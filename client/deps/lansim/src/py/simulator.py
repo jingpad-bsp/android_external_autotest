@@ -16,6 +16,16 @@ class SimulatorError(Exception):
     "A Simulator generic error."
 
 
+class NullContext(object):
+    """A context manager without any functionality."""
+    def __enter__(self):
+        return self
+
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return False # raises the exception if passed.
+
+
 class Simulator(object):
     """A TUN/TAP network interface simulator class.
 
@@ -43,6 +53,8 @@ class Simulator(object):
         # stop(). See the stop() method for details.
         self._pipe_rd, self._pipe_wr = os.pipe()
         self._running = False
+        # Lock object used for _events if multithreading is required.
+        self._lock = NullContext()
 
 
     def __del__(self):
@@ -95,10 +107,11 @@ class Simulator(object):
         if not callable(callback):
             raise SimulatorError("|callback| must be a callable object.")
         timestamp = time.time() + timeout
-        if timestamp not in self._events:
-            self._events[timestamp] = [callback]
-        else:
-            self._events[timestamp].append(callback)
+        with self._lock:
+            if timestamp not in self._events:
+                self._events[timestamp] = [callback]
+            else:
+                self._events[timestamp].append(callback)
 
 
     def remove_timeout(self, callback):
@@ -175,7 +188,7 @@ class Simulator(object):
         self._running = True
         iface_fd = self._iface.fileno()
         # Check the until function.
-        while self._running and not (until and until()):
+        while not (until and until()):
             # The main purpose of this loop is to wait (block) until the next
             # event is required to be fired. There are four kinds of events:
             #  * a packet is received.
@@ -189,19 +202,21 @@ class Simulator(object):
             # the timeout for the next event if there's one.
             timeout = None
             cur_time = time.time()
-            if self._events:
-                # Check events that should be fired.
-                while self._events and min(self._events) <= cur_time:
-                    key = min(self._events)
-                    lst = self._events[key]
-                    del self._events[key]
-                    for callback in lst:
-                        callback()
-                    cur_time = time.time()
-            # Check if there is an event to attend. Here we know that
-            # min(self._events) > cur_time because the previous while finished.
-            if self._events:
-                timeout = min(self._events) - cur_time # in seconds
+            with self._lock:
+                if self._events:
+                    # Check events that should be fired.
+                    while self._events and min(self._events) <= cur_time:
+                        key = min(self._events)
+                        lst = self._events[key]
+                        del self._events[key]
+                        for callback in lst:
+                            callback()
+                        cur_time = time.time()
+                # Check if there is an event to attend. Here we know that
+                # min(self._events) > cur_time because the previous while
+                # finished.
+                if self._events:
+                    timeout = min(self._events) - cur_time # in seconds
 
             # Pool the until() function at least once a second.
             if timeout is None or timeout > 1.0:
@@ -226,9 +241,11 @@ class Simulator(object):
             rlist, wlist, xlist = select.select(rlist, wlist, xlist, timeout)
 
             if self._pipe_rd in rlist:
-                # stop() was called.
-                os.read(self._pipe_rd, 1)
-                break
+                msg = os.read(self._pipe_rd, 1)
+                # stop() breaks the loop sending a '*'.
+                if '*' in msg:
+                    break
+                # Other messages are ignored.
 
             if xlist:
                 break
@@ -256,9 +273,7 @@ class Simulator(object):
 
     def stop(self):
         """Stops the run() method if it is running."""
-        if self._running:
-            self._running = False
-            os.write(self._pipe_wr, '*')
+        os.write(self._pipe_wr, '*')
 
 
 class SimulatorThread(threading.Thread, Simulator):
@@ -287,7 +302,25 @@ class SimulatorThread(threading.Thread, Simulator):
         threading.Thread.__init__(self)
         Simulator.__init__(self, iface)
         self._timeout = timeout
+        # We allow the same thread to acquire the lock more than once. This is
+        # useful if a callback want's to add itself.
+        self._lock = threading.RLock()
         self.error = None
+
+
+    def run_on_simulator(self, callback):
+        """Runs the given callback on the SimulatorThread thread.
+
+        Before calling start() on the SimulatorThread, all the calls seting up
+        the simulator are allowed, but once the thread is running, concurrency
+        problems should be considered. This method runs the provided callback
+        on the simulator.
+
+        @param callback: A callback function without arguments.
+        """
+        self.add_timeout(0, callback)
+        # Wake up the main loop with an ignored message.
+        os.write(self._pipe_wr, ' ')
 
 
     def run(self):

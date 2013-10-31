@@ -323,7 +323,7 @@ class ZeroconfDaemon(object):
 
 
     ### RFC 1035 - 3.3.14, Domain names - TXT (descriptive text).
-    def register_TXT(self, domain, txt_list):
+    def register_TXT(self, domain, txt_list, announce=False):
         """Register a TXT record on a domain with given list of strings.
 
         A TXT record can hold any list of text entries whos format depends on
@@ -333,8 +333,12 @@ class ZeroconfDaemon(object):
         @param domain: A domain name that normally can include a proto name and
         a service or host name.
         @param txt_list: A list of strings.
+        @param announce: If True, the method will also announce the changes
+        on the network.
         """
         self._txt_records[domain] = txt_list
+        if announce:
+            self._send_answers(self._process_TXT(dpkt.dns.DNS.Q(name=domain)))
 
 
     def _process_TXT(self, q):

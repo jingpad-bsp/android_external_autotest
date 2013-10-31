@@ -34,47 +34,53 @@ class CrosP2PDaemon(object):
         zeroconf.register_SRV(zeroconf.hostname, CROS_P2P_PROTO, 0, 0, port)
         # Register the P2P running on this server.
         zeroconf.register_PTR(self._p2p_domain, zeroconf.hostname)
-        self._update_records()
+        self._update_records(False)
 
 
-    def add_file(self, file_id, file_size):
+    def add_file(self, file_id, file_size, announce=False):
         """Add or update a shared file.
 
         @param file_id: The name of the file (without .p2p extension).
         @param file_size: The expected total size of the file.
+        @param announce: If True, the method will also announce the changes
+        on the network.
         """
         self._files[file_id] = file_size
-        self._update_records()
+        self._update_records(announce)
 
 
-    def remove_file(self, file_id):
+    def remove_file(self, file_id, announce=False):
         """Remove a shared file.
 
         @param file_id: The name of the file (without .p2p extension).
+        @param announce: If True, the method will also announce the changes
+        on the network.
         """
         del self._files[file_id]
-        self._update_records()
+        self._update_records(announce)
 
 
-    def set_num_connections(self, num_connections):
+    def set_num_connections(self, num_connections, announce=False):
         """Sets the number of connections that the HTTP server is handling.
 
         This method allows the P2P server to properly announce the number of
         connections it is currently handling.
 
         @param num_connections: An integer with the number of connections.
+        @param announce: If True, the method will also announce the changes
+        on the network.
         """
         self._num_connections = num_connections
-        self._update_records()
+        self._update_records(announce)
 
 
-    def _update_records(self):
+    def _update_records(self, announce):
         # Build the TXT records:
         txts = ['num_connections=%d' % self._num_connections]
         for file_id, file_size in self._files.iteritems():
             txts.append('id_%s=%d' % (file_id, file_size))
         self._zeroconf.register_TXT(
-            self._zeroconf.hostname + '.' + self._p2p_domain, txts)
+            self._zeroconf.hostname + '.' + self._p2p_domain, txts, announce)
 
 
 class CrosP2PClient(object):

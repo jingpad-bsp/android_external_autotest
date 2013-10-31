@@ -80,17 +80,21 @@ class p2p_ConsumeFiles(test.test):
         fd, tempfn = tempfile.mkstemp(prefix='p2p-output')
         ret = utils.run(
                 P2P_CLIENT, args=args, timeout=timeout,
-                stdout_tee=open(tempfn, 'w'), ignore_status=True,
-                stderr_tee=sys.stdout)
+                ignore_timeout=True, ignore_status=True,
+                stdout_tee=open(tempfn, 'w'), stderr_tee=sys.stdout)
         url = os.fdopen(fd).read()
         os.unlink(tempfn)
+
+        if not ignore_status and ret is None:
+            self._join_simulator()
+            raise error.TestFail('p2p-client %s timeout.' % ' '.join(args))
 
         if not ignore_status and ret.exit_status != 0:
             self._join_simulator()
             raise error.TestFail('p2p-client %s finished with value: %d' % (
                                  ' '.join(args), ret.exit_status))
 
-        return ret.exit_status, url
+        return None if ret is None else ret.exit_status, url
 
 
     def _join_simulator(self):
@@ -184,18 +188,33 @@ class p2p_ConsumeFiles(test.test):
             self._join_simulator()
             raise error.TestFail('Received url but expected none: "%s"' % url)
         if ret == 0:
-            error.TestFail('p2p-client returned no URL, but without an error.')
+            raise error.TestFail('p2p-client returned no URL, but without an '
+                                 'error.')
 
         ### Check that p2p-client hangs while waiting for a peer when there are
         ### too many connections.
-        cros_a.set_num_connections(99)
+        self._sim.run_on_simulator(
+                lambda: cros_a.set_num_connections(99, announce=True))
+
+        # For a query on the DUT to check that the new information is received.
+        for attempt in range(5):
+            _ret, conns = self._run_p2p_client(args=('--num-connections',),
+                                               timeout=10.)
+            conns = conns.strip()
+            if conns == '100':
+                break
+        if conns != '100':
+            self._join_simulator()
+            raise error.TestFail("p2p-client --num-connections doesn't reflect "
+                                 "the current number of connections on the "
+                                 "network, returned %s" % conns)
 
         ret, url = self._run_p2p_client(
                 args=('--get-url=only-b',), timeout=5., ignore_status=True)
-        if ret == 0:
+        if not ret is None:
             self._join_simulator()
-            error.TestFail('p2p-client finished but should have waited for '
-                           'num_connections to drop.')
+            raise error.TestFail('p2p-client finished but should have waited '
+                                 'for num_connections to drop.')
 
         self._sim.stop()
         self._sim.join()
