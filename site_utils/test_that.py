@@ -784,12 +784,15 @@ def _main_for_local_run(argv, arguments):
         # https://chromium-review.googlesource.com/#/c/62880/
         # This code can eventually be removed once those builds no longer need
         # test_that support.
-        legacy_path = os.path.exists(os.path.join(sysroot_path, 'usr', 'local',
-                                                  'autotest', 'site_utils'))
+        new_path = 'usr/local/build/autotest'
+        old_path = 'usr/local/autotest'
+        legacy_path = (os.path.exists(os.path.join(sysroot_path, old_path))
+                       and not
+                       os.path.exists(os.path.join(sysroot_path, new_path)))
         if legacy_path:
-            path_ending = 'usr/local/autotest'
+            path_ending = old_path
         else:
-            path_ending = 'usr/local/build/autotest'
+            path_ending = new_path
         autotest_path = os.path.join(sysroot_path, path_ending)
 
     site_utils_path = os.path.join(autotest_path, 'site_utils')
