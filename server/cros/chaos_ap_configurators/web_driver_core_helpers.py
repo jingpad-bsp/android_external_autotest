@@ -10,6 +10,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..',
                              'client', 'deps', 'pyauto_dep', 'test_src',
                              'third_party', 'webdriver', 'pylib'))
 
+from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import TimeoutException as \
     SeleniumTimeoutException
 from selenium.common.exceptions import WebDriverException
@@ -216,7 +217,7 @@ class WebDriverCoreHelpers(object):
         try:
             self.wait.until(lambda _: self.driver.find_element_by_xpath(xpath))
             element = self.driver.find_element_by_xpath(xpath)
-        except SeleniumTimeoutException, e:
+        except (SeleniumTimeoutException, NoSuchElementException) as e:
             self.restore_default_wait_time()
             raise SeleniumTimeoutException('Unable to find the object by '
                                            'xpath: %s\n WebDriver exception: '
