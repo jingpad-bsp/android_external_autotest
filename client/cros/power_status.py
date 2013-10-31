@@ -449,6 +449,12 @@ class SysStat(object):
           TestError: if one of battery assertions fails
         """
         if self.on_ac():
+            # TODO(shawnn): This is debug code. Need to remove it later.
+            if utils.get_board() == 'butterfly':
+                logging.debug('Butterfly on_ac, delay and re-check')
+                time.sleep(5)
+                logging.debug('Butterfly on_ac(): %d', self.on_ac())
+
             raise error.TestError(
                 'Running on AC power. Please remove AC power cable.')
 
