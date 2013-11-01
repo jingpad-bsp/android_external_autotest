@@ -713,7 +713,8 @@ def main():
             logging.info(link.GenerateBuildbotLink())
     else:
         logging.info('Created suite job: %r', job_id)
-        link = LogLink(options.name, '%s-%s' % (job_id, getpass.getuser()))
+        link = LogLink(options.name, instance_server,
+                       '%s-%s' % (job_id, getpass.getuser()))
         logging.info(link.GenerateBuildbotLink())
         logging.info('--no_wait specified; Exiting.')
     return code
