@@ -6,6 +6,9 @@ import collections
 import re
 import time
 
+from autotest_lib.client.common_lib import utils
+
+
 HT20 = 'HT20'
 HT40_ABOVE = 'HT40+'
 HT40_BELOW = 'HT40-'
@@ -35,8 +38,10 @@ class IwRunner(object):
     """Defines an interface to the 'iw' command."""
 
 
-    def __init__(self, host, command_iw=DEFAULT_COMMAND_IW):
-        self._host = host
+    def __init__(self, remote_host=None, command_iw=DEFAULT_COMMAND_IW):
+        self._run = utils.run
+        if remote_host:
+            self._run = remote_host.run
         self._command_iw = command_iw
 
 
@@ -49,8 +54,8 @@ class IwRunner(object):
         @param interface_type: string type of interface to add (e.g. 'monitor').
 
         """
-        self._host.run('%s phy %s interface add %s type %s' %
-                       (self._command_iw, phy, interface, interface_type))
+        self._run('%s phy %s interface add %s type %s' %
+                  (self._command_iw, phy, interface, interface_type))
 
 
     def disconnect_station(self, interface):
@@ -60,7 +65,7 @@ class IwRunner(object):
         @param interface: string name of interface to disconnect.
 
         """
-        self._host.run('%s dev %s disconnect' % (self._command_iw, interface))
+        self._run('%s dev %s disconnect' % (self._command_iw, interface))
 
 
     def ibss_join(self, interface, ssid, frequency):
@@ -72,8 +77,8 @@ class IwRunner(object):
         @param frequency: int frequency of IBSS in Mhz.
 
         """
-        self._host.run('%s dev %s ibss join %s %d' %
-                       (self._command_iw, interface, ssid, frequency))
+        self._run('%s dev %s ibss join %s %d' %
+                  (self._command_iw, interface, ssid, frequency))
 
 
     def ibss_leave(self, interface):
@@ -83,12 +88,12 @@ class IwRunner(object):
         @param interface: string name of interface to remove from the IBSS.
 
         """
-        self._host.run('%s dev %s ibss leave' % (self._command_iw, interface))
+        self._run('%s dev %s ibss leave' % (self._command_iw, interface))
 
 
     def list_interfaces(self):
         """@return list of string WiFi interface names on device."""
-        output = self._host.run('%s dev' % self._command_iw).stdout
+        output = self._run('%s dev' % self._command_iw).stdout
         interfaces = []
         for line in output.splitlines():
             m = re.match('[\s]*Interface (.*)', line)
@@ -105,7 +110,7 @@ class IwRunner(object):
         @return list of IwPhy tuples.
 
         """
-        output = self._host.run('%s list' % self._command_iw).stdout
+        output = self._run('%s list' % self._command_iw).stdout
         current_phy = None
         current_band = None
         all_phys = []
@@ -155,8 +160,8 @@ class IwRunner(object):
                 to remove the interface.
 
         """
-        self._host.run('%s dev %s del' % (self._command_iw, interface),
-                       ignore_status=ignore_status)
+        self._run('%s dev %s del' % (self._command_iw, interface),
+                  ignore_status=ignore_status)
 
 
     def determine_security(self, supported_securities):
@@ -183,7 +188,7 @@ class IwRunner(object):
 
         """
         command = str('%s %s scan' % (self._command_iw, interface))
-        scan = self._host.run(command, ignore_status=True)
+        scan = self._run(command, ignore_status=True)
         if scan.exit_status != 0:
             # The device was busy
            return None
@@ -234,8 +239,8 @@ class IwRunner(object):
         @param power: string power parameter. (e.g. 'auto').
 
         """
-        self._host.run('%s dev %s set txpower %s' %
-                       (self._command_iw, interface, power))
+        self._run('%s dev %s set txpower %s' %
+                  (self._command_iw, interface, power))
 
 
     def set_regulatory_domain(self, domain_string):
@@ -245,7 +250,7 @@ class IwRunner(object):
         @param domain_string: string regulatory domain name (e.g. 'US').
 
         """
-        self._host.run('%s reg set %s' % (self._command_iw, domain_string))
+        self._run('%s reg set %s' % (self._command_iw, domain_string))
 
 
     def wait_for_scan_result(self, interface, bss=None, ssid=None,

@@ -4,7 +4,7 @@
 
 import unittest
 
-from autotest_lib.server.cros.network import iw_runner
+from autotest_lib.client.common_lib.cros.network import iw_runner
 
 class IwRunnerTest(unittest.TestCase):
     """Unit test for the IWRunner object."""
@@ -135,7 +135,7 @@ class IwRunnerTest(unittest.TestCase):
         Uses the runner to search for a network by bss.
         """
         host = self.host(scan_output)
-        runner = iw_runner.IwRunner(host)
+        runner = iw_runner.IwRunner(remote_host=host)
         network = runner.wait_for_scan_result('wlan0', bss=test_iw_bss.bss)
         self.verify_values(test_iw_bss, network)
 
@@ -187,7 +187,7 @@ class IwRunnerTest(unittest.TestCase):
         return
         scan_output = self.HT40_ABOVE + self.HT20 + self.NO_HT + self.HT20_2
         host = self.host(scan_output)
-        runner = iw_runner.IwRunner(host)
+        runner = iw_runner.IwRunner(remote_host=host)
         networks = runner.wait_for_scan_result('wlan 0',
                                                ssid=self.HT20_2_IW_BSS.ssid)
         for iw_bss_1, iw_bss_2 in zip([self.HT20_IW_BSS, self.HT20_2_IW_BSS],

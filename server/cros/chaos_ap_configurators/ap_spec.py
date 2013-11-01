@@ -2,7 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.server.cros.network import iw_runner
+from autotest_lib.client.common_lib.cros.network import iw_runner
+
 
 # Supported bands
 BAND_2GHZ = '2.4GHz'

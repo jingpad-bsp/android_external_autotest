@@ -5,10 +5,10 @@
 import logging
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.client.common_lib.cros.network import tcpdump_analyzer
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server.cros.network import hostap_config
-from autotest_lib.server.cros.network import iw_runner
 from autotest_lib.server.cros.network import netperf_runner
 from autotest_lib.server.cros.network import wifi_cell_test_base
 
@@ -52,7 +52,8 @@ class network_WiFi_RateControl(wifi_cell_test_base.WiFiCellTestBase):
 
         """
         # Figure out the highest MCS index supported by this hardware.
-        phys = iw_runner.IwRunner(self.context.client.host).list_phys()
+        phys = iw_runner.IwRunner(
+                remote_host=self.context.client.host).list_phys()
         if len(phys) != 1:
             raise error.TestFail('Test expects a single PHY, but we got %d' %
                                  len(phys))

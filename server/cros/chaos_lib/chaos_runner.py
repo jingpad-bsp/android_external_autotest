@@ -6,14 +6,15 @@ import datetime
 import logging
 import random
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import chaos_constants
+from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.server import hosts
 from autotest_lib.server import frontend
 from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros import host_lock_manager
 from autotest_lib.server.cros.chaos_ap_configurators import ap_batch_locker
 from autotest_lib.server.cros.chaos_ap_configurators import ap_cartridge
-from autotest_lib.server.cros.network import iw_runner
 
 class ChaosRunner(object):
     """Object to run a network_WiFi_ChaosXXX test."""
@@ -150,7 +151,8 @@ class ChaosRunner(object):
                                      tag=ap.ssid)
                         continue
                     logging.info('Searching for SSID %s in scan...', ap.ssid)
-                    iw_scanner = iw_runner.IwRunner(self._host,
+                    iw_scanner = iw_runner.IwRunner(
+                            remote_host=self._host,
                             command_iw=self._wifi_client.command_iw)
                     networks = iw_scanner.wait_for_scan_result(
                             self._wifi_client._wifi_if, ssid=ap.ssid,

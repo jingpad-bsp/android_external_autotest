@@ -7,9 +7,9 @@ import logging
 import time
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.server.cros import wifi_test_utils
 from autotest_lib.server.cros.network import packet_capturer
-from autotest_lib.server.cros.network import iw_runner
 
 class LinuxSystem(object):
     """Superclass for test machines running Linux.
@@ -65,7 +65,7 @@ class LinuxSystem(object):
                 self.host, host_description=role, cmd_ifconfig=cmd_ifconfig,
                 cmd_ip=self.cmd_ip, cmd_iw=cmd_iw, cmd_netdump=cmd_netdump,
                 ignore_failures=True)
-        self.iw_runner = iw_runner.IwRunner(host, command_iw=cmd_iw)
+        self.iw_runner = iw_runner.IwRunner(remote_host=host, command_iw=cmd_iw)
 
         self.phys_for_frequency, self.phy_bus_type = self._get_phy_info()
         self.wlanifs_in_use = []
