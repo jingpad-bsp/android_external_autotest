@@ -32,7 +32,7 @@ iterations = int(dict_args.get('iterations', 100))
 def run_bootperf(machine):
     host = hosts.create_host(machine)
     job.run_test('platform_BootPerfServer', host=host,
-                 iterations=iterations, upload_perf=True)
+                 iterations=iterations)
 
 
 parallel_simple(run_bootperf, machines)

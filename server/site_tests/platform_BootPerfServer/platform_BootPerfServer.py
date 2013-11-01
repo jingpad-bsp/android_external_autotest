@@ -4,45 +4,16 @@
 
 import logging
 import os
-import re
 import shutil
 import traceback
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.bin import utils
 from autotest_lib.server import test, autotest
 
-
-LOWER_IS_BETTER_METRICS = set(['rdbytes', 'seconds'])
-
-
 class platform_BootPerfServer(test.test):
-    """A test that reboots the client and collect boot perf data."""
     version = 1
 
 
-    def upload_perf_keyvals(self, keyvals):
-        """Upload perf keyvals in dictionary |keyvals| to Chrome perf dashboard.
-
-        This method assumes that the key of a perf keyval is in the format
-        of "units_description". The text before the first underscore represents
-        the units and the rest of the text represents
-        a description of the measured perf value. For instance,
-        'seconds_kernel_to_login', 'rdbytes_kernel_to_startup'.
-
-        @param keyvals: A dictionary that maps a perf metric to its value.
-
-        """
-        for key, val in keyvals.items():
-            match = re.match(r'^(.+?)_.+$', key)
-            if match:
-                units = match.group(1)
-                higher_is_better = units not in LOWER_IS_BETTER_METRICS
-                self.output_perf_value(
-                        description=key, value=val,
-                        units=units, higher_is_better=higher_is_better)
-
-
-    def run_once(self, host=None, upload_perf=False):
+    def run_once(self, host=None):
         self.client = host
         self.client_test = 'platform_BootPerf'
 
@@ -56,7 +27,7 @@ class platform_BootPerfServer(test.test):
             client_at.run_test('login_LoginSuccess', disable_sysinfo=True)
 
         # Reboot the client
-        logging.info('BootPerfServer: reboot %s', self.client.hostname)
+        logging.info('BootPerfServer: reboot %s' % self.client.hostname)
         try:
             self.client.reboot()
         except error.AutoservRebootError as e:
@@ -84,13 +55,7 @@ class platform_BootPerfServer(test.test):
             server_results.close()
             client_results.close()
         else:
-            logging.warn('Unable to locate %s', src)
-
-        # Upload perf keyvals in the client keyval file to perf dashboard.
-        if upload_perf:
-            logging.info('Output perf data for iteration %03d', self.iteration)
-            perf_keyvals = utils.read_keyval(src, type_tag='perf')
-            self.upload_perf_keyvals(perf_keyvals)
+            logging.warn('Unable to locate %s' % src)
 
         # Everything that isn't the client 'keyval' file is raw data
         # from the client test:  copy it to a per-iteration

@@ -4,10 +4,6 @@
     "master_name": "ChromeOSVideo"
   },
   {
-    "autotest_name": "platform_BootPerfServer",
-    "master_name": "ChromiumPerf"
-  },
-  {
     "autotest_name": "platform_GesturesRegressionTest",
     "master_name": "ChromeOSTouchpad"
   },

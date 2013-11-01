@@ -469,44 +469,26 @@ def matrix_to_string(matrix, header=None):
     return matrix_str
 
 
-def read_keyval(path, type_tag=None):
+def read_keyval(path):
     """
     Read a key-value pair format file into a dictionary, and return it.
     Takes either a filename or directory name as input. If it's a
     directory name, we assume you want the file to be called keyval.
-
-    @param path: Full path of the file to read from.
-    @param type_tag: If not None, only keyvals with key ending
-                     in a suffix {type_tag} will be collected.
     """
     if os.path.isdir(path):
         path = os.path.join(path, 'keyval')
-    if not os.path.exists(path):
-        return {}
-
-    if type_tag:
-        pattern = r'^([-\.\w]+)\{%s\}=(.+)$' % type_tag
-    else:
-        pattern = r'^([-\.\w]+)=(.+)$'
-
     keyval = {}
-    f = open(path)
-    for line in f:
-        line = re.sub('#.*', '', line).rstrip()
-        if not line:
-            continue
-        match = re.match(pattern, line)
-        if match:
-            key = match.group(1)
-            value = match.group(2)
+    if os.path.exists(path):
+        for line in open(path):
+            line = re.sub('#.*', '', line).rstrip()
+            if not re.search(r'^[-\.\w]+=', line):
+                raise ValueError('Invalid format line: %s' % line)
+            key, value = line.split('=', 1)
             if re.search('^\d+$', value):
                 value = int(value)
             elif re.search('^(\d+\.)?\d+$', value):
                 value = float(value)
             keyval[key] = value
-        else:
-            raise ValueError('Invalid format line: %s' % line)
-    f.close()
     return keyval
 
 
