@@ -14,6 +14,7 @@ from xml.parsers import expat
 
 import common
 
+from autotest_lib.client.common_lib import autotemp
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.server import site_utils
 from autotest_lib.server.cros.dynamic_suite import constants
@@ -220,13 +221,17 @@ class TestFailure(Bug):
         if not fundamental_libs:
             return
         try:
-            gs_context = gs.GSContext(retries=self._GS_RETRIES)
+            tempdir = autotemp.tempdir()
+            gs_context = gs.GSContext(retries=self._GS_RETRIES,
+                                      cache_dir=tempdir.name)
             gs_cmd = '%s%s%s/metadata.json' % (self._gs_file_prefix,
                                                self._chromeos_image_archive,
                                                self.build)
             return json.loads(gs_context.Cat(gs_cmd).output)
         except (cros_build_lib.RunCommandError, gs.GSContextException) as e:
             logging.debug(e)
+        finally:
+            tempdir.clean()
 
 
     def _link_buildbot_stages(self):
