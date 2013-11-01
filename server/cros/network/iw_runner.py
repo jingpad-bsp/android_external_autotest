@@ -184,7 +184,7 @@ class IwRunner(object):
         """
         command = str('%s %s scan' % (self._command_iw, interface))
         scan = self._host.run(command, ignore_status=True)
-        if scan.exit_status == 240:
+        if scan.exit_status != 0:
             # The device was busy
            return None
 
@@ -264,6 +264,7 @@ class IwRunner(object):
         while time.time() - start_time < timeout_seconds:
             scan_results = self.scan(interface)
             if scan_results is None:
+                time.sleep(5) ## allow in-progress scan to complete
                 continue
             matching_bsses = []
             for iwbss in scan_results:
