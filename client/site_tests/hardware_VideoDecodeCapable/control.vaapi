@@ -21,6 +21,7 @@ TEST_CLASS = 'hardware'
 TEST_TYPE = 'client'
 DEPENDENCIES = 'vaapi'
 EXPERIMENTAL = 'True'
+RETRIES = 1
 
 DOC = """
 VAAPI capabilities probing is done in C. It is built as an extension module

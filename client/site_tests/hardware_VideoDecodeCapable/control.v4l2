@@ -18,6 +18,8 @@ TEST_CLASS = 'hardware'
 TEST_TYPE = 'client'
 DEPENDENCIES = 'video_decode_v4l2'
 EXPERIMENTAL = 'True'
+RETRIES = 1
+
 DOC = """
 V4L2 formats enumeration is done in C. It is built as a extension module
 (v4l2.so) during setup.
