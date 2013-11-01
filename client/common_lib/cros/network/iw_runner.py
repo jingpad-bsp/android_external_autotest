@@ -179,15 +179,25 @@ class IwRunner(object):
         return security
 
 
-    def scan(self, interface):
+    def scan(self, interface, frequencies=(), ssids=()):
         """Performs a scan.
 
         @param interface: the interface to run the iw command against
+        @param frequencies: list of int frequencies in Mhz to scan.
+        @param ssids: list of string SSIDs to send probe requests for.
 
         @returns a list of IwBss collections; None if the scan fails
 
         """
-        command = str('%s %s scan' % (self._command_iw, interface))
+        freq_param = ''
+        if frequencies:
+            freq_param = ' freq %s' % ' '.join(map(str, frequencies))
+        ssid_param = ''
+        if ssids:
+           ssid_param = ' ssid "%s"' % '" "'.join(ssids)
+
+        command = str('%s dev %s scan%s%s' % (self._command_iw, interface,
+                                              freq_param, ssid_param))
         scan = self._run(command, ignore_status=True)
         if scan.exit_status != 0:
             # The device was busy

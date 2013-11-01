@@ -9,6 +9,7 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import interface
+from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.cros import constants
@@ -435,26 +436,44 @@ class WiFiClient(object):
         self.host.run('iw dev %s set power_save %s' % (self.wifi_if, mode))
 
 
-    def scan(self, frequencies, ssids):
+    def scan(self, frequencies, ssids, timeout_seconds=10):
         """Request a scan and check that certain SSIDs appear in the results.
+
+        This method will retry for a default of |timeout_seconds| until it is
+        able to successfully kick off a scan.  Sometimes, the device on the DUT
+        claims to be busy and rejects our requests.
 
         @param frequencies list of int WiFi frequencies to scan for.
         @param ssids list of string ssids to probe request for.
+        @param timeout_seconds: float number of seconds to retry scanning
+                if the interface is busy.  This does not retry if certain
+                SSIDs are missing from the results.
 
         """
-        scan_params = ''
-        if frequencies:
-           scan_params += ' freq %s' % ' '.join(map(str, frequencies))
-        if ssids:
-           scan_params += ' ssid "%s"' % '" "'.join(ssids)
-        result = self.host.run('%s dev %s scan%s' % (self.command_iw,
-                                                     self.wifi_if,
-                                                     scan_params))
-        scan_lines = result.stdout.splitlines()
+        runner = iw_runner.IwRunner(remote_host=self.host,
+                                    command_iw=self.command_iw)
+        start_time = time.time()
+        while time.time() - start_time < timeout_seconds:
+            bss_list = runner.scan(self.wifi_if, frequencies=frequencies,
+                                   ssids=ssids)
+            if bss_list is not None:
+                break
+
+            time.sleep(0.5)
+        else:
+            raise error.TestFail('Unable to trigger scan on client.')
+
         for ssid in ssids:
-            if ssid and ('\tSSID: %s' % ssid) not in scan_lines:
-                raise error.TestFail('SSID %s is not in scan results: %s' %
-                                     (ssid, result.stdout))
+            if not ssid:
+                continue
+
+            for bss in bss_list:
+                if bss.ssid == ssid:
+                    break
+
+            else:
+                raise error.TestFail('SSID %s is not in scan results: %r' %
+                                     (ssid, bss_list))
 
 
     def configure_bgscan(self, configuration):
