@@ -257,8 +257,8 @@ class BuffalowzrAPConfigurator(
             xpath = '//span[@class="WLAN11A"]'
         self.driver.find_element_by_xpath(xpath)
         self.click_button_by_xpath(xpath)
-        self.driver.find_element_by_xpath('//a[text()="WPA2-PSK (AES)"]')
-        self.click_button_by_xpath('//a[text()="WPA2-PSK (AES)"]')
+        self.driver.find_element_by_xpath('//a[text()="WPA-PSK (AES)"]')
+        self.click_button_by_xpath('//a[text()="WPA-PSK (AES)"]')
         text_field = '//input[@name="wpapsk"]'
         self.set_content_of_text_field_by_xpath(shared_key, text_field,
                                                 abort_check=True)

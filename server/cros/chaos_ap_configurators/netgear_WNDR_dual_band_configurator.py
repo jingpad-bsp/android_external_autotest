@@ -219,10 +219,10 @@ class NetgearDualBandAPConfigurator(
 
     def _set_security_wpapsk(self, shared_key, update_interval=None):
         # Update Interval is not supported.
-        xpath = ('//input[@name="security_type" and @value="WPA2-PSK"]')
+        xpath = ('//input[@name="security_type" and @value="WPA-PSK"]')
         text = '//input[@name="passphrase"]'
         if self.current_band == ap_spec.BAND_5GHZ:
-            xpath = ('//input[@name="security_type_an" and @value="WPA2-PSK"]')
+            xpath = ('//input[@name="security_type_an" and @value="WPA-PSK"]')
             text = '//input[@name="passphrase_an"]'
         try:
             self.click_button_by_xpath(xpath,

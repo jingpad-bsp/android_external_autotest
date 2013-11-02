@@ -266,7 +266,7 @@ class BuffaloAPConfigurator(
         popup = '//select[@name="ath0_security_mode"]'
         key_field = '//input[@name="ath0_wpa_psk"]'
         interval_field = '//input[@name="ath0_wpa_gtk_rekey"]'
-        wpa_item = 'WPA2 Personal'
+        wpa_item = 'WPA Personal'
 
         self._wait_for_item_in_popup(wpa_item, popup)
         self.select_item_from_popup_by_xpath(wpa_item, popup)
