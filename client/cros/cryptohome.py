@@ -133,10 +133,10 @@ def remove_all_vaults():
 def mount_vault(user, password, create=False):
     """Mount the given user's vault."""
     args = [CRYPTOHOME_CMD, '--action=mount', '--user=%s' % user,
-            '--password=%s' % password]
+            '--password=%s' % password, '--async']
     if create:
         args.append('--create')
-    print utils.system_output(args)
+    logging.info(__run_cmd(' '.join(args)))
     # Ensure that the vault exists in the shadow directory.
     user_hash = get_user_hash(user)
     if not os.path.exists(os.path.join(constants.SHADOW_ROOT, user_hash)):
@@ -151,7 +151,8 @@ def mount_vault(user, password, create=False):
 
 def mount_guest():
     """Mount the given user's vault."""
-    print utils.system_output([CRYPTOHOME_CMD, '--action=mount_guest'])
+    args = [CRYPTOHOME_CMD, '--action=mount_guest', '--async']
+    logging.info(__run_cmd(' '.join(args)))
     # Ensure that the guest tmpfs is mounted.
     if not is_guest_vault_mounted(allow_fail=True):
         raise ChromiumOSError('Cryptohome did not mount tmpfs.')
@@ -169,8 +170,7 @@ def unmount_vault(user):
     Once unmounting for a specific user is supported, the user parameter will
     name the target user. See crosbug.com/20778.
     """
-    cmd = (CRYPTOHOME_CMD + ' --action=unmount')
-    __run_cmd(cmd)
+    __run_cmd(CRYPTOHOME_CMD + ' --action=unmount')
     # Ensure that the vault is not mounted.
     if is_vault_mounted(user, allow_fail=True):
         raise ChromiumOSError('Cryptohome did not unmount the user.')
