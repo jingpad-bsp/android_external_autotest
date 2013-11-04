@@ -486,14 +486,18 @@ class Suite(object):
                             self._tag,
                             result)
 
-                    bug_info = bug_reporter.report(failure, bug_template)
-                    bug_keyvals = tools.create_bug_keyvals(
-                            result.test_name, bug_info)
-                    try:
-                        utils.write_keyval(self._results_dir, bug_keyvals)
-                    except ValueError:
-                        logging.error('Unable to log keyval for test:%s '
-                                      'bugid: %s', result.test_name, bug_id)
+                    bug_id, bug_count = bug_reporter.report(failure,
+                                                            bug_template)
+
+                    # We use keyvals to communicate bugs filed with run_suite.
+                    if bug_id is not None:
+                        bug_keyvals = tools.create_bug_keyvals(
+                                result.test_name, (bug_id, bug_count))
+                        try:
+                            utils.write_keyval(self._results_dir, bug_keyvals)
+                        except ValueError:
+                            logging.error('Unable to log bug keyval for:%s ',
+                                          result.test_name)
 
         except Exception:  # pylint: disable=W0703
             logging.error(traceback.format_exc())

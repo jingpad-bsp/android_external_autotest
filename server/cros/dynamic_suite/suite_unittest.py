@@ -28,6 +28,7 @@ from autotest_lib.server.cros.dynamic_suite.suite import Suite
 from autotest_lib.server.cros.dynamic_suite.fakes import FakeControlData
 from autotest_lib.server.cros.dynamic_suite.fakes import FakeJob
 from autotest_lib.server import frontend
+from autotest_lib.site_utils import phapi_lib
 
 
 class SuiteTest(mox.MoxTestBase):
@@ -348,6 +349,26 @@ class SuiteTest(mox.MoxTestBase):
         return suite
 
 
+    def _createSuiteMockResults(self, results_dir=None):
+        """Create a suite, returned a set of mocked results to expect.
+
+        @param results_dir: A mock results directory.
+        @return List of mocked results to wait on.
+        """
+        self.suite = self._createSuiteWithMockedTestsAndControlFiles(
+                         file_bugs=True)
+        self.suite._results_dir = results_dir
+        test_report = self._get_bad_test_report()
+        test_predicates = test_report.predicates
+        test_fallout = test_report.fallout
+
+        self.recorder = self.mox.CreateMock(base_job.base_job)
+        self._mock_recorder_with_results([test_predicates], self.recorder)
+        self.suite._tko.run = self.mox.CreateMock(frontend.RpcClient.run)
+        self.suite._tko.run('get_detailed_test_views', afe_job_id='myjob')
+        return [test_predicates, test_fallout]
+
+
     def _mock_recorder_with_results(self, results, recorder):
         """
         Checks that results are recoded in order, eg:
@@ -482,6 +503,8 @@ class SuiteTest(mox.MoxTestBase):
 
             @param result: The result we get when a test fails.
             """
+            test_predicates = test_results[0]
+            test_fallout = test_results[1]
             expected_result = job_status.Status('FAIL',
                                                 test_predicates.testname,
                                                 reason=test_predicates.reason,
@@ -493,33 +516,46 @@ class SuiteTest(mox.MoxTestBase):
                        expected_result.__dict__.iteritems()
                        if 'timestamp' not in str(k))
 
-        self.suite = self._createSuiteWithMockedTestsAndControlFiles(
-                         file_bugs=True)
-
-        test_report = self._get_bad_test_report()
-        test_predicates = test_report.predicates
-        test_fallout = test_report.fallout
-
-        self.recorder = self.mox.CreateMock(base_job.base_job)
-        self._mock_recorder_with_results([test_predicates], self.recorder)
+        test_results = self._createSuiteMockResults()
         self.schedule_and_expect_these_results(
             self.suite,
-            [test_predicates+test_fallout],
+            [test_results[0] + test_results[1]],
             self.recorder)
-
-        self.suite._tko.run = self.mox.CreateMock(frontend.RpcClient.run)
-        self.suite._tko.run('get_detailed_test_views', afe_job_id='myjob')
 
         self.mox.StubOutWithMock(reporting, 'TestFailure')
         reporting.TestFailure(self._BUILD, mox.IgnoreArg(),
                               mox.IgnoreArg(), mox.Func(check_result))
 
+        self.mox.StubOutClassWithMocks(phapi_lib, 'ProjectHostingApiClient')
+        mock_host = phapi_lib.ProjectHostingApiClient(mox.IgnoreArg(),
+                                                      mox.IgnoreArg())
         self.mox.StubOutWithMock(reporting.Reporter, 'report')
         reporting.Reporter.report(mox.IgnoreArg(),
                                   mox.IgnoreArg()).AndReturn((0, 0))
 
         self.mox.StubOutWithMock(utils, 'write_keyval')
         utils.write_keyval(mox.IgnoreArg(), mox.IgnoreArg())
+
+        self.mox.ReplayAll()
+
+        self.suite.schedule_and_wait(self.recorder.record_entry, True)
+
+
+    def testFailedBugFiling(self):
+        """
+        Make sure the suite survives even if we cannot file bugs.
+        """
+        test_results = self._createSuiteMockResults(self.tmpdir)
+        self.schedule_and_expect_these_results(
+            self.suite,
+            [test_results[0] + test_results[1]],
+            self.recorder)
+
+        self.mox.StubOutWithMock(reporting.Reporter, '_check_tracker')
+        self.mox.StubOutClassWithMocks(phapi_lib, 'ProjectHostingApiClient')
+        mock_host = phapi_lib.ProjectHostingApiClient(mox.IgnoreArg(),
+                                                      mox.IgnoreArg())
+        reporting.Reporter._check_tracker().AndReturn(False)
 
         self.mox.ReplayAll()
 

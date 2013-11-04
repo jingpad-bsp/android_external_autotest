@@ -616,11 +616,12 @@ class Reporter(object):
                             that was either created or modified, and
                             a count of the number of times the bug
                             has been updated.  For a new bug, the
-                            count is 1.
+                            count is 1. If we could not file a bug
+                            for some reason, the count is 0.
         """
         if not self._check_tracker():
             logging.error("Can't file %s", bug.title())
-            return None
+            return None, 0
 
         issue = None
         try:
@@ -656,7 +657,9 @@ class Reporter(object):
         except AttributeError:
             pass
 
-        return self._create_bug_report(bug, bug_template, sheriffs), 1
+        bug_id = self._create_bug_report(bug, bug_template, sheriffs)
+        bug_count = 1 if bug_id else 0
+        return bug_id, bug_count
 
 
 # TODO(beeps): Move this to server/site_utils after crbug.com/281906 is fixed.
