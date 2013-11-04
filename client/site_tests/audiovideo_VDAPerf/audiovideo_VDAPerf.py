@@ -23,17 +23,17 @@ KEY_DELIVERY_TIME_25 = 'delivery_time.percentile_0.25'
 KEY_FRAME_DROP_RATE = 'frame_drop_rate'
 KEY_CPU_KERNEL_USAGE = 'cpu_usage.kernel'
 KEY_CPU_USER_USAGE = 'cpu_usage.user'
-
-ONE_SECOND = 1000000 # in microseconds
+KEY_DECODE_TIME_50 = 'decode_time.percentile_0.50'
 
 DOWNLOAD_BASE = 'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/'
 BINARY = 'video_decode_accelerator_unittest'
-FRAME_DELIVERY_LOG = 'frame_delivery.log'
+TEST_OUTPUT_LOG = 'test_output.log'
 
 TIME_BINARY = '/usr/local/bin/time'
 
 TIME_LOG = 'time.log'
 
+UNIT_MILLISECOND = 'millisecond'
 UNIT_MICROSECOND = 'microsecond'
 UNIT_PERCENT = 'percent'
 
@@ -41,6 +41,7 @@ UNIT_PERCENT = 'percent'
 TIME_OUTPUT_FORMAT = '%e %S %U'
 
 RE_FRAME_DELIVERY_TIME = re.compile('frame \d+: (\d+) us')
+RE_DECODE_TIME_MEDIAN = re.compile('Decode time median: (\d+) ms')
 
 
 def _percentile(values, k):
@@ -137,7 +138,7 @@ class audiovideo_VDAPerf(chrome_test.ChromeBinaryTest):
         delivery times, and so on so forth.
         """
         result = []
-        with open(FRAME_DELIVERY_LOG, 'r') as f:
+        with open(TEST_OUTPUT_LOG, 'r') as f:
             while True:
                 line = f.readline()
                 if not line: break
@@ -183,31 +184,44 @@ class audiovideo_VDAPerf(chrome_test.ChromeBinaryTest):
     def _run_test_case(self, name, test_video_data, frame_num, rendering_fps):
 
         # Get frame delivery time, decode as fast as possible.
-        _remove_if_exists(FRAME_DELIVERY_LOG)
+        _remove_if_exists(TEST_OUTPUT_LOG)
         cmd_line = ('--test_video_data="%s" ' % test_video_data +
                     '--gtest_filter=DecodeVariations/*/0 ' +
                     '--disable_rendering ' +
-                    '--frame_delivery_log="%s"' % FRAME_DELIVERY_LOG)
+                    '--output_log="%s"' % TEST_OUTPUT_LOG)
         self.run_chrome_binary_test(BINARY, cmd_line)
 
         frame_delivery_times = self._load_frame_delivery_times()
         self._analyze_frame_delivery_times(name, frame_delivery_times)
 
         # Get frame drop rate & CPU usage, decode at the specified fps
-        _remove_if_exists(FRAME_DELIVERY_LOG)
+        _remove_if_exists(TEST_OUTPUT_LOG)
         cmd_line = ('--test_video_data="%s" ' % test_video_data +
                     '--gtest_filter=DecodeVariations/*/0 ' +
                     ('--rendering_fps=%s ' % rendering_fps) +
-                    '--frame_delivery_log="%s"' % FRAME_DELIVERY_LOG)
+                    '--output_log="%s"' % TEST_OUTPUT_LOG)
         time_cmd = ('%s -f "%s" -o "%s" ' %
                     (TIME_BINARY, TIME_OUTPUT_FORMAT, TIME_LOG))
         self.run_chrome_binary_test(BINARY, cmd_line, prefix=time_cmd)
 
-        #Ignore if no log was generated, see comment above.
+        # Ignore if no log was generated. See comment above.
         frame_delivery_times = self._load_frame_delivery_times()
         self._analyze_frame_drop_rate(name, frame_num, frame_delivery_times)
         self._analyze_cpu_usage(name, TIME_LOG)
 
+        # Get decode time median.
+        _remove_if_exists(TEST_OUTPUT_LOG)
+        cmd_line = ('--test_video_data="%s" ' % test_video_data +
+                    '--gtest_filter=*TestDecodeTimeMedian ' +
+                    '--output_log="%s"' % TEST_OUTPUT_LOG)
+        self.run_chrome_binary_test(BINARY, cmd_line)
+        line = open(TEST_OUTPUT_LOG, 'r').read()
+        m = RE_DECODE_TIME_MEDIAN.match(line)
+        assert m, 'invalid format: %s' % line
+        decode_time = int(m.group(1))
+        self._logperf(name, KEY_DECODE_TIME_50, decode_time, UNIT_MILLISECOND)
+
+        _remove_if_exists(TEST_OUTPUT_LOG)
 
     def run_once(self, test_cases):
 
