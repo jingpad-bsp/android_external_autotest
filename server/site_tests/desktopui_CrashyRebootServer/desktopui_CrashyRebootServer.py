@@ -20,7 +20,7 @@ class desktopui_CrashyRebootServer(test.test):
     """
     version = 1
 
-    CRASHY_DEVICE_TIMEOUT_SECONDS = 30
+    CRASHY_DEVICE_TIMEOUT_SECONDS = 120
     CLIENT_TEST = 'desktopui_CrashyReboot'
 
     def run_once(self, host=None):
