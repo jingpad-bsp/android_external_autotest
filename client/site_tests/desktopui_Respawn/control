@@ -9,7 +9,6 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "desktopui"
 TEST_TYPE = "client"
-EXPERIMENTAL = "True"
 
 DOC = """
 This test verifies that our UI respawning logic functions correctly under
