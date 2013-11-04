@@ -21,7 +21,7 @@ tcsd,tss,No,No,No,No,No
 cromo,cromo,No,No,No,No,No
 wimax-manager,root,No,No,No,No,No
 mtpd,mtp,Yes,Yes,No,No,Yes
-tlsdated,root,No,No,No,No,No
+tlsdated,proxystate,No,No,No,No,No
 lid_touchpad_he,root,No,No,No,No,No
 thermal.sh,root,No,No,No,No,No
 daisydog,watchdog,Yes,Yes,No,No,No
@@ -30,3 +30,4 @@ date-proxy-watc,proxystate,No,No,No,No,No
 netfilter-queue,nfqueue,Yes,Yes,No,Yes,Yes
 warn_collector,root,No,No,No,No,No
 dbus-monitor,proxystate,No,No,No,No,No
+tlsdated-setter,root,No,No,No,No,No
