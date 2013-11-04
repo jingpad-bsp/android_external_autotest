@@ -23,13 +23,13 @@ def is_job_complete(job_id):
     return _AFE.run('get_jobs', finished=True, id=job_id)
 
 
-def is_special_task_complete(job_id):
+def get_special_task(job_id):
     """
-    Check if a special task (Cleanup, Verify, Repair) job is no longer active.
+    Retrieve a special task (Cleanup, Verify, Repair) job from the database.
 
     @param job_id: job id in string format like '123' from '123-cleanup'
 
-    @return True if a job is complete, and False if it is not.
+    @return A dictionary representation of the special task.
     """
     # Make sure the job_id is a number.
     if not job_id.isdigit():
@@ -39,7 +39,7 @@ def is_special_task_complete(job_id):
     task = _AFE.run('get_special_tasks', id=job_id)
     if not task:
         raise DatabaseAnomaly('Special Task %s not found in database.' % job_id)
-    return task[0].get('is_complete')
+    return task[0]
 
 
 if __name__ == '__main__':

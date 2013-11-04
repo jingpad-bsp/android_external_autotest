@@ -12,6 +12,7 @@ successful copy, the local results directory is deleted.
 
 __author__ = 'dalecurtis@google.com (Dale Curtis)'
 
+import datetime
 import logging
 import os
 import re
@@ -111,7 +112,25 @@ def get_cmd_list(dir_entry, relative_path):
             dest_path]
 
 
-def offload_hosts_sub_dir(queue):
+def check_age(days_old, timestamp):
+  """Check to make sure a timestamp is older than the number of days specified.
+
+  @param days_old: Number of days that the job needs to be older than to be
+                   processed.
+  @param timestamp: Timestamp of the job whose age we are checking. Must be in
+                    '%Y-%m-%d %H:%M:%S' format.
+
+  @returns True if the job is old enough to process, False if its not.
+  """
+  if days_old <= 0:
+    return True
+  job_time = datetime.datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S')
+  if job_time > (datetime.datetime.now() - datetime.timedelta(days=days_old)):
+    return False
+  return True
+
+
+def offload_hosts_sub_dir(queue, days_old):
   """
   Loop over the hosts/ sub directory and offload all the Cleanup, Verify and
   Repair Jobs.
@@ -119,6 +138,8 @@ def offload_hosts_sub_dir(queue):
   This will delete the job folders inside each host directory.
 
   @param queue The work queue to place uploading tasks onto.
+  @param days_old: Only process a special task if its older than the number of
+                   days specified.
   """
   logging.debug('Offloading Cleanup, Verify and Repair jobs from'
                 'results/hosts/')
@@ -137,7 +158,10 @@ def offload_hosts_sub_dir(queue):
       job_id = os.path.basename(dir_path).split('-')[0]
 
       try:
-        if is_job_complete.is_special_task_complete(job_id):
+        special_task = is_job_complete.get_special_task(job_id)
+        if special_task['is_complete']:
+          if not check_age(days_old, special_task['time_started']):
+            continue
           logging.debug('Processing %s', dir_path)
           queue.put([dir_path, dir_path])
         else:
@@ -150,7 +174,7 @@ def offload_hosts_sub_dir(queue):
                                          email_msg)
 
 
-def offload_job_results(queue, process_all):
+def offload_job_results(queue, process_all, days_old):
   """
   Loop over all of the job directories and offload them.
 
@@ -159,6 +183,8 @@ def offload_job_results(queue, process_all):
   @param queue The work queue to place uploading tasks onto.
   @param process_all True if we should process both job and hosts folders.
                      False if we should process only job folders.
+  @param days_old: Only process a job if its older than the number of days
+                   specified.
   """
   # Only pick up directories of the form <job #>-<job user>.
   job_matcher = re.compile('^\d+-\w+')
@@ -175,7 +201,8 @@ def offload_job_results(queue, process_all):
     # Directory names are in the format of <job #>-<job user>. We want just
     # the job # to see if it has completed.
     job_id = os.path.basename(dir_entry).split('-')[0]
-    if not is_job_complete.is_job_complete(job_id):
+    job = is_job_complete.is_job_complete(job_id)
+    if not job:
       logging.debug('Job %s is not yet complete; skipping.', dir_entry)
       continue
     if (job_matcher.match(dir_entry) and os.path.isdir(dir_entry)):
@@ -186,6 +213,8 @@ def offload_job_results(queue, process_all):
       # os.system(CLEAN_CMD % dir_entry)
       # TODO(scottz): Monitor offloading and make sure chrome logs are
       # no longer an issue.
+      if not check_age(days_old, job[0]['created_on']):
+        continue
       queue.put([dir_entry])
 
 
@@ -245,7 +274,20 @@ def offload_dir(dir_entry, dest_path=''):
     stderr_file.close()
 
 
-def offload_files(results_dir, process_all, process_hosts_only, processes):
+def delete_files(dir_entry, dest_path=''):
+  """Simply deletes the dir_entry from the filesystem.
+
+  Uses same arguments as offload_dir so that it can be used in replace of it on
+  systems that only want to delete files instead of offloading them.
+
+  @param dir_entry: Directory entry to offload.
+  @param dest_path: NOT USED.
+  """
+  shutil.rmtree(dir_entry)
+
+
+def offload_files(results_dir, process_all, process_hosts_only, processes,
+                  delete_only, days_old):
   """
   Offload files to Google Storage or the RSYNC_HOST_PATH host if USE_RSYNC is
   True.
@@ -261,6 +303,10 @@ def offload_files(results_dir, process_all, process_hosts_only, processes):
   @param process_hosts_only: Indicates whether we only want to process files
                              in the hosts subdirectory.
   @param processes:  The number of uploading processes to kick off.
+  @param delete_only: If True, don't offload to google storage, just delete the
+                      files.
+  @param days_old: Only process a result if its older than the number of days
+                   specified.
   """
   # Nice our process (carried to subprocesses) so we don't kill the system.
   os.nice(NICENESS)
@@ -270,15 +316,19 @@ def offload_files(results_dir, process_all, process_hosts_only, processes):
   os.chdir(results_dir)
   logging.debug('Looking for Autotest results in %s', results_dir)
   signal.signal(signal.SIGALRM, timeout_handler)
+  if delete_only:
+    offloading_func = delete_files
+  else:
+    offloading_func = offload_dir
 
   while True:
     with parallel.BackgroundTaskRunner(
-        offload_dir, processes=processes) as queue:
+        offloading_func, processes=processes) as queue:
       if process_hosts_only:
         # Only offload the hosts/ sub directory.
-        offload_hosts_sub_dir(queue)
+        offload_hosts_sub_dir(queue, days_old)
       else:
-        offload_job_results(queue, process_all)
+        offload_job_results(queue, process_all, days_old)
     time.sleep(SLEEP_TIME_SECS)
 
 
@@ -298,6 +348,14 @@ def parse_options():
                          'in the results/hosts subdirectory')
   parser.add_option('-p', '--parallelism', dest='parallelism', type='int',
                     default=1, help='Number of parallel workers to use.')
+  parser.add_option('-o', '--delete-only', dest='delete_only',
+                    action='store_true',
+                    help='GS Offloader will only the delete the directories '
+                         'and will not offload them to google storage.',
+                    default=False)
+  parser.add_option('-d', '--days-old', dest='days_old',
+                    help='Minimum job age in days before a result can be '
+                    'offloaded.', type='int', default=0)
   options = parser.parse_args()[0]
   if options.process_all and options.process_hosts_only:
     parser.print_help()
@@ -324,7 +382,7 @@ def main():
   logging.basicConfig(filename=log_filename, level=logging.DEBUG,
                       format=LOGGING_FORMAT)
   offload_files(RESULTS_DIR, options.process_all, options.process_hosts_only,
-                options.parallelism)
+                options.parallelism, options.delete_only, options.days_old)
 
 
 if __name__ == '__main__':
