@@ -1,4 +1,4 @@
-# Copyright (c) 2012 The Chromium Authors. All rights reserved.
+# Copyright (c) 2013 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -10,7 +10,7 @@ This test will fail if any of the tests in video_decode_accelerator_unittest
 fails. Running video_decode_accelerator_unittest is skipped on machines that are
 known not to support video decode.
 """
-SUITE = "bvt"
+SUITE = "video"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "audiovideo"
@@ -25,6 +25,8 @@ This is a wrapper test for Chrome video_decode_accelerator_unittest.
 
 # The FPS expectations here are lower than observed in most runs to keep
 # the bots green.
-videos = ['test-25fps.h264:320:240:250:258:35:150:1']
+videos = ['bear.h264:320:180:30:32:35:150:1',
+          'npot-video.h264:300:176:901:978:35:150:1',
+          'red-green.h264:80:128:150:156:35:150:1']
 
 job.run_test('audiovideo_VDA', videos=videos)
