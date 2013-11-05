@@ -26,6 +26,7 @@ class security_StatefulPermissions(test.test):
                      "chronos": ["/encrypted/chronos",
                                  "/encrypted/var/cache/app_pack",
                                  "/encrypted/var/cache/device_local_account_extensions",
+                                 "/encrypted/var/cache/device_local_account_external_policy_data",
                                  "/encrypted/var/cache/echo",
                                  "/encrypted/var/cache/external_cache",
                                  "/encrypted/var/cache/touch_trial/selection",
