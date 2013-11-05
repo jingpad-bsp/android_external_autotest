@@ -8,7 +8,16 @@ import resultset
 
 
 def PrintRawData(reader, dirlist, keytype, keylist):
-  """Print 'bootperf' results in "raw data" format."""
+  """Print 'bootperf' results in "raw data" format.
+
+  @param reader Function for reading results from results
+                directories.
+  @param dirlist List of directories to read results from.
+  @param keytype Selector specifying the desired key set (e.g.
+                 the boot time keyset, the disk stats keyset, etc.)
+  @param keylist List of event keys to be printed in the report.
+
+  """
   for dir_ in dirlist:
     results = reader(dir_)
     keyset = results.KeySet(keytype)
@@ -28,7 +37,16 @@ def PrintRawData(reader, dirlist, keytype, keylist):
 
 
 def PrintStatisticsSummary(reader, dirlist, keytype, keylist):
-  """Print 'bootperf' results in "summary of averages" format."""
+  """Print 'bootperf' results in "summary of averages" format.
+
+  @param reader Function for reading results from results
+                directories.
+  @param dirlist List of directories to read results from.
+  @param keytype Selector specifying the desired key set (e.g.
+                 the boot time keyset, the disk stats keyset, etc.)
+  @param keylist List of event keys to be printed in the report.
+
+  """
   if (keytype == resultset.TestResultSet.BOOTTIME_KEYSET or
       keytype == resultset.TestResultSet.FIRMWARE_KEYSET):
     header = "%5s %3s  %5s %3s  %s" % (

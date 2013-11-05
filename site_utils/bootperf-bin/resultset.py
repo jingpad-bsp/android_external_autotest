@@ -36,9 +36,14 @@ import math
 
 
 def _ListStats(list_):
-  # Utility function - calculate the average and (sample) standard
-  # deviation of a list of numbers.  Result is float, even if the
-  # input list is full of int's
+  """Return the mean and sample standard deviation of a list.
+
+  The returned result is float, even if the input list is full of
+  integers.
+
+  @param list_ The list over which to calculate.
+
+  """
   sum_ = 0.0
   sumsq = 0.0
   for v in list_:
@@ -51,25 +56,6 @@ def _ListStats(list_):
     var = 0.0
   dev = math.sqrt(var)
   return (avg, dev)
-
-
-def _DoCheck(dict_):
-  # Utility function - check the that all keyvals occur the same
-  # number of times.  On success, return the number of occurrences;
-  # on failure return None
-  check = map(len, dict_.values())
-  if not check:
-    return None
-  for i in range(1, len(check)):
-    if check[i] != check[i-1]:
-      return None
-  return check[0]
-
-
-def _KeyDelta(dict_, key0, key1):
-  # Utility function - return a list of the vector difference between
-  # two keyvals.
-  return map(lambda a, b: b - a, dict_[key0], dict_[key1])
 
 
 class TestResultSet(object):
@@ -112,6 +98,8 @@ class TestResultSet(object):
     to values.  When all iteration results have been added,
     FinalizeResults() makes the results available for analysis.
 
+    @param runkeys The dictionary of keyvals for the iteration.
+
     """
 
     for keyset in self._keysets.itervalues():
@@ -132,7 +120,11 @@ class TestResultSet(object):
       keyset.FinalizeResults()
 
   def KeySet(self, keytype):
-    """Return the boot time statistics result set."""
+    """Return a selected keyset from the test results.
+
+    @param keytype Selector for the desired keyset.
+
+    """
     return self._keysets[keytype]
 
 
@@ -161,9 +153,27 @@ class _KeySet(object):
   def __init__(self):
     self._keyvals = {}
 
-  def AddIterationResults(self, runkeys):
-    """Add results for one iteration."""
+  def _CheckCounts(self):
+    """Check the validity of the keyvals results dictionary.
 
+    Each keyval must have occurred the same number of times.  When
+    this check succeeds, it returns the total number of occurrences;
+    on failure return `None`.
+
+    """
+    check = map(len, self._keyvals.values())
+    if not check:
+      return None
+    for i in range(1, len(check)):
+      if check[i] != check[i-1]:
+        return None
+    return check[0]
+
+  def AddIterationResults(self, runkeys):
+    """Add results for one iteration.
+
+    @param runkeys The dictionary of keyvals for the iteration.
+    """
     for key, value in runkeys.iteritems():
       if not key.startswith(self.PREFIX):
         continue
@@ -180,8 +190,7 @@ class _KeySet(object):
     number of data points.
 
     """
-
-    count = _DoCheck(self._keyvals)
+    count = self._CheckCounts()
     if count is None:
       self.num_iterations = 0
       self.markers = []
@@ -194,20 +203,40 @@ class _KeySet(object):
     return True
 
   def RawData(self, key):
-    """Return the list of values for the given marker key."""
+    """Return the list of values for the given key.
+
+    @param key Key of the list of values to return.
+
+    """
     return self._keyvals[key]
 
   def DeltaData(self, key0, key1):
-    """Return vector difference of the values of the given keys."""
-    return _KeyDelta(self._keyvals, key0, key1)
+    """Return the vector difference between two keyvals lists.
+
+    @param key0 Key of the subtrahend vector.
+    @param key1 Key of the subtractor vector.
+
+    """
+    return map(lambda a, b: b - a,
+               self._keyvals[key0],
+               self._keyvals[key1])
 
   def Statistics(self, key):
-    """Return the average and standard deviation of the key's values."""
+    """Return the average and standard deviation for a key.
+
+    @param key
+    """
     return _ListStats(self._keyvals[key])
 
   def DeltaStatistics(self, key0, key1):
-    """Return the average and standard deviation of the differences
-    between two keys.
+    """Return the average and standard deviation between two keys.
+
+    Calculates the difference between each matching element in the
+    two key's lists, and returns the average and sample standard
+    deviation of the differences.
+
+    @param key0 Key of the subtrahend.
+    @param key1 Key of the subtractor.
 
     """
     return _ListStats(self.DeltaData(key0, key1))
@@ -223,12 +252,32 @@ class _TimeKeySet(_KeySet):
   TIME_SCALE = 1000
 
   def _ConvertVal(self, value):
+    """Return a keyval value in its 'canonical' form.
+
+    For boot time values, the input is seconds as a float; the
+    canonical form is milliseconds as an integer.
+
+    @param value A time statistic in seconds.
+
+    """
     # We want to return the nearest exact integer here.  round()
     # returns a float, and int() truncates its results, so we have
     # to combine them.
     return int(round(self.TIME_SCALE * float(value)))
 
   def PrintableStatistic(self, value):
+    """Return a keyval in its preferred form for printing.
+
+    The return value is a tuple of a string to be printed, and
+    value rounded to the precision to which it was printed.
+
+    Rationale: Some callers of this function total up intermediate
+    results.  Returning the rounded value makes those totals more
+    robust against visible rounding anomalies.
+
+    @param value The value to be printed.
+
+    """
     v = int(round(value))
     return ("%d" % v, v)
 
@@ -253,8 +302,28 @@ class _DiskKeySet(_KeySet):
   DISK_SCALE = 1.0e-6
 
   def _ConvertVal(self, value):
+    """Return a keyval value in its 'canonical' form.
+
+    For disk statistics, the input is bytes as a float; the
+    canonical form is megabytes as a float.
+
+    @param value A disk data statistic in megabytes.
+
+    """
     return self.DISK_SCALE * float(value)
 
   def PrintableStatistic(self, value):
+    """Return a keyval in its preferred form for printing.
+
+    The return value is a tuple of a string to be printed, and
+    value rounded to the precision to which it was printed.
+
+    Rationale: Some callers of this function total up intermediate
+    results.  Returning the rounded value makes those totals more
+    robust against visible rounding anomalies.
+
+    @param value The value to be printed.
+
+    """
     v = round(value, 1)
     return ("%.1fM" % v, v)

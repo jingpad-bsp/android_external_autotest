@@ -31,6 +31,10 @@ def _ReadKeyvalFile(results, file_):
   to the `results` parameter, which should be an instance of
   TestResultSet.
 
+  @param results A TestResultSet where the result data will be
+                 collected.
+  @param file_ File object for the results file to be read.
+
   """
   kvd = {}
   for line in iter(file_):
@@ -52,6 +56,8 @@ def ReadResultsDirectory(dir_):
 
   The accumulated results are returned in a newly created
   TestResultSet object.
+
+  @param dir_ The directory containing the test results keyval file.
 
   """
   res_set = resultset.TestResultSet(dir_)

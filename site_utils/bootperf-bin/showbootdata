@@ -31,7 +31,7 @@ differences.
 
 The --rawdata display shows the raw data value associated with each
 event for each boot:  Each line of output represents the event values
-for one boot cycle.
+for one boot iteration.
 
 """
 
@@ -52,6 +52,7 @@ arguments are directories previously specified as output for the
 
 
 def _SetupOptions():
+  """Create an OptionParser for the command line."""
   optparser = optparse.OptionParser(usage=_USAGE, description=_DESCRIPTION)
 
   optgroup = optparse.OptionGroup(
@@ -97,6 +98,15 @@ def _SetupOptions():
 
 
 def _ProcessDisplayOptions(options):
+  """Determine options controlling the display format.
+
+  Command options allow choosing either raw data format, or summary
+  statistics format.  The default option is the summary format.
+  It's not allowed to select both formats.
+
+  @param options Parsed command line options data.
+
+  """
   display_count = 0
   if options.print_averages:
     display_count += 1
@@ -113,6 +123,16 @@ def _ProcessDisplayOptions(options):
 
 
 def _ProcessKeysetOptions(options):
+  """Determine options controlling key set to be displayed.
+
+  Command options allow choosing one of three key sets: the
+  boot time key set, the firmware time key set, or the disk
+  read key set.  It's not allowed to select more than one
+  key set.
+
+  @param options Parsed command line options data.
+
+  """
   keyset_count = 0
   keyset_type = resultset.TestResultSet.BOOTTIME_KEYSET
   if options.use_timestats:
@@ -130,28 +150,38 @@ def _ProcessKeysetOptions(options):
   return keyset_type
 
 
-def _ProcessKeylistOptions(options):
+def _ProcessEventlistOptions(options):
+  """Determine whether we'll display all events, or a subset.
+
+  Command options allow restricting a chosen key set to a
+  list of specific events.  If the option is present, return
+  the list of events.  Otherwise, return `None`.
+
+  @param options Parsed command line options data.
+
+  """
   if not options.eventnames:
     return None
-  keylist = []
+  eventlist = []
   for kl in options.eventnames:
-    keylist.extend(kl.split(','))
-  return keylist
+    eventlist.extend(kl.split(','))
+  return eventlist
 
 
 def main(argv):
+  """Canonical main routine."""
   optparser = _SetupOptions()
   (options, args) = optparser.parse_args(argv)
   printfunc = _ProcessDisplayOptions(options)
   keyset_type = _ProcessKeysetOptions(options)
-  keylist = _ProcessKeylistOptions(options)
+  eventlist = _ProcessEventlistOptions(options)
   if printfunc is None or keyset_type is None:
     optparser.print_help()
     sys.exit(1)
   if not args:
     args = ["."]
   printfunc(resultsdir.ReadResultsDirectory,
-            args, keyset_type, keylist)
+            args, keyset_type, eventlist)
 
 
 if __name__ == "__main__":
