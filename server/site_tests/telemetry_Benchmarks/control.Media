@@ -19,7 +19,7 @@ This is part of Chrome for Chrome OS performance testing.
 def run_benchmark(machine):
     host = hosts.create_host(machine)
     job.run_test("telemetry_Benchmarks", host=host,
-                 benchmark="media", page_sets=["tough_video_cases.json"],
+                 benchmark="media.tough_media_cases",
                  tag="media")
 
 

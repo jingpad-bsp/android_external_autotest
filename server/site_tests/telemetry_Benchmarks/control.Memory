@@ -18,7 +18,7 @@ This is part of Chrome for Chrome OS performance testing.
 def run_benchmark(machine):
     host = hosts.create_host(machine)
     job.run_test("telemetry_Benchmarks", host=host,
-                 benchmark="memory_benchmark", page_sets=["top_25.json"],
+                 benchmark="memory.top_25",
                  tag="memory_benchmark")
 
 

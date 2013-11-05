@@ -13,7 +13,7 @@ from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.common_lib.cros import dev_server
 
 
-TELEMETRY_RUN_BENCHMARKS_SCRIPT = 'tools/perf/run_measurement'
+TELEMETRY_RUN_BENCHMARKS_SCRIPT = 'tools/perf/run_benchmark'
 TELEMETRY_RUN_TESTS_SCRIPT = 'tools/telemetry/run_tests'
 TELEMETRY_RUN_CROS_TESTS_SCRIPT = 'chrome/test/telemetry/run_cros_tests'
 TELEMETRY_TIMEOUT_MINS = 60
@@ -103,8 +103,7 @@ class TelemetryResult(object):
     def parse_benchmark_results(self):
         """Parse the results of a telemetry benchmark run.
 
-        Stdout has the format of CSV at the top and then the output repeated
-        in RESULT block format below.
+        Stdout has the output in RESULT block format below.
 
         The lines of interest start with the substring "RESULT".  These are
         specially-formatted perf data lines that are interpreted by chrome
@@ -313,11 +312,10 @@ class TelemetryRunner(object):
         return self._run_test(TELEMETRY_RUN_CROS_TESTS_SCRIPT, test)
 
 
-    def run_telemetry_benchmark(self, benchmark, page_set, keyval_writer=None):
+    def run_telemetry_benchmark(self, benchmark, keyval_writer=None):
         """Runs a telemetry benchmark on a dut.
 
         @param benchmark: Benchmark we want to run.
-        @param page_set: Page set we want to use.
         @param keyval_writer: Should be a instance with the function
                               write_perf_keyval(), if None, no keyvals will be
                               written. Typically this will be the job object
@@ -326,26 +324,20 @@ class TelemetryRunner(object):
         @returns A TelemetryResult Instance with the results of this telemetry
                  execution.
         """
-        logging.debug('Running telemetry benchmark: %s with page set: %s.',
-                      benchmark, page_set)
+        logging.debug('Running telemetry benchmark: %s', benchmark)
         telemetry_script = os.path.join(self._telemetry_path,
                                         TELEMETRY_RUN_BENCHMARKS_SCRIPT)
-        page_set_path = os.path.join(self._telemetry_path,
-                                     'tools/perf/page_sets/%s' % page_set)
-        benchmark_with_pageset = ' '.join([benchmark, page_set_path])
-        result = self._run_telemetry(telemetry_script, benchmark_with_pageset)
+        result = self._run_telemetry(telemetry_script, benchmark)
         result.parse_benchmark_results()
 
         if keyval_writer:
             keyval_writer.write_perf_keyval(result.perf_keyvals)
 
         if result.status is WARNING_STATUS:
-            raise error.TestWarn('Telemetry Benchmark: %s with page set: %s'
-                                 ' exited with Warnings.' % (benchmark,
-                                                             page_set))
+            raise error.TestWarn('Telemetry Benchmark: %s'
+                                 ' exited with Warnings.' % benchmark)
         if result.status is FAILED_STATUS:
-            raise error.TestFail('Telemetry Benchmark: %s with page set: %s'
-                                 ' failed to run.' % (benchmark,
-                                                      page_set))
+            raise error.TestFail('Telemetry Benchmark: %s'
+                                 ' failed to run.' % benchmark)
 
         return result

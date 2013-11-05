@@ -17,8 +17,8 @@ Benchmark.  This is part of Chrome for Chrome OS performance testing.
 
 def run_benchmark(machine):
     host = hosts.create_host(machine)
-    job.run_test("telemetry_Benchmarks", host=host, benchmark="dromaeo",
-                 page_sets=["dromaeo/domcoretraverse.json"],
+    job.run_test("telemetry_Benchmarks", host=host,
+                 benchmark="dromaeo.domcoretraverse",
                  tag="dromaeo_domcoretraverse")
 
 

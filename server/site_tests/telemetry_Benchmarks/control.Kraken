@@ -17,8 +17,8 @@ This is part of Chrome for Chrome OS performance testing.
 
 def run_benchmark(machine):
     host = hosts.create_host(machine)
-    job.run_test("telemetry_Benchmarks", host=host, benchmark="kraken",
-                 page_sets=["kraken.json"], tag="kraken")
+    job.run_test("telemetry_Benchmarks", host=host,
+                 benchmark="kraken", tag="kraken")
 
 
 parallel_simple(run_benchmark, machines)
