@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
+
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
@@ -25,7 +27,7 @@ class security_SandboxStatusTelemetry(test.test):
         try:
             return self._tab.EvaluateJavaScript(table_js)
         except exceptions.EvaluateException:
-            raise error.TestFail('Failed to evaluate in chrome://sandbox %s'
+            raise error.TestFail('Failed to evaluate in chrome://sandbox "%s"'
                                  % table_js)
 
 
@@ -34,7 +36,7 @@ class security_SandboxStatusTelemetry(test.test):
 
         actual_name = self._TableEntry(row, 0)
         if expected_name != actual_name:
-            raise error.TestFail('Expected row %d to be %s, found %s',
+            raise error.TestFail('Expected row %d to be "%s", found "%s"',
                                  expected_name, actual_name)
 
 
@@ -50,7 +52,7 @@ class security_SandboxStatusTelemetry(test.test):
             value = self._TableEntry(row, 1)
             if value != "Yes":
                 name = self._TableEntry(row, 0)
-                raise error.TestFail('%s enabled = %s', name, value)
+                raise error.TestFail('"%s" enabled = "%s"', name, value)
 
 
     def _CheckGPUCell(self, cell, content, error_msg):
@@ -58,13 +60,17 @@ class security_SandboxStatusTelemetry(test.test):
 
         gpu_js = ("document.getElementsByTagName('table')"
                   "[1].rows[1].cells[%d].textContent" % cell)
+
         try:
             res = self._tab.EvaluateJavaScript(gpu_js)
         except exceptions.EvaluateException:
-            raise error.TestFail('Failed to evaluate in chrome://gpu %s'
-                                 % gpu_js)
+            logging.error('Failed to evaluate in chrome://gpu "%s"', gpu_js)
+            return False
+
         if res.find(content) == -1:
-            raise error.TestFail(error_msg)
+            logging.error(error_msg)
+            return False
+        return True
 
 
     def run_once(self):
@@ -75,7 +81,7 @@ class security_SandboxStatusTelemetry(test.test):
             self._CheckRowValues(len(SANDBOXES))
 
             self._tab.Navigate('chrome://gpu')
-            self._CheckGPUCell(0, 'Sandboxed',
-                               'Could not locate "Sandboxed" row in table')
-            self._CheckGPUCell(1, 'true', 'GPU not sandboxed')
-
+            found_gpu_row = self._CheckGPUCell(0, 'Sandboxed',
+                    'Could not locate "Sandboxed" row in table')
+            if found_gpu_row:
+                self._CheckGPUCell(1, 'true', 'GPU not sandboxed')
