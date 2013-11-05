@@ -14,7 +14,6 @@ many connections) is included.
 NAME = 'p2p_ConsumeFiles'
 PURPOSE = 'Check that P2P can discover peers and download from them.'
 CRITERIA = 'Fails if p2p-client is not able to discover and get the URLs.'
-EXPERIMENTAL = 'True'
 SUITE = 'bvt'
 TEST_CLASS = 'platform'
 TEST_CATEGORY = 'Functional'
