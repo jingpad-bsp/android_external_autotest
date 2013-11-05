@@ -11,6 +11,7 @@ import mox
 import common
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import job_status, reporting
+from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.site_utils import phapi_lib
 from chromite.lib import gdata_lib
 
@@ -42,13 +43,22 @@ class ReportingTest(mox.MoxTestBase):
         'title': None,
     }
 
-    def _get_failure(self):
+    def _get_failure(self, is_server_job=False):
         """Get a TestFailure so we can report it.
 
+        @param is_server_job: Set to True of failed job is a server job. Server
+                job's test name is formated as build/suite/test_name.
         @return: a failure object initialized with values from test_report.
         """
+        if is_server_job:
+            test_name = tools.create_job_name(
+                    self.test_report.get('build'),
+                    self.test_report.get('suite'),
+                    self.test_report.get('test'))
+        else:
+            test_name = self.test_report.get('test')
         expected_result = job_status.Status(self.test_report.get('status'),
-            self.test_report.get('test'),
+            test_name,
             reason=self.test_report.get('reason'),
             job_id=self.test_report.get('job_id'),
             owner=self.test_report.get('owner'),
@@ -209,6 +219,15 @@ class ReportingTest(mox.MoxTestBase):
 
         self.assertEqual(bug_id, self._FAKE_ISSUE_ID)
         self.assertEqual(bug_count, 1)
+
+
+    def testSearchMarkerNoBuildSuiteInfo(self):
+        """Test that the search marker does not include build and suite info."""
+        test_failure = self._get_failure(is_server_job=True)
+        search_marker = test_failure.search_marker()
+        self.assertFalse(test_failure.build in search_marker,
+                         ('Build information should not be presented in search '
+                          'marker.'))
 
 
 class FindIssueByMarkerTests(mox.MoxTestBase):

@@ -19,6 +19,7 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.server import site_utils
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import job_status
+from autotest_lib.server.cros.dynamic_suite import tools
 
 # Try importing the essential bug reporting libraries. Chromite and gdata_lib
 # are useless unless they can import gdata too.
@@ -141,7 +142,7 @@ class TestFailure(Bug):
         self.build = build
         self.chrome_version = chrome_version
         self.suite = suite
-        self.name = result.test_name
+        self.name = tools.get_test_name(build, suite, result.test_name)
         self.reason = result.reason
         # The result_owner is used to find results and logs.
         self.result_owner = result.owner

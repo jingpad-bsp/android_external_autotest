@@ -205,7 +205,7 @@ def get_view_info(suite_job_id, view, build, suite):
         #    SERVER_JOB, try_new_image,
         #    lumpy-release/R28-4008.0.0/bvt/experimental_pass_SERVER_JOB.
         # Neither of these operations will stomp on a pristine string.
-        test_name = view['test_name'].replace('%s/%s/'% (build, suite), '')
+        test_name = tools.get_test_name(build, suite, view['test_name'])
         std_job_name = test_name.split('.')[0]
 
         if (job_status.view_is_for_infrastructure_fail(view) and

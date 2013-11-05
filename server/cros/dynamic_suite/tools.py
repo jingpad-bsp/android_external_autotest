@@ -234,3 +234,30 @@ def get_test_failure_bug_info(keyvals, testname):
     bug_count = keyvals.get(keyval_base + _BUG_COUNT_KEYVAL)
     bug_count = int(bug_count) if bug_count else None
     return bug_id, bug_count
+
+
+def create_job_name(build, suite, test_name):
+    """Create the name of a test job based on given build, suite, and test_name.
+
+    @param build: name of the build, e.g., lumpy-release/R31-1234.0.0.
+    @param suite: name of the suite, e.g., bvt.
+    @param test_name: name of the test, e.g., dummy_Pass.
+    @return: the test job's name, e.g.,
+             lumpy-release/R31-1234.0.0/bvt/dummy_Pass.
+    """
+    return '/'.join([build, suite, test_name])
+
+
+def get_test_name(build, suite, test_job_name):
+    """Get the test name from test job name.
+
+    Name of test job may contain information like build and suite. This method
+    strips these information and return only the test name.
+
+    @param build: name of the build, e.g., lumpy-release/R31-1234.0.0.
+    @param suite: name of the suite, e.g., bvt.
+    @param test_job_name: name of the test job, e.g.,
+                          lumpy-release/R31-1234.0.0/bvt/dummy_Pass_SERVER_JOB.
+    @return: the test name, e.g., dummy_Pass_SERVER_JOB.
+    """
+    return test_job_name.replace('%s/%s/' % (build, suite), '')

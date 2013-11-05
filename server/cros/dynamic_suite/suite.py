@@ -350,7 +350,7 @@ class Suite(object):
 
         test_obj = self._afe.create_job(
             control_file=test.text,
-            name='/'.join([self._build, self._tag, test.name]),
+            name=tools.create_job_name(self._build, self._tag, test.name),
             control_type=test.test_type.capitalize(),
             meta_hosts=[self._board],
             dependencies=job_deps,
