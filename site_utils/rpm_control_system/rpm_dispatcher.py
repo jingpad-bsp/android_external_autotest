@@ -132,21 +132,26 @@ class RPMDispatcher(object):
         """
         logging.info('Received request to set DUT: %s to state: %s',
                      dut_hostname, new_state)
-        rpm_controller = self._get_rpm_controller(dut_hostname)
-        if not rpm_controller:
-            return False
-        return rpm_controller.queue_request(dut_hostname, new_state)
+        rpm_hostname = self._get_rpm_hostname_for_dut(dut_hostname)
+        result = False
+        while not result and rpm_hostname:
+            rpm_controller = self._get_rpm_controller(rpm_hostname)
+            result = rpm_controller.queue_request(dut_hostname, new_state)
+            if not result:
+                # If the request failed, check to see if there is another RPM
+                # at this location.
+                rpm_hostname = rpm_controller.get_next_rpm_hostname()
+        return result
 
 
-    def _get_rpm_controller(self, dut_hostname):
+    def _get_rpm_hostname_for_dut(self, dut_hostname):
         """
-        Private method that retreives the appropriate RPMController instance for
-        this DUT or calls _create_rpm_controller it if it does not already
-        exist.
+        Private method that retreives the appropriate RPMController instance
+        for this DUT.
 
         @param dut_hostname: hostname of the DUT whose RPMController we want.
 
-        @return: RPMController instance responsible for this DUT's RPM.
+        @return: RPM Hostname responsible for this DUT.
                  Return None on failure.
         """
         if dut_hostname.endswith('servo'):
@@ -170,6 +175,21 @@ class RPMDispatcher(object):
             rpm_hostname = re.sub('host[^.]*', 'rpm1', dut_hostname, count=1)
             logging.info('RPM hostname for DUT %s is %s',  dut_hostname,
                          rpm_hostname)
+        return rpm_hostname
+
+
+    def _get_rpm_controller(self, rpm_hostname):
+        """
+        Private method that retreives the appropriate RPMController instance
+        for this RPM Hostname or calls _create_rpm_controller it if it does not
+        already exist.
+
+        @param rpm_hostname: hostname of the RPM whose RPMController we want.
+
+        @return: RPMController instance responsible for this RPM.
+        """
+        if not rpm_hostname:
+            return None
         rpm_controller = self._worker_dict_get(rpm_hostname)
         if not rpm_controller:
             rpm_controller = self._create_rpm_controller(rpm_hostname)

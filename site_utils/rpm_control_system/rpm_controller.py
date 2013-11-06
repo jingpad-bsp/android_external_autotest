@@ -7,6 +7,7 @@ import logging
 import pexpect
 import Queue
 import re
+import subprocess
 import threading
 import time
 
@@ -468,6 +469,37 @@ class RPMController(object):
         return self.TYPE
 
 
+    def get_next_rpm_hostname(self):
+        """Return the hostname of the next RPM in the same location if it
+        exists.
+
+        For example chromeos3-rack2-row3 may have rpm1 and rpm2.
+
+        @returns Hostname of the next rpm or None.
+        """
+        if self.behind_hydra:
+            # For now lets not do the hydra-case. It would require us to log
+            # into the admin console, and see if an entry exists for the next
+            # RPM hostname. This would impact the run time of any failure that
+            # occurs with an RPM behind the hydra, as well as constantly
+            # disconnecting the lab admins from the admin console.
+            return None
+        # Determine the RPM location and number.
+        hostname_regex = '(?P<LOCATION>.*)-rpm(?P<RPM_NUM>[\d]+)(.)*'
+        match = re.match(hostname_regex, self.hostname)
+        location = match.group('LOCATION')
+        rpm_number = int(match.group('RPM_NUM'))
+        next_rpm = '%s-rpm%d' % (location, int(rpm_number) + 1)
+        try:
+            # Ping it to see if it exists.
+            subprocess.check_call(
+                    ['ping', '%s.%s' % (next_rpm, self._dns_zone), '-w 3'],
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            return next_rpm
+        except subprocess.CalledProcessError:
+            return None
+
+
 class SentryRPMController(RPMController):
     """
     This class implements power control for Sentry Switched CDU
@@ -917,6 +949,14 @@ class CiscoPOEController(RPMController):
         logging.debug('Outlet for DUT: %s set to %s',
                       dut_hostname, new_state)
         return True
+
+
+    def get_next_rpm_hostname(self):
+        """Override from RPMController. Not applicable to POE Controller.
+
+        @returns None.
+        """
+        return None
 
 
 def test_in_order_requests():

@@ -60,8 +60,10 @@ class TestRPMDispatcher(mox.MoxTestBase):
         belong to the same RPM device create and retrieve the same RPMController
         instance.
         """
-        controller1 = self.dispatcher._get_rpm_controller(DUT_SAME_RPM1)
-        controller2 = self.dispatcher._get_rpm_controller(DUT_SAME_RPM2)
+        controller1 = self.dispatcher._get_rpm_controller(
+                self.dispatcher._get_rpm_hostname_for_dut(DUT_SAME_RPM1))
+        controller2 = self.dispatcher._get_rpm_controller(
+                self.dispatcher._get_rpm_hostname_for_dut(DUT_SAME_RPM2))
         self.assertEquals(controller1, controller2)
 
 
