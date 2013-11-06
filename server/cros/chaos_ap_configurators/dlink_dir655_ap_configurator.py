@@ -89,7 +89,8 @@ class DLinkDIR655APConfigurator(
         """
         return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
                                  ap_spec.SECURITY_TYPE_WEP,
-                                 ap_spec.SECURITY_TYPE_WPAPSK)
+                                 ap_spec.SECURITY_TYPE_WPAPSK,
+                                 ap_spec.SECURITY_TYPE_WPA2PSK)
 
 
     def navigate_to_page(self, page_number):
@@ -262,17 +263,22 @@ class DLinkDIR655APConfigurator(
         self.set_content_of_text_field_by_id(key_value, 'key1')
 
 
-    def set_security_wpapsk(self, shared_key, update_interval=1800):
+    def set_security_wpapsk(self, security, shared_key, update_interval=1800):
         self.add_item_to_command_list(self._set_security_wpapsk,
-                                      (shared_key, update_interval), 1, 900)
+                                      (security, shared_key, update_interval),
+                                       1, 900)
 
 
-    def _set_security_wpapsk(self, shared_key, update_interval=1800):
+    def _set_security_wpapsk(self, security, shared_key, update_interval=1800):
         self._set_radio(enabled=True)
         self.select_item_from_popup_by_id('WPA-Personal', 'wep_type',
             wait_for_xpath='id("wlan0_gkey_rekey_time")')
-        self.select_item_from_popup_by_id('WPA Only', 'wpa_mode',
-            wait_for_xpath='id("wlan0_psk_pass_phrase")')
+        if security == ap_spec.SECURITY_TYPE_WPAPSK:
+            wpa_item = 'WPA Only'
+        else:
+            wpa_item = 'WPA2 Only'
+        self.select_item_from_popup_by_id(wpa_item, 'wpa_mode',
+             wait_for_xpath='id("wlan0_psk_pass_phrase")')
         self.set_content_of_text_field_by_id(str(update_interval),
                                              'wlan0_gkey_rekey_time')
         self.set_content_of_text_field_by_id(shared_key,

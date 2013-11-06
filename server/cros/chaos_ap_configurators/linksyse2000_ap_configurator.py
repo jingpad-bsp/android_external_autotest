@@ -228,20 +228,24 @@ class Linksyse2000APConfigurator(
         self.click_button_by_xpath(xpath, alert_handler=self._sec_alert)
 
 
-    def set_security_wpapsk(self, shared_key, update_interval=None):
+    def set_security_wpapsk(self, security, shared_key, update_interval=None):
         # WEP and WPA-Personal are not supported for Wireless-N only mode,
-        # so use WPA2-Personal to avoid conflicts.
-        self.add_item_to_command_list(self._set_security_wpa2psk,
-                                      (shared_key,), 2, 900)
+        self.add_item_to_command_list(self._set_security_wpapsk,
+                                      (security, shared_key,), 2, 900)
 
 
-    def _set_security_wpa2psk(self, shared_key):
+    def _set_security_wpapsk(self, security, shared_key):
         popup = '//select[@name="security_mode2"]'
-        self.select_item_from_popup_by_xpath('WPA2 Personal', popup,
+        if security == ap_spec.SECURITY_TYPE_WPAPSK:
+            wpa_item = 'WPA Personal'
+        else:
+            wpa_item = 'WPA2 Personal'
+        self.select_item_from_popup_by_xpath(wpa_item, popup,
                                              alert_handler=self._sec_alert)
         text = '//input[@name="wl_wpa_psk"]'
         self.set_content_of_text_field_by_xpath(shared_key, text,
                                                 abort_check=False)
+
 
     def is_update_interval_supported(self):
         """

@@ -142,15 +142,19 @@ class Trendnet654trAPConfigurator(trendnet_ap_configurator.
                                              abort_check=True)
 
 
-    def set_security_wpapsk(self, shared_key, update_interval=1800):
+    def set_security_wpapsk(self, security, shared_key, update_interval=1800):
         self.add_item_to_command_list(self._set_security_wpapsk,
-                                      (shared_key, update_interval), 1, 100)
+                                      (security, shared_key, update_interval),
+                                       1, 100)
 
 
-    def _set_security_wpapsk(self, shared_key, update_interval=None):
+    def _set_security_wpapsk(self, security, shared_key, update_interval=None):
         self.wait_for_object_by_id('security_type')
-        item = 'Enable WPA Wireless Security ( enhanced )'
-        self.select_item_from_popup_by_id(item, 'security_type')
+        if security == ap_spec.SECURITY_TYPE_WPAPSK:
+            wpa_item = 'Enable WPA Wireless Security ( enhanced )'
+        else:
+            wpa_item = 'Enable WPA2 Wireless Security ( enhanced )'
+        self.select_item_from_popup_by_id(wpa_item, 'security_type')
         self.set_content_of_text_field_by_id(shared_key, 'passphrase')
         self.set_content_of_text_field_by_id(shared_key, 'confirm_passphrase')
 

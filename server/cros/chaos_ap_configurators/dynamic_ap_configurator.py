@@ -483,7 +483,7 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
             self.set_visibility(set_ap_spec.visible)
         if (set_ap_spec.security == ap_spec.SECURITY_TYPE_WPAPSK or
             set_ap_spec.security == ap_spec.SECURITY_TYPE_WPA2PSK):
-            self.set_security_wpapsk(set_ap_spec.password)
+            self.set_security_wpapsk(set_ap_spec.security, set_ap_spec.password)
         else:
             self.set_security_disabled()
         self.set_band(set_ap_spec.band)
@@ -586,11 +586,12 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
         raise NotImplementedError
 
 
-    def set_security_wpapsk(self, shared_key, update_interval=1800):
+    def set_security_wpapsk(self, security, shared_key, update_interval=1800):
         """Enabled WPA using a private security key for the wireless network.
 
         Note: The derived class must implement this method.
 
+        @param security: Required security for AP configuration
         @param shared_key: shared encryption key to use
         @param update_interval: number of seconds to wait before updating
 

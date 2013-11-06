@@ -209,14 +209,18 @@ class Keeboxw150nrAPConfigurator(
         self.set_content_of_text_field_by_id(key_value, 'wep_key_1')
 
 
-    def set_security_wpapsk(self, shared_key, update_interval=None):
+    def set_security_wpapsk(self, security, shared_key, update_interval=None):
         self.add_item_to_command_list(self._set_security_wpapsk,
-                                      (shared_key, update_interval), 2, 900)
+                                      (security,shared_key, update_interval),
+                                       2, 900)
 
 
-    def _set_security_wpapsk(self, shared_key, update_interval=None):
+    def _set_security_wpapsk(self, security, shared_key, update_interval=None):
         self.wait_for_object_by_id('security_type')
-        self.select_item_from_popup_by_id('WPA Only', 'security_type')
+        if security == ap_spec.SECURITY_TYPE_WPAPSK:
+            self.select_item_from_popup_by_id('WPA Only', 'security_type')
+        else:
+            self.select_item_from_popup_by_id('WPA2 Only', 'security_type')
         self.select_item_from_popup_by_id('Passphrase', 'id_shared_keytype')
         self.set_content_of_text_field_by_id(shared_key, 'wpapsk')
 

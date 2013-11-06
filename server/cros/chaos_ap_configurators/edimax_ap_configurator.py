@@ -180,15 +180,21 @@ class EdimaxAPConfigurator(
                                              '//select[@name="method"]')
 
 
-    def set_security_wpapsk(self, shared_key, update_interval=None):
+    def set_security_wpapsk(self, security, shared_key, update_interval=None):
         self.add_item_to_command_list(self._set_security_wpapsk,
-                                      (shared_key, update_interval), 2, 1000)
+                                      (security, shared_key, update_interval),
+                                       2, 1000)
 
 
-    def _set_security_wpapsk(self, shared_key, update_interval=None):
+    def _set_security_wpapsk(self, security, shared_key, update_interval=None):
         self.wait_for_object_by_xpath('//input[@name="pskValue"]')
         self.select_item_from_popup_by_xpath('WPA pre-shared key',
                                              '//select[@name="method"]')
+        if security == ap_spec.SECURITY_TYPE_WPAPSK:
+            wpa_item = 'wpaCipher1'
+        else:
+            wpa_item = 'wpaCipher2'
+        self.click_button_by_id(wpa_item, alert_handler=self._alert_handler)
         self.select_item_from_popup_by_xpath('Passphrase',
                                              '//select[@name="pskFormat"]')
         self.set_content_of_text_field_by_xpath(shared_key,

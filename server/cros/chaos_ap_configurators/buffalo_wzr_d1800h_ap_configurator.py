@@ -55,6 +55,7 @@ class BuffalowzrAPConfigurator(
         """
         return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
                                  ap_spec.SECURITY_TYPE_WPAPSK,
+                                 ap_spec.SECURITY_TYPE_WPA2PSK,
                                  ap_spec.SECURITY_TYPE_WEP)
 
 
@@ -245,20 +246,24 @@ class BuffalowzrAPConfigurator(
         default = self.driver.switch_to_default_content()
 
 
-    def set_security_wpapsk(self, shared_key, update_interval=None):
+    def set_security_wpapsk(self, security, shared_key, update_interval=None):
         self.add_item_to_command_list(self._set_security_wpapsk,
-                                      (shared_key,), 2, 900)
+                                      (security, shared_key,), 2, 900)
 
 
-    def _set_security_wpapsk(self, shared_key, update_interval=None):
+    def _set_security_wpapsk(self, security, shared_key, update_interval=None):
         self._switch_frame()
         xpath = '//span[@class="WLAN11G"]'
         if self.current_band == ap_spec.BAND_5GHZ:
             xpath = '//span[@class="WLAN11A"]'
         self.driver.find_element_by_xpath(xpath)
         self.click_button_by_xpath(xpath)
-        self.driver.find_element_by_xpath('//a[text()="WPA-PSK (AES)"]')
-        self.click_button_by_xpath('//a[text()="WPA-PSK (AES)"]')
+        if security == ap_spec.SECURITY_TYPE_WPAPSK:
+            wpa_item = '//a[text()="WPA-PSK (AES)"]'
+        else:
+            wpa_item = '//a[text()="WPA2-PSK (AES)"]'
+        self.driver.find_element_by_xpath(wpa_item)
+        self.click_button_by_xpath(wpa_item)
         text_field = '//input[@name="wpapsk"]'
         self.set_content_of_text_field_by_xpath(shared_key, text_field,
                                                 abort_check=True)

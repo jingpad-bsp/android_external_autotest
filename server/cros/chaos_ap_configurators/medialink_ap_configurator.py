@@ -199,18 +199,23 @@ class MediaLinkAPConfigurator(
                                                 abort_check=True)
 
 
-    def set_security_wpapsk(self, shared_key, update_interval=1800):
+    def set_security_wpapsk(self, security, shared_key, update_interval=1800):
         self.add_item_to_command_list(self._set_security_wpapsk,
-                                      (shared_key,update_interval,), 2, 900)
+                                      (security, shared_key,update_interval,),
+                                       2, 900)
 
 
-    def _set_security_wpapsk(self, shared_key, update_interval=1800):
+    def _set_security_wpapsk(self, security, shared_key, update_interval=1800):
         if update_interval < 600 | update_interval > 7200:
             logging.debug('Invalid update interval, setting it to 1800.')
             update_interval = 1800
         popup = '//select[@name="security_mode"]'
         key_field = '//input[@name="passphrase"]'
-        self.select_item_from_popup_by_xpath('WPA - Personal', popup,
+        if security == ap_spec.SECURITY_TYPE_WPAPSK:
+            wpa_item = 'WPA - Personal'
+        else:
+            wpa_item = 'WPA2 - Personal'
+        self.select_item_from_popup_by_xpath(wpa_item, popup,
                                              wait_for_xpath=key_field)
         self.set_content_of_text_field_by_xpath(shared_key, key_field,
                                                 abort_check=True)

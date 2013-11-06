@@ -281,18 +281,20 @@ class WesternDigitalN600APConfigurator(
                                                 abort_check=True)
 
 
-    def set_security_wpapsk(self, shared_key, update_interval=None):
+    def set_security_wpapsk(self, security, shared_key, update_interval=None):
         # WEP and WPA-Personal are not supported for Wireless-N only mode,
-        # so use WPA2-Personal to avoid conflicts.
-        self.add_item_to_command_list(self._set_security_wpa2psk,
-                                      (shared_key,), 1, 1000)
+        self.add_item_to_command_list(self._set_security_wpapsk,
+                                      (security, shared_key,), 1, 1000)
 
 
-    def _set_security_wpa2psk(self, shared_key):
-        text ='wpapsk'
+    def _set_security_wpapsk(self, security, shared_key):
+        text = 'wpapsk'
         if self.current_band == ap_spec.BAND_5GHZ:
             text = 'wpapsk_Aband'
-        self._set_security('WPA2 - Personal', '//input[@id="%s"]' % text)
+        if security == ap_spec.SECURITY_TYPE_WPAPSK:
+            self._set_security('WPA - Personal', '//input[@id="%s"]' % text)
+        else:
+            self._set_security('WPA2 - Personal', '//input[@id="%s"]' % text)
         self.set_content_of_text_field_by_id(shared_key, text,
                                              abort_check=False)
 

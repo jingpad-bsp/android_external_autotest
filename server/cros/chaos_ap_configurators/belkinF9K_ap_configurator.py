@@ -231,19 +231,24 @@ class BelkinF9KAPConfigurator(
                                    alert_handler=self._security_alert)
 
 
-    def set_security_wpapsk(self, shared_key, update_interval=None):
+    def set_security_wpapsk(self, security, shared_key, update_interval=None):
         self.add_item_to_command_list(self._set_security_wpapsk,
-                                      (shared_key, update_interval), 2, 900)
+                                      (security, shared_key, update_interval),
+                                       2, 900)
 
 
-    def _set_security_wpapsk(self, shared_key, update_interval=None):
+    def _set_security_wpapsk(self, security, shared_key, update_interval=None):
         key_field = '//input[@name="wpa_key_text"]'
         psk = '//select[@name="authentication"]'
         self.select_item_from_popup_by_xpath('WPA/WPA2-Personal (PSK)',
                                              self.security_popup,
                                              wait_for_xpath=key_field,
                                              alert_handler=self._security_alert)
-        self.select_item_from_popup_by_xpath('WPA-PSK', psk,
+        if security == ap_spec.SECURITY_TYPE_WPAPSK:
+            self.select_item_from_popup_by_xpath('WPA-PSK', psk,
+                                             alert_handler=self._security_alert)
+        else:
+            self.select_item_from_popup_by_xpath('WPA2-PSK', psk,
                                              alert_handler=self._security_alert)
         self.set_content_of_text_field_by_xpath(shared_key, key_field,
                                                 abort_check=False)

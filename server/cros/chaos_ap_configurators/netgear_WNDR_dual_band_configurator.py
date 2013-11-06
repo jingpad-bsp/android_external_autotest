@@ -74,6 +74,7 @@ class NetgearDualBandAPConfigurator(
         """
         return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
                                  ap_spec.SECURITY_TYPE_WPAPSK,
+                                 ap_spec.SECURITY_TYPE_WPA2PSK,
                                  ap_spec.SECURITY_TYPE_WEP)
 
 
@@ -212,17 +213,22 @@ class NetgearDualBandAPConfigurator(
         self.click_button_by_xpath(button, alert_handler=self._alert_handler)
 
 
-    def set_security_wpapsk(self, shared_key, update_interval=None):
+    def set_security_wpapsk(self, security, shared_key, update_interval=None):
         self.add_item_to_command_list(self._set_security_wpapsk,
-                                      (shared_key,), 1, 1000)
+                                      (security, shared_key,), 1, 1000)
 
 
-    def _set_security_wpapsk(self, shared_key, update_interval=None):
+    def _set_security_wpapsk(self, security, shared_key, update_interval=None):
         # Update Interval is not supported.
-        xpath = ('//input[@name="security_type" and @value="WPA-PSK"]')
+        if security == ap_spec.SECURITY_TYPE_WPAPSK:
+            wpa_item = "WPA-PSK"
+        else:
+            wpa_item = "WPA2-PSK"
+        xpath = ('//input[@name="security_type" and @value=%s]' % wpa_item)
         text = '//input[@name="passphrase"]'
         if self.current_band == ap_spec.BAND_5GHZ:
-            xpath = ('//input[@name="security_type_an" and @value="WPA-PSK"]')
+            xpath = ('//input[@name="security_type_an" and @value=%s]' %
+                              wpa_item)
             text = '//input[@name="passphrase_an"]'
         try:
             self.click_button_by_xpath(xpath,

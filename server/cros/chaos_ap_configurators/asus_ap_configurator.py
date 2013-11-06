@@ -70,6 +70,7 @@ class AsusAPConfigurator(
         """
         return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
                                  ap_spec.SECURITY_TYPE_WPAPSK,
+                                 ap_spec.SECURITY_TYPE_WPA2PSK,
                                  ap_spec.SECURITY_TYPE_WEP)
 
 
@@ -227,21 +228,26 @@ class AsusAPConfigurator(
                                                 abort_check=True)
 
 
-    def set_security_wpapsk(self, shared_key, update_interval=1800):
+    def set_security_wpapsk(self, security, shared_key, update_interval=1800):
         #  Asus does not support TKIP (wpapsk) encryption in 'n' mode.
         #  So we will use AES (wpa2psk) to avoid conflicts and modal dialogs.
         self.add_item_to_command_list(self._set_security_wpapsk,
-                                      (shared_key, update_interval), 1, 900)
+                                      (security, shared_key, update_interval),
+                                       1, 900)
 
 
-    def _set_security_wpapsk(self, shared_key, update_interval):
+    def _set_security_wpapsk(self, security, shared_key, update_interval):
         key_field = '//input[@name="rt_wpa_psk"]'
         interval_field = '//input[@name="rt_wpa_gtk_rekey"]'
         if self.current_band == ap_spec.BAND_5GHZ:
             key_field = '//input[@name="wl_wpa_psk"]'
             interval_field = '//input[@name="wl_wpa_gtk_rekey"]'
-        self._set_authentication('WPA-Personal',
-                                 wait_for_xpath=key_field)
+        if security == ap_spec.SECURITY_TYPE_WPAPSK:
+            self._set_authentication('WPA-Personal',
+                                     wait_for_xpath=key_field)
+        else:
+            self._set_authentication('WPA2-Personal',
+                                     wait_for_xpath=key_field)
         self.set_content_of_text_field_by_xpath(shared_key, key_field)
         self.set_content_of_text_field_by_xpath(str(update_interval),
                                                 interval_field)

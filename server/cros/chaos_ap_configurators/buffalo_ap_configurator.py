@@ -51,6 +51,7 @@ class BuffaloAPConfigurator(
         """
         return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
                                  ap_spec.SECURITY_TYPE_WPAPSK,
+                                 ap_spec.SECURITY_TYPE_WPA2PSK,
                                  ap_spec.SECURITY_TYPE_WEP)
 
 
@@ -255,19 +256,21 @@ class BuffaloAPConfigurator(
         self.click_button_by_xpath('//input[@value="Generate"]')
 
 
-    def set_security_wpapsk(self, shared_key, update_interval=3600):
+    def set_security_wpapsk(self, security, shared_key, update_interval=3600):
         self.add_item_to_command_list(self._set_security_wpapsk,
-                                      (shared_key, update_interval), 2, 900)
+                                      (security, shared_key, update_interval),
+                                       2, 900)
 
 
-    def _set_security_wpapsk(self, shared_key, update_interval=3600):
+    def _set_security_wpapsk(self, security, shared_key, update_interval=3600):
         self._retry_page(2)
-
         popup = '//select[@name="ath0_security_mode"]'
         key_field = '//input[@name="ath0_wpa_psk"]'
         interval_field = '//input[@name="ath0_wpa_gtk_rekey"]'
-        wpa_item = 'WPA Personal'
-
+        if security == ap_spec.SECURITY_TYPE_WPAPSK:
+             wpa_item = 'WPA Personal'
+        else:
+             wpa_item = 'WPA2 Personal'
         self._wait_for_item_in_popup(wpa_item, popup)
         self.select_item_from_popup_by_xpath(wpa_item, popup)
         self.wait_for_object_by_xpath(key_field)

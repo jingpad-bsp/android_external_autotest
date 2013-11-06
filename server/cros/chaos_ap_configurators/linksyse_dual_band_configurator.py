@@ -215,19 +215,24 @@ class LinksyseDualBandAPConfigurator(
         self.click_button_by_xpath(xpath)
 
 
-    def set_security_wpapsk(self, shared_key, update_interval=None):
+    def set_security_wpapsk(self, security, shared_key, update_interval=None):
         self.add_item_to_command_list(self._set_security_wpapsk,
-                                      (shared_key, update_interval), 1, 900)
+                                      (security, shared_key, update_interval),
+                                       1, 900)
 
 
-    def _set_security_wpapsk(self, shared_key, update_interval=None):
+    def _set_security_wpapsk(self, security, shared_key, update_interval=None):
         popup = '//select[@name="wl0_security_mode"]'
         key_field = '//input[@name="wl0_wpa_psk"]'
         if self.current_band == ap_spec.BAND_5GHZ:
             popup = '//select[@name="wl1_security_mode"]'
             key_field = '//input[@name="wl1_wpa_psk"]'
         self.wait_for_object_by_xpath(popup)
-        self.select_item_from_popup_by_xpath('WPA Personal', popup,
+        if security == ap_spec.SECURITY_TYPE_WPAPSK:
+            wpa_item = 'WPA Personal'
+        else:
+            wpa_item = 'WPA2 Personal'
+        self.select_item_from_popup_by_xpath(wpa_item, popup,
                                              wait_for_xpath=key_field,
                                              alert_handler=self._alert_handler)
         self.set_content_of_text_field_by_xpath(shared_key, key_field,

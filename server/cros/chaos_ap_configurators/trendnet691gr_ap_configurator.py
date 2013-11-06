@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import ap_spec
 import trendnet_ap_configurator
 
 
@@ -19,9 +20,13 @@ class Trendnet691grAPConfigurator(trendnet_ap_configurator.
             self.wait_for_progress_bar()
 
 
-    def _set_security_wpapsk(self, shared_key, update_interval=1800):
+    def _set_security_wpapsk(self, security, shared_key, update_interval=1800):
         self.wait_for_object_by_id('security_mode')
-        self.select_item_from_popup_by_id('WPA-PSK', 'security_mode',
+        if security == ap_spec.SECURITY_TYPE_WPAPSK:
+            wpa_item = 'WPA-PSK'
+        else:
+            wpa_item = 'WPA2-PSK'
+        self.select_item_from_popup_by_id(wpa_item, 'security_mode',
                                           wait_for_xpath='id("passphrase")')
         self.set_content_of_text_field_by_id(shared_key, 'passphrase')
         self.set_content_of_text_field_by_id(update_interval,

@@ -142,19 +142,24 @@ class AsusQISAPConfigurator(asus_ap_configurator.AsusAPConfigurator):
         self.set_content_of_text_field_by_xpath(key_value, text_field,
                                                 abort_check=True)
 
-    def set_security_wpapsk(self, shared_key, update_interval=1800):
+    def set_security_wpapsk(self, security, shared_key, update_interval=1800):
         #  Asus does not support TKIP (wpapsk) encryption in 'n' mode.
-        #  So we will use AES (wpa2psk) to avoid conflicts and modal dialogs.
+        #  Therefore security will fall back to wpa2psk in 'n' mode.
         self.add_item_to_command_list(self._set_security_wpapsk,
-                                      (shared_key, update_interval), 1, 1000)
+                                      (security, shared_key, update_interval),
+                                       1, 1000)
 
 
-    def _set_security_wpapsk(self, shared_key, update_interval):
+    def _set_security_wpapsk(self, security, shared_key, update_interval):
         popup = '//select[@name="wl_crypto"]'
         key_field = '//input[@name="wl_wpa_psk"]'
         interval_field = '//input[@name="wl_wpa_gtk_rekey"]'
-        self._set_authentication('WPA-Personal', wait_for_xpath=key_field)
-        self.select_item_from_popup_by_xpath('AES', popup)
+        if security == ap_spec.SECURITY_TYPE_WPAPSK:
+            self._set_authentication('WPA-Personal', wait_for_xpath=key_field,
+                                   alert_handler=self._invalid_security_handler)
+        else:
+            self._set_authentication('WPA2-Personal', wait_for_xpath=key_field,
+                                   alert_handler=self._invalid_security_handler)
         self.set_content_of_text_field_by_xpath(shared_key, key_field)
         self.set_content_of_text_field_by_xpath(str(update_interval),
                                                 interval_field)

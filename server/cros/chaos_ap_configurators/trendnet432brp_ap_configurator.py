@@ -134,9 +134,12 @@ class Trendnet432brpAPConfigurator(trendnet_ap_configurator.
                                              abort_check=True)
 
 
-    def _set_security_wpapsk(self, shared_key, update_interval=None):
+    def _set_security_wpapsk(self, security, shared_key, update_interval=None):
         self.wait_for_object_by_id('wep_type')
-        self.select_item_from_popup_by_id(' WPA ', 'wep_type')
+        if security == ap_spec.SECURITY_TYPE_WPAPSK:
+            self.select_item_from_popup_by_id(' WPA ', 'wep_type')
+        else:
+            self.select_item_from_popup_by_id(' WPA2 ', 'wep_type')
         self.set_content_of_text_field_by_id(shared_key, 'wpapsk1')
         self.set_content_of_text_field_by_id(shared_key, 'wpapsk2')
 

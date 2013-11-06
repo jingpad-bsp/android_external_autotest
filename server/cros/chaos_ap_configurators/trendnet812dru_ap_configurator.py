@@ -41,6 +41,7 @@ class Trendnet812druAPConfigurator(trendnet692gr_ap_configurator.
 
         """
         return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
+                                 ap_spec.SECURITY_TYPE_WEP,
                                  ap_spec.SECURITY_TYPE_WPAPSK,
                                  ap_spec.SECURITY_TYPE_WPA2PSK)
 
@@ -134,9 +135,13 @@ class Trendnet812druAPConfigurator(trendnet692gr_ap_configurator.
                                                  xpath)
 
 
-    def _set_security_wpapsk(self, shared_key, update_interval=1800):
+    def _set_security_wpapsk(self, security, shared_key, update_interval=1800):
         self.wait_for_object_by_id('security_mode')
-        self.select_item_from_popup_by_id('WPA-PSK', 'security_mode',
+        if security == ap_spec.SECURITY_TYPE_WPAPSK:
+            wpa_item = 'WPA-PSK'
+        else:
+            wpa_item = 'WPA2-PSK'
+        self.select_item_from_popup_by_id(wpa_item, 'security_mode',
                                           wait_for_xpath='id("wpaPassphrase")')
         self.set_content_of_text_field_by_id(shared_key, 'wpaPassphrase')
         self.set_content_of_text_field_by_id(update_interval,

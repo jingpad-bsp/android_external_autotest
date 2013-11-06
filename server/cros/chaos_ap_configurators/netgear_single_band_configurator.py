@@ -54,6 +54,7 @@ class NetgearSingleBandAPConfigurator(
     def is_security_mode_supported(self, security_mode):
         return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
                                  ap_spec.SECURITY_TYPE_WPAPSK,
+                                 ap_spec.SECURITY_TYPE_WPA2PSK,
                                  ap_spec.SECURITY_TYPE_WEP)
 
 
@@ -146,13 +147,17 @@ class NetgearSingleBandAPConfigurator(
         self.click_button_by_xpath(xpath, alert_handler=self._alert_handler)
 
 
-    def set_security_wpapsk(self, key, update_interval=None):
-        self.add_item_to_command_list(self._set_security_wpapsk, (key,), 1, 900)
+    def set_security_wpapsk(self, security, key, update_interval=None):
+        self.add_item_to_command_list(self._set_security_wpapsk, (security,
+                                      key,), 1, 900)
 
 
-    def _set_security_wpapsk(self, key, update_interval=None):
+    def _set_security_wpapsk(self, security, key, update_interval=None):
         # Update Interval is not supported.
-        xpath = '//input[@name="security_type" and @value="WPA-PSK"]'
+        if security == ap_spec.SECURITY_TYPE_WPAPSK:
+            xpath = '//input[@name="security_type" and @value="WPA-PSK"]'
+        else:
+            xpath = '//input[@name="security_type" and @value="WPA2-PSK"]'
         self.click_button_by_xpath(xpath, alert_handler=self._alert_handler)
         xpath = '//input[@name="passphrase"]'
         self.set_content_of_text_field_by_xpath(key, xpath, abort_check=True)
