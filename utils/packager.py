@@ -18,11 +18,11 @@ def get_exclude_string(client_dir):
     '''
     Get the exclude string for the tar command to exclude specific
     subdirectories inside client_dir.
-    For profilers we need to exclude everything except the __ini__.py
+    For profilers we need to exclude everything except the __init__.py
     file so that the profilers can be imported.
     '''
     exclude_string = ('--exclude=deps/* --exclude=tests/* '
-                      '--exclude=site_tests/*')
+                      '--exclude=site_tests/* --exclude=**.pyc')
 
     # Get the profilers directory
     prof_dir = os.path.join(client_dir, 'profilers')
