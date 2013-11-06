@@ -11,7 +11,7 @@ PURPOSE = "Validate Ownership DBus API"
 CRITERIA = """
 Fail if a call does not behave as expected
 """
-SUITE = "bvt, kaen_bvt, smoke"
+SUITE = "bvt, smoke"
 TIME="SHORT"
 TEST_CLASS = "login"
 TEST_CATEGORY = "Functional"

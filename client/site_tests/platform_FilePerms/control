@@ -9,7 +9,7 @@ CRITERIA = """
 This test will fail if it finds unexpected permissions on system files or
 directories.
 """
-SUITE = "bvt, kaen_bvt, smoke"
+SUITE = "bvt, smoke"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
