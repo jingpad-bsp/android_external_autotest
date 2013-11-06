@@ -4,20 +4,12 @@
 
 import logging
 import os
-import shutil
 import sys
 
-from autotest_lib.client.bin import test, utils
-from autotest_lib.client.common_lib import error, utils
-from autotest_lib.client.cros import service_stopper, avahi_utils
+from autotest_lib.client.bin import test
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import p2p_utils
 from autotest_lib.client.cros.netprotos import cros_p2p, zeroconf
-
-
-P2P_SHARE_PATH = '/var/cache/p2p'
-
-# A path used to store the existing p2p files during the test and restore them
-# once the test finishes.
-P2P_SHARE_BACKUP_PATH = '/var/cache/p2p-backup'
 
 
 class p2p_ShareFiles(test.test):
@@ -41,56 +33,11 @@ class p2p_ShareFiles(test.test):
         # Import the lansim modules installed on lansim/build/
         sys.path.append(os.path.join(dep_dir, 'build'))
 
-        self._services = None
-        self._tap = None
+        self._p2p = p2p_utils.P2PServerOverTap()
 
 
     def cleanup(self):
-        try:
-            utils.system('stop p2p')
-            avahi_utils.avahi_stop()
-        except:
-            logging.exception('Failed to stop tested services.')
-
-        if self._tap:
-            self._tap.down()
-
-        # Restore p2p files.
-        if os.path.exists(P2P_SHARE_PATH):
-            shutil.rmtree(P2P_SHARE_PATH, ignore_errors=True)
-        try:
-            if os.path.exists(P2P_SHARE_BACKUP_PATH):
-                os.rename(P2P_SHARE_BACKUP_PATH, P2P_SHARE_PATH)
-        except OSError:
-            logging.exception('Failed to restore the P2P backup.')
-
-        if self._services:
-            self._services.restore_services()
-
-
-    def _setup_avahi(self):
-        """Initializes avahi daemon on a new tap interface."""
-        from lansim import tuntap
-        # Ensure p2p and avahi aren't running.
-        self._services = service_stopper.ServiceStopper(['p2p', 'avahi'])
-        self._services.stop_services()
-
-        # Backup p2p files.
-        if os.path.exists(P2P_SHARE_BACKUP_PATH):
-            shutil.rmtree(P2P_SHARE_BACKUP_PATH)
-        if os.path.exists(P2P_SHARE_PATH):
-            os.rename(P2P_SHARE_PATH, P2P_SHARE_BACKUP_PATH)
-
-        # Initialize avahi-daemon listenning only on the fake TAP interface.
-        self._tap = tuntap.TunTap(tuntap.IFF_TAP, name='faketap')
-
-        # The network 169.254/16 shouldn't clash with other real services. We
-        # use a /24 subnet of it here.
-        self._tap.set_addr('169.254.10.1', mask=24)
-        self._tap.up()
-
-        # Re-launch avahi-daemon on the tap interface.
-        avahi_utils.avahi_start_on_iface(self._tap.name)
+        self._p2p.cleanup()
 
 
     def _run_lansim_loop(self, timeout=None, until=None):
@@ -107,18 +54,17 @@ class p2p_ShareFiles(test.test):
 
         # Setup the environment where avahi-daemon runs during the test.
         try:
-            self._setup_avahi()
-            utils.system("start p2p")
+            self._p2p.setup()
         except:
             logging.exception('Failed to start tested services.')
             raise error.TestError('Failed to setup p2p/avahi environment.')
 
-        self._sim = simulator.Simulator(self._tap)
+        self._sim = simulator.Simulator(self._p2p.tap)
         # Create a single fake peer that will be sending the multicast requests.
         peer = host.SimpleHost(self._sim, '94:EB:2C:00:00:61', '169.254.10.97')
 
-        # Run a userspace implementation of avahi + p2p-server on the fake
-        # hosts. This announces the P2P service on each fake host.
+        # Run a userspace implementation of avahi + p2p-client on the fake
+        # host. This will use the P2P services exported by the DUT.
         zero = zeroconf.ZeroconfDaemon(peer, 'a-peer')
         p2pcli = cros_p2p.CrosP2PClient(zero)
 
@@ -135,7 +81,7 @@ class p2p_ShareFiles(test.test):
 
         # Check that the announced information is correct.
         peer_name, _hostname, ips, port = peers[0]
-        if len(ips) != 1 or ips[0] != self._tap.addr:
+        if len(ips) != 1 or ips[0] != self._p2p.tap.addr:
             logging.info('Peer ips: %r', ips)
             raise error.TestFail('Found wrong peer IP address on the DUT.')
         if port != cros_p2p.CROS_P2P_PORT:
@@ -153,7 +99,8 @@ class p2p_ShareFiles(test.test):
             raise error.TestFail('DUT already has p2p connections.')
 
         # Share a small file and check that it is broadcasted.
-        with open(os.path.join(P2P_SHARE_PATH, 'my_file=HASH==.p2p'), 'w') as f:
+        with open(os.path.join(p2p_utils.P2P_SHARE_PATH, 'my_file=HASH==.p2p'),
+                  'w') as f:
             f.write('0123456789')
 
         # Run the loop until the file is shared. Normally, the p2p-server takes
