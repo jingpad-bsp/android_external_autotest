@@ -753,10 +753,11 @@ class BaseDispatcher(object):
                       'ISNULL(host_id), '
                       'ISNULL(meta_host), '
                       'job_id')
+        query=('NOT complete AND NOT active AND status="Queued"'
+               'AND NOT aborted')
         return list(scheduler_models.HostQueueEntry.fetch(
             joins='INNER JOIN afe_jobs ON (job_id=afe_jobs.id)',
-            where='NOT complete AND NOT active AND status="Queued"',
-            order_by=sort_order))
+            where=query, order_by=sort_order))
 
 
     def _refresh_pending_queue_entries(self):

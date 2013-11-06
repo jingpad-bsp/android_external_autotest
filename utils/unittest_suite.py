@@ -89,6 +89,7 @@ SKIP = set((
     'chaos_base_test.py',
     'chaos_interop_test.py',
     'monitor_db_functional_test.py',
+    'atomic_group_unittests.py',
     # crbug.com/251395
     'dev_server_test.py',
     'full_release_test.py',

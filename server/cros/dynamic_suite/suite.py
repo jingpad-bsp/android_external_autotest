@@ -331,11 +331,16 @@ class Suite(object):
             job_deps = []
         else:
             job_deps = list(test.dependencies)
-
         if self._extra_deps:
             job_deps.extend(self._extra_deps)
         if self._pool:
             job_deps.append(self._pool)
+
+        # TODO(beeps): Comletely remove the concept of a metahost.
+        # Currently we use this to distinguis a job scheduled through
+        # the afe from a suite job, as only the latter will get requeued
+        # when a special task fails.
+        job_deps.append(self._board)
 
         test_obj = self._afe.create_job(
             control_file=test.text,

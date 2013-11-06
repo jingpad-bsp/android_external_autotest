@@ -233,6 +233,7 @@ class SuiteTest(mox.MoxTestBase):
                 dependencies.extend(test.dependencies)
             if suite_deps:
                 dependencies.extend(suite_deps)
+            dependencies.append(self._BOARD)
             job_mock = self.afe.create_job(
                 control_file=test.text,
                 name=mox.And(mox.StrContains(self._BUILD),

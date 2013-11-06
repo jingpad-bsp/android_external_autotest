@@ -121,6 +121,12 @@ class FrontendTestMixin(object):
             reboot_before=model_attributes.RebootBefore.NEVER,
             drone_set=drone_set, control_file=control_file,
             parameterized_job=parameterized_job)
+
+        # Update the job's dependencies to include the metahost.
+        for metahost_label in metahosts:
+            dep = models.Label.objects.get(id=metahost_label)
+            job.dependency_labels.add(dep)
+
         for host_id in hosts:
             models.HostQueueEntry.objects.create(job=job, host_id=host_id,
                                                  status=status,
