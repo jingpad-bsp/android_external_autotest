@@ -73,7 +73,7 @@ class CommonUtilityTest(unittest.TestCase):
       pass
 
     self.assertTrue(abs((time.time() - start_time)
-                        - (try_count * try_sleep)) < 1)
+                        - (try_count * try_sleep)) < 2)
 
   def testIgnoreErrors(self):
     common_util.RunCommand(cmd='exit 1', ignore_errors=True)
