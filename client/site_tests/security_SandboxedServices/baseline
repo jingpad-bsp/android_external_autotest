@@ -3,7 +3,7 @@ udevd,root,No,No,No,No,No
 session_manager,root,No,No,No,No,No
 rsyslogd,syslog,No,No,No,No,No
 dbus-daemon,messagebus,No,No,No,No,No
-wpa_supplicant,wpa,Yes,Yes,No,Yes,No
+wpa_supplicant,wpa,No,No,No,No,No
 shill,root,No,No,No,No,No
 X,root,No,No,No,No,No
 chapsd,chaps,No,No,No,No,No
