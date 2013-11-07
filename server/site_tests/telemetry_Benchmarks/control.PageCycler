@@ -1,0 +1,25 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "chromeos-perf"
+NAME = "Telemetry Page Loading Benchmark"
+SUITE = "perf_v2"
+TIME = "LONG"
+TEST_CATEGORY = "Benchmark"
+TEST_CLASS = "performance"
+TEST_TYPE = "server"
+
+DOC = """
+This server side test suite executes the Telemetry Page Loading
+Benchmark.  This is part of Chrome for Chrome OS performance testing.
+"""
+
+def run_benchmark(machine):
+    host = hosts.create_host(machine)
+    job.run_test("telemetry_Benchmarks", host=host,
+                 benchmark="page_cycler.typical_25",
+                 tag="page_cycler.typical_25")
+
+
+parallel_simple(run_benchmark, machines)
