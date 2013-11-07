@@ -323,6 +323,72 @@ class SimulatorThread(threading.Thread, Simulator):
         os.write(self._pipe_wr, ' ')
 
 
+    def wait_for_condition(self, condition, timeout=None):
+        """Blocks until the condition is met or timeout is exceeded.
+
+        This method should be called from a different thread while the simulator
+        thread is running as it blocks the calling thread's execution until a
+        condition is met. The condition function is evaluated in a callback
+        running on the simulator thread and thus can safely access objects owned
+        by the simulator.
+
+        @param condition: A function called on the simulator thread that returns
+        a value indicating if the condition is met.
+        @param timeout: The timeout in seconds. None for no timeout.
+        @return: The value returned by condition the last time it was called.
+        This means that in the event of a timeout, this function will return a
+        value that evaluates to False since the condition wasn't met the last
+        time it was checked.
+        """
+        # Lock and Condition used to wait until the passed condition is met.
+        lock_cond = threading.Lock()
+        cond_var = threading.Condition(lock_cond)
+        # We use a mutable object like the [] to pass the reference by value
+        # to the simulator's callback and let it modify the contents.
+        ret = [None]
+
+        # Create the actual callback that will be running on the simulator
+        # thread and pass a reference to it to keep including it
+        callback = lambda: self._condition_poller(
+                callback, ret, cond_var, condition)
+
+        # Let the simulator keep calling our function, it will keep calling
+        # itself until the condition is met (or we remove it).
+        self.run_on_simulator(callback)
+
+        # Condition variable waiting loop.
+        cur_time = time.time()
+        start_time = cur_time
+        with cond_var:
+            while not ret[0]:
+                if timeout is None:
+                    cond_var.wait()
+                else:
+                    cur_timeout = timeout - (cur_time - start_time)
+                    if cur_timeout < 0:
+                        break
+                    cond_var.wait(cur_timeout)
+                    cur_time = time.time()
+        self.remove_timeout(callback)
+
+        return ret[0]
+
+
+    def _condition_poller(self, callback, ref_value, cond_var, func):
+        """Callback function used to poll for a condition.
+
+        This method keeps scheduling itself in the simulator until the passed
+        condition evaluates to a True value. This effectivelly implements a
+        polling mechanism. See wait_for_condition() for details.
+        """
+        with cond_var:
+            ref_value[0] = func()
+            if ref_value[0]:
+                cond_var.notify()
+            else:
+                self.add_timeout(1., callback)
+
+
     def run(self):
         """Runs the simulation on the thread, called by start().
 

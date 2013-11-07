@@ -6,6 +6,7 @@ import threading
 import select
 import socket
 import subprocess
+import sys
 import unittest
 
 from lansim import host
@@ -154,6 +155,10 @@ class SimulatorThreadTest(unittest.TestCase):
         self._sim.stop() # stop() is idempotent.
         self._sim.join()
         self._tap.down()
+        if self._sim.error:
+            sys.stderr.write('SimulatorThread exception: %r' % self._sim.error)
+            sys.stderr.write(self._sim.traceback)
+            raise self._sim.error
 
 
     def testError(self):
@@ -162,6 +167,8 @@ class SimulatorThreadTest(unittest.TestCase):
         self._sim.start()
         self._sim.join()
         self.assertEqual(self._sim.error.message, 'Something bad.')
+        # Clean the error before tearDown()
+        self._sim.error = None
 
 
     def testARPPing(self):
@@ -223,6 +230,30 @@ class SimulatorThreadTest(unittest.TestCase):
         # to a different port.
         self.assertEqual(srv2data, '169.254.11.22 1024 1081')
 
+
+    def testWaitForCondition(self):
+        """Main thread can wait until a condition is met on the simulator."""
+        self._sim.start()
+
+        # Wait for an always False condition.
+        condition = lambda: False
+        ret = self._sim.wait_for_condition(condition, timeout=1.5)
+        self.assertFalse(ret)
+
+        # Wait for a trivially True condition.
+        condition = lambda: True
+        ret = self._sim.wait_for_condition(condition, timeout=10.)
+        self.assertTrue(ret)
+
+        # Without timeout.
+        ret = self._sim.wait_for_condition(condition, timeout=None)
+        self.assertTrue(ret)
+
+        # Wait for a condition that takes 3 calls to meet.
+        var = []
+        condition = lambda: var if len(var) == 3 else var.append(None)
+        ret = self._sim.wait_for_condition(condition, timeout=10.)
+        self.assertEqual(len(ret), 3)
 
 if __name__ == '__main__':
     unittest.main()
