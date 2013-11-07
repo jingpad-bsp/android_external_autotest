@@ -61,7 +61,7 @@ class LinuxSystem(object):
         cmd_netdump = wifi_test_utils.get_install_path(
                 host, params.get('cmd_netdump', '/usr/sbin/tcpdump'))
         cmd_ifconfig = wifi_test_utils.get_install_path(
-                host, params.get('cmd_ifconfig', '/sbin/ifconfig'))
+                host, params.get('cmd_ifconfig', 'ifconfig'))
         self._packet_capturer = packet_capturer.get_packet_capturer(
                 self.host, host_description=role, cmd_ifconfig=cmd_ifconfig,
                 cmd_ip=self.cmd_ip, cmd_iw=cmd_iw, cmd_netdump=cmd_netdump,

@@ -25,8 +25,8 @@ ntp
 
 %post --interpreter /usr/bin/python
 import socket, os
-os.system('/sbin/ifconfig eth0 10.0.2.15 netmask 255.255.255.0 up')
-os.system('/sbin/route add default gw 10.0.2.2')
+os.system('/bin/ifconfig eth0 10.0.2.15 netmask 255.255.255.0 up')
+os.system('/bin/route add default gw 10.0.2.2')
 os.system('chkconfig sshd on')
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind(('', 12323))

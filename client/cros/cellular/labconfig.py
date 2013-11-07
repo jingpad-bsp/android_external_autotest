@@ -30,10 +30,10 @@ def get_interface_ip(interface='eth0'):
     #  utils.system_output('ifconfig eth0 2>&1', retain_output=True)
     # but that gives us a dependency on the rest of autotest, which
     # means that running the unit test requires pythonpath manipulation
-    ifconfig = subprocess.Popen(['/sbin/ifconfig', interface],
-                                stdout=subprocess.PIPE).communicate()[0]
+    stdout = subprocess.Popen(['ip', '-4', 'addr', 'show', 'dev', interface],
+                              stdout=subprocess.PIPE).communicate()[0]
 
-    match = re.search(r'inet addr:([0-9.]+)', ifconfig)
+    match = re.search(r'inet ([0-9.]+)[/ ]', stdout)
     if not match:
         return None
     return match.group(1)
@@ -108,14 +108,15 @@ class Configuration(object):
                               machine)
                     self.ip = machine
                     break
-                ifconfig = subprocess.Popen(['/sbin/ifconfig'],
+            else:
+                ifconfig = subprocess.Popen(['ip', 'addr', 'show'],
                         stdout=subprocess.PIPE).communicate()[0]
         if not machine:
             raise LabConfigError(
                 'Could not determine which machine we are.\n'
                 '  Cell =  %s \n' % self.options.cell +
                 'Tried these interface names: %s \n' % possible_interfaces +
-                'ifconfig output:\n%s' % ifconfig
+                '`ip addr show` output:\n%s' % ifconfig
             )
 
         for dut in self.cell["duts"]:

@@ -25,7 +25,7 @@ class network_utils(object):
 
 
     def list(self):
-        utils.system('/sbin/ifconfig -a')
+        utils.system('ifconfig -a')
 
 
     def get_ip_local(self, query_ip, netmask="24"):
