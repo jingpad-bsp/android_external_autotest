@@ -225,6 +225,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                 log_file, pid_file, conf_file)
         self.router.run(start_command)
         self.hostapd_instances.append({
+            'ssid': conf['ssid'],
             'conf_file': conf_file,
             'log_file': log_file,
             'interface': interface,
@@ -758,10 +759,10 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.router.run('grep -q "%s" %s' % (pmksa_match, instance['log_file']))
 
 
-    def get_ssid(self):
+    def get_ssid(self, instance=0):
         """@return string ssid for the network stemming from this router."""
-        if self.hostapd['configured']:
-            return self.hostapd['conf']['ssid']
+        if self.hostapd_instances:
+            return self.hostapd_instances[instance]['ssid']
 
         if not 'ssid' in self.station['conf']:
             raise error.TestFail('Requested ssid of an unconfigured AP.')
