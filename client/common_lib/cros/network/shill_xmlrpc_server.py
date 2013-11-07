@@ -148,6 +148,26 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         return result
 
 
+    @xmlrpc_server.dbus_safe(False)
+    def delete_entries_for_ssid(self, ssid):
+        """Delete a profile entry.
+
+        @param ssid string of WiFi service for which to delete entries.
+        @return True on success, False otherwise.
+
+        """
+        shill = self._wifi_proxy
+        for profile in shill.get_profiles():
+            profile_properties = shill.dbus2primitive(
+                    profile.GetProperties(utf8_strings=True))
+            entry_ids = profile_properties[shill.PROFILE_PROPERTY_ENTRIES]
+            for entry_id in entry_ids:
+                entry = profile.GetEntry(entry_id)
+                if shill.dbus2primitive(entry[shill.ENTRY_FIELD_NAME]) == ssid:
+                    profile.DeleteEntry(entry_id)
+        return True
+
+
     def init_test_network_state(self):
         """Create a clean slate for tests with respect to remembered networks.
 
