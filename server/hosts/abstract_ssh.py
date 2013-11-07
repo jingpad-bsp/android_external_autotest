@@ -382,19 +382,21 @@ class AbstractSSHHost(remote.RemoteHost):
                     raise error.AutoservRunError(e.args[0], e.args[1])
 
 
-    def ssh_ping(self, timeout=60):
+    def ssh_ping(self, timeout=60, base_cmd='true'):
         """
         Pings remote host via ssh.
 
         @param timeout: Time in seconds before giving up.
                         Defaults to 60 seconds.
+        @param base_cmd: The base command to run with the ssh ping.
+                         Defaults to true.
         @raise AutoservSSHTimeout: If the ssh ping times out.
         @raise AutoservSshPermissionDeniedError: If ssh ping fails due to
                                                  permissions.
         @raise AutoservSshPingHostError: For other AutoservRunErrors.
         """
         try:
-            self.run("true", timeout=timeout, connect_timeout=timeout)
+            self.run(base_cmd, timeout=timeout, connect_timeout=timeout)
         except error.AutoservSSHTimeout:
             msg = "Host (ssh) verify timed out (timeout = %d)" % timeout
             raise error.AutoservSSHTimeout(msg)
@@ -408,16 +410,17 @@ class AbstractSSHHost(remote.RemoteHost):
                                                  repr(e.result_obj))
 
 
-    def is_up(self, timeout=60):
+    def is_up(self, timeout=60, base_cmd='true'):
         """
-        Check if the remote host is up.
+        Check if the remote host is up by ssh-ing and running a base command.
 
         @param timeout: timeout in seconds.
+        @param base_cmd: a base command to run with ssh. The default is 'true'.
         @returns True if the remote host is up before the timeout expires,
                  False otherwise.
         """
         try:
-            self.ssh_ping(timeout=timeout)
+            self.ssh_ping(timeout=timeout, base_cmd=base_cmd)
         except error.AutoservError:
             return False
         else:
@@ -438,8 +441,8 @@ class AbstractSSHHost(remote.RemoteHost):
                  False otherwise
         """
         if timeout:
-            end_time = time.time() + timeout
-            current_time = time.time()
+            current_time = int(time.time())
+            end_time = current_time + timeout
 
         while not timeout or current_time < end_time:
             if self.is_up(timeout=end_time - current_time):
@@ -450,7 +453,7 @@ class AbstractSSHHost(remote.RemoteHost):
                 except error.AutoservError:
                     pass
             time.sleep(1)
-            current_time = time.time()
+            current_time = int(time.time())
 
         logging.debug('Host %s is still down after waiting %d seconds',
                       self.hostname, int(timeout + time.time() - end_time))
@@ -498,7 +501,7 @@ class AbstractSSHHost(remote.RemoteHost):
         """
         #TODO: there is currently no way to distinguish between knowing
         #TODO: boot_id was unsupported and not knowing the boot_id.
-        current_time = time.time()
+        current_time = int(time.time())
         if timeout:
             end_time = current_time + timeout
 
@@ -525,7 +528,7 @@ class AbstractSSHHost(remote.RemoteHost):
         # the same time that allowed us into that iteration of the loop.
         while not timeout or current_time < end_time:
             try:
-                new_boot_id = self.get_boot_id(timeout=end_time - current_time)
+                new_boot_id = self.get_boot_id(timeout=end_time-current_time)
             except error.AutoservError:
                 logging.debug('Host %s is now unreachable over ssh, is down',
                               self.hostname)
@@ -549,7 +552,7 @@ class AbstractSSHHost(remote.RemoteHost):
                 self.run('kill -HUP 1', ignore_status=True)
 
             time.sleep(1)
-            current_time = time.time()
+            current_time = int(time.time())
 
         return False
 

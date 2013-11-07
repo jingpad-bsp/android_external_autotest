@@ -103,3 +103,17 @@ def get_sheriffs(lab_only=False):
             sheriff_ids += ['%s@chromium.org' % alias.replace(' ', '')
                             for alias in ldaps.group(1).split(',')]
     return sheriff_ids
+
+
+def remote_wget(source_url, dest_path, ssh_cmd):
+    """wget source_url from localhost to dest_path on remote host using ssh.
+
+    @param source_url: The complete url of the source of the package to send.
+    @param dest_path: The path on the remote host's file system where we would
+        like to store the package.
+    @param ssh_cmd: The ssh command to use in performing the remote wget.
+    """
+    wget_cmd = ("wget -O - %s | %s 'cat >%s'" %
+                (source_url, ssh_cmd, dest_path))
+    base_utils.run(wget_cmd)
+

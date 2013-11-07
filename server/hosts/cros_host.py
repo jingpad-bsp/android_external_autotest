@@ -157,6 +157,26 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
 
     @staticmethod
+    def check_host(host, timeout=10):
+        """
+        Check if the given host is a chrome-os host.
+
+        @param host: An ssh host representing a device.
+        @param timeout: The timeout for the run command.
+
+        @return: True if the host device is chromeos.
+
+        @raises AutoservRunError: If the command failed.
+        @raises AutoservSSHTimeout: Ssh connection has timed out.
+        """
+        try:
+            result = host.run('cat /etc/lsb-release > /dev/null', timeout=timeout)
+        except (error.AutoservRunError, error.AutoservSSHTimeout):
+            return False
+        return result.exit_status == 0
+
+
+    @staticmethod
     def get_servo_arguments(args_dict):
         """Extract servo options from `args_dict` and return the result.
 

@@ -29,6 +29,27 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
     """This class represents a host running an ADB server."""
 
 
+    @staticmethod
+    def check_host(host, timeout=10):
+        """
+        Check if the given host is an adb host.
+
+        @param host: An ssh host representing a device.
+        @param timeout: The timeout for the run command.
+
+
+        @return: True if the host device has adb.
+
+        @raises AutoservRunError: If the command failed.
+        @raises AutoservSSHTimeout: Ssh connection has timed out.
+        """
+        try:
+            result = host.run('which adb 2> /dev/null', timeout=timeout)
+        except (error.AutoservRunError, error.AutoservSSHTimeout):
+            return False
+        return result.exit_status == 0
+
+
     def _initialize(self, hostname='localhost', serial=None,
                     device_hostname=None, *args, **dargs):
         """Initialize an ADB Host.

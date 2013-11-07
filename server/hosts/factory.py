@@ -1,9 +1,12 @@
 """Provides a factory method to create a host object."""
 
+import logging
 from contextlib import closing
+
 from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.server import autotest, utils as server_utils
 from autotest_lib.server.hosts import site_factory, cros_host, ssh_host, serial
+from autotest_lib.server.hosts import eureka_host
 from autotest_lib.server.hosts import adb_host, logfile_monitor
 
 
@@ -23,6 +26,11 @@ DEFAULT_SSH_OPTIONS = ''
 
 # for tracking which hostnames have already had job_start called
 _started_hostnames = set()
+
+# A list of all the possible host types, ordered according to frequency of
+# host types in the lab, so the more common hosts don't incur a repeated ssh
+# overhead in checking for less common host types.
+host_types = [cros_host.CrosHost, eureka_host.EurekaHost, adb_host.ADBHost,]
 
 
 def _get_host_arguments():
@@ -49,8 +57,10 @@ def _get_host_arguments():
 def _detect_host(connectivity_class, hostname, **args):
     """Detect host type.
 
-    Currently checks if adb is on the host and if so returns ADBHost if not or
-    if the check fails, it will return CrosHost.
+    Goes through all the possible host classes, calling check_host with a
+    basic host object. Currently this is an ssh host, but theoretically it
+    can be any host object that the check_host method of appropriate host
+    type knows to use.
 
     @param connectivity_class: connectivity class to use to talk to the host
                                (ParamikoHost or SSHHost)
@@ -58,24 +68,19 @@ def _detect_host(connectivity_class, hostname, **args):
     @param args: Args that will be passed to the constructor of
                  the host class.
 
-    @returns Class type to use for this host.
+    @returns: Class type of the first host class that returns True to the
+              check_host method.
     """
-    # Detect if adb is on the host. If so we are using an ADBHost. If not use,
-    # CrosHost.
-    try:
-        # Attempt to find adb on the system. If that succeeds use ADBHost.
-        with closing(connectivity_class(hostname, **args)) as host:
-            # Send stderr to /dev/null which cleans up log spam about not
-            # finding adb installed.
-            result = host.run('which adb 2> /dev/null', timeout=10)
-            return adb_host.ADBHost
-    except (error.AutoservRunError, error.AutoservSSHTimeout):
-        # If any errors occur use CrosHost.
-        # TODO(fdeng): this method should should dynamically discover
-        # and allocate host types, crbug.com/273843
-        # TODO crbug.com/302026 (sbasi) - adjust this pathway for ADBHost in
-        # the future should a host require verify/repair.
-        return cros_host.CrosHost
+    # TODO crbug.com/302026 (sbasi) - adjust this pathway for ADBHost in
+    # the future should a host require verify/repair.
+    with closing(connectivity_class(hostname, **args)) as host:
+        for host_module in host_types:
+            if host_module.check_host(host, timeout=10):
+                return host_module
+
+    logging.warning('Unable to apply conventional host detection methods, '
+                    'defaulting to chromeos host.')
+    return cros_host.CrosHost
 
 
 def create_host(

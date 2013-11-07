@@ -6,11 +6,10 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.server import test
 
 
-class adb_Reboot(test.test):
+class generic_RebootTest(test.test):
     """Reboot a device. Should be ran on ADBHosts only."""
     version = 1
 
-
     def run_once(self, host):
         if not host.reboot():
-            raise error.TestFail('ADB failed to reboot as expected.')
+            raise error.TestFail('Host failed to reboot.')
