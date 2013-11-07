@@ -19,8 +19,8 @@ class firmware_ECKeyboard(FAFTSequence):
     CMD_DELAY = 1
 
 
-    def setup(self):
-        super(firmware_ECKeyboard, self).setup()
+    def initialize(self, host, cmdline_args):
+        super(firmware_ECKeyboard, self).initialize(host, cmdline_args)
         # Only run in normal mode
         self.setup_dev_mode(False)
 

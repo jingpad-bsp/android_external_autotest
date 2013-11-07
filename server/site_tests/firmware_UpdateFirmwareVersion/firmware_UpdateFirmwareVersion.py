@@ -47,8 +47,6 @@ class firmware_UpdateFirmwareVersion(FAFTSequence):
         self.use_shellball = dict_args.get('shellball', None)
         super(firmware_UpdateFirmwareVersion, self).initialize(
             host, cmdline_args)
-
-    def setup(self):
         self.backup_firmware()
         updater_path = self.setup_firmwareupdate_shellball(self.use_shellball)
         self.faft_client.updater.setup(updater_path)
@@ -61,7 +59,6 @@ class firmware_UpdateFirmwareVersion(FAFTSequence):
             self.wait_for_client_offline()
             self.wait_for_client()
 
-        super(firmware_UpdateFirmwareVersion, self).setup()
         self.setup_usbkey(usbkey=True, host=True, install_shim=True)
         self.setup_dev_mode(dev_mode=False)
         self._fwid = self.faft_client.updater.get_fwid()

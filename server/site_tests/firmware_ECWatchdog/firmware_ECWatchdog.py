@@ -22,8 +22,8 @@ class firmware_ECWatchdog(FAFTSequence):
     EC_BOOT_DELAY = 1000
 
 
-    def setup(self):
-        super(firmware_ECWatchdog, self).setup()
+    def initialize(self, host, cmdline_args):
+        super(firmware_ECWatchdog, self).initialize(host, cmdline_args)
         # Only run in normal mode
         self.setup_dev_mode(False)
 

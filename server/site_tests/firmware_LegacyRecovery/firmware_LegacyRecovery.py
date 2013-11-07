@@ -21,8 +21,8 @@ class firmware_LegacyRecovery(FAFTSequence):
     version = 1
 
 
-    def setup(self):
-        super(firmware_LegacyRecovery, self).setup()
+    def initialize(self, host, cmdline_args):
+        super(firmware_LegacyRecovery, self).initialize(host, cmdline_args)
         self.setup_usbkey(usbkey=True, host=False)
         self.setup_dev_mode(dev_mode=False)
 

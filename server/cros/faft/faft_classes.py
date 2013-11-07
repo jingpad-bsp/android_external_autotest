@@ -183,7 +183,16 @@ class FAFTSequence(FAFTBase):
         """
         cls._global_setup_done[label] = False
 
-    def initialize(self, host, cmdline_args):
+    def initialize(self, host, cmdline_args, ec_wp=None):
+        super(FAFTSequence, self).initialize(host)
+        self.run_id = str(uuid.uuid4())
+        logging.info('FAFTSequence initialize begin (id=%s)', self.run_id)
+        self.register_faft_template({
+            'state_checker': (None),
+            'userspace_action': (None),
+            'reboot_action': (self.sync_and_warm_reboot),
+            'firmware_action': (None)
+        })
         # Parse arguments from command line
         args = {}
         self.power_control = host.POWER_CONTROL_RPM
@@ -212,8 +221,6 @@ class FAFTSequence(FAFTBase):
                 logging.warning('Firmware update will not not performed '
                                 'since no image is specified.')
 
-        super(FAFTSequence, self).initialize(host)
-
         self.faft_config = FAFTConfig(
                 self.faft_client.system.get_platform_name())
         self.checkers = FAFTCheckers(self, self.faft_client)
@@ -232,24 +239,13 @@ class FAFTSequence(FAFTBase):
         # Setting up key matrix mapping
         self.servo.set_key_matrix(self.faft_config.key_matrix_layout)
 
-    def setup(self, ec_wp=None):
-        """Autotest setup function."""
-        self.run_id = str(uuid.uuid4())
-        logging.info('FAFTSequence setup begin (id=%s)', self.run_id)
-        super(FAFTSequence, self).setup()
-        self.register_faft_template({
-            'state_checker': (None),
-            'userspace_action': (None),
-            'reboot_action': (self.sync_and_warm_reboot),
-            'firmware_action': (None)
-        })
         self.setup_uart_capture()
         self.setup_servo_log()
         self.install_test_image(self._install_image_path, self._firmware_update)
         self.record_system_info()
         self.setup_gbb_flags()
         self.setup_ec_write_protect(ec_wp)
-        logging.info('FAFTSequence setup done (id=%s)', self.run_id)
+        logging.info('FAFTSequence initialize done (id=%s)', self.run_id)
 
     def cleanup(self):
         """Autotest cleanup function."""

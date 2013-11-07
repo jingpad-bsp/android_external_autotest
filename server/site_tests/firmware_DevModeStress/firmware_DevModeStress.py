@@ -56,11 +56,7 @@ class firmware_DevModeStress(FAFTSequence):
         dict_args = utils.args_to_dict(cmdline_args)
         self.faft_iterations = int(dict_args.get('faft_iterations', 1))
         super(firmware_DevModeStress, self).initialize(host, cmdline_args)
-
-    def setup(self):
-        super(firmware_DevModeStress, self).setup()
         self.setup_usbkey(usbkey=False)
-
 
     def run_once(self):
         self.register_faft_sequence((

@@ -31,8 +31,8 @@ class firmware_ECUsbPorts(FAFTSequence):
     USB_CHARGE_MODE_DCP_SHORT      = 3
     USB_CHARGE_MODE_ENABLED        = 4
 
-    def setup(self):
-        super(firmware_ECUsbPorts, self).setup()
+    def initialize(self, host, cmdline_args):
+        super(firmware_ECUsbPorts, self).initialize(host, cmdline_args)
         # Only run in normal mode
         self.setup_dev_mode(False)
         self.ec.send_command("chan 0")

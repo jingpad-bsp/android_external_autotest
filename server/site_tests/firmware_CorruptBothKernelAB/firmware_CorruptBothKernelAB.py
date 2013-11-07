@@ -36,8 +36,8 @@ class firmware_CorruptBothKernelAB(FAFTSequence):
             })
 
 
-    def setup(self, dev_mode=False):
-        super(firmware_CorruptBothKernelAB, self).setup()
+    def initialize(self, host, cmdline_args, dev_mode=False):
+        super(firmware_CorruptBothKernelAB, self).initialize(host, cmdline_args)
         self.setup_dev_mode(dev_mode)
         self.setup_usbkey(usbkey=True, host=False)
         self.setup_kernel('a')

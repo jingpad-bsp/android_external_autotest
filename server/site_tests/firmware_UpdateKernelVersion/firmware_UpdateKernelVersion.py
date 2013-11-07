@@ -42,8 +42,8 @@ class firmware_UpdateKernelVersion(FAFTSequence):
             self.reset_and_prioritize_kernel('b')
 
 
-    def setup(self, dev_mode=True):
-        super(firmware_UpdateKernelVersion, self).setup()
+    def initialize(self, host, cmdline_args, dev_mode=True):
+        super(firmware_UpdateKernelVersion, self).initialize(host, cmdline_args)
 
         self.setup_dev_mode(dev_mode)
 

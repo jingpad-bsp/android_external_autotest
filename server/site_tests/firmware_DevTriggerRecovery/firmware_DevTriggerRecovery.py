@@ -60,8 +60,8 @@ class firmware_DevTriggerRecovery(FAFTSequence):
                 })
 
 
-    def setup(self):
-        super(firmware_DevTriggerRecovery, self).setup()
+    def initialize(self, host, cmdline_args):
+        super(firmware_DevTriggerRecovery, self).initialize(host, cmdline_args)
         self.setup_dev_mode(dev_mode=False)
         self.setup_usbkey(usbkey=True, host=False)
 

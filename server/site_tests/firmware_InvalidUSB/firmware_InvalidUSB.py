@@ -46,8 +46,8 @@ class firmware_InvalidUSB(FAFTSequence):
         self.servo.switch_usbkey('dut')
 
 
-    def setup(self):
-        super(firmware_InvalidUSB, self).setup()
+    def initialize(self, host, cmdline_args):
+        super(firmware_InvalidUSB, self).initialize(host, cmdline_args)
         self.servo.switch_usbkey('host')
         usb_dev = self.servo.probe_host_usb_dev()
         self.assert_test_image_in_usb_disk(usb_dev)

@@ -16,8 +16,8 @@ class firmware_ECCharging(FAFTSequence):
     # Threshold of trickle charging current in mA
     TRICKLE_CHARGE_THRESHOLD = 100
 
-    def setup(self):
-        super(firmware_ECCharging, self).setup()
+    def initialize(self, host, cmdline_args):
+        super(firmware_ECCharging, self).initialize(host, cmdline_args)
         # Only run in normal mode
         self.setup_dev_mode(False)
         self.ec.send_command("chan 0")

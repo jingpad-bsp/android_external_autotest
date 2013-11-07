@@ -37,8 +37,8 @@ class firmware_ECWakeSource(FAFTSequence):
     SHUTDOWN_DELAY = 10
 
 
-    def setup(self):
-        super(firmware_ECWakeSource, self).setup()
+    def initialize(self, host, cmdline_args):
+        super(firmware_ECWakeSource, self).initialize(host, cmdline_args)
         # Only run in normal mode
         self.setup_dev_mode(False)
 

@@ -16,15 +16,11 @@ class firmware_CgptStress(FAFTSequence):
     version = 1
 
 
-    def initialize(self, host, cmdline_args):
+    def initialize(self, host, cmdline_args, dev_mode):
         # Parse arguments from command line
         dict_args = utils.args_to_dict(cmdline_args)
         self.faft_iterations = int(dict_args.get('faft_iterations', 1))
         super(firmware_CgptStress, self).initialize(host, cmdline_args)
-
-
-    def setup(self, dev_mode=False):
-        super(firmware_CgptStress, self).setup()
         self.setup_dev_mode(dev_mode)
         self.setup_usbkey(usbkey=False)
         self.setup_kernel('a')

@@ -35,8 +35,8 @@ class firmware_FwScreenPressPower(FAFTSequence):
         self.wait_longer_fw_screen_and_press_power()
 
 
-    def setup(self):
-        super(firmware_FwScreenPressPower, self).setup()
+    def initialize(self, host, cmdline_args):
+        super(firmware_FwScreenPressPower, self).initialize(host, cmdline_args)
         self.assert_test_image_in_usb_disk()
         self.setup_dev_mode(dev_mode=True)
         self.servo.switch_usbkey('host')

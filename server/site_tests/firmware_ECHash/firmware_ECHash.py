@@ -21,8 +21,8 @@ class firmware_ECHash(FAFTSequence):
     version = 1
 
 
-    def setup(self):
-        super(firmware_ECHash, self).setup()
+    def initialize(self, host, cmdline_args):
+        super(firmware_ECHash, self).initialize(host, cmdline_args)
         self.backup_firmware()
         self.setup_dev_mode(dev_mode=False)
         self.setup_usbkey(usbkey=False)

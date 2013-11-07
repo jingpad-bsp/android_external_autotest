@@ -45,10 +45,6 @@ class firmware_UpdateECBin(FAFTSequence):
         self.arg_new_ec = dict_args['new_ec']
         logging.info('The EC image to-be-updated is: %s', self.arg_new_ec)
         super(firmware_UpdateECBin, self).initialize(host, cmdline_args)
-
-
-    def setup(self, host, dev_mode=False):
-        super(firmware_UpdateECBin, self).setup()
         self.backup_firmware()
         self.setup_dev_mode(dev_mode)
         self.setup_usbkey(usbkey=False)

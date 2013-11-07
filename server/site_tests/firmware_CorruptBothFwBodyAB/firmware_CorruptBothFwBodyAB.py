@@ -25,8 +25,8 @@ class firmware_CorruptBothFwBodyAB(FAFTSequence):
     use_ro = False
 
 
-    def setup(self, dev_mode=False):
-        super(firmware_CorruptBothFwBodyAB, self).setup()
+    def initialize(self, host, cmdline_args, dev_mode=False):
+        super(firmware_CorruptBothFwBodyAB, self).initialize(host, cmdline_args)
         self.backup_firmware()
         if (self.faft_client.bios.get_preamble_flags('a') &
                 vboot.PREAMBLE_USE_RO_NORMAL):

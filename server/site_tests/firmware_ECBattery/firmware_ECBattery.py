@@ -36,8 +36,8 @@ class firmware_ECBattery(FAFTSequence):
     BATTERY_TEMP_LOWER_BOUND = 0
 
 
-    def setup(self):
-        super(firmware_ECBattery, self).setup()
+    def initialize(self, host, cmdline_args):
+        super(firmware_ECBattery, self).initialize(host, cmdline_args)
         # Only run in normal mode
         self.setup_dev_mode(False)
         self.ec.send_command("chan 0")

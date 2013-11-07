@@ -33,8 +33,8 @@ class firmware_ECPowerButton(FAFTSequence):
     POWER_BUTTON_NO_POWERD_DURATION = 10
 
 
-    def setup(self):
-        super(firmware_ECPowerButton, self).setup()
+    def initialize(self, host, cmdline_args):
+        super(firmware_ECPowerButton, self).initialize(host, cmdline_args)
         # Only run in normal mode
         self.setup_dev_mode(False)
 

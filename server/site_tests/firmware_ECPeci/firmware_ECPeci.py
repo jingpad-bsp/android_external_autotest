@@ -17,8 +17,8 @@ class firmware_ECPeci(FAFTSequence):
     # Repeat read count
     READ_COUNT = 200
 
-    def setup(self):
-        super(firmware_ECPeci, self).setup()
+    def initialize(self, host, cmdline_args):
+        super(firmware_ECPeci, self).initialize(host, cmdline_args)
         self.ec.send_command("chan 0")
 
 

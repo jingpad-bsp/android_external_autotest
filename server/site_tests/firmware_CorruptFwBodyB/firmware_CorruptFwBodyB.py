@@ -19,8 +19,8 @@ class firmware_CorruptFwBodyB(FAFTSequence):
     version = 1
 
 
-    def setup(self, dev_mode=False):
-        super(firmware_CorruptFwBodyB, self).setup()
+    def initialize(self, host, cmdline_args, dev_mode=False):
+        super(firmware_CorruptFwBodyB, self).initialize(host, cmdline_args)
         self.backup_firmware()
         self.setup_dev_mode(dev_mode)
         self.setup_usbkey(usbkey=False)

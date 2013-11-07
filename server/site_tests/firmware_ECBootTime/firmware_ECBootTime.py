@@ -13,8 +13,8 @@ class firmware_ECBootTime(FAFTSequence):
     """
     version = 1
 
-    def setup(self):
-        super(firmware_ECBootTime, self).setup()
+    def initialize(self, host, cmdline_args):
+        super(firmware_ECBootTime, self).initialize(host, cmdline_args)
         # Only run in normal mode
         self.setup_dev_mode(False)
 

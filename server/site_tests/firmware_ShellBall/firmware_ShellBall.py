@@ -32,8 +32,9 @@ class firmware_ShellBall(FAFTSequence):
             'sudo chromeos-firmwareupdate --mode=factory_install')
         self.invalidate_firmware_setup()
 
-    def setup(self, host=None, shellball_path=None, shellball_name=None):
-        super(firmware_ShellBall, self).setup()
+    def initialize(self, host, cmdline_args, shellball_path=None,
+                   shellball_name=None):
+        super(firmware_ShellBall, self).initialize(host, cmdline_args)
         self._shellball_name = "/home/chronos/%s" % self._shellball_name
         host.send_file("%s/%s" %(shellball_path, shellball_name),
                        self._shellball_name)

@@ -37,8 +37,8 @@ class firmware_FwScreenCloseLid(FAFTSequence):
         self.wait_longer_fw_screen_and_close_lid()
 
 
-    def setup(self):
-        super(firmware_FwScreenCloseLid, self).setup()
+    def initialize(self, host, cmdline_args):
+        super(firmware_FwScreenCloseLid, self).initialize(host, cmdline_args)
         if self.faft_config.has_lid:
             self.assert_test_image_in_usb_disk()
             self.setup_dev_mode(dev_mode=True)

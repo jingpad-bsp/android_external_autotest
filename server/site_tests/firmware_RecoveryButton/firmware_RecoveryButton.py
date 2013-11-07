@@ -31,8 +31,9 @@ class firmware_RecoveryButton(FAFTSequence):
             })
 
 
-    def setup(self, dev_mode=False, ec_wp=None):
-        super(firmware_RecoveryButton, self).setup(ec_wp=ec_wp)
+    def initialize(self, host, cmdline_args, dev_mode=False, ec_wp=None):
+        super(firmware_RecoveryButton, self).initialize(host, cmdline_args,
+                                                        ec_wp=ec_wp)
         self.setup_dev_mode(dev_mode)
         self.setup_usbkey(usbkey=True, host=False)
 

@@ -15,8 +15,8 @@ class firmware_ECSharedMem(FAFTSequence):
     version = 1
 
 
-    def setup(self):
-        super(firmware_ECSharedMem, self).setup()
+    def initialize(self, host, cmdline_args):
+        super(firmware_ECSharedMem, self).initialize(host, cmdline_args)
         # Only run in normal mode
         self.setup_dev_mode(False)
         self.ec.send_command("chan 0")

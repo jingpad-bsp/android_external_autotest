@@ -138,8 +138,8 @@ class firmware_ECThermal(FAFTSequence):
         logging.info("Number of temperature sensor: %d", self._num_temp_sensor)
 
 
-    def setup(self):
-        super(firmware_ECThermal, self).setup()
+    def initialize(self, host, cmdline_args):
+        super(firmware_ECThermal, self).initialize(host, cmdline_args)
         self.ec.send_command("chan 0")
         try:
             self.faft_client.system.run_shell_command('stop temp_metrics')

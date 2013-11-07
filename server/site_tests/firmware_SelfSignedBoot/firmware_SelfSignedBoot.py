@@ -23,8 +23,9 @@ class firmware_SelfSignedBoot(FAFTSequence):
     version = 1
 
 
-    def setup(self, ec_wp=None):
-        super(firmware_SelfSignedBoot, self).setup(ec_wp=ec_wp)
+    def initialize(self, host, cmdline_args, ec_wp=None):
+        super(firmware_SelfSignedBoot, self).initialize(host, cmdline_args,
+                                                        ec_wp=ec_wp)
         self.setup_dev_mode(dev_mode=True)
         self.setup_usbkey(usbkey=True, host=False)
 

@@ -38,8 +38,8 @@ class firmware_ECLidSwitch(FAFTSequence):
     SHORT_WAKE_DELAY = 15
 
 
-    def setup(self):
-        super(firmware_ECLidSwitch, self).setup()
+    def initialize(self, host, cmdline_args):
+        super(firmware_ECLidSwitch, self).initialize(host, cmdline_args)
         # Only run in normal mode
         self.setup_dev_mode(False)
 

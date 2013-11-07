@@ -15,9 +15,10 @@ class firmware_SoftwareSync(FAFTSequence):
     version = 1
 
 
-    def setup(self, dev_mode=False):
+    def initialize(self, host, cmdline_args, dev_mode=False):
         # This test tries to corrupt EC firmware. Should disable EC WP.
-        super(firmware_SoftwareSync, self).setup(ec_wp=False)
+        super(firmware_SoftwareSync, self).initialize(host, cmdline_args,
+                                                      ec_wp=False)
         self.backup_firmware()
         self.setup_dev_mode(dev_mode)
         self.setup_usbkey(usbkey=False)
@@ -49,7 +50,8 @@ class firmware_SoftwareSync(FAFTSequence):
     def wait_software_sync_and_boot(self):
         """Wait for software sync to update EC."""
         if self.dev_mode:
-            time.sleep(self.faft_config.software_sync_update + self.faft_config.dev_screen)
+            time.sleep(self.faft_config.software_sync_update +
+                       self.faft_config.dev_screen)
             self.press_ctrl_d()
         else:
             time.sleep(self.faft_config.software_sync_update)

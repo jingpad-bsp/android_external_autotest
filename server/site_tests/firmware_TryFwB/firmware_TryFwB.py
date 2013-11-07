@@ -12,8 +12,8 @@ class firmware_TryFwB(FAFTSequence):
     version = 1
 
 
-    def setup(self, dev_mode=False, ec_wp=None):
-        super(firmware_TryFwB, self).setup(ec_wp=ec_wp)
+    def initialize(self, host, cmdline_args, dev_mode=False, ec_wp=None):
+        super(firmware_TryFwB, self).initialize(host, cmdline_args, ec_wp=ec_wp)
         self.setup_dev_mode(dev_mode)
         self.setup_usbkey(usbkey=False)
         self.setup_tried_fwb(tried_fwb=False)

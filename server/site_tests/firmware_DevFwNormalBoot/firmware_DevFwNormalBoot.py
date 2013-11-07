@@ -35,8 +35,8 @@ class firmware_DevFwNormalBoot(FAFTSequence):
         self.servo.enable_development_mode()
 
 
-    def setup(self):
-        super(firmware_DevFwNormalBoot, self).setup()
+    def initialize(self, host, cmdline_args):
+        super(firmware_DevFwNormalBoot, self).initialize(host, cmdline_args)
         # This test is only meaningful on Alex/ZGB.
         if self.faft_client.system.get_platform_name() in ('Alex', 'ZGB'):
             self.has_different_dev_fw = True

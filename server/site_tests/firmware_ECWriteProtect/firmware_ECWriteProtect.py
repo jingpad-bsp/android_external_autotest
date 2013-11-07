@@ -32,8 +32,9 @@ class firmware_ECWriteProtect(FAFTSequence):
             return False
 
 
-    def setup(self, dev_mode=False):
-        super(firmware_ECWriteProtect, self).setup(ec_wp=False)
+    def initialize(self, host, cmdline_args, dev_mode=False):
+        super(firmware_ECWriteProtect, self).initialize(host, cmdline_args,
+                                                        ec_wp=False)
         self.backup_firmware()
         self.setup_dev_mode(dev_mode)
         self.ec.send_command("chan 0")
