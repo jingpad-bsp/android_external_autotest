@@ -6,6 +6,7 @@ import collections
 import json
 import logging
 import os
+import socket
 import time
 import urllib2
 import urlparse
@@ -310,6 +311,9 @@ class UpdateEventLogVerifier(object):
                     conn = urllib2.urlopen(self._event_log_url)
             except urllib2.URLError, e:
                 logging.warning('Failed to read event log url: %s', e)
+                return None
+            except socket.timeout, e:
+                logging.warning('Timed out reading event log url: %s', e)
                 return None
 
             event_log_resp = conn.read()
