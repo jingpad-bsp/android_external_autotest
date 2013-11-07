@@ -19,7 +19,6 @@ from autotest_lib.client.cros import constants
 from autotest_lib.server import autotest
 from autotest_lib.server import hosts
 from autotest_lib.server import site_attenuator
-from autotest_lib.server import site_host_attributes
 from autotest_lib.server import site_host_route
 from autotest_lib.server import site_linux_bridge_router
 from autotest_lib.server import site_linux_cros_router
@@ -1585,46 +1584,10 @@ def read_tests(dir, *args):
     return sorted(tests, cmp=__byfile)
 
 
-def read_wifi_testbed_config(file, client_addr=None, server_addr=None,
-        router_addr=None):
-    # read configuration file
-    fd = open(file)
-    config = eval(fd.read())
-
-    # Read in attributes from host config database
-    client_attributes = site_host_attributes.HostAttributes(client_addr)
-
-    # client must be reachable on the control network
-    client = config['client']
-    if client_addr is not None:
-        client['addr'] = client_addr
-
-    # router must be reachable on the control network
-    router = config['router']
-    if router_addr is None and hasattr(client_attributes, 'router_addr'):
-        router_addr = client_attributes.router_addr
-    if router_addr is not None:
-        router['addr'] = router_addr
-
-    server = config['server']
-    if server_addr is None and hasattr(client_attributes, 'server_addr'):
-        server_addr = client_attributes.server_addr
-    if server_addr is not None:
-        server['addr'] = server_addr
-
-    # tag jobs w/ the router's address on the control network
-    config['tagname'] = router['addr']
-
-    return config
-
 def run_test_dir(test_name, job, args, machine):
     # convert autoserv args to something usable
     opts = dict([[k, v] for (k, e, v) in [x.partition('=') for x in args]])
 
-    # config file located under third_party/autotest/files/client/config/
-    config_file = opts.get('config_file', 'wifi_testbed_config')
-
-    test_pat = opts.get('test_pat', '[0-9]*')
     if utils.host_is_in_lab_zone(machine):
         # If we are in the lab use the names for the server, AKA rspro,
         # and the router as defined in:
@@ -1635,22 +1598,18 @@ def run_test_dir(test_name, job, args, machine):
         server_addr = opts.get('server_addr', None)
         router_addr = opts.get('router_addr', None)
 
-    run_options = opts.get('run_options', '').split(',')
+    config = {'client': {'addr': machine},
+              'router': {'addr': router_addr},
+              'server': {'addr': server_addr},
+              'run_options': opts.get('run_options', '').split(',')}
 
-    config = read_wifi_testbed_config(
-        os.path.join(job.configdir, config_file),
-        client_addr = machine,    # NB: take client identity from command line
-        router_addr = router_addr,
-        server_addr = server_addr)
-    server = config['server']
-    router = config['router']
-    attenuator = config.get('attenuator', dict())
-    config['run_options'] = run_options
+    logging.info('Client %r, Server %r, AP %r' %
+                 (machine, server_addr, router_addr))
 
-    logging.info("Client %s, Server %s, AP %s, Attenuator %s" % \
-        (machine, server.get('addr', 'N/A'), router['addr'],
-         attenuator.get('addr', 'N/A')))
+    if not all([server_addr, router_addr]):
+        raise error.TestFail('User must specify server_addr and router_addr')
 
+    test_pat = opts.get('test_pat', '[0-9]*')
     test_dir = os.path.join(job.serverdir, "site_tests", test_name)
 
     for t in read_tests(test_dir, test_pat):
