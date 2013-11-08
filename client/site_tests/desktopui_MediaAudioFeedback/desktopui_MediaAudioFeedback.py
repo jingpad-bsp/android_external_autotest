@@ -4,6 +4,7 @@
 
 import logging, tempfile
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_ui_test, httpd
 from autotest_lib.client.cros.audio import audio_helper
@@ -75,6 +76,13 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
         with tempfile.NamedTemporaryFile(mode='w+t') as noise_file:
             logging.info('Noise file: %s', noise_file.name)
             audio_helper.record_sample(noise_file.name, self._rec_cmd)
+
+            def record_callback(filename):
+                audio_helper.record_sample(filename, self._rec_cmd)
+
+            def mix_callback(filename):
+                utils.system("%s %s" % (self._mix_cmd, filename))
+
             # Test each media file for all channels.
             for media_file in _MEDIA_FORMATS:
                 audio_helper.loopback_test_channels(noise_file.name,
@@ -82,8 +90,8 @@ class desktopui_MediaAudioFeedback(cros_ui_test.UITest):
                         lambda channel: self.play_media(media_file),
                         self.wait_player_end_then_check_recorded,
                         num_channels=self._num_channels,
-                        record_command=self._rec_cmd,
-                        mix_command=self._mix_cmd)
+                        record_callback=record_callback,
+                        mix_callback=mix_callback)
 
     def wait_player_end_then_check_recorded(self, sox_output):
         """Wait for player ends playing and then check for recorded result.

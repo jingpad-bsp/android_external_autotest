@@ -60,13 +60,17 @@ class audio_SuspendResumeStress(cros_ui_test.UITest):
         for _ in xrange(_DEFAULT_ITERATIONS):
             logging.info('Start %s audio verification before suspend.' % _)
             self.play_media()
+
+            def record_callback(filename):
+                audio_helper.record_sample(filename, self._cmd_rec)
+
             audio_helper.loopback_test_channels(noise_file_name,
                     self.resultsdir,
                     None,
                     lambda x:self.check_recorded(x, _),
                     preserve_test_file=False,
                     num_channels=self._num_channels,
-                    record_command=self._cmd_rec)
+                    record_callback=record_callback)
             logging.info('End %s audio verification before suspend.' % _)
             logging.info('Start %s suspend/resume.' % _)
             self._suspender.suspend(_DEFAULT_SUSPEND_DURATION)
@@ -79,7 +83,7 @@ class audio_SuspendResumeStress(cros_ui_test.UITest):
                     lambda x:self.check_recorded(x, _),
                     preserve_test_file=False,
                     num_channels=self._num_channels,
-                    record_command=self._cmd_rec)
+                    record_callback=record_callback)
             logging.info('End %s audio verification after suspend.' % _)
 
     def play_media(self):

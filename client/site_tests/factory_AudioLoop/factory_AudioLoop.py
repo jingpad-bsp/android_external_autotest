@@ -136,8 +136,11 @@ class factory_AudioLoop(test.test):
 
     def audio_loopback(self):
         for input_device in self._input_devices:
-            rec_cmd = 'arecord -D %s -f dat -d %f' % (input_device,
-                                                      self._duration)
+
+            def record_callback(filename):
+                rec_cmd = 'arecord -D %s -f dat -d %f' % (input_device,
+                                                          self._duration)
+                audio_helper.record_sample(filename, rec_cmd)
 
             # TODO(hychao): split deps and I/O devices to different
             # utils so we can setup deps only once.
@@ -154,7 +157,7 @@ class factory_AudioLoop(test.test):
                                                               self._freq,
                                                               self._duration),
                             self.check_recorded_audio,
-                            record_command=rec_cmd)
+                            record_callback=record_callback)
 
         if self._test_result:
             self.ui.CallJSFunction('testPassResult')

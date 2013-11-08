@@ -114,6 +114,9 @@ class audiovideo_CRASFormatConversion(test.test):
         noise_proc = subprocess.Popen(shlex.split(cmd))
         noise_proc.wait();
 
+        def record_callback(filename):
+            audio_helper.record_sample(filename, self._rec_cmd)
+
         # Try all sample rate pairs.
         for primary in _TEST_SAMPLE_RATES:
             for secondary in _TEST_SAMPLE_RATES:
@@ -124,7 +127,7 @@ class audiovideo_CRASFormatConversion(test.test):
                                                             primary, secondary),
                         lambda out: audio_helper.check_audio_rms(
                                 out, sox_threshold=_MIN_SOX_RMS_VALUE),
-                        record_command=self._rec_cmd)
+                        record_callback=record_callback)
 
         # Record at all sample rates
         for rate in _TEST_SAMPLE_RATES:

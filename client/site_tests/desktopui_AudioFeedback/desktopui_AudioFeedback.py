@@ -86,11 +86,17 @@ class desktopui_AudioFeedback(test.test):
             # will be overriden by Chrome.
             audio_helper.set_volume_levels(self._volume_level, self._capture_gain)
 
+            def record_callback(filename):
+                audio_helper.record_sample(filename, self._rec_cmd)
+
+            def mix_callback(filename):
+                utils.system("%s %s" % (self._mix_cmd, filename))
+
             # Play the same video to test all channels.
             self.play_video(lambda: audio_helper.loopback_test_channels(
                                             noise_file_name,
                                             self.resultsdir,
                                             num_channels=self._num_channels,
-                                            record_command=self._rec_cmd,
-                                            mix_command=self._mix_cmd),
+                                            record_callback=record_callback,
+                                            mix_callback=mix_callback),
                             cr.browser.tabs[0])

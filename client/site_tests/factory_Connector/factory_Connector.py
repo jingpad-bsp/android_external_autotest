@@ -499,14 +499,17 @@ class factory_Connector(state_machine.FactoryStateMachine):
                 errors.append('Frequency not match, expect %d but got %d' %
                         (test_freq, freq))
 
-        rec_cmd = 'arecord -D hw:0,0 -d %d -f dat' % loop_duration
+        def record_callback(filename):
+            rec_cmd = 'arecord -D hw:0,0 -d %d -f dat' % loop_duration
+            audio_helper.record_sample(filename, rec_cmd)
+
         with tempfile.NamedTemporaryFile(mode='w+t') as noise_file:
             audio_helper.record_sample(noise_file.name)
             audio_helper.loopback_test_channels(noise_file.name,
                     self.resultsdir,
                     lambda ch: playback_sine(),
                     check_loop_output,
-                    record_command=rec_cmd)
+                    record_callback=record_callback)
         return errors
 
     def run_once(self, config_file):

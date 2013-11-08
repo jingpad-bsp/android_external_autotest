@@ -381,31 +381,6 @@ def record_sample(tmpfile, record_command=_DEFAULT_REC_COMMAND):
     '''
     utils.system('%s %s' % (record_command, tmpfile))
 
-
-class RecordSampleThread(threading.Thread):
-    '''Wraps the execution of arecord in a thread.'''
-    def __init__(self, recordfile, record_command=_DEFAULT_REC_COMMAND):
-        threading.Thread.__init__(self)
-        self._recordfile = recordfile
-        self._record_command = record_command
-
-    def run(self):
-        record_sample(self._recordfile, self._record_command)
-
-
-class RecordMixThread(threading.Thread):
-    '''
-    Wraps the execution of recording the mixed loopback stream in
-    cras_test_client in a thread.
-    '''
-    def __init__(self, recordfile, mix_command):
-        threading.Thread.__init__(self)
-        self._mix_command = mix_command
-        self._recordfile = recordfile
-
-    def run(self):
-        utils.system('%s %s' % (self._mix_command, self._recordfile))
-
 def create_wav_file(wav_dir, prefix=""):
     '''Creates a unique name for wav file.
 
@@ -417,60 +392,66 @@ def create_wav_file(wav_dir, prefix=""):
     filename = "%s-%s.wav" % (prefix, time.time())
     return os.path.join(wav_dir, filename)
 
+def run_in_parallel(*funs):
+    threads = []
+    for f in funs:
+        t = threading.Thread(target=f)
+        t.start()
+        threads.append(t)
+
+    for t in threads:
+        t.join()
+
 def loopback_test_channels(noise_file_name, wav_dir,
-                           loopback_callback=None,
+                           playback_callback=None,
                            check_recorded_callback=check_audio_rms,
                            preserve_test_file=True,
                            num_channels = _DEFAULT_NUM_CHANNELS,
-                           record_command=_DEFAULT_REC_COMMAND,
-                           mix_command=None):
+                           record_callback=record_sample,
+                           mix_callback=None):
     '''Tests loopback on all channels.
 
     @param noise_file_name: Name of the file contains pre-recorded noise.
-    @param loopback_callback: The callback to do the loopback for
+    @param playback_callback: The callback to do the playback for
         one channel.
+    @param record_callback: The callback to do the recording.
     @param check_recorded_callback: The callback to check recorded file.
     @param preserve_test_file: Retain the recorded files for future debugging.
     '''
     for channel in xrange(num_channels):
-        reduced_file_name = create_wav_file(wav_dir,
-                                            "reduced-%d" % channel)
         record_file_name = create_wav_file(wav_dir,
                                            "record-%d" % channel)
-        record_thread = RecordSampleThread(record_file_name,
-                                           record_command)
-        record_thread.start()
+        functions = [lambda: record_callback(record_file_name)]
 
-        if mix_command:
-            mix_file_name = create_wav_file(wav_dir,
-                                            "mix-%d" % channel)
-            mix_thread = RecordMixThread(mix_file_name, mix_command)
-            mix_thread.start()
+        if playback_callback:
+            functions.append(lambda: playback_callback(channel))
 
-        if loopback_callback:
-            loopback_callback(channel)
+        if mix_callback:
+            mix_file_name = create_wav_file(wav_dir, "mix-%d" % channel)
+            functions.append(lambda: mix_callback(mix_file_name))
 
-        if mix_command:
-            mix_thread.join()
+        run_in_parallel(*functions)
+
+        if mix_callback:
             sox_output_mix = sox_stat_output(mix_file_name, channel)
             rms_val_mix = get_audio_rms(sox_output_mix)
             logging.info('Got mixed audio RMS value of %f.', rms_val_mix)
 
-        record_thread.join()
         sox_output_record = sox_stat_output(record_file_name, channel)
         rms_val_record = get_audio_rms(sox_output_record)
         logging.info('Got recorded audio RMS value of %f.', rms_val_record)
 
+        reduced_file_name = create_wav_file(wav_dir,
+                                            "reduced-%d" % channel)
         noise_reduce_file(record_file_name, noise_file_name,
                           reduced_file_name)
 
-        sox_output_reduced = sox_stat_output(reduced_file_name,
-                                             channel)
+        sox_output_reduced = sox_stat_output(reduced_file_name, channel)
 
         if not preserve_test_file:
             os.unlink(reduced_file_name)
             os.unlink(record_file_name)
-            if mix_command:
+            if mix_callback:
                 os.unlink(mix_file_name)
 
         check_recorded_callback(sox_output_reduced)

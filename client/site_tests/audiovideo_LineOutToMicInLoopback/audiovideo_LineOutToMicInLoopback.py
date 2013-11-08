@@ -70,11 +70,14 @@ class audiovideo_LineOutToMicInLoopback(test.test):
                        (self._record_duration, self._wav_path))
                 utils.system(cmd)
 
+            def record_callback(filename):
+                audio_helper.record_sample(filename, rec_cmd);
+
             audio_helper.loopback_test_channels(noise_file.name,
                                                 self.resultsdir,
                                                 play_wav,
                                                 num_channels=self._num_channels,
-                                                record_command=rec_cmd)
+                                                record_callback=record_callback)
 
     def loopback_test_cras(self):
         """Uses cras_test_client to test audio on CRAS."""
@@ -96,8 +99,11 @@ class audiovideo_LineOutToMicInLoopback(test.test):
                        (self._record_duration, self._wav_path))
                 utils.system(cmd)
 
+            def record_callback(filename):
+                audio_helper.record_sample(filename, rec_cmd);
+
             audio_helper.loopback_test_channels(noise_file.name,
                                                 self.resultsdir,
                                                 play_wav,
                                                 num_channels=self._num_channels,
-                                                record_command=rec_cmd)
+                                                record_callback=record_callback)
