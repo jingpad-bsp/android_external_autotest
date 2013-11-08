@@ -21,7 +21,8 @@ args_dict = utils.args_to_dict(args)
 
 def run_system_bluetooth_Regression(machine):
     if 'device_addrs' in args_dict:
-        device_addrs = args_dict.get('device_addrs').split(',')
+        arg = args_dict.get('device_addrs')
+        device_addrs = arg.split(',') if arg != '' else []
         job.run_test('bluetooth_RegressionServer', client_ip=machine,
                      device_addrs=device_addrs)
     else:

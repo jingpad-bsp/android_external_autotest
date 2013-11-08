@@ -6,10 +6,10 @@ import json, logging, os, pwd, shutil, subprocess, time
 
 import dbus
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import semiauto_framework
 from autotest_lib.client.cros import sys_power
-from telemetry.core import util
 
 _USER_TIMEOUT_TIME = 321  # Seconds a tester has to respond to prompts
 _DEVICE_TIMEOUT_TIME = 321  # Seconds a tester has to pair or connect device
@@ -85,14 +85,12 @@ class BluetoothSemiAutoHelper(semiauto_framework.semiauto_test):
 
         @param adapter_status: True for adapter is on; False off.
         """
-        def _complete():
-            return self._verify_adapter(adapter_status=adapter_status)
-        try:
-            util.WaitFor(_complete, _DEVICE_TIMEOUT_TIME, poll_interval=1)
-        except:
-            adapter_str = 'ON' if adapter_status else 'OFF'
-            raise error.TestError(
-                    'Timeout for Bluetooth Adapter to be %s' % adapter_str)
+        complete = lambda: self._verify_adapter(adapter_status=adapter_status)
+        adapter_str = 'ON' if adapter_status else 'OFF'
+        utils.poll_for_condition(
+                condition=complete, timeout=_DEVICE_TIMEOUT_TIME,
+                sleep_interval=1,
+                desc=('Timeout for Bluetooth Adapter to be %s' % adapter_str))
 
     def _wait_for_connection(self, addr, paired_status, connected_status):
         """Wait until device statuses match given values."""
@@ -102,13 +100,12 @@ class BluetoothSemiAutoHelper(semiauto_framework.semiauto_test):
                                                              conn_str)
         logging.info(message)
 
-        def _complete():
-            return self._verify_connection(addr, paired_status=paired_status,
-                                           connected_status=connected_status)
-        try:
-            util.WaitFor(_complete, _DEVICE_TIMEOUT_TIME, poll_interval=1)
-        except:
-            self._err('Timeout while %s' % message)
+        complete = lambda: self._verify_connection(
+                addr, paired_status=paired_status,
+                connected_status=connected_status)
+        utils.poll_for_condition(
+                condition=complete, timeout=_DEVICE_TIMEOUT_TIME,
+                sleep_interval=1, desc=('Timeout while %s' % message))
 
     def wait_for_connections(self, paired_status=True, connected_status=True):
         """Wait until all Bluetooth devices have the given statues.
@@ -263,7 +260,7 @@ class BluetoothSemiAutoHelper(semiauto_framework.semiauto_test):
         with open(path, 'a') as f:
             f.write('%s\n' % _SECTION_BREAK)
             f.write('%s: %s\n' % (time.strftime(_TIME_FORMAT), message))
-            f.write(json.dumps(self._get_objects(), indent=2))
+            f.write(json.dumps(self._get_objects().items(), indent=2))
             f.write('\n')
 
         logging.info('Collecting hciconfig info')
@@ -296,6 +293,9 @@ class BluetoothSemiAutoHelper(semiauto_framework.semiauto_test):
     def os_suspend(self):
         """Function to suspend ChromeOS using sys_power."""
         sys_power.do_suspend(5)
+
+        # Sleep
+        time.sleep(5)
 
     def initialize(self):
         self._will_close_browser = True

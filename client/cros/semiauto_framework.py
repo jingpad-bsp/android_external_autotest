@@ -30,7 +30,7 @@ class semiauto_test(test.test):
         self._browser.SetHTTPServerDirectories(
                 os.path.join(self.bindir, '..', '..', 'cros'))
         self._tab.Navigate(self._browser.http_server.UrlOf(
-                'semiauto_shell.html'))
+                '/semiauto_shell.html'))
 
     def close_browser(self):
         """Close browser if open."""
