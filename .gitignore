@@ -38,7 +38,8 @@ client/tests/kvm/env
 client/tmp
 client/tests/kvm/*.cfg
 logs/*
-results*
+results-*
+results/*
 server/tmp
 tko/parsers/test/site_scenarios
 ExternalSource
