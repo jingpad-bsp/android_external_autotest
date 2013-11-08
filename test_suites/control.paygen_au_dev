@@ -39,7 +39,7 @@ from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 
 # Needs to be done to generate the control files for the suite.
-ds = dev_server.ImageServer.resolve(build)
+ds = dev_server.ImageServer(devserver_url)
 ds.stage_artifacts(build, artifacts=['paygen_au_dev_suite'])
 
 # TODO(sosa): Really should skip_reimage but suite logic does not currently
