@@ -9,10 +9,10 @@ package are stored as performance 'keyvals', that is, a mapping
 of names to numeric values.  For each iteration of the test, one
 set of keyvals is recorded.
 
-This module currently tracks three kinds of keyval results: the boot
-time results, the disk read results, and firmware time results.
-These results are stored with keyval names such as
-'seconds_kernel_to_login', 'rdbytes_kernel_to_login', and
+This module currently tracks four kinds of keyval results: the boot
+time results, the disk read results, the firmware time results, and
+reboot time results.  These results are stored with keyval names
+such as 'seconds_kernel_to_login', 'rdbytes_kernel_to_login', and
 'seconds_power_on_to_kernel'.  These keyvals record an accumulated
 total measured from a fixed time in the past, e.g.
 'seconds_kernel_to_login' records the total seconds from kernel
@@ -29,6 +29,11 @@ since kernel startup.
 The firmware keyval names all start with the prefix
 'seconds_power_on_to_', and record time in seconds since CPU
 power on.
+
+The reboot keyval names are selected from a hard-coded list of
+keyvals that include both some boot time and some firmware time
+keyvals, plus specific keyvals keyed to record shutdown and reboot
+time.
 
 """
 
@@ -77,9 +82,13 @@ class TestResultSet(object):
 
   # The names of the available KeySets, to be used as arguments to
   # KeySet().
-  BOOTTIME_KEYSET = "time"
+  BOOTTIME_KEYSET = "boot"
   DISK_KEYSET = "disk"
   FIRMWARE_KEYSET = "firmware"
+  REBOOT_KEYSET = "reboot"
+  AVAILABLE_KEYSETS = [
+    BOOTTIME_KEYSET, DISK_KEYSET, FIRMWARE_KEYSET, REBOOT_KEYSET
+  ]
 
   def __init__(self, name):
     self.name = name
@@ -87,6 +96,7 @@ class TestResultSet(object):
       self.BOOTTIME_KEYSET : _TimeKeySet(),
       self.DISK_KEYSET : _DiskKeySet(),
       self.FIRMWARE_KEYSET : _FirmwareKeySet(),
+      self.REBOOT_KEYSET : _RebootKeySet(),
     }
 
   def AddIterationResults(self, runkeys):
@@ -290,6 +300,54 @@ class _FirmwareKeySet(_TimeKeySet):
   # Time-based keyvals are reported in seconds and get converted to
   # milliseconds
   TIME_SCALE = 1000
+
+
+class _RebootKeySet(_TimeKeySet):
+  """Concrete subclass of _KeySet for reboot time statistics."""
+
+  PREFIX = ''
+
+  # Time-based keyvals are reported in seconds and get converted to
+  # milliseconds
+  TIME_SCALE = 1000
+
+  def AddIterationResults(self, runkeys):
+    """Add results for one iteration.
+
+    For _RebootKeySet, we cherry-pick and normalize a hard-coded
+    list of keyvals.
+
+    @param runkeys The dictionary of keyvals for the iteration.
+    """
+    # The time values we report are calculated as the time from when
+    # shutdown was requested.  However, the actual keyvals from the
+    # test are reported, variously, as "time from shutdown request",
+    # "time from power-on", and "time from kernel start".  So,
+    # the values have to be normalized to a common time line.
+    #
+    # The keyvals below capture the time from shutdown request of
+    # the _end_ of a designated phase of reboot, as follows:
+    #   shutdown - end of shutdown, start of firmware power-on
+    #       sequence.
+    #   firmware - end of firmware, transfer to kernel.
+    #   startup - end of kernel initialization, Upstart's "startup"
+    #       event.
+    #   chrome_exec - session_manager initialization complete,
+    #       Chrome starts running.
+    #   login - Chrome completes initialization of the login screen.
+    #
+    shutdown = float(runkeys["seconds_shutdown_time"])
+    firmware_time = float(runkeys["seconds_power_on_to_kernel"])
+    startup = float(runkeys["seconds_kernel_to_startup"])
+    chrome_exec = float(runkeys["seconds_kernel_to_chrome_exec"])
+    reboot = float(runkeys["seconds_reboot_time"])
+    newkeys = {}
+    newkeys["shutdown"] = shutdown
+    newkeys["firmware"] = shutdown + firmware_time
+    newkeys["startup"] = newkeys["firmware"] + startup
+    newkeys["chrome_exec"] = newkeys["firmware"] + chrome_exec
+    newkeys["login"] = reboot
+    super(_RebootKeySet, self).AddIterationResults(newkeys)
 
 
 class _DiskKeySet(_KeySet):
