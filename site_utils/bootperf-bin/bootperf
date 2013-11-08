@@ -43,9 +43,9 @@ DEFINE_string board "" "name of board we are testing"
 DEFINE_boolean keep_logs "$FLAGS_FALSE" "keep autotest results" k
 
 RUN_TEST="test_that"
-TEST='f:.*/platform_BootPerfServer/control'
+TEST='platform_BootPerfServer.bootperf'
 TMP_RESULTS="$(mktemp -d /tmp/bootperf.XXXXXX)"
-RESULTS_ROOT=results-1-experimental_BootPerfServer
+RESULTS_ROOT="results-1-$TEST"
 RESULTS_DIR=platform_BootPerfServer/results
 RESULTS_KEYVAL=$RESULTS_DIR/keyval
 RESULTS_SUMMARY_FILES=(
@@ -164,8 +164,8 @@ run_boot_test() {
     mkdir $iter_rundir
     echo "$(date '+%T') - $logfile"
 
-    $RUN_TEST --results_dir="$TMP_RESULTS" \
-              "$remote" $BOARD $TEST >$logfile 2>&1
+    $RUN_TEST --results_dir="$TMP_RESULTS" --args "10" $BOARD \
+              "$remote" $TEST >$logfile 2>&1
     if [ ! -e "$TMP_RESULTS/$RESULTS_ROOT/$RESULTS_KEYVAL" ]; then
       error "No results file; terminating test runs."
       error "Check $logfile for output from the test run,"
