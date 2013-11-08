@@ -49,7 +49,7 @@ class AssociationParameters(xmlrpc_types.XmlRpcStruct):
                  association_timeout=DEFAULT_ASSOCIATION_TIMEOUT,
                  configuration_timeout=DEFAULT_CONFIGURATION_TIMEOUT,
                  is_hidden=False, save_credentials=False, station_type=None,
-                 expect_failure=False):
+                 expect_failure=False, guid=None, autoconnect=None):
         """Construct an AssociationParameters.
 
         @param ssid string the network to connect to (e.g. 'GoogleGuest').
@@ -65,6 +65,10 @@ class AssociationParameters(xmlrpc_types.XmlRpcStruct):
                 non-managed BSS.  One of STATION_TYPE_* above.
         @param expect_failure bool True if we expect this connection attempt to
                 fail.
+        @param guid string unique identifier of this service.
+        @param autoconnect: bool or None.  None indicates that this should not
+                be set one way or the other, while a boolean indicates a desired
+                value.
 
         """
         super(AssociationParameters, self).__init__()
@@ -86,6 +90,9 @@ class AssociationParameters(xmlrpc_types.XmlRpcStruct):
         self.save_credentials = save_credentials
         self.station_type = station_type
         self.expect_failure = expect_failure
+        self.guid = guid
+        self.autoconnect = autoconnect
+
 
     def __str__(self):
         """Returns a formatted string of member parameters"""
@@ -190,3 +197,30 @@ class BgscanConfiguration(xmlrpc_types.XmlRpcStruct):
                       'avg=%d, offset=%r, noise=%r => signal=%d.',
                       signal_average, signal_offset, signal_noise, signal)
         self.signal = signal
+
+
+class ConfigureServiceParameters(xmlrpc_types.XmlRpcStruct):
+    """Describes a group of optional settings for use with ConfigureService.
+
+    The Manager in shill has a method ConfigureService which takes a dictionary
+    of parameters, and uses some of them to look up a service, and sets the
+    remainder of the properties on the service.  This struct represents
+    some of the optional parameters that can be set in this way.  Current
+    consumers of this interface look up the service by GUID.
+
+    """
+
+    def __init__(self, guid, passphrase=None, autoconnect=None):
+        """Construct a ConfigureServiceParameters.
+
+        @param guid string GUID of the service to configure.
+        @param passphrase string optional psk passphrase.
+        @param autoconnect: bool or None.  None indicates that this should not
+                be set one way or the other, while a boolean indicates a desired
+                value.
+
+        """
+        super(ConfigureServiceParameters, self).__init__()
+        self.guid = guid
+        self.passphrase = passphrase
+        self.autoconnect = autoconnect

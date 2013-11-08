@@ -124,6 +124,45 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             self._wifi_proxy.manager.RemoveProfile(profile_name)
 
 
+    @xmlrpc_server.dbus_safe(False)
+    def configure_service_by_guid(self, raw_params):
+        """Configure a service referenced by a GUID.
+
+        @param raw_params serialized ConfigureServiceParameters.
+
+        """
+        params = xmlrpc_datatypes.deserialize(raw_params)
+        shill = self._wifi_proxy
+        properties = {}
+        if params.autoconnect is not None:
+            properties[shill.SERVICE_PROPERTY_AUTOCONNECT] = params.autoconnect
+        if params.passphrase is not None:
+            properties[shill.SERVICE_PROPERTY_PASSPHRASE] = params.passphrase
+        if properties:
+            self._wifi_proxy.configure_service_by_guid(params.guid, properties)
+        return True
+
+
+    @xmlrpc_server.dbus_safe(False)
+    def configure_wifi_service(self, raw_params):
+        """Configure a WiFi service
+
+        @param raw_params serialized AssociationParameters.
+        @return True on success, False otherwise.
+
+        """
+        params = xmlrpc_datatypes.deserialize(raw_params)
+        return self._wifi_proxy.configure_wifi_service(
+                params.ssid,
+                params.security,
+                params.security_parameters,
+                save_credentials=params.save_credentials,
+                station_type=params.station_type,
+                hidden_network=params.is_hidden,
+                guid=params.guid,
+                autoconnect=params.autoconnect)
+
+
     def connect_wifi(self, raw_params):
         """Block and attempt to connect to wifi network.
 
@@ -141,6 +180,7 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
                 params.save_credentials,
                 station_type=params.station_type,
                 hidden_network=params.is_hidden,
+                guid=params.guid,
                 discovery_timeout_seconds=params.discovery_timeout,
                 association_timeout_seconds=params.association_timeout,
                 configuration_timeout_seconds=params.configuration_timeout)
