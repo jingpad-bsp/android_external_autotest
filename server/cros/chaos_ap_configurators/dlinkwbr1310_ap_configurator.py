@@ -188,7 +188,7 @@ class DLinkwbr1310APConfigurator(
         if security == ap_spec.SECURITY_TYPE_WPAPSK:
             wpa_item = 'Enable WPA-Personal Wireless Security (enhanced)'
         else:
-            wpa_item = 'Enable WPA2-Personal Wireless Security (enhanced)'
+            wpa_item = 'Enable WPA2 Wireless Security (enhanced)'
         self.select_item_from_popup_by_xpath(wpa_item, popup,
                                              wait_for_xpath=key_field1)
         self.set_content_of_text_field_by_xpath(shared_key, key_field1,

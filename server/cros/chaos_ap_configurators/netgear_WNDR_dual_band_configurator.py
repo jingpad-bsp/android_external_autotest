@@ -224,10 +224,10 @@ class NetgearDualBandAPConfigurator(
             wpa_item = "WPA-PSK"
         else:
             wpa_item = "WPA2-PSK"
-        xpath = ('//input[@name="security_type" and @value=%s]' % wpa_item)
+        xpath = ('//input[@name="security_type" and @value="%s"]' % wpa_item)
         text = '//input[@name="passphrase"]'
         if self.current_band == ap_spec.BAND_5GHZ:
-            xpath = ('//input[@name="security_type_an" and @value=%s]' %
+            xpath = ('//input[@name="security_type_an" and @value="%s"]' %
                               wpa_item)
             text = '//input[@name="passphrase_an"]'
         try:
