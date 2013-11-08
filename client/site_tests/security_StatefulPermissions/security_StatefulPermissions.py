@@ -91,9 +91,12 @@ class security_StatefulPermissions(test.test):
         if prunelist is None:
             return "true" # return a no-op shell command, e.g. for root.
 
-        # Cover-up crosbug.com/14947 by masking out uma-events in all tests
-        # TODO(jimhebert) remove this when 14947 is resolved.
+        # Cover-up crosbug.com/14947 by masking out uma-events in all tests.
+        # TODO(jorgelo): remove this when 14947 is resolved.
         prunelist.append("/encrypted/var/log/metrics/uma-events")
+
+        # Workaround crbug.com/316231 by masking out preserve/log in all tests.
+        prunelist.append("/unencrypted/preserve/log");
 
         # Cover-up autotest noise.
         prunelist.append("/dev_image")
@@ -165,7 +168,7 @@ class security_StatefulPermissions(test.test):
         Accounts for the contents of the stateful partition
         piece-wise, inspecting the level of access which can
         be obtained by each of the privilege levels (usernames)
-        utilized in CrOS.
+        used in CrOS.
 
         The autotest passes if each of the owner-specific sub-tests pass,
         and, if there are no files unaccounted for (ie, no unexpected
