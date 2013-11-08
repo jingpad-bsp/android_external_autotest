@@ -10,7 +10,6 @@ import logging
 import os
 import re
 import stat
-import subprocess
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
@@ -88,11 +87,10 @@ class platform_FilePerms(test.test):
 
     def checkid(self, fs, userid):
         """
-        Check that the uid and gid for fs match userid.
+        Check that the uid and gid for |fs| match |userid|.
 
-        Args:
-            fs: string, directory or file path.
-            userid: userid to check for.
+        @param fs: string, directory or file path.
+        @param userid: userid to check for.
         Returns:
             int, the number errors (non-matches) detected.
         """
@@ -102,10 +100,10 @@ class platform_FilePerms(test.test):
         gid = os.stat(fs)[stat.ST_GID]
 
         if userid != uid:
-            logging.warn('fs %s uid wrong' % fs)
+            logging.error('Wrong uid in filesystem "%s"',fs)
             errors += 1
         if userid != gid:
-            logging.warn('fs %s gid wrong' % fs)
+            logging.error('Wrong gid in filesystem "%s"', fs)
             errors += 1
 
         return errors
@@ -113,10 +111,9 @@ class platform_FilePerms(test.test):
 
     def get_perm(self, fs):
         """
-        Check the file permissions of filesystem.
+        Check the file permissions of a filesystem.
 
-        Args:
-            fs: string, mount point for filesystem to check.
+        @param fs: string, mount point for filesystem to check.
         Returns:
             int, equivalent to unix permissions.
         """
@@ -133,8 +130,7 @@ class platform_FilePerms(test.test):
         """
         Helper function to read the mtab file into a dict
 
-        Args:
-          (none)
+        @param mtab_path: path to '/etc/mtab'
         Returns:
           dict, mount points as keys, and another dict with
           options list, device and type as values.
@@ -167,8 +163,7 @@ class platform_FilePerms(test.test):
         """
         Try to write a file in the given filesystem.
 
-        Args:
-            fs: string, file system to use.
+        @param fs: string, file system to use.
         Returns:
             int, number of errors encountered:
             0 = write successful,
@@ -197,8 +192,7 @@ class platform_FilePerms(test.test):
         """
         Check the permissions of a filesystem according to /etc/mtab.
 
-        Args:
-            filesystem: string, file system device to check.
+        @param filesystem: string, file system device to check.
         Returns:
             1 if rw, 0 if ro
         """
@@ -206,12 +200,12 @@ class platform_FilePerms(test.test):
         errors = 0
         mtab = self.read_mtab()
         if not (filesystem in mtab.keys()):
-            logging.warn('Did not find filesystem %s in mtab' % filesystem)
+            logging.error('Could not find filesystem "%s" in mtab', filesystem)
             errors += 1
             return errors # no point in continuing this test.
         if not ('ro' in mtab[filesystem]['options']):
-            logging.warn('Filesystem "%s" is not mounted read only!' %
-                         filesystem)
+            logging.error('Filesystem "%s" is not mounted read-only',
+                          filesystem)
             errors += 1
         return errors
 
@@ -243,6 +237,7 @@ class platform_FilePerms(test.test):
         # expectations for the second pass.
         mtabs = ['/var/log/mount_options.log', '/etc/mtab']
         ignored_fses = set(['/'])
+        ignored_types = set(['ecryptfs'])
         for mtab_path in mtabs:
             mtab = self.read_mtab(mtab_path=mtab_path)
             for fs in mtab.keys():
@@ -250,17 +245,25 @@ class platform_FilePerms(test.test):
                     continue
                 if fs.startswith('/media/removable'):
                     # Work around lab breakage, see crbug.com/286701.
-                    logging.warn('Unexpected removable media present.')
+                    # TODO(jorgelo): fix crbug.com/286701 and remove this.
+                    logging.warn('Unexpected removable media present')
+                    continue
+
+                fs_type = mtab[fs]['type']
+                if fs_type in ignored_types:
+                    logging.warn('Ignoring filesystem "%s" with type "%s"',
+                                 fs, fs_type)
                     continue
                 if not fs in self.expected_mount_options:
-                    logging.warn('No expectations entry for %s' % fs)
+                    logging.error('No expectations entry for "%s"', fs)
                     errors += 1
                     continue
 
-                if mtab[fs]['type'] != self.expected_mount_options[fs]['type']:
-                    logging.warn('[%s] Wrong fs type: %s is %s, expected %s' %
-                                 (mtab_path, fs, mtab[fs]['type'],
-                                  self.expected_mount_options[fs]['type']))
+                if fs_type != self.expected_mount_options[fs]['type']:
+                    logging.error(
+                            '[%s] "%s" has type "%s", expected type "%s"',
+                            mtab_path, fs, fs_type,
+                            self.expected_mount_options[fs]['type'])
                     errors += 1
                 # For options, require the specified options to be present.
                 # Do not consider it an error if extra options are present.
@@ -270,8 +273,8 @@ class platform_FilePerms(test.test):
                 expected = set(self.expected_mount_options[fs]['options'])
                 missing = expected - seen
                 if (missing):
-                    logging.warn('[%s] Missing options: %s is missing %s' %
-                                 (mtab_path, fs, missing))
+                    logging.error('[%s] "%s" is missing options "%s"',
+                                  mtab_path, fs, missing)
                     errors += 1
             ignored_fses.update(self.testmode_modded_fses)
         return errors
@@ -320,7 +323,7 @@ class platform_FilePerms(test.test):
         # Ensure you cannot write files in read only directories.
         for dir in ro_dirs:
             if self.try_write(dir) == 0:
-                logging.warn('Root can write to RO dir %s' % dir)
+                logging.error('Root can write to read-only dir "%s"', dir)
                 errors += 1
 
         # Ensure the uid and gid are correct for root owned directories.
@@ -331,14 +334,13 @@ class platform_FilePerms(test.test):
         # Ensure root can write into root dirs with rw access.
         for dir in root_rw_dirs:
             if self.try_write(dir) > 0:
-                logging.warn('Root cannot write RW dir %s' % dir)
                 errors += 1
 
         # Check permissions on root owned directories.
         for dir in root_dirs:
             fperms = self.get_perm(dir)
             if fperms not in root_dirs[dir]:
-                logging.warn('%s has %s permissions' % (dir, fperms))
+                logging.error('"%s" has "%s" permissions', dir, fperms)
                 errors += 1
 
         errors += self.check_mounted_read_only('/')
