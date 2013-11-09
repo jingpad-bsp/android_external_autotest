@@ -201,15 +201,33 @@ class TelemetryRunner(object):
     output to the caller.
     """
 
-    def __init__(self, host):
+    def __init__(self, host, local=False):
         """Initializes this telemetry runner instance.
 
         If telemetry is not installed for this build, it will be.
+
+        @param host: Host where the test will be run.
+        @param local: If set, no devserver will be used, test will be run
+                      locally.
         """
         self._host = host
+
+        # TODO (llozano crbug.com/324964). Remove conditional code.
+        # Use a class hierarchy instead.
+        if local:
+            self._setup_local_telemetry()
+        else:
+            self._setup_devserver_telemetry()
+
+        logging.debug('Telemetry Path: %s', self._telemetry_path)
+
+
+    def _setup_devserver_telemetry(self):
+        """Setup Telemetry to use the devserver."""
+        logging.debug('Setting up telemetry for devserver testing')
         logging.debug('Grabbing build from AFE.')
 
-        build = host.get_build()
+        build = self._host.get_build()
         if not build:
             logging.error('Unable to locate build label for host: %s.',
                           self._host.hostname)
@@ -220,14 +238,69 @@ class TelemetryRunner(object):
 
         self._devserver = dev_server.ImageServer.resolve(build)
         self._telemetry_path = self._devserver.setup_telemetry(build=build)
-        logging.debug('Telemetry Path: %s',self._telemetry_path)
+
+
+    def _setup_local_telemetry(self):
+        """Setup Telemetry to use local path to its sources.
+
+        First look for chrome source root, either externally mounted, or inside
+        the chroot.  Prefer chrome-src-internal source tree to chrome-src.
+        """
+        TELEMETRY_DIR = 'src'
+        CHROME_LOCAL_SRC = '/var/cache/chromeos-cache/distfiles/target/'
+        CHROME_EXTERNAL_SRC = '~/chrome_root/'
+
+        logging.debug('Setting up telemetry for local testing')
+
+        sources_list = ('chrome-src-internal', 'chrome-src')
+        dir_list = [os.path.join(CHROME_EXTERNAL_SRC, x) for x in sources_list]
+        dir_list.extend(
+                [os.path.join(CHROME_LOCAL_SRC, x) for x in sources_list])
+        if 'CHROME_ROOT' in os.environ:
+            dir_list.insert(0, os.environ['CHROME_ROOT'])
+
+        telemetry_src = ''
+        for dir in dir_list:
+            if os.path.exists(dir):
+                telemetry_src = os.path.join(dir, TELEMETRY_DIR)
+                break
+        else:
+            raise error.TestError('Telemetry source directory not found.')
+
+        self._devserver = None
+        self._telemetry_path = telemetry_src
+
+
+    def _get_telemetry_cmd(self, script, test_or_benchmark):
+        """Build command to execute telemetry based on script and benchmark.
+
+        @param script: Telemetry script we want to run. For example:
+                       [path_to_telemetry_src]/src/tools/telemetry/run_tests.
+        @param test_or_benchmark: Name of the test or benchmark we want to run,
+                                  with the page_set (if required) as part of
+                                  the string.
+        @returns Full telemetry command to execute the script.
+        """
+        telemetry_cmd = []
+        if self._devserver:
+            devserver_hostname = self._devserver.url().split(
+                    'http://')[1].split(':')[0]
+            telemetry_cmd.extend(['ssh', devserver_hostname])
+
+        telemetry_cmd.extend(
+                ['python',
+                 script,
+                 '--browser=cros-chrome',
+                 '--remote=%s' % self._host.hostname,
+                 test_or_benchmark])
+        return telemetry_cmd
 
 
     def _run_telemetry(self, script, test_or_benchmark):
         """Runs telemetry on a dut.
 
         @param script: Telemetry script we want to run. For example:
-                       [path_to_telemetry_src]/src/tools/telemetry/run_tests
+                       [path_to_telemetry_src]/src/tools/telemetry/run_tests.
         @param test_or_benchmark: Name of the test or benchmark we want to run,
                                  with the page_set (if required) as part of the
                                  string.
@@ -235,23 +308,16 @@ class TelemetryRunner(object):
         @returns A TelemetryResult Instance with the results of this telemetry
                  execution.
         """
-        devserver_hostname = self._devserver.url().split(
-                'http://')[1].split(':')[0]
         # TODO (sbasi crbug.com/239933) add support for incognito mode.
-        telemetry_args = ['ssh',
-                          devserver_hostname,
-                          'python',
-                          script,
-                          '--browser=cros-chrome',
-                          '--remote=%s' % self._host.hostname,
-                          test_or_benchmark]
 
-        logging.debug('Running Telemetry: %s', ' '.join(telemetry_args))
+        telemetry_cmd = self._get_telemetry_cmd(script, test_or_benchmark)
+        logging.debug('Running Telemetry: %s', ' '.join(telemetry_cmd))
+
         output = StringIO.StringIO()
         error_output = StringIO.StringIO()
         exit_code = 0
         try:
-            result = utils.run(' '.join(telemetry_args), stdout_tee=output,
+            result = utils.run(' '.join(telemetry_cmd), stdout_tee=output,
                                stderr_tee=error_output,
                                timeout=TELEMETRY_TIMEOUT_MINS*60)
             exit_code = result.exit_status
