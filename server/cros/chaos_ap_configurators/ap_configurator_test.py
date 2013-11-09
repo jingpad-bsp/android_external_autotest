@@ -277,7 +277,8 @@ class ConfiguratorTest(unittest.TestCase):
         if self.ap.is_security_mode_supported(ap_spec.SECURITY_TYPE_DISABLED):
             self.ap.set_security_disabled()
         if self.ap.is_security_mode_supported(ap_spec.SECURITY_TYPE_WPAPSK):
-            self.ap.set_security_wpapsk('qwertyuiolkjhgfsdfg')
+            self.ap.set_security_wpapsk(ap_spec.SECURITY_TYPE_WPAPSK,
+                                        'qwertyuiolkjhgfsdfg')
         self.ap.apply_settings()
 
 
@@ -294,8 +295,9 @@ class ConfiguratorTest(unittest.TestCase):
         if self.ap.is_security_mode_supported(ap_spec.SECURITY_TYPE_DISABLED):
             self.ap.set_security_disabled()
         self.ap.apply_settings()
-        if self.ap.is_security_mode_supported(ap_spec.SECURITY_TYPE_WPAPSK):
-            self.ap.set_security_wpapsk('qwertyuiolkjhgfsdfg')
+        if self.ap.is_security_mode_supported(ap_spec.SECURITY_TYPE_WPA2PSK):
+            self.ap.set_security_wpapsk(ap_spec.SECURITY_TYPE_WPA2PSK,
+                                        'qwertyuiolkjhgfsdfg')
         self.ap.apply_settings()
 
 
