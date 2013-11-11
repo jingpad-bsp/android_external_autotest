@@ -17,6 +17,7 @@ from firmware_constants import GV, MODE
 # Define the robot control script names.
 SCRIPT_LINE = 'line.py'
 SCRIPT_TAP = 'tap.py'
+SCRIPT_CLICK = 'click.py'
 
 # Define constants for coordinates.
 # Normally, a gesture is performed within [START, END].
@@ -52,6 +53,7 @@ class RobotWrapper:
             self._get_control_command_line: SCRIPT_LINE,
             self._get_control_command_rapid_taps: SCRIPT_TAP,
             self._get_control_command_single_tap: SCRIPT_TAP,
+            self._get_control_command_click: SCRIPT_CLICK,
         }
 
         # Each gesture maps to a get_contorol_command method
@@ -60,10 +62,12 @@ class RobotWrapper:
             conf.ONE_FINGER_TO_EDGE: self._get_control_command_line,
             conf.ONE_FINGER_SWIPE: self._get_control_command_line,
             conf.ONE_FINGER_TAP: self._get_control_command_single_tap,
-            conf.TWO_FINGER_TRACKING: self._get_control_command_line,
+            conf.ONE_FINGER_PHYSICAL_CLICK: self._get_control_command_click,
             conf.RAPID_TAPS: self._get_control_command_rapid_taps,
+            conf.TWO_FINGER_TRACKING: self._get_control_command_line,
             conf.TWO_FINGER_SWIPE: self._get_control_command_line,
             conf.TWO_FINGER_TAP: self._get_control_command_single_tap,
+            conf.TWO_FINGER_PHYSICAL_CLICK: self._get_control_command_click,
         }
 
         self._line_dict = {
@@ -142,7 +146,6 @@ class RobotWrapper:
         calib_script = os.path.join(self._robot_script_dir,
                                     'calibrate_for_new_device.py')
         calib_cmd = 'python %s %s' % (calib_script, board)
-        print calib_cmd
         self._execute_control_command(calib_cmd)
 
     def _is_robot_action_mode(self):
@@ -240,6 +243,19 @@ class RobotWrapper:
         """Get robot control command for tap gestures.  This includes rapid tap
         tests as well as 1 and 2 finger taps at various locations on the pad.
         """
+        if num_taps is None:
+            msg = 'Cannot determine the number of taps to do from %s.'
+            self._raise_error(msg % gesture)
+
+        # The tap commands have identical arguments as the click except with
+        # two additional arguments at the end.  As such we generate the 'click'
+        # command and add these on to make it work as a tap.
+        cmd = self._get_control_command_click(robot_script, gesture, variation)
+        control_cmd = '%s %d tap' % (cmd, num_taps)
+        return control_cmd
+
+    def _get_control_command_click(self, robot_script, gesture, variation):
+        """Get robot control command for pysical click gestures """
         location = None
         for element in variation:
             location = self._location_dict.get(element)
@@ -252,17 +268,13 @@ class RobotWrapper:
             msg = 'Cannot determine the location parameters from %s %s.'
             self._raise_error(msg % (gesture, variation))
 
-        if num_taps is None:
-            msg = 'Cannot determine the number of taps to do from %s.'
-            self._raise_error(msg % gesture)
-
         fingers = [0, 1, 0, 1] if 'two' in gesture else [0, 1, 0, 0]
         angle = 45 if 'two' in gesture else 0
         spacing = 17
 
         para = (robot_script, self._board, location_str, angle, spacing,
-                fingers[0], fingers[1], fingers[2], fingers[3], num_taps)
-        control_cmd = 'python %s %s.p %s %d %d %d %d %d %d %s tap' % para
+                fingers[0], fingers[1], fingers[2], fingers[3])
+        control_cmd = 'python %s %s.p %s %d %d %d %d %d %d' % para
         return control_cmd
 
     def _build_robot_script_paths(self):
