@@ -80,12 +80,19 @@ class FAFTCheckers(object):
                     logging.info("Expected '%s' value '%s' but got '%s'",
                                  key, expected_dict[key], got_dict[key])
                     succeed = False
+                else:
+                    logging.info("Expected '%s' value '%s' == real value '%s'",
+                                 key, expected_dict[key], got_dict[key])
+
             elif isinstance(expected_dict[key], tuple):
                 # Expected value is a tuple of possible actual values.
                 if got_dict[key] not in expected_dict[key]:
                     logging.info("Expected '%s' values %s but got '%s'",
                                  key, str(expected_dict[key]), got_dict[key])
                     succeed = False
+                else:
+                    logging.info("Expected '%s' values %s == real value '%s'",
+                                 key, str(expected_dict[key]), got_dict[key])
             else:
                 logging.info("The expected value of %s is neither a str nor a "
                              "dict: %s", key, str(expected_dict[key]))
