@@ -4,7 +4,7 @@
 
 import logging
 
-from autotest_lib.client.bin import test
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from telemetry.core import exceptions
@@ -19,16 +19,25 @@ class security_SandboxStatusTelemetry(test.test):
     version = 1
 
 
+    def _EvaluateJavaScript(self, js):
+        '''Evaluates js, returns None if an exception was thrown.'''
+
+        try:
+            return self._tab.EvaluateJavaScript(js)
+        except exceptions.EvaluateException:
+            return None
+
     def _TableEntry(self, row, column):
         '''Fetches table cell text content corresponding to row, column.'''
 
         table_js = ("document.getElementsByTagName('table')[0]."
                     "rows[%d].cells[%d].textContent" % (row, column))
-        try:
-            return self._tab.EvaluateJavaScript(table_js)
-        except exceptions.EvaluateException:
-            raise error.TestFail('Failed to evaluate in chrome://sandbox "%s"'
-                                 % table_js)
+        return utils.poll_for_condition(
+                lambda: self._EvaluateJavaScript(table_js),
+                exception=error.TestFail(
+                       'Failed to evaluate in chrome://sandbox "%s"'
+                        % table_js),
+                timeout=30)
 
 
     def _CheckRowName(self, row, expected_name):
@@ -60,10 +69,11 @@ class security_SandboxStatusTelemetry(test.test):
 
         gpu_js = ("document.getElementsByTagName('table')"
                   "[1].rows[1].cells[%d].textContent" % cell)
-
         try:
-            res = self._tab.EvaluateJavaScript(gpu_js)
-        except exceptions.EvaluateException:
+            res = utils.poll_for_condition(
+                    lambda: self._EvaluateJavaScript(gpu_js),
+                    timeout=30)
+        except utils.TimeoutError:
             logging.error('Failed to evaluate in chrome://gpu "%s"', gpu_js)
             return False
 
