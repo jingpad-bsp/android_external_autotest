@@ -19,7 +19,7 @@ def run_benchmark(machine):
     host = hosts.create_host(machine)
     job.run_test("telemetry_Benchmarks", host=host,
                  benchmark="dromaeo.domcoreattr",
-                 tag="dromaeo_domcoreattr")
+                 tag="dromaeo.domcoreattr")
 
 
 parallel_simple(run_benchmark, machines)

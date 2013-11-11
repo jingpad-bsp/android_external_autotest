@@ -20,7 +20,7 @@ def run_benchmark(machine):
     host = hosts.create_host(machine)
     job.run_test("telemetry_Benchmarks", host=host,
                  benchmark="media.tough_media_cases",
-                 tag="media")
+                 tag="media.tough_media_cases")
 
 
 parallel_simple(run_benchmark, machines)
