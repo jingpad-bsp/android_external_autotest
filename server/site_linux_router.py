@@ -759,8 +759,14 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.router.run('grep -q "%s" %s' % (pmksa_match, instance['log_file']))
 
 
-    def get_ssid(self, instance=0):
+    def get_ssid(self, instance=None):
         """@return string ssid for the network stemming from this router."""
+        if instance is None:
+            instance = 0
+            if len(self.hostapd_instances) > 1:
+                raise error.TestFail('No instance of hostapd specified with '
+                                     'multiple instances present.')
+
         if self.hostapd_instances:
             return self.hostapd_instances[instance]['ssid']
 
