@@ -412,6 +412,7 @@ class db_sql(object):
                 data['stddev'] = perf_dict['stddev']
                 data['units'] = perf_dict['units']
                 data['higher_is_better'] = perf_dict['higher_is_better']
+                data['graph'] = perf_dict['graph']
                 self.insert('tko_iteration_perf_value', data, commit=commit)
 
         for key, value in test.attributes.iteritems():

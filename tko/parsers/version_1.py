@@ -117,6 +117,8 @@ class perf_value_iteration(models.perf_value_iteration):
             'units': the string units associated with the perf metric.
             'higher_is_better': a boolean whether a higher value is considered
                 better.  If False, a lower value is considered better.
+            'graph': a string indicating the name of the perf dashboard graph
+                     on which the perf data will be displayed.
 
         The resulting dictionary will also have a standard deviation key/value
         pair, 'stddev'.  If the perf measurement value is a list of values

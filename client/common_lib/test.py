@@ -87,7 +87,7 @@ class base_test(object):
 
 
     def output_perf_value(self, description, value, units,
-                          higher_is_better=True):
+                          higher_is_better=True, graph=None):
         """
         Records a measured performance value in an output file.
 
@@ -109,6 +109,13 @@ class base_test(object):
                 measured perf value is considered to be better. If False, it is
                 assumed that a "lower" measured value is considered to be
                 better.
+        @param graph: A string indicating the name of the graph on which
+                      the perf value will be subsequently displayed on
+                      the chrome perf dashboard.
+                      This allows multiple metrics be grouped together
+                      on the same graphs. Defaults to None, indicating
+                      that the perf value should be displayed individually
+                      on a separate graph.
 
         """
         if len(description) > 256:
@@ -127,6 +134,7 @@ class base_test(object):
             'value': value,
             'units': units,
             'higher_is_better': higher_is_better,
+            'graph': graph
         }
 
         output_path = os.path.join(self.resultsdir, 'perf_measurements')

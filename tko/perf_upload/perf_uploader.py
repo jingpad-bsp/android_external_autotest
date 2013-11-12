@@ -46,6 +46,7 @@ def _aggregate_iterations(perf_values):
                 perf_data[perf_dict['description']] = {
                     'units': perf_dict['units'],
                     'higher_is_better': perf_dict['higher_is_better'],
+                    'graph': perf_dict['graph'],
                     'value': [perf_dict['value']],   # Note: a list of values.
                     'stddev': perf_dict['stddev']
                 }
@@ -130,24 +131,13 @@ def _gather_presentation_info(config_data, test_name):
         |config_data| for the given autotest name.
     """
     master_name = _DEFAULT_MASTER_NAME
-    description_to_graph_name = {}  # Multiple values can be on the same graph.
     if test_name in config_data:
         presentation_dict = config_data[test_name]
         if 'master_name' in presentation_dict:
             master_name = presentation_dict['master_name']
         if 'dashboard_test_name' in presentation_dict:
             test_name = presentation_dict['dashboard_test_name']
-        if 'graphs' in presentation_dict:
-            for graph in presentation_dict['graphs']:
-                graph_name = graph['graph_name']
-                for desc in graph['descriptions']:
-                    description_to_graph_name[desc] = graph_name
-
-    return {
-        'master_name': master_name,
-        'desc_to_graph_name': description_to_graph_name,
-        'test_name': test_name,
-    }
+    return {'master_name': master_name, 'test_name': test_name}
 
 
 def _format_for_upload(platform_name, cros_version, chrome_version, perf_data,
@@ -179,14 +169,14 @@ def _format_for_upload(platform_name, cros_version, chrome_version, perf_data,
         # a graph name (if specified), and a description.  This must be defined
         # according to rules set by the Chrome team, as implemented in:
         # chromium/tools/build/scripts/slave/results_dashboard.py.
-        graph_name = presentation_info['desc_to_graph_name'].get(desc, None)
+        data = perf_data[desc]
         if desc.endswith('_ref'):
             desc = 'ref'
         desc = desc.replace('_by_url', '')
         desc = desc.replace('/', '_')
-        if graph_name:
+        if data['graph']:
             test_path = '%s/%s/%s' % (presentation_info['test_name'],
-                                      graph_name, desc)
+                                      data['graph'], desc)
         else:
             test_path = '%s/%s' % (presentation_info['test_name'], desc)
 
@@ -194,9 +184,9 @@ def _format_for_upload(platform_name, cros_version, chrome_version, perf_data,
             'master': presentation_info['master_name'],
             'bot': 'cros-' + platform_name,  # Prefix to clarify it's chromeOS.
             'test': test_path,
-            'value': perf_data[desc]['value'],
-            'error': perf_data[desc]['stddev'],
-            'units': perf_data[desc]['units'],
+            'value': data['value'],
+            'error': data['stddev'],
+            'units': data['units'],
             'supplemental_columns': {
                 'r_cros_version': cros_version,
                 'r_chrome_version': chrome_version,

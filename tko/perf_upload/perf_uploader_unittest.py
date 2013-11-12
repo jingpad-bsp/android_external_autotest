@@ -21,21 +21,24 @@ class test_aggregate_iterations(unittest.TestCase):
                 'value': 1,
                 'stddev': 0.0,
                 'units': 'units1',
-                'higher_is_better': True
+                'higher_is_better': True,
+                'graph':None
             },
             {
                 'description': 'metric2',
                 'value': 10,
                 'stddev': 0.0,
                 'units': 'units2',
-                'higher_is_better': True
+                'higher_is_better': True,
+                'graph':None,
             },
             {
                 'description': 'metric3',
                 'value': 100,
                 'stddev': 1.7,
                 'units': 'units3',
-                'higher_is_better': False
+                'higher_is_better': False,
+                'graph':None,
             }
         ],
         '2': [
@@ -44,21 +47,24 @@ class test_aggregate_iterations(unittest.TestCase):
                 'value': 2,
                 'stddev': 0.0,
                 'units': 'units1',
-                'higher_is_better': True
+                'higher_is_better': True,
+                'graph':None,
             },
             {
                 'description': 'metric2',
                 'value': 20,
                 'stddev': 0.0,
                 'units': 'units2',
-                'higher_is_better': True
+                'higher_is_better': True,
+                'graph':None,
             },
             {
                 'description': 'metric3',
                 'value': 200,
                 'stddev': 21.2,
                 'units': 'units3',
-                'higher_is_better': False
+                'higher_is_better': False,
+                'graph':None,
             }
         ],
     }
@@ -165,12 +171,6 @@ class test_gather_presentation_info(unittest.TestCase):
         'test_name': {
             'master_name': 'new_master_name',
             'dashboard_test_name': 'new_test_name',
-            'graphs': [
-                {
-                    'graph_name': 'graph_name',
-                    'descriptions': ['metric1', 'metric2'],
-                },
-            ]
         }
     }
 
@@ -181,22 +181,8 @@ class test_gather_presentation_info(unittest.TestCase):
                 self._PRESENT_INFO, 'test_name')
         self.assertTrue(
                 all([key in result for key in
-                     ['test_name', 'master_name', 'desc_to_graph_name']]),
+                     ['test_name', 'master_name']]),
                 msg='Unexpected keys in resulting dictionary: %s' % result)
-        self.assertEqual(len(result['desc_to_graph_name']), 2,
-                         msg='Unexpected "desc_to_graph_name" value: %s' %
-                             result['desc_to_graph_name'])
-        self.assertTrue(
-                all([x in result['desc_to_graph_name'] for x in
-                     ['metric1', 'metric2']]),
-                msg='Unexpected "desc_to_graph_name" value: %s' %
-                    result['desc_to_graph_name'])
-        self.assertEqual(result['desc_to_graph_name']['metric1'], 'graph_name',
-                         msg='Unexpected "desc_to_graph_name" value: %s' %
-                             result['desc_to_graph_name'])
-        self.assertEqual(result['desc_to_graph_name']['metric2'], 'graph_name',
-                         msg='Unexpected "desc_to_graph_name" value: %s' %
-                             result['desc_to_graph_name'])
         self.assertEqual(result['master_name'], 'new_master_name',
                          msg='Unexpected "master_name" value: %s' %
                              result['master_name'])
@@ -211,11 +197,8 @@ class test_gather_presentation_info(unittest.TestCase):
                 self._PRESENT_INFO, 'other_test_name')
         self.assertTrue(
                 all([key in result for key in
-                     ['test_name', 'master_name', 'desc_to_graph_name']]),
+                     ['test_name', 'master_name']]),
                 msg='Unexpected keys in resulting dictionary: %s' % result)
-        self.assertEqual(len(result['desc_to_graph_name']), 0,
-                         msg='Unexpected "desc_to_graph_name" value: %s' %
-                             result['desc_to_graph_name'])
         self.assertEqual(result['master_name'],
                          perf_uploader._DEFAULT_MASTER_NAME,
                          msg='Unexpected "master_name" value: %s' %
@@ -233,27 +216,24 @@ class test_format_for_upload(unittest.TestCase):
             'value': 2.7,
             'stddev': 0.2,
             'units': 'msec',
+            'graph': 'graph_name',
         },
         'metric2': {
             'value': 101.35,
             'stddev': 5.78,
             'units': 'frames_per_sec',
+            'graph': None,
         },
     }
 
     _PRESENT_INFO_DEFAULT = {
         'master_name': perf_uploader._DEFAULT_MASTER_NAME,
         'test_name': 'test_name',
-        'desc_to_graph_name': {}
     }
 
     _PRESENT_INFO = {
         'master_name': 'new_master_name',
         'test_name': 'new_test_name',
-        'desc_to_graph_name': {
-            'metric1': 'graph_name',
-            'metric2': 'graph_name'
-        }
     }
 
 
@@ -324,7 +304,7 @@ class test_format_for_upload(unittest.TestCase):
                 '{"supplemental_columns": {"r_cros_version": "1200.0.0", '
                 '"r_chrome_version": "25.10.0.0"}, "bot": "cros-platform", '
                 '"value": 2.7, "units": "msec", "master": "ChromeOSPerf", '
-                '"error": 0.2, "test": "test_name/metric1"}]')
+                '"error": 0.2, "test": "test_name/graph_name/metric1"}]')
         self._verify_result_string(result['data'], expected_result_string)
 
 
@@ -338,7 +318,7 @@ class test_format_for_upload(unittest.TestCase):
                 '"r_chrome_version": "25.10.0.0"}, "bot": "cros-platform", '
                 '"value": 101.35, "units": "frames_per_sec", "master": '
                 '"new_master_name", "error": 5.78, "test": '
-                '"new_test_name/graph_name/metric2"}, '
+                '"new_test_name/metric2"}, '
                 '{"supplemental_columns": {"r_cros_version": "1200.0.0", '
                 '"r_chrome_version": "25.10.0.0"}, "bot": "cros-platform", '
                 '"value": 2.7, "units": "msec", "master": "new_master_name", '
