@@ -1,3 +1,7 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
 import commands
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
@@ -12,7 +16,8 @@ class build_RootFilesystemSize(test.test):
 
         # Report the production size.
         f = open('/root/bytes-rootfs-prod', 'r')
-        self.write_perf_keyval({'bytes_rootfs_prod': float(f.read())})
+        self.output_perf_value('bytes_rootfs_prod', value=float(f.read()),
+                               units='bytes', higher_is_better=False)
         f.close()
 
         # Report the current (test) size.
@@ -28,7 +33,8 @@ class build_RootFilesystemSize(test.test):
         used = output_columns[2]
         free = output_columns[3]
 
-        self.write_perf_keyval({'bytes_rootfs_test': float(used)})
+        self.output_perf_value('bytes_rootfs_test', value=float(used),
+                               units='bytes', higher_is_better=False)
 
         # Fail if we are running out of free space on rootfs.
         required_free_space = 40 * 1024 * 1024
