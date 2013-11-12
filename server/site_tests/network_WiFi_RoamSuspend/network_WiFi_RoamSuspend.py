@@ -12,9 +12,13 @@ from autotest_lib.server.cros.network import wifi_cell_test_base
 class network_WiFi_RoamSuspend(wifi_cell_test_base.WiFiCellTestBase):
     """Tests roaming to an AP that changes while we're suspended.
 
-    This test run seeks to place the DUT in suspend-to-RAM, rearrange the
-    environment behind the DUT's back and watch what happens when the
-    DUT wakes up.
+    This test:
+    1) Sets up a network with a single BSS.
+    2) Connects the DUT to that network and that particular BSS.
+    3) Places the DUT in suspend-to-RAM
+    4) Replaces the BSS with another BSS on the same SSID.
+    5) Watches to make sure the DUT connects to this BSS on resume.
+
     """
 
     version = 1

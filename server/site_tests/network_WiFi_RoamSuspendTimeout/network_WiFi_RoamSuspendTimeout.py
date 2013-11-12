@@ -9,11 +9,11 @@ from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server.cros.network import wifi_cell_test_base
 
 class network_WiFi_RoamSuspendTimeout(wifi_cell_test_base.WiFiCellTestBase):
-    """Tests roaming to an AP that changes while we're suspended.
+    """Tests behavior on resume during which the client has been de-authed.
 
-    This test run seeks to place the DUT in suspend-to-RAM, rearrange the
-    environment behind the DUT's back and watch what happens when the
-    DUT wakes up.
+    This test places the DUT in a suspend-to-RAM state, de-authenticates the
+    sleeping DUT, then makes sure that the DUT detects and corrects this
+    de-authentication on resume.
 
     """
     version = 1
@@ -34,13 +34,9 @@ class network_WiFi_RoamSuspendTimeout(wifi_cell_test_base.WiFiCellTestBase):
         logging.info("- Set up AP, connect.")
         self.context.configure(self._router_conf)
 
-        client_conf = xmlrpc_datatypes.AssociationParameters()
-        try:
-            client_conf.security_config = self._router_conf.security_config
-        except AttributeError:
-            pass  # OK if self._router_conf has no security_config.
-        client_conf.ssid = self.context.router.get_ssid()
-
+        client_conf = xmlrpc_datatypes.AssociationParameters(
+                ssid=self.context.router.get_ssid(),
+                security_config=self._router_conf.security_config)
         self.context.assert_connect_wifi(client_conf)
         self.context.assert_ping_from_dut()
 
