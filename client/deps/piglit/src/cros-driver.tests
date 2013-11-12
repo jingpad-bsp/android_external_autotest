@@ -61,3 +61,7 @@ del profile.tests['spec']['ARB_fragment_program']['fp-long-alu']
 
 # SCBA: These crashed on i915
 del profile.tests['shaders']['glsl-fs-convolution-2']
+
+# DB: these hang on SNB with HiZ disabled, crbug.com/313085
+del profile.tests['spec']['EXT_framebuffer_multisample']
+del profile.tests['spec']['!OpenGL 1.1']['copyteximage 2D']
