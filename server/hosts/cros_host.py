@@ -733,10 +733,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
 
     def _install_repair_with_powerwash(self):
-        """Attempt to powerwash first then repair this host using upate-engine.
+        """Attempt to powerwash first then repair this host using update-engine.
 
-        Update engine may fail due to a bad image. In such case, powerwash
-        may help to cleanup the DUT for update engine to work again.
+        update-engine may fail due to a bad image. In such case, powerwash
+        may help to cleanup the DUT for update-engine to work again.
 
         @raises AutoservRepairMethodNA if the DUT is not reachable.
         @raises ChromiumOSError if the install failed for some reason.
@@ -750,7 +750,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                  '/mnt/stateful_partition/factory_install_reset')
         self.reboot(timeout=self.POWERWASH_BOOT_TIMEOUT, wait=True)
         if not self.is_up():
-            logging.error('Powerwash failed. DUT does not come back after '
+            logging.error('Powerwash failed. DUT did not come back after '
                           'reboot.')
             raise error.AutoservRepairFailure(
                     'DUT failed to boot from powerwash after %d seconds' %
