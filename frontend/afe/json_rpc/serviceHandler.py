@@ -22,6 +22,7 @@
 import traceback
 
 from json import decoder, encoder
+from autotest_lib.site_utils.graphite import stats
 
 def customConvertJson(value):
     """\
@@ -90,6 +91,8 @@ class ServiceHandler(object):
             args = request['params']
         except KeyError:
             raise BadServiceRequest(request)
+
+        stats.Counter('rpc').increment(methName)
 
         try:
             meth = self.findServiceEndpoint(methName)

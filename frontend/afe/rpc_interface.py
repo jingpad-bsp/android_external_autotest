@@ -36,7 +36,6 @@ import common
 from autotest_lib.client.common_lib import error, priorities
 from autotest_lib.frontend.afe import models, model_logic, model_attributes
 from autotest_lib.frontend.afe import control_file, rpc_utils
-from autotest_lib.site_utils.graphite import stats
 
 def get_parameterized_autoupdate_image_url(job):
     """Get the parameterized autoupdate image url from a parameterized job."""
@@ -541,7 +540,6 @@ def create_job(name, priority, control_file, control_type,
 
     @returns The created Job id number.
     """
-    stats.Counter('create_job').increment()
     # Force control files to only contain ascii characters.
     try:
         control_file.encode('ascii')
