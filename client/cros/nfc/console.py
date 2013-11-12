@@ -233,8 +233,6 @@ class NfcClient(object):
         if name == 'Tags' or name == 'Devices':
             print_message('Found ' + name + ': ' +
                           self._dbus_array_to_string(value))
-            if len(value) == 0:
-                self.start_polling(adapter)
 
     @handle_errors
     def show_adapters(self):
