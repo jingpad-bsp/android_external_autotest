@@ -86,6 +86,9 @@ To run locally:
     Your .boto file must be available inside the chroot.
     cp ~/.boto chroot/home/<user>/
 
+  Make sure the gsutil command is available outside the chroot (note:
+  the gsutil package in Ubuntu is not what you're looking for.)
+
   Start a devserver (outside the chroot):
     src/platform/dev/devserver.py
 
