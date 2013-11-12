@@ -690,13 +690,26 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         @param params dict of parameters from site_wifitest.
 
         """
+        self.deconfig_aps(instance=params.get('instance', None),
+                          silent='silent' in params)
+
+
+    def deconfig_aps(self, instance=None, silent=False):
+        """De-configure an AP (will also bring wlan down).
+
+        @param instance: int or None.  If instance is None, will bring down all
+                instances of hostapd.
+        @param silent: True if instances should be brought without de-authing
+                the DUT.
+
+        """
         if not self.hostapd['configured'] and not self.station['configured']:
             return
 
         if self.hostapd['configured']:
             local_servers = []
-            if 'instance' in params:
-                instances = [ self.hostapd_instances.pop(params['instance']) ]
+            if instance is not None:
+                instances = [ self.hostapd_instances.pop(instance) ]
                 for server in self.local_servers:
                     if server['interface'] == instances[0]['interface']:
                         local_servers = [server]
@@ -709,7 +722,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                 self.local_servers = []
 
             for instance in instances:
-                if 'silent' in params:
+                if silent:
                     # Deconfigure without notifying DUT.  Remove the interface
                     # hostapd uses to send beacon and DEAUTH packets.
                     self._remove_interface(instance['interface'], True)
