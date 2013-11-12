@@ -134,7 +134,7 @@ public class JobDetailView extends DetailView implements TableWidgetFactory, Tab
                 String priorityName = staticData.getPriorityName(priorityValue);
                 showText(priorityName, "view_priority");
                 showField(jobObject, "created_on", "view_created");
-                showField(jobObject, "timeout", "view_timeout");
+                showField(jobObject, "timeout_mins", "view_timeout");
                 String imageUrlString = "";
                 if (jobObject.containsKey("image")) {
                     imageUrlString = Utils.jsonToString(jobObject.get("image")).trim();

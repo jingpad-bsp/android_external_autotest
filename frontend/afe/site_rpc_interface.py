@@ -79,7 +79,7 @@ def get_control_file_contents_by_name(build, board, ds, suite_name):
 
 
 def create_suite_job(suite_name, board, build, pool, check_hosts=True,
-                     num=None, file_bugs=False, timeout=24,
+                     num=None, file_bugs=False, timeout=24, timeout_mins=None,
                      priority=priorities.Priority.DEFAULT,
                      suite_args=None):
     """
@@ -98,6 +98,8 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True,
                 Leave unspecified or use None to use default sharding factor.
     @param file_bugs: File a bug on each test failure in this suite.
     @param timeout: The max lifetime of this suite, in hours.
+    @param timeout_mins: The max lifetime of this suite, in minutes. Takes
+                         priority over timeout.
     @param priority: Integer denoting priority. Higher is more important.
     @param suite_args: Optional arguments which will be parsed by the suite
                        control file. Used by control.test_that_wrapper to
@@ -136,6 +138,8 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True,
     control_file_in = get_control_file_contents_by_name(build, board, ds,
                                                         suite_name)
 
+    timeout_mins = timeout_mins or timeout * 60
+
 
     # prepend build and board to the control file
     inject_dict = {'board': board,
@@ -145,6 +149,7 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True,
                    'num': num,
                    'file_bugs': file_bugs,
                    'timeout': timeout,
+                   'timeout_mins': timeout_mins,
                    'devserver_url': ds.url(),
                    'priority': priority,
                    'suite_args' : suite_args
@@ -154,7 +159,7 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True,
 
     return _rpc_utils().create_job_common('%s-%s' % (build, suite_name),
                                           priority=priority,
-                                          timeout=timeout,
+                                          timeout_mins=timeout_mins,
                                           max_runtime_mins=timeout*60,
                                           control_type='Server',
                                           control_file=control_file,

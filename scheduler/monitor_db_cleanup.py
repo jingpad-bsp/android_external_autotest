@@ -66,7 +66,7 @@ class UserCleanup(PeriodicCleanup):
         msg = 'Aborting all jobs that have timed out and are not complete'
         logging.info(msg)
         query = models.Job.objects.filter(hostqueueentry__complete=False).extra(
-            where=['created_on + INTERVAL timeout HOUR < NOW()'])
+            where=['created_on + INTERVAL timeout_mins MINUTE < NOW()'])
         for job in query.distinct():
             logging.warning('Aborting job %d due to job timeout', job.id)
             job.abort()

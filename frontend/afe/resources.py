@@ -438,7 +438,7 @@ class ExecutionInfo(resource_lib.Resource):
             'machines_per_execution': 1,
             'run_verify': bool(_job_fields['run_verify'].default),
             'run_reset': bool(_job_fields['run_reset'].default),
-            'timeout_hrs': _job_fields['timeout'].default,
+            'timeout_mins': _job_fields['timeout_mins'].default,
             'maximum_runtime_mins': _job_fields['max_runtime_mins'].default,
             'cleanup_before_job':
                 model_attributes.RebootBefore.get_string(
@@ -480,7 +480,7 @@ class ExecutionInfo(resource_lib.Resource):
                 'machines_per_execution': job.synch_count,
                 'run_verify': bool(job.run_verify),
                 'run_reset': bool(job.run_reset),
-                'timeout_hrs': job.timeout,
+                'timeout_mins': job.timeout_mins,
                 'maximum_runtime_mins': job.max_runtime_mins,
                 'cleanup_before_job':
                     model_attributes.RebootBefore.get_string(job.reboot_before),
@@ -689,7 +689,7 @@ class Job(resource_lib.InstanceEntry):
                 control_file=execution_info['control_file'],
                 control_type=control_type,
                 is_template=input_dict.get('is_template', None),
-                timeout=execution_info.get('timeout_hrs'),
+                timeout_mins=execution_info.get('timeout_mins'),
                 max_runtime_mins=execution_info.get('maximum_runtime_mins'),
                 synch_count=execution_info.get('machines_per_execution'),
                 run_verify=execution_info.get('run_verify'),

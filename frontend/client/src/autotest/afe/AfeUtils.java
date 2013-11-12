@@ -234,7 +234,7 @@ public class AfeUtils {
         args.put("control_file", controlInfo.get("control_file"));
         args.put("control_type", new JSONString(TestSelector.SERVER_TYPE));
         args.put("synch_count", controlInfo.get("synch_count"));
-        args.put("timeout", staticData.getData("job_timeout_default"));
+        args.put("timeout_mins", staticData.getData("job_timeout_mins_default"));
         args.put("max_runtime_mins", staticData.getData("job_max_runtime_mins_default"));
         args.put("run_verify", JSONBoolean.getInstance(false));
         args.put("parse_failed_repair", JSONBoolean.getInstance(true));

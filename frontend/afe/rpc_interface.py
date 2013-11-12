@@ -418,11 +418,11 @@ def create_parameterized_job(name, priority, test, parameters, kernel=None,
                              meta_hosts=(), one_time_hosts=(),
                              atomic_group_name=None, synch_count=None,
                              is_template=False, timeout=None,
-                             max_runtime_mins=None, run_verify=False,
-                             email_list='', dependencies=(), reboot_before=None,
-                             reboot_after=None, parse_failed_repair=None,
-                             hostless=False, keyvals=None, drone_set=None,
-                             run_reset=True):
+                             timeout_mins=None, max_runtime_mins=None,
+                             run_verify=False, email_list='', dependencies=(),
+                             reboot_before=None, reboot_after=None,
+                             parse_failed_repair=None, hostless=False,
+                             keyvals=None, drone_set=None, run_reset=True):
     """
     Creates and enqueues a parameterized job.
 
@@ -498,11 +498,11 @@ def create_parameterized_job(name, priority, test, parameters, kernel=None,
 def create_job(name, priority, control_file, control_type,
                hosts=(), meta_hosts=(), one_time_hosts=(),
                atomic_group_name=None, synch_count=None, is_template=False,
-               timeout=None, max_runtime_mins=None, run_verify=False,
-               email_list='', dependencies=(), reboot_before=None,
-               reboot_after=None, parse_failed_repair=None, hostless=False,
-               keyvals=None, drone_set=None, image=None, parent_job_id=None,
-               test_retry=0, run_reset=True):
+               timeout=None, timeout_mins=None, max_runtime_mins=None,
+               run_verify=False, email_list='', dependencies=(),
+               reboot_before=None, reboot_after=None, parse_failed_repair=None,
+               hostless=False, keyvals=None, drone_set=None, image=None,
+               parent_job_id=None, test_retry=0, run_reset=True):
     """\
     Create and enqueue a job.
 
@@ -515,6 +515,8 @@ def create_job(name, priority, control_file, control_type,
     given this value is treated as a minimum.
     @param is_template If true then create a template job.
     @param timeout Hours after this call returns until the job times out.
+    @param timeout_mins Minutes after this call returns until the job times
+    out.
     @param max_runtime_mins Minutes from job starting time until job times out
     @param run_verify Should the host be verified before running the test?
     @param email_list String containing emails to mail when the job is done
@@ -870,7 +872,7 @@ def get_static_data():
     current_user: Logged-in username.
     host_statuses: Sorted list of possible Host statuses.
     job_statuses: Sorted list of possible HostQueueEntry statuses.
-    job_timeout_default: The default job timeout length in hours.
+    job_timeout_default: The default job timeout length in minutes.
     parse_failed_repair_default: Default value for the parse_failed_repair job
     option.
     reboot_before_options: A list of valid RebootBefore string enums.
@@ -901,7 +903,7 @@ def get_static_data():
         models.User.current_user().get_object_dict())
     result['host_statuses'] = sorted(models.Host.Status.names)
     result['job_statuses'] = sorted(models.HostQueueEntry.Status.names)
-    result['job_timeout_default'] = models.Job.DEFAULT_TIMEOUT
+    result['job_timeout_mins_default'] = models.Job.DEFAULT_TIMEOUT_MINS
     result['job_max_runtime_mins_default'] = (
         models.Job.DEFAULT_MAX_RUNTIME_MINS)
     result['parse_failed_repair_default'] = bool(

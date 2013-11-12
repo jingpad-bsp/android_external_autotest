@@ -421,7 +421,8 @@ class job_create(job_create_or_clone):
         self.parser.add_option('-n', '--noverify',
                                help='Do not run verify for job',
                                default=False, action='store_true')
-        self.parser.add_option('-o', '--timeout', help='Job timeout in hours.',
+        self.parser.add_option('-o', '--timeout_mins',
+                               help='Job timeout in minutes.',
                                metavar='TIMEOUT')
         self.parser.add_option('--max_runtime',
                                help='Job maximum runtime in minutes')
@@ -502,8 +503,8 @@ class job_create(job_create_or_clone):
                 options.parse_failed_repair == 'true')
         if options.noverify:
             self.data['run_verify'] = False
-        if options.timeout:
-            self.data['timeout'] = options.timeout
+        if options.timeout_mins:
+            self.data['timeout_mins'] = options.timeout_mins
         if options.max_runtime:
             self.data['max_runtime_mins'] = options.max_runtime
 

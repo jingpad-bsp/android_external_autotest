@@ -175,7 +175,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         String priorityName = staticData.getPriorityName(priorityValue);
         display.getPriorityList().selectByName(priorityName);
 
-        display.getTimeout().setText(Utils.jsonToString(jobObject.get("timeout")));
+        display.getTimeout().setText(Utils.jsonToString(jobObject.get("timeout_mins")));
         display.getMaxRuntime().setText(Utils.jsonToString(jobObject.get("max_runtime_mins")));
         display.getTestRetry().setText(Utils.jsonToString(jobObject.get("test_retry")));
         display.getEmailList().setText(
@@ -592,7 +592,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         display.getKernel().setText("");
         display.getKernelCmdline().setText("");
         display.getImageUrl().setText("");
-        display.getTimeout().setText(Utils.jsonToString(repository.getData("job_timeout_default")));
+        display.getTimeout().setText(Utils.jsonToString(repository.getData("job_timeout_mins_default")));
         display.getMaxRuntime().setText(
                 Utils.jsonToString(repository.getData("job_max_runtime_mins_default")));
         display.getTestRetry().setText("");
@@ -652,7 +652,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
                 args.put("control_type",
                          new JSONString(controlTypeSelect.getControlType()));
                 args.put("synch_count", synchCount);
-                args.put("timeout", new JSONNumber(timeoutValue));
+                args.put("timeout_mins", new JSONNumber(timeoutValue));
                 args.put("max_runtime_mins", new JSONNumber(maxRuntimeValue));
                 args.put("test_retry", new JSONNumber(testRetryValue));
                 args.put("email_list", new JSONString(display.getEmailList().getText()));

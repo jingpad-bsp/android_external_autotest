@@ -82,7 +82,7 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
         r.create_job_common(mox.And(mox.StrContains(self._NAME),
                                     mox.StrContains(self._BUILD)),
                             priority=self._PRIORITY,
-                            timeout=self._TIMEOUT,
+                            timeout_mins=self._TIMEOUT*60,
                             max_runtime_mins=self._TIMEOUT*60,
                             control_type='Server',
                             control_file=mox.And(mox.StrContains(self._BOARD),

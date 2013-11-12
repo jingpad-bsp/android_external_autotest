@@ -354,7 +354,7 @@ class AFE(RpcClient):
 
     def run_test_suites(self, pairings, kernel, kernel_label=None,
                         priority='Medium', wait=True, poll_interval=10,
-                        email_from=None, email_to=None, timeout=168,
+                        email_from=None, email_to=None, timeout_mins=10080,
                         max_runtime_mins=10080, kernel_cmdline=None):
         """
         Run a list of test suites on a particular kernel.
@@ -377,7 +377,7 @@ class AFE(RpcClient):
         for pairing in pairings:
             try:
                 new_job = self.invoke_test(pairing, kernel, kernel_label,
-                                           priority, timeout=timeout,
+                                           priority, timeout_mins=timeout_mins,
                                            kernel_cmdline=kernel_cmdline,
                                            max_runtime_mins=max_runtime_mins)
                 if not new_job:

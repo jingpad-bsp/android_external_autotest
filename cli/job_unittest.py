@@ -1053,10 +1053,10 @@ class job_create_unittest(cli_mock.cli_unittest):
 
     def test_execute_create_job_with_timeout(self):
         data = self.data.copy()
-        data['timeout'] = '222'
+        data['timeout_mins'] = '13320'
         file_temp = cli_mock.create_file(self.ctrl_file)
         self.run_cmd(argv=['atest', 'job', 'create', '-f', file_temp.name,
-                           'test_job0', '-m', 'host0', '-o', '222',
+                           'test_job0', '-m', 'host0', '-o', '13320',
                            '--ignore_site_file'],
                      rpcs=[('create_job', data, True, 42)],
                      out_words_ok=['test_job0', 'Created'],)
@@ -1286,7 +1286,7 @@ class job_clone_unittest(cli_mock.cli_unittest):
                     'reboot_before': u'If dirty',
                     'run_verify': True,
                     'synch_count': 1,
-                    'timeout': 480}
+                    'timeout_mins': 480}
 
     local_hosts = [{u'acls': [u'acl0'],
                     u'atomic_group': None,
