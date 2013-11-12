@@ -348,12 +348,12 @@ def parse_options():
                          'in the results/hosts subdirectory')
   parser.add_option('-p', '--parallelism', dest='parallelism', type='int',
                     default=1, help='Number of parallel workers to use.')
-  parser.add_option('-o', '--delete-only', dest='delete_only',
+  parser.add_option('-o', '--delete_only', dest='delete_only',
                     action='store_true',
                     help='GS Offloader will only the delete the directories '
                          'and will not offload them to google storage.',
                     default=False)
-  parser.add_option('-d', '--days-old', dest='days_old',
+  parser.add_option('-d', '--days_old', dest='days_old',
                     help='Minimum job age in days before a result can be '
                     'offloaded.', type='int', default=0)
   options = parser.parse_args()[0]
