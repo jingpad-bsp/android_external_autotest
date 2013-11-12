@@ -93,6 +93,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     RESUME_TIMEOUT = 10
     BOOT_TIMEOUT = 60
     USB_BOOT_TIMEOUT = 150
+    POWERWASH_BOOT_TIMEOUT = 60
 
     # We have a long timeout to ensure we don't flakily fail due to other
     # issues. Shorter timeouts are vetted in platform_RebootAfterUpdate.
@@ -731,6 +732,34 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             raise
 
 
+    def _install_repair_with_powerwash(self):
+        """Attempt to powerwash first then repair this host using upate-engine.
+
+        Update engine may fail due to a bad image. In such case, powerwash
+        may help to cleanup the DUT for update engine to work again.
+
+        @raises AutoservRepairMethodNA if the DUT is not reachable.
+        @raises ChromiumOSError if the install failed for some reason.
+
+        """
+        if not self.is_up():
+            raise error.AutoservRepairMethodNA('DUT unreachable for install.')
+
+        logging.info('Attempting to powerwash the DUT.')
+        self.run('echo "fast safe" > '
+                 '/mnt/stateful_partition/factory_install_reset')
+        self.reboot(timeout=self.POWERWASH_BOOT_TIMEOUT, wait=True)
+        if not self.is_up():
+            logging.error('Powerwash failed. DUT does not come back after '
+                          'reboot.')
+            raise error.AutoservRepairFailure(
+                    'DUT failed to boot from powerwash after %d seconds' %
+                    self.POWERWASH_BOOT_TIMEOUT)
+
+        logging.info('Powerwash succeeded.')
+        self._install_repair()
+
+
     def servo_install(self, image_url=None, usb_boot_timeout=USB_BOOT_TIMEOUT,
                       install_timeout=INSTALL_TIMEOUT):
         """
@@ -909,7 +938,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         # TODO(scottz): This should use something similar to label_decorator,
         # but needs to be populated in order so DUTs are repaired with the
         # least amount of effort.
-        repair_funcs = [self._install_repair, self._servo_repair_power,
+        repair_funcs = [self._install_repair,
+                        self._install_repair_with_powerwash,
+                        self._servo_repair_power,
                         self._servo_repair_reinstall,
                         self._powercycle_to_repair]
         errors = []
