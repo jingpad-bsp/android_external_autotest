@@ -540,6 +540,7 @@ True
 ...         'priority': 10,
 ...         'synch_count': 1,
 ...         'timeout': 24,
+...         'timeout_mins': 1440,
 ...         'max_runtime_mins': 1440,
 ...         'max_runtime_hrs' : 72,
 ...         'run_verify': False,

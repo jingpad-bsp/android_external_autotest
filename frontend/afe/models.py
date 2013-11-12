@@ -1003,7 +1003,8 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
     synch_count: how many hosts should be used per autoserv execution
     run_verify: Whether or not to run the verify phase
     run_reset: Whether or not to run the reset phase
-    timeout: hours from queuing time until job times out
+    timeout: DEPRECATED - hours from queuing time until job times out
+    timeout_mins: minutes from job queuing time until the job times out
     max_runtime_hrs: DEPRECATED - hours from job starting time until job
                      times out
     max_runtime_mins: minutes from job starting time until job times out
@@ -1020,8 +1021,11 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
     test_retry: Number of times to retry test if the test did not complete
                 successfully. (optional, default: 0)
     """
+    # TIMEOUT is deprecated.
     DEFAULT_TIMEOUT = global_config.global_config.get_config_value(
-        'AUTOTEST_WEB', 'job_timeout_default', default=240)
+        'AUTOTEST_WEB', 'job_timeout_default', default=24)
+    DEFAULT_TIMEOUT_MINS = global_config.global_config.get_config_value(
+        'AUTOTEST_WEB', 'job_timeout_mins_default', default=24*60)
     # MAX_RUNTIME_HRS is deprecated. Will be removed after switch to mins is
     # completed.
     DEFAULT_MAX_RUNTIME_HRS = global_config.global_config.get_config_value(
@@ -1070,6 +1074,8 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
     test_retry = dbmodels.IntegerField(blank=True, default=0)
 
     run_reset = dbmodels.BooleanField(default=True)
+
+    timeout_mins = dbmodels.IntegerField(default=DEFAULT_TIMEOUT_MINS)
 
     # custom manager
     objects = JobManager()
@@ -1148,6 +1154,9 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
 
         drone_set = DroneSet.resolve_name(options.get('drone_set'))
 
+        if options.get('timeout_mins') is None and options.get('timeout'):
+            options['timeout_mins'] = options['timeout'] * 60
+
         job = cls.add_object(
             owner=owner,
             name=options['name'],
@@ -1155,7 +1164,9 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
             control_file=control_file,
             control_type=options['control_type'],
             synch_count=options.get('synch_count'),
+            # timeout needs to be deleted in the future.
             timeout=options.get('timeout'),
+            timeout_mins=options.get('timeout_mins'),
             max_runtime_mins=options.get('max_runtime_mins'),
             run_verify=options.get('run_verify'),
             email_list=options.get('email_list'),

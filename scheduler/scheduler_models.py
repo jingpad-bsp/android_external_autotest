@@ -827,7 +827,7 @@ class Job(DBObject):
                'run_verify', 'email_list', 'reboot_before', 'reboot_after',
                'parse_failed_repair', 'max_runtime_hrs', 'drone_set_id',
                'parameterized_job_id', 'max_runtime_mins', 'parent_job_id',
-               'test_retry', 'run_reset')
+               'test_retry', 'run_reset', 'timeout_mins')
     _timer = stats.Timer("scheduler_models.Job")
 
     # This does not need to be a column in the DB.  The delays are likely to
