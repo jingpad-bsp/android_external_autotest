@@ -59,11 +59,11 @@ class bluetooth_Sanity_Discoverable(bluetooth_test.BluetoothTest):
 
     def run_once(self):
         # Reset the adapter to the powered on, discoverable state.
-        if not (self.client.reset_on() and
-                self.client.set_discoverable(True)):
+        if not (self.device.reset_on() and
+                self.device.set_discoverable(True)):
             raise error.TestFail('DUT could not be reset to initial state')
 
-        self.adapter = self.client.get_adapter_properties()
+        self.adapter = self.device.get_adapter_properties()
 
         if self.interactive:
             self.interactive.login()

@@ -21,10 +21,10 @@ from autotest_lib.server.cros.bluetooth import bluetooth_tester
 
 
 def run(machine):
-    client_host = hosts.create_host(machine)
-    tester_host = bluetooth_tester.create_host_from(client_host)
+    device_host = hosts.create_host(machine)
+    tester_host = bluetooth_tester.create_host_from(device_host)
     job.run_test('bluetooth_Sanity_Discoverable',
-                 client_host=client_host,
+                 device_host=device_host,
                  tester_host=tester_host,
                  interactive=False)
 

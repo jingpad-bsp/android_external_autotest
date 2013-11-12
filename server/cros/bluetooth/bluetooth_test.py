@@ -4,7 +4,7 @@
 
 from autotest_lib.server import test
 from autotest_lib.server.cros import interactive_client
-from autotest_lib.server.cros.bluetooth import bluetooth_client
+from autotest_lib.server.cros.bluetooth import bluetooth_device
 from autotest_lib.server.cros.bluetooth import bluetooth_tester
 
 
@@ -15,7 +15,7 @@ class BluetoothTest(test.test):
     collection of Bluetooth tests that sets the following properties, depending
     on the arguments to the test and properties of the test object:
 
-      self.client - BluetoothClient object for the device being tested
+      self.device - BluetoothDevice object for the device being tested
       self.tester - BluetoothTester object for the device's partner tester
       self.interactive - InteractiveClient object for the device
 
@@ -30,11 +30,11 @@ class BluetoothTest(test.test):
 
     """
 
-    def warmup(self, client_host, tester_host, interactive=False):
+    def warmup(self, device_host, tester_host, interactive=False):
         """Initialize the test member objects based on its arguments."""
         super(BluetoothTest, self).warmup()
 
-        self.client = bluetooth_client.BluetoothClient(client_host)
+        self.device = bluetooth_device.BluetoothDevice(device_host)
 
         if tester_host:
             self.tester = bluetooth_tester.BluetoothTester(tester_host)
@@ -42,7 +42,7 @@ class BluetoothTest(test.test):
             self.tester = None
 
         if interactive:
-            self.interactive = interactive_client.InteractiveClient(client_host)
+            self.interactive = interactive_client.InteractiveClient(device_host)
         else:
             self.interactive = None
 
@@ -51,7 +51,7 @@ class BluetoothTest(test.test):
         """Close the test member objects."""
         if self.interactive:
             self.interactive.close()
-        self.client.close()
+        self.device.close()
         if self.tester:
             self.tester.close()
 

@@ -18,7 +18,7 @@ from autotest_lib.client.common_lib.cros.bluetooth import bluetooth_socket
 from autotest_lib.client.cros import constants
 
 
-class BluetoothClientXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
+class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
     """Exposes DUT methods called remotely during Bluetooth autotests.
 
     All instance methods of this object without a preceding '_' are exposed via
@@ -52,7 +52,7 @@ class BluetoothClientXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
     ADAPTER_TIMEOUT = 30
 
     def __init__(self):
-        super(BluetoothClientXmlRpcDelegate, self).__init__()
+        super(BluetoothDeviceXmlRpcDelegate, self).__init__()
 
         # Open the Bluetooth Control socket to the kernel which provides us
         # raw management access to the Bluetooth Host Subsystem. Read the list
@@ -345,12 +345,12 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     handler = logging.handlers.SysLogHandler(address='/dev/log')
     formatter = logging.Formatter(
-            'bluetooth_client_xmlrpc_server: [%(levelname)s] %(message)s')
+            'bluetooth_device_xmlrpc_server: [%(levelname)s] %(message)s')
     handler.setFormatter(formatter)
     logging.getLogger().addHandler(handler)
-    logging.debug('bluetooth_client_xmlrpc_server main...')
+    logging.debug('bluetooth_device_xmlrpc_server main...')
     server = xmlrpc_server.XmlRpcServer(
             'localhost',
-            constants.BLUETOOTH_CLIENT_XMLRPC_SERVER_PORT)
-    server.register_delegate(BluetoothClientXmlRpcDelegate())
+            constants.BLUETOOTH_DEVICE_XMLRPC_SERVER_PORT)
+    server.register_delegate(BluetoothDeviceXmlRpcDelegate())
     server.run()

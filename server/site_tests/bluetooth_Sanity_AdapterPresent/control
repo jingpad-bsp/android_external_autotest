@@ -16,9 +16,9 @@ the Kernel and the Bluetooth daemon.
 """
 
 def run(machine):
-    client_host = hosts.create_host(machine)
+    device_host = hosts.create_host(machine)
     job.run_test('bluetooth_Sanity_AdapterPresent',
-                 client_host=client_host,
+                 device_host=device_host,
                  tester_host=None,
                  interactive=False)
 

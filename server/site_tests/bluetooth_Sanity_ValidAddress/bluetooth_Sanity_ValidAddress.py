@@ -16,13 +16,13 @@ class bluetooth_Sanity_ValidAddress(bluetooth_test.BluetoothTest):
 
     def run_once(self):
         # Reset the adapter to the powered off state.
-        if not self.client.reset_off():
+        if not self.device.reset_off():
             raise error.TestFail('DUT could not be reset to initial state')
 
         # Read the address both via BlueZ and via the kernel mgmt_ops interface.
         # Compare the two, they should not differ.
-        bluez_properties = self.client.get_adapter_properties()
-        controller_info = self.client.read_info()
+        bluez_properties = self.device.get_adapter_properties()
+        controller_info = self.device.read_info()
 
         if bluez_properties['Address'] != controller_info[0]:
             raise error.TestFail(
@@ -48,9 +48,9 @@ class bluetooth_Sanity_ValidAddress(bluetooth_test.BluetoothTest):
             raise error.TestFail('Device portion of address is all ones')
 
         # Verify that the address is still the same after powering on the radio.
-        self.client.set_powered(True)
-        bluez_properties = self.client.get_adapter_properties()
-        controller_info = self.client.read_info()
+        self.device.set_powered(True)
+        bluez_properties = self.device.get_adapter_properties()
+        controller_info = self.device.read_info()
 
         if bluez_properties['Address'] != address:
             raise error.TestFail(

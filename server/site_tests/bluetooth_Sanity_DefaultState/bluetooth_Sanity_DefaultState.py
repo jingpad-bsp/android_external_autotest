@@ -42,13 +42,13 @@ class bluetooth_Sanity_DefaultState(bluetooth_test.BluetoothTest):
 
     def run_once(self):
         # Reset the adapter to the powered off state.
-        if not self.client.reset_off():
+        if not self.device.reset_off():
             raise error.TestFail('DUT could not be reset to initial state')
 
         # Read the initial state of the adapter. Verify that it is powered down.
         ( address, bluetooth_version, manufacturer_id,
                     supported_settings, current_settings, class_of_device,
-                    name, short_name ) = self.client.read_info()
+                    name, short_name ) = self.device.read_info()
         self._log_settings('Initial state', current_settings)
 
         if current_settings & bluetooth_socket.MGMT_SETTING_POWERED:
@@ -65,7 +65,7 @@ class bluetooth_Sanity_DefaultState(bluetooth_test.BluetoothTest):
 
         # Verify that the Bluetooth Daemon sees that it is also powered down,
         # non-discoverable and not discovering devices.
-        bluez_properties = self.client.get_adapter_properties()
+        bluez_properties = self.device.get_adapter_properties()
 
         if bluez_properties['Powered']:
             raise error.TestFail('Bluetooth daemon Powered property does not '
@@ -80,10 +80,10 @@ class bluetooth_Sanity_DefaultState(bluetooth_test.BluetoothTest):
         # Power on the adapter, then read the state again. Verify that it is
         # powered up, connectable and pairable (accepting incoming connections)
         # but not discoverable.
-        self.client.set_powered(True)
+        self.device.set_powered(True)
         ( address, bluetooth_version, manufacturer_id,
                     supported_settings, current_settings, class_of_device,
-                    name, short_name ) = self.client.read_info()
+                    name, short_name ) = self.device.read_info()
         self._log_settings("Powered up", current_settings)
 
         if not current_settings & bluetooth_socket.MGMT_SETTING_POWERED:
@@ -98,7 +98,7 @@ class bluetooth_Sanity_DefaultState(bluetooth_test.BluetoothTest):
 
         # Verify that the Bluetooth Daemon sees the same state as the kernel
         # and that it's not discovering.
-        bluez_properties = self.client.get_adapter_properties()
+        bluez_properties = self.device.get_adapter_properties()
 
         if not bluez_properties['Powered']:
             raise error.TestFail('Bluetooth daemon Powered property does not '
@@ -116,10 +116,10 @@ class bluetooth_Sanity_DefaultState(bluetooth_test.BluetoothTest):
 
         # Finally power off the adapter again, and verify that the adapter has
         # returned to powered down.
-        self.client.set_powered(False)
+        self.device.set_powered(False)
         ( address, bluetooth_version, manufacturer_id,
                     supported_settings, current_settings, class_of_device,
-                    name, short_name ) = self.client.read_info()
+                    name, short_name ) = self.device.read_info()
         self._log_settings("After power down", current_settings)
 
         if current_settings & bluetooth_socket.MGMT_SETTING_POWERED:
@@ -130,7 +130,7 @@ class bluetooth_Sanity_DefaultState(bluetooth_test.BluetoothTest):
                                  'during next power on')
 
         # Verify that the Bluetooth Daemon sees the same state as the kernel.
-        bluez_properties = self.client.get_adapter_properties()
+        bluez_properties = self.device.get_adapter_properties()
 
         if bluez_properties['Powered']:
             raise error.TestFail('Bluetooth daemon Powered property does not '

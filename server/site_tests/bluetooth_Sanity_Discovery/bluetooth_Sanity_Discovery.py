@@ -26,7 +26,7 @@ class bluetooth_Sanity_Discovery(bluetooth_test.BluetoothTest):
 
         """
         # Get the set of devices known to the DUT.
-        devices = self.client.get_devices()
+        devices = self.device.get_devices()
         if devices == False:
             raise error.TestFail('Could not retrieve devices from DUT')
 
@@ -76,7 +76,7 @@ class bluetooth_Sanity_Discovery(bluetooth_test.BluetoothTest):
 
     def run_once(self):
         # Reset the adapter to the powered on state.
-        if not self.client.reset_on():
+        if not self.device.reset_on():
             raise error.TestFail('DUT could not be reset to initial state')
 
         if self.tester:
@@ -121,7 +121,7 @@ class bluetooth_Sanity_Discovery(bluetooth_test.BluetoothTest):
 
         # Discover devices from the DUT.
         for failed_attempts in range(0, 5):
-            if not self.client.start_discovery():
+            if not self.device.start_discovery():
                 raise error.TestFail('Could not start discovery on DUT')
             try:
                 utils.poll_for_condition(
@@ -137,7 +137,7 @@ class bluetooth_Sanity_Discovery(bluetooth_test.BluetoothTest):
                 # loop.
                 pass
             finally:
-                if not self.client.stop_discovery():
+                if not self.device.stop_discovery():
                     logging.warning('Failed to stop discovery on DUT')
         else:
             # We only reach this if we tried five times to find the device and

@@ -8,8 +8,8 @@ from autotest_lib.client.cros import constants
 from autotest_lib.server import autotest
 
 
-class BluetoothClient(object):
-    """BluetoothClient is a thin layer of logic over a remote DUT.
+class BluetoothDevice(object):
+    """BluetoothDevice is a thin layer of logic over a remote DUT.
 
     The Autotest host object representing the remote DUT, passed to this
     class on initialization, can be accessed from its host property.
@@ -18,25 +18,25 @@ class BluetoothClient(object):
 
     XMLRPC_BRINGUP_TIMEOUT_SECONDS = 60
 
-    def __init__(self, client_host):
-        """Construct a BluetoothClient.
+    def __init__(self, device_host):
+        """Construct a BluetoothDevice.
 
-        @param client_host: host object representing a remote host.
+        @param device_host: host object representing a remote host.
 
         """
-        self.host = client_host
+        self.host = device_host
         # Make sure the client library is on the device so that the proxy code
         # is there when we try to call it.
         client_at = autotest.Autotest(self.host)
         client_at.install()
         # Start up the XML-RPC proxy on the client.
         self._proxy = self.host.xmlrpc_connect(
-                constants.BLUETOOTH_CLIENT_XMLRPC_SERVER_COMMAND,
-                constants.BLUETOOTH_CLIENT_XMLRPC_SERVER_PORT,
+                constants.BLUETOOTH_DEVICE_XMLRPC_SERVER_COMMAND,
+                constants.BLUETOOTH_DEVICE_XMLRPC_SERVER_PORT,
                 command_name=
-                  constants.BLUETOOTH_CLIENT_XMLRPC_SERVER_CLEANUP_PATTERN,
+                  constants.BLUETOOTH_DEVICE_XMLRPC_SERVER_CLEANUP_PATTERN,
                 ready_test_name=
-                  constants.BLUETOOTH_CLIENT_XMLRPC_SERVER_READY_METHOD,
+                  constants.BLUETOOTH_DEVICE_XMLRPC_SERVER_READY_METHOD,
                 timeout_seconds=self.XMLRPC_BRINGUP_TIMEOUT_SECONDS)
 
 

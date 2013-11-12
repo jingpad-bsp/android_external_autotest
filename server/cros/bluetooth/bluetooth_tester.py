@@ -113,20 +113,20 @@ class BluetoothTester(object):
         self.host.close()
 
 
-def create_host_from(client_host):
+def create_host_from(device_host):
     """Creates a host object for the Tester associated with a DUT.
 
     Will raise an exception if there isn't a tester for the DUT.
 
-    @param client_host: Autotest host object for the DUT.
+    @param device_host: Autotest host object for the DUT.
 
     @return Autotest host object for the Tester.
 
     """
 
-    client_hostname = client_host.hostname
+    device_hostname = device_host.hostname
 
-    parts = client_hostname.split('.')
+    parts = device_hostname.split('.')
     parts[0] = parts[0] + '-bluetooth'
     tester_hostname = '.'.join(parts)
 
