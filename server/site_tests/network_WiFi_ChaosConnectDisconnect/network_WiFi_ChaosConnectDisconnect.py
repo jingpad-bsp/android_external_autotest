@@ -42,6 +42,7 @@ class network_WiFi_ChaosConnectDisconnect(test.test):
             try:
                 success = False
                 logging.info('Connection attempt %d', i)
+                host.syslog('Connection attempt %d' % i)
                 assoc_result = xmlrpc_datatypes.deserialize(
                         client.shill.connect_wifi(assoc_params))
                 success = assoc_result.success

@@ -145,6 +145,8 @@ class ChaosRunner(object):
                                      tag=ap.ssid)
                         continue
                     logging.info('Searching for SSID %s in scan...', ap.ssid)
+                    self._host.syslog('Searching for SSID %s in scan...' %
+                                      ap.ssid)
                     iw_scanner = iw_runner.IwRunner(
                             remote_host=self._host,
                             command_iw=self._wifi_client.command_iw)
