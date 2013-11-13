@@ -322,23 +322,33 @@ def _yield_job_results(afe, tko, job):
     @yields an iterator of Statuses, one per test.
     """
     entries = afe.run('get_host_queue_entries', job=job.id)
-    if reduce(_collate_aborted, entries, False):
+
+    # This query uses the job id to search through the tko_test_view_2
+    # table, for results of a test with a similar job_tag. The job_tag
+    # is used to store results, and takes the form job_id-owner/host.
+    # Many times when a job aborts during a test, the job_tag actually
+    # exists and the results directory contains valid logs. If the job
+    # was aborted prematurely i.e before it had a chance to create the
+    # job_tag, this query will return no results. When statuses is not
+    # empty it will contain frontend.TestStatus' with fields populated
+    # using the results of the db query.
+    statuses = tko.get_job_test_statuses_from_db(job.id)
+    if not statuses:
         yield Status('ABORT', job.name)
-    else:
-        statuses = tko.get_job_test_statuses_from_db(job.id)
-        for s in statuses:
-            if _status_for_test(s):
-                yield Status(s.status, s.test_name, s.reason,
-                             s.test_started_time, s.test_finished_time,
-                             job.id, job.owner, s.hostname, job.name)
-            else:
-                if s.status != 'GOOD':
-                    yield Status(s.status,
-                                 '%s_%s' % (entries[0]['job']['name'],
-                                            s.test_name),
-                                 s.reason, s.test_started_time,
-                                 s.test_finished_time, job.id,
-                                 job.owner, s.hostname, job.name)
+
+    for s in statuses:
+        if _status_for_test(s):
+            yield Status(s.status, s.test_name, s.reason,
+                         s.test_started_time, s.test_finished_time,
+                         job.id, job.owner, s.hostname, job.name)
+        else:
+            if s.status != 'GOOD':
+                yield Status(s.status,
+                             '%s_%s' % (entries[0]['job']['name'],
+                                        s.test_name),
+                             s.reason, s.test_started_time,
+                             s.test_finished_time, job.id,
+                             job.owner, s.hostname, job.name)
 
 
 def wait_for_child_results(afe, tko, parent_job_id):

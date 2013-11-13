@@ -105,6 +105,10 @@ class TestFailure(Bug):
     _debug_dir = global_config.global_config.get_config_value(
         BUG_CONFIG_SECTION, 'debug_dir', default='')
 
+    # cautotest url used to generate the link to the job
+    _cautotest_job_view = global_config.global_config.get_config_value(
+        BUG_CONFIG_SECTION, 'cautotest_job_view', default='')
+
     # gs prefix to perform file like operations (gs://)
     _gs_file_prefix = global_config.global_config.get_config_value(
         BUG_CONFIG_SECTION, 'gs_file_prefix', default='')
@@ -169,7 +173,8 @@ class TestFailure(Bug):
                    'Build: %(build)s.\n\nReason:\n%(reason)s.\n'
                    'build artifacts: %(build_artifacts)s.\n'
                    'results log: %(results_log)s.\n'
-                   'buildbot stages: %(buildbot_stages)s.\n')
+                   'buildbot stages: %(buildbot_stages)s.\n'
+                   'job link: %(job)s.\n')
 
         specifics = {
             'test': self.name,
@@ -180,6 +185,7 @@ class TestFailure(Bug):
             'build_artifacts': links.artifacts,
             'results_log': links.results,
             'buildbot_stages': links.buildbot,
+            'job': links.job,
         }
 
         return template % specifics
@@ -204,7 +210,17 @@ class TestFailure(Bug):
                                               self.hostname, self._debug_dir)
             return (self._retrieve_logs_cgi + self._generic_results_bin +
                     path_to_object)
-        return 'NA'
+
+        return ('Could not generate results log: the job with id %s, '
+                'scheduled by: %s on host: %s did not run' %
+                (self.job_id, self.result_owner, self.hostname))
+
+
+    def _link_job(self):
+        """Returns an url to the job on cautotest."""
+        if not self.job_id:
+            return 'Job did not run, or was aborted prematurely'
+        return '%s=%s' % (self._cautotest_job_view, self.job_id)
 
 
     def _get_metadata_dict(self):
@@ -257,10 +273,12 @@ class TestFailure(Bug):
         """Returns a named tuple of links related to this failure."""
         links = collections.namedtuple('links', ('results,'
                                                  'artifacts,'
-                                                 'buildbot'))
+                                                 'buildbot,'
+                                                 'job'))
         return links(self._link_result_logs(),
                      self._link_build_artifacts(),
-                     self._link_buildbot_stages())
+                     self._link_buildbot_stages(),
+                     self._link_job())
 
 
 class Reporter(object):

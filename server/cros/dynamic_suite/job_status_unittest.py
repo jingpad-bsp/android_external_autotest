@@ -430,10 +430,18 @@ class StatusTest(mox.MoxTestBase):
                 FakeJob(2, [FakeStatus('TEST_NA', 'T0', 'no')]),
                 FakeJob(3, [FakeStatus('FAIL', 'T0', 'broken')]),
                 FakeJob(4, [FakeStatus('ERROR', 'SERVER_JOB', 'server error'),
-                            FakeStatus('GOOD', 'T0', '')]),
-                FakeJob(5, [FakeStatus('ERROR', 'T0', 'gah', True)]),
+                            FakeStatus('GOOD', 'T0', '')]),]
+
+                # TODO: Write a better test for the case where we yield
+                # results for aborts vs cannot yield results because of
+                # a premature abort. Currently almost all client aborts
+                # have been converted to failures, and when aborts do happen
+                # they result in server job failures for which we always
+                # want results.
+                # FakeJob(5, [FakeStatus('ERROR', 'T0', 'gah', True)]),
                 # The next job shouldn't be recorded in the results.
-                FakeJob(6, [FakeStatus('GOOD', 'SERVER_JOB', '')])]
+                # FakeJob(6, [FakeStatus('GOOD', 'SERVER_JOB', '')])]
+
         for status in jobs[4].statuses:
             status.entry['job'] = {'name': 'broken_infra_job'}
 
@@ -473,12 +481,19 @@ class StatusTest(mox.MoxTestBase):
                         parent_job_id=parent_job_id),
                 FakeJob(4, [FakeStatus('ERROR', 'SERVER_JOB', 'server error'),
                             FakeStatus('GOOD', 'T0', '')],
-                        parent_job_id=parent_job_id),
-                FakeJob(5, [FakeStatus('ERROR', 'T0', 'gah', True)],
-                        parent_job_id=parent_job_id),
+                        parent_job_id=parent_job_id),]
+
+                # TODO: Write a better test for the case where we yield
+                # results for aborts vs cannot yield results because of
+                # a premature abort. Currently almost all client aborts
+                # have been converted to failures and when aborts do happen
+                # they result in server job failures for which we always
+                # want results.
+                #FakeJob(5, [FakeStatus('ERROR', 'T0', 'gah', True)],
+                #        parent_job_id=parent_job_id),
                 # The next job shouldn't be recorded in the results.
-                FakeJob(6, [FakeStatus('GOOD', 'SERVER_JOB', '')],
-                        parent_job_id=12345)]
+                #FakeJob(6, [FakeStatus('GOOD', 'SERVER_JOB', '')],
+                #        parent_job_id=12345)]
         for status in jobs[4].statuses:
             status.entry['job'] = {'name': 'broken_infra_job'}
 
