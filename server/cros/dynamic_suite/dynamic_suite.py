@@ -237,7 +237,7 @@ class SuiteSpec(object):
                  suite_dependencies=[], version_prefix=None,
                  bug_template={}, devserver_url=None,
                  priority=priorities.Priority.DEFAULT, predicate=None,
-                 **dargs):
+                 wait_for_results=True, **dargs):
         """
         Vets arguments for reimage_and_run() and populates self with supplied
         values.
@@ -290,6 +290,9 @@ class SuiteSpec(object):
                           included in suite. If argument is absent, suite
                           behavior will default to creating a suite of based
                           on the SUITE field of control files.
+        @param wait_for_results: Set to False to run the suite job without
+                                 waiting for test jobs to finish. Default is
+                                 True.
 
         @param **dargs: these arguments will be ignored.  This allows us to
                         deprecate and remove arguments in ToT while not
@@ -335,6 +338,7 @@ class SuiteSpec(object):
         self.version_prefix = version_prefix
         self.priority = priority
         self.predicate = predicate
+        self.wait_for_results = wait_for_results
 
 
 def skip_reimage(g):
@@ -473,12 +477,16 @@ def _perform_reimage_and_run(spec, afe, tko, predicate, suite_job_id=None):
         file_bugs=spec.file_bugs,
         file_experimental_bugs=spec.file_experimental_bugs,
         suite_job_id=suite_job_id, extra_deps=spec.suite_dependencies,
-        priority=spec.priority)
+        priority=spec.priority, wait_for_results=spec.wait_for_results)
 
     # Now we get to asychronously schedule tests.
     suite.schedule(spec.job.record_entry, spec.add_experimental)
 
-    logging.debug('Waiting on suite.')
-    suite.wait(spec.job.record_entry, spec.bug_template)
-    logging.debug('Finished waiting on suite. '
-                  'Returning from _perform_reimage_and_run.')
+    if suite.wait_for_results:
+        logging.debug('Waiting on suite.')
+        suite.wait(spec.job.record_entry, spec.bug_template)
+        logging.debug('Finished waiting on suite. '
+                      'Returning from _perform_reimage_and_run.')
+    else:
+        logging.info('wait_for_results is set to False, suite job will exit '
+                     'without waiting for test jobs to finish.')

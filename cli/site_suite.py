@@ -63,6 +63,12 @@ class site_suite_create(action_common.atest_create, site_suite):
                                metavar='NUM')
         self.parser.add_option('-p', '--pool', help='Pool of machines to use.',
                                metavar='POOL')
+        self.parser.add_option('-w', '--wait_for_results',
+                               default=True,
+                               help=('Set to False for suite job to exit '
+                                     'without waiting for test jobs to finish. '
+                                     'Default is True.'),
+                               metavar='WAIT_FOR_RESULTS')
 
 
     def parse(self):
@@ -80,11 +86,14 @@ class site_suite_create(action_common.atest_create, site_suite):
                                                  inline_option='file_bugs')
         suite_info = topic_common.item_parse_info(attribute_name='name',
                                                   use_leftover=True)
+        wait_for_results_info = topic_common.item_parse_info(
+            attribute_name='wait_for_results',
+            inline_option='wait_for_results')
 
         options, leftover = site_suite.parse(
             self,
             [suite_info, board_info, build_info, pool_info, num_info,
-             check_info, bugs_info],
+             check_info, bugs_info, wait_for_results_info],
             req_items='name')
         self.data = {}
         name = getattr(self, 'name')
@@ -96,6 +105,7 @@ class site_suite_create(action_common.atest_create, site_suite):
         self.data['num'] = options.num  # None is OK.
         self.data['check_hosts'] = options.check_hosts
         self.data['file_bugs'] = options.file_bugs
+        self.data['wait_for_results'] = options.wait_for_results
         if options.board:
             self.data['board'] = options.board
         else:

@@ -605,8 +605,8 @@ def main():
                                         delay_sec=options.delay_sec)
     logging.info('Autotest instance: %s', instance_server)
 
-    wait = (options.no_wait == 'False')
-    file_bugs = (options.file_bugs == 'True')
+    wait = options.no_wait == 'False'
+    file_bugs = options.file_bugs == 'True'
     if options.mock_job_id:
         job_id = int(options.mock_job_id)
     else:
@@ -614,7 +614,8 @@ def main():
                          board=options.board, build=options.build,
                          check_hosts=wait, pool=options.pool, num=options.num,
                          file_bugs=file_bugs, priority=priority,
-                         suite_args=options.suite_args)
+                         suite_args=options.suite_args,
+                         wait_for_results=wait)
     TKO = frontend_wrappers.RetryingTKO(server=instance_server,
                                         timeout_min=options.timeout_min,
                                         delay_sec=options.delay_sec)

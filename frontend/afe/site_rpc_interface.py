@@ -81,7 +81,7 @@ def get_control_file_contents_by_name(build, board, ds, suite_name):
 def create_suite_job(suite_name, board, build, pool, check_hosts=True,
                      num=None, file_bugs=False, timeout=24, timeout_mins=None,
                      priority=priorities.Priority.DEFAULT,
-                     suite_args=None):
+                     suite_args=None, wait_for_results=True):
     """
     Create a job to run a test suite on the given device with the given image.
 
@@ -104,6 +104,8 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True,
     @param suite_args: Optional arguments which will be parsed by the suite
                        control file. Used by control.test_that_wrapper to
                        determine which tests to run.
+    @param wait_for_results: Set to False to run the suite job without waiting
+                             for test jobs to finish. Default is True.
 
     @raises ControlFileNotFound: if a unique suite control file doesn't exist.
     @raises NoControlFileList: if we can't list the control files at all.
@@ -152,7 +154,8 @@ def create_suite_job(suite_name, board, build, pool, check_hosts=True,
                    'timeout_mins': timeout_mins,
                    'devserver_url': ds.url(),
                    'priority': priority,
-                   'suite_args' : suite_args
+                   'suite_args' : suite_args,
+                   'wait_for_results': wait_for_results
                    }
 
     control_file = tools.inject_vars(inject_dict, control_file_in)

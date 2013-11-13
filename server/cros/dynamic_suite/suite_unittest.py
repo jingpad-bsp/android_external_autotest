@@ -417,7 +417,8 @@ class SuiteTest(mox.MoxTestBase):
         self.schedule_and_expect_these_results(suite, results, recorder)
         self.mox.ReplayAll()
 
-        suite.schedule_and_wait(recorder.record_entry, True)
+        suite.schedule(recorder.record_entry, True)
+        suite.wait(recorder.record_entry)
 
 
     def testRunAndWaitFailure(self):
@@ -437,7 +438,8 @@ class SuiteTest(mox.MoxTestBase):
                                             Exception('Expected during test.'))
         self.mox.ReplayAll()
 
-        suite.schedule_and_wait(recorder.record_entry, True)
+        suite.schedule(recorder.record_entry, True)
+        suite.wait(recorder.record_entry)
 
 
     def testRunAndWaitScheduleFailure(self):
@@ -456,7 +458,8 @@ class SuiteTest(mox.MoxTestBase):
             Exception('Expected during test.'))
         self.mox.ReplayAll()
 
-        suite.schedule_and_wait(recorder.record_entry, True)
+        suite.schedule(recorder.record_entry, True)
+        suite.wait(recorder.record_entry)
 
 
     def testGetTestsSortedByTime(self):
@@ -539,7 +542,8 @@ class SuiteTest(mox.MoxTestBase):
 
         self.mox.ReplayAll()
 
-        self.suite.schedule_and_wait(self.recorder.record_entry, True)
+        self.suite.schedule(self.recorder.record_entry, True)
+        self.suite.wait(self.recorder.record_entry)
 
 
     def testFailedBugFiling(self):
@@ -560,7 +564,8 @@ class SuiteTest(mox.MoxTestBase):
 
         self.mox.ReplayAll()
 
-        self.suite.schedule_and_wait(self.recorder.record_entry, True)
+        self.suite.schedule(self.recorder.record_entry, True)
+        self.suite.wait(self.recorder.record_entry)
 
 
 if __name__ == '__main__':

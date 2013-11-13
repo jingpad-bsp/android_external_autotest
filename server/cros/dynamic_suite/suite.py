@@ -233,7 +233,8 @@ class Suite(object):
                  tko=None, pool=None, results_dir=None, max_runtime_mins=24*60,
                  timeout=24, file_bugs=False, file_experimental_bugs=False,
                  suite_job_id=None, ignore_deps=False, extra_deps=[],
-                 priority=priorities.Priority.DEFAULT, forgiving_parser=True):
+                 priority=priorities.Priority.DEFAULT, forgiving_parser=True,
+                 wait_for_results=True):
         """
         Constructor
 
@@ -262,6 +263,9 @@ class Suite(object):
         @param extra_deps: A list of strings which are the extra DEPENDENCIES
                            to add to each test being scheduled.
         @param priority: Integer priority level.  Higher is more important.
+        @param wait_for_results: Set to False to run the suite job without
+                                 waiting for test jobs to finish. Default is
+                                 True.
 
         """
         def combined_predicate(test):
@@ -294,6 +298,7 @@ class Suite(object):
         self._ignore_deps = ignore_deps
         self._extra_deps = extra_deps
         self._priority = priority
+        self.wait_for_results = wait_for_results
 
 
     @property
@@ -360,31 +365,6 @@ class Suite(object):
         setattr(test_obj, 'test_name', test.name)
 
         return test_obj
-
-
-    def schedule_and_wait(self, record, add_experimental=True):
-        """
-        Synchronously run tests in |self.tests|.
-
-        See |schedule| and |wait| for more information.
-
-        Schedules tests against a device running image |self._build|, and
-        then polls for status, using |record| to print status when each
-        completes.
-
-        Tests returned by self.stable_tests() will always be run, while tests
-        in self.unstable_tests() will only be run if |add_experimental| is true.
-
-        @param record: callable that records job status.
-                 prototype:
-                   record(base_job.status_log_entry)
-        @param manager: a populated HostLockManager instance to handle
-                        unlocking DUTs that we already reimaged.
-        @param add_experimental: schedule experimental tests as well, or not.
-        """
-        # This method still exists for unittesting convenience.
-        self.schedule(record, add_experimental)
-        self.wait(record)
 
 
     def schedule(self, record, add_experimental=True):
