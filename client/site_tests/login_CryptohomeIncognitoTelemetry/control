@@ -14,9 +14,10 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"
 TEST_TYPE = "client"
-# TODO(achuith): Remove login_CryptohomeIncognitoMounted and
-# login_CryptohomeIncognitoUnmounted tests when this test is ready to be
-# promoted to smoke/bvt.
+# TODO(achuith): Remove the experimental label, and remove
+# the login_CryptohomeIncognitoMounted and login_CryptohomeIncognitoUnmounted
+# tests when this test is stable enough.
+EXPERIMENTAL = "True"
 
 DOC = """
 This test checks that, after logging in as guest successfully,
