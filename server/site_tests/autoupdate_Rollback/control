@@ -28,8 +28,9 @@ Arg:
 To run locally:
   1) Setup your devserver in your shadow config that your DUT can reach.
   2) Start your devserver and stage the image you want for example:
-     http://localhost:8080/download?archive_url=\
-     gs://chromeos-image-archive/parrot-release/R32-4793.0.0 (and leave it on).
+     http://localhost:8080/stage?archive_url=\
+     gs://chromeos-image-archive/parrot-release/R32-4793.0.0&\
+     artifacts=full_payload (and leave it on).
   3) Run with test_that etc passing
      args="job_repo_url=http://<your_hostname>:8080/static/\
      parrot-release/R32-4793.0.0/autotest/packages"
