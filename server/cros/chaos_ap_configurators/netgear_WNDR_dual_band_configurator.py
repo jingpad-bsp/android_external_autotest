@@ -127,6 +127,7 @@ class NetgearDualBandAPConfigurator(
         xpath = '//select[@name="opmode"]'
         if self.current_band == ap_spec.BAND_5GHZ:
             xpath = '//select[@name="opmode_an"]'
+        self.wait_for_object_by_xpath(xpath)
         self.select_item_from_popup_by_xpath(mode, xpath)
 
 
@@ -222,6 +223,12 @@ class NetgearDualBandAPConfigurator(
         # Update Interval is not supported.
         if security == ap_spec.SECURITY_TYPE_WPAPSK:
             wpa_item = "WPA-PSK"
+            # WPA-PSK is supported only in mode g and a (Up to 54 Mbps).
+            # Setting correct mode before setting WPA-PSK.
+            if self.current_band == ap_spec.BAND_2GHZ:
+                self._set_mode(ap_spec.MODE_G, self.current_band)
+            else:
+                self._set_mode(ap_spec.MODE_A, self.current_band)
         else:
             wpa_item = "WPA2-PSK"
         xpath = ('//input[@name="security_type" and @value="%s"]' % wpa_item)

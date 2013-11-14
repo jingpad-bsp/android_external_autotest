@@ -79,10 +79,14 @@ class Linksyse2100APConfigurator(linksyse_single_band_configurator.
         self.click_button_by_xpath(xpath, alert_handler=self._sec_alert)
 
 
-    def _set_security_psk(self, shared_key, update_interval=None,
-                          rsn_mode='WPA Personal'):
+    def _set_security_wpapsk(self, security, shared_key, update_interval=None):
         popup = '//select[@name="security_mode2"]'
-        self.select_item_from_popup_by_xpath('WPA2 Personal', popup,
+        self.wait_for_object_by_xpath(popup)
+        if security == ap_spec.SECURITY_TYPE_WPAPSK:
+            wpa_item = 'WPA Personal'
+        else:
+            wpa_item = 'WPA2 Personal'
+        self.select_item_from_popup_by_xpath(wpa_item, popup,
                                              alert_handler=self._sec_alert)
         text = '//input[@name="wl_wpa_psk"]'
         self.set_content_of_text_field_by_xpath(shared_key, text,

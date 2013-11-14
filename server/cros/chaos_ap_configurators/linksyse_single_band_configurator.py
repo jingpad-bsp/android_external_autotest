@@ -211,6 +211,7 @@ class LinksyseSingleBandAPConfigurator(
     def _set_security_wpapsk(self, security, shared_key, upadate_interval=None):
         """Common method to set wpapsk and wpa2psk modes."""
         popup = '//select[@name="wl0_security_mode"]'
+        self.wait_for_object_by_xpath(popup)
         if security == ap_spec.SECURITY_TYPE_WPAPSK:
             wpa_item = 'WPA Personal'
         else:

@@ -42,14 +42,13 @@ class LinksysWRT160APConfigurator(linksyse2100_ap_configurator.
                                              xpath)
 
 
-    def _set_security_psk(self, shared_key, update_interval=3600,
-                          rsn_mode='WPA Personal'):
+    def _set_security_wpapsk(self, security, shared_key, update_interval=3600):
         if update_interval not in range(600, 7201):
            logging.info('The update interval should be between 600 and 7200.'
                        'Setting the interval to default (3600)')
            update_interval = 3600
-        super(LinksysWRT160APConfigurator, self)._set_security_psk(shared_key,
-                                                 update_interval, rsn_mode)
+        super(LinksysWRT160APConfigurator, self)._set_security_wpapsk(security,
+                                          shared_key, update_interval)
         text = '//input[@name="wl_wpa_gtk_rekey"]'
         self.set_content_of_text_field_by_xpath(update_interval, text,
                                                 abort_check=True)
