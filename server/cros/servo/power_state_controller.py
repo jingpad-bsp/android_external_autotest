@@ -138,6 +138,30 @@ class _PowerStateController(object):
         """
         raise NotImplementedError()
 
+class _PantherController(_PowerStateController):
+
+    """Power-state controller for Pantherand compatible boards.
+
+    For Panther, the 'cold_reset' signal is not connected
+    """
+
+    # TODO(@moch): rename and modify appropriately
+    _TIME_TO_SWITCH_OFF = 5.0
+    _TIME_TO_BOOT = 5.0
+    _TIME_TO_HOLD_POWER_BUTTON = 0.5
+
+    @_inherit_docstring(_PowerStateController)
+    def cold_reset(self):
+        self._servo.set('pwr_button', 'press')
+        time.sleep(self._TIME_TO_HOLD_POWER_BUTTON)
+        self._servo.set('pwr_button', 'release')
+        time.sleep(self._TIME_TO_SWITCH_OFF)
+
+        self._servo.set('pwr_button', 'press')
+        time.sleep(self._TIME_TO_HOLD_POWER_BUTTON)
+        self._servo.set('pwr_button', 'release')
+        time.sleep(self._TIME_TO_BOOT)
+
 
 class _AlexController(_PowerStateController):
 
@@ -352,7 +376,8 @@ _CONTROLLER_BOARD_MAP = {
     'lumpy': _LumpyController,
     'parrot': _ParrotController,
     'stumpy': _StumpyController,
-    'x86-alex': _AlexController
+    'x86-alex': _AlexController,
+    'panther':_PantherController
 }
 
 
