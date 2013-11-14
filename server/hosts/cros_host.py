@@ -1290,6 +1290,16 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         return proxy
 
 
+    def syslog(self, message, tag='autotest'):
+        """Logs a message to syslog on host.
+
+        @param message String message to log into syslog
+        @param tag String tag prefix for syslog
+
+        """
+        self.run('logger -t "%s" "%s"' % (tag, message))
+
+
     def jsonrpc_connect(self, port):
         """Creates a jsonrpc proxy connection through an ssh tunnel.
 
