@@ -30,7 +30,13 @@ HT_TABLE = {'no secondary': HT20,
 IwBand = collections.namedtuple('Band', ['num', 'frequencies', 'mcs_indices'])
 IwBss = collections.namedtuple('IwBss', ['bss', 'frequency', 'ssid', 'security',
                                          'ht'])
-IwPhy = collections.namedtuple('Phy', ['name', 'bands'])
+# The fields for IwPhy are as follows:
+#   name: string name of the phy, such as "phy0"
+#   bands: list of IwBand objects.
+#   modes: List of strings containing interface modes supported, such as "AP".
+#   command: List of strings containing nl80211 commands supported, such as
+#          "authenticate".
+IwPhy = collections.namedtuple('Phy', ['name', 'bands', 'modes', 'commands'])
 
 DEFAULT_COMMAND_IW = 'iw'
 
@@ -113,20 +119,39 @@ class IwRunner(object):
         output = self._run('%s list' % self._command_iw).stdout
         current_phy = None
         current_band = None
+        current_section = None
         all_phys = []
         for line in output.splitlines():
             match_phy = re.search('Wiphy (.*)', line)
             if match_phy:
-                current_phy = IwPhy(name=match_phy.group(1), bands=[])
+                current_phy = IwPhy(name=match_phy.group(1), bands=[], modes=[],
+                                    commands=[])
                 all_phys.append(current_phy)
                 continue
-            match_band = re.search('Band (\d+):', line)
-            if match_band:
-                current_band = IwBand(num=int(match_band.group(1)),
-                                      frequencies=[],
-                                      mcs_indices=[])
-                current_phy.bands.append(current_band)
+
+            match_section = re.match('\s*(\w.*):', line)
+            if match_section:
+                current_section = match_section.group(1)
+                match_band = re.match('Band (\d+)', current_section)
+                if match_band:
+                    current_band = IwBand(num=int(match_band.group(1)),
+                                          frequencies=[],
+                                          mcs_indices=[])
+                    current_phy.bands.append(current_band)
                 continue
+
+            if current_section == 'Supported interface modes' and current_phy:
+                mode_match = re.search('\* (\w+)', line)
+                if mode_match:
+                    current_phy.modes.append(mode_match.group(1))
+                    continue
+
+            if current_section == 'Supported commands' and current_phy:
+                command_match = re.search('\* (\w+)', line)
+                if command_match:
+                    current_phy.commands.append(command_match.group(1))
+                    continue
+
             if not all([current_band, current_phy, line.startswith('\t')]):
                 continue
 

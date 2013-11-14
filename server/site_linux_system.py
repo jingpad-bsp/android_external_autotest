@@ -27,6 +27,7 @@ class LinuxSystem(object):
     CAPABILITY_MULTI_AP_SAME_BAND = 'multi_ap_same_band'
     CAPABILITY_IBSS = 'ibss_supported'
     CAPABILITY_SEND_MANAGEMENT_FRAME = 'send_management_frame'
+    CAPABILITY_TDLS = 'tdls'
 
 
     @property
@@ -67,6 +68,7 @@ class LinuxSystem(object):
                 ignore_failures=True)
         self.iw_runner = iw_runner.IwRunner(remote_host=host, command_iw=cmd_iw)
 
+        self._phy_list = None
         self.phys_for_frequency, self.phy_bus_type = self._get_phy_info()
         self.wlanifs_in_use = []
         self.wlanifs = {}
@@ -75,6 +77,14 @@ class LinuxSystem(object):
         # is not desired.
         self._wlanifs_initialized = False
         self._capabilities = None
+
+
+    @property
+    def phy_list(self):
+        """@return iterable object of PHY descriptions for this system."""
+        if self._phy_list is None:
+            self._phy_list = self.iw_runner.list_phys()
+        return self._phy_list
 
 
     def _get_phy_info(self):
@@ -91,10 +101,10 @@ class LinuxSystem(object):
         @return phys_for_frequency, phy_bus_type tuple as described.
 
         """
-        phys = self.iw_runner.list_phys()
         phys_for_frequency = {}
+        phy_caps = {}
         phy_list = []
-        for phy in phys:
+        for phy in self.phy_list:
             phy_list.append(phy.name)
             for band in phy.bands:
                 for mhz in band.frequencies:
@@ -169,6 +179,9 @@ class LinuxSystem(object):
             caps.add(self.CAPABILITY_MULTI_AP)
         elif len(self.phy_bus_type) > 1:
             caps.add(self.CAPABILITY_MULTI_AP)
+        for phy in self.phy_list:
+            if 'tdls_mgmt' in phy.commands or 'tdls_oper' in phy.commands:
+                caps.add(self.CAPABILITY_TDLS)
         return caps
 
 
