@@ -30,10 +30,6 @@ RESULTS_REGEX = re.compile(r'(?P<IMPORTANT>\*)?RESULT '
                              '(?P<VALUE>[\{\[]?[-\d\., ]+[\}\]]?)('
                              ' ?(?P<UNITS>.+))?')
 
-# Constants pertaining to perf keys generated from Telemetry test results.
-PERF_KEY_TELEMETRY_PREFIX = 'TELEMETRY'
-PERF_KEY_DELIMITER = '--'
-
 
 class TelemetryResult(object):
     """Class to represent the results of a telemetry run.
@@ -55,7 +51,10 @@ class TelemetryResult(object):
         else:
             self.status = FAILED_STATUS
 
-        self.perf_keyvals = {}
+        # A list of perf values, e.g.
+        # [{'graph': 'graphA', 'trace': 'page_load_time',
+        #   'units': 'secs', 'value':0.5}, ...]
+        self.perf_data = []
         self._stdout = stdout
         self._stderr = stderr
         self.output = '\n'.join([stdout, stderr])
@@ -172,13 +171,16 @@ class TelemetryResult(object):
                 # In this example, we'd get 34.2.
                 value_list = [float(x) for x in value.strip('{},').split(',')]
                 value = value_list[0]  # Position 0 is the value.
+            elif re.search('^\d+$', value):
+                value = int(value)
+            else:
+                value = float(value)
 
-            perf_key = PERF_KEY_DELIMITER.join(
-                    [PERF_KEY_TELEMETRY_PREFIX, graph_name, trace_name, units])
-            self.perf_keyvals[perf_key] = str(value)
+            self.perf_data.append({'graph':graph_name, 'trace': trace_name,
+                                   'units': units, 'value': value})
 
         pp = pprint.PrettyPrinter(indent=2)
-        logging.debug('Perf Keyvals: %s', pp.pformat(self.perf_keyvals))
+        logging.debug('Perf values: %s', pp.pformat(self.perf_data))
 
         if self.status is SUCCESS_STATUS:
             return
@@ -312,14 +314,38 @@ class TelemetryRunner(object):
         return self._run_test(TELEMETRY_RUN_CROS_TESTS_SCRIPT, test)
 
 
-    def run_telemetry_benchmark(self, benchmark, keyval_writer=None):
+    @staticmethod
+    def _output_perf_value(perf_value_writer, perf_data):
+        """Output perf values to result dir.
+
+        The perf values will be output to the result dir and
+        be subsequently uploaded to perf dashboard.
+
+        @param perf_value_writer: Should be an instance with the function
+                                  output_perf_value(), if None, no perf value
+                                  will be written. Typically this will be the
+                                  job object from an autotest test.
+        @param perf_data: A list of perf values, each value is
+                          a dictionary that looks like
+                          {'graph':'GraphA', 'trace':'metric1',
+                           'units':'secs', 'value':0.5}
+        """
+        for perf_value in perf_data:
+            perf_value_writer.output_perf_value(
+                    description=perf_value['trace'],
+                    value=perf_value['value'],
+                    units=perf_value['units'],
+                    graph=perf_value['graph'])
+
+
+    def run_telemetry_benchmark(self, benchmark, perf_value_writer=None):
         """Runs a telemetry benchmark on a dut.
 
         @param benchmark: Benchmark we want to run.
-        @param keyval_writer: Should be a instance with the function
-                              write_perf_keyval(), if None, no keyvals will be
-                              written. Typically this will be the job object
-                              from a autotest test.
+        @param perf_value_writer: Should be an instance with the function
+                                  output_perf_value(), if None, no perf value
+                                  will be written. Typically this will be the
+                                  job object from an autotest test.
 
         @returns A TelemetryResult Instance with the results of this telemetry
                  execution.
@@ -330,8 +356,8 @@ class TelemetryRunner(object):
         result = self._run_telemetry(telemetry_script, benchmark)
         result.parse_benchmark_results()
 
-        if keyval_writer:
-            keyval_writer.write_perf_keyval(result.perf_keyvals)
+        if perf_value_writer:
+            self._output_perf_value(perf_value_writer, result.perf_data)
 
         if result.status is WARNING_STATUS:
             raise error.TestWarn('Telemetry Benchmark: %s'

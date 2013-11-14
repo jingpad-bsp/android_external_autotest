@@ -86,7 +86,7 @@ class base_test(object):
         return new_dict
 
 
-    def output_perf_value(self, description, value, units,
+    def output_perf_value(self, description, value, units=None,
                           higher_is_better=True, graph=None):
         """
         Records a measured performance value in an output file.
@@ -124,10 +124,11 @@ class base_test(object):
             raise ValueError('The units must be at most 32 characters.')
         string_regex = re.compile(r'^[-\.\w]+$')
         if (not string_regex.search(description) or
-            not string_regex.search(units)):
+            (units and not string_regex.search(units))):
             raise ValueError('Invalid description or units string. May only '
                              'contain letters, numbers, periods, dashes, and '
-                             'underscores.')
+                             'underscores. description: %s, units: %s' %
+                             (description, units))
 
         entry = {
             'description': description,

@@ -21,12 +21,16 @@ class TelemetryResultTest(mox.MoxTestBase):
         '[614,527,523,471,530,523,577,625,614,538] ms\n'
         'RESULT graph_name: test_name= {3.14, 0.98} units')
 
-    EXPECTED_KEYVALS = {
-        'TELEMETRY--average_commit_time_by_url--http___www.ebay.com--ms':
-            '8.86528',
-        'TELEMETRY--CodeLoad--CodeLoad--score__bigger_is_better_': '6343',
-        'TELEMETRY--ai-astar--ai-astar--ms': '554.2',
-        'TELEMETRY--graph_name--test_name--units': '3.14'}
+    EXPECTED_PERF_DATA = [
+        {'graph': 'average_commit_time_by_url', 'trace': 'http___www.ebay.com',
+         'units': 'ms', 'value': 8.86528},
+        {'graph': 'CodeLoad', 'trace': 'CodeLoad',
+         'units': 'score__bigger_is_better_', 'value': 6343},
+        {'graph': 'ai-astar', 'trace': 'ai-astar',
+         'units': 'ms', 'value': 554.2},
+        {'graph': 'graph_name', 'trace': 'test_name',
+         'units': 'units', 'value': 3.14}]
+
 
     def testEmptyStdout(self):
         """Test when the test exits with 0 but there is no output."""
@@ -41,7 +45,7 @@ class TelemetryResultTest(mox.MoxTestBase):
                 exit_code=0, stdout=self.SAMPLE_RESULT_LINES)
         result.parse_benchmark_results()
         self.assertEquals(result.status, telemetry_runner.SUCCESS_STATUS)
-        self.assertEquals(self.EXPECTED_KEYVALS, result.perf_keyvals)
+        self.assertEquals(self.EXPECTED_PERF_DATA, result.perf_data)
 
 
     def testOnlyResultLinesWithWarnings(self):
@@ -54,7 +58,7 @@ class TelemetryResultTest(mox.MoxTestBase):
                                                   stderr=stderr)
         result.parse_benchmark_results()
         self.assertEquals(result.status, telemetry_runner.WARNING_STATUS)
-        self.assertEquals(self.EXPECTED_KEYVALS, result.perf_keyvals)
+        self.assertEquals(self.EXPECTED_PERF_DATA, result.perf_data)
 
 
     def testOnlyResultLinesWithWarningsAndTraceback(self):
@@ -71,7 +75,7 @@ class TelemetryResultTest(mox.MoxTestBase):
                                                   stderr=stderr)
         result.parse_benchmark_results()
         self.assertEquals(result.status, telemetry_runner.FAILED_STATUS)
-        self.assertEquals(self.EXPECTED_KEYVALS, result.perf_keyvals)
+        self.assertEquals(self.EXPECTED_PERF_DATA, result.perf_data)
 
 
     def testInfoBeforeResultLines(self):
@@ -84,7 +88,7 @@ class TelemetryResultTest(mox.MoxTestBase):
                                                   stderr=stderr)
         result.parse_benchmark_results()
         self.assertEquals(result.status, telemetry_runner.WARNING_STATUS)
-        self.assertEquals(self.EXPECTED_KEYVALS, result.perf_keyvals)
+        self.assertEquals(self.EXPECTED_PERF_DATA, result.perf_data)
 
 
     def testInfoAfterResultLines(self):
@@ -98,7 +102,7 @@ class TelemetryResultTest(mox.MoxTestBase):
                                                   stderr='')
         result.parse_benchmark_results()
         self.assertEquals(result.status, telemetry_runner.SUCCESS_STATUS)
-        self.assertEquals(self.EXPECTED_KEYVALS, result.perf_keyvals)
+        self.assertEquals(self.EXPECTED_PERF_DATA, result.perf_data)
 
 
     def testInfoBeforeAndAfterResultLines(self):
@@ -113,7 +117,7 @@ class TelemetryResultTest(mox.MoxTestBase):
                                                   stderr='')
         result.parse_benchmark_results()
         self.assertEquals(result.status, telemetry_runner.SUCCESS_STATUS)
-        self.assertEquals(self.EXPECTED_KEYVALS, result.perf_keyvals)
+        self.assertEquals(self.EXPECTED_PERF_DATA, result.perf_data)
 
 
     def testNoResultLines(self):
@@ -127,7 +131,7 @@ class TelemetryResultTest(mox.MoxTestBase):
                                                   stderr='')
         result.parse_benchmark_results()
         self.assertEquals(result.status, telemetry_runner.SUCCESS_STATUS)
-        self.assertEquals({}, result.perf_keyvals)
+        self.assertEquals([], result.perf_data)
 
 
     def testBadCharactersInResultStringComponents(self):
@@ -139,18 +143,22 @@ class TelemetryResultTest(mox.MoxTestBase):
             'RESULT ai-astar: ai-astar= '
             '[614,527,523,471,530,523,577,625,614,538] ~~ms\n'
             'RESULT !!graph_name: &&test_name= {3.14, 0.98} units!')
-        expected_keyvals = {
-            'TELEMETRY--average_commit_time_by_url_--http___www.__ebay.com--ms':
-                '8.86528',
-            'TELEMETRY--CodeLoad_--CodeLoad--score': '6343',
-            'TELEMETRY--ai-astar--ai-astar--__ms': '554.2',
-            'TELEMETRY--__graph_name--__test_name--units_': '3.14'}
+        expected_perf_data = [
+            {'graph': 'average_commit_time_by_url_',
+             'trace': 'http___www.__ebay.com',
+             'units': 'ms', 'value': 8.86528},
+            {'graph': 'CodeLoad_', 'trace': 'CodeLoad',
+             'units': 'score', 'value': 6343},
+            {'graph': 'ai-astar', 'trace': 'ai-astar',
+             'units': '__ms', 'value': 554.2},
+            {'graph': '__graph_name', 'trace': '__test_name',
+             'units': 'units_', 'value': 3.14}]
 
         result = telemetry_runner.TelemetryResult(exit_code=0, stdout=stdout,
                                                   stderr='')
         result.parse_benchmark_results()
         self.assertEquals(result.status, telemetry_runner.SUCCESS_STATUS)
-        self.assertEquals(expected_keyvals, result.perf_keyvals)
+        self.assertEquals(expected_perf_data, result.perf_data)
 
 
     def testCleanupUnitsString(self):

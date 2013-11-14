@@ -17,4 +17,4 @@ class telemetry_Benchmarks(test.test):
         @param benchmark: benchmark we want to run.
         """
         telemetry = telemetry_runner.TelemetryRunner(host)
-        telemetry.run_telemetry_benchmark(benchmark, keyval_writer=self)
+        telemetry.run_telemetry_benchmark(benchmark, perf_value_writer=self)

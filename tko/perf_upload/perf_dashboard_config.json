@@ -18,5 +18,45 @@
   {
     "autotest_name": "video_VideoDecodeMemeoryUsage",
     "master_name": "ChromeOSVideo"
+  },
+  {
+    "autotest_name": "telemetry_Benchmarks.dromaeo.domcoreattr",
+    "master_name": "ChromiumPerf",
+    "dashboard_test_name": "dromaeo.domcoreattr"
+  },
+  {
+    "autotest_name": "telemetry_Benchmarks.dromaeo.domcoremodify",
+    "master_name": "ChromiumPerf",
+    "dashboard_test_name": "dromaeo.domcoremodify"
+  },
+  {
+    "autotest_name": "telemetry_Benchmarks.dromaeo.domcorequery",
+    "master_name": "ChromiumPerf",
+    "dashboard_test_name": "dromaeo.domcorequery"
+  },
+  {
+    "autotest_name": "telemetry_Benchmarks.dromaeo.domcoretraverse",
+    "master_name": "ChromiumPerf",
+    "dashboard_test_name": "dromaeo.domcoretraverse"
+  },
+  {
+    "autotest_name": "telemetry_Benchmarks.media.tough_media_cases",
+    "master_name": "ChromiumPerf",
+    "dashboard_test_name": "media.tough_media_cases"
+  },
+  {
+    "autotest_name": "telemetry_Benchmarks.memory.top_25",
+    "master_name": "ChromiumPerf",
+    "dashboard_test_name": "memory.top_25"
+  },
+  {
+    "autotest_name": "telemetry_Benchmarks.robohornet_pro",
+    "master_name": "ChromiumPerf",
+    "dashboard_test_name": "robohornet_pro"
+  },
+  {
+    "autotest_name": "telemetry_Benchmarks.smoothness.top_25",
+    "master_name": "ChromiumPerf",
+    "dashboard_test_name": "smoothness.top_25"
   }
 ]
