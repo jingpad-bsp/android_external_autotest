@@ -393,6 +393,29 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         return True
 
 
+    @xmlrpc_server.dbus_safe(False)
+    def set_device_enabled(self, wifi_interface, enabled):
+        """Enable or disable the WiFi device.
+
+        @param wifi_interface: string name of interface being modified.
+        @param enabled: boolean; true if this device should be enabled,
+                false if this device should be disabled.
+        @return True if it worked; false, otherwise
+
+        """
+        interface = {'Name': wifi_interface}
+        dbus_object = self._wifi_proxy.find_object(self.DBUS_DEVICE,
+                                                   interface)
+        if dbus_object is None:
+            return False
+
+        if enabled:
+            dbus_object.Enable()
+        else:
+            dbus_object.Disable()
+        return True
+
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     handler = logging.handlers.SysLogHandler(address = '/dev/log')

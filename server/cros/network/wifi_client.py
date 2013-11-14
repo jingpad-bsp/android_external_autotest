@@ -273,6 +273,9 @@ class WiFiClient(object):
         system = site_linux_system.LinuxSystem(self.host, {}, 'client')
         self._capabilities = system.capabilities
 
+        # All tests that use this object assume the interface starts enabled.
+        self.set_device_enabled(self._wifi_if, True)
+
 
     def _raise_logging_level(self):
         """Raises logging levels for WiFi on DUT."""
@@ -578,3 +581,15 @@ class WiFiClient(object):
 
         """
         return self._shill_proxy.set_roam_threshold(wifi_interace, value)
+
+
+    def set_device_enabled(self, wifi_interace, value):
+        """Enable or disable the WiFi device.
+
+        @param wifi_interface: string name of interface being modified.
+        @param enabled: boolean; true if this device should be enabled,
+                false if this device should be disabled.
+        @return True if it worked; False, otherwise.
+
+        """
+        return self._shill_proxy.set_device_enabled(wifi_interace, value)
