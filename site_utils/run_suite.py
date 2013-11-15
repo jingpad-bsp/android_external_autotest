@@ -627,7 +627,7 @@ def main():
     code = RETURN_CODES.OK
     if wait:
         while not afe.get_jobs(id=job_id, finished=True):
-            time.sleep(1)
+            time.sleep(10)
 
         views = TKO.run('get_detailed_test_views', afe_job_id=job_id)
         # The intended behavior is to refrain from recording stats if the suite
