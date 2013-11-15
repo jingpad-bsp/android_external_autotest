@@ -3,18 +3,17 @@
 # found in the LICENSE file.
 
 AUTHOR = 'wdg@chromium.com'
-NAME = 'network_WiFi_RoamSuspendTimeout.RSTwifi_checkWEP40'
+NAME = 'network_WiFi_RoamSuspendTimeout.wpa2'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
 SUITE = 'wifi_matfunc'
 DEPENDENCIES = 'wificell'
 
 DOC = """
-This test case verifies that the DUT can reconnect to an AP using
-WEP open system authentication after deauthentication while the DUT is
-suspended.
+This tests verifies that we can reconnect to an AP broadcasting a WPA2 (aka
+RSN) network after deauthentication while the DUT is suspended.  By definition,
+traffic on this network is encrypted under AES.
 """
-
 
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
@@ -22,23 +21,18 @@ from autotest_lib.server.cros.network import hostap_config
 
 
 def run(machine):
-    # FYI: D-Bus requires string parameters must be valid UTF-8.
-    wep_keys = ['abcde',
-                'fghij',
-                'klmno',
-                'pqrst']
-    wep_config = xmlrpc_security_types.WEPConfig(
-            wep_keys,
-            wep_default_key=2,
-            auth_algorithm=xmlrpc_security_types.WEPConfig.AUTH_ALGORITHM_OPEN)
+    wpa_config = xmlrpc_security_types.WPAConfig(
+            psk='chromeos',
+            wpa_mode=xmlrpc_security_types.WPAConfig.MODE_PURE_WPA2,
+            wpa2_ciphers=[xmlrpc_security_types.WPAConfig.CIPHER_CCMP])
     job.run_test('network_WiFi_RoamSuspendTimeout',
                  tag=NAME.split('.')[1],
                  host=hosts.create_host(machine),
                  raw_cmdline_args=args,
                  additional_params=hostap_config.HostapConfig(
-                         frequency=2437,
+                         frequency=2412,
                          mode=hostap_config.HostapConfig.MODE_11G,
-                         security_config=wep_config))
+                         security_config=wpa_config))
 
 
 parallel_simple(run, machines)

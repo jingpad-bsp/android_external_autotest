@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = 'wdg@chromium.com'
-NAME = 'network_WiFi_RoamSuspendTimeout.RSTwifi_check11g'
+NAME = 'network_WiFi_RoamSuspendTimeout.11g'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
 SUITE = 'wifi_matfunc'

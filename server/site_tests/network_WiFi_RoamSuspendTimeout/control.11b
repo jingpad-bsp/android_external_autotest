@@ -3,15 +3,16 @@
 # found in the LICENSE file.
 
 AUTHOR = 'wdg@chromium.com'
-NAME = 'network_WiFi_RoamSuspendTimeout.RSTwifi_check11a'
+NAME = 'network_WiFi_RoamSuspendTimeout.11b'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
 SUITE = 'wifi_matfunc'
 DEPENDENCIES = 'wificell'
 
 DOC = """
-This test verifies that DUT can reconnect to an open 802.11a network
-on channel 48 after deauthentication while the DUT is suspended.
+This test attempts to verify that we can reconnect to a router over 802.11b
+on channel 6 (2.4 Ghz band) and correctly send IP traffic after
+deauthentication while the DUT is suspended.
 """
 
 
@@ -20,13 +21,13 @@ from autotest_lib.server.cros.network import hostap_config
 
 
 def run(machine):
-    a_mode = hostap_config.HostapConfig.MODE_11A
+    b_mode = hostap_config.HostapConfig.MODE_11B
     job.run_test('network_WiFi_RoamSuspendTimeout',
                  tag=NAME.split('.')[1],
                  host=hosts.create_host(machine),
                  raw_cmdline_args=args,
-                 additional_params=hostap_config.HostapConfig(channel=48,
-                                                              mode=a_mode))
+                 additional_params=hostap_config.HostapConfig(channel=6,
+                                                              mode=b_mode))
 
 
 parallel_simple(run, machines)

@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = 'wdg@chromium.com'
-NAME = 'network_WiFi_RoamSuspendTimeout.RSTwifi_checkWPA_CCMP'
+NAME = 'network_WiFi_RoamSuspendTimeout.wpa'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
 SUITE = 'wifi_matfunc'
@@ -11,7 +11,9 @@ DEPENDENCIES = 'wificell'
 
 DOC = """
 This tests verifies that we can reconnect to an AP broadcasting a WPA network
-using AES based CCMP after deauthentication while the DUT is suspended.
+using TKIP after deauthentication while the DUT is suspended.  TKIP is
+deprecated for having some security holes, and WPA is deprecated in favor of
+WPA2, but routers of a certain age only support this mode.
 """
 
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
@@ -23,7 +25,7 @@ def run(machine):
     wpa_config = xmlrpc_security_types.WPAConfig(
             psk='chromeos',
             wpa_mode=xmlrpc_security_types.WPAConfig.MODE_PURE_WPA,
-            wpa_ciphers=[xmlrpc_security_types.WPAConfig.CIPHER_CCMP])
+            wpa_ciphers=[xmlrpc_security_types.WPAConfig.CIPHER_TKIP])
     job.run_test('network_WiFi_RoamSuspendTimeout',
                  tag=NAME.split('.')[1],
                  host=hosts.create_host(machine),
