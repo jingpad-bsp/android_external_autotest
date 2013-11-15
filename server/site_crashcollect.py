@@ -63,6 +63,8 @@ def find_and_generate_minidump_stacktraces(host_resultdir):
     identified as files with .dmp extension.  The stack trace filename is
     composed by appending the .txt extension to the minidump filename.
 
+    @param host_resultdir: Directory to walk looking for dmp files.
+
     @returns The list of generated minidumps.
     """
     minidumps = []
@@ -132,6 +134,20 @@ def get_site_crashdumps(host, test_start_time):
         logging.warning('Collection of orphaned crash dumps failed %s', e)
 
     minidumps = find_and_generate_minidump_stacktraces(host_resultdir)
+
+    # Record all crashdumps in status.log of the job:
+    # - If one server job runs several client jobs we will only record
+    # crashdumps in the status.log of the high level server job.
+    # - We will record these crashdumps whether or not we successfully
+    # symbolicate them.
+    if host.job and minidumps or orphans:
+        host.job.record('INFO', None, None, 'Start crashcollection record')
+        for minidump in minidumps:
+            host.job.record('INFO', None, 'New Crash Dump', minidump)
+        for orphan in orphans:
+            host.job.record('INFO', None, 'Orphaned Crash Dump', orphan)
+        host.job.record('INFO', None, None, 'End crashcollection record')
+
     orphans.extend(minidumps)
 
     for minidump in orphans:

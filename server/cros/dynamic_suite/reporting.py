@@ -173,6 +173,7 @@ class TestFailure(Bug):
                    'Build: %(build)s.\n\nReason:\n%(reason)s.\n'
                    'build artifacts: %(build_artifacts)s.\n'
                    'results log: %(results_log)s.\n'
+                   'status log: %(status_log)s.\n'
                    'buildbot stages: %(buildbot_stages)s.\n'
                    'job link: %(job)s.\n')
 
@@ -184,6 +185,7 @@ class TestFailure(Bug):
             'reason': self.reason,
             'build_artifacts': links.artifacts,
             'results_log': links.results,
+            'status_log': links.status_log,
             'buildbot_stages': links.buildbot,
             'job': links.job,
         }
@@ -203,24 +205,38 @@ class TestFailure(Bug):
                 self._chromeos_image_archive + self.build)
 
 
-    def _link_result_logs(self):
-        """Returns an url to test logs on google storage."""
-        if self.job_id and self.result_owner and self.hostname:
-            path_to_object = '%s-%s/%s/%s' % (self.job_id, self.result_owner,
-                                              self.hostname, self._debug_dir)
-            return (self._retrieve_logs_cgi + self._generic_results_bin +
-                    path_to_object)
-
-        return ('Could not generate results log: the job with id %s, '
-                'scheduled by: %s on host: %s did not run' %
-                (self.job_id, self.result_owner, self.hostname))
-
-
     def _link_job(self):
         """Returns an url to the job on cautotest."""
         if not self.job_id:
             return 'Job did not run, or was aborted prematurely'
         return '%s=%s' % (self._cautotest_job_view, self.job_id)
+
+
+    def _base_results_log(self):
+        """Returns the base url of the job's results."""
+        if self.job_id and self.result_owner and self.hostname:
+            path_to_object = '%s-%s/%s' % (self.job_id, self.result_owner,
+                                           self.hostname)
+            return (self._retrieve_logs_cgi + self._generic_results_bin +
+                    path_to_object)
+
+
+    def _link_result_logs(self):
+        """Returns an url to test logs on google storage."""
+        base_results = self._base_results_log()
+        if base_results:
+            return '%s/%s' % (base_results, self._debug_dir)
+        return ('Could not generate results log: the job with id %s, '
+                'scheduled by: %s on host: %s did not run' %
+                (self.job_id, self.result_owner, self.hostname))
+
+
+    def _link_status_log(self):
+        """Returns an url to status log of the job."""
+        base_results = self._base_results_log()
+        if base_results:
+            return '%s/%s' % (base_results, 'status.log')
+        return 'NA'
 
 
     def _get_metadata_dict(self):
@@ -272,10 +288,12 @@ class TestFailure(Bug):
     def _get_links_for_failure(self):
         """Returns a named tuple of links related to this failure."""
         links = collections.namedtuple('links', ('results,'
+                                                 'status_log,'
                                                  'artifacts,'
                                                  'buildbot,'
                                                  'job'))
         return links(self._link_result_logs(),
+                     self._link_status_log(),
                      self._link_build_artifacts(),
                      self._link_buildbot_stages(),
                      self._link_job())
