@@ -598,8 +598,7 @@ def main():
         if not options.bypass_labstatus:
             utils.check_lab_status(options.board)
     except (error.LabIsDownException, error.BoardIsDisabledException) as e:
-        logging.debug('Error Message: %s', e)
-        print str(e)
+        logging.warning('Error Message: %s', e)
         return RETURN_CODES.WARNING
 
     instance_server = instance_for_pool(options.pool)
