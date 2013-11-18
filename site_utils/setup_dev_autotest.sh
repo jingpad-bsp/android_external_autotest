@@ -209,6 +209,9 @@ echo "Populating autotest mysql DB..."
 echo -e "Done!\n"
 
 echo "Configuring apache to run the autotest web interface..."
+if [ ! -d /etc/apache2/run ]; then
+  sudo mkdir /etc/apache2/run
+fi
 sudo ln -sf "${AT_DIR}"/apache/apache-conf \
   /etc/apache2/sites-available/autotest-server
 # disable currently active default
