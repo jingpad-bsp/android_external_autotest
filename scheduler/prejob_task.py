@@ -11,7 +11,7 @@ and epilog of each task.
 
 All prejob tasks must have a host, though they may not have an HQE. If a
 prejob task has a hqe, it will activate the hqe through its on_pending
-method on successfull completion. A row in afe_special_tasks with values:
+method on successful completion. A row in afe_special_tasks with values:
     host=C1, unlocked, is_active=0, is_complete=0, type=Verify
 will indicate to the scheduler that it needs to schedule a new special task
 of type=Verify, against the C1 host. While the special task is running
@@ -35,7 +35,25 @@ Children PreJobTasks:
         failure:
             repair throgh PreJobTask
             set Host, HQE status
+
+Failing a prejob task effects both the Host and the HQE, as follows:
+
+- Host: PreJob failure will result in a Repair job getting queued against
+the host, is we haven't already tried repairing it more than the
+max_repair_limit. When this happens, the host will remain in whatever status
+the prejob task left it in, till the Repair job puts it into 'Repairing'. This
+way the host_scheduler won't pick bad hosts and assign them to jobs.
+
+If we have already tried repairing the host too many times, the PreJobTask
+will flip the host to 'RepairFailed' in its epilog, and it will remain in this
+state till it is recovered and reverified.
+
+- HQE: Is either requeued or failed. Requeuing the HQE involves putting it
+in the Queued state and setting its host_id to None, so it gets a new host
+in the next scheduler tick. Failing the HQE results in either a Parsing
+or Archiving postjob task, and an eventual Failed status for the HQE.
 """
+
 import logging
 import os
 
@@ -324,10 +342,20 @@ class ProvisionTask(PreJobTask):
     def epilog(self):
         super(ProvisionTask, self).epilog()
 
+        # If we were not successful in provisioning the machine
+        # leave the DUT in whatever status was set in the PreJobTask's
+        # epilog. If this task was successful the host status will get
+        # set appropriately as a fallout of the hqe's on_pending. If
+        # we don't call on_pending, it can only be because:
+        #   1. This task was not successful:
+        #       a. Another repair is queued: this repair job will set the host
+        #       status, and it will remain in 'Provisioning' till then.
+        #       b. We have hit the max_repair_limit: in which case the host
+        #       status is set to 'RepairFailed' in the epilog of PreJobTask.
+        #   2. The task was successful, but there are other special tasks:
+        #      Those special tasks will set the host status appropriately.
         if self._should_pending():
             self.queue_entry.on_pending()
-        else:
-            self.host.set_status(models.Host.Status.READY)
 
 
 class RepairTask(agent_task.SpecialAgentTask):
