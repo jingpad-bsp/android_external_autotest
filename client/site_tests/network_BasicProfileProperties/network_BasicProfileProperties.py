@@ -15,14 +15,13 @@ from autotest_lib.client.cros import flimflam_test_path
 import wifi_proxy
 
 class network_BasicProfileProperties(test.test):
-    """Test that shill's DBus properties for profiles and entries work."""
+    """Test that shill's DBus properties for profiles work."""
 
     version = 1
 
     PROFILE_NAME = 'test'
     PROFILE_PROPERTY_NAME = 'Name'
     PROFILE_PROPERTY_ENTRIES = 'Entries'
-    ENTRY_PROPERTY_FAVORITE = 'Favorite'
 
 
     @staticmethod
@@ -73,4 +72,3 @@ class network_BasicProfileProperties(test.test):
                                      ethernet_entry_key)
 
             entry = profile.GetEntry(ethernet_entry_key)
-            self.get_field_from_properties(entry, self.ENTRY_PROPERTY_FAVORITE)
