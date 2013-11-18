@@ -105,10 +105,38 @@ class HostapConfig(object):
                           PMF_SUPPORT_REQUIRED)
 
 
+    @staticmethod
+    def get_channel_for_frequency(frequency):
+        """Returns the channel number associated with a given frequency.
+
+        @param value: int frequency in MHz.
+
+        @return int frequency associated with the channel.
+
+        """
+        return HostapConfig.CHANNEL_MAP[frequency]
+
+
+    @staticmethod
+    def get_frequency_for_channel(channel):
+        """Returns the frequency associated with a given channel number.
+
+        @param value: int channel number.
+
+        @return int frequency in MHz associated with the channel.
+
+        """
+        for frequency, channel_iter in HostapConfig.CHANNEL_MAP.iteritems():
+            if channel == channel_iter:
+                return frequency
+        else:
+            raise error.TestFail('Unknown channel value: %r.' % channel)
+
+
     @property
     def channel(self):
         """@return int channel number for self.frequency."""
-        return self.CHANNEL_MAP[self.frequency]
+        return self.get_channel_for_frequency(self.frequency)
 
 
     @channel.setter
@@ -118,14 +146,7 @@ class HostapConfig(object):
         @param value: int channel number.
 
         """
-        for frequency, channel in self.CHANNEL_MAP.iteritems():
-            if channel == value:
-                self.frequency = frequency
-                break
-
-        else:
-            raise error.TestFail('Tried to set an invalid channel: %r.' %
-                                 value)
+        self.frequency = self.get_frequency_for_channel(value)
 
 
     @property

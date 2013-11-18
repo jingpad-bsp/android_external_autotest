@@ -9,6 +9,7 @@ import string
 
 from autotest_lib.client.common_lib import base_utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros.network import interface
 from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros import wifi_test_utils
 from autotest_lib.server.cros.network import hostap_config
@@ -72,6 +73,9 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                 host, params.get('cmd_hostapd', '/usr/sbin/hostapd'))
         self.cmd_hostapd_cli = wifi_test_utils.must_be_installed(
                 host, params.get('cmd_hostapd_cli', '/usr/sbin/hostapd_cli'))
+        self.cmd_wpa_supplicant = wifi_test_utils.must_be_installed(
+                host, params.get('cmd_wpa_supplicant',
+                                 '/usr/sbin/wpa_supplicant'))
         self.dhcpd_conf = '/tmp/dhcpd.%s.conf'
         self.dhcpd_leases = '/tmp/dhcpd.leases'
 
@@ -102,6 +106,9 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         }
         self.station = {
             'configured': False,
+            'config_file': "/tmp/wpa-supplicant-test-%s.conf",
+            'log_file': "/tmp/wpa-supplicant-test-%s.log",
+            'pid_file': "/tmp/wpa-supplicant-test-%s.pid",
             'conf': {},
         }
         self.local_servers = []
@@ -229,7 +236,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             'conf_file': conf_file,
             'log_file': log_file,
             'interface': interface,
-            'pid_file': pid_file
+            'pid_file': pid_file,
+            'config_dict': conf.copy()
         })
 
 
@@ -560,6 +568,29 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         return '%d.%d.%d.%d' % (self.SUBNET_PREFIX_OCTETS + (index, 254))
 
 
+    def local_peer_ip_address(self, index):
+        """Get the IP address allocated for the peer associated to the AP.
+
+        This address is assigned to a locally associated peer device that
+        is created for the DUT to perform connectivity tests with.
+        When we have multiple local servers, we give them static IP addresses
+        like 192.168.*.253.
+
+        @param index int describing which local server this is for.
+
+        """
+        return '%d.%d.%d.%d' % (self.SUBNET_PREFIX_OCTETS + (index, 253))
+
+
+    def local_peer_mac_address(self):
+        """Get the MAC address of the peer interface.
+
+        @return string MAC address of the peer interface.
+        """
+        iface = interface.Interface(self.station['interface'], self.router)
+        return iface.mac_address
+
+
     def start_local_server(self, interface):
         """Start a local server on an interface.
 
@@ -745,6 +776,9 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             self.local_servers = []
             if self.station['type'] == 'ibss':
                 self.iw_runner.ibss_leave(self.station['interface'])
+            if self.station['type'] == 'supplicant':
+                self._kill_process_instance('wpa_supplicant',
+                                            self.station['interface'])
             else:
                 self.iw_runner.disconnect_station(self.station['interface'])
             self.router.run("%s link set %s down" % (self.cmd_ip,
@@ -877,6 +911,77 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         result = self.router.run("grep -qi '%s' %s" % (coex_msg, log_file),
                                  ignore_status=True)
         return result.exit_status == 0
+
+
+    def add_connected_peer(self, instance=0):
+        """Configure a station connected to a running AP instance.
+
+        Extract relevant configuration objects from the hostap
+        configuration for |instance| and generate a wpa_supplicant
+        instance that connects to it.  This allows the DUT to interact
+        with a client entity that is also connected to the same AP.  A
+        full wpa_supplicant instance is necessary here (instead of just
+        using the "iw" command to connect) since we want to enable
+        advanced features such as TDLS.
+
+        @param instance int indicating which hostapd instance to connect to.
+
+        """
+        if not self.hostapd_instances:
+            raise error.TestFail('Hostapd is not configured.')
+
+        if self.station['configured']:
+            raise error.TestFail('Station is already configured.')
+
+        client_conf = self.station['conf']
+        client_conf['ssid'] = self.get_ssid(instance)
+
+        hostap_conf = self.hostapd_instances[instance]['config_dict']
+        frequency = hostap_config.HostapConfig.get_frequency_for_channel(
+                hostap_conf['channel'])
+        interface = self._get_wlanif(
+                frequency, 'managed', hostap_conf['hw_mode'])
+        client_conf['interface'] = interface
+
+        # TODO(pstew): Configure other bits like PSK, 802.11n if tests
+        # require them...
+        supplicant_config = (
+                'network={\n'
+                '  ssid="%(ssid)s"\n'
+                '  key_mgmt=NONE\n'
+                '}\n' % client_conf
+        )
+
+        conf_file = self.station['config_file'] % interface
+        log_file = self.station['log_file'] % interface
+        pid_file = self.station['pid_file'] % interface
+
+        self.router.run('cat <<EOF >%s\n%s\nEOF\n' %
+            (conf_file, supplicant_config))
+
+        # Connect the station.
+        self.router.run('%s link set %s up' % (self.cmd_ip, interface))
+        start_command = ('%s -dd -t -i%s -P%s -c%s -D%s &> %s &' %
+                         (self.cmd_wpa_supplicant,
+                         interface, pid_file, conf_file,
+                         self.hostapd['driver'], log_file))
+        self.router.run(start_command)
+        self.iw_runner.wait_for_link(interface)
+
+        # Assign an IP address to this interface.
+        self.router.run('%s addr add %s/24 dev %s' %
+                        (self.cmd_ip, self.local_peer_ip_address(instance),
+                         interface))
+
+        # Since we now have two network interfaces connected to the same
+        # network, we need to disable the kernel's protection against
+        # incoming packets to an "unexpected" interface.
+        self.router.run('echo 2 > /proc/sys/net/ipv4/conf/%s/rp_filter' %
+                        interface)
+
+        self.station['configured'] = True
+        self.station['type'] = 'supplicant'
+        self.station['interface'] = interface
 
 
     def _pre_config_hook(self, config):

@@ -315,3 +315,22 @@ class IwRunner(object):
                 matching_bsses.append(iwbss)
             if len(matching_bsses) > 0:
                 return matching_bsses
+
+
+    def wait_for_link(self, interface, timeout_seconds=10):
+        """Waits until a link completes on |interface|.
+
+        @param interface: which interface to run iw against.
+        @param timeout_seconds: the amount of time to wait in seconds.
+
+        @returns True if link was established before the timeout.
+
+        """
+        start_time = time.time()
+        while time.time() - start_time < timeout_seconds:
+            link_results = self._run('%s dev %s link' %
+                                     (self._command_iw, interface))
+            if 'Not connected' not in link_results.stdout:
+                return True
+            time.sleep(1)
+        return False
