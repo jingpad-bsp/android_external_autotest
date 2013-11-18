@@ -5,7 +5,7 @@
 AUTHOR = "ChromeOS Team"
 NAME = "network_DhcpClasslessStaticRoute"
 PURPOSE = "Verify DHCP negotions can succeed with a classless static route"
-SUITE = "network_nightly"
+SUITE = "bvt, network_nightly"
 CRITERIA = """
 This test fails if dhcpcd is unable to attain a default route using
 the classless static route option (RFC 3442) instead of the normal

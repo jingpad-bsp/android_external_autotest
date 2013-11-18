@@ -5,7 +5,7 @@
 AUTHOR = 'pstew@chromium.org'
 NAME = 'network_VPNConnect.openvpn_cert_verify'
 PURPOSE = 'Verify shill correctly verifies an OpenVPN server'
-SUITE = 'network_nightly'
+SUITE = 'bvt, network_nightly'
 CRITERIA = """
 This test fails if the DUT cannot successfully verify the remote VPN
 server using the "verify-hash" and "verify-x509-name" parameters.  It

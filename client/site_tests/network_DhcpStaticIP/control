@@ -5,7 +5,7 @@
 AUTHOR = "pstew@chromium.org"
 NAME = "network_DhcpStaticIP"
 PURPOSE = "Verify DHCP negotions can succeed in addition to Static IP"
-SUITE = "network_nightly"
+SUITE = "bvt, network_nightly"
 CRITERIA = """
 This test succceeds if dhcpcd is able to negotiate and DHCP lease, but
 then apply static IP parameters and release the lease after acquiring

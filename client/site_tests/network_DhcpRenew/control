@@ -5,7 +5,7 @@
 AUTHOR = "ChromeOS Team"
 NAME = "network_DhcpRenew"
 PURPOSE = "Verify shill correctly handles lease timeouts through dhcpcd"
-SUITE = "network_nightly"
+SUITE = "bvt, network_nightly"
 CRITERIA = """
 This test fails if shill ignores the T1, T2, or lease timeouts.  Since
 the logic handling these timeouts is handled through dhcpcd, this tests
