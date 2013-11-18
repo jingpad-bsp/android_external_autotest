@@ -4,7 +4,7 @@
 
 AUTHOR = 'wiley, pstew'
 NAME = 'network_DestinationVerification'
-SUITE = 'network_nightly'
+SUITE = 'bvt, network_nightly'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
 

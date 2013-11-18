@@ -4,7 +4,7 @@
 
 AUTHOR = 'wiley, pstew, quiche'
 NAME = 'network_DhcpNonAsciiParameter'
-SUITE = 'network_nightly'
+SUITE = 'bvt, network_nightly'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
 

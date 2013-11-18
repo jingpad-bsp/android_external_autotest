@@ -4,7 +4,7 @@
 
 AUTHOR = 'pstew, quiche, wiley'
 NAME = 'network_DhcpStaticIP'
-SUITE = 'network_nightly'
+SUITE = 'bvt, network_nightly'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
 

@@ -5,7 +5,7 @@
 AUTHOR = 'wiley, pstew, quiche'
 NAME = 'network_WiFiInvalidParameters'
 PURPOSE = 'Verify shill returns correct errors for invalid WiFi configurations'
-SUITE = 'network_nightly'
+SUITE = 'bvt, network_nightly'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
 
