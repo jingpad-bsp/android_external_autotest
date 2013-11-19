@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os
+import logging, os
 
 from telemetry.core import browser_finder, browser_options, exceptions
 from telemetry.core import extension_to_load, util
@@ -20,7 +20,8 @@ class Chrome(object):
     BROWSER_TYPE_GUEST = 'system-guest'
 
 
-    def __init__(self, logged_in=True, extension_paths=[], autotest_ext=False):
+    def __init__(self, logged_in=True, extension_paths=[], autotest_ext=False,
+                 num_tries=1):
         self._autotest_ext_path = None
         if autotest_ext:
             self._autotest_ext_path = os.path.join(os.path.dirname(__file__),
@@ -48,9 +49,16 @@ class Chrome(object):
         b_options.disable_component_extensions_with_background_pages = False
         b_options.create_browser_with_oobe = True
 
-        browser_to_create = browser_finder.FindBrowser(finder_options)
-        self._browser = browser_to_create.Create()
-        self._browser.Start()
+        for i in range(num_tries):
+            try:
+                browser_to_create = browser_finder.FindBrowser(finder_options)
+                self._browser = browser_to_create.Create()
+                self._browser.Start()
+                break
+            except util.TimeoutException:
+                logging.error('Timed out logging in, tries=%d', i)
+                if i == num_tries-1:
+                    raise
 
 
     def __enter__(self):
