@@ -7,7 +7,13 @@ import logging
 import os
 import urllib2
 
-from selenium import webdriver
+try:
+    from selenium import webdriver
+except ImportError:
+    # Ignore import error, as this can happen when builder tries to call the
+    # setup method of test that imports chromedriver.
+    logging.error('selenium module failed to be imported.')
+    pass
 
 import common
 from autotest_lib.client.bin import utils
@@ -39,8 +45,12 @@ class chromedriver(object):
                           utils.get_chrome_remote_debugging_port())}
         capabilities = {'chromeOptions':chromeOptions}
         # Handle to chromedriver, for chrome automation.
-        self.driver = webdriver.Remote(command_executor=self._server.url,
-                                        desired_capabilities=capabilities)
+        try:
+            self.driver = webdriver.Remote(command_executor=self._server.url,
+                                           desired_capabilities=capabilities)
+        except NameError:
+            logging.error('selenium module failed to be imported.')
+            raise
 
 
     def __enter__(self):
