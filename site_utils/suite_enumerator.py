@@ -11,7 +11,7 @@ tool will print out the name of each test in that suite, one per line.
 
 Example:
 $ ./site_utils/suite_enumerator.py -a /usr/local/autotest bvt 2>/dev/null
-login_LoginSuccess
+login_LoginSuccessTelemetry
 logging_CrashSender
 login_BadAuthentication
 

@@ -1,19 +1,21 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "login_LoginSuccess"
-PURPOSE = "Login through the Chrome login manager."
+NAME = "login_LoginSuccessTelemetry"
+PURPOSE = "Login using Telemetry."
 CRITERIA = "This test will succeed as long as a test account is able to login."
+SUITE = "bvt, smoke"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "login"
 TEST_TYPE = "client"
+EXPERIMENTAL = "True"
 
 DOC = """
-This is a helper test that will login a system through the login manager. Sets
+This is a helper test that will login a system using Telemetry. Sets
 client_success to True on success so callers can verify it ran correctly.
 """
 
-job.run_test('login_LoginSuccess')
+job.run_test('login_LoginSuccessTelemetry')
