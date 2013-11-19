@@ -12,7 +12,6 @@ file but, for security reasons, localhost can't.
 NAME = 'p2p_ServeFiles'
 PURPOSE = 'Check that p2p-http-server daemon serves files over HTTP.'
 CRITERIA = "Fails if the DUT can't serve a HTTP request from the network."
-EXPERIMENTAL = 'True'
 SUITE = 'bvt'
 TEST_CLASS = 'platform'
 TEST_CATEGORY = 'Functional'
