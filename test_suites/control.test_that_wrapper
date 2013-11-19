@@ -68,4 +68,4 @@ dynamic_suite.reimage_and_run(
     file_bugs=file_bugs, priority=priority, timeout_mins=timeout_mins,
     max_runtime_mins=20, bug_template=_BUG_TEMPLATE,
     devserver_url=devserver_url, version_prefix=provision.CROS_VERSION_PREFIX,
-    predicate=combined_predicate)
+    predicate=combined_predicate, wait_for_results=wait_for_results)
