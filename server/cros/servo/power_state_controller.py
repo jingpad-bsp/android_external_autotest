@@ -146,9 +146,9 @@ class _PantherController(_PowerStateController):
     """
 
     # TODO(@moch): rename and modify appropriately
-    _TIME_TO_SWITCH_OFF = 5.0
-    _TIME_TO_BOOT = 5.0
-    _TIME_TO_HOLD_POWER_BUTTON = 0.5
+    _TIME_TO_SWITCH_OFF = 10.0
+    _TIME_TO_BOOT = 10.0
+    _TIME_TO_HOLD_POWER_BUTTON = 1.2
 
     @_inherit_docstring(_PowerStateController)
     def cold_reset(self):
