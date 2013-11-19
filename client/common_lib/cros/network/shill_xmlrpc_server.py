@@ -304,6 +304,12 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         return self._wifi_proxy.dbus2primitive(service_properties)
 
 
+    @xmlrpc_server.dbus_safe(False)
+    def get_active_wifi_SSIDs(self):
+        """@return list of string SSIDs with at least one BSS we've scanned."""
+        return self._wifi_proxy.get_active_wifi_SSIDs()
+
+
     def enable_ui(self):
         """@return True iff the UI was successfully started."""
         return cros_ui.start(allow_fail=True) == 0

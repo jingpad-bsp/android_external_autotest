@@ -277,6 +277,17 @@ class WiFiClient(object):
         self.set_device_enabled(self._wifi_if, True)
 
 
+    def _assert_method_supported(self, method_name):
+        """Raise a TestNAError if the XMLRPC proxy has no method |method_name|.
+
+        @param method_name: string name of method that should exist on the
+                XMLRPC proxy.
+
+        """
+        if not self._supports_method(method_name):
+            raise error.TestNAError('%s() is not supported' % method_name)
+
+
     def _raise_logging_level(self):
         """Raises logging levels for WiFi on DUT."""
         self.host.run('wpa_debug excessive')
@@ -299,8 +310,10 @@ class WiFiClient(object):
         @return True if method is available, False otherwise.
 
         """
-        supported = (not isinstance(self.host, adb_host.ADBHost) and
-                     method_name not in self._shill_proxy.system.listMethods())
+        # Make no assertions about ADBHost support.  We don't use an XMLRPC
+        # proxy with those hosts anyway.
+        supported = (isinstance(self.host, adb_host.ADBHost) or
+                     method_name in self._shill_proxy.system.listMethods())
         if not supported:
             logging.warning('%s() is not supported on older images',
                             method_name)
@@ -549,6 +562,16 @@ class WiFiClient(object):
         logging.info('wpa_cli blacklist clear: out:%r err:%r', stdoutdata,
                      stderrdata)
         return stdoutdata, stderrdata
+
+
+    def get_active_wifi_SSIDs(self):
+        """Get a list of visible SSID's around the DUT
+
+        @return list of string SSIDs
+
+        """
+        self._assert_method_supported('get_active_wifi_SSIDs')
+        return self._shill_proxy.get_active_wifi_SSIDs()
 
 
     def get_roam_threshold(self, wifi_interace):
