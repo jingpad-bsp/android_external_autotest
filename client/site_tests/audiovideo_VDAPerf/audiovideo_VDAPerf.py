@@ -33,8 +33,9 @@ TIME_BINARY = '/usr/local/bin/time'
 
 TIME_LOG = 'time.log'
 
-UNIT_MILLISECOND = 'millisecond'
-UNIT_MICROSECOND = 'microsecond'
+# These strings should match chromium/src/tools/perf/unit-info.json.
+UNIT_MILLISECOND = 'milliseconds'
+UNIT_MICROSECOND = 'us'
 UNIT_PERCENT = 'percent'
 
 # The format used for 'time': <real time>, <kernel time>, <user time>
