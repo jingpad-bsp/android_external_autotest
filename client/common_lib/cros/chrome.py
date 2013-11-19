@@ -21,7 +21,11 @@ class Chrome(object):
 
 
     def __init__(self, logged_in=True, extension_paths=[], autotest_ext=False,
-                 num_tries=1):
+                 num_tries=1, extra_browser_args=None):
+        """
+        @param extra_browser_args: Additional argument(s) to pass to the
+            browser. It can be a string or a list.
+        """
         self._autotest_ext_path = None
         if autotest_ext:
             self._autotest_ext_path = os.path.join(os.path.dirname(__file__),
@@ -32,6 +36,9 @@ class Chrome(object):
         self._browser_type = (self.BROWSER_TYPE_LOGIN
                 if logged_in else self.BROWSER_TYPE_GUEST)
         finder_options.browser_type = self.browser_type
+        if extra_browser_args:
+            finder_options.browser_options.AppendExtraBrowserArgs(
+                    extra_browser_args)
 
         if logged_in:
             extensions_to_load = finder_options.extensions_to_load
