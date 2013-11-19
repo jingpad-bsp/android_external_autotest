@@ -20,6 +20,7 @@
 /usr/lib64/opengl/xorg-x11/extensions/libdri.so
 /usr/lib64/opengl/xorg-x11/extensions/libglx.so
 /usr/lib64/xorg/modules/drivers/ati_drv.so
+/usr/lib64/xorg/modules/drivers/fbdev_drv.so
 /usr/lib64/xorg/modules/drivers/intel_drv.so
 /usr/lib64/xorg/modules/drivers/nouveau_drv.so
 /usr/lib64/xorg/modules/drivers/radeon_drv.so
