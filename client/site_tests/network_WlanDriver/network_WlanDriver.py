@@ -99,7 +99,8 @@ class network_WlanDriver(test.test):
 
         module_name = os.path.basename(os.readlink(os.path.join(
                 device_path, 'driver', 'module')))
-        module_path = utils.system_output('modprobe -l %s' % module_name)
+        module_path = utils.system_output('find /lib/modules/* -name %s.ko '
+                                          '-printf %%P' % module_name)
         return (device_name, module_path)
 
 
