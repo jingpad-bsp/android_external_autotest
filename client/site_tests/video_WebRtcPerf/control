@@ -1,0 +1,22 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Project, chromeos-video@google.com"
+NAME = "video_WebRtcPerf"
+PURPOSE = "Monitor the performance of video decode time for WebRtc."
+CRITERIA = """
+The test output video decode time for WebRtc to performance dashboard.
+"""
+SUITE = "video"
+TIME = "SHORT"
+TEST_CATEGORY = "Performance"
+TEST_CLASS = "audiovideo"
+TEST_TYPE = "client"
+DEPENDENCIES = "hw_video_acc_vp8"
+
+DOC = """
+This test checks whether video decode time for WebRtc has regression.
+"""
+
+job.run_test('video_WebRtcPerf')
