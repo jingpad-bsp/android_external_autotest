@@ -233,7 +233,7 @@ class SuiteSpec(object):
                  pool=None, num=None, check_hosts=True,
                  add_experimental=True, file_bugs=False,
                  file_experimental_bugs=False, max_runtime_mins=24*60,
-                 timeout=24, firmware_reimage=False,
+                 timeout=24, timeout_mins=None, firmware_reimage=False,
                  suite_dependencies=[], version_prefix=None,
                  bug_template={}, devserver_url=None,
                  priority=priorities.Priority.DEFAULT, predicate=None,
@@ -328,6 +328,7 @@ class SuiteSpec(object):
         self.dependencies = {'': []}
         self.max_runtime_mins = max_runtime_mins
         self.timeout = timeout
+        self.timeout_mins = timeout_mins or timeout * 60
         self.firmware_reimage = firmware_reimage
         if isinstance(suite_dependencies, str):
             self.suite_dependencies = [dep.strip(' ') for dep
@@ -473,7 +474,7 @@ def _perform_reimage_and_run(spec, afe, tko, predicate, suite_job_id=None):
         build=spec.build, board=spec.board, devserver=spec.devserver,
         afe=afe, tko=tko, pool=spec.pool,
         results_dir=spec.job.resultdir,
-        max_runtime_mins=spec.max_runtime_mins, timeout=spec.timeout,
+        max_runtime_mins=spec.max_runtime_mins, timeout_mins=spec.timeout_mins,
         file_bugs=spec.file_bugs,
         file_experimental_bugs=spec.file_experimental_bugs,
         suite_job_id=suite_job_id, extra_deps=spec.suite_dependencies,

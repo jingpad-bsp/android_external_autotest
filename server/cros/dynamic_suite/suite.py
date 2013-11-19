@@ -231,8 +231,9 @@ class Suite(object):
 
     def __init__(self, predicates, tag, build, board, cf_getter, afe=None,
                  tko=None, pool=None, results_dir=None, max_runtime_mins=24*60,
-                 timeout=24, file_bugs=False, file_experimental_bugs=False,
-                 suite_job_id=None, ignore_deps=False, extra_deps=[],
+                 timeout_mins=24*60, file_bugs=False,
+                 file_experimental_bugs=False, suite_job_id=None,
+                 ignore_deps=False, extra_deps=[],
                  priority=priorities.Priority.DEFAULT, forgiving_parser=True,
                  wait_for_results=True):
         """
@@ -291,7 +292,7 @@ class Suite(object):
                         forgiving_parser=forgiving_parser)
 
         self._max_runtime_mins = max_runtime_mins
-        self._timeout = timeout
+        self._timeout_mins = timeout_mins
         self._file_bugs = file_bugs
         self._file_experimental_bugs = file_experimental_bugs
         self._suite_job_id = suite_job_id
@@ -357,7 +358,7 @@ class Suite(object):
                      constants.JOB_SUITE_KEY: self._tag,
                      constants.JOB_EXPERIMENTAL_KEY: test.experimental},
             max_runtime_mins=self._max_runtime_mins,
-            timeout=self._timeout,
+            timeout_mins=self._timeout_mins,
             parent_job_id=self._suite_job_id,
             test_retry=test.retries,
             priority=self._priority)

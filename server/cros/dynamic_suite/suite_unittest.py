@@ -244,7 +244,7 @@ class SuiteTest(mox.MoxTestBase):
                 keyvals={'build': self._BUILD, 'suite': self._TAG,
                          'experimental':test.experimental},
                 max_runtime_mins=24*60,
-                timeout=24,
+                timeout_mins=1440,
                 parent_job_id=None,
                 test_retry=0,
                 priority=priorities.Priority.DEFAULT
