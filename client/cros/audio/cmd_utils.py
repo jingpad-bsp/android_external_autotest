@@ -11,16 +11,35 @@ import threading
 _popen_lock = threading.Lock()
 
 
+def kill_silently(*popens):
+    '''Kill all the processes of the given Popens without rasie any exceptions
+    in any cases.
+
+    @param poopens: The Popens to be killed.
+    '''
+    for p in popens:
+        if p and p.pid:
+            try:
+                p.kill()
+            except:
+                logging.exception('failed to kill %d', p.pid)
+
+
 def wait_and_check_returncode(*popens):
     '''Wait for all the Popens and check the return code is 0.
 
     If the return code is not 0, it raises an RuntimeError.
+
+    @param popens: The Popens to be checked.
     '''
+    error_message = None
     for p in popens:
         if p.wait() != 0:
-            raise RuntimeError(
-                    'Command failed(%d, %d): %s' %
-                    (p.pid, p.returncode, p.command))
+            error_message = ('Command failed(%d, %d): %s' %
+                             (p.pid, p.returncode, p.command))
+            logging.error(error_message)
+    if error_message:
+        raise RuntimeError(error_message)
 
 
 def execute(args, stdin=None, stdout=None):

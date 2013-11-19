@@ -12,6 +12,7 @@ from autotest_lib.client.cros.audio import cmd_utils
 _CRAS_TEST_CLIENT = '/usr/bin/cras_test_client'
 _RE_SELECTED_OUTPUT_NODE = re.compile('Selected Output Node: (.*)')
 _RE_SELECTED_INPUT_NODE = re.compile('Selected Input Node: (.*)')
+_RE_NUM_ACTIVE_STREAM = re.compile('Num active streams: (.*)')
 
 def playback(*args, **kargs):
     """A helper function to execute the playback_cmd."""
@@ -97,3 +98,12 @@ def get_selected_nodes():
         raise RuntimeError('No match for the pattern')
 
     return (output_match.group(1).strip(), input_match.group(1).strip())
+
+def get_active_stream_count():
+    """Gets the number of active streams."""
+    server_info = dump_server_info()
+    match = _RE_NUM_ACTIVE_STREAM.search(server_info)
+    if not match:
+        logging.error(server_info)
+        raise RuntimeException('Cannot find matched pattern')
+    return int(match.group(1))

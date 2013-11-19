@@ -2,10 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import os
 import subprocess
 import tempfile
+import time
 
 from autotest_lib.client.bin import test
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.audio import audio_helper
 from autotest_lib.client.cros.audio import cmd_utils
@@ -42,8 +45,7 @@ class audiovideo_CRASFormatConversion(test.test):
         """
         p1 = cmd_utils.popen(
             sox_utils.generate_sine_tone_cmd(
-                    filename='-', duration=2, rate=rate, frequence=frequence,
-                    gain=-6),
+                    filename='-', rate=rate, frequence=frequence, gain=-6),
             stdout=subprocess.PIPE)
         p2 = cmd_utils.popen(
             cras_utils.playback_cmd(
@@ -51,19 +53,72 @@ class audiovideo_CRASFormatConversion(test.test):
             stdin=p1.stdout)
         return [p1, p2]
 
-    def play_two_freqs(self, primary, secondary):
-        """ Starts a stream at primary sample rate, adds a stream at secondary.
+    def ensure_running(self, ps):
+        """Ensures the prcoess is still running. Otherwise raises an exception.
         Args:
+            ps: the process to be tested with.
+        """
+        if ps.poll() != None:
+            raise error.TestFail(
+                    'commands stopped(pid=%d, rc=%d): %s' %
+                    (ps.pid, ps.returncode, ps.command))
+
+    def wait_for_active_stream_count(self, expected_count):
+        utils.poll_for_condition(
+                lambda: cras_utils.get_active_stream_count() == expected_count,
+                exception=error.TestError(
+                        'Timeout waiting active stream count to become %d' %
+                        expected_count),
+                timeout=1, sleep_interval=0.05)
+
+    def loopback(self, noise_profile, primary, secondary):
+        """ Plays two different tones (the 440 and 523 Hz sine wave) at the
+            specified sampling rate and make sure the sounds is recorded
+        Args:
+            noise_profile: The noise profile which is used to reduce the
+                           noise of the recored audio.
             primary: The sample rate to play first, HW will be set to this.
             secondary: The second sample rate, will be SRC'd to the first.
         """
         processes = []
 
+        record_file = os.path.join(self.resultsdir,
+                'record-%s-%s.wav' % (primary, secondary))
+
+        # There should be no other active streams.
+        self.wait_for_active_stream_count(0)
+
         # Start with the primary sample rate, then add the secondary.  This
         # causes the secondary to be SRC'd to the primary rate.
-        processes += self.play_sine_tone(_TEST_TONE_ONE, primary)
-        processes += self.play_sine_tone(_TEST_TONE_TWO, secondary)
-        cmd_utils.wait_and_check_returncode(*processes)
+        try:
+            # Play the first audio stream and make sure it has been played
+            processes += self.play_sine_tone(_TEST_TONE_ONE, primary)
+            self.wait_for_active_stream_count(1)
+
+            # Play the second audio stream and make sure it has been played
+            processes += self.play_sine_tone(_TEST_TONE_TWO, secondary)
+            self.wait_for_active_stream_count(2)
+
+            cras_utils.capture(
+                    record_file, buffer_frames=441, duration=2, rate=44100)
+
+            # Make sure the playback is still in good shape
+            for ps in processes:
+                self.ensure_running(ps)
+
+            reduced_file = tempfile.NamedTemporaryFile()
+            sox_utils.noise_reduce(
+                    record_file, reduced_file.name, noise_profile,
+                    channels=2, bits=16, rate=44100)
+
+            audio_helper.check_rms_for_all_channels(
+                    reduced_file.name, channels=2, bits=16, rate=44100,
+                    rms_threshold=_MIN_SOX_RMS_VALUE)
+
+            # Remove the file only when we pass the test
+            os.unlink(record_file)
+        finally:
+            cmd_utils.kill_silently(*processes)
 
     def run_once(self):
         """Runs the format conversion test.
@@ -76,27 +131,21 @@ class audiovideo_CRASFormatConversion(test.test):
         cras_utils.set_capture_gain(_TEST_CAPTURE_GAIN)
 
         # Record silence to use as the noise profile.
-        noise_file = tempfile.NamedTemporaryFile(mode='w+t');
+        noise_file = tempfile.NamedTemporaryFile()
+        noise_profile = tempfile.NamedTemporaryFile()
         cras_utils.capture(
                 noise_file.name, buffer_frames=512, duration=1, rate=48000)
+        sox_utils.noise_profile(
+                noise_file.name, noise_profile.name, rate=48000)
 
-        def record_callback(filename):
-            cras_utils.capture(
-                    filename, buffer_frames=441, duration=2, rate=44100)
 
         # Try all sample rate pairs.
         for primary in _TEST_SAMPLE_RATES:
             for secondary in _TEST_SAMPLE_RATES:
-                audio_helper.loopback_test_channels(
-                        noise_file.name,
-                        self.resultsdir,
-                        lambda channel: self.play_two_freqs(primary, secondary),
-                        lambda out: audio_helper.check_audio_rms(
-                                out, sox_threshold=_MIN_SOX_RMS_VALUE),
-                        record_callback=record_callback)
+                self.loopback(noise_profile.name, primary, secondary)
 
         # Record at all sample rates
-        record_file = tempfile.NamedTemporaryFile(mode='w+t');
+        record_file = tempfile.NamedTemporaryFile()
         for rate in _TEST_SAMPLE_RATES:
             cras_utils.capture(
                     record_file.name, buffer_frames=512, duration=1, rate=rate)
