@@ -21,6 +21,6 @@ state (work in progress, feel free to add some more).
 job.run_test('power_SuspendStress', duration=(60 * 60 * 1.5), tag='bareDaily')
 
 job.run_test('hardware_EC', tag='power_SuspendStress')
-job.run_test('login_LoginSuccess', tag='power_SuspendStress')
+job.run_test('login_LoginSuccessTelemetry', tag='power_SuspendStress')
 job.run_test('hardware_TPMCheck', tag='power_SuspendStress')
 job.run_test('audiovideo_Aplay', tag='power_SuspendStress')
