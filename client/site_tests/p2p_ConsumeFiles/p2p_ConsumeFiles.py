@@ -79,7 +79,7 @@ class p2p_ConsumeFiles(test.test):
         """
         fd, tempfn = tempfile.mkstemp(prefix='p2p-output')
         ret = utils.run(
-                P2P_CLIENT, args=args, timeout=timeout,
+                P2P_CLIENT, args=['-v=1'] + list(args), timeout=timeout,
                 ignore_timeout=True, ignore_status=True,
                 stdout_tee=open(tempfn, 'w'), stderr_tee=sys.stdout)
         url = os.fdopen(fd).read()
