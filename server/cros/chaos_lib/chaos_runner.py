@@ -129,12 +129,6 @@ class ChaosRunner(object):
                 # configurations.
                 self._power_down_aps(aps)
                 self._configure_aps(aps)
-                # Sanitized security mapping for iw scanner.
-                sanitized_security = {
-                    iw_runner.SECURITY_OPEN: 'open',
-                    iw_runner.SECURITY_WPA: 'psk',
-                    iw_runner.SECURITY_WPA2: 'psk',
-                    iw_runner.SECURITY_MIXED: 'mixed'}
 
                 for ap in aps:
                     # http://crbug.com/306687
@@ -168,8 +162,12 @@ class ChaosRunner(object):
                                          chaos_constants.AP_SSID_NOTFOUND,
                                      tag=ap.ssid)
                         continue
-                    if (sanitized_security[networks[0].security] !=
-                            sanitized_security[self._ap_spec.security]):
+                    # Sanitize the only security setting that doesn't match
+                    # before doing the comparison
+                    if networks[0].security == iw_runner.SECURITY_MIXED:
+                        networks[0].security = iw_runner.SECURITY_WPA2
+
+                    if networks[0].security != self._ap_spec.security:
                         # Check if AP is configured with the expected security.
                         logging.error('%s was the expected security but got %s',
                                       self._ap_spec.security,
