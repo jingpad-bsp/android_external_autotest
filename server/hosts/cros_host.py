@@ -1228,7 +1228,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
 
     def xmlrpc_connect(self, command, port, command_name=None,
-                       ready_test_name=None, timeout_seconds=10):
+                       ready_test_name=None, timeout_seconds=10,
+                       logfile='/dev/null'):
         """Connect to an XMLRPC server on the host.
 
         The `command` argument should be a simple shell command that
@@ -1266,7 +1267,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         @param timeout_seconds Number of seconds to wait
             for the server to become 'ready.'  Will throw a
             TestFail error if server is not ready in time.
-
+        @param logfile Logfile to send output when running
+            'command' argument.
         """
         # Clean up any existing state.  If the caller is willing
         # to believe their server is down, we ought to clean up
@@ -1276,7 +1278,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         # below is necessary, because 'ssh' won't terminate until
         # background child processes close stdin, stdout, and
         # stderr.
-        remote_cmd = '%s </dev/null >/dev/null 2>&1 & echo $!' % command
+        remote_cmd = '%s </dev/null >%s 2>&1 & echo $!' % (command, logfile)
         remote_pid = self.run(remote_cmd).stdout.rstrip('\n')
         logging.debug('Started XMLRPC server on host %s, pid = %s',
                       self.hostname, remote_pid)
