@@ -20,22 +20,29 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib.cros import chrome
 
 CHROMEDRIVER_EXE_PATH = '/usr/local/chromedriver/chromedriver'
+X_SERVER_DISPLAY = ':0'
+X_AUTHORITY = '/home/chronos/.Xauthority'
+
 
 class chromedriver(object):
     """Wrapper class, a context manager type, for tests to use Chrome Driver."""
 
     def __init__(self, extra_chrome_flags=[], subtract_extra_chrome_flags=[],
-                 *args, **kwargs):
+                 extension_paths=[], is_component=True, *args, **kwargs):
         """Initialize.
 
         @param extra_chrome_flags: Extra chrome flags to pass to chrome, if any.
         @param subtract_extra_chrome_flags: Remove default flags passed to
                 chrome by chromedriver, if any.
+        @param extension_paths: A list of paths to unzipped extensions. Note
+                                that paths to crx files won't work.
+        @param is_component: True if the manifest.json has a key.
         """
         assert os.geteuid() == 0, 'Need superuser privileges'
 
         # Log in with telemetry
-        self._browser = chrome.Chrome().browser
+        self._browser = chrome.Chrome(extension_paths=extension_paths,
+                                      is_component=is_component).browser
 
         # Start ChromeDriver server
         self._server = chromedriver_server(CHROMEDRIVER_EXE_PATH)
@@ -94,6 +101,12 @@ class chromedriver_server(object):
 
         port = utils.get_unused_port()
         chromedriver_args = [exe_path, '--port=%d' % port]
+
+        # Chromedriver will look for an X server running on the display
+        # specified through the DISPLAY environment variable.
+        os.environ['DISPLAY'] = X_SERVER_DISPLAY
+        os.environ['XAUTHORITY'] = X_AUTHORITY
+
         self.bg_job = utils.BgJob(chromedriver_args, stderr_level=logging.DEBUG)
         self.url = 'http://localhost:%d' % port
         if self.bg_job is None:
