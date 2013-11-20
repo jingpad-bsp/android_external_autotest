@@ -127,7 +127,6 @@ MODE.COMPLETE = 'complete'
 MODE.MANUAL = 'manual'
 MODE.REPLAY = 'replay'
 MODE.ROBOT = 'robot'
-MODE.ROBOT_INT = 'robot_int'
 MODE.ROBOT_SIM = 'robot_sim'
 # GESTURE_PLAY_MODE is a list of all attributes above
 MODE.GESTURE_PLAY_MODE = list(MODE.__dict__.values())

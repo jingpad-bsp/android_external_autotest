@@ -11,18 +11,14 @@ import glob
 import os
 import subprocess
 import sys
-import time
-
-import gtk.keysyms
 
 import common_util
-import firmware_constants
 import firmware_log
 import firmware_utils
 import fuzzy
 import mini_color
 import mtb
-import robot_wrapper
+import touchbotII_robot_wrapper as robot_wrapper
 import test_conf as conf
 import validators
 
@@ -32,7 +28,7 @@ sys.path.append('../../bin/input')
 import input_device
 
 # Include some constants
-from firmware_constants import DEV, MODE, OPTIONS, RC, TFK
+from firmware_constants import DEV, MODE, OPTIONS, TFK
 
 
 class TestFlow:
@@ -91,17 +87,14 @@ class TestFlow:
 
     def _is_robot_mode(self):
         """Is it in robot mode?"""
-        return self.mode in [MODE.ROBOT, MODE.ROBOT_INT, MODE.ROBOT_SIM]
+        return self.mode in [MODE.ROBOT, MODE.ROBOT_SIM]
 
     def _get_gesture_names(self):
         """Determine the gesture names based on the mode."""
         if self._is_robot_mode():
-            if self.mode == MODE.ROBOT_INT:
-                return conf.gesture_names_robot_interaction[self.device_type]
-            else:
-                # The mode could be MODE.ROBOT or MODE.ROBOT_SIM.
-                # The same gesture names list is used in both modes.
-                return conf.gesture_names_robot[self.device_type]
+            # The mode could be MODE.ROBOT or MODE.ROBOT_SIM.
+            # The same gesture names list is used in both modes.
+            return conf.gesture_names_robot[self.device_type]
         elif self.mode == MODE.MANUAL:
             return conf.gesture_names_manual[self.device_type]
         elif self.mode == MODE.CALIBRATION:
@@ -153,29 +146,6 @@ class TestFlow:
                  "Press 'd'   to delete this file and try again (recommended),",
                  "      SPACE to save this file if you are sure it's correct,",
                  "      'x'   to discard this file and exit."])
-        return prompt
-
-    def _get_prompt_robot_pause(self):
-        """Prompt for robot pause."""
-        # Check if the robot needs to pause for this gesture.
-        pause = conf.gesture_names_robot_pause.get(self.gesture.name)
-        # No need to pause if this is not the first iteration.
-        if not pause or self.gv_count > 1:
-            return None
-
-        # If the pause is per gesture, pause only at the first variation.
-        pause_msg = pause[RC.PROMPT]
-        if pause[RC.PAUSE_TYPE] == RC.PER_GESTURE:
-            variations_list = self.variations_dict.get(self.gesture.name)
-            # It is possible that there are no variations in a gesture.
-            # Then this is considered to be the first variation.
-            if (variations_list and self.variation != variations_list[0]):
-                return None
-
-        prompt = ("----- %s -----\n"
-                  "%s\n"
-                  "%s\n"
-                  "%s\n") % pause_msg
         return prompt
 
     def _get_prompt_no_data(self):
@@ -371,27 +341,14 @@ class TestFlow:
         final_score = eval(conf.score_aggregator)(scores)
         self.output.print_report('\nFinal score: %s\n' % str(final_score))
 
-    def _prompt_and_action(self):
-        """Set the prompt and perform the action if in robot mode."""
-        self.win.set_prompt(self._prompt_result)
-        # Have the robot perform the gesture if it is in ROBOT mode.
-        if self._is_robot_mode():
-            prompt_msg = self._get_prompt_robot_pause()
-            if prompt_msg is not None:
-                # Print the prompt on both the window and the console.
-                # The latter is needed because another machine is used
-                # to ssh to the chromebook under test. Hence, the user
-                # could look at the prompt from the console more easily
-                # rather than staring at the distant window of the
-                # chromebook under test.
-                self.win.set_prompt(prompt_msg)
-                print '\n\n' + prompt_msg
-                self.robot_waiting = True
-            else:
-                self._robot_action()
-
     def _robot_action(self):
         """Control the robot to perform the action."""
+        if (self.gesture.name in conf.robot_must_start_without_fingertips
+            and self.robot.fingertips != [None, None, None, None]):
+            self.robot.return_fingertips()
+        elif (self.gesture.name not in conf.robot_must_start_without_fingertips
+              and self.robot.fingertips == [None, None, None, None]):
+            self.robot.get_fingertips(self.robot.fingertip_size)
         self.robot.control(self.gesture, self.variation)
 
     def _handle_user_choice_save_after_parsing(self, next_gesture=True):
@@ -410,7 +367,7 @@ class TestFlow:
         if self._pre_setup_this_gesture_variation(next_gesture=next_gesture):
             # There are more gestures.
             self._setup_this_gesture_variation()
-            self._prompt_and_action()
+            self._robot_action()
         else:
             # No more gesture.
             self._final_scores(self.scores)
@@ -423,7 +380,7 @@ class TestFlow:
         """Handle user choice for discarding the parsed gesture file."""
         self.output.print_window('')
         self._setup_this_gesture_variation()
-        self._prompt_and_action()
+        self._robot_action()
         self.packets = None
 
     def _handle_user_choice_exit_after_parsing(self):
@@ -602,7 +559,7 @@ class TestFlow:
             self.init_flag = True
             self._pre_setup_this_gesture_variation()
             self._setup_this_gesture_variation()
-            self._prompt_and_action()
+            self._robot_action()
 
     def _get_existent_event_files(self):
         """Get the existent event files that starts with the primary_name."""

@@ -4,9 +4,11 @@
 
 """A wrapper for robot manipulation with Touchbot II."""
 
+import math
 import os
 import re
-import math
+import sys
+import time
 
 import common_util
 import test_conf as conf
@@ -136,10 +138,33 @@ class RobotWrapper:
             None: (CENTER, CENTER),
         }
 
+
+        self.fingertip_size = 2
+        self.fingertips = [None, None, None, None]
+
         self._build_robot_script_paths()
 
         if should_calibrate:
             self._calibrate_device(board)
+
+    def get_fingertips(self, size):
+        script = os.path.join(self._robot_script_dir,
+                              'manipulate_fingertips.py')
+        cmd = ('python %s %d %d %d %d %d %s' %
+                 (script, 1, 1, 1, 1, size, str(True)))
+        if self._execute_control_command(cmd):
+            raise RobotWrapperError('Error getting the fingertips!')
+        self.fingertip_size = size
+        self.fingertips = [size, size, size, size]
+
+    def return_fingertips(self):
+        script = os.path.join(self._robot_script_dir,
+                              'manipulate_fingertips.py')
+        cmd = ('python %s %d %d %d %d %d %s' %
+                 (script, 1, 1, 1, 1, self.fingertip_size, str(False)))
+        if self._execute_control_command(cmd):
+            raise RobotWrapperError('Error returning the fingertips!')
+        self.fingertips = [None, None, None, None]
 
     def _calibrate_device(self, board):
         """ Have the operator show the robot where the device is."""
@@ -153,7 +178,7 @@ class RobotWrapper:
 
         In the robot action mode, it actually invokes the robot control script.
         """
-        return self._mode in [MODE.ROBOT, MODE.ROBOT_INT]
+        return self._mode in [MODE.ROBOT]
 
     def _raise_error(self, msg):
         """Only raise an error if it is in the robot action mode."""
@@ -174,7 +199,7 @@ class RobotWrapper:
     def _get_num_taps(self, gesture):
         """Determine the number of times to tap."""
         matches = re.match('[^0-9]*([0-9]*)[^0-9]*', gesture)
-        return matches.group(1) if matches else None
+        return int(matches.group(1)) if matches else None
 
     def _reverse_coord_if_is_touchscreen(self, coordinates):
         """Reverse the coordinates if the device is a touchscreen.
@@ -317,7 +342,8 @@ class RobotWrapper:
         """Execute a control command."""
         print 'Executing: "%s"' % control_cmd
         if self._is_robot_action_mode():
-            common_util.simple_system(control_cmd)
+            return common_util.simple_system(control_cmd)
+        return 0
 
     def control(self, gesture, variation):
         """Have the robot perform the gesture variation."""
@@ -327,6 +353,8 @@ class RobotWrapper:
             print gesture.name, variation
             control_cmd = self._get_control_command(gesture.name, variation)
             print control_cmd
+            # Pausing to give everything time to settle
+            time.sleep(2)
             self._execute_control_command(control_cmd)
         except RobotWrapperError as e:
             print gesture.name, variation

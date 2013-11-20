@@ -6,9 +6,7 @@
 
 """This configuration file defines the gestures to perform."""
 
-import validators
-
-from firmware_constants import DEV, GV, RC, VAL
+from firmware_constants import DEV, GV, VAL
 from validators import (CountPacketsValidator,
                         CountTrackingIDValidator,
                         DrumrollValidator,
@@ -73,9 +71,9 @@ validators_hidden_when_no_failures = ['PinchValidator',
 
 
 # Define the path to find the robot gestures library path
-robot_lib_path = '/usr/local/lib*'
+robot_lib_path = '/usr/lib*'
 python_package = 'python*'
-gestures_sub_path = 'site-packages/gestures'
+gestures_sub_path = 'site-packages/touchbotII'
 
 
 # Define the gesture names
@@ -178,6 +176,10 @@ robot_capability_list = [
     TWO_FINGER_PHYSICAL_CLICK,
 ]
 
+robot_must_start_without_fingertips = [
+    ONE_FINGER_PHYSICAL_CLICK,
+    TWO_FINGER_PHYSICAL_CLICK
+]
 
 def get_gesture_names_for_robot(device):
     """Get the gesture names that a robot can do for a specified device."""
@@ -192,21 +194,6 @@ gesture_names_robot = {
 }
 
 
-# Define the gestures to test using the robot with finger interaction.
-gesture_names_robot_interaction = {
-    DEV.TOUCHPAD: gesture_names_robot[DEV.TOUCHPAD] + [
-        FINGER_CROSSING,
-        STATIONARY_FINGER_NOT_AFFECTED_BY_2ND_FINGER_TAPS,
-        RESTING_FINGER_PLUS_2ND_FINGER_MOVE,
-    ],
-    DEV.TOUCHSCREEN: gesture_names_robot[DEV.TOUCHSCREEN] + [
-        FINGER_CROSSING,
-        STATIONARY_FINGER_NOT_AFFECTED_BY_2ND_FINGER_TAPS,
-        RESTING_FINGER_PLUS_2ND_FINGER_MOVE,
-    ],
-}
-
-
 # Define the manual list which is gesture_names_complete - gesture_names_robot
 gesture_names_manual = {}
 for dev in DEV.DEVICE_TYPE_LIST:
@@ -218,55 +205,6 @@ for dev in DEV.DEVICE_TYPE_LIST:
 
 # Define the gesture for pressure calibration
 gesture_names_calibration = [PRESSURE_CALIBRATION,]
-
-
-# Define those gestures that the robot needs to pause so the user
-# could adjust the robot or do finger interaction.
-msg_step1 = 'Step 1: Place a metal finger on the %s of the touch surface now.'
-msg_step2 = 'Step 2: Press SPACE when ready.'
-msg_step3 = 'Step 3: Remember to lift the metal finger when robot has finished!'
-gesture_names_robot_pause = {
-    TWO_FINGER_TRACKING: {
-        RC.PAUSE_TYPE: RC.PER_GESTURE,
-        RC.PROMPT: (
-            'Gesture: %s' % TWO_FINGER_TRACKING,
-            'Step 1: Install two fingers for the robot now.',
-            msg_step2,
-            '',
-        )
-    },
-
-    FINGER_CROSSING: {
-        RC.PAUSE_TYPE: RC.PER_VARIATION,
-        RC.PROMPT: (
-            'Gesture: %s' % FINGER_CROSSING,
-            msg_step1 % 'center',
-            msg_step2,
-            msg_step3,
-        )
-    },
-
-    STATIONARY_FINGER_NOT_AFFECTED_BY_2ND_FINGER_TAPS: {
-        RC.PAUSE_TYPE: RC.PER_VARIATION,
-        RC.PROMPT: (
-            'Gesture: %s' % STATIONARY_FINGER_NOT_AFFECTED_BY_2ND_FINGER_TAPS,
-            msg_step1 % 'center',
-            msg_step2,
-            msg_step3,
-        )
-    },
-
-    RESTING_FINGER_PLUS_2ND_FINGER_MOVE: {
-        RC.PAUSE_TYPE: RC.PER_VARIATION,
-        RC.PROMPT: (
-            'Gesture: %s' % RESTING_FINGER_PLUS_2ND_FINGER_MOVE,
-            msg_step1 % 'bottom left corner',
-            msg_step2,
-            msg_step3,
-        )
-    },
-}
-
 
 # Define the relative segment weights of a validator.
 # For example, LinearityMiddleValidator : LinearityBothEndsValidator = 7 : 3

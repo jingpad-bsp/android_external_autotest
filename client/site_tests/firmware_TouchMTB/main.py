@@ -334,7 +334,6 @@ def _usage_and_exit():
                                 'both manual mode and robot mode'
     print '            manual: all gestures minus gestures in robot mode'
     print '            robot: using robot to perform gestures automatically'
-    print '            robot_int: using robot with finger interaction'
     print '            robot_sim: robot simulation, for developer only'
     print '  --%s log_dir' % OPTIONS.REPLAY
     print '        Replay the gesture files and get the test results.'
