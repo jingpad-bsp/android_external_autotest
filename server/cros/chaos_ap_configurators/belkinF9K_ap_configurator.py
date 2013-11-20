@@ -161,7 +161,7 @@ class BelkinF9KAPConfigurator(
         mode_name = mode_mapping.get(mode)
         if not mode_name:
             raise RuntimeError('The mode %d not supported by router %s. ',
-                               hex(mode), self.get_router_name())
+                               hex(mode), self.name)
         xpath = '//select[@name="wbr"]'
         self.select_item_from_popup_by_xpath(mode_name, xpath,
                                              wait_for_xpath=None,
@@ -186,14 +186,13 @@ class BelkinF9KAPConfigurator(
 
 
     def set_radio(self, enabled=True):
-        logging.debug('This router (%s) does not support radio',
-                      self.get_router_name())
+        logging.debug('This router (%s) does not support radio', self.name)
         return None
 
 
     def set_band(self, band):
         logging.debug('This router %s does not support multiple bands.',
-                      self.get_router_name())
+                      self.name)
         return None
 
 

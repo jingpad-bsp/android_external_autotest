@@ -19,7 +19,7 @@ class LinksysAP15Configurator(linksys_ap_configurator.LinksysAPConfigurator):
         mode_name = mode_mapping.get(mode)
         if not mode_name:
             raise RuntimeError('The mode selected %d is not supported by router'
-                               ' %s.', hex(mode), self.get_router_name())
+                               ' %s.', hex(mode), self.name)
         xpath = ('//select[@name="wl_net_mode"]')
         self.select_item_from_popup_by_xpath(mode_name, xpath)
 

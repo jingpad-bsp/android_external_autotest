@@ -104,7 +104,7 @@ class Linksyse2500APConfigurator(linksyse_dual_band_configurator.
                 return
         else:
             raise RuntimeError('The mode selected %d is not supported by router'
-                               ' %s.', hex(mode), self.get_router_name())
+                               ' %s.', hex(mode), self.name)
         self.select_item_from_popup_by_xpath(mode_name, xpath)
 
 

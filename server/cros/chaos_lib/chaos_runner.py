@@ -190,7 +190,7 @@ class ChaosRunner(object):
                                  assoc_params=assoc_params,
                                  client=self._wifi_client,
                                  tries=tries,
-                                 debug_info=ap.get_router_name(),
+                                 debug_info=ap.name,
                                  # Copy all logs from the system
                                  disabled_sysinfo=False,
                                  tag=ap.ssid)

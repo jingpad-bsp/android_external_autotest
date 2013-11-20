@@ -129,15 +129,14 @@ class BuffaloAPConfigurator(
             mode_name = mode_mapping[mode]
         else:
             raise RuntimeError('The mode %d not supported by router %s. ',
-                               hex(mode), self.get_router_name())
+                               hex(mode), self.name)
         xpath = '//select[@name="ath0_net_mode"]'
         self.select_item_from_popup_by_xpath(mode_name, xpath)
 
 
     def set_radio(self, enabled):
         #  We cannot turn off radio on Buffalo.
-        logging.debug('This router (%s) does not support radio.',
-                      self.get_router_name())
+        logging.debug('This router (%s) does not support radio.', self.name)
         return None
 
 
@@ -211,7 +210,7 @@ class BuffaloAPConfigurator(
 
     def set_band(self, band):
         logging.debug('This router (%s) does not support multiple bands.',
-                      self.get_router_name())
+                      self.name)
         return None
 
 

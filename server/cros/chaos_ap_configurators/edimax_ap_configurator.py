@@ -108,7 +108,7 @@ class EdimaxAPConfigurator(
             mode_name = mode_mapping[mode]
         else:
             raise RuntimeError('The mode selected %d is not supported by router'
-                               ' %s.', hex(mode), self.get_router_name())
+                               ' %s.', hex(mode), self.name)
         xpath = '//select[@name="band"]'
         self.select_item_from_popup_by_xpath(mode_name, xpath)
 

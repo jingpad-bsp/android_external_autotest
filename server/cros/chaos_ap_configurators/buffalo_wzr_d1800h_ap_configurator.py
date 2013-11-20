@@ -124,14 +124,13 @@ class BuffalowzrAPConfigurator(
     def set_mode(self, mode, band=None):
         # We cannot set mode in Buffalo WZR.
         logging.debug('This router (%s) does not support setting mode.' ,
-                      self.get_router_name())
+                      self.name)
         return None
 
 
     def set_radio(self, enabled=True):
         #  We cannot turn off radio on Buffalo WZR.
-        logging.debug('This router (%s) does not support radio.' ,
-                      self.get_router_name())
+        logging.debug('This router (%s) does not support radio.' , self.name)
         return None
 
 

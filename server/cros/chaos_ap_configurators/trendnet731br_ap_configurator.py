@@ -87,7 +87,7 @@ class Trendnet731brAPConfigurator(trendnet_ap_configurator.
             mode_name = mode_mapping[mode]
         else:
             raise RuntimeError('The mode selected %d is not supported by router'
-                               ' %s.', hex(mode), self.get_router_name())
+                               ' %s.', hex(mode), self.name)
         self.select_item_from_popup_by_id(mode_name, 'dot11_mode')
 
     def get_supported_bands(self):

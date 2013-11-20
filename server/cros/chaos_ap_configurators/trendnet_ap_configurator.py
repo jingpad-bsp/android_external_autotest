@@ -113,14 +113,14 @@ class TrendnetAPConfigurator(
             mode_name = mode_mapping[mode]
         else:
             raise RuntimeError('The mode selected %d is not supported by router'
-                               ' %s.', hex(mode), self.get_router_name())
+                               ' %s.', hex(mode), self.name)
         self.select_item_from_popup_by_id(mode_name, 'wirelessmode',
                                           wait_for_xpath='id("wds_mode")')
 
 
     def set_radio(self, enabled=True):
         logging.debug('Enabling/Disabling the radio is not supported on this '
-                      'router (%s).', self.get_router_name())
+                      'router (%s).', self.name)
         return None
 
 

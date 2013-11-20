@@ -57,6 +57,10 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
         self.host_name = ap_config.get_wan_host()
         self.config_data = ap_config
 
+        self._name = ('Router name: %s, Controller class: %s,'
+                      'MAC Address: %s' % (self._short_name, self.class_name,
+                      self.mac_address))
+
         # Set a default band, this can be overriden by the subclasses
         self.current_band = ap_spec.BAND_2GHZ
         self._ssid = None
@@ -87,7 +91,7 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
         return('AP Name: %s\n'
                'BSS: %s\n'
                'SSID: %s\n'
-               'Short name: %s' % (self.get_router_name(), self.get_bss(),
+               'Short name: %s' % (self.name, self.get_bss(),
                self._ssid, self.short_name))
 
 
@@ -244,11 +248,10 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
         self._webdriver_port = value
 
 
-    def get_router_name(self):
+    @property
+    def name(self):
         """Returns a string to describe the router."""
-        return ('Router name: %s, Controller class: %s, MAC '
-                'Address: %s' % (self.short_name, self.class_name,
-                                 self.mac_address))
+        return self._name
 
 
     def get_configuration_success(self):
@@ -447,13 +450,13 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
             except:
                 self.driver.refresh()
                 logging.info('Waiting for router %s to come back up.',
-                             self.get_router_name())
+                             self.name)
                 # Sometime the APs just don't come up right.
                 if i == 8:
                     logging.info('Cannot connect to AP, forcing cycle')
                     self.rpm_client.queue_request(self.host_name, 'CYCLE')
         raise RuntimeError('Unable to load admin page after powering on the '
-                           'router: %s' % self.get_router_name())
+                           'router: %s' % self.name)
 
 
     def save_page(self, page_number):
@@ -683,8 +686,7 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
                     direction = 'up'
                     if first_command == self._power_down_router:
                         direction = 'down'
-                    logging.info('Powering %s %s', direction,
-                                 self.get_router_name())
+                    logging.info('Powering %s %s', direction, self.name)
                     first_command(*sorted_page_commands[0]['args'])
                     sorted_page_commands.pop(0)
 

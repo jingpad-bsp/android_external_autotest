@@ -95,7 +95,7 @@ class Trendnet812druAPConfigurator(trendnet692gr_ap_configurator.
         else:
             raise RuntimeError('The mode selected %s is not supported by router'
                                ' %s.', ap_spec.mode_string_for_mode(mode),
-                               self.get_router_name())
+                               self.name)
         self.select_item_from_popup_by_xpath('Auto',
                                              '//select[@name="wl_nmode"]')
 

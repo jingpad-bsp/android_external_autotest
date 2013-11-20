@@ -149,7 +149,7 @@ class AsusAPConfigurator(
                 return
         else:
             raise RuntimeError('The mode selected \'%s\' is not supported by '
-                               'router %s.' % mode_name, self.get_router_name())
+                               'router %s.' % mode_name, self.name)
         self.select_item_from_popup_by_xpath(mode_name, xpath,
             alert_handler=self._invalid_security_handler)
 

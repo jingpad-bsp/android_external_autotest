@@ -170,7 +170,7 @@ class MediaLinkAPConfigurator(
 
     def set_band(self, band):
         logging.debug('This router %s does not support multiple bands.',
-                      self.get_router_name())
+                      self.name)
         return None
 
 
@@ -190,7 +190,7 @@ class MediaLinkAPConfigurator(
 
     def _set_security_wep(self, key_value, authentication):
         logging.debug('This router %s does not support WEP authentication type:'
-                      ' %s', self.get_router_name(), authentication)
+                      ' %s', self.name, authentication)
         popup = '//select[@name="security_mode"]'
         text_field = '//input[@name="wep_key_1"]'
         self.select_item_from_popup_by_xpath('Mixed WEP', popup,

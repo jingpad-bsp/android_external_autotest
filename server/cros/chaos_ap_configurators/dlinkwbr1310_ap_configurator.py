@@ -112,13 +112,12 @@ class DLinkwbr1310APConfigurator(
     def _set_mode(self, mode_enable=True):
         # For dlinkwbr1310, 802.11g is the only available mode.
         logging.debug('This router (%s) does not support multiple modes.',
-                      self.get_router_name())
+                      self.name)
         return None
 
 
     def set_radio(self, enabled=True):
-        logging.debug('This router (%s) does not support radio.',
-                      self.get_router_name())
+        logging.debug('This router (%s) does not support radio.', self.name)
         return None
 
 
@@ -144,7 +143,7 @@ class DLinkwbr1310APConfigurator(
 
     def set_band(self, band):
         logging.debug('This router (%s) does not support multiple bands.',
-                      self.get_router_name())
+                      self.name)
         return None
 
 

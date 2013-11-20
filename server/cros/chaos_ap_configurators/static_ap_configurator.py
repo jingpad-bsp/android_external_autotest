@@ -52,7 +52,7 @@ class StaticAPConfigurator(ap_configurator.APConfiguratorAbstract):
         return('AP Name: %s\n'
                'BSS: %s\n'
                'SSID: %s\n'
-               'Short name: %s' % (self.get_router_name(),
+               'Short name: %s' % (self.name,
                    self.config_data.get_bss(), self._ssid,
                    self.short_name))
 
@@ -104,11 +104,10 @@ class StaticAPConfigurator(ap_configurator.APConfiguratorAbstract):
         self._command_list = list()
 
 
-    def get_router_name(self):
+    @property
+    def name(self):
         """Returns a string to describe the router."""
-        return ('Router name: %s, Controller class: %s, MAC '
-                'Address: %s' % (self.short_name, self.class_name,
-                                 self.mac_address))
+        return self._name
 
 
     def get_configuration_success(self):

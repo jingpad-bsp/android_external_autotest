@@ -115,7 +115,7 @@ class Trendnet654trAPConfigurator(trendnet_ap_configurator.
         else:
             raise RuntimeError('The mode selected %s is not supported by router'
                                ' %s.', ap_spec.mode_string_for_mode(mode),
-                               self.get_router_name())
+                               self.name)
         self.select_item_from_popup_by_id(mode_name, 'dot11_mode')
 
 

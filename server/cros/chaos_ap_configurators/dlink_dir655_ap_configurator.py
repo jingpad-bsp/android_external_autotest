@@ -166,7 +166,7 @@ class DLinkDIR655APConfigurator(
         else:
             raise SeleniumTimeoutException('The mode selected %s is not '
                                            'supported by router %s.' %
-                                           (hex(mode), self.get_router_name()))
+                                           (hex(mode), self.name))
         # When we change to an N based mode another popup is displayed.  We need
         # to wait for the before proceeding.
         wait_for_xpath = 'id("show_ssid")'
@@ -236,7 +236,7 @@ class DLinkDIR655APConfigurator(
 
     def set_band(self, band):
         logging.debug('This router (%s) does not support multiple bands.',
-                      self.get_router_name())
+                      self.name)
         return None
 
 

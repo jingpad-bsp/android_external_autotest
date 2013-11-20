@@ -168,7 +168,7 @@ class WesternDigitalN600APConfigurator(
                 return
         else:
             raise RuntimeError('The mode selected \'%d\' is not supported by '
-                               ' \'%s\'.', hex(mode), self.get_router_name())
+                               ' \'%s\'.', hex(mode), self.name)
         self.select_item_from_popup_by_id(mode_name, mode_id,
                                           alert_handler=self._sec_alert)
 

@@ -164,7 +164,7 @@ class DLinkAPConfigurator(
         else:
             raise SeleniumTimeoutException('The mode selected %s is not '
                                            'supported by router %s.' %
-                                           (hex(mode), self.get_router_name()))
+                                           (hex(mode), self.name))
         # Set the band first
         self._set_band(band_value)
         popup_id = 'mode_80211_11g'

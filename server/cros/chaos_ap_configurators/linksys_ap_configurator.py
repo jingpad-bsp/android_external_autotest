@@ -77,7 +77,7 @@ class LinksysAPConfigurator(
         mode_name = mode_mapping.get(mode)
         if not mode_name:
             raise RuntimeError('The mode selected %d is not supported by router'
-                               ' %s.', hex(mode), self.get_router_name())
+                               ' %s.', hex(mode), self.name)
         xpath = ('//select[@onchange="SelWL()" and @name="Mode"]')
         self.select_item_from_popup_by_xpath(mode_name, xpath)
 
@@ -145,7 +145,7 @@ class LinksysAPConfigurator(
 
     def _set_security_wep(self, key_value, authentication):
         logging.debug('This router %s doesnt support WEP authentication type: '
-                      '%s', self.get_router_name(), authentication)
+                      '%s', self.name, authentication)
         popup = '//select[@name="SecurityMode"]'
         self.wait_for_object_by_xpath(popup)
         text_field = ('//input[@name="wl_passphrase"]')

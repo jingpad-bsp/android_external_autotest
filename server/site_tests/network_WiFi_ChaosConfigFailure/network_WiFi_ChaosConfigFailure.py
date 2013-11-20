@@ -32,12 +32,12 @@ class network_WiFi_ChaosConfigFailure(test.test):
         if chaos_constants.AP_CONFIG_FAIL in error_string:
             raise error.TestError('The AP was not configured correctly. Please '
                                   'see the ERROR log for more details.\n%s',
-                                  ap.get_router_name())
+                                  ap.name)
         elif chaos_constants.AP_SECURITY_MISMATCH in error_string:
             raise error.TestError('The AP was not configured with correct '
                                   'security. Please check screenshots to '
-                                  'debug.\n%s', ap.get_router_name())
+                                  'debug.\n%s', ap.name)
         else:
             raise error.TestError('The SSID %s was not found in the scan. '
                                   'Check the screenshots to debug.\n%s',
-                                  ap.ssid, ap.get_router_name())
+                                  ap.ssid, ap.name)

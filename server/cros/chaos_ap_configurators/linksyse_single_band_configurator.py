@@ -100,7 +100,7 @@ class LinksyseSingleBandAPConfigurator(
         mode_name = mode_mapping.get(mode)
         if not mode_name:
             raise RuntimeError('The mode %d not supported by router %s. ',
-                               hex(mode), self.get_router_name())
+                               hex(mode), self.name)
         xpath = '//select[@name="net_mode_24g"]'
         self.select_item_from_popup_by_xpath(mode_name, xpath,
                                              alert_handler=self._sec_alert)
