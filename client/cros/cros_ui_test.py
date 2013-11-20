@@ -12,6 +12,8 @@ from autotest_lib.client.common_lib import error
 class UITest(pyauto_test.PyAutoTest):
     """Base class for tests that drive some portion of the user interface.
 
+    PYAUTO IS DEPRECATED. PLEASE DO NOT USE THIS CLASS. Use Telemetry instead.
+
     By default subclasses will use the default remote credentials before
     the run_once method is invoked, and will log out at the completion
     of the test case even if an exception is thrown.
