@@ -2,12 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "Wade Guthrie <wdg@google.com>"
-TIME = "SHORT"
-NAME = "network_WiFi_SSIDSwitchBack"
-TEST_CATEGORY = "Functional"
-TEST_CLASS = "network"
-TEST_TYPE = "Server"
+AUTHOR = 'wiley, pstew, quiche'
+TIME = 'SHORT'
+NAME = 'network_WiFi_SSIDSwitchBack'
+TEST_TYPE = 'Server'
 DOC = """
 The SSIDSwitchBack test verifies that the connection manager is able
 to rejoin a previously connected AP when it loses connectivity to its

@@ -2,19 +2,18 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "Chrome OS Team"
-NAME = "network_ShillInitScripts"
-PURPOSE = "Verify that shill init and login / logout scripts work correctly."
-CRITERIA = "Fails if file operations or DBus calls do not work as expected."
-SUITE = "network_nightly"
-TIME = "SHORT"
-TEST_CATEGORY = "Functional"
-TEST_CLASS = "network"
-TEST_TYPE = "client"
+AUTHOR = 'pstew, quiche, wiley'
+NAME = 'network_ShillInitScripts'
+SUITE = 'network_nightly'
+TIME = 'SHORT'
+TEST_TYPE = 'client'
 
 DOC = """
-This test depends on the ifconfig utility to both disable and reenable a
-network interface.
+This test verifies that shill init and login / logout scripts work correctly
+and fails if file operations or DBus calls do not work as expected.  This test
+depends on the ifconfig utility to both disable and reenable a network
+interface.
+
 """
 
 job.run_test('network_ShillInitScripts', iface_name='all', tag='all')

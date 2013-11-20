@@ -2,16 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = 'pstew@chromium.org'
+AUTHOR = 'pstew, quiche, wiley'
 NAME = 'network_CheckCriticalProcesses'
-PURPOSE = 'Make sure all expected essential networking processes are running.'
-CRITERIA = """
-Fail if we find any missing processes.
-"""
 SUITE='bvt, network_nightly'
 TIME = 'SHORT'
-TEST_CATEGORY = 'Functional'
-TEST_CLASS = 'network'
 TEST_TYPE = 'client'
 
 DOC = """

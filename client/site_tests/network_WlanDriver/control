@@ -2,15 +2,17 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = 'pstew@chromium.org'
-DOC = 'Verifies that the wireless driver is the expected revision.'
-CRITERIA = 'Fails if wlan0/mlan0 has an unexpected driver release.'
+AUTHOR = 'pstew, quiche, wiley'
 NAME = 'network_WlanDriver'
-PURPOSE = 'Ensure the detected Wlan has the correct associated kernel driver.'
 SUITE = 'network_nightly, wifi_matfunc'
 TIME = 'SHORT'
-TEST_CATEGORY = 'Functional'
-TEST_CLASS = 'network'
 TEST_TYPE = 'client'
+
+DOC = """
+Ensure the detected wlan device has the correct associated kernel driver and
+that the driver is the expected revision.  This test will fail if we find
+that mlan0/wlan0 has an odd driver release.
+"""
+
 
 job.run_test('network_WlanDriver')

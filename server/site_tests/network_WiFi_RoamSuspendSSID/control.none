@@ -2,11 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = 'wiley@chromium.org'
+AUTHOR = 'wiley, pstew, quiche'
 TIME = 'SHORT'
 NAME = 'network_WiFi_RoamSuspendSSID.none'
-TEST_CATEGORY = 'Functional'
-TEST_CLASS = 'network'
 TEST_TYPE = 'Server'
 DOC = """
 This test verifies that the connection manager connects to a

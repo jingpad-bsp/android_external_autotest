@@ -2,18 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = 'pstew@chromium.org'
+AUTHOR = 'pstew, wiley, quiche'
 NAME = 'network_VPNConnect.l2tpipsec_psk'
-PURPOSE = 'Verify shill correctly authenticates to an L2TP/IPSec PSK VPN'
 SUITE = 'network_nightly'
-CRITERIA = """
-This test fails if the DUT cannot authenticate to a locally running
-L2TP/IPSec PSK VPN server runing at the other end of a virtual Ethernet
-interface.
-"""
 TIME = 'SHORT'
-TEST_CATEGORY = 'Functional'
-TEST_CLASS = 'network'
 TEST_TYPE = 'client'
 
 DOC = """
@@ -23,6 +15,10 @@ DOC = """
   is best suited for verifying that the connection manager and VPN
   manager are correctly passing parameters to the underlying VPN client
   to have it properly connect.
+
+  This test fails if the DUT cannot authenticate to a locally running
+  L2TP/IPSec PSK VPN server runing at the other end of a virtual Ethernet
+  interface.
 
 """
 

@@ -2,12 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = 'jabele@chromium.org'
+AUTHOR = 'krisr, wiley, jabele'
 NAME = 'network_WiFi_ChaosConnectDisconnect.interop'
 TIME = 'SHORT'
 SUITE = 'wifi_interop'
-TEST_CATEGORY = 'Functional'
-TEST_CLASS = 'network'
 TEST_TYPE = 'server'
 DEPENDENCIES = 'chaos_dut'
 

@@ -2,11 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = 'Wade Guthrie <wdg@google.com>'
+AUTHOR = 'wiley, pstew, quiche'
 TIME = 'SHORT'
 NAME = 'network_WiFi_SSIDMultiSwitchBack'
-TEST_CATEGORY = 'Functional'
-TEST_CLASS = 'network'
 TEST_TYPE = 'Server'
 DOC = """
 The SSIDSwitchBack test verifies that the connection manager is able

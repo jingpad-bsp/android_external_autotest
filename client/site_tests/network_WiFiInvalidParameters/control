@@ -2,23 +2,21 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = 'wiley@chromium.org'
+AUTHOR = 'wiley, pstew, quiche'
 NAME = 'network_WiFiInvalidParameters'
 PURPOSE = 'Verify shill returns correct errors for invalid WiFi configurations'
 SUITE = 'network_nightly'
-CRITERIA = """
-This test fails if shill doesn't return the expected DBus exceptions when asked
-to configure networks with invalid settings, like SSIDs/passphrases that
-are too long or short.
-"""
 TIME = 'SHORT'
-TEST_CATEGORY = 'Functional'
-TEST_CLASS = 'network'
 TEST_TYPE = 'client'
 
 DOC = """
-Configures WiFi services with invalid parameters and expects certain types of
-errors to come back from shill.
+  Configures WiFi services with invalid parameters and expects certain types of
+  errors to come back from shill.
+
+  This test fails if shill doesn't return the expected DBus exceptions when
+  asked to configure networks with invalid settings, like SSIDs/passphrases
+  that are too long or short.
+
 """
 
 job.run_test('network_WiFiInvalidParameters')

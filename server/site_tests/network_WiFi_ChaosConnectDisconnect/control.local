@@ -2,11 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = 'krisr@chromium.org'
+AUTHOR = 'krisr, wiley, jabele'
 NAME = 'network_WiFi_ChaosConnectDisconnect.local'
 TIME = 'LONG'
-TEST_CATEGORY = 'Functional'
-TEST_CLASS = 'network'
 TEST_TYPE = 'server'
 
 DOC = """

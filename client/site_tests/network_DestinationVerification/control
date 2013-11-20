@@ -2,22 +2,18 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = 'wiley@chromium.org'
+AUTHOR = 'wiley, pstew'
 NAME = 'network_DestinationVerification'
-PURPOSE = 'Verify that the shill crypto-util shim operates correctly.'
-CRITERIA = """
-This test fails if crypto-util is unable to verify a valid destination
-certificate or validates an invalid certificate.  This checks the ways
-that crypto-util interacts with OpenSSL and verifies that we're expecting
-the correct key/certificate formats.
-"""
 SUITE = 'network_nightly'
 TIME = 'SHORT'
-TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'client'
 
 DOC = """
-  Tests that we can validate a destination by its certificate.
+  Tests that we can validate a ChromeCast device by its certificate.  This test
+  fails if crypto-util is unable to verify a valid ChromeCast device
+  certificate or validates an invalid certificate.  This checks the ways that
+  crypto-util interacts with OpenSSL and verifies that we're expecting the
+  correct key/certificate formats.
 
 """
 

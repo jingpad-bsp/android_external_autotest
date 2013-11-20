@@ -2,22 +2,18 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "ChromeOS Team"
-NAME = "network_DhcpClasslessStaticRoute"
-PURPOSE = "Verify DHCP negotions can succeed with a classless static route"
-SUITE = "network_nightly"
-CRITERIA = """
-This test fails if dhcpcd is unable to attain a default route using
-the classless static route option (RFC 3442) instead of the normal
-gateway parameter.
-"""
-TIME = "SHORT"
-TEST_CATEGORY = "Functional"
-TEST_CLASS = "network"
-TEST_TYPE = "client"
+AUTHOR = 'pstew, quiche, wiley'
+NAME = 'network_DhcpClasslessStaticRoute'
+SUITE = 'network_nightly'
+TIME = 'SHORT'
+TEST_TYPE = 'client'
 
 DOC = """
   Tests that we can negotiate a lease on an IPv4 address via DHCP.
+
+  This test fails if dhcpcd is unable to attain a default route using
+  the classless static route option (RFC 3442) instead of the normal
+  gateway parameter.
 
 """
 
