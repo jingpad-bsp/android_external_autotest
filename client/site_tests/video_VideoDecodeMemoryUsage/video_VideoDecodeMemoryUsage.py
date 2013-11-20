@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import os
 import re
 import time
 
@@ -145,9 +146,14 @@ def _assert_no_memory_leak(name, mem_usage, threshold = MEMORY_LEAK_THRESHOLD):
 class MemoryTest(object):
     """The base class of all memory tests"""
 
+    def __init__(self, bindir):
+        self._bindir = bindir
+
+
     def _open_new_tab(self, page_to_open):
         tab = self.browser.tabs.New()
-        tab.Navigate(self.browser.http_server.UrlOf(page_to_open))
+        tab.Navigate(self.browser.http_server.UrlOf(
+                os.path.join(self._bindir, page_to_open)))
         return tab
 
 
@@ -342,7 +348,8 @@ class video_VideoDecodeMemoryUsage(test.test):
                 logging.info('run: %s - %s', name, videos)
                 try :
                     test_case_class = globals()[class_name]
-                    test_case_class().run(name, cr.browser, videos, self)
+                    test_case_class(self.bindir).run(
+                            name, cr.browser, videos, self)
                 except Exception as last_error:
                     logging.exception('%s fail', name)
                     # continue to next test case

@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import os
+
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
@@ -22,7 +24,8 @@ class video_VideoDecodeAcceleration(test.test):
         """
         with chrome.Chrome() as cr:
             cr.browser.SetHTTPServerDirectories(self.bindir)
-            video_url = cr.browser.http_server.UrlOf(video_file)
+            video_url = cr.browser.http_server.UrlOf(
+                    os.path.join(self.bindir, video_file))
             tab1 = cr.browser.tabs[0]
             tab1.Navigate(video_url)
             tab1.WaitForDocumentReadyStateToBeComplete()

@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import os
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -22,7 +23,8 @@ class video_VideoSeek(test.test):
         with chrome.Chrome() as cr:
             cr.browser.SetHTTPServerDirectories(self.bindir)
             tab = cr.browser.tabs[0]
-            tab.Navigate(cr.browser.http_server.UrlOf('video.html'))
+            tab.Navigate(cr.browser.http_server.UrlOf(
+                    os.path.join(self.bindir, 'video.html')))
 
             # Test seeks either before or after the previous seeks complete.
             seek_event = 'seeking' if fast_seek else 'seeked'
