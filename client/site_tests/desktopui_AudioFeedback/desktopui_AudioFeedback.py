@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import os
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -79,7 +80,8 @@ class desktopui_AudioFeedback(test.test):
 
         with chrome.Chrome() as cr:
             cr.browser.SetHTTPServerDirectories(self.bindir)
-            self._test_url = cr.browser.http_server.UrlOf('youtube.html')
+            self._test_url = cr.browser.http_server.UrlOf(
+                    os.path.join(self.bindir, 'youtube.html'))
             logging.info('Playing back youtube media file %s.', self._test_url)
 
             # Set volume and capture gain after Chrome is up, or those value
