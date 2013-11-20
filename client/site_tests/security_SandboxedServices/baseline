@@ -26,8 +26,6 @@ lid_touchpad_he,root,No,No,No,No,No
 thermal.sh,root,No,No,No,No,No
 daisydog,watchdog,Yes,Yes,No,No,No
 permission_brok,devbroker,Yes,No,No,Yes,No
-date-proxy-watc,proxystate,No,No,No,No,No
 netfilter-queue,nfqueue,Yes,Yes,No,Yes,Yes
 warn_collector,root,No,No,No,No,No
-dbus-monitor,proxystate,No,No,No,No,No
 tlsdated-setter,root,No,No,No,No,No
