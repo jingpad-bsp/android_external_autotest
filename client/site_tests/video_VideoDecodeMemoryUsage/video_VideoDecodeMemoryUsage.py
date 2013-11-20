@@ -103,7 +103,7 @@ def _get_graphics_memory_usage():
             result = GEM_OBJECTS_RE.match(line)
             if result:
                 return int(result.group(2))
-    raise eror.TestError('Cannot parse the content')
+    raise error.TestError('Cannot parse the content')
 
 
 def _get_linear_regression_slope(x, y):
