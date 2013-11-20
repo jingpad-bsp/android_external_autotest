@@ -39,7 +39,13 @@ def avahi_config(options, src_file='/etc/avahi/avahi-daemon.conf'):
 
     fd, tempfn = tempfile.mkstemp(prefix='avahi-conf')
     os.close(fd)
-    conf.write(open(tempfn, 'w'))
+    # ConfigParser writes the options as "key = value\n" while avahi-daemon only
+    # accepts them in the form of "key=value\n".
+    with open(tempfn, 'w') as f:
+      for section in conf.sections():
+        f.write('[%s]\n' % section)
+        for option in conf.options(section):
+          f.write('%s=%s\n' % (option, conf.get(section, option)))
     return tempfn
 
 
@@ -75,8 +81,8 @@ def avahi_start(config_file=None):
     """
     env = ''
     if not config_file is None:
-        env = 'AVAHI_DAEMON_CONF="%s" ' % config_file
-    utils.system(env + 'start avahi', ignore_status=False)
+        env = ' AVAHI_DAEMON_CONF="%s"' % config_file
+    utils.system('start avahi' + env, ignore_status=False)
     # Wait until avahi is ready.
     deadline = time.time() + 10.
     while time.time() < deadline:
