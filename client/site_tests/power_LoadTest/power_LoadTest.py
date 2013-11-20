@@ -5,9 +5,8 @@
 import collections, logging, numpy, os, time
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import backchannel, cros_ui, cros_ui_test
-from autotest_lib.client.cros import httpd, power_rapl, power_status, power_utils
-from autotest_lib.client.cros import flimflam_test_path
+from autotest_lib.client.cros import backchannel, cros_ui, cros_ui_test, httpd
+from autotest_lib.client.cros import power_rapl, power_status, power_utils
 from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.audio import audio_helper
 import flimflam
@@ -24,8 +23,9 @@ params_dict = {
 
 
 class power_LoadTest(cros_ui_test.UITest):
+    """test class"""
     version = 2
-    _creds='power.loadtest@gmail.com:power_LoadTest'
+    _creds = 'power.loadtest@gmail.com:power_LoadTest'
 
 
     def start_authserver(self):
@@ -53,7 +53,7 @@ class power_LoadTest(cros_ui_test.UITest):
                  scroll_by_pixels='600', test_low_batt_p=3,
                  verbose=True, force_wifi=False, wifi_ap='', wifi_sec='none',
                  wifi_pw='', tasks="", kblight_percent=10, volume_level=10,
-                 mic_gain=10):
+                 mic_gain=10, low_batt_margin_p=2):
         """
         percent_initial_charge_min: min battery charge at start of test
         check_network: check that Ethernet interface is not running
@@ -72,6 +72,8 @@ class power_LoadTest(cros_ui_test.UITest):
             shut-down the device
         sys_low_batt_s: seconds battery at which power manager will
             shut-down the device
+        low_batt_margin_p: percent low battery margin to be added to
+            sys_low_batt_p to guarantee test completes prior to powerd shutdown
         """
         self._backlight = None
         self._services = None
@@ -100,7 +102,7 @@ class power_LoadTest(cros_ui_test.UITest):
         self._wait_time = 60
         self._stats = collections.defaultdict(list)
 
-        #self._power_status.assert_battery_state(percent_initial_charge_min)
+        self._power_status.assert_battery_state(percent_initial_charge_min)
         # If force wifi enabled, convert eth0 to backchannel and connect to the
         # specified WiFi AP.
         if self._force_wifi:
@@ -155,12 +157,12 @@ class power_LoadTest(cros_ui_test.UITest):
         self._power_status.refresh()
         (self._sys_low_batt_p, self._sys_low_batt_s) = \
             self._get_sys_low_batt_values()
-        if self._sys_low_batt_p and (self._sys_low_batt_p >
-                                     self._test_low_batt_p):
+        min_low_batt_p = min(self._sys_low_batt_p + low_batt_margin_p, 100)
+        if self._sys_low_batt_p and (min_low_batt_p > self._test_low_batt_p):
             logging.warn("test low battery threshold is below system " +
                          "low battery requirement.  Setting to %f",
-                         self._sys_low_batt_p)
-            self._test_low_batt_p = self._sys_low_batt_p
+                         min_low_batt_p)
+            self._test_low_batt_p = min_low_batt_p
 
         self._ah_charge_start = self._power_status.battery[0].charge_now
         self._wh_energy_start = self._power_status.battery[0].energy
@@ -222,7 +224,7 @@ class power_LoadTest(cros_ui_test.UITest):
             self._plog.checkpoint('loop%d' % (i), start_time)
             self._tlog.checkpoint('loop%d' % (i), start_time)
             if self._verbose:
-                logging.debug('loop %d completed' % i)
+                logging.debug('loop %d completed', i)
 
             if low_battery:
                 logging.info('Exiting due to low battery')
