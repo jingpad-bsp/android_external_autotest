@@ -24,7 +24,8 @@ class APConfiguratorAbstract(object):
         return True
 
 
-    def get_router_short_name(self):
+    @property
+    def short_name(self):
         """Returns a short string to describe the router."""
         raise NotImplementedError('Missing subclass implementation')
 

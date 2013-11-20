@@ -52,7 +52,7 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
         # Load the data for the config file
         self.admin_interface_url = ap_config.get_admin()
         self.class_name = ap_config.get_class()
-        self.short_name = ap_config.get_model()
+        self._short_name = ap_config.get_model()
         self.mac_address = ap_config.get_wan_mac()
         self.host_name = ap_config.get_wan_host()
         self.config_data = ap_config
@@ -88,7 +88,7 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
                'BSS: %s\n'
                'SSID: %s\n'
                'Short name: %s' % (self.get_router_name(), self.get_bss(),
-               self._ssid, self.get_router_short_name()))
+               self._ssid, self.short_name))
 
 
     @property
@@ -256,9 +256,10 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
         return self.configuration_success
 
 
-    def get_router_short_name(self):
+    @property
+    def short_name(self):
         """Returns a short string to describe the router."""
-        return self.short_name
+        return self._short_name
 
 
     def get_number_of_pages(self):
@@ -489,7 +490,7 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
 
         # Update ssid
         raw_ssid = '%s_%s_ch%d_%s' % (
-                self.get_router_short_name(),
+                self.short_name,
                 ap_spec.mode_string_for_mode(set_ap_spec.mode),
                 set_ap_spec.channel,
                 set_ap_spec.security)
@@ -624,7 +625,7 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
         f.close()
         webdriver_url = ('http://%s:%d' % (webdriver_server,
                                            self._webdriver_port))
-        router_name = self.get_router_short_name().replace(' ', '_')
+        router_name = self.short_name.replace(' ', '_')
         temp_dir = datetime.datetime.now().strftime('/tmp/chromedriver_' +
                                                     router_name +
                                                     '_' + '%H%M%S%m%d%Y')

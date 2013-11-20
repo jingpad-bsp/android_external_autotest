@@ -28,7 +28,7 @@ class StaticAPConfigurator(ap_configurator.APConfiguratorAbstract):
         # This allows the ability to build a generic configurator
         # which can be used to get access to the members above.
         self.class_name = ap_config.get_class()
-        self.short_name = ap_config.get_model()
+        self._short_name = ap_config.get_model()
         self.mac_address = ap_config.get_wan_mac()
         self.host_name = ap_config.get_wan_host()
         self.channel = ap_config.get_channel()
@@ -54,7 +54,7 @@ class StaticAPConfigurator(ap_configurator.APConfiguratorAbstract):
                'SSID: %s\n'
                'Short name: %s' % (self.get_router_name(),
                    self.config_data.get_bss(), self._ssid,
-                   self.get_router_short_name()))
+                   self.short_name))
 
 
     @property
@@ -115,10 +115,10 @@ class StaticAPConfigurator(ap_configurator.APConfiguratorAbstract):
         """Returns True, there is no config step for Static APs"""
         return True
 
-
-    def get_router_short_name(self):
+    @property
+    def short_name(self):
         """Returns a short string to describe the router."""
-        return self.short_name
+        return self._short_name
 
 
     def get_supported_bands(self):
