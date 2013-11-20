@@ -5,7 +5,7 @@
 AUTHOR = 'wiley@chromium.org'
 NAME = 'network_WiFiInvalidParameters'
 PURPOSE = 'Verify shill returns correct errors for invalid WiFi configurations'
-SUITE = 'bvt, network_nightly'
+SUITE = 'network_nightly'
 CRITERIA = """
 This test fails if shill doesn't return the expected DBus exceptions when asked
 to configure networks with invalid settings, like SSIDs/passphrases that

@@ -5,7 +5,7 @@
 AUTHOR = 'pstew@chromium.org'
 NAME = 'network_VPNConnect.openvpn'
 PURPOSE = 'Verify shill correctly authenticates to an OpenVPN server'
-SUITE = 'bvt, network_nightly'
+SUITE = 'network_nightly'
 CRITERIA = """
 This test fails if the DUT cannot authenticate to a locally running
 OpenVPN server runing at the other end of a virtual Ethernet interface.

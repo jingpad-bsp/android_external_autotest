@@ -5,7 +5,7 @@
 AUTHOR = "ChromeOS Team"
 NAME = "network_DhcpNonAsciiParameter"
 PURPOSE = "Verify DHCP negotions can succeed with non-ASCII DHCP parameters"
-SUITE = "bvt, network_nightly"
+SUITE = "network_nightly"
 CRITERIA = """
 This test fails if dhcpcd is unable to negotiate and renew a DHCP lease
 if the server returns a string parameter with non-ASCII parameters, which

@@ -11,7 +11,7 @@ certificate or validates an invalid certificate.  This checks the ways
 that crypto-util interacts with OpenSSL and verifies that we're expecting
 the correct key/certificate formats.
 """
-SUITE = 'bvt, network_nightly'
+SUITE = 'network_nightly'
 TIME = 'SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'client'

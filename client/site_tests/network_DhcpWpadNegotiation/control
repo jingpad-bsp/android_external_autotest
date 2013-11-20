@@ -5,7 +5,7 @@
 AUTHOR = "pstew@chromium.org"
 NAME = "network_DhcpWpadNegotiation"
 PURPOSE = "Verify DHCP negotion for Web Proxy Auto Discovery succeeds"
-SUITE = "bvt, network_nightly"
+SUITE = "network_nightly"
 CRITERIA = """
 This test fails if dhcpcd is unable to negotiate a DHCP lease, or
 if shill fails to report the WPAD parameter sent by the server.

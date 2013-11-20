@@ -5,7 +5,7 @@
 AUTHOR = 'pstew@chromium.org'
 NAME = 'network_VPNConnect.l2tpipsec_cert'
 PURPOSE = 'Verify shill correctly authenticates to an L2TP/IPSec Cert VPN'
-SUITE = 'bvt, network_nightly'
+SUITE = 'network_nightly'
 CRITERIA = """
 This test fails if the DUT cannot authenticate to a locally running
 L2TP/IPSec certificate-based VPN server running at the other end of a
