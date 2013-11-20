@@ -92,7 +92,10 @@ class telemetry_Crosperf(test.test):
                                                   stderr=stderr)
 
         result.parse_benchmark_results()
-        self.write_perf_keyval(result.perf_keyvals)
+        for data in result.perf_data:
+            self.output_perf_value(description=data['trace'],
+                                   value=data['value'],
+                                   units=data['units'],
+                                   graph=data['graph'])
+
         return result
-
-
