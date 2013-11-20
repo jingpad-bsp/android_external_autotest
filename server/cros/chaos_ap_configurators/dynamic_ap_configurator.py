@@ -36,7 +36,7 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
     """Base class for objects to configure access points using webdriver."""
 
 
-    def __init__(self, ap_config=None, set_ap_spec=None):
+    def __init__(self, ap_config):
         """Construct a DynamicAPConfigurator.
 
         @param ap_config: information from the configuration file
@@ -49,14 +49,13 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
             'http://chromeos-rpmserver1.cbf.corp.google.com:9999',
             verbose=False)
 
-        if ap_config:
-            # Load the data for the config file
-            self.admin_interface_url = ap_config.get_admin()
-            self.class_name = ap_config.get_class()
-            self.short_name = ap_config.get_model()
-            self.mac_address = ap_config.get_wan_mac()
-            self.host_name = ap_config.get_wan_host()
-            self.config_data = ap_config
+        # Load the data for the config file
+        self.admin_interface_url = ap_config.get_admin()
+        self.class_name = ap_config.get_class()
+        self.short_name = ap_config.get_model()
+        self.mac_address = ap_config.get_wan_mac()
+        self.host_name = ap_config.get_wan_host()
+        self.config_data = ap_config
 
         # Set a default band, this can be overriden by the subclasses
         self.current_band = ap_spec.BAND_2GHZ
@@ -72,9 +71,7 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
         self.configuration_success = False
         self._webdriver_port = 9515
 
-        self.ap_spec = set_ap_spec
-        if self.ap_spec:
-            self.set_using_ap_spec(self.ap_spec)
+        self.ap_spec = None
 
 
     def __del__(self):
