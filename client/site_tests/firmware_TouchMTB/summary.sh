@@ -14,6 +14,7 @@ VERBOSE_MSG=\
      2:  display all metrics statistics with raw metrics values
 "
 DEFINE_string "verbose" "2" "$VERBOSE_MSG" "v"
+DEFINE_boolean "scores" false "display the summary scores" "s"
 DEFINE_boolean "individual" false \
                "calculate statistics for every individual round" "i"
 
@@ -88,10 +89,12 @@ find "$TEST_DIR" \( -name \*.log -o -name \*.html \) \
   -exec cp -t "$SUMMARY_DIR" {} \;
 
 # Run firmware_summary module to derive the summary report.
+[ ${FLAGS_scores} -eq ${FLAGS_TRUE} ] && scores_flag="--scores" \
+                                      || scores_flag=""
 [ ${FLAGS_individual} -eq ${FLAGS_TRUE} ] && individual_flag="--individual" \
                                           || individual_flag=""
 python "${SCRIPT_DIR}/$SUMMARY_MODULE" -m "$FLAGS_verbose" $individual_flag \
-       -d "$SUMMARY_DIR" > "$SUMMARY_FILE"
+       $scores_flag -d "$SUMMARY_DIR" > "$SUMMARY_FILE"
 
 # Create a tarball for the summary files.
 cd $SUMMARY_ROOT

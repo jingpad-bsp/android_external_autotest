@@ -96,7 +96,7 @@ class FirmwareSummary:
     """Summary for touch device firmware tests."""
 
     def __init__(self, log_dir, display_metrics=False, debug_flag=False,
-                 individual_round_flag=False,
+                 display_scores=False, individual_round_flag=False,
                  segment_weights=segment_weights,
                  validator_weights=validator_weights):
         """ segment_weights and validator_weights are passed as arguments
@@ -110,6 +110,7 @@ class FirmwareSummary:
             sys.exit(1)
 
         self.display_metrics = display_metrics
+        self.display_scores = display_scores
         self.slog = firmware_log.SummaryLog(log_dir,
                                             segment_weights,
                                             validator_weights,
@@ -326,13 +327,14 @@ class FirmwareSummary:
 
     def print_result_summary(self):
         """Print the summary of the test results."""
-        self._print_result_stats_by_gesture()
-        self._print_result_stats_by_validator()
         if self.display_metrics:
             self._print_statistics_of_metrics()
             if self.display_metrics.display_raw_values:
                 self._print_raw_metrics_values()
-        self._print_final_weighted_averages()
+        if self.display_scores:
+            self._print_result_stats_by_gesture()
+            self._print_result_stats_by_validator()
+            self._print_final_weighted_averages()
 
 
 def _usage_and_exit():
@@ -384,15 +386,17 @@ def _parse_options():
                OPTIONS.DIR: log_root_dir,
                OPTIONS.INDIVIDUAL: False,
                OPTIONS.METRICS: OptionsDisplayMetrics(None),
+               OPTIONS.SCORES: False,
     }
 
     try:
-        short_opt = 'Dd:him:'
+        short_opt = 'Dd:him:s'
         long_opt = [OPTIONS.DEBUG,
                     OPTIONS.DIR + '=',
                     OPTIONS.HELP,
                     OPTIONS.INDIVIDUAL,
                     OPTIONS.METRICS + '=',
+                    OPTIONS.SCORES,
         ]
         opts, args = getopt.getopt(sys.argv[1:], short_opt, long_opt)
     except getopt.GetoptError, err:
@@ -412,6 +416,8 @@ def _parse_options():
             options[OPTIONS.INDIVIDUAL] = True
         elif opt in ('-m', '--%s' % OPTIONS.METRICS):
             options[OPTIONS.METRICS] = OptionsDisplayMetrics(arg)
+        elif opt in ('-s', '--%s' % OPTIONS.SCORES):
+            options[OPTIONS.SCORES] = True
         else:
             msg = 'This option "%s" is not supported.' % opt
             _parsing_error(opt)
@@ -424,5 +430,6 @@ if __name__ == '__main__':
     summary = FirmwareSummary(options[OPTIONS.DIR],
                               display_metrics=options[OPTIONS.METRICS],
                               individual_round_flag=options[OPTIONS.INDIVIDUAL],
+                              display_scores=options[OPTIONS.SCORES],
                               debug_flag=options[OPTIONS.DEBUG])
     summary.print_result_summary()
