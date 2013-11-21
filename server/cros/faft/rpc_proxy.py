@@ -4,6 +4,7 @@
 
 import httplib
 import socket
+import time
 import xmlrpclib
 
 from autotest_lib.client.cros.faft.config import Config as ClientConfig
@@ -85,7 +86,9 @@ class RPCProxy(object):
                 command_name=self._client_config.rpc_command_short,
                 ready_test_name=self._client_config.rpc_ready_call,
                 timeout_seconds=self._client_config.rpc_timeout,
-                logfile=self._client_config.rpc_logfile)
+                logfile="%s.%s" % (self._client_config.rpc_logfile,
+                                   time.time())
+                )
 
     def disconnect(self):
         """Disconnect the RPC server."""

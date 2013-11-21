@@ -1268,6 +1268,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             TestFail error if server is not ready in time.
         @param logfile Logfile to send output when running
             'command' argument.
+
         """
         # Clean up any existing state.  If the caller is willing
         # to believe their server is down, we ought to clean up
