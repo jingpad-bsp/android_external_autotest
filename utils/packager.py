@@ -39,6 +39,14 @@ def get_exclude_string(client_dir):
     # directory(which is '.') excluding the ones in the exclude_dirs
     exclude_string += " ."
 
+    # TODO(milleral): This is sad and ugly.  http://crbug.com/258161
+    # Surprisingly, |exclude_string| actually means argument list, and
+    # we'd like to package up the current global_config.ini also, so let's
+    # just tack it on here.
+    # Also note that this only works because tar prevents us from un-tarring
+    # files into parent directories.
+    exclude_string += " ../global_config.ini"
+
     return exclude_string
 
 
