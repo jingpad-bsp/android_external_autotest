@@ -1,4 +1,4 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -11,9 +11,11 @@ firmware using FTDI, USB and/or serial interfaces provided by servo.
 Servo state is preserved across the programming process.
 """
 
+import logging
 import os
 
 from autotest_lib.server.cros.faft.config.config import Config as FAFTConfig
+
 
 class ProgrammerError(Exception):
     """Local exception class wrapper."""
@@ -30,7 +32,7 @@ class _BaseProgrammer(object):
                          programming
       _servo_saved_state: a list of the same elements as _servo_prog_state,
                           those which need to be restored after programming
-      _program_command: a string, the shell command to run on the servo host
+      _program_cmd: a string, the shell command to run on the servo host
                     to actually program the firmware. Dependent on
                     firmware/hardware type, set by subclasses.
     """
@@ -44,14 +46,15 @@ class _BaseProgrammer(object):
         self._servo = servo
         self._servo_prog_state = ()
         self._servo_saved_state = []
-        self._program_command = ''
+        self._program_cmd = ''
         # These will fail if the utilities are not available, we want the
         # failure happen before run_once() is invoked.
-        servo.system('which %s' % ' '.join(req_list))
+        self._servo.system('which %s' % ' '.join(req_list))
 
 
     def _set_servo_state(self):
         """Set servo for programming, while saving the current state."""
+        logging.debug("Setting servo state for programming")
         for item in self._servo_prog_state:
             key, value = item.split(':')
             present = self._servo.get(key)
@@ -62,6 +65,7 @@ class _BaseProgrammer(object):
 
     def _restore_servo_state(self):
         """Restore previously saved servo state."""
+        logging.debug("Restoring servo state after programming")
         self._servo_saved_state.reverse()  # Do it in the reverse order.
         for item in self._servo_saved_state:
             key, value = item.split(':')
@@ -72,7 +76,8 @@ class _BaseProgrammer(object):
         """Program the firmware as configured by a subclass."""
         self._set_servo_state()
         try:
-            self._servo.system(self._program_command)
+            logging.debug("Programmer command: %s", self._program_cmd)
+            self._servo.system(self._program_cmd)
         finally:
             self._restore_servo_state()
 
@@ -102,7 +107,7 @@ class FlashromProgrammer(_BaseProgrammer):
             # Save needed sections from current firmware
             for section in vpd_sections + gbb_section:
                 self._servo.system(' '.join([
-                    'flashrom', '-p', 'ft2232_spi:type=servo-v2',
+                    'flashrom', '-V', '-p', 'ft2232_spi:type=servo-v2',
                     '-r', self._fw_main, '-i', '%s:%s' % section]))
 
             # Pack the saved VPD into new firmware
@@ -129,19 +134,19 @@ class FlashromProgrammer(_BaseProgrammer):
 
             # Flash the new firmware
             self._servo.system(' '.join([
-                'flashrom', '-p', 'ft2232_spi:type=servo-v2',
+                'flashrom', '-V', '-p', 'ft2232_spi:type=servo-v2',
                 '-w', self._fw_main]))
         finally:
             self._restore_servo_state()
 
 
-    def prepare_programmer(self, path, board):
+    def prepare_programmer(self, path):
         """Prepare programmer for programming.
 
         @param path: a string, name of the file containing the firmware image.
         @param board: a string, used to find servo voltage setting.
         """
-        faft_config = FAFTConfig(board)
+        faft_config = FAFTConfig(self._servo.get_board())
         self._fw_path = path
         self._servo_prog_state = (
             'spi2_vref:%s' % faft_config.wp_voltage,
@@ -152,131 +157,101 @@ class FlashromProgrammer(_BaseProgrammer):
             )
 
 
-class CrosProgrammer(_BaseProgrammer):
-    """Class for programming ARM platform's flashrom through USB."""
+class FlashECProgrammer(_BaseProgrammer):
+    """Class for programming AP flashrom."""
 
     def __init__(self, servo):
         """Configure required servo state."""
-        super(CrosProgrammer, self).__init__(
-            servo, ['cros_write_firmware', 'dtc', 'smdk-usbdl'])
+        super(FlashECProgrammer, self).__init__(servo, ['flash_ec',])
+        self._servo = servo
 
 
-    def prepare_programmer(self, path, board):
+    def prepare_programmer(self, image):
         """Prepare programmer for programming.
 
-        @param path: a string, name of the file containing the firmware image.
-        @param board: a string, used to find the appropriate device tree. The
-                      device tree is expected to be in the dts subdirectory
-                      along with the firmware image file.
+        @param image: string with the location of the image file
         """
-        firmware_root = os.path.dirname(path)
-        dts_file = os.path.join(
-            firmware_root, 'dts',
-            'exynos5250-%s.dts' % board)
-        self._program_command = 'cros_write_firmware -b daisy -w usb '
-        self._program_command += '-d %s -F spi -i %s -V -D' % (dts_file, path)
+        # TODO: need to not have port be hardcoded
+        self._program_cmd = 'flash_ec --board=%s --image=%s --port=%s' % (
+            self._servo.get_board(), image, '9999')
 
 
-class OpenocdEcProgrammer(_BaseProgrammer):
-    """Class for programming EC firmware using openocd.
-
-    The openocd debugger expects certain scripts/control files to be
-    available. The location of the scripts and control files is different for
-    cases when the servo device is controlled by local and remote hosts.
-    """
-
-    # TODO(vbendeb): clean the paths up once the Beaglebone directory
-    # structure/maintenance is formalized. (see http://crosbug.com/35988 for
-    # details).
-    OPENOCD_SCRIPTS_LOCAL_PATH = os.path.join(os.path.dirname(
-            __file__), '..', 'openocd_scripts')
-    OPENOCD_SCRIPTS_SERVO_PATH = '/home/chromeos-test/ec/chip/lm4/openocd'
-    OPENOCD_CONFIG_SCRIPT = 'servo_v2_slower.cfg'
-    OPENOCD_WRITE_COMMAND = """
-init; reset halt; flash write_image erase %s 0; reset; shutdown;"""
-
+class ProgrammerV2(object):
+    """Main programmer class which provides programmer for BIOS and EC."""
 
     def __init__(self, servo):
-        """Configure required servo state."""
-        super(OpenocdEcProgrammer, self).__init__(servo, ['openocd',])
-        self._servo_prog_state = (
-            'jtag_buf_on_flex_en:on',
-            'jtag_buf_en:on'
-            )
+        self._servo = servo
+        self._bios_programmer = self._factory_bios(self._servo)
+        self._ec_programmer = self._factory_ec(self._servo)
 
 
-    def prepare_programmer(self, path, board='unused'):
-        """Prepare programmer for programming.
+    def _factory_bios(self, servo):
+        """Instantiates and returns (bios, ec) programmers for the board.
 
-        @param path: a string, name of the file containing the EC firmware
-               image.
-        @param board: unused by this class
+        @param servo: A servo object.
+
+        @return A programmer for ec. If the programmer is not supported
+            for the board, None will be returned.
         """
-        if self._servo.is_localhost():
-            scripts_path = self.OPENOCD_SCRIPTS_LOCAL_PATH
-        else:
-            scripts_path = self.OPENOCD_SCRIPTS_SERVO_PATH
+        _bios_prog = None
+        _board = servo.get_board()
 
-        self._program_command = 'openocd -s %s -f %s -c "%s"' % (
-            scripts_path, self.OPENOCD_CONFIG_SCRIPT,
-            (self.OPENOCD_WRITE_COMMAND % path).strip())
-
-
-class Stm32monEcProgrammer(_BaseProgrammer):
-    """Class for programming EC firmware using stm32mon."""
-
-    def __init__(self, servo):
-        """Configure required servo state."""
-        super(Stm32monEcProgrammer, self).__init__(servo, ['stm32mon',])
-        self._servo_prog_state = (
-            'uart1_en:on',
-            'uart1_parity:even',
-            'uart1_baudrate:115200',
-            'spi1_vref:pp3300',
+        servo_prog_state = [
+            'spi2_buf_en:on',
+            'spi2_buf_on_flex_en:on',
+            'spi_hold:off',
             'cold_reset:on',
-            'cold_reset:off'
-            )
+            ]
 
-    def prepare_programmer(self, path, board='unused'):
-        """Prepare programmer for programming.
+        logging.debug('Setting up BIOS programmer for board: %s', _board)
+        if _board in ('daisy_spring', 'rambi', 'pit', 'spring',
+                      'snow', 'daisy', 'monroe', 'panther', 'beltino',
+                      'bolt', 'slippy', 'falco', 'link', 'stumpy',
+                      'lumpy', 'parrot', 'stout', 'butterfly', 'alex',
+                      'zgb', 'mario'):
+            _bios_prog = FlashromProgrammer(servo)
+        else:
+            logging.warn('No BIOS programmer found for board: %s', _board)
 
-        @param path: a string, name of the file containing the firmware image.
-        @param board: unused by this class
+        return _bios_prog
+
+
+    def _factory_ec(self, servo):
+        """Instantiates and returns ec programmer for the board.
+
+        @param servo: A servo object.
+
+        @return A programmer for ec. If the programmer is not supported
+            for the board, None will be returned.
         """
-        ec_uart_dev = self._servo.get('ec_uart_pty')
-        self._program_command = 'stm32mon -d %s -e -w %s' % (ec_uart_dev, path)
+        _ec_prog = None
+        _board = servo.get_board()
+
+        logging.debug('Setting up EC programmer for board: %s', _board)
+        if _board in ('daisy', 'kirby', 'pit', 'puppy', 'snow',
+                      'spring', 'discovery', 'nyan', 'bolt', 'samus',
+                      'falco', 'peppy', 'rambi', 'slippy', 'link'):
+            _ec_prog = FlashECProgrammer(servo)
+        else:
+            logging.warn('No EC programmer found for board: %s', _board)
+
+        return _ec_prog
 
 
-def program_ec(board, servo, image):
-    """Program EC firmware on the DUT.
+    def program_bios(self, image):
+        """Programs the DUT with provide bios image.
 
-    @param board: a string, the DUT board type
-    @param servo: a servo object controlling the servo device
-    @param image: a string, name of the file containing the new firmware image
-    """
-    if board in ('link', 'rambi'):
-        prog = OpenocdEcProgrammer(servo)
-    elif board in ('snow',):
-        prog = Stm32monEcProgrammer(servo)
-    else:
-        raise ProgrammerError('unsupported board %s' % board)
+        @param image: (required) location of bios image file.
 
-    prog.prepare_programmer(image)
-    prog.program()
+        """
+        self._bios_programmer.prepare_programmer(image)
+        self._bios_programmer.program()
 
+    def program_ec(self, image):
+        """Programs the DUT with provide ec image.
 
-def program_bootprom(board, servo, image):
-    """Program AP firmware on the DUT.
+        @param image: (required) location of ec image file.
 
-    @param board: a string, the DUT board type (not yet used)
-    @param servo: a servo object controlling the servo device
-    @param image: a string, name of the file containing the new firmware image
-    """
-    if board in ('link', 'rambi'):
-        prog = FlashromProgrammer(servo)
-    elif board in ('snow',):
-        prog = CrosProgrammer(servo)
-    else:
-        raise ProgrammerError('unsupported board %s' % board)
-    prog.prepare_programmer(image, board)
-    prog.program()
+        """
+        self._ec_programmer.prepare_programmer(image)
+        self._ec_programmer.program()

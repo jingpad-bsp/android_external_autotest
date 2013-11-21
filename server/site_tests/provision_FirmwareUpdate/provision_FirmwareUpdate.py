@@ -105,12 +105,9 @@ class provision_FirmwareUpdate(test.test):
         """The method called by the control file to start the test."""
         self._clear_version_labels()
         logging.info('Will re-program EC now')
-        self._servo.program_ec(self._board,
-                               os.path.join(self.tmpd.name, self._ec_image))
-        logging.info('Will re-program bootprom now')
-        self._servo.program_bootprom(
-                self._board,
-                os.path.join(self.tmpd.name, self._ap_image))
+        self._servo.program_ec(os.path.join(self.tmpd.name, self._ec_image))
+        logging.info('Will re-program BIOS now')
+        self._servo.program_bios(os.path.join(self.tmpd.name, self._ap_image))
         self._servo.get_power_state_controller().cold_reset()
         time.sleep(self._servo.BOOT_DELAY)
         self._add_version_label()

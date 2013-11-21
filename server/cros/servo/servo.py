@@ -12,7 +12,7 @@ import logging, re, time, xmlrpclib
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import utils
 from autotest_lib.server.cros.servo import power_state_controller
-from autotest_lib.server.cros.servo import programmer
+from autotest_lib.server.cros.servo import firmware_programmer
 
 
 class Servo(object):
@@ -83,6 +83,13 @@ class Servo(object):
         self.set('dut_hub_pwren', 'on')
         self.set('usb_mux_oe1', 'on')
         self.switch_usbkey('off')
+
+        # Initialize firmware programmer
+        if self._server.get_version() == "servo_v2":
+            self._programmer = firmware_programmer.ProgrammerV2(self)
+        else:
+            logging.warn("No firmware programmer for servo version: %s" %
+                    self._version)
 
 
     def get_power_state_controller(self):
@@ -290,6 +297,20 @@ class Servo(object):
         time.sleep(Servo.BOOT_DELAY)
         self.ctrl_d()
         time.sleep(Servo.BOOT_DELAY)
+
+
+    def get_version(self):
+        """Get the version of servod board.
+
+        """
+        return self._server.get_version()
+
+
+    def get_board(self):
+        """Get the board connected to servod.
+
+        """
+        return self._server.get_board()
 
 
     def _get_xmlrpclib_exception(self, xmlexc):
@@ -537,38 +558,28 @@ class Servo(object):
                                     args=args).stdout.strip()
 
 
-    def program_ec(self, board, image):
-        """Program EC on a given board using given image.
+    def program_bios(self, image):
+        """Program bios on DUT with given image.
 
-        @param board: a string, type of the DUT board
-        @param image: a string, file name of the EC image to program on the
-                      DUT
+        @param image: a string, file name of the BIOS image to program
+                      on the DUT.
+
         """
         if not self.is_localhost():
             image = self._scp_image(image)
-        programmer.program_ec(board, self, image)
+        self._programmer.program_bios(image)
 
 
-    def program_bootprom(self, board, image):
-        """Program bootprom on a given board using given image.
+    def program_ec(self, image):
+        """Program ec on DUT with given image.
 
-        In case servo is controlled by a remote host, the image needs to be
-        transferred to the host.
+        @param image: a string, file name of the EC image to program
+                      on the DUT.
 
-        If the device tree subdirectory is present along with the image, the
-        subdirectory is also copied to the remote host.
-
-        @param board: a string, type of the DUT board
-        @param image: a string, file name of the firmware image to program on
-                      the DUT. The device tree subdirectory, if present, is on
-                      the same level with the image file.
         """
         if not self.is_localhost():
-            dts_path = os.path.join(os.path.dirname(image), 'dts')
             image = self._scp_image(image)
-            if os.path.isdir(dts_path):
-                self._scp_image(dts_path)
-        programmer.program_bootprom(board, self, image)
+        self._programmer.program_ec(image)
 
 
     def _switch_usbkey_power(self, power_state, detection_delay=False):
