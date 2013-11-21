@@ -4,13 +4,12 @@
 
 import logging, os, re, shutil, time
 
-import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_logging, sys_power
+#pylint: disable=W0611
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam
-
 
 class Suspender(object):
     """Class for suspend/resume measurements.
@@ -49,6 +48,7 @@ class Suspender(object):
     _SUSPEND_DELAY = {
         # TODO: Reevaluate this when http://crosbug.com/38460 is fixed
         'daisy': 5,
+        'daisy_spring': 5,
 
         # TODO: Reevaluate this when http://crosbug.com/36766 is fixed
         'x86-zgb': 4,
@@ -139,7 +139,7 @@ class Suspender(object):
                 logging.info('3G disconnected successfully.')
                 self.disconnect_3G_time = time.time() - start_time
             else:
-                logging.error('Could not disconnect: %s.' % status)
+                logging.error('Could not disconnect: %s.', status)
                 self.disconnect_3G_time = -1
 
 
@@ -147,11 +147,11 @@ class Suspender(object):
         """Enable/disable extra suspend timing output from powerd to syslog."""
         if utils.system('echo %s > /sys/power/pm_print_times' % int(bool(on)),
                 ignore_status=True):
-            logging.warn('Failed to set pm_print_times to %s' % bool(on))
+            logging.warn('Failed to set pm_print_times to %s', bool(on))
             del self.device_times
             self._reset_pm_print_times = False
         else:
-            logging.info('Device resume times set to %s' % bool(on))
+            logging.info('Device resume times set to %s', bool(on))
 
 
     def _reset_logs(self):
@@ -211,7 +211,7 @@ class Suspender(object):
                                   re.DOTALL)
                 if match:
                     seconds = int(match.group(1)) + float(match.group(2))
-                    logging.debug('RTC resume timestamp read: %f' % seconds)
+                    logging.debug('RTC resume timestamp read: %f', seconds)
                     if seconds >= not_before:
                         return seconds
                     early_wakeup = True
@@ -274,10 +274,10 @@ class Suspender(object):
                 else:
                     key += '_suspend'
                 if key in self.device_times[-1]:
-                    logging.warn('Duplicate entry for %s: +%f' % (key, secs))
+                    logging.warn('Duplicate entry for %s: +%f', key, secs)
                     self.device_times[-1][key] += secs
                 else:
-                    logging.debug('%s: %f' % (key, secs))
+                    logging.debug('%s: %f', key, secs)
                     self.device_times[-1][key] = secs
 
 
@@ -301,6 +301,8 @@ class Suspender(object):
         exception when _throw is set. Returns a dict of general measurements,
         or a tuple (general_measurements, individual_device_times) when
         _device_times is set.
+
+        @param duration: time in seconds to do a suspend prior to waking.
         """
         try:
             iteration = len(self.failures) + len(self.successes) + 1
