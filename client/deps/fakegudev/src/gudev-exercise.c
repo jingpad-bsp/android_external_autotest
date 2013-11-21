@@ -39,19 +39,34 @@ main (int argc, const char *argv[])
 static void
 print_device(GUdevDevice *device)
 {
+  GHashTable *properties;
+  GHashTableIter iter;
+  gpointer key, value;
+
   printf (" Name:        %s\n", g_udev_device_get_name (device));
   printf (" Device file: %s\n", g_udev_device_get_device_file (device));
   printf (" Devtype:     %s\n", g_udev_device_get_devtype (device));
   printf (" Driver:      %s\n", g_udev_device_get_driver (device));
   printf (" Subsystem:   %s\n", g_udev_device_get_subsystem (device));
   printf (" Sysfs path:  %s\n", g_udev_device_get_sysfs_path (device));
+
+  /* We want to print out properties in some fixed order every time.
+   * To do this, we hash on the property name, and then iterate.
+   */
   const gchar * const * keys = g_udev_device_get_property_keys (device);
-  while (*keys) {
-    printf("  Property %s: %s\n", *keys, g_udev_device_get_property (device,
-                                                                     *keys));
-    keys++;
+  properties = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+  for (;*keys;++keys) {
+    const gchar * prop;
+
+    prop = g_udev_device_get_property (device, *keys);
+    g_hash_table_insert (properties, g_strdup (*keys), g_strdup (prop));
   }
-  /* sysfs attr? */
+
+  g_hash_table_iter_init (&iter, properties);
+  while (g_hash_table_iter_next (&iter, &key, &value))
+    printf ("  Property %s: %s\n", (gchar *)key, (gchar *)value);
+
+  g_hash_table_unref (properties);
 }
 
 gboolean
@@ -65,16 +80,13 @@ lookup (const gpointer data)
   if (path[0] == '=') {
     gchar **parts;
     parts = g_strsplit (path+1, ",", 2);
-    printf ("Subsystem '%s', Name '%s'\n", parts[0], parts[1]);
 
     device = g_udev_client_query_by_subsystem_and_name (guclient, parts[0],
                                                         parts[1]);
     g_strfreev (parts);
   } else if (strncmp (path, "/sys/", 5) == 0) {
-    printf ("Sysfs path '%s'\n", path);
     device = g_udev_client_query_by_sysfs_path (guclient, path);
   } else {
-    printf ("Path '%s'\n", path);
     device = g_udev_client_query_by_device_file (guclient, path);
   }
 
