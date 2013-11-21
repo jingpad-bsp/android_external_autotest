@@ -186,21 +186,26 @@ class BuffaloAPConfigurator(
             channel_width_choice[channel_width], xpath)
 
 
-    def set_wireless_mode(self, wireles_mo):
+    def set_wireless_mode(self, wireless_mo):
         """
-        Sets the wireless mode.
+        Queues a change to the wireless mode.
 
-        @param wireles_mo: the wireless mode.
+        @param wireless_mo: the wireless mode.
         """
         self.add_item_to_command_list(self._set_wireless_mode,
-                                      (wireles_mo,), 1, 900)
+                                      (wireless_mo,), 1, 900)
 
 
     def _set_wireless_mode(self, wireless_mo):
+        """
+        Sets the wireless mode.
+
+        @param wireless_mo: the wireless mode.
+        """
         wireless_mode_choices = ['AP', 'Client', 'Client Bridge',
                                  'Adhoc', 'WDS Station', 'WDS AP']
         xpath = '//select[@name="ath0_mode"]'
-        self.select_item_from_popup_by_xpath(wireless_mode_choices[wireles_mo],
+        self.select_item_from_popup_by_xpath(wireless_mode_choices[wireless_mo],
                                              xpath)
 
 

@@ -114,7 +114,7 @@ class DLinkAPConfigurator(
         button_xpath = '//input[@name="bt"]'
         try:
             self.wait_for_object_by_xpath(button_xpath)
-        except selenium.common.exceptions.TimeoutException, e:
+        except SeleniumTimeoutException, e:
             continue_screen = False
         if continue_screen:
             button = self.driver.find_element_by_xpath(button_xpath)
