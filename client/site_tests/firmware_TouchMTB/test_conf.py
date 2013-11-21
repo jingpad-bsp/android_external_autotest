@@ -41,6 +41,7 @@ no_reversed_motion_criteria = '<= 5, ~ +30'
 pinch_criteria = '>= 200, ~ -100'
 range_criteria = '<= 0.01, ~ +0.07'
 min_report_rate = 60
+max_report_interval = 1.0 / min_report_rate * 1000
 report_rate_criteria = '>= %d' % min_report_rate
 stationary_finger_criteria = '<= 1.25, ~ +1.25'
 relaxed_stationary_finger_criteria = '<= 100, ~ +100'

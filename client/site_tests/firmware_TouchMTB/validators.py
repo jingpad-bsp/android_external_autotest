@@ -577,9 +577,6 @@ class RangeValidator(BaseValidator):
                                         else self.device.axis_y)
         deviation_ratio = (float(short_of_range_px) /
                            (axis_spec.max - axis_spec.min))
-        self.log_details('actual: %s' % str(actual_edge))
-        self.log_details('spec: %s' % str(spec_edge))
-        self.log_details('deviation_ratio: %f' % deviation_ratio)
         # Convert the direction to edge name.
         #   E.g., direction: center_to_left
         #         edge name: left
@@ -590,6 +587,10 @@ class RangeValidator(BaseValidator):
         self.vlog.metrics = [
             firmware_log.Metric(metric_name, short_of_range_mm)
         ]
+        self.log_details('actual: px %s' % str(actual_edge))
+        self.log_details('spec: px %s' % str(spec_edge))
+        self.log_details('short of range: %d px == %f mm' %
+                         (short_of_range_px, short_of_range_mm))
         self.vlog.score = self.fc.mf.grade(deviation_ratio)
         return self.vlog
 
@@ -837,16 +838,18 @@ class PhysicalClickValidator(BaseValidator):
             firmware_log.Metric(name_clicks, value_clicks),
         ]
 
+        return value_with_TIDs
+
     def check(self, packets, variation=None):
         """Check the number of packets in the specified slot."""
         self.init_check(packets)
+        correct_click_count, raw_click_count = self._add_metrics()
         # Get the number of physical clicks made with the specified number
         # of fingers.
-        click_count = self.packets.get_physical_clicks(self.fingers)
         msg = 'Count of %d-finger physical clicks: %s'
-        self.log_details(msg % (self.fingers, click_count))
-        self._add_metrics()
-        self.vlog.score = self.fc.mf.grade(click_count)
+        self.log_details(msg % (self.fingers, correct_click_count))
+        self.log_details('Count of physical clicks: %d' % raw_click_count)
+        self.vlog.score = self.fc.mf.grade(correct_click_count)
         return self.vlog
 
 
@@ -1063,21 +1066,20 @@ class ReportRateValidator(BaseValidator):
                                self.packets.get_list_syn_time(self.finger))
 
         # Each packet consists of a list of events of which The last one is
-        # the sync event.
-        sync_intervals = [list_syn_time[i + 1] - list_syn_time[i]
+        # the sync event. The unit of sync_intervals is ms.
+        sync_intervals = [1000.0 * (list_syn_time[i + 1] - list_syn_time[i])
                           for i in range(len(list_syn_time) - 1)]
 
-        min_report_rate = conf.min_report_rate
-        max_report_interval = 1.0 / min_report_rate
+        max_report_interval = conf.max_report_interval
 
         # Calculate the metrics and add them to vlog.
         long_intervals = [s for s in sync_intervals if s > max_report_interval]
         metric_long_intervals = (len(long_intervals), len(sync_intervals))
-        ave_interval = 1000.0 * sum(sync_intervals) / len(sync_intervals)
-        max_interval = 1000.0 * max(sync_intervals)
+        ave_interval = sum(sync_intervals) / len(sync_intervals)
+        max_interval = max(sync_intervals)
 
         name_long_intervals_pct = self.mnprops.LONG_INTERVALS.format(
-            firmware_log.MetricNameProps.get_report_interval(min_report_rate))
+            '%.2f' % max_report_interval)
         name_ave_time_interval = self.mnprops.AVE_TIME_INTERVAL
         name_max_time_interval = self.mnprops.MAX_TIME_INTERVAL
 
@@ -1086,6 +1088,15 @@ class ReportRateValidator(BaseValidator):
             firmware_log.Metric(self.mnprops.AVE_TIME_INTERVAL, ave_interval),
             firmware_log.Metric(self.mnprops.MAX_TIME_INTERVAL, max_interval),
         ]
+
+        self.log_details('%s: %f' % (self.mnprops.AVE_TIME_INTERVAL,
+                         ave_interval))
+        self.log_details('%s: %f' % (self.mnprops.MAX_TIME_INTERVAL,
+                         max_interval))
+        self.log_details('# long intervals > %s ms: %d' %
+                         (self.mnprops.max_report_interval_str,
+                          len(long_intervals)))
+        self.log_details('# total intervals: %d' % len(sync_intervals))
 
     def _get_report_rate(self, list_syn_time):
         """Get the report rate in Hz from the list of syn_time.
@@ -1106,8 +1117,6 @@ class ReportRateValidator(BaseValidator):
         list_syn_time = self.packets.get_list_syn_time(self.finger)
         # Get the report rate
         self.report_rate = self._get_report_rate(list_syn_time)
-        msg = 'Report rate: %.2f Hz'
-        self.log_details(msg % self.report_rate)
         self._add_report_rate_metrics2()
         self.vlog.score = self.fc.mf.grade(self.report_rate)
         return self.vlog

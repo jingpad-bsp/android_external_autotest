@@ -129,15 +129,6 @@ class MetricNameProps:
         self._init_raw_metrics_props()
         self._derive_metrics_props()
 
-    @staticmethod
-    def get_report_interval(report_rate):
-        """Convert the report rate in Hz to report interval in ms.
-
-        @param report_rate: the report rate in Hz
-        Return: the report interval in ms
-        """
-        return '%.2f' % (1.0 / report_rate * 1000)
-
     def _init_raw_metrics_props(self):
         """Initialize raw_metrics_props.
 
@@ -216,7 +207,7 @@ class MetricNameProps:
         pct_by_cases_less = lambda lst: _pct(
                 [len([pair for pair in lst if pair[0] < pair[1]]), len(lst)])
 
-        max_report_interval_str = self.get_report_interval(conf.min_report_rate)
+        self.max_report_interval_str = '%.2f' % conf.max_report_interval
 
         # A dictionary from metric attribute to its properties:
         #    {metric_attr: (template,
@@ -293,20 +284,20 @@ class MetricNameProps:
             # Report Rate Validator
             'LONG_INTERVALS': (
                 'pct of intervals > {} ms (%)',
-                [max_report_interval_str,],
+                [self.max_report_interval_str,],
                 '0% is required',
                 '(the number of long intervals, total packets)',
                 pct_by_numbers),
             'AVE_TIME_INTERVAL': (
                 'average time interval (ms)',
                 None,
-                'less than %s ms is required' % max_report_interval_str,
+                'less than %s ms is required' % self.max_report_interval_str,
                 None,
                 average),
             'MAX_TIME_INTERVAL': (
                 'max time interval (ms)',
                 None,
-                'less than %s ms is required' % max_report_interval_str,
+                'less than %s ms is required' % self.max_report_interval_str,
                 None,
                 max),
             # Stationary Finger Validator

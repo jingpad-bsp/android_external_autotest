@@ -13,6 +13,7 @@ import test_conf as conf
 
 from firmware_utils import get_fw_and_date
 from string import Template
+from validators import get_base_name_and_segment
 
 
 class TemplateHtml:
@@ -47,12 +48,13 @@ class TemplateHtml:
             </tr>
         ''' % (image_width, image_height))
 
+        self.criteria_string = '  criteria: %s'
         self.validator_template =  Template('''
             <tr>
 <pre><span style="color:$color"><b>$name</b></span>
 $details
-    criteria: $criteria
-<span style="color:$color"><b>score: $score</b></span></pre>
+$criteria
+</pre>
             </tr>
         ''')
 
@@ -83,16 +85,18 @@ $details
     def _insert_details(self, details):
         details_content = []
         for detail in details:
-            details_content.append(' ' * 4 + detail.strip())
+            details_content.append(' ' * 2 + detail.strip())
         return '<br>'.join(details_content)
 
     def _insert_vlog(self, vlog):
         """Insert a single vlog."""
+        base_name, _ = get_base_name_and_segment(vlog.name)
+        criteria_string = self.criteria_string % vlog.criteria
         vlog_content = self.validator_template.safe_substitute(
                 name=vlog.name,
                 details=self._insert_details(vlog.details),
-                criteria=vlog.criteria,
-                color=self.get_score_color(vlog.score),
+                criteria=criteria_string,
+                color='blue',
                 score=vlog.score)
         return vlog_content
 
