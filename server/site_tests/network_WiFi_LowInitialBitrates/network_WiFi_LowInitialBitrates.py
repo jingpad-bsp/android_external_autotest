@@ -49,7 +49,7 @@ class network_WiFi_LowInitialBitrates(wifi_cell_test_base.WiFiCellTestBase):
                 # permissable and expected.
                 break
 
-            if frame.mcs_index:
+            if frame.mcs_index is not None:
                 if frame.mcs_index > 1:
                     # wpa_supplicant should ask that all but the 2 lowest rates
                     # be disabled.
