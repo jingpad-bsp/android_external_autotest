@@ -35,7 +35,7 @@ class WiFiTestUtilsSimpleTest(unittest.TestCase):
 
     def testGetServerAddrInLab_withHostNameNoDot(self):
         """Tests return of server hostname with no embedded dot."""
-        expected = ''.join([self.HOST, '-server'])
+        expected = ''.join([self.HOST, '-router'])
         actual = wifi_test_utils.get_server_addr_in_lab(self.HOST)
         self.assertEquals(expected, actual)
 
@@ -43,7 +43,7 @@ class WiFiTestUtilsSimpleTest(unittest.TestCase):
     def testGetServerAddrInLab_withHostNameAndDot(self):
         """Tests return of server hostname with embedded dot."""
         hostname = '.'.join([self.HOST, 'cros'])
-        expected = ''.join([self.HOST, '-server', '.cros'])
+        expected = ''.join([self.HOST, '-router', '.cros'])
         actual = wifi_test_utils.get_server_addr_in_lab(hostname)
         self.assertEquals(expected, actual)
 

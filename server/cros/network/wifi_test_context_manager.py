@@ -9,7 +9,6 @@ from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server import hosts
-from autotest_lib.server import site_linux_bridge_router
 from autotest_lib.server import site_linux_cros_router
 from autotest_lib.server import site_linux_server
 from autotest_lib.server.cros import wifi_test_utils
@@ -31,23 +30,7 @@ class WiFiTestContextManager(object):
     CMDLINE_ROUTER_ADDR = 'router_addr'
     CMDLINE_ROUTER_PACKET_CAPTURES = 'router_capture'
     CMDLINE_ROUTER_PORT = 'router_port'
-    CMDLINE_SERVER_ADDR = 'server_addr'
     CONNECTED_STATES = 'ready', 'portal', 'online'
-
-
-    @property
-    def server_address(self):
-        """@return string address of WiFi server host in test."""
-        hostname = self.client.host.hostname
-        if utils.host_is_in_lab_zone(hostname):
-            # Lab naming convention in: go/chromeos-lab-hostname-convention
-            return wifi_test_utils.get_server_addr_in_lab(hostname)
-
-        elif self.CMDLINE_SERVER_ADDR in self._cmdline_args:
-            return self._cmdline_args[self.CMDLINE_SERVER_ADDR]
-
-        raise error.TestError('Test not running in lab zone and no '
-                              'server address given')
 
 
     @property
@@ -186,21 +169,19 @@ class WiFiTestContextManager(object):
         router_port = int(self._cmdline_args.get(self.CMDLINE_ROUTER_PORT, 22))
         logging.info('Connecting to router at %s:%d',
                      self.router_address, router_port)
-        router_host = hosts.SSHHost(self.router_address, port=router_port)
         # TODO(wiley) Simplify the router and make the parameters explicit.
         router_params = {}
-        if site_linux_cros_router.isLinuxCrosRouter(router_host):
-            self._router = site_linux_cros_router.LinuxCrosRouter(
-                    router_host, router_params, self._test_name)
-        else:
-            self._router = site_linux_bridge_router.LinuxBridgeRouter(
-                    router_host, router_params, self._test_name)
+        self._router = site_linux_cros_router.LinuxCrosRouter(
+                hosts.SSHHost(self.router_address, port=router_port),
+                router_params, self._test_name)
         # If we're testing WiFi, we're probably going to need one of these.
         self._router.create_wifi_device()
-        # The '_server' is a machine which hosts network
-        # services, such as OpenVPN or StrongSwan.
-        server_host = hosts.SSHHost(self.server_address, port=22)
-        self._server = site_linux_server.LinuxServer(server_host, {})
+        # The '_server' is a machine which hosts network services, such as
+        # OpenVPN or StrongSwan.  Note that we make a separate SSHHost instance
+        # here because both the server and the router expect to close() their
+        # host, and only one close() is permitted.
+        self._server = site_linux_server.LinuxServer(
+                hosts.SSHHost(self.router_address, port=router_port), {})
         # Set up a clean context to conduct WiFi tests in.
         self.client.shill.init_test_network_state()
         if self.CMDLINE_CLIENT_PACKET_CAPTURES in self._cmdline_args:

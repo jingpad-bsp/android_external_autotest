@@ -38,7 +38,7 @@ def get_server_addr_in_lab(hostname):
             (e.g. chromeos1-shelf1-host1-server.cros)
 
     """
-    return '%s-server%s' % _get_machine_domain(hostname)
+    return get_router_addr_in_lab(hostname)
 
 
 def get_router_addr_in_lab(hostname):
