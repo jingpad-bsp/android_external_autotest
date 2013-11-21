@@ -755,10 +755,14 @@ class HostQueueEntry(DBObject):
             assert not dispatcher.get_agents_for_entry(self)
             self.host.set_status(models.Host.Status.READY)
         elif (self.status == Status.VERIFYING or
-              self.status == Status.RESETTING or
-              self.status == Status.PROVISIONING):
+              self.status == Status.RESETTING):
             models.SpecialTask.objects.create(
                     task=models.SpecialTask.Task.CLEANUP,
+                    host=models.Host.objects.get(id=self.host.id),
+                    requested_by=self.job.owner_model())
+        elif self.status == Status.PROVISIONING:
+            models.SpecialTask.objects.create(
+                    task=models.SpecialTask.Task.REPAIR,
                     host=models.Host.objects.get(id=self.host.id),
                     requested_by=self.job.owner_model())
 

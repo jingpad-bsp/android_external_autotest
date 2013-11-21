@@ -907,6 +907,15 @@ class BaseDispatcher(object):
         for entry in scheduler_models.HostQueueEntry.fetch(
                 where='aborted=1 and complete=0'):
             logging.info('Aborting %s', entry)
+
+            # The task would have started off with both is_complete and
+            # is_active = False. Aborted tasks are neither active nor complete.
+            # For all currently active tasks this will happen through the agent,
+            # but we need to manually update the special tasks that haven't
+            # started yet, because they don't have agents.
+            models.SpecialTask.objects.filter(is_active=False,
+                queue_entry_id=entry.id).update(is_complete=True)
+
             for agent in self.get_agents_for_entry(entry):
                 agent.abort()
             entry.abort(self)
