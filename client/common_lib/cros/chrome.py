@@ -21,8 +21,18 @@ class Chrome(object):
 
 
     def __init__(self, logged_in=True, extension_paths=[], autotest_ext=False,
-                 num_tries=1, extra_browser_args=None):
+                 is_component=True, num_tries=1, extra_browser_args=None):
         """
+        Constructor of telemetry wrapper.
+
+        @param logged_in: Regular user (True) or guest user (False).
+        @param extension_paths: path of unpacked extension to install.
+        @param autotest_ext: Load a component extension with privileges to
+                             invoke chrome.autotestPrivate.
+        @param is_component: Whether extensions should be loaded as component
+                             extensions.
+        @param num_tries: Number of attempts to log in. (Temporary for
+                          debugging).
         @param extra_browser_args: Additional argument(s) to pass to the
             browser. It can be a string or a list.
         """
@@ -44,7 +54,7 @@ class Chrome(object):
             extensions_to_load = finder_options.extensions_to_load
             for path in extension_paths:
                 extension = extension_to_load.ExtensionToLoad(
-                        path, self.browser_type, is_component=True)
+                        path, self.browser_type, is_component=is_component)
                 extensions_to_load.append(extension)
             self._extensions_to_load = extensions_to_load
 
