@@ -3,20 +3,20 @@
 # found in the LICENSE file.
 
 AUTHOR = "jwerner, chromeos-power"
-NAME = "power_SuspendStress.idleDaily"
-#SUITE = "jailed_daily"
+NAME = "power_SuspendStress.idle"
+SUITE = "jailed_build"
 PURPOSE = "Run repeated iterations of idle-suspend."
-TIME = "LENGTHY"
+TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "power"
 TEST_TYPE = "client"
 EXPERIMENTAL = "True"
 
 DOC = """
-Runs one hour of suspend/resume tests where suspend is triggered by idling.
+Runs eight minutes of suspend/resume tests where suspend is triggered by idling.
 """
 
-job.parallel([lambda: job.run_test('power_SuspendStress', tag='idleDaily',
-                                   method='idle', duration=3600, init_delay=60,
+job.parallel([lambda: job.run_test('power_SuspendStress', tag='idle',
+                                   method='idle', duration=480, init_delay=60,
                                    min_suspend=11, breathing_time=0)],
              [lambda: job.run_test('dummy_IdleSuspend')])

@@ -3,22 +3,22 @@
 # found in the LICENSE file.
 
 AUTHOR = "jwerner, chromeos-power"
-NAME = "power_SuspendStress.diskPerBuild"
+NAME = "power_SuspendStress.disk"
 SUITE = "jailed_build"
 PURPOSE = "Run repeated iterations of suspend/resume while stressing the disk."
-TIME = "SHORT"
+TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "power"
 TEST_TYPE = "client"
 EXPERIMENTAL = "True"
 
 DOC = """
-Runs two minutes of suspend/resume cycles in the background of a file I/O bench.
+Runs eight minutes of suspend/resume cycles in the background of a file I/O bench.
 """
 
-job.parallel([lambda: job.run_test('power_SuspendStress', tag='diskPerBuild',
-                                   duration=120, init_delay=10, min_suspend=7,
+job.parallel([lambda: job.run_test('power_SuspendStress', tag='disk',
+                                   duration=480, init_delay=10, min_suspend=7,
                                    tolerated_aborts=1, breathing_time=8)],
              [lambda: job.run_test('hardware_StorageFio',
-                                   quicktest=True, iterations=2,
+                                   quicktest=True, iterations=8,
                                    tag='power_SuspendStress')])

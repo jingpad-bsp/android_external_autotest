@@ -3,21 +3,21 @@
 # found in the LICENSE file.
 
 AUTHOR = "jwerner, chromeos-power"
-NAME = "power_SuspendStress.videoPerBuild"
+NAME = "power_SuspendStress.video"
 #SUITE = "jailed_build"
 PURPOSE = "Run repeated iterations of suspend/resume while rendering a video."
-TIME = "SHORT"
+TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "power"
 TEST_TYPE = "client"
 EXPERIMENTAL = "True"
 
 DOC = """
-Runs two minutes of suspend/resume cycles in the background of an OpenGL video.
+Runs eight minutes of suspend/resume cycles in the background of an OpenGL video.
 """
 
-job.parallel([lambda: job.run_test('power_SuspendStress', tag='videoPerBuild',
-                                   duration=120, init_delay=20, min_suspend=7,
+job.parallel([lambda: job.run_test('power_SuspendStress', tag='video',
+                                   duration=480, init_delay=20, min_suspend=7,
                                    tolerated_aborts=1, breathing_time=10)],
              [lambda: job.run_test('graphics_SanAngeles', creds='$default',
-                                   tag='power_SuspendStress')])
+                                   tag='power_SuspendStress', iterations=4)])
