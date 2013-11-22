@@ -83,6 +83,18 @@ class BuffalowzrAPConfigurator(
                                (self.get_number_of_pages(), page_number))
 
 
+    def refresh_page(self, apply_set):
+        """Refresh the settings page
+
+        @param apply_set: xpath for the apply button.
+
+        """
+        self.driver.refresh()
+        self._switch_frame()
+        self.wait_for_object_by_xpath(apply_set, wait_time=40)
+        self.click_button_by_xpath(apply_set)
+
+
     def save_page(self, page_number):
         """
         Saves the given page.
@@ -92,8 +104,11 @@ class BuffalowzrAPConfigurator(
         """
         self._switch_frame()
         apply_set = '//input[@type="submit"]'
-        if self.driver.find_element_by_xpath(apply_set):
+        try:
+            self.wait_for_object_by_xpath(apply_set, wait_time=40)
             self.click_button_by_xpath(apply_set)
+        except:
+            self.refresh_page(apply_set)
         # We need to hit one more apply button when settings have changed.
         try:
             if self.driver.find_element_by_xpath(apply_set):
@@ -107,10 +122,7 @@ class BuffalowzrAPConfigurator(
         try:
             self.wait_for_object_by_xpath(complete, wait_time=40)
         except:
-            self.driver.refresh()
-            self._switch_frame()
-            self.wait_for_object_by_xpath(apply_set)
-            self.click_button_by_xpath(apply_set)
+            self.refresh_page(apply_set)
         self.wait_for_object_by_xpath(complete, wait_time=40)
         self.driver.find_element_by_xpath(complete)
         self.click_button_by_xpath(complete)
