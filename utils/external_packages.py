@@ -947,6 +947,25 @@ class PyMoxPackage(ExternalPackage):
         return self.version
 
 
+class PySeleniumPackage(ExternalPackage):
+    """
+    selenium module
+
+    Used in wifi_interop suite.
+    """
+    module_name = 'selenium'
+    version = '2.37.2'
+    url_filename = 'selenium-%s.tar.gz' % version
+    local_filename = url_filename
+    urls = ('https://pypi.python.org/packages/source/s/selenium/%s' % (
+        url_filename),)
+    hex_sum = '66946d5349e36d946daaad625c83c30c11609e36'
+
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+                        ExternalPackage._build_and_install_current_dir_setup_py)
+
+
 class _ExternalGitRepo(ExternalPackage):
     """
     Parent class for any package which needs to pull a git repo.
