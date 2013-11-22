@@ -79,12 +79,16 @@ class ArpingResult(object):
         responders = set()
         num_sent = None
         regex = re.compile(r'(([0-9]{1,3}\.){3}[0-9]{1,3}) '
-                           r'\[(([0-9A-F]{2}:){5}[0-9A-F]{2})\] +'
-                           r'([0-9\.]+)ms$')
+                           r'\[(([0-9A-Fa-f]{1,2}:){5}[0-9A-Fa-f]{1,2})\] +'
+                           r'([0-9\.]+)ms')
         requests = 0
         for line in stdout.splitlines():
             if line.find('Unicast reply from') == 0:
                 match = re.search(regex, line.strip())
+                if match is None:
+                    raise error.TestError('arping result parsing code failed '
+                                          'to anticipate line: ' % line)
+
                 responder_ip = match.group(1)  # Maybe useful in the future?
                 responder_mac = match.group(3)
                 latency = float(match.group(5))
