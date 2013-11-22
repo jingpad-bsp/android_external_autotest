@@ -166,11 +166,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         @return: True if the host device is chromeos.
 
-        @raises AutoservRunError: If the command failed.
-        @raises AutoservSSHTimeout: Ssh connection has timed out.
         """
         try:
-            result = host.run('cat /etc/lsb-release > /dev/null', timeout=timeout)
+            result = host.run('grep -q CHROMEOS /etc/lsb-release',
+                              ignore_status=True, timeout=timeout)
         except (error.AutoservRunError, error.AutoservSSHTimeout):
             return False
         return result.exit_status == 0
