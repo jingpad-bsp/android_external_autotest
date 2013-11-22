@@ -690,7 +690,7 @@ def main():
                         code = RETURN_CODES.ERROR
 
         # Do not record stats for aborted suites.
-        if not is_aborted:
+        if not is_aborted and not options.mock_job_id:
             timings.SendResultsToStatsd(options.name, options.build,
                                         options.board)
         logging.info(timings)
