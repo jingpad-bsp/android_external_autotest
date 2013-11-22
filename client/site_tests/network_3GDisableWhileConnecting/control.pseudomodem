@@ -29,7 +29,7 @@ job.run_test('network_3GDisableWhileConnecting',
              disable_delay_per_iteration_ms=0,
              iterations=ITERATIONS_PER_TEST,
              use_pseudomodem=True,
-             tag='instant_disable.3GPP')
+             tag='instant_disable_3GPP')
 
 job.run_test('network_3GDisableWhileConnecting',
              timeout_s=20,
@@ -37,7 +37,7 @@ job.run_test('network_3GDisableWhileConnecting',
              disable_delay_per_iteration_ms=int(1000.0 / ITERATIONS_PER_TEST),
              iterations=ITERATIONS_PER_TEST,
              use_pseudomodem=True,
-             tag='disable_delay_ramp.3GPP')
+             tag='disable_delay_ramp_3GPP')
 
 # CDMA
 job.run_test('network_3GDisableWhileConnecting',
@@ -47,7 +47,7 @@ job.run_test('network_3GDisableWhileConnecting',
              iterations=ITERATIONS_PER_TEST,
              use_pseudomodem=True,
              pseudomodem_family='CDMA',
-             tag='instant_disable.CDMA')
+             tag='instant_disable_CDMA')
 
 job.run_test('network_3GDisableWhileConnecting',
              timeout_s=20,
@@ -56,4 +56,4 @@ job.run_test('network_3GDisableWhileConnecting',
              iterations=ITERATIONS_PER_TEST,
              use_pseudomodem=True,
              pseudomodem_family='CDMA',
-             tag='disable_delay_ramp.CDMA')
+             tag='disable_delay_ramp_CDMA')

@@ -22,10 +22,10 @@ DOC = """
 # 3GPP
 job.run_test('network_3GStressEnable',
              use_pseudomodem=True,
-             tag='pseudomodem.3GPP')
+             tag='pseudomodem_3GPP')
 
 # CDMA
 job.run_test('network_3GStressEnable',
              use_pseudomodem=True,
              pseudomodem_family='CDMA',
-             tag='pseudomodem.CDMA')
+             tag='pseudomodem_CDMA')

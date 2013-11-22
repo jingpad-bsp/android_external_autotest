@@ -23,10 +23,10 @@ DOC = """
 """
 
 # 3GPP
-job.run_test('network_3GSafetyDance', pseudo_modem=True, tag='pseudomodem.3GPP')
+job.run_test('network_3GSafetyDance', pseudo_modem=True, tag='pseudomodem_3GPP')
 
 # CDMA
 job.run_test('network_3GSafetyDance',
              pseudo_modem=True,
              pseudomodem_family='CDMA',
-             tag='pseudomodem.CDMA')
+             tag='pseudomodem_CDMA')
