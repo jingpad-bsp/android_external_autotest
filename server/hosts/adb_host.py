@@ -188,6 +188,15 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         return 'adb'
 
 
+    def job_start(self):
+        """
+        Disable log collection on adb_hosts.
+
+        TODO(sbasi): crbug.com/305427
+
+        """
+
+
     def run(self, command, timeout=3600, ignore_status=False,
             ignore_timeout=False, stdout_tee=utils.TEE_TO_LOGS,
             stderr_tee=utils.TEE_TO_LOGS, connect_timeout=30, options='',
@@ -276,12 +285,13 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         """
         if self._local_adb:
             return utils.run(
-                    command=cmd, timeout=timeout, ignore_status=ignore_status,
-                    stdout_tee=stdout_tee, stderr_tee=stderr_tee, stdin=stdin,
-                    args=args, ignore_timeout=ignore_timeout)
+                    command=command, timeout=timeout,
+                    ignore_status=ignore_status, stdout_tee=stdout_tee,
+                    stderr_tee=stderr_tee, stdin=stdin, args=args,
+                    ignore_timeout=ignore_timeout)
         return super(ADBHost, self).run(
-                command=cmd, timeout=timeout, ignore_status=ignore_status,
-                stdout_tee=stdout, options=options, stdin=stdin,
+                command=command, timeout=timeout, ignore_status=ignore_status,
+                stdout_tee=stdout_tee, options=options, stdin=stdin,
                 connect_timeout=connect_timeout, args=args,
                 ignore_timeout=ignore_timeout)
 
@@ -376,5 +386,11 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         if self._use_tcpip:
             # Return the device to usb mode.
             self.run('adb usb')
-        self._adb_run('kill-server')
+        # TODO(sbasi) Originally, we would kill the server after each test to
+        # reduce the opportunity for bad server state to hang around.
+        # Unfortunately, there is a period of time after each kill during which
+        # the Android device becomes unusable, and if we start the next test
+        # too quickly, we'll get an error complaining about no ADB device
+        # attached.
+        #self._adb_run('kill-server')
         return super(ADBHost, self).close()
