@@ -7,12 +7,33 @@
 # Read command flags
 . /usr/share/misc/shflags
 DEFINE_string "log_root_dir" "" "the log root directory" "d"
-DEFINE_string "metrics" "" "display the summary metrics" "m"
+VERBOSE_MSG=\
+"verbose level to display the summary metrics
+     0:  hide some metrics statistics when they passed
+     1:  display all metrics statistics
+     2:  display all metrics statistics with raw metrics values
+"
+DEFINE_string "verbose" "2" "$VERBOSE_MSG" "v"
 DEFINE_boolean "individual" false \
                "calculate statistics for every individual round" "i"
 
 PROG=$0
-FLAGS_HELP="USAGE: $PROG [flags]"
+EXAMPLES="
+  # Display all metrics statistics with raw metrics values.
+  $ $PROG -d /tmp
+
+  # Display all metrics statistics without raw metrics values.
+  $ $PROG -d /tmp -v 1
+
+  # Hide some metrics statistics when they passed.
+  $ $PROG -d /tmp -v 0
+"
+FLAGS_HELP=\
+"USAGE: $PROG [flags]
+
+Examples:
+$EXAMPLES
+"
 
 FLAGS "$@" || exit 1
 eval set -- "${FLAGS_ARGV}"
@@ -67,11 +88,9 @@ find "$TEST_DIR" \( -name \*.log -o -name \*.html \) \
   -exec cp -t "$SUMMARY_DIR" {} \;
 
 # Run firmware_summary module to derive the summary report.
-display_metrics=`[ "$FLAGS_metrics" = "" ] \
-                 && echo "" || echo "-m $FLAGS_metrics"`
 [ ${FLAGS_individual} -eq ${FLAGS_TRUE} ] && individual_flag="--individual" \
                                           || individual_flag=""
-python "${SCRIPT_DIR}/$SUMMARY_MODULE" $display_metrics $individual_flag \
+python "${SCRIPT_DIR}/$SUMMARY_MODULE" -m "$FLAGS_verbose" $individual_flag \
        -d "$SUMMARY_DIR" > "$SUMMARY_FILE"
 
 # Create a tarball for the summary files.

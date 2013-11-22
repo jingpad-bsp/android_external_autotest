@@ -66,13 +66,13 @@ from test_conf import (log_root_dir, segment_weights, validator_weights)
 class OptionsDisplayMetrics:
     """The options of displaying metrics."""
     # Defining the options of displaying metrics
-    DISPLAY_METRICS_PRIMARY_STATS = 'p'
-    DISPLAY_METRICS_ALL_STATS = 'a'
-    DISPLAY_METRICS_RAW_VALUES = 'f'
-    DISPLAY_METRICS_OPTIONS = [DISPLAY_METRICS_PRIMARY_STATS,
-                               DISPLAY_METRICS_ALL_STATS,
-                               DISPLAY_METRICS_RAW_VALUES]
-    DISPLAY_METRICS_DEFAULT = DISPLAY_METRICS_PRIMARY_STATS
+    HIDE_SOME_METRICS_STATS = '0'
+    DISPLAY_ALL_METRICS_STATS = '1'
+    DISPLAY_ALL_METRICS_WITH_RAW_VALUES = '2'
+    DISPLAY_METRICS_OPTIONS = [HIDE_SOME_METRICS_STATS,
+                               DISPLAY_ALL_METRICS_STATS,
+                               DISPLAY_ALL_METRICS_WITH_RAW_VALUES]
+    DISPLAY_METRICS_DEFAULT = DISPLAY_ALL_METRICS_WITH_RAW_VALUES
 
     def __init__(self, option):
         """Initialize with the level value.
@@ -83,11 +83,13 @@ class OptionsDisplayMetrics:
             option = self.DISPLAY_METRICS_DEFAULT
 
         # To display all metrics statistics grouped by validators?
-        self.display_all_stats = (option == self.DISPLAY_METRICS_ALL_STATS or
-                                  option == self.DISPLAY_METRICS_RAW_VALUES)
+        self.display_all_stats = (
+                option == self.DISPLAY_ALL_METRICS_STATS or
+                option == self.DISPLAY_ALL_METRICS_WITH_RAW_VALUES)
 
         # To display the raw metrics values in details on file basis?
-        self.display_raw_values = (option == self.DISPLAY_METRICS_RAW_VALUES)
+        self.display_raw_values = (
+                option == self.DISPLAY_ALL_METRICS_WITH_RAW_VALUES)
 
 
 class FirmwareSummary:
@@ -349,20 +351,23 @@ def _usage_and_exit():
     print '  -m, --%s <verbose_level>' % OPTIONS.METRICS
     print '        display the summary metrics.'
     print '        verbose_level:'
-    print '          p: display the primary metrics statistics (default)'
-    print '          s: display all metrics statistics'
-    print '          f: display all metrics statistics and ' \
-                        'the detailed raw metrics values'
+    print '          0: hide some metrics statistics if they passed'
+    print '          1: display all metrics statistics'
+    print '          2: display all metrics statistics and ' \
+                        'the detailed raw metrics values (default)'
+    print '  -s, --%s' % OPTIONS.SCORES
+    print '        display the scores (0.0 ~ 1.0)'
     print
     print 'Examples:'
     print '    Specify the log root directory.'
     print '    $ python %s -d /tmp' % prog
-    print '    Display the primary metrics statistics.'
-    print '    $ python %s -m p' % prog
+    print '    Hide some metrics statistics.'
+    print '    $ python %s -m 0' % prog
     print '    Display all metrics statistics.'
-    print '    $ python %s -m s' % prog
-    print '    Display all metrics statistics and detailed raw metrics values.'
-    print '    $ python %s -m f' % prog
+    print '    $ python %s -m 1' % prog
+    print '    Display all metrics statistics with detailed raw metrics values.'
+    print '    $ python %s         # or' % prog
+    print '    $ python %s -m 2' % prog
     sys.exit(1)
 
 
@@ -378,7 +383,7 @@ def _parse_options():
     options = {OPTIONS.DEBUG: False,
                OPTIONS.DIR: log_root_dir,
                OPTIONS.INDIVIDUAL: False,
-               OPTIONS.METRICS: None,
+               OPTIONS.METRICS: OptionsDisplayMetrics(None),
     }
 
     try:
