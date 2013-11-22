@@ -335,6 +335,18 @@ class WpaCliProxy(object):
         return True
 
 
+    def set_device_enabled(self, wifi_interface, enabled):
+        """Enable or disable the WiFi device.
+
+        @param wifi_interface: string name of interface being modified.
+        @param enabled: boolean; true if this device should be enabled,
+                false if this device should be disabled.
+        @return True if it worked; false, otherwise
+
+        """
+        return False
+
+
     def sync_time_to(self, epoch_seconds):
         """
         Sync time on the DUT to |epoch_seconds| from the epoch.
