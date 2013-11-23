@@ -336,13 +336,17 @@ def _yield_job_results(afe, tko, job):
     if not statuses:
         yield Status('ABORT', job.name)
 
+    # We only care about the SERVER and CLIENT job failures when there
+    # are no test failures.
+    contains_test_failure = any(_status_for_test(s) and s.status != 'GOOD'
+                                for s in statuses)
     for s in statuses:
         if _status_for_test(s):
             yield Status(s.status, s.test_name, s.reason,
                          s.test_started_time, s.test_finished_time,
                          job.id, job.owner, s.hostname, job.name)
         else:
-            if s.status != 'GOOD':
+            if s.status != 'GOOD' and not contains_test_failure:
                 yield Status(s.status,
                              '%s_%s' % (entries[0]['job']['name'],
                                         s.test_name),
