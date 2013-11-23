@@ -14,7 +14,7 @@ import urlparse
 from autotest_lib.client.bin import utils as client_utils
 from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.client.common_lib.cros import autoupdater, dev_server
-from autotest_lib.server import hosts, test
+from autotest_lib.server import autotest, hosts, test
 from autotest_lib.server.cros.dynamic_suite import tools
 
 
@@ -28,6 +28,9 @@ def _wait(secs, desc=None):
 
 
 class ExpectedUpdateEventChainFailed(error.TestFail):
+    """Raised if we fail to receive an expected event in a chain."""
+
+class RequiredArgumentMissing(error.TestFail):
     """Raised if we fail to receive an expected event in a chain."""
 
 
@@ -796,7 +799,7 @@ class autoupdate_EndToEndTest(test.test):
 
 
     def _stage_payload(self, autotest_devserver, devserver_label, filename,
-                       archive_url=None):
+                       archive_url=None, artifacts=None):
         """Stage the given payload onto the devserver.
 
         Works for either a stateful or full/delta test payload. Expects the
@@ -821,15 +824,16 @@ class autoupdate_EndToEndTest(test.test):
         """
         try:
             autotest_devserver.stage_artifacts(
-                    image=devserver_label, artifacts=None, files=[filename],
-                    archive_url=archive_url)
+                    image=devserver_label, artifacts=artifacts,
+                    files=[filename], archive_url=archive_url)
             return autotest_devserver.get_staged_file_url(filename,
                                                           devserver_label)
         except dev_server.DevServerException, e:
             raise error.TestError('Failed to stage payload: %s' % e)
 
 
-    def _stage_payload_by_uri(self, autotest_devserver, payload_uri):
+    def _stage_payload_by_uri(self, autotest_devserver, payload_uri,
+                              artifacts=None):
         """Stage a payload based on its GS URI.
 
         This infers the build's label, filename and GS archive from the
@@ -839,6 +843,8 @@ class autoupdate_EndToEndTest(test.test):
                                    use to reach the devserver instance for this
                                    build.
         @param payload_uri: The full GS URI of the payload.
+
+        @param artifacts: A list of artifacts to stage along from the build.
 
         @return URL of the staged payload on the server.
 
@@ -1010,6 +1016,11 @@ class autoupdate_EndToEndTest(test.test):
 
             staged_target_stateful_url = self._stage_payload_by_uri(
                     autotest_devserver, target_stateful_uri)
+
+        # Stage artifacts for client login test.
+        self._stage_payload_by_uri(autotest_devserver,
+                                   target_payload_uri,
+                                   ['autotest'])
 
         # Log all the urls.
         logging.info('Source %s from %s staged at %s',
@@ -1217,6 +1228,11 @@ class autoupdate_EndToEndTest(test.test):
                error.TestFail if any part of the test has failed.
 
         """
+
+        if not test_conf['target_release']:
+            raise RequiredArgumentMissing(
+                    'target_release is a required argument.')
+
         # Attempt to get the job_repo_url to find the stateful payload for the
         # target image.
         try:
@@ -1259,3 +1275,18 @@ class autoupdate_EndToEndTest(test.test):
         except ExpectedUpdateEventChainFailed:
             self._dump_update_engine_log()
             raise
+
+        # Only do login tests with recent builds, since they depend on
+        # some binary compatibility with the build itself.
+        # '5116.0.0' -> ('5116', '0', '0') -> 5116
+        if int(test_conf['target_release'].split('.')[0]) > 5110:
+            # Login, to prove we can after the update.
+            #
+            # TODO(dgarrett): Telemetry login is not yet robust. When it is,
+            # switch test to 'login_LoginSuccessTelemetry'
+            logging.info('Attempting to login to verify image.')
+
+            client_at = autotest.Autotest(self._host)
+            client_at.run_test('login_LoginSuccess')
+        else:
+            logging.info('Not attempting login test.')
