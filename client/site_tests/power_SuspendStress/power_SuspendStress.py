@@ -13,7 +13,7 @@ class power_SuspendStress(test.test):
     version = 1
 
     def initialize(self, duration, method='default', init_delay=0,
-                   tolerated_aborts=0, breathing_time=5, min_suspend=0):
+                   tolerated_aborts=0, min_suspend=0):
         """
         duration: total run time of the test
         method: suspend method to use... available options:
@@ -23,8 +23,6 @@ class power_SuspendStress(test.test):
                 parallel tests time to get started
         tolerated_aborts: only fail test for SuspendAborts if they surpass
                 this threshold
-        breathing_time: wait this many seconds after every third suspend to
-                allow Autotest/SSH to catch up
         min_suspend: suspend durations will be chosen randomly out of the
                 interval between min_suspend and min_suspend + 3
         """
@@ -32,15 +30,10 @@ class power_SuspendStress(test.test):
         self._init_delay = init_delay
         self._tolerated_aborts = tolerated_aborts
         self._min_suspend = min_suspend
-        self._breathing_time = breathing_time
         self._method = {
             'default': sys_power.do_suspend,
             'idle': sys_power.idle_suspend,
         }[method]
-
-
-    def _do_suspend(self):
-        self._suspender.suspend(random.randint(0, 3) + self._min_suspend)
 
 
     def run_once(self):
@@ -50,11 +43,7 @@ class power_SuspendStress(test.test):
         timeout = time.time() + self._duration
         while time.time() < timeout:
             time.sleep(random.randint(0, 3))
-            self._do_suspend()
-            time.sleep(random.randint(0, 3))
-            self._do_suspend()
-            time.sleep(self._breathing_time)
-            self._do_suspend()
+            self._suspender.suspend(random.randint(0, 3) + self._min_suspend)
 
 
     def postprocess_iteration(self):
