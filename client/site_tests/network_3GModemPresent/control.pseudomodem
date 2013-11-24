@@ -9,8 +9,7 @@ CRITERIA = """
 This test will fail if neither Cromo nor ModemManager is exporting a modem
 device via flimflam.
 """
-SUITE = "network3g_pseudomodem, bvt"
-EXPERIMENTAL = "True"
+SUITE = "network3g_pseudomodem"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"

@@ -15,8 +15,7 @@ incorrect state upon certain failures of a Disconnect call.
 
 """
 
-SUITE = "network3g_pseudomodem, bvt"
-EXPERIMENTAL = "True"
+SUITE = "network3g_pseudomodem"
 TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"

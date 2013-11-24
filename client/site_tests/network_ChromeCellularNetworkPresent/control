@@ -5,12 +5,12 @@
 AUTHOR = "ChromeOS Team"
 NAME = "network_ChromeCellularNetworkPresent"
 PURPOSE = "Verify that a cellular network is visible via networkingPrivate"
-SUITE = "network_ui, bvt"
-EXPERIMENTAL = "True"
+SUITE = "network_ui"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
+EXPERIMENTAL = "True"
 
 DOC = """
 
