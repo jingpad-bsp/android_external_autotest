@@ -8,7 +8,7 @@ import re
 import stat
 import subprocess
 
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 
 class security_OpenFDs(test.test):
@@ -116,19 +116,19 @@ class security_OpenFDs(test.test):
         If there were any un-accounted-for fds, or failed filters,
         mark the test failed. Returns True if test passed, False otherwise.
         """
-        logging.debug('Checking %s %s' % (process, args))
+        logging.debug('Checking %s %s', process, args)
         test_pass = True
         for pid in self.find_pids(process, args):
-            logging.debug('Found pid %s for %s' % (pid, process))
+            logging.debug('Found pid %s for %s', pid, process)
             fds = self.get_fds(pid, typechecker)
             failed_filters = self.apply_filters(fds, filters)
             if failed_filters:
-                logging.error('Some filter(s) failed to match any fds: %s' %
+                logging.error('Some filter(s) failed to match any fds: %s',
                               repr(failed_filters))
                 test_pass = False
             if fds:
-                logging.error('Found unexpected fds in %s %s: %s' %
-                              (process, args, repr(fds)))
+                logging.error('Found unexpected fds in %s %s: %s',
+                              process, args, repr(fds))
                 test_pass = False
         return test_pass
 
@@ -161,7 +161,7 @@ class security_OpenFDs(test.test):
         passes.append(self.check_process('chrome', 'type=plugin', filters,
                                          permitted_fd_type_check))
 
-        filters.extend([r'0700 /dev/shm/..*',
+        filters.extend([r'0[57]00 /dev/shm/..*',
                         r'0500 /opt/google/chrome/.*.pak',
                        ])
         passes.append(self.check_process('chrome', 'type=renderer', filters,
