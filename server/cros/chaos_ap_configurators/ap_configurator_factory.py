@@ -88,6 +88,9 @@ class APConfiguratorFactory(object):
         'Netgear4300APConfigurator':
             [PREFIX + 'netgear4300_ap_configurator',
                 'Netgear4300APConfigurator'],
+        'Netgear4500APConfigurator':
+            [PREFIX + 'netgear4500_ap_configurator',
+                'Netgear4500APConfigurator'],
         'LinksyseDualBandAPConfigurator':
             [PREFIX + 'linksyse_dual_band_configurator',
                 'LinksyseDualBandAPConfigurator'],
