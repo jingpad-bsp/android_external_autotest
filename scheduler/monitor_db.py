@@ -460,6 +460,8 @@ class BaseDispatcher(object):
         status_list = ','.join("'%s'" % status for status in statuses)
         queue_entries = scheduler_models.HostQueueEntry.fetch(
                 where='status IN (%s)' % status_list)
+        stats.Gauge('scheduler.jobs_per_tick').send(
+                'running', len(queue_entries))
 
         agent_tasks = []
         used_queue_entries = set()
@@ -829,8 +831,6 @@ class BaseDispatcher(object):
         scheduled for execution on the drone through _handle_agents.
         """
         queue_entries = self._refresh_pending_queue_entries()
-        if not queue_entries:
-            return
 
         new_hostless_jobs = 0
         new_atomic_groups = 0
