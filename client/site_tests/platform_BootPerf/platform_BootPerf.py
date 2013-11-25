@@ -26,6 +26,10 @@ class platform_BootPerf(test.test):
       * seconds_kernel_to_x_started
       * seconds_kernel_to_chrome_exec
       * seconds_kernel_to_chrome_main
+      * seconds_kernel_to_signin_start
+      * seconds_kernel_to_signin_wait
+      * seconds_kernel_to_signin_users
+      * seconds_kernel_to_signin_seen
       * seconds_kernel_to_login
       * seconds_kernel_to_network
       * rdbytes_kernel_to_startup
@@ -48,7 +52,8 @@ class platform_BootPerf(test.test):
 
     version = 2
 
-    # Names of keyvals and their associated bootstat events.
+    # Names of keyvals, their associated bootstat events and 'Required' flag.
+    # Test fails if a required event is not found.
     # Each event samples statistics measured since kernel startup
     # at a specific moment on the boot critical path:
     #   pre-startup - The start of the `chromeos_startup` script;
@@ -60,6 +65,13 @@ class platform_BootPerf(test.test):
     #     first Chrome process.
     #   chrome-main - The moment when the first Chrome process
     #     begins executing in main().
+    #   kernel_to_signin_start - The moment when LoadPage(loginSceenURL)
+    #     is called, i.e. initialization starts.
+    #   kernel_to_signin_wait - The moment when UI thread has finished signin
+    #     screen initialization and now waits until JS sends "ready" event.
+    #   kernel_to_signin_users - The moment when UI thread receives "ready" from
+    #     JS code. So V8 is initialized and running, etc...
+    #   kernel_to_signin_seen - The moment when user can actually see signin UI.
     #   boot-complete - Completion of boot after Chrome presents the
     #     login screen.
     _EVENT_KEYVALS = [
@@ -69,12 +81,19 @@ class platform_BootPerf(test.test):
         # 'rdbytes_', so we have 22 characters wiggle room.
         #
         # ----+----1----+----2--
-        ('kernel_to_startup',           'pre-startup'),
-        ('kernel_to_startup_done',      'post-startup'),
-        ('kernel_to_x_started',         'x-started'),
-        ('kernel_to_chrome_exec',       'chrome-exec'),
-        ('kernel_to_chrome_main',       'chrome-main'),
-        ('kernel_to_login',             'boot-complete')
+        ('kernel_to_startup',           'pre-startup',               True),
+        ('kernel_to_startup_done',      'post-startup',              True),
+        ('kernel_to_x_started',         'x-started',                 True),
+        ('kernel_to_chrome_exec',       'chrome-exec',               True),
+        ('kernel_to_chrome_main',       'chrome-main',               True),
+        # These two events do not happen if device is in OOBE.
+        ('kernel_to_signin_start',      'login-start-signin-screen', False),
+        ('kernel_to_signin_wait',
+            'login-wait-for-signin-state-initialize',                False),
+        # This event doesn't happen if device has no users.
+        ('kernel_to_signin_users',      'login-send-user-list',      False),
+        ('kernel_to_signin_seen',       'login-prompt-visible',      True),
+        ('kernel_to_login',             'boot-complete',             True)
     ]
 
     _CPU_FREQ_FILE = ('/sys/devices/system/cpu/cpu0'
@@ -193,7 +212,7 @@ class platform_BootPerf(test.test):
             khz = int(utils.read_one_line(self._CPU_FREQ_FILE))
         except IOError:
             logging.info('Test is unable to read "%s", not calculating the '
-                         'vboot times.', freq_file_path)
+                         'vboot times.', self._CPU_FREQ_FILE)
             return
         hertz = khz * 1000.0
         results['mhz_primary_cpu'] = khz / 1000.0
@@ -261,9 +280,13 @@ class platform_BootPerf(test.test):
                                 be determined.
 
         """
-        for keyval_name, event_name in self._EVENT_KEYVALS:
+        for keyval_name, event_name, required in self._EVENT_KEYVALS:
             key = 'seconds_' + keyval_name
-            results[key] = self._parse_uptime(event_name)
+            try:
+                results[key] = self._parse_uptime(event_name)
+            except error.TestFail:
+                if required:
+                    raise;
 
         # Not all 'uptime-network-*-ready' files necessarily exist;
         # probably there's only one.  We go through a list of
@@ -309,7 +332,7 @@ class platform_BootPerf(test.test):
         # "chrome-main" event because Chrome (not bootstat) generates
         # that event, and it doesn't include the disk statistics.
         # We get around that by ignoring all errors.
-        for keyval_name, event_name in self._EVENT_KEYVALS:
+        for keyval_name, event_name, required in self._EVENT_KEYVALS:
             try:
                 key = 'rdbytes_' + keyval_name
                 results[key] = 512 * self._parse_diskstat(event_name)
