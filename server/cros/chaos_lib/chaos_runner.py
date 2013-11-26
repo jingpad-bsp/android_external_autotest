@@ -166,14 +166,15 @@ class ChaosRunner(object):
                         continue
                     # Sanitize the only security setting that doesn't match
                     # before doing the comparison
-                    if networks[0].security == iw_runner.SECURITY_MIXED:
-                        networks[0].security = iw_runner.SECURITY_WPA2
+                    security = networks[0].security
+                    if security == iw_runner.SECURITY_MIXED:
+                        security = iw_runner.SECURITY_WPA2
 
-                    if networks[0].security != self._ap_spec.security:
+                    if security != self._ap_spec.security:
                         # Check if AP is configured with the expected security.
                         logging.error('%s was the expected security but got %s',
                                       self._ap_spec.security,
-                                      networks[0].security)
+                                      security)
                         job.run_test('network_WiFi_ChaosConfigFailure',
                                      ap=ap,
                                      error_string=
