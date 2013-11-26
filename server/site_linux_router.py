@@ -776,7 +776,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             self.local_servers = []
             if self.station['type'] == 'ibss':
                 self.iw_runner.ibss_leave(self.station['interface'])
-            if self.station['type'] == 'supplicant':
+            elif self.station['type'] == 'supplicant':
                 self._kill_process_instance('wpa_supplicant',
                                             self.station['interface'])
             else:
