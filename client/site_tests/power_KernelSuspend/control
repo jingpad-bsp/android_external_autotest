@@ -6,7 +6,7 @@ from autotest_lib.client.common_lib import utils
 
 AUTHOR = "Chrome OS Team"
 NAME = "power_KernelSuspend"
-SUITE = "kernel_per-build_regression"
+SUITE = "jailed_build"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "power"

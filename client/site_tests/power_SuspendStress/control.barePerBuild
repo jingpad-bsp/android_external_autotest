@@ -4,7 +4,7 @@
 
 AUTHOR = "jwerner, chromeos-power"
 NAME = "power_SuspendStress.barePerBuild"
-SUITE = "kernel_per-build_regression"
+SUITE = "jailed_build"
 PURPOSE = "Run repeated iterations of suspend/resume to find rare errors."
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"

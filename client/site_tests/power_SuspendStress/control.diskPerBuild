@@ -4,7 +4,7 @@
 
 AUTHOR = "jwerner, chromeos-power"
 NAME = "power_SuspendStress.diskPerBuild"
-SUITE = "kernel_per-build_regression"
+SUITE = "jailed_build"
 PURPOSE = "Run repeated iterations of suspend/resume while stressing the disk."
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
