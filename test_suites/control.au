@@ -47,7 +47,7 @@ _BUG_TEMPLATE = {
     'status': None,
     'summary': None,
     'title': None,
-    'ccs': ['beeps@chromium.org']
+    'cc': None
 }
 
 # TODO(sosa): Really should skip_reimage but suite logic does not currently
