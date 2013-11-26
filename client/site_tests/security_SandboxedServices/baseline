@@ -5,7 +5,7 @@ rsyslogd,syslog,No,No,No,No,No
 dbus-daemon,messagebus,No,No,No,No,No
 wpa_supplicant,wpa,No,No,No,No,No
 shill,root,No,No,No,No,No
-X,root,No,No,No,No,No
+X,xorg,No,No,No,No,No
 chapsd,chaps,No,No,No,No,No
 cryptohomed,root,No,No,No,No,No
 powerd,power,Yes,Yes,No,No,No
