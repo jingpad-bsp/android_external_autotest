@@ -22,7 +22,8 @@ def capture(*args, **kargs):
     """A helper function to execute the capture_cmd."""
     cmd_utils.execute(capture_cmd(*args, **kargs))
 
-def playback_cmd(playback_file, buffer_frames=None, duration=None, rate=44100):
+def playback_cmd(playback_file, buffer_frames=None, duration=None,
+                 rate=44100):
     """Gets a command to playback a file with given settings.
 
     @param playback_file: the name of the file to play. '-' indicates to
@@ -40,7 +41,8 @@ def playback_cmd(playback_file, buffer_frames=None, duration=None, rate=44100):
     args += ['--rate', str(rate)]
     return args
 
-def capture_cmd(capture_file, buffer_frames=None, duration=10, rate=44100):
+def capture_cmd(
+        capture_file, buffer_frames=None, duration=10, channels=2, rate=44100):
     """Gets a command to capture the audio into the file with given settings.
 
     @param capture_file: the name of file the audio to be stored in.
@@ -53,6 +55,7 @@ def capture_cmd(capture_file, buffer_frames=None, duration=10, rate=44100):
     if buffer_frames is not None:
         args += ['--buffer_frames', str(buffer_frames)]
     args += ['--duration', str(duration)]
+    args += ['--num_channels', str(channels)]
     args += ['--rate', str(rate)]
     return args
 

@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
 import os
 import subprocess
 import tempfile
@@ -100,7 +101,8 @@ class audiovideo_CRASFormatConversion(test.test):
             self.wait_for_active_stream_count(2)
 
             cras_utils.capture(
-                    record_file, buffer_frames=441, duration=2, rate=44100)
+                    record_file, buffer_frames=441, duration=1, channels=1,
+                    rate=44100)
 
             # Make sure the playback is still in good shape
             for ps in processes:
@@ -109,11 +111,16 @@ class audiovideo_CRASFormatConversion(test.test):
             reduced_file = tempfile.NamedTemporaryFile()
             sox_utils.noise_reduce(
                     record_file, reduced_file.name, noise_profile,
-                    channels=2, bits=16, rate=44100)
+                    channels=1, bits=16, rate=44100)
 
-            audio_helper.check_rms_for_all_channels(
-                    reduced_file.name, channels=2, bits=16, rate=44100,
-                    rms_threshold=_MIN_SOX_RMS_VALUE)
+            sox_stat = sox_utils.get_stat(
+                    reduced_file.name, channels=1, bits=16, rate=44100)
+
+            logging.info('The sox stat of (%d, %d) is %s',
+                         primary, secondary, str(sox_stat))
+
+            if sox_stat.rms < _MIN_SOX_RMS_VALUE:
+               raise error.TestFail('RMS: %s' % sox_stat.rms)
 
             # Remove the file only when we pass the test
             os.unlink(record_file)
@@ -131,13 +138,13 @@ class audiovideo_CRASFormatConversion(test.test):
         cras_utils.set_capture_gain(_TEST_CAPTURE_GAIN)
 
         # Record silence to use as the noise profile.
-        noise_file = tempfile.NamedTemporaryFile()
+        noise_file = os.path.join(self.resultsdir, "noise.wav")
         noise_profile = tempfile.NamedTemporaryFile()
         cras_utils.capture(
-                noise_file.name, buffer_frames=512, duration=1, rate=48000)
+                noise_file, buffer_frames=512, duration=1, channels=1,
+                rate=48000)
         sox_utils.noise_profile(
-                noise_file.name, noise_profile.name, rate=48000)
-
+                noise_file, noise_profile.name, channels=1, rate=48000)
 
         # Try all sample rate pairs.
         for primary in _TEST_SAMPLE_RATES:
@@ -148,4 +155,7 @@ class audiovideo_CRASFormatConversion(test.test):
         record_file = tempfile.NamedTemporaryFile()
         for rate in _TEST_SAMPLE_RATES:
             cras_utils.capture(
-                    record_file.name, buffer_frames=512, duration=1, rate=rate)
+                    record_file.name, buffer_frames=512, duration=1, channels=1,
+                    rate=rate)
+
+        os.unlink(noise_file)

@@ -486,37 +486,3 @@ def find_hw_soundcard_name(cpuType=None):
 
     # If there is only one soundcard, return it, else return not found (None)
     return '0' if id == 1 else None
-
-def check_rms_for_all_channels(input, channels=2, bits=16, rate=44100,
-                               rms_threshold=_DEFAULT_SOX_RMS_THRESHOLD):
-    '''Checks the RMS values for each the channels in the input audio.
-
-    The RMS value must be larger than the rms_threshold, otherwise an TestFail
-    exception will be raised.
-
-    @param input: The input audio file.
-    @param channels: The number of channels of the input audio.
-    @param bits: The number of bits of each audio sample.
-    @param rate: The sampling rate.
-    @param rms_threshold: The minimal requirement for the RMS value.
-    '''
-    for i in xrange(channels):
-        p1 = cmd_utils.popen(
-                sox_utils.extract_channel_cmd(
-                        input, '-', i + 1, channels, bits, rate),
-                stdout=subprocess.PIPE)
-        p2 = cmd_utils.popen(
-                sox_utils.stat_cmd('-', 1, bits, rate),
-                stdin=p1.stdout, stderr=subprocess.PIPE)
-
-        stat_output = p2.stderr.read()
-        cmd_utils.wait_and_check_returncode(p1, p2)
-
-        sox_stat = sox_utils.parse_stat_output(stat_output)
-        logging.info('sox stat: %s', sox_stat)
-
-        if sox_stat.rms < rms_threshold:
-            raise error.TestFail(
-                    'RMS: %s > %s in channel: %d' %
-                    (sox_stat.rms, rms_threshold, i + 1))
-
