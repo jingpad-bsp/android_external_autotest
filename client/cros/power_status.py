@@ -452,8 +452,16 @@ class SysStat(object):
             # TODO(shawnn): This is debug code. Need to remove it later.
             if utils.get_board() == 'butterfly':
                 logging.debug('Butterfly on_ac, delay and re-check')
-                time.sleep(5)
-                logging.debug('Butterfly on_ac(): %d', self.on_ac())
+                tries = 0
+                while self.on_ac():
+                    logging.debug('Butterfly {on_ac, pcc, tries}: %d %d %d' %
+                      (self.on_ac(), self.percent_current_charge(), tries))
+                    tries += 1
+                    if tries > 300:
+                        logging.debug('on_ac never deasserted')
+                        break
+                    time.sleep(5)
+                    self.refresh()
 
             raise error.TestError(
                 'Running on AC power. Please remove AC power cable.')
