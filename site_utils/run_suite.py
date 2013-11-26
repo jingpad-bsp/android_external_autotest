@@ -68,7 +68,10 @@ def parse_options():
                       help='Must pass "True" or "False" if used.')
     parser.add_option("-p", "--pool", dest="pool", default="")
     parser.add_option("-s", "--suite_name", dest="name")
-    parser.add_option("-t", "--timeout_min", dest="timeout_min", default=30)
+    parser.add_option("-a", "--afe_timeout_mins", dest="afe_timeout_mins",
+                      default=30)
+    parser.add_option("-t", "--timeout_mins", dest="timeout_mins",
+                      default=1440)
     parser.add_option("-d", "--delay_sec", dest="delay_sec", default=10)
     parser.add_option("-m", "--mock_job_id", dest="mock_job_id",
                       help="Skips running suite; creates report for given ID.")
@@ -601,7 +604,7 @@ def main():
 
     instance_server = instance_for_pool(options.pool)
     afe = frontend_wrappers.RetryingAFE(server=instance_server,
-                                        timeout_min=options.timeout_min,
+                                        timeout_min=options.afe_timeout_mins,
                                         delay_sec=options.delay_sec)
     logging.info('Autotest instance: %s', instance_server)
 
@@ -615,9 +618,10 @@ def main():
                          check_hosts=wait, pool=options.pool, num=options.num,
                          file_bugs=file_bugs, priority=priority,
                          suite_args=options.suite_args,
-                         wait_for_results=wait)
+                         wait_for_results=wait,
+                         timeout_mins=options.timeout_mins)
     TKO = frontend_wrappers.RetryingTKO(server=instance_server,
-                                        timeout_min=options.timeout_min,
+                                        timeout_min=options.afe_timeout_mins,
                                         delay_sec=options.delay_sec)
     logging.info('Started suite job: %s', job_id)
 
