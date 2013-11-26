@@ -41,6 +41,10 @@ class StaticAPConfigurator(ap_configurator.APConfiguratorAbstract):
 
         self.config_data = ap_config
 
+        self._name = ('Router name: %s, Controller class: %s,'
+                      'MAC Address: %s' % (self._short_name, self.class_name,
+                      self.mac_address))
+
         if self.rpm_managed:
             self.rpm_client = xmlrpclib.ServerProxy(
                     'http://chromeos-rpmserver1.cbf.corp.google.com:9999',
