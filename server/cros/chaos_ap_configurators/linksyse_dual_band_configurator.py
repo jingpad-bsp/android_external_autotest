@@ -36,9 +36,8 @@ class LinksyseDualBandAPConfigurator(
         elif 'Security modes are not compatible' in text:
             alert.accept()
             raise RuntimeError('Security modes are not compatible. %s' % text)
-        elif 'wireless security mode is not compatible' in text:
+        elif 'security mode is not compatible with Wireless-N' in text:
             alert.accept()
-            raise RuntimeError('Security modes are not compatible. %s' % text)
         elif 'The wifi interface is current busy.' in text:
             alert.accept()
             self.click_button_by_xpath('//a[text()="Save Settings"]',
@@ -131,7 +130,8 @@ class LinksyseDualBandAPConfigurator(
         else:
             raise RuntimeError('The mode selected %d is not supported by router'
                                ' %s.', hex(mode), self.name)
-        self.select_item_from_popup_by_xpath(mode_name, xpath)
+        self.select_item_from_popup_by_xpath(mode_name, xpath,
+                                             alert_handler=self._alert_handler)
 
 
     def set_radio(self, enabled=True):
