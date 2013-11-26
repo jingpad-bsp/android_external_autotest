@@ -163,5 +163,15 @@ class APSpecTest(unittest.TestCase):
         self.assertEquals('a', mode)
 
 
+    def test_mode_n_on_both_bands(self):
+        """Test that band is maintained when setting a mode N spec."""
+        spec = ap_spec.APSpec(band=ap_spec.BAND_5GHZ, mode=ap_spec.MODE_N)
+        self.assertEquals(spec.band, ap_spec.BAND_5GHZ)
+        self.assertEquals(spec.mode, ap_spec.MODE_N)
+        spec = ap_spec.APSpec(band=ap_spec.BAND_2GHZ, mode=ap_spec.MODE_N)
+        self.assertEquals(spec.band, ap_spec.BAND_2GHZ)
+        self.assertEquals(spec.mode, ap_spec.MODE_N)
+
+
 if __name__ == '__main__':
     unittest.main()

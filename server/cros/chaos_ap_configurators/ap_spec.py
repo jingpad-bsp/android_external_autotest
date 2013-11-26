@@ -119,13 +119,15 @@ class APSpec(object):
         self._channel = channel
         self._hostnames = hostnames
 
-        if not self._channel and not self._mode:
+        if not self._channel and (self._mode == MODE_N or not self._mode):
             if band == BAND_2GHZ or not band:
                 self._channel = DEFAULT_2GHZ_CHANNEL
-                self._mode = DEFAULT_2GHZ_MODE
+                if not self._mode:
+                    self._mode = DEFAULT_2GHZ_MODE
             elif band == BAND_5GHZ:
                 self._channel = DEFAULT_5GHZ_CHANNEL
-                self._mode = DEFAULT_5GHZ_MODE
+                if not self._mode:
+                    self._mode = DEFAULT_5GHZ_MODE
             else:
                 raise ValueError('Invalid Band.')
 
