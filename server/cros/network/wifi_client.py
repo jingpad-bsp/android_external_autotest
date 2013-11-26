@@ -284,6 +284,29 @@ class WiFiClient(object):
         self.host.run('ff_debug +wifi')
 
 
+    def _supports_method(self, method_name):
+        """Checks if |method_name| is supported on the remote XMLRPC proxy.
+
+        autotest will, for their own reasons, install python files in the
+        autotest client package that correspond the version of the build
+        rather than the version running on the autotest drone.  This
+        creates situations where we call methods on the client XMLRPC proxy
+        that don't exist in that version of the code.  This detects those
+        situations so that we can degrade more or less gracefully.
+
+        @param method_name: string name of method that should exist on the
+                XMLRPC proxy.
+        @return True if method is available, False otherwise.
+
+        """
+        supported = (not isinstance(self.host, adb_host.ADBHost) and
+                     method_name not in self._shill_proxy.system.listMethods())
+        if not supported:
+            logging.warning('%s() is not supported on older images',
+                            method_name)
+        return supported
+
+
     def close(self):
         """Tear down state associated with the client."""
         if self._ping_thread is not None:
@@ -558,6 +581,8 @@ class WiFiClient(object):
         @return True if it worked; False, otherwise.
 
         """
+        if not self._supports_method('set_device_enabled'):
+            return False
         return self._shill_proxy.set_device_enabled(wifi_interace, value)
 
 
