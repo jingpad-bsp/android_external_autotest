@@ -11,7 +11,6 @@ import ap_spec
 
 from selenium.common.exceptions import WebDriverException
 
-
 class WesternDigitalN600APConfigurator(
         dynamic_ap_configurator.DynamicAPConfigurator):
     """Base class for objects to configure Western Digital N600 access point
@@ -47,6 +46,16 @@ class WesternDigitalN600APConfigurator(
         return False
 
 
+    def is_visibility_supported(self):
+        """
+        Returns if AP supports setting the visibility (SSID broadcast).
+
+        @return True if supported; False otherwise.
+
+        """
+        return False
+
+
     def get_supported_modes(self):
         return [{'band': ap_spec.BAND_2GHZ,
                  'modes': [ap_spec.MODE_B, ap_spec.MODE_G, ap_spec.MODE_N,
@@ -66,6 +75,11 @@ class WesternDigitalN600APConfigurator(
 
 
     def is_security_mode_supported(self, security_mode):
+        """Check if the AP supports this mode of security.
+
+        @param security_mode: Type of security.
+
+        """
         return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
                                  ap_spec.SECURITY_TYPE_WPAPSK,
                                  ap_spec.SECURITY_TYPE_WPA2PSK,
@@ -73,6 +87,11 @@ class WesternDigitalN600APConfigurator(
 
 
     def navigate_to_page(self, page_number):
+        """Navigate to the required page.
+
+        @param page_number: The page number to navigate to.
+
+        """
         page_url = urlparse.urljoin(self.admin_interface_url, 'wlan.php')
         self.get_url(page_url, page_title='WESTERN DIGITAL')
         xpath_found = self.wait_for_objects_by_id(['loginusr', 'ssid'])
@@ -109,6 +128,11 @@ class WesternDigitalN600APConfigurator(
 
 
     def save_page(self, page_number):
+        """ Save page after applying settings.
+
+        @param page_number: The page number to be saved.
+
+        """
         self.wait_for_object_by_id('onsumit')
         self.click_button_by_id('onsumit', alert_handler=self._sec_alert)
         warning = '//h1[text()="Warning"]'
@@ -169,6 +193,11 @@ class WesternDigitalN600APConfigurator(
         else:
             raise RuntimeError('The mode selected \'%d\' is not supported by '
                                ' \'%s\'.', hex(mode), self.name)
+        popup = self.wait_for_object_by_id(mode_id)
+        while popup and not(self.object_by_id_exist(mode_id)):
+            logging.debug('The object %s does not exist', mode_id)
+        # Click is needed so that we can focus and don't get an empty popup.
+        self.driver.find_element_by_id(mode_id).click()
         self.select_item_from_popup_by_id(mode_name, mode_id,
                                           alert_handler=self._sec_alert)
 
@@ -178,6 +207,7 @@ class WesternDigitalN600APConfigurator(
 
 
     def _set_ssid(self, ssid):
+        self._enable_radio(True)
         ssid_id = 'ssid'
         if self.current_band == ap_spec.BAND_5GHZ:
             ssid_id = 'ssid_Aband'
@@ -224,9 +254,23 @@ class WesternDigitalN600APConfigurator(
                                           width_id)
 
 
-    def set_radio(self, enabled=True):
-        logging.debug('set_radio is not supported in Western Digital N600 AP.')
-        return None
+    def _enable_radio(self, enabled=True):
+        if not enabled:
+            raise RuntimeError('Incorrect value for Radio sent')
+        radio = '//input[@id="en_wifi"]/../span[@class="checkbox"]'
+        ssid = 'ssid'
+        if self.current_band == ap_spec.BAND_5GHZ:
+            radio = '//input[@id="en_wifi_Aband"]/../span[@class="checkbox"]'
+            ssid = 'ssid_Aband'
+        self.wait_for_object_by_id(ssid)
+        try:
+            # Getting the background-image property for Radio button always
+            # returns OFF. Same with ssid background-color. Hence try writing
+            # to the ssid text field. It will fail if Radio is disabled.
+            self.set_content_of_text_field_by_id('testradio', ssid,
+                                                  abort_check=False)
+        except:
+            self.click_button_by_xpath(radio)
 
 
     def set_band(self, band):
@@ -300,15 +344,6 @@ class WesternDigitalN600APConfigurator(
 
 
     def set_visibility(self, visible=True):
-        self.add_item_to_command_list(self._set_visibility, (visible,), 1, 900)
-
-
-    def _set_visibility(self, visible=True):
-        status = True
-        visibility = '//input[@id="ssid_visible"]/../span[@class="checkbox"]'
-        ssid_switch = self.driver.find_element_by_xpath(visibility)
-        if ('checkbox_off.png' in
-            ssid_switch.value_of_css_property('background-image')):
-            status = False
-        if (not visible and status) or (visible and not status):
-            self.click_button_by_xpath(visibility)
+        # The SSID Broadcast can't be reliable set on this AP beacuse the CSS
+        # property for backgroung-image always returns OFF.
+        return None
