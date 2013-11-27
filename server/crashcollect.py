@@ -15,10 +15,14 @@ get_site_crashinfo = utils.import_site_function(
     lambda host, test_start_time: None)
 
 
+_timer = stats.Timer('crash_collection')
+
+@_timer.decorate
 def get_crashdumps(host, test_start_time):
     get_site_crashdumps(host, test_start_time)
 
 
+@_timer.decorate
 def get_crashinfo(host, test_start_time):
     logging.info("Collecting crash information...")
 
