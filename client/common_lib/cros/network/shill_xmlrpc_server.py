@@ -11,6 +11,7 @@ import multiprocessing
 import common
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros import xmlrpc_server
+from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.cros import constants
 from autotest_lib.client.cros import cros_ui
@@ -173,6 +174,26 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         logging.debug('connect_wifi()')
         params = xmlrpc_datatypes.deserialize(raw_params)
         params.security_config.install_client_credentials(self._tpm_store)
+        wifi_if = params.bgscan_config.interface
+        if wifi_if is None:
+            logging.info('Using default interface for bgscan configuration')
+            interfaces = iw_runner.IwRunner().list_interfaces()
+            if not interfaces:
+                return xmlrpc_datatypes.AssociationResult(
+                        failure_reason='No wifi interfaces found?')
+
+            if len(interfaces) > 1:
+                logging.error('Defaulting to first interface of %r', interfaces)
+            wifi_if = interfaces[0]
+        if not self._wifi_proxy.configure_bgscan(
+                wifi_if,
+                method=params.bgscan_config.method,
+                short_interval=params.bgscan_config.short_interval,
+                long_interval=params.bgscan_config.long_interval,
+                signal=params.bgscan_config.signal):
+            return xmlrpc_datatypes.AssociationResult(
+                    failure_reason='Failed to configure bgscan')
+
         raw = self._wifi_proxy.connect_to_wifi_network(
                 params.ssid,
                 params.security,
@@ -250,26 +271,6 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         level('Disconnect result: %r, duration: %d, reason: %s',
               successful, duration, message)
         return successful is True
-
-
-    @xmlrpc_server.dbus_safe(False)
-    def configure_bgscan(self, raw_params):
-        """Configure background scan parameters via shill.
-
-        @param raw_params serialized BgscanConfiguration.
-
-        """
-        params = xmlrpc_datatypes.deserialize(raw_params)
-        if params.interface is None:
-            logging.error('No interface specified to set bgscan parameters on.')
-            return False
-
-        return self._wifi_proxy.configure_bgscan(
-                params.interface,
-                method=params.method,
-                short_interval=params.short_interval,
-                long_interval=params.long_interval,
-                signal=params.signal)
 
 
     def wait_for_service_states(self, ssid, states, timeout_seconds):

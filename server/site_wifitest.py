@@ -1251,52 +1251,6 @@ class WiFiTest(object):
         logging.info('Signal Info: %s' % repr(signal_info))
 
 
-    def bgscan_set(self, params):
-        """Control wpa_supplicant bgscan.
-
-        @param params dict of site_wifitest params.
-
-        """
-        config = xmlrpc_datatypes.BgscanConfiguration()
-        if params.get('short_interval', None):
-            config.short_interval = params['short_interval']
-        if params.get('long_interval', None):
-            config.long_interval = params['long_interval']
-        if params.get('signal', None):
-            signal = params['signal']
-            if signal == 'auto':
-                if 'signal avg' not in self.client_signal_info:
-                    raise error.TestError('No signal info')
-
-                config.set_auto_signal(
-                        self.client_signal_info['signal avg'],
-                        signal_offset=params.get('offset', None),
-                        signal_noise=self.client_signal_info.get('noise', None))
-                logging.info('Auto signal: %s' % repr(signal))
-            config.signal = signal
-        if params.get('method', None):
-            config.method = params['method']
-        self.client_proxy.configure_bgscan(config)
-
-
-    def bgscan_disable(self, params):
-        """Disable wpa_supplicant bgscan.
-
-        @param params dict (ignored).
-
-        """
-        self.client_proxy.disable_bgscan()
-
-
-    def bgscan_enable(self, params):
-        """Enable wpa_supplicant bgscan.
-
-        @param params dict (ignored).
-
-        """
-        self.client_proxy.enable_bgscan()
-
-
     def scan(self, params):
         """Ask the DUT to scan for SSIDs on frequencies.
 

@@ -27,18 +27,17 @@ class network_WiFi_BgscanBackoff(wifi_cell_test_base.WiFiCellTestBase):
         get_ap_config = lambda: hostap_config.HostapConfig(
                 frequency=2412,
                 mode=hostap_config.HostapConfig.MODE_11G)
-        get_assoc_params = lambda: xmlrpc_datatypes.AssociationParameters(
-                ssid=self.context.router.get_ssid())
+        get_assoc_params = lambda conf: xmlrpc_datatypes.AssociationParameters(
+                ssid=self.context.router.get_ssid(), bgscan_config=conf)
         get_ping_config = lambda period: ping_runner.PingConfig(
                 self.context.get_wifi_addr(),
                 interval=self.PING_INTERVAL_SECONDS,
                 count=int(period / self.PING_INTERVAL_SECONDS))
         self.context.configure(get_ap_config())
-        self.context.client.configure_bgscan(
-                xmlrpc_datatypes.BgscanConfiguration(short_interval=7,
-                                                     long_interval=7,
-                                                     method='simple'))
-        self.context.assert_connect_wifi(get_assoc_params())
+        bgscan_config = xmlrpc_datatypes.BgscanConfiguration(
+            short_interval=7, long_interval=7,
+            method=xmlrpc_datatypes.BgscanConfiguration.SCAN_METHOD_SIMPLE)
+        self.context.assert_connect_wifi(get_assoc_params(bgscan_config))
         logging.info('Pinging router with background scans for %d seconds.',
                      self.BGSCAN_SAMPLE_PERIOD_SECONDS)
         result_bgscan = self.context.client.ping(
@@ -47,8 +46,7 @@ class network_WiFi_BgscanBackoff(wifi_cell_test_base.WiFiCellTestBase):
         self.context.client.shill.disconnect(self.context.router.get_ssid())
         self.context.configure(get_ap_config())
         # Gather some statistics about ping latencies without scanning going on.
-        self.context.client.disable_bgscan()
-        self.context.assert_connect_wifi(get_assoc_params())
+        self.context.assert_connect_wifi(get_assoc_params(None))
         logging.info('Pinging router without background scans for %d seconds.',
                      self.NO_BGSCAN_SAMPLE_PERIOD_SECONDS)
         result_no_bgscan = self.context.client.ping(
@@ -59,7 +57,6 @@ class network_WiFi_BgscanBackoff(wifi_cell_test_base.WiFiCellTestBase):
                                  'background scans: %f' %
                                  result_no_bgscan.max_latency)
 
-        self.context.client.enable_bgscan()
         self.context.client.shill.disconnect(self.context.router.get_ssid())
         self.context.router.deconfig()
         # Dwell time for scanning is usually configured to be around 100 ms,

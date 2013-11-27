@@ -313,13 +313,16 @@ class network_WiFi_RoamOnLowPower(rvr_test_base.RvRTestBase):
             self.context.assert_ping_from_dut()
 
             # Setup background scan configuration to set a signal level, below
-            # which, supplicant will scan (3dB below the current level).
+            # which, supplicant will scan (3dB below the current level).  We
+            # must reconnect for these parameters to take effect.
             logging.info('- Set background scan level')
-            signal_level_dbm = self.context.client.wifi_signal_level
-            self.context.client.configure_bgscan(
-                xmlrpc_datatypes.BgscanConfiguration(
-                    interface=self.context.client.wifi_if,
-                    method='simple', signal=signal_level_dbm-3))
+            bgscan_config = xmlrpc_datatypes.BgscanConfiguration(
+                    method='simple',
+                    signal=self.context.client.wifi_signal_level - 3)
+            self.context.client.shill.disconnect(router_ssid)
+            self.context.assert_connect_wifi(
+                    xmlrpc_datatypes.AssociationParameters(
+                    ssid=router_ssid, bgscan_config=bgscan_config))
 
             logging.info('- Configure second AP')
             self.context.configure(hostap_config.HostapConfig(

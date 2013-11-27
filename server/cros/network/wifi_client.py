@@ -11,7 +11,6 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import interface
 from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.client.common_lib.cros.network import ping_runner
-from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.cros import constants
 from autotest_lib.server import autotest
 from autotest_lib.server import site_linux_system
@@ -229,8 +228,9 @@ class WiFiClient(object):
         self._ping_runner = ping_runner.PingRunner(host=self.host)
         self._ping_thread = None
         self._result_dir = result_dir
+        self._iw_runner = iw_runner.IwRunner(remote_host=self._host)
         # Look up the WiFi device (and its MAC) on the client.
-        devs = wifi_test_utils.get_wlan_devs(self.host, self.command_iw)
+        devs = self._iw_runner.list_interfaces()
         if not devs:
             raise error.TestFail('No wlan devices found on %s.' %
                                  self.host.hostname)
@@ -453,12 +453,10 @@ class WiFiClient(object):
                 SSIDs are missing from the results.
 
         """
-        runner = iw_runner.IwRunner(remote_host=self.host,
-                                    command_iw=self.command_iw)
         start_time = time.time()
         while time.time() - start_time < timeout_seconds:
-            bss_list = runner.scan(self.wifi_if, frequencies=frequencies,
-                                   ssids=ssids)
+            bss_list = self._iw_runner.scan(
+                    self.wifi_if, frequencies=frequencies, ssids=ssids)
             if bss_list is not None:
                 break
 
@@ -477,38 +475,6 @@ class WiFiClient(object):
             else:
                 raise error.TestFail('SSID %s is not in scan results: %r' %
                                      (ssid, bss_list))
-
-
-    def configure_bgscan(self, configuration):
-        """Control wpa_supplicant bgscan.
-
-        @param configuration BgscanConfiguration describes a configuration.
-
-        """
-        configuration.interface = self.wifi_if
-        if not self._shill_proxy.configure_bgscan(configuration):
-            raise error.TestError('Background scan configuration failed.')
-
-        logging.info('bgscan configured.')
-
-
-    def disable_bgscan(self):
-        """Disable wpa_supplicant bgscan."""
-        params = xmlrpc_datatypes.BgscanConfiguration()
-        params.interface = self.wifi_if
-        params.method = xmlrpc_datatypes.BgscanConfiguration.SCAN_METHOD_NONE
-        self.configure_bgscan(params)
-
-
-    def enable_bgscan(self):
-        """Enable wpa_supplicant bgscan."""
-        klass = xmlrpc_datatypes.BgscanConfiguration
-        params = xmlrpc_datatypes.BgscanConfiguration(
-                interface=self.wifi_if,
-                method=klass.SCAN_METHOD_DEFAULT,
-                short_interval=klass.DEFAULT_SHORT_INTERVAL_SECONDS,
-                long_interval=klass.DEFAULT_LONG_INTERVAL_SECONDS)
-        self.configure_bgscan(params)
 
 
     def wait_for_service_states(self, ssid, states, timeout_seconds):

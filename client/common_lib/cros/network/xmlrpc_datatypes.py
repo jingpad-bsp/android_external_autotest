@@ -49,7 +49,8 @@ class AssociationParameters(xmlrpc_types.XmlRpcStruct):
                  association_timeout=DEFAULT_ASSOCIATION_TIMEOUT,
                  configuration_timeout=DEFAULT_CONFIGURATION_TIMEOUT,
                  is_hidden=False, save_credentials=False, station_type=None,
-                 expect_failure=False, guid=None, autoconnect=None):
+                 expect_failure=False, guid=None, autoconnect=None,
+                 bgscan_config=None):
         """Construct an AssociationParameters.
 
         @param ssid string the network to connect to (e.g. 'GoogleGuest').
@@ -83,6 +84,14 @@ class AssociationParameters(xmlrpc_types.XmlRpcStruct):
             self.security_config = copy.copy(security_config)
         else:
             self.security_config = xmlrpc_security_types.SecurityConfig()
+
+        # The bgscan configuration is similar to the security configuration.
+        if isinstance(bgscan_config, dict):
+            self.bgscan_config = deserialize(bgscan_config)
+        elif bgscan_config is not None:
+            self.bgscan_config = copy.copy(bgscan_config)
+        else:
+            self.bgscan_config = BgscanConfiguration()
         self.discovery_timeout = discovery_timeout
         self.association_timeout = association_timeout
         self.configuration_timeout = configuration_timeout
@@ -153,13 +162,25 @@ class AssociationResult(xmlrpc_types.XmlRpcStruct):
 class BgscanConfiguration(xmlrpc_types.XmlRpcStruct):
     """Describes how to configure wpa_supplicant on a DUT."""
 
+    # Clears shill's bgscan method property on the WiFi device.
+    # This causes shill to choose between simple and no bgscan
+    # depending on the number of visible BSS's for a network.
     SCAN_METHOD_DEFAULT = 'default'
+    # Disables background scan entirely.
     SCAN_METHOD_NONE = 'none'
+    # A periodic background scan based on signal strength.
+    SCAN_METHOD_SIMPLE = 'simple'
+
+    # These three parameters come out shill's wifi.cc.
+    # and refer to inputs to the simple scanning method.
     DEFAULT_SHORT_INTERVAL_SECONDS = 30
     DEFAULT_LONG_INTERVAL_SECONDS = 180
+    DEFAULT_SIGNAL_THRESHOLD = -50
 
-    def __init__(self, interface=None, signal=None, short_interval=None,
-                 long_interval=None, method=None):
+    def __init__(self, interface=None, signal=DEFAULT_SIGNAL_THRESHOLD,
+                 short_interval=DEFAULT_SHORT_INTERVAL_SECONDS,
+                 long_interval=DEFAULT_LONG_INTERVAL_SECONDS,
+                 method=SCAN_METHOD_DEFAULT):
         """Construct a BgscanConfiguration.
 
         @param interface string interface to configure (e.g. wlan0).

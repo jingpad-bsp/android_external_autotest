@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 import datetime
-import logging
 import os
 import re
 import time
@@ -125,27 +124,6 @@ def must_be_installed(host, cmd):
         return alternate_path
 
     raise error.TestFail('Unable to find %s on %s' % (cmd, host.ip))
-
-
-def get_wlan_devs(host, command_iw):
-    """Get a list of WiFi devices.
-
-    @param host host object representing a remote machine.
-    @param command_iw string path to 'iw' executable on host
-    @return list of string wifi device names. (e.g. ['mlan0']).
-
-    """
-    ret = []
-    result = host.run('%s dev' % command_iw)
-    current_if = None
-    for line in result.stdout.splitlines():
-        ifmatch = re.search('Interface (\S*)', line)
-        if ifmatch is not None:
-            current_if = ifmatch.group(1)
-        elif ('type managed' in line or 'type IBSS' in line) and current_if:
-            ret.append(current_if)
-    logging.info('Found wireless interfaces %r', ret)
-    return ret
 
 
 def get_interface_mac(host, ifname, command_ip):
