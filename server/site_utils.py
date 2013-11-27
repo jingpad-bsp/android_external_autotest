@@ -3,11 +3,14 @@
 # found in the LICENSE file.
 
 
+import httplib
+import json
 import logging
 import re
+import time
 import urllib2
-import httplib
 
+import common
 from autotest_lib.client.common_lib import base_utils, global_config
 from autotest_lib.server.cros.dynamic_suite import constants
 
@@ -18,6 +21,40 @@ _LAB_SHERIFF_JS = global_config.global_config.get_config_value(
     'NOTIFICATIONS', 'lab_sheriffs', default='')
 _CHROMIUM_BUILD_URL = global_config.global_config.get_config_value(
     'NOTIFICATIONS', 'chromium_build_url', default='')
+
+LAB_GOOD_STATES = ('open', 'throttled')
+
+
+class LabIsDownException(Exception):
+    """Raised when the Lab is Down"""
+    pass
+
+
+class BoardIsDisabledException(Exception):
+    """Raised when a certain board is disabled in the Lab"""
+    pass
+
+
+class ParseBuildNameException(Exception):
+    """Raised when ParseBuildName() cannot parse a build name."""
+    pass
+
+
+def ParseBuildName(name):
+    """Format a build name, given board, type, milestone, and manifest num.
+
+    @param name: a build name, e.g. 'x86-alex-release/R20-2015.0.0'
+
+    @return board: board the manifest is for, e.g. x86-alex.
+    @return type: one of 'release', 'factory', or 'firmware'
+    @return milestone: (numeric) milestone the manifest was associated with.
+    @return manifest: manifest number, e.g. '2015.0.0'
+
+    """
+    match = re.match(r'([\w-]+)-(\w+)/R(\d+)-([\d.ab-]+)', name)
+    if match and len(match.groups()) == 4:
+        return match.groups()
+    raise ParseBuildNameException('%s is a malformed build name.' % name)
 
 
 def get_label_from_afe(hostname, label_prefix, afe):
@@ -117,3 +154,71 @@ def remote_wget(source_url, dest_path, ssh_cmd):
                 (source_url, ssh_cmd, dest_path))
     base_utils.run(wget_cmd)
 
+
+def get_lab_status():
+    """Grabs the current lab status and message.
+
+    @returns a dict with keys 'lab_is_up' and 'message'. lab_is_up points
+             to a boolean and message points to a string.
+    """
+    result = {'lab_is_up' : True, 'message' : ''}
+    status_url = global_config.global_config.get_config_value('CROS',
+            'lab_status_url')
+    max_attempts = 5
+    retry_waittime = 1
+    for _ in range(max_attempts):
+        try:
+            response = urllib2.urlopen(status_url)
+        except IOError as e:
+            logging.debug('Error occured when grabbing the lab status: %s.',
+                          e)
+            time.sleep(retry_waittime)
+            continue
+        # Check for successful response code.
+        if response.getcode() == 200:
+            data = json.load(response)
+            result['lab_is_up'] = data['general_state'] in LAB_GOOD_STATES
+            result['message'] = data['message']
+            return result
+        time.sleep(retry_waittime)
+    # We go ahead and say the lab is open if we can't get the status.
+    logging.warn('Could not get a status from %s', status_url)
+    return result
+
+
+def check_lab_status(board=None):
+    """Check if the lab is up and if we can schedule suites to run.
+
+    Also checks if the lab is disabled for that particular board, and if so
+    will raise an error to prevent new suites from being scheduled for that
+    board.
+
+    @param board: board name that we want to check the status of.
+
+    @raises LabIsDownException if the lab is not up.
+    @raises BoardIsDisabledException if the desired board is currently
+                                           disabled.
+    """
+    # Ensure we are trying to schedule on the actual lab.
+    if not (global_config.global_config.get_config_value('SERVER',
+            'hostname').startswith('cautotest')):
+        return
+
+    # First check if the lab is up.
+    lab_status = get_lab_status()
+    if not lab_status['lab_is_up']:
+        raise LabIsDownException('Chromium OS Lab is currently not up: '
+                                       '%s.' % lab_status['message'])
+
+    # Check if the board we wish to use is disabled.
+    # Lab messages should be in the format of:
+    # Lab is 'status' [boards not to be ran] (comment). Example:
+    # Lab is Open [stumpy, kiev, x86-alex] (power_resume rtc causing duts to go
+    # down)
+    boards_are_disabled = re.search('\[(.*)\]', lab_status['message'])
+    if board and boards_are_disabled:
+        if board in boards_are_disabled.group(1):
+            raise BoardIsDisabledException('Chromium OS Lab is '
+                    'currently not allowing suites to be scheduled on board '
+                    '%s: %s' % (board, lab_status['message']))
+    return

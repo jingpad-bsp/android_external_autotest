@@ -604,16 +604,6 @@ class UnknownReimageType(CrosDynamicSuiteException):
     pass
 
 
-class LabIsDownException(Exception):
-    """Raised when the Lab is Down"""
-    pass
-
-
-class BoardIsDisabledException(Exception):
-    """Raised when a certain board is disabled in the Lab"""
-    pass
-
-
 class NoUniquePackageFound(Exception):
     """Raised when an executable cannot be mapped back to a single package."""
     pass

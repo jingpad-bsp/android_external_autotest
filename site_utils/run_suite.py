@@ -19,8 +19,9 @@ from datetime import datetime
 
 import common
 
-from autotest_lib.client.common_lib import global_config, error, utils, enum
-from autotest_lib.client.common_lib import site_utils, priorities
+from autotest_lib.client.common_lib import global_config, enum
+from autotest_lib.client.common_lib import priorities
+from autotest_lib.server import utils
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import job_status
@@ -437,8 +438,8 @@ class Timings(object):
         @return: The key used to log timing information in statsd.
         """
         try:
-            _board, build_type, branch = site_utils.ParseBuildName(build)[:3]
-        except site_utils.ParseBuildNameException as e:
+            _board, build_type, branch = utils.ParseBuildName(build)[:3]
+        except utils.ParseBuildNameException as e:
             logging.error(str(e))
             branch = 'Unknown'
             build_type = 'Unknown'
@@ -597,7 +598,7 @@ def main():
     try:
         if not options.bypass_labstatus:
             utils.check_lab_status(options.board)
-    except (error.LabIsDownException, error.BoardIsDisabledException) as e:
+    except (utils.LabIsDownException, utils.BoardIsDisabledException) as e:
         logging.warning('Error Message: %s', e)
         return RETURN_CODES.WARNING
 

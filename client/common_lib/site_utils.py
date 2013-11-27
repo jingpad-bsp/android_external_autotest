@@ -1,7 +1,7 @@
 # Copyright (c) 2012 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-import json
+
 import logging
 import os
 import re
@@ -18,28 +18,6 @@ from autotest_lib.client.cros import constants
 CHECK_PID_IS_ALIVE_TIMEOUT = 6
 
 _LOCAL_HOST_LIST = ('localhost', '127.0.0.1')
-
-LAB_GOOD_STATES = ('open', 'throttled')
-
-
-class ParseBuildNameException(Exception):
-    """Raised when ParseBuildName() cannot parse a build name."""
-    pass
-
-
-def ParseBuildName(name):
-    """Format a build name, given board, type, milestone, and manifest num.
-
-    @param name: a build name, e.g. 'x86-alex-release/R20-2015.0.0'
-    @return board: board the manifest is for, e.g. x86-alex.
-    @return type: one of 'release', 'factory', or 'firmware'
-    @return milestone: (numeric) milestone the manifest was associated with.
-    @return manifest: manifest number, e.g. '2015.0.0'
-    """
-    match = re.match(r'([\w-]+)-(\w+)/R(\d+)-([\d.ab-]+)', name)
-    if match and len(match.groups()) == 4:
-        return match.groups()
-    raise ParseBuildNameException('%s is a malformed build name.' % name)
 
 
 def ping(host, deadline=None, tries=None, timeout=60):
@@ -243,75 +221,6 @@ def externalize_host(host):
 
     """
     return socket.gethostname() if host in _LOCAL_HOST_LIST else host
-
-
-def get_lab_status():
-      """Grabs the current lab status and message.
-
-      @returns a dict with keys 'lab_is_up' and 'message'. lab_is_up points
-               to a boolean and message points to a string.
-      """
-      result = {'lab_is_up' : True, 'message' : ''}
-      status_url = global_config.global_config.get_config_value('CROS',
-              'lab_status_url')
-      max_attempts = 5
-      retry_waittime = 1
-      for _ in range(max_attempts):
-          try:
-              response = urllib2.urlopen(status_url)
-          except IOError as e:
-              logging.debug('Error occured when grabbing the lab status: %s.',
-                            e)
-              time.sleep(retry_waittime)
-              continue
-          # Check for successful response code.
-          if response.getcode() == 200:
-              data = json.load(response)
-              result['lab_is_up'] = data['general_state'] in LAB_GOOD_STATES
-              result['message'] = data['message']
-              return result
-          time.sleep(retry_waittime)
-      # We go ahead and say the lab is open if we can't get the status.
-      logging.warn('Could not get a status from %s', status_url)
-      return result
-
-
-def check_lab_status(board=None):
-    """Check if the lab is up and if we can schedule suites to run.
-
-    Also checks if the lab is disabled for that particular board, and if so
-    will raise an error to prevent new suites from being scheduled for that
-    board.
-
-    @param board: board name that we want to check the status of.
-
-    @raises error.LabIsDownException if the lab is not up.
-    @raises error.BoardIsDisabledException if the desired board is currently
-                                           disabled.
-    """
-    # Ensure we are trying to schedule on the actual lab.
-    if not (global_config.global_config.get_config_value('SERVER',
-            'hostname').startswith('cautotest')):
-        return
-
-    # First check if the lab is up.
-    lab_status = get_lab_status()
-    if not lab_status['lab_is_up']:
-        raise error.LabIsDownException('Chromium OS Lab is currently not up: '
-                                       '%s.' % lab_status['message'])
-
-    # Check if the board we wish to use is disabled.
-    # Lab messages should be in the format of:
-    # Lab is 'status' [boards not to be ran] (comment). Example:
-    # Lab is Open [stumpy, kiev, x86-alex] (power_resume rtc causing duts to go
-    # down)
-    boards_are_disabled = re.search('\[(.*)\]', lab_status['message'])
-    if board and boards_are_disabled:
-        if board in boards_are_disabled.group(1):
-            raise error.BoardIsDisabledException('Chromium OS Lab is '
-                    'currently not allowing suites to be scheduled on board '
-                    '%s: %s' % (board, lab_status['message']))
-    return
 
 
 def urlopen_socket_timeout(url, data=None, timeout=5):

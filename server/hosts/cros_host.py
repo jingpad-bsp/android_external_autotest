@@ -15,7 +15,6 @@ import xmlrpclib
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib import site_utils
 from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
@@ -424,9 +423,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         # restage. If we're doing things right we should not see multiple
         # devservers for a given board/build/branch path.
         try:
-            board, build_type, branch = site_utils.ParseBuildName(
+            board, build_type, branch = server_utils.ParseBuildName(
                                                 image_name)[:3]
-        except site_utils.ParseBuildNameException:
+        except server_utils.ParseBuildNameException:
             pass
         else:
             devserver = devserver_url[

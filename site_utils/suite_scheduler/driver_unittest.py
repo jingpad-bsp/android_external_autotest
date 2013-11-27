@@ -15,7 +15,7 @@ import forgiving_config_parser, manifest_versions, task, timed_event
 
 import common
 from autotest_lib.server import frontend
-from autotest_lib.client.common_lib import site_utils, error
+from autotest_lib.server import utils
 from constants import Labels
 
 
@@ -56,7 +56,7 @@ class DriverTest(mox.MoxTestBase):
         self.mox.StubOutWithMock(timed_event.Nightly, 'CreateFromConfig')
         self.mox.StubOutWithMock(timed_event.Weekly, 'CreateFromConfig')
         self.mox.StubOutWithMock(build_event.NewBuild, 'CreateFromConfig')
-        self.mox.StubOutWithMock(site_utils, 'check_lab_status')
+        self.mox.StubOutWithMock(utils, 'check_lab_status')
         timed_event.Nightly.CreateFromConfig(
             mox.IgnoreArg(), self.mv).AndReturn(mock_nightly)
         timed_event.Weekly.CreateFromConfig(
@@ -89,16 +89,16 @@ class DriverTest(mox.MoxTestBase):
 
 
     def _ExpectLabStatusQuery(self, lab_up=True, message='No message.'):
-        """Expect one call to site_utils.check_lab_status
+        """Expect one call to utils.check_lab_status
         @param lab_up: True if lab shoule be up. False if lab should be down.
                        Default: True.
         @param message: String message with which lab should be down, if down.
         """
         if lab_up:
-            site_utils.check_lab_status()
+            utils.check_lab_status()
         else:
-            site_utils.check_lab_status().AndRaise(
-                error.LabIsDownException(message))
+            utils.check_lab_status().AndRaise(
+                utils.LabIsDownException(message))
 
 
     def _ExpectHandle(self, event, group):
