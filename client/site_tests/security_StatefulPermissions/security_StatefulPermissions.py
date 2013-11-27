@@ -78,7 +78,8 @@ class security_StatefulPermissions(test.test):
                      "tss": ["/var/lib/tpm"],
                      "uucp": [],
                      "wpa": [],
-                     "xorg": ["/encrypted/var/log/xorg"]
+                     "xorg": ["/encrypted/var/log/xorg",
+                              "/encrypted/var/log/Xorg.0.log"]
                     }
 
     def generate_find(self, user, prunelist):
