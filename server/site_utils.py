@@ -155,43 +155,35 @@ def remote_wget(source_url, dest_path, ssh_cmd):
     base_utils.run(wget_cmd)
 
 
-def get_lab_status():
+_MAX_LAB_STATUS_ATTEMPTS = 5
+def _get_lab_status(status_url):
     """Grabs the current lab status and message.
 
-    @returns a dict with keys 'lab_is_up' and 'message'. lab_is_up points
-             to a boolean and message points to a string.
+    @returns The JSON object obtained from the given URL.
+
     """
-    result = {'lab_is_up' : True, 'message' : ''}
-    status_url = global_config.global_config.get_config_value('CROS',
-            'lab_status_url')
-    max_attempts = 5
     retry_waittime = 1
-    for _ in range(max_attempts):
+    for _ in range(_MAX_LAB_STATUS_ATTEMPTS):
         try:
             response = urllib2.urlopen(status_url)
         except IOError as e:
-            logging.debug('Error occured when grabbing the lab status: %s.',
+            logging.debug('Error occurred when grabbing the lab status: %s.',
                           e)
             time.sleep(retry_waittime)
             continue
         # Check for successful response code.
         if response.getcode() == 200:
-            data = json.load(response)
-            result['lab_is_up'] = data['general_state'] in LAB_GOOD_STATES
-            result['message'] = data['message']
-            return result
+            return json.load(response)
         time.sleep(retry_waittime)
-    # We go ahead and say the lab is open if we can't get the status.
-    logging.warn('Could not get a status from %s', status_url)
-    return result
+    return None
 
 
-def check_lab_status(board=None):
-    """Check if the lab is up and if we can schedule suites to run.
+def _decode_lab_status(lab_status, board):
+    """Decode lab status, and report exceptions as needed.
 
-    Also checks if the lab is disabled for that particular board, and if so
-    will raise an error to prevent new suites from being scheduled for that
-    board.
+    Takes a deserialized JSON object from the lab status page, and
+    interprets it to determine the actual lab status.  Raises
+    exceptions as required to report when the lab is down.
 
     @param board: board name that we want to check the status of.
 
@@ -199,16 +191,10 @@ def check_lab_status(board=None):
     @raises BoardIsDisabledException if the desired board is currently
                                            disabled.
     """
-    # Ensure we are trying to schedule on the actual lab.
-    if not (global_config.global_config.get_config_value('SERVER',
-            'hostname').startswith('cautotest')):
-        return
-
     # First check if the lab is up.
-    lab_status = get_lab_status()
-    if not lab_status['lab_is_up']:
+    if not lab_status['general_state'] in LAB_GOOD_STATES:
         raise LabIsDownException('Chromium OS Lab is currently not up: '
-                                       '%s.' % lab_status['message'])
+                                 '%s.' % lab_status['message'])
 
     # Check if the board we wish to use is disabled.
     # Lab messages should be in the format of:
@@ -222,3 +208,34 @@ def check_lab_status(board=None):
                     'currently not allowing suites to be scheduled on board '
                     '%s: %s' % (board, lab_status['message']))
     return
+
+
+def check_lab_status(board=None):
+    """Check if the lab status allows us to schedule suites.
+
+    Also checks if the lab is disabled for that particular board, and if so
+    will raise an error to prevent new suites from being scheduled for that
+    board.
+
+    @param board: board name that we want to check the status of.
+
+    @raises LabIsDownException if the lab is not up.
+    @raises BoardIsDisabledException if the desired board is currently
+                                           disabled.
+
+    """
+    # Ensure we are trying to schedule on the actual lab.
+    test_server_name = global_config.global_config.get_config_value(
+              'SERVER', 'hostname')
+    if not test_server_name.startswith('cautotest'):
+        return
+
+    # Download the lab status from its home on the web.
+    status_url = global_config.global_config.get_config_value(
+            'CROS', 'lab_status_url')
+    json_status = _get_lab_status(status_url)
+    if json_status is None:
+        # We go ahead and say the lab is open if we can't get the status.
+        logging.warn('Could not get a status from %s', status_url)
+        return
+    _decode_lab_status(json_status, board)
