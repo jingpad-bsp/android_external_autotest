@@ -484,31 +484,3 @@ def find_hw_soundcard_name(cpuType=None):
 
     # If there is only one soundcard, return it, else return not found (None)
     return '0' if id == 1 else None
-
-def execute(args, stdin=None, stdout=None):
-    '''Executes a child command and wait for it.
-
-    Returns the output from standard output if 'stdout' is subprocess.PIPE.
-    Raises RuntimeError if the return code of the child command is not 0.
-
-    @param args: the command to be executed
-    @param stdin: the executed program's standard input
-    @param stdout: the executed program's stdandrd output
-    '''
-
-    ps = popen(args, stdin=stdin, stdout=stdout)
-    out = ps.communicate()[0] if stdout == subprocess.PIPE else None
-    returncode = ps.wait()
-    if returncode != 0:
-        raise RuntimeError( 'command failed(%d): %s' % (returncode, ps.command))
-    return out
-
-def popen(*args, **kargs):
-    '''Returns a Popen object just as subprocess.Popen does but with the
-    executed command stored in Popen.command.
-    '''
-    ps = subprocess.Popen(*args, **kargs)
-    the_args = args[0] if len(args) > 0 else kargs['args']
-    ps.command = ' '.join(pipes.quote(x) for x in the_args)
-    logging.info('Running: %s', ps.command)
-    return ps

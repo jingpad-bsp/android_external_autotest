@@ -6,7 +6,7 @@ import logging
 import re
 
 from autotest_lib.client.bin import utils
-from autotest_lib.client.cros.audio import audio_helper
+from autotest_lib.client.cros.audio import cmd_utils
 
 _CRAS_TEST_CLIENT = '/usr/bin/cras_test_client'
 _RE_SELECTED_OUTPUT_NODE = re.compile('Selected Output Node: (.*)')
@@ -14,11 +14,11 @@ _RE_SELECTED_INPUT_NODE = re.compile('Selected Input Node: (.*)')
 
 def playback(*args, **kargs):
     """A helper function to execute the playback_cmd."""
-    audio_helper.execute(playback_cmd(*args, **kargs))
+    cmd_utils.execute(playback_cmd(*args, **kargs))
 
 def capture(*args, **kargs):
     """A helper function to execute the capture_cmd."""
-    audio_helper.execute(capture_cmd(*args, **kargs))
+    cmd_utils.execute(capture_cmd(*args, **kargs))
 
 def playback_cmd(playback_file, buffer_frames=None, duration=None, rate=44100):
     """Gets a command to playback a file with given settings.
@@ -61,7 +61,7 @@ def set_system_volume(volume):
     """
     args = [_CRAS_TEST_CLIENT]
     args += ['--volume', str(volume)]
-    audio_helper.execute(args)
+    cmd_utils.execute(args)
 
 def set_node_volume(node_id, volume):
     """Set the volume of the given output node.
@@ -71,7 +71,7 @@ def set_node_volume(node_id, volume):
     """
     args = [_CRAS_TEST_CLIENT]
     args += ['--set_node_volume', '%s:%d' % (node_id, volume)]
-    audio_helper.execute(args)
+    cmd_utils.execute(args)
 
 def set_capture_gain(gain):
     """Set the system capture gain.
@@ -79,7 +79,7 @@ def set_capture_gain(gain):
     """
     args = [_CRAS_TEST_CLIENT]
     args += ['--capture_gain', str(gain)]
-    audio_helper.execute(args)
+    cmd_utils.execute(args)
 
 def dump_server_info():
     """Gets the CRAS's server information."""

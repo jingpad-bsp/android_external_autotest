@@ -8,6 +8,7 @@ import tempfile
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.audio import audio_helper
+from autotest_lib.client.cros.audio import cmd_utils
 from autotest_lib.client.cros.audio import cras_utils
 from autotest_lib.client.cros.audio import sox_utils
 
@@ -39,12 +40,12 @@ class audiovideo_CRASFormatConversion(test.test):
             frequence: the frequence of the sine wave.
             rate: the sampling rate.
         """
-        p1 = audio_helper.popen(
+        p1 = cmd_utils.popen(
             sox_utils.generate_sine_tone_cmd(
                     filename='-', duration=2, rate=rate, frequence=frequence,
                     gain=-6),
             stdout=subprocess.PIPE)
-        p2 = audio_helper.popen(
+        p2 = cmd_utils.popen(
             cras_utils.playback_cmd(
                     playback_file='-', buffer_frames=512, rate=rate),
             stdin=p1.stdout)
@@ -62,10 +63,7 @@ class audiovideo_CRASFormatConversion(test.test):
         # causes the secondary to be SRC'd to the primary rate.
         processes += self.play_sine_tone(_TEST_TONE_ONE, primary)
         processes += self.play_sine_tone(_TEST_TONE_TWO, secondary)
-        for ps in processes:
-            if ps.wait() != 0:
-                raise error.TestError(
-                        'command failed(%d): %s' % (ps.returncode, ps.command))
+        cmd_utils.wait_and_check_returncode(*processes)
 
     def run_once(self):
         """Runs the format conversion test.
