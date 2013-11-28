@@ -6,6 +6,9 @@
 import logging
 import pipes
 import subprocess
+import threading
+
+_popen_lock = threading.Lock()
 
 
 def wait_and_check_returncode(*popens):
@@ -40,7 +43,9 @@ def popen(*args, **kargs):
     '''Returns a Popen object just as subprocess.Popen does but with the
     executed command stored in Popen.command.
     '''
-    ps = subprocess.Popen(*args, **kargs)
+    # The lock is required for http://crbug.com/323843.
+    with _popen_lock:
+        ps = subprocess.Popen(*args, **kargs)
     the_args = args[0] if len(args) > 0 else kargs['args']
     ps.command = ' '.join(pipes.quote(x) for x in the_args)
     logging.info('Running(%d): %s', ps.pid, ps.command)

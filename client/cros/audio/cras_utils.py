@@ -4,6 +4,7 @@
 
 import logging
 import re
+import subprocess
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.cros.audio import cmd_utils
@@ -83,7 +84,8 @@ def set_capture_gain(gain):
 
 def dump_server_info():
     """Gets the CRAS's server information."""
-    return utils.system_output('%s --dump_server_info' % _CRAS_TEST_CLIENT)
+    args = [_CRAS_TEST_CLIENT, '--dump_server_info']
+    return cmd_utils.execute(args, stdout=subprocess.PIPE)
 
 def get_selected_nodes():
     """Returns the pair of active output node and input node."""
