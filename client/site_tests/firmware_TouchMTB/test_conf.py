@@ -11,6 +11,7 @@ from validators import (CountPacketsValidator,
                         CountTrackingIDValidator,
                         CountTrackingIDFatFingerValidator,
                         DrumrollValidator,
+                        HysteresisValidator,
                         LinearityValidator,
                         NoGapValidator,
                         NoReversedMotionValidator,
@@ -46,6 +47,7 @@ max_report_interval = 1.0 / min_report_rate * 1000
 report_rate_criteria = '>= %d' % min_report_rate
 stationary_finger_criteria = '<= 1.25, ~ +1.25'
 relaxed_stationary_finger_criteria = '<= 100, ~ +100'
+hysteresis_criteria = '<= 2.0'
 
 MIN_MOVING_DISTANCE = 20
 
@@ -103,6 +105,7 @@ FIRST_FINGER_TRACKING_AND_SECOND_FINGER_TAPS = \
         'first_finger_tracking_and_second_finger_taps'
 DRUMROLL = 'drumroll'
 RAPID_TAPS = 'rapid_taps_20'
+ONE_FINGER_TRACKING_FROM_CENTER = 'one_finger_tracking_from_center'
 # This following gesture is for pressure calibration.
 PRESSURE_CALIBRATION = 'pressure_calibration'
 
@@ -119,6 +122,7 @@ gesture_names_complete = {
         TWO_FINGER_TRACKING,
         FINGER_CROSSING,
         ONE_FINGER_SWIPE,
+        ONE_FINGER_TRACKING_FROM_CENTER,
         TWO_FINGER_SWIPE,
         PINCH_TO_ZOOM,
         ONE_FINGER_TAP,
@@ -144,6 +148,7 @@ gesture_names_complete = {
         TWO_FINGER_TRACKING,
         FINGER_CROSSING,
         ONE_FINGER_SWIPE,
+        ONE_FINGER_TRACKING_FROM_CENTER,
         TWO_FINGER_SWIPE,
         PINCH_TO_ZOOM,
         ONE_FINGER_TAP,
@@ -168,6 +173,7 @@ robot_capability_list = [
     ONE_FINGER_TRACKING,
     ONE_FINGER_TO_EDGE,
     ONE_FINGER_SWIPE,
+    ONE_FINGER_TRACKING_FROM_CENTER,
     ONE_FINGER_TAP,
     RAPID_TAPS,
     TWO_FINGER_TRACKING,
@@ -238,6 +244,7 @@ validator_weights = {'CountPacketsValidator': weight_common,
                      'PinchValidator': weight_common,
                      'RangeValidator': weight_common,
                      'ReportRateValidator': weight_common,
+                     'HysteresisValidator': weight_common,
                      'StationaryFingerValidator': weight_common,
 }
 
@@ -727,6 +734,28 @@ def get_gesture_dict():
                 CountTrackingIDValidator('== 20'),
             ),
             timeout = 2000,
+        ),
+
+        ONE_FINGER_TRACKING_FROM_CENTER:
+        Gesture(
+            name=ONE_FINGER_TRACKING_FROM_CENTER,
+            variations=((GV.CR, GV.CT, GV.CUL, GV.CLL),
+                        (GV.SLOW, GV.NORMAL),
+            ),
+            prompt='Place a stationary finger on the center of the touch '
+                   'surface for about 1 second, and then take {2} to draw a '
+                   '{0} line {1}.',
+            subprompt={
+                GV.CR: ('horizontal', 'to the right',),
+                GV.CT: ('vertical', 'to the top',),
+                GV.CUL: ('diagonal', 'to the upper left',),
+                GV.CLL: ('diagonal', 'to the lower left',),
+                GV.SLOW: ('2 seconds',),
+                GV.NORMAL: ('1 second',),
+            },
+            validators=(
+                HysteresisValidator(hysteresis_criteria, finger=0),
+            ),
         ),
 
         PRESSURE_CALIBRATION:

@@ -73,6 +73,8 @@ class RobotWrapper:
             conf.ONE_FINGER_TO_EDGE: self._get_control_command_line,
             conf.ONE_FINGER_SWIPE: self._get_control_command_line,
             conf.ONE_FINGER_TAP: self._get_control_command_single_tap,
+            conf.ONE_FINGER_TRACKING_FROM_CENTER:
+                    self._get_control_command_line,
             conf.RAPID_TAPS: self._get_control_command_rapid_taps,
             conf.TWO_FINGER_TRACKING: self._get_control_command_line,
             conf.TWO_FINGER_SWIPE: self._get_control_command_line,
@@ -95,6 +97,10 @@ class RobotWrapper:
             GV.TRBL: (END, START, START, END),
             GV.BRTL: (END, END, START, START),
             GV.TLBR: (START, START, END, END),
+            GV.CUR: (CENTER, CENTER, END, START),
+            GV.CUL: (CENTER, CENTER, START, START),
+            GV.CLR: (CENTER, CENTER, END, END),
+            GV.CLL: (CENTER, CENTER, START, END),
 
             # Overshoot for this one-finger gesture only: ONE_FINGER_TO_EDGE
             GV.CL: (CENTER, CENTER, OFF_START, CENTER),

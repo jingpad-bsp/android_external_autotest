@@ -74,13 +74,18 @@ GV.CL = 'center_to_left'
 GV.CR = 'center_to_right'
 GV.CT = 'center_to_top'
 GV.CB = 'center_to_bottom'
+GV.CUR = 'center_to_upper_right'
+GV.CUL = 'center_to_upper_left'
+GV.CLR = 'center_to_lower_right'
+GV.CLL = 'center_to_lower_left'
 GV.BLTR = 'bottom_left_to_top_right'
 GV.BRTL = 'bottom_right_to_top_left'
 GV.TRBL = 'top_right_to_bottom_left'
 GV.TLBR = 'top_left_to_bottom_right'
 GV.HORIZONTAL_DIRECTIONS = [GV.HORIZONTAL, GV.LR, GV.RL, GV.CL, GV.CR]
 GV.VERTICAL_DIRECTIONS = [GV.VERTICAL, GV.TB, GV.BT, GV.CT, GV.CB]
-GV.DIAGONAL_DIRECTIONS = [GV.DIAGONAL, GV.BLTR, GV.BRTL, GV.TRBL, GV.TLBR]
+GV.DIAGONAL_DIRECTIONS = [GV.DIAGONAL, GV.BLTR, GV.BRTL, GV.TRBL, GV.TLBR,
+                          GV.CUR, GV.CUL, GV.CLR, GV.CLL]
 GV.GESTURE_DIRECTIONS = (GV.HORIZONTAL_DIRECTIONS + GV.VERTICAL_DIRECTIONS +
                          GV.DIAGONAL_DIRECTIONS)
 # constants about locations

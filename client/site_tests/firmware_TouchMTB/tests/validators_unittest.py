@@ -22,6 +22,7 @@ from touch_device import TouchDevice
 from validators import (CountPacketsValidator,
                         CountTrackingIDValidator,
                         DrumrollValidator,
+                        HysteresisValidator,
                         LinearityValidator,
                         NoGapValidator,
                         NoLevelJumpValidator,
@@ -693,6 +694,24 @@ class ReportRateValidatorTest(unittest.TestCase):
         xy_pairs = [(120, 50), (120, 51), (200, 52), (200, 51)]
         expected_middle = None
         self._test_chop_off_both_ends(xy_pairs, distance, expected_middle)
+
+
+class HysteresisValidatorTest(unittest.TestCase):
+    """Unit tests for HysteresisValidator class."""
+
+    def setUp(self):
+        self.criteria = conf.hysteresis_criteria
+
+    def test_hysteresis(self):
+        """Test that the hysteresis causes an initial jump."""
+        filenames = {'center_to_right_normal_link.dat': 4.6043458,
+                     'center_to_right_slow_link.dat': 16.8671278}
+
+        for filename, expected_value in filenames.items():
+            packets = parse_tests_data(filename)
+            validator = HysteresisValidator(self.criteria, device=link)
+            vlog = validator.check(packets)
+            self.assertAlmostEqual(vlog.metrics[0].value, expected_value)
 
 
 if __name__ == '__main__':

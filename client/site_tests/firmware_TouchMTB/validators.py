@@ -67,6 +67,7 @@ from inspect import isfunction
 
 from common_util import print_and_exit
 from firmware_constants import AXIS, GV, MTB, UNIT, VAL
+from geometry.elements import Point
 
 
 # Define the ratio of points taken at both ends of a line for edge tests.
@@ -1125,4 +1126,112 @@ class ReportRateValidator(BaseValidator):
         self.report_rate = self._get_report_rate(list_syn_time)
         self._add_report_rate_metrics2()
         self.vlog.score = self.fc.mf.grade(self.report_rate)
+        return self.vlog
+
+
+class HysteresisValidator(BaseValidator):
+    """Validator to check if there exists a cursor jump initially
+
+    The movement hysteresis, if existing, set in the touchpad firmware
+    should not lead to an obvious cursor jump when a finger starts moving.
+
+    Example:
+        To verify if there exists a cursor jump with distance ratio larger
+        than 2.0; i.e.,
+        distance(point0, point1) / distance(point1, point2) should be <= 2.0
+          HysteresisValidator('> 2.0')
+
+    Raw data of tests/data/center_to_right_slow_link.dat:
+
+    [block0]
+    Event: type 3 (EV_ABS), code 57 (ABS_MT_TRACKING_ID), value 508
+    Event: type 3 (EV_ABS), code 53 (ABS_MT_POSITION_X), value 906
+    Event: type 3 (EV_ABS), code 54 (ABS_MT_POSITION_Y), value 720
+    Event: type 3 (EV_ABS), code 58 (ABS_MT_PRESSURE), value 24
+    Event: -------------- SYN_REPORT ------------
+
+    [block1]
+    Event: type 3 (EV_ABS), code 58 (ABS_MT_PRESSURE), value 25
+    Event: -------------- SYN_REPORT ------------
+
+    ...  more SYN_REPORT with ABS_MT_PRESSURE only  ...
+
+    [block2]
+    Event: type 3 (EV_ABS), code 53 (ABS_MT_POSITION_X), value 939
+    Event: type 3 (EV_ABS), code 54 (ABS_MT_POSITION_Y), value 727
+    Event: type 3 (EV_ABS), code 58 (ABS_MT_PRESSURE), value 34
+    Event: -------------- SYN_REPORT ------------
+
+    [block3]
+    Event: type 3 (EV_ABS), code 53 (ABS_MT_POSITION_X), value 941
+    Event: type 3 (EV_ABS), code 54 (ABS_MT_POSITION_Y), value 727
+    Event: type 3 (EV_ABS), code 58 (ABS_MT_PRESSURE), value 37
+    Event: -------------- SYN_REPORT ------------
+
+    ...  more data  ...
+
+    Let point0 represents the coordinates in block0.
+    Let point1 represents the coordinates in block2.
+    Let point2 represents the coordinates in block3.
+
+    Note that the data in block1 only contain a number of pressure values
+    without any X/Y updates even when the finger is tracking to the right.
+    This is the undesirable hysteresis effect.
+
+    Compute ratio = distance(point0, point1) / distance(point1, point2).
+    When ratio is high, it indicates the hysteresis effect.
+    """
+
+    def __init__(self, criteria_str, finger=0, mf=None, device=None):
+        self.criteria_str = criteria_str
+        self.finger = finger
+        name = self.__class__.__name__
+        super(HysteresisValidator, self).__init__(criteria_str, mf, device,
+                                                  name)
+
+    def _point_px_to_mm(self, point_px):
+        """Convert a point in px to a point in mm."""
+        return Point(*self.device.pixel_to_mm(point_px.value()))
+
+    def _find_index_of_first_distinct_value(self, points):
+        """Find first index, idx, such that points[idx] != points[0]."""
+        for idx, point in enumerate(points):
+            if points[0].distance(points[idx]) > 0:
+                return idx
+        return None
+
+    def check(self, packets, variation=None):
+        """There is no jump larger than a threshold at the beginning."""
+        self.init_check(packets)
+        points_px = self.packets.get_ordered_finger_path(self.finger, 'point')
+        point1_idx = point2_idx = None
+        distance1 = distance2 = None
+
+        if len(points_px) > 0:
+            point0_mm = self._point_px_to_mm(points_px[0])
+            point1_idx = self._find_index_of_first_distinct_value(points_px)
+
+        if point1_idx is not None:
+            point1_mm = self._point_px_to_mm(points_px[point1_idx])
+            distance1 = point0_mm.distance(point1_mm)
+            if point1_idx + 1 <= len(points_px):
+                point2_idx = self._find_index_of_first_distinct_value(
+                        points_px[point1_idx:]) + point1_idx
+
+        if point2_idx is not None:
+            point2_mm = self._point_px_to_mm(points_px[point2_idx])
+            distance2 = point1_mm.distance(point2_mm)
+            ratio = (float('infinity') if distance1 == 0 else
+                     distance1 / distance2)
+        else:
+            ratio = float('infinity')
+
+        self.log_details('init gap ratio: %.2f' % ratio)
+        self.log_details('dist(p0,p1): %.2f' % distance1)
+        self.log_details('dist(p1,p2): %.2f' % distance2)
+        self.vlog.metrics = [
+                firmware_log.Metric(self.mnprops.MAX_INIT_GAP_RATIO, ratio),
+                firmware_log.Metric(self.mnprops.AVE_INIT_GAP_RATIO, ratio),
+        ]
+        self.vlog.score = self.fc.mf.grade(ratio)
         return self.vlog

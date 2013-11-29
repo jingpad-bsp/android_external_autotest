@@ -300,6 +300,19 @@ class MetricNameProps:
                 'less than %s ms is required' % self.max_report_interval_str,
                 None,
                 max),
+            # Hysteresis Validator
+            'MAX_INIT_GAP_RATIO': (
+                'max init gap ratio',
+                None,
+                'the max ratio of dist(p0,p1) / dist(p1,p2)',
+                None,
+                max),
+            'AVE_INIT_GAP_RATIO': (
+                'ave init gap ratio',
+                None,
+                'the average ratio of dist(p0,p1) / dist(p1,p2)',
+                None,
+                average),
             # Stationary Finger Validator
             'MAX_DISTANCE': (
                 'max distance (mm)',
