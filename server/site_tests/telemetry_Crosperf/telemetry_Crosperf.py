@@ -34,11 +34,10 @@ class telemetry_Crosperf(test.test):
                 execution.
 
         """
-        if 'iterations' in args:
-            self._iterations = int(args['iterations'])
-        else:
-            self._iterations = 3
         self._test = args['test']
+        self._test_args = ''
+        if 'test_args' in args:
+            self._test_args = args['test_args']
 
         # Look for chrome source root, either externally mounted, or inside
         # the chroot.  Prefer chrome-src-internal source tree to chrome-src.
@@ -58,9 +57,9 @@ class telemetry_Crosperf(test.test):
         logging.info('Using Chrome source tree at %s', chrome_root_dir)
         format_string = ('%s/src/tools/perf/run_benchmark '
                          '--browser=cros-chrome --remote=%s '
-                         '--pageset-repeat=%d %s')
+                         '%s %s')
         command = format_string % (chrome_root_dir, client_ip,
-                                   self._iterations, self._test)
+                                   self._test_args, self._test)
         logging.info('CMD: %s', command)
 
         output = StringIO.StringIO()
