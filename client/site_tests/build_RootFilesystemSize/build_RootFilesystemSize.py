@@ -37,7 +37,7 @@ class build_RootFilesystemSize(test.test):
                                units='bytes', higher_is_better=False)
 
         # Fail if we are running out of free space on rootfs.
-        required_free_space = 40 * 1024 * 1024
+        required_free_space = 20 * 1024 * 1024
 
         if int(free) < required_free_space:
             raise error.TestFail('%s bytes free is less than the %s required.' %
