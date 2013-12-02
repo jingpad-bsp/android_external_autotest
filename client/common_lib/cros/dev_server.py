@@ -679,6 +679,30 @@ class ImageServer(DevServer):
         return urllib2.urlopen(call).read()
 
 
+    @remote_devserver_call()
+    def get_latest_build_in_server(self, target, milestone=''):
+        """Ask the devserver for the latest build for a given target.
+
+        @param target: The build target, typically a combination of the board
+                       and the type of build e.g. x86-mario-release.
+        @param milestone:  For latest build set to '', for builds only in a
+                           specific milestone set to a str of format Rxx
+                           (e.g. R16). Default: ''. Since we are dealing with a
+                           webserver sending an empty string, '', ensures that
+                           the variable in the URL is ignored as if it was set
+                           to None.
+        @return A string of the returned build e.g. R20-2226.0.0. Return None
+            if no build is found in the devserver for given target and
+            milestone.
+        """
+        call = self.build_call('latestbuild', target=target,
+                                milestone=milestone)
+        try:
+            return urllib2.urlopen(call).read()
+        except urllib2.HTTPError:
+            return None
+
+
     @classmethod
     @remote_devserver_call()
     def get_latest_build(cls, target, milestone=''):
