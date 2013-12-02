@@ -328,6 +328,8 @@ OPTION_DOMAIN_NAME = RawOption("domain_name", 15)
 OPTION_SWAP_SERVER = IpAddressOption("swap_server", 16)
 OPTION_ROOT_PATH = RawOption("root_path", 17)
 OPTION_EXTENSIONS = RawOption("extensions", 18)
+OPTION_VENDOR_ENCAPSULATED_OPTIONS = RawOption(
+        "vendor_encapsulated_options", 43)
 OPTION_REQUESTED_IP = IpAddressOption("requested_ip", 50)
 OPTION_IP_LEASE_TIME = IntOption("ip_lease_time", 51)
 OPTION_OPTION_OVERLOAD = ByteOption("option_overload", 52)
@@ -445,6 +447,7 @@ DHCP_PACKET_OPTIONS = [
         OPTION_DOMAIN_NAME,
         OPTION_ROOT_PATH,
         OPTION_EXTENSIONS,
+        OPTION_VENDOR_ENCAPSULATED_OPTIONS,
         OPTION_REQUESTED_IP,
         OPTION_IP_LEASE_TIME,
         OPTION_OPTION_OVERLOAD,

@@ -61,6 +61,7 @@ class DhcpHandlingRule(object):
         self._fields = custom_fields
         self._target_time_seconds = None
         self._allowable_time_delta_seconds = 0.5
+        self._force_reply_options = []
 
     @property
     def logger(self):
@@ -146,6 +147,14 @@ class DhcpHandlingRule(object):
         logging.info("Packet was not too soon for handling.")
         return False
 
+    @property
+    def force_reply_options(self):
+        return self._force_reply_options
+
+    @force_reply_options.setter
+    def force_reply_options(self, value):
+        self._force_reply_options = value
+
     def handle(self, query_packet):
         """
         The DhcpTestServer will call this method to ask a handling rule whether
@@ -176,7 +185,8 @@ class DhcpHandlingRule(object):
     def inject_options(self, packet, requested_parameters):
         """
         Adds options listed in the intersection of |requested_parameters| and
-        |self.options| to |packet|.
+        |self.options| to |packet|.  Also include the options in the
+        intersection of |self.force_reply_options| and |self.options|.
 
         |packet| is a DhcpPacket.
 
@@ -190,7 +200,8 @@ class DhcpHandlingRule(object):
         upon request.
         """
         for option, value in self.options.items():
-            if option.number in requested_parameters:
+            if (option.number in requested_parameters or
+                option in self.force_reply_options):
                 packet.set_option(option, value)
 
     def inject_fields(self, packet):
