@@ -24,6 +24,7 @@ from autotest_lib.client.common_lib import global_config, utils
 from autotest_lib.frontend.afe import models, model_attributes
 from autotest_lib.database import database_connection
 from autotest_lib.scheduler import drone_manager, email_manager
+from autotest_lib.scheduler import rdb_lib
 from autotest_lib.scheduler import scheduler_config
 from autotest_lib.site_utils.graphite import stats
 from autotest_lib.client.common_lib import control_data
@@ -361,7 +362,8 @@ class Label(DBObject):
 class Host(DBObject):
     _table_name = 'afe_hosts'
     _fields = ('id', 'hostname', 'locked', 'synch_id', 'status',
-               'invalid', 'protection', 'locked_by_id', 'lock_time', 'dirty')
+               'invalid', 'protection', 'locked_by_id', 'lock_time', 'dirty',
+               'leased')
     _timer = stats.Timer("scheduler_models.Host")
 
 
@@ -448,7 +450,8 @@ class HostQueueEntry(DBObject):
         self.job = Job(self.job_id)
 
         if self.host_id:
-            self.host = Host(self.host_id)
+            self.host = rdb_lib.get_hosts([self.host_id])[0]
+            self.host.dbg_str = self.get_dbg_str()
         else:
             self.host = None
 
@@ -537,6 +540,17 @@ class HostQueueEntry(DBObject):
         return 'no host'
 
 
+    def get_dbg_str(self):
+        """Get a debug string to identify this host.
+
+        @return: A string containing the hqe and job id.
+        """
+        try:
+            return 'HQE: %s, for job: %s' % (self.id, self.job_id)
+        except AttributeError as e:
+            return 'HQE has not been initialized yet: %s' % e
+
+
     def __str__(self):
         flags = []
         if self.active:
@@ -550,8 +564,9 @@ class HostQueueEntry(DBObject):
         flags_str = ','.join(flags)
         if flags_str:
             flags_str = ' [%s]' % flags_str
-        return "%s/%d (%d) %s%s" % (self._get_hostname(), self.job.id, self.id,
-                                    self.status, flags_str)
+        return ("%s and host: %s has status:%s%s" %
+                (self.get_dbg_str(), self._get_hostname(), self.status,
+                 flags_str))
 
 
     @_timer.decorate

@@ -116,6 +116,7 @@ from autotest_lib.frontend.afe import models
 from autotest_lib.scheduler import drone_manager, pidfile_monitor
 from autotest_lib.client.common_lib import utils
 from autotest_lib.scheduler import email_manager, host_scheduler
+from autotest_lib.scheduler import rdb_lib
 from autotest_lib.scheduler import scheduler_models
 from autotest_lib.server import autoserv_utils
 
@@ -513,11 +514,13 @@ class SpecialAgentTask(AgentTask, TaskWithJobKeyvals):
 
         assert self.TASK_TYPE is not None, 'self.TASK_TYPE must be overridden'
 
-        self.host = scheduler_models.Host(id=task.host.id)
+        self.host = rdb_lib.get_hosts([task.host.id])[0]
+        self.host.dbg_str = 'Task: %s' % str(task)
         self.queue_entry = None
         if task.queue_entry:
             self.queue_entry = scheduler_models.HostQueueEntry(
                     id=task.queue_entry.id)
+            self.host.dbg_str += self.queue_entry.get_dbg_str()
 
         self.task = task
         self._extra_command_args = extra_command_args

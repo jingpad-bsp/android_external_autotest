@@ -367,6 +367,7 @@ class Host(model_logic.ModelWithInvalid, dbmodels.Model,
     labels = dbmodels.ManyToManyField(Label, blank=True,
                                       db_table='afe_hosts_labels')
     locked = dbmodels.BooleanField(default=False)
+    leased = dbmodels.BooleanField(default=True)
     synch_id = dbmodels.IntegerField(blank=True, null=True,
                                      editable=settings.FULL_ADMIN)
     status = dbmodels.CharField(max_length=255, default=Status.READY,
@@ -384,6 +385,7 @@ class Host(model_logic.ModelWithInvalid, dbmodels.Model,
     name_field = 'hostname'
     objects = model_logic.ModelWithInvalidManager()
     valid_objects = model_logic.ValidObjectsManager()
+    leased_objects = model_logic.LeasedHostManager()
 
 
     def __init__(self, *args, **kwargs):

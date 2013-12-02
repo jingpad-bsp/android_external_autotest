@@ -1,5 +1,4 @@
-"""
-Autotest client module for the rdb.
+"""Autotest host scheduler.
 """
 
 
@@ -8,7 +7,7 @@ import logging
 from autotest_lib.client.common_lib import global_config, utils
 from autotest_lib.frontend.afe import models
 from autotest_lib.scheduler import metahost_scheduler, scheduler_config
-from autotest_lib.scheduler import rdb, scheduler_models
+from autotest_lib.scheduler import scheduler_models
 from autotest_lib.site_utils.graphite import stats
 from autotest_lib.server.cros import provision
 
@@ -59,7 +58,12 @@ class BaseHostScheduler(metahost_scheduler.HostSchedulingUtility):
 
 
     @_timer.decorate
-    def _get_ready_hosts(self):
+    def _release_hosts(self):
+        """Release hosts to the RDB.
+
+        Release all hosts that are ready and are currently not being used by an
+        active hqe, and don't have a new special task scheduled against them.
+        """
         # Avoid any host with a currently active queue entry against it.
         hqe_join = ('LEFT JOIN afe_host_queue_entries AS active_hqe '
                     'ON (afe_hosts.id = active_hqe.host_id AND '
@@ -79,10 +83,27 @@ class BaseHostScheduler(metahost_scheduler.HostSchedulingUtility):
         hosts = scheduler_models.Host.fetch(
             joins='%s %s' % (hqe_join, special_task_join),
             where="active_hqe.host_id IS NULL AND new_tasks.host_id IS NULL "
+                  "AND afe_hosts.leased "
                   "AND NOT afe_hosts.locked "
                   "AND (afe_hosts.status IS NULL "
                           "OR afe_hosts.status = 'Ready')")
 
+        for ready_host in hosts:
+            ready_host.update_field('leased', 0)
+
+
+    @_timer.decorate
+    def _get_ready_hosts(self):
+        # We don't lose anything by re-doing these checks
+        # even though we release hosts on the same conditions.
+        # In the future we might have multiple clients that
+        # release_hosts and/or lock them independent of the
+        # scheduler tick.
+        hosts = scheduler_models.Host.fetch(
+            where="NOT afe_hosts.leased "
+                  "AND NOT afe_hosts.locked "
+                  "AND (afe_hosts.status IS NULL "
+                      "OR afe_hosts.status = 'Ready')")
         return dict((host.id, host) for host in hosts)
 
 
@@ -221,8 +242,7 @@ class BaseHostScheduler(metahost_scheduler.HostSchedulingUtility):
 
     @_timer.decorate
     def tick(self):
-        for metahost_scheduler in self._metahost_schedulers:
-            metahost_scheduler.tick()
+        self._release_hosts()
 
 
     def hosts_in_label(self, label_id):
@@ -375,100 +395,6 @@ class BaseHostScheduler(metahost_scheduler.HostSchedulingUtility):
         return True
 
 
-    def get_job_info(self, queue_entry):
-        """
-        Extract job information from a queue_entry/host-scheduler.
-
-        Unfortunately the information needed to choose hosts for a job
-        are split across several tables and not restricted to just the
-        hqe. At the very least we require the deps and acls of the job, but
-        we also need to know if the job has a host assigned to it. This method
-        consolidates this information into a light-weight dictionary that the
-        host_scheduler and the rdb can pass back and forth.
-
-        @param queue_entry: the queue_entry of the job we would like
-            information about.
-
-        @return: A dictionary containing 1. A set of deps 2. A set of acls
-            3. The host id of the host assigned to the hqe, or None.
-        """
-        job_id = queue_entry.job_id
-        host_id = queue_entry.host_id
-        job_deps = self._job_dependencies.get(job_id, set())
-        job_deps = set([dep for dep in job_deps if
-                       not provision.can_provision(self._labels[dep].name)])
-        job_acls = self._job_acls.get(job_id, set())
-
-        return {'deps': set(job_deps),
-                'acls': set(job_acls),
-                'host_id': host_id}
-
-
-    def schedule_entry(self, queue_entry):
-        """
-        Schedule a hqe aginst a host.
-
-        A hqe can either have a host assigned to it or not. In eithercase
-        however, actually scheduling the hqe on the host involves validating
-        the assignment by checking acls and labels. If the hqe doesn't have a
-        host we need to find a host before we can perform this validation.
-
-        If we successfully validate the host->hqe pairing, return the host. The
-        scheduler will not begin scheduling special tasks for the hqe until it
-        acquires a valid host.
-
-        @param queue_entry: The queue_entry that requires a host.
-        @return: The host assigned to the hqe, if any.
-        """
-        host_id = queue_entry.host_id
-        job_id = queue_entry.job_id
-        job_info = self.get_job_info(queue_entry)
-        host = None
-
-        if host_id:
-            host = self._hosts_available.get(host_id, None)
-
-            # TODO(beeps): Remove the need for 2 rdb calls. Ideally we should
-            # just do one call to validate the assignment, however, since we're
-            # currently still using the host_scheduler, we'd need to pass it
-            # as an argument to validate_host_assignment, which is less clean
-            # than just splitting this work into 2 calls.
-            host_info = rdb.get_host_info(self, host_id)
-
-            # If the host is either unavailable or in-eligible for this job,
-            # defer scheduling this queue_entry till the next tick.
-            if (host is None or not
-                rdb.validate_host_assignment(job_info, host_info)):
-                return None
-        else:
-            host = rdb.get_host(self, job_info)
-            if host is None:
-                return None
-            queue_entry.set_host(host)
-
-        # TODO(beeps): Make it so we don't need to set the hqe active status
-        # to remove a host from the active pool.
-        # A host will remain in the available pool for as long as its status
-        # is Ready and it is not referenced by an active hqe. The state of
-        # the host is not under our control, as it will only change to
-        # resetting etc whenever the prejob task starts. However, the hqe
-        # is theoretically active from the moment we assign a healthy host
-        # to it. Setting the host on an inactive hqe will not remove it
-        # from the available pool, leading to unnecessary scheduling
-        # overhead.
-        # Without this, we will process each hqe twice because it is still
-        # judged as 'new', and perform the host<->hqe assignment twice,
-        # because the host assigned to the hqe is still 'available', as
-        # the first prejob task only runs at the end of the next tick's
-        # handle_agents call. Note that the status is still 'Queued', and
-        # will remaing 'Queued' till an agent changes it.
-        queue_entry.update_field('active', True)
-
-        # The available_hosts dictionary determines our scheduling decisions
-        # for subsequent jobs processed in this tick.
-        self._hosts_available.pop(host.id)
-        logging.debug('Scheduling job: %s, Host %s', job_id, host.id)
-        return host
 
 
     def find_eligible_atomic_group(self, queue_entry):

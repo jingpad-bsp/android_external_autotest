@@ -20,6 +20,8 @@ _DB_TRANSLATORS = (
         # it arises in an important query
         _re_translator(r'GROUP_CONCAT\((.*?)\)', r'\1'),
         _re_translator(r'TRUNCATE TABLE', 'DELETE FROM'),
+        _re_translator(r'ISNULL\(([a-z,_]+)\)',
+                       r'ifnull(nullif(\1, NULL), \1) DESC'),
 )
 
 HqeStatus = models.HostQueueEntry.Status

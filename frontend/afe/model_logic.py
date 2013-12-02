@@ -89,6 +89,14 @@ class ReadonlyValuesQuerySet(dbmodels.query.ValuesQuerySet):
         _make_queryset_readonly(self)
 
 
+class LeasedHostManager(dbmodels.Manager):
+    """Query manager for unleased, unlocked hosts.
+    """
+    def get_query_set(self):
+        return (super(LeasedHostManager, self).get_query_set().filter(
+                leased=0, locked=0))
+
+
 class ExtendedManager(dbmodels.Manager):
     """\
     Extended manager supporting subquery filtering.

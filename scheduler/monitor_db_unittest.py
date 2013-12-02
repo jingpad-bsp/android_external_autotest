@@ -221,6 +221,7 @@ class DispatcherSchedulingTest(BaseSchedulerTest):
 
 
     def _run_scheduler(self):
+        self._dispatcher._host_scheduler.tick()
         for _ in xrange(2): # metahost scheduling can take two cycles
             self._dispatcher._schedule_new_jobs()
 
