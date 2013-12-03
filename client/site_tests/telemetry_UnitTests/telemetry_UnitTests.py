@@ -9,14 +9,55 @@ from telemetry.unittest import gtest_testrunner, run_tests
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 
-
-TELEMETRY_BASE_DIR = '/usr/local/telemetry/src/tools/telemetry'
-UNIT_TEST_SUBDIR = os.path.join(TELEMETRY_BASE_DIR, 'telemetry/unittest')
+TOOLS_BASE_DIR = '/usr/local/telemetry/src/tools/'
+TELEMETRY_BASE_DIR = os.path.join(TOOLS_BASE_DIR, 'telemetry')
+TELEMETRY_SUBDIR = os.path.join(TELEMETRY_BASE_DIR, 'telemetry')
+PERF_BASE_DIR = os.path.join(TOOLS_BASE_DIR, 'perf')
 
 
 class telemetry_UnitTests(test.test):
     """This is a client side wrapper for the Telemetry unit tests."""
     version = 1
+
+
+    def run_unit_tests(self, browser_type, start_dir, top_level_dir):
+        """run unit tests in given directory and browser type.
+
+        @param browser_type: The string type of browser to use, e.g., 'system'.
+        @param start_dir: The directory to recursively search.
+        @param top_level_dir: The top level of the package, for importing.
+
+        """
+        # Capture the Telemetry output when running the unit tests.
+        capturer = StringIO.StringIO()
+        sys.stdout = capturer
+        runner = gtest_testrunner.GTestTestRunner(print_result_after_run=False)
+        run_tests.Main(['--browser=' + browser_type], start_dir,
+                       top_level_dir, runner)
+
+        if runner.result:
+            # The PrintSummary() below is captured in the test debug log file.
+            runner.result.PrintSummary()
+
+        sys.stdout = sys.__stdout__  # Restore sys.stdout.
+        test_output = capturer.getvalue()
+        logging.info(test_output)  # Log the Telemetry output.
+        capturer.close()
+
+        if runner.result:
+            if runner.result.num_errors:
+                error_details = ''
+                all_errors = runner.result.errors[:]
+                all_errors.extend(runner.result.failures)
+                for (test_name, error_string) in all_errors:
+                    error_details += '%s\n%s\n' % (test_name, error_string)
+                raise error.TestFail('%d unit tests failed:\n%s' %
+                                     (runner.result.num_errors, error_details))
+            else:
+                logging.info('All %d unit tests passed.',
+                             len(runner.result.successes))
+        else:
+            raise error.TestFail('No results found.')
 
 
     def run_once(self, browser_type):
@@ -28,28 +69,9 @@ class telemetry_UnitTests(test.test):
         """
         logging.info('Running the Telemetry unit tests with '
                      'browser_type "%s".', browser_type)
+        self.run_unit_tests(browser_type, TELEMETRY_SUBDIR, TELEMETRY_BASE_DIR)
 
-        # Capture the Telemetry output when running the unit tests.
-        capturer = StringIO.StringIO()
-        sys.stdout = capturer
-        runner = gtest_testrunner.GTestTestRunner(print_result_after_run=False)
-        run_tests.Main(['--browser=' + browser_type], UNIT_TEST_SUBDIR,
-                       TELEMETRY_BASE_DIR, runner)
-
-        if runner.result:
-            # The PrintSummary() below is captured in the test debug log file.
-            runner.result.PrintSummary()
-
-        sys.stdout = sys.__stdout__  # Restore sys.stdout.
-        logging.info(capturer.getvalue())  # Log the Telemetry output.
-        capturer.close()
-
-        if runner.result:
-            if runner.result.num_errors:
-                raise error.TestFail(
-                        '%d unit tests failed.' % runner.result.num_errors)
-            else:
-                logging.info('All %d unit tests passed.',
-                             len(runner.result.successes))
-        else:
-            raise error.TestFail('No results found.')
+        logging.info('Running the perf unit tests with '
+                     'browser_type "%s".', browser_type)
+        sys.path.append(PERF_BASE_DIR)
+        self.run_unit_tests(browser_type, PERF_BASE_DIR, PERF_BASE_DIR)
