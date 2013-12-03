@@ -50,6 +50,15 @@ class network_DhcpVendorEncapsulatedOptions(dhcp_test_base.DhcpTestBase):
                                  (ipconfig_vendor_encapsulated_options,
                                   option_string))
 
+        device_path = shill_proxy.ShillProxy.dbus2primitive(device.object_path)
+        service = proxy.find_object('Service', {'Device': device_path})
+        tethering = service.GetProperties()['Tethering']
+        expected_value = 'Confirmed'
+        if tethering != expected_value:
+            raise error.TestFail('Service tethering state %s does '
+                                 'not match expected %s.' %
+                                 (tethering, expected_value))
+
 
     def test_body(self):
         """Main body of the test."""
@@ -60,7 +69,7 @@ class network_DhcpVendorEncapsulatedOptions(dhcp_test_base.DhcpTestBase):
                 INTENDED_IP_SUFFIX)
         # Two real name servers, and a bogus one to be unpredictable.
         dns_servers = ['8.8.8.8', '8.8.4.4', '192.168.87.88']
-        vendor_options = 'ANDROID_TETHERED'
+        vendor_options = 'ANDROID_METERED'
         # This is the pool of information the server will give out to the client
         # upon request.
         dhcp_options = {

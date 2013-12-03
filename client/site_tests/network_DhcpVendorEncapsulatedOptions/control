@@ -9,7 +9,9 @@ TEST_TYPE = 'client'
 
 DOC = """
   Tests that we can negotiate a lease on an IPv4 address via DHCP from
-  a server that provides the Vendor Encapsulated Options option.
+  a server that provides the Vendor Encapsulated Options option.  Test
+  that a properly formatted Vendor Encapsulated Options field causes
+  the Ethernet service to report that it is tethered.
 
 """
 
