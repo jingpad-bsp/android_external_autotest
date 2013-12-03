@@ -15,9 +15,6 @@ from autotest_lib.server import frontend
 from autotest_lib.server.cros.dynamic_suite import reporting
 
 
-# Label used by the bug-filer to categorize machine killers
-_MACHINE_KILLER_LABEL = 'machine-killer'
-
 # Receiver and sender information, if we need to send an email
 _NOTIFY_ADDRESS = global_config.global_config.get_config_value(
     'SCHEDULER', 'notify_email_errors', default='')
@@ -112,42 +109,20 @@ def flag_problem_test(machine):
         return
 
     if problem_test:
+        job_id = problem_test['job']['id']
         job_name = problem_test['job']['name']
-        title = ('%s suspected of putting machines in Repair Failed state.'
-                 % job_name)
-        bug_filer_prefix = ('This bug has been automatically filed to track '
-                            'the following issue:\n\n')
-
-        disclaimer = ('\n\nNote that the autofiled count on this bug indicates '
-                      'the number of times we have attempted to repair the '
-                      'machine, not the number of times it has gone into '
-                      'the repair failed state.\n')
-
-        summary = ('Test: %s\n'
-                   'Machine: %s\n'
-                   'Issue: It is suspected that the test has put the '
-                   'machine in the Repair Failed State.\n'
-                   'Suggested Actions: Investigate to determine if this '
-                   'test is at fault and then either fix or disable the '
-                   'test if appropriate.' %
-                   (job_name, machine))
-
-        search_marker = 'MachineKiller(%s)' % job_name
-        bug_id = reporting.submit_generic_bug_report(
-                        title=title,
-                        summary=bug_filer_prefix+summary+disclaimer,
-                        labels=[_MACHINE_KILLER_LABEL],
-                        cc=[_NOTIFY_ADDRESS],
-                        search_marker=search_marker)
+        bug = reporting.MachineKillerBug(job_id=job_id,
+                                         job_name=job_name,
+                                         machine=machine)
+        reporter = reporting.Reporter()
+        bug_id = reporter.report(bug)[0]
 
         if bug_id is None:
             try:
                 email_prefix = ('The following test is killing a machine, '
                                 'could not file a bug to report this:\n\n')
                 mail.send(_SENDER_ADDRESS, _NOTIFY_ADDRESS, '',
-                          title, email_prefix + summary)
+                          bug.title(), email_prefix + bug.summary())
             except smtplib.SMTPDataError:
                 logger.logger.error('%s | %d | %s'
-                                    % (machine, problem_test['job']['id'],
-                                       job_name))
-
+                                    % (machine, job_id, job_name))

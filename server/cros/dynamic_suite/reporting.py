@@ -6,7 +6,6 @@
 import cgi
 import collections
 import HTMLParser
-import json
 import logging
 import re
 
@@ -14,24 +13,20 @@ from xml.parsers import expat
 
 import common
 
-from autotest_lib.client.common_lib import autotemp
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.server import site_utils
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import job_status
+from autotest_lib.server.cros.dynamic_suite import reporting_utils
 from autotest_lib.server.cros.dynamic_suite import tools
 
-# Try importing the essential bug reporting libraries. Chromite and gdata_lib
-# are useless unless they can import gdata too.
+# Try importing the essential bug reporting libraries.
 try:
-    __import__('chromite')
-    __import__('gdata')
     from autotest_lib.site_utils import phapi_lib
 except ImportError, e:
     fundamental_libs = False
     logging.debug('Bug filing disabled. %s', e)
 else:
-    from chromite.lib import cros_build_lib, gs
     fundamental_libs = True
 
 
@@ -90,44 +85,6 @@ class TestFailure(Bug):
     that can be used to find reports of the same error.
     """
 
-    # global configurations needed for build artifacts
-    _gs_domain = global_config.global_config.get_config_value(
-        BUG_CONFIG_SECTION, 'gs_domain', default='')
-    _chromeos_image_archive = global_config.global_config.get_config_value(
-        BUG_CONFIG_SECTION, 'chromeos_image_archive', default='')
-    _arg_prefix = global_config.global_config.get_config_value(
-        BUG_CONFIG_SECTION, 'arg_prefix', default='')
-
-    # global configurations needed for results log
-    _retrieve_logs_cgi = global_config.global_config.get_config_value(
-        BUG_CONFIG_SECTION, 'retrieve_logs_cgi', default='')
-    _generic_results_bin = global_config.global_config.get_config_value(
-        BUG_CONFIG_SECTION, 'generic_results_bin', default='')
-    _debug_dir = global_config.global_config.get_config_value(
-        BUG_CONFIG_SECTION, 'debug_dir', default='')
-
-    # cautotest url used to generate the link to the job
-    _cautotest_job_view = global_config.global_config.get_config_value(
-        BUG_CONFIG_SECTION, 'cautotest_job_view', default='')
-
-    # gs prefix to perform file like operations (gs://)
-    _gs_file_prefix = global_config.global_config.get_config_value(
-        BUG_CONFIG_SECTION, 'gs_file_prefix', default='')
-
-    # global configurations needed for buildbot stages link
-    _buildbot_builders = global_config.global_config.get_config_value(
-        BUG_CONFIG_SECTION, 'buildbot_builders', default='')
-    _build_prefix = global_config.global_config.get_config_value(
-        BUG_CONFIG_SECTION, 'build_prefix', default='')
-
-    # Number of times to retry if a gs command fails. Defaults to 10,
-    # which is far too long given that we already wait on these files
-    # before starting HWTests.
-    _GS_RETRIES = 1
-
-
-    _HTTP_ERROR_THRESHOLD = 400
-
     def __init__(self, build, chrome_version, suite, result):
         """
         @param build: The build type, of the form <board>/<milestone>-<release>.
@@ -159,6 +116,7 @@ class TestFailure(Bug):
         self.cc = []
         self.labels = []
 
+
     def title(self):
         """Combines information about this failure into a title string."""
         return '[%s] %s failed on %s' % (self.suite, self.name, self.build)
@@ -169,14 +127,14 @@ class TestFailure(Bug):
 
         links = self._get_links_for_failure()
         template = ('This bug has been automatically filed to track the '
-                   'following failure:\nTest: %(test)s.\nSuite: %(suite)s.\n'
-                   'Chrome Version: %(chrome_version)s.\n'
-                   'Build: %(build)s.\n\nReason:\n%(reason)s.\n'
-                   'build artifacts: %(build_artifacts)s.\n'
-                   'results log: %(results_log)s.\n'
-                   'status log: %(status_log)s.\n'
-                   'buildbot stages: %(buildbot_stages)s.\n'
-                   'job link: %(job)s.\n')
+                    'following failure:\nTest: %(test)s.\nSuite: %(suite)s.\n'
+                    'Chrome Version: %(chrome_version)s.\n'
+                    'Build: %(build)s.\n\nReason:\n%(reason)s.\n'
+                    'build artifacts: %(build_artifacts)s.\n'
+                    'results log: %(results_log)s.\n'
+                    'status log: %(status_log)s.\n'
+                    'buildbot stages: %(buildbot_stages)s.\n'
+                    'job link: %(job)s.\n')
 
         specifics = {
             'test': self.name,
@@ -200,92 +158,6 @@ class TestFailure(Bug):
                                  self.name, self.reason)
 
 
-    def _link_build_artifacts(self):
-        """Returns an url to build artifacts on google storage."""
-        return (self._gs_domain + self._arg_prefix +
-                self._chromeos_image_archive + self.build)
-
-
-    def _link_job(self):
-        """Returns an url to the job on cautotest."""
-        if not self.job_id:
-            return 'Job did not run, or was aborted prematurely'
-        return '%s=%s' % (self._cautotest_job_view, self.job_id)
-
-
-    def _base_results_log(self):
-        """Returns the base url of the job's results."""
-        if self.job_id and self.result_owner and self.hostname:
-            path_to_object = '%s-%s/%s' % (self.job_id, self.result_owner,
-                                           self.hostname)
-            return (self._retrieve_logs_cgi + self._generic_results_bin +
-                    path_to_object)
-
-
-    def _link_result_logs(self):
-        """Returns an url to test logs on google storage."""
-        base_results = self._base_results_log()
-        if base_results:
-            return '%s/%s' % (base_results, self._debug_dir)
-        return ('Could not generate results log: the job with id %s, '
-                'scheduled by: %s on host: %s did not run' %
-                (self.job_id, self.result_owner, self.hostname))
-
-
-    def _link_status_log(self):
-        """Returns an url to status log of the job."""
-        base_results = self._base_results_log()
-        if base_results:
-            return '%s/%s' % (base_results, 'status.log')
-        return 'NA'
-
-
-    def _get_metadata_dict(self):
-        """
-        Get a dictionary of metadata related to this failure.
-
-        Metadata.json is created in the HWTest Archiving stage, if this file
-        isn't found the call to Cat will timeout after the number of retries
-        specified in the GSContext object. If metadata.json exists we parse
-        a json string of it's contents into a dictionary, which we return.
-
-        @return: a dictionary with the contents of metadata.json.
-        """
-        if not fundamental_libs:
-            return
-        try:
-            tempdir = autotemp.tempdir()
-            gs_context = gs.GSContext(retries=self._GS_RETRIES,
-                                      cache_dir=tempdir.name)
-            gs_cmd = '%s%s%s/metadata.json' % (self._gs_file_prefix,
-                                               self._chromeos_image_archive,
-                                               self.build)
-            return json.loads(gs_context.Cat(gs_cmd).output)
-        except (cros_build_lib.RunCommandError, gs.GSContextException) as e:
-            logging.debug(e)
-        finally:
-            tempdir.clean()
-
-
-    def _link_buildbot_stages(self):
-        """
-        Link to the buildbot page associated with this run of HWTests.
-
-        @return: A link to the buildbot stages page, or 'NA' if we cannot glean
-                 enough information from metadata.json (or it doesn't exist).
-        """
-        metadata = self._get_metadata_dict()
-        if (metadata and
-            metadata.get('builder-name') and
-            metadata.get('build-number')):
-
-            return ('%s%s/builds/%s' %
-                        (self._buildbot_builders,
-                         metadata.get('builder-name'),
-                         metadata.get('build-number'))).replace(' ', '%20')
-        return 'NA'
-
-
     def _get_links_for_failure(self):
         """Returns a named tuple of links related to this failure."""
         links = collections.namedtuple('links', ('results,'
@@ -293,11 +165,78 @@ class TestFailure(Bug):
                                                  'artifacts,'
                                                  'buildbot,'
                                                  'job'))
-        return links(self._link_result_logs(),
-                     self._link_status_log(),
-                     self._link_build_artifacts(),
-                     self._link_buildbot_stages(),
-                     self._link_job())
+        return links(reporting_utils.link_result_logs(
+                         self.job_id, self.result_owner, self.hostname),
+                     reporting_utils.link_status_log(
+                         self.job_id, self.result_owner, self.hostname),
+                     reporting_utils.link_build_artifacts(self.build),
+                     reporting_utils.link_buildbot_stages(self.build),
+                     reporting_utils.link_job(self.job_id))
+
+
+class MachineKillerBug(Bug):
+    """Wrap up information needed to report a test killing a machine."""
+
+    # Label used by the bug-filer to categorize machine killers
+    _MACHINE_KILLER_LABEL = 'machine-killer'
+    # Address to which this bug will be cc'd
+    _CC_ADDRESS = global_config.global_config.get_config_value(
+                            'SCHEDULER', 'notify_email_errors', default='')
+
+
+    def __init__(self, job_id, job_name, machine):
+        """Initialize MachineKillerBug.
+
+        @param job_id: The id of the job, this should be an afe job id.
+        @param job_name: the name of the job
+        @param machine: The hostname of a machine that has been put
+                        in Repair Failed by the job.
+
+        """
+        # Name of test job may contain information like build and suite.
+        # e.g. lumpy-release/R31-1234.0.0/bvt/dummy_Pass_SERVER_JOB
+        # Try to split job_name with '/' and use the last part
+        # as test name. Note this assumes test name must not contains '/'.
+        self._test_name = job_name.rsplit('/', 1)[-1]
+        self._job_id = job_id
+        self._machine = machine
+        self.owner=''
+        self.cc=[self._CC_ADDRESS]
+        self.labels=[self._MACHINE_KILLER_LABEL]
+
+
+    def title(self):
+        return ('%s suspected of putting machines in Repair Failed state.'
+                 % self._test_name)
+
+    def summary(self):
+        """Combines information about this bug into a summary string."""
+
+        template = ('This bug has been automatically filed to track the '
+                    'following issue:\n\n'
+                    'Test: %(test)s.\n'
+                    'Machine: %(machine)s.\n'
+                    'Issue: It is suspected that the test has put the '
+                    'machine in the Repair Failed State.\n'
+                    'Suggested Actions: Investigate to determine if this '
+                    'test is at fault and then either fix or disable the '
+                    'test if appropriate.\n'
+                    'Job link: %(job)s.\n')
+        disclaimer = ('\n\nNote that the autofiled count on this bug indicates '
+                      'the number of times we have attempted to repair the '
+                      'machine, not the number of times it has gone into '
+                      'the repair failed state.\n')
+        specifics = {
+            'test': self._test_name,
+            'machine': self._machine,
+            'job': reporting_utils.link_job(self._job_id),
+        }
+        return template % specifics + disclaimer
+
+
+    def search_marker(self):
+        """Returns an Anchor that we can use to dedupe this bug."""
+        return 'MachineKiller(%s)' % self._test_name
 
 
 class Reporter(object):
