@@ -172,6 +172,15 @@
                          "alarms",
                          "webstorePrivate",
                          "identity"]
+    },
+    { "name": "Welcome",
+      "id": "jdgcneonijmofocbhmijhacgchbihela",
+      "effectiveHostPermissions": ["chrome://theme/*",
+                                   "chrome://resources/*"],
+      "apiPermissions": ["app.currentWindowInternal",
+                         "app.runtime",
+                         "app.window",
+                         "firstRunPrivate"]
     }
   ],
   "official_components": []
