@@ -1,7 +1,0 @@
-{  
- "script": [
-  [  "string", "\\(Return)" ],    
-  [  "sleep", 3000 ],
-  [  "string", "perfsmurf\\(Return)" ],    
- ],
-}

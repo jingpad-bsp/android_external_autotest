@@ -869,7 +869,6 @@ class base_job(object):
     @property site_testdir: The job site test directory. [WRITABLE]
 
     @property bindir: The client bin/ directory.
-    @property configdir: The client config/ directory.
     @property profdir: The client profilers/ directory.
     @property toolsdir: The client tools/ directory.
 
@@ -951,7 +950,6 @@ class base_job(object):
     testdir = _job_directory.property_factory('testdir')
     site_testdir = _job_directory.property_factory('site_testdir')
     bindir = _job_directory.property_factory('bindir')
-    configdir = _job_directory.property_factory('configdir')
     profdir = _job_directory.property_factory('profdir')
     toolsdir = _job_directory.property_factory('toolsdir')
     conmuxdir = _job_directory.property_factory('conmuxdir')
@@ -1028,7 +1026,6 @@ class base_job(object):
 
         # various client-specific directories
         self._bindir = readonly_dir(self.clientdir, 'bin')
-        self._configdir = readonly_dir(self.clientdir, 'config')
         self._profdir = readonly_dir(self.clientdir, 'profilers')
         self._pkgdir = readwrite_dir(self.clientdir, 'packages')
         self._toolsdir = readonly_dir(self.clientdir, 'tools')

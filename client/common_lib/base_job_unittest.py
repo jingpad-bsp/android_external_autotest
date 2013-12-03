@@ -73,7 +73,7 @@ class test_init(unittest.TestCase):
             # standard directories
             'autodir', 'clientdir', 'serverdir', 'resultdir', 'pkgdir',
             'tmpdir', 'testdir', 'site_testdir', 'bindir',
-            'configdir', 'profdir', 'toolsdir', 'conmuxdir',
+            'profdir', 'toolsdir', 'conmuxdir',
 
             # other special attributes
             'args', 'automatic_test_tag', 'bootloader', 'control',
@@ -169,7 +169,6 @@ class test_initialize_dir_properties(unittest.TestCase):
 
         # check all the always-client dir properties
         self.assertEqual(self.cjob.bindir, self.sjob.bindir)
-        self.assertEqual(self.cjob.configdir, self.sjob.configdir)
         self.assertEqual(self.cjob.profdir, self.sjob.profdir)
         self.assertEqual(self.cjob.pkgdir, self.sjob.pkgdir)
 
