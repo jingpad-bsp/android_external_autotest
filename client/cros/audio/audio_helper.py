@@ -457,22 +457,3 @@ def loopback_test_channels(noise_file_name, wav_dir,
                 os.unlink(mix_file_name)
 
         check_recorded_callback(sox_output_reduced)
-
-def find_hw_soundcard_name():
-    '''Finds the name of the default hardware soundcard.'''
-
-    # If there is only one card, choose it; otherwise,
-    # choose the first card with controls named 'Speaker'
-    cmd = 'amixer -c %d scontrols'
-    id = 0
-    while True:
-        p = subprocess.Popen(shlex.split(cmd % id), stdout=subprocess.PIPE)
-        output, error = p.communicate()
-        if p.wait() != 0: # end of the card list
-            break;
-        if 'speaker' in output.lower():
-            return str(id)
-        id = id + 1
-
-    # If there is only one soundcard, return it, else return not found (None)
-    return '0' if id == 1 else None
