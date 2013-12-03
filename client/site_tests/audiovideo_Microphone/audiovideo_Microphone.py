@@ -28,14 +28,12 @@ class audiovideo_Microphone(test.test):
 
 
     def run_once(self):
-        cpuType = utils.get_cpu_arch()
-
-        sndcard = audio_helper.find_hw_soundcard_name(cpuType)
+        sndcard = audio_helper.find_hw_soundcard_name()
         if sndcard is None:
             raise error.TestError('No sound card detected')
 
         # Microphone should be on by default.
-        if cpuType != "arm":
+        if utils.get_cpu_arch() != "arm":
             cmd = 'amixer -D hw:%s cget name="Capture Switch" | grep values=on,on'
             output = utils.system_output(cmd % sndcard)
             if (output == ''):

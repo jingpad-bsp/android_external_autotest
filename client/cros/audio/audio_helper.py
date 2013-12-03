@@ -458,20 +458,10 @@ def loopback_test_channels(noise_file_name, wav_dir,
 
         check_recorded_callback(sox_output_reduced)
 
-def find_hw_soundcard_name(cpuType=None):
-    '''Finds the name of the default hardware soundcard.
+def find_hw_soundcard_name():
+    '''Finds the name of the default hardware soundcard.'''
 
-    @param cpuType: (Optional) the cpu type.
-    '''
-
-    if not cpuType:
-        cpuType = utils.get_cpu_arch()
-
-    # On Intel platform, return the name "PCH".
-    if cpuType == 'x86_64' or cpuType == 'i386':
-        return 'PCH'
-
-    # On other platforms, if there is only one card, choose it; otherwise,
+    # If there is only one card, choose it; otherwise,
     # choose the first card with controls named 'Speaker'
     cmd = 'amixer -c %d scontrols'
     id = 0
