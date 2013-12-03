@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import ping_runner
@@ -17,6 +18,7 @@ class network_WiFi_BgscanBackoff(wifi_cell_test_base.WiFiCellTestBase):
 
     BGSCAN_SAMPLE_PERIOD_SECONDS = 100
     NO_BGSCAN_SAMPLE_PERIOD_SECONDS = 10
+    CONFIGURED_BGSCAN_INTERVAL_SECONDS = 7
     PING_INTERVAL_SECONDS = 0.1
     LATENCY_MARGIN_MS = 200
     THRESHOLD_BASELINE_LATENCY_MS = 100
@@ -24,27 +26,39 @@ class network_WiFi_BgscanBackoff(wifi_cell_test_base.WiFiCellTestBase):
 
     def run_once(self):
         """Body of the test."""
-        get_ap_config = lambda: hostap_config.HostapConfig(
-                frequency=2412,
-                mode=hostap_config.HostapConfig.MODE_11G)
         get_assoc_params = lambda conf: xmlrpc_datatypes.AssociationParameters(
-                ssid=self.context.router.get_ssid(), bgscan_config=conf)
+                ssid=self.context.router.get_ssid(instance=0),
+                bgscan_config=conf)
         get_ping_config = lambda period: ping_runner.PingConfig(
                 self.context.get_wifi_addr(),
                 interval=self.PING_INTERVAL_SECONDS,
                 count=int(period / self.PING_INTERVAL_SECONDS))
-        self.context.configure(get_ap_config())
+        self.context.configure(hostap_config.HostapConfig(channel=1))
         bgscan_config = xmlrpc_datatypes.BgscanConfiguration(
-            short_interval=7, long_interval=7,
-            method=xmlrpc_datatypes.BgscanConfiguration.SCAN_METHOD_SIMPLE)
+                short_interval=self.CONFIGURED_BGSCAN_INTERVAL_SECONDS,
+                long_interval=self.CONFIGURED_BGSCAN_INTERVAL_SECONDS,
+                method=xmlrpc_datatypes.BgscanConfiguration.SCAN_METHOD_SIMPLE)
         self.context.assert_connect_wifi(get_assoc_params(bgscan_config))
         logging.info('Pinging router with background scans for %d seconds.',
                      self.BGSCAN_SAMPLE_PERIOD_SECONDS)
         result_bgscan = self.context.client.ping(
                 get_ping_config(self.BGSCAN_SAMPLE_PERIOD_SECONDS))
         logging.info('Ping statistics with bgscan: %r', result_bgscan)
-        self.context.client.shill.disconnect(self.context.router.get_ssid())
-        self.context.configure(get_ap_config())
+        # Bring up a second AP, make sure that it shows up in bgscans.
+        self.context.configure(hostap_config.HostapConfig(channel=11),
+                               multi_interface=True)
+        logging.info('Without a ping running, ensure that bgscans succeed.')
+        start_time = time.time()
+        while time.time() - start_time < self.BGSCAN_SAMPLE_PERIOD_SECONDS:
+            if (self.context.router.get_ssid(instance=1) in
+                    self.context.client.get_active_wifi_SSIDs()):
+                break
+            time.sleep(1)
+        else:
+            raise error.TestFail('Background scans should detect other SSIDs.')
+
+        self.context.client.shill.disconnect(
+                self.context.router.get_ssid(instance=0))
         # Gather some statistics about ping latencies without scanning going on.
         self.context.assert_connect_wifi(get_assoc_params(None))
         logging.info('Pinging router without background scans for %d seconds.',
@@ -57,8 +71,6 @@ class network_WiFi_BgscanBackoff(wifi_cell_test_base.WiFiCellTestBase):
                                  'background scans: %f' %
                                  result_no_bgscan.max_latency)
 
-        self.context.client.shill.disconnect(self.context.router.get_ssid())
-        self.context.router.deconfig()
         # Dwell time for scanning is usually configured to be around 100 ms,
         # since this is also the standard beacon interval.  Tolerate spikes in
         # latency up to 200 ms as a way of asking that our PHY be servicing
