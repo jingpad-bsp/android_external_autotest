@@ -40,6 +40,8 @@ RIGHT_TO_CENTER = 0.7
 OUTER_PINCH_SPACING = 70
 INNER_PINCH_SPACING = 25
 
+PHYSICAL_CLICK_SPACING = 20
+
 class RobotWrapperError(Exception):
     """An exception class for the robot_wrapper module."""
     pass
@@ -71,15 +73,17 @@ class RobotWrapper:
             conf.ONE_FINGER_TO_EDGE: self._get_control_command_line,
             conf.ONE_FINGER_SWIPE: self._get_control_command_line,
             conf.ONE_FINGER_TAP: self._get_control_command_single_tap,
-            conf.ONE_FINGER_PHYSICAL_CLICK: self._get_control_command_click,
             conf.RAPID_TAPS: self._get_control_command_rapid_taps,
             conf.TWO_FINGER_TRACKING: self._get_control_command_line,
             conf.TWO_FINGER_SWIPE: self._get_control_command_line,
             conf.TWO_FINGER_TAP: self._get_control_command_single_tap,
-            conf.TWO_FINGER_PHYSICAL_CLICK: self._get_control_command_click,
             conf.RESTING_FINGER_PLUS_2ND_FINGER_MOVE:
                     self._get_control_command_one_stationary_finger,
             conf.PINCH_TO_ZOOM: self._get_control_command_pinch,
+            conf.ONE_FINGER_PHYSICAL_CLICK: self._get_control_command_click,
+            conf.TWO_FINGER_PHYSICAL_CLICK: self._get_control_command_click,
+            conf.THREE_FINGER_PHYSICAL_CLICK: self._get_control_command_click,
+            conf.FOUR_FINGER_PHYSICAL_CLICK: self._get_control_command_click,
         }
 
         self._line_dict = {
@@ -345,11 +349,16 @@ class RobotWrapper:
             msg = 'Cannot determine the location parameters from %s %s.'
             self._raise_error(msg % (gesture, variation))
 
-        fingers = [0, 1, 0, 1] if 'two' in gesture else [0, 1, 0, 0]
-        angle = 45 if 'two' in gesture else 0
-        spacing = 17
+        fingers = [1, 0, 0, 0]
+        if 'two' in gesture:
+            fingers = [0, 1, 0, 1]
+        elif 'three' in gesture:
+            fingers = [0, 1, 1, 1]
+        elif 'four' in gesture:
+            fingers = [1, 1, 1, 1]
 
-        para = (robot_script, self._board, location_str, angle, spacing,
+        para = (robot_script, self._board, location_str, 45,
+                PHYSICAL_CLICK_SPACING,
                 fingers[0], fingers[1], fingers[2], fingers[3])
         control_cmd = 'python %s %s.p %s %d %d %d %d %d %d' % para
         return control_cmd
