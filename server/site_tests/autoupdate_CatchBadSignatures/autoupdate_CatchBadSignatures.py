@@ -2,110 +2,20 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import BaseHTTPServer
 import os
-import socket
-import thread
 import urlparse
-import urllib2
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import autoupdater, dev_server
-from autotest_lib.server import test
-
+from autotest_lib.client.common_lib.cros import dev_server
+from autotest_lib.server import autotest, test
 
 def _split_url(url):
     """Splits a URL into the URL base and path."""
     split_url = urlparse.urlsplit(url)
     url_base = urlparse.urlunsplit(
-        (split_url.scheme, split_url.netloc, '', '', ''))
+            (split_url.scheme, split_url.netloc, '', '', ''))
     url_path = split_url.path
     return url_base, url_path.lstrip('/')
-
-
-class NanoOmahaDevserver(object):
-    """Simple implementation of Omaha."""
-
-    class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
-        """Inner class for handling HTTP requests."""
-
-        _OMAHA_RESPONSE_TEMPLATE = """
-          <response protocol=\"3.0\">
-            <daystart elapsed_seconds=\"44801\"/>
-            <app appid=\"{87efface-864d-49a5-9bb3-4b050a7c227a}\" status=\"ok\">
-              <ping status=\"ok\"/>
-              <updatecheck status=\"ok\">
-                <urls>
-                  <url codebase=\"%s\"/>
-                </urls>
-                <manifest version=\"9999.0.0\">
-                  <packages>
-                    <package name=\"%s\" size=\"%d\" required=\"true\"/>
-                  </packages>
-                  <actions>
-                    <action event=\"postinstall\"
-              ChromeOSVersion=\"9999.0.0\"
-              sha256=\"%s\"
-              needsadmin=\"false\"
-              IsDeltaPayload=\"false\"
-              MetadataSize=\"%d\"
-              MetadataSignatureRsa=\"%s\"
-              PublicKeyRsa=\"%s\" />
-                  </actions>
-                </manifest>
-              </updatecheck>
-            </app>
-          </response>
-        """
-
-        def do_POST(self):
-            """Handler for POST requests."""
-            if self.path == '/update':
-                (base, name) = _split_url(self.server._devserver._payload_url)
-                response = self._OMAHA_RESPONSE_TEMPLATE % (
-                    base + '/', name,
-                    self.server._devserver._payload_size,
-                    self.server._devserver._sha256,
-                    self.server._devserver._metadata_size,
-                    self.server._devserver._metadata_signature,
-                    self.server._devserver._public_key)
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/xml')
-                self.end_headers()
-                self.wfile.write(response)
-            else:
-                self.send_response(500)
-
-    def _serving_thread(self):
-        """Method for serving requests. Runs in a dedicated thread."""
-        self._httpd.serve_forever()
-
-    def start(self):
-        """Starts the server."""
-        self._httpd = BaseHTTPServer.HTTPServer(('0.0.0.0', 0), self.Handler)
-        self._httpd._devserver = self
-        thread.start_new_thread(self._serving_thread, ())
-
-        port = self._httpd.socket.getsockname()[1]
-        self._url = 'http://%s:%d/update'%(socket.gethostname(), port)
-
-    def stop(self):
-        """Stops the server."""
-        self._httpd.shutdown()
-
-    def get_url(self):
-        """Returns the URL that update_engine should use for updates."""
-        return self._url
-
-    def set_image_params(self, payload_url, payload_size, sha256,
-                         metadata_size, metadata_signature, public_key):
-        """Sets the values to return in the Omaha response."""
-        self._payload_url = payload_url
-        self._payload_size = payload_size
-        self._sha256 = sha256
-        self._metadata_size = metadata_size
-        self._metadata_signature = metadata_signature
-        self._public_key = public_key
 
 
 class autoupdate_CatchBadSignatures(test.test):
@@ -206,54 +116,59 @@ class autoupdate_CatchBadSignatures(test.test):
                 return False
         return True
 
+    def _check_signature(self, metadata_signature, public_key,
+                         expected_log_messages, failure_message):
+        """Helper function for updating with a Canned Omaha response."""
+
+        # Runs the update on the DUT and expect it to fail.
+        client_host = autotest.Autotest(self._host)
+        client_host.run_test(
+                'autoupdate_CannedOmahaUpdate',
+                image_url=self._staged_payload_url,
+                image_size=self._IMAGE_SIZE,
+                image_sha256=self._IMAGE_SHA256,
+                allow_failure=True,
+                metadata_size=self._IMAGE_METADATA_SIZE,
+                metadata_signature=metadata_signature,
+                public_key=public_key)
+
+        cmdresult = self._host.run('cat /var/log/update_engine.log')
+        if not self._string_has_strings(cmdresult.stdout,
+                                        expected_log_messages):
+            raise error.TestFail(failure_message)
+
+
     def _check_bad_metadata_signature(self):
         """Checks that update_engine rejects updates where the payload
         and Omaha response do not agree on the metadata signature."""
-        self._devserver.set_image_params(
-            self._staged_payload_url,
-            self._IMAGE_SIZE,
-            self._IMAGE_SHA256,
-            self._IMAGE_METADATA_SIZE,
-            self._IMAGE_METADATA_SIGNATURE_WITH_KEY1,
-            self._IMAGE_PUBLIC_KEY2)
-        self._updater.reset_update_engine()
-        try:
-            self._updater.update_rootfs()
-        except autoupdater.RootFSUpdateError:
-            cmdresult = self._host.run('cat /var/log/update_engine.log')
-            if self._string_has_strings(
-                cmdresult.stdout,
-                ['Mandating payload hash checks since Omaha Response for ' +
-                 'unofficial build includes public RSA key',
-                 'Mandatory metadata signature validation failed']):
-                return
 
-        raise error.TestFail('Check for bad metadata signature failed.')
+        expected_log_messages = [
+                'Mandating payload hash checks since Omaha Response for '
+                'unofficial build includes public RSA key',
+                'Mandatory metadata signature validation failed']
+
+        self._check_signature(
+                metadata_signature=self._IMAGE_METADATA_SIGNATURE_WITH_KEY1,
+                public_key=self._IMAGE_PUBLIC_KEY2,
+                expected_log_messages=expected_log_messages,
+                failure_message='Check for bad metadata signature failed.')
+
 
     def _check_bad_payload_signature(self):
         """Checks that update_engine rejects updates where the payload
         signature does not match what is expected."""
-        self._devserver.set_image_params(
-            self._staged_payload_url,
-            self._IMAGE_SIZE,
-            self._IMAGE_SHA256,
-            self._IMAGE_METADATA_SIZE,
-            self._IMAGE_METADATA_SIGNATURE_WITH_KEY2,
-            self._IMAGE_PUBLIC_KEY2)
-        self._updater.reset_update_engine()
-        try:
-            self._updater.update_rootfs()
-        except autoupdater.RootFSUpdateError:
-            cmdresult = self._host.run('cat /var/log/update_engine.log')
-            if self._string_has_strings(
-                cmdresult.stdout,
-                ['Mandating payload hash checks since Omaha Response for ' +
-                 'unofficial build includes public RSA key',
-                 'Metadata hash signature matches value in Omaha response.',
-                 'Public key verification failed, thus update failed']):
-                return
 
-        raise error.TestFail('Check for payload signature failed.')
+        expected_log_messages = [
+                'Mandating payload hash checks since Omaha Response for '
+                'unofficial build includes public RSA key',
+                'Metadata hash signature matches value in Omaha response.',
+                'Public key verification failed, thus update failed']
+
+        self._check_signature(
+                metadata_signature=self._IMAGE_METADATA_SIGNATURE_WITH_KEY2,
+                public_key=self._IMAGE_PUBLIC_KEY2,
+                expected_log_messages=expected_log_messages,
+                failure_message='Check for payload signature failed.')
 
 
     def _stage_image(self, image_url):
@@ -278,20 +193,14 @@ class autoupdate_CatchBadSignatures(test.test):
 
 
     def run_once(self, host):
-        """Runs the test on |host|."""
+        """Runs the test on the DUT represented by |host|."""
+
+        self._host = host
 
         # First, stage the image.
         self._staged_payload_url = self._stage_image(self._IMAGE_GS_URL)
 
-        # Then start a simple Omaha server.
-        self._host = host
-        self._devserver = NanoOmahaDevserver()
-        self._devserver.start()
-
-        # Finally run the tests.
-        self._updater = autoupdater.ChromiumOSUpdater(
-            self._devserver.get_url(), self._host)
+        # Then run the tests.
         self._check_bad_metadata_signature()
         self._check_bad_payload_signature()
 
-        self._devserver.stop()
