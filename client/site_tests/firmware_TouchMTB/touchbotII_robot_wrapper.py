@@ -37,6 +37,9 @@ BELOW_CENTER = 0.7
 LEFT_TO_CENTER = 0.3
 RIGHT_TO_CENTER = 0.7
 
+OUTER_PINCH_SPACING = 70
+INNER_PINCH_SPACING = 25
+
 class RobotWrapperError(Exception):
     """An exception class for the robot_wrapper module."""
     pass
@@ -59,6 +62,7 @@ class RobotWrapper:
             self._get_control_command_click: SCRIPT_CLICK,
             self._get_control_command_one_stationary_finger:
                     SCRIPT_ONE_STATIONARY_FINGER,
+            self._get_control_command_pinch: SCRIPT_LINE,
         }
 
         # Each gesture maps to a get_contorol_command method
@@ -75,6 +79,7 @@ class RobotWrapper:
             conf.TWO_FINGER_PHYSICAL_CLICK: self._get_control_command_click,
             conf.RESTING_FINGER_PLUS_2ND_FINGER_MOVE:
                     self._get_control_command_one_stationary_finger,
+            conf.PINCH_TO_ZOOM: self._get_control_command_pinch,
         }
 
         self._line_dict = {
@@ -142,7 +147,6 @@ class RobotWrapper:
             # location parameters for one_finger_click and two_finger_click
             None: (CENTER, CENTER),
         }
-
 
         self.fingertip_size = 2
         self.fingertips = [None, None, None, None]
@@ -216,6 +220,24 @@ class RobotWrapper:
         """
         return (tuple(1.0 - c for c in coordinates) if self.is_touchscreen else
                 coordinates)
+
+    def _get_control_command_pinch(self, robot_script, gesture, variation):
+        # Depending on which direction you're zooming, change the order of the
+        # finger spacings.
+        if GV.ZOOM_IN in variation:
+            starting_spacing = INNER_PINCH_SPACING
+            ending_spacing = OUTER_PINCH_SPACING
+        else:
+            starting_spacing = OUTER_PINCH_SPACING
+            ending_spacing = INNER_PINCH_SPACING
+
+        # Keep the hand centered on the pad, and make the fingers move
+        # in or out with only two opposing fingers on the pad.
+        para = (robot_script, self._board,
+                CENTER, CENTER, 45, starting_spacing,
+                CENTER, CENTER, 45, ending_spacing,
+                0, 1, 0, 1, self._speed_dict[GV.SLOW], 'basic')
+        return 'python %s %s.p %f %f %d %d %f %f %d %d %d %d %d %d %f %s' % para
 
     def _get_control_command_one_stationary_finger(self, robot_script, gesture,
                                                    variation):

@@ -175,6 +175,7 @@ robot_capability_list = [
     TWO_FINGER_TAP,
     TWO_FINGER_PHYSICAL_CLICK,
     RESTING_FINGER_PLUS_2ND_FINGER_MOVE,
+    PINCH_TO_ZOOM,
 ]
 
 robot_must_start_without_fingertips = [
