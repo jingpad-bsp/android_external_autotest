@@ -20,6 +20,7 @@ from firmware_constants import GV, MODE
 SCRIPT_LINE = 'line.py'
 SCRIPT_TAP = 'tap.py'
 SCRIPT_CLICK = 'click.py'
+SCRIPT_ONE_STATIONARY_FINGER = 'one_stationary_finger.py'
 
 # Define constants for coordinates.
 # Normally, a gesture is performed within [START, END].
@@ -56,6 +57,8 @@ class RobotWrapper:
             self._get_control_command_rapid_taps: SCRIPT_TAP,
             self._get_control_command_single_tap: SCRIPT_TAP,
             self._get_control_command_click: SCRIPT_CLICK,
+            self._get_control_command_one_stationary_finger:
+                    SCRIPT_ONE_STATIONARY_FINGER,
         }
 
         # Each gesture maps to a get_contorol_command method
@@ -70,6 +73,8 @@ class RobotWrapper:
             conf.TWO_FINGER_SWIPE: self._get_control_command_line,
             conf.TWO_FINGER_TAP: self._get_control_command_single_tap,
             conf.TWO_FINGER_PHYSICAL_CLICK: self._get_control_command_click,
+            conf.RESTING_FINGER_PLUS_2ND_FINGER_MOVE:
+                    self._get_control_command_one_stationary_finger,
         }
 
         self._line_dict = {
@@ -211,6 +216,31 @@ class RobotWrapper:
         """
         return (tuple(1.0 - c for c in coordinates) if self.is_touchscreen else
                 coordinates)
+
+    def _get_control_command_one_stationary_finger(self, robot_script, gesture,
+                                                   variation):
+        line = speed = None
+        for element in variation:
+            if element in GV.GESTURE_DIRECTIONS:
+                line = self._line_dict[element]
+            elif element in GV.GESTURE_SPEED:
+                speed = self._speed_dict[element]
+
+        if line is None or speed is None:
+            msg = 'Cannot derive the line/speed parameters from %s %s.'
+            self._raise_error(msg % (gesture, variation))
+
+        line = self._reverse_coord_if_is_touchscreen(line)
+        start_x, start_y, end_x, end_y = line
+
+        # The stationary finger should be in the bottom left corner
+        stationary_x = START
+        stationary_y = END
+
+        para = (robot_script, self._board, stationary_x, stationary_y,
+                start_x, start_y, end_x, end_y, speed)
+        cmd = 'python %s %s.p %f %f %f %f %f %f %s' % para
+        return cmd
 
     def _get_control_command_line(self, robot_script, gesture, variation):
         """Get robot control command for gestures using robot line script."""
