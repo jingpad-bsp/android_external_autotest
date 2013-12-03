@@ -18,7 +18,6 @@ class FsOptions(object):
     # NOTE(gps): This class could grow or be merged with something else in the
     # future that actually uses the encapsulated data (say to run mkfs) rather
     # than just being a container.
-    # Ex: fsdev_disks.mkfs_all_disks really should become a method.
 
     __slots__ = ('fstype', 'mkfs_flags', 'mount_options', 'fs_tag')
 
