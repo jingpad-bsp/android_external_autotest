@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 
-from autotest_lib.client.common_lib import utils
 from autotest_lib.server.cros import provision
 
 
@@ -41,7 +40,7 @@ def provision_machine(machine):
                 raise Exception('Provisioning %s:%s failed on %s' %
                                 (name, value, machine))
     except Exception as e:
-        job.record('END FAIL', None, 'provision', e.message)
+        job.record('END FAIL', None, 'provision', str(e))
         # (Re)raising the exception serves two purposes here:
         # 1. The scheduler only looks at the return code of autoserv to see if
         # the special task failed.  Raising an exception here will get autoserv
@@ -49,7 +48,7 @@ def provision_machine(machine):
         # This then triggers the failure condition in ProvisionTask's epilog,
         # which leads us into...
         # 2. This exception ends up triggering server_job to write an INFO line
-        # with job_abort_reason equal to e.message, which is how e.message
+        # with job_abort_reason equal to str(e), which is how str(e)
         # appears as the reason field for the job when the status.log we
         # generate is parsed as the job's results.
         raise
