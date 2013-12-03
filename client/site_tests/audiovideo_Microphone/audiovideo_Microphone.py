@@ -8,23 +8,28 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.audio import audio_helper
 
-DURATION = 30
+DURATION = 3
 BYTES_PER_SAMPLE = 2
-TOLERATE = 0.8
+TOLERANT_RATIO = 0.1
 
 class audiovideo_Microphone(test.test):
     version = 1
 
-    def verify_capture(self, sndcard, ch, rate):
-        cmd = "arecord -D plughw:%s -f dat -c %s -r %s -d %d %s"
-        recorded_file = tempfile.NamedTemporaryFile(mode='w+t').name
-        try:
-            utils.system(cmd % (sndcard, ch, rate, DURATION, recorded_file))
-            size = os.path.getsize(recorded_file)
-            if (size < DURATION * rate * ch * BYTES_PER_SAMPLE * TOLERATE) :
-                raise error.TestFail("File size not correct: %d" % size)
-        finally:
-            os.remove(recorded_file)
+
+    def check_recorded_filesize(self, filesize, duration, channels, rate):
+        expected = duration * channels * BYTES_PER_SAMPLE * rate
+        if abs(float(filesize) / expected - 1) > TOLERANT_RATIO:
+            raise error.TestFail('File size not correct: %d' % filesize)
+
+
+    def verify_capture(self, sndcard, channels, rate):
+        with tempfile.NamedTemporaryFile() as recorded_file:
+            cmd = "arecord -D plughw:%s -f dat -c %s -r %s -d %d %s"
+            utils.system(cmd % (sndcard, channels, rate,
+                                DURATION, recorded_file.name))
+            self.check_recorded_filesize(
+                    os.path.getsize(recorded_file.name),
+                    DURATION, channels, rate)
 
 
     def run_once(self):
@@ -34,9 +39,9 @@ class audiovideo_Microphone(test.test):
 
         # Microphone should be on by default.
         if utils.get_cpu_arch() != "arm":
-            cmd = 'amixer -D hw:%s cget name="Capture Switch" | grep values=on,on'
+            cmd = 'amixer -D hw:%s cget name="Capture Switch"'
             output = utils.system_output(cmd % sndcard)
-            if (output == ''):
+            if 'values=on,on' not in output:
                 raise error.TestFail('The microphone is not on by default.')
         else:
             # TODO(jiesun): find consistent way to find the ALSA mixer control
