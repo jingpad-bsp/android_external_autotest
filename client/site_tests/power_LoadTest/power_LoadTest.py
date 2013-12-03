@@ -5,16 +5,12 @@
 import collections, logging, numpy, os, time
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.cros import backchannel, cros_ui, cros_ui_test, httpd
 from autotest_lib.client.cros import power_rapl, power_status, power_utils
 from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.audio import audio_helper
-
-# pylint: disable=W0611
 from autotest_lib.client.cros import flimflam_test_path
-# pylint: enable=W0611
-import wifi_proxy
+import flimflam
 
 params_dict = {
     'test_time_ms': '_mseconds',
@@ -56,8 +52,8 @@ class power_LoadTest(cros_ui_test.UITest):
                  should_scroll='true', should_scroll_up='true',
                  scroll_loop='false', scroll_interval_ms='10000',
                  scroll_by_pixels='600', test_low_batt_p=3,
-                 verbose=True, wifi_config=None,
-                 tasks="", kblight_percent=10, volume_level=10,
+                 verbose=True, force_wifi=False, wifi_ap='', wifi_sec='none',
+                 wifi_pw='', tasks="", kblight_percent=10, volume_level=10,
                  mic_gain=10, low_batt_margin_p=2):
         """
         percent_initial_charge_min: min battery charge at start of test
@@ -97,6 +93,7 @@ class power_LoadTest(cros_ui_test.UITest):
         self._scroll_by_pixels = scroll_by_pixels
         self._tmp_keyvals = {}
         self._power_status = power_status.get_status()
+        self._force_wifi = force_wifi
         self._testServer = None
         self._tasks = '\'' + tasks.replace(' ','') + '\''
         self._backchannel = None
@@ -107,36 +104,22 @@ class power_LoadTest(cros_ui_test.UITest):
         self._stats = collections.defaultdict(list)
 
         self._power_status.assert_battery_state(percent_initial_charge_min)
-        # If we get a WiFi config, convert eth0 to backchannel and connect to
-        # the specified WiFi AP.
-        if wifi_config:
+        # If force wifi enabled, convert eth0 to backchannel and connect to the
+        # specified WiFi AP.
+        if self._force_wifi:
             # If backchannel is already running, don't run it again.
             self._backchannel = backchannel.Backchannel()
             if not self._backchannel.setup():
                 raise error.TestError('Could not setup Backchannel network.')
 
-            shill_proxy = wifi_proxy.WifiProxy()
-            for attempt in range(3):
-                raw_output = shill_proxy.connect_to_wifi_network(
-                        wifi_config.ssid,
-                        wifi_config.security,
-                        wifi_config.security_parameters,
-                        wifi_config.save_credentials,
-                        station_type=wifi_config.station_type,
-                        hidden_network=wifi_config.is_hidden,
-                        discovery_timeout_seconds=
-                                wifi_config.discovery_timeout,
-                        association_timeout_seconds=
-                                wifi_config.association_timeout,
-                        configuration_timeout_seconds=
-                                wifi_config.configuration_timeout)
-                result = xmlrpc_datatypes.AssociationResult. \
-                        from_dbus_proxy_output(raw_output)
-                if result.success:
-                    break
-            else:
+            if not flimflam.FlimFlam().ConnectService(retries=3,
+                                                      retry=True,
+                                                      service_type='wifi',
+                                                      ssid=wifi_ap,
+                                                      security=wifi_sec,
+                                                      passphrase=wifi_pw,
+                                                      mode='managed')[0]:
                 raise error.TestError('Could not connect to WiFi network.')
-
         else:
             # Find all wired ethernet interfaces.
             # TODO: combine this with code in network_DisableInterface, in a

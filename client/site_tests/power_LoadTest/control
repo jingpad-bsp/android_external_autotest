@@ -25,10 +25,6 @@ before this test can be run:
 You are now ready to run the test.
 """
 
-
-from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
-from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
-
 # TODO (bleung): Find a way to do automatic Facebook login for test account.
 
 loop_time = 3600
@@ -65,17 +61,5 @@ tasks='window;http://www.cnn.com,http://www.ebay.com,http://www.msn.com;900' + \
       'window;http://www.alexa.com,http://www.intel.com,http://www.apple.co' + \
       'm;1200'
 
-# To specify a WiFi AP with WPA security:
-#
-# wpa_config = xmlrpc_security_types.WPAConfig(
-#         psk='chromeos',
-#         wpa_mode=xmlrpc_security_types.WPAConfig.MODE_PURE_WPA2,
-#         wpa2_ciphers=[xmlrpc_security_types.WPAConfig.CIPHER_CCMP])
-# wifi_config = xmlrpc_datatypes.AssociationParameters(
-#         ssid='MySSID', security_config=wpa_config)
-#
-# To specify an unencrypted network, just leave off the security_config
-# parameter.
-
 job.run_test('power_LoadTest', loop_time=loop_time, loop_count=loop_count,
-             test_low_batt_p=3, wifi_config=None)
+             test_low_batt_p=3)
