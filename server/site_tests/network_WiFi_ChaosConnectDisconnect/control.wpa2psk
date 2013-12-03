@@ -24,7 +24,11 @@ def run_chaos_wpa2psk(machine):
     ap_specs = [ap_spec.APSpec(security=ap_spec.SECURITY_TYPE_WPA2PSK,
                                band=ap_spec.BAND_2GHZ),
                 ap_spec.APSpec(security=ap_spec.SECURITY_TYPE_WPA2PSK,
-                               band=ap_spec.BAND_5GHZ)]
+                               band=ap_spec.BAND_5GHZ),
+                # Non-US models
+                ap_spec.APSpec(security=ap_spec.SECURITY_TYPE_WPA2PSK,
+                               band=ap_spec.BAND_5GHZ,
+                               channel=48)]
     for spec in ap_specs:
         runner = chaos_runner.ChaosRunner(
                 'network_WiFi_ChaosConnectDisconnect', host, client, spec)
