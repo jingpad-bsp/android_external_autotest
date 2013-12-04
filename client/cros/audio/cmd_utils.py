@@ -63,9 +63,11 @@ def popen(*args, **kargs):
     executed command stored in Popen.command.
     '''
     # The lock is required for http://crbug.com/323843.
+    the_args = args[0] if len(args) > 0 else kargs['args']
+    command = ' '.join(pipes.quote(x) for x in the_args)
+    logging.info('Running: %s', command)
     with _popen_lock:
         ps = subprocess.Popen(*args, **kargs)
-    the_args = args[0] if len(args) > 0 else kargs['args']
-    ps.command = ' '.join(pipes.quote(x) for x in the_args)
-    logging.info('Running(%d): %s', ps.pid, ps.command)
+    ps.command = command
+    logging.info('pid: %d', ps.pid)
     return ps
