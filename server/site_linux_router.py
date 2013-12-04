@@ -679,6 +679,17 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             self.ibss_configure(config)
 
 
+    def get_wifi_channel(self, ap_num):
+        """Return channel of BSS corresponding to |ap_num|.
+
+        @param ap_num int which BSS to get the channel of.
+        @return int primary channel of BSS.
+
+        """
+        instance = self.hostapd_instances[ap_num]
+        return instance['config_dict']['channel']
+
+
     def get_wifi_ip(self, ap_num):
         """Return IP address on the WiFi subnet of a local server on the router.
 
@@ -794,16 +805,18 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.station['configured'] = False
 
 
-    def verify_pmksa_auth(self, params):
+    def confirm_pmksa_cache_use(self, instance=0):
         """Verify that the PMKSA auth was cached on a hostapd instance.
 
-        @param params dict with optional key 'instance' (defaults to 0).
+        @param instance int router instance number.
 
         """
-        instance_num = params.get('instance', 0)
-        instance = self.hostapd_instances[instance_num]
-        pmksa_match = 'PMK from PMKSA cache - skip IEEE 802.1X.EAP'
-        self.router.run('grep -q "%s" %s' % (pmksa_match, instance['log_file']))
+        log_file = self.hostapd_instances[instance]['log_file']
+        pmksa_match = 'PMK from PMKSA cache'
+        result = self.router.run('grep -q "%s" %s' % (pmksa_match, log_file),
+                                 ignore_status=True)
+        if result.exit_status:
+            raise error.TestFail('PMKSA cache was not used in roaming.')
 
 
     def get_ssid(self, instance=None):

@@ -449,8 +449,9 @@ class WiFiClient(object):
                                                       actual_value))
 
 
-    def get_iw_link_value(self, iw_link_key):
-        return self._iw_runner.get_link_value(self.wifi_if, iw_link_key)
+    def get_iw_link_value(self, iw_link_key, ignore_failures=False):
+        return self._iw_runner.get_link_value(self.wifi_if, iw_link_key,
+                                              ignore_failures=ignore_failures)
 
 
     def powersave_switch(self, turn_on):
@@ -634,6 +635,24 @@ class WiFiClient(object):
 
         """
         return self._shill_proxy.query_tdls_link(self.wifi_if, mac_address)
+
+
+    def request_roam(self, bssid):
+        """Request that we roam to the specified BSSID.
+
+        Note that this operation assumes that:
+
+        1) We're connected to an SSID for which |bssid| is a member.
+        2) There is a BSS with an appropriate ID in our scan results.
+
+        This method does not check for success of either the command or
+        the roaming operation.
+
+        @param bssid: string MAC address of bss to roam to.
+
+        """
+        self._assert_method_supported('request_roam')
+        self._shill_proxy.request_roam(bssid)
 
 
     def wait_for_ssid_vanish(self, ssid):

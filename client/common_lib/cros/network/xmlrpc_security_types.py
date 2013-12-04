@@ -499,7 +499,8 @@ class WPAEAPConfig(EAPConfig):
                  server_ca_cert=None, server_cert=None, server_key=None,
                  client_ca_cert=None, client_cert=None, client_key=None,
                  client_cert_id=None, client_key_id=None,
-                 eap_identity=None, server_eap_users=None):
+                 eap_identity=None, server_eap_users=None,
+                 wpa_mode=WPAConfig.MODE_PURE_WPA):
         """Construct a DynamicWEPConfig.
 
         @param file_suffix string unique file suffix on DUT.
@@ -523,6 +524,7 @@ class WPAEAPConfig(EAPConfig):
                 client_cert=client_cert, client_key=client_key,
                 client_cert_id=client_cert_id, client_key_id=client_key_id,
                 eap_identity=eap_identity, server_eap_users=server_eap_users)
+        self.wpa_mode = wpa_mode
 
 
     def get_hostapd_config(self):
@@ -531,7 +533,7 @@ class WPAEAPConfig(EAPConfig):
         # If we wanted to expand test coverage to WPA2/PEAP combinations
         # or particular ciphers, we'd have to let people set these
         # settings manually.  But for now, do the simple thing.
-        ret.update({'wpa': WPAConfig.MODE_PURE_WPA,
+        ret.update({'wpa': self.wpa_mode,
                     'wpa_pairwise': WPAConfig.CIPHER_CCMP,
                     'wpa_key_mgmt':'WPA-EAP'})
         return ret

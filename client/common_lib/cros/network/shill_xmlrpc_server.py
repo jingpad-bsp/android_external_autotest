@@ -379,6 +379,24 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
                 object_properties[self.ROAM_THRESHOLD])
 
 
+    def request_roam(self, bssid):
+        """Request that we roam to the specified BSSID.
+
+        Note that this operation assumes that:
+
+        1) We're connected to an SSID for which |bssid| is a member.
+        2) There is a BSS with an appropriate ID in our scan results.
+
+        This method does not check for success of either the command or
+        the roaming operation.
+
+        @param bssid: string BSSID of BSS to roam to.
+
+        """
+        utils.run('su wpa -s /usr/bin/wpa_cli roam %s' % bssid)
+        return True
+
+
     @xmlrpc_server.dbus_safe(False)
     def set_roam_threshold(self, wifi_interface, value):
         """Set roam threshold for a specified wifi interface.
