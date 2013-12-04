@@ -597,7 +597,8 @@ class WiFiClient(object):
         return self._shill_proxy.set_roam_threshold(wifi_interace, value)
 
 
-    def set_device_enabled(self, wifi_interace, value):
+    def set_device_enabled(self, wifi_interace, value,
+                           fail_on_unsupported=False):
         """Enable or disable the WiFi device.
 
         @param wifi_interface: string name of interface being modified.
@@ -606,7 +607,9 @@ class WiFiClient(object):
         @return True if it worked; False, otherwise.
 
         """
-        if not self._supports_method('set_device_enabled'):
+        if fail_on_unsupported:
+            self._assert_method_supported('set_device_enabled')
+        elif not self._supports_method('set_device_enabled'):
             return False
         return self._shill_proxy.set_device_enabled(wifi_interace, value)
 
