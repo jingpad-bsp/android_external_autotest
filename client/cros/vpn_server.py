@@ -95,7 +95,6 @@ class L2TPIPSecVPNServer(VPNServer):
             'debug\n'
             'lock\n'
             'proxyarp\n'
-            'connect-delay 5000\n'
     }
     IPSEC_TYPED_CONFIGS = {
         'psk': {
