@@ -31,8 +31,8 @@ class network_3GIdentifiers(test.test):
         """Validates a specific identifier by matching the values reported by
            Shill and ModemManager as well as verifying its length."""
         if device_value != modem_value:
-            message = 'Shill value "%s" does not match MM value "%s"' % \
-                      (device_value, modem_value)
+            message = ('Shill value "%s" for "%s" does not match MM value "%s"'
+                       % (device_value, label, modem_value))
             logging.error(message)
             raise error.TestFail(message)
         if (len(device_value) < min_length or len(device_value) > max_length):
