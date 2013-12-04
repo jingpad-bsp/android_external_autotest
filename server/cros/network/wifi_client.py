@@ -33,6 +33,8 @@ class WiFiClient(object):
     DEFAULT_PING_COUNT = 10
     COMMAND_PING = 'ping'
 
+    MAX_SERVICE_GONE_TIMEOUT_SECONDS = 60
+
     UNKNOWN_BOARD_TYPE = 'unknown'
 
 
@@ -641,3 +643,23 @@ class WiFiClient(object):
 
         """
         return self._shill_proxy.query_tdls_link(self.wifi_if, mac_address)
+
+
+    def wait_for_ssid_vanish(self, ssid):
+        """Wait for shill to notice that there are no BSS's for an SSID present.
+
+        Raise a test failing exception if this does not come to pass.
+
+        @param ssid: string SSID of the network to require be missing.
+
+        """
+        start_time = time.time()
+        while time.time() - start_time < self.MAX_SERVICE_GONE_TIMEOUT_SECONDS:
+            visible_ssids = self.get_active_wifi_SSIDs()
+            logging.info('Got service list: %r', visible_ssids)
+            if ssid not in visible_ssids:
+                return
+
+            self.scan(frequencies=[], ssids=[], timeout_seconds=30)
+        else:
+            raise error.TestFail('shill should mark the BSS as not present')

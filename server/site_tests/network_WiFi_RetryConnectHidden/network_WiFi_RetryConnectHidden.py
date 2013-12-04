@@ -8,19 +8,19 @@ from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server.cros.network import hostap_config
 from autotest_lib.server.cros.network import wifi_cell_test_base
 
-class network_WiFi_ConnectOnResume(wifi_cell_test_base.WiFiCellTestBase):
+class network_WiFi_RetryConnectHidden(wifi_cell_test_base.WiFiCellTestBase):
     """
-    Tests our behavior after a resume when not connected before the suspend.
+    Test that we retry to connect after an AP disappears.
 
     This test:
         1) Sets up a network with a single hidden BSS.
         2) Connects the DUT to that network and that particular BSS.
         3) Takes down the BSS in view of the DUT.
         4) Waits for scan cache results from the device to expire.
-        5) Places the DUT in suspend-to-RAM
+        5) Waits an additional few seconds to get past any immediate
+            reactions from the connection manager.
         6) Bring the same BSS back up.
-        7) Resumes the DUT.
-        8) Watches to make sure the DUT connects to this BSS on resume.
+        8) Watches to make sure the DUT connects to this BSS.
 
     Note that since the BSS is hidden, and wpa_supplicant does not
     know to explicitly scan for hidden BSS's, this means that shill
@@ -41,12 +41,9 @@ class network_WiFi_ConnectOnResume(wifi_cell_test_base.WiFiCellTestBase):
         self.context.assert_connect_wifi(assoc_params)
         self.context.router.deconfig()
         self.context.client.wait_for_ssid_vanish(router_ssid)
-        self.context.client.do_suspend_bg(20)
-        # Locally, let's wait 15 seconds to make sure the DUT is really asleep
-        # before we proceed.
-        time.sleep(15)
+        # Don't let any of shill's short term actions affect our test.
+        time.sleep(20)
         self.context.configure(hostap_config.HostapConfig(
-            channel=1, ssid=router_ssid, hide_ssid=True))
-        # When we resume, we should see the device automatically connect,
-        # despite the absence of beacons.
+            channel=11, ssid=router_ssid, hide_ssid=True))
+        # But shill should continue to probe around for the network.
         self.context.wait_for_connection(router_ssid)
