@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import errno
 import os
 import shutil
 import time
@@ -159,16 +160,21 @@ class NetworkChroot(object):
         @param pid_file string containing the filename within the choot
             to read and convert to an integer.  This should not contain a
             leading '/'.
-        @param missing_ok bool indicating whether to test for
-            the existence of the pid file first and return 0 if it does
-            not exist.  If false, a missing pid file will cause an exception.
+        @param missing_ok bool indicating whether exceptions due to failure
+            to open the pid file should be caught.  If true a missing pid
+            file will cause this method to return 0.  If false, a missing
+            pid file will cause an exception.
 
         """
         chroot_pid_file = self.chroot_path(pid_file)
-        if missing_ok and not os.path.exists(chroot_pid_file):
+        try:
+            with open(chroot_pid_file) as f:
+                return int(f.read())
+        except IOError, e:
+            if not missing_ok or e.errno != errno.ENOENT:
+                raise e
+
             return 0
-        with open(chroot_pid_file) as f:
-            return int(f.read())
 
 
     def kill_pid_file(self, pid_file, missing_ok=False):
