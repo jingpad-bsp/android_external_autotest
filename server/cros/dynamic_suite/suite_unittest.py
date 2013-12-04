@@ -247,7 +247,8 @@ class SuiteTest(mox.MoxTestBase):
                 timeout_mins=1440,
                 parent_job_id=None,
                 test_retry=0,
-                priority=priorities.Priority.DEFAULT
+                priority=priorities.Priority.DEFAULT,
+                synch_count=test.sync_count
                 )
             if raises:
               job_mock.AndRaise(error.NoEligibleHostException())

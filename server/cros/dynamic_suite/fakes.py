@@ -22,6 +22,7 @@ class FakeControlData(object):
         self.dependencies = dependencies
         self.time = time
         self.retries = 0
+        self.sync_count = 1
 
 
 class FakeJob(object):

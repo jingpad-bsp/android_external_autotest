@@ -352,7 +352,7 @@ class Suite(object):
             control_file=test.text,
             name=tools.create_job_name(self._build, self._tag, test.name),
             control_type=test.test_type.capitalize(),
-            meta_hosts=[self._board],
+            meta_hosts=[self._board]*test.sync_count,
             dependencies=job_deps,
             keyvals={constants.JOB_BUILD_KEY: self._build,
                      constants.JOB_SUITE_KEY: self._tag,
@@ -361,7 +361,8 @@ class Suite(object):
             timeout_mins=self._timeout_mins,
             parent_job_id=self._suite_job_id,
             test_retry=test.retries,
-            priority=self._priority)
+            priority=self._priority,
+            synch_count=test.sync_count)
 
         setattr(test_obj, 'test_name', test.name)
 
