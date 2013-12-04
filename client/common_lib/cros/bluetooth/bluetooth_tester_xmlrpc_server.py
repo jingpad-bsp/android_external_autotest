@@ -12,11 +12,12 @@ import logging.handlers
 import common
 from autotest_lib.client.common_lib.cros import xmlrpc_server
 from autotest_lib.client.common_lib.cros.bluetooth import bluetooth_socket
+from autotest_lib.client.common_lib.cros.bluetooth import bluetooth_sdp_socket
 from autotest_lib.client.cros import constants
 
 
 class BluetoothTesterXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
-    """Exposes Tester methods called removely during Bluetooth autotests.
+    """Exposes Tester methods called remotely during Bluetooth autotests.
 
     All instance methods of this object without a preceding '_' are exposed via
     an XML-RPC server. This is not a stateless handler object, which means that
@@ -51,6 +52,9 @@ class BluetoothTesterXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         # Open the Bluetooth Control socket to the kernel which provides us
         # the needed raw management access to the Bluetooth Host Subsystem.
         self._control = bluetooth_socket.BluetoothControlSocket()
+        # Open the Bluetooth SDP socket to the kernel which provides us the
+        # needed interface to use SDP commands.
+        self._sdp = bluetooth_sdp_socket.BluetoothSDPSocket()
         # This is almost a constant, but it might not be forever.
         self.index = 0
 
@@ -283,6 +287,28 @@ class BluetoothTesterXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
                  base64.encodestring(eirdata))
                 for address, address_type, rssi, flags, eirdata in devices
         ])
+
+
+    def connect(self, address):
+        """Connect to device with the given address
+
+        @param address: Bluetooth address.
+
+        """
+        self._sdp.connect(address)
+        return True
+
+
+    def service_search_request(self, uuids, max_rec_cnt):
+        """Send a Service Search Request
+
+        @param uuids: List of UUIDs (in 32-bit format) to look for.
+        @param max_rec_cnt: Maximum count of returned service records.
+
+        @return list of found services' service record handles
+
+        """
+        return self._sdp.service_search_request(uuids, max_rec_cnt)
 
 
 if __name__ == '__main__':

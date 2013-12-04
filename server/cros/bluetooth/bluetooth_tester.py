@@ -113,6 +113,27 @@ class BluetoothTester(object):
         self.host.close()
 
 
+    def connect(self, address):
+        """Connect to device with the given address
+
+        @param address: Bluetooth address.
+
+        """
+        self._proxy.connect(address)
+
+
+    def service_search_request(self, uuids, max_rec_cnt):
+        """Send a Service Search Request
+
+        @param uuids: List of UUIDs (in 32-bit format) to look for.
+        @param max_rec_cnt: Maximum count of returned service records.
+
+        @return list of found services' service record handles
+
+        """
+        return self._proxy.service_search_request(uuids, max_rec_cnt)
+
+
 def create_host_from(device_host):
     """Creates a host object for the Tester associated with a DUT.
 
