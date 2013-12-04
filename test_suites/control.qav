@@ -29,6 +29,7 @@ These tests are only run on full release builds, not on the commit queue.
 
 import common
 from autotest_lib.server.cros.dynamic_suite import dynamic_suite
+from autotest_lib.server.cros import provision
 
 
 dynamic_suite.reimage_and_run(
