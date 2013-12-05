@@ -27,7 +27,7 @@ def playback(*args, **kargs):
 
 
 def playback_cmd(
-        input, duration=None, channels=2, bits=16, rate=44100, device=None):
+        input, duration=None, channels=2, bits=16, rate=48000, device=None):
     '''Plays the given input audio by the ALSA utility: 'aplay'.
 
     @param input: The input audio to be played.
@@ -54,7 +54,7 @@ def record(*args, **kargs):
 
 
 def record_cmd(
-        output, duration=None, channels=2, bits=16, rate=44100, device=None):
+        output, duration=None, channels=1, bits=16, rate=48000, device=None):
     '''Records the audio to the specified output by ALSA utility: 'arecord'.
 
     @param output: The filename where the recorded audio will be stored to.

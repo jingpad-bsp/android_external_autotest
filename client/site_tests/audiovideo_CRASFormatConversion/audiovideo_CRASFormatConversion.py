@@ -101,8 +101,7 @@ class audiovideo_CRASFormatConversion(test.test):
             self.wait_for_active_stream_count(2)
 
             cras_utils.capture(
-                    record_file, buffer_frames=441, duration=1, channels=1,
-                    rate=44100)
+                    record_file, buffer_frames=441, duration=1, rate=44100)
 
             # Make sure the playback is still in good shape
             for ps in processes:
@@ -110,11 +109,9 @@ class audiovideo_CRASFormatConversion(test.test):
 
             reduced_file = tempfile.NamedTemporaryFile()
             sox_utils.noise_reduce(
-                    record_file, reduced_file.name, noise_profile,
-                    channels=1, bits=16, rate=44100)
+                    record_file, reduced_file.name, noise_profile, rate=44100)
 
-            sox_stat = sox_utils.get_stat(
-                    reduced_file.name, channels=1, bits=16, rate=44100)
+            sox_stat = sox_utils.get_stat(reduced_file.name, rate=44100)
 
             logging.info('The sox stat of (%d, %d) is %s',
                          primary, secondary, str(sox_stat))
@@ -140,11 +137,8 @@ class audiovideo_CRASFormatConversion(test.test):
         # Record silence to use as the noise profile.
         noise_file = os.path.join(self.resultsdir, "noise.wav")
         noise_profile = tempfile.NamedTemporaryFile()
-        cras_utils.capture(
-                noise_file, buffer_frames=512, duration=1, channels=1,
-                rate=48000)
-        sox_utils.noise_profile(
-                noise_file, noise_profile.name, channels=1, rate=48000)
+        cras_utils.capture(noise_file, buffer_frames=512, duration=1)
+        sox_utils.noise_profile(noise_file, noise_profile.name)
 
         # Try all sample rate pairs.
         for primary in _TEST_SAMPLE_RATES:
@@ -155,7 +149,6 @@ class audiovideo_CRASFormatConversion(test.test):
         record_file = tempfile.NamedTemporaryFile()
         for rate in _TEST_SAMPLE_RATES:
             cras_utils.capture(
-                    record_file.name, buffer_frames=512, duration=1, channels=1,
-                    rate=rate)
+                    record_file.name, buffer_frames=512, duration=1, rate=rate)
 
         os.unlink(noise_file)

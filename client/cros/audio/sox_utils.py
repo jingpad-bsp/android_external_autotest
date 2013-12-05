@@ -18,7 +18,7 @@ def _raw_format_args(channels, bits, rate):
     return args
 
 def generate_sine_tone_cmd(
-        filename, channels=2, bits=16, rate=44100, duration=None, frequence=440,
+        filename, channels=2, bits=16, rate=48000, duration=None, frequence=440,
         gain=None):
     """Gets a command to generate sine tones at specified ferquencies.
 
@@ -47,7 +47,7 @@ def noise_profile(*arg, **karg):
     return cmd_utils.execute(noise_profile_cmd(*arg, **karg))
 
 
-def noise_profile_cmd(input, output, channels=2, bits=16, rate=44100):
+def noise_profile_cmd(input, output, channels=1, bits=16, rate=48000):
     """Gets the noise profile of the input audio.
 
     @param input: The input audio.
@@ -68,7 +68,7 @@ def noise_reduce(*args, **kargs):
 
 
 def noise_reduce_cmd(
-        input, output, noise_profile, channels=2, bits=16, rate=44100):
+        input, output, noise_profile, channels=1, bits=16, rate=48000):
     """Reduce noise in the input audio by the given noise profile.
 
     @param input: The input audio file.
@@ -91,7 +91,7 @@ def noise_reduce_cmd(
 
 
 def extract_channel_cmd(
-        input, output, channel_index, channels=2, bits=16, rate=44100):
+        input, output, channel_index, channels=2, bits=16, rate=48000):
     """Extract the specified channel data from the given input audio file.
 
     @param input: The input audio file.
@@ -110,7 +110,7 @@ def extract_channel_cmd(
     return args
 
 
-def stat_cmd(input, channels=2, bits=16, rate=44100):
+def stat_cmd(input, channels=1, bits=16, rate=44100):
     """Get statistical information about the input audio data.
 
     The statistics will be output to standard error.

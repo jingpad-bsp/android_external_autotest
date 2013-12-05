@@ -51,11 +51,10 @@ class audiovideo_LineOutToMicInLoopback(test.test):
     def _check_rms(self, noise_file, recorded_file):
         with tempfile.NamedTemporaryFile() as noise_profile,\
              tempfile.NamedTemporaryFile() as reduced_file:
-            sox_utils.noise_profile(noise_file, noise_profile.name, channels=1)
+            sox_utils.noise_profile(noise_file, noise_profile.name)
             sox_utils.noise_reduce(
-                    recorded_file, reduced_file.name, noise_profile.name,
-                    channels=1)
-            stat = sox_utils.get_stat(reduced_file.name, channels=1)
+                    recorded_file, reduced_file.name, noise_profile.name)
+            stat = sox_utils.get_stat(reduced_file.name)
             logging.info('stat: %s', str(stat))
             if stat.rms < RMS_THRESHOLD:
                 raise error.TestFail('RMS: %s' % stat.rms)
@@ -67,7 +66,7 @@ class audiovideo_LineOutToMicInLoopback(test.test):
         recorded_file = os.path.join(self.resultsdir, 'hw_recorded.wav')
 
         # Record a sample of "silence" to use as a noise profile.
-        alsa_utils.record(noise_file, duration=TEST_DURATION, channels=1)
+        alsa_utils.record(noise_file, duration=TEST_DURATION)
 
         p1 = cmd_utils.popen(alsa_utils.playback_cmd(
                 self._wav_path, duration=TEST_DURATION))
@@ -90,12 +89,12 @@ class audiovideo_LineOutToMicInLoopback(test.test):
         recorded_file = os.path.join(self.resultsdir, 'cras_recorded.wav')
 
         # Record a sample of "silence" to use as a noise profile.
-        cras_utils.capture(noise_file, duration=TEST_DURATION, channels=1)
+        cras_utils.capture(noise_file, duration=TEST_DURATION)
 
         p1 = cmd_utils.popen(cras_utils.playback_cmd(
                 self._wav_path, duration=TEST_DURATION))
         p2 = cmd_utils.popen(cras_utils.capture_cmd(
-                recorded_file, duration=TEST_DURATION, channels=1))
+                recorded_file, duration=TEST_DURATION))
 
         cmd_utils.wait_and_check_returncode(p1, p2)
         self._check_rms(noise_file, recorded_file)

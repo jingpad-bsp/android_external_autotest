@@ -461,7 +461,7 @@ def loopback_test_channels(noise_file_name, wav_dir,
 
 
 def get_channel_sox_stat(
-        input_audio, channel_index, channels=1, bits=16, rate=48000):
+        input_audio, channel_index, channels=2, bits=16, rate=48000):
     """Gets the sox stat info of the selected channel in the input audio file.
 
     @param input_audio: The input audio file to be analyzed.

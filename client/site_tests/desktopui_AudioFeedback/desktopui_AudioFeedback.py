@@ -66,26 +66,23 @@ class desktopui_AudioFeedback(test.test):
             cras_utils.set_capture_gain(CAPTURE_GAIN)
 
             # Record a sample of "silence" to use as a noise profile.
-            cras_utils.capture(noise_file, duration=3, channels=1, rate=48000)
+            cras_utils.capture(noise_file, duration=3)
 
             # Play a video and record the audio output
             self.play_video(cr.browser.tabs[0], video_url)
 
             p1 = cmd_utils.popen(cras_utils.capture_cmd(
-                    recorded_file, duration=TEST_DURATION, channels=1,
-                    rate=48000))
+                    recorded_file, duration=TEST_DURATION))
             p2 = cmd_utils.popen(cras_utils.loopback_cmd(
-                    loopback_file, duration=TEST_DURATION, rate=48000))
+                    loopback_file, duration=TEST_DURATION))
 
             cmd_utils.wait_and_check_returncode(p1, p2)
 
             # See if we recorded something
             loopback_stats = [audio_helper.get_channel_sox_stat(
-                    loopback_file, i, channels=2, bits=16, rate=48000)
-                    for i in (1, 2)]
+                    loopback_file, i) for i in (1, 2)]
             logging.info('loopback stats: %s', [str(s) for s in loopback_stats])
-            audio_helper.reduce_noise_and_check_rms(
-                    recorded_file, noise_file, channels=1)
+            audio_helper.reduce_noise_and_check_rms(recorded_file, noise_file)
 
         # Keep these files if the test failed
         os.unlink(noise_file)

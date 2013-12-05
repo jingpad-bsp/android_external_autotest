@@ -23,7 +23,7 @@ def capture(*args, **kargs):
     cmd_utils.execute(capture_cmd(*args, **kargs))
 
 def playback_cmd(playback_file, buffer_frames=None, duration=None,
-                 rate=44100):
+                 channels=2, rate=48000):
     """Gets a command to playback a file with given settings.
 
     @param playback_file: the name of the file to play. '-' indicates to
@@ -38,11 +38,12 @@ def playback_cmd(playback_file, buffer_frames=None, duration=None,
         args += ['--buffer_frames', str(buffer_frames)]
     if duration is not None:
         args += ['--duration', str(duration)]
+    args += ['--num_channels', str(channels)]
     args += ['--rate', str(rate)]
     return args
 
 def capture_cmd(
-        capture_file, buffer_frames=None, duration=10, channels=2, rate=44100):
+        capture_file, buffer_frames=None, duration=10, channels=1, rate=48000):
     """Gets a command to capture the audio into the file with given settings.
 
     @param capture_file: the name of file the audio to be stored in.
@@ -65,7 +66,7 @@ def loopback(*args, **kargs):
     cmd_utils.execute(loopback_cmd(*args, **kargs))
 
 
-def loopback_cmd(output_file, duration=10, channels=2, rate=44100):
+def loopback_cmd(output_file, duration=10, channels=2, rate=48000):
     """Gets a command to record the loopback.
 
     @param output_file: The name of the file the loopback to be stored in.
