@@ -427,3 +427,4 @@ class RobotWrapper:
         except RobotWrapperError as e:
             print gesture.name, variation
             print 'RobotWrapperError: %s' % str(e)
+            sys.exit(1)
