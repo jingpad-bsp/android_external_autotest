@@ -633,6 +633,12 @@ class CountTrackingIDValidator(BaseValidator):
         return self.vlog
 
 
+class CountTrackingIDFatFingerValidator(CountTrackingIDValidator):
+    """A dummy CountTrackingIDValidator to collect data for fat finger gestures.
+    """
+    pass
+
+
 class StationaryFingerValidator(BaseValidator):
     """Validator to check the count of tracking IDs.
 

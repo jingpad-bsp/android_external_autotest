@@ -9,6 +9,7 @@
 from firmware_constants import DEV, GV, VAL
 from validators import (CountPacketsValidator,
                         CountTrackingIDValidator,
+                        CountTrackingIDFatFingerValidator,
                         DrumrollValidator,
                         LinearityValidator,
                         NoGapValidator,
@@ -228,6 +229,7 @@ weight_common = 2
 weight_critical = 3
 validator_weights = {'CountPacketsValidator': weight_common,
                      'CountTrackingIDValidator': weight_critical,
+                     'CountTrackingIDFatFingerValidator': weight_rare,
                      'DrumrollValidator': weight_rare,
                      'LinearityValidator': weight_common,
                      'NoGapValidator': weight_common,
@@ -568,7 +570,7 @@ def get_gesture_dict():
                 GV.BT: ('center', 'from bottom to top', 'on the left to'),
             },
             validators=(
-                CountTrackingIDValidator('== 2'),
+                CountTrackingIDFatFingerValidator('== 2'),
                 LinearityValidator(relaxed_linearity_criteria, finger=1,
                                    segments=VAL.MIDDLE),
                 LinearityValidator(relaxed_linearity_criteria, finger=1,
@@ -593,7 +595,7 @@ def get_gesture_dict():
                 GV.BT: ('vertically from bottom to top',),
             },
             validators=(
-                CountTrackingIDValidator('== 1'),
+                CountTrackingIDFatFingerValidator('== 1'),
                 LinearityValidator(relaxed_linearity_criteria, finger=0,
                                    segments=VAL.MIDDLE),
                 LinearityValidator(relaxed_linearity_criteria, finger=0,
@@ -620,7 +622,7 @@ def get_gesture_dict():
                 GV.TLBR: ('diagonal', 'from the top left to the bottom right',),
             },
             validators=(
-                CountTrackingIDValidator('== 2'),
+                CountTrackingIDFatFingerValidator('== 2'),
                 LinearityValidator(relaxed_linearity_criteria, finger=0,
                                    segments=VAL.MIDDLE),
                 LinearityValidator(relaxed_linearity_criteria, finger=0,
@@ -672,7 +674,7 @@ def get_gesture_dict():
                 GV.RL: ('from right to left',),
             },
             validators=(
-                CountTrackingIDValidator('== 2'),
+                CountTrackingIDFatFingerValidator('== 2'),
                 LinearityValidator(relaxed_linearity_criteria, finger=0,
                                    segments=VAL.MIDDLE),
                 LinearityValidator(relaxed_linearity_criteria, finger=0,
