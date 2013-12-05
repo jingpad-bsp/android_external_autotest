@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import re
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -10,7 +11,7 @@ from autotest_lib.client.common_lib.cros import chrome
 from telemetry.core import exceptions
 
 SANDBOXES = [u'SUID Sandbox',
-             u'\xa0\xa0PID namespaces',
+             u'\xa0\xa0PID name ?spaces',
              u'\xa0\xa0Network namespaces',
              u'Seccomp-BPF sandbox']
 
@@ -44,9 +45,9 @@ class security_SandboxStatusTelemetry(test.test):
         '''Ensures the name of the row is as we expect.'''
 
         actual_name = self._TableEntry(row, 0)
-        if expected_name != actual_name:
-            raise error.TestFail('Expected row %d to be "%s", found "%s"',
-                                 expected_name, actual_name)
+        if not re.match(expected_name, actual_name):
+            raise error.TestFail('Expected row %d to be "%s", found "%s"'
+                                 % (row, expected_name, actual_name))
 
 
     def _CheckRowNames(self, expected_names):
@@ -61,7 +62,7 @@ class security_SandboxStatusTelemetry(test.test):
             value = self._TableEntry(row, 1)
             if value != "Yes":
                 name = self._TableEntry(row, 0)
-                raise error.TestFail('"%s" enabled = "%s"', name, value)
+                raise error.TestFail('"%s" enabled = "%s"' % (name, value))
 
 
     def _CheckGPUCell(self, cell, content, error_msg):
