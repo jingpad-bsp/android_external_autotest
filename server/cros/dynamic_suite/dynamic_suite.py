@@ -249,6 +249,7 @@ class SuiteSpec(object):
         @param name: a value of the SUITE control file variable to search for.
         @param job: an instance of client.common_lib.base_job representing the
                     currently running suite job.
+        @param devserver_url: url to the selected devserver.
 
         Currently supported optional args:
         @param pool: specify the pool of machines to use for scheduling purposes
@@ -281,7 +282,6 @@ class SuiteSpec(object):
                                    accepted for backwards compatibility.
         @param bug_template: A template dictionary specifying the default bug
                              filing options for failures in this suite.
-        @param devserver_url: url to the selected devserver.
         @param version_prefix: A version prefix from provision.py that the
                                tests should be scheduled with.
         @param priority: Integer priority level.  Higher is more important.
@@ -301,7 +301,8 @@ class SuiteSpec(object):
         required_keywords = {'build': str,
                              'board': str,
                              'name': str,
-                             'job': base_job.base_job}
+                             'job': base_job.base_job,
+                             'devserver_url': str}
         for key, expected in required_keywords.iteritems():
             value = locals().get(key)
             if not value or not isinstance(value, expected):
@@ -309,10 +310,7 @@ class SuiteSpec(object):
                     "reimage_and_run() needs %s=<%r>" % (key, expected))
         self.build = build
         self.board = 'board:%s' % board
-        if devserver_url:
-            self.devserver = dev_server.ImageServer(devserver_url)
-        else:
-            self.devserver = dev_server.ImageServer.resolve(self.build)
+        self.devserver = dev_server.ImageServer(devserver_url)
         self.name = name
         self.job = job
         if pool:
