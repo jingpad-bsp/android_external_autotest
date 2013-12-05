@@ -72,6 +72,7 @@ class TestFlow:
         self._set_static_prompt_messages()
         self.gesture_image_name = None
         self.gesture_continues_flag = False
+        self.use_existent_event_file_flag = False
 
     def __del__(self):
         self.system_device.close()
@@ -349,12 +350,13 @@ class TestFlow:
     def _handle_user_choice_save_after_parsing(self, next_gesture=True):
         """Handle user choice for saving the parsed gesture file."""
         self.output.print_window('')
-        if self.saved_msg:
-            self.output.print_report(self.saved_msg)
-        if self.new_scores:
-            self._add_scores(self.new_scores)
-        self.output.report_html.insert_image(self.gesture_image_name)
-        self.output.report_html.flush()
+        if self.use_existent_event_file_flag:
+            if self.saved_msg:
+                self.output.print_report(self.saved_msg)
+            if self.new_scores:
+                self._add_scores(self.new_scores)
+            self.output.report_html.insert_image(self.gesture_image_name)
+            self.output.report_html.flush()
         # After flushing to report_html, reset the gesture_image_name so that
         # it will not be reused by next gesture variation accidentally.
         self.gesture_image_name = None
