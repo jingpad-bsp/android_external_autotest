@@ -59,6 +59,28 @@ def capture_cmd(
     args += ['--rate', str(rate)]
     return args
 
+
+def loopback(*args, **kargs):
+    """A helper function to execute loopback_cmd."""
+    cmd_utils.execute(loopback_cmd(*args, **kargs))
+
+
+def loopback_cmd(output_file, duration=10, channels=2, rate=44100):
+    """Gets a command to record the loopback.
+
+    @param output_file: The name of the file the loopback to be stored in.
+    @param channels: The number of channels of the recorded audio.
+    @param duration: seconds to record.
+    @param rate: the sampling rate.
+    """
+    args = [_CRAS_TEST_CLIENT]
+    args += ['--loopback_file', output_file]
+    args += ['--duration_seconds', str(duration)]
+    args += ['--num_channels', str(channels)]
+    args += ['--rate', str(rate)]
+    return args
+
+
 def set_system_volume(volume):
     """Set the system volume.
 

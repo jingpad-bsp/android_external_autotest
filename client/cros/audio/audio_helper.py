@@ -9,6 +9,7 @@ import pipes
 import re
 import shlex
 import subprocess
+import tempfile
 import threading
 import time
 
@@ -457,3 +458,59 @@ def loopback_test_channels(noise_file_name, wav_dir,
                 os.unlink(mix_file_name)
 
         check_recorded_callback(sox_output_reduced)
+
+
+def get_channel_sox_stat(
+        input_audio, channel_index, channels=1, bits=16, rate=48000):
+    """Gets the sox stat info of the selected channel in the input audio file.
+
+    @param input_audio: The input audio file to be analyzed.
+    @param channel_index: The index of the channel to be analyzed.
+                          (1 for the first channel).
+    @param channels: The number of channels in the input audio.
+    @param bits: The number of bits of each audio sample.
+    @param rate: The sampling rate.
+    """
+    if channel_index <= 0 or channel_index > channels:
+        raise ValueError('incorrect channel_indexi: %d' % channel_index)
+
+    if channels == 1:
+        return sox_utils.get_stat(input_audio)
+
+    p1 = cmd_utils.popen(
+            sox_utils.extract_channel_cmd(
+                    input_audio, '-', channel_index,
+                    channels=channels, bits=bits, rate=rate),
+            stdout=subprocess.PIPE)
+    p2 = cmd_utils.popen(
+            sox_utils.stat_cmd('-', channels=1, bits=bits, rate=rate),
+            stdin=p1.stdout, stderr=subprocess.PIPE)
+    stat_output = p2.stderr.read()
+    cmd_utils.wait_and_check_returncode(p1, p2)
+    return sox_utils.parse_stat_output(stat_output)
+
+
+def reduce_noise_and_check_rms(
+        input_audio, noise_file, rms_threshold=_DEFAULT_SOX_RMS_THRESHOLD,
+        channels=1, bits=16, rate=48000):
+    with tempfile.NamedTemporaryFile() as reduced_file:
+        p1 = cmd_utils.popen(
+                sox_utils.noise_profile_cmd(
+                        noise_file, '-', channels=channels, bits=bits,
+                        rate=rate),
+                stdout=subprocess.PIPE)
+        p2 = cmd_utils.popen(
+                sox_utils.noise_reduce_cmd(
+                        input_audio, reduced_file.name, '-',
+                        channels=channels, bits=bits, rate=rate),
+                stdin=p1.stdout)
+        cmd_utils.wait_and_check_returncode(p1, p2)
+
+        stats = [get_channel_sox_stat(
+                reduced_file.name, i + 1, channels=channels, bits=bits,
+                rate=rate) for i in xrange(channels)]
+
+        logging.info('sox stat: %s', [str(s) for s in stats])
+
+        if any(s.rms < rms_threshold for s in stats):
+            raise error.TestFail('RMS: %s' % [s.rms for s in stats])

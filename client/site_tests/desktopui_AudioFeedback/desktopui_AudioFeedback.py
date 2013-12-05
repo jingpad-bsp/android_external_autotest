@@ -4,58 +4,35 @@
 
 import logging
 import os
+import subprocess
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.audio import audio_helper
+from autotest_lib.client.cros.audio import cmd_utils
+from autotest_lib.client.cros.audio import cras_utils
+from autotest_lib.client.cros.audio import sox_utils
 
-_DEFAULT_NUM_CHANNELS = 2
-_DEFAULT_RECORD_DURATION = 15
-_DEFAULT_VOLUME_LEVEL = 100
-_DEFAULT_CAPTURE_GAIN = 2500
+TEST_DURATION = 15
+VOLUME_LEVEL = 100
+CAPTURE_GAIN = 2500
 
-_PLAYER_READY_TIMEOUT = 45
-
+PLAYER_READY_TIMEOUT = 45
 
 class desktopui_AudioFeedback(test.test):
     """Verifies if youtube playback can be captured."""
     version = 1
 
-    def initialize(self,
-                   num_channels=_DEFAULT_NUM_CHANNELS,
-                   record_duration=_DEFAULT_RECORD_DURATION,
-                   volume_level=_DEFAULT_VOLUME_LEVEL,
-                   capture_gain=_DEFAULT_CAPTURE_GAIN):
-        """Setup the deps for the test.
-
-        Args:
-            num_channels: The number of channels on the device to test.
-            record_duration: How long of a sample to record.
-
-        Raises:
-            error.TestError if the deps can't be run.
-        """
-        self._volume_level = volume_level
-        self._capture_gain = capture_gain
-        self._rec_cmd = 'arecord -d %f -f dat' % record_duration
-        self._mix_cmd = '/usr/bin/cras_test_client --show_total_rms ' \
-                        '--duration_seconds %f --num_channels 2 ' \
-                        '--rate 48000 --loopback_file' % record_duration
-        self._num_channels = num_channels
-
-        super(desktopui_AudioFeedback, self).initialize()
-
-    def play_video(self, player_ready_callback, tab):
+    def play_video(self, tab, video_url):
         """Plays a Youtube video to record audio samples.
 
            Skipping initial 60 seconds so we can ignore initial silence
            in the video.
 
-           @param player_ready_callback: callback when yt player is ready.
            @param tab: the tab to load page for testing.
         """
-        tab.Navigate(self._test_url)
+        tab.Navigate(video_url)
         tab.WaitForDocumentReadyStateToBeComplete()
 
         utils.poll_for_condition(
@@ -63,42 +40,54 @@ class desktopui_AudioFeedback(test.test):
                     'player ready',
             exception=error.TestError('Failed to load the Youtube player'),
             sleep_interval=1,
-            timeout=_PLAYER_READY_TIMEOUT)
+            timeout=PLAYER_READY_TIMEOUT)
 
         tab.ExecuteJavaScript('seekAndPlay()')
-        if player_ready_callback:
-            player_ready_callback()
+
 
     def run_once(self):
         """Entry point of this test."""
-        if not audio_helper.check_loopback_dongle():
-            raise error.TestError('Audio loopback dongle is in bad state.')
 
-        # Record a sample of "silence" to use as a noise profile.
-        noise_file_name = audio_helper.create_wav_file(self.resultsdir, "noise")
-        audio_helper.record_sample(noise_file_name, self._rec_cmd)
+        noise_file = os.path.join(self.resultsdir, "noise.wav")
+        recorded_file = os.path.join(self.resultsdir, "recorded.wav")
+        loopback_file = os.path.join(self.resultsdir, "loopback.wav")
 
         with chrome.Chrome() as cr:
             cr.browser.SetHTTPServerDirectories(self.bindir)
-            self._test_url = cr.browser.http_server.UrlOf(
+            video_url = cr.browser.http_server.UrlOf(
                     os.path.join(self.bindir, 'youtube.html'))
-            logging.info('Playing back youtube media file %s.', self._test_url)
+            logging.info('Playing back youtube media file %s.', video_url)
 
             # Set volume and capture gain after Chrome is up, or those value
             # will be overriden by Chrome.
-            audio_helper.set_volume_levels(self._volume_level, self._capture_gain)
+            cras_utils.set_system_volume(VOLUME_LEVEL)
+            output_node, _ = cras_utils.get_selected_nodes()
+            cras_utils.set_node_volume(output_node, VOLUME_LEVEL)
+            cras_utils.set_capture_gain(CAPTURE_GAIN)
 
-            def record_callback(filename):
-                audio_helper.record_sample(filename, self._rec_cmd)
+            # Record a sample of "silence" to use as a noise profile.
+            cras_utils.capture(noise_file, duration=3, channels=1, rate=48000)
 
-            def mix_callback(filename):
-                utils.system("%s %s" % (self._mix_cmd, filename))
+            # Play a video and record the audio output
+            self.play_video(cr.browser.tabs[0], video_url)
 
-            # Play the same video to test all channels.
-            self.play_video(lambda: audio_helper.loopback_test_channels(
-                                            noise_file_name,
-                                            self.resultsdir,
-                                            num_channels=self._num_channels,
-                                            record_callback=record_callback,
-                                            mix_callback=mix_callback),
-                            cr.browser.tabs[0])
+            p1 = cmd_utils.popen(cras_utils.capture_cmd(
+                    recorded_file, duration=TEST_DURATION, channels=1,
+                    rate=48000))
+            p2 = cmd_utils.popen(cras_utils.loopback_cmd(
+                    loopback_file, duration=TEST_DURATION, rate=48000))
+
+            cmd_utils.wait_and_check_returncode(p1, p2)
+
+            # See if we recorded something
+            loopback_stats = [audio_helper.get_channel_sox_stat(
+                    loopback_file, i, channels=2, bits=16, rate=48000)
+                    for i in (1, 2)]
+            logging.info('loopback stats: %s', [str(s) for s in loopback_stats])
+            audio_helper.reduce_noise_and_check_rms(
+                    recorded_file, noise_file, channels=1)
+
+        # Keep these files if the test failed
+        os.unlink(noise_file)
+        os.unlink(recorded_file)
+        os.unlink(loopback_file)
