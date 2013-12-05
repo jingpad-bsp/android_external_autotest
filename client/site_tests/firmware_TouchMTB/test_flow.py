@@ -343,13 +343,8 @@ class TestFlow:
 
     def _robot_action(self):
         """Control the robot to perform the action."""
-        if (self.gesture.name in conf.robot_must_start_without_fingertips
-            and self.robot.fingertips != [None, None, None, None]):
-            self.robot.return_fingertips()
-        elif (self.gesture.name not in conf.robot_must_start_without_fingertips
-              and self.robot.fingertips == [None, None, None, None]):
-            self.robot.get_fingertips(self.robot.fingertip_size)
-        self.robot.control(self.gesture, self.variation)
+        if self._is_robot_mode():
+            self.robot.control(self.gesture, self.variation)
 
     def _handle_user_choice_save_after_parsing(self, next_gesture=True):
         """Handle user choice for saving the parsed gesture file."""

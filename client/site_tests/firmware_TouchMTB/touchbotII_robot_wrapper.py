@@ -408,6 +408,13 @@ class RobotWrapper:
 
     def control(self, gesture, variation):
         """Have the robot perform the gesture variation."""
+        if (gesture.name in conf.robot_must_start_without_fingertips
+            and self.fingertips != [None, None, None, None]):
+            self.return_fingertips()
+        elif (gesture.name not in conf.robot_must_start_without_fingertips
+              and self.fingertips == [None, None, None, None]):
+            self.get_fingertips(self.fingertip_size)
+
         if not isinstance(variation, tuple):
             variation = (variation,)
         try:
