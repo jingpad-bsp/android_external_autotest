@@ -31,8 +31,6 @@ class network_WiFi_Roam(wifi_cell_test_base.WiFiCellTestBase):
     def run_once(self):
         """Test body."""
         # Configure the inital AP.
-        self._router0_conf.security_config.install_router_credentials(
-                self.context.router.host)
         self.context.configure(self._router0_conf)
         router_ssid = self.context.router.get_ssid()
 

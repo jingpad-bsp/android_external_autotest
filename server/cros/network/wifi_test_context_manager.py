@@ -144,6 +144,8 @@ class WiFiTestContextManager(object):
         @param is_ibss True iff this is an IBSS endpoint.
 
         """
+        configuration_parameters.security_config.install_router_credentials(
+                self.router.host)
         if is_ibss:
             if multi_interface:
                 raise error.TestFail('IBSS mode does not support multiple '
