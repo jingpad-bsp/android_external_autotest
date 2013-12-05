@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus, logging, os, random, re, shutil, string
+import dbus, logging, os, random, re, shutil, string, time
 
 import common, constants
 from autotest_lib.client.bin import utils
@@ -15,11 +15,9 @@ class ChromiumOSError(error.TestError):
     """Generic error for ChromiumOS-specific exceptions."""
     pass
 
-
 def __run_cmd(cmd):
     return utils.system_output(cmd + ' 2>&1', retain_output=True,
                                ignore_status=True).strip()
-
 
 def get_user_hash(user):
     """Get the user hash for the given user."""
@@ -268,6 +266,11 @@ def canonicalize(credential):
     return '@'.join([name, domain]).lower()
 
 
+def crash_cryptohomed():
+  # Try to kill cryptohomed so we get something to work with.
+  utils.system('pkill -ABRT cryptohomed')
+  time.sleep(2)  # Give it 2 seconds to dump
+
 class CryptohomeProxy:
     def __init__(self):
         BUSNAME = 'org.chromium.Cryptohome'
@@ -277,6 +280,17 @@ class CryptohomeProxy:
         obj = bus.get_object(BUSNAME, PATH)
         self.iface = dbus.Interface(obj, INTERFACE)
 
+    # Wrap all proxied calls to catch cryptohomed failures.
+    def __call(self, method, *args):
+        try:
+            return method(*args)
+        except dbus.exceptions.DBusException, e:
+            if e.get_dbus_name() == 'org.freedesktop.DBus.Error.NoReply':
+                logging.error('Cryptohome is not responding. Sending ABRT')
+                crash_cryptohomed()
+                raise ChromiumOSError('cryptohomed aborted. Check crashes!')
+            raise e
+
     def mount(self, user, password, create=False):
         """Mounts a cryptohome.
 
@@ -284,7 +298,10 @@ class CryptohomeProxy:
         TODO(ellyjones): Migrate mount_vault() to use a multi-user-safe
         heuristic, then remove this method. See <crosbug.com/20778>.
         """
-        return self.iface.Mount(user, password, create, False, [])[1]
+        out = self.__call(self.iface.Mount, user, password, create, False, [])
+        if not out:
+            return out
+        return out[1]
 
     def unmount(self, user):
         """Unmounts a cryptohome.
@@ -293,7 +310,7 @@ class CryptohomeProxy:
         TODO(ellyjones): Once there's a per-user unmount method, use it. See
         <crosbug.com/20778>.
         """
-        return self.iface.Unmount()
+        return self.__call(self.iface.Unmount)
 
     def is_mounted(self, user):
         """Tests whether a user's cryptohome is mounted."""
@@ -307,7 +324,7 @@ class CryptohomeProxy:
 
     def migrate(self, user, oldkey, newkey):
         """Migrates the specified user's cryptohome from one key to another."""
-        return self.iface.MigrateKey(user, oldkey, newkey)
+        return self.__call(self.iface.MigrateKey, user, oldkey, newkey)
 
     def remove(self, user):
-        return self.iface.Remove(user)
+        return self.__call(self.iface.Remove, user)

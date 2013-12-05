@@ -1,72 +1,43 @@
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-
-import logging
-import os
-import re
-import shutil
-
 from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error, utils
-from autotest_lib.client.cros import constants
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import cryptohome
 
 class platform_CryptohomeMount(test.test):
     version = 1
-
-    def __run_cmd(self, cmd):
-        result = utils.system_output(cmd + ' 2>&1', retain_output=True,
-                                     ignore_status=True)
-        return result
-
 
     def run_once(self):
         test_user = 'this_is_a_local_test_account@chromium.org';
         test_password = 'this_is_a_test_password';
         # Get the hash for the test user account
-        cmd = ('/usr/sbin/cryptohome --action=obfuscate_user --user='
-               + test_user)
-        user_hash = self.__run_cmd(cmd).strip()
+        user_hash = cryptohome.get_user_hash(test_user)
+        proxy = cryptohome.CryptohomeProxy()
 
         # Remove the test user account
-        cmd = ('/usr/sbin/cryptohome --action=remove --force --user='
-               + test_user)
-        self.__run_cmd(cmd)
-        # Ensure that the user directory does not exist
-        if os.path.exists(os.path.join(constants.SHADOW_ROOT, user_hash)):
-          raise error.TestFail('Cryptohome could not remove the test user.')
+        proxy.remove(test_user)
 
         # Mount the test user account
-        cmd = ('/usr/sbin/cryptohome --async --action=mount --user=' + test_user
-               + ' --password=' + test_password + ' --create')
-        self.__run_cmd(cmd)
-        # Ensure that the user directory exists
-        if not os.path.exists(os.path.join(constants.SHADOW_ROOT, user_hash)):
-          raise error.TestFail('Cryptohome could not create the test user.')
-        # Ensure that the user directory is mounted
-        cmd = ('/usr/sbin/cryptohome --action=is_mounted')
-        if (self.__run_cmd(cmd).strip() == 'false'):
-          raise error.TestFail('Cryptohome created the user but did not mount.')
+        if not proxy.mount(test_user, test_password, create=True):
+          raise error.TestFail('Failed to create and mount the test user')
 
         # Unmount the directory
-        cmd = ('/usr/sbin/cryptohome --action=unmount')
-        self.__run_cmd(cmd)
+        if not proxy.unmount(test_user):
+          raise error.TestFail('Failed to unmount test user')
+
         # Ensure that the user directory is not mounted
-        cmd = ('/usr/sbin/cryptohome --action=is_mounted')
-        if (self.__run_cmd(cmd).strip() != 'false'):
-          raise error.TestFail('Cryptohome did not unmount the user.')
+        if proxy.is_mounted(test_user):
+          raise error.TestFail('Cryptohome mounted after unmount!')
 
         # Make sure that an incorrect password fails
         incorrect_password = 'this_is_an_incorrect_password'
-        cmd = ('/usr/sbin/cryptohome --async --action=mount --user=' + test_user
-               + ' --password=' + incorrect_password)
-        self.__run_cmd(cmd)
-        # Ensure that the user directory is not mounted
-        cmd = ('/usr/sbin/cryptohome --action=is_mounted')
-        if (self.__run_cmd(cmd).strip() != 'false'):
+        if proxy.mount(test_user, incorrect_password):
           raise error.TestFail('Cryptohome mounted with a bad password.')
+        # Ensure that the user directory is not mounted
+        if proxy.is_mounted(test_user):
+          raise error.TestFail('Cryptohome mounted even though mount() failed')
 
         # Remove the test user account
-        cmd = ('/usr/sbin/cryptohome --action=remove --force --user='
-               + test_user)
-        self.__run_cmd(cmd)
+        if not proxy.remove(test_user):
+          raise error.TestFail('Cryptohome could not clean up vault')
