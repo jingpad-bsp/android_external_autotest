@@ -2,11 +2,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import dbus
 import gobject
 import logging
-import mm1
 
-class StateMachine(object):
+import mm1
+import utils
+
+class StateMachine(dbus.service.Object):
     """
     StateMachine is the abstract base class for the complex state machines
     that are involved in the pseudo modem manager.
@@ -22,12 +25,26 @@ class StateMachine(object):
     function according to the dictionary returned by the subclass'
     implementation of StateMachine._GetModemStateFunctionMap.
 
+    Using the StateMachine in |interactive| mode:
+    In interactive mode, the state machine object exposes a dbus object under
+    the object path |mm1.TESTING_PATH|/|self._GetIsmObjectName()|, where
+    |self._GetIsmObjectName()| returns the dbus object name to be used.
+
+    In this mode, the state machine waits for a dbus method call
+    |mm1.I_TESTING_ISM|.|Advance| when a state transition is possible before
+    actually executing the transition.
+
     """
     def __init__(self, modem):
+        super(StateMachine, self).__init__(None, None)
         self._modem = modem
         self._started = False
         self._done = False
+        self._interactive = False
         self._trans_func_map = self._GetModemStateFunctionMap()
+
+    def __exit__(self):
+        self.remove_from_connection()
 
     @property
     def cancelled(self):
@@ -44,6 +61,82 @@ class StateMachine(object):
 
         """
         self._done = True
+
+    def EnterInteractiveMode(self, bus):
+        """
+        Run this machine in interactive mode.
+
+        This function must be called before |Start|. In this mode, the machine
+        waits for an |Advance| call before each step.
+
+        @param bus: The bus on which the testing interface must be exported.
+
+        """
+        if not bus:
+            self.warning('Cannot enter interactive mode without a |bus|.')
+            return
+
+        self._interactive = True
+        self._ism_object_path = '/'.join([mm1.TESTING_PATH,
+                                          self._GetIsmObjectName()])
+        self.add_to_connection(bus, self._ism_object_path)
+        self._interactive = True
+        self._waiting_for_advance = False
+        logging.info('Running state machine in interactive mode')
+        logging.info('Exported test object at %s', self._ism_object_path)
+
+    def Start(self):
+        """
+        Start the state machine.
+
+        """
+        self.Step()
+
+    @utils.dbus_method_wrapper(logging.debug, logging.warning,
+                               mm1.I_TESTING_ISM, out_signature='b')
+    def Advance(self):
+        """
+        Advance a step on a state machine running in interactive mode.
+
+        @return: True if the state machine was advanced. False otherwise.
+
+        @raises: TestError if called on a non-interactive state machine.
+
+        """
+        if not self._interactive:
+            raise mm1.TestError(
+                    'Can not advance a non-interactive state machine')
+
+        if not self._waiting_for_advance:
+            logging.warning('%s received an unexpected advance request',
+                            self._GetIsmObjectName())
+            return False
+        logging.info('%s state machine advancing', self._GetIsmObjectName())
+        self._waiting_for_advance = False
+        if not self._next_transition(self):
+            self._done = True
+        self._ScheduleNextStep()
+        return True
+
+    @dbus.service.signal(mm1.I_TESTING_ISM)
+    def Waiting(self):
+        """
+        Signal sent out by an interactive machine when it is waiting for remote
+        dbus call  on the |Advance| function.
+
+        """
+        logging.info('%s state machine waiting', self._GetIsmObjectName())
+
+    @utils.dbus_method_wrapper(logging.debug, logging.warning,
+                               mm1.I_TESTING_ISM, out_signature='b')
+    def IsWaiting(self):
+        """
+        Determine whether the state machine is waiting for user action.
+
+        @return: True if machine is waiting for |Advance| call.
+
+        """
+        return self._waiting_for_advance
 
     def Step(self):
         """
@@ -64,8 +157,18 @@ class StateMachine(object):
 
         state = self._GetCurrentState()
         func = self._trans_func_map.get(state, self._GetDefaultHandler())
-        if func and func(self):
-            self._ScheduleNextStep()
+        if not self._interactive:
+            if func and func(self):
+                self._ScheduleNextStep()
+            else:
+                self._done = True
+            return
+
+        assert not self._waiting_for_advance
+        if func:
+            self._next_transition = func
+            self._waiting_for_advance = True
+            self.Waiting()  # Wait for user to |Advance| the machine.
         else:
             self._done = True
 
@@ -77,6 +180,16 @@ class StateMachine(object):
 
         """
         gobject.idle_add(StateMachine.Step, self)
+
+    def _GetIsmObjectName(self):
+        """
+        The name of the dbus object exposed by this object with |I_TESTING_ISM|
+        interface.
+
+        By default, this is the name of the most concrete class of the object.
+
+        """
+        return self.__class__.__name__
 
     def _GetDefaultHandler(self):
         """

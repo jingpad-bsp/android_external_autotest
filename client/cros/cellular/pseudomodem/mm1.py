@@ -20,6 +20,8 @@ ROOT_PATH = '/'
 # PseudoModemManager Testing Interfaces
 TESTING_PATH = '/org/chromium/Pseudomodem/Testing'
 I_TESTING = 'org.chromium.Pseudomodem.Testing'
+# Interactive state machine interface.
+I_TESTING_ISM = 'org.chromium.Pseudomodem.Testing.InteractiveStateMachine'
 
 # Standard Interfaces
 I_PROPERTIES = 'org.freedesktop.DBus.Properties'
@@ -388,6 +390,19 @@ MM_SMS_VALIDITY_TYPE_RELATIVE = 1
 MM_SMS_VALIDITY_TYPE_ABSOLUTE = 2
 MM_SMS_VALIDITY_TYPE_ENHANCED = 3
 
+
+# Other constants used and exported by pseudomodem
+# State machine names
+STATE_MACHINE_CDMA_ACTIVATE = 'CdmaActivateMachine'
+STATE_MACHINE_CONNECT = 'ConnectMachine'
+STATE_MACHINE_CONNECT_CDMA = 'ConnectCdmaMachine'
+STATE_MACHINE_DISABLE = 'DisableMachine'
+STATE_MACHINE_DISCONNECT = 'DisconnectMachine'
+STATE_MACHINE_ENABLE = 'EnableMachine'
+STATE_MACHINE_REGISTER = 'RegisterMachine'
+STATE_MACHINE_REGISTER_CDMA = 'RegisterCdmaMachine'
+
+
 # Errors
 class MMError(dbus.exceptions.DBusException):
     """
@@ -729,3 +744,14 @@ class MMCdmaActivationError(MMError):
             self.START_FAILED :
                 '.StartFailed'
         }
+
+class TestError(dbus.exceptions.DBusException):
+    """
+    Raised by the test interface of Pseudomodem.
+
+    This is not a core ModemManager error, and is raised only on the test
+    interface mostly to notify the user of invalid requests or misconfiguration
+    of pseudomodem.
+
+    """
+    pass

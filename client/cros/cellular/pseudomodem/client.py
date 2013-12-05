@@ -24,6 +24,9 @@ class PseudoModemClient(cmd.Cmd):
     def _get_proxy(self, path=mm1.TESTING_PATH):
         return self._bus.get_object(mm1.I_MODEM_MANAGER, path)
 
+    def _get_ism_proxy(self, state_machine):
+        return self._get_proxy('/'.join([mm1.TESTING_PATH, state_machine]))
+
     def Begin(self):
         """
         Starts the interactive shell.
@@ -140,6 +143,74 @@ class PseudoModemClient(cmd.Cmd):
         print ('\nUsage: set pco <pco-value>\n<pco-value> can be empty to set'
                ' the PCO value to an empty string.\n')
 
+    def _get_state_machine(self, args):
+        arglist = args.split()
+        if len(arglist) != 1:
+            print '\nExpected one argument: Name of state machine\n'
+            return None
+        try:
+            return self._get_ism_proxy(arglist[0])
+        except dbus.exceptions.DBusException as e:
+            print '\nNo such interactive state machine.\n'
+            print 'Error obtained: |%s|\n' % repr(e)
+            return None
+
+    def do_is_waiting(self, machine):
+        """
+        Determine if a machine is waiting for an advance call.
+
+        @param machine: Case sensitive name of the machine.
+
+        @return: True if |machine| is waiting to be advanced by the user.
+
+        """
+        ism = self._get_state_machine(machine)
+        if not ism:
+            return False
+
+        try:
+            is_waiting = ism.IsWaiting(dbus_interface=mm1.I_TESTING_ISM)
+            print ('\nState machine is %swaiting.\n' %
+                   ('' if is_waiting else 'not '))
+        except dbus.exceptions.DBusException as e:
+            print ('\nCould not determine if |%s| is waiting: |%s|\n' %
+                   (machine, repr(e)))
+        return False
+
+    def help_is_waiting(self):
+        """Handles the 'help is_waiting' command"""
+        print ('\nUsage: is_waiting <state-machine-name>\n'
+               'Check whether a state machine is waiting for user action. The '
+               'waiting machine can be advanced using the |advance| command.\n'
+               'state-machine-name is the case sensitive name of the machine'
+               'whose status is to be queried.\n')
+
+    def do_advance(self, machine):
+        """
+        Advance the given state machine.
+
+        @param machine: Case sensitive name of the state machine to advance.
+
+        @return: True if |machine| was successfully advanced, False otherwise.
+
+        """
+        ism = self._get_state_machine(machine)
+        if not ism:
+            return False
+
+        try:
+            success = ism.Advance(dbus_interface=mm1.I_TESTING_ISM)
+            print ('\nAdvanced!\n' if success else '\nCould not advance.\n')
+        except dbus.exceptions.DBusException as e:
+            print '\nError while advancing state machine: |%s|\n' % repr(e)
+        return False
+
+    def help_advance(self):
+        """Handles the 'help advance' command"""
+        print ('\nUsage: advance <state-machine-name>\n'
+               'Advance a waiting state machine to the next step.\n'
+               'state-machine-name is the case sensitive name of the machine'
+               'to advance.\n')
 
     def do_exit(self, args):
         """

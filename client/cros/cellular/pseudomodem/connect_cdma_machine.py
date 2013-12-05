@@ -7,14 +7,14 @@ import logging
 import connect_machine
 import mm1
 
-class ConnectMachineCdma(connect_machine.ConnectMachine):
+class ConnectCdmaMachine(connect_machine.ConnectMachine):
     """
-    ConnectMachineCdma handles CDMA specific logic that is involved in
+    ConnectCdmaMachine handles CDMA specific logic that is involved in
     connecting to a network.
 
     """
     def _HandleRegisteredState(self):
-        logging.info('ConnectMachineCdma: Modem is REGISTERED.')
+        logging.info('ConnectCdmaMachine: Modem is REGISTERED.')
         assert not self._modem.IsPendingDisconnect()
         assert not self._modem.IsPendingEnable()
         assert not self._modem.IsPendingDisable()
@@ -25,19 +25,19 @@ class ConnectMachineCdma(connect_machine.ConnectMachine):
         # sure that connect fails.
         network = self._modem.GetHomeNetwork()
         if not network.activated:
-            logging.info('ConnectMachineCdma: Service is not activated. Cannot'
+            logging.info('ConnectCdmaMachine: Service is not activated. Cannot'
                          ' connect.')
             self.raise_cb(mm1.MMCoreError(mm1.MMCoreError.FAILED,
                                           'Service not activated.'))
             return False
 
-        logging.info('ConnectMachineCdma: Setting state to CONNECTING.')
+        logging.info('ConnectCdmaMachine: Setting state to CONNECTING.')
         reason = mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
         self._modem.ChangeState(mm1.MM_MODEM_STATE_CONNECTING, reason)
         return True
 
     def _GetModemStateFunctionMap(self):
-        fmap = super(ConnectMachineCdma, self)._GetModemStateFunctionMap()
+        fmap = super(ConnectCdmaMachine, self)._GetModemStateFunctionMap()
         fmap[mm1.MM_MODEM_STATE_REGISTERED] = \
-            ConnectMachineCdma._HandleRegisteredState
+            ConnectCdmaMachine._HandleRegisteredState
         return fmap

@@ -17,8 +17,10 @@ import time
 import client
 import mm1
 import modem_3gpp
+import modem_cdma
 import modemmanager
 import sim
+import state_machine_factory
 import testing
 
 import common
@@ -61,6 +63,7 @@ class TestModemManagerContext(object):
     def __init__(self, use_pseudomodem,
                  family='3GPP',
                  sim=None,
+                 sm_factory=None,
                  modem=None):
         """
         @param use_pseudomodem: Whether or not the context should create a
@@ -74,6 +77,10 @@ class TestModemManagerContext(object):
         @param sim: An instance of sim.SIM. This is required for 3GPP modems
                     as it encapsulates information about the carrier.
 
+        @param sm_factory: An instance of StateMachineFactory subclass. If
+                           None, an instance of StateMachineFactory is used.
+                           This argument is only used if |modem| is None.
+
         @param modem: An instance of a modem.Modem subclass. If none is provided
                       the default modem is defined by the |family| parameter.
 
@@ -82,11 +89,11 @@ class TestModemManagerContext(object):
         if modem:
             self.pseudo_modem = modem
         elif family == '3GPP':
-            self.pseudo_modem = modem_3gpp.Modem3gpp()
+            self.pseudo_modem = modem_3gpp.Modem3gpp(
+                    state_machine_factory=sm_factory)
         elif family == 'CDMA':
-            # Import modem_cdma here to avoid circular imports.
-            import modem_cdma
-            self.pseudo_modem = modem_cdma.ModemCdma()
+            self.pseudo_modem = modem_cdma.ModemCdma(
+                    state_machine_factory=sm_factory)
         else:
             raise TestModemManagerContextError(
                 "Invalid modem family value: " + str(family))
@@ -279,7 +286,9 @@ class PseudoModemManager(object):
         self.modem_net_interface.Setup()
         dbus_loop = dbus.mainloop.glib.DBusGMainLoop()
         bus = dbus.SystemBus(private=True, mainloop=dbus_loop)
-        name = dbus.service.BusName(mm1.I_MODEM_MANAGER, bus)
+        named_service = dbus.service.BusName(mm1.I_MODEM_MANAGER, bus)
+        logging.info('Exported dbus service with well know name: |%s|',
+                     named_service.get_name())
         self.manager = modemmanager.ModemManager(bus)
 
         self.modem.SetBus(bus)
@@ -317,7 +326,8 @@ class PseudoModemManager(object):
 
 
 def Start(use_cdma=False, activated=True, sim_locked=False,
-          roaming_networks=0, interactive=False):
+          roaming_networks=0, interactive=False, interactive_sm_all=False,
+          interactive_sm_list=None):
     """
     Runs the pseudomodem in script mode. This function is called only by the
     main function.
@@ -334,16 +344,26 @@ def Start(use_cdma=False, activated=True, sim_locked=False,
                              network scan in addition to the home network.
     @param interactive: If True, the pseudomodem gets launched with an
                         interactive shell.
-
+    @param interactive_sm_all: Start all state machines in interactive mode.
+    @param interactive_sm_list: List of state machines to start in interactive
+                                mode.
     """
     # TODO(armansito): Support "not activated" initialization option for 3GPP
     #                  carriers.
     networks = []
+    smf = state_machine_factory.StateMachineFactory()
+    if interactive_sm_all:
+        smf.SetInteractiveAll()
+    elif interactive_sm_list:
+        for sm in interactive_sm_list:
+            smf.SetInteractive(sm)
+
     if use_cdma:
         # Import modem_cdma here to avoid circular imports.
         import modem_cdma
         m = modem_cdma.ModemCdma(
-            modem_cdma.ModemCdma.CdmaNetwork(activated=activated))
+                    smf,
+                    modem_cdma.ModemCdma.CdmaNetwork(activated=activated))
         s = None
     else:
         networks = [
@@ -356,13 +376,11 @@ def Start(use_cdma=False, activated=True, sim_locked=False,
                     dbus.types.UInt32(
                             mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM))
                 for i in xrange(roaming_networks)]
-        m = modem_3gpp.Modem3gpp(roaming_networks=networks)
+        m = modem_3gpp.Modem3gpp(smf, roaming_networks=networks)
         s = sim.SIM(sim.SIM.Carrier(),
                     mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM,
                     locked=sim_locked)
 
-    if interactive:
-        logging.disable(logging.INFO)
     with PseudoModemManager(modem=m, sim=s, detach=interactive):
         if interactive:
             pmclient = client.PseudoModemClient()
@@ -383,6 +401,11 @@ def main():
     """
 
     parser = optparse.OptionParser(usage=usage)
+    parser.add_option('--debug', dest='debug', action='store_true',
+                      help='Run pseudomodem in debug mode')
+    parser.add_option('--log-file', dest='log_file', action='store', default='',
+                      help='An alternative file to redirect logs to (especially'
+                           ' useful in interactive mode')
     parser.add_option('-f', '--family', dest='family',
                       metavar='<family>', type="string",
                       help='<family> := 3GPP|CDMA')
@@ -399,8 +422,41 @@ def main():
     parser.add_option('-i', '--interactive', dest='interactive',
                       action='store_true', default=False,
                       help='Launch in interactive mode.')
+    parser.add_option('--interactive-state-machines-all',
+                      dest='interactive_sm_all', action='store_true',
+                      default=False,
+                      help='Initialize all state machines in interactive mode')
+    parser.add_option('--interactive-state-machine',
+                      dest='interactive_sm_list', action='append',
+                      default=None,
+                      help='Initialize a particular state machine in'
+                           'interactive mode. Use multiple times to specify'
+                           'multiple machines.')
 
     (opts, args) = parser.parse_args()
+
+    # Do this first, before any logging can happen.
+    if opts.interactive and not opts.log_file:
+        opts.log_file = '/tmp/pseudomodem'
+    if opts.log_file:
+        print 'Logging to file %s\n' % opts.log_file
+        # Log to file, but multiplex messages at WARNING or above to the console
+        # If user explicitly requested logging to this particular file, clear
+        # the handlers setup by autotest during import.
+        root = logging.getLogger()
+        if root.handlers:
+            for handler in root.handlers:
+                root.removeHandler(handler)
+        logging.basicConfig(filename=opts.log_file, filemode='w')
+        console = logging.StreamHandler()
+        console.setLevel(logging.WARNING)
+        logging.getLogger().addHandler(console)
+
+    if opts.debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+    else:
+        logging.getLogger().setLevel(logging.INFO)
+
     if not opts.family:
         print "A mandatory option '--family' is missing\n"
         parser.print_help()
@@ -421,7 +477,8 @@ def main():
         return
 
     Start(family == 'CDMA', not opts.not_activated, opts.sim_locked,
-          opts.roaming_networks, opts.interactive)
+          opts.roaming_networks, opts.interactive, opts.interactive_sm_all,
+          opts.interactive_sm_list)
 
 
 if __name__ == '__main__':

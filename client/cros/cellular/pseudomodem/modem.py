@@ -13,12 +13,11 @@ from autotest_lib.client.cros.cellular import net_interface
 
 import bearer
 import dbus_std_ifaces
-import disable_machine
-import enable_machine
 import messaging
 import mm1
 import modem_simple
 import sms_handler
+import state_machine_factory as smf
 import utils
 
 ALLOWED_BEARER_PROPERTIES = [
@@ -47,7 +46,9 @@ class Modem(dbus_std_ifaces.DBusProperties,
 
     SUPPORTS_MULTIPLE_OBJECT_PATHS = True
 
-    def __init__(self, bus=None,
+    def __init__(self,
+                 state_machine_factory=None,
+                 bus=None,
                  device='pseudomodem0',
                  device_port_type=mm1.MM_MODEM_PORT_TYPE_AT,
                  index=0,
@@ -62,7 +63,10 @@ class Modem(dbus_std_ifaces.DBusProperties,
         to this interface. Possible values for each are enumerated in mm1.py
 
         """
-
+        if state_machine_factory:
+            self._state_machine_factory = state_machine_factory
+        else:
+            self._state_machine_factory = smf.StateMachineFactory()
         self.device = device
         self.device_port_type = device_port_type
         self.index = index
@@ -312,6 +316,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
 
         """
         dbus_std_ifaces.DBusProperties.SetBus(self, bus)
+        self._state_machine_factory.SetBus(bus)
         self._sms_handler.bus = bus
 
     def UpdateLockStatus(self):
@@ -372,10 +377,19 @@ class Modem(dbus_std_ifaces.DBusProperties,
         """
         if enable:
             logging.info('Modem enable')
-            enable_machine.EnableMachine(self, return_cb, raise_cb).Step()
+            machine = self._state_machine_factory.CreateMachine(
+                    mm1.STATE_MACHINE_ENABLE,
+                    self,
+                    return_cb,
+                    raise_cb)
         else:
             logging.info('Modem disable')
-            disable_machine.DisableMachine(self, return_cb, raise_cb).Step()
+            machine = self._state_machine_factory.CreateMachine(
+                    mm1.STATE_MACHINE_DISABLE,
+                    self,
+                    return_cb,
+                    raise_cb)
+        machine.Start()
 
     def RegisterWithNetwork(
             self, operator_id="", return_cb=None, raise_cb=None):

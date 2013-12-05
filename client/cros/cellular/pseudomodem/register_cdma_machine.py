@@ -7,19 +7,24 @@ import logging
 import mm1
 import register_machine
 
-class RegisterMachineCdma(register_machine.RegisterMachine):
+class RegisterCdmaMachine(register_machine.RegisterMachine):
     """
-    RegisterMachineCdma handles the CDMA specific state transitions involved in
+    RegisterCdmaMachine handles the CDMA specific state transitions involved in
     bringing the modem to the REGISTERED state.
 
     """
     def Cancel(self):
-        logging.info('RegisterMachineCdma: Canceling register.')
-        super(RegisterMachineCdma, self).Cancel()
+        """
+        Cancel the current machine.
+
+        Overwritten from parent class.
+        """
+        logging.info('RegisterCdmaMachine: Canceling register.')
+        super(RegisterCdmaMachine, self).Cancel()
         state = self._modem.Get(mm1.I_MODEM, 'State')
         reason = mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
         if state == mm1.MM_MODEM_STATE_SEARCHING:
-            logging.info('RegisterMachineCdma: Setting state to ENABLED.')
+            logging.info('RegisterCdmaMachine: Setting state to ENABLED.')
             self._modem.ChangeState(mm1.MM_MODEM_STATE_ENABLED, reason)
             self._modem.SetRegistrationState(
                 mm1.MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN)
@@ -30,25 +35,25 @@ class RegisterMachineCdma(register_machine.RegisterMachine):
 
     def _GetModemStateFunctionMap(self):
         return {
-            mm1.MM_MODEM_STATE_ENABLED: RegisterMachineCdma._HandleEnabledState,
+            mm1.MM_MODEM_STATE_ENABLED: RegisterCdmaMachine._HandleEnabledState,
             mm1.MM_MODEM_STATE_SEARCHING:
-                RegisterMachineCdma._HandleSearchingState
+                RegisterCdmaMachine._HandleSearchingState
         }
 
     def _HandleEnabledState(self):
-        logging.info('RegisterMachineCdma: Modem is ENABLED.')
-        logging.info('RegisterMachineCdma: Setting state to SEARCHING.')
+        logging.info('RegisterCdmaMachine: Modem is ENABLED.')
+        logging.info('RegisterCdmaMachine: Setting state to SEARCHING.')
         self._modem.ChangeState(
             mm1.MM_MODEM_STATE_SEARCHING,
             mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED)
         return True
 
     def _HandleSearchingState(self):
-        logging.info('RegisterMachineCdma: Modem is SEARCHING.')
+        logging.info('RegisterCdmaMachine: Modem is SEARCHING.')
         network = self._modem.GetHomeNetwork()
         if not network:
-            logging.info('RegisterMachineCdma: No network available.')
-            logging.info('RegisterMachineCdma: Setting state to ENABLED.')
+            logging.info('RegisterCdmaMachine: No network available.')
+            logging.info('RegisterCdmaMachine: Setting state to ENABLED.')
             self._modem.ChangeState(mm1.MM_MODEM_STATE_ENABLED,
                 mm1.MM_MODEM_STATE_CHANGE_REASON_UNKNOWN)
             if self._raise_cb:
@@ -57,8 +62,8 @@ class RegisterMachineCdma(register_machine.RegisterMachine):
                         'No networks were found to register.'))
         else:
             logging.info(
-                'RegisterMachineCdma: Registering to network: ' + str(network))
-            logging.info('RegisterMachineCdma: Setting state to REGISTERED.')
+                'RegisterCdmaMachine: Registering to network: ' + str(network))
+            logging.info('RegisterCdmaMachine: Setting state to REGISTERED.')
             self._modem.ChangeState(
                 mm1.MM_MODEM_STATE_REGISTERED,
                 mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED)

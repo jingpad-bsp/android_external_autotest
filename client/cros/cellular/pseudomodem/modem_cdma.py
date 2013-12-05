@@ -6,10 +6,8 @@ import dbus
 import dbus.types
 import logging
 
-import cdma_activate_machine
 import mm1
 import modem
-import register_machine_cdma
 import utils
 
 class ModemCdma(modem.Modem):
@@ -50,6 +48,7 @@ class ModemCdma(modem.Modem):
             return '000000' + self._mdn[6:]
 
     def __init__(self,
+                 state_machine_factory=None,
                  home_network=CdmaNetwork(),
                  bus=None,
                  device='pseudomodem0',
@@ -58,6 +57,7 @@ class ModemCdma(modem.Modem):
         self.home_network = home_network
         self.cdma_activate_step = None
         modem.Modem.__init__(self,
+                             state_machine_factory,
                              bus=bus,
                              device=device,
                              roaming_networks=roaming_networks,
@@ -140,8 +140,12 @@ class ModemCdma(modem.Modem):
 
         """
         logging.info('ModemCdma.Activate')
-        cdma_activate_machine.CdmaActivateMachine(
-            self, return_cb, raise_cb).Step()
+        machine = self._state_machine_factory.CreateMachine(
+                mm1.STATE_MACHINE_CDMA_ACTIVATE,
+                self,
+                return_cb,
+                raise_cb)
+        machine.Start()
 
     @utils.dbus_method_wrapper(logging.debug, logging.warning, mm1.I_MODEM_CDMA,
                                in_signature='a{sv}')
@@ -276,8 +280,13 @@ class ModemCdma(modem.Modem):
 
         """
         logging.info('ModemCdma.RegisterWithNetwork')
-        register_machine_cdma.RegisterMachineCdma(
-                self, operator_id, return_cb, raise_cb).Step()
+        machine = self._state_machine_factory.CreateMachine(
+                mm1.STATE_MACHINE_REGISTER_CDMA,
+                self,
+                operator_id,
+                return_cb,
+                raise_cb)
+        machine.Start()
 
     def UnregisterWithNetwork(self):
         """
@@ -306,10 +315,13 @@ class ModemCdma(modem.Modem):
 
         """
         logging.info('ModemCdma.Connect')
-        # Import connect_machine_cdma here to avoid circular imports.
-        import connect_machine_cdma
-        connect_machine_cdma.ConnectMachineCdma(
-            self, properties, return_cb, raise_cb).Step()
+        machine = self._state_machine_factory.CreateMachine(
+                mm1.STATE_MACHINE_CONNECT_CDMA,
+                self,
+                properties,
+                return_cb,
+                raise_cb)
+        machine.Start()
 
     def Disconnect(self, bearer_path, return_cb, raise_cb, *return_cb_args):
         """
@@ -322,10 +334,14 @@ class ModemCdma(modem.Modem):
 
         """
         logging.info('ModemCdma.Disconnect: %s', bearer_path)
-        # Import connect_machine_cdma here to avoid circular imports.
-        import disconnect_machine
-        disconnect_machine.DisconnectMachine(
-            self, bearer_path, return_cb, raise_cb, return_cb_args).Step()
+        machine = self._state_machine_factory.CreateMachine(
+                mm1.STATE_MACHINE_DISCONNECT,
+                self,
+                bearer_path,
+                return_cb,
+                raise_cb,
+                return_cb_args)
+        machine.Start()
 
     def GetStatus(self):
         """

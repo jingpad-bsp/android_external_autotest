@@ -6,11 +6,8 @@ import dbus
 import dbus.types
 import logging
 
-import connect_machine
-import disconnect_machine
 import mm1
 import modem
-import register_machine
 import utils
 
 class Modem3gpp(modem.Modem):
@@ -57,12 +54,15 @@ class Modem3gpp(modem.Modem):
               'access-technology': dbus.types.UInt32(self.access_technology),
             }
 
-    def __init__(self, bus=None,
+    def __init__(self,
+                 state_machine_factory=None,
+                 bus=None,
                  device='pseudomodem0',
                  index=0,
                  roaming_networks=None,
                  config=None):
         modem.Modem.__init__(self,
+                             state_machine_factory,
                              bus=bus,
                              device=device,
                              roaming_networks=roaming_networks,
@@ -352,8 +352,13 @@ class Modem3gpp(modem.Modem):
         @param raise_cb: See superclass documentation.
 
         """
-        register_machine.RegisterMachine(
-                self, operator_id, return_cb, raise_cb).Step()
+        machine = self._state_machine_factory.CreateMachine(
+                mm1.STATE_MACHINE_REGISTER,
+                self,
+                operator_id,
+                return_cb,
+                raise_cb)
+        machine.Start()
 
     def UnregisterWithNetwork(self):
         """
@@ -379,8 +384,13 @@ class Modem3gpp(modem.Modem):
 
         """
         logging.info('Connect')
-        connect_machine.ConnectMachine(
-            self, properties, return_cb, raise_cb).Step()
+        machine = self._state_machine_factory.CreateMachine(
+                mm1.STATE_MACHINE_CONNECT,
+                self,
+                properties,
+                return_cb,
+                raise_cb)
+        machine.Start()
 
     def Disconnect(self, bearer_path, return_cb, raise_cb, *return_cb_args):
         """
@@ -393,8 +403,14 @@ class Modem3gpp(modem.Modem):
 
         """
         logging.info('Disconnect: %s', bearer_path)
-        disconnect_machine.DisconnectMachine(
-            self, bearer_path, return_cb, raise_cb, return_cb_args).Step()
+        machine = self._state_machine_factory.CreateMachine(
+                mm1.STATE_MACHINE_DISCONNECT,
+                self,
+                bearer_path,
+                return_cb,
+                raise_cb,
+                return_cb_args)
+        machine.Start()
 
     def GetStatus(self):
         """
