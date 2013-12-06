@@ -72,8 +72,9 @@ class Chrome(object):
                 self._browser = browser_to_create.Create()
                 self._browser.Start()
                 break
-            except util.TimeoutException:
-                logging.error('Timed out logging in, tries=%d', i)
+            except (util.TimeoutException, exceptions.LoginException) as e:
+                logging.error('Timed out logging in, tries=%d, error=%s',
+                              i, repr(e))
                 if i == num_tries-1:
                     raise
 
