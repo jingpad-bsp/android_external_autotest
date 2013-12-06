@@ -4,7 +4,10 @@
 
 import dbus
 import dbus.service
+import logging
+
 import mm1
+import utils
 
 
 class ModemSimple(dbus.service.Interface):
@@ -16,10 +19,10 @@ class ModemSimple(dbus.service.Interface):
 
     """
 
-    @dbus.service.method(mm1.I_MODEM_SIMPLE,
-                         in_signature='a{sv}',
-                         out_signature='o',
-                         async_callbacks=('return_cb', 'raise_cb'))
+    @utils.dbus_method_wrapper(logging.debug, logging.warning,
+                               mm1.I_MODEM_SIMPLE, in_signature='a{sv}',
+                               out_signature='o', async_callbacks=('return_cb',
+                                                                   'raise_cb'))
     def Connect(self, properties, return_cb, raise_cb):
         """
         Do everything needed to connect the modem using the given properties.
@@ -52,9 +55,9 @@ class ModemSimple(dbus.service.Interface):
         """
         raise NotImplementedError()
 
-    @dbus.service.method(mm1.I_MODEM_SIMPLE,
-                         in_signature='o',
-                         async_callbacks=('return_cb', 'raise_cb'))
+    @utils.dbus_method_wrapper(logging.debug, logging.warning,
+                               mm1.I_MODEM_SIMPLE, in_signature='o',
+                               async_callbacks=('return_cb', 'raise_cb'))
     def Disconnect(self, bearer, return_cb, raise_cb, *return_cb_args):
         """
         Disconnect an active packet data connection.
@@ -74,7 +77,8 @@ class ModemSimple(dbus.service.Interface):
         """
         raise NotImplementedError()
 
-    @dbus.service.method(mm1.I_MODEM_SIMPLE, out_signature='a{sv}')
+    @utils.dbus_method_wrapper(logging.debug, logging.warning,
+                               mm1.I_MODEM_SIMPLE, out_signature='a{sv}')
     def GetStatus(self):
         """
         Gets the general modem status.

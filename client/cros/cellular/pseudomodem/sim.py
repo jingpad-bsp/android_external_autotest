@@ -7,6 +7,7 @@ import logging
 
 import dbus_std_ifaces
 import mm1
+import utils
 
 class IncorrectPasswordError(mm1.MMMobileEquipmentError):
     """
@@ -311,7 +312,8 @@ class SIM(dbus_std_ifaces.DBusProperties):
             raise TypeError('Invalid SIM lock type')
         self._lock_data[lock_type]['retries'] = value
 
-    @dbus.service.method(mm1.I_SIM, in_signature='s')
+    @utils.dbus_method_wrapper(logging.debug, logging.warning, mm1.I_SIM,
+                               in_signature='s')
     def SendPin(self, pin):
         """
         Sends the PIN to unlock the SIM card.
@@ -345,7 +347,8 @@ class SIM(dbus_std_ifaces.DBusProperties):
         self._modem.Expose3GPPProperties()
         self._UpdateProperties()
 
-    @dbus.service.method(mm1.I_SIM, in_signature='ss')
+    @utils.dbus_method_wrapper(logging.debug, logging.warning, mm1.I_SIM,
+                               in_signature='ss')
     def SendPuk(self, puk, pin):
         """
         Sends the PUK and a new PIN to unlock the SIM card.
@@ -378,7 +381,8 @@ class SIM(dbus_std_ifaces.DBusProperties):
         self._modem.Expose3GPPProperties()
         self._UpdateProperties()
 
-    @dbus.service.method(mm1.I_SIM, in_signature='sb')
+    @utils.dbus_method_wrapper(logging.debug, logging.warning, mm1.I_SIM,
+                               in_signature='sb')
     def EnablePin(self, pin, enabled):
         """
         Enables or disables PIN checking.
@@ -422,7 +426,8 @@ class SIM(dbus_std_ifaces.DBusProperties):
         self._UpdateProperties()
         self.modem.UpdateLockStatus()
 
-    @dbus.service.method(mm1.I_SIM, in_signature='ss')
+    @utils.dbus_method_wrapper(logging.debug, logging.warning, mm1.I_SIM,
+                               in_signature='ss')
     def ChangePin(self, old_pin, new_pin):
         """
         Changes the PIN code.

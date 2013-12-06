@@ -8,6 +8,9 @@ import gobject
 import logging
 import random
 
+import common
+from autotest_lib.client.cros.cellular import net_interface
+
 import bearer
 import dbus_std_ifaces
 import disable_machine
@@ -16,9 +19,7 @@ import messaging
 import mm1
 import modem_simple
 import sms_handler
-
-import common
-from autotest_lib.client.cros.cellular import net_interface
+import utils
 
 ALLOWED_BEARER_PROPERTIES = [
     'apn',
@@ -349,9 +350,9 @@ class Modem(dbus_std_ifaces.DBusProperties,
             self.ChangeState(mm1.MM_MODEM_STATE_DISABLED,
                              mm1.MM_MODEM_STATE_CHANGE_REASON_UNKNOWN)
 
-    @dbus.service.method(mm1.I_MODEM,
-                         in_signature='b',
-                         async_callbacks=('return_cb', 'raise_cb'))
+    @utils.dbus_method_wrapper(logging.debug, logging.warning, mm1.I_MODEM,
+                               in_signature='b', async_callbacks=('return_cb',
+                                                                  'raise_cb'))
     def Enable(self, enable, return_cb=None, raise_cb=None):
         """
         Enables or disables the modem.
@@ -435,7 +436,8 @@ class Modem(dbus_std_ifaces.DBusProperties,
                 raise mm1.MMCoreError(mm1.MMCoreError.INVALID_ARGS,
                         'Invalid property "%s", not creating bearer.' % key)
 
-    @dbus.service.method(mm1.I_MODEM, out_signature='ao')
+    @utils.dbus_method_wrapper(logging.debug, logging.warning, mm1.I_MODEM,
+                               out_signature='ao')
     def ListBearers(self):
         """
         Lists configured packet data bearers (EPS Bearers, PDP Contexts, or
@@ -447,9 +449,8 @@ class Modem(dbus_std_ifaces.DBusProperties,
         logging.info('ListBearers')
         return [dbus.types.ObjectPath(key) for key in self.bearers.iterkeys()]
 
-    @dbus.service.method(mm1.I_MODEM,
-                         in_signature='a{sv}',
-                         out_signature='o')
+    @utils.dbus_method_wrapper(logging.debug, logging.warning, mm1.I_MODEM,
+                               in_signature='a{sv}', out_signature='o')
     def CreateBearer(self, properties):
         """
         Creates a new packet data bearer using the given characteristics.
@@ -532,7 +533,8 @@ class Modem(dbus_std_ifaces.DBusProperties,
         bearer.Disconnect()
         self.active_bearers.pop(bearer_path)
 
-    @dbus.service.method(mm1.I_MODEM, in_signature='o')
+    @utils.dbus_method_wrapper(logging.debug, logging.error, mm1.I_MODEM,
+                               in_signature='o')
     def DeleteBearer(self, bearer):
         """
         Deletes an existing packet data bearer.
@@ -566,7 +568,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
         for b in self.bearers.keys():
             self.DeleteBearer(b)
 
-    @dbus.service.method(mm1.I_MODEM)
+    @utils.dbus_method_wrapper(logging.debug, logging.warning, mm1.I_MODEM)
     def Reset(self):
         """
         Clears non-persistent configuration and state, and returns the device to
@@ -636,7 +638,8 @@ class Modem(dbus_std_ifaces.DBusProperties,
         else:
             gobject.idle_add(_ResetFunc)
 
-    @dbus.service.method(mm1.I_MODEM, in_signature='s')
+    @utils.dbus_method_wrapper(logging.debug, logging.warning, mm1.I_MODEM,
+                               in_signature='s')
     def FactoryReset(self, code):
         """
         Clears the modem's configuration (including persistent configuration and
@@ -651,7 +654,8 @@ class Modem(dbus_std_ifaces.DBusProperties,
         """
         raise NotImplementedError()
 
-    @dbus.service.method(mm1.I_MODEM, in_signature='(uu)')
+    @utils.dbus_method_wrapper(logging.debug, logging.warning, mm1.I_MODEM,
+                               in_signature='(uu)')
     def SetCurrentModes(self, modes):
         """
         Sets the access technologies (eg 2G/3G/4G preference) the device is
@@ -669,7 +673,8 @@ class Modem(dbus_std_ifaces.DBusProperties,
                                   'Mode not supported: ' + repr(modes))
         self.Set(mm1.I_MODEM, 'CurrentModes', modes)
 
-    @dbus.service.method(mm1.I_MODEM, in_signature='au')
+    @utils.dbus_method_wrapper(logging.debug, logging.warning, mm1.I_MODEM,
+                               in_signature='au')
     def SetCurrentBands(self, bands):
         """
         Sets the radio frequency and technology bands the device is currently
@@ -682,9 +687,8 @@ class Modem(dbus_std_ifaces.DBusProperties,
         band_list = [dbus.types.UInt32(band) for band in bands]
         self.Set(mm1.I_MODEM, 'CurrentBands', band_list)
 
-    @dbus.service.method(mm1.I_MODEM,
-                         in_signature='su',
-                         out_signature='s')
+    @utils.dbus_method_wrapper(logging.debug, logging.warning, mm1.I_MODEM,
+                               in_signature='su', out_signature='s')
     def Command(self, cmd, timeout):
         """
         Allows clients to send commands to the modem. By default, this method
@@ -704,7 +708,8 @@ class Modem(dbus_std_ifaces.DBusProperties,
                     'Carve your name on your heart and not on marble.']
         return random.choice(messages)
 
-    @dbus.service.method(mm1.I_MODEM, in_signature='u')
+    @utils.dbus_method_wrapper(logging.debug, logging.warning, mm1.I_MODEM,
+                               in_signature='u')
     def SetPowerState(self, power_state):
         """
         Sets the power state of the modem. This action can only be run when the
@@ -722,7 +727,8 @@ class Modem(dbus_std_ifaces.DBusProperties,
                                   ' DISABLED.')
         self.SetUInt32(mm1.I_MODEM, 'PowerState', power_state);
 
-    @dbus.service.method(mm1.I_MODEM, in_signature='u')
+    @utils.dbus_method_wrapper(logging.debug, logging.warning, mm1.I_MODEM,
+                               in_signature='u')
     def SetCurrentCapabilities(self, capabilities):
         """
         Set the capabilities of the device. A restart of the modem may be

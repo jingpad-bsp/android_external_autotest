@@ -11,6 +11,7 @@ import disconnect_machine
 import mm1
 import modem
 import register_machine
+import utils
 
 class Modem3gpp(modem.Modem):
     """
@@ -225,8 +226,9 @@ class Modem3gpp(modem.Modem):
         """
         return self._scanned_networks
 
-    @dbus.service.method(mm1.I_MODEM_3GPP, in_signature='s',
-                         async_callbacks=('return_cb', 'raise_cb'))
+    @utils.dbus_method_wrapper(logging.debug, logging.warning, mm1.I_MODEM_3GPP,
+                               in_signature='s', async_callbacks=('return_cb',
+                                                                  'raise_cb'))
     def Register(self, operator_id, return_cb=None, raise_cb=None):
         """
         Request registration with a given modem network.
@@ -294,7 +296,8 @@ class Modem3gpp(modem.Modem):
         self.Set(mm1.I_MODEM_3GPP, 'OperatorCode', operator_code)
         self.Set(mm1.I_MODEM_3GPP, 'OperatorName', operator_name)
 
-    @dbus.service.method(mm1.I_MODEM_3GPP, out_signature='aa{sv}')
+    @utils.dbus_method_wrapper(logging.debug, logging.warning, mm1.I_MODEM_3GPP,
+                               out_signature='aa{sv}')
     def Scan(self):
         """
         Scan for available networks.

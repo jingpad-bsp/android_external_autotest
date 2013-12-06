@@ -4,7 +4,10 @@
 
 import dbus
 import dbus.service
+import logging
+
 import mm1
+import utils
 
 # TODO(armansito): Have this class implement all Messaging methods
 # and make Modems have a reference to an instance of Messaging
@@ -18,7 +21,8 @@ class Messaging(dbus.service.Interface):
 
     """
 
-    @dbus.service.method(mm1.I_MODEM_MESSAGING, out_signature='ao')
+    @utils.dbus_method_wrapper(logging.debug, logging.warning,
+                               mm1.I_MODEM_MESSAGING, out_signature='ao')
     def List(self):
         """
         Retrieves all SMS messages.
@@ -31,7 +35,8 @@ class Messaging(dbus.service.Interface):
         """
         raise NotImplementedError()
 
-    @dbus.service.method(mm1.I_MODEM_MESSAGING, in_signature='o')
+    @utils.dbus_method_wrapper(logging.debug, logging.warning,
+                               mm1.I_MODEM_MESSAGING, in_signature='o')
     def Delete(self, path):
         """
         Deletes an SMS message.
@@ -44,9 +49,9 @@ class Messaging(dbus.service.Interface):
         """
         raise NotImplementedError()
 
-    @dbus.service.method(mm1.I_MODEM_MESSAGING,
-                         in_signature='a{sv}',
-                         out_signature='o')
+    @utils.dbus_method_wrapper(logging.debug, logging.warning,
+                               mm1.I_MODEM_MESSAGING, in_signature='a{sv}',
+                               out_signature='o')
     def Create(self, properties):
         """
         Creates a new message object. The 'Number' and 'Text' properties are

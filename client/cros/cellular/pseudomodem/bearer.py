@@ -3,11 +3,14 @@
 # found in the LICENSE file.
 
 import dbus
-import dbus_std_ifaces
-import mm1
 
 import common
 from autotest_lib.client.cros.cellular import net_interface
+
+import dbus_std_ifaces
+import logging
+import mm1
+import utils
 
 class Bearer(dbus_std_ifaces.DBusProperties):
     """
@@ -61,7 +64,7 @@ class Bearer(dbus_std_ifaces.DBusProperties):
         """
         return self._bearer_props
 
-    @dbus.service.method(mm1.I_BEARER)
+    @utils.dbus_method_wrapper(logging.debug, logging.warning, mm1.I_BEARER)
     def Connect(self):
         """
         Requests activation of a packet data connection with the network using
@@ -94,7 +97,7 @@ class Bearer(dbus_std_ifaces.DBusProperties):
         self._active = True
         self.Set(mm1.I_BEARER, 'Connected', dbus.types.Boolean(True))
 
-    @dbus.service.method(mm1.I_BEARER)
+    @utils.dbus_method_wrapper(logging.debug, logging.warning, mm1.I_BEARER)
     def Disconnect(self):
         """
         Disconnect and deactivate this packet data connection. In a real bearer,

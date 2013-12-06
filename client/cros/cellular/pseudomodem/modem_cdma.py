@@ -10,6 +10,7 @@ import cdma_activate_machine
 import mm1
 import modem
 import register_machine_cdma
+import utils
 
 class ModemCdma(modem.Modem):
     """
@@ -121,9 +122,9 @@ class ModemCdma(modem.Modem):
 
         return ip
 
-    @dbus.service.method(mm1.I_MODEM_CDMA,
-                         in_signature='s',
-                         async_callbacks=('return_cb', 'raise_cb'))
+    @utils.dbus_method_wrapper(logging.debug, logging.warning, mm1.I_MODEM_CDMA,
+                               in_signature='s', async_callbacks=('return_cb',
+                                                                  'raise_cb'))
     def Activate(self, carrier, return_cb, raise_cb):
         """
         Provisions the modem for use with a given carrier using the modem's
@@ -142,7 +143,8 @@ class ModemCdma(modem.Modem):
         cdma_activate_machine.CdmaActivateMachine(
             self, return_cb, raise_cb).Step()
 
-    @dbus.service.method(mm1.I_MODEM_CDMA, in_signature='a{sv}')
+    @utils.dbus_method_wrapper(logging.debug, logging.warning, mm1.I_MODEM_CDMA,
+                               in_signature='a{sv}')
     def ActivateManual(self, properties):
         """
         Sets the modem provisioning data directly, without contacting the

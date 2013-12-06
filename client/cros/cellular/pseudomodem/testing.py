@@ -2,9 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus
 import dbus_std_ifaces
+import logging
+
 import mm1
+import utils
 
 class Testing(dbus_std_ifaces.DBusProperties):
     """
@@ -22,7 +24,8 @@ class Testing(dbus_std_ifaces.DBusProperties):
     def _InitializeProperties(self):
         return { mm1.I_TESTING: { 'Modem': self._modem.path } }
 
-    @dbus.service.method(mm1.I_TESTING, in_signature='ss')
+    @utils.dbus_method_wrapper(logging.debug, logging.warning, mm1.I_TESTING,
+                               in_signature='ss')
     def ReceiveSms(self, sender, text):
         """
         Simulates a fake SMS.
@@ -33,7 +36,8 @@ class Testing(dbus_std_ifaces.DBusProperties):
         """
         self._modem.sms_handler.receive_sms(text, sender)
 
-    @dbus.service.method(mm1.I_TESTING, in_signature='s')
+    @utils.dbus_method_wrapper(logging.debug, logging.warning, mm1.I_TESTING,
+                               in_signature='s')
     def UpdatePcoInfo(self, pco_value):
         """
         Sets the VendorPcoInfo to the specified value. If the Modem.Modem3gpp
