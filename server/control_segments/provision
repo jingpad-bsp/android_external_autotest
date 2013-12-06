@@ -37,21 +37,35 @@ def provision_machine(machine):
             # we might as well just turn it off.
             success = job.run_test(test, host=host, value=value)
             if not success:
-                raise Exception('Provisioning %s:%s failed on %s' %
-                                (name, value, machine))
+                raise Exception('This exception will be immediately discarded,'
+                                ' and exists only to force all errors to the'
+                                ' same error handling codepath below.')
     except Exception as e:
-        job.record('END FAIL', None, 'provision', str(e))
-        # (Re)raising the exception serves two purposes here:
-        # 1. The scheduler only looks at the return code of autoserv to see if
-        # the special task failed.  Raising an exception here will get autoserv
-        # to exit with a non-zero exit code because of an unhandled exception.
-        # This then triggers the failure condition in ProvisionTask's epilog,
-        # which leads us into...
-        # 2. This exception ends up triggering server_job to write an INFO line
-        # with job_abort_reason equal to str(e), which is how str(e)
-        # appears as the reason field for the job when the status.log we
-        # generate is parsed as the job's results.
-        raise
+        job.record('END FAIL', None, 'provision')
+        # Raising a blank exception is done here because any message we can
+        # give here would be less useful than whatever the failing test left as
+        # its own exception message.
+        #
+        # The gory details of how raising a blank exception accomplishes this
+        # is as follows:
+        #
+        # The scheduler only looks at the return code of autoserv to see if
+        # the special task failed.  Therefore we need python to exit because
+        # of an unhandled exception or because someone called sys.exit(1).
+        #
+        # We can't call sys.exit, since there's post-job-running logic (like
+        # cleanup) that we'd be skipping out on.  So therefore, we need to
+        # raise an exception.  However, if we raise an exception, this
+        # exception ends up triggering server_job to write an INFO line with
+        # job_abort_reason equal to str(e), which the tko parser then picks
+        # up as the reason field for the job when the status.log we generate is
+        # parsed as the job's results.
+        #
+        # So therefore, we raise a blank exception, which then generates an
+        # empty job_abort_reason which the tko parser ignores just inserts as
+        # a SERVER_JOB failure with no reason, which we then ignore at suite
+        # results reporting time.
+        raise Exception('')
     else:
         # If we finish successfully, nothing in autotest ever looks at the
         # status.log, so it's purely for human consumption and tracability.
