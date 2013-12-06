@@ -7,7 +7,7 @@ from autotest_lib.server import test
 
 
 class generic_RebootTest(test.test):
-    """Reboot a device. Should be ran on ADBHosts only."""
+    """Reboot a device."""
     version = 1
 
     def run_once(self, host):

@@ -6,7 +6,7 @@ from contextlib import closing
 from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.server import autotest, utils as server_utils
 from autotest_lib.server.hosts import site_factory, cros_host, ssh_host, serial
-from autotest_lib.server.hosts import eureka_host
+from autotest_lib.server.hosts import sonic_host
 from autotest_lib.server.hosts import adb_host, logfile_monitor
 
 
@@ -30,7 +30,7 @@ _started_hostnames = set()
 # A list of all the possible host types, ordered according to frequency of
 # host types in the lab, so the more common hosts don't incur a repeated ssh
 # overhead in checking for less common host types.
-host_types = [cros_host.CrosHost, eureka_host.EurekaHost, adb_host.ADBHost,]
+host_types = [cros_host.CrosHost, sonic_host.SonicHost, adb_host.ADBHost,]
 
 
 def _get_host_arguments():

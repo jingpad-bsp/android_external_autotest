@@ -2,11 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import glob
 import logging
 import os
 import re
 import signal
 import socket
+import sys
 import time
 import urllib2
 
@@ -272,3 +274,32 @@ def parse_chrome_version(version_string):
     ver = match.group(0) if match else version_string
     milestone = match.group(1) if match else ''
     return ver, milestone
+
+
+def take_screenshot(dest_dir, fname_prefix, format='png'):
+    """Take screenshot and save to a new file in the dest_dir.
+
+    @param dest_dir: The destination directory to save the screenshot.
+    @param fname_prefix: Prefix for the output fname
+    @param format: String indicating file format ('png', 'jpg', etc)
+
+    @return: The path of the saved screenshot file
+    """
+    next_index = len(glob.glob(
+        os.path.join(dest_dir, '%s-*.%s' % (fname_prefix, format))))
+    screenshot_file = os.path.join(
+        dest_dir, '%s-%d.%s' % (fname_prefix, next_index, format))
+    logging.info('Saving screenshot to %s.', screenshot_file)
+
+    old_exc_type = sys.exc_info()[0]
+    try:
+        base_utils.system('DISPLAY=:0.0 XAUTHORITY=/home/chronos/.Xauthority '
+                          '/usr/local/bin/import -window root -depth 8 %s' %
+                          screenshot_file)
+    except Exception as err:
+        # Do not raise an exception if the screenshot fails while processing
+        # another exception.
+        if old_exc_type is None:
+            raise
+        logging.error(err)
+    return screenshot_file

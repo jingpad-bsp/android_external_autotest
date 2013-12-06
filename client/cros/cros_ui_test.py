@@ -350,37 +350,6 @@ class UITest(pyauto_test.PyAutoTest):
         return [cryptohome.canonicalize(name), passwd]
 
 
-    def take_screenshot(self, fname_prefix, format='png'):
-      """Take screenshot and save to a new file in the results dir.
-
-      Args:
-        fname_prefix: prefix for the output fname
-        format:       string indicating file format ('png', 'jpg', etc)
-
-      Returns:
-        the path of the saved screenshot file
-      """
-      next_index = len(glob.glob(
-          os.path.join(self.resultsdir, '%s-*.%s' % (fname_prefix, format))))
-      screenshot_file = os.path.join(
-          self.resultsdir, '%s-%d.%s' % (fname_prefix, next_index, format))
-      logging.info('Saving screenshot to %s.' % screenshot_file)
-
-      old_exc_type = sys.exc_info()[0]
-      try:
-          utils.system('DISPLAY=:0.0 XAUTHORITY=/home/chronos/.Xauthority '
-                       '/usr/local/bin/import -window root -depth 8 %s' %
-                       screenshot_file)
-      except Exception as err:
-          # Do not raise an exception if the screenshot fails while processing
-          # another exception.
-          if old_exc_type is None:
-              raise
-          logging.error(err)
-
-      return screenshot_file
-
-
     def login(self, username=None, password=None):
         """Log in with a set of credentials.
 
@@ -436,7 +405,7 @@ class UITest(pyauto_test.PyAutoTest):
                                  'file named %s.png in the results folder.' %
                                  (err, screenshot_name))
         finally:
-            self.take_screenshot(fname_prefix=screenshot_name)
+            utils.take_screenshot(self.resultsdir, fname_prefix=screenshot_name)
             self.stop_tcpdump(fname_prefix='tcpdump-lo--till-login')
 
         logging.info('Logged in as %s.  You can verify with the '
@@ -544,7 +513,7 @@ class UITest(pyauto_test.PyAutoTest):
                                         constraints=constraints,
                                         *args, **kwargs)
         except:
-            self.take_screenshot(fname_prefix='test-fail-screenshot')
+            utils.take_screenshot(self.resultsdir, fname_prefix='test-fail-screenshot')
             raise
 
 

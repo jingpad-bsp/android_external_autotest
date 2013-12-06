@@ -41,8 +41,10 @@ class chromedriver(object):
         assert os.geteuid() == 0, 'Need superuser privileges'
 
         # Log in with telemetry
-        self._browser = chrome.Chrome(extension_paths=extension_paths,
-                                      is_component=is_component).browser
+        self._chrome = chrome.Chrome(extension_paths=extension_paths,
+                                     is_component=is_component,
+                                     extra_browser_args=extra_chrome_flags)
+        self._browser = self._chrome.browser
 
         # Start ChromeDriver server
         self._server = chromedriver_server(CHROMEDRIVER_EXE_PATH)
@@ -79,6 +81,16 @@ class chromedriver(object):
         if hasattr(self, '_browser') and self._browser:
             self._browser.Close()
             del self._browser
+
+
+    def get_extension(self, extension_path):
+        """Gets an extension by proxying to the browser.
+
+        @param extension_path: Path to the extension loaded in the browser.
+
+        @return: A telemetry extension object representing the extension.
+        """
+        return self._chrome.get_extension(extension_path)
 
 
 class chromedriver_server(object):

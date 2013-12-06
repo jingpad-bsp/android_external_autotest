@@ -1,0 +1,45 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "beeps@chromium.org"
+NAME = "desktopui_SonicExtension"
+PURPOSE = "Verify that we can load the sonic extension and cast a tab."
+CRITERIA = """
+This test will fail if we are unable to load the extension, if we don't
+find the expected test utilities page, or we can't cast a tab to the sonic
+device.
+"""
+TIME = "SHORT"
+TEST_CATEGORY = "General"
+TEST_CLASS = "desktopui"
+TEST_TYPE = "client"
+
+DOC = """
+This test loads an extension through chromedriver and navigates to a test
+utility page used to configure the extension. It requires the ip address
+of a sonic host, and that the sonic host is on the same subnet as the
+Device Under Test.
+
+Usage: test_that <ip address of DUT> --board=<boardname of DUT>
+           --args="sonic_hostname=<ip or name of sonichost>,
+                   extension_path=/path/to/local/extension_in_testdir"
+
+The extension_path is optional, if none is specified the default ToT
+extension will get used. If one is specified, it must reside in the
+test's root directory (i.e autotest_checkout/client/site_tests/\
+                           desktopui_SonicExtension/).
+"""
+
+args_dict = utils.args_to_dict(args)
+sonic_hostname = args_dict.get('sonic_hostname')
+extension_path = args_dict.get('extension_path')
+if not sonic_hostname:
+    raise error.TestError('Cannot run sonic_AppTest without a sonic host.'
+                          'please specify --args="sonic_hostname=<ip>" with '
+                          'test_that.')
+
+
+job.run_test('desktopui_SonicExtension',
+             extension_path=extension_path,
+             chromecast_ip=sonic_hostname)

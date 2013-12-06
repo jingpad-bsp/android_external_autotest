@@ -1,0 +1,44 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import utils
+
+AUTHOR = "Chrome OS Team"
+NAME = "sonic_AppTest"
+PURPOSE = "Demonstrate the ability to start the chromecast app."
+CRITERIA = "This test will fail if the app fails to start."
+EXPERIMENTAL = "True"
+TIME = "SHORT"
+TEST_CATEGORY = "General"
+TEST_CLASS = "sonic"
+TEST_TYPE = "server"
+
+DOC = """
+This is a sonic test that will cast a tab.
+
+Tab cast is achieved through desktopui_SonicExtension, which is a client
+test that handles all the extension manipulation necessary to talk to the
+sonic device. Note that the sonic host and the DUT need to be on the same
+subnet.
+
+Usage: test_that <ip of Cros DUT> --board=<boardname of DUT>
+           --args="sonic_hostname=<ip of sonichost>"
+"""
+
+args_dict = utils.args_to_dict(args)
+
+def run(machine):
+    sonic_hostname = args_dict.get('sonic_hostname')
+    if not sonic_hostname:
+        raise error.TestError('Cannot run sonic_AppTest without a sonic host. '
+                              'please specify --args="sonic_hostname=<ip>" with '
+                              'test_that.')
+
+    cros_host = hosts.create_host(machine)
+    sonic_host = hosts.create_host(sonic_hostname)
+    job.run_test('sonic_AppTest', cros_host=cros_host, sonic_host=sonic_host,
+                 disable_sysinfo=True)
+
+parallel_simple(run, machines)

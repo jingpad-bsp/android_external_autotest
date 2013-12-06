@@ -19,8 +19,8 @@ can successfully reboot. It automatically detects the type of the host,
 creates the appropriate host object, and calls reboot on the host object.
 
 Example usage:
-test_that generic_RebootTest <eureka/cros/beaglobonedevice ip> --board=<board>
-A note about --board: <unless you're emerging eureka sources you
+test_that generic_RebootTest <sonic/cros/beaglobonedevice ip> --board=<board>
+A note about --board: <unless you're emerging sonic sources you
 can just use a chromeos board here, as all we need is test_that
 from the sysroot>.
 
