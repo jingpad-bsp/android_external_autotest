@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import ping_runner
@@ -118,16 +119,38 @@ class network_WiFi_TDLSPing(wifi_cell_test_base.WiFiCellTestBase):
         # it can send TDLS traffic.
         self.context.router.add_connected_peer()
 
+        # Test for TDLS connectivity to the peer, using the IP address.
+        # We expect the first attempt to fail since the client does not
+        # have the IP address of the peer in its ARP cache.
+        peer_ip = self.context.router.local_peer_ip_address(0)
+        link_state = self.context.client.query_tdls_link(peer_ip)
+        if link_state is not False:
+            raise error.TestError(
+                    'First query of TDLS link succeeded: %r' % link_state)
+
+        # Wait a reasonable time for the ARP triggered by the first TDLS
+        # command to succeed.
+        time.sleep(1)
+
+        # A second attempt should succeed, since by now the ARP cache should
+        # be populated.  However at this time there should be no link.
+        link_state = self.context.client.query_tdls_link(peer_ip)
+        if link_state != 'Nonexistent':
+            raise error.TestError(
+                    'DUT does not report a missing TDLS link: %r' % link_state)
+
         # Ping from DUT to the associated peer without TDLS.
         self.ping_and_check_for_tdls(frequency, expected=False)
 
         # Ping from DUT to the associated peer with TDLS.
-        peer_mac = self.context.router.local_peer_mac_address()
-        self.context.client.establish_tdls_link(peer_mac)
+        self.context.client.establish_tdls_link(peer_ip)
         self.ping_and_check_for_tdls(frequency, expected=True)
 
         # Ensure that the DUT reports the TDLS link as being active.
+        # Use the MAC address to ensure we can perform TDLS requests
+        # against either IP or MAC addresses.
+        peer_mac = self.context.router.local_peer_mac_address()
         link_state = self.context.client.query_tdls_link(peer_mac)
-        if (link_state != 'Connected'):
+        if link_state != 'Connected':
             raise error.TestError(
                     'DUT does not report TDLS link is active: %r' % link_state)
