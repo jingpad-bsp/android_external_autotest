@@ -22,6 +22,7 @@ class PseudoNetInterface(object):
     that is needed to pass portal detection and perform data transfer tests.
 
     """
+    ARP_ANNOUNCE_CONF = '/proc/sys/net/ipv4/conf/all/arp_announce'
     IFACE_NAME = 'pseudomodem0'
     PEER_IFACE_NAME = IFACE_NAME + 'p'
     IFACE_IP_BASE = '192.168.7'
@@ -35,6 +36,7 @@ class PseudoNetInterface(object):
     SHILL_PORTAL_DETECTION_SERVER = 'www.gstatic.com'
 
     def __init__(self):
+        self._arp_announce = 0
         peer_ip = self.IFACE_IP_BASE + '.1'
         peer_interface_ip = peer_ip + '/' + str(self.IFACE_NETWORK_PREFIX)
         self.vif = virtual_ethernet_pair.VirtualEthernetPair(
@@ -108,6 +110,12 @@ class PseudoNetInterface(object):
         Sets up the virtual Ethernet pair and starts dnsmasq.
 
         """
+        # Make sure ARP requests for the pseudo modem network addresses
+        # go out the pseudo modem network interface.
+        self._arp_announce = utils.system_output(
+                'cat %s' % self.ARP_ANNOUNCE_CONF)
+        utils.run('echo 1 > %s' % self.ARP_ANNOUNCE_CONF)
+
         self.vif.setup()
         self.BringInterfaceDown()
         if not self.vif.is_healthy:
@@ -122,8 +130,9 @@ class PseudoNetInterface(object):
         self._ChrootRunCmdIgnoreErrors(['/bin/bash', '-c', '"pkill dnsmasq"'])
         self._ChrootRunCmdIgnoreErrors(['/bin/bash', '-c',
                                         '"pkill -f test_endpoint"'])
-        self.chroot.shutdown()
         self.vif.teardown()
+        self.chroot.shutdown()
+        utils.run('echo %s > %s' % (self._arp_announce, self.ARP_ANNOUNCE_CONF))
 
     def Restart(self):
         """
