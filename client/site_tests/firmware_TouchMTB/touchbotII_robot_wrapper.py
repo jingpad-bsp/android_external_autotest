@@ -403,6 +403,8 @@ class RobotWrapper:
         """Execute a control command."""
         print 'Executing: "%s"' % control_cmd
         if self._is_robot_action_mode():
+            # Pausing to give everything time to settle
+            time.sleep(2)
             return common_util.simple_system(control_cmd)
         return 0
 
@@ -421,8 +423,6 @@ class RobotWrapper:
             print gesture.name, variation
             control_cmd = self._get_control_command(gesture.name, variation)
             print control_cmd
-            # Pausing to give everything time to settle
-            time.sleep(2)
             self._execute_control_command(control_cmd)
         except RobotWrapperError as e:
             print gesture.name, variation
