@@ -366,7 +366,10 @@ class BaseDroneManager(object):
 
         @param drone: A Drone object.
         """
-        percent = float(drone.active_processes) / drone.max_processes
+        try:
+            percent = float(drone.active_processes) / drone.max_processes
+        except ZeroDivisionError:
+            percent = 100
         max_percent = scheduler_config.config.max_processes_warning_threshold
         if percent >= max_percent:
             message = ('Drone %s is hitting %s of process limit.' %
