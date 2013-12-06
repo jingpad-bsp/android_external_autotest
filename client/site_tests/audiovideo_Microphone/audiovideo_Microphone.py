@@ -44,6 +44,7 @@ class audiovideo_Microphone(test.test):
             cmd = 'amixer -D hw:%d cget name="Capture Switch"'
             output = utils.system_output(cmd % sndcard_id)
             if 'values=on,on' not in output:
+                logging.error(output)
                 raise error.TestFail('The microphone is not on by default.')
         else:
             # TODO(jiesun): find consistent way to find the ALSA mixer control
