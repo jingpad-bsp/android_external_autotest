@@ -596,7 +596,8 @@ class Suite(object):
                 tests[file] = found_test
             except control_data.ControlVariableException, e:
                 if not forgiving_parser:
-                    raise
+                    msg = "Failed parsing %s\n%s" % (file, e)
+                    raise control_data.ControlVariableException(msg)
                 logging.warn("Skipping %s\n%s", file, e)
             except Exception, e:
                 logging.error("Bad %s\n%s", file, e)
