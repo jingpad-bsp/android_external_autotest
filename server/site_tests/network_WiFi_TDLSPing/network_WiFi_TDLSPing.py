@@ -118,18 +118,11 @@ class network_WiFi_TDLSPing(wifi_cell_test_base.WiFiCellTestBase):
         # it can send TDLS traffic.
         self.context.router.add_connected_peer()
 
-        # Manually add an ARP entry for the peer device in the DUT.
-        # Because the AP is the same machine as the peer, it will
-        # reply to ARP requests for the peer with the AP MAC address,
-        # which is not what we want the DUT to use.
-        peer_ip = self.context.router.local_peer_ip_address(0)
-        peer_mac = self.context.router.local_peer_mac_address()
-        self.context.client.add_arp_entry(peer_ip, peer_mac)
-
         # Ping from DUT to the associated peer without TDLS.
         self.ping_and_check_for_tdls(frequency, expected=False)
 
         # Ping from DUT to the associated peer with TDLS.
+        peer_mac = self.context.router.local_peer_mac_address()
         self.context.client.establish_tdls_link(peer_mac)
         self.ping_and_check_for_tdls(frequency, expected=True)
 

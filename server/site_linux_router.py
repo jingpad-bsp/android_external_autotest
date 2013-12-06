@@ -979,6 +979,14 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.router.run('echo 2 > /proc/sys/net/ipv4/conf/%s/rp_filter' %
                         interface)
 
+        # Similarly, we'd like to prevent the hostap interface from
+        # replying to ARP requests for the peer IP address and vice
+        # versa.
+        self.router.run('echo 1 > /proc/sys/net/ipv4/conf/%s/arp_ignore' %
+                        interface)
+        self.router.run('echo 1 > /proc/sys/net/ipv4/conf/%s/arp_ignore' %
+                        hostap_conf['interface'])
+
         self.station['configured'] = True
         self.station['type'] = 'supplicant'
         self.station['interface'] = interface
