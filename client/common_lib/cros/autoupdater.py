@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import glob
 import httplib
 import logging
 import multiprocessing
@@ -516,6 +517,26 @@ class ChromiumOSUpdater():
         # Check for rollback due to a bad build.
         if (expected_kernel_state and
                 active_kernel_state != expected_kernel_state):
+
+            # Kernel crash reports should be wiped between test runs, but
+            # may persist from earlier parts of the test, or from problems
+            # with provisioning.
+            #
+            # Kernel crash reports will NOT be present if the crash happened
+            # before encrypted stateful is mounted.
+            #
+            # TODO(dgarrett): Integrate with server/crashcollect.py at some
+            # point.
+            kernel_crashes = glob.glob('/var/spool/crash/kernel.*.kcrash')
+            if kernel_crashes:
+                rollback_message += ': kernel_crash'
+                logging.debug('Found %d kernel crash reports:',
+                              len(kernel_crashes))
+                # The crash names contain timestamps that may be useful:
+                #   kernel.20131207.005945.0.kcrash
+                for crash in kernel_crashes:
+                  logging.debug('  %s', os.path.basename(crash))
+
             # Print out some information to make it easier to debug
             # the rollback.
             logging.debug('Dumping partition table.')
