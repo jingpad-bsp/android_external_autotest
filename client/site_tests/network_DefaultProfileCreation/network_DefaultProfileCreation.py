@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
 import os
 
 from autotest_lib.client.bin import test
@@ -46,4 +47,6 @@ class network_DefaultProfileCreation(test.test):
         profile = open(self.DEFAULT_PROFILE_PATH).read()
         for setting in self.EXPECTED_SETTINGS:
             if setting not in profile:
-                raise error.TestFail('Missing setting ' + setting)
+                logging.error('Did not find setting %s', setting)
+                logging.error('Full profile contents are:\n%s', profile)
+                raise error.TestFail('Missing setting(s) in default profile.')
