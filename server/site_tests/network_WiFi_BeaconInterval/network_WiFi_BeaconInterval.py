@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server.cros.network import hostap_config
 from autotest_lib.server.cros.network import wifi_cell_test_base
-from autotest_lib.server.cros.network import wifi_client
 
 
 class network_WiFi_BeaconInterval(wifi_cell_test_base.WiFiCellTestBase):
@@ -25,7 +25,7 @@ class network_WiFi_BeaconInterval(wifi_cell_test_base.WiFiCellTestBase):
         assoc_params.ssid = self.context.router.get_ssid()
         self.context.assert_connect_wifi(assoc_params)
         self.context.client.check_iw_link_value(
-                wifi_client.WiFiClient.IW_LINK_KEY_BEACON_INTERVAL,
+                iw_runner.IW_LINK_KEY_BEACON_INTERVAL,
                 bint_val)
         self.context.assert_ping_from_dut()
         self.context.client.shill.disconnect(assoc_params.ssid)

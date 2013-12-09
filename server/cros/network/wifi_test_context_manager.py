@@ -6,6 +6,7 @@ import logging
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
+from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server import hosts
@@ -293,5 +294,5 @@ class WiFiTestContextManager(object):
                     (ssid, elapsed_seconds, state))
         if freq:
             self.client.check_iw_link_value(
-                    wifi_client.WiFiClient.IW_LINK_KEY_FREQUENCY, freq)
+                    iw_runner.IW_LINK_KEY_FREQUENCY, freq)
         self.assert_ping_from_dut(ap_num=ap_num)

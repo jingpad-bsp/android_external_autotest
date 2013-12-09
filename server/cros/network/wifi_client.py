@@ -26,10 +26,6 @@ class WiFiClient(object):
 
     XMLRPC_BRINGUP_TIMEOUT_SECONDS = 60
 
-    IW_LINK_KEY_BEACON_INTERVAL = 'beacon int'
-    IW_LINK_KEY_DTIM_PERIOD = 'dtim period'
-    IW_LINK_KEY_FREQUENCY = 'freq'
-
     DEFAULT_PING_COUNT = 10
     COMMAND_PING = 'ping'
 
@@ -440,29 +436,21 @@ class WiFiClient(object):
     def check_iw_link_value(self, iw_link_key, desired_value):
         """Assert that the current wireless link property is |desired_value|.
 
-        @param iw_link_key string one of IW_LINK_KEY_* defined above.
+        @param iw_link_key string one of IW_LINK_KEY_* defined in iw_runner.
         @param desired_value string desired value of iw link property.
 
         """
-        result = self.host.run('%s dev %s link' % (self.command_iw,
-                                                   self.wifi_if))
-        find_re = re.compile('\s*%s:\s*(.*\S)\s*$' % iw_link_key)
-        find_results = filter(bool, map(find_re.match,
-                                        result.stdout.splitlines()))
-        if not find_results:
-            raise error.TestFail('Could not find iw link property %s.' %
-                                 iw_link_key)
-
-        actual_value = find_results[0].group(1)
+        actual_value = self.get_iw_link_value(iw_link_key)
         desired_value = str(desired_value)
-        if actual_value != str(desired_value):
+        if actual_value != desired_value:
             raise error.TestFail('Wanted iw link property %s value %s, but '
                                  'got %s instead.' % (iw_link_key,
                                                       desired_value,
                                                       actual_value))
 
-        logging.info('Found iw link key %s with value %s.',
-                     iw_link_key, actual_value)
+
+    def get_iw_link_value(self, iw_link_key):
+        return self._iw_runner.get_link_value(self.wifi_if, iw_link_key)
 
 
     def powersave_switch(self, turn_on):

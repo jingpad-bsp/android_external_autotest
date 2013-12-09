@@ -3,9 +3,11 @@
 # found in the LICENSE file.
 
 import collections
+import logging
 import re
 import time
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
 
 
@@ -40,6 +42,11 @@ IwPhy = collections.namedtuple('Phy', ['name', 'bands', 'modes', 'commands'])
 
 DEFAULT_COMMAND_IW = 'iw'
 
+IW_LINK_KEY_BEACON_INTERVAL = 'beacon int'
+IW_LINK_KEY_DTIM_PERIOD = 'dtim period'
+IW_LINK_KEY_FREQUENCY = 'freq'
+
+
 class IwRunner(object):
     """Defines an interface to the 'iw' command."""
 
@@ -72,6 +79,54 @@ class IwRunner(object):
 
         """
         self._run('%s dev %s disconnect' % (self._command_iw, interface))
+
+
+    def get_link_value(self, interface, iw_link_key, ignore_failures=False):
+        """Get the value of a link property for |interface|.
+
+        This command parses fields of iw link:
+
+        #> iw dev wlan0 link
+        Connected to 74:e5:43:10:4f:c0 (on wlan0)
+              SSID: PMKSACaching_4m9p5_ch1
+              freq: 5220
+              RX: 5370 bytes (37 packets)
+              TX: 3604 bytes (15 packets)
+              signal: -59 dBm
+              tx bitrate: 13.0 MBit/s MCS 1
+
+              bss flags:      short-slot-time
+              dtim period:    5
+              beacon int:     100
+
+        @param iw_link_key: string one of IW_LINK_KEY_* defined above.
+        @param interface: string desired value of iw link property.
+
+        """
+        result = self._run('%s dev %s link' % (self._command_iw, interface),
+                           ignore_status=ignore_failures)
+        if result.exit_status:
+            # When roaming, there is a period of time for mac80211 based drivers
+            # when the driver is 'associated' with an SSID but not a particular
+            # BSS.  This causes iw to return an error code (-2) when attempting
+            # to retrieve information specific to the BSS.  This does not happen
+            # in mwifiex drivers.
+            return None
+
+        find_re = re.compile('\s*%s:\s*(.*\S)\s*$' % iw_link_key)
+        find_results = filter(bool,
+                              map(find_re.match, result.stdout.splitlines()))
+        if not find_results:
+            if ignore_failures:
+                return None
+
+            raise error.TestFail('Could not find iw link property %s.' %
+                                 iw_link_key)
+
+        actual_value = find_results[0].group(1)
+        logging.info('Found iw link key %s with value %s.',
+                     iw_link_key, actual_value)
+        return actual_value
 
 
     def ibss_join(self, interface, ssid, frequency):

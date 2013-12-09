@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server.cros.network import hostap_config
 from autotest_lib.server.cros.network import wifi_cell_test_base
-from autotest_lib.server.cros.network import wifi_client
 
 
 class network_WiFi_Prefer5Ghz(wifi_cell_test_base.WiFiCellTestBase):
@@ -25,5 +25,5 @@ class network_WiFi_Prefer5Ghz(wifi_cell_test_base.WiFiCellTestBase):
         self.context.assert_connect_wifi(
                 xmlrpc_datatypes.AssociationParameters(ssid=ssid))
         self.context.client.check_iw_link_value(
-                wifi_client.WiFiClient.IW_LINK_KEY_FREQUENCY,
+                iw_runner.IW_LINK_KEY_FREQUENCY,
                 str(ap_config1.frequency))
