@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, tempfile
+import logging, os, tempfile
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -117,5 +117,6 @@ class desktopui_MediaAudioFeedback(test.test):
 
         # Navigate to play.html?<file-name>, javascript test will parse
         # the media file name and play it.
-        url = self._cr.browser.http_server.UrlOf('play.html')
+        url = self._cr.browser.http_server.UrlOf(
+                os.path.join(self.bindir, 'play.html'))
         self._cr.browser.tabs[0].Navigate('%s?%s' % (url, media_file))
