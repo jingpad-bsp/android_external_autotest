@@ -62,7 +62,7 @@ class StateMachine(object):
                 return
             self._started = True
 
-        state = self._modem.Get(mm1.I_MODEM, 'State')
+        state = self._GetCurrentState()
         func = self._trans_func_map.get(state, self._GetDefaultHandler())
         if func and func(self):
             self._ScheduleNextStep()
@@ -126,3 +126,19 @@ class StateMachine(object):
 
         """
         raise NotImplementedError()
+
+    def _GetCurrentState(self):
+        """
+        Get the current state of the state machine.
+
+        This method is called to get the current state of the machine when
+        deciding what the next transition should be.
+        By default, the state machines are tied to the modem state, and this
+        function simply returns the modem state.
+
+        Subclasses can override this function to use custom states in the state
+        machine.
+
+        @returns The modem state.
+        """
+        return self._modem.Get(mm1.I_MODEM, 'State')
