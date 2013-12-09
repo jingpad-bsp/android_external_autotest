@@ -9,6 +9,7 @@ from autotest_lib.client.cros.audio import cmd_utils
 
 ARECORD_PATH='/usr/bin/arecord'
 APLAY_PATH='/usr/bin/aplay'
+AMIXER_PATH='/usr/bin/amixer'
 
 def _get_format_args(channels, bits, rate):
     args = ['-c', str(channels)]
@@ -109,3 +110,9 @@ def _find_default_soundcard_id():
 
     # If there is only one soundcard, return it, else return not found (None)
     return 0 if id == 1 else None
+
+def dump_control_contents(device=None):
+    if device is None:
+        device = 'hw:%d' % get_default_soundcard_id()
+    args = [AMIXER_PATH, '-D', device, 'contents']
+    return cmd_utils.execute(args, stdout=subprocess.PIPE)

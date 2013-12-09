@@ -28,9 +28,6 @@ _TEST_SAMPLE_RATES = [ 8000,
 # Minimum RMS value to consider a "pass".  Can't be too high because we don't
 # know how much or our recording will be silence waiting for the tone to start.
 _MIN_SOX_RMS_VALUE = 0.05
-# Input and output levels.
-_TEST_VOLUME_LEVEL = 100
-_TEST_CAPTURE_GAIN = 2500
 
 _TEST_TONE_ONE = 440
 _TEST_TONE_TWO = 523
@@ -116,15 +113,10 @@ class audiovideo_CRASFormatConversion(test.test):
         finally:
             cmd_utils.kill_or_log_returncode(*popens)
 
+    @audio_helper.cras_rms_test
     def run_once(self):
         """Runs the format conversion test.
         """
-
-        # Config the playback volume and recording gain
-        cras_utils.set_system_volume(_TEST_VOLUME_LEVEL)
-        output_node, _ = cras_utils.get_selected_nodes()
-        cras_utils.set_node_volume(output_node, _TEST_VOLUME_LEVEL)
-        cras_utils.set_capture_gain(_TEST_CAPTURE_GAIN)
 
         # Record silence to use as the noise profile.
         noise_file = os.path.join(self.resultsdir, "noise.wav")

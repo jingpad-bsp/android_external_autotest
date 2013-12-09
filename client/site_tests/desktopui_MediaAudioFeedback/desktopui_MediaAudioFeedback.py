@@ -65,34 +65,31 @@ class desktopui_MediaAudioFeedback(test.test):
 
         super(desktopui_MediaAudioFeedback, self).initialize()
 
-    def run_once(self):
-        audio_helper.set_volume_levels(self._volume_level, self._capture_gain)
-        if not audio_helper.check_loopback_dongle():
-            raise error.TestError('Audio loopback dongle is in bad state.')
+    @audio_helper.chrome_rms_test
+    def run_once(self, chrome):
 
-        with chrome.Chrome() as cr:
-            cr.browser.SetHTTPServerDirectories(self.bindir)
-            self._cr = cr
+        chrome.browser.SetHTTPServerDirectories(self.bindir)
+        self._cr = chrome
 
-            def record_callback(filename):
-                audio_helper.record_sample(filename, self._rec_cmd)
+        def record_callback(filename):
+            audio_helper.record_sample(filename, self._rec_cmd)
 
-            def mix_callback(filename):
-                utils.system("%s %s" % (self._mix_cmd, filename))
+        def mix_callback(filename):
+            utils.system("%s %s" % (self._mix_cmd, filename))
 
-            # Record a sample of "silence" to use as a noise profile.
-            with tempfile.NamedTemporaryFile(mode='w+t') as noise_file:
-                logging.info('Noise file: %s', noise_file.name)
-                audio_helper.record_sample(noise_file.name, self._rec_cmd)
-                # Test each media file for all channels.
-                for media_file in _MEDIA_FORMATS:
-                    audio_helper.loopback_test_channels(noise_file.name,
-                            self.resultsdir,
-                            lambda channel: self.play_media(media_file),
-                            self.wait_player_end_then_check_recorded,
-                            num_channels=self._num_channels,
-                            record_callback=record_callback,
-                            mix_callback=mix_callback)
+        # Record a sample of "silence" to use as a noise profile.
+        with tempfile.NamedTemporaryFile(mode='w+t') as noise_file:
+            logging.info('Noise file: %s', noise_file.name)
+            audio_helper.record_sample(noise_file.name, self._rec_cmd)
+            # Test each media file for all channels.
+            for media_file in _MEDIA_FORMATS:
+                audio_helper.loopback_test_channels(noise_file.name,
+                        self.resultsdir,
+                        lambda channel: self.play_media(media_file),
+                        self.wait_player_end_then_check_recorded,
+                        num_channels=self._num_channels,
+                        record_callback=record_callback,
+                        mix_callback=mix_callback)
 
     def wait_player_end_then_check_recorded(self, sox_output):
         """Wait for player ends playing and then check for recorded result.

@@ -14,8 +14,6 @@ from autotest_lib.client.cros.audio import sox_utils
 
 
 TEST_DURATION = 1
-VOLUME_LEVEL = 100
-CAPTURE_GAIN = 2500
 RMS_THRESHOLD = 0.05
 
 class audiovideo_LineOutToMicInLoopback(test.test):
@@ -23,26 +21,13 @@ class audiovideo_LineOutToMicInLoopback(test.test):
     version = 1
     preserve_srcdir = True
 
-
+    # TODO(owenlin): split this test into two tests for ALSA and CRAS.
+    @audio_helper.alsa_rms_test
     def run_once(self):
         """Entry point of this test."""
 
         # Multitone wav file lasts 10 seconds
         self._wav_path = os.path.join(self.srcdir, '10SEC.wav')
-
-        # Config the playback volume and recording gain.
-        cras_utils.set_system_volume(VOLUME_LEVEL)
-        output_node, _ = cras_utils.get_selected_nodes()
-        cras_utils.set_node_volume(output_node, VOLUME_LEVEL)
-        cras_utils.set_capture_gain(CAPTURE_GAIN)
-
-        # CRAS does not apply the volume and capture gain to ALSA until
-        # streams are added. Do that to ensure the values have been set.
-        cras_utils.playback('-')
-        cras_utils.capture('/dev/null', duration=0.1)
-
-        if not audio_helper.check_loopback_dongle():
-            raise error.TestError('Audio loopback dongle is in bad state.')
 
         self.loopback_test_hw()
         self.loopback_test_cras()

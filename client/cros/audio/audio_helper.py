@@ -17,7 +17,9 @@ from glob import glob
 from autotest_lib.client.bin import utils
 from autotest_lib.client.bin.input.input_device import *
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.audio import alsa_utils
 from autotest_lib.client.cros.audio import cmd_utils
+from autotest_lib.client.cros.audio import cras_utils
 from autotest_lib.client.cros.audio import sox_utils
 
 LD_LIBRARY_PATH = 'LD_LIBRARY_PATH'
@@ -25,6 +27,8 @@ LD_LIBRARY_PATH = 'LD_LIBRARY_PATH'
 _DEFAULT_NUM_CHANNELS = 2
 _DEFAULT_REC_COMMAND = 'arecord -D hw:0,0 -d 10 -f dat'
 _DEFAULT_SOX_FORMAT = '-t raw -b 16 -e signed -r 48000 -L'
+_DEFAULT_PLAYBACK_VOLUME = 100
+_DEFAULT_CAPTURE_GAIN = 2500
 
 # Minimum RMS value to pass when checking recorded file.
 _DEFAULT_SOX_RMS_THRESHOLD = 0.08
@@ -180,29 +184,21 @@ def get_mic_jack_status():
     else:
         return None
 
-def check_loopback_dongle():
+def log_loopback_dongle_status():
     '''
-    Checks if loopback dongle is equipped correctly.
+    Log the status of the loopback dongle to make sure it is equipped correctly.
     '''
+    dongle_status_ok = True
+
     # Check Mic Jack
     mic_jack_status = get_mic_jack_status()
-    if mic_jack_status is None:
-        logging.warning('Found no Mic Jack control, skip check.')
-    elif not mic_jack_status:
-        logging.info('Mic jack is not plugged.')
-        return False
-    else:
-        logging.info('Mic jack is plugged.')
+    logging.info('Mic jack status: %s', mic_jack_status)
+    dongle_status_ok &= mic_jack_status
 
     # Check Headphone Jack
     hp_jack_status = get_hp_jack_status()
-    if hp_jack_status is None:
-        logging.warning('Found no Headphone Jack control, skip check.')
-    elif not hp_jack_status:
-        logging.info('Headphone jack is not plugged.')
-        return False
-    else:
-        logging.info('Headphone jack is plugged.')
+    logging.info('Headphone jack status: %s', hp_jack_status)
+    dongle_status_ok &= hp_jack_status
 
     # Use latency check to test if audio can be captured through dongle.
     # We only want to know the basic function of dongle, so no need to
@@ -212,10 +208,11 @@ def check_loopback_dongle():
         logging.info('Got latency measured %d, reported %d',
                 latency[0], latency[1])
     else:
-        logging.warning('Latency check fail.')
-        return False
+        logging.info('Latency check fail.')
+        dongle_status_ok = False
 
-    return True
+    logging.info('audio loopback dongle test: %s',
+            'PASS' if dongle_status_ok else 'FAIL')
 
 # Functions to test audio palyback.
 def play_sound(duration_seconds=None, audio_file_path=None):
@@ -514,3 +511,88 @@ def reduce_noise_and_check_rms(
 
         if any(s.rms < rms_threshold for s in stats):
             raise error.TestFail('RMS: %s' % [s.rms for s in stats])
+
+
+def cras_rms_test_setup():
+    """ Setups for the cras_rms_tests.
+
+    To make sure the line_out-to-mic_in path is all green.
+    """
+    # TODO(owenlin): Now, the nodes are choosed by chrome.
+    #                We should do it here.
+    output_node, _ = cras_utils.get_selected_nodes()
+
+    cras_utils.set_system_volume(_DEFAULT_PLAYBACK_VOLUME)
+    cras_utils.set_node_volume(output_node, _DEFAULT_PLAYBACK_VOLUME)
+
+    cras_utils.set_capture_gain(_DEFAULT_CAPTURE_GAIN)
+
+    cras_utils.set_system_mute(False)
+    cras_utils.set_capture_mute(False)
+
+
+def chrome_rms_test(run_once):
+    """ An annotation used for RMS audio test with Chrome.
+
+    The first parameter for run_once will be replaced by a chrome instance.
+
+    @param run_once: the function which this annotation will be applied.
+    """
+    def wrapper(self, cr=None, *args, **kargs):
+        # Not all client of this file using telemetry.
+        # Just do the import here for those who really need it.
+        from autotest_lib.client.common_lib.cros import chrome
+        try:
+            with chrome.Chrome() as chrome_instance:
+                # The audio configuration could be changed when we
+                # restart chrome.
+                cras_rms_test_setup()
+                run_once(self, chrome_instance, *args, **kargs)
+        except error.TestFail:
+            logging.info('audio postmortem report')
+            logging.info(cras_utils.dump_server_info())
+            log_loopback_dongle_status()
+            logging.info(alsa_utils.dump_control_contents())
+            raise
+    return wrapper
+
+
+def cras_rms_test(run_once):
+    """ An annotation used for RMS audio test with CRAS.
+
+    @param run_once: the function which this annotation will be applied.
+    """
+    def wrapper(*args, **kargs):
+        cras_rms_test_setup()
+        try:
+            run_once(*args, **kargs)
+        except error.TestFail:
+            logging.info('audio postmortem report')
+            logging.info(cras_utils.dump_server_info())
+            log_loopback_dongle_status()
+            logging.info(alsa_utils.dump_control_contents())
+            raise
+    return wrapper
+
+
+def alsa_rms_test(run_once):
+    """ An annotation used for RMS audio test with ALSA.
+
+    @param run_once: the function which this annotation to be applied.
+    """
+    def wrapper(*args, **kargs):
+        # TODO(owenlin): Don't use CRAS for setup.
+        cras_rms_test_setup()
+
+        # CRAS does not apply the volume and capture gain to ALSA util
+        # streams are added. Do that to ensure the values have been set.
+        cras_utils.playback('-')
+        cras_utils.capture('/dev/null', duration=0.1)
+        try:
+            run_once(*args, **kargs)
+        except error.TestFail:
+            logging.info('audio postmortem report')
+            log_loopback_dongle_status()
+            logging.info(alsa_utils.dump_control_contents())
+            raise
+    return wrapper

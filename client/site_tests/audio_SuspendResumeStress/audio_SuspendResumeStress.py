@@ -46,11 +46,9 @@ class audio_SuspendResumeStress(cros_ui_test.UITest):
         self._testServer = httpd.HTTPListener(8000, docroot=self.bindir)
         self._testServer.run()
 
+    @audio_helper.cras_rms_test
     def run_once(self):
         """Entry point of this test."""
-        audio_helper.set_volume_levels(self._volume_level, self._capture_gain)
-        if not audio_helper.check_loopback_dongle():
-            raise error.TestError('Audio loopback dongle is in bad state.')
 
         # Record a sample of "silence" to use as a noise profile.
         noise_file_name = audio_helper.create_wav_file(self.resultsdir, "noise")

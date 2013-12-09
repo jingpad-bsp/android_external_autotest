@@ -133,3 +133,21 @@ def get_active_stream_count():
         logging.error(server_info)
         raise RuntimeException('Cannot find matched pattern')
     return int(match.group(1))
+
+
+def set_system_mute(is_mute):
+    """Sets the system mute switch.
+
+    @param is_mute: Set True to mute the system playback.
+    """
+    args = [_CRAS_TEST_CLIENT, '--mute', '1' if is_mute else '0']
+    cmd_utils.execute(args)
+
+
+def set_capture_mute(is_mute):
+    """Sets the capture mute switch.
+
+    @param is_mute: Set True to mute the capture.
+    """
+    args = [_CRAS_TEST_CLIENT, '--capture_mute', '1' if is_mute else '0']
+    cmd_utils.execute(args)
