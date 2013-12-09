@@ -64,16 +64,18 @@ class security_kASLR(test.test):
 
         self._client = host
 
-        # Make sure we're expecting kernel ASLR at all.
+        # Report client configuration, to help debug any problems.
         kernel_ver = self._client.run('uname -r').stdout.rstrip()
-        if utils.compare_versions(kernel_ver, "3.8") < 0:
-            logging.info("kASLR not available on this device (kernel is %s)",
-                         kernel_ver)
-            return
         arch = utils.get_arch(self._client.run)
+        logging.info("Starting kASLR tests for '%s' on '%s'",
+                     kernel_ver, arch)
+
+        # Make sure we're expecting kernel ASLR at all.
+        if utils.compare_versions(kernel_ver, "3.8") < 0:
+            logging.info("kASLR not available on this kernel")
+            return
         if arch.startswith('arm'):
-            logging.info("kASLR not available on this device (arch is %s)",
-                         arch)
+            logging.info("kASLR not available on this architecture")
             return
 
         kallsyms_filename = os.path.join(self.resultsdir, 'kallsyms')
