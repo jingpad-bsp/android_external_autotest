@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
 import re
 
 from autotest_lib.client.bin import test, utils
@@ -35,7 +34,7 @@ class security_SandboxStatusTelemetry(test.test):
                     "rows[%d].cells[%d].textContent" % (row, column))
         return utils.poll_for_condition(
                 lambda: self._EvaluateJavaScript(table_js),
-                exception=error.TestFail(
+                exception=error.TestError(
                        'Failed to evaluate in chrome://sandbox "%s"'
                         % table_js),
                 timeout=30)
@@ -75,13 +74,11 @@ class security_SandboxStatusTelemetry(test.test):
                     lambda: self._EvaluateJavaScript(gpu_js),
                     timeout=30)
         except utils.TimeoutError:
-            logging.error('Failed to evaluate in chrome://gpu "%s"', gpu_js)
-            return False
+            raise error.TestError('Failed to evaluate in chrome://gpu "%s"'
+                                  % gpu_js)
 
         if res.find(content) == -1:
-            logging.error(error_msg)
-            return False
-        return True
+            raise error.TestFail(error_msg)
 
 
     def run_once(self):
@@ -92,7 +89,6 @@ class security_SandboxStatusTelemetry(test.test):
             self._CheckRowValues(len(SANDBOXES))
 
             self._tab.Navigate('chrome://gpu')
-            found_gpu_row = self._CheckGPUCell(0, 'Sandboxed',
-                    'Could not locate "Sandboxed" row in table')
-            if found_gpu_row:
-                self._CheckGPUCell(1, 'true', 'GPU not sandboxed')
+            self._CheckGPUCell(0, 'Sandboxed',
+                               'Could not locate "Sandboxed" row in table')
+            self._CheckGPUCell(1, 'true', 'GPU not sandboxed')
