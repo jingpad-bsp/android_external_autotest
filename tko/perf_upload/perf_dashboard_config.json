@@ -20,6 +20,10 @@
     "master_name": "ChromeOSVideo"
   },
   {
+    "autotest_name": "video_WebRtcPerf",
+    "master_name": "ChromeOSVideo"
+  },
+  {
     "autotest_name": "telemetry_Benchmarks.dromaeo.domcoreattr",
     "master_name": "ChromiumPerf",
     "dashboard_test_name": "dromaeo.domcoreattr"
