@@ -6,7 +6,7 @@
 # to make sure it works as expected. The most robust implementations is
 # based on real HW but it doesn't have to be.
 
-import logging, os
+import logging
 
 # http://docs.python.org/2/library/errno.html
 import errno
@@ -16,6 +16,8 @@ from autotest_lib.server import test
 
 
 class platform_HWwatchdog(test.test):
+    """Test to make sure that /dev/watchdog will reboot the system."""
+
     version = 1
 
     def _stop_watchdog(self, wd_dev):
@@ -34,7 +36,7 @@ class platform_HWwatchdog(test.test):
             raise error.TestError('write to %s failed (%s)' %
                                   (wd_dev, errno.errorcode[e.errno]))
 
-        logging.info("KernelHWpath: tickled watchdog on %s" %
+        logging.info("KernelHWpath: tickled watchdog on %s",
                      self.client.hostname)
 
         # machine should became unpingable after lockup
@@ -66,7 +68,7 @@ class platform_HWwatchdog(test.test):
 
         # If watchdog not present, just skip this test
         if not self._exists_on_client(wd_dev):
-            logging.info("INFO: %s not present. Skipping test." % wd_dev)
+            logging.info("INFO: %s not present. Skipping test.", wd_dev)
             return
 
         self._stop_daemon()
