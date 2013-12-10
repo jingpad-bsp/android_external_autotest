@@ -8,7 +8,11 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 
-
+_MOCK_GET_DEVICE_CODE = """
+    echo.getDeviceCode = function(isGroupType, callback) {
+        callback("fake_device_code");
+    };
+"""
 _MOCK_ORIGIN_SUCCESS_JS = """
     echo.verifyOrigin = function(origin, requestNonce, successCallback,
                                  failureCallback) {
@@ -150,7 +154,8 @@ class desktopui_EchoExtension(test.test):
         @param key_string: The key_string returned from ECHO server.
         """
 
-        js_code = _MOCK_ORIGIN_SUCCESS_JS + _MOCK_CONSENT_ALLOW_JS + """
+        js_code = _MOCK_ORIGIN_SUCCESS_JS + _MOCK_CONSENT_ALLOW_JS + \
+            _MOCK_GET_DEVICE_CODE + """
             echo.getXHR = function() {
                 var xhr = {};
                 xhr.open = function(action, endpoint) {};
