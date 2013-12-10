@@ -267,9 +267,22 @@ def canonicalize(credential):
 
 
 def crash_cryptohomed():
-  # Try to kill cryptohomed so we get something to work with.
-  utils.system('pkill -ABRT cryptohomed')
-  time.sleep(2)  # Give it 2 seconds to dump
+    # Try to kill cryptohomed so we get something to work with.
+    pid = __run_cmd('pgrep cryptohomed')
+    try:
+      pid = int(pid)
+    except ValueError, e:  # empty or invalid string
+      raise error.TestError('Cryptohomed was not running')
+    utils.system('kill -ABRT %d' % pid)
+    # CONT just in case cryptohomed had a spurious STOP.
+    utils.system('kill -CONT %d' % pid)
+    utils.poll_for_condition(
+        lambda: utils.system('ps -p %d' % pid,
+                             ignore_status=True) != 0,
+            timeout=60,
+            exception=error.TestError(
+                'Timeout waiting for cryptohomed to coredump'))
+
 
 class CryptohomeProxy:
     def __init__(self):
