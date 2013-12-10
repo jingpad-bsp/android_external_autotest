@@ -13,7 +13,7 @@ import re
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-
+from autotest_lib.client.cros import service_stopper
 
 GLMARK2_SCORE_RE = 'glmark2 Score: (\d+)'
 
@@ -23,6 +23,13 @@ class graphics_GLMark2(test.test):
 
     def setup(self):
         self.job.setup_dep(['glmark2'])
+
+    def initialize(self):
+        self._services = service_stopper.ServiceStopper(['ui'])
+
+    def cleanup(self):
+        if self._services:
+           self._services.restore_services()
 
     def run_once(self, size='800x600', validation_mode=False, min_score=None):
         dep = 'glmark2'
@@ -36,8 +43,16 @@ class graphics_GLMark2(test.test):
         else:
            options.append('--annotate')
         cmd = '%s %s' % (glmark2, ' '.join(options))
-        if not os.getenv('DISPLAY'):
-            cmd = 'X :1 & sleep 1; DISPLAY=:1 %s; kill $!' % cmd
+
+        # If UI is running, we must stop it and restore later.
+        self._services.stop_services()
+
+        # Just sending SIGTERM to X is not enough; we must wait for it to
+        # really die before we start a new X server (ie start ui).
+        # The term_process function of /sbin/killers makes sure that all X
+        # process are really dead before returning; this is what stop ui uses.
+        kill_cmd = '. /sbin/killers; term_process "^X$"'
+        cmd = 'X :1 vt1 & sleep 1; chvt 1 && DISPLAY=:1 %s; %s' % (cmd, kill_cmd)
 
         if os.environ.get('CROS_FACTORY'):
             from autotest_lib.client.cros import factory_setup_modules
