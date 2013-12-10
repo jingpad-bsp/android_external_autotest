@@ -8,13 +8,17 @@
 This script is responsible for removing older builds from the Chrome OS
 devserver. It walks through the files in the images folder, check each found
 staged.timestamp and do following.
-1. Check if the modified time of the timestamp file is older than a given cutoff
+1. Check if the build target is in the list of targets that need to keep the
+   latest build. Skip processing the directory if that's True.
+2. Check if the modified time of the timestamp file is older than a given cutoff
    time, e.g., 24 hours before the current time.
-2. If that's True, delete the folder containing staged.timestamp.
-3. Check if the parent folder of the deleted foler is empty. If that's True,
+3. If that's True, delete the folder containing staged.timestamp.
+4. Check if the parent folder of the deleted foler is empty. If that's True,
    delete the parent folder as well. Do so recursively, until it hits the top
    folder, e.g., |~/images|.
 """
+
+from distutils import version
 
 import logging
 import optparse
@@ -27,7 +31,22 @@ import time
 # This filename must be kept in sync with devserver's downloader.py
 _TIMESTAMP_FILENAME = 'staged.timestamp'
 _HOURS_TO_SECONDS = 60 * 60
-_EXEMPTED_DIRECTORIES = [ 'servo-images' ]
+_EXEMPTED_DIRECTORIES = []
+_KEEP_LAST_BUILD_FOR_TARGETS = {'beaglebone_servo-release',
+                                'trybot-beaglebone_servo-release'}
+
+def is_latest_staged_build(dir_path):
+    """Check if dir_path has the latest build for the same build target.
+
+    @param dir_path: Path to a staged build.
+    @return: True if the build staged in dir_path is the latest.
+    """
+    target_dir = os.path.dirname(dir_path)
+    builds = [dir for dir in os.listdir(target_dir)
+              if os.path.isdir(os.path.join(target_dir, dir))]
+    latest_build = max(builds, key=version.LooseVersion)
+    return os.path.basename(dir_path) == latest_build
+
 
 def get_all_timestamp_dirs(root):
     """Get all directories that has timestamp file.
@@ -41,7 +60,16 @@ def get_all_timestamp_dirs(root):
             dir_names[:] = []
         elif _TIMESTAMP_FILENAME in file_names:
             dir_names[:] = []
-            yield dir_path
+            target = os.path.basename(os.path.dirname(dir_path))
+            # Check if dir_path belongs to build targets in
+            # _KEEP_LAST_BUILD_FOR_TARGETS, and has the latest build staged,
+            # skip if that is True.
+            if (target in _KEEP_LAST_BUILD_FOR_TARGETS and
+                is_latest_staged_build(dir_path)):
+                logging.debug('Build in %s is the latest build, skipping.',
+                              dir_path)
+            else:
+                yield dir_path
 
 
 def file_is_too_old(build_path, max_age_hours):
