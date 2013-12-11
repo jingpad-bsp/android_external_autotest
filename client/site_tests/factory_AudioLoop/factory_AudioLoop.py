@@ -136,10 +136,10 @@ class factory_AudioLoop(test.test):
 
     def audio_loopback(self):
         for input_device in self._input_devices:
+            rec_cmd = 'arecord -D %s -f dat -d %f' % (input_device,
+                                                      self._duration)
 
             def record_callback(filename):
-                rec_cmd = 'arecord -D %s -f dat -d %f' % (input_device,
-                                                          self._duration)
                 audio_helper.record_sample(filename, rec_cmd)
 
             # TODO(hychao): split deps and I/O devices to different
