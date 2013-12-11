@@ -2,11 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus, logging, os, random, re, shutil, string, time
+import dbus, gobject, logging, os, random, re, shutil, string
+from dbus.mainloop.glib import DBusGMainLoop
 
 import common, constants
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.cros_disks import DBusClient
 
 CRYPTOHOME_CMD = '/usr/sbin/cryptohome'
 GUEST_USER_NAME = '$guest'
@@ -270,9 +272,9 @@ def crash_cryptohomed():
     # Try to kill cryptohomed so we get something to work with.
     pid = __run_cmd('pgrep cryptohomed')
     try:
-      pid = int(pid)
+        pid = int(pid)
     except ValueError, e:  # empty or invalid string
-      raise error.TestError('Cryptohomed was not running')
+        raise error.TestError('Cryptohomed was not running')
     utils.system('kill -ABRT %d' % pid)
     # CONT just in case cryptohomed had a spurious STOP.
     utils.system('kill -CONT %d' % pid)
@@ -284,14 +286,32 @@ def crash_cryptohomed():
                 'Timeout waiting for cryptohomed to coredump'))
 
 
-class CryptohomeProxy:
+class CryptohomeProxy(DBusClient):
+    """A DBus proxy client for testing the Cryptohome DBus server.
+    """
+    CRYPTOHOME_BUS_NAME = 'org.chromium.Cryptohome'
+    CRYPTOHOME_OBJECT_PATH = '/org/chromium/Cryptohome'
+    CRYPTOHOME_INTERFACE = 'org.chromium.CryptohomeInterface'
+    ASYNC_CALL_STATUS_SIGNAL = 'AsyncCallStatus'
+    ASYNC_CALL_STATUS_SIGNAL_ARGUMENTS = (
+        'async_id', 'return_status', 'return_code'
+    )
+    DBUS_PROPERTIES_INTERFACE = 'org.freedesktop.DBus.Properties'
+
     def __init__(self):
-        BUSNAME = 'org.chromium.Cryptohome'
-        PATH = '/org/chromium/Cryptohome'
-        INTERFACE = 'org.chromium.CryptohomeInterface'
-        bus = dbus.SystemBus()
-        obj = bus.get_object(BUSNAME, PATH)
-        self.iface = dbus.Interface(obj, INTERFACE)
+        self.main_loop = gobject.MainLoop()
+        bus_loop = DBusGMainLoop(set_as_default=True)
+        self.bus = dbus.SystemBus(mainloop=bus_loop)
+        super(CryptohomeProxy, self).__init__(self.main_loop, self.bus,
+                                              self.CRYPTOHOME_BUS_NAME,
+                                              self.CRYPTOHOME_OBJECT_PATH)
+        self.iface = dbus.Interface(self.proxy_object,
+                                    self.CRYPTOHOME_INTERFACE)
+        self.properties = dbus.Interface(self.proxy_object,
+                                         self.DBUS_PROPERTIES_INTERFACE)
+        self.handle_signal(self.CRYPTOHOME_INTERFACE,
+                           self.ASYNC_CALL_STATUS_SIGNAL,
+                           self.ASYNC_CALL_STATUS_SIGNAL_ARGUMENTS)
 
     # Wrap all proxied calls to catch cryptohomed failures.
     def __call(self, method, *args):
@@ -304,17 +324,49 @@ class CryptohomeProxy:
                 raise ChromiumOSError('cryptohomed aborted. Check crashes!')
             raise e
 
-    def mount(self, user, password, create=False):
+    def __wait_for_specific_signal(self, signal, data):
+      """Wait for the |signal| with matching |data|
+         Returns the resulting dict on success or {} on error.
+      """
+      self.clear_signal_content(signal)
+      result = self.wait_for_signal(signal)
+      for k in data.keys():
+          if not result.has_key(k) or result[k] != data[k]:
+            return {}
+      return result
+
+    # Perform a data-less async call.
+    # TODO(wad) Add __async_data_call.
+    def __async_call(self, method, *args):
+        out = self.__call(method, *args)
+        logging.debug('Issued call ' + str(method) +
+                      ' with async_id ' + str(out))
+        result = {}
+        try:
+            result = utils.poll_for_condition(
+                lambda: self.__wait_for_specific_signal(
+                    self.ASYNC_CALL_STATUS_SIGNAL, {'async_id' : out}),
+                timeout=60,
+                desc='matching %s signal' % self.ASYNC_CALL_STATUS_SIGNAL)
+        except utils.TimeoutError, e:
+            logging.error('Cryptohome timed out. Sending ABRT.')
+            crash_cryptohomed()
+            raise ChromiumOSError('cryptohomed aborted. Check crashes!')
+        return result
+
+    def mount(self, user, password, create=False, async=True):
         """Mounts a cryptohome.
 
         Returns True if the mount succeeds or False otherwise.
         TODO(ellyjones): Migrate mount_vault() to use a multi-user-safe
         heuristic, then remove this method. See <crosbug.com/20778>.
         """
+        if async:
+            return self.__async_call(self.iface.AsyncMount, user, password,
+                                     create, False, [])['return_status']
         out = self.__call(self.iface.Mount, user, password, create, False, [])
-        if not out:
-            return out
-        return out[1]
+        # Sync returns (return code, return status)
+        return out[1] if len(out) > 1 else False
 
     def unmount(self, user):
         """Unmounts a cryptohome.
@@ -335,9 +387,15 @@ class CryptohomeProxy:
         utils.require_mountpoint(user_path(user))
         utils.require_mountpoint(system_path(user))
 
-    def migrate(self, user, oldkey, newkey):
+    def migrate(self, user, oldkey, newkey, async=True):
         """Migrates the specified user's cryptohome from one key to another."""
+        if async:
+            return self.__async_call(self.iface.AsyncMigrateKey,
+                                     user, oldkey, newkey)['return_status']
         return self.__call(self.iface.MigrateKey, user, oldkey, newkey)
 
-    def remove(self, user):
+    def remove(self, user, async=True):
+        if async:
+            return self.__async_call(self.iface.AsyncRemove,
+                                     user)['return_status']
         return self.__call(self.iface.Remove, user)
