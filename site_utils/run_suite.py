@@ -597,8 +597,8 @@ def main():
 
     try:
         if not options.bypass_labstatus:
-            utils.check_lab_status(options.board)
-    except (utils.LabIsDownException, utils.BoardIsDisabledException) as e:
+            utils.check_lab_status(options.build)
+    except utils.TestLabException as e:
         logging.warning('Error Message: %s', e)
         return RETURN_CODES.WARNING
 

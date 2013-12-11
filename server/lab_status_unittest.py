@@ -13,6 +13,8 @@ import common
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.server import site_utils
 
+_DEADBUILD = 'deadboard-release/R33-4966.0.0'
+_LIVEBUILD = 'liveboard-release/R32-4920.14.0'
 
 _OPEN_STATUS_VALUES = [
     '''
@@ -44,6 +46,16 @@ _OPEN_STATUS_VALUES = [
       "general_state": "open"
     }
     ''',
+
+    '''
+    {
+      "username": "fizzbin@google.com",
+      "date": "2013-11-16 00:25:23.511208",
+      "message": "Lab is up despite R33-4966.0.0",
+      "can_commit_freely": true,
+      "general_state": "open"
+    }
+    ''',
 ]
 
 _CLOSED_STATUS_VALUES = [
@@ -61,19 +73,19 @@ _CLOSED_STATUS_VALUES = [
     {
       "username": "fizzbin@google.com",
       "date": "2013-11-16 00:25:23.511208",
-      "message": "Lab is down even for [deadboard]",
+      "message": "Lab is down even for [liveboard-release/R32-4920.14.0]",
       "can_commit_freely": false,
       "general_state": "closed"
     }
     ''',
 ]
 
-_DEADBOARD_STATUS_VALUES = [
+_DEADBUILD_STATUS_VALUES = [
     '''
     {
       "username": "fizzbin@google.com",
       "date": "2013-11-16 00:25:23.511208",
-      "message": "Lab is up except for [deadboard]",
+      "message": "Lab is up except for [deadboard-]",
       "can_commit_freely": false,
       "general_state": "open"
     }
@@ -83,7 +95,7 @@ _DEADBOARD_STATUS_VALUES = [
     {
       "username": "fizzbin@google.com",
       "date": "2013-11-16 00:25:23.511208",
-      "message": "liveboard is good, but [deadboard] is bad",
+      "message": "Lab is up except for [R33-]",
       "can_commit_freely": false,
       "general_state": "open"
     }
@@ -93,7 +105,7 @@ _DEADBOARD_STATUS_VALUES = [
     {
       "username": "fizzbin@google.com",
       "date": "2013-11-16 00:25:23.511208",
-      "message": "Lab is up [deadboard otherboard]",
+      "message": "Lab is up except for [deadboard-.*/R33-]",
       "can_commit_freely": false,
       "general_state": "open"
     }
@@ -103,7 +115,7 @@ _DEADBOARD_STATUS_VALUES = [
     {
       "username": "fizzbin@google.com",
       "date": "2013-11-16 00:25:23.511208",
-      "message": "Lab is up [otherboard deadboard]",
+      "message": "Lab is up except for [ deadboard-]",
       "can_commit_freely": false,
       "general_state": "open"
     }
@@ -113,7 +125,47 @@ _DEADBOARD_STATUS_VALUES = [
     {
       "username": "fizzbin@google.com",
       "date": "2013-11-16 00:25:23.511208",
-      "message": "Lab is up [first deadboard last]",
+      "message": "Lab is up except for [deadboard- ]",
+      "can_commit_freely": false,
+      "general_state": "open"
+    }
+    ''',
+
+    '''
+    {
+      "username": "fizzbin@google.com",
+      "date": "2013-11-16 00:25:23.511208",
+      "message": "Lab is up [first R33- last]",
+      "can_commit_freely": false,
+      "general_state": "open"
+    }
+    ''',
+
+    '''
+    {
+      "username": "fizzbin@google.com",
+      "date": "2013-11-16 00:25:23.511208",
+      "message": "liveboard is good, but [deadboard-] is bad",
+      "can_commit_freely": false,
+      "general_state": "open"
+    }
+    ''',
+
+    '''
+    {
+      "username": "fizzbin@google.com",
+      "date": "2013-11-16 00:25:23.511208",
+      "message": "Lab is up [deadboard- otherboard-]",
+      "can_commit_freely": false,
+      "general_state": "open"
+    }
+    ''',
+
+    '''
+    {
+      "username": "fizzbin@google.com",
+      "date": "2013-11-16 00:25:23.511208",
+      "message": "Lab is up [otherboard- deadboard-]",
       "can_commit_freely": false,
       "general_state": "open"
     }
@@ -249,10 +301,10 @@ class DecodeStatusTest(unittest.TestCase):
      1. Lab is up.  All calls to _decode_lab_status() will
         succeed without raising an exception.
      2. Lab is down.  All calls to _decode_lab_status() will
-        fail with LabIsDownException.
-     3. Board disabled.  Calls to _decode_lab_status() will
-        succeed, except that board 'deadboard' will raise
-        BoardIsDisabledException.
+        fail with TestLabException.
+     3. Build disabled.  Calls to _decode_lab_status() will
+        succeed, except that board `_DEADBUILD` will raise
+        TestLabException.
 
     """
 
@@ -265,42 +317,37 @@ class DecodeStatusTest(unittest.TestCase):
         @param lab_status JSON value describing lab status.
 
         """
-        site_utils._decode_lab_status(lab_status, None)
-        site_utils._decode_lab_status(lab_status, 'liveboard')
-        site_utils._decode_lab_status(lab_status, 'deadboard')
+        site_utils._decode_lab_status(lab_status, _LIVEBUILD)
+        site_utils._decode_lab_status(lab_status, _DEADBUILD)
 
 
     def _assert_lab_closed(self, lab_status):
         """Test that closed status values are handled properly.
 
-        Test that _decode_lab_status() raises LabIsDownException
+        Test that _decode_lab_status() raises TestLabException
         when the lab status is down.
 
         @param lab_status JSON value describing lab status.
 
         """
-        with self.assertRaises(site_utils.LabIsDownException):
-            site_utils._decode_lab_status(lab_status, None)
-        with self.assertRaises(site_utils.LabIsDownException):
-            site_utils._decode_lab_status(lab_status, 'liveboard')
-        with self.assertRaises(site_utils.LabIsDownException):
-            site_utils._decode_lab_status(lab_status, 'deadboard')
+        with self.assertRaises(site_utils.TestLabException):
+            site_utils._decode_lab_status(lab_status, _LIVEBUILD)
+        with self.assertRaises(site_utils.TestLabException):
+            site_utils._decode_lab_status(lab_status, _DEADBUILD)
 
 
-    def _assert_lab_deadboard(self, lab_status):
-        """Test that disabled boards are handled properly.
+    def _assert_lab_deadbuild(self, lab_status):
+        """Test that disabled builds are handled properly.
 
-        Test that _decode_lab_status() raises
-        BoardIsDisabledException for board 'deadboard' and
-        succeeds otherwise.
+        Test that _decode_lab_status() raises TestLabException
+        for build `_DEADBUILD` and succeeds otherwise.
 
         @param lab_status JSON value describing lab status.
 
         """
-        site_utils._decode_lab_status(lab_status, None)
-        site_utils._decode_lab_status(lab_status, 'liveboard')
-        with self.assertRaises(site_utils.BoardIsDisabledException):
-            site_utils._decode_lab_status(lab_status, 'deadboard')
+        site_utils._decode_lab_status(lab_status, _LIVEBUILD)
+        with self.assertRaises(site_utils.TestLabException):
+            site_utils._decode_lab_status(lab_status, _DEADBUILD)
 
 
     def _assert_lab_status(self, test_values, checker):
@@ -333,10 +380,10 @@ class DecodeStatusTest(unittest.TestCase):
                                 self._assert_lab_closed)
 
 
-    def test_dead_board(self):
-        """Test that disabled boards are handled correctly."""
-        self._assert_lab_status(_DEADBOARD_STATUS_VALUES,
-                                self._assert_lab_deadboard)
+    def test_dead_build(self):
+        """Test that disabled builds are handled correctly."""
+        self._assert_lab_status(_DEADBUILD_STATUS_VALUES,
+                                self._assert_lab_deadbuild)
 
 
 class CheckStatusTest(mox.MoxTestBase):
@@ -389,100 +436,51 @@ class CheckStatusTest(mox.MoxTestBase):
         site_utils._get_lab_status(_FAKE_URL).AndReturn(json_value)
 
 
-    def _try_check_no_board(self):
-        """Test calling check_lab_status() with no board."""
+    def _try_check_status(self, build):
+        """Test calling check_lab_status() with `build`."""
         try:
             self.mox.ReplayAll()
-            site_utils.check_lab_status()
+            site_utils.check_lab_status(build)
         finally:
             self.mox.VerifyAll()
 
 
-    def _try_check_dead_board(self):
-        """Test calling check_lab_status() with 'deadboard'."""
-        try:
-            self.mox.ReplayAll()
-            site_utils.check_lab_status('deadboard')
-        finally:
-            self.mox.VerifyAll()
-
-
-    def _try_check_live_board(self):
-        """Test calling check_lab_status() with 'liveboard'."""
-        try:
-            self.mox.ReplayAll()
-            site_utils.check_lab_status('liveboard')
-        finally:
-            self.mox.VerifyAll()
-
-
-    def test_non_cautotest_no_board(self):
-        """Test a call with no board when the host isn't cautotest."""
+    def test_non_cautotest(self):
+        """Test a call with a build when the host isn't cautotest."""
         self._setup_not_cautotest()
-        self._try_check_no_board()
+        self._try_check_status(_LIVEBUILD)
 
 
-    def test_non_cautotest_with_board(self):
-        """Test a call with a board when the host isn't cautotest."""
-        self._setup_not_cautotest()
-        self._try_check_live_board()
-
-
-    def test_no_status_no_board(self):
-        """Test without a board when `_get_lab_status()` returns `None`."""
+    def test_no_lab_status(self):
+        """Test with a build when `_get_lab_status()` returns `None`."""
         self._setup_no_status()
-        self._try_check_no_board()
+        self._try_check_status(_LIVEBUILD)
 
 
-    def test_no_lab_status_with_board(self):
-        """Test with a board when `_get_lab_status()` returns `None`."""
-        self._setup_no_status()
-        self._try_check_live_board()
-
-
-    def test_lab_up_no_board(self):
-        """Test lab open with no board specified."""
+    def test_lab_up_live_build(self):
+        """Test lab open with a build specified."""
         self._setup_lab_status(_OPEN_STATUS_VALUES[0])
-        self._try_check_no_board()
+        self._try_check_status(_LIVEBUILD)
 
 
-    def test_lab_up_live_board(self):
-        """Test lab open with a board specified."""
-        self._setup_lab_status(_OPEN_STATUS_VALUES[0])
-        self._try_check_live_board()
-
-
-    def test_lab_down_no_board(self):
-        """Test lab closed with no board specified."""
+    def test_lab_down_live_build(self):
+        """Test lab closed with a build specified."""
         self._setup_lab_status(_CLOSED_STATUS_VALUES[0])
-        with self.assertRaises(site_utils.LabIsDownException):
-            self._try_check_no_board()
+        with self.assertRaises(site_utils.TestLabException):
+            self._try_check_status(_LIVEBUILD)
 
 
-    def test_lab_down_live_board(self):
-        """Test lab closed with a board specified."""
-        self._setup_lab_status(_CLOSED_STATUS_VALUES[0])
-        with self.assertRaises(site_utils.LabIsDownException):
-            self._try_check_live_board()
+    def test_build_disabled_live_build(self):
+        """Test build disabled with a live build specified."""
+        self._setup_lab_status(_DEADBUILD_STATUS_VALUES[0])
+        self._try_check_status(_LIVEBUILD)
 
 
-    def test_board_disabled_no_board(self):
-        """Test board disabled with no board specified."""
-        self._setup_lab_status(_DEADBOARD_STATUS_VALUES[0])
-        self._try_check_no_board()
-
-
-    def test_board_disabled_live_board(self):
-        """Test board disabled with a live board specified."""
-        self._setup_lab_status(_DEADBOARD_STATUS_VALUES[0])
-        self._try_check_live_board()
-
-
-    def test_board_disabled_dead_board(self):
-        """Test board disabled with the disabled board specified."""
-        self._setup_lab_status(_DEADBOARD_STATUS_VALUES[0])
-        with self.assertRaises(site_utils.BoardIsDisabledException):
-            self._try_check_dead_board()
+    def test_build_disabled_dead_build(self):
+        """Test build disabled with the disabled build specified."""
+        self._setup_lab_status(_DEADBUILD_STATUS_VALUES[0])
+        with self.assertRaises(site_utils.TestLabException):
+            self._try_check_status(_DEADBUILD)
 
 
 if __name__ == '__main__':

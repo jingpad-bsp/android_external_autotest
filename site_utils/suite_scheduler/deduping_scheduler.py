@@ -49,8 +49,8 @@ class DedupingScheduler(object):
     def _ShouldScheduleSuite(self, suite, board, build):
         """Return True if |suite| has not yet been run for |build| on |board|.
 
-        True if |suite| has not been run for |build| on |board|.
-        False if it has been.
+        True if |suite| has not been run for |build| on |board|, and
+        the lab is open for this particular request.  False otherwise.
 
         @param suite: the name of the suite to run, e.g. 'bvt'
         @param board: the board to run the suite on, e.g. x86-alex
@@ -59,6 +59,12 @@ class DedupingScheduler(object):
         @return False if the suite was already scheduled, True if not
         @raise DedupException if the AFE raises while searching for jobs.
         """
+        try:
+            site_utils.check_lab_status(build)
+        except site_utils.TestLabException as ex:
+            logging.debug('Skipping suite %s, board %s, build %s:  %s',
+                          suite, board, build, str(ex))
+            return False
         try:
             return not self._afe.get_jobs(name__startswith=build,
                                           name__endswith='control.'+suite)

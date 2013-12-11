@@ -42,10 +42,30 @@ class DedupingSchedulerTest(mox.MoxTestBase):
         super(DedupingSchedulerTest, self).setUp()
         self.afe = self.mox.CreateMock(frontend.AFE)
         self.scheduler = deduping_scheduler.DedupingScheduler(afe=self.afe)
+        self.mox.StubOutWithMock(site_utils, 'check_lab_status')
+
+
+    def _SetupLabStatus(self, build, message=None):
+        """Set up to mock one call to `site_utils.check_lab_status()`.
+
+        @param build    The build to expect to be passed to
+                        `check_lab_status()`.
+        @param message  `None` if the mocked call should return that
+                        the lab status is up.  Otherwise, a string for
+                        the exception message.
+
+        """
+        if message is None:
+            site_utils.check_lab_status(build)
+        else:
+            site_utils.check_lab_status(build).AndRaise(
+                site_utils.TestLabException(message))
 
 
     def testScheduleSuite(self):
         """Test a successful de-dup and suite schedule."""
+        # Lab is UP!
+        self._SetupLabStatus(self._BUILD)
         # A similar suite has not already been scheduled.
         self.afe.get_jobs(name__startswith=self._BUILD,
                           name__endswith='control.'+self._SUITE).AndReturn([])
@@ -72,10 +92,26 @@ class DedupingSchedulerTest(mox.MoxTestBase):
 
     def testShouldNotScheduleSuite(self):
         """Test a successful de-dup and avoiding scheduling the suite."""
+        # Lab is UP!
+        self._SetupLabStatus(self._BUILD)
         # A similar suite has already been scheduled.
         self.afe.get_jobs(
             name__startswith=self._BUILD,
             name__endswith='control.'+self._SUITE).AndReturn(['42'])
+        self.mox.ReplayAll()
+        self.assertFalse(self.scheduler.ScheduleSuite(self._SUITE,
+                                                      self._BOARD,
+                                                      self._BUILD,
+                                                      self._POOL,
+                                                      None,
+                                                      self._PRIORITY,
+                                                      self._TIMEOUT))
+
+
+    def testShouldNotScheduleSuiteLabClosed(self):
+        """Test that we don't schedule when the lab is closed."""
+        # Lab is down.  :-(
+        self._SetupLabStatus(self._BUILD, 'Lab closed due to sheep.')
         self.mox.ReplayAll()
         self.assertFalse(self.scheduler.ScheduleSuite(self._SUITE,
                                                       self._BOARD,
@@ -112,6 +148,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
 
     def testShouldScheduleSuiteExplodes(self):
         """Test a failure to de-dup."""
+        # Lab is UP!
+        self._SetupLabStatus(self._BUILD)
         # Barf while checking for similar suites.
         self.afe.get_jobs(
             name__startswith=self._BUILD,
@@ -130,6 +168,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
 
     def testScheduleFail(self):
         """Test a successful de-dup and failure to schedule the suite."""
+        # Lab is UP!
+        self._SetupLabStatus(self._BUILD)
         # A similar suite has not already been scheduled.
         self.afe.get_jobs(name__startswith=self._BUILD,
                           name__endswith='control.'+self._SUITE).AndReturn([])
@@ -158,6 +198,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
 
     def testScheduleExplodes(self):
         """Test a successful de-dup and barf while scheduling the suite."""
+        # Lab is UP!
+        self._SetupLabStatus(self._BUILD)
         # A similar suite has not already been scheduled.
         self.afe.get_jobs(name__startswith=self._BUILD,
                           name__endswith='control.'+self._SUITE).AndReturn([])
@@ -191,6 +233,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
         self.mox.StubOutWithMock(reporting.Reporter, '_check_tracker')
         self.mox.StubOutWithMock(site_utils, 'get_sheriffs')
         self.scheduler._file_bug = True
+        # Lab is UP!
+        self._SetupLabStatus(self._BUILD)
         # A similar suite has not already been scheduled.
         self.afe.get_jobs(name__startswith=self._BUILD,
                           name__endswith='control.'+self._SUITE).AndReturn([])

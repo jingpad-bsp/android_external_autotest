@@ -132,13 +132,6 @@ class Driver(object):
         logging.info('Boards currently in the lab: %r', boards)
         for e in self._events.itervalues():
             if e.ShouldHandle():
-                try:
-                    utils.check_lab_status()
-                except utils.LabIsDownException as ex:
-                    logging.debug('Skipping event %s, because lab is down '
-                                  'with message: %s', e.keyword, ex.message)
-                    continue
-
                 logging.info('Handling %s event', e.keyword)
                 for board in boards:
                     branch_builds = e.GetBranchBuildsForBoard(board)

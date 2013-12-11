@@ -25,13 +25,8 @@ _CHROMIUM_BUILD_URL = global_config.global_config.get_config_value(
 LAB_GOOD_STATES = ('open', 'throttled')
 
 
-class LabIsDownException(Exception):
-    """Raised when the Lab is Down"""
-    pass
-
-
-class BoardIsDisabledException(Exception):
-    """Raised when a certain board is disabled in the Lab"""
+class TestLabException(Exception):
+    """Exception raised when the Test Lab blocks a test or suite."""
     pass
 
 
@@ -178,50 +173,48 @@ def _get_lab_status(status_url):
     return None
 
 
-def _decode_lab_status(lab_status, board):
+def _decode_lab_status(lab_status, build):
     """Decode lab status, and report exceptions as needed.
 
-    Takes a deserialized JSON object from the lab status page, and
-    interprets it to determine the actual lab status.  Raises
+    Take a deserialized JSON object from the lab status page, and
+    interpret it to determine the actual lab status.  Raise
     exceptions as required to report when the lab is down.
 
-    @param board: board name that we want to check the status of.
+    @param build: build name that we want to check the status of.
 
-    @raises LabIsDownException if the lab is not up.
-    @raises BoardIsDisabledException if the desired board is currently
-                                           disabled.
+    @raises TestLabException Raised if a request to test for the given
+                             status and build should be blocked.
     """
     # First check if the lab is up.
     if not lab_status['general_state'] in LAB_GOOD_STATES:
-        raise LabIsDownException('Chromium OS Lab is currently not up: '
-                                 '%s.' % lab_status['message'])
+        raise TestLabException('Chromium OS Test Lab is closed: '
+                               '%s.' % lab_status['message'])
 
-    # Check if the board we wish to use is disabled.
+    # Check if the build we wish to use is disabled.
     # Lab messages should be in the format of:
-    # Lab is 'status' [boards not to be ran] (comment). Example:
-    # Lab is Open [stumpy, kiev, x86-alex] (power_resume rtc causing duts to go
-    # down)
-    boards_are_disabled = re.search('\[(.*)\]', lab_status['message'])
-    if board and boards_are_disabled:
-        if board in boards_are_disabled.group(1):
-            raise BoardIsDisabledException('Chromium OS Lab is '
-                    'currently not allowing suites to be scheduled on board '
-                    '%s: %s' % (board, lab_status['message']))
+    #    Lab is 'status' [regex ...] (comment)
+    # If the build name matches any regex, it will be blocked.
+    build_exceptions = re.search('\[(.*)\]', lab_status['message'])
+    if not build_exceptions:
+        return
+    for build_pattern in build_exceptions.group(1).split():
+        if re.search(build_pattern, build):
+            raise TestLabException('Chromium OS Test Lab is closed: '
+                                   '%s matches %s.' % (
+                                           build, build_pattern))
     return
 
 
-def check_lab_status(board=None):
-    """Check if the lab status allows us to schedule suites.
+def check_lab_status(build):
+    """Check if the lab status allows us to schedule for a build.
 
-    Also checks if the lab is disabled for that particular board, and if so
-    will raise an error to prevent new suites from being scheduled for that
-    board.
+    Checks if the lab is down, or if testing for the requested build
+    should be blocked.
 
-    @param board: board name that we want to check the status of.
+    @param build: Name of the build to be scheduled for testing.
 
-    @raises LabIsDownException if the lab is not up.
-    @raises BoardIsDisabledException if the desired board is currently
-                                           disabled.
+    @raises TestLabException Raised if a request to test for the given
+                             status and build should be blocked.
 
     """
     # Ensure we are trying to schedule on the actual lab.
@@ -238,4 +231,4 @@ def check_lab_status(board=None):
         # We go ahead and say the lab is open if we can't get the status.
         logging.warn('Could not get a status from %s', status_url)
         return
-    _decode_lab_status(json_status, board)
+    _decode_lab_status(json_status, build)
