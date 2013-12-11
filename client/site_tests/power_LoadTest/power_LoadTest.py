@@ -5,12 +5,17 @@
 import collections, logging, numpy, os, time
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
+from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
 from autotest_lib.client.cros import backchannel, cros_ui, cros_ui_test, httpd
 from autotest_lib.client.cros import power_rapl, power_status, power_utils
 from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.audio import audio_helper
+
+# pylint: disable=W0611
 from autotest_lib.client.cros import flimflam_test_path
-import flimflam
+# pylint: enable=W0611
+import wifi_proxy
 
 params_dict = {
     'test_time_ms': '_mseconds',
@@ -107,19 +112,44 @@ class power_LoadTest(cros_ui_test.UITest):
         # If force wifi enabled, convert eth0 to backchannel and connect to the
         # specified WiFi AP.
         if self._force_wifi:
+            sec_config = None
+            # TODO(dbasehore): Fix this when we get a better way of figuring out
+            # the wifi security configuration.
+            if wifi_sec == 'rsn' or wifi_sec == 'wpa':
+                sec_config = xmlrpc_security_types.WPAConfig(
+                        psk=wifi_pw,
+                        wpa_mode=xmlrpc_security_types.WPAConfig.MODE_PURE_WPA2,
+                        wpa2_ciphers=
+                                [xmlrpc_security_types.WPAConfig.CIPHER_CCMP])
+            wifi_config = xmlrpc_datatypes.AssociationParameters(
+                    ssid=wifi_ap, security_config=sec_config)
             # If backchannel is already running, don't run it again.
             self._backchannel = backchannel.Backchannel()
             if not self._backchannel.setup():
                 raise error.TestError('Could not setup Backchannel network.')
 
-            if not flimflam.FlimFlam().ConnectService(retries=3,
-                                                      retry=True,
-                                                      service_type='wifi',
-                                                      ssid=wifi_ap,
-                                                      security=wifi_sec,
-                                                      passphrase=wifi_pw,
-                                                      mode='managed')[0]:
+            shill_proxy = wifi_proxy.WifiProxy()
+            for attempt in range(3):
+                raw_output = shill_proxy.connect_to_wifi_network(
+                        wifi_config.ssid,
+                        wifi_config.security,
+                        wifi_config.security_parameters,
+                        wifi_config.save_credentials,
+                        station_type=wifi_config.station_type,
+                        hidden_network=wifi_config.is_hidden,
+                        discovery_timeout_seconds=
+                                wifi_config.discovery_timeout,
+                        association_timeout_seconds=
+                                wifi_config.association_timeout,
+                        configuration_timeout_seconds=
+                                wifi_config.configuration_timeout)
+                result = xmlrpc_datatypes.AssociationResult. \
+                        from_dbus_proxy_output(raw_output)
+                if result.success:
+                    break
+            else:
                 raise error.TestError('Could not connect to WiFi network.')
+
         else:
             # Find all wired ethernet interfaces.
             # TODO: combine this with code in network_DisableInterface, in a
