@@ -367,7 +367,12 @@ class AutoservError(Exception):
     pass
 
 
-class AutoservSSHTimeout(AutoservError):
+class AutoservSSHError(AutoservError):
+    """Generic SSH Error."""
+    pass
+
+
+class AutoservSSHTimeout(AutoservSSHError):
     """SSH experienced a connection timeout"""
     pass
 

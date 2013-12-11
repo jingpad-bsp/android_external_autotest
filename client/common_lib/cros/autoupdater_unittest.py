@@ -9,6 +9,7 @@ import unittest
 import common
 
 import autoupdater
+from autotest_lib.client.common_lib import error
 
 
 class TestAutoUpdater(mox.MoxTestBase):
@@ -316,6 +317,55 @@ class TestAutoUpdater(mox.MoxTestBase):
 
         self.assertFalse(updater.check_version())
         self.assertTrue(updater.check_version_to_confirm_install())
+
+
+    def testTriggerUpdate(self):
+        """Tests that we correctly handle updater errors."""
+        self.mox.StubOutWithMock(autoupdater.ChromiumOSUpdater, '_run')
+        update_url = 'http://server/test/url'
+        host = self.mox.CreateMockAnything()
+        host.hostname = 'test_host'
+
+        expected_cmd = ('/usr/bin/update_engine_client --check_for_update '
+                        '--omaha_url=http://server/test/url')
+
+        updater = autoupdater.ChromiumOSUpdater(update_url, host=host)
+
+        # Test with success.
+        autoupdater.ChromiumOSUpdater._run(expected_cmd)
+
+        # SSH Timeout
+        autoupdater.ChromiumOSUpdater._run(expected_cmd).AndRaise(
+                error.AutoservSSHTimeout("ssh timed out", 255))
+
+        # SSH Permission Error
+        autoupdater.ChromiumOSUpdater._run(expected_cmd).AndRaise(
+                error.AutoservSshPermissionDeniedError("ssh timed out", 255))
+
+        # Generic SSH Error
+        autoupdater.ChromiumOSUpdater._run(expected_cmd).AndRaise(
+                error.AutoservSSHError("ssh timed out", 255))
+
+        # Command Failed Error
+        autoupdater.ChromiumOSUpdater._run(expected_cmd).AndRaise(
+                error.AutoservRunError("ssh timed out", 1))
+
+        self.mox.ReplayAll()
+
+        # Verify Success.
+        updater.trigger_update()
+
+        # Verify each type of error listed above.
+        self.assertRaises(autoupdater.RootFSUpdateError,
+                          updater.trigger_update)
+        self.assertRaises(autoupdater.RootFSUpdateError,
+                          updater.trigger_update)
+        self.assertRaises(autoupdater.RootFSUpdateError,
+                          updater.trigger_update)
+        self.assertRaises(autoupdater.RootFSUpdateError,
+                          updater.trigger_update)
+
+        self.mox.VerifyAll()
 
 
     def testUpdateStateful(self):

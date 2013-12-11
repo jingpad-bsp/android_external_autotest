@@ -99,6 +99,8 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
             if "Permission denied." in result.stderr:
                 msg = "ssh permission denied"
                 raise error.AutoservSshPermissionDeniedError(msg, result)
+            msg = "Unknown SSH Error."
+            raise error.AutoservSSHError(msg, result)
 
         if not ignore_status and result.exit_status > 0:
             raise error.AutoservRunError("command execution error", result)
