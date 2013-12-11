@@ -54,15 +54,6 @@ class audiovideo_CRASFormatConversion(test.test):
             stdin=p1.stdout)
         return [p1, p2]
 
-    def ensure_running(self, ps):
-        """Ensures the prcoess is still running. Otherwise raises an exception.
-        Args:
-            ps: the process to be tested with.
-        """
-        if ps.poll() != None:
-            raise error.TestFail(
-                    'commands stopped(pid=%d, rc=%d): %s' %
-                    (ps.pid, ps.returncode, ps.command))
 
     def wait_for_active_stream_count(self, expected_count):
         utils.poll_for_condition(
@@ -81,7 +72,7 @@ class audiovideo_CRASFormatConversion(test.test):
             primary: The sample rate to play first, HW will be set to this.
             secondary: The second sample rate, will be SRC'd to the first.
         """
-        processes = []
+        popens = []
 
         record_file = os.path.join(self.resultsdir,
                 'record-%s-%s.wav' % (primary, secondary))
@@ -93,19 +84,20 @@ class audiovideo_CRASFormatConversion(test.test):
         # causes the secondary to be SRC'd to the primary rate.
         try:
             # Play the first audio stream and make sure it has been played
-            processes += self.play_sine_tone(_TEST_TONE_ONE, primary)
+            popens += self.play_sine_tone(_TEST_TONE_ONE, primary)
             self.wait_for_active_stream_count(1)
 
             # Play the second audio stream and make sure it has been played
-            processes += self.play_sine_tone(_TEST_TONE_TWO, secondary)
+            popens += self.play_sine_tone(_TEST_TONE_TWO, secondary)
             self.wait_for_active_stream_count(2)
 
             cras_utils.capture(
                     record_file, buffer_frames=441, duration=1, rate=44100)
 
             # Make sure the playback is still in good shape
-            for ps in processes:
-                self.ensure_running(ps)
+            if any(p.poll() is not None for p in popens):
+                # We will log more details later in finally.
+                raise error.TestFail('process unexpectly stopped')
 
             reduced_file = tempfile.NamedTemporaryFile()
             sox_utils.noise_reduce(
@@ -122,7 +114,7 @@ class audiovideo_CRASFormatConversion(test.test):
             # Remove the file only when we pass the test
             os.unlink(record_file)
         finally:
-            cmd_utils.kill_silently(*processes)
+            cmd_utils.kill_or_log_returncode(*popens)
 
     def run_once(self):
         """Runs the format conversion test.
