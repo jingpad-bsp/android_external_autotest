@@ -29,7 +29,11 @@ class power_VideoSuspend(cros_ui_test.UITest):
         if video_urls is None:
             raise error.TestError('no videos to play')
 
+	# We need access to the Internet to download the video files,
+	# temporarily stop the local fake DNS and authentication server.
+	self.stop_authserver()
         local_video_urls = [download(url) for url in video_urls]
+	self.start_authserver()
 
         for url in local_video_urls:
             self.suspend_with_video(url)
