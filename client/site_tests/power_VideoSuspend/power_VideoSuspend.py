@@ -5,9 +5,11 @@
 import logging
 import os
 import time
-from autotest_lib.client.bin import utils
+
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui_test, sys_power
+from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.cros import sys_power
 
 def download(url):
     """
@@ -22,25 +24,23 @@ def download(url):
     return 'file://' + path
 
 
-class power_VideoSuspend(cros_ui_test.UITest):
+class power_VideoSuspend(test.test):
     """Suspend the system with a video playing."""
+    version = 1
 
     def run_once(self, video_urls=None):
         if video_urls is None:
             raise error.TestError('no videos to play')
 
-	# We need access to the Internet to download the video files,
-	# temporarily stop the local fake DNS and authentication server.
-	self.stop_authserver()
-        local_video_urls = [download(url) for url in video_urls]
-	self.start_authserver()
+        with chrome.Chrome() as cr:
+            local_video_urls = [download(url) for url in video_urls]
+            for url in local_video_urls:
+                self.suspend_with_video(cr.browser.tabs[0], url)
 
-        for url in local_video_urls:
-            self.suspend_with_video(url)
-
-    def suspend_with_video(self, url):
+    @staticmethod
+    def suspend_with_video(tab, url):
         logging.info('playing %s', url)
-        self.pyauto.NavigateToURL(url)
+        tab.Navigate(url)
 
         # Wait for video to start playing.
         # TODO(spang): Make this sane. crosbug.com/37452
