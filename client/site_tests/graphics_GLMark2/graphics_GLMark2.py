@@ -20,6 +20,7 @@ GLMARK2_SCORE_RE = 'glmark2 Score: (\d+)'
 class graphics_GLMark2(test.test):
     version = 1
     preserve_srcdir = True
+    _services = None
 
     def setup(self):
         self.job.setup_dep(['glmark2'])
