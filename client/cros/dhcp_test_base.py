@@ -22,8 +22,12 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import dhcp_handling_rule
 from autotest_lib.client.cros import dhcp_packet
 from autotest_lib.client.cros import dhcp_test_server
-from autotest_lib.client.cros import flimflam_test_path
 from autotest_lib.client.cros import virtual_ethernet_pair
+
+# This hacks the path so that we can import flimflam.
+# pylint: disable=W0611
+from autotest_lib.client.cros import flimflam_test_path
+# pylint: enable=W0611
 
 import flimflam
 
@@ -41,6 +45,7 @@ DHCPCD_KEY_SEARCH_DOMAIN_LIST = "SearchDomains"
 DHCP_NEGOTIATION_TIMEOUT_SECONDS = 10
 
 class DhcpTestBase(test.test):
+    """Parent class for tests that work verify DHCP behavior."""
     version = 1
 
     @staticmethod
@@ -48,6 +53,11 @@ class DhcpTestBase(test.test):
         """
         Removes meta information from dbus data types and returns their raw
         Python equivalents.
+
+        @param value object DBus object to be converted.
+
+        @return un-adorned basic type as a result of the conversion.
+
         """
         if isinstance(value, int):
             return int(value)
@@ -83,6 +93,13 @@ class DhcpTestBase(test.test):
         Usage: rewrite_ip_suffix("255.255.255.0", "192.168.1.1", "0.0.0.105")
 
         The example usage will return "192.168.1.105".
+
+        @param subnet_mask string subnet mask, e.g. "255.255.255.0"
+        @param ip_in_subnet string an IP address in the desired subnet
+        @param ip_suffix string suffix desired for new address, e.g. "0.0.0.105"
+
+        @return string IP address on in the same subnet with specified suffix.
+
         """
         mask = struct.unpack("!I", socket.inet_aton(subnet_mask))[0]
         subnet = mask & struct.unpack("!I", socket.inet_aton(ip_in_subnet))[0]
@@ -92,9 +109,15 @@ class DhcpTestBase(test.test):
     @staticmethod
     def get_interface_ipconfig(interface_name):
         """
-        Returns a dbus dictionary containing settings for an |interface_name|
-        set via DHCP.  Returns None if no such interface or setting bundle on
+        Returns a dictionary containing settings for an |interface_name| set
+        via DHCP.  Returns None if no such interface or setting bundle on
         that interface can be found in shill.
+
+        @param interface_name string name of the interface to query.
+
+        @return dict containing the the properties of the IPConfig stripped
+            of DBus meta-data.
+
         """
         flim = flimflam.FlimFlam(dbus.SystemBus())
         device = flim.FindElementByNameSubstring("Device", interface_name)
@@ -119,7 +142,7 @@ class DhcpTestBase(test.test):
         if dhcp_properties is None:
             logging.info("Did not find IPConfig object with method == dhcp")
             return None
-        logging.info("Got raw dhcp config dbus object: %s." % dhcp_properties)
+        logging.info("Got raw dhcp config dbus object: %s.", dhcp_properties)
         return DhcpTestBase._cleanup_dbus_types(dhcp_properties)
 
     def run_once(self):
@@ -192,6 +215,16 @@ class DhcpTestBase(test.test):
                                   dhcp_options,
                                   custom_fields={},
                                   disable_check=False):
+        """
+        Perform DHCP lease negotiation, and ensure that the resulting
+        ipconfig matches the DHCP options provided to the server.
+
+        @param dhcp_options dict of properties the DHCP server should provide.
+        @param custom_fields dict of custom DHCP parameters to add to server.
+        @param disable_check bool whether to perform IPConfig parameter
+             checking.
+
+        """
         if dhcp_packet.OPTION_REQUESTED_IP not in dhcp_options:
             raise error.TestFail("You must specify OPTION_REQUESTED_IP to "
                                  "negotiate a DHCP lease")
@@ -211,7 +244,7 @@ class DhcpTestBase(test.test):
         rules[-1].is_final_handler = True
         self.server.start_test(rules, DHCP_NEGOTIATION_TIMEOUT_SECONDS)
         self.server.wait_for_test_to_finish()
-        logging.info("Server is negotiating new lease with options: %s" %
+        logging.info("Server is negotiating new lease with options: %s",
                      dhcp_options)
         if not self.server.last_test_passed:
             raise error.TestFail("Test server didn't get all the messages it "
@@ -227,6 +260,13 @@ class DhcpTestBase(test.test):
 
 
     def check_dhcp_config(self, dhcp_options):
+        """
+        Compare the DHCP ipconfig with DHCP lease parameters to ensure
+        that the DUT attained the correct values.
+
+        @param dhcp_options dict of properties the DHCP server provided.
+
+        """
         # The config is what the interface was actually configured with, as
         # opposed to dhcp_options, which is what the server expected it be
         # configured with.
@@ -286,7 +326,7 @@ class DhcpTestBase(test.test):
                 dhcp_packet.OPTION_CLASSLESS_STATIC_ROUTES]
             for prefix, destination, gateway in classless_static_routes:
                 if not prefix:
-                    logging.info("Using %s as the default gateway" % gateway)
+                    logging.info("Using %s as the default gateway", gateway)
                     expected_routers = [ gateway ]
                     break
         configured_router = dhcp_config.get(DHCPCD_KEY_GATEWAY)
