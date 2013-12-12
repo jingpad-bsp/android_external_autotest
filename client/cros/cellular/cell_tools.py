@@ -427,17 +427,28 @@ class AutoConnectContext(object):
         if not service:
             raise error.TestFail('No cellular service available.')
 
+        # Always set the AutoConnect property even if the requested value
+        # is the same so that shill will retain the AutoConnect property, else
+        # shill may override it.
         props = service.GetProperties()
         autoconnect = props['AutoConnect']
         logger.info('AutoConnect = %s' % autoconnect)
+        logger.info('Setting AutoConnect = %s.', self.autoconnect)
+        service.SetProperty('AutoConnect', dbus.Boolean(self.autoconnect))
 
         if autoconnect != self.autoconnect:
-            logger.info('Setting AutoConnect = %s.', self.autoconnect)
-            service.SetProperty('AutoConnect', dbus.Boolean(self.autoconnect))
-
             props = service.GetProperties()
             autoconnect = props['AutoConnect']
             changed = True
+
+        # Make sure the cellular service gets persisted by taking it out of
+        # the ephemeral profile.
+        if not props['Profile']:
+            manager_props = self.flim.manager.GetProperties()
+            active_profile = manager_props['ActiveProfile']
+            logger.info("Setting cellular service profile to %s",
+                        active_profile)
+            service.SetProperty('Profile', active_profile)
 
         if autoconnect != self.autoconnect:
             raise error.TestFail('AutoConnect is %s, but we want it to be %s' %
