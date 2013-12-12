@@ -41,8 +41,8 @@ class BelkinF9KAPConfigurator(
         self.wait_for_object_by_xpath(xpath, wait_time=10)
         self.set_content_of_text_field_by_xpath('password', xpath,
                                                 abort_check=True)
-        self.click_button_by_xpath('//input[@type="button" and '
-                                   '@value="Submit"]')
+        self.click_button_by_xpath('//input[@value="Submit"]',
+                                   alert_handler=self._security_alert)
 
 
     def get_supported_bands(self):
@@ -99,7 +99,8 @@ class BelkinF9KAPConfigurator(
                 self.wait_for_object_by_xpath(self.security_popup)
             except WebDriverException, e:
                 message = str(e)
-                if message.find('An open modal dialog blocked') == -1:
+                if (not any(alert in message for alert in
+                    ['unexpected alert open', 'An open modal dialog blocked'])):
                     raise RuntimeError(message)
                     return
                 self._security_alert(self.driver.switch_to_alert())
@@ -118,13 +119,16 @@ class BelkinF9KAPConfigurator(
         self.click_button_by_xpath('//input[@type="submit" and '
                                    '@value="Apply Changes"]',
                                    alert_handler=self._security_alert)
-        self.set_wait_time(26)
+        self.set_wait_time(30)
         try:
             self.wait.until(lambda _:'setup.htm' in self.driver.title)
         except SeleniumTimeoutException, e:
-            raise SeleniumTimeoutException('The changes were not saved. '
-                                           '%s' % str(e))
-        self.restore_default_wait_time()
+            xpath= '//h1[contains(text(), "Duplicate Administrator")]'
+            if (self.driver.find_element_by_xpath(xpath)):
+                logging.info("We got a 'Duplicate Administrator' page "
+                             "when we saved the changes.")
+        finally:
+            self.restore_default_wait_time()
 
 
     def set_ssid(self, ssid):
@@ -133,7 +137,7 @@ class BelkinF9KAPConfigurator(
 
     def _set_ssid(self, ssid):
         xpath = '//input[@name="ssid"]'
-        self.set_content_of_text_field_by_xpath(ssid, xpath, abort_check=False)
+        self.set_content_of_text_field_by_xpath(ssid, xpath, abort_check=True)
         self._ssid = ssid
 
 
@@ -215,8 +219,8 @@ class BelkinF9KAPConfigurator(
         text_field = '//input[@name="passphrase"]'
         try:
             self.select_item_from_popup_by_xpath('64bit WEP',
-                                                 self.security_popup,
-                                                 wait_for_xpath=text_field)
+                    self.security_popup, wait_for_xpath=text_field,
+                    alert_handler=self._security_alert)
         except WebDriverException, e:
             message = str(e)
             if message.find('An open modal dialog blocked') == -1:
@@ -243,14 +247,14 @@ class BelkinF9KAPConfigurator(
                                              self.security_popup,
                                              wait_for_xpath=key_field,
                                              alert_handler=self._security_alert)
-        if security == ap_spec.SECURITY_TYPE_WPAPSK:
-            self.select_item_from_popup_by_xpath('WPA-PSK', psk,
-                                             alert_handler=self._security_alert)
-        else:
-            self.select_item_from_popup_by_xpath('WPA2-PSK', psk,
+        auth_type = 'WPA-PSK'
+        if security == ap_spec.SECURITY_TYPE_WPA2PSK:
+            auth_type = 'WPA2-PSK'
+        self.select_item_from_popup_by_xpath(auth_type, psk,
+                                             wait_for_xpath=key_field,
                                              alert_handler=self._security_alert)
         self.set_content_of_text_field_by_xpath(shared_key, key_field,
-                                                abort_check=False)
+                                                abort_check=True)
 
 
     def is_visibility_supported(self):

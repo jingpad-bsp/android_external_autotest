@@ -103,9 +103,33 @@ class APConfiguratorFactory(object):
         'BelkinAPConfigurator':
             [PREFIX + 'belkin_ap_configurator',
                 'BelkinAPConfigurator'],
+        'BelkinF5D7234APConfigurator':
+            [PREFIX + 'belkinF5D7234_ap_configurator',
+                'BelkinF5D7234APConfigurator'],
+        'BelkinF5D8236APConfigurator':
+            [PREFIX + 'belkinF5D8236_ap_configurator',
+                'BelkinF5D8236APConfigurator'],
+        'BelkinF6D4230APConfigurator':
+            [PREFIX + 'belkinF6D4230_ap_configurator',
+                'BelkinF6D4230APConfigurator'],
+        'BelkinF7DAPConfigurator':
+            [PREFIX + 'belkinF7D_ap_configurator',
+                'BelkinF7DAPConfigurator'],
+        'BelkinF7D1301APConfigurator':
+            [PREFIX + 'belkinF7D1301_ap_configurator',
+                'BelkinF7D1301APConfigurator'],
         'BelkinF9KAPConfigurator':
             [PREFIX + 'belkinF9K_ap_configurator',
                 'BelkinF9KAPConfigurator'],
+        'BelkinF9K1102APConfigurator':
+            [PREFIX + 'belkinF9K1102_ap_configurator',
+                'BelkinF9K1102APConfigurator'],
+        'BelkinF9K1105APConfigurator':
+            [PREFIX + 'belkinF9K1105_ap_configurator',
+                'BelkinF9K1105APConfigurator'],
+        'BelkinWRTRAPConfigurator':
+            [PREFIX + 'belkinWRTR_ap_configurator',
+                'BelkinWRTRAPConfigurator'],
         'MediaLinkAPConfigurator':
             [PREFIX + 'medialink_ap_configurator',
                 'MediaLinkAPConfigurator'],

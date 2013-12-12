@@ -130,7 +130,7 @@ class BelkinAPConfigurator(
         # Invalid character: ~!@#$%^&*()={}[]|'\":;?/.,<>-
         xpath = '//input[@name="wl_ssid"]'
         self.set_content_of_text_field_by_xpath(ssid, xpath, abort_check=False)
-        self_ssid = ssid
+        self._ssid = ssid
 
 
     def set_channel(self, channel):
