@@ -107,43 +107,60 @@ class DhcpTestBase(test.test):
         return socket.inet_ntoa(struct.pack("!I", (subnet | suffix)))
 
     @staticmethod
+    def get_interface_ipconfig_objects(interface_name):
+        """
+        Returns a list of dbus object proxies for |interface_name|.
+        Returns an empty list if no such interface exists.
+
+        @param interface_name string name of the device to query (e.g., "eth0").
+
+        @return list of objects representing DBus IPConfig RPC endpoints.
+
+        """
+        flim = flimflam.FlimFlam(dbus.SystemBus())
+        device = flim.FindElementByNameSubstring("Device", interface_name)
+        if device is None:
+            return []
+
+        device_properties = device.GetProperties(utf8_strings=True)
+        return filter(bool,
+                      [ flim.GetObjectInterface("IPConfig", property_path)
+                        for property_path in device_properties["IPConfigs"] ])
+
+
+    @staticmethod
     def get_interface_ipconfig(interface_name):
         """
         Returns a dictionary containing settings for an |interface_name| set
         via DHCP.  Returns None if no such interface or setting bundle on
         that interface can be found in shill.
 
-        @param interface_name string name of the interface to query.
+        @param interface_name string name of the device to query (e.g., "eth0").
 
         @return dict containing the the properties of the IPConfig stripped
-            of DBus meta-data.
+            of DBus meta-data or None.
 
         """
-        flim = flimflam.FlimFlam(dbus.SystemBus())
-        device = flim.FindElementByNameSubstring("Device", interface_name)
-        if device is None:
-            return None
-
-        device_properties = device.GetProperties(utf8_strings=True)
         dhcp_properties = None
-        for property_path in device_properties["IPConfigs"]:
-            ipconfig = flim.GetObjectInterface("IPConfig", property_path)
-            ipconfig_properties = ipconfig.GetProperties(utf8_strings=True)
-            if "Method" not in ipconfig_properties:
-                logging.info("Found ipconfig object with no method field")
-                continue
-            if ipconfig_properties["Method"] != "dhcp":
-                logging.info("Found ipconfig object with method != dhcp")
-                continue
-            if dhcp_properties != None:
-                raise error.TestFail("Found multiple ipconfig objects "
-                                     "with method == dhcp")
-            dhcp_properties = ipconfig_properties
+        for ipconfig in DhcpTestBase.get_interface_ipconfig_objects(
+                interface_name):
+          ipconfig_properties = ipconfig.GetProperties(utf8_strings=True)
+          if "Method" not in ipconfig_properties:
+              logging.info("Found ipconfig object with no method field")
+              continue
+          if ipconfig_properties["Method"] != "dhcp":
+              logging.info("Found ipconfig object with method != dhcp")
+              continue
+          if dhcp_properties != None:
+              raise error.TestFail("Found multiple ipconfig objects "
+                                   "with method == dhcp")
+          dhcp_properties = ipconfig_properties
         if dhcp_properties is None:
             logging.info("Did not find IPConfig object with method == dhcp")
             return None
         logging.info("Got raw dhcp config dbus object: %s.", dhcp_properties)
         return DhcpTestBase._cleanup_dbus_types(dhcp_properties)
+
 
     def run_once(self):
         self._server = None
