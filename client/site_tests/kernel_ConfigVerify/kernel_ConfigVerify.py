@@ -250,6 +250,12 @@ class kernel_ConfigVerify(test.test):
 
         # Cache the architecture to avoid redundant execs to "uname".
         self._arch = utils.get_arch()
+        self._userspace_arch = utils.get_arch_userspace()
+
+        # Report the full uname for anyone reading logs.
+        logging.info('Running %s kernel, %s userspace: %s',
+                     self._arch, self._userspace_arch,
+                     utils.system_output('uname -a'))
 
         # Locate and load the list of kernel config variables.
         self._config = self._load_configs()
