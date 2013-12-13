@@ -65,6 +65,11 @@ class profilers(profiler_manager.profiler_manager):
         in_use_hosts = set()
         # find hosts in use but not used by us
         for host in self.job.hosts:
+            if host.hostname not in self.job.machines:
+                # job.hosts include all host instances created on the fly.
+                # We only care DUTs in job.machines which are
+                # piped in from autoserv -m option.
+                continue
             autodir = host.get_autodir()
             if not (autodir and autodir.startswith(PROFILER_TMPDIR)):
                 in_use_hosts.add(host.hostname)
