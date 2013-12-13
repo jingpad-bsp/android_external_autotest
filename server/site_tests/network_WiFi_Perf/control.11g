@@ -4,6 +4,7 @@
 
 AUTHOR = 'wiley, pstew, quiche'
 NAME = 'network_WiFi_Perf.11g'
+SUITE = 'wifi_perf'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
 DEPENDENCIES = 'wificell'
