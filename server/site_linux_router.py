@@ -66,7 +66,6 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                 'managed': 'pci'
             }})
         site_linux_system.LinuxSystem.__init__(self, host, params, 'router')
-        self._remove_interfaces()
 
         # Router host.
         self.router = host
@@ -167,9 +166,9 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         logging.info('Starting hostapd with parameters: %r',
                      hostapd_conf_dict)
         # Figure out the correct interface.
-        interface = self._get_wlanif(configuration.frequency,
-                                     self.phytype,
-                                     configuration.hw_mode)
+        interface = self.get_wlanif(configuration.frequency,
+                                    self.phytype,
+                                    configuration.hw_mode)
 
         conf_file = self.HOSTAPD_CONF_FILE_PATTERN % interface
         log_file = self.HOSTAPD_LOG_FILE_PATTERN % interface
@@ -376,8 +375,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         """
         if self.station['configured'] or self.hostapd_instances:
             self.deconfig()
-        interface = self._get_wlanif(config.frequency, self.phytype,
-                                     config.hw_mode)
+        interface = self.get_wlanif(config.frequency, self.phytype,
+                                    config.hw_mode)
         self.station['conf']['ssid'] = (config.ssid or
                                         self._build_ssid(config.ssid_suffix))
         # Connect the station
@@ -587,7 +586,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                 if silent:
                     # Deconfigure without notifying DUT.  Remove the interface
                     # hostapd uses to send beacon and DEAUTH packets.
-                    self._remove_interface(instance['interface'], True)
+                    self.remove_interface(instance['interface'])
 
                 self.kill_hostapd_instance(instance['conf_file'])
                 if wifi_test_utils.is_installed(self.host,
@@ -599,7 +598,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                 else:
                     logging.error('Did not collect hostapd log file because '
                                   'it was missing.')
-                self._release_wlanif(instance['interface'])
+                self.release_interface(instance['interface'])
 #               self.router.run("rm -f %(log_file)s %(conf_file)s" % instance)
             self._total_hostapd_instances += 1
         if self.station['configured']:
@@ -676,11 +675,11 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
         """
         hostap_interface = self.hostapd_instances[instance]['interface']
-        interface = self._get_wlanif(0, 'monitor', same_phy_as=hostap_interface)
+        interface = self.get_wlanif(0, 'monitor', same_phy_as=hostap_interface)
         self.router.run("%s link set %s up" % (self.cmd_ip, interface))
         self.router.run('%s %s %s' %
                         (self.cmd_send_management_frame, interface, frame_type))
-        self._release_wlanif(interface)
+        self.release_interface(interface)
 
 
     def detect_client_deauth(self, client_mac, instance=0):
@@ -743,7 +742,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         hostap_conf = self.hostapd_instances[instance]['config_dict']
         frequency = hostap_config.HostapConfig.get_frequency_for_channel(
                 hostap_conf['channel'])
-        interface = self._get_wlanif(
+        interface = self.get_wlanif(
                 frequency, 'managed', hostap_conf['hw_mode'])
         client_conf['interface'] = interface
 

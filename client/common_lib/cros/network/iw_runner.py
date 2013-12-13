@@ -32,6 +32,8 @@ HT_TABLE = {'no secondary': HT20,
 IwBand = collections.namedtuple('Band', ['num', 'frequencies', 'mcs_indices'])
 IwBss = collections.namedtuple('IwBss', ['bss', 'frequency', 'ssid', 'security',
                                          'ht'])
+IwNetDev = collections.namedtuple('IwNetDev', ['phy', 'if_name', 'if_type'])
+
 # The fields for IwPhy are as follows:
 #   name: string name of the phy, such as "phy0"
 #   bands: list of IwBand objects.
@@ -156,10 +158,25 @@ class IwRunner(object):
         """@return list of string WiFi interface names on device."""
         output = self._run('%s dev' % self._command_iw).stdout
         interfaces = []
+        phy = None
+        if_name = None
+        if_type = None
         for line in output.splitlines():
+            m = re.match('phy#([0-9]+)', line)
+            if m:
+                phy = 'phy%d' % int(m.group(1))
             m = re.match('[\s]*Interface (.*)', line)
             if m:
-                interfaces.append(m.group(1))
+                if_name = m.group(1)
+            # Common values for type are 'managed', 'monitor', and 'IBSS'.
+            m = re.match('[\s]*type ([a-zA-Z]+)', line)
+            if m:
+                if_type = m.group(1)
+            if phy and if_name and if_type:
+                interfaces.append(IwNetDev(phy=phy, if_name=if_name,
+                                           if_type=if_type))
+                # One phy may have many interfaces, so don't reset it.
+                if_name = if_type = None
 
         return interfaces
 

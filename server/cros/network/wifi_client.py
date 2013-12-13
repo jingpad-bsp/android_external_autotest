@@ -9,19 +9,17 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import interface
-from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.cros import constants
 from autotest_lib.server import autotest
 from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros import remote_command
 from autotest_lib.server.cros import wifi_test_utils
-from autotest_lib.server.cros.network import packet_capturer
 from autotest_lib.server.cros.network import wpa_cli_proxy
 from autotest_lib.server.hosts import adb_host
 
 
-class WiFiClient(object):
+class WiFiClient(site_linux_system.LinuxSystem):
     """WiFiClient is a thin layer of logic over a remote DUT in wifitests."""
 
     XMLRPC_BRINGUP_TIMEOUT_SECONDS = 60
@@ -83,18 +81,6 @@ class WiFiClient(object):
                                  'in iw results.')
 
         return find_results.group(2) == 'on'
-
-
-    @property
-    def capabilities(self):
-        """@return list of WiFi capabilities as parsed by LinuxSystem."""
-        return self._capabilities
-
-
-    @property
-    def host(self):
-        """@return host object representing the remote DUT."""
-        return self._host
 
 
     @property
@@ -212,7 +198,8 @@ class WiFiClient(object):
         @param result_dir string directory to store test logs/packet caps.
 
         """
-        super(WiFiClient, self).__init__()
+        super(WiFiClient, self).__init__(client_host, {}, 'client',
+                                         inherit_interfaces=True)
         self._board = None
         self._command_ip = 'ip'
         self._command_iptables = 'iptables'
@@ -226,9 +213,8 @@ class WiFiClient(object):
         self._ping_runner = ping_runner.PingRunner(host=self.host)
         self._ping_thread = None
         self._result_dir = result_dir
-        self._iw_runner = iw_runner.IwRunner(remote_host=self._host)
         # Look up the WiFi device (and its MAC) on the client.
-        devs = self._iw_runner.list_interfaces()
+        devs = self.iw_runner.list_interfaces()
         if not devs:
             raise error.TestFail('No wlan devices found on %s.' %
                                  self.host.hostname)
@@ -236,7 +222,7 @@ class WiFiClient(object):
         if len(devs) > 1:
             logging.warning('Warning, found multiple WiFi devices on %s: %r',
                             self.host.hostname, devs)
-        self._wifi_if = devs[0]
+        self._wifi_if = devs[0].if_name
         self._interface = interface.Interface(self._wifi_if, host=self.host)
         if isinstance(self.host, adb_host.ADBHost):
             self._shill_proxy = wpa_cli_proxy.WpaCliProxy(
@@ -256,21 +242,11 @@ class WiFiClient(object):
             # These commands aren't known to work with ADB hosts.
             self._command_ifconfig = 'ifconfig'
             self._raise_logging_level()
-        # Used for packet captures.
-        self._packet_capturer = packet_capturer.get_packet_capturer(
-                self.host, host_description='client', ignore_failures=True)
         self._result_dir = result_dir
 
         self._firewall_rules = []
         # Turn off powersave mode by default.
         self.powersave_switch(False)
-        # It is tempting to make WiFiClient a type of LinuxSystem, but most of
-        # the functionality there only makes sense for systems that want to
-        # manage their own WiFi interfaces.  On client devices however, shill
-        # does that work.
-        system = site_linux_system.LinuxSystem(self.host, {}, 'client')
-        self._capabilities = system.capabilities
-
         # All tests that use this object assume the interface starts enabled.
         self.set_device_enabled(self._wifi_if, True)
 
@@ -402,31 +378,6 @@ class WiFiClient(object):
         self._firewall_rules = []
 
 
-    def start_capture(self, snaplen=None):
-        """Start a packet capture.
-
-        Attempt to start a host based OTA capture.  If the driver stack does
-        not support creating monitor interfaces, fall back to managed interface
-        packet capture.  Only one ongoing packet capture is supported at a time.
-
-        @param snaplen int number of byte to retain per captured frame.
-
-        """
-        self.stop_capture()
-        devname = self._packet_capturer.create_managed_monitor(self.wifi_if)
-        if devname is None:
-            logging.warning('Failure creating monitor interface; doing '
-                            'managed packet capture instead.')
-            devname = self.wifi_if
-        self._packet_capturer.start_capture(devname, self._result_dir,
-                                            snaplen=snaplen)
-
-
-    def stop_capture(self):
-        """Stop a packet capture and copy over the results."""
-        self._packet_capturer.close()
-
-
     def sync_host_times(self):
         """Set time on our DUT to match local time."""
         epoch_seconds = time.time()
@@ -450,8 +401,8 @@ class WiFiClient(object):
 
 
     def get_iw_link_value(self, iw_link_key, ignore_failures=False):
-        return self._iw_runner.get_link_value(self.wifi_if, iw_link_key,
-                                              ignore_failures=ignore_failures)
+        return self.iw_runner.get_link_value(self.wifi_if, iw_link_key,
+                                             ignore_failures=ignore_failures)
 
 
     def powersave_switch(self, turn_on):
@@ -482,7 +433,7 @@ class WiFiClient(object):
         """
         start_time = time.time()
         while time.time() - start_time < timeout_seconds:
-            bss_list = self._iw_runner.scan(
+            bss_list = self.iw_runner.scan(
                     self.wifi_if, frequencies=frequencies, ssids=ssids)
             if bss_list is not None:
                 break

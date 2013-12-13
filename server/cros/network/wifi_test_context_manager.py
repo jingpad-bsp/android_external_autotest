@@ -157,7 +157,8 @@ class WiFiTestContextManager(object):
             self.router.hostap_configure(configuration_parameters,
                                          multi_interface=multi_interface)
         if self._enable_client_packet_captures:
-            self.client.start_capture(snaplen=self._packet_capture_snaplen)
+            self.client.start_capture(configuration_parameters.frequency,
+                                      snaplen=self._packet_capture_snaplen)
         if self._enable_router_packet_captures:
             self.router.start_capture(
                     configuration_parameters.frequency,

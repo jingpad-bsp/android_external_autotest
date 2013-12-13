@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import datetime
+import collections
 import logging
 import time
 
@@ -10,6 +11,9 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.server.cros import wifi_test_utils
 from autotest_lib.server.cros.network import packet_capturer
+
+NetDev = collections.namedtuple('NetDev',
+                                ['inherited', 'phy', 'if_name', 'if_type'])
 
 class LinuxSystem(object):
     """Superclass for test machines running Linux.
@@ -40,7 +44,7 @@ class LinuxSystem(object):
         return self._capabilities
 
 
-    def __init__(self, host, params, role):
+    def __init__(self, host, params, role, inherit_interfaces=False):
         # Command locations.
         cmd_iw = wifi_test_utils.must_be_installed(
                 host, params.get('cmd_iw', '/usr/sbin/iw'))
@@ -56,8 +60,6 @@ class LinuxSystem(object):
         self.host = host
         self.role = role
 
-        self.capture_channel = None
-        self.capture_ht_type = None
         cmd_netdump = wifi_test_utils.get_install_path(
                 host, params.get('cmd_netdump', '/usr/sbin/tcpdump'))
         cmd_ifconfig = wifi_test_utils.get_install_path(
@@ -70,8 +72,18 @@ class LinuxSystem(object):
 
         self._phy_list = None
         self.phys_for_frequency, self.phy_bus_type = self._get_phy_info()
-        self.wlanifs_in_use = []
-        self.wlanifs = {}
+        self._interfaces = []
+        for interface in self.iw_runner.list_interfaces():
+            if inherit_interfaces:
+                self._interfaces.append(NetDev(inherited=True,
+                                               if_name=interface.if_name,
+                                               if_type=interface.if_type,
+                                               phy=interface.phy))
+            else:
+                self.iw_runner.remove_interface(interface.if_name)
+
+        self._wlanifs_in_use = []
+        self._capture_interface = None
         # Some uses of LinuxSystem don't use the interface allocation facility.
         # Don't force us to remove all the existing interfaces if this facility
         # is not desired.
@@ -129,41 +141,32 @@ class LinuxSystem(object):
         return phys_for_frequency, phy_bus_type
 
 
-    def _remove_interface(self, interface, remove_monitor):
+    def remove_interface(self, interface):
         """Remove an interface from a WiFi device.
 
         @param interface string interface to remove (e.g. wlan0).
-        @param remove_monitor bool True if we should also remove a monitor.
 
         """
+        self.release_interface(interface)
         self.host.run('%s link set %s down' % (self.cmd_ip, interface))
         self.iw_runner.remove_interface(interface)
-        if remove_monitor:
-            # Some old hostap implementations create a 'mon.<interface>' to
-            # handle management frame transmit/receive.
-            self.host.run('%s link set mon.%s down' % (self.cmd_ip, interface),
-                          ignore_status=True)
-            self.iw_runner.remove_interface('mon.%s' % interface,
-                                             ignore_status=True)
-        for phytype in self.wlanifs:
-            for phy in self.wlanifs[phytype]:
-                if self.wlanifs[phytype][phy] == interface:
-                    self.wlanifs[phytype].pop(phy)
-                    break
-
-
-    def _remove_interfaces(self):
-        """Remove all WiFi devices."""
-        for interface in self.iw_runner.list_interfaces():
-            self.iw_runner.remove_interface(interface)
-        self.wlanifs = {}
-        self._wlanifs_initialized = True
+        for net_dev in self._interfaces:
+            if net_dev.if_name == interface:
+                self._interfaces.remove(net_dev)
+                break
 
 
     def close(self):
         """Close global resources held by this system."""
         logging.debug('Cleaning up host object for %s', self.role)
         self._packet_capturer.close()
+        # Release and remove any interfaces that we create.
+        for net_dev in self._wlanifs_in_use:
+            self.release_interface(net_dev.if_name)
+        for net_dev in self._interfaces:
+            if net_dev.inherited:
+                continue
+            self.remove_interface(net_dev.if_name)
         self.host.close()
         self.host = None
 
@@ -185,36 +188,6 @@ class LinuxSystem(object):
         return caps
 
 
-    def start_capture_params(self, params):
-        """Start a packet capture.
-
-        Note that in |params|, 'channel' refers to the frequency of the WiFi
-        channel (e.g. 2412), not the channel number.
-
-        @param params dict of site_wifitest parameters.
-
-        """
-        if 'channel' in params:
-            self.capture_channel = int(params['channel'])
-        for arg in ('ht20', 'ht40+', 'ht40-'):
-            if arg in params:
-                self.capture_ht_type = arg.upper()
-
-        if not self.capture_channel:
-            raise error.TestError('No capture channel specified.')
-
-        self.start_capture(self.capture_channel, ht_type=self.capture_ht_type)
-
-
-    def stop_capture_params(self, params):
-        """Stop a packet capture.
-
-        @param params dict unused, but required by our dispatch method.
-
-        """
-        return self.stop_capture()
-
-
     def start_capture(self, frequency, ht_type=None, snaplen=None):
         """Start a packet capture.
 
@@ -225,14 +198,18 @@ class LinuxSystem(object):
         """
         if self._packet_capturer.capture_running:
             self.stop_capture()
-        # LinuxSystem likes to manage the phys on its own, so let it.
-        self.capture_interface = self._get_wlanif(frequency, 'monitor')
-        # But let the capturer configure the interface.
-        self._packet_capturer.configure_raw_monitor(self.capture_interface,
-                                                    frequency,
-                                                    ht_type=ht_type)
+        self._capture_interface = self.get_wlanif(frequency, 'monitor')
+        full_interface = [net_dev for net_dev in self._interfaces
+                          if net_dev.if_name == self._capture_interface][0]
+        # If this is the only interface on this phy, we ought to configure
+        # the phy with a channel and ht_type.  Otherwise, inherit the settings
+        # of the phy as they stand.
+        if len([net_dev for net_dev in self._interfaces
+                if net_dev.phy == full_interface.phy]) == 1:
+            self._packet_capturer.configure_raw_monitor(
+                    self._capture_interface, frequency, ht_type=ht_type)
         # Start the capture.
-        self._packet_capturer.start_capture(self.capture_interface, './debug/',
+        self._packet_capturer.start_capture(self._capture_interface, './debug/',
                                             snaplen=snaplen)
 
 
@@ -247,9 +224,8 @@ class LinuxSystem(object):
             return
         results = self._packet_capturer.stop_capture(
                 local_save_dir=save_dir, local_pcap_filename=save_filename)
-        self.host.run('%s link set %s down' % (self.cmd_ip,
-                                               self.capture_interface))
-        self._release_wlanif(self.capture_interface)
+        self.release_interface(self._capture_interface)
+        self._capture_interface = None
         return results
 
 
@@ -260,6 +236,7 @@ class LinuxSystem(object):
         busybox_date = datetime.datetime.utcnow().strftime(busybox_format)
         self.host.run('date -u --set=@%s 2>/dev/null || date -u %s' %
                       (epoch_seconds, busybox_date))
+
 
     def _get_phy_for_frequency(self, frequency, phytype):
         """Get a phy appropriate for a frequency and phytype.
@@ -276,7 +253,7 @@ class LinuxSystem(object):
         """
         phys = self.phys_for_frequency[frequency]
 
-        busy_phys = set(phy for phy, wlanif, phytype in self.wlanifs_in_use)
+        busy_phys = set(net_dev.phy for net_dev in self._wlanifs_in_use)
         idle_phys = [phy for phy in phys if phy not in busy_phys]
         phys = idle_phys or phys
 
@@ -288,12 +265,8 @@ class LinuxSystem(object):
         return phys[0]
 
 
-    def _get_wlanif(self, frequency, phytype, mode = None, same_phy_as = None):
+    def get_wlanif(self, frequency, phytype, mode=None, same_phy_as=None):
         """Get a WiFi device that supports the given frequency, mode, and type.
-
-        This function is used by inherited classes, so we use the single '_'
-        convention rather than the '__' we usually use for non-scriptable
-        commands, since these cannot be inherited by subclasses.
 
         We still support the old "phydevN" parameters, but this code is
         smart enough to do without it.
@@ -306,9 +279,10 @@ class LinuxSystem(object):
 
         """
         if same_phy_as:
-            for phy, wlanif_i, phytype_i in self.wlanifs_in_use:
-                if wlanif_i == same_phy_as:
-                     break
+            for net_dev in self._interfaces:
+                if net_dev.if_name == same_phy_as:
+                    phy = net_dev.phy
+                    break
             else:
                 raise error.TestFail('Unable to find phy for interface %s' %
                                      same_phy_as)
@@ -322,31 +296,39 @@ class LinuxSystem(object):
             raise error.TestFail('Unable to find phy for frequency %d mode %s' %
                                  (frequency, mode))
 
-        if not self._wlanifs_initialized:
-            self._remove_interfaces()
-        if phytype not in self.wlanifs:
-            self.wlanifs[phytype] = {}
-        elif phy in self.wlanifs[phytype]:
-            return self.wlanifs[phytype][phy]
+        # If we have a suitable unused interface sitting around on this
+        # phy, reuse it.
+        for net_dev in set(self._interfaces) - set(self._wlanifs_in_use):
+            if net_dev.phy == phy and net_dev.if_type == phytype:
+                self._wlanifs_in_use.append(net_dev)
+                return net_dev.if_name
 
-        wlanif = '%s%d' % (phytype, len(self.wlanifs[phytype].keys()))
-        self.wlanifs[phytype][phy] = wlanif
+        # Because we can reuse interfaces, we have to iteratively find a good
+        # interface name.
+        name_exists = lambda name: bool([net_dev
+                                         for net_dev in self._interfaces
+                                         if net_dev.if_name == name])
+        if_name = lambda index: '%s%d' % (phytype, index)
+        if_index = len(self._interfaces)
+        while name_exists(if_name(if_index)):
+            if_index += 1
+        net_dev = NetDev(phy=phy, if_name=if_name(if_index), if_type=phytype,
+                         inherited=False)
+        self._interfaces.append(net_dev)
+        self._wlanifs_in_use.append(net_dev)
+        self.iw_runner.add_interface(phy, net_dev.if_name, phytype)
+        return net_dev.if_name
 
-        self.iw_runner.add_interface(phy, wlanif, phytype)
-        self.wlanifs_in_use.append((phy, wlanif, phytype))
 
-        return wlanif
-
-
-    def _release_wlanif(self, wlanif):
-        """Release a device allocated throuhg _get_wlanif().
+    def release_interface(self, wlanif):
+        """Release a device allocated throuhg get_wlanif().
 
         @param wlanif string name of device to release.
 
         """
-        for phy, wlanif_i, phytype in self.wlanifs_in_use:
-            if wlanif_i == wlanif:
-                 self.wlanifs_in_use.remove((phy, wlanif, phytype))
+        for net_dev in self._wlanifs_in_use:
+            if net_dev.if_name == wlanif:
+                 self._wlanifs_in_use.remove(net_dev)
 
 
     def require_capabilities(self, requirements, fatal_failure=False):

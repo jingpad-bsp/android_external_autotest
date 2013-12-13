@@ -181,7 +181,7 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
             if len(interfaces) > 1:
                 logging.error('Defaulting to first interface of %r', interfaces)
-            wifi_if = interfaces[0]
+            wifi_if = interfaces[0].if_name
         if not self._wifi_proxy.configure_bgscan(
                 wifi_if,
                 method=params.bgscan_config.method,
