@@ -29,20 +29,27 @@ class video_VideoDecodeAcceleration(test.test):
             tab1 = cr.browser.tabs[0]
             tab1.Navigate(video_url)
             tab1.WaitForDocumentReadyStateToBeComplete()
+
+            # Waits for histogram updated for the test video.
             tab2 = cr.browser.tabs.New()
 
-            # Waiting for histogram updated for the test video.
+            def search_histogram_text(text):
+                """Searches the histogram text in the second tab.
+
+                @param text: Text to be searched in the histogram tab.
+                """
+                return tab2.EvaluateJavaScript('document.documentElement && '
+                         'document.documentElement.innerText.search('
+                         '\'%s\') != -1' % text)
+
             def gpu_histogram_loaded():
+                """Loads the histogram in the second tab."""
                 tab2.Navigate('chrome://histograms/%s' % MEDIA_GVD_INIT_STATUS)
-                return tab2.EvaluateJavaScript(
-                        'document.documentElement.innerText.search('
-                        '\'%s\') != -1' % MEDIA_GVD_INIT_STATUS)
+                return search_histogram_text(MEDIA_GVD_INIT_STATUS)
 
             utils.poll_for_condition(gpu_histogram_loaded,
                     exception=error.TestError(
                             'Histogram gpu status failed to load.'),
                             sleep_interval=1)
-            if tab2.EvaluateJavaScript(
-                    'document.documentElement.innerText.search('
-                    '\'average = 0.0\') == -1'):
+            if not search_histogram_text('average = 0.0'):
                 raise error.TestError('Video decode acceleration not working.')

@@ -25,6 +25,7 @@ class video_VideoSeek(test.test):
             tab = cr.browser.tabs[0]
             tab.Navigate(cr.browser.http_server.UrlOf(
                     os.path.join(self.bindir, 'video.html')))
+            tab.WaitForDocumentReadyStateToBeComplete()
 
             # Test seeks either before or after the previous seeks complete.
             seek_event = 'seeking' if fast_seek else 'seeked'

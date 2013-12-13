@@ -154,6 +154,7 @@ class MemoryTest(object):
         tab = self.browser.tabs.New()
         tab.Navigate(self.browser.http_server.UrlOf(
                 os.path.join(self._bindir, page_to_open)))
+        tab.WaitForDocumentReadyStateToBeComplete()
         return tab
 
 
