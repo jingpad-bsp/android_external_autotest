@@ -136,6 +136,41 @@ class Modem3gpp(modem.Modem):
             'VendorPcoInfo': ''
         }
 
+    def SyncScan(self):
+        """ The synchronous implementation of |Scan| for this class. """
+        state = self.Get(mm1.I_MODEM, 'State')
+        if state < mm1.MM_MODEM_STATE_ENABLED:
+            raise mm1.MMCoreError(mm1.MMCoreError.WRONG_STATE,
+                    'Modem not enabled, cannot scan for networks.')
+
+        sim_path = self.Get(mm1.I_MODEM, 'Sim')
+        if not self.sim:
+            assert sim_path == mm1.ROOT_PATH
+            raise mm1.MMMobileEquipmentError(
+                mm1.MMMobileEquipmentError.SIM_NOT_INSERTED,
+                'Cannot scan for networks because no SIM is inserted.')
+        assert sim_path != mm1.ROOT_PATH
+
+        # TODO(armansito): check here for SIM lock?
+
+        scanned = [network.ToScanDictionary()
+                   for network in self.roaming_networks]
+
+        # get home network
+        sim_props = self.sim.GetAll(mm1.I_SIM)
+        scanned.append({
+            'status': dbus.types.UInt32(
+                    mm1.MM_MODEM_3GPP_NETWORK_AVAILABILITY_AVAILABLE),
+            'operator-long': sim_props['OperatorName'],
+            'operator-short': sim_props['OperatorName'],
+            'operator-code': sim_props['OperatorIdentifier'],
+            'access-technology': dbus.types.UInt32(self.sim.access_technology)
+        })
+
+        self._scanned_networks = (
+                {network['operator-code']: network for network in scanned})
+        return scanned
+
     def AssignPcoValue(self, pco_value):
         """
         Stores the given value so that it is shown as the value of VendorPcoInfo
@@ -296,11 +331,15 @@ class Modem3gpp(modem.Modem):
         self.Set(mm1.I_MODEM_3GPP, 'OperatorCode', operator_code)
         self.Set(mm1.I_MODEM_3GPP, 'OperatorName', operator_name)
 
-    @utils.dbus_method_wrapper(logging.debug, logging.warning, mm1.I_MODEM_3GPP,
-                               out_signature='aa{sv}')
-    def Scan(self):
+    @utils.dbus_method_wrapper(
+            logging.debug, logging.warning, mm1.I_MODEM_3GPP,
+            out_signature='aa{sv}', async_callbacks=('return_cb', 'raise_cb'))
+    def Scan(self, return_cb, raise_cb):
         """
         Scan for available networks.
+
+        @param return_cb: This function is called with the result.
+        @param raise_cb: This function may be called with error.
 
         Returns:
             An array of dictionaries with each array element describing a
@@ -309,38 +348,8 @@ class Modem3gpp(modem.Modem):
             dictionary.
 
         """
-        state = self.Get(mm1.I_MODEM, 'State')
-        if state < mm1.MM_MODEM_STATE_ENABLED:
-            raise mm1.MMCoreError(mm1.MMCoreError.WRONG_STATE,
-                    'Modem not enabled, cannot scan for networks.')
-
-        sim_path = self.Get(mm1.I_MODEM, 'Sim')
-        if not self.sim:
-            assert sim_path == mm1.ROOT_PATH
-            raise mm1.MMMobileEquipmentError(
-                mm1.MMMobileEquipmentError.SIM_NOT_INSERTED,
-                'Cannot scan for networks because no SIM is inserted.')
-        assert sim_path != mm1.ROOT_PATH
-
-        # TODO(armansito): check here for SIM lock?
-
-        scanned = [network.ToScanDictionary()
-                   for network in self.roaming_networks]
-
-        # get home network
-        sim_props = self.sim.GetAll(mm1.I_SIM)
-        scanned.append({
-            'status': dbus.types.UInt32(
-                    mm1.MM_MODEM_3GPP_NETWORK_AVAILABILITY_AVAILABLE),
-            'operator-long': sim_props['OperatorName'],
-            'operator-short': sim_props['OperatorName'],
-            'operator-code': sim_props['OperatorIdentifier'],
-            'access-technology': dbus.types.UInt32(self.sim.access_technology)
-        })
-
-        self._scanned_networks = (
-                {network['operator-code']: network for network in scanned})
-        return scanned
+        scan_result = self.SyncScan()
+        return_cb(scan_result)
 
     def RegisterWithNetwork(
             self, operator_id="", return_cb=None, raise_cb=None):

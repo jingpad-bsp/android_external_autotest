@@ -50,7 +50,7 @@ class RegisterMachine(state_machine.StateMachine):
         self._modem.ChangeState(mm1.MM_MODEM_STATE_SEARCHING, reason)
         logging.info('RegisterMachine: Starting network scan.')
         try:
-            self._networks = self._modem.Scan()
+            self._networks = self._modem.SyncScan()
         except mm1.MMError as e:
             self._modem.register_step = None
             logging.error('An error occurred during network scan: ' + str(e))
@@ -80,7 +80,7 @@ class RegisterMachine(state_machine.StateMachine):
                 mm1.MM_MODEM_3GPP_REGISTRATION_STATE_IDLE)
             self._modem.register_step = None
             if self._raise_cb:
-                self_raise_cb(mm1.MMMobileEquipmentError(
+                self._raise_cb(mm1.MMMobileEquipmentError(
                         mm1.MMMobileEquipmentError.NO_NETWORK,
                         'No networks were found to register.'))
             return False
