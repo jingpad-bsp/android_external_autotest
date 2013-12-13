@@ -16,7 +16,6 @@ from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.client.common_lib.cros import autoupdater, dev_server
 from autotest_lib.server import hosts, test
 from autotest_lib.server.cros.dynamic_suite import tools
-from autotest_lib.client.common_lib.cros import chrome
 
 
 def _wait(secs, desc=None):
@@ -794,7 +793,7 @@ class autoupdate_EndToEndTest(test.test):
 
 
     def _stage_payload(self, autotest_devserver, devserver_label, filename,
-                       archive_url=None, artifacts=None):
+                       archive_url=None):
         """Stage the given payload onto the devserver.
 
         Works for either a stateful or full/delta test payload. Expects the
@@ -819,16 +818,15 @@ class autoupdate_EndToEndTest(test.test):
         """
         try:
             autotest_devserver.stage_artifacts(
-                    image=devserver_label, artifacts=artifacts,
-                    files=[filename], archive_url=archive_url)
+                    image=devserver_label, artifacts=None, files=[filename],
+                    archive_url=archive_url)
             return autotest_devserver.get_staged_file_url(filename,
                                                           devserver_label)
         except dev_server.DevServerException, e:
             raise error.TestError('Failed to stage payload: %s' % e)
 
 
-    def _stage_payload_by_uri(self, autotest_devserver, payload_uri,
-                              artifacts=None):
+    def _stage_payload_by_uri(self, autotest_devserver, payload_uri):
         """Stage a payload based on its GS URI.
 
         This infers the build's label, filename and GS archive from the
@@ -838,8 +836,6 @@ class autoupdate_EndToEndTest(test.test):
                                    use to reach the devserver instance for this
                                    build.
         @param payload_uri: The full GS URI of the payload.
-
-        @param artifacts: A list of artifacts to stage along from the build.
 
         @return URL of the staged payload on the server.
 
@@ -1011,11 +1007,6 @@ class autoupdate_EndToEndTest(test.test):
 
             staged_target_stateful_url = self._stage_payload_by_uri(
                     autotest_devserver, target_stateful_uri)
-
-        # Stage artifacts for client login test.
-        self._stage_payload_by_uri(autotest_devserver,
-                                   target_payload_uri,
-                                   ['autotest'])
 
         # Log all the urls.
         logging.info('Source %s from %s staged at %s',
@@ -1265,11 +1256,3 @@ class autoupdate_EndToEndTest(test.test):
         except ExpectedUpdateEventChainFailed:
             self._dump_update_engine_log()
             raise
-
-        # Login, to prove we can after the update.
-        #
-        # TODO(dgarrett): Telemetry login is not yet robust. When it is,
-        # Remove "logged_in" argument to use a real account instead of
-        # guest mode.
-        with chrome.Chrome(logged_in=False):
-          pass
