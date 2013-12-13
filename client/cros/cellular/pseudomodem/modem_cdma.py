@@ -257,10 +257,10 @@ class ModemCdma(modem.Modem):
             sid = 0
             nid = 0
             activation_state = mm1.MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED
-        self.SetRegistrationState(state)
         self.SetUInt32(mm1.I_MODEM_CDMA, 'ActivationState', activation_state)
         self.SetUInt32(mm1.I_MODEM_CDMA, 'Sid', sid)
         self.SetUInt32(mm1.I_MODEM_CDMA, 'Nid', nid)
+        self.SetRegistrationState(state)
 
     def SetRegistrationState(self, state):
         """

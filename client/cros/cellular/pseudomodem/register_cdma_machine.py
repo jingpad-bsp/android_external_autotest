@@ -60,14 +60,16 @@ class RegisterCdmaMachine(register_machine.RegisterMachine):
                 self._raise_cb(mm1.MMMobileEquipmentError(
                         mm1.MMMobileEquipmentError.NO_NETWORK,
                         'No networks were found to register.'))
-        else:
-            logging.info(
-                'RegisterCdmaMachine: Registering to network: ' + str(network))
-            logging.info('RegisterCdmaMachine: Setting state to REGISTERED.')
-            self._modem.ChangeState(
-                mm1.MM_MODEM_STATE_REGISTERED,
-                mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED)
+            self._modem.register_step = None
+            return False
+
+        logging.info(
+            'RegisterMachineCdma: Registering to network: ' + str(network))
+        logging.info('RegisterMachineCdma: Setting state to REGISTERED.')
         self._modem.SetRegistered(network)
+        self._modem.ChangeState(
+            mm1.MM_MODEM_STATE_REGISTERED,
+            mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED)
         self._modem.register_step = None
         if self._return_cb:
             self._return_cb()
