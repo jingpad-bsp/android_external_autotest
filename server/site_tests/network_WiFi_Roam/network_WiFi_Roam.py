@@ -43,7 +43,7 @@ class network_WiFi_Roam(wifi_cell_test_base.WiFiCellTestBase):
         self.context.configure(self._router1_conf, multi_interface=True)
 
         # Tear down the AP instance that the DUT is currently connected to.
-        self.context.router.deconfig({ 'instance': 0 })
+        self.context.router.deconfig_aps(instance=0)
 
         # Expect that the DUT will re-connect to the new AP.
         self.context.wait_for_connection(router_ssid,

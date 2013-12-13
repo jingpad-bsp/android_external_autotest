@@ -4,26 +4,14 @@
 
 import logging
 import random
-import re
 import string
+import time
 
-from autotest_lib.client.common_lib import base_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import interface
 from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros import wifi_test_utils
 from autotest_lib.server.cros.network import hostap_config
-
-def isLinuxRouter(host):
-    """Check if host is a linux router.
-
-    @param host Host object representing the remote machine.
-    @return True iff remote system is a Linux system.
-
-    """
-    router_uname = host.run('uname').stdout
-    return re.search('Linux', router_uname)
-
 
 class LinuxRouter(site_linux_system.LinuxSystem):
     """Linux/mac80211-style WiFi Router support for WiFiTest class.
@@ -42,9 +30,18 @@ class LinuxRouter(site_linux_system.LinuxSystem):
     SUFFIX_LETTERS = string.ascii_lowercase + string.digits
     SUBNET_PREFIX_OCTETS = (192, 168)
 
+    HOSTAPD_CONF_FILE_PATTERN = '/tmp/hostapd-test-%s.conf'
+    HOSTAPD_LOG_FILE_PATTERN = '/tmp/hostapd-test-%s.log'
+    HOSTAPD_PID_FILE_PATTERN = '/tmp/hostapd-test-%s.pid'
+    HOSTAPD_DRIVER_NAME = 'nl80211'
+
+    STATION_CONF_FILE_PATTERN = '/tmp/wpa-supplicant-test-%s.conf'
+    STATION_LOG_FILE_PATTERN = '/tmp/wpa-supplicant-test-%s.log'
+    STATION_PID_FILE_PATTERN = '/tmp/wpa-supplicant-test-%s.pid'
+
     def get_capabilities(self):
         """@return iterable object of AP capabilities for this system."""
-        caps = set()
+        caps = set([self.CAPABILITY_IBSS])
         try:
             self.cmd_send_management_frame = wifi_test_utils.must_be_installed(
                     self.router, '/usr/bin/send_management_frame')
@@ -62,20 +59,25 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         @param test_name string name of this test.  Used in SSID creation.
 
         """
+        params = params.copy()
+        params.update({
+            'phy_bus_preference': {
+                'monitor': 'usb',
+                'managed': 'pci'
+            }})
         site_linux_system.LinuxSystem.__init__(self, host, params, 'router')
         self._remove_interfaces()
 
         # Router host.
         self.router = host
 
-        self.cmd_dhcpd = params.get('cmd_dhcpd', '/usr/sbin/dhcpd')
+        self.cmd_dhcpd = '/usr/sbin/dhcpd'
         self.cmd_hostapd = wifi_test_utils.must_be_installed(
-                host, params.get('cmd_hostapd', '/usr/sbin/hostapd'))
+                host, '/usr/sbin/hostapd')
         self.cmd_hostapd_cli = wifi_test_utils.must_be_installed(
-                host, params.get('cmd_hostapd_cli', '/usr/sbin/hostapd_cli'))
+                host, '/usr/sbin/hostapd_cli')
         self.cmd_wpa_supplicant = wifi_test_utils.must_be_installed(
-                host, params.get('cmd_wpa_supplicant',
-                                 '/usr/sbin/wpa_supplicant'))
+                host, '/usr/sbin/wpa_supplicant')
         self.dhcpd_conf = '/tmp/dhcpd.%s.conf'
         self.dhcpd_leases = '/tmp/dhcpd.leases'
 
@@ -89,21 +91,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.ssid_prefix = self.ssid_prefix.lstrip('_')
         self.ssid_prefix += '_'
 
-        self.default_config = {
-            'hw_mode': 'g',
-            'ctrl_interface': '/tmp/hostapd-test.control',
-            'logger_syslog': '-1',
-            'logger_syslog_level': '0'
-        }
-        self.hostapd = {
-            'configured': False,
-            'config_file': "/tmp/hostapd-test-%s.conf",
-            'log_file': "/tmp/hostapd-test-%s.log",
-            'pid_file': "/tmp/hostapd-test-%s.pid",
-            'log_count': 0,
-            'driver': "nl80211",
-            'conf': self.default_config.copy()
-        }
+        self._total_hostapd_instances = 0
         self.station = {
             'configured': False,
             'config_file': "/tmp/wpa-supplicant-test-%s.conf",
@@ -113,7 +101,6 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         }
         self.local_servers = []
         self.hostapd_instances = []
-        self.force_local_server = "force_local_server" in params
         self.dhcp_low = 1
         self.dhcp_high = 128
 
@@ -129,15 +116,6 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         """Close global resources held by this system."""
         self.destroy()
         super(LinuxRouter, self).close()
-
-
-    def create(self, params):
-        """Create a wifi device of the specified type.
-
-        @param params dict containing the device type under key 'type'.
-
-        """
-        self.create_wifi_device(params['type'])
 
 
     def create_wifi_device(self, device_type='hostap'):
@@ -169,14 +147,9 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         }[device_type]
 
 
-    def destroy(self, params={}):
-        """Destroy a previously created device.
-
-        @param params dict of site_wifitest parameters.
-
-        """
-        self.deconfig(params)
-        self.hostapd['conf'] = self.default_config.copy()
+    def destroy(self):
+        """Destroy a previously created device."""
+        self.deconfig()
 
 
     def has_local_server(self):
@@ -184,61 +157,77 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         return bool(self.local_servers)
 
 
-    def cleanup(self, params):
-        """Clean up any resources in use.
-
-        @param params dict of site_wifitest parameters.
-
-        """
-        # For linux, this is a no-op
-        pass
-
-
-    def get_hostapd_start_command(self, log_file, pid_file, conf_file):
-        return '%s -dd -t -P %s %s &> %s &' % (
-                self.cmd_hostapd, pid_file, conf_file, log_file)
-
-
-    def start_hostapd(self, conf, params):
+    def start_hostapd(self, hostapd_conf_dict, configuration):
         """Start a hostapd instance described by conf.
 
-        @param conf dict of hostapd configuration parameters.
-        @param params dict of site_wifitest parameters.
+        @param hostapd_conf_dict dict of hostapd configuration parameters.
+        @param configuration HostapConfig object.
 
         """
-        logging.info('Starting hostapd with parameters: %r', conf)
+        logging.info('Starting hostapd with parameters: %r',
+                     hostapd_conf_dict)
         # Figure out the correct interface.
-        interface = self._get_wlanif(self.hostapd['frequency'],
+        interface = self._get_wlanif(configuration.frequency,
                                      self.phytype,
-                                     mode=conf.get('hw_mode', 'b'))
+                                     configuration.hw_mode)
 
-        conf_file = self.hostapd['config_file'] % interface
-        log_file = self.hostapd['log_file'] % interface
-        pid_file = self.hostapd['pid_file'] % interface
-        conf['interface'] = interface
+        conf_file = self.HOSTAPD_CONF_FILE_PATTERN % interface
+        log_file = self.HOSTAPD_LOG_FILE_PATTERN % interface
+        pid_file = self.HOSTAPD_PID_FILE_PATTERN % interface
+        hostapd_conf_dict['interface'] = interface
 
         # Generate hostapd.conf.
-        self._pre_config_hook(conf)
         self.router.run("cat <<EOF >%s\n%s\nEOF\n" %
             (conf_file, '\n'.join(
-            "%s=%s" % kv for kv in conf.iteritems())))
+            "%s=%s" % kv for kv in hostapd_conf_dict.iteritems())))
 
         # Run hostapd.
         logging.info("Starting hostapd...")
         self.router.run('rm %s' % log_file, ignore_status=True)
         self.router.run('rm %s' % pid_file, ignore_status=True)
-        self._pre_start_hook(params)
-        start_command = self.get_hostapd_start_command(
-                log_file, pid_file, conf_file)
+        self.router.run('stop wpasupplicant', ignore_status=True)
+        start_command = '%s -dd -B -t -f %s -P %s %s' % (
+                self.cmd_hostapd, log_file, pid_file, conf_file)
         self.router.run(start_command)
         self.hostapd_instances.append({
-            'ssid': conf['ssid'],
+            'ssid': hostapd_conf_dict['ssid'],
             'conf_file': conf_file,
             'log_file': log_file,
             'interface': interface,
             'pid_file': pid_file,
-            'config_dict': conf.copy()
+            'config_dict': hostapd_conf_dict.copy()
         })
+
+        # Wait for confirmation that the router came up.
+        pid = int(self.router.run('cat %s' % pid_file).stdout)
+        logging.info('Waiting for hostapd to startup.')
+        start_time = time.time()
+        while time.time() - start_time < self.STARTUP_TIMEOUT_SECONDS:
+            success = self.router.run(
+                    'grep "Completing interface initialization" %s' % log_file,
+                    ignore_status=True).exit_status == 0
+            if success:
+                break
+
+            # A common failure is an invalid router configuration.
+            # Detect this and exit early if we see it.
+            bad_config = self.router.run(
+                    'grep "Interface initialization failed" %s' % log_file,
+                    ignore_status=True).exit_status == 0
+            if bad_config:
+                raise error.TestFail('hostapd failed to initialize AP '
+                                     'interface.')
+
+            if pid:
+                early_exit = self.router.run('kill -0 %d' % pid,
+                                             ignore_status=True).exit_status
+                if early_exit:
+                    raise error.TestFail('hostapd process terminated.')
+
+            time.sleep(self.STARTUP_POLLING_INTERVAL_SECONDS)
+        else:
+            raise error.TestFail('Timed out while waiting for hostapd '
+                                 'to start.')
 
 
     def _kill_process_instance(self, process, instance=None, wait=0):
@@ -284,13 +273,15 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
     def __get_default_hostap_config(self):
         """@return dict of default options for hostapd."""
-        conf = self.hostapd['conf']
-        # default RTS and frag threshold to ``off''
-        conf['rts_threshold'] = '2347'
-        conf['fragm_threshold'] = '2346'
-        conf['driver'] = self.hostapd['driver']
-        conf['ssid'] = self._build_ssid('')
-        return conf
+        return {'hw_mode': 'g',
+                'ctrl_interface': '/tmp/hostapd-test.control',
+                'logger_syslog': '-1',
+                'logger_syslog_level': '0',
+                # default RTS and frag threshold to ``off''
+                'rts_threshold': '2347',
+                'fragm_threshold': '2346',
+                'driver': self.HOSTAPD_DRIVER_NAME,
+                'ssid': self._build_ssid('') }
 
 
     def _build_ssid(self, suffix):
@@ -308,7 +299,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         @param multi_interface bool True iff multiple interfaces allowed.
 
         """
-        if multi_interface is None and (self.hostapd['configured'] or
+        if multi_interface is None and (self.hostapd_instances or
                                         self.station['configured']):
             self.deconfig()
         # Start with the default hostapd config parameters.
@@ -318,7 +309,6 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         if configuration.bssid:
             conf['bssid'] = configuration.bssid
         conf['channel'] = configuration.channel
-        self.hostapd['frequency'] = configuration.frequency
         conf['hw_mode'] = configuration.hw_mode
         if configuration.hide_ssid:
             conf['ignore_broadcast_ssid'] = 1
@@ -340,166 +330,11 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         if configuration.obss_interval:
             conf['obss_interval'] = configuration.obss_interval
         conf.update(configuration.get_security_hostapd_conf())
-
-        # TODO(wiley): Remove this multi_interface flag when the bridge router
-        # class is gone.
-        params = {'multi_interface': 1} if multi_interface else {}
-        self.start_hostapd(conf, params)
-        # Configure transmit power
-        tx_power_params = {'interface': conf['interface']}
-        # TODO(wiley) support for setting transmit power
-        self.set_txpower(tx_power_params)
-        if self.force_local_server:
-            self.start_local_server(conf['interface'])
-        self._post_start_hook(params)
+        self.start_hostapd(conf, configuration)
+        interface = self.hostapd_instances[-1]['interface']
+        self.iw_runner.set_tx_power(interface, 'auto')
+        self.start_local_server(interface)
         logging.info('AP configured.')
-        self.hostapd['configured'] = True
-
-
-    def hostap_config(self, params):
-        """Configure the AP per test requirements.
-
-        @param params dict of site_wifitest parameters.
-
-        """
-        # keep parameter modifications local-only
-        orig_params = params
-        params = params.copy()
-
-        multi_interface = 'multi_interface' in params
-        if multi_interface:
-            # remove non-hostapd config item from params
-            params.pop('multi_interface')
-        elif self.hostapd['configured'] or self.station['configured']:
-            self.deconfig()
-
-        local_server = params.pop('local_server', False)
-
-        conf = self.__get_default_hostap_config()
-        tx_power_params = {}
-        htcaps = set()
-
-        for k, v in params.iteritems():
-            if k == 'ssid':
-                conf['ssid'] = v
-            elif k == 'ssid_suffix':
-                conf['ssid'] = self._build_ssid(v)
-            elif k == 'channel':
-                freq = int(v)
-                self.hostapd['frequency'] = freq
-
-                # 2.4GHz
-                if freq <= 2484:
-                    # Make sure hw_mode is set
-                    if conf.get('hw_mode') == 'a':
-                        conf['hw_mode'] = 'g'
-
-                    # Freq = 5 * chan + 2407, except channel 14
-                    if freq == 2484:
-                        conf['channel'] = 14
-                    else:
-                        conf['channel'] = (freq - 2407) / 5
-                # 5GHz
-                else:
-                    # Make sure hw_mode is set
-                    conf['hw_mode'] = 'a'
-                    # Freq = 5 * chan + 4000
-                    if freq < 5000:
-                        conf['channel'] = (freq - 4000) / 5
-                    # Freq = 5 * chan + 5000
-                    else:
-                        conf['channel'] = (freq - 5000) / 5
-
-            elif k == 'country':
-                conf['country_code'] = v
-            elif k == 'dotd':
-                conf['ieee80211d'] = 1
-            elif k == '-dotd':
-                conf['ieee80211d'] = 0
-            elif k == 'mode':
-                if v == '11a':
-                    conf['hw_mode'] = 'a'
-                elif v == '11g':
-                    conf['hw_mode'] = 'g'
-                elif v == '11b':
-                    conf['hw_mode'] = 'b'
-                elif v == '11n':
-                    conf['ieee80211n'] = 1
-            elif k == 'bintval':
-                conf['beacon_int'] = v
-            elif k == 'dtimperiod':
-                conf['dtim_period'] = v
-            elif k == 'rtsthreshold':
-                conf['rts_threshold'] = v
-            elif k == 'fragthreshold':
-                conf['fragm_threshold'] = v
-            elif k == 'shortpreamble':
-                conf['preamble'] = 1
-            elif k == 'authmode':
-                if v == "open":
-                    conf['auth_algs'] = 1
-                elif v == "shared":
-                    conf['auth_algs'] = 2
-            elif k == 'hidessid':
-                conf['ignore_broadcast_ssid'] = 1
-            elif k == 'wme':
-                conf['wmm_enabled'] = 1
-            elif k == '-wme':
-                conf['wmm_enabled'] = 0
-            elif k == 'deftxkey':
-                conf['wep_default_key'] = v
-            elif k == 'ht20':
-                htcaps.add('')  # NB: ensure 802.11n setup below
-                conf['wmm_enabled'] = 1
-            elif k == 'ht40':
-                htcaps.add('[HT40-]')
-                htcaps.add('[HT40+]')
-                conf['wmm_enabled'] = 1
-            elif k in ('ht40+', 'ht40-'):
-                htcaps.add('[%s]' % k.upper())
-                conf['wmm_enabled'] = 1
-            elif k == 'shortgi':
-                htcaps.add('[SHORT-GI-20]')
-                htcaps.add('[SHORT-GI-40]')
-            elif k == 'pureg':
-                pass        # TODO(sleffler) need hostapd support
-            elif k == 'puren':
-                pass        # TODO(sleffler) need hostapd support
-            elif k == 'protmode':
-                pass        # TODO(sleffler) need hostapd support
-            elif k == 'ht':
-                htcaps.add('')  # NB: ensure 802.11n setup below
-            elif k == 'htprotmode':
-                pass        # TODO(sleffler) need hostapd support
-            elif k == 'rifs':
-                pass        # TODO(sleffler) need hostapd support
-            elif k == 'wepmode':
-                pass        # NB: meaningless for hostapd; ignore
-            elif k == '-ampdu':
-                pass        # TODO(sleffler) need hostapd support
-            elif k == 'txpower':
-                tx_power_params['power'] = v
-            else:
-                conf[k] = v
-
-        # Aggregate ht_capab.
-        if htcaps:
-            conf['ieee80211n'] = 1
-            conf['ht_capab'] = ''.join(htcaps)
-
-        self.start_hostapd(conf, orig_params)
-
-        # Configure transmit power
-        tx_power_params['interface'] = conf['interface']
-        self.set_txpower(tx_power_params)
-
-        if self.force_local_server or local_server is not False:
-            self.start_local_server(conf['interface'])
-
-        self._post_start_hook(orig_params)
-
-        logging.info("AP configured.")
-        self.hostapd['configured'] = True
 
 
     @staticmethod
@@ -539,7 +374,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         @param config HostapConfig object.
 
         """
-        if self.station['configured'] or self.hostapd['configured']:
+        if self.station['configured'] or self.hostapd_instances:
             self.deconfig()
         interface = self._get_wlanif(config.frequency, self.phytype,
                                      config.hw_mode)
@@ -634,21 +469,25 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         @param interface string (e.g. wlan0)
 
         """
-        conf_file = self.dhcpd_conf % interface
-        dhcp_conf = '\n'.join(map(
-            lambda server_conf: \
-                "subnet %(subnet)s netmask %(netmask)s {\n" \
-                "  range %(dhcp_range)s;\n" \
-                "}" % server_conf,
-            self.local_servers))
-        self.router.run("cat <<EOF >%s\n%s\nEOF\n" %
-            (conf_file,
-             '\n'.join(('ddns-update-style none;', dhcp_conf))))
-        self.router.run("touch %s" % self.dhcpd_leases)
+        for server in self.local_servers:
+            if server['interface'] == interface:
+                params = server
+                break
+        else:
+            raise error.TestFail('Could not find local server '
+                                 'to match interface: %r' % interface)
 
-        self.router.run("pkill dhcpd >/dev/null 2>&1", ignore_status=True)
-        self.router.run("%s -q -cf %s -lf %s" %
-                        (self.cmd_dhcpd, conf_file, self.dhcpd_leases))
+        dhcpd_conf_file = self.dhcpd_conf % interface
+        dhcp_conf = '\n'.join([
+            'port=0',  # disables DNS server
+            'bind-interfaces',
+            'log-dhcp',
+            'dhcp-range=%s' % params['dhcp_range'].replace(' ', ','),
+            'interface=%s' % params['interface'],
+            'dhcp-leasefile=%s' % self.dhcpd_leases])
+        self.router.run('cat <<EOF >%s\n%s\nEOF\n' %
+            (dhcpd_conf_file, dhcp_conf))
+        self.router.run('dnsmasq --conf-file=%s' % dhcpd_conf_file)
 
 
     def stop_dhcp_server(self, instance=None):
@@ -657,26 +496,12 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         @param instance string instance to kill.
 
         """
-        self._kill_process_instance('dhcpd', instance, 0)
+        self._kill_process_instance('dnsmasq', instance, 0)
 
 
     def stop_dhcp_servers(self):
         """Stop all dhcp servers on the router."""
         self.stop_dhcp_server(None)
-
-
-    def config(self, params):
-        """Configure an AP based on site_wifitest parameters.
-
-        @param params dict of site_wifitest parameters.
-
-        """
-        if self.apmode:
-            self.hostap_config(params)
-        else:
-            config = hostap_config.HostapConfig(
-                    frequency=int(params.get('channel', None)))
-            self.ibss_configure(config)
 
 
     def get_wifi_channel(self, ap_num):
@@ -726,14 +551,9 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         return parts[parts.index('link/ether') + 1]
 
 
-    def deconfig(self, params={}):
-        """De-configure the AP (will also bring wlan down).
-
-        @param params dict of parameters from site_wifitest.
-
-        """
-        self.deconfig_aps(instance=params.get('instance', None),
-                          silent='silent' in params)
+    def deconfig(self):
+        """A legacy, deprecated alias for deconfig_aps."""
+        self.deconfig_aps()
 
 
     def deconfig_aps(self, instance=None, silent=False):
@@ -745,10 +565,10 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                 the DUT.
 
         """
-        if not self.hostapd['configured'] and not self.station['configured']:
+        if not self.hostapd_instances and not self.station['configured']:
             return
 
-        if self.hostapd['configured']:
+        if self.hostapd_instances:
             local_servers = []
             if instance is not None:
                 instances = [ self.hostapd_instances.pop(instance) ]
@@ -774,14 +594,14 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                                                 instance['log_file']):
                     self.router.get_file(instance['log_file'],
                                          'debug/hostapd_router_%d_%s.log' %
-                                         (self.hostapd['log_count'],
+                                         (self._total_hostapd_instances,
                                           instance['interface']))
                 else:
                     logging.error('Did not collect hostapd log file because '
                                   'it was missing.')
                 self._release_wlanif(instance['interface'])
 #               self.router.run("rm -f %(log_file)s %(conf_file)s" % instance)
-            self.hostapd['log_count'] += 1
+            self._total_hostapd_instances += 1
         if self.station['configured']:
             local_servers = self.local_servers
             self.local_servers = []
@@ -801,7 +621,6 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                             (self.cmd_ip, server['ip_params']),
                              ignore_status=True)
 
-        self.hostapd['configured'] = False
         self.station['configured'] = False
 
 
@@ -836,22 +655,6 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         return self.station['conf']['ssid']
 
 
-    def set_txpower(self, params):
-        """Set the transmission power for an interface.
-
-        Assumes that we want to refer to the first hostapd instance unless
-        'interface' is defined in params.  Sets the transmission power to
-        'auto' if 'power' is not defined in params.
-
-        @param params dict of parameters as described above.
-
-        """
-        interface = params.get('interface',
-                               self.hostapd_instances[0]['interface'])
-        power = params.get('power', 'auto')
-        self.iw_runner.set_tx_power(interface, power)
-
-
     def deauth_client(self, client_mac):
         """Deauthenticates a client described in params.
 
@@ -861,20 +664,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         """
         self.router.run('%s -p%s deauthenticate %s' %
                         (self.cmd_hostapd_cli,
-                         self.hostapd['conf']['ctrl_interface'],
+                         self.hostapd_instances[-1]['ctrl_interface'],
                          client_mac))
-
-
-    @base_utils.deprecated
-    def deauth(self, params):
-        """Deauthenticates a client described in params.
-
-        Deprecated: Call 'deauth_client', instead.
-
-        @param params dict containing a key 'client'.
-
-        """
-        self.deauth_client(params['client'])
 
 
     def send_management_frame(self, frame_type, instance=0):
@@ -965,9 +756,9 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                 '}\n' % client_conf
         )
 
-        conf_file = self.station['config_file'] % interface
-        log_file = self.station['log_file'] % interface
-        pid_file = self.station['pid_file'] % interface
+        conf_file = self.STATION_CONF_FILE_PATTERN % interface
+        log_file = self.STATION_LOG_FILE_PATTERN % interface
+        pid_file = self.STATION_PID_FILE_PATTERN % interface
 
         self.router.run('cat <<EOF >%s\n%s\nEOF\n' %
             (conf_file, supplicant_config))
@@ -977,7 +768,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         start_command = ('%s -dd -t -i%s -P%s -c%s -D%s &> %s &' %
                          (self.cmd_wpa_supplicant,
                          interface, pid_file, conf_file,
-                         self.hostapd['driver'], log_file))
+                         self.HOSTAPD_DRIVER_NAME, log_file))
         self.router.run(start_command)
         self.iw_runner.wait_for_link(interface)
 
@@ -1003,35 +794,3 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.station['configured'] = True
         self.station['type'] = 'supplicant'
         self.station['interface'] = interface
-
-
-    def _pre_config_hook(self, config):
-        """Hook for subclasses.
-
-        Run after gathering configuration parameters,
-        but before writing parameters to config file.
-
-        @param config dict containing hostapd config parameters.
-
-        """
-        pass
-
-
-    def _pre_start_hook(self, params):
-        """Hook for subclasses.
-
-        Run after generating hostapd config file, but before starting hostapd.
-
-        @param params dict parameters from site_wifitest.
-
-        """
-        pass
-
-
-    def _post_start_hook(self, params):
-        """Hook for subclasses run after starting hostapd.
-
-        @param params dict parameters from site_wifitest.
-
-        """
-        pass
