@@ -1,0 +1,31 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = 'arakhov@chromium.org'
+NAME = 'bluetooth_SDP_ServiceSearchRequestBasic'
+SUITE = 'bluetooth,bluetooth_sdp'
+TIME = 'SHORT'
+TEST_CLASS = 'bluetooth'
+TEST_TYPE = 'Server'
+DEPENDENCIES = 'bluetooth'
+
+DOC = """
+Verify the correct behaviour of the device when searching for services.
+
+The tester sends a Service Search Request to the DUT, searching the UUID of
+SDP Server Service.
+"""
+
+from autotest_lib.server.cros.bluetooth import bluetooth_tester
+
+
+def run(machine):
+    device_host = hosts.create_host(machine)
+    tester_host = bluetooth_tester.create_host_from(device_host)
+    job.run_test('bluetooth_SDP_ServiceSearchRequestBasic',
+                 device_host=device_host,
+                 tester_host=tester_host,
+                 interactive=False)
+
+parallel_simple(run, machines)
