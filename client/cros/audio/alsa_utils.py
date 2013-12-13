@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 import shlex
-import subprocess
 
 from autotest_lib.client.cros.audio import cmd_utils
 
@@ -100,7 +99,7 @@ def _find_default_soundcard_id():
     cmd = 'amixer -c %d scontrols'
     id = 0
     while True:
-        p = cmd_utils.popen(shlex.split(cmd % id), stdout=subprocess.PIPE)
+        p = cmd_utils.popen(shlex.split(cmd % id), stdout=cmd_utils.PIPE)
         output, _ = p.communicate()
         if p.wait() != 0: # end of the card list
             break;
@@ -115,4 +114,4 @@ def dump_control_contents(device=None):
     if device is None:
         device = 'hw:%d' % get_default_soundcard_id()
     args = [AMIXER_PATH, '-D', device, 'contents']
-    return cmd_utils.execute(args, stdout=subprocess.PIPE)
+    return cmd_utils.execute(args, stdout=cmd_utils.PIPE)

@@ -4,7 +4,6 @@
 
 import logging
 import re
-import subprocess
 
 from autotest_lib.client.cros.audio import cmd_utils
 
@@ -132,7 +131,7 @@ def get_stat(*args, **kargs):
     It returns the statistical information (in text) read from the standard
     error.
     """
-    p = cmd_utils.popen(stat_cmd(*args, **kargs), stderr=subprocess.PIPE)
+    p = cmd_utils.popen(stat_cmd(*args, **kargs), stderr=cmd_utils.PIPE)
 
     #The output is read from the stderr instead of stdout
     stat_output = p.stderr.read()

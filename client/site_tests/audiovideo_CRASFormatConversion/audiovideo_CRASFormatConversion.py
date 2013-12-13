@@ -4,7 +4,6 @@
 
 import logging
 import os
-import subprocess
 import tempfile
 import time
 
@@ -44,7 +43,7 @@ class audiovideo_CRASFormatConversion(test.test):
         p1 = cmd_utils.popen(
             sox_utils.generate_sine_tone_cmd(
                     filename='-', rate=rate, frequence=frequence, gain=-6),
-            stdout=subprocess.PIPE)
+            stdout=cmd_utils.PIPE)
         p2 = cmd_utils.popen(
             cras_utils.playback_cmd(
                     playback_file='-', buffer_frames=512, rate=rate),

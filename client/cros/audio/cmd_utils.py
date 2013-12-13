@@ -12,6 +12,7 @@ import select
 import subprocess
 import threading
 
+from subprocess import PIPE
 from autotest_lib.client.common_lib.utils import TEE_TO_LOGS
 
 _popen_lock = threading.Lock()
