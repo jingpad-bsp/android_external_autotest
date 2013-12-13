@@ -490,10 +490,11 @@ def get_channel_sox_stat(
 def check_rms(
         input_audio, rms_threshold=_DEFAULT_SOX_RMS_THRESHOLD,
         channels=1, bits=16, rate=48000):
-    """Checks the RMS values of all chanels of the input audio.
+    """Checks the RMS values of all channels of the input audio.
 
-    @param input_audio: The input audio file to be analyzed.
-    @param rms_threshold: The minimal requirement for RMS of all channels.
+    @param input_audio: The input audio file to be checked.
+    @param rms_threshold: The minimal requirement for RMS values of
+                          all channels.
     @param channels: The number of channels in the input audio.
     @param bits: The number of bits of each audio sample.
     @param rate: The sampling rate.
@@ -512,8 +513,8 @@ def check_rms(
 def reduce_noise_and_check_rms(
         input_audio, noise_file, rms_threshold=_DEFAULT_SOX_RMS_THRESHOLD,
         channels=1, bits=16, rate=48000):
-    """Reduces noise in the input audio by the given noise file and then check
-    the RMS values of all chanels of the input audio.
+    """Reduces noise in the input audio by the given noise file and then checks
+    the RMS values of all channels of the input audio.
 
     @param input_audio: The input audio file to be analyzed.
     @param noise_file: The noise file used to reduce noise in the input audio.
