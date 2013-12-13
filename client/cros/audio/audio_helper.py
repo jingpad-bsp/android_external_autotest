@@ -487,9 +487,42 @@ def get_channel_sox_stat(
     return sox_utils.parse_stat_output(stat_output)
 
 
+def check_rms(
+        input_audio, rms_threshold=_DEFAULT_SOX_RMS_THRESHOLD,
+        channels=1, bits=16, rate=48000):
+    """Checks the RMS values of all chanels of the input audio.
+
+    @param input_audio: The input audio file to be analyzed.
+    @param rms_threshold: The minimal requirement for RMS of all channels.
+    @param channels: The number of channels in the input audio.
+    @param bits: The number of bits of each audio sample.
+    @param rate: The sampling rate.
+    @raise TestFail: If the RMS of any channel is less than the threshold.
+    """
+    stats = [get_channel_sox_stat(
+            input_audio, i + 1, channels=channels, bits=bits,
+            rate=rate) for i in xrange(channels)]
+
+    logging.info('sox stat: %s', [str(s) for s in stats])
+
+    if any(s.rms < rms_threshold for s in stats):
+        raise error.TestFail('RMS: %s' % [s.rms for s in stats])
+
+
 def reduce_noise_and_check_rms(
         input_audio, noise_file, rms_threshold=_DEFAULT_SOX_RMS_THRESHOLD,
         channels=1, bits=16, rate=48000):
+    """Reduces noise in the input audio by the given noise file and then check
+    the RMS values of all chanels of the input audio.
+
+    @param input_audio: The input audio file to be analyzed.
+    @param noise_file: The noise file used to reduce noise in the input audio.
+    @param rms_threshold: The minimal requirement for RMS of all channels.
+    @param channels: The number of channels in the input audio.
+    @param bits: The number of bits of each audio sample.
+    @param rate: The sampling rate.
+    @raise TestFail: If the RMS of any channel is less than the threshold.
+    """
     with tempfile.NamedTemporaryFile() as reduced_file:
         p1 = cmd_utils.popen(
                 sox_utils.noise_profile_cmd(
@@ -502,15 +535,7 @@ def reduce_noise_and_check_rms(
                         channels=channels, bits=bits, rate=rate),
                 stdin=p1.stdout)
         cmd_utils.wait_and_check_returncode(p1, p2)
-
-        stats = [get_channel_sox_stat(
-                reduced_file.name, i + 1, channels=channels, bits=bits,
-                rate=rate) for i in xrange(channels)]
-
-        logging.info('sox stat: %s', [str(s) for s in stats])
-
-        if any(s.rms < rms_threshold for s in stats):
-            raise error.TestFail('RMS: %s' % [s.rms for s in stats])
+        check_rms(reduced_file.name, rms_threshold, channels, bits, rate)
 
 
 def cras_rms_test_setup():
