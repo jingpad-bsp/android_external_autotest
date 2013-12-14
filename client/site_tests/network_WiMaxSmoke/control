@@ -16,6 +16,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
+DEPENDENCIES = "wimax"
 EXPERIMENTAL = "True"
 DOC = """
   Verifies that a WiMAX module can connect to a WiMAX network.
