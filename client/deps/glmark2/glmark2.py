@@ -21,12 +21,18 @@ def setup(tarball, topdir):
     for patch in patches:
         utils.system('patch -p1 < ../%s' % patch)
 
+    gl_option = '--enable-gl'
+    if 'GRAPHICS_BACKEND' in os.environ:
+        graphics_backend = os.environ.get('GRAPHICS_BACKEND')
+        if graphics_backend == 'OPENGLES':
+            gl_option = '--enable-glesv2'
+
     # glmark2 does not have any runtime option to specify its data dir, so we
     # have to set the prefix dir to where it's being run on target machine.
     # And we can only install glmark2 to inside the build sandbox (destdir), so
     # we have to do additional work to move the installed files to the correct
     # path and it will get installed on target machine correctly.
-    utils.system('./waf configure --enable-gl --prefix=%s' % PREFIX_DIR)
+    utils.system('./waf configure %s --prefix=%s' % (gl_option, PREFIX_DIR))
     utils.system('./waf')
     utils.system('./waf install --destdir=%s' % topdir)
     utils.system('mv %s/* %s' % (topdir + PREFIX_DIR, topdir))
