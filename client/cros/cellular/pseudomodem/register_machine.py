@@ -66,7 +66,6 @@ class RegisterMachine(state_machine.StateMachine):
 
     def _HandleSearchingState(self):
         logging.info('RegisterMachine: Modem is SEARCHING.')
-        assert self._networks
         if not self._networks:
             logging.info('RegisterMachine: Scan returned no networks.')
             logging.info('RegisterMachine: Setting state to ENABLED.')

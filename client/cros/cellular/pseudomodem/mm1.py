@@ -126,6 +126,30 @@ def RegistrationStateToString(state):
     """
     return REGISTRATION_STATE_STRINGS[state]
 
+# enum MMModem3gppSubscriptionState
+MM_MODEM_3GPP_SUBSCRIPTION_STATE_UNKNOWN = 0
+MM_MODEM_3GPP_SUBSCRIPTION_STATE_UNPROVISIONED = 1
+MM_MODEM_3GPP_SUBSCRIPTION_STATE_PROVISIONED = 2
+MM_MODEM_3GPP_SUBSCRIPTION_STATE_OUT_OF_DATA = 3
+
+SUBSCRIPTION_STATE_STRINGS = [
+        'UNKNOWN',
+        'UNPROVISIONED',
+        'PROVISIONED',
+        'OUT_OF_DATA',
+]
+
+def SubscriptionStateToString(state):
+    """
+    Returns a string representation of the SubscriptionState.
+
+    @param state: An MMModem3gppSubscriptionState value.
+
+    @return A string that describes the given state.
+
+    """
+    return SUBSCRIPTION_STATE_STRINGS[state]
+
 # enum MMModem3gppUssdSessionState
 MM_MODEM_3GPP_USSD_SESSION_STATE_UNKNOWN = 0
 MM_MODEM_3GPP_USSD_SESSION_STATE_IDLE = 1

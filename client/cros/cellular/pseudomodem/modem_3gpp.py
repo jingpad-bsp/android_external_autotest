@@ -70,6 +70,8 @@ class Modem3gpp(modem.Modem):
 
         self._scanned_networks = {}
         self._cached_pco_value = ''
+        self._cached_subscription_state = (
+                mm1.MM_MODEM_3GPP_SUBSCRIPTION_STATE_PROVISIONED)
 
     def _InitializeProperties(self):
         ip = modem.Modem._InitializeProperties(self)
@@ -133,6 +135,8 @@ class Modem3gpp(modem.Modem):
             'OperatorName' : '',
             'EnabledFacilityLocks' : (
                     dbus.types.UInt32(self.sim.enabled_locks)),
+            'SubscriptionState' : dbus.types.UInt32(
+                    mm1.MM_MODEM_3GPP_SUBSCRIPTION_STATE_UNKNOWN),
             'VendorPcoInfo': ''
         }
 
@@ -203,6 +207,45 @@ class Modem3gpp(modem.Modem):
             new_pco_value = ''
         self.Set(mm1.I_MODEM_3GPP, 'VendorPcoInfo', new_pco_value)
 
+    def AssignSubscriptionState(self, state):
+        """
+        Caches the given |SubscriptionState| value and updates the property
+        after sanity checking against |RegistrationState|.
+
+        @param state: The new subscription state.
+
+        """
+        self._cached_subscription_state = state
+        self.UpdateSubscriptionState()
+
+    def UpdateSubscriptionState(self):
+        """
+        Updates the current |SubscriptionState| property after sanity checking
+        against |RegistrationState|.
+
+        """
+        if not mm1.I_MODEM_3GPP in self._properties:
+            return
+        registration_state = self.Get(mm1.I_MODEM_3GPP, 'RegistrationState')
+        new_subscription_state = self._cached_subscription_state
+        if (registration_state == mm1.MM_MODEM_3GPP_REGISTRATION_STATE_HOME or
+            registration_state == mm1.MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING):
+            if ((new_subscription_state ==
+                 mm1.MM_MODEM_3GPP_SUBSCRIPTION_STATE_UNKNOWN) or
+                (new_subscription_state ==
+                 mm1.MM_MODEM_3GPP_SUBSCRIPTION_STATE_UNPROVISIONED)):
+                logging.warning(
+                        '|SubscriptionState| can not be |%s| on registered '
+                        'network. Setting it to '
+                        'MM_MODEM_3GPP_SUBSCRIPTION_STATE_PROVISIONED',
+                        mm1.SubscriptionStateToString(new_subscription_state))
+                new_subscription_state = (
+                        mm1.MM_MODEM_3GPP_SUBSCRIPTION_STATE_PROVISIONED)
+
+        self.SetUInt32(mm1.I_MODEM_3GPP,
+                       'SubscriptionState',
+                       new_subscription_state)
+
     def UpdateLockStatus(self):
         """
         Overloads superclass implementation. Also updates
@@ -251,6 +294,7 @@ class Modem3gpp(modem.Modem):
         """
         self.SetUInt32(mm1.I_MODEM_3GPP, 'RegistrationState', state)
         self.UpdatePcoInfo()
+        self.UpdateSubscriptionState()
 
     @property
     def scanned_networks(self):
