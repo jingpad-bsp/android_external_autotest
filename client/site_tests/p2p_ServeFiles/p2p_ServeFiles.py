@@ -116,9 +116,13 @@ class p2p_ServeFiles(test.test):
 
         self._sim.start()
 
+        # Force a request from the client before waiting for the DUT's response.
+        self._sim.run_on_simulator(lambda: p2pcli.start_query())
+
         # Wait up to 30 seconds until the DUT is ready sharing the files.
         res = self._sim.wait_for_condition(lambda: self._dut_ready(p2pcli),
                                            timeout=30.)
+        self._sim.run_on_simulator(lambda: p2pcli.stop_query())
 
         if not res:
             raise error.TestFail('The DUT failed to announce the shared files '
