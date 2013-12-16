@@ -222,9 +222,26 @@ class ChromiumOSUpdater():
         logging.info('Triggering update via: %s', autoupdate_cmd)
         try:
             self._run(autoupdate_cmd)
-        except error.AutoservRunError, e:
-            raise RootFSUpdateError('Update triggering failed on %s: %s' %
-                                    (self.host.hostname, str(e)))
+        except (error.AutoservSshPermissionDeniedError,
+                error.AutoservSSHTimeout) as e:
+            raise RootFSUpdateError('SSH on %s is seeing %s' %
+                                    (self.host.hostname, type(e).__name__))
+        except error.AutoservRunError as e:
+
+            # Check if the exit code is 255, if so it's probably a generic
+            # SSH error.
+            result = e.args[1]
+            if result.exit_status == 255:
+              raise RootFSUpdateError('SSH on %s is seeing a generic error.' %
+                                      self.host.hostname)
+
+            # We have ruled out all SSH cases, the error code is from
+            # update_engine_client, though we still don't know why.
+            raise RootFSUpdateError(
+                    'devserver unreachable, payload unavailable, '
+                    'or AU bug (unlikely) on %s: %s' %
+                    (self.host.hostname, type(e).__name__))
+
 
     def _verify_update_completed(self):
         """Verifies that an update has completed.
