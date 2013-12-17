@@ -96,6 +96,12 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
 
 
     @property
+    def configurator_type(self):
+        """Returns the configurator type."""
+        return ap_spec.CONFIGURATOR_DYNAMIC
+
+
+    @property
     def ssid(self):
         """Returns the SSID."""
         return self._ssid

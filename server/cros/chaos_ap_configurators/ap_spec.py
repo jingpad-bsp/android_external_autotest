@@ -6,8 +6,8 @@ from autotest_lib.client.common_lib.cros.network import iw_runner
 
 
 # Supported bands
-BAND_2GHZ = '2.4GHz'
-BAND_5GHZ = '5GHz'
+BAND_2GHZ = object()
+BAND_5GHZ = object()
 
 # List of valid bands.
 VALID_BANDS = [BAND_2GHZ, BAND_5GHZ]
@@ -34,8 +34,8 @@ SECURITY_TYPE_WPA2PSK = iw_runner.SECURITY_WPA2
 # Mixed mode security is wpa/wpa2
 SECURITY_TYPE_MIXED = iw_runner.SECURITY_MIXED
 
-WEP_AUTHENTICATION_OPEN = 'open_wep'
-WEP_AUTHENTICATION_SHARED = 'shared_wep'
+WEP_AUTHENTICATION_OPEN = object()
+WEP_AUTHENTICATION_SHARED = object()
 
 # List of valid securities.
 # TODO (krisr) the configurators do not support WEP at this time.
@@ -60,6 +60,10 @@ CHANNEL_TABLE = {2412: 1, 2417: 2, 2422: 3,
 # This only works because the frequency table is one to one
 # for channels/frequencies.
 FREQUENCY_TABLE = dict((v,k) for k,v in CHANNEL_TABLE.iteritems())
+
+CONFIGURATOR_STATIC = object()
+CONFIGURATOR_DYNAMIC = object()
+CONFIGURATOR_ANY = object()
 
 # Default values
 DEFAULT_BAND = BAND_2GHZ
@@ -111,13 +115,15 @@ class APSpec(object):
 
 
     def __init__(self, visible=True, security=SECURITY_TYPE_DISABLED,
-                 band=None, mode=None, channel=None, hostnames=None):
+                 band=None, mode=None, channel=None, hostnames=None,
+                 configurator_type=CONFIGURATOR_ANY):
         super(APSpec, self).__init__()
         self._visible = visible
         self._security = security
         self._mode = mode
         self._channel = channel
         self._hostnames = hostnames
+        self._configurator_type = configurator_type
 
         if not self._channel and (self._mode == MODE_N or not self._mode):
             if band == BAND_2GHZ or not band:
@@ -201,6 +207,12 @@ class APSpec(object):
     def hostnames(self):
         """Return the hostnames; this may be None."""
         return self._hostnames
+
+
+    @property
+    def configurator_type(self):
+        """Returns the configurator type."""
+        return self._configurator_type
 
 
     def _validate_channel_and_mode(self):

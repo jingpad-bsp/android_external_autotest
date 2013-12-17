@@ -8,7 +8,7 @@ import logging
 
 from autotest_lib.server.cros import chaos_config
 from autotest_lib.server.cros.chaos_ap_configurators import ap_cartridge
-
+from autotest_lib.server.cros.chaos_ap_configurators import ap_spec
 
 class APConfiguratorFactory(object):
     """Class that instantiates all available APConfigurators.
@@ -284,18 +284,33 @@ class APConfiguratorFactory(object):
 
         return aps
 
+    def _get_aps_by_configurator_type(self, configurator_type, ap_list):
+        """Returns aps that match the given configurator type.
 
-    def get_ap_configurators_by_spec(self, ap_spec=None, pre_configure=False):
+        @param configurator_type: the type of configurtor to
+         return.
+
+        @return a list of APConfigurators.
+        """
+        aps = []
+        for ap in ap_list:
+            if ap.configurator_type == configurator_type:
+                aps.append(ap)
+
+        return aps
+
+
+    def get_ap_configurators_by_spec(self, spec=None, pre_configure=False):
         """Returns available configurators meeting spec.
 
-        @param ap_spec: a validated ap_spec object
+        @param spec: a validated ap_spec object
         @param pre_configure: boolean, True to set all of the configuration
                               options for the APConfigurator object using the
                               given ap_spec; False otherwise.  An ap_spec must
                               be passed for this to have any effect.
         @returns aps: a list of APConfigurator objects
         """
-        if not ap_spec:
+        if not spec:
             return self.ap_list
 
         band_aps = self._get_aps_by_band(ap_spec.band, channel=ap_spec.channel)
@@ -303,12 +318,15 @@ class APConfiguratorFactory(object):
         security_aps = self._get_aps_by_security(ap_spec.security)
         visible_aps = self._get_aps_by_visibility(ap_spec.visible)
         matching_aps = list(band_aps & mode_aps & security_aps & visible_aps)
-        if ap_spec.hostnames is not None:
-            matching_aps = self._get_aps_by_hostnames(ap_spec.hostnames,
+        if spec.configurator_type != ap_spec.CONFIGURATOR_ANY:
+            matching_aps = self._get_aps_by_configurator_type(
+                    spec.configurator_type, matching_aps)
+        if spec.hostnames is not None:
+            matching_aps = self._get_aps_by_hostnames(spec.hostnames,
                                                         matching_aps)
         if pre_configure:
             for ap in matching_aps:
-                ap.set_using_ap_spec(ap_spec)
+                ap.set_using_ap_spec(spec)
         return matching_aps
 
 

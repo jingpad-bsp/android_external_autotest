@@ -4,6 +4,9 @@
 
 import logging
 
+from autotest_lib.server.cros.chaos_ap_configurators import ap_spec
+
+
 class APConfiguratorAbstract(object):
     """Abstract Base class to find and control access points."""
 
@@ -23,6 +26,12 @@ class APConfiguratorAbstract(object):
     def get_configuration_success(self):
         """Returns True if the configuration was a success; False otherwise"""
         return True
+
+
+    @property
+    def configurator_type(self):
+        """Returns the configurator type."""
+        return ap_spec.CONFIGURATOR_STATIC
 
 
     @property
