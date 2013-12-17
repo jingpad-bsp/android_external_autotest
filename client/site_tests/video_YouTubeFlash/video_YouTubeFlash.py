@@ -21,6 +21,9 @@ class video_YouTubeFlash(test.test):
     - verify the available video resolutions.
     - verify the player functionalities.
 
+    Note: please make sure that the test page uses nohtml5=1 flag for enforcing
+          the player to play video in Flash mode. Same for html5=1 for html5
+          mode.
     """
     version = 2
 
