@@ -23,6 +23,8 @@ from autotest_lib.client.cros.audio import sox_utils
 
 LD_LIBRARY_PATH = 'LD_LIBRARY_PATH'
 
+_AUDIO_DIAGNOSTICS_PATH = '/usr/bin/audio_diagnostics'
+
 _DEFAULT_NUM_CHANNELS = 2
 _DEFAULT_REC_COMMAND = 'arecord -D hw:0,0 -d 10 -f dat'
 _DEFAULT_SOX_FORMAT = '-t raw -b 16 -e signed -r 48000 -L'
@@ -575,9 +577,9 @@ def chrome_rms_test(run_once):
                 run_once(self, chrome_instance, *args, **kargs)
         except error.TestFail:
             logging.info('audio postmortem report')
-            logging.info(cras_utils.dump_server_info())
             log_loopback_dongle_status()
-            logging.info(alsa_utils.dump_control_contents())
+            logging.info(cmd_utils.execute(
+                    [_AUDIO_DIAGNOSTICS_PATH], stdout=cmd_utils.PIPE))
             raise
     return wrapper
 
@@ -593,9 +595,9 @@ def cras_rms_test(run_once):
             run_once(*args, **kargs)
         except error.TestFail:
             logging.info('audio postmortem report')
-            logging.info(cras_utils.dump_server_info())
             log_loopback_dongle_status()
-            logging.info(alsa_utils.dump_control_contents())
+            logging.info(cmd_utils.execute(
+                    [_AUDIO_DIAGNOSTICS_PATH], stdout=cmd_utils.PIPE))
             raise
     return wrapper
 
@@ -618,6 +620,7 @@ def alsa_rms_test(run_once):
         except error.TestFail:
             logging.info('audio postmortem report')
             log_loopback_dongle_status()
-            logging.info(alsa_utils.dump_control_contents())
+            logging.info(cmd_utils.execute(
+                    [_AUDIO_DIAGNOSTICS_PATH], stdout=cmd_utils.PIPE))
             raise
     return wrapper
