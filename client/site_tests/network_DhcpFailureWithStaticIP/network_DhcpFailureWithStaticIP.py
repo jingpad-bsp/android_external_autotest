@@ -8,12 +8,6 @@ import time
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import dhcp_test_base
 
-# This hacks the path so that we can import shill_proxy.
-# pylint: disable=W0611
-from autotest_lib.client.cros import flimflam_test_path
-# pylint: enable=W0611
-import shill_proxy
-
 class network_DhcpFailureWithStaticIP(dhcp_test_base.DhcpTestBase):
     """The DHCP Negotiation Timeout class.
 
@@ -29,37 +23,6 @@ class network_DhcpFailureWithStaticIP(dhcp_test_base.DhcpTestBase):
     SHILL_DHCP_TIMEOUT_SECONDS = 30
 
 
-    def get_device(self, interface_name):
-        """Finds the corresponding Device object for an interface with
-        the name |interface_name|.
-
-        @param interface_name string The name of the interface to check.
-
-        @return DBus interface object representing the associated device.
-
-        """
-        device = self._shill_proxy.find_object('Device',
-                                               {'Name': interface_name})
-        if device is None:
-            raise error.TestFail('Device was not found.')
-
-        return device
-
-
-    def find_ethernet_service(self, interface_name):
-        """Finds the corresponding service object for an ethernet
-        interface.
-
-        @param interface_name string The name of the associated interface
-
-        @return Service object representing the associated service.
-
-        """
-        device = self.get_device(interface_name)
-        device_path = shill_proxy.ShillProxy.dbus2primitive(device.object_path)
-        return self._shill_proxy.find_object('Service', {'Device': device_path})
-
-
     def check_static_ip_config(self, ipconfig, static_ip_address, name_servers):
         """Checks that the static IP configuration is applied to the
         interface ipconfig.
@@ -70,17 +33,17 @@ class network_DhcpFailureWithStaticIP(dhcp_test_base.DhcpTestBase):
                 configured on the interface.
 
         """
-        ipconfig_properties = dhcp_test_base.DhcpTestBase._cleanup_dbus_types(
+        ipconfig_properties = self.shill_proxy.dbus2primitive(
                 ipconfig.GetProperties(utf8_strings=True))
 
         logging.info('IPConfig properties are %r', ipconfig_properties)
         if static_ip_address != ipconfig_properties['Address']:
-            raise error.TestFail("Expected address %r but got %r" %
+            raise error.TestFail('Expected address %r but got %r' %
                                  (static_ip_address,
                                   ipconfig_properties['Address']))
 
         if name_servers != ipconfig_properties['NameServers']:
-            raise error.TestFail("Expected name servers %r but got %r" %
+            raise error.TestFail('Expected name servers %r but got %r' %
                                  (name_servers,
                                   ipconfig_properties['NameServers']))
 
@@ -88,20 +51,20 @@ class network_DhcpFailureWithStaticIP(dhcp_test_base.DhcpTestBase):
     def get_ipconfig(self):
         """Returns the first IPConfig object associated with the peer device."""
         ipconfig_objects = (
-                dhcp_test_base.DhcpTestBase.get_interface_ipconfig_objects(
+                self.get_interface_ipconfig_objects(
                         self.ethernet_pair.peer_interface_name))
         if len(ipconfig_objects) == 0:
-            raise error.TestFail("Failed to retrieve DHCP ipconfig object "
-                                 "from shill.")
+            raise error.TestFail('Failed to retrieve DHCP ipconfig object '
+                                 'from shill.')
         return ipconfig_objects[0]
 
 
     def test_body(self):
         """Test main loop."""
         self.server.stop()
-        self._shill_proxy = shill_proxy.ShillProxy()
         service = self.find_ethernet_service(
                 self.ethernet_pair.peer_interface_name)
+
         static_ip_address = '192.168.1.101'
         prefix_len = 23
         service.SetProperty('StaticIP.Address', static_ip_address)

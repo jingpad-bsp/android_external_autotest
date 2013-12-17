@@ -10,7 +10,6 @@ ethernet interface to shill.  Child classes should override test_body() with the
 logic of their test.  The plumbing of DhcpTestBase is accessible via properties.
 """
 
-import dbus
 import logging
 import socket
 import struct
@@ -24,22 +23,22 @@ from autotest_lib.client.cros import dhcp_packet
 from autotest_lib.client.cros import dhcp_test_server
 from autotest_lib.client.cros import virtual_ethernet_pair
 
-# This hacks the path so that we can import flimflam.
+# This hacks the path so that we can import the shill proxy.
 # pylint: disable=W0611
 from autotest_lib.client.cros import flimflam_test_path
 # pylint: enable=W0611
 
-import flimflam
+import shill_proxy
 
 # These are keys that may be used with the DBus dictionary returned from
 # DhcpTestBase.get_interface_ipconfig().
-DHCPCD_KEY_NAMESERVERS = "NameServers"
-DHCPCD_KEY_GATEWAY = "Gateway"
-DHCPCD_KEY_BROADCAST_ADDR = "Broadcast"
-DHCPCD_KEY_ADDRESS = "Address"
-DHCPCD_KEY_PREFIX_LENGTH = "Prefixlen"
-DHCPCD_KEY_DOMAIN_NAME = "DomainName"
-DHCPCD_KEY_SEARCH_DOMAIN_LIST = "SearchDomains"
+DHCPCD_KEY_NAMESERVERS = 'NameServers'
+DHCPCD_KEY_GATEWAY = 'Gateway'
+DHCPCD_KEY_BROADCAST_ADDR = 'Broadcast'
+DHCPCD_KEY_ADDRESS = 'Address'
+DHCPCD_KEY_PREFIX_LENGTH = 'Prefixlen'
+DHCPCD_KEY_DOMAIN_NAME = 'DomainName'
+DHCPCD_KEY_SEARCH_DOMAIN_LIST = 'SearchDomains'
 
 # We should be able to complete a DHCP negotiation in this amount of time.
 DHCP_NEGOTIATION_TIMEOUT_SECONDS = 10
@@ -47,40 +46,6 @@ DHCP_NEGOTIATION_TIMEOUT_SECONDS = 10
 class DhcpTestBase(test.test):
     """Parent class for tests that work verify DHCP behavior."""
     version = 1
-
-    @staticmethod
-    def _cleanup_dbus_types(value):
-        """
-        Removes meta information from dbus data types and returns their raw
-        Python equivalents.
-
-        @param value object DBus object to be converted.
-
-        @return un-adorned basic type as a result of the conversion.
-
-        """
-        if isinstance(value, int):
-            return int(value)
-        elif isinstance(value, dbus.Double):
-            return float(value)
-        elif isinstance(value, str):
-            return str(value)
-        elif isinstance(value, unicode):
-            return unicode(value)
-        elif isinstance(value, dbus.Array):
-            return [DhcpTestBase._cleanup_dbus_types(v) for v in value]
-        elif isinstance(value, dbus.Struct):
-            return tuple([DhcpTestBase._cleanup_dbus_types(v) for v in value])
-        elif isinstance(value, dbus.Dictionary):
-            ret = dict()
-            for k,v in value.items():
-                converted_key = DhcpTestBase._cleanup_dbus_types(k)
-                converted_value = DhcpTestBase._cleanup_dbus_types(v)
-                ret[converted_key] = converted_value
-            return ret
-        else:
-            raise error.TestFail("Unhandled dbus data type found in "
-                                 "conversion: %s." % value)
 
     @staticmethod
     def rewrite_ip_suffix(subnet_mask, ip_in_subnet, ip_suffix):
@@ -101,13 +66,39 @@ class DhcpTestBase(test.test):
         @return string IP address on in the same subnet with specified suffix.
 
         """
-        mask = struct.unpack("!I", socket.inet_aton(subnet_mask))[0]
-        subnet = mask & struct.unpack("!I", socket.inet_aton(ip_in_subnet))[0]
-        suffix = ~mask & struct.unpack("!I", socket.inet_aton(ip_suffix))[0]
-        return socket.inet_ntoa(struct.pack("!I", (subnet | suffix)))
+        mask = struct.unpack('!I', socket.inet_aton(subnet_mask))[0]
+        subnet = mask & struct.unpack('!I', socket.inet_aton(ip_in_subnet))[0]
+        suffix = ~mask & struct.unpack('!I', socket.inet_aton(ip_suffix))[0]
+        return socket.inet_ntoa(struct.pack('!I', (subnet | suffix)))
 
-    @staticmethod
-    def get_interface_ipconfig_objects(interface_name):
+
+    def get_device(self, interface_name):
+        """Finds the corresponding Device object for an interface with
+        the name |interface_name|.
+
+        @param interface_name string The name of the interface to check.
+
+        @return DBus interface object representing the associated device.
+
+        """
+        return self.shill_proxy.find_object('Device',
+                                            {'Name': interface_name})
+
+
+    def find_ethernet_service(self, interface_name):
+        """Finds the corresponding service object for an Ethernet interface.
+
+        @param interface_name string The name of the associated interface
+
+        @return Service object representing the associated service.
+
+        """
+        device = self.get_device(interface_name)
+        device_path = shill_proxy.ShillProxy.dbus2primitive(device.object_path)
+        return self.shill_proxy.find_object('Service', {'Device': device_path})
+
+
+    def get_interface_ipconfig_objects(self, interface_name):
         """
         Returns a list of dbus object proxies for |interface_name|.
         Returns an empty list if no such interface exists.
@@ -117,19 +108,22 @@ class DhcpTestBase(test.test):
         @return list of objects representing DBus IPConfig RPC endpoints.
 
         """
-        flim = flimflam.FlimFlam(dbus.SystemBus())
-        device = flim.FindElementByNameSubstring("Device", interface_name)
+        device = self.get_device(interface_name)
         if device is None:
             return []
 
         device_properties = device.GetProperties(utf8_strings=True)
+        proxy = self.shill_proxy
+
+        # TODO(pstew): This should move to using a shill_proxy constant when we
+        # can reasonably expect all devices we test have this constant there.
+        ipconfig_object = 'org.chromium.flimflam.IPConfig'
         return filter(bool,
-                      [ flim.GetObjectInterface("IPConfig", property_path)
-                        for property_path in device_properties["IPConfigs"] ])
+                      [ proxy.get_dbus_object(ipconfig_object, property_path)
+                        for property_path in device_properties['IPConfigs'] ])
 
 
-    @staticmethod
-    def get_interface_ipconfig(interface_name):
+    def get_interface_ipconfig(self, interface_name):
         """
         Returns a dictionary containing settings for an |interface_name| set
         via DHCP.  Returns None if no such interface or setting bundle on
@@ -142,24 +136,24 @@ class DhcpTestBase(test.test):
 
         """
         dhcp_properties = None
-        for ipconfig in DhcpTestBase.get_interface_ipconfig_objects(
-                interface_name):
+        for ipconfig in self.get_interface_ipconfig_objects(interface_name):
+          logging.error('Looking at ipconfig %r', ipconfig)
           ipconfig_properties = ipconfig.GetProperties(utf8_strings=True)
-          if "Method" not in ipconfig_properties:
-              logging.info("Found ipconfig object with no method field")
+          if 'Method' not in ipconfig_properties:
+              logging.info('Found ipconfig object with no method field')
               continue
-          if ipconfig_properties["Method"] != "dhcp":
-              logging.info("Found ipconfig object with method != dhcp")
+          if ipconfig_properties['Method'] != 'dhcp':
+              logging.info('Found ipconfig object with method != dhcp')
               continue
           if dhcp_properties != None:
-              raise error.TestFail("Found multiple ipconfig objects "
-                                   "with method == dhcp")
+              raise error.TestFail('Found multiple ipconfig objects '
+                                   'with method == dhcp')
           dhcp_properties = ipconfig_properties
         if dhcp_properties is None:
-            logging.info("Did not find IPConfig object with method == dhcp")
+            logging.info('Did not find IPConfig object with method == dhcp')
             return None
-        logging.info("Got raw dhcp config dbus object: %s.", dhcp_properties)
-        return DhcpTestBase._cleanup_dbus_types(dhcp_properties)
+        logging.info('Got raw dhcp config dbus object: %s.', dhcp_properties)
+        return shill_proxy.ShillProxy.dbus2primitive(dhcp_properties)
 
 
     def run_once(self):
@@ -167,28 +161,29 @@ class DhcpTestBase(test.test):
         self._server_ip = None
         self._ethernet_pair = None
         self._server = None
+        self._shill_proxy = shill_proxy.ShillProxy()
         try:
             self._ethernet_pair = virtual_ethernet_pair.VirtualEthernetPair(
-                    peer_interface_name="pseudoethernet0",
+                    peer_interface_name='pseudoethernet0',
                     peer_interface_ip=None)
             self._ethernet_pair.setup()
             if not self._ethernet_pair.is_healthy:
-                raise error.TestFail("Could not create virtual ethernet pair.")
+                raise error.TestFail('Could not create virtual ethernet pair.')
             self._server_ip = self._ethernet_pair.interface_ip
             self._server = dhcp_test_server.DhcpTestServer(
                     self._ethernet_pair.interface_name)
             self._server.start()
             if not self._server.is_healthy:
-                raise error.TestFail("Could not start DHCP test server.")
+                raise error.TestFail('Could not start DHCP test server.')
             self._subnet_mask = self._ethernet_pair.interface_subnet_mask
             self.test_body()
         except error.TestFail:
             # Pass these through without modification.
             raise
         except Exception as e:
-            logging.error("Caught exception: %s.", str(e))
-            logging.error("Trace: %s", traceback.format_exc())
-            raise error.TestFail("Caught exception: %s." % str(e))
+            logging.error('Caught exception: %s.', str(e))
+            logging.error('Trace: %s', traceback.format_exc())
+            raise error.TestFail('Caught exception: %s.' % str(e))
         finally:
             if self._server is not None:
                 self._server.stop()
@@ -201,7 +196,7 @@ class DhcpTestBase(test.test):
         that the the properties exposed by DhcpTestBase correctly return
         references to the test apparatus.
         """
-        raise error.TestFail("No test body implemented")
+        raise error.TestFail('No test body implemented')
 
     @property
     def server_ip(self):
@@ -228,6 +223,13 @@ class DhcpTestBase(test.test):
         """
         return self._ethernet_pair
 
+    @property
+    def shill_proxy(self):
+        """
+        Returns a the shill proxy instance.
+        """
+        return self._shill_proxy
+
     def negotiate_and_check_lease(self,
                                   dhcp_options,
                                   custom_fields={},
@@ -243,8 +245,8 @@ class DhcpTestBase(test.test):
 
         """
         if dhcp_packet.OPTION_REQUESTED_IP not in dhcp_options:
-            raise error.TestFail("You must specify OPTION_REQUESTED_IP to "
-                                 "negotiate a DHCP lease")
+            raise error.TestFail('You must specify OPTION_REQUESTED_IP to '
+                                 'negotiate a DHCP lease')
         intended_ip = dhcp_options[dhcp_packet.OPTION_REQUESTED_IP]
         # Build up the handling rules for the server and start the test.
         rules = []
@@ -261,14 +263,14 @@ class DhcpTestBase(test.test):
         rules[-1].is_final_handler = True
         self.server.start_test(rules, DHCP_NEGOTIATION_TIMEOUT_SECONDS)
         self.server.wait_for_test_to_finish()
-        logging.info("Server is negotiating new lease with options: %s",
+        logging.info('Server is negotiating new lease with options: %s',
                      dhcp_options)
         if not self.server.last_test_passed:
-            raise error.TestFail("Test server didn't get all the messages it "
-                                 "was told to expect during negotiation.")
+            raise error.TestFail('Test server didn\'t get all the messages it '
+                                 'was told to expect during negotiation.')
 
         if disable_check:
-            logging.info("Skipping check of negotiated DHCP lease parameters.")
+            logging.info('Skipping check of negotiated DHCP lease parameters.')
         else:
             # Wait for configuration to propagate over dbus to shill.
             # TODO(wiley) Make this event based.  This is pretty sloppy.
@@ -287,19 +289,19 @@ class DhcpTestBase(test.test):
         # The config is what the interface was actually configured with, as
         # opposed to dhcp_options, which is what the server expected it be
         # configured with.
-        dhcp_config = DhcpTestBase.get_interface_ipconfig(
+        dhcp_config = self.get_interface_ipconfig(
                 self.ethernet_pair.peer_interface_name)
         if dhcp_config is None:
-            raise error.TestFail("Failed to retrieve DHCP ipconfig object "
-                                 "from shill.")
+            raise error.TestFail('Failed to retrieve DHCP ipconfig object '
+                                 'from shill.')
 
-        logging.debug("Got DHCP config: %s", str(dhcp_config))
+        logging.debug('Got DHCP config: %s', str(dhcp_config))
         expected_address = dhcp_options.get(dhcp_packet.OPTION_REQUESTED_IP)
         configured_address = dhcp_config.get(DHCPCD_KEY_ADDRESS)
         if expected_address != configured_address:
-            raise error.TestFail("Interface configured with IP address not "
-                                 "granted by the DHCP server after DHCP "
-                                 "negotiation.  Expected %s but got %s." %
+            raise error.TestFail('Interface configured with IP address not '
+                                 'granted by the DHCP server after DHCP '
+                                 'negotiation.  Expected %s but got %s.' %
                                  (expected_address, configured_address))
 
         # While DNS related settings only propagate to the system when the
@@ -307,33 +309,33 @@ class DhcpTestBase(test.test):
         # IP address on the interface, since that is set immediately.
         interface_address = self.ethernet_pair.peer_interface_ip
         if expected_address != interface_address:
-            raise error.TestFail("shill somehow knew about the proper DHCP "
-                                 "assigned address: %s, but configured the "
-                                 "interface with something completely "
-                                 "different: %s." %
+            raise error.TestFail('shill somehow knew about the proper DHCP '
+                                 'assigned address: %s, but configured the '
+                                 'interface with something completely '
+                                 'different: %s.' %
                                  (expected_address, interface_address))
 
         expected_dns_servers = dhcp_options.get(dhcp_packet.OPTION_DNS_SERVERS)
         configured_dns_servers = dhcp_config.get(DHCPCD_KEY_NAMESERVERS)
         if expected_dns_servers != configured_dns_servers:
-            raise error.TestFail("Expected to be configured with DNS server "
-                                 "list %s, but was configured with %s "
-                                 "instead." % (expected_dns_servers,
+            raise error.TestFail('Expected to be configured with DNS server '
+                                 'list %s, but was configured with %s '
+                                 'instead.' % (expected_dns_servers,
                                                configured_dns_servers))
 
         expected_domain_name = dhcp_options.get(dhcp_packet.OPTION_DOMAIN_NAME)
         configured_domain_name = dhcp_config.get(DHCPCD_KEY_DOMAIN_NAME)
         if expected_domain_name != configured_domain_name:
-            raise error.TestFail("Expected to be configured with domain "
-                                 "name %s, but got %s instead." %
+            raise error.TestFail('Expected to be configured with domain '
+                                 'name %s, but got %s instead.' %
                                  (expected_domain_name, configured_domain_name))
 
         expected_search_list = dhcp_options.get(
                 dhcp_packet.OPTION_DNS_DOMAIN_SEARCH_LIST)
         configured_search_list = dhcp_config.get(DHCPCD_KEY_SEARCH_DOMAIN_LIST)
         if expected_search_list != configured_search_list:
-            raise error.TestFail("Expected to be configured with domain "
-                                 "search list %s, but got %s instead." %
+            raise error.TestFail('Expected to be configured with domain '
+                                 'search list %s, but got %s instead.' %
                                  (expected_search_list, configured_search_list))
 
         expected_routers = dhcp_options.get(dhcp_packet.OPTION_ROUTERS)
@@ -343,16 +345,16 @@ class DhcpTestBase(test.test):
                 dhcp_packet.OPTION_CLASSLESS_STATIC_ROUTES]
             for prefix, destination, gateway in classless_static_routes:
                 if not prefix:
-                    logging.info("Using %s as the default gateway", gateway)
+                    logging.info('Using %s as the default gateway', gateway)
                     expected_routers = [ gateway ]
                     break
         configured_router = dhcp_config.get(DHCPCD_KEY_GATEWAY)
         if expected_routers and expected_routers[0] != configured_router:
-            raise error.TestFail("Expected to be configured with gateway %s, "
-                                 "but got %s instead." %
+            raise error.TestFail('Expected to be configured with gateway %s, '
+                                 'but got %s instead.' %
                                  (expected_routers[0], configured_router))
 
         self.server.wait_for_test_to_finish()
         if not self.server.last_test_passed:
-            raise error.TestFail("Test server didn't get all the messages it "
-                                 "was told to expect for renewal.")
+            raise error.TestFail('Test server didn\'t get all the messages it '
+                                 'was told to expect for renewal.')

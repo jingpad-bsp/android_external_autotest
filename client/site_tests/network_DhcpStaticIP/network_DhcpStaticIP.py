@@ -8,12 +8,6 @@ from autotest_lib.client.cros import dhcp_packet
 from autotest_lib.client.cros import dhcp_test_base
 from autotest_lib.client.cros import shill_temporary_profile
 
-# This hacks the path so that we can import shill_proxy.
-# pylint: disable=W0611
-from autotest_lib.client.cros import flimflam_test_path
-# pylint: enable=W0611
-import shill_proxy
-
 class network_DhcpStaticIP(dhcp_test_base.DhcpTestBase):
     """DHCP test which confirms static IP functionality"""
     # Length of time the lease from the DHCP server is valid.
@@ -33,37 +27,6 @@ class network_DhcpStaticIP(dhcp_test_base.DhcpTestBase):
     # Various parameters that can be set statically.
     CONFIGURE_STATIC_IP_ADDRESS = 'ip-address'
     CONFIGURE_STATIC_IP_DNS_SERVERS = 'dns-servers'
-
-    def get_device(self, interface_name):
-        """Finds the corresponding Device object for an interface with
-        the name |interface_name|.
-
-        @param interface_name string The name of the interface to check.
-
-        @return DBus interface object representing the associated device.
-
-        """
-        device = self._shill_proxy.find_object('Device',
-                                               {'Name': interface_name})
-        if device is None:
-            raise error.TestFail('Device was not found.')
-
-        return device
-
-
-    def find_ethernet_service(self, interface_name):
-        """Finds the corresponding service object for an ethernet
-        interface.
-
-        @param interface_name string The name of the associated interface
-
-        @return Service object representing the associated service.
-
-        """
-        device = self.get_device(interface_name)
-        device_path = shill_proxy.ShillProxy.dbus2primitive(device.object_path)
-        return self._shill_proxy.find_object('Service', {'Device': device_path})
-
 
     def configure_static_ip(self, service, params):
         """Configures the Static IP parameters for the Ethernet interface
@@ -173,9 +136,9 @@ class network_DhcpStaticIP(dhcp_test_base.DhcpTestBase):
             raise error.TestFail('Test server didn\'t get all the messages it '
                                  'was told to expect during negotiation.')
         # Wait for the service to enter a "good" state.
-        connect_result = self._shill_proxy.wait_for_property_in(
+        connect_result = self.shill_proxy.wait_for_property_in(
                 service,
-                self._shill_proxy.SERVICE_PROPERTY_STATE,
+                self.shill_proxy.SERVICE_PROPERTY_STATE,
                 ('ready', 'portal', 'online'),
                 self.DHCP_SETUP_TIMEOUT_SECONDS)
         (successful, _, association_time) = connect_result
@@ -257,11 +220,10 @@ class network_DhcpStaticIP(dhcp_test_base.DhcpTestBase):
                 dhcp_packet.OPTION_DOMAIN_NAME : domain_name,
                 dhcp_packet.OPTION_DNS_DOMAIN_SEARCH_LIST : dns_search_list,
                 }
-        self._shill_proxy = shill_proxy.ShillProxy()
         service = self.find_ethernet_service(
                 self.ethernet_pair.peer_interface_name)
 
-        manager = self._shill_proxy.manager
+        manager = self.shill_proxy.manager
         with shill_temporary_profile.ShillTemporaryProfile(
                 manager, profile_name=self.TEST_PROFILE_NAME):
 
