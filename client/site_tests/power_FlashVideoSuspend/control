@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "power_VideoSuspend"
+NAME = "power_FlashVideoSuspend"
 SUITE = "kernel_per-build_regression"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
@@ -21,4 +21,4 @@ base_url = 'http://commondatastorage.googleapis.com/chromeos-test-public/'
 video_urls = [base_url + video for video in videos]
 
 job.add_sysinfo_logfile('/sys/kernel/debug/suspend_stats', on_every_test=True)
-job.run_test('power_VideoSuspend', video_urls=video_urls, tag='flash')
+job.run_test('power_FlashVideoSuspend', video_urls=video_urls, tag='flash')
