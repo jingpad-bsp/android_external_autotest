@@ -613,7 +613,7 @@ def alsa_rms_test(run_once):
 
         # CRAS does not apply the volume and capture gain to ALSA util
         # streams are added. Do that to ensure the values have been set.
-        cras_utils.playback('-')
+        cras_utils.playback('/dev/zero', duration=0.1)
         cras_utils.capture('/dev/null', duration=0.1)
         try:
             run_once(*args, **kargs)
