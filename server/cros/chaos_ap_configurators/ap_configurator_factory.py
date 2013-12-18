@@ -245,7 +245,7 @@ class APConfiguratorFactory(object):
         return set(aps)
 
 
-    def _get_aps_by_band(self, band):
+    def _get_aps_by_band(self, band, channel=None):
         """Returns all APs that support a given band.
 
         @param band: the band desired.
@@ -259,8 +259,11 @@ class APConfiguratorFactory(object):
         for ap in self.ap_list:
             bands_and_channels = ap.get_supported_bands()
             for d in bands_and_channels:
-                if d['band'] == band:
-                    aps.append(ap)
+                if channel:
+                    if d['band'] == band and channel in d['channels']:
+                        aps.append(ap)
+                elif d['band'] == band:
+                        aps.append(ap)
         return set(aps)
 
 
@@ -295,7 +298,7 @@ class APConfiguratorFactory(object):
         if not ap_spec:
             return self.ap_list
 
-        band_aps = self._get_aps_by_band(ap_spec.band)
+        band_aps = self._get_aps_by_band(ap_spec.band, channel=ap_spec.channel)
         mode_aps = self._get_aps_by_mode(ap_spec.mode)
         security_aps = self._get_aps_by_security(ap_spec.security)
         visible_aps = self._get_aps_by_visibility(ap_spec.visible)
