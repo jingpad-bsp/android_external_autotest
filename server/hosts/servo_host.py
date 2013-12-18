@@ -17,7 +17,11 @@ import xmlrpclib
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib.cros import autoupdater
+from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
+from autotest_lib.server import site_utils as server_site_utils
 from autotest_lib.server.cros.servo import servo
 from autotest_lib.server.hosts import ssh_host
 from autotest_lib.site_utils.graphite import stats
@@ -76,6 +80,7 @@ class ServoHost(ssh_host.SSHHost):
     SERVOD_PROCESS = 'servod'
 
     _MAX_POWER_CYCLE_ATTEMPTS = 3
+    _timer = stats.Timer('servo_host')
 
 
     def _initialize(self, servo_host='localhost', servo_port=9999,
@@ -144,6 +149,20 @@ class ServoHost(ssh_host.SSHHost):
         """
         processes = [self.SERVOD_PROCESS]
         return processes
+
+
+    def _is_cros_host(self):
+        """Check if a servo host is running chromeos.
+
+        @return: True if the servo host is running chromeos.
+            False if it isn't, or we don't have enough information.
+        """
+        try:
+            result = self.run('grep -q CHROMEOS /etc/lsb-release',
+                              ignore_status=True, timeout=10)
+        except (error.AutoservRunError, error.AutoservSSHTimeout):
+            return False
+        return result.exit_status == 0
 
 
     def make_ssh_command(self, user='root', port=22, opts='', hosts_file=None,
@@ -295,17 +314,109 @@ class ServoHost(ssh_host.SSHHost):
                     'USB sanity check on %s failed: %s' % (self.hostname, e))
 
 
+    @_timer.decorate
+    def _update_image(self):
+        """Update the image on the servo host, if needed.
+
+        This method does nothing for servo hosts that are not running chromeos.
+        If the host is running chromeos, and a newer image is available on the
+        devserver, trigger a download and apply it in the background. If an
+        update has already been downloaded and applied, reboot the servo host
+        into the new image. If update_engine_client is in the process of
+        applying an update that was triggered on a previous invocation, do
+        nothing.
+
+        @raises dev_server.DevServerException: If all the devservers are down.
+        @raises site_utils.ParseBuildNameException: If the devserver returns
+            an invalid build name.
+        @raises autoupdater.ChromiumOSError: If something goes wrong in the
+            checking update engine client status or applying an update.
+        @raises AutoservRunError: If the update_engine_client isn't present on
+            the host, and the host is a cros_host.
+        """
+        #TODO(beeps): Remove this check once all servo hosts are using chromeos.
+        if not self._is_cros_host():
+            logging.info('Not attempting an update, either %s is not running '
+                         'chromeos or we cannot find enough information about '
+                         'the host.', self.hostname)
+            return
+
+        update_branch = global_config.global_config.get_config_value(
+                'CROS', 'servo_builder')
+        ds = dev_server.ImageServer.resolve(self.hostname)
+        latest_build = ds.get_latest_build_in_server(target=update_branch)
+
+        # We might have just purged all the beaglebone builds on the devserver
+        # after having triggered a download the last time we verified this
+        # beaglebone, so we still need to reboot if necessary.
+        if latest_build is None:
+            logging.debug('Could not find any builds for %s on %s',
+                          update_branch, ds.url())
+            url = ds.url()
+            latest_build_number = None
+        else:
+            latest_build = '%s/%s' % (update_branch, latest_build)
+            latest_build_number = server_site_utils.ParseBuildName(
+                    latest_build)[3]
+            url = ds.get_update_url(latest_build)
+
+        updater = autoupdater.ChromiumOSUpdater(update_url=url, host=self)
+        current_build_number = updater.get_build_id()
+        status = updater.check_update_status()
+
+        if status == autoupdater.UPDATER_NEED_REBOOT:
+            logging.info('Rebooting beaglebone host %s with build %s',
+                         self.hostname, current_build_number)
+            kwargs = {
+                'reboot_cmd': ('((reboot & sleep 10; reboot -f &) '
+                               '</dev/null >/dev/null 2>&1 &)'),
+                'fastsync': True,
+                'label': None,
+                'wait': True,
+            }
+            self.reboot(**kwargs)
+            current_build_number = updater.get_build_id()
+            logging.info('servo host %s back from reboot, with build %s',
+                         self.hostname, current_build_number)
+
+        if status in autoupdater.UPDATER_PROCESSING_UPDATE:
+            logging.info('servo host %s already processing an update, update '
+                         'engine client status=%s', self.hostname, status)
+        elif (latest_build_number and
+              current_build_number != latest_build_number):
+            logging.info('Using devserver url: %s to trigger update on '
+                         'servo host %s, from %s to %s', url, self.hostname,
+                         current_build_number, latest_build_number)
+            try:
+                updater.trigger_update()
+            except autoupdater.RootFSUpdateError as e:
+                trigger_download_status = 'failed with %s' % str(e)
+                stats.Counter('servo_host.RootFSUpdateError').increment()
+            else:
+                trigger_download_status = 'passed'
+            logging.info('Triggered download and update %s for %s, '
+                         'update engine currently in status %s',
+                         trigger_download_status, self.hostname,
+                         updater.check_update_status())
+        else:
+            logging.info('servo host %s does not require an update.',
+                         self.hostname)
+
+
     def verify_software(self):
-        """Verify that the servo is in a good state.
+        """Update the servo host and verify it's in a good state.
 
         It overrides the base class function for verify_software.
-        It checks:
+        If an update is available, downloads and applies it. Then verifies:
             1) Whether basic servo command can run successfully.
             2) Whether USB is in a good state. crbug.com/225932
 
         @raises ServoHostVerifyFailure if servo host does not pass the checks.
 
         """
+        logging.info('Applying an update to the servo host, if necessary.')
+        self._update_image()
+
         logging.info('Verifying servo host %s with sanity checks.',
                      self.hostname)
         self._check_servod()
