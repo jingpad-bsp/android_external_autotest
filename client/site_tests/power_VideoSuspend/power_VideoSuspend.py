@@ -11,19 +11,6 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import sys_power
 
-def download(url):
-    """
-    Download a file to the local download directory.
-
-    Returns the URL to the downloaded file.
-    """
-    logging.info('downloading %s', url)
-    path = utils.unmap_url('', url, '/home/chronos/user/Downloads/')
-    if not os.path.isfile(path):
-        raise error.TestError('downloaded file missing: %s' % path)
-    return 'file://' + path
-
-
 class power_VideoSuspend(test.test):
     """Suspend the system with a video playing."""
     version = 1
@@ -33,20 +20,34 @@ class power_VideoSuspend(test.test):
             raise error.TestError('no videos to play')
 
         with chrome.Chrome() as cr:
-            local_video_urls = [download(url) for url in video_urls]
-            for url in local_video_urls:
-                self.suspend_with_video(cr.browser.tabs[0], url)
+            cr.browser.SetHTTPServerDirectories(self.bindir)
+            tab = cr.browser.tabs[0]
+            tab.Navigate(cr.browser.http_server.UrlOf(
+                os.path.join(self.bindir, 'play.html')))
+            tab.WaitForDocumentReadyStateToBeComplete()
 
-    @staticmethod
-    def suspend_with_video(tab, url):
-        logging.info('playing %s', url)
-        tab.Navigate(url)
+            for url in video_urls:
+                self.suspend_with_video(cr.browser, tab, url)
 
-        # Wait for video to start playing.
-        # TODO(spang): Make this sane. crosbug.com/37452
-        time.sleep(5)
 
+    def check_video_is_playing(self, tab):
+        def get_current_time():
+            return tab.EvaluateJavaScript('player.currentTime')
+
+        old_time = get_current_time()
+        utils.poll_for_condition(
+            condition=lambda: get_current_time() > old_time,
+            exception=error.TestError('Player stuck until timeout.'))
+
+
+    def suspend_with_video(self, browser, tab, video_url):
+        logging.info('testing %s', video_url)
+        tab.EvaluateJavaScript('play("%s")' % video_url)
+
+        self.check_video_is_playing(tab)
+
+        time.sleep(2)
         sys_power.kernel_suspend(10)
-        # TODO(spang): Check video is still playing. crosbug.com/37452
+        time.sleep(2)
 
-        logging.info('done %s', url)
+        self.check_video_is_playing(tab)
