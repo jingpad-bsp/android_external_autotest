@@ -62,6 +62,7 @@ class BelkinF9K1105APConfigurator(
         """
         return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
                                  ap_spec.SECURITY_TYPE_WPAPSK,
+                                 ap_spec.SECURITY_TYPE_WPA2PSK,
                                  ap_spec.SECURITY_TYPE_WEP)
 
 
@@ -147,7 +148,7 @@ class BelkinF9K1105APConfigurator(
             # The page reloads in about 80 secs and goes back to the dashboard.
             # The device reboots to apply the changes, hence this delay.
             try:
-                self.set_wait_time(80)
+                self.set_wait_time(120)
                 self.wait.until(lambda _: page_title in self.driver.title)
             except:
                 if not page_title in self.driver.title:
@@ -267,24 +268,27 @@ class BelkinF9K1105APConfigurator(
         self.click_button_by_xpath(generate_button)
 
 
-    def set_security_wpapsk(self, shared_key, update_interval=None):
+    def set_security_wpapsk(self, security, shared_key, update_interval=None):
         self.add_item_to_command_list(self._set_security_wpapsk,
-                                      (shared_key, update_interval), 2, 900)
+                                      (security, shared_key, update_interval),
+                                      2, 900)
 
 
-    def _set_security_wpapsk(self, shared_key, update_interval=None):
+    def _set_security_wpapsk(self, security, shared_key, update_interval=None):
         auth_popup = '//select[@name="wl_auth"]'
         psk_field = '//input[@name="wl_wpa_ks_pwd"]'
         if self.current_band == ap_spec.BAND_5GHZ:
             auth_popup = '//select[@name="wl1_auth"]'
             psk_field = '//input[@name="wl1_wpa_ks_pwd"]'
         self._set_security('WPA/WPA2-Personal (PSK)', wait_for_xpath=auth_popup)
-        self.select_item_from_popup_by_xpath('WPA-PSK', auth_popup,
+        selection = 'WPA2-PSK'
+        if security == ap_spec.SECURITY_TYPE_WPAPSK:
+            selection = 'WPA-PSK'
+        self.select_item_from_popup_by_xpath(selection, auth_popup,
                                              wait_for_xpath=psk_field,
-                                             alert_handler=
-                                             self._security_alert)
+                                             alert_handler=self._security_alert)
         self.set_content_of_text_field_by_xpath(shared_key, psk_field,
-                                                abort_check=True)
+                                                abort_check=False)
 
 
     def is_visibility_supported(self):
