@@ -1,0 +1,26 @@
+<html>
+  <body>
+    <iframe id="player_frame" type="text/html" width="640" height="390"
+        src="http://www.youtube.com/embed/Lv-sY_z8MNs?enablejsapi=1&nohtml5=1"
+        frameborder="0"></iframe>
+    <br>
+    <script>
+      var tag = document.createElement('script');
+      tag.src = "https://www.youtube.com/iframe_api";
+      var firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+      var player;
+      function onYouTubeIframeAPIReady() {
+        new YT.Player('player_frame', {
+          events: {
+            'onReady': onPlayerReady,
+          }
+        });
+      }
+      function onPlayerReady(event) {
+        player = event.target;
+        player.playVideo();
+      }
+    </script>
+  </body>
+</html>
