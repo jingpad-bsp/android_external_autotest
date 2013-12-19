@@ -45,8 +45,7 @@ class audio_CRASFormatConversion(test.test):
                     filename='-', rate=rate, frequence=frequence, gain=-6),
             stdout=cmd_utils.PIPE)
         p2 = cmd_utils.popen(
-            cras_utils.playback_cmd(
-                    playback_file='-', buffer_frames=512, rate=rate),
+            cras_utils.playback_cmd(playback_file='-', rate=rate),
             stdin=p1.stdout)
         return [p1, p2]
 
@@ -87,8 +86,7 @@ class audio_CRASFormatConversion(test.test):
             popens += self.play_sine_tone(_TEST_TONE_TWO, secondary)
             self.wait_for_active_stream_count(2)
 
-            cras_utils.capture(
-                    record_file, buffer_frames=441, duration=1, rate=44100)
+            cras_utils.capture(record_file, duration=1, rate=44100)
 
             # Make sure the playback is still in good shape
             if any(p.poll() is not None for p in popens):
@@ -120,7 +118,7 @@ class audio_CRASFormatConversion(test.test):
         # Record silence to use as the noise profile.
         noise_file = os.path.join(self.resultsdir, "noise.wav")
         noise_profile = tempfile.NamedTemporaryFile()
-        cras_utils.capture(noise_file, buffer_frames=512, duration=1)
+        cras_utils.capture(noise_file, duration=1)
         sox_utils.noise_profile(noise_file, noise_profile.name)
 
         # Try all sample rate pairs.
@@ -131,7 +129,6 @@ class audio_CRASFormatConversion(test.test):
         # Record at all sample rates
         record_file = tempfile.NamedTemporaryFile()
         for rate in _TEST_SAMPLE_RATES:
-            cras_utils.capture(
-                    record_file.name, buffer_frames=512, duration=1, rate=rate)
+            cras_utils.capture(record_file.name, duration=1, rate=rate)
 
         os.unlink(noise_file)
