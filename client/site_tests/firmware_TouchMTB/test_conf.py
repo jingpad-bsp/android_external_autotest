@@ -8,6 +8,7 @@
 
 from firmware_constants import DEV, GV, VAL
 from validators import (CountPacketsValidator,
+                        CountTrackingIDValidator,
                         CountTrackingIDNormalFingerValidator,
                         CountTrackingIDFatFingerValidator,
                         DrumrollValidator,
@@ -19,6 +20,7 @@ from validators import (CountPacketsValidator,
                         PinchValidator,
                         RangeValidator,
                         ReportRateValidator,
+                        StationaryValidator,
                         StationaryFingerValidator,
                         StationaryTapValidator,
 )
@@ -73,6 +75,11 @@ validators_hidden_when_no_failures = ['PinchValidator',
                                       'CountTrackingIDNormalFingerValidator',
                                       'CountTrackingIDFatFingerValidator',
                                       'CountPacketsValidator']
+
+
+# Define the parent validators from which the derived validators should be
+# merged in the top-level summary table.
+merged_validators = [StationaryValidator,]
 
 
 # Define the path to find the robot gestures library path

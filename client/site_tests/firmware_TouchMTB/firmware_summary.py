@@ -51,16 +51,16 @@ import getopt
 import os
 import sys
 
-import test_conf as conf
 import firmware_log
+import test_conf as conf
 
 from collections import defaultdict
 
 from common_util import print_and_exit
 from firmware_constants import OPTIONS
-from test_conf import (log_root_dir, segment_weights, validator_weights)
-
-
+from test_conf import (log_root_dir, merged_validators, segment_weights,
+                       validator_weights)
+from validators import BaseValidator, get_parent_validators
 
 
 class OptionsDisplayMetrics:
@@ -174,7 +174,7 @@ class FirmwareSummary:
             statistics_format_list = []
             for fw in self.slog.fws:
                 result = self.slog.get_result(fw=fw, gesture=gesture,
-                                              validator=validator)
+                                              validators=validator)
                 scores_data = result.stat_scores.all_data
                 if scores_data:
                     stat_scores_data += scores_data
@@ -212,12 +212,27 @@ class FirmwareSummary:
         """
         return metric_name.split('--')[0]
 
+    def _get_merged_validators(self):
+        merged = defaultdict(list)
+        for validator_name in self.slog.validators:
+            parents = get_parent_validators(validator_name)
+            for parent in parents:
+                if parent in merged_validators:
+                    merged[parent].append(validator_name)
+                    break
+            else:
+                merged[validator_name] = [validator_name,]
+        return sorted(merged.values())
 
-    def _print_statistics_of_metrics(self, gesture=None):
+    def _print_statistics_of_metrics(self, detailed=True, gesture=None):
         """Print the statistics of metrics by gesture or by validator.
 
         @param gesture: print the statistics grouped by gesture
                 if this argument is specified; otherwise, by validator.
+        @param detailed: print statistics for all derived validators if True;
+                otherwise, print the merged statistics, e.g.,
+                both StationaryFingerValidator and StationaryTapValidator
+                are merged into StationaryValidator.
         """
         # Print the complete title which looks like:
         #   <title_str>  <fw1>  <fw2>  ...  <description>
@@ -225,6 +240,8 @@ class FirmwareSummary:
         num_fws = len(fws)
         fws_str_max_width = max(map(len, fws))
         fws_str_width = max(fws_str_max_width + 1, 10)
+        table_name = ('Detailed table (for debugging)' if detailed else
+                      'Summary table')
         title_str = ('Metrics statistics by gesture: ' + gesture if gesture else
                      'Metrics statistics by validator')
         description_str = 'description (lower is better)'
@@ -232,7 +249,9 @@ class FirmwareSummary:
         complete_title = ('{:<37}: '.format(title_str) +
                           (fw_format * num_fws).format(*fws) +
                           '  {:<40}'.format(description_str))
-        print '\n' * 2 + complete_title
+        print '\n' * 2
+        print table_name
+        print complete_title
         print '-' * len(complete_title)
 
         # Print the metric name and the metric stats values of every firmwares
@@ -240,11 +259,15 @@ class FirmwareSummary:
         description_format = ' {:<40}'
         float_format = '{:>%d.2f}' % fws_str_width
         blank_format = '{:>%d}' % fws_str_width
-        for validator in self.slog.validators:
+
+        validators = (self.slog.validators if detailed else
+                      self._get_merged_validators())
+
+        for validator in validators:
             fw_stats_values = defaultdict(dict)
             for fw in fws:
                 result = self.slog.get_result(fw=fw, gesture=gesture,
-                                              validator=validator)
+                                              validators=validator)
                 stat_metrics = result.stat_metrics
 
                 for metric_name in stat_metrics.metrics_values:
@@ -267,7 +290,10 @@ class FirmwareSummary:
                         self.display_metrics.display_all_stats or any(values)):
                     if not fw_stats_values_printed:
                         fw_stats_values_printed = True
-                        print ' ' * 2, validator
+                        if isinstance(validator, list):
+                            print (' ' + ' {}' * len(validator)).format(*validator)
+                        else:
+                            print '  ' + validator
                     disp_name = self._get_metric_name_for_display(metric_name)
                     print name_format.format(disp_name),
                     print values_format.format(*values),
@@ -290,7 +316,7 @@ class FirmwareSummary:
         for fw in self.slog.fws:
             print '\n', fw
             for validator in self.slog.validators:
-                result = self.slog.get_result(fw=fw, validator=validator)
+                result = self.slog.get_result(fw=fw, validators=validator)
                 metrics_dict = result.stat_metrics.metrics_dict
                 if metrics_dict:
                     print '\n' + ' ' * 3 + validator
@@ -328,7 +354,8 @@ class FirmwareSummary:
     def print_result_summary(self):
         """Print the summary of the test results."""
         if self.display_metrics:
-            self._print_statistics_of_metrics()
+            self._print_statistics_of_metrics(detailed=False)
+            self._print_statistics_of_metrics(detailed=True)
             if self.display_metrics.display_raw_values:
                 self._print_raw_metrics_values()
         if self.display_scores:

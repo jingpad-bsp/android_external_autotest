@@ -54,7 +54,7 @@ class FirmwareSummaryTest(unittest.TestCase):
     def _get_score(self, fw=None, gesture=None, validator=None):
         """Score = sum / count, rounded to the 4th digit."""
         result= self.slog.get_result(fw=fw, gesture=gesture,
-                                     validator=validator)
+                                     validators=validator)
         average = result.stat_scores.average
         return round(average, self._round_digits)
 
@@ -239,7 +239,7 @@ class FirmwareSummaryLumpyTest(FirmwareSummaryTest):
 
         for fw, fw_stats_values in expected_stats_values.items():
             for validator, stats_metrics in fw_stats_values.items():
-                result = self.slog.get_result(fw=fw, validator=validator)
+                result = self.slog.get_result(fw=fw, validators=validator)
                 for metric_name, expected_value in stats_metrics:
                     actual_value = result.stat_metrics.stats_values[metric_name]
                     self.assertAlmostEqual(actual_value, expected_value)

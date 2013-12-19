@@ -57,6 +57,7 @@ import copy
 import numpy as np
 import os
 import re
+import sys
 
 import firmware_log
 import fuzzy
@@ -105,6 +106,12 @@ def validate(packets, gesture, variation):
             msg_list.append(msg_score)
 
     return (score_list, msg_list, vlogs)
+
+
+def get_parent_validators(validator_name):
+    """Get the parents of a given validator."""
+    validator = getattr(sys.modules[__name__], validator_name, None)
+    return validator.__bases__ if validator else []
 
 
 def get_short_name(validator_name):
@@ -647,23 +654,20 @@ class CountTrackingIDFatFingerValidator(CountTrackingIDValidator):
     pass
 
 
-class StationaryFingerValidator(BaseValidator):
+class StationaryValidator(BaseValidator):
     """Check to make sure a finger we expect to remain still doesn't move.
 
-    Example:
-        To verify if the stationary finger specified by the slot does not
-        move larger than a specified radius:
-          StationaryFingerValidator('<= 15 ~ +10')
+    This class is inherited by both StationaryFingerValidator and
+    StationaryTapValidator, and is not used directly as a validator.
     """
 
     def __init__(self, criteria, mf=None, device=None, slot=0):
         name = self.__class__.__name__
-        super(StationaryFingerValidator, self).__init__(criteria, mf,
-                                                        device, name)
+        super(StationaryValidator, self).__init__(criteria, mf, device, name)
         self.slot = slot
 
     def check(self, packets, variation=None):
-        """Check the moving distance of the specified finger."""
+        """Check the moving distance of the specified slot."""
         self.init_check(packets)
         max_distance = self.packets.get_max_distance(self.slot, UNIT.MM)
         msg = 'Max distance slot%d: %.2f mm'
@@ -675,8 +679,25 @@ class StationaryFingerValidator(BaseValidator):
         return self.vlog
 
 
-class StationaryTapValidator(StationaryFingerValidator):
-    """A dummy StationaryFingerValidator to check the wobble of tap/click."""
+class StationaryFingerValidator(StationaryValidator):
+    """A dummy StationaryValidator to check pulling effect by another finger.
+
+    Example:
+        To verify if the stationary finger specified by the slot is not
+        pulled away more than 1.0 mm by another finger.
+          StationaryFingerValidator('<= 1.0')
+    """
+    pass
+
+
+class StationaryTapValidator(StationaryValidator):
+    """A dummy StationaryValidator to check the wobble of tap/click.
+
+    Example:
+        To verify if the tapping finger specified by the slot does not
+        wobble larger than 1.0 mm.
+          StationaryTapValidator('<= 1.0')
+    """
     pass
 
 

@@ -660,12 +660,24 @@ class SummaryLog:
         return extended_validator_weights
 
     def get_result(self, fw=None, round=None, gesture=None, variation=None,
-                   validator=None):
+                   validators=None):
         """Get the result statistics of a validator which include both
         the score and the metrics.
+
+        If validators is a list, every validator in the list is used to query
+        the log table, and all results are merged to get the final result.
+        For example, both StationaryFingerValidator and StationaryTapValidator
+        inherit StationaryValidator. The results of those two extended classes
+        will be merged into StationaryValidator.
         """
-        key = (fw, round, gesture, variation, validator)
-        rows = self.log_table.search(key)
+        if not isinstance(validators, list):
+            validators = [validators,]
+
+        rows = []
+        for validator in validators:
+            key = (fw, round, gesture, variation, validator)
+            rows.extend(self.log_table.search(key))
+
         scores = [vlog.score for _key, vlogs in rows for vlog in vlogs]
         metrics = [metric.insert_key(_key) for _key, vlogs in rows
                                                for vlog in vlogs
@@ -677,7 +689,7 @@ class SummaryLog:
         weighted_average = {}
         # for fw in self.fws:
         for fw, validators in self.fw_validators.items():
-            scores = [self.get_result(fw=fw, validator=val).stat_scores.average
+            scores = [self.get_result(fw=fw, validators=val).stat_scores.average
                       for val in validators]
             _, weights = zip(*sorted(self.ext_validator_weights[fw].items()))
             weighted_average[fw] = np.average(scores, weights=weights)
