@@ -58,8 +58,8 @@ class power_LoadTest(cros_ui_test.UITest):
                  scroll_loop='false', scroll_interval_ms='10000',
                  scroll_by_pixels='600', test_low_batt_p=3,
                  verbose=True, force_wifi=False, wifi_ap='', wifi_sec='none',
-                 wifi_pw='', tasks="", kblight_percent=10, volume_level=10,
-                 mic_gain=10, low_batt_margin_p=2):
+                 wifi_pw='', wifi_timeout=60, tasks="", kblight_percent=10,
+                 volume_level=10, mic_gain=10, low_batt_margin_p=2):
         """
         creds: the login credentials to be used for the test
         percent_initial_charge_min: min battery charge at start of test
@@ -77,6 +77,7 @@ class power_LoadTest(cros_ui_test.UITest):
         wifi_ap: the name (ssid) of the wifi access point
         wifi_sec: the type of security for the wifi ap
         wifi_pw: password for the wifi ap
+        wifi_timeout: The timeout for wifi configuration
         kblight_percent: percent brightness of keyboard backlight
         volume_level: percent audio volume level
         mic_gain: percent audio microphone gain level
@@ -124,7 +125,8 @@ class power_LoadTest(cros_ui_test.UITest):
                         wpa2_ciphers=
                                 [xmlrpc_security_types.WPAConfig.CIPHER_CCMP])
             wifi_config = xmlrpc_datatypes.AssociationParameters(
-                    ssid=wifi_ap, security_config=sec_config)
+                    ssid=wifi_ap, security_config=sec_config,
+                    configuration_timeout=wifi_timeout)
             # If backchannel is already running, don't run it again.
             self._backchannel = backchannel.Backchannel()
             if not self._backchannel.setup():
