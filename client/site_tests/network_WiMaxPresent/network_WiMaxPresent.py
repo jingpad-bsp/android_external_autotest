@@ -4,11 +4,7 @@
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-
-# pylint: disable=W0611
-from autotest_lib.client.cros import flimflam_test_path
-# pylint: enable=W0611
-import wimax_proxy
+from autotest_lib.client.cros.networking import wimax_proxy
 
 
 class network_WiMaxPresent(test.test):

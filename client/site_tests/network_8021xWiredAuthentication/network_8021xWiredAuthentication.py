@@ -11,12 +11,7 @@ from autotest_lib.client.common_lib.cros import site_eap_certs
 from autotest_lib.client.cros import hostapd_server
 from autotest_lib.client.cros import shill_temporary_profile
 from autotest_lib.client.cros import virtual_ethernet_pair
-
-# This hacks the path so that we can import shill_proxy.
-# pylint: disable=W0611
-from autotest_lib.client.cros import flimflam_test_path
-# pylint: enable=W0611
-import shill_proxy
+from autotest_lib.client.cros.networking import shill_proxy
 
 class network_8021xWiredAuthentication(test.test):
     """The 802.1x EAP wired authentication class.

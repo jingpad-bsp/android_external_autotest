@@ -16,11 +16,7 @@ import time
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_ui
-# This hacks the path so that we can import shill_proxy.
-# pylint: disable=W0611
-from autotest_lib.client.cros import flimflam_test_path
-# pylint: enable=W0611
-import shill_proxy
+from autotest_lib.client.cros.networking import shill_proxy
 
 from dbus.mainloop.glib import DBusGMainLoop
 from SocketServer import ThreadingTCPServer, StreamRequestHandler

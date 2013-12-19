@@ -22,13 +22,8 @@ from autotest_lib.client.cros import dhcp_handling_rule
 from autotest_lib.client.cros import dhcp_packet
 from autotest_lib.client.cros import dhcp_test_server
 from autotest_lib.client.cros import virtual_ethernet_pair
+from autotest_lib.client.cros.networking import shill_proxy
 
-# This hacks the path so that we can import the shill proxy.
-# pylint: disable=W0611
-from autotest_lib.client.cros import flimflam_test_path
-# pylint: enable=W0611
-
-import shill_proxy
 
 # These are keys that may be used with the DBus dictionary returned from
 # DhcpTestBase.get_interface_ipconfig().

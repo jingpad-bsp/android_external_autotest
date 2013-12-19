@@ -9,14 +9,10 @@ import random
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-# This is a hack that sets up the path to import shill_proxy
-# pylint: disable=W0611
-from autotest_lib.client.cros import flimflam_test_path
-# pylint: enable=W0611
 from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
 from autotest_lib.client.cros.cellular.pseudomodem import sim
 
-import cellular_proxy
+from autotest_lib.client.cros.networking import cellular_proxy
 
 # This is a software only test. Most time delayes are only dbus update delays.
 DEFAULT_OPERATION_TIMEOUT=3

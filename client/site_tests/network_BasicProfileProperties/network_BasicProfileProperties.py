@@ -5,14 +5,10 @@
 import logging
 
 from autotest_lib.client.bin import test
-from autotest_lib.client.cros import shill_temporary_profile
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import interface
-
-# pylint: disable=W0611
-from autotest_lib.client.cros import flimflam_test_path
-# pylint: enable=W0611
-import wifi_proxy
+from autotest_lib.client.cros import shill_temporary_profile
+from autotest_lib.client.cros.networking import wifi_proxy
 
 class network_BasicProfileProperties(test.test):
     """Test that shill's DBus properties for profiles work."""

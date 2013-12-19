@@ -3,15 +3,13 @@
 # found in the LICENSE file.
 
 import dbus
+import logging
+import sys
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.cros import shill_temporary_profile
 from autotest_lib.client.common_lib import error
-
-# pylint: disable=W0611
-from autotest_lib.client.cros import flimflam_test_path
-# pylint: enable=W0611
-import wifi_proxy
+from autotest_lib.client.cros.networking import wifi_proxy
 
 class network_WiFiInvalidParameters(test.test):
     """Test that shill will reject invalid WiFi service configurations.
@@ -127,8 +125,8 @@ class network_WiFiInvalidParameters(test.test):
                              shill.SERVICE_PROPERTY_SECURITY: 'wep'}
             try:
                 shill.manager.ConfigureService(config_params)
-            except _, e:
-                logging.error('%r', e)
+            except:
+                logging.error('%r', sys.exc_info())
                 raise error.TestFail('shill should let us use a WEP key '
                                      'like: %s' % key)
 

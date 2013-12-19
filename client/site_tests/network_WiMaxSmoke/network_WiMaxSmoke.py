@@ -10,12 +10,13 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import backchannel, network
 from autotest_lib.client.cros.cellular import cell_tools
+from autotest_lib.client.cros.networking import shill_context
 
-# Import 'flimflam_test_path' first in order to import 'flimflam' and
-# 'shill_context'.
+# Import 'flimflam_test_path' first in order to import 'flimflam'.
+# pylint: disable=W0611
 from autotest_lib.client.cros import flimflam_test_path
+# pylint: enable=W0611
 import flimflam
-import shill_context
 
 
 # TODO(benchan): Use the log scopes defined in ShillProxy after

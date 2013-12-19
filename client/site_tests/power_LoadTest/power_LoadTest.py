@@ -11,11 +11,7 @@ from autotest_lib.client.cros import backchannel, cros_ui, cros_ui_test, httpd
 from autotest_lib.client.cros import power_rapl, power_status, power_utils
 from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.audio import audio_helper
-
-# pylint: disable=W0611
-from autotest_lib.client.cros import flimflam_test_path
-# pylint: enable=W0611
-import wifi_proxy
+from autotest_lib.client.cros.networking import wifi_proxy
 
 params_dict = {
     'test_time_ms': '_mseconds',

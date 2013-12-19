@@ -17,12 +17,9 @@ from autotest_lib.client.cros import constants
 from autotest_lib.client.cros import cros_ui
 from autotest_lib.client.cros import sys_power
 from autotest_lib.client.cros import tpm_store
+from autotest_lib.client.cros.networking import shill_proxy
+from autotest_lib.client.cros.networking import wifi_proxy
 
-# pylint: disable=W0611
-from autotest_lib.client.cros import flimflam_test_path
-# pylint: enable=W0611
-import shill_proxy
-import wifi_proxy
 
 
 class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):

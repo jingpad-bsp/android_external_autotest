@@ -8,12 +8,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import dhcp_handling_rule
 from autotest_lib.client.cros import dhcp_packet
 from autotest_lib.client.cros import dhcp_test_base
-
-# This hacks the path so that we can import shill_proxy.
-# pylint: disable=W0611
-from autotest_lib.client.cros import flimflam_test_path
-# pylint: enable=W0611
-import shill_proxy
+from autotest_lib.client.cros.networking import shill_proxy
 
 # Length of time the lease from the DHCP server is valid.
 LEASE_TIME_SECONDS = 60

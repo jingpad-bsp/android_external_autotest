@@ -7,12 +7,7 @@ import os
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
-
-# This hacks the path so that we can import shill_proxy.
-# pylint: disable=W0611
-from autotest_lib.client.cros import flimflam_test_path
-# pylint: enable=W0611
-import shill_proxy
+from autotest_lib.client.cros.networking import shill_proxy
 
 class network_DefaultProfileServices(test.test):
     """The Default Profile Services class.

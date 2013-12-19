@@ -7,14 +7,9 @@ import time
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-# This hack allows us to setup the path to import shill_proxy
-# pylint: disable=W0611
-from autotest_lib.client.cros import flimflam_test_path
-# pylint: enable=W0611
 from autotest_lib.client.cros import hostapd_server
 from autotest_lib.client.cros import virtual_ethernet_pair
-
-import shill_proxy
+from autotest_lib.client.cros.networking import shill_proxy
 
 class network_8021xEapDetection(test.test):
     """The 802.1x EAP detection class.

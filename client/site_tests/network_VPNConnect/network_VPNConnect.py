@@ -11,12 +11,7 @@ from autotest_lib.client.cros import shill_temporary_profile
 from autotest_lib.client.cros import tpm_store
 from autotest_lib.client.cros import virtual_ethernet_pair
 from autotest_lib.client.cros import vpn_server
-
-# This hacks the path so that we can import shill_proxy.
-# pylint: disable=W0611
-from autotest_lib.client.cros import flimflam_test_path
-# pylint: enable=W0611
-import shill_proxy
+from autotest_lib.client.cros.networking import shill_proxy
 
 class network_VPNConnect(test.test):
     """The VPN authentication class.

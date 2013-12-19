@@ -15,11 +15,7 @@ from autotest_lib.client.cros import backchannel
 from autotest_lib.client.cros.cellular import mm
 from autotest_lib.client.cros.cellular.pseudomodem import modem_3gpp
 from autotest_lib.client.cros.cellular.pseudomodem import mm1, pseudomodem, sim
-
-# pylint: disable=W0611
-from autotest_lib.client.cros import flimflam_test_path
-# pylint: enable=W0611
-import cellular_proxy
+from autotest_lib.client.cros.networking import cellular_proxy
 
 I_ACTIVATION_TEST = 'Interface.LTEActivationTest'
 
