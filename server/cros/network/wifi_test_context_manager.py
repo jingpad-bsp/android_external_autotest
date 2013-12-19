@@ -10,7 +10,7 @@ from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server import hosts
-from autotest_lib.server import site_linux_cros_router
+from autotest_lib.server import site_linux_router
 from autotest_lib.server import site_linux_server
 from autotest_lib.server.cros import wifi_test_utils
 from autotest_lib.server.cros.network import wifi_client
@@ -174,7 +174,7 @@ class WiFiTestContextManager(object):
                      self.router_address, router_port)
         # TODO(wiley) Simplify the router and make the parameters explicit.
         router_params = {}
-        self._router = site_linux_cros_router.LinuxCrosRouter(
+        self._router = site_linux_router.LinuxRouter(
                 hosts.SSHHost(self.router_address, port=router_port),
                 router_params, self._test_name)
         # If we're testing WiFi, we're probably going to need one of these.
