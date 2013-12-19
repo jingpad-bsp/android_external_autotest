@@ -2,8 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "Ben Chan <benchan@chromium.org>"
+AUTHOR = "Chrome OS Team"
 NAME = "network_WiMaxSmoke"
+SUITE = "wimax"
 PURPOSE = "Verify a WiMAX module can connect to a WiMAX network."
 CRITERIA = """
 This test fails if one of the following conditions occurs:
