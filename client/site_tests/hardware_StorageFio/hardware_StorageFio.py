@@ -19,13 +19,13 @@ class hardware_StorageFio(test.test):
     """
 
     version = 7
-    DEFAULT_FILE_SIZE = 1024*1024*1024
+    DEFAULT_FILE_SIZE = 1024 * 1024 * 1024
 
     # Initialize fail counter used to determine test pass/fail.
     _fail_count = 0
 
     # http://brick.kernel.dk/snaps/
-    def setup(self, tarball = 'fio-2.1.2.tar.bz2'):
+    def setup(self, tarball='fio-2.1.2.tar.bz2'):
         # clean
         if os.path.exists(self.srcdir):
             utils.system('rm -rf %s' % self.srcdir)
@@ -37,7 +37,7 @@ class hardware_StorageFio(test.test):
         ldflags = '-L' + self.autodir + '/deps/libaio/lib'
         cflags = '-I' + self.autodir + '/deps/libaio/include'
         var_ldflags = 'LDFLAGS="' + ldflags + '"'
-        var_cflags  = 'CFLAGS="' + cflags + '"'
+        var_cflags = 'CFLAGS="' + cflags + '"'
 
         os.chdir(self.srcdir)
         utils.system('patch -p1 < ../add-condition-to-stop-issuing-io.patch')
@@ -164,11 +164,13 @@ class hardware_StorageFio(test.test):
 
         # Using the --minimal flag for easier results parsing
         # Newest fio doesn't omit any information in --minimal
+        # Need to set terse-version to 4 for trim related output
+        options.append('--terse-version=4')
         fio = utils.run(vars + ionice + ' ./fio --minimal %s "%s"' %
                         (' '.join(options), os.path.join(self.bindir, job)))
 
         logging.debug(fio.stdout)
-        output =  self.__parse_fio(fio.stdout)
+        output = self.__parse_fio(fio.stdout)
         self._fail_count += int(output['_' + job + '_error'])
         return output
 
