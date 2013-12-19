@@ -641,7 +641,7 @@ class CountTrackingIDFatFingerValidator(CountTrackingIDValidator):
 
 
 class StationaryFingerValidator(BaseValidator):
-    """Validator to check the count of tracking IDs.
+    """Check to make sure a finger we expect to remain still doesn't move.
 
     Example:
         To verify if the stationary finger specified by the slot does not
@@ -659,13 +659,18 @@ class StationaryFingerValidator(BaseValidator):
         """Check the moving distance of the specified finger."""
         self.init_check(packets)
         max_distance = self.packets.get_max_distance(self.slot, UNIT.MM)
-        msg = 'Max distance slot%d: %d mm'
+        msg = 'Max distance slot%d: %.2f mm'
         self.log_details(msg % (self.slot, max_distance))
         self.vlog.metrics = [
             firmware_log.Metric(self.mnprops.MAX_DISTANCE, max_distance)
         ]
         self.vlog.score = self.fc.mf.grade(max_distance)
         return self.vlog
+
+
+class StationaryTapValidator(StationaryFingerValidator):
+    """A dummy StationaryFingerValidator to check the wobble of tap/click."""
+    pass
 
 
 class NoGapValidator(BaseValidator):

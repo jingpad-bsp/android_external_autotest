@@ -32,6 +32,7 @@ from validators import (CountPacketsValidator,
                         RangeValidator,
                         ReportRateValidator,
                         StationaryFingerValidator,
+                        StationaryTapValidator,
 )
 
 
@@ -490,11 +491,11 @@ class StationaryFingerValidatorTest(unittest.TestCase):
     def setUp(self):
         self.criteria = conf.stationary_finger_criteria
 
-    def _test_stationary_finger(self, filename, criteria, device):
+    def _get_max_distance(self, filename, criteria, device):
         packets = parse_tests_data(filename)
         validator = StationaryFingerValidator(criteria, device=device)
         vlog = validator.check(packets)
-        return vlog.score
+        return vlog.metrics[0].value
 
     def test_stationary_finger_shift(self):
         """Test that the stationary shift due to 2nd finger tapping.
@@ -503,8 +504,8 @@ class StationaryFingerValidatorTest(unittest.TestCase):
         position
         """
         filename = 'stationary_finger_shift_with_2nd_finger_tap.dat'
-        score = self._test_stationary_finger(filename, self.criteria, lumpy)
-        self.assertTrue(score <= 0.1)
+        max_distance = self._get_max_distance(filename, self.criteria, lumpy)
+        self.assertAlmostEqual(max_distance, 5.464430436926)
 
     def test_stationary_strongly_affected_by_2nd_moving_finger(self):
         """Test stationary finger strongly affected by 2nd moving finger with
@@ -515,8 +516,25 @@ class StationaryFingerValidatorTest(unittest.TestCase):
         """
         filename = ('stationary_finger_strongly_affected_by_2nd_moving_finger_'
                     'with_gaps.dat')
-        score = self._test_stationary_finger(filename, self.criteria, lumpy)
-        self.assertTrue(score <= 0.1)
+        max_distance = self._get_max_distance(filename, self.criteria, lumpy)
+        self.assertAlmostEqual(max_distance, 4.670861210146)
+
+
+class StationaryTapValidatorTest(unittest.TestCase):
+    """Unit tests for StationaryTapValidator class."""
+
+    def setUp(self):
+        self.criteria = conf.stationary_tap_criteria
+
+    def test_stationary_tap(self):
+        filenames = {'1f_click.dat': 1.718284027744,
+                     '1f_clickb.dat': 0.577590781705}
+        for filename, expected_max_distance in filenames.items():
+            packets = parse_tests_data(filename)
+            validator = StationaryTapValidator(self.criteria, device=lumpy)
+            vlog = validator.check(packets)
+            actual_max_distance = vlog.metrics[0].value
+            self.assertAlmostEqual(actual_max_distance, expected_max_distance)
 
 
 class NoLevelJumpValidatorTest(unittest.TestCase):

@@ -20,6 +20,7 @@ from validators import (CountPacketsValidator,
                         RangeValidator,
                         ReportRateValidator,
                         StationaryFingerValidator,
+                        StationaryTapValidator,
 )
 
 
@@ -45,8 +46,8 @@ range_criteria = '<= 0.01, ~ +0.07'
 min_report_rate = 60
 max_report_interval = 1.0 / min_report_rate * 1000
 report_rate_criteria = '>= %d' % min_report_rate
-stationary_finger_criteria = '<= 1.25, ~ +1.25'
-relaxed_stationary_finger_criteria = '<= 100, ~ +100'
+stationary_finger_criteria = '<= 1.0'
+stationary_tap_criteria = '<= 1.0'
 hysteresis_criteria = '<= 2.0'
 
 MIN_MOVING_DISTANCE = 20
@@ -246,6 +247,7 @@ validator_weights = {'CountPacketsValidator': weight_common,
                      'ReportRateValidator': weight_common,
                      'HysteresisValidator': weight_common,
                      'StationaryFingerValidator': weight_common,
+                     'StationaryTapValidator': weight_common,
 }
 
 
@@ -445,7 +447,7 @@ def get_gesture_dict():
             },
             validators=(
                 CountTrackingIDValidator('== 1'),
-                StationaryFingerValidator(stationary_finger_criteria, slot=0),
+                StationaryTapValidator(stationary_tap_criteria, slot=0),
             ),
         ),
 
@@ -462,8 +464,8 @@ def get_gesture_dict():
             },
             validators=(
                 CountTrackingIDValidator('== 2'),
-                StationaryFingerValidator(stationary_finger_criteria, slot=0),
-                StationaryFingerValidator(stationary_finger_criteria, slot=1),
+                StationaryTapValidator(stationary_tap_criteria, slot=0),
+                StationaryTapValidator(stationary_tap_criteria, slot=1),
             ),
         ),
 
@@ -482,7 +484,7 @@ def get_gesture_dict():
             validators=(
                 CountTrackingIDValidator('== 1'),
                 PhysicalClickValidator('== 1', fingers=1),
-                StationaryFingerValidator(stationary_finger_criteria, slot=0),
+                StationaryTapValidator(stationary_tap_criteria, slot=0),
             ),
         ),
 
@@ -496,10 +498,8 @@ def get_gesture_dict():
             validators=(
                 CountTrackingIDValidator('== 2'),
                 PhysicalClickValidator('== 1', fingers=2),
-                StationaryFingerValidator(relaxed_stationary_finger_criteria,
-                                          slot=0),
-                StationaryFingerValidator(relaxed_stationary_finger_criteria,
-                                          slot=1),
+                StationaryTapValidator(stationary_tap_criteria, slot=0),
+                StationaryTapValidator(stationary_tap_criteria, slot=1),
             ),
         ),
 
