@@ -4,6 +4,7 @@
 
 import logging, time
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 
 
@@ -52,7 +53,8 @@ class YouTubeHelper(object):
 
     def get_player_status(self):
         """Returns the player status."""
-        return self._tab.EvaluateJavaScript('playerStatus.innerHTML')
+        return self._tab.EvaluateJavaScript(
+                'playerStatus && playerStatus.innerHTML')
 
 
     def set_playback_quality(self, quality):
@@ -80,17 +82,14 @@ class YouTubeHelper(object):
                                 to continue.
 
         """
-        wait_time = 0 # seconds
-        while self.get_player_status() != expected_status:
-            time.sleep(1)
-            if wait_time > WAIT_TIMEOUT_S:
-                player_status = self.get_player_status()
-                raise error.TestError(
+        utils.poll_for_condition(
+            lambda: self.get_player_status() == expected_status,
+            exception=error.TestError(
                         'Video failed to load. Player expected status: %s'
                         ' and current status: %s.'
-                        % (expected_status, player_status))
-            wait_time += 1
-
+                        % (expected_status, self.get_player_status())),
+            timeout=WAIT_TIMEOUT_S,
+            sleep_interval=1)
 
     def verify_video_playback(self):
         """Verify the video playback."""
