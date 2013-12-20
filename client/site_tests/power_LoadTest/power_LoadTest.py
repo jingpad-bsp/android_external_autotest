@@ -61,23 +61,25 @@ class power_LoadTest(cros_ui_test.UITest):
                  wifi_pw='', tasks="", kblight_percent=10, volume_level=10,
                  mic_gain=10, low_batt_margin_p=2):
         """
+        creds: the login credentials to be used for the test
         percent_initial_charge_min: min battery charge at start of test
         check_network: check that Ethernet interface is not running
-        loop_count: number of times to loop the test for
         loop_time: length of time to run the test for in each loop
+        loop_count: number of times to loop the test for
         should_scroll: should the extension scroll pages
         should_scroll_up: should scroll in up direction
         scroll_loop: continue scrolling indefinitely
         scroll_interval_ms: how often to scoll
         scroll_by_pixels: number of pixels to scroll each time
+        test_low_batt_p: percent battery at which test should stop
+        verbose: add more logging information
+        force_wifi: should we force to test to run on wifi
+        wifi_ap: the name (ssid) of the wifi access point
+        wifi_sec: the type of security for the wifi ap
+        wifi_pw: password for the wifi ap
         kblight_percent: percent brightness of keyboard backlight
         volume_level: percent audio volume level
         mic_gain: percent audio microphone gain level
-        test_low_batt_p: percent battery at which test should stop
-        sys_low_batt_p: percent battery at which power manager will
-            shut-down the device
-        sys_low_batt_s: seconds battery at which power manager will
-            shut-down the device
         low_batt_margin_p: percent low battery margin to be added to
             sys_low_batt_p to guarantee test completes prior to powerd shutdown
         """
