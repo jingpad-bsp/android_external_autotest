@@ -8,7 +8,7 @@
 
 from firmware_constants import DEV, GV, VAL
 from validators import (CountPacketsValidator,
-                        CountTrackingIDValidator,
+                        CountTrackingIDNormalFingerValidator,
                         CountTrackingIDFatFingerValidator,
                         DrumrollValidator,
                         HysteresisValidator,
@@ -70,7 +70,8 @@ num_chars_per_row = 28
 
 # Define the validators that are shown only when there are failures.
 validators_hidden_when_no_failures = ['PinchValidator',
-                                      'CountTrackingIDValidator',
+                                      'CountTrackingIDNormalFingerValidator',
+                                      'CountTrackingIDFatFingerValidator',
                                       'CountPacketsValidator']
 
 
@@ -235,7 +236,7 @@ weight_rare = 1
 weight_common = 2
 weight_critical = 3
 validator_weights = {'CountPacketsValidator': weight_common,
-                     'CountTrackingIDValidator': weight_critical,
+                     'CountTrackingIDNormalFingerValidator': weight_critical,
                      'CountTrackingIDFatFingerValidator': weight_rare,
                      'DrumrollValidator': weight_rare,
                      'LinearityValidator': weight_common,
@@ -273,7 +274,7 @@ def get_gesture_dict():
                 GV.NORMAL: ('1 second',),
             },
             validators=(
-                CountTrackingIDValidator('== 1'),
+                CountTrackingIDNormalFingerValidator('== 1'),
                 LinearityValidator(linearity_criteria, finger=0,
                                    segments=VAL.MIDDLE),
                 NoGapValidator(no_gap_criteria, slot=0),
@@ -300,7 +301,7 @@ def get_gesture_dict():
                 GV.SLOW: ('2 seconds',),
             },
             validators=(
-                CountTrackingIDValidator('== 1'),
+                CountTrackingIDNormalFingerValidator('== 1'),
                 LinearityValidator(linearity_criteria, finger=0,
                                    segments=VAL.MIDDLE),
                 NoGapValidator(no_gap_criteria, slot=0),
@@ -329,7 +330,7 @@ def get_gesture_dict():
                 GV.NORMAL: ('1 second',),
             },
             validators=(
-                CountTrackingIDValidator('== 2'),
+                CountTrackingIDNormalFingerValidator('== 2'),
                 LinearityValidator(linearity_criteria, finger=0,
                                    segments=VAL.MIDDLE),
                 LinearityValidator(linearity_criteria, finger=1,
@@ -367,7 +368,7 @@ def get_gesture_dict():
                 GV.NORMAL: ('1 second',),
             },
             validators=(
-                CountTrackingIDValidator('== 2'),
+                CountTrackingIDNormalFingerValidator('== 2'),
                 NoGapValidator(no_gap_criteria, slot=1),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=1),
                 ReportRateValidator(report_rate_criteria, finger=1),
@@ -386,7 +387,7 @@ def get_gesture_dict():
             },
             validators=(
                 CountPacketsValidator(count_packets_criteria, slot=0),
-                CountTrackingIDValidator('== 1'),
+                CountTrackingIDNormalFingerValidator('== 1'),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=0),
                 ReportRateValidator(report_rate_criteria),
             ),
@@ -404,7 +405,7 @@ def get_gesture_dict():
             validators=(
                 CountPacketsValidator(count_packets_criteria, slot=0),
                 CountPacketsValidator(count_packets_criteria, slot=1),
-                CountTrackingIDValidator('== 2'),
+                CountTrackingIDNormalFingerValidator('== 2'),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=0),
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=1),
                 ReportRateValidator(report_rate_criteria),
@@ -422,7 +423,7 @@ def get_gesture_dict():
                 GV.ZOOM_OUT: ('zoom out', 'closer together'),
             },
             validators=(
-                CountTrackingIDValidator('== 2'),
+                CountTrackingIDNormalFingerValidator('== 2'),
                 PinchValidator(pinch_criteria),
                 ReportRateValidator(report_rate_criteria),
             ),
@@ -446,7 +447,7 @@ def get_gesture_dict():
                 GV.CENTER: ('center',),
             },
             validators=(
-                CountTrackingIDValidator('== 1'),
+                CountTrackingIDNormalFingerValidator('== 1'),
                 StationaryTapValidator(stationary_tap_criteria, slot=0),
             ),
         ),
@@ -463,7 +464,7 @@ def get_gesture_dict():
                 GV.DIAGONAL: ('diagonally',),
             },
             validators=(
-                CountTrackingIDValidator('== 2'),
+                CountTrackingIDNormalFingerValidator('== 2'),
                 StationaryTapValidator(stationary_tap_criteria, slot=0),
                 StationaryTapValidator(stationary_tap_criteria, slot=1),
             ),
@@ -482,7 +483,7 @@ def get_gesture_dict():
                 GV.BR: ('bottom right corner',),
             },
             validators=(
-                CountTrackingIDValidator('== 1'),
+                CountTrackingIDNormalFingerValidator('== 1'),
                 PhysicalClickValidator('== 1', fingers=1),
                 StationaryTapValidator(stationary_tap_criteria, slot=0),
             ),
@@ -496,7 +497,7 @@ def get_gesture_dict():
                    'touch surface.',
             subprompt=None,
             validators=(
-                CountTrackingIDValidator('== 2'),
+                CountTrackingIDNormalFingerValidator('== 2'),
                 PhysicalClickValidator('== 1', fingers=2),
                 StationaryTapValidator(stationary_tap_criteria, slot=0),
                 StationaryTapValidator(stationary_tap_criteria, slot=1),
@@ -511,7 +512,7 @@ def get_gesture_dict():
                    'the center of the touch surface.',
             subprompt=None,
             validators=(
-                CountTrackingIDValidator('== 3'),
+                CountTrackingIDNormalFingerValidator('== 3'),
                 PhysicalClickValidator('== 1', fingers=3),
             ),
         ),
@@ -524,7 +525,7 @@ def get_gesture_dict():
                    'the center of the touch surface.',
             subprompt=None,
             validators=(
-                CountTrackingIDValidator('== 4'),
+                CountTrackingIDNormalFingerValidator('== 4'),
                 PhysicalClickValidator('== 1', fingers=4),
             ),
         ),
@@ -537,7 +538,7 @@ def get_gesture_dict():
                    'the center of the touch surface.',
             subprompt=None,
             validators=(
-                CountTrackingIDValidator('== 5'),
+                CountTrackingIDNormalFingerValidator('== 5'),
                 PhysicalClickValidator('== 1', fingers=5),
             ),
         ),
@@ -551,7 +552,7 @@ def get_gesture_dict():
                    'all around it',
             subprompt=None,
             validators=(
-                CountTrackingIDValidator('>= 2'),
+                CountTrackingIDNormalFingerValidator('>= 2'),
                 StationaryFingerValidator(stationary_finger_criteria, slot=0),
             ),
         ),
@@ -642,7 +643,7 @@ def get_gesture_dict():
                 GV.SLOW: ('3 seconds',),
             },
             validators=(
-                CountTrackingIDValidator('== 2'),
+                CountTrackingIDNormalFingerValidator('== 2'),
                 LinearityValidator(relaxed_linearity_criteria, finger=1,
                                    segments=VAL.MIDDLE),
                 NoGapValidator(no_gap_criteria, slot=1),
@@ -688,7 +689,7 @@ def get_gesture_dict():
                 GV.BRTL: ('from bottom right to top left',),
             },
             validators=(
-                CountTrackingIDValidator('== 4'),
+                CountTrackingIDNormalFingerValidator('== 4'),
                 LinearityValidator(relaxed_linearity_criteria, finger=0,
                                    segments=VAL.MIDDLE),
                 NoGapValidator(no_gap_criteria, slot=0),
@@ -708,7 +709,7 @@ def get_gesture_dict():
                 GV.FAST: ('as fast as possible',),
             },
             validators=(
-                CountTrackingIDValidator('>= 5'),
+                CountTrackingIDNormalFingerValidator('>= 5'),
                 DrumrollValidator(drumroll_criteria),
             ),
             timeout = 2000,
@@ -731,7 +732,7 @@ def get_gesture_dict():
                 GV.BR: ('bottom right corner',),
             },
             validators=(
-                CountTrackingIDValidator('== 20'),
+                CountTrackingIDNormalFingerValidator('== 20'),
             ),
             timeout = 2000,
         ),
@@ -775,7 +776,7 @@ def get_gesture_dict():
                 GV.SIZE6: ('6 (the largest size)',),
             },
             validators=(
-                CountTrackingIDValidator('== 1'),
+                CountTrackingIDNormalFingerValidator('== 1'),
             ),
         ),
     }
