@@ -2,17 +2,23 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from contextlib import closing
 import logging
 import os
 import time
+import urllib2
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 
+
 # Chrome flags to use fake camera and skip camera permission.
 EXTRA_BROWSER_ARGS = ['--use-fake-device-for-media-stream',
                       '--use-fake-ui-for-media-stream']
+FAKE_FILE_ARG = '--use-file-for-fake-video-capture="%s"'
+DOWNLOAD_BASE = 'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/crowd/'
+VIDEO_NAME = 'crowd720_25frames.y4m'
 
 WEBRTC_INTERNALS_URL = 'chrome://webrtc-internals'
 RTC_INIT_HISTOGRAM = 'Media.RTCVideoDecoderInitDecodeSuccess'
@@ -77,11 +83,10 @@ class video_WebRtcPerf(test.test):
         @raises error.TestError if decoding is not hardware accelerated.
         """
         tab = cr.browser.tabs.New()
-        tab.Navigate(HISTOGRAMS_URL)
-        tab.WaitForDocumentReadyStateToBeComplete()
         def histograms_loaded():
             """Returns true if histogram is loaded."""
             tab.Navigate(HISTOGRAMS_URL)
+            tab.WaitForDocumentReadyStateToBeComplete()
             return tab.EvaluateJavaScript(
                     'document.documentElement.innerText.search("%s") != -1'
                     % RTC_INIT_HISTOGRAM)
@@ -115,7 +120,13 @@ class video_WebRtcPerf(test.test):
 
 
     def run_once(self):
-        # Start with chrome without asking camera permission.
+        # Download test video.
+        url = DOWNLOAD_BASE + VIDEO_NAME
+        local_path = os.path.join(self.bindir, VIDEO_NAME)
+        self.download_file(url, local_path)
+
+        # Start chrome with test flags.
+        EXTRA_BROWSER_ARGS.append(FAKE_FILE_ARG % local_path)
         with chrome.Chrome(extra_browser_args=EXTRA_BROWSER_ARGS) as cr:
             # Open WebRTC loopback page.
             cr.browser.SetHTTPServerDirectories(self.bindir)
@@ -177,3 +188,15 @@ class video_WebRtcPerf(test.test):
         if size % 2 != 0:
             return seq[size / 2]
         return (seq[size / 2] + seq[size / 2 - 1]) / 2.0
+
+
+    def download_file(self, url, local_path):
+        """
+        Downloads a file from the specified URL.
+
+        @param url: URL of the file.
+        @param local_path: the path that the file will be saved to.
+        """
+        logging.info('Downloading "%s" to "%s"', url, local_path)
+        with closing(urllib2.urlopen(url)) as r, open(local_path, 'wb') as w:
+            w.write(r.read())

@@ -10,7 +10,17 @@ var remoteVideo = document.getElementById("remoteVideo");
 function start() {
   navigator.getUserMedia = navigator.getUserMedia ||
     navigator.webkitGetUserMedia;
-  navigator.getUserMedia({audio:false, video:true}, gotLocalStream);
+  navigator.getUserMedia(
+    {
+      audio:false,
+      video:{
+        "mandatory": {
+          "minWidth": "1280",
+          "minHeight": "720",
+        }
+      }
+    },
+    gotLocalStream);
 }
 
 function gotLocalStream(stream) {
