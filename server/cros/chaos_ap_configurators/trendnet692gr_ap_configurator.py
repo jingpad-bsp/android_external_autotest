@@ -106,16 +106,18 @@ class Trendnet692grAPConfigurator(trendnet_ap_configurator.
 
 
     def _set_mode(self, mode, band=None):
-        # Different bands are not supported so we ignore.
         # Create the mode to popup item mapping
         mode_mapping = {ap_spec.MODE_B | ap_spec.MODE_G | ap_spec.MODE_N:
                         '2.4GHz 802.11 b/g/n mixed mode',
-                        ap_spec.MODE_N: '2.4GHz 802.11 n only',
                         ap_spec.MODE_B | ap_spec.MODE_G:
                         '2.4GHz 802.11 b/g mixed mode',
                         ap_spec.MODE_A: '5GHz 802.11 a only',
                         ap_spec.MODE_A | ap_spec.MODE_N:
                         '5GHz 802.11 a/n mixed mode'}
+        # N only is not supported on 5 GHz
+        if self.current_band == ap_spec.BAND_2GHZ:
+            mode_mapping[ap_spec.MODE_N] = '2.4GHz 802.11 n only'
+
         mode_name = ''
         if mode in mode_mapping.keys():
             mode_name = mode_mapping[mode]

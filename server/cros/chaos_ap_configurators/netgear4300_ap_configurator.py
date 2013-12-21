@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import os
+import urlparse
 
 import ap_spec
 import netgear_WNDR_dual_band_configurator
@@ -50,9 +51,7 @@ class Netgear4300APConfigurator(netgear_WNDR_dual_band_configurator.
     def logout_from_previous_netgear(self):
         """Some netgear routers dislike you being logged into another
            one of their kind. So make sure that you are not."""
-        print 'Logging out of older router'
         self.click_button_by_id('yes')
-        self.navigate_to_page(page_number)
 
 
     def navigate_to_page(self, page_number):
@@ -85,6 +84,23 @@ class Netgear4300APConfigurator(netgear_WNDR_dual_band_configurator.
         """
         self.click_button_by_xpath('//input[@name="Apply"]',
                                    alert_handler=self._alert_handler)
+
+
+    def _set_mode(self, mode, band=None):
+        if mode == ap_spec.MODE_G or mode == ap_spec.MODE_A:
+            mode_selection = 'Up to 54 Mbps'
+        elif mode == ap_spec.MODE_N:
+            if self.current_band == ap_spec.BAND_2GHZ:
+                mode_selection = 'Up to 300 Mbps'
+            else:
+                mode_selection = 'Up to 450 Mbps'
+        else:
+            raise RuntimeError('Unsupported mode passed.')
+        xpath = '//select[@name="opmode"]'
+        if self.current_band == ap_spec.BAND_5GHZ:
+            xpath = '//select[@name="opmode_an"]'
+        self.wait_for_object_by_xpath(xpath)
+        self.select_item_from_popup_by_xpath(mode_selection, xpath)
 
 
     def set_channel(self, channel):

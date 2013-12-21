@@ -208,9 +208,10 @@ class APConfiguratorFactory(object):
                           self.ap_list))
 
 
-    def _get_aps_by_mode(self, mode):
+    def _get_aps_by_mode(self, band, mode):
         """Returns all configurators that support a given 802.11 mode.
 
+        @param band: an 802.11 band.
         @param mode: an 802.11 modes.
 
         @returns aps: a set of APConfigurators.
@@ -222,7 +223,7 @@ class APConfiguratorFactory(object):
         for ap in self.ap_list:
             modes = ap.get_supported_modes()
             for d in modes:
-                if mode in d['modes']:
+                if d['band'] == band and mode in d['modes']:
                     aps.append(ap)
         return set(aps)
 
@@ -263,7 +264,7 @@ class APConfiguratorFactory(object):
                     if d['band'] == band and channel in d['channels']:
                         aps.append(ap)
                 elif d['band'] == band:
-                        aps.append(ap)
+                    aps.append(ap)
         return set(aps)
 
 
@@ -313,17 +314,17 @@ class APConfiguratorFactory(object):
         if not spec:
             return self.ap_list
 
-        band_aps = self._get_aps_by_band(ap_spec.band, channel=ap_spec.channel)
-        mode_aps = self._get_aps_by_mode(ap_spec.mode)
-        security_aps = self._get_aps_by_security(ap_spec.security)
-        visible_aps = self._get_aps_by_visibility(ap_spec.visible)
+        band_aps = self._get_aps_by_band(spec.band, channel=spec.channel)
+        mode_aps = self._get_aps_by_mode(spec.band, spec.mode)
+        security_aps = self._get_aps_by_security(spec.security)
+        visible_aps = self._get_aps_by_visibility(spec.visible)
         matching_aps = list(band_aps & mode_aps & security_aps & visible_aps)
         if spec.configurator_type != ap_spec.CONFIGURATOR_ANY:
             matching_aps = self._get_aps_by_configurator_type(
                     spec.configurator_type, matching_aps)
         if spec.hostnames is not None:
             matching_aps = self._get_aps_by_hostnames(spec.hostnames,
-                                                        matching_aps)
+                                                      matching_aps)
         if pre_configure:
             for ap in matching_aps:
                 ap.set_using_ap_spec(spec)

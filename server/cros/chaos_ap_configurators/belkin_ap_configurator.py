@@ -25,7 +25,7 @@ class BelkinAPConfigurator(
         if "Invalid character" in text:
             alert.accept()
         else:
-            raise RuntimeError('Invalid handler')
+            raise RuntimeError('Unhandled alert: %s', text)
 
 
     def _open_landing_page(self):
@@ -215,12 +215,12 @@ class BelkinAPConfigurator(
         self.click_button_by_id('submitBtn_generate')
 
 
-    def set_security_wpapsk(self, shared_key, update_interval=None):
+    def set_security_wpapsk(self, security, shared_key, update_interval=None):
         self.add_item_to_command_list(self._set_security_wpapsk,
                                       (shared_key, update_interval), 2, 900)
 
 
-    def _set_security_wpapsk(self, shared_key, update_interval=None):
+    def _set_security_wpapsk(self, security, shared_key, update_interval=None):
         popup = '//select[@name="wl_sec_mode"]'
         self.wait_for_object_by_xpath(popup)
         key_field = '//input[@name="wl_wpa_psk1"]'

@@ -15,9 +15,8 @@ class AsusQISAPConfigurator(asus_ap_configurator.AsusAPConfigurator):
     def _set_authentication(self, authentication, wait_for_xpath=None):
         """Sets the authentication method in the popup.
 
-        Args:
-          authentication: The authentication method to select.
-          wait_for_path: An item to wait for before returning.
+        @param authentication: authentication method to select.
+        @param wait_for_path: item to wait for before returning.
         """
         auth = '//select[@name="wl_auth_mode_x"]'
         self.select_item_from_popup_by_xpath(authentication, auth,
@@ -25,8 +24,12 @@ class AsusQISAPConfigurator(asus_ap_configurator.AsusAPConfigurator):
 
 
     def navigate_to_page(self, page_number):
+        """Navigates to the given page number.
+
+        @param page_number: integer of page to navigate to
+        """
         self.get_url('%s/Advanced_Wireless_Content.asp' %
-                         self.admin_interface_url, page_title='General')
+                     self.admin_interface_url, page_title='General')
 
 
     def get_number_of_pages(self):
@@ -34,13 +37,13 @@ class AsusQISAPConfigurator(asus_ap_configurator.AsusAPConfigurator):
 
 
     def save_page(self, page_number):
+        """Save the given page.
+
+        @param page_number: integer of the page to save
+        """
         self.click_button_by_id('applyButton')
         ssid = '//input[@name="wl_ssid"]'
-        try:
-            self.wait_for_objects_by_xpath([ssid])
-        except selenium.common.exceptions.TimeoutException, e:
-            raise RuntimeError('Unable to find the object by xpath: %s\n '
-                               'WebDriver exception: %s' % (ssid, str(e)))
+        self.wait_for_objects_by_xpath([ssid])
 
 
     def get_supported_bands(self):
@@ -107,11 +110,13 @@ class AsusQISAPConfigurator(asus_ap_configurator.AsusAPConfigurator):
     def set_band(self, band):
         if band == ap_spec.BAND_2GHZ:
             self.current_band = ap_spec.BAND_2GHZ
+            band_popup = '2.4GHz'
         elif band == ap_spec.BAND_5GHZ:
             self.current_band = ap_spec.BAND_5GHZ
+            band_popup = '5GHz'
         else:
             raise RuntimeError('Invalid band sent %s' % band)
-        self.add_item_to_command_list(self._set_band, (band,), 1, 800)
+        self.add_item_to_command_list(self._set_band, (band_popup,), 1, 800)
 
 
     def _set_band(self, band):

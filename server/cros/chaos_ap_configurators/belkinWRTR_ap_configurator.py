@@ -24,7 +24,8 @@ class BelkinWRTRAPConfigurator(
 
         """
         return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
-                                 ap_spec.SECURITY_TYPE_WPAPSK)
+                                 ap_spec.SECURITY_TYPE_WPAPSK,
+                                 ap_spec.SECURITY_TYPE_WPA2PSK,)
 
 
     def get_supported_modes(self):
@@ -130,18 +131,23 @@ class BelkinWRTRAPConfigurator(
         self.wait_for_object_by_xpath(text_field)
 
 
-    def set_security_wpapsk(self, shared_key, update_interval=None):
+    def set_security_wpapsk(self, security, shared_key, update_interval=None):
         self.add_item_to_command_list(self._set_security_wpapsk,
-                                      (shared_key, update_interval), 2, 900)
+                                      (security, shared_key, update_interval),
+                                      2, 900)
 
 
-    def _set_security_wpapsk(self, shared_key, update_interval=None):
+    def _set_security_wpapsk(self, security, shared_key, update_interval=None):
         popup = '//select[@name="wl_sec_mode"]'
         self.wait_for_object_by_xpath(popup)
         key_field = '//input[@name="wl_wpa_psk1"]'
-        psk = '//select[@name="wl_auth"]'
         self.select_item_from_popup_by_xpath('WPA-PSK(no server)', popup,
                                              wait_for_xpath=key_field)
-        self.select_item_from_popup_by_xpath('WPA-PSK', psk)
         self.set_content_of_text_field_by_xpath(shared_key, key_field,
                                                 abort_check=False)
+        security_popup = 'WPA-PSK'
+        if security == ap_spec.SECURITY_TYPE_WPA2PSK:
+            security_popup = 'WPA2-PSK'
+        self.select_item_from_popup_by_xpath(security_popup,
+                                             '//select[@name="wl_auth"]')
+

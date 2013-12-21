@@ -76,10 +76,21 @@ DEFAULT_SECURITY_TYPE = SECURITY_TYPE_DISABLED
 DEFAULT_2GHZ_CHANNEL = 5
 DEFAULT_5GHZ_CHANNEL = 149
 
-# Convenience method to convert modes to human readable strings.
-def mode_string_for_mode(mode):
+# Convenience method to convert modes and bands to human readable strings.
+def band_string_for_band(band):
+    """Returns a human readable string of the band
+
+    @param band: band object
+    @returns: string representation of the band
     """
-    Returns a human readable string of the mode.
+    if band == BAND_2GHZ:
+        return '2.4 GHz'
+    elif band == BAND_5GHZ:
+        return '5 GHz'
+
+
+def mode_string_for_mode(mode):
+    """Returns a human readable string of the mode.
 
     @param mode: integer, the mode to convert.
     @returns: string representation of the mode
@@ -153,9 +164,10 @@ class APSpec(object):
                 'band=%s\n'
                 'mode=%s\n'
                 'channel=%d\n'
-                'password=%s' % (self._visible, self._security, self.band,
-                mode_string_for_mode(self._mode), self._channel,
-                self._password))
+                'password=%s' % (self._visible, self._security,
+                                 band_string_for_band(self.band),
+                                 mode_string_for_mode(self._mode),
+                                 self._channel, self._password))
 
 
     @property

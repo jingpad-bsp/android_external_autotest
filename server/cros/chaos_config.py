@@ -8,7 +8,7 @@ import os
 import time
 
 from autotest_lib.site_utils.rpm_control_system import rpm_client
-
+from autotest_lib.server.cros.chaos_ap_configurators import ap_spec
 
 DYNAMIC_AP_CONFIG_FILE = 'chaos_dynamic_ap_list.conf'
 SHADOW_AP_CONFIG_FILE = 'chaos_shadow_ap_list.conf'
@@ -67,24 +67,6 @@ class ChaosAP(object):
     CONF_CHANNEL = 'channel'
     CONF_CLASS = 'class_name'
     CONF_ADMIN = 'admin_url'
-
-    # Frequency to channel conversion table
-    CHANNEL_TABLE = {2412: 1, 2417: 2, 2422: 3,
-                     2427: 4, 2432: 5, 2437: 6,
-                     2442: 7, 2447: 8, 2452: 9,
-                     2457: 10, 2462: 11, 2467: 12,
-                     2472: 13, 2484: 14, 5180: 36,
-                     5200: 40, 5220: 44, 5240: 48,
-                     5745: 149, 5765: 153, 5785: 157,
-                     5805: 161, 5825: 165}
-
-    # This only works because the frequency table is
-    # one to one for Channels/Frequencies.
-    FREQUENCY_TABLE = dict((v,k) for k,v in CHANNEL_TABLE.iteritems())
-
-    # Needed for ap_configurator interoperability
-    BAND_2GHZ = '2.4GHz'
-    BAND_5GHZ = '5GHz'
 
 
     def __init__(self, bss, config):
@@ -162,15 +144,15 @@ class ChaosAP(object):
 
     def get_channel(self):
         """@return int channel for AP from config file"""
-        return self.CHANNEL_TABLE[self.get_frequency()]
+        return ap_spec.CHANNEL_TABLE[self.get_frequency()]
 
 
     def get_band(self):
         """@return string band for AP from config file"""
         if self.get_frequency() < 4915:
-            return self.BAND_2GHZ
+            return ap_spec.BAND_2GHZ
         else:
-            return self.BAND_5GHZ
+            return ap_spec.BAND_5GHZ
 
 
     def get_class(self):
