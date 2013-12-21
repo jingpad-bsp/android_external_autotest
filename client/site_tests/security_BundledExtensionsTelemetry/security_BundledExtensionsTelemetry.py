@@ -63,8 +63,7 @@ class security_BundledExtensionsTelemetry(test.test):
 
         @return list of dicts, each representing an extension.
         """
-        with chrome.Chrome(logged_in=True, autotest_ext=True,
-                           num_tries=3) as cr:
+        with chrome.Chrome(logged_in=True, autotest_ext=True) as cr:
             ext = cr.autotest_ext
             if not ext:
                 return None
