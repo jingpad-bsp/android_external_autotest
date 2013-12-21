@@ -167,7 +167,7 @@ class fio_job_output(UserDict):
         self._fio_table.extend([
                 ('_%s_cpu_usg_usr_percent'          , 128, self._parse_gen),
                 ('_%s_cpu_usg_sys_percent'          , 129, self._parse_gen),
-                ('_%s_cpu_context_sw_percent'       , 130, self._parse_gen),
+                ('_%s_cpu_context_count'            , 130, self._parse_gen),
                 ('_%s_major_page_faults'            , 131, self._parse_gen),
                 ('_%s_minor_page_faults'            , 132, self._parse_gen),
                 ('_%s_io_depth_le_1_percent'        , 133, self._parse_gen),
