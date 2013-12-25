@@ -15,8 +15,6 @@ from autotest_lib.client.cros.audio import sox_utils
 
 TEST_DURATION = 15
 
-PLAYER_READY_TIMEOUT = 45
-
 class desktopui_AudioFeedback(test.test):
     """Verifies if youtube playback can be captured."""
     version = 1
@@ -24,22 +22,30 @@ class desktopui_AudioFeedback(test.test):
     def play_video(self, tab, video_url):
         """Plays a Youtube video to record audio samples.
 
-           Skipping initial 60 seconds so we can ignore initial silence
-           in the video.
-
-           @param tab: the tab to load page for testing.
+           @param tab: the tab to load and play the video.
         """
         tab.Navigate(video_url)
-        tab.WaitForDocumentReadyStateToBeComplete()
+
+        def player_is_ready():
+            return tab.EvaluateJavaScript('player != undefined')
 
         utils.poll_for_condition(
-            condition=lambda: tab.EvaluateJavaScript('getPlayerStatus()') ==
-                    'player ready',
-            exception=error.TestError('Failed to load the Youtube player'),
-            sleep_interval=1,
-            timeout=PLAYER_READY_TIMEOUT)
+            condition=player_is_ready,
+            exception=error.TestError('Failed to load the Youtube player'))
 
-        tab.ExecuteJavaScript('seekAndPlay()')
+        # Seek to 60 seconds to skip the silence in the beginning.
+        tab.ExecuteJavaScript('player.seekTo(60, true)')
+        tab.ExecuteJavaScript('player.playVideo()')
+
+        # Make sure the video is playing
+        def get_current_time():
+            return tab.EvaluateJavaScript('player.getCurrentTime()')
+
+        old_time = get_current_time()
+        utils.poll_for_condition(
+            condition=lambda: get_current_time() > old_time,
+            exception=error.TestError('Video is not played until timeout'))
+
 
     @audio_helper.chrome_rms_test
     def run_once(self, chrome):

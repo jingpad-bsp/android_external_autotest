@@ -1,35 +1,26 @@
 <!-- This is a test html file for Youtube video tests. -->
 <html>
-<script type="text/javascript" src="swfobject.js"></script>
-<div id="ytapiplayer">
-You need Flash player 8+ and JavaScript enabled to view this video.
-</div>
-
-<script type="text/javascript">
-function onYouTubePlayerReady(playerId) {
-    ytplayer = document.getElementById("myytplayer");
-    console.log("player ready to play");
-    document.getElementById('player_status').innerHTML = 'player ready';
-}
-function loadPlayer() {
-  var params = { allowScriptAccess: "always" };
-  var atts = { id: "myytplayer" };
-  swfobject.embedSWF(
-    "http://www.youtube.com/e/QNdT65_4xtQ?enablejsapi=1&playerapiid=ytplayer",
-    "ytapiplayer", "800", "600", "8", null, null, params, atts);
-}
-function getPlayerStatus() {
-  return document.getElementById('player_status').innerHTML;
-}
-function seekAndPlay() {
-  ytplayer.pauseVideo();
-  ytplayer.seekTo(60, true);
-  ytplayer.playVideo();
-}
-</script>
-
-<body onload="loadPlayer()">
-<div id=player_status>Not Ready</div>
-Youtube flash test</body>
-
+  <body>
+    <iframe id="yt_frame" type="text/html" width="640" height="390"
+        src="http://www.youtube.com/embed/QNdT65_4xtQ?enablejsapi=1&nohtml5=1"
+        frameborder="0"></iframe>
+    <br>
+    <script>
+      var tag = document.createElement('script');
+      tag.src = "https://www.youtube.com/iframe_api";
+      var firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+      var player;
+      function onYouTubeIframeAPIReady() {
+        new YT.Player('yt_frame', {
+          events: {
+            'onReady': onPlayerReady,
+          }
+        });
+      }
+      function onPlayerReady(event) {
+        player = event.target;
+      }
+    </script>
+  </body>
 </html>
