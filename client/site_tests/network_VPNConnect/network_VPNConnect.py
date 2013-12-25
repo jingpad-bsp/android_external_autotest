@@ -71,25 +71,26 @@ class network_VPNConnect(test.test):
 
         """
         service = self.find_ethernet_service(interface_name)
-        service.SetProperty("StaticIP.Address", address)
-        service.SetProperty("StaticIP.Prefixlen", prefix_len)
+        service.SetProperty('StaticIP.Address', address)
+        service.SetProperty('StaticIP.Prefixlen', prefix_len)
         service.Disconnect()
         service.Connect()
 
 
     def get_vpn_server(self):
         """Returns a VPN server instance."""
-        if self._vpn_type == 'l2tpipsec-psk':
+        if self._vpn_type.startswith('l2tpipsec-psk'):
             return vpn_server.L2TPIPSecVPNServer('psk',
                                                  self.SERVER_INTERFACE_NAME,
                                                  self.SERVER_ADDRESS,
-                                                 self.NETWORK_PREFIX)
-        elif self._vpn_type == 'l2tpipsec-cert':
+                                                 self.NETWORK_PREFIX,
+                                                 'xauth' in self._vpn_type)
+        elif self._vpn_type.startswith('l2tpipsec-cert'):
             return vpn_server.L2TPIPSecVPNServer('cert',
                                                  self.SERVER_INTERFACE_NAME,
                                                  self.SERVER_ADDRESS,
                                                  self.NETWORK_PREFIX)
-        if self._vpn_type.startswith('openvpn'):
+        elif self._vpn_type.startswith('openvpn'):
             return vpn_server.OpenVPNServer(self.SERVER_INTERFACE_NAME,
                                             self.SERVER_ADDRESS,
                                             self.NETWORK_PREFIX,
@@ -104,10 +105,11 @@ class network_VPNConnect(test.test):
         @param tpm object TPM store instance to add credentials if necessary.
 
         """
-        if self._vpn_type == 'l2tpipsec-psk':
-            return {
+        if self._vpn_type.startswith('l2tpipsec-psk'):
+            params = {
                 'L2TPIPsec.Password': vpn_server.L2TPIPSecVPNServer.CHAP_SECRET,
-                'L2TPIPsec.PSK': vpn_server.L2TPIPSecVPNServer.IPSEC_PASSWORD,
+                'L2TPIPsec.PSK':
+                        vpn_server.L2TPIPSecVPNServer.IPSEC_PRESHARED_KEY,
                 'L2TPIPsec.User':vpn_server.L2TPIPSecVPNServer.CHAP_USER,
                 'Name': 'test-vpn-l2tp-psk',
                 'Provider.Host': self.SERVER_ADDRESS,
@@ -115,7 +117,17 @@ class network_VPNConnect(test.test):
                 'Type': 'vpn',
                 'VPN.Domain': 'test-vpn-psk-domain'
             }
-        if self._vpn_type == 'l2tpipsec-cert':
+            if 'xauth' in self._vpn_type:
+                if 'incorrect_user' in self._vpn_type:
+                    params['L2TPIPsec.XauthUser'] = 'wrong_user'
+                    params['L2TPIPsec.XauthPassword'] = 'wrong_password'
+                elif 'incorrect_missing_user' not in self._vpn_type:
+                    params['L2TPIPsec.XauthUser'] = (
+                            vpn_server.L2TPIPSecVPNServer.XAUTH_USER)
+                    params['L2TPIPsec.XauthPassword'] = (
+                            vpn_server.L2TPIPSecVPNServer.XAUTH_PASSWORD)
+            return params
+        elif self._vpn_type == 'l2tpipsec-cert':
             tpm.install_certificate(site_eap_certs.client_cert_1,
                                     site_eap_certs.cert_1_tpm_key_id)
             tpm.install_private_key(site_eap_certs.client_private_key_1,
@@ -132,7 +144,7 @@ class network_VPNConnect(test.test):
                 'Type': 'vpn',
                 'VPN.Domain': 'test-vpn-psk-domain'
             }
-        if self._vpn_type.startswith('openvpn'):
+        elif self._vpn_type.startswith('openvpn'):
             tpm.install_certificate(site_eap_certs.client_cert_1,
                                     site_eap_certs.cert_1_tpm_key_id)
             tpm.install_private_key(site_eap_certs.client_private_key_1,

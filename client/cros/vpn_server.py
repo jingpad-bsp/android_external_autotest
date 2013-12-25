@@ -33,10 +33,13 @@ class L2TPIPSecVPNServer(VPNServer):
     CHAP_SECRET = 'chapsecret'
     IPSEC_COMMAND = '/usr/sbin/ipsec'
     IPSEC_LOGFILE = 'var/log/charon.log'
-    IPSEC_PASSWORD = 'password'
+    IPSEC_PRESHARED_KEY = 'preshared-key'
     IPSEC_CA_CERTIFICATE = 'etc/ipsec.d/cacerts/ca.cert'
     IPSEC_SERVER_CERTIFICATE = 'etc/ipsec.d/certs/server.cert'
     PPPD_PID_FILE = 'var/run/ppp0.pid'
+    XAUTH_USER = 'xauth_user'
+    XAUTH_PASSWORD = 'xauth_password'
+    XAUTH_SECONDARY_AUTHENTICATION_STANZA = 'rightauth2=xauth'
     XL2TPD_COMMAND = '/usr/sbin/xl2tpd'
     XL2TPD_CONFIG_FILE = 'etc/xl2tpd/xl2tpd.conf'
     XL2TPD_PID_FILE = 'var/run/xl2tpd.pid'
@@ -104,6 +107,7 @@ class L2TPIPSecVPNServer(VPNServer):
                 'conn L2TP\n'
                 '  keyexchange=ikev1\n'
                 '  authby=psk\n'
+                '  %(xauth-stanza)s\n'
                 '  rekey=no\n'
                 '  left=%(local-ip)s\n'
                 '  leftprotoport=17/1701\n'
@@ -112,7 +116,8 @@ class L2TPIPSecVPNServer(VPNServer):
                 '  auto=add\n',
 
             'etc/ipsec.secrets' :
-              '%(local-ip)s %%any : PSK "%(password)s"',
+              '%(local-ip)s %%any : PSK "%(preshared-key)s"\n'
+              '%(xauth-user)s : XAUTH "%(xauth-password)s"\n',
         },
         'cert': {
             'etc/ipsec.conf' :
@@ -141,10 +146,12 @@ class L2TPIPSecVPNServer(VPNServer):
     }
 
     """Implementation of an L2TP/IPSec server instance."""
-    def __init__(self, auth_type, interface_name, address, network_prefix):
+    def __init__(self, auth_type, interface_name, address, network_prefix,
+                 perform_xauth_authentication=False):
         self._auth_type = auth_type
         self._chroot = network_chroot.NetworkChroot(interface_name,
                                                     address, network_prefix)
+        self._perform_xauth_authentication = perform_xauth_authentication
 
 
     def start_server(self):
@@ -161,7 +168,11 @@ class L2TPIPSecVPNServer(VPNServer):
             'chap-secret': self.CHAP_SECRET,
             'charon-debug-flags': 'dmn 2, mgr 2, ike 2, net 2',
             'charon-logfile': self.IPSEC_LOGFILE,
-            'password': self.IPSEC_PASSWORD
+            'preshared-key': self.IPSEC_PRESHARED_KEY,
+            'xauth-user': self.XAUTH_USER,
+            'xauth-password': self.XAUTH_PASSWORD,
+            'xauth-stanza': self.XAUTH_SECONDARY_AUTHENTICATION_STANZA
+                    if self._perform_xauth_authentication else '',
         })
         chroot.add_startup_command('%s start' % self.IPSEC_COMMAND)
         chroot.add_startup_command('%s -c /%s -C /tmp/l2tpd.control' %
