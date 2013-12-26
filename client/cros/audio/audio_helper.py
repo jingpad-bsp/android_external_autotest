@@ -473,7 +473,8 @@ def get_channel_sox_stat(
         raise ValueError('incorrect channel_indexi: %d' % channel_index)
 
     if channels == 1:
-        return sox_utils.get_stat(input_audio)
+        return sox_utils.get_stat(
+                input_audio, channels=channels, bits=bits, rate=rate)
 
     p1 = cmd_utils.popen(
             sox_utils.extract_channel_cmd(
