@@ -477,14 +477,17 @@ class OmahaDevserver(object):
 
         self._devserver_ssh.run('kill %s' % pid)
         try:
-            client_utils.poll_for_condition(_devserver_down,
-                                            sleep_interval=1)
+            client_utils.poll_for_condition(
+                    _devserver_down, sleep_interval=1, desc='devserver down')
             return
         except client_utils.TimeoutError:
-            logging.warning('Could not gracefully shut down devserver.')
+            logging.warning('Could not gracefully shut down devserver, '
+                            'retrying with SIGKILL')
 
         self._devserver_ssh.run('kill -9 %s' % pid)
-        client_utils.poll_for_condition(_devserver_down, timeout=1)
+        client_utils.poll_for_condition(
+                _devserver_down, timeout=5, sleep_interval=1,
+                desc='devserver down')
 
 
     def _remote_devserver_pid(self):
