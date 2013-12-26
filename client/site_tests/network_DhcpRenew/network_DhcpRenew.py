@@ -22,8 +22,11 @@ DHCP_RENEWAL_TIMEOUT_SECONDS = 25
 INTENDED_IP_SUFFIX = "0.0.0.101"
 # How far off the expected deadlines we'll accept the T1/T2 packets.
 RENEWAL_TIME_DELTA_SECONDS = 2.0
+# Time by which we are sure shill will give up on the DHCP client.
+DHCP_ATTEMPT_TIMEOUT_SECONDS = 40
 
 class network_DhcpRenew(dhcp_test_base.DhcpTestBase):
+    """Tests DHCP renewal process in the connection manager."""
     def test_body(self):
         subnet_mask = self.ethernet_pair.interface_subnet_mask
         intended_ip = dhcp_test_base.DhcpTestBase.rewrite_ip_suffix(
@@ -89,4 +92,19 @@ class network_DhcpRenew(dhcp_test_base.DhcpTestBase):
         if not self.server.last_test_passed:
             raise error.TestFail("Test server didn't get all the messages it "
                                  "was told to expect for renewal.")
-        # TODO(wiley) Check that we don't have an IP (crosbug.com/34578)
+
+        # The service should leave the connected state after shill attempts
+        # one last DHCP attempt from scratch.  We may miss the transition to the
+        # "idle" state since the system immediately attempts to re-connect, so
+        # we also test for the "configuration" state.
+        service = self.find_ethernet_service(
+                self.ethernet_pair.peer_interface_name)
+        (successful, state, duration) = self.shill_proxy.wait_for_property_in(
+                service,
+                self.shill_proxy.SERVICE_PROPERTY_STATE,
+                ('failure', 'idle', 'configuration'),
+                DHCP_ATTEMPT_TIMEOUT_SECONDS)
+        if not successful:
+            raise error.TestFail('Service failed to go idle in %ds (state %s)' %
+                                 (duration, state))
+        logging.info('In state "%s" after %d seconds', state, duration)
