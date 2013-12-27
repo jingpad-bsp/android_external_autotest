@@ -7,7 +7,7 @@ import os
 import shutil
 
 from autotest_lib.client.common_lib import error, utils
-from autotest_lib.client.cros import service_stopper, avahi_utils
+from autotest_lib.client.cros import service_stopper, avahi_utils, tcpdump
 
 
 P2P_SHARE_PATH = '/var/cache/p2p'
@@ -68,10 +68,15 @@ class P2PServerOverTap(object):
         self._tap_name = tap_name
         self._services = None
         self.tap = None
+        self._tcpdump = None
 
 
-    def setup(self):
-        """Initializes avahi daemon on a new tap interface."""
+    def setup(self, dumpdir=None):
+        """Initializes avahi daemon on a new tap interface.
+
+        @param dumpdir: Directory where the traffic on the new tap interface
+                        is recorded. A value of None disables traffic dumping.
+        """
         try:
             from lansim import tuntap
         except ImportError:
@@ -91,6 +96,11 @@ class P2PServerOverTap(object):
         self.tap.set_addr(self._tap_ip, self._tap_mask)
         self.tap.up()
 
+        # Enable traffic dump.
+        if not dumpdir is None:
+            dumpfile = os.path.join(dumpdir, 'dump-%s.pcap' % self.tap.name)
+            self._tcpdump = tcpdump.Tcpdump(self.tap.name, dumpfile)
+
         # Re-launch avahi-daemon on the TAP interface only.
         avahi_utils.avahi_start_on_iface(self.tap.name)
         utils.system("start p2p")
@@ -107,6 +117,9 @@ class P2PServerOverTap(object):
             avahi_utils.avahi_stop()
         except:
             logging.exception('Failed to stop tested services.')
+
+        if self._tcpdump:
+            self._tcpdump.stop()
 
         if self.tap:
             self.tap.down()

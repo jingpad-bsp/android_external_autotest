@@ -95,7 +95,7 @@ class p2p_ServeFiles(test.test):
 
         # Setup the environment where avahi-daemon runs during the test.
         try:
-            self._p2p.setup()
+            self._p2p.setup(dumpdir=self.job.resultdir)
         except:
             logging.exception('Failed to start tested services.')
             raise error.TestError('Failed to setup p2p/avahi environment.')
