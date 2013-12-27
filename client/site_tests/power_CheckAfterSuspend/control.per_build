@@ -18,7 +18,7 @@ DOC = """
 """
 
 # Comma-separated list of test names to run before and after the suspend.
-tests = ['audiovideo_Aplay', 'hardware_TPMCheck']
+tests = ['audio_Aplay', 'hardware_TPMCheck']
 
 
 dict_args = utils.args_to_dict(args)

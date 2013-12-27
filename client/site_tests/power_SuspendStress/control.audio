@@ -19,5 +19,5 @@ Runs eight minutes of suspend/resume cycles in the background of an audio tone.
 job.parallel([lambda: job.run_test('power_SuspendStress', tag='audio',
                                    duration=480, init_delay=10, min_suspend=7,
                                    tolerated_aborts=1)],
-             [lambda: job.run_test('audiovideo_Aplay', duration=460,
+             [lambda: job.run_test('audio_Aplay', duration=460,
                                    tag='power_SuspendStress')])
