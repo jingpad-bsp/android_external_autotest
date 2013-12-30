@@ -54,6 +54,7 @@ class TestFlow:
         self.iterations = options[OPTIONS.ITERATIONS]
         self.replay_dir = options[OPTIONS.REPLAY]
         self.resume_dir = options[OPTIONS.RESUME]
+        self.recording = not any([bool(self.replay_dir), bool(self.resume_dir)])
         self.device_type = (DEV.TOUCHSCREEN if options[OPTIONS.TOUCHSCREEN]
                                             else DEV.TOUCHPAD)
         self.gv_count = float('infinity')
@@ -350,7 +351,7 @@ class TestFlow:
     def _handle_user_choice_save_after_parsing(self, next_gesture=True):
         """Handle user choice for saving the parsed gesture file."""
         self.output.print_window('')
-        if self.use_existent_event_file_flag:
+        if self.use_existent_event_file_flag or self.recording:
             if self.saved_msg:
                 self.output.print_report(self.saved_msg)
             if self.new_scores:
