@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, tempfile
+import logging, os, time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -14,12 +14,20 @@ from autotest_lib.client.cros.audio import sox_utils
 
 
 TEST_DURATION = 1
-RMS_THRESHOLD = 0.05
 
 class audio_LineOutToMicInLoopback(test.test):
     """Verifies audio playback and capture function."""
     version = 1
     preserve_srcdir = True
+
+    @staticmethod
+    def wait_for_active_stream_count(expected_count):
+        utils.poll_for_condition(
+            lambda: cras_utils.get_active_stream_count() == expected_count,
+            exception=error.TestError(
+                'Timeout waiting active stream count to become %d' %
+                 expected_count))
+
 
     # TODO(owenlin): split this test into two tests for ALSA and CRAS.
     @audio_helper.alsa_rms_test
@@ -33,33 +41,28 @@ class audio_LineOutToMicInLoopback(test.test):
         self.loopback_test_cras()
 
 
-    def _check_rms(self, noise_file, recorded_file):
-        with tempfile.NamedTemporaryFile() as noise_profile,\
-             tempfile.NamedTemporaryFile() as reduced_file:
-            sox_utils.noise_profile(noise_file, noise_profile.name)
-            sox_utils.noise_reduce(
-                    recorded_file, reduced_file.name, noise_profile.name)
-            stat = sox_utils.get_stat(reduced_file.name)
-            logging.info('stat: %s', str(stat))
-            if stat.rms < RMS_THRESHOLD:
-                raise error.TestFail('RMS: %s' % stat.rms)
-
-
     def loopback_test_hw(self):
         logging.info('loopback_test_hw')
         noise_file = os.path.join(self.resultsdir, 'hw_noise.wav')
         recorded_file = os.path.join(self.resultsdir, 'hw_recorded.wav')
 
         # Record a sample of "silence" to use as a noise profile.
-        alsa_utils.record(noise_file, duration=TEST_DURATION)
+        alsa_utils.record(noise_file, duration=1)
 
-        p1 = cmd_utils.popen(alsa_utils.playback_cmd(
-                self._wav_path, duration=TEST_DURATION))
-        p2 = cmd_utils.popen(alsa_utils.record_cmd(
-                recorded_file, duration=TEST_DURATION))
+        try:
+            p = cmd_utils.popen(alsa_utils.playback_cmd(self._wav_path))
 
-        cmd_utils.wait_and_check_returncode(p1, p2)
-        self._check_rms(noise_file, recorded_file)
+            # Wait one second to make sure the playback has been started.
+            time.sleep(1)
+            alsa_utils.record(recorded_file, duration=TEST_DURATION)
+
+            # Make sure the audio is still playing.
+            if p.poll() != None:
+                raise error.TestError('playback stopped')
+        finally:
+            cmd_utils.kill_or_log_returncode(p)
+
+        audio_helper.reduce_noise_and_check_rms(recorded_file, noise_file)
 
         # Keep the file if the above check fails
         os.unlink(noise_file)
@@ -74,15 +77,21 @@ class audio_LineOutToMicInLoopback(test.test):
         recorded_file = os.path.join(self.resultsdir, 'cras_recorded.wav')
 
         # Record a sample of "silence" to use as a noise profile.
-        cras_utils.capture(noise_file, duration=TEST_DURATION)
+        cras_utils.capture(noise_file, duration=1)
 
-        p1 = cmd_utils.popen(cras_utils.playback_cmd(
-                self._wav_path, duration=TEST_DURATION))
-        p2 = cmd_utils.popen(cras_utils.capture_cmd(
-                recorded_file, duration=TEST_DURATION))
+        self.wait_for_active_stream_count(0)
+        try:
+            p = cmd_utils.popen(cras_utils.playback_cmd(self._wav_path))
+            self.wait_for_active_stream_count(1)
+            cras_utils.capture(recorded_file, duration=TEST_DURATION)
 
-        cmd_utils.wait_and_check_returncode(p1, p2)
-        self._check_rms(noise_file, recorded_file)
+            # Make sure the audio is still playing.
+            if p.poll() != None:
+                raise error.TestError('playback stopped')
+        finally:
+            cmd_utils.kill_or_log_returncode(p)
+
+        audio_helper.reduce_noise_and_check_rms(recorded_file, noise_file)
 
         # Keep these files if the above check failed
         os.unlink(noise_file)
