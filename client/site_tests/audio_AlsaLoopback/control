@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = 'The Chromium OS Audiovideo Team, chromeos-audio@google.com'
-NAME = 'audio_LineOutToMicInLoopback'
+NAME = 'audio_AlsaLoopback'
 PURPOSE = 'Test that audio played to line out can be heard at mic in.'
 CRITERIA = """
 Check if the audio played to line out is heard by arecord at mic in.
@@ -22,4 +22,4 @@ This can be through a 3.5mm male-to-male cable or a loopback dongle depending on
 your device.
 """
 
-job.run_test('audio_LineOutToMicInLoopback')
+job.run_test('audio_AlsaLoopback')
