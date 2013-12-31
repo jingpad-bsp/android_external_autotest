@@ -281,7 +281,7 @@ class PressureSpreadsheet(object):
             for size in GV.SIZE_LIST:
                 if size in pressure_dict:
                     self.feed.add_set_cell(row, col, pressure_dict[size])
-                    col = col + 1
+                col = col + 1
             row = row + 1
 
     def _insert_summary_record(self, table, row_source):
