@@ -6,7 +6,7 @@ AUTHOR = 'wiley, pstew, quiche'
 NAME = 'network_WiFi_SimpleConnect.wifi_checkMixedWPA'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
-SUITE = 'wifi_matfunc, wifi_android_correctness'
+SUITE = 'wifi_matfunc, wifi_android_correctness, wifi_release'
 DEPENDENCIES = 'wificell'
 
 DOC = """

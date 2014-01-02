@@ -6,7 +6,7 @@ AUTHOR = 'wiley, pstew, quiche'
 NAME = 'network_WiFi_SimpleConnect.wifi_checkOddWPAPassphrases'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
-SUITE = 'wifi_matfunc'
+SUITE = 'wifi_matfunc, wifi_release'
 DEPENDENCIES = 'wificell'
 
 DOC = """
