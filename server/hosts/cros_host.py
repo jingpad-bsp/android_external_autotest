@@ -25,6 +25,7 @@ from autotest_lib.server import utils as server_utils
 from autotest_lib.server.cros.dynamic_suite import constants as ds_constants
 from autotest_lib.server.cros.dynamic_suite import tools, frontend_wrappers
 from autotest_lib.server.hosts import abstract_ssh
+from autotest_lib.server.hosts import chameleon_host
 from autotest_lib.server.hosts import servo_host
 from autotest_lib.site_utils.graphite import stats
 from autotest_lib.site_utils.rpm_control_system import rpm_client
@@ -175,14 +176,48 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
 
     @staticmethod
-    def get_servo_arguments(args_dict):
-        """Extract servo options from `args_dict` and return the result.
+    def _extract_arguments(args_dict, key_subset):
+        """Extract options from `args_dict` and return a subset result.
 
         Take the provided dictionary of argument options and return
-        a subset that represent standard arguments needed to
-        construct a servo object for a host.  The intent is to
-        provide standard argument processing from run_remote_tests
-        for tests that require a servo to operate.
+        a subset that represent standard arguments needed to construct
+        a test-assistant object (chameleon or servo) for a host. The
+        intent is to provide standard argument processing from
+        run_remote_tests for tests that require a test-assistant board
+        to operate.
+
+        @param args_dict Dictionary from which to extract the arguments.
+        @param key_subset Tuple of keys to extract from the args_dict, e.g.
+          ('servo_host', 'servo_port').
+        """
+        result = {}
+        for arg in key_subset:
+            if arg in args_dict:
+                result[arg] = args_dict[arg]
+        return result
+
+
+    @staticmethod
+    def get_chameleon_arguments(args_dict):
+        """Extract chameleon options from `args_dict` and return the result.
+
+        Recommended usage:
+        ~~~~~~~~
+            args_dict = utils.args_to_dict(args)
+            chameleon_args = hosts.CrosHost.get_chameleon_arguments(args_dict)
+            host = hosts.create_host(machine, chameleon_args=chameleon_args)
+        ~~~~~~~~
+
+        @param args_dict Dictionary from which to extract the chameleon
+          arguments.
+        """
+        return CrosHost._extract_arguments(
+                args_dict, ('chameleon_host', 'chameleon_port'))
+
+
+    @staticmethod
+    def get_servo_arguments(args_dict):
+        """Extract servo options from `args_dict` and return the result.
 
         Recommended usage:
         ~~~~~~~~
@@ -194,29 +229,28 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         @param args_dict Dictionary from which to extract the servo
           arguments.
         """
-        servo_args = {}
-        for arg in ('servo_host', 'servo_port'):
-            if arg in args_dict:
-                servo_args[arg] = args_dict[arg]
-        return servo_args
+        return CrosHost._extract_arguments(
+                args_dict, ('servo_host', 'servo_port'))
 
 
-    def _initialize(self, hostname, servo_args=None, ssh_verbosity_flag='',
-                    ssh_options='',
+    def _initialize(self, hostname, chameleon_args=None, servo_args=None,
+                    ssh_verbosity_flag='', ssh_options='',
                     *args, **dargs):
-        """Initialize superclasses, and |self.servo|.
+        """Initialize superclasses, |self.chameleon|, and |self.servo|.
 
-        This method checks whether a servo is required by checking whether
-        servo_args is None. This method will only attempt to create a servo
-        object when servo is required by the test.
+        This method checks whether a chameleon/servo (aka
+        test-assistant objects) is required by checking whether
+        chameleon_args/servo_args is None. This method will only
+        attempt to create the test-assistant object when it is
+        required by the test.
 
-        For creating the host servo object, there are three
-        possibilities:  First, if the host is a lab system known to
-        have a servo board, we connect to that servo unconditionally.
+        For creating the test-assistant object, there are three
+        possibilities: First, if the host is a lab system known to have
+        a test-assistant board, we connect to that board unconditionally.
         Second, if we're called from a control file that requires
-        servo features for testing, it will pass settings for
-        `servo_host`, `servo_port`, or both.  If neither of these
-        cases apply, `self.servo` will be `None`.
+        test-assistant features for testing, it will pass settings from
+        the arguments, like `servo_host`, `servo_port`. If neither of
+        these cases apply, the test-assistant object will be `None`.
 
         """
         super(CrosHost, self)._initialize(hostname=hostname,
@@ -234,6 +268,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         # process of servo and servo_host initialization.
         # crbug.com/298432
         self._servo_host = self._create_servo_host(servo_args)
+        # TODO(waihong): Do the simplication on Chameleon too.
+        self._chameleon_host = self._create_chameleon_host(chameleon_args)
         # TODO(fdeng): 'servo_args is not None' is used to determine whether
         # a test needs a servo. Better solution is needed.
         # There are three possible cases here:
@@ -249,6 +285,41 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         # a servo is required, i.e. when the servo_args is not None.
         if servo_args is not None:
             self.servo = self._servo_host.create_healthy_servo_object()
+        # TODO(waihong): Create a wrapper for the Chameleond Proxy such that
+        # we can hide the RPC specific logic, like wrapping the binary data
+        # in xmlrpclib.Binary().
+        # TODO(waihong): Add verify and repair logic which are required while
+        # deploying to Cros Lab.
+        if chameleon_args is not None:
+            self.chameleon = self._chameleon_host.get_chameleond_proxy()
+
+
+    def _create_chameleon_host(self, chameleon_args):
+        """Create a ChameleonHost object.
+
+        There three possible cases:
+        1) If the DUT is in Cros Lab and has a chameleon board, then create
+           a ChameleonHost object pointing to the board. chameleon_args
+           is ignored.
+        2) If not case 1) and chameleon_args is neither None nor empty, then
+           create a ChameleonHost object using chameleon_args.
+        3) If neither case 1) or 2) applies, return None.
+
+        @param chameleon_args: A dictionary that contains args for creating
+                           a ChameleonHost object,
+                           e.g. {'chameleon_host': '172.11.11.112',
+                                 'chameleon_port': 9992}.
+
+        @returns: A ChameleonHost object or None.
+
+        """
+        hostname = chameleon_host.make_chameleon_hostname(self.hostname)
+        if utils.host_is_in_lab_zone(hostname):
+            return chameleon_host.ChameleonHost(chameleon_host=hostname)
+        elif chameleon_args is not None:
+            return chameleon_host.ChameleonHost(**chameleon_args)
+        else:
+            return None
 
 
     def _create_servo_host(self, servo_args):
@@ -271,9 +342,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         @returns: A ServoHost object or None. See comments above.
 
         """
-        servo_host_name = servo_host.make_servo_hostname(self.hostname)
-        if utils.host_is_in_lab_zone(servo_host_name):
-            return servo_host.ServoHost(servo_host=servo_host_name)
+        hostname = servo_host.make_servo_hostname(self.hostname)
+        if utils.host_is_in_lab_zone(hostname):
+            return servo_host.ServoHost(servo_host=hostname)
         elif servo_args is not None:
             return servo_host.ServoHost(**servo_args)
         else:
