@@ -238,7 +238,7 @@ class MetricNameProps:
             'CIRCLE_RADIUS': (
                 'circle radius (mm)',
                 None,
-                'Anything over 2mm is failure',
+                'the max radius of enclosing circles of tapping points',
                 None,
                 max),
             # Linearity Validator
@@ -283,21 +283,21 @@ class MetricNameProps:
                 max),
             # Report Rate Validator
             'LONG_INTERVALS': (
-                'pct of intervals > {} ms (%)',
-                [self.max_report_interval_str,],
-                '0% is required',
+                'pct of large intervals (%)',
+                None,
+                'pct of intervals larger than expected',
                 '(the number of long intervals, total packets)',
                 pct_by_numbers),
             'AVE_TIME_INTERVAL': (
                 'average time interval (ms)',
                 None,
-                'less than %s ms is required' % self.max_report_interval_str,
+                'the average of report intervals',
                 None,
                 average),
             'MAX_TIME_INTERVAL': (
                 'max time interval (ms)',
                 None,
-                'less than %s ms is required' % self.max_report_interval_str,
+                'the max report interval',
                 None,
                 max),
             # Hysteresis Validator
