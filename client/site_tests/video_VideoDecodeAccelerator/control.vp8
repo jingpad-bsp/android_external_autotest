@@ -13,7 +13,7 @@ known not to support video decode.
 SUITE = "bvt"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
-TEST_CLASS = "audiovideo"
+TEST_CLASS = "video"
 TEST_TYPE = "client"
 DEPENDENCIES = "hw_video_acc_vp8"
 EXPERIMENTAL = "False"

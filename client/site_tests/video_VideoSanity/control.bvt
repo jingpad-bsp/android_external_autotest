@@ -11,7 +11,7 @@ This test will fail if Chrome media is not enable or video doesn't play.
 SUITE = "bvt"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
-TEST_CLASS = "audiovideo"
+TEST_CLASS = "video"
 TEST_TYPE = "client"
 EXPERIMENTAL = "True"
 

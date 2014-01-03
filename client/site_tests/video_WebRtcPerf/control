@@ -11,7 +11,7 @@ The test output video decode time for WebRtc to performance dashboard.
 SUITE = "video"
 TIME = "SHORT"
 TEST_CATEGORY = "Performance"
-TEST_CLASS = "audiovideo"
+TEST_CLASS = "video"
 TEST_TYPE = "client"
 DEPENDENCIES = "hw_video_acc_vp8"
 

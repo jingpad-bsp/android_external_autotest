@@ -16,7 +16,6 @@ if any of the following conditions occur:
 SUITE = "hwqual"
 TIME='MEDIUM'
 TEST_CATEGORY = 'V4L2'
-TEST_CLASS = "audiovideo"
 TEST_TYPE = 'client'
 DEPENDENCIES = 'webcam'
 

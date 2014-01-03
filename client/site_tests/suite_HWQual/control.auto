@@ -73,7 +73,7 @@ job.run_test('graphics_GLBench',
 job.run_test('graphics_SanAngeles', creds='$backdoor')
 
 # Video
-job.run_test('audiovideo_V4L2')
+job.run_test('camera_V4L2')
 
 # RealTimeComm
 # TODO(zhurunz): crosbug.com/p/1332 - improve performance and
