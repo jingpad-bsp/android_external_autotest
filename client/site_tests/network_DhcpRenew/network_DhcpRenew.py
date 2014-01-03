@@ -20,6 +20,8 @@ LEASE_T2_TIME = 15
 DHCP_RENEWAL_TIMEOUT_SECONDS = 25
 # We'll fill in the subnet and give this address to the client.
 INTENDED_IP_SUFFIX = "0.0.0.101"
+# How far off the expected deadlines we'll accept the T1/T2 packets.
+RENEWAL_TIME_DELTA_SECONDS = 2.0
 
 class network_DhcpRenew(dhcp_test_base.DhcpTestBase):
     def test_body(self):
@@ -64,7 +66,7 @@ class network_DhcpRenew(dhcp_test_base.DhcpTestBase):
                 {},
                 should_respond=False)
         t1_handler.target_time_seconds = t1_deadline
-        t1_handler.allowable_time_delta_seconds = 1.0
+        t1_handler.allowable_time_delta_seconds = RENEWAL_TIME_DELTA_SECONDS
         t2_handler = dhcp_handling_rule.DhcpHandlingRule_RespondToPostT2Request(
                 intended_ip,
                 self.server_ip,
@@ -72,7 +74,7 @@ class network_DhcpRenew(dhcp_test_base.DhcpTestBase):
                 {},
                 should_respond=False)
         t2_handler.target_time_seconds = t2_deadline
-        t2_handler.allowable_time_delta_seconds = 1.0
+        t2_handler.allowable_time_delta_seconds = RENEWAL_TIME_DELTA_SECONDS
         discovery_handler = \
                 dhcp_handling_rule.DhcpHandlingRule_RespondToDiscovery(
                         intended_ip,

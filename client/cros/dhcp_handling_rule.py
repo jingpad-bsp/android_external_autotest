@@ -129,9 +129,12 @@ class DhcpHandlingRule(object):
     def packet_is_too_late(self):
         if self.target_time_seconds is None:
             return False
-        now = time.time()
-        if now - self.target_time_seconds > self._allowable_time_delta_seconds:
-            logging.info("Packet was too late for handling.")
+        delta = time.time() - self.target_time_seconds
+        logging.debug("Handler received packet %0.2f seconds from target time.",
+                      delta)
+        if delta > self._allowable_time_delta_seconds:
+            logging.info("Packet was too late for handling (+%0.2f seconds)",
+                         delta - self._allowable_time_delta_seconds)
             return True
         logging.info("Packet was not too late for handling.")
         return False
@@ -140,9 +143,13 @@ class DhcpHandlingRule(object):
     def packet_is_too_soon(self):
         if self.target_time_seconds is None:
             return False
-        now = time.time()
-        if self.target_time_seconds - now > self._allowable_time_delta_seconds:
-            logging.info("Packet arrived too soon for handling.")
+        delta = time.time() - self.target_time_seconds
+        logging.debug("Handler received packet %0.2f seconds from target time.",
+                      delta)
+        if -delta > self._allowable_time_delta_seconds:
+            logging.info("Packet arrived too soon for handling: "
+                         "(-%0.2f seconds)",
+                         -delta - self._allowable_time_delta_seconds)
             return True
         logging.info("Packet was not too soon for handling.")
         return False
