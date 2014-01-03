@@ -541,6 +541,14 @@ def reduce_noise_and_check_rms(
         check_rms(reduced_file.name, rms_threshold, channels, bits, rate)
 
 
+def skip_devices_to_test(*boards):
+    """Devices to skip due to hardware or test compatibility issues."""
+    # TODO(scottz): Remove this when crbug.com/220147 is fixed.
+    dut_board = utils.get_current_board()
+    if dut_board in boards:
+       raise error.TestNAError('This test is not available on %s' % dut_board)
+
+
 def cras_rms_test_setup():
     """ Setups for the cras_rms_tests.
 
@@ -580,6 +588,7 @@ def chrome_rms_test(run_once):
         # Not all client of this file using telemetry.
         # Just do the import here for those who really need it.
         from autotest_lib.client.common_lib.cros import chrome
+        skip_devices_to_test('x86-mario')
         try:
             with chrome.Chrome() as chrome_instance:
                 # The audio configuration could be changed when we
@@ -598,6 +607,7 @@ def cras_rms_test(run_once):
     @param run_once: the function which this annotation will be applied.
     """
     def wrapper(*args, **kargs):
+        skip_devices_to_test('x86-mario')
         cras_rms_test_setup()
         try:
             run_once(*args, **kargs)
@@ -613,6 +623,7 @@ def alsa_rms_test(run_once):
     @param run_once: the function which this annotation to be applied.
     """
     def wrapper(*args, **kargs):
+        skip_devices_to_test('x86-mario')
         # TODO(owenlin): Don't use CRAS for setup.
         cras_rms_test_setup()
 
