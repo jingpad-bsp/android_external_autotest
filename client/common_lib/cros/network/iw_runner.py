@@ -184,7 +184,7 @@ class IwRunner(object):
                 all_phys.append(current_phy)
                 continue
 
-            match_section = re.match('\s*(\w.*):', line)
+            match_section = re.match('\s*(\w.*):\s*$', line)
             if match_section:
                 current_section = match_section.group(1)
                 match_band = re.match('Band (\d+)', current_section)
