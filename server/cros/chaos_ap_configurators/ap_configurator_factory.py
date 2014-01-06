@@ -314,14 +314,34 @@ class APConfiguratorFactory(object):
         if not spec:
             return self.ap_list
 
-        band_aps = self._get_aps_by_band(spec.band, channel=spec.channel)
-        mode_aps = self._get_aps_by_mode(spec.band, spec.mode)
-        security_aps = self._get_aps_by_security(spec.security)
-        visible_aps = self._get_aps_by_visibility(spec.visible)
-        matching_aps = list(band_aps & mode_aps & security_aps & visible_aps)
+        def _get_unique_aps(existing_aps, new_aps):
+            """ Creates and returns a set of aps.
+
+            @param existing_aps: Existing set of aps.
+            @param new_aps: Set of aps to be added to the existing set.
+
+            @return a new set of aps.
+            """
+            if new_aps:
+                if existing_aps:
+                    existing_aps &= new_aps
+                else:
+                    existing_aps = new_aps
+            return existing_aps
+
+        aps = set()
+        aps = _get_unique_aps(aps, self._get_aps_by_band(spec.band,
+                                                 channel=spec.channel))
+        aps = _get_unique_aps(aps, self._get_aps_by_mode(spec.band, spec.mode))
+        aps = _get_unique_aps(aps, self._get_aps_by_security(spec.security))
+        aps = _get_unique_aps(aps, self._get_aps_by_visibility(spec.visible))
+        matching_aps = list(aps)
+
         if spec.configurator_type != ap_spec.CONFIGURATOR_ANY:
-            matching_aps = self._get_aps_by_configurator_type(
-                    spec.configurator_type, matching_aps)
+            filtered_aps = self._get_aps_by_configurator_type(
+                           spec.configurator_type, matching_aps)
+        if filtered_aps:
+            matching_aps = filtered_aps
         if spec.hostnames is not None:
             matching_aps = self._get_aps_by_hostnames(spec.hostnames,
                                                       matching_aps)
