@@ -559,6 +559,16 @@ def cras_rms_test_setup():
     cras_utils.set_capture_mute(False)
 
 
+def generate_rms_postmortem():
+    try:
+        logging.info('audio postmortem report')
+        log_loopback_dongle_status()
+        logging.info(cmd_utils.execute(
+                [_AUDIO_DIAGNOSTICS_PATH], stdout=cmd_utils.PIPE))
+    except:
+        logging.exception('Error while generating postmortem report')
+
+
 def chrome_rms_test(run_once):
     """ An annotation used for RMS audio test with Chrome.
 
@@ -577,10 +587,7 @@ def chrome_rms_test(run_once):
                 cras_rms_test_setup()
                 run_once(self, chrome_instance, *args, **kargs)
         except error.TestFail:
-            logging.info('audio postmortem report')
-            log_loopback_dongle_status()
-            logging.info(cmd_utils.execute(
-                    [_AUDIO_DIAGNOSTICS_PATH], stdout=cmd_utils.PIPE))
+            generate_rms_postmortem()
             raise
     return wrapper
 
@@ -595,10 +602,7 @@ def cras_rms_test(run_once):
         try:
             run_once(*args, **kargs)
         except error.TestFail:
-            logging.info('audio postmortem report')
-            log_loopback_dongle_status()
-            logging.info(cmd_utils.execute(
-                    [_AUDIO_DIAGNOSTICS_PATH], stdout=cmd_utils.PIPE))
+            generate_rms_postmortem()
             raise
     return wrapper
 
@@ -619,9 +623,6 @@ def alsa_rms_test(run_once):
         try:
             run_once(*args, **kargs)
         except error.TestFail:
-            logging.info('audio postmortem report')
-            log_loopback_dongle_status()
-            logging.info(cmd_utils.execute(
-                    [_AUDIO_DIAGNOSTICS_PATH], stdout=cmd_utils.PIPE))
+            generate_rms_postmortem()
             raise
     return wrapper
