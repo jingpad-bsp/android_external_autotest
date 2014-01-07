@@ -142,20 +142,22 @@ class _PantherController(_PowerStateController):
 
     """Power-state controller for Pantherand compatible boards.
 
-    For Panther, the 'cold_reset' signal is not connected
+    For Panther, the 'cold_reset' signal is now connected (from DVT)
+    However releasing the 'cold_reset' line does not power on the
+    device. Hence the need to press the power button.
     """
 
-    # TODO(@moch): rename and modify appropriately
-    _TIME_TO_SWITCH_OFF = 10.0
+    _RESET_HOLD_TIME = 0.5
+    _RESET_DELAY = 5.0
     _TIME_TO_BOOT = 10.0
     _TIME_TO_HOLD_POWER_BUTTON = 1.2
 
     @_inherit_docstring(_PowerStateController)
     def cold_reset(self):
-        self._servo.set('pwr_button', 'press')
-        time.sleep(self._TIME_TO_HOLD_POWER_BUTTON)
-        self._servo.set('pwr_button', 'release')
-        time.sleep(self._TIME_TO_SWITCH_OFF)
+        self._servo.set_get_all(['cold_reset:on',
+                                 'sleep:%.4f' % self._RESET_HOLD_TIME,
+                                 'cold_reset:off'])
+        time.sleep(self._RESET_DELAY)
 
         self._servo.set('pwr_button', 'press')
         time.sleep(self._TIME_TO_HOLD_POWER_BUTTON)
