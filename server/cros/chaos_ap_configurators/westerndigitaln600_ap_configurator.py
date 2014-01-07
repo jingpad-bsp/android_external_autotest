@@ -212,7 +212,7 @@ class WesternDigitalN600APConfigurator(
         if self.current_band == ap_spec.BAND_5GHZ:
             ssid_id = 'ssid_Aband'
         self.wait_for_object_by_id(ssid_id)
-        self.set_content_of_text_field_by_id(ssid, ssid_id, abort_check=False)
+        self.set_content_of_text_field_by_id(ssid, ssid_id, abort_check=True)
         self._ssid = ssid
 
 

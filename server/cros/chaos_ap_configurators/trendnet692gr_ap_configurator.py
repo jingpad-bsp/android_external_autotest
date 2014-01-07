@@ -7,6 +7,7 @@ import os
 import ap_spec
 import trendnet_ap_configurator
 
+from selenium.common.exceptions import WebDriverException
 
 class Trendnet692grAPConfigurator(trendnet_ap_configurator.
                                   TrendnetAPConfigurator):
@@ -93,7 +94,14 @@ class Trendnet692grAPConfigurator(trendnet_ap_configurator.
                                     (self.get_number_of_pages(), page_number))
         else:
             raise RuntimeError('Incorrect band band = %s' % self.current_band)
-        self.get_url(page_url, page_title='TEW-692GR')
+        try:
+            self.get_url(page_url, page_title='TEW-692GR')
+        except WebDriverException, e:
+            if "unexpected alert open" in str(e):
+                alert = self.driver.switch_to_alert()
+                self._alert_handler(alert)
+            else:
+                raise WebDriverException(str(e))
 
 
     def is_update_interval_supported(self):
