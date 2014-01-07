@@ -305,9 +305,9 @@ class Modem3gpp(modem.Modem):
         """
         return self._scanned_networks
 
-    @utils.dbus_method_wrapper(logging.debug, logging.warning, mm1.I_MODEM_3GPP,
-                               in_signature='s', async_callbacks=('return_cb',
-                                                                  'raise_cb'))
+    @utils.log_dbus_method(return_cb_arg='return_cb', raise_cb_arg='raise_cb')
+    @dbus.service.method(mm1.I_MODEM_3GPP, in_signature='s',
+                         async_callbacks=('return_cb', 'raise_cb'))
     def Register(self, operator_id, return_cb=None, raise_cb=None):
         """
         Request registration with a given modem network.
@@ -375,9 +375,9 @@ class Modem3gpp(modem.Modem):
         self.Set(mm1.I_MODEM_3GPP, 'OperatorCode', operator_code)
         self.Set(mm1.I_MODEM_3GPP, 'OperatorName', operator_name)
 
-    @utils.dbus_method_wrapper(
-            logging.debug, logging.warning, mm1.I_MODEM_3GPP,
-            out_signature='aa{sv}', async_callbacks=('return_cb', 'raise_cb'))
+    @utils.log_dbus_method(return_cb_arg='return_cb', raise_cb_arg='raise_cb')
+    @dbus.service.method(mm1.I_MODEM_3GPP, out_signature='aa{sv}',
+                         async_callbacks=('return_cb', 'raise_cb'))
     def Scan(self, return_cb, raise_cb):
         """
         Scan for available networks.
@@ -427,6 +427,8 @@ class Modem3gpp(modem.Modem):
         self.Set(mm1.I_MODEM_3GPP, 'OperatorName', '')
         self.Set(mm1.I_MODEM_3GPP, 'OperatorCode', '')
 
+    # Inherited from modem_simple.ModemSimple.
+    @utils.log_dbus_method(return_cb_arg='return_cb', raise_cb_arg='raise_cb')
     def Connect(self, properties, return_cb, raise_cb):
         """
         Overriden from superclass.
@@ -445,6 +447,8 @@ class Modem3gpp(modem.Modem):
                 raise_cb)
         machine.Start()
 
+    # Inherited from modem_simple.ModemSimple.
+    @utils.log_dbus_method(return_cb_arg='return_cb', raise_cb_arg='raise_cb')
     def Disconnect(self, bearer_path, return_cb, raise_cb, *return_cb_args):
         """
         Overriden from superclass.
@@ -465,6 +469,8 @@ class Modem3gpp(modem.Modem):
                 return_cb_args)
         machine.Start()
 
+    # Inherited from modem_simple.ModemSimple.
+    @utils.log_dbus_method()
     def GetStatus(self):
         """
         Overriden from superclass.

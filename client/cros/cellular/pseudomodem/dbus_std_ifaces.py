@@ -150,8 +150,8 @@ class DBusProperties(dbus.service.Object):
         """
         self.Set(interface_name, property_name, dbus.types.Int32(value))
 
-    @utils.dbus_method_wrapper(logging.debug, logging.warning, mm1.I_PROPERTIES,
-                               in_signature='ss', out_signature='v')
+    @utils.log_dbus_method()
+    @dbus.service.method(mm1.I_PROPERTIES, in_signature='ss', out_signature='v')
     def Get(self, interface_name, property_name):
         """
         Returns the value matching the given property and interface.
@@ -179,8 +179,8 @@ class DBusProperties(dbus.service.Object):
                 MMPropertyError.UNKNOWN_PROPERTY, message)
         return val
 
-    @utils.dbus_method_wrapper(logging.debug, logging.warning, mm1.I_PROPERTIES,
-                               in_signature='ssv')
+    @utils.log_dbus_method()
+    @dbus.service.method(mm1.I_PROPERTIES, in_signature='ssv')
     def Set(self, interface_name, property_name, value):
         """
         Sets the value matching the given property and interface.
@@ -218,8 +218,9 @@ class DBusProperties(dbus.service.Object):
         inv = self._InvalidatedPropertiesForChangedValues(changed)
         self.PropertiesChanged(interface_name, changed, inv)
 
-    @utils.dbus_method_wrapper(logging.debug, logging.warning, mm1.I_PROPERTIES,
-                               in_signature='s', out_signature='a{sv}')
+    @utils.log_dbus_method()
+    @dbus.service.method(mm1.I_PROPERTIES,
+                         in_signature='s', out_signature='a{sv}')
     def GetAll(self, interface_name):
         """
         Returns all property-value pairs that match the given interface.
@@ -362,9 +363,8 @@ class DBusObjectManager(dbus.service.Object):
         self.InterfacesRemoved(device.path, interfaces)
         device.remove_from_connection()
 
-    @utils.dbus_method_wrapper(logging.debug, logging.warning,
-                               mm1.I_OBJECT_MANAGER,
-                               out_signature='a{oa{sa{sv}}}')
+    @utils.log_dbus_method()
+    @dbus.service.method(mm1.I_OBJECT_MANAGER, out_signature='a{oa{sa{sv}}}')
     def GetManagedObjects(self):
         """
         Returns:

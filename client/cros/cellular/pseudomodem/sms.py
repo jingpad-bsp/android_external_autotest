@@ -107,6 +107,8 @@ class SMS(dbus_std_ifaces.DBusProperties):
         props['DischargeTimestamp'] = ''
         return { mm1.I_SMS: props }
 
+    # Remember to decorate your concrete implementation with
+    # @utils.log_dbus_method()
     @dbus.service.method(mm1.I_SMS)
     def Send(self):
         """
@@ -115,6 +117,8 @@ class SMS(dbus_std_ifaces.DBusProperties):
         """
         raise NotImplementedError()
 
+    # Remember to decorate your concrete implementation with
+    # @utils.log_dbus_method()
     @dbus.service.method(mm1.I_SMS, in_signature='u')
     def Store(self, storage):
         """

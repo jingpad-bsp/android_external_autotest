@@ -92,8 +92,8 @@ class StateMachine(dbus.service.Object):
         """
         self.Step()
 
-    @utils.dbus_method_wrapper(logging.debug, logging.warning,
-                               mm1.I_TESTING_ISM, out_signature='b')
+    @utils.log_dbus_method()
+    @dbus.service.method(mm1.I_TESTING_ISM, out_signature='b')
     def Advance(self):
         """
         Advance a step on a state machine running in interactive mode.
@@ -127,8 +127,8 @@ class StateMachine(dbus.service.Object):
         """
         logging.info('%s state machine waiting', self._GetIsmObjectName())
 
-    @utils.dbus_method_wrapper(logging.debug, logging.warning,
-                               mm1.I_TESTING_ISM, out_signature='b')
+    @utils.log_dbus_method()
+    @dbus.service.method(mm1.I_TESTING_ISM, out_signature='b')
     def IsWaiting(self):
         """
         Determine whether the state machine is waiting for user action.

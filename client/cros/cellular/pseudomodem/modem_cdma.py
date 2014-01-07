@@ -122,9 +122,9 @@ class ModemCdma(modem.Modem):
 
         return ip
 
-    @utils.dbus_method_wrapper(logging.debug, logging.warning, mm1.I_MODEM_CDMA,
-                               in_signature='s', async_callbacks=('return_cb',
-                                                                  'raise_cb'))
+    @utils.log_dbus_method(return_cb_arg='return_cb', raise_cb_arg='raise_cb')
+    @dbus.service.method(mm1.I_MODEM_CDMA, in_signature='s',
+                         async_callbacks=('return_cb', 'raise_cb'))
     def Activate(self, carrier, return_cb, raise_cb):
         """
         Provisions the modem for use with a given carrier using the modem's
@@ -147,8 +147,8 @@ class ModemCdma(modem.Modem):
                 raise_cb)
         machine.Start()
 
-    @utils.dbus_method_wrapper(logging.debug, logging.warning, mm1.I_MODEM_CDMA,
-                               in_signature='a{sv}')
+    @utils.log_dbus_method()
+    @dbus.service.method(mm1.I_MODEM_CDMA, in_signature='a{sv}')
     def ActivateManual(self, properties):
         """
         Sets the modem provisioning data directly, without contacting the
@@ -305,6 +305,7 @@ class ModemCdma(modem.Modem):
         self.SetRegistered(None)
 
     # Inherited from modem_simple.ModemSimple.
+    @utils.log_dbus_method(return_cb_arg='return_cb', raise_cb_arg='raise_cb')
     def Connect(self, properties, return_cb, raise_cb):
         """
         Overridden from superclass.
@@ -323,6 +324,8 @@ class ModemCdma(modem.Modem):
                 raise_cb)
         machine.Start()
 
+    # Inherited from modem_simple.ModemSimple.
+    @utils.log_dbus_method(return_cb_arg='return_cb', raise_cb_arg='raise_cb')
     def Disconnect(self, bearer_path, return_cb, raise_cb, *return_cb_args):
         """
         Overridden from superclass.
@@ -343,6 +346,8 @@ class ModemCdma(modem.Modem):
                 return_cb_args)
         machine.Start()
 
+    # Inherited from modem_simple.ModemSimple.
+    @utils.log_dbus_method()
     def GetStatus(self):
         """
         Overridden from superclass.
