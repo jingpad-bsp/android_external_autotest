@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import contextlib
 import datetime
 import logging
 import random
@@ -15,23 +16,23 @@ from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros import host_lock_manager
 from autotest_lib.server.cros.chaos_ap_configurators import ap_batch_locker
 from autotest_lib.server.cros.chaos_ap_configurators import ap_cartridge
+from autotest_lib.server.cros.network import wifi_client
+
 
 class ChaosRunner(object):
     """Object to run a network_WiFi_ChaosXXX test."""
 
 
-    def __init__(self, test, host, wifi_client, ap_spec):
+    def __init__(self, test, host, ap_spec):
         """Initializes and runs test.
 
         @param test: a string, test name.
         @param host: an Autotest host object, device under test.
-        @param wifi_client: a WiFiClient object
         @param ap_spec: an APSpec object
 
         """
         self._test = test
         self._host = host
-        self._wifi_client = wifi_client
         self._ap_spec = ap_spec
         # Log server and DUT times
         dt = datetime.datetime.now()
@@ -99,6 +100,66 @@ class ChaosRunner(object):
         cartridge.run_configurators()
 
 
+    def _return_available_networks(self, ap, client, job):
+        """Returns a list of networks configured as described by an APSpec.
+
+        @param ap: the APConfigurator being testing against.
+        @param client: wifi client object of the DUT.
+        @param job: an Autotest job object.
+
+        @returns a list of the network available; otherwise None
+
+        """
+        logging.info('Searching for SSID %s in scan...', ap.ssid)
+        iw_scanner = iw_runner.IwRunner(remote_host=self._host,
+                                        command_iw=client.command_iw)
+        # We have some APs that need a while to come on-line
+        networks = iw_scanner.wait_for_scan_result(client._wifi_if,
+                                                   ssid=ap.ssid,
+                                                   timeout_seconds=300)
+        if networks == None:
+            # For crbug.com/331915, the next step will be to reboot the DUT
+            logging.error('Scan failed to run, see crbug.com/309148 and '
+                          'crbug.com/331915.')
+            return None
+
+        if len(networks) == 0:
+            # The SSID of the AP was not found
+            logging.error('The ssid %s was not found in the scan', ap.ssid)
+            job.run_test('network_WiFi_ChaosConfigFailure', ap=ap,
+                         error_string=chaos_constants.AP_SSID_NOTFOUND,
+                         tag=ap.ssid)
+            return None
+
+        # Sanitize the only security setting that doesn't match
+        # before doing the comparison
+        security = networks[0].security
+        if security == iw_runner.SECURITY_MIXED:
+            security = iw_runner.SECURITY_WPA2
+
+        if security != self._ap_spec.security:
+            # Check if AP is configured with the expected security.
+            logging.error('%s was the expected security but got %s',
+                          self._ap_spec.security, security)
+            job.run_test('network_WiFi_ChaosConfigFailure', ap=ap,
+                         error_string=chaos_constants.AP_SECURITY_MISMATCH,
+                         tag=ap.ssid)
+            return None
+        return networks
+
+
+    def _release_ap(self, ap, batch_locker):
+        """Powers down and unlocks the given AP.
+
+        @param ap: the APConfigurator under test
+        @param batch_locker: the batch locker object
+
+        """
+        ap.power_down_router()
+        ap.apply_settings()
+        batch_locker.unlock_one_ap(ap.host_name)
+
+
     def run(self, job, batch_size=15, tries=10, capturer_hostname=None):
         """Executes Chaos test.
 
@@ -118,86 +179,60 @@ class ChaosRunner(object):
             batch_locker = ap_batch_locker.ApBatchLocker(lock_manager,
                                                          self._ap_spec)
             while batch_locker.has_more_aps():
-                aps = batch_locker.get_ap_batch(batch_size=batch_size)
-                if not aps:
-                    logging.info('No more APs to test.')
-                    break
+                with contextlib.closing(wifi_client.WiFiClient(
+                    hosts.create_host(self._host.hostname),
+                    './debug')) as client:
 
-                # Power down all of the APs because some can get grumpy
-                # if they are configured several times and remain on.
-                # User the cartridge to down group power downs and
-                # configurations.
-                self._power_down_aps(aps)
-                self._configure_aps(aps)
+                    aps = batch_locker.get_ap_batch(batch_size=batch_size)
+                    if not aps:
+                        logging.info('No more APs to test.')
+                        break
 
-                for ap in aps:
-                    # http://crbug.com/306687
-                    if ap.ssid == None:
-                        logging.error('The SSID was not set for the AP:%s', ap)
+                    # Power down all of the APs because some can get grumpy
+                    # if they are configured several times and remain on.
+                    # User the cartridge to down group power downs and
+                    # configurations.
+                    self._power_down_aps(aps)
+                    self._configure_aps(aps)
 
-                    if not ap.get_configuration_success():
-                        logging.error('The AP %s was not configured correctly',
-                                      ap.ssid)
-                        job.run_test('network_WiFi_ChaosConfigFailure',
-                                     ap=ap,
-                                     error_string=
-                                         chaos_constants.AP_CONFIG_FAIL,
+                    for ap in aps:
+                        # http://crbug.com/306687
+                        if ap.ssid == None:
+                            logging.error('The SSID was not set for the AP:%s',
+                                          ap)
+
+                        if not ap.get_configuration_success():
+                            logging.error('The AP %s was not configured '
+                                          'correctly', ap.ssid)
+                            job.run_test('network_WiFi_ChaosConfigFailure',
+                                         ap=ap,
+                                         error_string=
+                                             chaos_constants.AP_CONFIG_FAIL,
+                                         tag=ap.ssid)
+                            continue
+
+                        # TODO (krisr) this method should use the packet capture
+                        # not the DUT.
+                        networks = self._return_available_networks(ap, client,
+                                                                   job)
+                        if not networks:
+                            self._release_ap(ap, batch_locker)
+                            continue
+
+                        assoc_params = ap.get_association_parameters()
+                        result = job.run_test(self._test,
+                                     capturer=capturer,
+                                     capturer_frequency=networks[0].frequency,
+                                     capturer_ht_type=networks[0].ht,
+                                     host=self._host,
+                                     assoc_params=assoc_params,
+                                     client=client,
+                                     tries=tries,
+                                     debug_info=ap.name,
+                                     # Copy all logs from the system
+                                     disabled_sysinfo=False,
                                      tag=ap.ssid)
-                        continue
-                    logging.info('Searching for SSID %s in scan...', ap.ssid)
-                    self._host.syslog('Searching for SSID %s in scan...' %
-                                      ap.ssid)
-                    iw_scanner = iw_runner.IwRunner(
-                            remote_host=self._host,
-                            command_iw=self._wifi_client.command_iw)
-                    networks = iw_scanner.wait_for_scan_result(
-                            self._wifi_client._wifi_if, ssid=ap.ssid,
-                            # We have some APs that need a while to come on-line
-                            timeout_seconds=300)
-                    if networks == None or len(networks) == 0:
-                        # The SSID of the AP was not found
-                        logging.error('The ssid %s was not found in the scan',
-                                      ap.ssid)
-                        job.run_test('network_WiFi_ChaosConfigFailure',
-                                     ap=ap,
-                                     error_string=
-                                         chaos_constants.AP_SSID_NOTFOUND,
-                                     tag=ap.ssid)
-                        continue
-                    # Sanitize the only security setting that doesn't match
-                    # before doing the comparison
-                    security = networks[0].security
-                    if security == iw_runner.SECURITY_MIXED:
-                        security = iw_runner.SECURITY_WPA2
 
-                    if security != self._ap_spec.security:
-                        # Check if AP is configured with the expected security.
-                        logging.error('%s was the expected security but got %s',
-                                      self._ap_spec.security,
-                                      security)
-                        job.run_test('network_WiFi_ChaosConfigFailure',
-                                     ap=ap,
-                                     error_string=
-                                         chaos_constants.AP_SECURITY_MISMATCH,
-                                     tag=ap.ssid)
-                        continue
-
-                    assoc_params = ap.get_association_parameters()
-                    result = job.run_test(self._test,
-                                 capturer=capturer,
-                                 capturer_frequency=networks[0].frequency,
-                                 capturer_ht_type=networks[0].ht,
-                                 host=self._host,
-                                 assoc_params=assoc_params,
-                                 client=self._wifi_client,
-                                 tries=tries,
-                                 debug_info=ap.name,
-                                 # Copy all logs from the system
-                                 disabled_sysinfo=False,
-                                 tag=ap.ssid)
-
-                    ap.power_down_router()
-                    ap.apply_settings()
-                    batch_locker.unlock_one_ap(ap.host_name)
+                        self._release_ap(ap, batch_locker)
 
                 batch_locker.unlock_aps()

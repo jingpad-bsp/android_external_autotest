@@ -15,12 +15,9 @@ performed in the AP compatibility lab.
 
 from autotest_lib.server.cros.chaos_ap_configurators import ap_spec
 from autotest_lib.server.cros.chaos_lib import chaos_runner
-from autotest_lib.server.cros.network import wifi_client
 
 def run_chaos_open(machine):
     host = hosts.create_host(machine)
-    # TODO (krisr): Move back into the runner when resoved.
-    client = wifi_client.WiFiClient(host, './debug')
     # Test with no security on both 2.4 and 5 GHz bands
     ap_specs = [ap_spec.APSpec(security=ap_spec.SECURITY_TYPE_DISABLED,
                                band=ap_spec.BAND_2GHZ),
@@ -28,7 +25,7 @@ def run_chaos_open(machine):
                                band=ap_spec.BAND_5GHZ)]
     for spec in ap_specs:
         runner = chaos_runner.ChaosRunner(
-                'network_WiFi_ChaosConnectDisconnect', host, client, spec)
+                'network_WiFi_ChaosConnectDisconnect', host, spec)
         runner.run(job)
 
 
