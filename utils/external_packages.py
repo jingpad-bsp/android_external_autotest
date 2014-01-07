@@ -966,6 +966,23 @@ class PySeleniumPackage(ExternalPackage):
                         ExternalPackage._build_and_install_current_dir_setup_py)
 
 
+class FaultHandlerPackage(ExternalPackage):
+    """
+    faulthandler module
+    """
+    module_name = 'faulthandler'
+    version = '2.3'
+    url_filename = '%s-%s.tar.gz' % (module_name, version)
+    local_filename = url_filename
+    urls = ('http://pypi.python.org/packages/source/f/faulthandler/%s' %
+            (url_filename),)
+    hex_sum = 'efb30c068414fba9df892e48fcf86170cbf53589'
+
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+            ExternalPackage._build_and_install_current_dir_noegg)
+
+
 class _ExternalGitRepo(ExternalPackage):
     """
     Parent class for any package which needs to pull a git repo.
