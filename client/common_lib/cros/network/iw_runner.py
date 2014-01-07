@@ -60,6 +60,50 @@ class IwRunner(object):
         self._command_iw = command_iw
 
 
+    def _parse_scan_results(self, output):
+        """Parse the output of the 'scan' and 'scan dump' commands.
+
+        @param output: string command output.
+
+        @returns a list of IwBss namedtuples; None if the scan fails
+
+        """
+        bss = None
+        frequency = None
+        ssid = None
+        ht = None
+        security = None
+        supported_securities = []
+        bss_list = []
+        for line in output.splitlines():
+            line = line.strip()
+            if line.startswith('BSS'):
+                if bss != None:
+                    security = self.determine_security(supported_securities)
+                    iwbss = IwBss(bss, frequency, ssid, security, ht)
+                    bss_list.append(iwbss)
+                    bss = frequency = ssid = security = ht = None
+                    supported_securities = []
+                bss = line.split()[1]
+            if line.startswith('freq:'):
+                frequency = int(line.split()[1])
+            if line.startswith('SSID:'):
+                ssid = line.split()
+                if len(ssid) > 1:
+                    ssid = ssid[1]
+                else:
+                    ssid = None
+            if line.startswith('* secondary channel offset'):
+                ht = HT_TABLE[line.split(':')[1].strip()]
+            if line.startswith('WPA'):
+               supported_securities.append(SECURITY_WPA)
+            if line.startswith('RSN'):
+               supported_securities.append(SECURITY_WPA2)
+        security = self.determine_security(supported_securities)
+        bss_list.append(IwBss(bss, frequency, ssid, security, ht))
+        return bss_list
+
+
     def add_interface(self, phy, interface, interface_type):
         """
         Add an interface to a WiFi PHY.
@@ -283,7 +327,7 @@ class IwRunner(object):
         @param frequencies: list of int frequencies in Mhz to scan.
         @param ssids: list of string SSIDs to send probe requests for.
 
-        @returns a list of IwBss collections; None if the scan fails
+        @returns a list of IwBss namedtuples; None if the scan fails
 
         """
         freq_param = ''
@@ -300,42 +344,23 @@ class IwRunner(object):
             # The device was busy
            return None
 
-        bss = None
-        frequency = None
-        ssid = None
-        ht = None
-        security = None
+        return self._parse_scan_results(scan.stdout)
 
-        supported_securities = []
-        bss_list = []
 
-        for line in scan.stdout.splitlines():
-            line = line.strip()
-            if line.startswith('BSS'):
-                if bss != None:
-                    security = self.determine_security(supported_securities)
-                    iwbss = IwBss(bss, frequency, ssid, security, ht)
-                    bss_list.append(iwbss)
-                    bss = frequency = ssid = security = ht = None
-                    supported_securities = []
-                bss = line.split()[1]
-            if line.startswith('freq:'):
-                frequency = int(line.split()[1])
-            if line.startswith('SSID:'):
-                ssid = line.split()
-                if len(ssid) > 1:
-                    ssid = ssid[1]
-                else:
-                    ssid = None
-            if line.startswith('* secondary channel offset'):
-                ht = HT_TABLE[line.split(':')[1].strip()]
-            if line.startswith('WPA'):
-               supported_securities.append(SECURITY_WPA)
-            if line.startswith('RSN'):
-               supported_securities.append(SECURITY_WPA2)
-        security = self.determine_security(supported_securities)
-        bss_list.append(IwBss(bss, frequency, ssid, security, ht))
-        return bss_list
+    def scan_dump(self, interface):
+        """Dump the contents of the scan cache.
+
+        Note that this does not trigger a scan.  Instead, it returns
+        the kernel's idea of what BSS's are currently visible.
+
+        @param interface: the interface to run the iw command against
+
+        @returns a list of IwBss namedtuples; None if the scan fails
+
+        """
+        result = self._run('%s dev %s scan dump' % (self._command_iw,
+                                                    interface))
+        return self._parse_scan_results(result.stdout)
 
 
     def set_tx_power(self, interface, power):

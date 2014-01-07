@@ -6,6 +6,7 @@ import logging
 import time
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server.cros.network import hostap_config
@@ -45,17 +46,25 @@ class network_WiFi_BgscanBackoff(wifi_cell_test_base.WiFiCellTestBase):
                 get_ping_config(self.BGSCAN_SAMPLE_PERIOD_SECONDS))
         logging.info('Ping statistics with bgscan: %r', result_bgscan)
         # Bring up a second AP, make sure that it shows up in bgscans.
-        self.context.configure(hostap_config.HostapConfig(channel=11),
-                               multi_interface=True)
+        self.context.configure(
+                hostap_config.HostapConfig(channel=11,
+                                           ssid=self.context.router.get_ssid()),
+                multi_interface=True)
         logging.info('Without a ping running, ensure that bgscans succeed.')
+        ap_mac = self.context.router.get_hostapd_mac(ap_num=1)
+        logging.debug('Looking for BSS %s', ap_mac)
+        iw = iw_runner.IwRunner(remote_host=self.context.client.host)
         start_time = time.time()
         while time.time() - start_time < self.BGSCAN_SAMPLE_PERIOD_SECONDS:
-            if (self.context.router.get_ssid(instance=1) in
-                    self.context.client.get_active_wifi_SSIDs()):
+            bsses = iw.scan_dump(self.context.client.wifi_if)
+            logging.debug('Found BSSes: %r', bsses)
+            if filter(lambda bss: bss.bss == ap_mac, bsses):
                 break
+
             time.sleep(1)
         else:
-            raise error.TestFail('Background scans should detect other SSIDs.')
+            raise error.TestFail('Background scans should detect new BSSes '
+                                 'within an associated ESS.')
 
         self.context.client.shill.disconnect(
                 self.context.router.get_ssid(instance=0))
