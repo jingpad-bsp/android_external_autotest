@@ -52,7 +52,7 @@ class GraphicsStateChecker(object):
     crash_blacklist = []
 
     _BROWSER_VERSION_COMMAND = '/opt/google/chrome/chrome --version'
-    _HANGCHECK = 'drm:i915_hangcheck_elapsed'
+    _HANGCHECK = ['drm:i915_hangcheck_elapsed', 'drm:i915_hangcheck_hung']
     _MESSAGES_FILE = '/var/log/messages'
 
     def __init__(self):
@@ -70,9 +70,10 @@ class GraphicsStateChecker(object):
           logging.info('Initialize: Checking for old GPU hangs...')
           f = open(self._MESSAGES_FILE, 'r')
           for line in f:
-            if self._HANGCHECK in line:
-              logging.info(line)
-              self.hangs[line] = line
+            for hang in self._HANGCHECK:
+              if hang in line:
+                logging.info(line)
+                self.hangs[line] = line
           f.close()
 
     def finalize(self):
@@ -84,10 +85,11 @@ class GraphicsStateChecker(object):
           logging.info('Cleanup: Checking for new GPU hangs...')
           f = open(self._MESSAGES_FILE, 'r')
           for line in f:
-            if self._HANGCHECK in line:
-              if not line in self.hangs.keys():
-                logging.info(line)
-                self.job.record('WARN', None, 'Saw GPU hang during test.')
+            for hang in self._HANGCHECK:
+              if hang in line:
+                if not line in self.hangs.keys():
+                  logging.info(line)
+                  logging.warn('Saw GPU hang during test.')
           f.close()
 
           cmd = 'glxinfo | grep "OpenGL renderer string"'
@@ -97,7 +99,7 @@ class GraphicsStateChecker(object):
           logging.info('glxinfo: %s', result)
           # TODO(ihf): Find exhaustive error conditions (especially ARM).
           if 'llvmpipe' in result.lower() or 'soft' in result.lower():
-            logging.info('Finished test on SW rasterizer.')
+            logging.warn('Finished test on SW rasterizer.')
             raise error.TestFail('Finished test on SW rasterizer: ' + result)
 
         # TODO(ihf): Perform crash processing (primarily for Piglit) as is done

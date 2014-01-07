@@ -262,11 +262,16 @@ int main(int argc, char **argv)
 	switch(pci_id) {
 		// sandy bridge
 		case 0x102:
-		case 0x106:
+                case 0x106: // Butterfly, Lumpy.
 		case 0x116:
 		case 0x126:
 		// ivy bridge
-		case 0x166:
+                case 0x156: // Stout.
+                case 0x166: // Link.
+                // haswell
+                case 0xa06: // GT1, Peppy, Falco.
+                case 0xa16: // GT2.
+                case 0xa26: // GT3.
 			break;
 		default:
 		{
