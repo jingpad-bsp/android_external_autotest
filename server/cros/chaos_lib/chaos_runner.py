@@ -160,6 +160,12 @@ class ChaosRunner(object):
         batch_locker.unlock_one_ap(ap.host_name)
 
 
+    def _sanitize_client(self):
+        """Clean up logs and reboot the DUT."""
+        self._host.run('rm -rf /var/log')
+        self._host.reboot()
+
+
     def run(self, job, batch_size=15, tries=10, capturer_hostname=None):
         """Executes Chaos test.
 
@@ -169,6 +175,9 @@ class ChaosRunner(object):
         @param capturer_hostname: a string or None, hostname or IP of capturer.
 
         """
+
+        logging.debug('Going to cleanup logs and reboot host!!!')
+        self._sanitize_client()
 
         lock_manager = host_lock_manager.HostLockManager()
         with host_lock_manager.HostsLockedBy(lock_manager):
