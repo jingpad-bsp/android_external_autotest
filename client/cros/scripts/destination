@@ -6,6 +6,7 @@
 
 import sys
 
+import common
 from autotest_lib.client.cros.networking import shill_proxy
 
 def usage():
