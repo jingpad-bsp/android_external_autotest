@@ -112,7 +112,8 @@
           "https://storage.googleapis.com/*",
           "https://www-googleapis-test.sandbox.google.com/*",
           "https://www.googleapis.com/*",
-          "https://www.google.com/*"],
+          "https://www.google.com/*",
+          "https://*.ytimg.com/*"],
       "apiPermissions": ["app.currentWindowInternal",
                          "app.runtime",
                          "app.window",
@@ -138,20 +139,14 @@
     },
     { "name": "Help",
       "id": "honijodknafkokifofgiaalefdiedpko",
-      "effectiveHostPermissions": [
-          "https://gweb-gettingstartedguide.appspot.com/*",
-          "http://support.google.com/chromeos/*",
-          "http://support.google.com/chromebook/*",
-          "https://support.google.com/*",
-          "https://support.google.com/chromebook/*",
-          "https://support.google.com/chromeos/*"],
-      "apiPermissions": ["chromeosInfoPrivate",
-                         "tabs"]
+      "effectiveHostPermissions": [],
+      "apiPermissions": []
     },
     { "name": "Hangout Services",
       "id": "nkeimhogjdpnpccoofpliimaahmaaome",
       "effectiveHostPermissions": [],
-      "apiPermissions": ["desktopCapture",
+      "apiPermissions": ["alarms",
+                         "desktopCapture",
                          "system.cpu",
                          "webConnectable",
                          "webrtcAudioPrivate",
@@ -181,6 +176,12 @@
                          "app.runtime",
                          "app.window",
                          "firstRunPrivate"]
+    },
+    { "name": "Chrome OS text-to-speech component extension",
+      "id": "gjjabgpgjpampikjhjpfhneeoapjbjaf",
+      "effectiveHostPermissions": [],
+      "apiPermissions": ["ttsEngine",
+                         "unlimitedStorage"]
     }
   ],
   "official_components": []
