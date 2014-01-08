@@ -39,6 +39,17 @@ class WifiProxy(shill_proxy.ShillProxy):
         self.set_logging_for_test(self.TECHNOLOGY_WIFI)
 
 
+    def remove_all_wifi_entries(self):
+        """Iterate over all pushed profiles and remove WiFi entries."""
+        profiles = self.get_profiles()
+        for profile in profiles:
+            profile_properties = profile.GetProperties(utf8_strings=True)
+            entries = profile_properties[self.PROFILE_PROPERTY_ENTRIES]
+            for entry_id in entries:
+                if profile.GetEntry(entry_id)[self.ENTRY_FIELD_TYPE] == 'wifi':
+                    profile.DeleteEntry(entry_id)
+
+
     def configure_wifi_service(self, ssid, security, security_parameters={},
                                save_credentials=True, station_type=None,
                                hidden_network=False, guid=None,

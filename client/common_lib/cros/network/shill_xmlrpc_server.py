@@ -229,17 +229,14 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
     def init_test_network_state(self):
         """Create a clean slate for tests with respect to remembered networks.
 
-        For shill, this means popping and removing profiles before adding a
-        'test' profile.
+        For shill, this means popping and removing profiles, removing all WiFi
+        entries from the default profile, and pushing a 'test' profile.
 
         @return True iff operation succeeded, False otherwise.
 
         """
-        # TODO(wiley) We've not seen this problem before, but there could
-        #             still be remembered networks in the default profile.
-        #             at the very least, this profile has the ethernet
-        #             entry.
         self.clean_profiles()
+        self._wifi_proxy.remove_all_wifi_entries()
         self.remove_profile(self.DEFAULT_TEST_PROFILE_NAME)
         worked = self.create_profile(self.DEFAULT_TEST_PROFILE_NAME)
         if worked:
