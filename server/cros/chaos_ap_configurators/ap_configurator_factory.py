@@ -338,10 +338,8 @@ class APConfiguratorFactory(object):
         matching_aps = list(aps)
 
         if spec.configurator_type != ap_spec.CONFIGURATOR_ANY:
-            filtered_aps = self._get_aps_by_configurator_type(
+            matching_aps = self._get_aps_by_configurator_type(
                            spec.configurator_type, matching_aps)
-        if filtered_aps:
-            matching_aps = filtered_aps
         if spec.hostnames is not None:
             matching_aps = self._get_aps_by_hostnames(spec.hostnames,
                                                       matching_aps)
