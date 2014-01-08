@@ -47,7 +47,7 @@ def get_latest_build(build_target):
 
     @param build_target: build target to look up for the latest build.
     @return: build name of latest beaglebone image in Google Storage,
-             e.g., beaglebone-release/R33-4936.0.0
+             e.g., beaglebone_servo-release/R33-4936.0.0
     """
     archive_url = IMAGE_STORAGE_SERVER + build_target
     return gsutil_util.GetLatestVersionFromGSDir(archive_url)
@@ -59,7 +59,7 @@ def stage_build(devserver, build, build_target=DEFAULT_BUILD_TARGET):
     @param devserver: an instance of ImageServer.
     @param build: name of the beaglebone build to stage, e.g., R33-4936.0.0.
     @param build_target: build target of the build to be staged, default
-                         is set to beaglebone-release.
+                         is set to DEFAULT_BUILD_TARGET.
     @raise DevServerException: upon any return code that's not HTTP OK when
                                making stage_artifacts RPC.
     """
@@ -91,8 +91,8 @@ def parse_arguments(argv):
     parser.add_argument('-t', '--build_target', action='store',
                         default=DEFAULT_BUILD_TARGET,
                         help='Optional argument to specify a build target, '
-                             'e.g., trybot-beaglebone-release. Default value '
-                             'is set to beaglebone-release.')
+                             'e.g., trybot-beaglebone_servo-release. Default '
+                             'value is set to %s.' % DEFAULT_BUILD_TARGET)
     return parser.parse_args(argv)
 
 
