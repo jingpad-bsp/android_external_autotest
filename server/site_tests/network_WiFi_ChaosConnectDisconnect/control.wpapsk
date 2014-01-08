@@ -23,10 +23,11 @@ def run_chaos_wpapsk(machine):
                                band=ap_spec.BAND_2GHZ),
                 ap_spec.APSpec(security=ap_spec.SECURITY_TYPE_WPAPSK,
                                band=ap_spec.BAND_5GHZ),
-                # Non-US models
+                # Non-US models, which are all static.
                 ap_spec.APSpec(security=ap_spec.SECURITY_TYPE_WPAPSK,
                                band=ap_spec.BAND_5GHZ,
-                               channel=48)]
+                               channel=48,
+                               configurator_type=ap_spec.CONFIGURATOR_STATIC)]
     for spec in ap_specs:
         runner = chaos_runner.ChaosRunner(
                 'network_WiFi_ChaosConnectDisconnect', host, spec)
