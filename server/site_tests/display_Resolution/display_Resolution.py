@@ -5,10 +5,9 @@
 """This is a server side resolution display test using the Chameleon board."""
 
 import logging
-import math
 import os
 import re
-import struct
+import time
 import xmlrpclib
 
 from autotest_lib.client.bin import utils
@@ -30,6 +29,8 @@ class display_Resolution(test.test):
     XMLRPC_CONNECT_TIMEOUT = 30
     HTTPD_PORT = 12345
     X_ENV_VARIABLES = 'DISPLAY=:0.0 XAUTHORITY=/home/chronos/.Xauthority'
+    CALIBRATION_IMAGE_SETUP_TIME = 10
+    PIXEL_DIFF_MARGIN = 1
     RESOLUTION_TEST_LIST = {
             CONNECTOR.DP: [
                     (1280, 800),
@@ -160,61 +161,14 @@ class display_Resolution(test.test):
         self._chameleon_board.ApplyEdid(self._connector_id, edid_id)
         self._chameleon_board.DestoryEdid(edid_id)
 
-    @staticmethod
-    def parse_ppm(input_file, x, y, width, height, value_bit_mask=8):
-        """Parses a PPM image and returns RGB values of pixels.
-
-        @param input_file: The input PPM image.  It is expected to be of binary
-                PPM format.
-        @param x: The x coordinate to start parsing pixel data.
-        @param y: The y coordinate to start parsing pixel data.
-        @param width: The width in pixels to parse.
-        @param height: The height in pixels to parse.
-        @param value_bit_mask: The returned RGB values is truncated to the most
-                significant of value_bit_mask bits.
-
-        @return: A 2-dimensional list of RGB value tuples of each pixel.
-        """
-        with open(input_file) as f:
-            input_bytes = f.read()
-
-        input_lines = input_bytes.split('\n', 3)
-        ppm_format = input_lines[0].strip()
-        if ppm_format != 'P6':
-            raise error.TestError('Input PPM image must be of P6 format')
-        img_width, img_height = map(int, input_lines[1].strip().split())
-        maximum_value = int(input_lines[2].strip())
-        pixels = input_lines[3]
-        value_bit_length = int(math.ceil(math.log(maximum_value, 2)))
-        bytes_per_pixel = 1 if maximum_value < 256 else 2
-        bytes_per_raster = img_width * bytes_per_pixel * 3
-
-        discard_lsb = value_bit_length - value_bit_mask
-        def _get_pixel(x, y):
-            """Get the RGB value of pixel (x, y)."""
-            raster = pixels[y * bytes_per_raster:(y + 1) * bytes_per_raster]
-            base = x * 6
-            rgb_values = struct.unpack(
-                    '>HHH', raster[base:base + 3 * bytes_per_pixel])
-            if discard_lsb:
-                rgb_values = map(lambda v: v >> discard_lsb, rgb_values)
-            return tuple(rgb_values)
-
-        results = []
-        for w in xrange(0, width):
-            results.append([])
-            for h in xrange(0, height):
-                results[w].append(_get_pixel(x + w, y + h))
-        return results
-
     def test_display(self, resolution):
         """Main display testing logic.
 
         1. Open a calibration image of the given resolution, and set it to
            fullscreen on the external display.
-        2. Capture several regions from the display buffer of Chameleon.
+        2. Capture the whole screen from the display buffer of Chameleon.
         3. Capture the framebuffer on DUT.
-        4. Verify that the captured regions match the content of DUT
+        4. Verify that the captured screen match the content of DUT
            framebuffer.
 
         @param resolution: A tuple of integers (width, height) representing the
@@ -223,18 +177,8 @@ class display_Resolution(test.test):
         logging.info('Testing %r...', resolution)
         width, height = resolution
         resolution_str = '%dx%d' % (width, height)
-        crop_width, crop_height = (40, 40)
-        regions_to_test = [
-                # Top-left corner.
-                (0, 0, crop_width, crop_height),
-                # Center.
-                (width / 2 - 20, height / 2 - 20, crop_width, crop_height),
-                # Bottom-right corner
-                (width - 40, height - 40, crop_width, crop_height)
-        ]
-        chameleon_image_file = (
-                'chameleon-%s-%%dx%%d+%%dx%%d.ppm' % resolution_str)
-        dut_image_file = 'dut-%s.ppm' % resolution_str
+        chameleon_image_file = 'chameleon-%s.bgra' % resolution_str
+        dut_image_file = 'dut-%s.bgra' % resolution_str
 
         def _move_cursor():
             """Move mouse cursor to the bottom-left corner."""
@@ -248,73 +192,76 @@ class display_Resolution(test.test):
 
         def _load_calibration_image():
             """Load calibration image from host HTTP server."""
+            logging.info('Waiting the calibration image stable.')
             image_url = ('http://%s:%s' % (self._my_ip, self.HTTPD_PORT) +
                          '/%s.png' % resolution_str)
             self._display_xmlrpc_client.close_tab()
             self._display_xmlrpc_client.load_url(image_url)
-
-        def _save_ppm_image(filename, width, height, pixels):
-            """Save as a PPM image."""
-            with open(filename, 'w+') as f:
-                f.write('P6\n{width} {height}\n1023\n'.format(
-                        width=width, height=height))
-                for index in xrange(0, len(pixels), 2):
-                    pixel = struct.unpack('<H', pixels[index:index + 2])[0]
-                    f.write(struct.pack('>H', pixel))
+            time.sleep(self.CALIBRATION_IMAGE_SETUP_TIME)
 
         def _capture_chameleon_fb():
             """Capture Chameleon framebuffer."""
             logging.info('Capturing framebuffer on Chameleon.')
-            for r in regions_to_test:
-                # XXX: The UART connection is not stable. May result wrong
-                # checksum in some cases. So retry if the length not correct.
-                for retry in range(3):
-                    pixels = self._chameleon_board.DumpPixels(
-                            self._connector_id, *r).data
-                    pixels_length = len(pixels)
-                    if pixels_length == r[2] * r[3] * 6:
-                        break
-                    else:
-                        logging.warn('The length of pixels not correct: %d',
-                                     pixels_length)
-                # TODO(waihong): Don't save to a file. Directly compare.
-                _save_ppm_image(chameleon_image_file % r,
-                                r[2], r[3], pixels)
+            pixels = self._chameleon_board.DumpPixels(self._connector_id).data
+            # Write to file for debug.
+            file_path = os.path.join(self.outputdir, chameleon_image_file)
+            open(file_path, 'w+').write(pixels)
+            return pixels
 
         def _capture_dut_fb():
             """Capture DUT framebuffer."""
             logging.info('Capturing framebuffer on DUT.')
-            self._host.run('%s import -window root /tmp/%s' %
-                           (self.X_ENV_VARIABLES, dut_image_file))
-            self._host.get_file('/tmp/%s' % dut_image_file, os.path.join(
-                    self.outputdir, dut_image_file))
-
-        def _verify():
-            """Verify that the captured frambuffers match."""
             _, _, fb_x, fb_y = self._display_xmlrpc_client.get_resolution(
                     self._active_output)
-            logging.info(
-                    'External output framebuffer offset: +%d+%d', fb_x, fb_y)
-            for r in regions_to_test:
-                # We only capture the selected region from Chameleon.
-                chameleon_pixels = self.parse_ppm(
-                        os.path.join(self.outputdir, chameleon_image_file % r),
-                        0, 0, r[2], r[3])
-                # We capture the whole DUT framebuffer. Need to take into
-                # account the framebuffer offset of the external output.
-                dut_pixels = self.parse_ppm(
-                        os.path.join(self.outputdir, dut_image_file),
-                        r[0] + fb_x, r[1] + fb_y, r[2], r[3])
-                if chameleon_pixels != dut_pixels:
-                    error_message = ('%s and %s (%dx%d+%d+%d) mismatch' %
-                            (chameleon_image_file % r, dut_image_file,
-                             r[2], r[3], r[0] + fb_x, r[1] + fb_y))
+            local_path = os.path.join(self.outputdir, dut_image_file)
+            remote_path = os.path.join('/tmp', dut_image_file)
+            command = ('%s import -window root -depth 8 -crop %dx%d+%d+%d %s' %
+                       (self.X_ENV_VARIABLES, width, height, fb_x, fb_y,
+                        remote_path))
+            self._host.run(command)
+            self._host.get_file(remote_path, local_path)
+            return open(local_path).read()
+
+        def _remove_image_files():
+            chameleon_path = os.path.join(self.outputdir, chameleon_image_file)
+            dut_path = os.path.join(self.outputdir, dut_image_file)
+            for file_path in (chameleon_path, dut_path):
+                os.remove(file_path)
+
+        def _verify():
+            chameleon_pixels = _capture_chameleon_fb()
+            chameleon_pixels_len = len(chameleon_pixels)
+            dut_pixels = _capture_dut_fb()
+            dut_pixels_len = len(dut_pixels)
+
+            if chameleon_pixels_len != dut_pixels_len:
+                error_message = ('Lengths of pixels not the same: %d != %d' %
+                        (chameleon_pixels_len, dut_pixels_len))
+                logging.error(error_message)
+                self._errors.append(error_message)
+                return
+
+            logging.info('Comparing the pixels...')
+            for i in xrange(len(dut_pixels)):
+                chameleon_pixel = ord(chameleon_pixels[i])
+                dut_pixel = ord(dut_pixels[i])
+                # Skip the fourth byte, i.e. the alpha value.
+                if (i % 4 != 3 and abs(chameleon_pixel - dut_pixel) >
+                        self.PIXEL_DIFF_MARGIN):
+                    error_message = ('The pixel, offset %d, on '
+                            'resolution %s, not match: %d != %d' %
+                            (i, resolution_str, chameleon_pixel, dut_pixel))
                     logging.error(error_message)
                     self._errors.append(error_message)
+                    break
+            else:
+                logging.info('All pixels match.')
+                _remove_image_files()
+
+        def _cleanup():
             self._display_xmlrpc_client.close_tab()
 
         _move_cursor()
         _load_calibration_image()
-        _capture_chameleon_fb()
-        _capture_dut_fb()
         _verify()
+        _cleanup()
