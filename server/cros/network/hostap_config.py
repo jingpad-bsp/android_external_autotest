@@ -258,6 +258,15 @@ class HostapConfig(object):
 
 
     @property
+    def perf_loggable_description(self):
+        """@return string test description suitable for performance logging."""
+        mode = 'mode%s' % (
+                self.printable_mode.replace('+', 'p').replace('-', 'm'))
+        channel = 'ch%03d' % self.channel
+        return '_'.join([channel, mode, self.security_config.security])
+
+
+    @property
     def printable_mode(self):
         """@return human readable mode string."""
         if self.is_11n:

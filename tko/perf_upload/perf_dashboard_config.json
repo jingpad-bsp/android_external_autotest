@@ -62,5 +62,100 @@
     "autotest_name": "telemetry_Benchmarks.smoothness.top_25",
     "master_name": "ChromiumPerf",
     "dashboard_test_name": "smoothness.top_25"
+  },
+  {
+    "autotest_name": "network_WiFi_AttenuatedPerf.ht40_ch001",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_AttenuatedPerf"
+  },
+  {
+    "autotest_name": "network_WiFi_AttenuatedPerf.ht40_ch006",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_AttenuatedPerf"
+  },
+  {
+    "autotest_name": "network_WiFi_AttenuatedPerf.ht40_ch011",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_AttenuatedPerf"
+  },
+  {
+    "autotest_name": "network_WiFi_AttenuatedPerf.ht40_ch044",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_AttenuatedPerf"
+  },
+  {
+    "autotest_name": "network_WiFi_AttenuatedPerf.ht40_ch153",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_AttenuatedPerf"
+  },
+  {
+    "autotest_name": "network_WiFi_Perf.11a",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_Perf"
+  },
+  {
+    "autotest_name": "network_WiFi_Perf.11a_aes",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_Perf"
+  },
+  {
+    "autotest_name": "network_WiFi_Perf.11a_tkip",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_Perf"
+  },
+  {
+    "autotest_name": "network_WiFi_Perf.11a_wep",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_Perf"
+  },
+  {
+    "autotest_name": "network_WiFi_Perf.11b",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_Perf"
+  },
+  {
+    "autotest_name": "network_WiFi_Perf.11b_wep",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_Perf"
+  },
+  {
+    "autotest_name": "network_WiFi_Perf.11g",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_Perf"
+  },
+  {
+    "autotest_name": "network_WiFi_Perf.11g_aes",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_Perf"
+  },
+  {
+    "autotest_name": "network_WiFi_Perf.11g_tkip",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_Perf"
+  },
+  {
+    "autotest_name": "network_WiFi_Perf.11g_wep",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_Perf"
+  },
+  {
+    "autotest_name": "network_WiFi_Perf.ht20",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_Perf"
+  },
+  {
+    "autotest_name": "network_WiFi_Perf.ht20_aes",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_Perf"
+  },
+  {
+    "autotest_name": "network_WiFi_Perf.ht40",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_Perf"
+  },
+  {
+    "autotest_name": "network_WiFi_Perf.ht40_aes",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_Perf"
   }
 ]

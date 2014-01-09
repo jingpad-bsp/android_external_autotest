@@ -126,4 +126,4 @@ class NetperfSession(object):
         if final_result is None:
             final_result = self._from_samples(history)
         logging.info('Took averaged measurement %r.', final_result)
-        return final_result
+        return history or None

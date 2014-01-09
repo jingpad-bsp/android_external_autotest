@@ -9,7 +9,6 @@ import time
 
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server.cros.network import netperf_runner
-from autotest_lib.server.cros.network import netperf_wifi_perf_logger
 from autotest_lib.server.cros.network import netperf_session
 from autotest_lib.server.cros.network import rvr_test_base
 
@@ -65,8 +64,6 @@ class network_WiFi_AttenuatedPerf(rvr_test_base.RvRTestBase):
         start_time = time.time()
         throughput_data = []
         self.context.client.host.get_file('/etc/lsb-release', self.resultsdir)
-        keyval_logger = netperf_wifi_perf_logger.NetperfWiFiPerfLogger(
-                self._ap_config, self.context.client, self.write_perf_keyval)
         # Set up the router and associate the client with it.
         self.context.configure(self._ap_config)
         assoc_params = xmlrpc_datatypes.AssociationParameters(
@@ -84,27 +81,38 @@ class network_WiFi_AttenuatedPerf(rvr_test_base.RvRTestBase):
         for atten in range(self.STARTING_ATTENUATION,
                            self.FINAL_ATTENUATION + 1,
                            self.ATTENUATION_STEP):
+            atten_tag = 'atten%03d' % atten
             self.context.attenuator.set_total_attenuation(atten)
             logging.info('RvR test: current attenuation = %d dB', atten)
-            atten_tag = 'atten%03d' % atten
             for config in self.NETPERF_CONFIGS:
-                test_tag = '_'.join([atten_tag, config.tag])
-                result = session.run(config)
-                if result is None:
+                results = session.run(config)
+                if not results:
                     logging.warning('Unable to take measurement for %s',
-                                    test_tag)
+                                    config.human_readable_tag)
                     continue
-
-                keyval_logger.record_keyvals_for_result(
-                        result, descriptive_tag=test_tag)
-                if result.throughput is not None:
-                    throughput_data.append(self.DataPoint(
-                            atten,
-                            result.throughput,
-                            result.throughput_dev,
-                            self.context.client.wifi_signal_level,
-                            config.tag))
-            keyval_logger.record_signal_keyval(descriptive_tag=atten_tag)
+                graph_name = '.'.join(
+                        [self._ap_config.perf_loggable_description, config.tag])
+                values = [result.throughput for result in results]
+                self.output_perf_value(atten_tag, values, units='Mbps',
+                                       higher_is_better=True, graph=graph_name)
+                self.output_perf_value('_'.join([atten_tag, 'signal']),
+                                       self.context.client.wifi_signal_level,
+                                       units='dBm', higher_is_better=True,
+                                       graph=graph_name)
+                result = netperf_runner.NetperfResult.from_samples(results)
+                throughput_data.append(self.DataPoint(
+                        atten,
+                        result.throughput,
+                        result.throughput_dev,
+                        self.context.client.wifi_signal_level,
+                        config.tag))
+                keyval_prefix = '_'.join(
+                        [self._ap_config.perf_loggable_description, config.tag,
+                         atten_tag])
+                self.write_perf_keyval(result.get_keyval(prefix=keyval_prefix))
+            signal_level = self.context.client.wifi_signal_level
+            self.write_perf_keyval(
+                    {'_'.join([atten_tag, 'signal']): signal_level})
         # Clean up router and client state.
         self.context.client.shill.disconnect(assoc_params.ssid)
         self.context.router.deconfig()
