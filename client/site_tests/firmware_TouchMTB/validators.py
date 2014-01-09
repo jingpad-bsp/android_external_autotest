@@ -450,6 +450,10 @@ class LinearityValidator(BaseValidator):
         mid_segment_t, mid_segment_y = self.packets.get_segments(
                 list_t, list_y, VAL.MIDDLE, END_PERCENTAGE)
 
+        # Check to make sure there are enough samples to continue
+        if len(mid_segment_t) <= 2 or len(mid_segment_y) <= 2:
+            return []
+
         # Calculate the simple linear regression line.
         degree = 1
         regress_line = np.poly1d(np.polyfit(mid_segment_t, mid_segment_y,
