@@ -61,6 +61,7 @@ CHANNEL_TABLE = {2412: 1, 2417: 2, 2422: 3,
 # for channels/frequencies.
 FREQUENCY_TABLE = dict((v,k) for k,v in CHANNEL_TABLE.iteritems())
 
+# Configurator type
 CONFIGURATOR_STATIC = object()
 CONFIGURATOR_DYNAMIC = object()
 CONFIGURATOR_ANY = object()
@@ -127,7 +128,10 @@ class APSpec(object):
 
     def __init__(self, visible=True, security=SECURITY_TYPE_DISABLED,
                  band=None, mode=None, channel=None, hostnames=None,
-                 configurator_type=CONFIGURATOR_ANY):
+                 configurator_type=CONFIGURATOR_ANY,
+                 # lab_ap set to true means the AP must be in the Chaos lab;
+                 # if it set to false the AP is outside of the Chaos lab.
+                 lab_ap=True):
         super(APSpec, self).__init__()
         self._visible = visible
         self._security = security
@@ -135,6 +139,7 @@ class APSpec(object):
         self._channel = channel
         self._hostnames = hostnames
         self._configurator_type = configurator_type
+        self._lab_ap = lab_ap
 
         if not self._channel and (self._mode == MODE_N or not self._mode):
             if band == BAND_2GHZ or not band:
@@ -225,6 +230,12 @@ class APSpec(object):
     def configurator_type(self):
         """Returns the configurator type."""
         return self._configurator_type
+
+
+    @property
+    def lab_ap(self):
+        """Returns if the AP should be in the lab or not."""
+        return self._lab_ap
 
 
     def _validate_channel_and_mode(self):

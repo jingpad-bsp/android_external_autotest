@@ -6,9 +6,16 @@
 
 import logging
 
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.server.cros import chaos_config
 from autotest_lib.server.cros.chaos_ap_configurators import ap_cartridge
 from autotest_lib.server.cros.chaos_ap_configurators import ap_spec
+from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
+
+CONFIG = global_config.global_config
+
+_DEFAULT_AUTOTEST_INSTANCE = CONFIG.get_config_value('SERVER', 'hostname',
+                                                     type=str)
 
 class APConfiguratorFactory(object):
     """Class that instantiates all available APConfigurators.
@@ -286,16 +293,40 @@ class APConfiguratorFactory(object):
         return aps
 
     def _get_aps_by_configurator_type(self, configurator_type, ap_list):
-        """Returns aps that match the given configurator type.
+        """Returns APs that match the given configurator type.
 
-        @param configurator_type: the type of configurtor to
-         return.
+        @param configurator_type: the type of configurtor to return.
 
         @return a list of APConfigurators.
         """
         aps = []
         for ap in ap_list:
             if ap.configurator_type == configurator_type:
+                aps.append(ap)
+
+        return aps
+
+
+    def _get_aps_by_lab_location(self, want_chaos_aps, ap_list):
+        """Returns APs that are inside or outside of the chaos lab.
+
+        @param want_chaos_aps: True to select only APs in the chaos chamber.
+                               False to select APs outside of the chaos chamber.
+
+        @return a list of APConfigurators
+        """
+        aps = []
+        afe = frontend_wrappers.RetryingAFE(server=_DEFAULT_AUTOTEST_INSTANCE,
+                                            timeout_min=10,
+                                            delay_sec=5)
+        all_aps = set(afe.get_hostnames(label='chaos_ap'))
+        chaos_devices = set(afe.get_hostnames(label='chaos_chamber'))
+        chaos_aps = all_aps.intersection(chaos_devices)
+        for ap in ap_list:
+            if want_chaos_aps and ap.host_name in chaos_aps:
+                aps.append(ap)
+
+            if not want_chaos_aps and ap.host_name not in chaos_aps:
                 aps.append(ap)
 
         return aps
@@ -336,6 +367,7 @@ class APConfiguratorFactory(object):
         aps = _get_unique_aps(aps, self._get_aps_by_security(spec.security))
         aps = _get_unique_aps(aps, self._get_aps_by_visibility(spec.visible))
         matching_aps = list(aps)
+        matching_aps = self._get_aps_by_lab_location(spec.lab_ap, matching_aps)
 
         if spec.configurator_type != ap_spec.CONFIGURATOR_ANY:
             matching_aps = self._get_aps_by_configurator_type(

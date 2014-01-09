@@ -114,7 +114,7 @@ class APConfiguratorFactoryTest(mox.MoxTestBase):
             bands_and_modes=[{'band': ap_spec.BAND_2GHZ,
                               'modes': ap_spec.VALID_2GHZ_MODES}],
             supported_securities=ap_spec.VALID_SECURITIES,
-            host_name='mock_ap1',
+            host_name='chromeos3-row2-rack1-host1',
             configurator_type=ap_spec.CONFIGURATOR_STATIC
             )
         # AP2 supports 2.4 and 5 GHz, all modes, open system, and visibility.
@@ -130,9 +130,20 @@ class APConfiguratorFactoryTest(mox.MoxTestBase):
             supported_securities=[ap_spec.SECURITY_TYPE_DISABLED],
             visibility_supported=True,
             configurator_type=ap_spec.CONFIGURATOR_DYNAMIC,
-            host_name='mock_ap2',
+            host_name='chromeos3-row2-rack1-host2',
             )
-        self.factory.ap_list = [self.mock_ap1, self.mock_ap2]
+        # AP3 supports 2.4GHz band, all modes, all securities, and is not
+        # in the lab.
+        self.mock_ap3 = self.MockAp(
+            bands_and_channels=[{'band': ap_spec.BAND_2GHZ,
+                                 'channels': ap_spec.VALID_2GHZ_CHANNELS}],
+            bands_and_modes=[{'band': ap_spec.BAND_2GHZ,
+                              'modes': ap_spec.VALID_2GHZ_MODES}],
+            supported_securities=ap_spec.VALID_SECURITIES,
+            host_name='chromeos3-row7-rack1-host2',
+            configurator_type=ap_spec.CONFIGURATOR_STATIC
+            )
+        self.factory.ap_list = [self.mock_ap1, self.mock_ap2, self.mock_ap3]
 
 
     def testGetApConfigurators_WithBandAPSpec(self):
@@ -186,11 +197,12 @@ class APConfiguratorFactoryTest(mox.MoxTestBase):
         """Test obtaining a list of APs by hostname."""
         self._build_ap_test_inventory()
 
-        spec = ap_spec.APSpec(hostnames=['mock_ap1'])
+        spec = ap_spec.APSpec(hostnames=['chromeos3-row2-rack1-host1'])
         actual = self.factory.get_ap_configurators_by_spec(spec=spec)
         self.assertEquals([self.mock_ap1], actual)
 
-        spec = ap_spec.APSpec(hostnames=['mock_ap1', 'mock_ap2'])
+        spec = ap_spec.APSpec(hostnames=['chromeos3-row2-rack1-host1',
+                                         'chromeos3-row2-rack1-host2'])
         actual = self.factory.get_ap_configurators_by_spec(spec=spec)
         self.assertEquals([self.mock_ap1, self.mock_ap2].sort(), actual.sort())
 
@@ -216,3 +228,14 @@ class APConfiguratorFactoryTest(mox.MoxTestBase):
         actual = self.factory.get_ap_configurators_by_spec(spec=spec,
                                                            pre_configure=True)
         self.assertEquals([self.mock_ap1], actual)
+
+
+    def testGetAPConfigurators_ByLab(self):
+        """Test obtaining configurators by location relative to the lab."""
+        self._build_ap_test_inventory()
+
+        spec = ap_spec.APSpec(lab_ap=False)
+        actual = self.factory.get_ap_configurators_by_spec(spec=spec,
+                                                           pre_configure=True)
+        self.assertEquals([self.mock_ap3], actual)
+

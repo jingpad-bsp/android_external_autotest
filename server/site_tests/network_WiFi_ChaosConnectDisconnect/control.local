@@ -25,7 +25,8 @@ def run_chaos_debug(machine):
     capturer_hostname = 'chromeos3-row7-rack1-host1.cros'
     ap_specs = [ap_spec.APSpec(security=ap_spec.SECURITY_TYPE_WPA2PSK,
                                hostnames=debug_aps,
-                               band=ap_spec.BAND_2GHZ),]
+                               band=ap_spec.BAND_2GHZ,
+                               lab_ap=False)]
     for spec in ap_specs:
         runner = chaos_runner.ChaosRunner(
                 'network_WiFi_ChaosConnectDisconnect', host, spec)
