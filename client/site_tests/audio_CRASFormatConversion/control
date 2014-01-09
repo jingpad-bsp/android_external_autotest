@@ -20,4 +20,10 @@ This can be through a 3.5mm male-to-male cable or a loopback dongle depending on
 your device.
 """
 
-job.run_test('audio_CRASFormatConversion')
+TEST_SAMPLE_RATES = [
+        8000, 16000, 22050, 32000, 44100, 48000, 88200, 96000, 192000]
+
+job.run_test(
+        'audio_CRASFormatConversion',
+        test_sample_rates=TEST_SAMPLE_RATES,
+        constraints=['min_rms_value > 0.05'])

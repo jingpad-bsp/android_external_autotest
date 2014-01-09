@@ -6,34 +6,21 @@ import logging
 import os
 import tempfile
 
-from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.audio import audio_helper
 from autotest_lib.client.cros.audio import cmd_utils
 from autotest_lib.client.cros.audio import cras_utils
 from autotest_lib.client.cros.audio import sox_utils
 
-TEST_DURATION = 5 # In seconds.
-PLAYER_TIMEOUT = 5 # In seconds.
-VOLUME_LEVEL = 100
-CAPTURE_GAIN = 2500
 
-# Media formats to be tested. The length of these audio are all 5 seconds.
-MEDIA_FORMATS = ['sine440.mp3',
-                 'sine440.mp4',
-                 'sine440.wav',
-                 'sine440.ogv',
-                 'sine440.webm']
-
-class desktopui_MediaAudioFeedback(test.test):
+class desktopui_MediaAudioFeedback(audio_helper.chrome_rms_test):
     """Verifies if media playback can be captured."""
 
     version = 1
 
-    @audio_helper.chrome_rms_test
-    def run_once(self, chrome):
+    def run_once(self, test_files, test_duration):
+        self._rms_values = {}
         noise_file = os.path.join(self.resultsdir, 'noise.wav')
         noiseprof_file = tempfile.NamedTemporaryFile()
 
@@ -42,20 +29,19 @@ class desktopui_MediaAudioFeedback(test.test):
         sox_utils.noise_profile(noise_file, noiseprof_file.name)
 
         # Open the test page
-        chrome.browser.SetHTTPServerDirectories(self.bindir)
-        tab = chrome.browser.tabs[0]
-        tab.Navigate(chrome.browser.http_server.UrlOf(
+        self.chrome.browser.SetHTTPServerDirectories(self.bindir)
+        tab = self.chrome.browser.tabs[0]
+        tab.Navigate(self.chrome.browser.http_server.UrlOf(
                 os.path.join(self.bindir, 'play.html')))
         tab.WaitForDocumentReadyStateToBeComplete()
 
         # Test each media file for all channels.
-        for media_file in MEDIA_FORMATS:
-            self.rms_test(tab, media_file, noiseprof_file.name)
+        for media_file in test_files:
+            self.rms_test(tab, media_file, noiseprof_file.name, test_duration)
+        self.write_perf_keyval(self._rms_values)
 
-        os.unlink(noise_file)
 
-
-    def rms_test(self, tab, media_file, noiseprof_file):
+    def rms_test(self, tab, media_file, noiseprof_file, test_duration):
         logging.info('rms test on media file %s.', media_file)
         recorded_file = os.path.join(self.resultsdir, 'recorded.wav')
         loopback_file = os.path.join(self.resultsdir, 'loopback.wav')
@@ -65,9 +51,9 @@ class desktopui_MediaAudioFeedback(test.test):
 
         # Record the audio output and also the CRAS loopback output.
         p1 = cmd_utils.popen(cras_utils.capture_cmd(
-                recorded_file, duration=TEST_DURATION))
+                recorded_file, duration=test_duration))
         p2 = cmd_utils.popen(cras_utils.loopback_cmd(
-                loopback_file, duration=TEST_DURATION))
+                loopback_file, duration=test_duration))
         cmd_utils.wait_and_check_returncode(p1, p2)
 
         # See if we recorded something.
@@ -81,22 +67,19 @@ class desktopui_MediaAudioFeedback(test.test):
         reduced_file = tempfile.NamedTemporaryFile()
         sox_utils.noise_reduce(
                 recorded_file, reduced_file.name, noiseprof_file)
-        audio_helper.check_rms(reduced_file.name)
+        rms = audio_helper.get_rms(reduced_file.name)[0]
+
+        self._rms_values['%s_rms_value' % media_file.replace('.', '_')] = rms
 
         # Make sure the audio can be played to the end.
         self.wait_player_end(tab)
-
-        # Keep these files if the test failed.
-        os.unlink(recorded_file)
-        os.unlink(loopback_file)
 
 
     def wait_player_end(self, tab):
         """Wait for player ends playing."""
         utils.poll_for_condition(
             condition=lambda: tab.EvaluateJavaScript('player.ended'),
-            exception=error.TestError('Player never end until timeout.'),
-            timeout=PLAYER_TIMEOUT)
+            exception=error.TestError('Player never end until timeout.'))
 
 
     def play_media(self, tab, media_file):
@@ -113,5 +96,4 @@ class desktopui_MediaAudioFeedback(test.test):
         old_time = get_current_time()
         utils.poll_for_condition(
             condition=lambda: get_current_time() > old_time,
-            exception=error.TestError('Player never start until timeout.'),
-            timeout=PLAYER_TIMEOUT)
+            exception=error.TestError('Player never start until timeout.'))

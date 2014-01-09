@@ -15,7 +15,7 @@ from autotest_lib.client.cros.audio import sox_utils
 
 TEST_DURATION = 15
 
-class desktopui_AudioFeedback(test.test):
+class desktopui_AudioFeedback(audio_helper.chrome_rms_test):
     """Verifies if youtube playback can be captured."""
     version = 1
 
@@ -47,12 +47,11 @@ class desktopui_AudioFeedback(test.test):
             exception=error.TestError('Video is not played until timeout'))
 
 
-    @audio_helper.chrome_rms_test
-    def run_once(self, chrome):
+    def run_once(self):
         """Entry point of this test."""
-        chrome.browser.SetHTTPServerDirectories(self.bindir)
+        self.chrome.browser.SetHTTPServerDirectories(self.bindir)
 
-        video_url = chrome.browser.http_server.UrlOf(
+        video_url = self.chrome.browser.http_server.UrlOf(
                 os.path.join(self.bindir, 'youtube.html'))
         logging.info('Playing back youtube media file %s.', video_url)
         noise_file = os.path.join(self.resultsdir, "noise.wav")
@@ -63,7 +62,7 @@ class desktopui_AudioFeedback(test.test):
         cras_utils.capture(noise_file, duration=3)
 
         # Play a video and record the audio output
-        self.play_video(chrome.browser.tabs[0], video_url)
+        self.play_video(self.chrome.browser.tabs[0], video_url)
 
         p1 = cmd_utils.popen(cras_utils.capture_cmd(
                 recorded_file, duration=TEST_DURATION))
@@ -76,9 +75,7 @@ class desktopui_AudioFeedback(test.test):
         loopback_stats = [audio_helper.get_channel_sox_stat(
                 loopback_file, i) for i in (1, 2)]
         logging.info('loopback stats: %s', [str(s) for s in loopback_stats])
-        audio_helper.reduce_noise_and_check_rms(recorded_file, noise_file)
+        rms_value = audio_helper.reduce_noise_and_get_rms(
+            recorded_file, noise_file)[0]
 
-        # Keep these files if the test failed
-        os.unlink(noise_file)
-        os.unlink(recorded_file)
-        os.unlink(loopback_file)
+        self.write_perf_keyval({'rms_value': rms_value})

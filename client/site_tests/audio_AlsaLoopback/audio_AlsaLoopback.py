@@ -4,7 +4,6 @@
 
 import logging, os, time
 
-from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.audio import audio_helper
 from autotest_lib.client.cros.audio import alsa_utils
@@ -13,11 +12,10 @@ from autotest_lib.client.cros.audio import cmd_utils
 
 TEST_DURATION = 1
 
-class audio_AlsaLoopback(test.test):
+class audio_AlsaLoopback(audio_helper.alsa_rms_test):
     """Verifies audio playback and capture function."""
     version = 1
 
-    @audio_helper.alsa_rms_test
     def run_once(self):
         """Entry point of this test."""
 
@@ -42,8 +40,8 @@ class audio_AlsaLoopback(test.test):
         finally:
             cmd_utils.kill_or_log_returncode(p)
 
-        audio_helper.reduce_noise_and_check_rms(recorded_file, noise_file)
+        rms_value = audio_helper.reduce_noise_and_get_rms(
+            recorded_file, noise_file)[0]
 
-        # Keep the file if the above check fails
-        os.unlink(noise_file)
-        os.unlink(recorded_file)
+        self.write_perf_keyval({'rms_value': rms_value})
+

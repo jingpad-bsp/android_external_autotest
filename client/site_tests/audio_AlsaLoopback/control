@@ -22,4 +22,4 @@ This can be through a 3.5mm male-to-male cable or a loopback dongle depending on
 your device.
 """
 
-job.run_test('audio_AlsaLoopback')
+job.run_test('audio_AlsaLoopback', constraints=['rms_value > 0.05'])

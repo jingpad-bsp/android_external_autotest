@@ -4,7 +4,7 @@
 
 import logging, os, time
 
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.audio import audio_helper
 from autotest_lib.client.cros.audio import cmd_utils
@@ -13,7 +13,7 @@ from autotest_lib.client.cros.audio import cras_utils
 
 TEST_DURATION = 1
 
-class audio_CrasLoopback(test.test):
+class audio_CrasLoopback(audio_helper.cras_rms_test):
     """Verifies audio playback and capture function."""
     version = 1
 
@@ -26,7 +26,6 @@ class audio_CrasLoopback(test.test):
                  expected_count))
 
 
-    @audio_helper.cras_rms_test
     def run_once(self):
         """Entry point of this test."""
 
@@ -51,8 +50,7 @@ class audio_CrasLoopback(test.test):
         finally:
             cmd_utils.kill_or_log_returncode(p)
 
-        audio_helper.reduce_noise_and_check_rms(recorded_file, noise_file)
+        rms_value = audio_helper.reduce_noise_and_get_rms(
+                recorded_file, noise_file)[0]
+        self.write_perf_keyval({'rms_value': rms_value})
 
-        # Keep these files if the above check failed
-        os.unlink(noise_file)
-        os.unlink(recorded_file)

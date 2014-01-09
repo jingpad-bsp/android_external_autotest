@@ -13,7 +13,7 @@ import threading
 import time
 
 from glob import glob
-from autotest_lib.client.bin import utils
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.bin.input.input_device import *
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.audio import alsa_utils
@@ -489,42 +489,32 @@ def get_channel_sox_stat(
     return sox_utils.parse_stat_output(stat_output)
 
 
-def check_rms(
-        input_audio, rms_threshold=_DEFAULT_SOX_RMS_THRESHOLD,
-        channels=1, bits=16, rate=48000):
-    """Checks the RMS values of all channels of the input audio.
+def get_rms(input_audio, channels=1, bits=16, rate=48000):
+    """Gets the RMS values of all channels of the input audio.
 
     @param input_audio: The input audio file to be checked.
-    @param rms_threshold: The minimal requirement for RMS values of
-                          all channels.
     @param channels: The number of channels in the input audio.
     @param bits: The number of bits of each audio sample.
     @param rate: The sampling rate.
-    @raise TestFail: If the RMS of any channel is less than the threshold.
     """
     stats = [get_channel_sox_stat(
             input_audio, i + 1, channels=channels, bits=bits,
             rate=rate) for i in xrange(channels)]
 
     logging.info('sox stat: %s', [str(s) for s in stats])
-
-    if any(s.rms < rms_threshold for s in stats):
-        raise error.TestFail('RMS: %s' % [s.rms for s in stats])
+    return [s.rms for s in stats]
 
 
-def reduce_noise_and_check_rms(
-        input_audio, noise_file, rms_threshold=_DEFAULT_SOX_RMS_THRESHOLD,
-        channels=1, bits=16, rate=48000):
-    """Reduces noise in the input audio by the given noise file and then checks
+def reduce_noise_and_get_rms(
+        input_audio, noise_file, channels=1, bits=16, rate=48000):
+    """Reduces noise in the input audio by the given noise file and then gets
     the RMS values of all channels of the input audio.
 
     @param input_audio: The input audio file to be analyzed.
     @param noise_file: The noise file used to reduce noise in the input audio.
-    @param rms_threshold: The minimal requirement for RMS of all channels.
     @param channels: The number of channels in the input audio.
     @param bits: The number of bits of each audio sample.
     @param rate: The sampling rate.
-    @raise TestFail: If the RMS of any channel is less than the threshold.
     """
     with tempfile.NamedTemporaryFile() as reduced_file:
         p1 = cmd_utils.popen(
@@ -538,7 +528,7 @@ def reduce_noise_and_check_rms(
                         channels=channels, bits=bits, rate=rate),
                 stdin=p1.stdout)
         cmd_utils.wait_and_check_returncode(p1, p2)
-        check_rms(reduced_file.name, rms_threshold, channels, bits, rate)
+        return get_rms(reduced_file.name, channels, bits, rate)
 
 
 def skip_devices_to_test(*boards):
@@ -573,57 +563,67 @@ def generate_rms_postmortem():
         log_loopback_dongle_status()
         logging.info(cmd_utils.execute(
                 [_AUDIO_DIAGNOSTICS_PATH], stdout=cmd_utils.PIPE))
-    except:
+    except Exception:
         logging.exception('Error while generating postmortem report')
 
 
-def chrome_rms_test(run_once):
-    """ An annotation used for RMS audio test with Chrome.
+class _base_rms_test(test.test):
+    """ Base class for all rms_test """
 
-    The first parameter for run_once will be replaced by a chrome instance.
+    def postprocess(self):
+        super(_base_rms_test, self).postprocess()
 
-    @param run_once: the function which this annotation will be applied.
+        # Sum up the number of failed constraints in each iteration
+        if sum(len(x) for x in self.failed_constraints):
+            generate_rms_postmortem()
+
+
+class chrome_rms_test(_base_rms_test):
+    """ Base test class for audio RMS test with Chrome.
+
+    The chrome instance can be accessed by self.chrome.
     """
-    def wrapper(self, cr=None, *args, **kargs):
+    def warmup(self):
+        skip_devices_to_test('x86-mario')
+        super(chrome_rms_test, self).warmup()
+
         # Not all client of this file using telemetry.
         # Just do the import here for those who really need it.
         from autotest_lib.client.common_lib.cros import chrome
-        skip_devices_to_test('x86-mario')
+
+        self.chrome = chrome.Chrome()
+
+        # The audio configuration could be changed when we
+        # restart chrome.
         try:
-            with chrome.Chrome() as chrome_instance:
-                # The audio configuration could be changed when we
-                # restart chrome.
-                cras_rms_test_setup()
-                run_once(self, chrome_instance, *args, **kargs)
-        except error.TestFail:
-            generate_rms_postmortem()
+            cras_rms_test_setup()
+        except Exception:
+            self.chrome.browser.Close()
             raise
-    return wrapper
 
 
-def cras_rms_test(run_once):
-    """ An annotation used for RMS audio test with CRAS.
+    def cleanup(self, *args):
+        try:
+            self.chrome.browser.Close()
+        finally:
+            super(chrome_rms_test, self).cleanup()
 
-    @param run_once: the function which this annotation will be applied.
-    """
-    def wrapper(*args, **kargs):
+class cras_rms_test(_base_rms_test):
+    """ Base test class for CRAS audio RMS test."""
+
+    def warmup(self):
         skip_devices_to_test('x86-mario')
+        super(cras_rms_test, self).warmup()
         cras_rms_test_setup()
-        try:
-            run_once(*args, **kargs)
-        except error.TestFail:
-            generate_rms_postmortem()
-            raise
-    return wrapper
 
 
-def alsa_rms_test(run_once):
-    """ An annotation used for RMS audio test with ALSA.
+class alsa_rms_test(_base_rms_test):
+    """ Base test class for ALSA audio RMS test."""
 
-    @param run_once: the function which this annotation to be applied.
-    """
-    def wrapper(*args, **kargs):
+    def warmup(self):
         skip_devices_to_test('x86-mario')
+        super(alsa_rms_test, self).warmup()
+
         # TODO(owenlin): Don't use CRAS for setup.
         cras_rms_test_setup()
 
@@ -631,9 +631,3 @@ def alsa_rms_test(run_once):
         # streams are added. Do that to ensure the values have been set.
         cras_utils.playback('/dev/zero', duration=0.1)
         cras_utils.capture('/dev/null', duration=0.1)
-        try:
-            run_once(*args, **kargs)
-        except error.TestFail:
-            generate_rms_postmortem()
-            raise
-    return wrapper

@@ -7,7 +7,6 @@ import os
 import tempfile
 import time
 
-from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.audio import audio_helper
@@ -15,24 +14,13 @@ from autotest_lib.client.cros.audio import cmd_utils
 from autotest_lib.client.cros.audio import cras_utils
 from autotest_lib.client.cros.audio import sox_utils
 
-_TEST_SAMPLE_RATES = [ 8000,
-                       16000,
-                       22050,
-                       32000,
-                       44100,
-                       48000,
-                       88200,
-                       96000,
-                       192000 ]
-# Minimum RMS value to consider a "pass".  Can't be too high because we don't
-# know how much or our recording will be silence waiting for the tone to start.
-_MIN_SOX_RMS_VALUE = 0.05
 
 _TEST_TONE_ONE = 440
 _TEST_TONE_TWO = 523
 
-class audio_CRASFormatConversion(test.test):
+class audio_CRASFormatConversion(audio_helper.cras_rms_test):
     version = 1
+
 
     def play_sine_tone(self, frequence, rate):
         """Plays a sine tone by cras and returns the processes.
@@ -59,13 +47,13 @@ class audio_CRASFormatConversion(test.test):
                 timeout=1, sleep_interval=0.05)
 
     def loopback(self, noise_profile, primary, secondary):
-        """ Plays two different tones (the 440 and 523 Hz sine wave) at the
-            specified sampling rate and make sure the sounds is recorded
-        Args:
-            noise_profile: The noise profile which is used to reduce the
-                           noise of the recored audio.
-            primary: The sample rate to play first, HW will be set to this.
-            secondary: The second sample rate, will be SRC'd to the first.
+        """Gets the rms value of the recorded audio of playing two different
+        tones (the 440 and 523 Hz sine wave) at the specified sampling rate.
+
+        @param noise_profile: The noise profile which is used to reduce the
+                              noise of the recored audio.
+        @param primary: The first sample rate, HW will be set to this.
+        @param secondary: The second sample rate, will be SRC'd to the first.
         """
         popens = []
 
@@ -102,18 +90,16 @@ class audio_CRASFormatConversion(test.test):
             logging.info('The sox stat of (%d, %d) is %s',
                          primary, secondary, str(sox_stat))
 
-            if sox_stat.rms < _MIN_SOX_RMS_VALUE:
-               raise error.TestFail('RMS: %s' % sox_stat.rms)
+            return sox_stat.rms
 
-            # Remove the file only when we pass the test
-            os.unlink(record_file)
         finally:
             cmd_utils.kill_or_log_returncode(*popens)
 
-    @audio_helper.cras_rms_test
-    def run_once(self):
+    def run_once(self, test_sample_rates):
         """Runs the format conversion test.
         """
+
+        rms_values = {}
 
         # Record silence to use as the noise profile.
         noise_file = os.path.join(self.resultsdir, "noise.wav")
@@ -122,13 +108,18 @@ class audio_CRASFormatConversion(test.test):
         sox_utils.noise_profile(noise_file, noise_profile.name)
 
         # Try all sample rate pairs.
-        for primary in _TEST_SAMPLE_RATES:
-            for secondary in _TEST_SAMPLE_RATES:
-                self.loopback(noise_profile.name, primary, secondary)
+        for primary in test_sample_rates:
+            for secondary in test_sample_rates:
+                key = 'rms_value_%d_%d' % (primary, secondary)
+                rms_values[key] = self.loopback(
+                        noise_profile.name, primary, secondary)
 
         # Record at all sample rates
         record_file = tempfile.NamedTemporaryFile()
-        for rate in _TEST_SAMPLE_RATES:
+        for rate in test_sample_rates:
             cras_utils.capture(record_file.name, duration=1, rate=rate)
 
-        os.unlink(noise_file)
+        # Add min_rms_value to the result
+        rms_values['min_rms_value'] = min(rms_values.values())
+
+        self.write_perf_keyval(rms_values)
