@@ -26,6 +26,10 @@ class BelkinF9KAPConfigurator(
             alert.accept()
         elif 'It is recommended to use WPA/WPA2 when WPS is enabled' in text:
             alert.accept()
+        elif 'After changing to 11g mode' in text:
+            alert.accept()
+        elif 'After changing to 11b&g&n or 11n mode' in text:
+            alert.accept()
         else:
             alert.accept()
             raise RuntimeError('Unhandeled modal dialog. %s' % text)
