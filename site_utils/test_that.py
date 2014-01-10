@@ -493,7 +493,9 @@ def parse_arguments(argv):
     parser.add_argument('-i', '--build', metavar='BUILD', default=_NO_BUILD,
                         help='Build to test. Device will be reimaged if '
                              'necessary. Omit flag to skip reimage and test '
-                             'against already installed DUT image.')
+                             'against already installed DUT image. Examples: '
+                             'link-paladin/R34-5222.0.0-rc2, '
+                             'lumpy-release/R34-5205.0.0')
     parser.add_argument('--fast', action='store_true', dest='fast_mode',
                         default=False,
                         help='Enable fast mode.  This will cause test_that to '
