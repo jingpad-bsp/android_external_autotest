@@ -101,6 +101,7 @@ class power_LoadTest(cros_ui_test.UITest):
         self._testServer = None
         self._tasks = '\'' + tasks.replace(' ','') + '\''
         self._backchannel = None
+        self._shill_proxy = None
         self._kblight_percent = kblight_percent
         self._volume_level = volume_level
         self._mic_gain = mic_gain
@@ -128,9 +129,10 @@ class power_LoadTest(cros_ui_test.UITest):
             if not self._backchannel.setup():
                 raise error.TestError('Could not setup Backchannel network.')
 
-            shill_proxy = wifi_proxy.WifiProxy()
+            self._shill_proxy = wifi_proxy.WifiProxy()
+            self._shill_proxy.remove_all_wifi_entries()
             for attempt in range(3):
-                raw_output = shill_proxy.connect_to_wifi_network(
+                raw_output = self._shill_proxy.connect_to_wifi_network(
                         wifi_config.ssid,
                         wifi_config.security,
                         wifi_config.security_parameters,
@@ -361,6 +363,10 @@ class power_LoadTest(cros_ui_test.UITest):
             self._services.restore_services()
 
         # cleanup backchannel interface
+        # Prevent wifi congestion in test lab by forcing machines to forget the
+        # wifi AP we connected to at the start of the test.
+        if self._shill_proxy:
+            self._shill_proxy.remove_all_wifi_entries()
         if self._backchannel:
             self._backchannel.teardown()
         if self._testServer:
