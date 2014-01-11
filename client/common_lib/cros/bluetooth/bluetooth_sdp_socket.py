@@ -13,6 +13,7 @@ SDP_TID_CNT           = 1 << 16
 SDP_MAX_SSR_UUIDS_CNT = 12
 SDP_BODY_CNT_FORMAT   = '>HH'
 SDP_BODY_CNT_SIZE     = struct.calcsize(SDP_BODY_CNT_FORMAT)
+BLUETOOTH_BASE_UUID   = 0x0000000000001000800000805F9B34FB
 
 # Constants from lib/sdp.h in BlueZ source
 SDP_RESPONSE_TIMEOUT    = 20
@@ -179,19 +180,38 @@ class BluetoothSDPSocket(btsocket.socket):
         return rsp_code, rsp_data
 
 
-    def _pack_uuids(self, uuids):
+    def _pack_uuids(self, uuids, preferred_size):
         """Pack a list of UUIDs to a binary sequence
 
-        @param uuids: List of UUIDs in 32-bit format.
+        @param uuids: List of UUIDs (as integers).
+        @param preferred_size: Preffered size of UUIDs in bits (16, 32, or 128).
 
         @return packed list as a str
         @raise BluetoothSDPSocketError: if list of UUIDs after packing is larger
-               than or equal to 2^32 bytes
+               than or equal to 2^32 bytes or the given preferred size is not
+               supported by SDP
 
         """
+        if preferred_size not in (16, 32, 128):
+            raise BluetoothSDPSocketError('Unsupported UUID size: %d; '
+                                          'Supported values are: 16, 32, 128'
+                                          % preferred_size)
+
         res = ''
         for uuid in uuids:
-            res += struct.pack('>BI', SDP_UUID32, uuid)
+            # Fall back to 128 bits if the UUID does not fit into preferred_size
+            if uuid >= (1 << preferred_size) or preferred_size == 128:
+                uuid128 = uuid
+                if uuid < (1 << 32):
+                    uuid128 = (uuid128 << 96) + BLUETOOTH_BASE_UUID
+                packed_uuid = struct.pack('>BQQ', SDP_UUID128, uuid128 >> 64,
+                                          uuid128 & ((1 << 64) - 1))
+            elif preferred_size == 16:
+                packed_uuid = struct.pack('>BH', SDP_UUID16, uuid)
+            elif preferred_size == 32:
+                packed_uuid = struct.pack('>BI', SDP_UUID32, uuid)
+
+            res += packed_uuid
 
         size = len(res)
         if size < (1 << 8):
@@ -228,11 +248,12 @@ class BluetoothSDPSocket(btsocket.socket):
         return uuids, cont_state
 
 
-    def service_search_request(self, uuids, max_rec_cnt):
+    def service_search_request(self, uuids, max_rec_cnt, preferred_size=32):
         """Send a Service Search Request
 
-        @param uuids: List of UUIDs (in 32-bit format) to look for.
+        @param uuids: List of UUIDs (as integers) to look for.
         @param max_rec_cnt: Maximum count of returned service records.
+        @param preferred_size: Preffered size of UUIDs in bits (16, 32, or 128).
 
         @return list of found services' service record handles
         @raise BluetoothSDPSocketError: arguments do not match the SDP
@@ -246,7 +267,8 @@ class BluetoothSDPSocket(btsocket.socket):
         if len(uuids) > SDP_MAX_SSR_UUIDS_CNT:
             raise BluetoothSDPSocketError('Too many UUIDs')
 
-        pattern = self._pack_uuids(uuids) + struct.pack('>H', max_rec_cnt)
+        pattern = self._pack_uuids(uuids, preferred_size) + struct.pack(
+                  '>H', max_rec_cnt)
         cont_state = '\0'
         handles = []
 

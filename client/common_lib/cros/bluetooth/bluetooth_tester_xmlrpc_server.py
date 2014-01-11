@@ -299,16 +299,18 @@ class BluetoothTesterXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         return True
 
 
-    def service_search_request(self, uuids, max_rec_cnt):
+    def service_search_request(self, uuids, max_rec_cnt, preferred_size=32):
         """Send a Service Search Request
 
         @param uuids: List of UUIDs (in 32-bit format) to look for.
         @param max_rec_cnt: Maximum count of returned service records.
+        @param preferred_size: Preffered size of UUIDs in bits (16, 32, or 128).
 
         @return list of found services' service record handles
 
         """
-        return self._sdp.service_search_request(uuids, max_rec_cnt)
+        return self._sdp.service_search_request(uuids, max_rec_cnt,
+                                                preferred_size)
 
 
 if __name__ == '__main__':

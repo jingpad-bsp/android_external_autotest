@@ -24,8 +24,12 @@ class bluetooth_SDP_ServiceSearchRequestBasic(bluetooth_test.BluetoothTest):
         # connect to the DUT via L2CAP using SDP socket
         self.tester.connect(self.adapter['Address'])
         # at least the SDP server service exists
-        resp = self.tester.service_search_request([self.SDP_SERVER_CLASS_ID], 3)
-        return 0 in resp
+        for size in 16, 32, 128:
+            resp = self.tester.service_search_request(
+                   [self.SDP_SERVER_CLASS_ID], 3, size)
+            if not 0 in resp:
+                return False
+        return True
 
 
     def run_once(self):
