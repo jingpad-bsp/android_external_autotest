@@ -4,6 +4,7 @@
 
 import logging
 from autotest_lib.client.common_lib import error, utils
+from autotest_lib.client.cros import constants
 from autotest_lib.server import host_attributes
 
 AUTHOR = "Chromium OS"
@@ -144,6 +145,8 @@ for key in TEST_CONF_KEYS:
 def run_test(machine):
     """Execute a test configuration on a given machine."""
     host = hosts.create_host(machine, servo_args=servo_args)
+    # Save preserved log after autoupdate is completed.
+    job.sysinfo.add_logdir(constants.AUTOUPDATE_PRESERVE_LOG)
     try:
         job.run_test(
                 "autoupdate_EndToEndTest",
