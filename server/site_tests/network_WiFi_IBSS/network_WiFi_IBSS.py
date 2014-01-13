@@ -17,7 +17,6 @@ class network_WiFi_IBSS(wifi_cell_test_base.WiFiCellTestBase):
         """Body of the test."""
         self.context.router.require_capabilities(
                 [site_linux_system.LinuxSystem.CAPABILITY_IBSS])
-        self.context.router.create_wifi_device(device_type='ibss')
         configuration = hostap_config.HostapConfig(
                 frequency=2412, mode=hostap_config.HostapConfig.MODE_11B)
         self.context.configure(configuration, is_ibss=True)

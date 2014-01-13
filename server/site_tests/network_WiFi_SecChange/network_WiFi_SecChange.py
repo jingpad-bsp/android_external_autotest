@@ -36,9 +36,8 @@ class network_WiFi_SecChange(wifi_cell_test_base.WiFiCellTestBase):
         self.context.assert_connect_wifi(assoc_params)
         self.context.assert_ping_from_dut()
         self.context.client.shill.disconnect(assoc_params.ssid)
-        # This destroy erases the state stored in the router around WPA.
-        self.context.router.destroy()
-        self.context.router.create_wifi_device()
+        # This deconfig erases the state stored in the router around WPA.
+        self.context.router.deconfig()
         # Now we change the same SSID to be an open network.
         ap_config = hostap_config.HostapConfig(
                     ssid=self.TEST_SSID,

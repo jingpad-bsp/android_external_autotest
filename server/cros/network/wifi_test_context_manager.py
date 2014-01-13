@@ -173,13 +173,9 @@ class WiFiTestContextManager(object):
         router_port = int(self._cmdline_args.get(self.CMDLINE_ROUTER_PORT, 22))
         logging.info('Connecting to router at %s:%d',
                      self.router_address, router_port)
-        # TODO(wiley) Simplify the router and make the parameters explicit.
-        router_params = {}
         self._router = site_linux_router.LinuxRouter(
                 hosts.SSHHost(self.router_address, port=router_port),
-                router_params, self._test_name)
-        # If we're testing WiFi, we're probably going to need one of these.
-        self._router.create_wifi_device()
+                self._test_name)
         # The '_server' is a machine which hosts network services, such as
         # OpenVPN or StrongSwan.  Note that we make a separate SSHHost instance
         # here because both the server and the router expect to close() their

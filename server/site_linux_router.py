@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import collections
 import logging
 import random
 import string
@@ -12,6 +13,11 @@ from autotest_lib.client.common_lib.cros.network import interface
 from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros import wifi_test_utils
 from autotest_lib.server.cros.network import hostap_config
+
+
+StationInstance = collections.namedtuple('StationInstance',
+                                         ['ssid', 'interface', 'dev_type'])
+
 
 class LinuxRouter(site_linux_system.LinuxSystem):
     """Linux/mac80211-style WiFi Router support for WiFiTest class.
@@ -44,31 +50,31 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         caps = set([self.CAPABILITY_IBSS])
         try:
             self.cmd_send_management_frame = wifi_test_utils.must_be_installed(
-                    self.router, '/usr/bin/send_management_frame')
+                    self.host, '/usr/bin/send_management_frame')
             caps.add(self.CAPABILITY_SEND_MANAGEMENT_FRAME)
         except error.TestFail:
             pass
         return super(LinuxRouter, self).get_capabilities().union(caps)
 
 
-    def __init__(self, host, params, test_name):
+    @property
+    def router(self):
+        """Deprecated.  Use self.host instead.
+
+        @return Host object representing the remote router.
+
+        """
+        return self.host
+
+
+    def __init__(self, host, test_name):
         """Build a LinuxRouter.
 
         @param host Host object representing the remote machine.
-        @param params dict of settings from site_wifitest based tests.
         @param test_name string name of this test.  Used in SSID creation.
 
         """
-        params = params.copy()
-        params.update({
-            'phy_bus_preference': {
-                'monitor': 'usb',
-                'managed': 'pci'
-            }})
-        site_linux_system.LinuxSystem.__init__(self, host, params, 'router')
-
-        # Router host.
-        self.router = host
+        super(LinuxRouter, self).__init__(host, 'router')
 
         self.cmd_dhcpd = '/usr/sbin/dhcpd'
         self.cmd_hostapd = wifi_test_utils.must_be_installed(
@@ -91,15 +97,9 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.ssid_prefix += '_'
 
         self._total_hostapd_instances = 0
-        self.station = {
-            'configured': False,
-            'config_file': "/tmp/wpa-supplicant-test-%s.conf",
-            'log_file': "/tmp/wpa-supplicant-test-%s.log",
-            'pid_file': "/tmp/wpa-supplicant-test-%s.pid",
-            'conf': {},
-        }
         self.local_servers = []
         self.hostapd_instances = []
+        self.station_instances = []
         self.dhcp_low = 1
         self.dhcp_high = 128
 
@@ -113,42 +113,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
     def close(self):
         """Close global resources held by this system."""
-        self.destroy()
-        super(LinuxRouter, self).close()
-
-
-    def create_wifi_device(self, device_type='hostap'):
-        """Create a wifi device of the specified type.
-
-        Defaults to creating a hostap managed device.
-
-        @param device_type string device type.
-
-        """
-        #
-        # AP mode is handled entirely by hostapd so we only
-        # have to setup others (mapping the bsd type to what
-        # iw wants)
-        #
-        # map from bsd types to iw types
-        self.apmode = device_type in ('ap', 'hostap')
-        if not self.apmode:
-            self.station['type'] = device_type
-        self.phytype = {
-            'sta'       : 'managed',
-            'monitor'   : 'monitor',
-            'adhoc'     : 'adhoc',
-            'ibss'      : 'ibss',
-            'ap'        : 'managed',     # NB: handled by hostapd
-            'hostap'    : 'managed',     # NB: handled by hostapd
-            'mesh'      : 'mesh',
-            'wds'       : 'wds',
-        }[device_type]
-
-
-    def destroy(self):
-        """Destroy a previously created device."""
         self.deconfig()
+        super(LinuxRouter, self).close()
 
 
     def has_local_server(self):
@@ -166,9 +132,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         logging.info('Starting hostapd with parameters: %r',
                      hostapd_conf_dict)
         # Figure out the correct interface.
-        interface = self.get_wlanif(configuration.frequency,
-                                    self.phytype,
-                                    configuration.hw_mode)
+        interface = self.get_wlanif(configuration.frequency, 'managed')
 
         conf_file = self.HOSTAPD_CONF_FILE_PATTERN % interface
         log_file = self.HOSTAPD_LOG_FILE_PATTERN % interface
@@ -299,7 +263,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
         """
         if multi_interface is None and (self.hostapd_instances or
-                                        self.station['configured']):
+                                        self.station_instances):
             self.deconfig()
         # Start with the default hostapd config parameters.
         conf = self.__get_default_hostap_config()
@@ -373,21 +337,19 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         @param config HostapConfig object.
 
         """
-        if self.station['configured'] or self.hostapd_instances:
+        if self.station_instances or self.hostapd_instances:
             self.deconfig()
-        interface = self.get_wlanif(config.frequency, self.phytype,
-                                    config.hw_mode)
-        self.station['conf']['ssid'] = (config.ssid or
-                                        self._build_ssid(config.ssid_suffix))
+        interface = self.get_wlanif(config.frequency, 'ibss')
+        ssid = (config.ssid or self._build_ssid(config.ssid_suffix))
         # Connect the station
         self.router.run('%s link set %s up' % (self.cmd_ip, interface))
-        self.iw_runner.ibss_join(
-                interface, self.station['conf']['ssid'], config.frequency)
+        self.iw_runner.ibss_join(interface, ssid, config.frequency)
         # Always start a local server.
         self.start_local_server(interface)
         # Remember that this interface is up.
-        self.station['configured'] = True
-        self.station['interface'] = interface
+        self.station_instances.append(
+                StationInstance(ssid=ssid, interface=interface,
+                                dev_type='ibss'))
 
 
     def local_server_address(self, index):
@@ -420,8 +382,10 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         """Get the MAC address of the peer interface.
 
         @return string MAC address of the peer interface.
+
         """
-        iface = interface.Interface(self.station['interface'], self.router)
+        iface = interface.Interface(self.station_instances[0].interface,
+                                    self.router)
         return iface.mac_address
 
 
@@ -560,7 +524,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                 the DUT.
 
         """
-        if not self.hostapd_instances and not self.station['configured']:
+        if not self.hostapd_instances and not self.station_instances:
             return
 
         if self.hostapd_instances:
@@ -597,26 +561,25 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                 self.release_interface(instance['interface'])
 #               self.router.run("rm -f %(log_file)s %(conf_file)s" % instance)
             self._total_hostapd_instances += 1
-        if self.station['configured']:
+        if self.station_instances:
             local_servers = self.local_servers
             self.local_servers = []
-            if self.station['type'] == 'ibss':
-                self.iw_runner.ibss_leave(self.station['interface'])
-            elif self.station['type'] == 'supplicant':
+            instance = self.station_instances.pop()
+            if instance.dev_type == 'ibss':
+                self.iw_runner.ibss_leave(instance.interface)
+            elif instance.dev_type == 'managed':
                 self._kill_process_instance('wpa_supplicant',
-                                            self.station['interface'])
+                                            instance.interface)
             else:
-                self.iw_runner.disconnect_station(self.station['interface'])
-            self.router.run("%s link set %s down" % (self.cmd_ip,
-                                                     self.station['interface']))
+                self.iw_runner.disconnect_station(instance.interface)
+            self.router.run('%s link set %s down' %
+                            (self.cmd_ip, instance.interface))
 
         for server in local_servers:
             self.stop_dhcp_server(server['interface'])
             self.router.run("%s addr del %s" %
                             (self.cmd_ip, server['ip_params']),
                              ignore_status=True)
-
-        self.station['configured'] = False
 
 
     def confirm_pmksa_cache_use(self, instance=0):
@@ -644,10 +607,10 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         if self.hostapd_instances:
             return self.hostapd_instances[instance]['ssid']
 
-        if not 'ssid' in self.station['conf']:
-            raise error.TestFail('Requested ssid of an unconfigured AP.')
+        if self.station_instances:
+            return self.station_instances[0].ssid
 
-        return self.station['conf']['ssid']
+        raise error.TestFail('Requested ssid of an unconfigured AP.')
 
 
     def deauth_client(self, client_mac):
@@ -729,18 +692,14 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         if not self.hostapd_instances:
             raise error.TestFail('Hostapd is not configured.')
 
-        if self.station['configured']:
+        if self.station_instances:
             raise error.TestFail('Station is already configured.')
 
-        client_conf = self.station['conf']
-        client_conf['ssid'] = self.get_ssid(instance)
-
+        ssid = self.get_ssid(instance)
         hostap_conf = self.hostapd_instances[instance]['config_dict']
         frequency = hostap_config.HostapConfig.get_frequency_for_channel(
                 hostap_conf['channel'])
-        interface = self.get_wlanif(
-                frequency, 'managed', hostap_conf['hw_mode'])
-        client_conf['interface'] = interface
+        interface = self.get_wlanif(frequency, 'managed')
 
         # TODO(pstew): Configure other bits like PSK, 802.11n if tests
         # require them...
@@ -748,7 +707,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                 'network={\n'
                 '  ssid="%(ssid)s"\n'
                 '  key_mgmt=NONE\n'
-                '}\n' % client_conf
+                '}\n' % {'ssid': ssid}
         )
 
         conf_file = self.STATION_CONF_FILE_PATTERN % interface
@@ -786,6 +745,6 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.router.run('echo 1 > /proc/sys/net/ipv4/conf/%s/arp_ignore' %
                         hostap_conf['interface'])
 
-        self.station['configured'] = True
-        self.station['type'] = 'supplicant'
-        self.station['interface'] = interface
+        self.station_instances.append(
+                StationInstance(ssid=ssid, interface=interface,
+                                dev_type='managed'))

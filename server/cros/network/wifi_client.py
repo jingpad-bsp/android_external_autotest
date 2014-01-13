@@ -198,7 +198,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
         @param result_dir string directory to store test logs/packet caps.
 
         """
-        super(WiFiClient, self).__init__(client_host, {}, 'client',
+        super(WiFiClient, self).__init__(client_host, 'client',
                                          inherit_interfaces=True)
         self._board = None
         self._command_ip = 'ip'

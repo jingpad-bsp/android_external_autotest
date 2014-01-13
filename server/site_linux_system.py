@@ -44,30 +44,21 @@ class LinuxSystem(object):
         return self._capabilities
 
 
-    def __init__(self, host, params, role, inherit_interfaces=False):
+    def __init__(self, host, role, inherit_interfaces=False):
         # Command locations.
         cmd_iw = wifi_test_utils.must_be_installed(
-                host, params.get('cmd_iw', '/usr/sbin/iw'))
+                host, '/usr/sbin/iw')
         self.cmd_ip = wifi_test_utils.must_be_installed(
-                host, params.get('cmd_ip', '/usr/sbin/ip'))
+                host, '/usr/sbin/ip')
         self.cmd_readlink = '%s -l' % wifi_test_utils.must_be_installed(
-                host, params.get('cmd_readlink', '/bin/ls'))
-
-        self.phy_bus_preference = params.get('phy_bus_preference', {})
-        self.phydev2 = params.get('phydev2', None)
-        self.phydev5 = params.get('phydev5', None)
+                host, '/bin/ls')
 
         self.host = host
         self.role = role
 
-        cmd_netdump = wifi_test_utils.get_install_path(
-                host, params.get('cmd_netdump', '/usr/sbin/tcpdump'))
-        cmd_ifconfig = wifi_test_utils.get_install_path(
-                host, params.get('cmd_ifconfig', 'ifconfig'))
         self._packet_capturer = packet_capturer.get_packet_capturer(
-                self.host, host_description=role, cmd_ifconfig=cmd_ifconfig,
-                cmd_ip=self.cmd_ip, cmd_iw=cmd_iw, cmd_netdump=cmd_netdump,
-                ignore_failures=True)
+                self.host, host_description=role, cmd_ip=self.cmd_ip,
+                cmd_iw=cmd_iw, ignore_failures=True)
         self.iw_runner = iw_runner.IwRunner(remote_host=host, command_iw=cmd_iw)
 
         self._phy_list = None
@@ -257,7 +248,7 @@ class LinuxSystem(object):
         idle_phys = [phy for phy in phys if phy not in busy_phys]
         phys = idle_phys or phys
 
-        preferred_bus = self.phy_bus_preference.get(phytype)
+        preferred_bus = {'monitor': 'usb', 'managed': 'pci'}.get(phytype)
         preferred_phys = [phy for phy in phys
                           if self.phy_bus_type[phy] == preferred_bus]
         phys = preferred_phys or phys
@@ -265,15 +256,11 @@ class LinuxSystem(object):
         return phys[0]
 
 
-    def get_wlanif(self, frequency, phytype, mode=None, same_phy_as=None):
-        """Get a WiFi device that supports the given frequency, mode, and type.
-
-        We still support the old "phydevN" parameters, but this code is
-        smart enough to do without it.
+    def get_wlanif(self, frequency, phytype, same_phy_as=None):
+        """Get a WiFi device that supports the given frequency and type.
 
         @param frequency int WiFi frequency to support.
         @param phytype string type of phy (e.g. 'monitor').
-        @param mode string 'a' 'b' or 'g'.
         @param same_phy_as string create the interface on the same phy as this.
         @return string WiFi device.
 
@@ -286,15 +273,11 @@ class LinuxSystem(object):
             else:
                 raise error.TestFail('Unable to find phy for interface %s' %
                                      same_phy_as)
-        elif mode in ('b', 'g') and self.phydev2 is not None:
-            phy = self.phydev2
-        elif mode == 'a' and self.phydev5 is not None:
-            phy = self.phydev5
         elif frequency in self.phys_for_frequency:
             phy = self._get_phy_for_frequency(frequency, phytype)
         else:
-            raise error.TestFail('Unable to find phy for frequency %d mode %s' %
-                                 (frequency, mode))
+            raise error.TestFail('Unable to find phy for frequency %d' %
+                                 frequency)
 
         # If we have a suitable unused interface sitting around on this
         # phy, reuse it.
