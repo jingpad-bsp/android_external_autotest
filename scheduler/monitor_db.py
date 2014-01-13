@@ -759,6 +759,7 @@ class BaseDispatcher(object):
         sort_order = ('afe_jobs.priority DESC, '
                       'ISNULL(host_id), '
                       'ISNULL(meta_host), '
+                      'parent_job_id, '
                       'job_id')
         query=('NOT complete AND NOT active AND status="Queued"'
                'AND NOT aborted')
