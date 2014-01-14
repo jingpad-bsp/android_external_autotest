@@ -42,6 +42,9 @@ INNER_PINCH_SPACING = 25
 
 PHYSICAL_CLICK_SPACING = 20
 
+TWO_CLOSE_FINGER_SPACING = 17
+TWO_FINGER_SPACING = 25
+
 class RobotWrapperError(Exception):
     """An exception class for the robot_wrapper module."""
     pass
@@ -50,7 +53,7 @@ class RobotWrapperError(Exception):
 class RobotWrapper:
     """A class to wrap and manipulate the robot library."""
 
-    def __init__(self, board, mode, is_touchscreen, should_calibrate=False):
+    def __init__(self, board, mode, is_touchscreen, should_calibrate=True):
         self._board = board
         self._mode = mode
         self.is_touchscreen = is_touchscreen
@@ -79,6 +82,7 @@ class RobotWrapper:
             conf.TWO_FINGER_TRACKING: self._get_control_command_line,
             conf.TWO_FINGER_SWIPE: self._get_control_command_line,
             conf.TWO_FINGER_TAP: self._get_control_command_single_tap,
+            conf.TWO_CLOSE_FINGERS_TRACKING: self._get_control_command_line,
             conf.RESTING_FINGER_PLUS_2ND_FINGER_MOVE:
                     self._get_control_command_one_stationary_finger,
             conf.PINCH_TO_ZOOM: self._get_control_command_pinch,
@@ -107,6 +111,18 @@ class RobotWrapper:
             GV.CR: (CENTER, CENTER, OFF_END, CENTER),
             GV.CT: (CENTER, CENTER, CENTER, OFF_START),
             GV.CB: (CENTER, CENTER, CENTER, OFF_END),
+        }
+
+        # The angle wrt the pad that the fingers should take when doing a 2f
+        # gesture along these lines.
+        self._angle_dict = {
+            GV.LR: -45,
+            GV.RL: -45,
+            GV.TB: 45,
+            GV.BT: 45,
+            GV.TLBR: 90,
+            GV.BLTR: 0,
+            GV.TRBL: 0,
         }
 
         self._speed_dict = {
@@ -277,15 +293,19 @@ class RobotWrapper:
     def _get_control_command_line(self, robot_script, gesture, variation):
         """Get robot control command for gestures using robot line script."""
         line_type = 'swipe' if bool('swipe' in gesture) else 'basic'
-        line = speed = None
+        line = speed = finger_angle = None
         for element in variation:
             if element in GV.GESTURE_DIRECTIONS:
                 line = self._line_dict[element]
+                finger_angle = self._angle_dict.get(element, None)
             elif element in GV.GESTURE_SPEED:
                 speed = self._speed_dict[element]
 
         if line_type is 'swipe' and speed is None:
             speed = self._speed_dict[GV.FAST]
+
+        if 'two_close_fingers' in gesture and speed is None:
+            speed = self._speed_dict[GV.NORMAL]
 
         if line is None or speed is None:
             msg = 'Cannot derive the line/speed parameters from %s %s.'
@@ -294,15 +314,18 @@ class RobotWrapper:
         line = self._reverse_coord_if_is_touchscreen(line)
         start_x, start_y, end_x, end_y = line
 
-        if 'two_finger' in gesture:
-            finger_spacing = 25
-            fingers = (0, 1, 0, 1)
-            if end_x != start_x:
-                finger_angle = math.degrees(math.atan((end_y - start_y) /
-                                                      (end_x - start_x))) + 90
+        if 'two' in gesture:
+            if 'close_fingers' in gesture:
+                finger_spacing = TWO_CLOSE_FINGER_SPACING
+                finger_angle += 45
+                fingers = (1, 1, 0, 0)
             else:
-                finger_angle = 0
-            finger_angle += 45
+                finger_spacing = TWO_FINGER_SPACING
+                fingers = (0, 1, 0, 1)
+
+            if finger_angle is None:
+                msg = 'Unable to determine finger angle for %s %s.'
+                self._raise_error(msg % (gesture, variation))
         else:
             finger_spacing = 17
             fingers = (0, 1, 0, 0)
