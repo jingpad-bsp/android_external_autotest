@@ -198,8 +198,15 @@ class IwRunner(object):
         self._run('%s dev %s ibss leave' % (self._command_iw, interface))
 
 
-    def list_interfaces(self):
-        """@return list of string WiFi interface names on device."""
+    def list_interfaces(self, desired_if_type=None):
+        """List WiFi related interfaces on this system.
+
+        @param desired_if_type: string type of interface to filter
+                our returned list of interfaces for (e.g. 'managed').
+
+        @return list of IwNetDev tuples.
+
+        """
         output = self._run('%s dev' % self._command_iw).stdout
         interfaces = []
         phy = None
@@ -222,6 +229,9 @@ class IwRunner(object):
                 # One phy may have many interfaces, so don't reset it.
                 if_name = if_type = None
 
+        if desired_if_type:
+            interfaces = [interface for interface in interfaces
+                          if interface.if_type == desired_if_type]
         return interfaces
 
 

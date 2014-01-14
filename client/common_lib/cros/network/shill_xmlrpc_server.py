@@ -174,7 +174,8 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         wifi_if = params.bgscan_config.interface
         if wifi_if is None:
             logging.info('Using default interface for bgscan configuration')
-            interfaces = iw_runner.IwRunner().list_interfaces()
+            iw_helper = iw_runner.IwRunner()
+            interfaces = iw_helper.list_interfaces(desired_if_type='managed')
             if not interfaces:
                 return xmlrpc_datatypes.AssociationResult(
                         failure_reason='No wifi interfaces found?')

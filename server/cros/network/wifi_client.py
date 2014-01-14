@@ -213,7 +213,9 @@ class WiFiClient(site_linux_system.LinuxSystem):
         self._ping_thread = None
         self._result_dir = result_dir
         # Look up the WiFi device (and its MAC) on the client.
-        devs = self.iw_runner.list_interfaces()
+        devs = self.iw_runner.list_interfaces(desired_if_type='managed')
+        # TODO(wiley) Handle a missing management interface by recreating
+        #             it (or rebooting).
         if not devs:
             raise error.TestFail('No wlan devices found on %s.' %
                                  self.host.hostname)
