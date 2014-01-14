@@ -124,6 +124,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
             'PowerState' : dbus.types.UInt32(mm1.MM_MODEM_POWER_STATE_ON),
             'SupportedIpFamilies' :
                 dbus.types.UInt32(mm1.MM_BEARER_IP_FAMILY_ANY),
+            'Bearers' : dbus.Array([], signature='o'),
 
             # specified by subclass:
             'SupportedCapabilities' :
@@ -461,8 +462,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
         @return A list of bearer object paths.
 
         """
-        logging.info('ListBearers')
-        return [dbus.types.ObjectPath(key) for key in self.bearers.iterkeys()]
+        return self.Get(mm1.I_MODEM, 'Bearers')
 
     @utils.log_dbus_method()
     @dbus.service.method(mm1.I_MODEM, in_signature='a{sv}', out_signature='o')
@@ -491,6 +491,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
             bearer_obj = bearer.Bearer(self.bus, properties)
             logging.info('Created bearer with path "%s".', bearer_obj.path)
             self.bearers[bearer_obj.path] = bearer_obj
+            self._UpdateBearersProperty()
             return bearer_obj.path
 
     def ActivateBearer(self, bearer_path):
@@ -574,6 +575,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
 
         bearer_object.remove_from_connection()
         self.bearers.pop(bearer)
+        self._UpdateBearersProperty()
 
     def ClearBearers(self):
         """
@@ -804,3 +806,14 @@ class Modem(dbus_std_ifaces.DBusProperties,
         """
         logging.info('New SMS added: path: ' + path + ' received: ' +
                      str(received))
+
+    def _UpdateBearersProperty(self):
+        """
+        Update the 'Bearers' property on |I_MODEM| interface to match the
+        internal list.
+
+        """
+        bearers = dbus.Array(
+                [dbus.types.ObjectPath(key) for key in self.bearers.iterkeys()],
+                signature='o')
+        self.Set(mm1.I_MODEM, 'Bearers', bearers)
