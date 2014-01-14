@@ -40,12 +40,9 @@ class Servo(object):
     # TODO(jrbarnette) Being generous is the right thing to do for
     # existing platforms, but if this code is to be used for
     # qualification of new hardware, we should be less generous.
-    LONG_DELAY = 8.5
     SHORT_DELAY = 0.1
-    NORMAL_TRANSITION_DELAY = 1.2
 
     # Maximum number of times to re-read power button on release.
-    RELEASE_RETRY_MAX = 5
     GET_RETRY_MAX = 10
 
     # Delays to deal with DUT state transitions.
@@ -64,41 +61,6 @@ class Servo(object):
     # Time to wait before timing out on servo initialization.
     INIT_TIMEOUT_SECS = 10
 
-    KEY_MATRIX_ALT_0 = {
-        'ctrl_refresh':  ['0', '0', '0', '1'],
-        'ctrl_d':        ['0', '1', '0', '0'],
-        'd':             ['0', '1', '1', '1'],
-        'ctrl_enter':    ['1', '0', '0', '0'],
-        'enter':         ['1', '0', '1', '1'],
-        'ctrl':          ['1', '1', '0', '0'],
-        'refresh':       ['1', '1', '0', '1'],
-        'unused':        ['1', '1', '1', '0'],
-        'none':          ['1', '1', '1', '1']}
-
-    KEY_MATRIX_ALT_1 = {
-        'ctrl_d':        ['0', '0', '1', '0'],
-        'd':             ['0', '0', '1', '1'],
-        'ctrl_enter':    ['0', '1', '1', '0'],
-        'enter':         ['0', '1', '1', '1'],
-        'ctrl_refresh':  ['1', '0', '0', '1'],
-        'unused':        ['1', '1', '0', '0'],
-        'refresh':       ['1', '1', '0', '1'],
-        'ctrl':          ['1', '1', '1', '0'],
-        'none':          ['1', '1', '1', '1']}
-
-    KEY_MATRIX_ALT_2 = {
-        'ctrl_d':        ['0', '0', '0', '1'],
-        'd':             ['0', '0', '1', '1'],
-        'unused':        ['0', '1', '1', '1'],
-        'rec_mode':      ['1', '0', '0', '0'],
-        'ctrl_enter':    ['1', '0', '0', '1'],
-        'enter':         ['1', '0', '1', '1'],
-        'ctrl':          ['1', '1', '0', '1'],
-        'refresh':       ['1', '1', '1', '0'],
-        'ctrl_refresh':  ['1', '1', '1', '1'],
-        'none':          ['1', '1', '1', '1']}
-
-    KEY_MATRIX = [KEY_MATRIX_ALT_0, KEY_MATRIX_ALT_1, KEY_MATRIX_ALT_2]
 
     def __init__(self, servo_host):
         """Sets up the servo communication infrastructure.
@@ -106,7 +68,6 @@ class Servo(object):
         @param servo_host: A ServoHost object representing
                            the host running servod.
         """
-        self._key_matrix = 0
         # TODO(fdeng): crbug.com/298379
         # We should move servo_host object out of servo object
         # to minimize the dependencies on the rest of Autotest.
@@ -175,40 +136,25 @@ class Servo(object):
         # button press (at least on Alex).  To guarantee that this
         # won't happen, we need to allow the EC one second to
         # collect itself.
-        self.power_key(Servo.LONG_DELAY)
-        time.sleep(1.0)
+        self._server.power_long_press()
 
 
     def power_normal_press(self):
         """Simulate a normal power button press."""
-        self.power_key()
+        self._server.power_normal_press()
 
 
     def power_short_press(self):
         """Simulate a short power button press."""
-        self.power_key(Servo.SHORT_DELAY)
+        self._server.power_short_press()
 
 
-    def power_key(self, secs=NORMAL_TRANSITION_DELAY):
+    def power_key(self, press_secs=''):
         """Simulate a power button press.
 
-        Args:
-          secs: Time in seconds to simulate the keypress.
+        @param press_secs : Str. Time to press key.
         """
-        self.set_get_all(['pwr_button:press',
-                          'sleep:%.4f' % secs,
-                          'pwr_button:release'])
-        # TODO(tbroch) Different systems have different release times on the
-        # power button that this loop addresses.  Longer term we may want to
-        # make this delay platform specific.
-        retry = 1
-        while True:
-            value = self.get('pwr_button')
-            if value == 'release' or retry > Servo.RELEASE_RETRY_MAX:
-                break
-            logging.info('Waiting for pwr_button to release, retry %d.', retry)
-            retry += 1
-            time.sleep(Servo.SHORT_DELAY)
+        self._server.power_key(press_secs)
 
 
     def lid_open(self):
@@ -225,84 +171,80 @@ class Servo(object):
         time.sleep(Servo.SLEEP_DELAY)
 
 
-    def _press_keys(self, key):
-        """Simulate button presses.
+    def ctrl_d(self, press_secs=''):
+        """Simulate Ctrl-d simultaneous button presses.
 
-        Note, key presses will remain on indefinitely. See
-            _press_and_release_keys for release procedure.
+        @param press_secs : Str. Time to press key.
         """
-        (m1_a1_n, m1_a0_n, m2_a1_n, m2_a0_n) = (
-                self.KEY_MATRIX[self._key_matrix]['none'])
-        (m1_a1, m1_a0, m2_a1, m2_a0) = self.KEY_MATRIX[self._key_matrix][key]
-        self.set_get_all(['kbd_m2_a0:%s' % m2_a0_n,
-                          'kbd_m2_a1:%s' % m2_a1_n,
-                          'kbd_m1_a0:%s' % m1_a0_n,
-                          'kbd_m1_a1:%s' % m1_a1_n,
-                          'kbd_en:on',
-                          'kbd_m2_a0:%s' % m2_a0,
-                          'kbd_m2_a1:%s' % m2_a1,
-                          'kbd_m1_a0:%s' % m1_a0,
-                          'kbd_m1_a1:%s' % m1_a1])
+        self._server.ctrl_d(press_secs)
 
 
-    def _press_and_release_keys(self, key, press_secs=None):
-        """Simulate button presses and release."""
-        if press_secs is None:
-            press_secs = self.SERVO_KEY_PRESS_DELAY
-        self._press_keys(key)
-        time.sleep(press_secs)
-        self.set_nocheck('kbd_en', 'off')
+    def ctrl_u(self):
+        """Simulate Ctrl-u simultaneous button presses.
+
+        @param press_secs : Str. Time to press key.
+        """
+        self._server.ctrl_u()
 
 
-    def set_key_matrix(self, matrix=0):
-        """Set keyboard mapping"""
-        self._key_matrix = matrix
+    def ctrl_enter(self, press_secs=''):
+        """Simulate Ctrl-enter simultaneous button presses.
+
+        @param press_secs : Str. Time to press key.
+        """
+        self._server.ctrl_enter(press_secs)
 
 
-    def ctrl_d(self, press_secs=None):
-        """Simulate Ctrl-d simultaneous button presses."""
-        self._press_and_release_keys('ctrl_d', press_secs)
+    def d_key(self, press_secs=''):
+        """Simulate Enter key button press.
+
+        @param press_secs : Str. Time to press key.
+        """
+        self._server.d_key(press_secs)
 
 
-    def ctrl_enter(self, press_secs=None):
-        """Simulate Ctrl-enter simultaneous button presses."""
-        self._press_and_release_keys('ctrl_enter', press_secs)
+    def ctrl_key(self, press_secs=''):
+        """Simulate Enter key button press.
+
+        @param press_secs : Str. Time to press key.
+        """
+        self._server.ctrl_key(press_secs)
 
 
-    def d_key(self, press_secs=None):
-        """Simulate Enter key button press."""
-        self._press_and_release_keys('d', press_secs)
+    def enter_key(self, press_secs=''):
+        """Simulate Enter key button press.
+
+        @param press_secs : Str. Time to press key.
+        """
+        self._server.enter_key(press_secs)
 
 
-    def ctrl_key(self, press_secs=None):
-        """Simulate Enter key button press."""
-        self._press_and_release_keys('ctrl', press_secs)
+    def refresh_key(self, press_secs=''):
+        """Simulate Refresh key (F3) button press.
+
+        @param press_secs : Str. Time to press key.
+        """
+        self._server.refresh_key(press_secs)
 
 
-    def enter_key(self, press_secs=None):
-        """Simulate Enter key button press."""
-        self._press_and_release_keys('enter', press_secs)
-
-
-    def refresh_key(self, press_secs=None):
-        """Simulate Refresh key (F3) button press."""
-        self._press_and_release_keys('refresh', press_secs)
-
-
-    def ctrl_refresh_key(self, press_secs=None):
+    def ctrl_refresh_key(self, press_secs=''):
         """Simulate Ctrl and Refresh (F3) simultaneous press.
 
         This key combination is an alternative of Space key.
+
+        @param press_secs : Str. Time to press key.
         """
-        self._press_and_release_keys('ctrl_refresh', press_secs)
+        self._server.ctrl_refresh_key(press_secs)
 
 
-    def imaginary_key(self, press_secs=None):
+    def imaginary_key(self, press_secs=''):
         """Simulate imaginary key button press.
 
         Maps to a key that doesn't physically exist.
+
+        @param press_secs : Str. Time to press key.
         """
-        self._press_and_release_keys('unused', press_secs)
+        self._server.imaginary_key(press_secs)
 
 
     def enable_recovery_mode(self):

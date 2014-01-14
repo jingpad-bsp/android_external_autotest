@@ -8,7 +8,6 @@
 class Values():
     broken_warm_reset = True
     broken_rec_mode = True
-    key_matrix_layout = 2
     key_checker = [[0x29, 'press'],
                    [0x32, 'press'],
                    [0x32, 'release'],

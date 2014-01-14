@@ -67,6 +67,13 @@ class FAFTBase(ServoTest):
         @param orig_boot_id: A string containing the original boot id.
         @raise ConnectionError: Failed to connect DUT.
         """
+        # When running against panther, we see that sometimes
+        # ping_wait_down() does not work correctly. There needs to
+        # be some investigation to the root cause.
+        # If we sleep for 120s before running get_boot_id(), it
+        # does succeed. But if we change this to ping_wait_down()
+        # there are implications on the wait time when running
+        # commands at the fw screens.
         if not self._client.ping_wait_down(timeout):
             if orig_boot_id and self._client.get_boot_id() != orig_boot_id:
                 logging.warn('Reboot done very quickly.')
@@ -227,17 +234,6 @@ class FAFTSequence(FAFTBase):
 
         if self.faft_config.chrome_ec:
             self.ec = chrome_ec.ChromeEC(self.servo)
-
-        if not self.faft_config.has_keyboard:
-            # The environment variable USBKM232_UART_DEVICE should point
-            # to the USB-KM232 UART device.
-            if ('USBKM232_UART_DEVICE' not in os.environ or
-                    not os.path.exists(os.environ['USBKM232_UART_DEVICE'])):
-                raise error.TestError('Must set a valid environment '
-                        'variable USBKM232_UART_DEVICE.')
-
-        # Setting up key matrix mapping
-        self.servo.set_key_matrix(self.faft_config.key_matrix_layout)
 
         self.setup_uart_capture()
         self.setup_servo_log()
@@ -843,13 +839,12 @@ class FAFTSequence(FAFTBase):
                 'firmware_action': self.wait_dev_screen_and_ctrl_d,
             })
 
-    def press_ctrl_d(self):
-        """Send Ctrl-D key to DUT."""
-        if not self.faft_config.has_keyboard:
-            logging.info('Running usbkm232-ctrld...')
-            os.system('usbkm232-ctrld')
-        else:
-            self.servo.ctrl_d()
+    def press_ctrl_d(self, press_secs=''):
+        """Send Ctrl-D key to DUT.
+
+        @param press_secs : Str. Time to press key.
+        """
+        self.servo.ctrl_d(press_secs)
 
     def press_ctrl_u(self):
         """Send Ctrl-U key to DUT.
@@ -858,8 +853,7 @@ class FAFTSequence(FAFTBase):
                           on a no-build-in-keyboard device.
         """
         if not self.faft_config.has_keyboard:
-            logging.info('Running usbkm232-ctrlu...')
-            os.system('usbkm232-ctrlu')
+            self.servo.ctrl_u()
         elif self.check_ec_capability(['keyboard'], suppress_warning=True):
             self.ec.key_down('<ctrl_l>')
             self.ec.key_down('u')
@@ -872,16 +866,12 @@ class FAFTSequence(FAFTBase):
             raise error.TestError(
                     "Should specify the ctrl_u_cmd argument.")
 
-    def press_enter(self, press_secs=None):
+    def press_enter(self, press_secs=''):
         """Send Enter key to DUT.
 
         @param press_secs: Seconds of holding the key.
         """
-        if not self.faft_config.has_keyboard:
-            logging.info('Running usbkm232-enter...')
-            os.system('usbkm232-enter')
-        else:
-            self.servo.enter_key(press_secs)
+        self.servo.enter_key(press_secs)
 
     def wait_dev_screen_and_ctrl_d(self):
         """Wait for firmware warning screen and press Ctrl-D."""

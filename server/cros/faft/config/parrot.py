@@ -14,7 +14,6 @@ class Values(object):
     dev_screen = 8
     broken_warm_reset = True
     dark_resume_capable = True
-    key_matrix_layout = 1
     key_checker = [[0x29, 'press'],
                    [0x32, 'press'],
                    [0x32, 'release'],

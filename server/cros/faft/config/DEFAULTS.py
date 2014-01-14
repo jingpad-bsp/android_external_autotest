@@ -25,7 +25,6 @@ class Values(object):
     ec_capability = list()
     gbb_version = 1.1
     wp_voltage = 'pp1800'
-    key_matrix_layout = 0
     key_checker = [[0x29, 'press'],
                    [0x32, 'press'],
                    [0x32, 'release'],
