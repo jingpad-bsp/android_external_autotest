@@ -99,7 +99,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
         @return host object representing a remote DUT.
 
         """
-        return self._host
+        return self.host
 
 
     @property
@@ -208,7 +208,6 @@ class WiFiClient(site_linux_system.LinuxSystem):
         self._command_netserv = 'netserver'
         self._command_ping6 = 'ping6'
         self._command_wpa_cli = 'wpa_cli'
-        self._host = client_host
         self._machine_id = None
         self._ping_runner = ping_runner.PingRunner(host=self.host)
         self._ping_thread = None
@@ -301,9 +300,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
         self.stop_capture()
         self.powersave_switch(False)
         self.shill.clean_profiles()
-        # This kills the RPC server.
-        logging.debug('Cleaning up host object for client')
-        self._host.close()
+        super(WiFiClient, self).close()
 
 
     def ping(self, ping_config):
