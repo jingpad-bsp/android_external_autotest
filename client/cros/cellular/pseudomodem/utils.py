@@ -49,11 +49,13 @@ def log_dbus_method(return_logger=logging.debug, raise_logger=logging.warning,
                             args[return_cb_index],
                             func.__name__,
                             return_logger)
-                else:
+                elif return_cb_arg in kwargs:
                     modified_kwargs[return_cb_arg] = _wrap_async_return(
                             kwargs[return_cb_arg],
                             func.__name__,
                             return_logger)
+                else:
+                    logging.debug('Not logging default return_cb')
 
             raise_cb_index = getattr(wrapped_func, '_logging_raise_cb_index')
             if raise_cb_index > -1:
@@ -62,11 +64,13 @@ def log_dbus_method(return_logger=logging.debug, raise_logger=logging.warning,
                             args[raise_cb_index],
                             func.__name__,
                             raise_logger)
-                else:
+                elif raise_cb_arg in kwargs:
                     modified_kwargs[raise_cb_arg] = _wrap_async_raise(
                             kwargs[raise_cb_arg],
                             func.__name__,
                             raise_logger)
+                else:
+                    logging.debug('Not logging default raise_cb')
 
             try:
                 retval = func(*modified_args, **modified_kwargs)
