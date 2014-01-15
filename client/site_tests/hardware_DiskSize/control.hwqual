@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = 'The Chromium OS Authors'
-NAME = 'hardware_DiskSize with performance constraints'
+NAME = 'hardware_DiskSize.hwqual'
 PURPOSE = 'Ensure the hard disk is large enough.'
 CRITERIA = 'Fails if the main disk is less than gb_main_disk_size.'
 SUITE = "hwqual"
