@@ -8,7 +8,6 @@
 
 from firmware_constants import DEV, GV, VAL
 from validators import (CountPacketsValidator,
-                        CountTrackingIDValidator,
                         CountTrackingIDNormalFingerValidator,
                         CountTrackingIDFatFingerValidator,
                         DrumrollValidator,
