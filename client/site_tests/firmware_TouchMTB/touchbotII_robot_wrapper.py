@@ -32,10 +32,10 @@ CENTER = 0.5
 END = 0.9
 OFF_START = -0.05
 OFF_END = 1.05
-ABOVE_CENTER = 0.3
-BELOW_CENTER = 0.7
-LEFT_TO_CENTER = 0.3
-RIGHT_TO_CENTER = 0.7
+ABOVE_CENTER = 0.25
+BELOW_CENTER = 0.75
+LEFT_TO_CENTER = 0.25
+RIGHT_TO_CENTER = 0.75
 
 OUTER_PINCH_SPACING = 70
 INNER_PINCH_SPACING = 25
@@ -86,6 +86,8 @@ class RobotWrapper:
             conf.TWO_CLOSE_FINGERS_TRACKING: self._get_control_command_line,
             conf.RESTING_FINGER_PLUS_2ND_FINGER_MOVE:
                     self._get_control_command_one_stationary_finger,
+            conf.FINGER_CROSSING:
+                    self._get_control_command_one_stationary_finger,
             conf.PINCH_TO_ZOOM: self._get_control_command_pinch,
             conf.DRUMROLL: self._get_control_command_drumroll,
             conf.ONE_FINGER_PHYSICAL_CLICK: self._get_control_command_click,
@@ -125,6 +127,17 @@ class RobotWrapper:
             GV.TLBR: 90,
             GV.BLTR: 0,
             GV.TRBL: 0,
+        }
+
+        # The stationary finger locations corresponding the line specifications
+        # for the finger crossing tests
+        self._stationary_finger_dict = {
+            GV.LR: (CENTER, ABOVE_CENTER),
+            GV.RL: (CENTER, BELOW_CENTER),
+            GV.TB: (RIGHT_TO_CENTER, CENTER),
+            GV.BT: (LEFT_TO_CENTER, CENTER),
+            GV.BLTR: (RIGHT_TO_CENTER, BELOW_CENTER),
+            GV.TRBL: (LEFT_TO_CENTER, ABOVE_CENTER),
         }
 
         self._speed_dict = {
@@ -270,9 +283,15 @@ class RobotWrapper:
     def _get_control_command_one_stationary_finger(self, robot_script, gesture,
                                                    variation):
         line = speed = None
+        # The stationary finger should be in the bottom left corner for resting
+        # finger tests, and various locations for finger crossing tests
+        stationary_finger = (START, END)
+
         for element in variation:
             if element in GV.GESTURE_DIRECTIONS:
                 line = self._line_dict[element]
+                if 'finger_crossing' in gesture:
+                    stationary_finger = self._stationary_finger_dict[element]
             elif element in GV.GESTURE_SPEED:
                 speed = self._speed_dict[element]
 
@@ -282,10 +301,7 @@ class RobotWrapper:
 
         line = self._reverse_coord_if_is_touchscreen(line)
         start_x, start_y, end_x, end_y = line
-
-        # The stationary finger should be in the bottom left corner
-        stationary_x = START
-        stationary_y = END
+        stationary_x, stationary_y = stationary_finger
 
         para = (robot_script, self._board, stationary_x, stationary_y,
                 start_x, start_y, end_x, end_y, speed)
