@@ -112,7 +112,7 @@ class ZeroconfDaemon(object):
 
 
     def _mdns_request(self, data, addr, port):
-        """Handles an Ethernet packet containing a mDNS multicast packet.
+        """Handles a mDNS multicast packet.
 
         This method will generate and send a mDNS response to any query
         for which it has new authoritative information. Called by the Simulator
