@@ -16,6 +16,7 @@ from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros import host_lock_manager
 from autotest_lib.server.cros.chaos_ap_configurators import ap_batch_locker
 from autotest_lib.server.cros.chaos_ap_configurators import ap_cartridge
+from autotest_lib.server.cros.chaos_ap_configurators import ap_spec
 from autotest_lib.server.cros.network import wifi_client
 
 
@@ -23,17 +24,17 @@ class ChaosRunner(object):
     """Object to run a network_WiFi_ChaosXXX test."""
 
 
-    def __init__(self, test, host, ap_spec):
+    def __init__(self, test, host, spec):
         """Initializes and runs test.
 
         @param test: a string, test name.
         @param host: an Autotest host object, device under test.
-        @param ap_spec: an APSpec object
+        @param spec: an APSpec object
 
         """
         self._test = test
         self._host = host
-        self._ap_spec = ap_spec
+        self._ap_spec = spec
         # Log server and DUT times
         dt = datetime.datetime.now()
         logging.info('Server time: %s', dt.strftime('%a %b %d %H:%M:%S %Y'))
@@ -100,27 +101,25 @@ class ChaosRunner(object):
         cartridge.run_configurators()
 
 
-    def _return_available_networks(self, ap, client, job):
+    def _return_available_networks(self, ap, capturer, wifi_if, job):
         """Returns a list of networks configured as described by an APSpec.
 
         @param ap: the APConfigurator being testing against.
-        @param client: wifi client object of the DUT.
+        @param capturer: a packet capture device
+        @param wifi_if: string of the wifi interface to use
         @param job: an Autotest job object.
 
         @returns a list of the network available; otherwise None
 
         """
         logging.info('Searching for SSID %s in scan...', ap.ssid)
-        iw_scanner = iw_runner.IwRunner(remote_host=self._host,
-                                        command_iw=client.command_iw)
         # We have some APs that need a while to come on-line
-        networks = iw_scanner.wait_for_scan_result(client._wifi_if,
-                                                   ssid=ap.ssid,
-                                                   timeout_seconds=300)
+        networks = capturer.iw_runner.wait_for_scan_result(wifi_if,
+                                                           ssid=ap.ssid,
+                                                           timeout_seconds=300)
         if networks == None:
             # For crbug.com/331915, the next step will be to reboot the DUT
-            logging.error('Scan failed to run, see crbug.com/309148 and '
-                          'crbug.com/331915.')
+            logging.error('Scan failed to run, see crbug.com/309148.')
             return None
 
         if len(networks) == 0:
@@ -220,10 +219,19 @@ class ChaosRunner(object):
                                          tag=ap.ssid)
                             continue
 
-                        # TODO (krisr) this method should use the packet capture
-                        # not the DUT.
-                        networks = self._return_available_networks(ap, client,
+                        # Setup a managed interface to perform scanning on the
+                        # packet capture device.
+                        wifi_if = capturer.get_wlanif(
+                            ap_spec.FREQUENCY_TABLE[self._ap_spec.channel],
+                            'managed')
+                        capturer.host.run('%s link set %s up' %
+                                          (capturer.cmd_ip, wifi_if))
+                        networks = self._return_available_networks(ap,
+                                                                   capturer,
+                                                                   wifi_if,
                                                                    job)
+                        capturer.remove_interface(wifi_if)
+
                         if not networks:
                             self._release_ap(ap, batch_locker)
                             continue

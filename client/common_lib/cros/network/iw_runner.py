@@ -352,7 +352,8 @@ class IwRunner(object):
         scan = self._run(command, ignore_status=True)
         if scan.exit_status != 0:
             # The device was busy
-           return None
+            logging.debug('scan exit_status: %d', scan.exit_status)
+            return None
 
         return self._parse_scan_results(scan.stdout)
 
@@ -408,11 +409,24 @@ class IwRunner(object):
 
         """
         start_time = time.time()
+        scan_failure_attempts = 0
+        logging.info('Performing a scan with a max timeout of %d seconds.',
+                     timeout_seconds)
         while time.time() - start_time < timeout_seconds:
             scan_results = self.scan(interface)
             if scan_results is None:
-                time.sleep(5) ## allow in-progress scan to complete
+                scan_failure_attempts += 1
+                # Allow in-progress scan to complete
+                time.sleep(5)
+                # If the in-progress scan takes more than 30 seconds to
+                # complete it will most likely never complete; abort.
+                # See crbug.com/309148.
+                if scan_failure_attempts > 5:
+                    logging.error('Scan failed to run, see debug log for '
+                                  'error code.')
+                    return None
                 continue
+            scan_failure_attempts = 0
             matching_bsses = []
             for iwbss in scan_results:
                 if bss is not None and iwbss.bss != bss:
