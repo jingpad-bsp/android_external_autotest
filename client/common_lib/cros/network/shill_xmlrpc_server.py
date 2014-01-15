@@ -11,7 +11,6 @@ import multiprocessing
 import common
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros import xmlrpc_server
-from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.cros import constants
 from autotest_lib.client.cros import cros_ui
@@ -174,15 +173,14 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         wifi_if = params.bgscan_config.interface
         if wifi_if is None:
             logging.info('Using default interface for bgscan configuration')
-            iw_helper = iw_runner.IwRunner()
-            interfaces = iw_helper.list_interfaces(desired_if_type='managed')
+            interfaces = self.list_controlled_wifi_interfaces()
             if not interfaces:
                 return xmlrpc_datatypes.AssociationResult(
                         failure_reason='No wifi interfaces found?')
 
             if len(interfaces) > 1:
                 logging.error('Defaulting to first interface of %r', interfaces)
-            wifi_if = interfaces[0].if_name
+            wifi_if = interfaces[0]
         if not self._wifi_proxy.configure_bgscan(
                 wifi_if,
                 method=params.bgscan_config.method,
@@ -243,6 +241,24 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         if worked:
             worked = self.push_profile(self.DEFAULT_TEST_PROFILE_NAME)
         return worked
+
+
+    @xmlrpc_server.dbus_safe(None)
+    def list_controlled_wifi_interfaces(self):
+        """List WiFi interfaces controlled by shill.
+
+        @return list of string WiFi device names (e.g. ['mlan0'])
+
+        """
+        ret = []
+        devices = self._wifi_proxy.get_devices()
+        for device in devices:
+            properties = self._wifi_proxy.dbus2primitive(
+                    device.GetProperties(utf8_strings=True))
+            if properties[self._wifi_proxy.DEVICE_PROPERTY_TYPE] != 'wifi':
+                continue
+            ret.append(properties[self._wifi_proxy.DEVICE_PROPERTY_NAME])
+        return ret
 
 
     @xmlrpc_server.dbus_safe(False)

@@ -103,12 +103,6 @@ class WiFiClient(site_linux_system.LinuxSystem):
 
 
     @property
-    def command_ifconfig(self):
-        """@return string path to ifconfig command."""
-        return self._command_ifconfig
-
-
-    @property
     def command_ip(self):
         """@return string path to ip command."""
         return self._command_ip
@@ -212,20 +206,17 @@ class WiFiClient(site_linux_system.LinuxSystem):
         self._ping_runner = ping_runner.PingRunner(host=self.host)
         self._ping_thread = None
         self._result_dir = result_dir
-        # Look up the WiFi device (and its MAC) on the client.
-        devs = self.iw_runner.list_interfaces(desired_if_type='managed')
-        # TODO(wiley) Handle a missing management interface by recreating
-        #             it (or rebooting).
-        if not devs:
-            raise error.TestFail('No wlan devices found on %s.' %
-                                 self.host.hostname)
-
-        if len(devs) > 1:
-            logging.warning('Warning, found multiple WiFi devices on %s: %r',
-                            self.host.hostname, devs)
-        self._wifi_if = devs[0].if_name
-        self._interface = interface.Interface(self._wifi_if, host=self.host)
         if isinstance(self.host, adb_host.ADBHost):
+            # Look up the WiFi device (and its MAC) on the client.
+            devs = self.iw_runner.list_interfaces(desired_if_type='managed')
+            if not devs:
+                raise error.TestFail('No wlan devices found on %s.' %
+                                     self.host.hostname)
+
+            if len(devs) > 1:
+                logging.warning('Warning, found multiple WiFi devices on '
+                                '%s: %r', self.host.hostname, devs)
+            self._wifi_if = devs[0].if_name
             self._shill_proxy = wpa_cli_proxy.WpaCliProxy(
                     self.host, self._wifi_if)
         else:
@@ -240,11 +231,15 @@ class WiFiClient(site_linux_system.LinuxSystem):
                     command_name=constants.SHILL_XMLRPC_SERVER_CLEANUP_PATTERN,
                     ready_test_name=constants.SHILL_XMLRPC_SERVER_READY_METHOD,
                     timeout_seconds=self.XMLRPC_BRINGUP_TIMEOUT_SECONDS)
-            # These commands aren't known to work with ADB hosts.
-            self._command_ifconfig = 'ifconfig'
+            interfaces = self._shill_proxy.list_controlled_wifi_interfaces()
+            if not interfaces:
+                # TODO(wiley) Handle a missing management interface by
+                #             recreating it (or rebooting).
+                raise error.TestFail('No interfaces managed by shill on %s',
+                                     self.host.hostname)
+            self._wifi_if = interfaces[0]
             self._raise_logging_level()
-        self._result_dir = result_dir
-
+        self._interface = interface.Interface(self._wifi_if, host=self.host)
         self._firewall_rules = []
         # Turn off powersave mode by default.
         self.powersave_switch(False)
