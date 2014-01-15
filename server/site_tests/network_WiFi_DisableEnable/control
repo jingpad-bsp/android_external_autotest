@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = 'pstew, wiley, quiche'
-NAME = 'network_WiFi_EnableDisable.wifi_enable_disable'
+NAME = 'network_WiFi_DisableEnable'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
 SUITE = 'wifi_matfunc'
