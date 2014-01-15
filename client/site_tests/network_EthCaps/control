@@ -17,4 +17,4 @@ DOC = """
 See server/site_tests/network_EthCapsServer/control for details
 """
 
-job.run_test('network_EthCaps')
+job.run_test('network_EthCaps', ethname="eth0")
