@@ -201,7 +201,8 @@ class graphics_GLBench(test.test):
       testname = key.strip()
       testrating = float(val)
       imagefile = remainder.split(']')[0]
-      # TODO(ihf) move here the check for valid test rating numbers
+      self.output_perf_value(description=testname, value=testrating,
+                             units='Hz', higher_is_better=True)
 
       # classify result image
       if ReferenceImageExists(knownbad_imagenames,

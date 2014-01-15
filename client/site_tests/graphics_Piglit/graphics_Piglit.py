@@ -100,6 +100,15 @@ class graphics_Piglit(test.test):
         keyvals['count_subtests_skip'] = skipped
         self.write_perf_keyval(keyvals)
 
+        self.output_perf_value(description='pass', value=passed,
+                               units='count', higher_is_better=True)
+        self.output_perf_value(description='fail', value=failed,
+                               units='count', higher_is_better=False)
+        self.output_perf_value(description='warn', value=warned,
+                               units='count', higher_is_better=False)
+        self.output_perf_value(description='skip', value=skipped,
+                               units='count', higher_is_better=False)
+
         # generate human friendly html output
         cmd = 'python piglit-summary-html.py'
         cmd = cmd + ' ' + os.path.join(results_path, 'html')

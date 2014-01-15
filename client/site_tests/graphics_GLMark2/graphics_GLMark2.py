@@ -89,6 +89,9 @@ class graphics_GLMark2(test.test):
             keyvals = {}
             keyvals['glmark2_score'] = score
             self.write_perf_keyval(keyvals)
+            self.output_perf_value(description='Score', value=score,
+                                   units='score', higher_is_better=True)
+
             if min_score is not None and score < min_score:
                 raise error.TestFail('Benchmark score %d < %d (minimum score '
                                      'requirement)' % (score, min_score))

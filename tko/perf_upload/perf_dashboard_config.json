@@ -8,6 +8,26 @@
     "master_name": "ChromiumPerf"
   },
   {
+    "autotest_name": "graphics_GLBench",
+    "master_name": "ChromeOS_Graphics"
+  },
+  {
+    "autotest_name": "graphics_Mark2",
+    "master_name": "ChromeOS_Graphics"
+  },
+  {
+    "autotest_name": "graphics_Piglit",
+    "master_name": "ChromeOS_Graphics"
+  },
+  {
+    "autotest_name": "graphics_WebGLConformance",
+    "master_name": "ChromeOS_Graphics"
+  },
+  {
+    "autotest_name": "graphics_WebGLPerformance",
+    "master_name": "ChromeOS_Graphics"
+  },
+  {
     "autotest_name": "platform_BootPerfServer",
     "master_name": "ChromiumPerf"
   },

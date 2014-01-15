@@ -5,7 +5,7 @@
 import logging, os, shutil, urllib
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui, cros_ui_test, graphics_ui_test
+from autotest_lib.client.cros import graphics_ui_test
 from autotest_lib.client.cros import httpd
 
 class graphics_WebGLConformance(graphics_ui_test.GraphicsUITest):
@@ -151,6 +151,18 @@ class graphics_WebGLConformance(graphics_ui_test.GraphicsUITest):
                      tests_fail_not_waived)
         keyvals['count_tests_fail_not_waived'] = tests_fail_not_waived
         self.write_perf_keyval(keyvals)
+
+        # TODO(ihf): Switch this test to Telemetry (in cros_ui_test.py) so that
+        # the numbers actually make it to the perf dashboard.
+        self.output_perf_value(description='pass', value=tests_pass,
+                               units='count', higher_is_better=True)
+        self.output_perf_value(description='fail', value=tests_fail,
+                               units='count', higher_is_better=False)
+        self.output_perf_value(description='timeout', value=tests_timeout,
+                               units='count', higher_is_better=False)
+        self.output_perf_value(description='fail_not_waived',
+                               value=tests_fail_not_waived, units='count',
+                               higher_is_better=False)
 
         # Write transmitted summary to graphics_WebGLConformance/summary.txt
         summary = urllib.unquote_plus(results['summary'])

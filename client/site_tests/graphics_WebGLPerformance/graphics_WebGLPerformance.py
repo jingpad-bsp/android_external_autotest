@@ -69,6 +69,11 @@ class graphics_WebGLPerformance(graphics_ui_test.GraphicsUITest):
         logging.info('WebGLPerformance: time_ms_geom_mean = %f'\
                                       % time_ms_geom_mean)
         self.write_perf_keyval(keyvals)
+        # TODO(ihf): Switch this test to Telemetry (in cros_ui_test.py) so that
+        # the numbers actually make it to the perf dashboard.
+        self.output_perf_value(description='time_geom_mean',
+                               value=time_ms_geom_mean, units='ms',
+                               higher_is_better=False)
 
         # Write transmitted summary to graphics_WebGLPerformance/summary.html.
         summary = urllib.unquote_plus(results['summary'])
