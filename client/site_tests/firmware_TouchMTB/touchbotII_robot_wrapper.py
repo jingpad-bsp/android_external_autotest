@@ -64,6 +64,7 @@ class RobotWrapper:
             self._get_control_command_line: SCRIPT_LINE,
             self._get_control_command_rapid_taps: SCRIPT_TAP,
             self._get_control_command_single_tap: SCRIPT_TAP,
+            self._get_control_command_drumroll: SCRIPT_TAP,
             self._get_control_command_click: SCRIPT_CLICK,
             self._get_control_command_one_stationary_finger:
                     SCRIPT_ONE_STATIONARY_FINGER,
@@ -86,6 +87,7 @@ class RobotWrapper:
             conf.RESTING_FINGER_PLUS_2ND_FINGER_MOVE:
                     self._get_control_command_one_stationary_finger,
             conf.PINCH_TO_ZOOM: self._get_control_command_pinch,
+            conf.DRUMROLL: self._get_control_command_drumroll,
             conf.ONE_FINGER_PHYSICAL_CLICK: self._get_control_command_click,
             conf.TWO_FINGER_PHYSICAL_CLICK: self._get_control_command_click,
             conf.THREE_FINGER_PHYSICAL_CLICK: self._get_control_command_click,
@@ -347,6 +349,13 @@ class RobotWrapper:
     def _get_control_command_single_tap(self, robot_script, gesture, variation):
         return self._get_control_command_taps(robot_script, gesture,
                                               variation, 1)
+
+    def _get_control_command_drumroll(self, robot_script, gesture, variation):
+        """Get robot control command for the drumroll gesture. There is only
+        one so there is no need for complicated parsing here.
+        """
+        return ('python %s %s.p 0.5 0.5 45 20 0 1 0 1 50 drumroll' %
+                (robot_script, self._board))
 
     def _get_control_command_taps(self, robot_script, gesture,
                                   variation, num_taps):
