@@ -855,10 +855,29 @@ class BaseDispatcher(object):
             else:
                 new_jobs_need_hosts = new_jobs_need_hosts + 1
                 assigned_host = self._host_scheduler.schedule_entry(queue_entry)
-                if assigned_host and not self.host_has_agent(assigned_host):
-                    assert assigned_host.id == queue_entry.host_id
-                    self._run_queue_entry(queue_entry)
-                    new_jobs_with_hosts = new_jobs_with_hosts + 1
+                if assigned_host:
+                    # If we ever find ourselves in a position where a ready host
+                    # has an agent, roll back the host assignment and try again
+                    # next tick.
+                    if self.host_has_agent(assigned_host):
+                        host_agent_task = [host_agent.task for host_agent in
+                                           list(self._host_agents.get(
+                                                       assigned_host.id))][0]
+                        subject = 'Host with agents assigned to an HQE'
+                        message = ('HQE: %s assigned host %s, but the host has '
+                                   'agent: %s for queue_entry %s. The HQE '
+                                   'will remain in a queued state till the '
+                                   'the host is usable.' %
+                                   (queue_entry, assigned_host.hostname,
+                                    host_agent_task,
+                                    host_agent_task.queue_entry))
+                        email_manager.manager.enqueue_notify_email(subject, message)
+                        queue_entry.set_host(None)
+                        queue_entry.update_field('active', False)
+                    else:
+                        assert assigned_host.id == queue_entry.host_id
+                        self._run_queue_entry(queue_entry)
+                        new_jobs_with_hosts = new_jobs_with_hosts + 1
 
         key = 'scheduler.jobs_per_tick'
         stats.Gauge(key).send('new_hostless_jobs', new_hostless_jobs)

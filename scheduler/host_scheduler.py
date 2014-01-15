@@ -60,15 +60,29 @@ class BaseHostScheduler(metahost_scheduler.HostSchedulingUtility):
 
     @_timer.decorate
     def _get_ready_hosts(self):
-        # avoid any host with a currently active queue entry against it
+        # Avoid any host with a currently active queue entry against it.
+        hqe_join = ('LEFT JOIN afe_host_queue_entries AS active_hqe '
+                    'ON (afe_hosts.id = active_hqe.host_id AND '
+                    'active_hqe.active)')
+
+        # Avoid any host with a new special task against it. There are 2 cases
+        # when an inactive but incomplete special task will not use the host
+        # this tick: 1. When the host is locked 2. When an active hqe already
+        # has special tasks for the same host. In both these cases this host
+        # will not be in the ready hosts list anyway. In all other cases,
+        # an incomplete special task will grab the host before a new job does
+        # by assigning an agent to it.
+        special_task_join = ('LEFT JOIN afe_special_tasks as new_tasks '
+                             'ON (afe_hosts.id = new_tasks.host_id AND '
+                             'new_tasks.is_complete=0)')
+
         hosts = scheduler_models.Host.fetch(
-            joins='LEFT JOIN afe_host_queue_entries AS active_hqe '
-                  'ON (afe_hosts.id = active_hqe.host_id AND '
-                      'active_hqe.active)',
-            where="active_hqe.host_id IS NULL "
+            joins='%s %s' % (hqe_join, special_task_join),
+            where="active_hqe.host_id IS NULL AND new_tasks.host_id IS NULL "
                   "AND NOT afe_hosts.locked "
                   "AND (afe_hosts.status IS NULL "
                           "OR afe_hosts.status = 'Ready')")
+
         return dict((host.id, host) for host in hosts)
 
 
