@@ -50,19 +50,20 @@ class graphics_Piglit(test.test):
         results_path = os.path.join(self.outputdir, 'cros-driver')
         piglit_path = os.path.join(dep_dir, 'piglit')
         bin_path = os.path.join(piglit_path, 'bin')
+        run_path = os.path.join(piglit_path, 'piglit-run.py')
+        test_path = 'tests/cros-driver.tests'
         summary = ''
-        if not (os.path.exists(os.path.join(piglit_path, 'piglit-run.py')) and
+        if not (os.path.exists(run_path) and
                 os.path.exists(bin_path) and
                 os.listdir(bin_path)):
             raise error.TestError('piglit not found at %s' % piglit_path)
 
         os.chdir(piglit_path)
-        cmd = 'python piglit-run.py'
+
         # Piglit by default wants to run multiple tests in separate
         # processes concurrently. Strictly serialize this.
-        cmd = cmd + ' --concurrent=0'
-        cmd = cmd + ' tests/cros-driver.tests'
-        cmd = cmd + ' ' + results_path
+        flags = '--concurrent=0'
+        cmd = '%s %s %s %s' % (run_path, flags, test_path, results_path)
         # Output all commands as run sequentially with results in
         # piglit-run.log and store everything for future inspection.
         cmd = cmd + ' | tee ' + log_path
