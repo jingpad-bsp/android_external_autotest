@@ -51,31 +51,31 @@ class graphics_Piglit(test.test):
         piglit_path = os.path.join(dep_dir, 'piglit')
         bin_path = os.path.join(piglit_path, 'bin')
         summary = ''
-        if (os.path.exists(os.path.join(piglit_path, 'piglit-run.py')) and
-            os.path.exists(bin_path) and
-            os.listdir(bin_path)):
-            os.chdir(piglit_path)
-            cmd = 'python piglit-run.py'
-            # Piglit by default wants to run multiple tests in separate
-            # processes concurrently. Strictly serialize this.
-            cmd = cmd + ' --concurrent=0'
-            cmd = cmd + ' tests/cros-driver.tests'
-            cmd = cmd + ' ' + results_path
-            # Output all commands as run sequentially with results in
-            # piglit-run.log and store everything for future inspection.
-            cmd = cmd + ' | tee ' + log_path
-            cmd = cros_ui.xcommand(cmd)
-            logging.info('Calling %s', cmd)
-            utils.run(cmd,
-                      stdout_tee=utils.TEE_TO_LOGS,
-                      stderr_tee=utils.TEE_TO_LOGS)
-            # count number of pass, fail, warn and skip in the test summary
-            summary_path = os.path.join(results_path, 'main')
-            f = open(summary_path, 'r')
-            summary = f.read()
-            f.close()
-        else:
-            return error.TestError('test runs only on x86 (needs OpenGL)')
+        if not (os.path.exists(os.path.join(piglit_path, 'piglit-run.py')) and
+                os.path.exists(bin_path) and
+                os.listdir(bin_path)):
+            raise error.TestError('piglit not found at %s' % piglit_path)
+
+        os.chdir(piglit_path)
+        cmd = 'python piglit-run.py'
+        # Piglit by default wants to run multiple tests in separate
+        # processes concurrently. Strictly serialize this.
+        cmd = cmd + ' --concurrent=0'
+        cmd = cmd + ' tests/cros-driver.tests'
+        cmd = cmd + ' ' + results_path
+        # Output all commands as run sequentially with results in
+        # piglit-run.log and store everything for future inspection.
+        cmd = cmd + ' | tee ' + log_path
+        cmd = cros_ui.xcommand(cmd)
+        logging.info('Calling %s', cmd)
+        utils.run(cmd,
+                  stdout_tee=utils.TEE_TO_LOGS,
+                  stderr_tee=utils.TEE_TO_LOGS)
+        # count number of pass, fail, warn and skip in the test summary
+        summary_path = os.path.join(results_path, 'main')
+        f = open(summary_path, 'r')
+        summary = f.read()
+        f.close()
 
         if not summary:
             raise error.TestError('Test summary was empty')
