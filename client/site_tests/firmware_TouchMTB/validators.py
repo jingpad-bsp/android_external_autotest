@@ -1260,8 +1260,10 @@ class HysteresisValidator(BaseValidator):
             ratio = float('infinity')
 
         self.log_details('init gap ratio: %.2f' % ratio)
-        self.log_details('dist(p0,p1): %.2f' % distance1)
-        self.log_details('dist(p1,p2): %.2f' % distance2)
+        self.log_details('dist(p0,p1): ' +
+                         ('None' if distance1 is None else '%.2f' % distance1))
+        self.log_details('dist(p1,p2): ' +
+                         ('None' if distance2 is None else '%.2f' % distance2))
         self.vlog.metrics = [
                 firmware_log.Metric(self.mnprops.MAX_INIT_GAP_RATIO, ratio),
                 firmware_log.Metric(self.mnprops.AVE_INIT_GAP_RATIO, ratio),

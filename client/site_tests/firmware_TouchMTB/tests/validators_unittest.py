@@ -731,6 +731,17 @@ class HysteresisValidatorTest(unittest.TestCase):
             vlog = validator.check(packets)
             self.assertAlmostEqual(vlog.metrics[0].value, expected_value)
 
+    def test_click_data(self):
+        """Test that the validator handles None distances well.
+
+        In this test, distance1 = None and distance2 = None.
+        This results in ratio = infinity. There should be no error incurred.
+        """
+        packets = parse_tests_data('2f_clicks_test_hysteresis.dat')
+        validator = HysteresisValidator(self.criteria, device=link)
+        vlog = validator.check(packets)
+        self.assertEqual(vlog.metrics[0].value, float('infinity'))
+
 
 if __name__ == '__main__':
   unittest.main()
