@@ -145,10 +145,18 @@ class ZeroconfDaemon(object):
                 for known_ans in mdns.an if _RR_equals(known_ans, ans))]
 
             self._send_answers(answers)
-        elif mdns.op == 0x8400: # Standard response
+
+        # Always process the received authoritative answers.
+        answers = mdns.ns
+
+        # Process the answers for response packets.
+        if mdns.op == 0x8400: # Standard response
+            answers.extend(mdns.an)
+
+        if answers:
             cur_time = time.time()
             new_answers = []
-            for rr in mdns.an: # Answers RRs
+            for rr in answers: # Answers RRs
                 # dpkt decodes the information on different fields depending on
                 # the response type.
                 if rr.type == dpkt.dns.DNS_A:

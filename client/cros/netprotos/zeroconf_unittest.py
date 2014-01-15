@@ -69,5 +69,58 @@ class TestZeroconfDaemon(unittest.TestCase):
         self.assertEqual(record.ip, socket.inet_aton(self._host.ip_addr))
 
 
+    def testDoubleTXTProcessing(self):
+        """Test when more than one TXT record is present in a packet.
+
+        A mDNS packet can include several answer records for several domains and
+        record type. A corner case found on the field presents a mDNS packet
+        with two TXT records for the same domain name on the same packet on its
+        authoritative answers section while the packet itself is a query.
+        """
+        # Build the mDNS packet with two TXT records.
+        domain_name = 'other_host.local'
+        answers = [
+                dpkt.dns.DNS.RR(
+                        type = dpkt.dns.DNS_TXT,
+                        cls = dpkt.dns.DNS_IN,
+                        ttl = 120,
+                        name = domain_name,
+                        text = ['one', 'two']),
+                dpkt.dns.DNS.RR(
+                        type = dpkt.dns.DNS_TXT,
+                        cls = dpkt.dns.DNS_IN,
+                        ttl = 120,
+                        name = domain_name,
+                        text = ['two'])]
+        # The packet is a query packet, with extra answers on the autoritative
+        # section.
+        mdns = dpkt.dns.DNS(
+                op = dpkt.dns.DNS_QUERY, # Standard query
+                rcode = dpkt.dns.DNS_RCODE_NOERR,
+                q = [],
+                an = [],
+                ns = answers)
+
+        # Record the new answers received on the answer_calls list.
+        answer_calls = []
+        self._zero.add_answer_observer(lambda args: answer_calls.extend(args))
+
+        # Send the packet to the registered callback.
+        sock = self._host._sockets[0]
+        cbk = sock._bind_recv_callback
+        cbk(str(mdns), '1234', 5353)
+
+        # Check that the answers callback is called with all the answers in the
+        # received order.
+        self.assertEqual(len(answer_calls), 2)
+        ans1, ans2 = answer_calls # Each ans is a (rrtype, rrname, data)
+        self.assertEqual(ans1[2], ('one', 'two'))
+        self.assertEqual(ans2[2], ('two',))
+
+        # Check that the two records were cached.
+        records = self._zero.cached_results(domain_name, dpkt.dns.DNS_TXT)
+        self.assertEqual(len(records), 2)
+
+
 if __name__ == '__main__':
     unittest.main()
