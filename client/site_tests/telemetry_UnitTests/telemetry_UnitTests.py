@@ -19,21 +19,44 @@ class telemetry_UnitTests(test.test):
     """This is a client side wrapper for the Telemetry unit tests."""
     version = 1
 
+    class TestSpec(object):
+        """Test specification class with directory paths, etc."""
+        def __init__(self, test_type, root, top_level_dir):
+            self.test_type = test_type
+            self.root = root
+            self.top_level_dir = top_level_dir
+            self.num_errors = 0
+            self.error_details = ''
 
-    def run_unit_tests(self, browser_type, start_dir, top_level_dir):
+        def error_string(self):
+            """Printable error string. Returns empty string if no errors."""
+            if self.num_errors:
+                return ('%d %s unit tests failed:\n%s' %
+                        (self.num_errors, self.test_type,
+                        self.error_details))
+            return ''
+
+    _TESTS = [
+        TestSpec('telemetry', TELEMETRY_SUBDIR, TELEMETRY_BASE_DIR),
+        TestSpec('perf', PERF_BASE_DIR, PERF_BASE_DIR),
+    ]
+
+    def _run_tests(self, browser_type, test_spec):
         """run unit tests in given directory and browser type.
 
         @param browser_type: The string type of browser to use, e.g., 'system'.
-        @param start_dir: The directory to recursively search.
-        @param top_level_dir: The top level of the package, for importing.
+        @param test_spec: Object of type TestSpec.
 
         """
+        logging.info('Running %s unit tests with browser_type "%s".',
+                     test_spec.test_type, browser_type)
+        sys.path.append(test_spec.root)
         # Capture the Telemetry output when running the unit tests.
         capturer = StringIO.StringIO()
         sys.stdout = capturer
         runner = gtest_testrunner.GTestTestRunner(print_result_after_run=False)
-        run_tests.Main(['--browser=' + browser_type], start_dir,
-                       top_level_dir, runner)
+        run_tests.Main(['--browser=' + browser_type],
+                       test_spec.root, test_spec.top_level_dir, runner)
 
         if runner.result:
             # The PrintSummary() below is captured in the test debug log file.
@@ -46,32 +69,30 @@ class telemetry_UnitTests(test.test):
 
         if runner.result:
             if runner.result.num_errors:
-                error_details = ''
                 all_errors = runner.result.errors[:]
                 all_errors.extend(runner.result.failures)
                 for (test_name, error_string) in all_errors:
-                    error_details += '%s\n%s\n' % (test_name, error_string)
-                raise error.TestFail('%d unit tests failed:\n%s' %
-                                     (runner.result.num_errors, error_details))
+                    test_spec.error_details += '%s\n%s\n' % (test_name,
+                                                             error_string)
+                test_spec.num_errors = runner.result.num_errors
+                logging.error(test_spec.error_string())
             else:
-                logging.info('All %d unit tests passed.',
-                             len(runner.result.successes))
+                logging.info('All %d %s unit tests passed.',
+                             len(runner.result.successes), test_spec.test_type)
         else:
             raise error.TestFail('No results found.')
 
 
     def run_once(self, browser_type):
         """
-        Runs the Telemetry unit tests.
+        Runs telemetry/perf unit tests.
 
         @param browser_tye: The string type of browser to use, e.g., 'system'.
 
         """
-        logging.info('Running the Telemetry unit tests with '
-                     'browser_type "%s".', browser_type)
-        self.run_unit_tests(browser_type, TELEMETRY_SUBDIR, TELEMETRY_BASE_DIR)
-
-        logging.info('Running the perf unit tests with '
-                     'browser_type "%s".', browser_type)
-        sys.path.append(PERF_BASE_DIR)
-        self.run_unit_tests(browser_type, PERF_BASE_DIR, PERF_BASE_DIR)
+        error_str = ''
+        for test_spec in self._TESTS:
+            self._run_tests(browser_type, test_spec)
+            error_str += test_spec.error_string()
+        if error_str:
+            raise error.TestFail(error_str)
