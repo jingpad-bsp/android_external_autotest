@@ -492,7 +492,8 @@ class SuiteTest(mox.MoxTestBase):
         test_report = collections.namedtuple('test_report',
                                              'predicates, fallout')
         return test_report(predicates('FAIL', 'bad_test', 'dreadful_reason'),
-                           fallout('None', 'None', 'myjob', 'user', 'myhost'))
+                           fallout('2014-01-01 01:01:01', 'None', 'myjob',
+                                   'user', 'myhost'))
 
 
     def testBugFiling(self):
@@ -510,14 +511,13 @@ class SuiteTest(mox.MoxTestBase):
             """
             test_predicates = test_results[0]
             test_fallout = test_results[1]
-            expected_result = job_status.Status('FAIL',
-                                                test_predicates.testname,
-                                                reason=test_predicates.reason,
-                                                job_id=test_fallout.job_id,
-                                                owner=test_fallout.username,
-                                                hostname=test_fallout.hostname)
+            expected_result = job_status.Status(
+                'FAIL', test_predicates.testname, reason=test_predicates.reason,
+                job_id=test_fallout.job_id, owner=test_fallout.username,
+                hostname=test_fallout.hostname,
+                begin_time_str=test_fallout.time_start)
 
-            return all(result.__dict__.get(k) == v for k, v in
+            return all(getattr(result, k, None) == v for k, v in
                        expected_result.__dict__.iteritems()
                        if 'timestamp' not in str(k))
 

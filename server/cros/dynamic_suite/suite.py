@@ -428,7 +428,7 @@ class Suite(object):
             constants.EXPERIMENTAL_PREFIX not in result._test_name and
             constants.EXPERIMENTAL_PREFIX not in result._job_name)
 
-        return (self._file_bugs and
+        return (self._file_bugs and result.test_executed and
                 (is_not_experimental or self._file_experimental_bugs) and
                 result.is_worse_than(job_status.Status('WARN', '', 'reason')))
 

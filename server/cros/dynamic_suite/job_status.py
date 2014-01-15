@@ -550,6 +550,10 @@ class Status(object):
         self._owner = owner
         self._hostname = hostname
         self._job_name = job_name
+        # Autoserv drops a keyval of the started time which eventually makes its
+        # way here.  Therefore, if we have a starting time, we may assume that
+        # the test reached Running and actually began execution on a drone.
+        self._test_executed = begin_time_str and begin_time_str != 'None'
 
         if begin_time_str and begin_time_str != 'None':
             self._begin_timestamp = int(time.mktime(
@@ -687,3 +691,9 @@ class Status(object):
     def reason(self):
         """ Reason the job corresponding to this status failed. """
         return self._reason
+
+
+    @property
+    def test_executed(self):
+        """ If the test reached running an autoserv instance or not. """
+        return self._test_executed
