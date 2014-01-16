@@ -28,62 +28,6 @@
     "master_name": "ChromeOS_Graphics"
   },
   {
-    "autotest_name": "platform_BootPerfServer",
-    "master_name": "ChromiumPerf"
-  },
-  {
-    "autotest_name": "platform_GesturesRegressionTest",
-    "master_name": "ChromeOSTouchpad"
-  },
-  {
-    "autotest_name": "video_VideoDecodeMemeoryUsage",
-    "master_name": "ChromeOSVideo"
-  },
-  {
-    "autotest_name": "video_WebRtcPerf",
-    "master_name": "ChromeOSVideo"
-  },
-  {
-    "autotest_name": "telemetry_Benchmarks.dromaeo.domcoreattr",
-    "master_name": "ChromiumPerf",
-    "dashboard_test_name": "dromaeo.domcoreattr"
-  },
-  {
-    "autotest_name": "telemetry_Benchmarks.dromaeo.domcoremodify",
-    "master_name": "ChromiumPerf",
-    "dashboard_test_name": "dromaeo.domcoremodify"
-  },
-  {
-    "autotest_name": "telemetry_Benchmarks.dromaeo.domcorequery",
-    "master_name": "ChromiumPerf",
-    "dashboard_test_name": "dromaeo.domcorequery"
-  },
-  {
-    "autotest_name": "telemetry_Benchmarks.dromaeo.domcoretraverse",
-    "master_name": "ChromiumPerf",
-    "dashboard_test_name": "dromaeo.domcoretraverse"
-  },
-  {
-    "autotest_name": "telemetry_Benchmarks.media.tough_media_cases",
-    "master_name": "ChromiumPerf",
-    "dashboard_test_name": "media.tough_media_cases"
-  },
-  {
-    "autotest_name": "telemetry_Benchmarks.memory.top_25",
-    "master_name": "ChromiumPerf",
-    "dashboard_test_name": "memory.top_25"
-  },
-  {
-    "autotest_name": "telemetry_Benchmarks.robohornet_pro",
-    "master_name": "ChromiumPerf",
-    "dashboard_test_name": "robohornet_pro"
-  },
-  {
-    "autotest_name": "telemetry_Benchmarks.smoothness.top_25",
-    "master_name": "ChromiumPerf",
-    "dashboard_test_name": "smoothness.top_25"
-  },
-  {
     "autotest_name": "network_WiFi_AttenuatedPerf.ht40_ch001",
     "master_name": "ChromeOSWiFi",
     "dashboard_test_name": "network_WiFi_AttenuatedPerf"
@@ -177,5 +121,81 @@
     "autotest_name": "network_WiFi_Perf.ht40_aes",
     "master_name": "ChromeOSWiFi",
     "dashboard_test_name": "network_WiFi_Perf"
+  },
+  {
+    "autotest_name": "platform_BootPerfServer",
+    "master_name": "ChromiumPerf"
+  },
+  {
+    "autotest_name": "platform_GesturesRegressionTest",
+    "master_name": "ChromeOSTouchpad"
+  },
+  {
+    "autotest_name": "telemetry_Benchmarks.dromaeo.domcoreattr",
+    "master_name": "ChromiumPerf",
+    "dashboard_test_name": "dromaeo.domcoreattr"
+  },
+  {
+    "autotest_name": "telemetry_Benchmarks.dromaeo.domcoremodify",
+    "master_name": "ChromiumPerf",
+    "dashboard_test_name": "dromaeo.domcoremodify"
+  },
+  {
+    "autotest_name": "telemetry_Benchmarks.dromaeo.domcorequery",
+    "master_name": "ChromiumPerf",
+    "dashboard_test_name": "dromaeo.domcorequery"
+  },
+  {
+    "autotest_name": "telemetry_Benchmarks.dromaeo.domcoretraverse",
+    "master_name": "ChromiumPerf",
+    "dashboard_test_name": "dromaeo.domcoretraverse"
+  },
+  {
+    "autotest_name": "telemetry_Benchmarks.kraken",
+    "master_name": "ChromiumPerf",
+    "dashboard_test_name": "kraken"
+  },
+  {
+    "autotest_name": "telemetry_Benchmarks.media.tough_media_cases",
+    "master_name": "ChromiumPerf",
+    "dashboard_test_name": "media.tough_media_cases"
+  },
+  {
+    "autotest_name": "telemetry_Benchmarks.memory.top_25",
+    "master_name": "ChromiumPerf",
+    "dashboard_test_name": "memory.top_25"
+  },
+  {
+    "autotest_name": "telemetry_Benchmarks.octane",
+    "master_name": "ChromiumPerf",
+    "dashboard_test_name": "octane"
+  },
+  {
+    "autotest_name": "telemetry_Benchmarks.page_cycler.typical_25",
+    "master_name": "ChromiumPerf",
+    "dashboard_test_name": "page_cycler.typical_25"
+  },
+  {
+    "autotest_name": "telemetry_Benchmarks.robohornet_pro",
+    "master_name": "ChromiumPerf",
+    "dashboard_test_name": "robohornet_pro"
+  },
+  {
+    "autotest_name": "telemetry_Benchmarks.smoothness.top_25",
+    "master_name": "ChromiumPerf",
+    "dashboard_test_name": "smoothness.top_25"
+  },
+  {
+    "autotest_name": "telemetry_Benchmarks.sunspider",
+    "master_name": "ChromiumPerf",
+    "dashboard_test_name": "sunspider"
+  },
+  {
+    "autotest_name": "video_VideoDecodeMemeoryUsage",
+    "master_name": "ChromeOSVideo"
+  },
+  {
+    "autotest_name": "video_WebRtcPerf",
+    "master_name": "ChromeOSVideo"
   }
 ]

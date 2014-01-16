@@ -137,6 +137,11 @@ def _gather_presentation_info(config_data, test_name):
             master_name = presentation_dict['master_name']
         if 'dashboard_test_name' in presentation_dict:
             test_name = presentation_dict['dashboard_test_name']
+    else:
+        tko_utils.dprint('WARNING: Config data not found in %s, '
+                         'use default master_name "%s", test_name "%s"' %
+                         (_PRESENTATION_CONFIG_FILE,
+                          master_name, test_name))
     return {'master_name': master_name, 'test_name': test_name}
 
 
@@ -214,7 +219,8 @@ def _send_to_dashboard(data_obj):
     try:
         urllib2.urlopen(req)
     except urllib2.HTTPError, e:
-        return 'HTTPError: %d for JSON %s\n' % (e.code, data_obj['data'])
+        return 'HTTPError: %d %s for JSON %s\n' % (
+                e.code, e.msg, data_obj['data'])
     except urllib2.URLError, e:
         return 'URLError: %s for JSON %s\n' % (str(e.reason), data_obj['data'])
     except httplib.HTTPException:
