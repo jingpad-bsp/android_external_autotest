@@ -62,10 +62,6 @@ class network_3GIdentifiers(test.test):
                         device_props['Cellular.HomeProvider']['code'],
                         operator_identifier,
                         5, 6)
-            self._ValidateIdentifier('Operator ID',
-                                     device_props['Cellular.SIMOperatorID'],
-                                     modem_props['OperatorIdentifier'],
-                                     5, 6)
             self._ValidateIdentifier('ICCID',
                                      device_props['Cellular.ICCID'],
                                      modem_props['SimIdentifier'],
