@@ -29,7 +29,8 @@ validator_weights = {'CountPacketsValidator': weight_common,
                      'CountTrackingIDFatFingerValidator': weight_rare,
                      'CountTrackingIDNormalFingerValidator': weight_critical,
                      'DrumrollValidator': weight_rare,
-                     'LinearityValidator': weight_common,
+                     'LinearityFatFingerValidator': weight_rare,
+                     'LinearityNormalFingerValidator': weight_common,
                      'NoGapValidator': weight_common,
                      'NoLevelJumpValidator': weight_rare,
                      'NoReversedMotionValidator': weight_common,
@@ -116,7 +117,7 @@ class FirmwareSummaryLumpyTest(FirmwareSummaryTest):
         self._test_by_gesture(validator, expected_scores)
 
     def test_by_gesture_LinearityMiddleValidator(self):
-        validator = 'Linearity(Middle)Validator'
+        validator = 'LinearityNormalFinger(Middle)Validator'
         expected_scores = {
             'fw_11.23': {
                 'one_finger_to_edge': 0.58086671000000001,
@@ -182,7 +183,7 @@ class FirmwareSummaryLumpyTest(FirmwareSummaryTest):
                 'CountTrackingIDFatFingerValidator': 0.0,
                 'CountTrackingIDNormalFingerValidator': 0.96666666999999995,
                 'DrumrollValidator': 0.75,
-                'Linearity(Middle)Validator': 0.51612809999999998,
+                'LinearityNormalFinger(Middle)Validator': 0.54910331999999995,
                 'NoGapValidator': 0.101144302433,
                 'PhysicalClickValidator': 0.75,
                 'PinchValidator': 0.875,
@@ -193,7 +194,7 @@ class FirmwareSummaryLumpyTest(FirmwareSummaryTest):
                 'CountTrackingIDFatFingerValidator': 0.5,
                 'CountTrackingIDNormalFingerValidator': 0.95555555999999997,
                 'DrumrollValidator': 0.666666666667,
-                'Linearity(Middle)Validator': 0.65045845000000002,
+                'LinearityNormalFinger(Middle)Validator': 0.66679957999999995,
                 'NoGapValidator': 0.623221473233,
                 'PhysicalClickValidator': 1.0,
                 'PinchValidator': 1.0,
@@ -238,8 +239,8 @@ class FirmwareSummaryLumpyTest(FirmwareSummaryTest):
 
     def test_final_weighted_average(self):
         expected_weighted_averages = {
-            'fw_11.23': 0.70754817999999997,
-            'fw_11.27': 0.85250137000000004,
+            'fw_11.23': 0.68406327,
+            'fw_11.27': 0.83886367,
         }
         final_weighted_average = self.slog.get_final_weighted_average()
         for fw, expected_value in expected_weighted_averages.items():

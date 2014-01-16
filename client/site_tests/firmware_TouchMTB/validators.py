@@ -553,6 +553,20 @@ class LinearityValidator(BaseValidator):
         return self.vlog
 
 
+class LinearityNormalFingerValidator(LinearityValidator):
+    """A dummy LinearityValidator to verify linearity for gestures performed
+    with normal fingers.
+    """
+    pass
+
+
+class LinearityFatFingerValidator(LinearityValidator):
+    """A dummy LinearityValidator to verify linearity for gestures performed
+    with fat fingers or thumb edge.
+    """
+    pass
+
+
 class RangeValidator(BaseValidator):
     """Validator to check the observed (x, y) positions should be within
     the range of reported min/max values.

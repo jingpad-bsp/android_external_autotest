@@ -1,7 +1,7 @@
 (lp0
-S'fw_11.27'
+S'fw_11.23'
 p1
-aS'20130506_030025'
+aS'20130506_032659'
 p2
 a(lp3
 (ifirmware_log
@@ -71,7 +71,7 @@ p33
 c__builtin__
 float
 p34
-F1.0323600432214637
+F1.3189987873192877
 tp35
 Rp36
 sba(ifirmware_log
@@ -85,13 +85,13 @@ sg16
 g32
 (g33
 g34
-F0.49372120920131263
+F0.69341848857610222
 tp40
 Rp41
 sbasg18
-F0.97704964298583419
+F0.88898503562081554
 sg14
-S'Linearity(Middle)Validator'
+S'LinearityNormalFinger(Middle)Validator'
 p42
 sg20
 Nsg21
@@ -99,9 +99,9 @@ S'<= 0.8, ~ +2.4'
 p43
 sg23
 (lp44
-S'    max_err[x]: 1.03 mm'
+S'    max_err[x]: 1.32 mm'
 p45
-aS'    rms_err[x]: 0.49 mm'
+aS'    rms_err[x]: 0.69 mm'
 p46
 asba(ifirmware_log
 ValidatorLog
@@ -110,7 +110,7 @@ p47
 g10
 (lp49
 sg18
-I1
+F0.71675131747071119
 sg14
 S'NoGapValidator'
 p50
@@ -120,7 +120,7 @@ S'<= 1.8, ~ +1.0'
 p51
 sg23
 (lp52
-S'    Largest gap ratio slot0: 1.571429'
+S'    Largest gap ratio slot0: 2.157277'
 p53
 asba(ifirmware_log
 ValidatorLog
@@ -148,7 +148,7 @@ p61
 g10
 (lp63
 sg18
-I1
+F0.99726094768413664
 sg14
 S'NoReversedMotion(BothEnds)Validator'
 p64
@@ -157,7 +157,7 @@ Nsg21
 g58
 sg23
 (lp65
-S"    Reversed motions slot0: {'x': 0} px"
+S"    Reversed motions slot0: {'x': -6} px"
 p66
 asba(ifirmware_log
 ValidatorLog
@@ -174,7 +174,7 @@ S'pct of large intervals (%)'
 p72
 sg16
 (I0
-I109
+I110
 tp73
 sba(ifirmware_log
 Metric
@@ -187,7 +187,7 @@ sg16
 g32
 (g33
 g34
-F8.805366972477163
+F9.6659545454547864
 tp77
 Rp78
 sba(ifirmware_log
@@ -201,7 +201,7 @@ sg16
 g32
 (g33
 g34
-F9.2130000002725865
+F10.151999999834516
 tp82
 Rp83
 sbasg18
@@ -215,13 +215,13 @@ S'>= 60'
 p85
 sg23
 (lp86
-S'    average time interval (ms): 8.805367'
+S'    average time interval (ms): 9.665955'
 p87
-aS'    max time interval (ms): 9.213000'
+aS'    max time interval (ms): 10.152000'
 p88
 aS'    # long intervals > 16.67 ms: 0'
 p89
-aS'    # total intervals: 109'
+aS'    # total intervals: 110'
 p90
 asbasS'prompt'
 p91
@@ -287,7 +287,7 @@ sg16
 g32
 (g33
 g34
-F3.7184650935232639
+F5.2549567222595215
 tp115
 Rp116
 sba(ifirmware_log
@@ -301,7 +301,7 @@ sg16
 g32
 (g33
 g34
-F1.3404305762766571
+F3.0068621742435844
 tp120
 Rp121
 sbasg18
@@ -313,9 +313,9 @@ Nsg21
 g43
 sg23
 (lp122
-S'    max_err[x]: 3.72 mm'
+S'    max_err[x]: 5.25 mm'
 p123
-aS'    rms_err[x]: 1.34 mm'
+aS'    rms_err[x]: 3.01 mm'
 p124
 asba(ifirmware_log
 ValidatorLog
@@ -324,7 +324,7 @@ p125
 g10
 (lp127
 sg18
-F0.29695937028913677
+F0.163774566964973
 sg14
 g50
 sg20
@@ -332,7 +332,7 @@ Nsg21
 g51
 sg23
 (lp128
-S'    Largest gap ratio slot0: 2.433105'
+S'    Largest gap ratio slot0: 2.534758'
 p129
 asba(ifirmware_log
 ValidatorLog
@@ -366,7 +366,7 @@ Nsg21
 g58
 sg23
 (lp138
-S"    Reversed motions slot0: {'x': 0} px"
+S"    Reversed motions slot0: {'x': -2} px"
 p139
 asba(ifirmware_log
 ValidatorLog
@@ -383,7 +383,7 @@ S'pct of large intervals (%)'
 p145
 sg16
 (I0
-I106
+I129
 tp146
 sba(ifirmware_log
 Metric
@@ -395,7 +395,7 @@ sg16
 g32
 (g33
 g34
-F8.8324999999987899
+F9.6604496124017221
 tp149
 Rp150
 sba(ifirmware_log
@@ -408,7 +408,7 @@ sg16
 g32
 (g33
 g34
-F9.2640000002575107
+F10.106000000632775
 tp153
 Rp154
 sbasg18
@@ -420,13 +420,13 @@ Nsg21
 g85
 sg23
 (lp155
-S'    average time interval (ms): 8.832500'
+S'    average time interval (ms): 9.660450'
 p156
-aS'    max time interval (ms): 9.264000'
+aS'    max time interval (ms): 10.106000'
 p157
 aS'    # long intervals > 16.67 ms: 0'
 p158
-aS'    # total intervals: 106'
+aS'    # total intervals: 129'
 p159
 asbasg91
 S'Take 3 seconds to draw a straight, horizontal line from left to right using a ruler.'
@@ -485,7 +485,7 @@ sg16
 g32
 (g33
 g34
-F1.1080299792811275
+F1.2411798194904502
 tp178
 Rp179
 sba(ifirmware_log
@@ -499,11 +499,11 @@ sg16
 g32
 (g33
 g34
-F0.51296818265460653
+F0.57703895454073184
 tp183
 Rp184
 sbasg18
-F0.95990305010574595
+F0.91891421921551864
 sg14
 g42
 sg20
@@ -511,9 +511,9 @@ Nsg21
 g43
 sg23
 (lp185
-S'    max_err[x]: 1.11 mm'
+S'    max_err[x]: 1.24 mm'
 p186
-aS'    rms_err[x]: 0.51 mm'
+aS'    rms_err[x]: 0.58 mm'
 p187
 asba(ifirmware_log
 ValidatorLog
@@ -522,7 +522,7 @@ p188
 g10
 (lp190
 sg18
-I1
+I0
 sg14
 g50
 sg20
@@ -530,7 +530,7 @@ Nsg21
 g51
 sg23
 (lp191
-S'    Largest gap ratio slot0: 1.737932'
+S'    Largest gap ratio slot0: 3.794733'
 p192
 asba(ifirmware_log
 ValidatorLog
@@ -580,8 +580,8 @@ g14
 S'pct of large intervals (%)'
 p208
 sg16
-(I0
-I100
+(I1
+I151
 tp209
 sba(ifirmware_log
 Metric
@@ -593,7 +593,7 @@ sg16
 g32
 (g33
 g34
-F8.9002499999969586
+F9.5782781456954584
 tp212
 Rp213
 sba(ifirmware_log
@@ -606,7 +606,7 @@ sg16
 g32
 (g33
 g34
-F9.2610000001513981
+F18.76799999990908
 tp216
 Rp217
 sbasg18
@@ -618,13 +618,13 @@ Nsg21
 g85
 sg23
 (lp218
-S'    average time interval (ms): 8.900250'
+S'    average time interval (ms): 9.578278'
 p219
-aS'    max time interval (ms): 9.261000'
+aS'    max time interval (ms): 18.768000'
 p220
-aS'    # long intervals > 16.67 ms: 0'
+aS'    # long intervals > 16.67 ms: 1'
 p221
-aS'    # total intervals: 100'
+aS'    # total intervals: 151'
 p222
 asbasg91
 S'Take 3 seconds to draw a straight, horizontal line from right to left using a ruler.'
@@ -686,7 +686,7 @@ sg16
 g32
 (g33
 g34
-F1.7929712027156104
+F3.1723659075796604
 tp243
 Rp244
 sba(ifirmware_log
@@ -700,11 +700,11 @@ sg16
 g32
 (g33
 g34
-F0.65701367969226421
+F1.1678291483247596
 tp248
 Rp249
 sbasg18
-F0.63384756686395449
+F0.00032708477258519553
 sg14
 g42
 sg20
@@ -712,9 +712,9 @@ Nsg21
 g43
 sg23
 (lp250
-S'    max_err[x]: 1.79 mm'
+S'    max_err[x]: 3.17 mm'
 p251
-aS'    rms_err[x]: 0.66 mm'
+aS'    rms_err[x]: 1.17 mm'
 p252
 asba(ifirmware_log
 ValidatorLog
@@ -723,7 +723,7 @@ p253
 g10
 (lp255
 sg18
-F0.99726094768413676
+I0
 sg14
 g50
 sg20
@@ -731,7 +731,7 @@ Nsg21
 g51
 sg23
 (lp256
-S'    Largest gap ratio slot0: 1.833333'
+S'    Largest gap ratio slot0: 4.642796'
 p257
 asba(ifirmware_log
 ValidatorLog
@@ -757,7 +757,7 @@ p263
 g10
 (lp265
 sg18
-F0.90450849718747373
+I1
 sg14
 g64
 sg20
@@ -765,7 +765,7 @@ Nsg21
 g58
 sg23
 (lp266
-S"    Reversed motions slot0: {'x': 11} px"
+S"    Reversed motions slot0: {'x': 0} px"
 p267
 asba(ifirmware_log
 ValidatorLog
@@ -781,8 +781,8 @@ g14
 S'pct of large intervals (%)'
 p273
 sg16
-(I0
-I105
+(I1
+I178
 tp274
 sba(ifirmware_log
 Metric
@@ -794,7 +794,7 @@ sg16
 g32
 (g33
 g34
-F8.8269428571428374
+F9.655792134831092
 tp277
 Rp278
 sba(ifirmware_log
@@ -807,7 +807,7 @@ sg16
 g32
 (g33
 g34
-F9.1459999994185637
+F19.4549999996525
 tp281
 Rp282
 sbasg18
@@ -819,13 +819,13 @@ Nsg21
 g85
 sg23
 (lp283
-S'    average time interval (ms): 8.826943'
+S'    average time interval (ms): 9.655792'
 p284
-aS'    max time interval (ms): 9.146000'
+aS'    max time interval (ms): 19.455000'
 p285
-aS'    # long intervals > 16.67 ms: 0'
+aS'    # long intervals > 16.67 ms: 1'
 p286
-aS'    # total intervals: 105'
+aS'    # total intervals: 178'
 p287
 asbasg91
 S'Take 3 seconds to draw a straight, horizontal line from right to left using a ruler.'
@@ -884,7 +884,7 @@ sg16
 g32
 (g33
 g34
-F2.6858388418331742
+F1.6687406741936381
 tp306
 Rp307
 sba(ifirmware_log
@@ -898,22 +898,22 @@ sg16
 g32
 (g33
 g34
-F1.0756346733736759
+F0.46947009440458559
 tp311
 Rp312
 sbasg18
-F0.10903343595792525
+F0.71007809996713567
 sg14
-S'Linearity(Middle)Validator'
+S'LinearityNormalFinger(Middle)Validator'
 p313
 sg20
 Nsg21
 g43
 sg23
 (lp314
-S'    max_err[x]: 2.69 mm'
+S'    max_err[x]: 1.67 mm'
 p315
-aS'    rms_err[x]: 1.08 mm'
+aS'    rms_err[x]: 0.47 mm'
 p316
 asba(ifirmware_log
 ValidatorLog
@@ -930,7 +930,7 @@ Nsg21
 g51
 sg23
 (lp320
-S'    Largest gap ratio slot0: 13.446189'
+S'    Largest gap ratio slot0: 5.215362'
 p321
 asba(ifirmware_log
 ValidatorLog
@@ -967,7 +967,7 @@ sg16
 g32
 (g33
 g34
-F0.0
+F0.083333333333333329
 tp334
 Rp335
 sbasg18
@@ -981,11 +981,11 @@ S'<= 0.01, ~ +0.07'
 p337
 sg23
 (lp338
-S'    actual: px 0'
+S'    actual: px 1'
 p339
 aS'    spec: px 0'
 p340
-aS'    short of range: 0 px == 0.000000 mm'
+aS'    short of range: 1 px == 0.083333 mm'
 p341
 asba(ifirmware_log
 ValidatorLog
@@ -1002,7 +1002,7 @@ S'pct of large intervals (%)'
 p347
 sg16
 (I0
-I62
+I93
 tp348
 sba(ifirmware_log
 Metric
@@ -1014,7 +1014,7 @@ sg16
 g32
 (g33
 g34
-F8.8038709677382414
+F9.5889139784929043
 tp351
 Rp352
 sba(ifirmware_log
@@ -1027,7 +1027,7 @@ sg16
 g32
 (g33
 g34
-F9.2709999998987769
+F10.98699999965902
 tp355
 Rp356
 sbasg18
@@ -1039,13 +1039,13 @@ Nsg21
 g85
 sg23
 (lp357
-S'    average time interval (ms): 8.803871'
+S'    average time interval (ms): 9.588914'
 p358
-aS'    max time interval (ms): 9.271000'
+aS'    max time interval (ms): 10.987000'
 p359
 aS'    # long intervals > 16.67 ms: 0'
 p360
-aS'    # total intervals: 62'
+aS'    # total intervals: 93'
 p361
 asbasg91
 S'Take 2 seconds to draw a striaght horizontal line from the center off left edge.'
@@ -1108,7 +1108,7 @@ sg16
 g32
 (g33
 g34
-F3.5118642791640013
+F1.7408308317147505
 tp383
 Rp384
 sba(ifirmware_log
@@ -1122,11 +1122,11 @@ sg16
 g32
 (g33
 g34
-F1.0081727439735599
+F0.59347207199142982
 tp388
 Rp389
 sbasg18
-I0
+F0.66639074322751257
 sg14
 g313
 sg20
@@ -1134,9 +1134,9 @@ Nsg21
 g43
 sg23
 (lp390
-S'    max_err[x]: 3.51 mm'
+S'    max_err[x]: 1.74 mm'
 p391
-aS'    rms_err[x]: 1.01 mm'
+aS'    rms_err[x]: 0.59 mm'
 p392
 asba(ifirmware_log
 ValidatorLog
@@ -1153,7 +1153,7 @@ Nsg21
 g51
 sg23
 (lp396
-S'    Largest gap ratio slot0: 21.000000'
+S'    Largest gap ratio slot0: 10.295630'
 p397
 asba(ifirmware_log
 ValidatorLog
@@ -1162,7 +1162,7 @@ p398
 g10
 (lp400
 sg18
-I1
+F0.97552825814757682
 sg14
 g325
 sg20
@@ -1170,7 +1170,7 @@ Nsg21
 g58
 sg23
 (lp401
-S"    Reversed motions slot0: {'x': 0} px"
+S"    Reversed motions slot0: {'x': 8} px"
 p402
 asba(ifirmware_log
 ValidatorLog
@@ -1189,7 +1189,7 @@ sg16
 g32
 (g33
 g34
-F0.0
+F0.083333333333333329
 tp409
 Rp410
 sbasg18
@@ -1201,11 +1201,11 @@ Nsg21
 g337
 sg23
 (lp411
-S'    actual: px 0'
+S'    actual: px 1'
 p412
 aS'    spec: px 0'
 p413
-aS'    short of range: 0 px == 0.000000 mm'
+aS'    short of range: 1 px == 0.083333 mm'
 p414
 asba(ifirmware_log
 ValidatorLog
@@ -1221,8 +1221,8 @@ g14
 S'pct of large intervals (%)'
 p420
 sg16
-(I0
-I98
+(I3
+I179
 tp421
 sba(ifirmware_log
 Metric
@@ -1234,7 +1234,7 @@ sg16
 g32
 (g33
 g34
-F8.826775510210517
+F9.9032122905037046
 tp424
 Rp425
 sba(ifirmware_log
@@ -1247,7 +1247,7 @@ sg16
 g32
 (g33
 g34
-F9.2640000002575107
+F22.022999999535386
 tp428
 Rp429
 sbasg18
@@ -1259,13 +1259,13 @@ Nsg21
 g85
 sg23
 (lp430
-S'    average time interval (ms): 8.826776'
+S'    average time interval (ms): 9.903212'
 p431
-aS'    max time interval (ms): 9.264000'
+aS'    max time interval (ms): 22.023000'
 p432
-aS'    # long intervals > 16.67 ms: 0'
+aS'    # long intervals > 16.67 ms: 3'
 p433
-aS'    # total intervals: 98'
+aS'    # total intervals: 179'
 p434
 asbasg91
 S'Take 2 seconds to draw a striaght horizontal line from the center off left edge.'
@@ -1325,7 +1325,7 @@ sg16
 g32
 (g33
 g34
-F2.142994153468559
+F1.0762420436755444
 tp454
 Rp455
 sba(ifirmware_log
@@ -1339,22 +1339,22 @@ sg16
 g32
 (g33
 g34
-F0.9686307139175877
+F0.44203845721236412
 tp459
 Rp460
 sbasg18
-F0.40695608799925825
+F0.967665995439561
 sg14
-S'Linearity(Middle)Validator'
+S'LinearityNormalFinger(Middle)Validator'
 p461
 sg20
 Nsg21
 g43
 sg23
 (lp462
-S'    max_err[x]: 2.14 mm'
+S'    max_err[x]: 1.08 mm'
 p463
-aS'    rms_err[x]: 0.97 mm'
+aS'    rms_err[x]: 0.44 mm'
 p464
 asba(ifirmware_log
 ValidatorLog
@@ -1373,7 +1373,7 @@ sg16
 g32
 (g33
 g34
-F2.295590428635478
+F1.1197655794676393
 tp471
 Rp472
 sba(ifirmware_log
@@ -1387,22 +1387,22 @@ sg16
 g32
 (g33
 g34
-F0.97627492951737738
+F0.4667522435749018
 tp476
 Rp477
 sbasg18
-F0.31132782614602894
+F0.95683511205607952
 sg14
-S'Linearity(Middle)Validator'
+S'LinearityNormalFinger(Middle)Validator'
 p478
 sg20
 Nsg21
 g43
 sg23
 (lp479
-S'    max_err[x]: 2.30 mm'
+S'    max_err[x]: 1.12 mm'
 p480
-aS'    rms_err[x]: 0.98 mm'
+aS'    rms_err[x]: 0.47 mm'
 p481
 asba(ifirmware_log
 ValidatorLog
@@ -1411,7 +1411,7 @@ p482
 g10
 (lp484
 sg18
-I1
+I0
 sg14
 g50
 sg20
@@ -1419,7 +1419,7 @@ Nsg21
 g51
 sg23
 (lp485
-S'    Largest gap ratio slot0: 1.674979'
+S'    Largest gap ratio slot0: 3.038963'
 p486
 asba(ifirmware_log
 ValidatorLog
@@ -1428,7 +1428,7 @@ p487
 g10
 (lp489
 sg18
-F0.89801242443173446
+I0
 sg14
 g50
 sg20
@@ -1436,7 +1436,7 @@ Nsg21
 g51
 sg23
 (lp490
-S'    Largest gap ratio slot1: 2.006932'
+S'    Largest gap ratio slot1: 3.590110'
 p491
 asba(ifirmware_log
 ValidatorLog
@@ -1489,7 +1489,7 @@ S'pct of large intervals (%)'
 p509
 sg16
 (I0
-I82
+I136
 tp510
 sba(ifirmware_log
 Metric
@@ -1501,7 +1501,7 @@ sg16
 g32
 (g33
 g34
-F10.199792682935989
+F11.627022058820224
 tp513
 Rp514
 sba(ifirmware_log
@@ -1514,7 +1514,7 @@ sg16
 g32
 (g33
 g34
-F10.648000000401225
+F12.609999999767751
 tp517
 Rp518
 sbasg18
@@ -1526,13 +1526,13 @@ Nsg21
 g85
 sg23
 (lp519
-S'    average time interval (ms): 10.199793'
+S'    average time interval (ms): 11.627022'
 p520
-aS'    max time interval (ms): 10.648000'
+aS'    max time interval (ms): 12.610000'
 p521
 aS'    # long intervals > 16.67 ms: 0'
 p522
-aS'    # total intervals: 82'
+aS'    # total intervals: 136'
 p523
 asbasg91
 S'Take 1 second to draw a horizontal line from left to right using a ruler with TWO fingers at the same time.'
@@ -1595,7 +1595,7 @@ sg16
 g32
 (g33
 g34
-F1.3816813097024958
+F1.203587802243419
 tp545
 Rp546
 sba(ifirmware_log
@@ -1609,11 +1609,11 @@ sg16
 g32
 (g33
 g34
-F0.73429823575565079
+F0.45721666496034891
 tp550
 Rp551
 sbasg18
-F0.86192883230952377
+F0.93183382533191228
 sg14
 g461
 sg20
@@ -1621,9 +1621,9 @@ Nsg21
 g43
 sg23
 (lp552
-S'    max_err[x]: 1.38 mm'
+S'    max_err[x]: 1.20 mm'
 p553
-aS'    rms_err[x]: 0.73 mm'
+aS'    rms_err[x]: 0.46 mm'
 p554
 asba(ifirmware_log
 ValidatorLog
@@ -1642,7 +1642,7 @@ sg16
 g32
 (g33
 g34
-F1.5456672878159832
+F1.2580386268285413
 tp561
 Rp562
 sba(ifirmware_log
@@ -1656,11 +1656,11 @@ sg16
 g32
 (g33
 g34
-F0.86797266169254461
+F0.47870570117307798
 tp566
 Rp567
 sbasg18
-F0.78013847912214507
+F0.91278884001480409
 sg14
 g478
 sg20
@@ -1668,9 +1668,9 @@ Nsg21
 g43
 sg23
 (lp568
-S'    max_err[x]: 1.55 mm'
+S'    max_err[x]: 1.26 mm'
 p569
-aS'    rms_err[x]: 0.87 mm'
+aS'    rms_err[x]: 0.48 mm'
 p570
 asba(ifirmware_log
 ValidatorLog
@@ -1679,7 +1679,7 @@ p571
 g10
 (lp573
 sg18
-F0.99587949000497322
+F0.080165971619802434
 sg14
 g50
 sg20
@@ -1687,7 +1687,7 @@ Nsg21
 g51
 sg23
 (lp574
-S'    Largest gap ratio slot0: 1.840894'
+S'    Largest gap ratio slot0: 2.617250'
 p575
 asba(ifirmware_log
 ValidatorLog
@@ -1696,7 +1696,7 @@ p576
 g10
 (lp578
 sg18
-F0.9993805611446408
+I0
 sg14
 g50
 sg20
@@ -1704,7 +1704,7 @@ Nsg21
 g51
 sg23
 (lp579
-S'    Largest gap ratio slot1: 1.815846'
+S'    Largest gap ratio slot1: 3.640055'
 p580
 asba(ifirmware_log
 ValidatorLog
@@ -1738,7 +1738,7 @@ Nsg21
 g58
 sg23
 (lp589
-S"    Reversed motions slot1: {'x': 0} px"
+S"    Reversed motions slot1: {'x': -1} px"
 p590
 asba(ifirmware_log
 ValidatorLog
@@ -1755,7 +1755,7 @@ S'pct of large intervals (%)'
 p596
 sg16
 (I0
-I93
+I154
 tp597
 sba(ifirmware_log
 Metric
@@ -1767,7 +1767,7 @@ sg16
 g32
 (g33
 g34
-F10.103311827963328
+F11.634623376621322
 tp600
 Rp601
 sba(ifirmware_log
@@ -1780,7 +1780,7 @@ sg16
 g32
 (g33
 g34
-F10.44000000001688
+F12.450000000171713
 tp604
 Rp605
 sbasg18
@@ -1792,13 +1792,13 @@ Nsg21
 g85
 sg23
 (lp606
-S'    average time interval (ms): 10.103312'
+S'    average time interval (ms): 11.634623'
 p607
-aS'    max time interval (ms): 10.440000'
+aS'    max time interval (ms): 12.450000'
 p608
 aS'    # long intervals > 16.67 ms: 0'
 p609
-aS'    # total intervals: 93'
+aS'    # total intervals: 154'
 p610
 asbasg91
 S'Take 1 second to draw a horizontal line from left to right using a ruler with TWO fingers at the same time.'
@@ -1857,7 +1857,7 @@ sg16
 g32
 (g33
 g34
-F2.422763423373302
+F0.90313772717490792
 tp629
 Rp630
 sba(ifirmware_log
@@ -1871,11 +1871,11 @@ sg16
 g32
 (g33
 g34
-F0.84240408206310324
+F0.4660158502194201
 tp634
 Rp635
 sbasg18
-F0.23721029715715536
+F0.99545019659906964
 sg14
 g461
 sg20
@@ -1883,9 +1883,9 @@ Nsg21
 g43
 sg23
 (lp636
-S'    max_err[x]: 2.42 mm'
+S'    max_err[x]: 0.90 mm'
 p637
-aS'    rms_err[x]: 0.84 mm'
+aS'    rms_err[x]: 0.47 mm'
 p638
 asba(ifirmware_log
 ValidatorLog
@@ -1904,7 +1904,7 @@ sg16
 g32
 (g33
 g34
-F1.9091224592023839
+F1.0464620914232607
 tp645
 Rp646
 sba(ifirmware_log
@@ -1918,11 +1918,11 @@ sg16
 g32
 (g33
 g34
-F0.8910443577643069
+F0.4718928476836452
 tp650
 Rp651
 sbasg18
-F0.55933902781400691
+F0.97420429584933066
 sg14
 g478
 sg20
@@ -1930,9 +1930,9 @@ Nsg21
 g43
 sg23
 (lp652
-S'    max_err[x]: 1.91 mm'
+S'    max_err[x]: 1.05 mm'
 p653
-aS'    rms_err[x]: 0.89 mm'
+aS'    rms_err[x]: 0.47 mm'
 p654
 asba(ifirmware_log
 ValidatorLog
@@ -1941,7 +1941,7 @@ p655
 g10
 (lp657
 sg18
-F0.10125544951134369
+I0
 sg14
 g50
 sg20
@@ -1949,7 +1949,7 @@ Nsg21
 g51
 sg23
 (lp658
-S'    Largest gap ratio slot0: 2.593839'
+S'    Largest gap ratio slot0: 6.082763'
 p659
 asba(ifirmware_log
 ValidatorLog
@@ -1958,7 +1958,7 @@ p660
 g10
 (lp662
 sg18
-F0.9901179915368109
+I0
 sg14
 g50
 sg20
@@ -1966,7 +1966,7 @@ Nsg21
 g51
 sg23
 (lp663
-S'    Largest gap ratio slot1: 1.863390'
+S'    Largest gap ratio slot1: 3.726780'
 p664
 asba(ifirmware_log
 ValidatorLog
@@ -2017,7 +2017,7 @@ S'pct of large intervals (%)'
 p680
 sg16
 (I0
-I71
+I146
 tp681
 sba(ifirmware_log
 Metric
@@ -2029,7 +2029,7 @@ sg16
 g32
 (g33
 g34
-F10.106492957751932
+F11.516369863018131
 tp684
 Rp685
 sba(ifirmware_log
@@ -2042,7 +2042,7 @@ sg16
 g32
 (g33
 g34
-F10.84400000036112
+F12.374999999337888
 tp688
 Rp689
 sbasg18
@@ -2054,13 +2054,13 @@ Nsg21
 g85
 sg23
 (lp690
-S'    average time interval (ms): 10.106493'
+S'    average time interval (ms): 11.516370'
 p691
-aS'    max time interval (ms): 10.844000'
+aS'    max time interval (ms): 12.375000'
 p692
 aS'    # long intervals > 16.67 ms: 0'
 p693
-aS'    # total intervals: 71'
+aS'    # total intervals: 146'
 p694
 asbasg91
 S'Take 1 second to draw a horizontal line from right to left using a ruler with TWO fingers at the same time.'
@@ -2121,7 +2121,7 @@ sg16
 g32
 (g33
 g34
-F1.7748828269541264
+F2.1348381201193356
 tp714
 Rp715
 sba(ifirmware_log
@@ -2135,11 +2135,11 @@ sg16
 g32
 (g33
 g34
-F0.80466187263319222
+F1.1497932526464389
 tp719
 Rp720
 sbasg18
-F0.64521572427135276
+F0.41220616213236894
 sg14
 g461
 sg20
@@ -2147,9 +2147,9 @@ Nsg21
 g43
 sg23
 (lp721
-S'    max_err[x]: 1.77 mm'
+S'    max_err[x]: 2.13 mm'
 p722
-aS'    rms_err[x]: 0.80 mm'
+aS'    rms_err[x]: 1.15 mm'
 p723
 asba(ifirmware_log
 ValidatorLog
@@ -2168,7 +2168,7 @@ sg16
 g32
 (g33
 g34
-F1.6602922821572672
+F2.4801576573712132
 tp730
 Rp731
 sba(ifirmware_log
@@ -2182,11 +2182,11 @@ sg16
 g32
 (g33
 g34
-F0.83412496747192399
+F1.2978047252324096
 tp735
 Rp736
 sbasg18
-F0.71508286969136226
+F0.20602390047407843
 sg14
 g478
 sg20
@@ -2194,9 +2194,9 @@ Nsg21
 g43
 sg23
 (lp737
-S'    max_err[x]: 1.66 mm'
+S'    max_err[x]: 2.48 mm'
 p738
-aS'    rms_err[x]: 0.83 mm'
+aS'    rms_err[x]: 1.30 mm'
 p739
 asba(ifirmware_log
 ValidatorLog
@@ -2205,7 +2205,7 @@ p740
 g10
 (lp742
 sg18
-I0
+F0.44922410520889894
 sg14
 g50
 sg20
@@ -2213,7 +2213,7 @@ Nsg21
 g51
 sg23
 (lp743
-S'    Largest gap ratio slot0: 4.800000'
+S'    Largest gap ratio slot0: 2.332381'
 p744
 asba(ifirmware_log
 ValidatorLog
@@ -2222,7 +2222,7 @@ p745
 g10
 (lp747
 sg18
-I1
+F0.14699155180484647
 sg14
 g50
 sg20
@@ -2230,7 +2230,7 @@ Nsg21
 g51
 sg23
 (lp748
-S'    Largest gap ratio slot1: 1.482407'
+S'    Largest gap ratio slot1: 2.549510'
 p749
 asba(ifirmware_log
 ValidatorLog
@@ -2264,7 +2264,7 @@ Nsg21
 g58
 sg23
 (lp758
-S"    Reversed motions slot1: {'x': 0} px"
+S"    Reversed motions slot1: {'x': 1} px"
 p759
 asba(ifirmware_log
 ValidatorLog
@@ -2281,7 +2281,7 @@ S'pct of large intervals (%)'
 p765
 sg16
 (I0
-I74
+I135
 tp766
 sba(ifirmware_log
 Metric
@@ -2293,7 +2293,7 @@ sg16
 g32
 (g33
 g34
-F10.162999999994174
+F11.719688888890097
 tp769
 Rp770
 sba(ifirmware_log
@@ -2306,7 +2306,7 @@ sg16
 g32
 (g33
 g34
-F10.753999999906227
+F14.658000000054017
 tp773
 Rp774
 sbasg18
@@ -2318,13 +2318,13 @@ Nsg21
 g85
 sg23
 (lp775
-S'    average time interval (ms): 10.163000'
+S'    average time interval (ms): 11.719689'
 p776
-aS'    max time interval (ms): 10.754000'
+aS'    max time interval (ms): 14.658000'
 p777
 aS'    # long intervals > 16.67 ms: 0'
 p778
-aS'    # total intervals: 74'
+aS'    # total intervals: 135'
 p779
 asbasg91
 S'Take 1 second to draw a horizontal line from right to left using a ruler with TWO fingers at the same time.'
@@ -2353,7 +2353,7 @@ g14
 S'pct of incorrect cases (%)--packets'
 p789
 sg16
-(I5
+(I4
 I3
 tp790
 sbasg18
@@ -2367,7 +2367,7 @@ S'>= 3, ~ -3'
 p792
 sg23
 (lp793
-S'    Number of packets slot0: 5'
+S'    Number of packets slot0: 4'
 p794
 asba(ifirmware_log
 ValidatorLog
@@ -2429,7 +2429,7 @@ S'pct of large intervals (%)'
 p814
 sg16
 (I0
-I2
+I1
 tp815
 sba(ifirmware_log
 Metric
@@ -2441,7 +2441,7 @@ sg16
 g32
 (g33
 g34
-F8.6845001205801964
+F9.5379995182156563
 tp818
 Rp819
 sba(ifirmware_log
@@ -2454,7 +2454,7 @@ sg16
 g32
 (g33
 g34
-F8.6890002712607384
+F9.5379995182156563
 tp822
 Rp823
 sbasg18
@@ -2466,13 +2466,13 @@ Nsg21
 g85
 sg23
 (lp824
-S'    average time interval (ms): 8.684500'
+S'    average time interval (ms): 9.538000'
 p825
-aS'    max time interval (ms): 8.689000'
+aS'    max time interval (ms): 9.538000'
 p826
 aS'    # long intervals > 16.67 ms: 0'
 p827
-aS'    # total intervals: 2'
+aS'    # total intervals: 1'
 p828
 asbasg91
 S'Use ONE finger to quickly swipe from the bottom left to the top right.'
@@ -2502,7 +2502,7 @@ p838
 g14
 g789
 sg16
-(I8
+(I6
 I3
 tp840
 sbasg18
@@ -2514,7 +2514,7 @@ Nsg21
 g792
 sg23
 (lp841
-S'    Number of packets slot0: 8'
+S'    Number of packets slot0: 6'
 p842
 asba(ifirmware_log
 ValidatorLog
@@ -2575,7 +2575,7 @@ S'pct of large intervals (%)'
 p861
 sg16
 (I0
-I5
+I3
 tp862
 sba(ifirmware_log
 Metric
@@ -2587,7 +2587,7 @@ sg16
 g32
 (g33
 g34
-F8.8484000414609909
+F9.7286667053898181
 tp865
 Rp866
 sba(ifirmware_log
@@ -2600,7 +2600,7 @@ sg16
 g32
 (g33
 g34
-F9.0140001848340034
+F9.9609997123479843
 tp869
 Rp870
 sbasg18
@@ -2612,13 +2612,13 @@ Nsg21
 g85
 sg23
 (lp871
-S'    average time interval (ms): 8.848400'
+S'    average time interval (ms): 9.728667'
 p872
-aS'    max time interval (ms): 9.014000'
+aS'    max time interval (ms): 9.961000'
 p873
 aS'    # long intervals > 16.67 ms: 0'
 p874
-aS'    # total intervals: 5'
+aS'    # total intervals: 3'
 p875
 asbasg91
 S'Use ONE finger to quickly swipe from the bottom left to the top right.'
@@ -2646,7 +2646,7 @@ p883
 g14
 g789
 sg16
-(I5
+(I4
 I3
 tp885
 sbasg18
@@ -2658,7 +2658,7 @@ Nsg21
 g792
 sg23
 (lp886
-S'    Number of packets slot0: 5'
+S'    Number of packets slot0: 4'
 p887
 asba(ifirmware_log
 ValidatorLog
@@ -2673,7 +2673,7 @@ p891
 g14
 g789
 sg16
-(I5
+(I4
 I3
 tp893
 sbasg18
@@ -2685,7 +2685,7 @@ Nsg21
 g792
 sg23
 (lp894
-S'    Number of packets slot1: 5'
+S'    Number of packets slot1: 4'
 p895
 asba(ifirmware_log
 ValidatorLog
@@ -2765,7 +2765,7 @@ S'pct of large intervals (%)'
 p921
 sg16
 (I0
-I2
+I1
 tp922
 sba(ifirmware_log
 Metric
@@ -2777,7 +2777,7 @@ sg16
 g32
 (g33
 g34
-F10.444999672472477
+F11.808000504970551
 tp925
 Rp926
 sba(ifirmware_log
@@ -2790,7 +2790,7 @@ sg16
 g32
 (g33
 g34
-F10.956999845802784
+F11.808000504970551
 tp929
 Rp930
 sbasg18
@@ -2802,13 +2802,13 @@ Nsg21
 g85
 sg23
 (lp931
-S'    average time interval (ms): 10.445000'
+S'    average time interval (ms): 11.808001'
 p932
-aS'    max time interval (ms): 10.957000'
+aS'    max time interval (ms): 11.808001'
 p933
 aS'    # long intervals > 16.67 ms: 0'
 p934
-aS'    # total intervals: 2'
+aS'    # total intervals: 1'
 p935
 asbasg91
 S'Use TWO fingers to quickly swipe from top to bottom.'
@@ -2838,7 +2838,7 @@ p945
 g14
 g789
 sg16
-(I6
+(I5
 I3
 tp947
 sbasg18
@@ -2850,7 +2850,7 @@ Nsg21
 g792
 sg23
 (lp948
-S'    Number of packets slot0: 6'
+S'    Number of packets slot0: 5'
 p949
 asba(ifirmware_log
 ValidatorLog
@@ -2865,7 +2865,7 @@ p953
 g14
 g789
 sg16
-(I6
+(I4
 I3
 tp955
 sbasg18
@@ -2877,7 +2877,7 @@ Nsg21
 g792
 sg23
 (lp956
-S'    Number of packets slot1: 6'
+S'    Number of packets slot1: 4'
 p957
 asba(ifirmware_log
 ValidatorLog
@@ -2955,7 +2955,7 @@ S'pct of large intervals (%)'
 p981
 sg16
 (I0
-I3
+I2
 tp982
 sba(ifirmware_log
 Metric
@@ -2967,7 +2967,7 @@ sg16
 g32
 (g33
 g34
-F10.275000085433325
+F11.814999859780073
 tp985
 Rp986
 sba(ifirmware_log
@@ -2980,7 +2980,7 @@ sg16
 g32
 (g33
 g34
-F10.409999638795853
+F11.969000101089478
 tp989
 Rp990
 sbasg18
@@ -2992,13 +2992,13 @@ Nsg21
 g85
 sg23
 (lp991
-S'    average time interval (ms): 10.275000'
+S'    average time interval (ms): 11.815000'
 p992
-aS'    max time interval (ms): 10.410000'
+aS'    max time interval (ms): 11.969000'
 p993
 aS'    # long intervals > 16.67 ms: 0'
 p994
-aS'    # total intervals: 3'
+aS'    # total intervals: 2'
 p995
 asbasg91
 S'Use TWO fingers to quickly swipe from top to bottom.'
@@ -3026,11 +3026,11 @@ p1003
 g14
 g15
 sg16
-(I2
+(I3
 I2
 tp1005
 sbasg18
-I1
+I0
 sg14
 g19
 sg20
@@ -3038,7 +3038,7 @@ Nsg21
 g445
 sg23
 (lp1006
-S'    count of trackid IDs: 2'
+S'    count of trackid IDs: 3'
 p1007
 asba(ifirmware_log
 ValidatorLog
@@ -3057,7 +3057,7 @@ sg16
 (g32
 (g33
 g34
-F674.81767933564561
+F782.48640987673616
 tp1014
 Rp1015
 I200
@@ -3073,7 +3073,7 @@ S'>= 200, ~ -100'
 p1018
 sg23
 (lp1019
-S'    Relative motions of the two fingers: 674.82 px'
+S'    Relative motions of the two fingers: 782.49 px'
 p1020
 asba(ifirmware_log
 ValidatorLog
@@ -3090,7 +3090,7 @@ S'pct of large intervals (%)'
 p1026
 sg16
 (I0
-I115
+I131
 tp1027
 sba(ifirmware_log
 Metric
@@ -3102,7 +3102,7 @@ sg16
 g32
 (g33
 g34
-F10.588469566858333
+F12.752221371153839
 tp1030
 Rp1031
 sba(ifirmware_log
@@ -3115,7 +3115,7 @@ sg16
 g32
 (g33
 g34
-F11.682999320328236
+F14.486999250948429
 tp1034
 Rp1035
 sbasg18
@@ -3127,13 +3127,13 @@ Nsg21
 g85
 sg23
 (lp1036
-S'    average time interval (ms): 10.588470'
+S'    average time interval (ms): 12.752221'
 p1037
-aS'    max time interval (ms): 11.682999'
+aS'    max time interval (ms): 14.486999'
 p1038
 aS'    # long intervals > 16.67 ms: 0'
 p1039
-aS'    # total intervals: 115'
+aS'    # total intervals: 131'
 p1040
 asbasg91
 S'Using two fingers, preform a "zoom in" pinch by bringingyour fingers farther apart.'
@@ -3163,11 +3163,11 @@ p1050
 g14
 g15
 sg16
-(I3
+(I2
 I2
 tp1052
 sbasg18
-I0
+I1
 sg14
 g19
 sg20
@@ -3175,7 +3175,7 @@ Nsg21
 g445
 sg23
 (lp1053
-S'    count of trackid IDs: 3'
+S'    count of trackid IDs: 2'
 p1054
 asba(ifirmware_log
 ValidatorLog
@@ -3193,7 +3193,7 @@ sg16
 (g32
 (g33
 g34
-F602.56046724571615
+F692.75301109597763
 tp1060
 Rp1061
 I200
@@ -3207,7 +3207,7 @@ Nsg21
 g1018
 sg23
 (lp1063
-S'    Relative motions of the two fingers: 602.56 px'
+S'    Relative motions of the two fingers: 692.75 px'
 p1064
 asba(ifirmware_log
 ValidatorLog
@@ -3223,8 +3223,8 @@ g14
 S'pct of large intervals (%)'
 p1070
 sg16
-(I1
-I115
+(I0
+I107
 tp1071
 sba(ifirmware_log
 Metric
@@ -3236,7 +3236,7 @@ sg16
 g32
 (g33
 g34
-F10.658965211199677
+F12.491962620031053
 tp1074
 Rp1075
 sba(ifirmware_log
@@ -3249,7 +3249,7 @@ sg16
 g32
 (g33
 g34
-F22.561999969184399
+F13.887000270187855
 tp1078
 Rp1079
 sbasg18
@@ -3261,13 +3261,13 @@ Nsg21
 g85
 sg23
 (lp1080
-S'    average time interval (ms): 10.658965'
+S'    average time interval (ms): 12.491963'
 p1081
-aS'    max time interval (ms): 22.562000'
+aS'    max time interval (ms): 13.887000'
 p1082
-aS'    # long intervals > 16.67 ms: 1'
+aS'    # long intervals > 16.67 ms: 0'
 p1083
-aS'    # total intervals: 115'
+aS'    # total intervals: 107'
 p1084
 asbasg91
 S'Using two fingers, preform a "zoom in" pinch by bringingyour fingers farther apart.'
@@ -3295,11 +3295,11 @@ p1092
 g14
 g15
 sg16
-(I2
+(I3
 I2
 tp1094
 sbasg18
-I1
+I0
 sg14
 g19
 sg20
@@ -3307,7 +3307,7 @@ Nsg21
 g445
 sg23
 (lp1095
-S'    count of trackid IDs: 2'
+S'    count of trackid IDs: 3'
 p1096
 asba(ifirmware_log
 ValidatorLog
@@ -3325,7 +3325,7 @@ sg16
 (g32
 (g33
 g34
-F709.26711188179149
+F676.20729185708217
 tp1102
 Rp1103
 I200
@@ -3339,7 +3339,7 @@ Nsg21
 g1018
 sg23
 (lp1105
-S'    Relative motions of the two fingers: 709.27 px'
+S'    Relative motions of the two fingers: 676.21 px'
 p1106
 asba(ifirmware_log
 ValidatorLog
@@ -3356,7 +3356,7 @@ S'pct of large intervals (%)'
 p1112
 sg16
 (I0
-I104
+I144
 tp1113
 sba(ifirmware_log
 Metric
@@ -3368,7 +3368,7 @@ sg16
 g32
 (g33
 g34
-F10.328471150177602
+F12.840680558130973
 tp1116
 Rp1117
 sba(ifirmware_log
@@ -3381,7 +3381,7 @@ sg16
 g32
 (g33
 g34
-F11.388000100851059
+F14.302999712526798
 tp1120
 Rp1121
 sbasg18
@@ -3393,13 +3393,13 @@ Nsg21
 g85
 sg23
 (lp1122
-S'    average time interval (ms): 10.328471'
+S'    average time interval (ms): 12.840681'
 p1123
-aS'    max time interval (ms): 11.388000'
+aS'    max time interval (ms): 14.303000'
 p1124
 aS'    # long intervals > 16.67 ms: 0'
 p1125
-aS'    # total intervals: 104'
+aS'    # total intervals: 144'
 p1126
 asbasg91
 S'Using two fingers, preform a "zoom out" pinch by bringingyour fingers closer together.'
@@ -3458,7 +3458,7 @@ sg16
 (g32
 (g33
 g34
-F738.49411756378481
+F517.35145500926228
 tp1145
 Rp1146
 I200
@@ -3472,7 +3472,7 @@ Nsg21
 g1018
 sg23
 (lp1148
-S'    Relative motions of the two fingers: 738.49 px'
+S'    Relative motions of the two fingers: 517.35 px'
 p1149
 asba(ifirmware_log
 ValidatorLog
@@ -3489,7 +3489,7 @@ S'pct of large intervals (%)'
 p1155
 sg16
 (I0
-I91
+I3
 tp1156
 sba(ifirmware_log
 Metric
@@ -3501,7 +3501,7 @@ sg16
 g32
 (g33
 g34
-F10.303054946464497
+F11.964333243668079
 tp1159
 Rp1160
 sba(ifirmware_log
@@ -3514,7 +3514,7 @@ sg16
 g32
 (g33
 g34
-F11.291000060737133
+F12.030999176204205
 tp1163
 Rp1164
 sbasg18
@@ -3526,13 +3526,13 @@ Nsg21
 g85
 sg23
 (lp1165
-S'    average time interval (ms): 10.303055'
+S'    average time interval (ms): 11.964333'
 p1166
-aS'    max time interval (ms): 11.291000'
+aS'    max time interval (ms): 12.030999'
 p1167
 aS'    # long intervals > 16.67 ms: 0'
 p1168
-aS'    # total intervals: 91'
+aS'    # total intervals: 3'
 p1169
 asbasg91
 S'Using two fingers, preform a "zoom out" pinch by bringingyour fingers closer together.'
@@ -3633,7 +3633,7 @@ sg16
 g32
 (g33
 g34
-F1.4743171677461742
+F2.0883273476902802
 tp1203
 Rp1204
 sbasg18
@@ -3647,7 +3647,7 @@ S'<= 1.0'
 p1206
 sg23
 (lp1207
-S'    Max distance slot0: 1.47 mm'
+S'    Max distance slot0: 2.09 mm'
 p1208
 asbasg91
 S'Use one finger to physically click the center of the touch surface.'
@@ -3748,11 +3748,11 @@ sg16
 g32
 (g33
 g34
-F0.38873012632302173
+F1.2898104942630604
 tp1242
 Rp1243
 sbasg18
-I1
+I0
 sg14
 g1205
 sg20
@@ -3760,7 +3760,7 @@ Nsg21
 g1206
 sg23
 (lp1244
-S'    Max distance slot0: 0.39 mm'
+S'    Max distance slot0: 1.29 mm'
 p1245
 asbasg91
 S'Use one finger to physically click the center of the touch surface.'
@@ -3859,11 +3859,11 @@ sg16
 g32
 (g33
 g34
-F0.80432856746757397
+F1.2806248474865694
 tp1277
 Rp1278
 sbasg18
-I1
+I0
 sg14
 g1205
 sg20
@@ -3871,7 +3871,7 @@ Nsg21
 g1206
 sg23
 (lp1279
-S'    Max distance slot0: 0.80 mm'
+S'    Max distance slot0: 1.28 mm'
 p1280
 asbasg91
 S'Use one finger to physically click the bottom left corner of the touch surface.'
@@ -3971,7 +3971,7 @@ sg16
 g32
 (g33
 g34
-F1.6343534229508365
+F1.5132745950421551
 tp1313
 Rp1314
 sbasg18
@@ -3983,7 +3983,7 @@ Nsg21
 g1206
 sg23
 (lp1315
-S'    Max distance slot0: 1.63 mm'
+S'    Max distance slot0: 1.51 mm'
 p1316
 asbasg91
 S'Use one finger to physically click the bottom left corner of the touch surface.'
@@ -4082,11 +4082,11 @@ sg16
 g32
 (g33
 g34
-F0.62271805640898092
+F1.34536240470737
 tp1348
 Rp1349
 sbasg18
-I1
+I0
 sg14
 g1205
 sg20
@@ -4094,7 +4094,7 @@ Nsg21
 g1206
 sg23
 (lp1350
-S'    Max distance slot0: 0.62 mm'
+S'    Max distance slot0: 1.35 mm'
 p1351
 asbasg91
 S'Use one finger to physically click the bottom side of the touch surface.'
@@ -4194,11 +4194,11 @@ sg16
 g32
 (g33
 g34
-F2.6476404589747466
+F0.69602043392736856
 tp1384
 Rp1385
 sbasg18
-I0
+I1
 sg14
 g1205
 sg20
@@ -4206,7 +4206,7 @@ Nsg21
 g1206
 sg23
 (lp1386
-S'    Max distance slot0: 2.65 mm'
+S'    Max distance slot0: 0.70 mm'
 p1387
 asbasg91
 S'Use one finger to physically click the bottom side of the touch surface.'
@@ -4305,7 +4305,7 @@ sg16
 g32
 (g33
 g34
-F1.3017082793177728
+F1.4609738000540746
 tp1419
 Rp1420
 sbasg18
@@ -4317,7 +4317,7 @@ Nsg21
 g1206
 sg23
 (lp1421
-S'    Max distance slot0: 1.30 mm'
+S'    Max distance slot0: 1.46 mm'
 p1422
 asbasg91
 S'Use one finger to physically click the bottom right corner of the touch surface.'
@@ -4417,11 +4417,11 @@ sg16
 g32
 (g33
 g34
-F0.99177170312078999
+F2.1000000000000014
 tp1455
 Rp1456
 sbasg18
-I1
+I0
 sg14
 g1205
 sg20
@@ -4429,7 +4429,7 @@ Nsg21
 g1206
 sg23
 (lp1457
-S'    Max distance slot0: 0.99 mm'
+S'    Max distance slot0: 2.10 mm'
 p1458
 asbasg91
 S'Use one finger to physically click the bottom right corner of the touch surface.'
@@ -4485,8 +4485,8 @@ g14
 S'2f-click w/o finger IDs (%)'
 p1476
 sg16
-(I1
-I1
+(I0
+I0
 tp1477
 sba(ifirmware_log
 Metric
@@ -4496,11 +4496,11 @@ g14
 S'2f-click miss rate (%)'
 p1480
 sg16
-(I1
+(I0
 I1
 tp1481
 sbasg18
-I1
+I0
 sg14
 g1193
 sg20
@@ -4508,9 +4508,9 @@ Nsg21
 g22
 sg23
 (lp1482
-S'    Count of 2-finger physical clicks: 1'
+S'    Count of 2-finger physical clicks: 0'
 p1483
-aS'    Count of physical clicks: 1'
+aS'    Count of physical clicks: 0'
 p1484
 asba(ifirmware_log
 ValidatorLog
@@ -4528,11 +4528,11 @@ sg16
 g32
 (g33
 g34
-F1.6414763002993527
+F0.8333333333333286
 tp1490
 Rp1491
 sbasg18
-I0
+I1
 sg14
 g1205
 sg20
@@ -4540,7 +4540,7 @@ Nsg21
 g1206
 sg23
 (lp1492
-S'    Max distance slot0: 1.64 mm'
+S'    Max distance slot0: 0.83 mm'
 p1493
 asba(ifirmware_log
 ValidatorLog
@@ -4558,11 +4558,11 @@ sg16
 g32
 (g33
 g34
-F0.53851648071345148
+F1.0770329614269016
 tp1499
 Rp1500
 sbasg18
-I1
+I0
 sg14
 g1205
 sg20
@@ -4570,7 +4570,7 @@ Nsg21
 g1206
 sg23
 (lp1501
-S'    Max distance slot1: 0.54 mm'
+S'    Max distance slot1: 1.08 mm'
 p1502
 asbasg91
 S'Use two fingers physically click the center of the touch surface.'
@@ -4626,8 +4626,8 @@ g14
 S'2f-click w/o finger IDs (%)'
 p1521
 sg16
-(I1
-I1
+(I0
+I0
 tp1522
 sba(ifirmware_log
 Metric
@@ -4637,11 +4637,11 @@ g14
 S'2f-click miss rate (%)'
 p1525
 sg16
-(I1
+(I0
 I1
 tp1526
 sbasg18
-I1
+I0
 sg14
 g1193
 sg20
@@ -4649,9 +4649,9 @@ Nsg21
 g22
 sg23
 (lp1527
-S'    Count of 2-finger physical clicks: 1'
+S'    Count of 2-finger physical clicks: 0'
 p1528
-aS'    Count of physical clicks: 1'
+aS'    Count of physical clicks: 0'
 p1529
 asba(ifirmware_log
 ValidatorLog
@@ -4669,7 +4669,7 @@ sg16
 g32
 (g33
 g34
-F1.077032961426903
+F1.9163767896736785
 tp1535
 Rp1536
 sbasg18
@@ -4681,7 +4681,7 @@ Nsg21
 g1206
 sg23
 (lp1537
-S'    Max distance slot0: 1.08 mm'
+S'    Max distance slot0: 1.92 mm'
 p1538
 asba(ifirmware_log
 ValidatorLog
@@ -4699,7 +4699,7 @@ sg16
 g32
 (g33
 g34
-F1.3727506854649349
+F1.3467037948677176
 tp1544
 Rp1545
 sbasg18
@@ -4711,7 +4711,7 @@ Nsg21
 g1206
 sg23
 (lp1546
-S'    Max distance slot1: 1.37 mm'
+S'    Max distance slot1: 1.35 mm'
 p1547
 asbasg91
 g1503
@@ -4737,7 +4737,7 @@ p1554
 g14
 g15
 sg16
-(I5
+(I7
 I1
 tp1556
 sbasg18
@@ -4750,7 +4750,7 @@ Nsg21
 g22
 sg23
 (lp1558
-S'    count of trackid IDs: 5'
+S'    count of trackid IDs: 7'
 p1559
 asba(ifirmware_log
 ValidatorLog
@@ -4769,7 +4769,7 @@ sg16
 g32
 (g33
 g34
-F3.545600414276123
+F6.4111874898274737
 tp1566
 Rp1567
 sba(ifirmware_log
@@ -4783,13 +4783,13 @@ sg16
 g32
 (g33
 g34
-F1.4920187564748406
+F2.8984228815783291
 tp1571
 Rp1572
 sbasg18
-F0.22961534222692609
+I0
 sg14
-S'Linearity(Middle)Validator'
+S'LinearityFatFinger(Middle)Validator'
 p1573
 sg20
 Nsg21
@@ -4797,9 +4797,9 @@ S'<= 1.5, ~ +3.0'
 p1574
 sg23
 (lp1575
-S'    max_err[x]: 3.55 mm'
+S'    max_err[x]: 6.41 mm'
 p1576
-aS'    rms_err[x]: 1.49 mm'
+aS'    rms_err[x]: 2.90 mm'
 p1577
 asba(ifirmware_log
 ValidatorLog
@@ -4816,7 +4816,7 @@ Nsg21
 g51
 sg23
 (lp1581
-S'    Largest gap ratio slot0: 6.474803'
+S'    Largest gap ratio slot0: 15.508062'
 p1582
 asba(ifirmware_log
 ValidatorLog
@@ -4825,7 +4825,7 @@ p1583
 g10
 (lp1585
 sg18
-I1
+F0.5
 sg14
 S'NoReversedMotion(Middle)Validator'
 p1586
@@ -4834,7 +4834,7 @@ Nsg21
 g58
 sg23
 (lp1587
-S"    Reversed motions slot0: {'x': 0} px"
+S"    Reversed motions slot0: {'x': -20} px"
 p1588
 asba(ifirmware_log
 ValidatorLog
@@ -4850,8 +4850,8 @@ g14
 S'pct of large intervals (%)'
 p1594
 sg16
-(I0
-I177
+(I6
+I615
 tp1595
 sba(ifirmware_log
 Metric
@@ -4863,7 +4863,7 @@ sg16
 g32
 (g33
 g34
-F11.062401125870519
+F11.504147968035403
 tp1598
 Rp1599
 sba(ifirmware_log
@@ -4876,7 +4876,7 @@ sg16
 g32
 (g33
 g34
-F12.392999604344368
+F42.240999639034271
 tp1602
 Rp1603
 sbasg18
@@ -4888,13 +4888,13 @@ Nsg21
 g85
 sg23
 (lp1604
-S'    average time interval (ms): 11.062401'
+S'    average time interval (ms): 11.504148'
 p1605
-aS'    max time interval (ms): 12.393000'
+aS'    max time interval (ms): 42.241000'
 p1606
-aS'    # long intervals > 16.67 ms: 0'
+aS'    # long intervals > 16.67 ms: 6'
 p1607
-aS'    # total intervals: 177'
+aS'    # total intervals: 615'
 p1608
 asbasg91
 S'Drag the edge of your thumb horizontally from left to right in a straight line across the touch surface'
@@ -4926,7 +4926,7 @@ S'>= 5'
 p1617
 sg23
 (lp1618
-S'    count of trackid IDs: 15'
+S'    count of trackid IDs: 16'
 p1619
 asba(ifirmware_log
 ValidatorLog
@@ -4945,7 +4945,7 @@ sg16
 g32
 (g33
 g34
-F0.46703854230673786
+F0.17159383568311934
 tp1626
 Rp1627
 sba(ifirmware_log
@@ -4958,7 +4958,7 @@ sg16
 g32
 (g33
 g34
-F0.34801021696368767
+F0.125
 tp1630
 Rp1631
 sba(ifirmware_log
@@ -4971,7 +4971,7 @@ sg16
 g32
 (g33
 g34
-F1.1969896973623759
+F0.22336511658794411
 tp1634
 Rp1635
 sba(ifirmware_log
@@ -4984,7 +4984,7 @@ sg16
 g32
 (g33
 g34
-F0.92379801784685389
+F0.38810436740650095
 tp1638
 Rp1639
 sba(ifirmware_log
@@ -4997,7 +4997,7 @@ sg16
 g32
 (g33
 g34
-F0.25
+F0.70123898288038355
 tp1642
 Rp1643
 sba(ifirmware_log
@@ -5010,7 +5010,7 @@ sg16
 g32
 (g33
 g34
-F0.65532010837791466
+F0.71956777149743234
 tp1646
 Rp1647
 sba(ifirmware_log
@@ -5023,7 +5023,7 @@ sg16
 g32
 (g33
 g34
-F0.097182531580749479
+F0.13462912017836418
 tp1650
 Rp1651
 sba(ifirmware_log
@@ -5036,7 +5036,7 @@ sg16
 g32
 (g33
 g34
-F0.10833333333333647
+F0.55901699437494745
 tp1654
 Rp1655
 sba(ifirmware_log
@@ -5049,7 +5049,7 @@ sg16
 g32
 (g33
 g34
-F2.2940290853527689
+F0.4583333333333357
 tp1658
 Rp1659
 sba(ifirmware_log
@@ -5062,7 +5062,7 @@ sg16
 g32
 (g33
 g34
-F0.56402570863392454
+F0.56410382384248037
 tp1662
 Rp1663
 sba(ifirmware_log
@@ -5072,59 +5072,59 @@ p1664
 g14
 g1625
 sg16
-g32
-(g33
-g34
-F0.26352313834736346
-tp1666
-Rp1667
-sba(ifirmware_log
-Metric
-p1668
-(dp1669
-g14
-g1625
-sg16
-g32
-(g33
-g34
-F0.29592134840940892
-tp1670
-Rp1671
-sba(ifirmware_log
-Metric
-p1672
-(dp1673
-g14
-g1625
-sg16
-g32
-(g33
-g34
-F0.2358495283014175
-tp1674
-Rp1675
-sba(ifirmware_log
-Metric
-p1676
-(dp1677
-g14
-g1625
-sg16
-g32
-(g33
-g34
-F0.17400510848184622
-tp1678
-Rp1679
-sba(ifirmware_log
-Metric
-p1680
-(dp1681
-g14
-g1625
-sg16
 I0
+sba(ifirmware_log
+Metric
+p1666
+(dp1667
+g14
+g1625
+sg16
+g32
+(g33
+g34
+F0.21424933553637041
+tp1668
+Rp1669
+sba(ifirmware_log
+Metric
+p1670
+(dp1671
+g14
+g1625
+sg16
+g32
+(g33
+g34
+F0.45069390943299864
+tp1672
+Rp1673
+sba(ifirmware_log
+Metric
+p1674
+(dp1675
+g14
+g1625
+sg16
+g32
+(g33
+g34
+F0.44454154268153073
+tp1676
+Rp1677
+sba(ifirmware_log
+Metric
+p1678
+(dp1679
+g14
+g1625
+sg16
+g32
+(g33
+g34
+F0.14999999999999858
+tp1680
+Rp1681
 sba(ifirmware_log
 Metric
 p1682
@@ -5135,7 +5135,7 @@ sg16
 g32
 (g33
 g34
-F0.11736111111198413
+F0.17400510848183942
 tp1684
 Rp1685
 sba(ifirmware_log
@@ -5148,7 +5148,7 @@ sg16
 g32
 (g33
 g34
-F0.71107313266639738
+F0.19525624189767074
 tp1688
 Rp1689
 sba(ifirmware_log
@@ -5161,7 +5161,7 @@ sg16
 g32
 (g33
 g34
-F0.73768173283381466
+F0.13462912017836154
 tp1692
 Rp1693
 sba(ifirmware_log
@@ -5171,25 +5171,28 @@ p1694
 g14
 g1625
 sg16
-g32
-(g33
-g34
-F0.097182531580755585
-tp1696
-Rp1697
+I0
 sba(ifirmware_log
 Metric
-p1698
-(dp1699
+p1696
+(dp1697
 g14
 g1625
 sg16
 g32
 (g33
 g34
-F0.19525624189766663
-tp1700
-Rp1701
+F0.27950849718747373
+tp1698
+Rp1699
+sba(ifirmware_log
+Metric
+p1700
+(dp1701
+g14
+g1625
+sg16
+I0
 sba(ifirmware_log
 Metric
 p1702
@@ -5200,7 +5203,7 @@ sg16
 g32
 (g33
 g34
-F0.28879539085272282
+F0.25495097567964009
 tp1704
 Rp1705
 sba(ifirmware_log
@@ -5210,33 +5213,33 @@ p1706
 g14
 g1625
 sg16
-g32
-(g33
-g34
-F0.17159383568311659
-tp1708
-Rp1709
-sba(ifirmware_log
-Metric
-p1710
-(dp1711
-g14
-g1625
-sg16
-g32
-(g33
-g34
-F0.15567951410224493
-tp1712
-Rp1713
-sba(ifirmware_log
-Metric
-p1714
-(dp1715
-g14
-g1625
-sg16
 I0
+sba(ifirmware_log
+Metric
+p1708
+(dp1709
+g14
+g1625
+sg16
+g32
+(g33
+g34
+F0.065085413965889641
+tp1710
+Rp1711
+sba(ifirmware_log
+Metric
+p1712
+(dp1713
+g14
+g1625
+sg16
+g32
+(g33
+g34
+F0.56000992054704601
+tp1714
+Rp1715
 sba(ifirmware_log
 Metric
 p1716
@@ -5247,7 +5250,7 @@ sg16
 g32
 (g33
 g34
-F0.19525624189766527
+F0.70123898288038355
 tp1718
 Rp1719
 sba(ifirmware_log
@@ -5260,7 +5263,7 @@ sg16
 g32
 (g33
 g34
-F0.25495097567963865
+F0.36524345001351777
 tp1722
 Rp1723
 sba(ifirmware_log
@@ -5273,7 +5276,7 @@ sg16
 g32
 (g33
 g34
-F0.21666666666666692
+F0.2358495283014175
 tp1726
 Rp1727
 sba(ifirmware_log
@@ -5286,7 +5289,7 @@ sg16
 g32
 (g33
 g34
-F0.160078105935821
+F0.084722222223825236
 tp1730
 Rp1731
 sba(ifirmware_log
@@ -5299,7 +5302,7 @@ sg16
 g32
 (g33
 g34
-F0.45399939580212917
+F0.041666666666664298
 tp1734
 Rp1735
 sba(ifirmware_log
@@ -5312,43 +5315,56 @@ sg16
 g32
 (g33
 g34
-F0.2083333333333286
+F0.75166481891864545
 tp1738
 Rp1739
+sba(ifirmware_log
+Metric
+p1740
+(dp1741
+g14
+g1625
+sg16
+g32
+(g33
+g34
+F2.6424551925140487
+tp1742
+Rp1743
 sbasg18
 I0
 sg14
 S'DrumrollValidator'
-p1740
+p1744
 sg20
 Nsg21
 S'<= 2.0'
-p1741
+p1745
 sg23
-(lp1742
-S'    Max radius: 2.29 mm'
-p1743
+(lp1746
+S'    Max radius: 2.64 mm'
+p1747
 asbasg91
 S'Use the index and middle finger of one hand to make a "drum roll" as fast as possible by alternately tapping each finger for 5 seconds.'
-p1744
+p1748
 sg14
 S'drumroll'
-p1745
+p1749
 sg94
 S'fast'
-p1746
+p1750
 sba(ifirmware_log
 GestureLog
-p1747
-(dp1748
+p1751
+(dp1752
 g6
-(lp1749
+(lp1753
 (ifirmware_log
 ValidatorLog
-p1750
-(dp1751
+p1754
+(dp1755
 g10
-(lp1752
+(lp1756
 sg18
 I1
 sg14
@@ -5357,29 +5373,16 @@ sg20
 Nsg21
 g1617
 sg23
-(lp1753
-S'    count of trackid IDs: 23'
-p1754
+(lp1757
+S'    count of trackid IDs: 16'
+p1758
 asba(ifirmware_log
 ValidatorLog
-p1755
-(dp1756
+p1759
+(dp1760
 g10
-(lp1757
+(lp1761
 (ifirmware_log
-Metric
-p1758
-(dp1759
-g14
-g1625
-sg16
-g32
-(g33
-g34
-F0.083333333333335702
-tp1760
-Rp1761
-sba(ifirmware_log
 Metric
 p1762
 (dp1763
@@ -5389,7 +5392,7 @@ sg16
 g32
 (g33
 g34
-F0.22422706745123056
+F0.43863424398968803
 tp1764
 Rp1765
 sba(ifirmware_log
@@ -5402,7 +5405,7 @@ sg16
 g32
 (g33
 g34
-F0.36524345001351777
+F0.46703854230673097
 tp1768
 Rp1769
 sba(ifirmware_log
@@ -5415,7 +5418,7 @@ sg16
 g32
 (g33
 g34
-F0.63513996707637299
+F0.25495097567963865
 tp1772
 Rp1773
 sba(ifirmware_log
@@ -5428,7 +5431,7 @@ sg16
 g32
 (g33
 g34
-F0.29154759474226427
+F0.20000000000000284
 tp1776
 Rp1777
 sba(ifirmware_log
@@ -5438,12 +5441,15 @@ p1778
 g14
 g1625
 sg16
-g32
-(g33
-g34
-F0.36232440512992353
-tp1780
-Rp1781
+I0
+sba(ifirmware_log
+Metric
+p1780
+(dp1781
+g14
+g1625
+sg16
+I0
 sba(ifirmware_log
 Metric
 p1782
@@ -5454,7 +5460,7 @@ sg16
 g32
 (g33
 g34
-F0.25344843876242662
+F0.45765100725820257
 tp1784
 Rp1785
 sba(ifirmware_log
@@ -5467,7 +5473,7 @@ sg16
 g32
 (g33
 g34
-F0.17400510848184725
+F0.43341665865574031
 tp1788
 Rp1789
 sba(ifirmware_log
@@ -5480,7 +5486,7 @@ sg16
 g32
 (g33
 g34
-F0.44845413490245684
+F0.28879539085272299
 tp1792
 Rp1793
 sba(ifirmware_log
@@ -5493,7 +5499,7 @@ sg16
 g32
 (g33
 g34
-F0.60092521257732889
+F0.55901699437494745
 tp1796
 Rp1797
 sba(ifirmware_log
@@ -5506,7 +5512,7 @@ sg16
 g32
 (g33
 g34
-F0.10963619850390771
+F0.29154759474226793
 tp1800
 Rp1801
 sba(ifirmware_log
@@ -5516,28 +5522,25 @@ p1802
 g14
 g1625
 sg16
-I0
+g32
+(g33
+g34
+F0.40731164699500033
+tp1804
+Rp1805
 sba(ifirmware_log
 Metric
-p1804
-(dp1805
+p1806
+(dp1807
 g14
 g1625
 sg16
 g32
 (g33
 g34
-F0.22131869269105039
-tp1806
-Rp1807
-sba(ifirmware_log
-Metric
-p1808
-(dp1809
-g14
-g1625
-sg16
-I0
+F0.40216428373378682
+tp1808
+Rp1809
 sba(ifirmware_log
 Metric
 p1810
@@ -5548,7 +5551,7 @@ sg16
 g32
 (g33
 g34
-F0.25
+F0.57759078170545097
 tp1812
 Rp1813
 sba(ifirmware_log
@@ -5558,67 +5561,64 @@ p1814
 g14
 g1625
 sg16
-I0
+g32
+(g33
+g34
+F0.065085413965887823
+tp1816
+Rp1817
 sba(ifirmware_log
 Metric
-p1816
-(dp1817
+p1818
+(dp1819
 g14
 g1625
 sg16
 g32
 (g33
 g34
-F0.28957831708162979
-tp1818
-Rp1819
+F0.041666666666664298
+tp1820
+Rp1821
 sba(ifirmware_log
 Metric
-p1820
-(dp1821
+p1822
+(dp1823
 g14
 g1625
 sg16
 g32
 (g33
 g34
-F0.30000000000000071
-tp1822
-Rp1823
+F0.27180466842510781
+tp1824
+Rp1825
 sba(ifirmware_log
 Metric
-p1824
-(dp1825
+p1826
+(dp1827
 g14
 g1625
 sg16
 g32
 (g33
 g34
-F0.71956777149742712
-tp1826
-Rp1827
+F0.91062402291566169
+tp1828
+Rp1829
 sba(ifirmware_log
 Metric
-p1828
-(dp1829
+p1830
+(dp1831
 g14
 g1625
 sg16
 g32
 (g33
 g34
-F0.16007810593582211
-tp1830
-Rp1831
-sba(ifirmware_log
-Metric
-p1832
-(dp1833
-g14
-g1625
-sg16
-I0
+F0.15567951410224304
+tp1832
+Rp1833
 sba(ifirmware_log
 Metric
 p1834
@@ -5629,7 +5629,7 @@ sg16
 g32
 (g33
 g34
-F0.18656002244742448
+F0.15567951410224304
 tp1836
 Rp1837
 sba(ifirmware_log
@@ -5642,7 +5642,7 @@ sg16
 g32
 (g33
 g34
-F0.30833333333333829
+F0.8367015264982155
 tp1840
 Rp1841
 sba(ifirmware_log
@@ -5655,7 +5655,7 @@ sg16
 g32
 (g33
 g34
-F0.35247143304261114
+F0.6553201083779191
 tp1844
 Rp1845
 sba(ifirmware_log
@@ -5665,77 +5665,80 @@ p1846
 g14
 g1625
 sg16
-g32
-(g33
-g34
-F0.10833333333332991
-tp1848
-Rp1849
+I0
 sba(ifirmware_log
 Metric
-p1850
-(dp1851
+p1848
+(dp1849
 g14
 g1625
 sg16
 g32
 (g33
 g34
-F0.10000000000000142
-tp1852
-Rp1853
+F0.22422706745123108
+tp1850
+Rp1851
 sba(ifirmware_log
 Metric
-p1854
-(dp1855
+p1852
+(dp1853
 g14
 g1625
 sg16
 g32
 (g33
 g34
-F0.125
-tp1856
-Rp1857
+F0.15567951410224304
+tp1854
+Rp1855
 sba(ifirmware_log
 Metric
-p1858
-(dp1859
+p1856
+(dp1857
 g14
 g1625
 sg16
 g32
 (g33
 g34
-F0.27358368036757791
-tp1860
-Rp1861
+F0.13017082793178017
+tp1858
+Rp1859
 sba(ifirmware_log
 Metric
-p1862
-(dp1863
+p1860
+(dp1861
 g14
 g1625
 sg16
 g32
 (g33
 g34
-F0.097182531580749479
-tp1864
-Rp1865
+F0.25671536334582379
+tp1862
+Rp1863
 sba(ifirmware_log
 Metric
-p1866
-(dp1867
+p1864
+(dp1865
 g14
 g1625
 sg16
 g32
 (g33
 g34
-F0.26034165586355307
-tp1868
-Rp1869
+F0.73048690002703731
+tp1866
+Rp1867
+sba(ifirmware_log
+Metric
+p1868
+(dp1869
+g14
+g1625
+sg16
+I0
 sba(ifirmware_log
 Metric
 p1870
@@ -5746,7 +5749,7 @@ sg16
 g32
 (g33
 g34
-F0.22131869269294122
+F0.17159383568311659
 tp1872
 Rp1873
 sba(ifirmware_log
@@ -5756,200 +5759,36 @@ p1874
 g14
 g1625
 sg16
-I0
-sba(ifirmware_log
-Metric
-p1876
-(dp1877
-g14
-g1625
-sg16
 g32
 (g33
 g34
-F0.2603416558635549
-tp1878
-Rp1879
+F0.050000000000000711
+tp1876
+Rp1877
 sba(ifirmware_log
 Metric
-p1880
-(dp1881
-g14
-g1625
-sg16
-g32
-(g33
-g34
-F0.60092521257733289
-tp1882
-Rp1883
-sba(ifirmware_log
-Metric
-p1884
-(dp1885
-g14
-g1625
-sg16
-g32
-(g33
-g34
-F0.16007810593582211
-tp1886
-Rp1887
-sba(ifirmware_log
-Metric
-p1888
-(dp1889
-g14
-g1625
-sg16
-g32
-(g33
-g34
-F0.55627730894262228
-tp1890
-Rp1891
-sba(ifirmware_log
-Metric
-p1892
-(dp1893
-g14
-g1625
-sg16
-g32
-(g33
-g34
-F0.13462912017836154
-tp1894
-Rp1895
-sba(ifirmware_log
-Metric
-p1896
-(dp1897
-g14
-g1625
-sg16
-g32
-(g33
-g34
-F0.10833333333333647
-tp1898
-Rp1899
-sba(ifirmware_log
-Metric
-p1900
-(dp1901
+p1878
+(dp1879
 g14
 g1625
 sg16
 I0
-sba(ifirmware_log
-Metric
-p1902
-(dp1903
-g14
-g1625
-sg16
-g32
-(g33
-g34
-F0.4127036820591804
-tp1904
-Rp1905
-sba(ifirmware_log
-Metric
-p1906
-(dp1907
-g14
-g1625
-sg16
-g32
-(g33
-g34
-F0.049999999999997158
-tp1908
-Rp1909
-sba(ifirmware_log
-Metric
-p1910
-(dp1911
-g14
-g1625
-sg16
-g32
-(g33
-g34
-F0.097182531580755585
-tp1912
-Rp1913
-sba(ifirmware_log
-Metric
-p1914
-(dp1915
-g14
-g1625
-sg16
-g32
-(g33
-g34
-F0.59238512716703096
-tp1916
-Rp1917
-sba(ifirmware_log
-Metric
-p1918
-(dp1919
-g14
-g1625
-sg16
-g32
-(g33
-g34
-F0.47987266829626657
-tp1920
-Rp1921
-sba(ifirmware_log
-Metric
-p1922
-(dp1923
-g14
-g1625
-sg16
-g32
-(g33
-g34
-F0.38765677832043383
-tp1924
-Rp1925
-sba(ifirmware_log
-Metric
-p1926
-(dp1927
-g14
-g1625
-sg16
-g32
-(g33
-g34
-F0.4196559437338101
-tp1928
-Rp1929
 sbasg18
 I1
 sg14
-g1740
+g1744
 sg20
 Nsg21
-g1741
+g1745
 sg23
-(lp1930
-S'    Max radius: 0.72 mm'
-p1931
+(lp1880
+S'    Max radius: 0.91 mm'
+p1881
 asbasg91
 S'Use the index and middle finger of one hand to make a "drum roll" as fast as possible by alternately tapping each finger for 5 seconds.'
-p1932
+p1882
 sg14
-g1745
+g1749
 sg94
-g1746
+g1750
 sbaa.

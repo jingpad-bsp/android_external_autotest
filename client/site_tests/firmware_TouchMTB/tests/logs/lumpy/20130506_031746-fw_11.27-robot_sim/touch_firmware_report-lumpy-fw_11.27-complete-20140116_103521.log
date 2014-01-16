@@ -91,7 +91,7 @@ Rp41
 sbasg18
 I1
 sg14
-S'Linearity(Middle)Validator'
+S'LinearityNormalFinger(Middle)Validator'
 p42
 sg20
 Nsg21
@@ -508,7 +508,7 @@ Rp186
 sbasg18
 F0.9861487997377445
 sg14
-S'Linearity(Middle)Validator'
+S'LinearityNormalFinger(Middle)Validator'
 p187
 sg20
 Nsg21
@@ -733,7 +733,7 @@ Rp264
 sbasg18
 F0.99795625615161088
 sg14
-S'Linearity(Middle)Validator'
+S'LinearityNormalFinger(Middle)Validator'
 p265
 sg20
 Nsg21
@@ -781,7 +781,7 @@ Rp281
 sbasg18
 I1
 sg14
-S'Linearity(Middle)Validator'
+S'LinearityNormalFinger(Middle)Validator'
 p282
 sg20
 Nsg21
@@ -2474,7 +2474,7 @@ Rp838
 sbasg18
 F0.72813777627242993
 sg14
-S'Linearity(Middle)Validator'
+S'LinearityFatFinger(Middle)Validator'
 p839
 sg20
 Nsg21
