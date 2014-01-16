@@ -12,15 +12,15 @@ TEST_TYPE = "server"
 EXPERIMENTAL = "True"
 
 DOC = """
-This server side test suite executes the Telemetry Media Benchmark.
+This server side test suite executes the Telemetry Media Benchmark for ChromeOS.
 This is part of Chrome for Chrome OS performance testing.
 """
 
 def run_benchmark(machine):
     host = hosts.create_host(machine)
     job.run_test("telemetry_Benchmarks", host=host,
-                 benchmark="media.tough_media_cases",
-                 tag="media.tough_media_cases")
+                 benchmark="media.chromeOS.tough_video_cases",
+                 tag="media.chromeOS.tough_video_cases")
 
 
 parallel_simple(run_benchmark, machines)
