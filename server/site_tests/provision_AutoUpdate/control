@@ -18,7 +18,6 @@ cros-version label of a host to the desired setting.
 
 
 from autotest_lib.client.common_lib import error, utils
-from autotest_lib.client.cros import constants
 
 
 # Uncomment the below line, and change it to the correct value if you are
@@ -34,9 +33,6 @@ if not locals().get('value'):
 
 
 def run(machine):
-    # Save preserved log after autoupdate is completed.
-    job.sysinfo.add_logdir(constants.AUTOUPDATE_PRESERVE_LOG)
-
     host = hosts.create_host(machine, initialize=False)
     job.run_test('provision_AutoUpdate', host=host, value=value,
                  disable_sysinfo=True)

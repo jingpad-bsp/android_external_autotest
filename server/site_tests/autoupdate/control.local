@@ -23,13 +23,9 @@ start_devserver [--pregenerate_update] [--image|--payload=<optional target>].
 
 import socket
 from autotest_lib.client.common_lib import utils
-from autotest_lib.client.cros import constants
 
 
 def run(machine):
-    # Save preserved log after autoupdate is completed.
-    job.sysinfo.add_logdir(constants.AUTOUPDATE_PRESERVE_LOG)
-
     hostname = socket.getfqdn()
     args_dict = utils.args_to_dict(args)
     port = args_dict.get('port', '8080')

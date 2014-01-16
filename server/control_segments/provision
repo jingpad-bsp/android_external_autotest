@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 
-from autotest_lib.client.cros import constants
 from autotest_lib.server.cros import provision
 
 
@@ -32,9 +31,6 @@ def provision_machine(machine):
 
     try:
         for name, value in provision.split_labels(provisionable).items():
-            # Save preserved log after autoupdate is completed.
-            job.sysinfo.add_logdir(constants.AUTOUPDATE_PRESERVE_LOG)
-
             test = provision.provisioner_for(name)
             # sysinfo isn't really going to get us anything incredibly
             # interesting here, and it takes a non-trivial amount of time, so

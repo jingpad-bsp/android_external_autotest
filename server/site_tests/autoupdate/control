@@ -19,14 +19,10 @@ Assumes that a label including the image name has already been created.
 @param image_name: the name of the image, used to label the device a.k.a. build
 """
 
-from autotest_lib.client.cros import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
 
 def run(machine):
-    # Save preserved log after autoupdate is completed.
-    job.sysinfo.add_logdir(constants.AUTOUPDATE_PRESERVE_LOG)
-
     host = hosts.create_host(machine, initialize=False)
     host.clear_cros_version_labels_and_job_repo_url()
     job.run_test('autoupdate', host=host, update_url=image_url)
