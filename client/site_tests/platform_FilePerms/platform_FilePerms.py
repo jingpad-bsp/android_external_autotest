@@ -243,11 +243,6 @@ class platform_FilePerms(test.test):
             for fs in mtab.keys():
                 if fs in ignored_fses:
                     continue
-                if fs.startswith('/media/removable'):
-                    # Work around lab breakage, see crbug.com/286701.
-                    # TODO(jorgelo): fix crbug.com/286701 and remove this.
-                    logging.warn('Unexpected removable media present')
-                    continue
 
                 fs_type = mtab[fs]['type']
                 if fs_type in ignored_types:
@@ -265,6 +260,7 @@ class platform_FilePerms(test.test):
                             mtab_path, fs, fs_type,
                             self.expected_mount_options[fs]['type'])
                     errors += 1
+
                 # For options, require the specified options to be present.
                 # Do not consider it an error if extra options are present.
                 # (This makes it easy to deal with options we don't wish
@@ -276,7 +272,9 @@ class platform_FilePerms(test.test):
                     logging.error('[%s] "%s" is missing options "%s"',
                                   mtab_path, fs, missing)
                     errors += 1
+
             ignored_fses.update(self.testmode_modded_fses)
+
         return errors
 
 
