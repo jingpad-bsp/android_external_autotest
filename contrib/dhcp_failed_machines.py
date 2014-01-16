@@ -61,4 +61,21 @@ with open_file(sys.argv[1]) as f:
 def lookup(h):
   return lookups.get(h, h)
 
-pprint.pprint(sorted([lookup(h) for h in offenders]))
+hosts = sorted([lookup(h) for h in offenders])
+if len(sys.argv) == 2:
+  pprint.pprint(hosts)
+else:
+  warning = int(sys.argv[2])
+  critical = int(sys.argv[3])
+  if len(offenders) > critical:
+    print ('DHCP Critical, number of duts with DHCP failure is %d: %s' %
+           (len(hosts), ', '.join(hosts)))
+    sys.exit(2)
+  elif len(offenders) > warning:
+    print ('DHCP Warning, number of duts with DHCP failure is %d: %s' %
+           (len(hosts), ', '.join(hosts)))
+    sys.exit(1)
+  else:
+    print ('DHCP OK, number of duts with DHCP failure is %d: %s' %
+           (len(hosts), ', '.join(hosts)))
+    sys.exit(0)
