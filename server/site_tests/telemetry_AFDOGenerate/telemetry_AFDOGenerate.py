@@ -33,28 +33,11 @@ from autotest_lib.server.cros import telemetry_runner
 # (take too long or are too flaky).
 TELEMETRY_AFDO_BENCHMARKS = [
         'dromaeo.domcoreattr',
-        'dromaeo.domcoremodify',
         'dromaeo.domcorequery',
         'dromaeo.domcoretraverse',
         'kraken',
-        'memory.top_25',
         'octane',
-        'robohornet_pro',
-        'smoothness.top_25',
-        'sunspider',
-        'jsgamebench',
-        'page_cycler.indexed_db.basic_insert',
-        'page_cycler.bloat',
-        'page_cycler.dhtml',
-        'page_cycler.intl_ar_fa_he',
-        'page_cycler.intl_es_fr_pt-BR',
-        'page_cycler.intl_hi_ru',
-        'page_cycler.intl_ja_zh',
-        'page_cycler.intl_ko_th_vi',
-        'page_cycler.morejs',
-        'page_cycler.moz',
-        'page_cycler.netsim.top_10',
-        'page_cycler.typical_25' ]
+        'sunspider' ]
 
 
 # List of boards where this test can be run.
