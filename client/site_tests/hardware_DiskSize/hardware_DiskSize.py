@@ -13,8 +13,20 @@ DEFAULT_MIN_GB = 16
 # Allowable amount of bits eMMC vendor can use in firmware to support bad block
 # replacement and metadata.
 EMMC_VENDOR_ALLOWED_GB = 0.25
+# Amount of data available for user data in device, the rest is left for
+# over provisioning.
+# Typically a SATA device will use 7% over provisioning [the difference
+# between GB and GiB], but some eMMC device can use 9%.
+# With Flash becoming more error prone as lithography shrinks, the trend
+# is to increase over provisioning.
+DEFAULT_USER_DENSITY = 0.9
+
 
 class hardware_DiskSize(test.test):
+    """
+    Check that disk size is around 16GB at least.
+    """
+
     version = 1
 
     def _is_emmc(self):
@@ -24,6 +36,10 @@ class hardware_DiskSize(test.test):
             return False
         return utils.read_one_line(path) == 'MMC'
 
+
+    @classmethod
+    def _gib_to_gb(cls, gib):
+        return float(gib) * (1 << 30) / (10**9)
 
     def _compute_min_gb(self):
         """Computes minimum size allowed primary storage device.
@@ -52,7 +68,8 @@ class hardware_DiskSize(test.test):
         min_gb = DEFAULT_MIN_GB
         if self._is_emmc():
             min_gb -= EMMC_VENDOR_ALLOWED_GB
-        return min_gb
+        min_gb *= DEFAULT_USER_DENSITY
+        return self._gib_to_gb(min_gb)
 
 
     def run_once(self):
@@ -72,7 +89,8 @@ class hardware_DiskSize(test.test):
 
         # Capacity of a hard disk is quoted with SI prefixes, incrementing by
         # powers of 1000, instead of powers of 1024.
-        gb = blocks * 1024.0 / 1000.0 / 1000.0 / 1000.0
+        gb = float(blocks) * 1024 / (10**9)
+
         self.write_perf_keyval({"gb_main_disk_size": gb})
         min_gb = self._compute_min_gb()
         logging.info("DiskSize: %.3f GB MinDiskSize: %.3f GB", gb, min_gb)
