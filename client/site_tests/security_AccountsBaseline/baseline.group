@@ -63,6 +63,7 @@ shill-crypto:x:237:
 avahi:x:238:
 p2p:x:239:
 brltty:x:240:chronos
+modem:x:241:
 ntfs-3g:x:300:
 avfs:x:301:
 fuse-exfat:x:302:
