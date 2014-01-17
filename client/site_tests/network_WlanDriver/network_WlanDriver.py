@@ -21,6 +21,7 @@ class network_WlanDriver(test.test):
     DeviceInfo = collections.namedtuple('DeviceInfo', ['vendor', 'device'])
     DEVICE_NAME_LOOKUP = {
         DeviceInfo('0x02df', '0x9129'): 'Marvell 88W8797 SDIO',
+        DeviceInfo('0x02df', '0x912d'): 'Marvell 88W8897 SDIO',
         DeviceInfo('0x11ab', '0x2b38'): 'Marvell 88W8897 PCIE',
         DeviceInfo('0x168c', '0x002a'): 'Atheros AR9280',
         DeviceInfo('0x168c', '0x0030'): 'Atheros AR9382',
@@ -53,6 +54,10 @@ class network_WlanDriver(test.test):
                            'mwifiex_sdio.ko'
             },
             'Marvell 88W8897 PCIE': {
+                     '3.8': 'kernel/drivers/net/wireless/mwifiex/'
+                            'mwifiex_sdio.ko'
+            },
+            'Marvell 88W8897 SDIO': {
                      '3.8': 'kernel/drivers/net/wireless/mwifiex/'
                             'mwifiex_sdio.ko'
             }
