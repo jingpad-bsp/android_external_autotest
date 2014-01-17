@@ -165,13 +165,17 @@ class ChaosRunner(object):
         self._host.reboot()
 
 
-    def run(self, job, batch_size=15, tries=10, capturer_hostname=None):
+    def run(self, job, batch_size=15, tries=10, capturer_hostname=None,
+            conn_worker=None, work_client_hostname=None):
         """Executes Chaos test.
 
         @param job: an Autotest job object.
         @param batch_size: an integer, max number of APs to lock in one batch.
         @param tries: an integer, number of iterations to run per AP.
         @param capturer_hostname: a string or None, hostname or IP of capturer.
+        @param conn_worker: ConnectionWorkerAbstract or None, to run extra
+                            work after successful connection.
+        @param work_client_hostname: a string or None, hostname of work client
 
         """
 
@@ -184,8 +188,14 @@ class ChaosRunner(object):
                     lock_manager, hostname=capturer_hostname)
             capturer = site_linux_system.LinuxSystem(capture_host, {},
                                                      'packet_capturer')
+            if conn_worker is not None:
+                logging.info('Allocate work client for ConnectionWorker')
+                work_client_machine = self._allocate_packet_capturer(
+                        lock_manager, hostname=work_client_hostname)
+                conn_worker.prepare_work_client(work_client_machine)
             batch_locker = ap_batch_locker.ApBatchLocker(lock_manager,
                                                          self._ap_spec)
+
             while batch_locker.has_more_aps():
                 with contextlib.closing(wifi_client.WiFiClient(
                     hosts.create_host(self._host.hostname),
@@ -237,6 +247,18 @@ class ChaosRunner(object):
                             continue
 
                         assoc_params = ap.get_association_parameters()
+                        if conn_worker:
+                            conn_status = conn_worker.connect_work_client(
+                                    assoc_params)
+                            if not conn_status:
+                                job.run_test('network_WiFi_ChaosConfigFailure',
+                                             ap=ap,
+                                             error_string=
+                                        chaos_constants.WORK_CLI_CONNECT_FAIL,
+                                             tag=ap.ssid)
+                                self._release_ap(ap, batch_locker)
+                                continue
+
                         result = job.run_test(self._test,
                                      capturer=capturer,
                                      capturer_frequency=networks[0].frequency,
@@ -248,8 +270,12 @@ class ChaosRunner(object):
                                      debug_info=ap.name,
                                      # Copy all logs from the system
                                      disabled_sysinfo=False,
-                                     tag=ap.ssid)
+                                     conn_worker=conn_worker,
+                                     tag=ap.ssid if conn_worker is None else
+                                         '%s.%s' % (conn_worker.name, ap.ssid))
 
                         self._release_ap(ap, batch_locker)
+                        if conn_worker is not None:
+                            conn_worker.cleanup()
 
                 batch_locker.unlock_aps()

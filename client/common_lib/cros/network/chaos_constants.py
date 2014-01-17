@@ -7,3 +7,4 @@
 AP_CONFIG_FAIL = 'AP configuration failed'
 AP_SECURITY_MISMATCH = 'AP security mismatch'
 AP_SSID_NOTFOUND = 'SSID was not found'
+WORK_CLI_CONNECT_FAIL = 'Work client was not able to connect to the AP'
