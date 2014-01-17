@@ -191,7 +191,7 @@
     "dashboard_test_name": "sunspider"
   },
   {
-    "autotest_name": "video_VideoDecodeMemeoryUsage",
+    "autotest_name": "video_VideoDecodeMemoryUsage",
     "master_name": "ChromeOSVideo"
   },
   {
