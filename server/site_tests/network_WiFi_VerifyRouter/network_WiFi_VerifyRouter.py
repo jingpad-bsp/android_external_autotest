@@ -29,3 +29,5 @@ class network_WiFi_VerifyRouter(wifi_cell_test_base.WiFiCellTestBase):
             self.context.assert_connect_wifi(client_conf)
             logging.info('Signal level for AP %d is %d', instance,
                          self.context.client.wifi_signal_level)
+            self.write_perf_keyval({'signal_for_ap_%d' % instance:
+                                    self.context.client.wifi_signal_level})

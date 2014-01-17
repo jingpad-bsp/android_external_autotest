@@ -173,6 +173,15 @@ class WiFiTestContextManager(object):
         router_port = int(self._cmdline_args.get(self.CMDLINE_ROUTER_PORT, 22))
         logging.info('Connecting to router at %s:%d',
                      self.router_address, router_port)
+        ping_helper = ping_runner.PingRunner()
+        ping_config = ping_runner.PingConfig(self.router_address, count=3,
+                                             interval=0.5, ignore_result=True,
+                                             ignore_status=True)
+        ping_result = ping_helper.ping(ping_config).loss
+        if ping_result is None or ping_result:
+            raise error.TestFail('Router at %s is not pingable!' %
+                                 self.router_address)
+
         self._router = site_linux_router.LinuxRouter(
                 hosts.SSHHost(self.router_address, port=router_port),
                 self._test_name)
