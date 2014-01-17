@@ -17,6 +17,7 @@ CHAPS_USER_DATABASE_PATH = '/home/chronos/user/.chaps/database'
 
 CHROME_CORE_MAGIC_FILE = '/mnt/stateful_partition/etc/collect_chrome_crashes'
 CHROME_LOG_DIR = '/var/log/chrome'
+CHROME_VERSION_COMMAND = BROWSER_EXE + ' --version'
 
 # Directory to save log files preserved during autoupdate.
 AUTOUPDATE_PRESERVE_LOG = '/mnt/stateful_partition/unencrypted/preserve/log'

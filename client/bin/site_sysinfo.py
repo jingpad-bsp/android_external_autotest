@@ -4,7 +4,6 @@
 
 import logging
 import os
-import re
 
 from autotest_lib.client.common_lib import log
 from autotest_lib.client.common_lib import error, utils, global_config
@@ -242,9 +241,6 @@ class purgeable_logdir(logdir):
 
 class site_sysinfo(base_sysinfo.base_sysinfo):
     """Represents site system info."""
-    _CHROME_VERSION_COMMAND = constants.BROWSER_EXE + " --version"
-
-
     def __init__(self, job_resultsdir):
         super(site_sysinfo, self).__init__(job_resultsdir)
         crash_exclude_string = None
@@ -268,7 +264,7 @@ class site_sysinfo(base_sysinfo.base_sysinfo):
         self.boot_loggables.add(command("ls -l /boot",
                                         "boot_file_list"))
         self.before_iteration_loggables.add(
-            command(self._CHROME_VERSION_COMMAND, "chrome_version"))
+            command(constants.CHROME_VERSION_COMMAND, "chrome_version"))
         self.test_loggables.add(
             purgeable_logdir(
                 os.path.join(constants.CRYPTOHOME_MOUNT_PT, "log")))
@@ -336,11 +332,8 @@ class site_sysinfo(base_sysinfo.base_sysinfo):
             of "chrome --version" and the milestone will be the empty string.
 
         """
-        version_string = utils.system_output(self._CHROME_VERSION_COMMAND)
-        match = re.search('(\d+)\.\d+\.\d+\.\d+', version_string)
-        ver = match.group(0) if match else version_string
-        milestone = match.group(1) if match else ''
-        return ver, milestone
+        version_string = utils.system_output(constants.CHROME_VERSION_COMMAND)
+        return utils.parse_chrome_version(version_string)
 
 
     def log_test_keyvals(self, test_sysinfodir):

@@ -117,7 +117,7 @@ class telemetry_AFDOGenerate(test.test):
         # Use local copy of telemetry instead of using the dev server copy.
         self._local = False
         # Chrome version to which the AFDO data corresponds.
-        self._version = '9999'
+        self._version, _ = self._host.get_chrome_version()
 
         for option_name, value in args.iteritems():
             if option_name == 'arch':

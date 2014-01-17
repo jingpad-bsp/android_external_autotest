@@ -1713,6 +1713,22 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         return platform.replace('google_', '')
 
 
+    def get_chrome_version(self):
+        """Gets the Chrome version number and milestone as strings.
+
+        Invokes "chrome --version" to get the version number and milestone.
+
+        @return A tuple (chrome_ver, milestone) where "chrome_ver" is the
+            current Chrome version number as a string (in the form "W.X.Y.Z")
+            and "milestone" is the first component of the version number
+            (the "W" from "W.X.Y.Z").  If the version number cannot be parsed
+            in the "W.X.Y.Z" format, the "chrome_ver" will be the full output
+            of "chrome --version" and the milestone will be the empty string.
+
+        """
+        version_string = self.run(constants.CHROME_VERSION_COMMAND).stdout
+        return utils.parse_chrome_version(version_string)
+
     @label_decorator()
     def get_board(self):
         """Determine the correct board label for this host.

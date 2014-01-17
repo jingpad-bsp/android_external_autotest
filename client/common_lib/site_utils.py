@@ -253,3 +253,22 @@ def urlopen_socket_timeout(url, data=None, timeout=5):
         raise
     finally:
         socket.setdefaulttimeout(old_timeout)
+
+
+def parse_chrome_version(version_string):
+    """
+    Parse a chrome version string and return version and milestone.
+
+    Given a chrome version of the form "W.X.Y.Z", return "W.X.Y.Z" as
+    the version and "W" as the milestone.
+
+    @param version_string: Chrome version string.
+    @return: a tuple (chrome_version, milestone). If the incoming version
+             string is not of the form "W.X.Y.Z", chrome_version will
+             be set to the incoming "version_string" argument and the
+             milestone will be set to the empty string.
+    """
+    match = re.search('(\d+)\.\d+\.\d+\.\d+', version_string)
+    ver = match.group(0) if match else version_string
+    milestone = match.group(1) if match else ''
+    return ver, milestone
