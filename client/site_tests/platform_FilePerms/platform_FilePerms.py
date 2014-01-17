@@ -9,6 +9,7 @@ __author__ = 'kdlucas@chromium.org (Kelly Lucas)'
 import logging
 import os
 import re
+import shutil
 import stat
 
 from autotest_lib.client.bin import test
@@ -30,7 +31,7 @@ class platform_FilePerms(test.test):
             'options': ['rw', 'nosuid', 'noexec', 'relatime', 'mode=755']},
         '/dev/pstore': {
             'type': 'pstore',
-            'options': ['rw', 'nosuid', 'nodev', 'noexec', 'relatime']},
+            'options': standard_rw_options},
         '/dev/pts': { # Special case, we want to track gid/mode too.
             'type': 'devpts',
             'options': ['rw', 'nosuid', 'noexec', 'relatime', 'gid=5',
@@ -56,16 +57,13 @@ class platform_FilePerms(test.test):
         '/sys/fs/cgroup/freezer': {
             'type': 'cgroup',
             'options': standard_rw_options},
-        '/sys/fs/fuse/connections': { # crosbug.com/32631
+        '/sys/fs/fuse/connections': {
             'type': 'fusectl',
             'options': standard_rw_options},
         '/sys/kernel/debug': {
             'type': 'debugfs',
             'options': standard_rw_options},
         '/tmp': {'type': 'tmpfs', 'options': standard_rw_options},
-        '/tmp/cgroup/cpu': { # crosbug.com/32633
-            'type': 'cgroup',
-            'options': ['rw', 'relatime', 'cpu']},
         '/var': {'type': 'ext4', 'options': standard_rw_options},
         '/var/lock': {'type': 'tmpfs', 'options': standard_rw_options},
         '/var/run': { # Special case, we want to track mode too.
@@ -78,7 +76,7 @@ class platform_FilePerms(test.test):
             'type': 'debugfs',
             'options': ['rw', 'nosuid', 'nodev', 'noexec', 'relatime',
                         'gid=236', 'mode=750']},
-        '/usr/share/oem': { # crosbug.com/34688
+        '/usr/share/oem': {
             'type': 'ext4',
             'options': ['ro', 'nosuid', 'nodev', 'noexec', 'relatime']},
     }
@@ -138,6 +136,11 @@ class platform_FilePerms(test.test):
         file_handle = open(mtab_path, 'r')
         lines = file_handle.readlines()
         file_handle.close()
+
+        # Save mtab to the results dir to diagnose failures.
+        shutil.copyfile(mtab_path,
+                        os.path.join(self.resultsdir,
+                                     os.path.basename(mtab_path)))
 
         comment_re = re.compile("#.*$")
         mounts = {}
