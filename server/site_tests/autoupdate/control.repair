@@ -16,12 +16,8 @@ Can only be used by test suites based on server.cros.dynamic_suite.Suite.
 Assumes that a label including the image name has already been created.
 """
 
-from autotest_lib.client.cros import constants
 
 def run(machine):
-    # Save preserved log after autoupdate is completed.
-    job.sysinfo.add_logdir(constants.AUTOUPDATE_PRESERVE_LOG)
-
     host = hosts.create_host(machine, initialize=False)
     job.run_test('autoupdate', host=host, update_url=None, repair=True,
                  disable_sysinfo=True)
