@@ -229,8 +229,8 @@ class hardware_StorageFio(test.test):
             pass
         elif quicktest:
             requirements = [
-                ('8k_write', []),
-                ('8k_read', [])
+                ('1m_write', []),
+                ('16k_read', [])
             ]
         elif integrity:
             requirements = [
@@ -246,10 +246,7 @@ class hardware_StorageFio(test.test):
                 ('seq_write', []),
                 ('16k_read', []),
                 ('16k_write', []),
-                ('8k_read', []),
-                ('8k_write', []),
-                ('4k_read', []),
-                ('4k_write', [])
+                ('1m_stress', []),
             ]
         else:
             # TODO(waihong@): Add more test cases for external storage
@@ -258,10 +255,7 @@ class hardware_StorageFio(test.test):
                 ('seq_write', []),
                 ('16k_read', []),
                 ('16k_write', []),
-                ('8k_read', []),
-                ('8k_write', []),
-                ('4k_read', []),
-                ('4k_write', [])
+                ('1m_stress', []),
             ]
 
         results = {}

@@ -26,5 +26,5 @@ job.run_test('hardware_StorageFio',
              constraints=[
                  '_seq_read_rd_mean_bw_KB_sec >= 50 * 1024',
                  '_seq_write_wr_mean_bw_KB_sec >= 15 * 1024',
-                 '_4k_write_wr_IOPS >= 10',
+                 '_16k_write_wr_IOPS >= 10',
              ])

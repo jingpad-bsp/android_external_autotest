@@ -2,26 +2,26 @@
 ; Use of this source code is governed by a BSD-style license that can be
 ; found in the LICENSE file.
 ;
-; 64k random with verify and mix read write.
+; 1MB random with verify and mix read write.
 ;
-[64k_stress]
+[1MB_stress]
 readwrite=randrw
-bs=64K
+rwmixread=15
+bs=1m
 ioengine=libaio
 iodepth=32
-time_based
-runtime=30m
-norandommap
 bwavgtime=5000
 iopsavgtime=5000
 direct=1
 thread=1
 numjobs=8
-rwmixread=15
-do_verify=0
+do_verify=1
 verify=meta
-verify_interval=4k
+verify_interval=64k
+verify_dump=1
 
 filename=${FILENAME}
 size=${FILESIZE}
 
+; write partition/file twice
+loops=2

@@ -8,5 +8,5 @@
 [rand_trim]
 filename=${FILENAME}
 size=${FILESIZE}
-rw=randtrim
+readwrite=randtrim
 ioengine=libaio

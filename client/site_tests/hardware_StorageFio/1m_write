@@ -2,22 +2,20 @@
 ; Use of this source code is governed by a BSD-style license that can be
 ; found in the LICENSE file.
 ;
-; 8k random writes over a 1 GiB area.
+; 1m random writes over a 1 GiB area.
 ;
 
-[8k_write]
+[1m_write]
 filename=${FILENAME}
 size=${FILESIZE}
+bs=1m
 
-time_based
-runtime=4m
+readwrite=randwrite
 
 ioengine=libaio
 iodepth=4
 direct=1
 
-readwrite=randwrite
-
-bs=8k
-norandommap
-
+do_verify=1
+verify=meta
+verify_interval=64k
