@@ -27,6 +27,7 @@ class network_WlanDriver(test.test):
         DeviceInfo('0x168c', '0x0030'): 'Atheros AR9382',
         DeviceInfo('0x168c', '0x0034'): 'Atheros AR9462',
         DeviceInfo('0x8086', '0x08b1'): 'Intel 7260',
+        DeviceInfo('0x02d0', '0x4354'): 'Broadcom 4354 SDIO',
     }
     EXPECTED_DRIVER = {
             'Atheros AR9280': {
@@ -60,7 +61,11 @@ class network_WlanDriver(test.test):
             'Marvell 88W8897 SDIO': {
                      '3.8': 'kernel/drivers/net/wireless/mwifiex/'
                             'mwifiex_sdio.ko'
-            }
+            },
+            'Broadcom 4354 SDIO': {
+                     '3.8': 'kernel/drivers/net/wireless/brcm80211/'
+                            'brcmfmac/brcmfmac.ko'
+            },
     }
 
 
