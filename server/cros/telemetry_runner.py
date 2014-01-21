@@ -16,7 +16,7 @@ from autotest_lib.client.common_lib.cros import dev_server
 TELEMETRY_RUN_BENCHMARKS_SCRIPT = 'tools/perf/run_benchmark'
 TELEMETRY_RUN_TESTS_SCRIPT = 'tools/telemetry/run_tests'
 TELEMETRY_RUN_CROS_TESTS_SCRIPT = 'chrome/test/telemetry/run_cros_tests'
-TELEMETRY_TIMEOUT_MINS = 60
+TELEMETRY_TIMEOUT_MINS = 120
 
 # Result Statuses
 SUCCESS_STATUS = 'SUCCESS'
