@@ -11,11 +11,9 @@ import time
 import xmlrpclib
 
 from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import enum, error
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import constants, httpd
 from autotest_lib.server import autotest, test
-
-CONNECTOR = enum.Enum('HDMI', 'DP', 'DVI', string_values=True)
 
 # pylint: disable=E1101
 
@@ -31,18 +29,16 @@ class display_Resolution(test.test):
     X_ENV_VARIABLES = 'DISPLAY=:0.0 XAUTHORITY=/home/chronos/.Xauthority'
     CALIBRATION_IMAGE_SETUP_TIME = 10
     PIXEL_DIFF_MARGIN = 1
-    RESOLUTION_TEST_LIST = {
-            CONNECTOR.DP: [
-                    (1280, 800),
-                    (1440, 900),
-                    (1600, 900),
-                    (1680, 1050),
-                    (1920, 1080)
-            ],
-            CONNECTOR.HDMI: [
-                    (1280, 720),
-                    (1920, 1080)
-            ]}
+    RESOLUTION_TEST_LIST = [
+            # Mix DP and HDMI together to test the converter cases.
+            ('DP', 1280, 800),
+            ('DP', 1440, 900),
+            ('DP', 1600, 900),
+            ('DP', 1680, 1050),
+            ('DP', 1920, 1080),
+            ('HDMI', 1280, 720),
+            ('HDMI', 1920, 1080),
+    ]
 
     def initialize(self, host):
         self._active_output = None
@@ -92,7 +88,7 @@ class display_Resolution(test.test):
         self._connector_id = connector_id
         self._connector_name = connector_name
 
-        for resolution in self.RESOLUTION_TEST_LIST[connector_name]:
+        for resolution in self.RESOLUTION_TEST_LIST:
             try:
                 self.set_up_chameleon(resolution)
                 logging.info('Reconnect output: %s', output)
@@ -140,15 +136,14 @@ class display_Resolution(test.test):
     def set_up_chameleon(self, resolution):
         """Loads the EDID of the given resolution onto Chameleon.
 
-        @param resolution: A tuple of integers (width, height) representing the
+        @param resolution: A tuple (tag, width, height) representing the
                 resolution to test.
         """
         logging.info('Setting up %r on port %d (%s)...',
                      resolution, self._connector_id, self._connector_name)
 
         edid_filename = os.path.join(
-                self._test_data_dir, 'edids', '%s_%dx%d' %
-                (self._connector_name, resolution[0], resolution[1]))
+                self._test_data_dir, 'edids', '%s_%dx%d' % resolution)
         if not os.path.exists(edid_filename):
             raise ValueError('EDID file %r does not exist' % edid_filename)
 
@@ -171,14 +166,14 @@ class display_Resolution(test.test):
         4. Verify that the captured screen match the content of DUT
            framebuffer.
 
-        @param resolution: A tuple of integers (width, height) representing the
+        @param resolution: A tuple (tag, width, height) representing the
                 resolution to test.
         """
         logging.info('Testing %r...', resolution)
-        width, height = resolution
+        tag, width, height = resolution
         resolution_str = '%dx%d' % (width, height)
-        chameleon_image_file = 'chameleon-%s.bgra' % resolution_str
-        dut_image_file = 'dut-%s.bgra' % resolution_str
+        chameleon_image_file = 'chameleon-%s-%s.bgra' % (tag, resolution_str)
+        dut_image_file = 'dut-%s-%s.bgra' % (tag, resolution_str)
 
         def _move_cursor():
             """Move mouse cursor to the bottom-right corner."""
@@ -246,9 +241,10 @@ class display_Resolution(test.test):
                 # Skip the fourth byte, i.e. the alpha value.
                 if (i % 4 != 3 and abs(chameleon_pixel - dut_pixel) >
                         self.PIXEL_DIFF_MARGIN):
-                    error_message = ('The pixel, offset %d, on '
+                    error_message = ('The pixel, offset %d, on %s '
                             'resolution %s, not match: %d != %d' %
-                            (i, resolution_str, chameleon_pixel, dut_pixel))
+                            (i, tag,
+                            resolution_str, chameleon_pixel, dut_pixel))
                     logging.error(error_message)
                     self._errors.append(error_message)
                     break
