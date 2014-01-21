@@ -181,14 +181,12 @@ class display_Resolution(test.test):
         dut_image_file = 'dut-%s.bgra' % resolution_str
 
         def _move_cursor():
-            """Move mouse cursor to the bottom-left corner."""
-            for port in ('eDP1', 'eDP-1'):
-                _, edp_h, _, _ = (
-                        self._display_xmlrpc_client.get_resolution(port))
-                if not edp_h:
-                    break
+            """Move mouse cursor to the bottom-right corner."""
+            # TODO(waihong): Make sure eDP work in this way.
+            fb_w, fb_h, _, _ = self._display_xmlrpc_client.get_resolution(
+                    self._active_output)
             self._host.run('%s xdotool mousemove %d %d' %
-                           (self.X_ENV_VARIABLES, 0, edp_h))
+                           (self.X_ENV_VARIABLES, fb_w, fb_h))
 
         def _load_calibration_image():
             """Load calibration image from host HTTP server."""
