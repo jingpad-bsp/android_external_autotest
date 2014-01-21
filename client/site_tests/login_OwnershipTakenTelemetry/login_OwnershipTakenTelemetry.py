@@ -27,7 +27,7 @@ class login_OwnershipTakenTelemetry(test.test):
             raise error.TestFail('Ownership already taken!')
 
 
-    def _validate_policy(self, retrieved_policy):
+    def _validate_policy(self, retrieved_policy, username):
         # Pull in protobuf definitions.
         sys.path.append(self.srcdir)
         from chrome_device_policy_pb2 import ChromeDeviceSettingsProto
@@ -42,12 +42,12 @@ class login_OwnershipTakenTelemetry(test.test):
         poldata = PolicyData()
         poldata.ParseFromString(response_proto.policy_data)
         ownership.assert_has_device_settings(poldata)
-        ownership.assert_username(poldata, chrome.LOGIN_USER)
+        ownership.assert_username(poldata, username)
 
         polval = ChromeDeviceSettingsProto()
         polval.ParseFromString(poldata.policy_value)
         ownership.assert_new_users(polval, True)
-        ownership.assert_users_on_whitelist(polval, (chrome.LOGIN_USER,))
+        ownership.assert_users_on_whitelist(polval, (username,))
 
 
     def run_once(self):
@@ -58,4 +58,4 @@ class login_OwnershipTakenTelemetry(test.test):
             retrieved_policy = sm.RetrievePolicy(byte_arrays=True)
             if retrieved_policy is None:
                 raise error.TestFail('Policy not found.')
-            self._validate_policy(retrieved_policy)
+            self._validate_policy(retrieved_policy, cr.username)

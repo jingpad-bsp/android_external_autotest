@@ -19,19 +19,21 @@ class login_CryptohomeTelemetry(test.test):
 
     def run_once(self):
         try:
-            with chrome.Chrome():
-                if not cryptohome.is_vault_mounted(user=chrome.LOGIN_USER,
+            username = ''
+            with chrome.Chrome() as cr:
+                username = cr.username
+                if not cryptohome.is_vault_mounted(user=username,
                                                    allow_fail=False):
                     raise error.TestFail('Expected to find a mounted vault.')
 
-            if cryptohome.is_vault_mounted(user=chrome.LOGIN_USER,
+            if cryptohome.is_vault_mounted(user=username,
                                            allow_fail=True):
                 raise error.TestFail('Expected to not find a mounted vault.')
 
             # Remove our vault, mount another vault, create a test file
             # in the other vault, and ensure that the file no longer exists
             # after we log back in.
-            cryptohome.remove_vault(chrome.LOGIN_USER)
+            cryptohome.remove_vault(username)
 
             cryptohome.mount_vault(TEST_USER, TEST_PASS, create=True)
             test_file = os.path.join(cryptohome.user_path(TEST_USER), 'hello')
@@ -39,7 +41,7 @@ class login_CryptohomeTelemetry(test.test):
             cryptohome.unmount_vault(TEST_USER)
 
             with chrome.Chrome():
-                if not cryptohome.is_vault_mounted(user=chrome.LOGIN_USER,
+                if not cryptohome.is_vault_mounted(user=username,
                                                    allow_fail=False):
                     raise error.TestFail(
                             'Expected to find a recreated mounted vault.')

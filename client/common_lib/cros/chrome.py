@@ -8,10 +8,6 @@ from telemetry.core import browser_finder, browser_options, exceptions
 from telemetry.core import extension_to_load, util
 
 
-# Name of the logged-in user specified by the telemetry login extension.
-LOGIN_USER = 'test@test.test'
-
-
 class Chrome(object):
     """Wrapper for creating a telemetry browser instance with extensions."""
 
@@ -65,6 +61,8 @@ class Chrome(object):
         b_options = finder_options.browser_options
         b_options.disable_component_extensions_with_background_pages = False
         b_options.create_browser_with_oobe = True
+        self.username = b_options.username
+        self.password = b_options.password
 
         for i in range(num_tries):
             try:

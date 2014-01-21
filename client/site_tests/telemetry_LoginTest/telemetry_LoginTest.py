@@ -37,5 +37,5 @@ class telemetry_LoginTest(test.test):
             (is_regular_user, email) = self.get_login_status(cr)
             if not is_regular_user:
                 raise error.TestFail('isRegularUser should be True')
-            if email != chrome.LOGIN_USER:
+            if email != cr.username:
                 raise error.TestFail('user email mismatch %s' % email)

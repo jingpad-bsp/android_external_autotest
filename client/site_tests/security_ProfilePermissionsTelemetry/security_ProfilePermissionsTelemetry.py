@@ -47,9 +47,9 @@ class security_ProfilePermissionsTelemetry(test.test):
 
 
     def run_once(self):
-        with chrome.Chrome(logged_in=self._logged_in):
-            username = (chrome.LOGIN_USER if self._logged_in
-                                          else cryptohome.GUEST_USER_NAME)
+        with chrome.Chrome(logged_in=self._logged_in) as cr:
+            username = (cr.username if self._logged_in
+                                    else cryptohome.GUEST_USER_NAME)
 
             """Check permissions within cryptohome for anything too permissive.
             """
