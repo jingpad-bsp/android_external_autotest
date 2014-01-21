@@ -1508,7 +1508,9 @@ class FAFTSequence(FAFTBase):
         self.record_uart_capture()
 
         if test['state_checker']:
+            logging.info("-[FAFT]-[ start stepstate_checker ]----------")
             self._call_action(test['state_checker'], check_status=True)
+            logging.info("-[FAFT]-[ end state_checker ]----------------")
 
         boot_id = None
         retry = 3
@@ -1524,18 +1526,26 @@ class FAFTSequence(FAFTBase):
                     logging.warning('Failed to get boot_id.')
         logging.info('boot_id: %s', boot_id)
 
+        logging.info("-[FAFT]-[ start userspace_action ]----------")
         self._call_action(test['userspace_action'])
+        logging.info("-[FAFT]-[ end userspace_action ]------------")
 
         # Don't run reboot_action and firmware_action if no_reboot is True.
         if not no_reboot:
+            logging.info("-[FAFT]-[ start reboot_action ]----------")
             self._call_action(test['reboot_action'])
+            logging.info("-[FAFT]-[ end reboot_action ]------------")
             self.wait_for_client_offline(orig_boot_id=boot_id)
+            logging.info("-[FAFT]-[ start firmware_action ]----------")
             self._call_action(test['firmware_action'])
+            logging.info("-[FAFT]-[ end firmware_action ]------------")
 
             try:
                 if 'install_deps_after_boot' in test:
+                    logging.info("-[FAFT]-[ start install_deps_after_boot ]---")
                     self.wait_for_client(
                             install_deps=test['install_deps_after_boot'])
+                    logging.info("-[FAFT]-[ end install_deps_after_boot ]-----")
                 else:
                     self.wait_for_client()
                 # Stop update-engine as it may change firmware/kernel.
