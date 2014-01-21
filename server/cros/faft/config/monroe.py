@@ -10,3 +10,4 @@ class Values(object):
     has_lid = False
     has_keyboard = False
     keyboard_dev = True
+    rec_button_dev_switch = True

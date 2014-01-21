@@ -1117,10 +1117,19 @@ class FAFTSequence(FAFTBase):
         time.sleep(self.faft_config.firmware_screen)
         if dev:
             self.press_ctrl_d()
+            time.sleep(self.faft_config.confirm_screen)
+            if self.faft_config.rec_button_dev_switch:
+                logging.info('RECOVERY button pressed to switch to dev mode')
+                self.servo.set('rec_mode', 'on')
+                time.sleep(self.faft_config.hold_cold_reset)
+                self.servo.set('rec_mode', 'off')
+            else:
+                logging.info('ENTER pressed to switch to dev mode')
+                self.press_enter()
         else:
             self.press_enter()
-        time.sleep(self.faft_config.confirm_screen)
-        self.press_enter()
+            time.sleep(self.faft_config.confirm_screen)
+            self.press_enter()
 
     def enable_keyboard_dev_mode(self):
         """Enable keyboard controlled developer mode"""

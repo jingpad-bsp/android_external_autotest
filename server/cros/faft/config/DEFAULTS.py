@@ -21,6 +21,7 @@ class Values(object):
     has_lid = True
     has_keyboard = True
     keyboard_dev = True
+    rec_button_dev_switch = False
     long_rec_combo = False
     ec_capability = list()
     gbb_version = 1.1
