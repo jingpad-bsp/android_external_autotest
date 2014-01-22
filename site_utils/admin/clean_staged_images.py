@@ -28,12 +28,14 @@ import sys
 import shutil
 import time
 
+from autotest_lib.client.common_lib import global_config
+
 # This filename must be kept in sync with devserver's downloader.py
 _TIMESTAMP_FILENAME = 'staged.timestamp'
 _HOURS_TO_SECONDS = 60 * 60
 _EXEMPTED_DIRECTORIES = []
-_KEEP_LAST_BUILD_FOR_TARGETS = {'beaglebone_servo-release',
-                                'trybot-beaglebone_servo-release'}
+_KEEP_LAST_BUILD_FOR_TARGET = global_config.global_config.get_config_value(
+        'CROS', 'servo_builder')
 
 def is_latest_staged_build(dir_path):
     """Check if dir_path has the latest build for the same build target.
@@ -64,7 +66,7 @@ def get_all_timestamp_dirs(root):
             # Check if dir_path belongs to build targets in
             # _KEEP_LAST_BUILD_FOR_TARGETS, and has the latest build staged,
             # skip if that is True.
-            if (target in _KEEP_LAST_BUILD_FOR_TARGETS and
+            if (target == _KEEP_LAST_BUILD_FOR_TARGET and
                 is_latest_staged_build(dir_path)):
                 logging.debug('Build in %s is the latest build, skipping.',
                               dir_path)

@@ -27,7 +27,8 @@ from autotest_lib.client.common_lib.cros import dev_server
 from devserver import gsutil_util
 
 
-DEFAULT_BUILD_TARGET = 'beaglebone-release'
+DEFAULT_BUILD_TARGET = global_config.global_config.get_config_value(
+        'CROS', 'servo_builder')
 IMAGE_STORAGE_SERVER = global_config.global_config.get_config_value('CROS',
         'image_storage_server', type=str)
 
