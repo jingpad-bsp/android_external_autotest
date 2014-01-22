@@ -156,7 +156,7 @@
     "dashboard_test_name": "kraken"
   },
   {
-    "autotest_name": "telemetry_Benchmarks.media.tough_media_cases",
+    "autotest_name": "telemetry_Benchmarks.media.chromeOS.tough_video_cases",
     "master_name": "ChromiumPerf",
     "dashboard_test_name": "media.tough_media_cases"
   },
