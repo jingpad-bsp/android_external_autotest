@@ -21,6 +21,7 @@ SCRIPT_LINE = 'line.py'
 SCRIPT_TAP = 'tap.py'
 SCRIPT_CLICK = 'click.py'
 SCRIPT_ONE_STATIONARY_FINGER = 'one_stationary_finger.py'
+SCRIPT_STATIONARY_WITH_TAPS = 'stationary_finger_with_taps_around_it.py'
 
 # Define constants for coordinates.
 # Normally, a gesture is performed within [START, END].
@@ -69,6 +70,8 @@ class RobotWrapper:
             self._get_control_command_one_stationary_finger:
                     SCRIPT_ONE_STATIONARY_FINGER,
             self._get_control_command_pinch: SCRIPT_LINE,
+            self._get_control_command_stationary_with_taps:
+                    SCRIPT_STATIONARY_WITH_TAPS,
         }
 
         # Each gesture maps to a get_contorol_command method
@@ -94,6 +97,8 @@ class RobotWrapper:
             conf.TWO_FINGER_PHYSICAL_CLICK: self._get_control_command_click,
             conf.THREE_FINGER_PHYSICAL_CLICK: self._get_control_command_click,
             conf.FOUR_FINGER_PHYSICAL_CLICK: self._get_control_command_click,
+            conf.STATIONARY_FINGER_NOT_AFFECTED_BY_2ND_FINGER_TAPS:
+                    self._get_control_command_stationary_with_taps,
         }
 
         self._line_dict = {
@@ -356,6 +361,14 @@ class RobotWrapper:
                 speed, line_type)
         cmd = 'python %s %s.p %f %f %d %d %f %f %d %d %d %d %d %d %f %s' % para
         return cmd
+
+    def _get_control_command_stationary_with_taps(self, robot_script, gesture,
+                                                  variation):
+        """ There is only one variant of this gesture, so there is only one
+        command to generate.  This is the command for tapping around a
+        stationary finger on the pad.
+        """
+        return 'python %s %s.p 0.5 0.5' % (robot_script, self._board)
 
     def _get_control_command_rapid_taps(self, robot_script, gesture, variation):
         num_taps = self._get_num_taps(gesture)
