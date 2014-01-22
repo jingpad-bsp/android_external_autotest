@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 
-import subprocess
+import collections
 import multiprocessing.pool
+import subprocess
+import sys
 
 import common
 from autotest_lib.server import frontend
@@ -29,16 +31,16 @@ class Result(object):
 def log_result(result):
     print "Examining %s ..." % result.host
 
-    if result.ping == 0:
+    if result.ping:
         print "  PING = UP"
     else:
-        print "  PING = DOWN"
+        print "  PING = DOWN\n"
         return
 
     if result.ssh:
         print "  SSH = UP"
     else:
-        print "  SSH = DOWN"
+        print "  SSH = DOWN\n"
         return
 
     print "  SERVOD = %s" % ('UP' if result.servod else 'DOWN',)
@@ -48,8 +50,8 @@ def log_result(result):
 def check_servo(servo):
     r = Result(servo, None, None, None, None)
 
-    r.ping = utils.ping(servo, tries=5, deadline=5)
-    if r.ping != 0:
+    r.ping = (utils.ping(servo, tries=5, deadline=5) == 0)
+    if not r.ping:
         return r
 
     try:
@@ -77,13 +79,94 @@ def check_servo(servo):
 
     return r
 
-for server in SERVERS:
-    afe = frontend.AFE(server=server)
-    hosts = afe.run('get_hosts', multiple_labels=['servo'],
-                    status='Repair Failed')
-    servos = [h['hostname']+'-servo.cros' for h in hosts]
 
+def redeploy_hdctools(host):
+    try:
+        subprocess.check_output(
+            ssh_command(host, "/home/chromeos-test/hdctools/beaglebone/deploy"),
+            stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError:
+        return False
+    else:
+        return True
+
+
+def install_package(package):
+    def curry(host):
+        try:
+            subprocess.check_output(
+                ssh_command(host, "apt-get install %s" % package),
+                stderr=subprocess.STDOUT)
+            subprocess.check_output(
+                ssh_command(host, "start servod"),
+                stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError:
+            return False
+        else:
+            return True
+    curry.__name__ = "install_package(%s)" % package
+    return curry
+
+
+def manual_intervention(reason):
+    def curry(_):
+          return False
+
+    curry.__name__ = 'MANUAL(%s)' % reason
+    return curry
+
+
+Fix = collections.namedtuple('Fix', ['host', 'method', 'success'])
+
+# I don't know if these failures are one-time or repeating, so I'm adding code
+# here for now.  If these are seen and fixed by this frequently, then this code
+# should be moved into servo_host's repair()
+def diagnose_failure(r):
+    method = None
+
+    if r.logs and 'ImportError: Entry point' in r.logs:
+        method = redeploy_hdctools
+
+    if r.logs and 'ImportError: No module named serial' in r.logs:
+        method = install_package('python-serial')
+
+    if not r.ping or not r.ssh:
+        method = manual_intervention('servo is unresponsive on network')
+
+    if r.logs and 'No usb device connected to servo' in r.logs:
+        method = manual_intervention("servo doesn't see USB drive")
+
+    if r.logs and 'discover_servo - No servos found' in r.logs:
+        method = manual_intervention("beaglebone doesn't see servo")
+
+    if method:
+        return Fix(r.host, method.__name__, method(r.host))
+    else:
+        return None
+
+
+def main():
     pool = multiprocessing.pool.ThreadPool()
-    results = pool.imap_unordered(check_servo, servos)
-    for result in results:
-        log_result(result)
+    all_results = []
+
+    for server in SERVERS:
+        afe = frontend.AFE(server=server)
+        hosts = afe.run('get_hosts', multiple_labels=['servo'],
+                        status='Repair Failed')
+        servos = [h['hostname']+'-servo.cros' for h in hosts]
+
+        results = pool.imap_unordered(check_servo, servos)
+        for result in results:
+            log_result(result)
+            all_results.append(result)
+
+    # fix 'em if you can?
+    fixes = filter(None, pool.imap_unordered(diagnose_failure, all_results))
+    for fix in fixes:
+      print ("Fixing %(host)s via %(method)s resulted in %(success)s" %
+             dict(host=fix.host, method=fix.method,
+                  success='SUCCESS' if fix.success else 'FAILURE'))
+    return 0
+
+if __name__ == '__main__':
+    sys.exit(main())
