@@ -4,8 +4,10 @@
 
 import logging
 
-import mm1
+import pm_errors
 import register_machine
+
+from autotest_lib.client.cros.cellular import mm1_constants
 
 class RegisterCdmaMachine(register_machine.RegisterMachine):
     """
@@ -21,31 +23,34 @@ class RegisterCdmaMachine(register_machine.RegisterMachine):
         """
         logging.info('RegisterCdmaMachine: Canceling register.')
         super(RegisterCdmaMachine, self).Cancel()
-        state = self._modem.Get(mm1.I_MODEM, 'State')
-        reason = mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
-        if state == mm1.MM_MODEM_STATE_SEARCHING:
+        state = self._modem.Get(mm1_constants.I_MODEM, 'State')
+        reason = mm1_constants.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
+        if state == mm1_constants.MM_MODEM_STATE_SEARCHING:
             logging.info('RegisterCdmaMachine: Setting state to ENABLED.')
-            self._modem.ChangeState(mm1.MM_MODEM_STATE_ENABLED, reason)
+            self._modem.ChangeState(mm1_constants.MM_MODEM_STATE_ENABLED,
+                                    reason)
             self._modem.SetRegistrationState(
-                mm1.MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN)
+                mm1_constants.MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN)
         self._modem.register_step = None
         if self._raise_cb:
             self._raise_cb(
-                    mm1.MMCoreError(mm1.MMCoreError.CANCELLED, 'Cancelled'))
+                    pm_errors.MMCoreError(pm_errors.MMCoreError.CANCELLED,
+                                          'Cancelled'))
 
     def _GetModemStateFunctionMap(self):
         return {
-            mm1.MM_MODEM_STATE_ENABLED: RegisterCdmaMachine._HandleEnabledState,
-            mm1.MM_MODEM_STATE_SEARCHING:
-                RegisterCdmaMachine._HandleSearchingState
+            mm1_constants.MM_MODEM_STATE_ENABLED:
+                    RegisterCdmaMachine._HandleEnabledState,
+            mm1_constants.MM_MODEM_STATE_SEARCHING:
+                    RegisterCdmaMachine._HandleSearchingState
         }
 
     def _HandleEnabledState(self):
         logging.info('RegisterCdmaMachine: Modem is ENABLED.')
         logging.info('RegisterCdmaMachine: Setting state to SEARCHING.')
         self._modem.ChangeState(
-            mm1.MM_MODEM_STATE_SEARCHING,
-            mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED)
+                mm1_constants.MM_MODEM_STATE_SEARCHING,
+                mm1_constants.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED)
         return True
 
     def _HandleSearchingState(self):
@@ -54,12 +59,13 @@ class RegisterCdmaMachine(register_machine.RegisterMachine):
         if not network:
             logging.info('RegisterCdmaMachine: No network available.')
             logging.info('RegisterCdmaMachine: Setting state to ENABLED.')
-            self._modem.ChangeState(mm1.MM_MODEM_STATE_ENABLED,
-                mm1.MM_MODEM_STATE_CHANGE_REASON_UNKNOWN)
+            self._modem.ChangeState(mm1_constants.MM_MODEM_STATE_ENABLED,
+                mm1_constants.MM_MODEM_STATE_CHANGE_REASON_UNKNOWN)
             if self._raise_cb:
-                self._raise_cb(mm1.MMMobileEquipmentError(
-                        mm1.MMMobileEquipmentError.NO_NETWORK,
-                        'No networks were found to register.'))
+                self._raise_cb(
+                        pm_errors.MMMobileEquipmentError(
+                                pm_errors.MMMobileEquipmentError.NO_NETWORK,
+                                'No networks were found to register.'))
             self._modem.register_step = None
             return False
 
@@ -68,8 +74,8 @@ class RegisterCdmaMachine(register_machine.RegisterMachine):
         logging.info('RegisterMachineCdma: Setting state to REGISTERED.')
         self._modem.SetRegistered(network)
         self._modem.ChangeState(
-            mm1.MM_MODEM_STATE_REGISTERED,
-            mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED)
+                mm1_constants.MM_MODEM_STATE_REGISTERED,
+                mm1_constants.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED)
         self._modem.register_step = None
         if self._return_cb:
             self._return_cb()

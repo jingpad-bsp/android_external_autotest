@@ -3,8 +3,11 @@
 # found in the LICENSE file.
 
 import logging
-import mm1
+
+import pm_errors
 import state_machine
+
+from autotest_lib.client.cros.cellular import mm1_constants
 
 class DisableMachine(state_machine.StateMachine):
     """
@@ -23,8 +26,8 @@ class DisableMachine(state_machine.StateMachine):
         # TODO(armansito): Pass a different raise_cb here to handle
         # disconnect failure
         logging.info('DisableMachine: Starting Disconnect.')
-        self._modem.Disconnect(
-            mm1.ROOT_PATH, DisableMachine.Step, DisableMachine.Step, self)
+        self._modem.Disconnect(mm1_constants.ROOT_PATH, DisableMachine.Step,
+                               DisableMachine.Step, self)
         return True
 
     def _HandleConnectingState(self):
@@ -49,8 +52,8 @@ class DisableMachine(state_machine.StateMachine):
         assert not self._modem.IsPendingDisconnect()
         self._modem.UnregisterWithNetwork()
         logging.info('DisableMachine: Setting state to DISABLING.')
-        reason = mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
-        self._modem.ChangeState(mm1.MM_MODEM_STATE_DISABLING, reason)
+        reason = mm1_constants.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
+        self._modem.ChangeState(mm1_constants.MM_MODEM_STATE_DISABLING, reason)
         return True
 
     def _HandleSearchingState(self):
@@ -68,8 +71,8 @@ class DisableMachine(state_machine.StateMachine):
         assert not self._modem.IsPendingEnable()
         assert not self._modem.IsPendingConnect()
         logging.info('DisableMachine: Setting state to DISABLING.')
-        reason = mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
-        self._modem.ChangeState(mm1.MM_MODEM_STATE_DISABLING, reason)
+        reason = mm1_constants.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
+        self._modem.ChangeState(mm1_constants.MM_MODEM_STATE_DISABLING, reason)
         return True
 
     def _HandleDisablingState(self):
@@ -79,8 +82,8 @@ class DisableMachine(state_machine.StateMachine):
         assert not self._modem.IsPendingConnect()
         assert not self._modem.IsPendingDisconnect()
         logging.info('DisableMachine: Setting state to DISABLED.')
-        reason = mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
-        self._modem.ChangeState(mm1.MM_MODEM_STATE_DISABLED, reason)
+        reason = mm1_constants.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
+        self._modem.ChangeState(mm1_constants.MM_MODEM_STATE_DISABLED, reason)
         self._modem.disable_step = None
         if self.return_cb:
             self.return_cb()
@@ -88,16 +91,20 @@ class DisableMachine(state_machine.StateMachine):
 
     def _GetModemStateFunctionMap(self):
         return {
-            mm1.MM_MODEM_STATE_CONNECTED: DisableMachine._HandleConnectedState,
-            mm1.MM_MODEM_STATE_CONNECTING: \
-                DisableMachine._HandleConnectingState,
-            mm1.MM_MODEM_STATE_DISCONNECTING: \
-                DisableMachine._HandleDisconnectingState,
-            mm1.MM_MODEM_STATE_REGISTERED: \
-                DisableMachine._HandleRegisteredState,
-            mm1.MM_MODEM_STATE_SEARCHING: DisableMachine._HandleSearchingState,
-            mm1.MM_MODEM_STATE_ENABLED: DisableMachine._HandleEnabledState,
-            mm1.MM_MODEM_STATE_DISABLING: DisableMachine._HandleDisablingState
+            mm1_constants.MM_MODEM_STATE_CONNECTED:
+                    DisableMachine._HandleConnectedState,
+            mm1_constants.MM_MODEM_STATE_CONNECTING:
+                    DisableMachine._HandleConnectingState,
+            mm1_constants.MM_MODEM_STATE_DISCONNECTING:
+                    DisableMachine._HandleDisconnectingState,
+            mm1_constants.MM_MODEM_STATE_REGISTERED:
+                    DisableMachine._HandleRegisteredState,
+            mm1_constants.MM_MODEM_STATE_SEARCHING:
+                    DisableMachine._HandleSearchingState,
+            mm1_constants.MM_MODEM_STATE_ENABLED:
+                    DisableMachine._HandleEnabledState,
+            mm1_constants.MM_MODEM_STATE_DISABLING:
+                    DisableMachine._HandleDisablingState
         }
 
     def _ShouldStartStateMachine(self):
@@ -105,11 +112,12 @@ class DisableMachine(state_machine.StateMachine):
             # There is already a disable operation in progress.
             message = 'Modem disable already in progress.'
             logging.info(message)
-            raise mm1.MMCoreError(mm1.MMCoreError.IN_PROGRESS, message)
+            raise pm_errors.MMCoreError(pm_errors.MMCoreError.IN_PROGRESS,
+                                        message)
         elif self._modem.disable_step is None:
             # There is no disable operation going in, cancelled or otherwise.
-            state = self._modem.Get(mm1.I_MODEM, 'State')
-            if state == mm1.MM_MODEM_STATE_DISABLED:
+            state = self._modem.Get(mm1_constants.I_MODEM, 'State')
+            if state == mm1_constants.MM_MODEM_STATE_DISABLED:
                 # The reason we're not raising an error here is that
                 # shill will make multiple successive calls to disable
                 # but WON'T check for raised errors, which causes
@@ -120,14 +128,14 @@ class DisableMachine(state_machine.StateMachine):
                 return False
 
             invalid_states = [
-                mm1.MM_MODEM_STATE_FAILED,
-                mm1.MM_MODEM_STATE_UNKNOWN,
-                mm1.MM_MODEM_STATE_INITIALIZING,
-                mm1.MM_MODEM_STATE_LOCKED
+                mm1_constants.MM_MODEM_STATE_FAILED,
+                mm1_constants.MM_MODEM_STATE_UNKNOWN,
+                mm1_constants.MM_MODEM_STATE_INITIALIZING,
+                mm1_constants.MM_MODEM_STATE_LOCKED
             ]
             if state in invalid_states:
-                raise mm1.MMCoreError(
-                        mm1.MMCoreError.WRONG_STATE,
+                raise pm_errors.MMCoreError(
+                        pm_errors.MMCoreError.WRONG_STATE,
                         ('Modem disable cannot be initiated while in state'
                          ' %u.') % state)
             if self._modem.connect_step:
@@ -144,10 +152,10 @@ class DisableMachine(state_machine.StateMachine):
                 logging.info('This should bring the modem to a disabled state.'
                              ' DisableMachine will not start.')
                 self._modem.enable_step.Cancel()
-                assert self._modem.Get(mm1.I_MODEM, 'State') == \
-                    mm1.MM_MODEM_STATE_DISABLED
-            if self._modem.Get(mm1.I_MODEM, 'State') == \
-                    mm1.MM_MODEM_STATE_DISABLED:
+                assert self._modem.Get(mm1_constants.I_MODEM, 'State') == \
+                    mm1_constants.MM_MODEM_STATE_DISABLED
+            if self._modem.Get(mm1_constants.I_MODEM, 'State') == \
+                    mm1_constants.MM_MODEM_STATE_DISABLED:
                 if self.return_cb:
                     self.return_cb()
                 return False

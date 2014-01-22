@@ -4,7 +4,7 @@
 
 import dbus
 
-import mm1
+from autotest_lib.client.cros.cellular import mm1_constants
 
 class ModemSimple(dbus.service.Interface):
     """
@@ -17,7 +17,7 @@ class ModemSimple(dbus.service.Interface):
 
     # Remember to decorate your concrete implementation with
     # @utils.log_dbus_method(return_cb_arg='return_cb', raise_cb_arg='raise_cb')
-    @dbus.service.method(mm1.I_MODEM_SIMPLE,
+    @dbus.service.method(mm1_constants.I_MODEM_SIMPLE,
                          in_signature='a{sv}', out_signature='o',
                          async_callbacks=('return_cb', 'raise_cb'))
     def Connect(self, properties, return_cb, raise_cb):
@@ -54,7 +54,7 @@ class ModemSimple(dbus.service.Interface):
 
     # Remember to decorate your concrete implementation with
     # @utils.log_dbus_method(return_cb_arg='return_cb', raise_cb_arg='raise_cb')
-    @dbus.service.method(mm1.I_MODEM_SIMPLE, in_signature='o',
+    @dbus.service.method(mm1_constants.I_MODEM_SIMPLE, in_signature='o',
                          async_callbacks=('return_cb', 'raise_cb'))
     def Disconnect(self, bearer, return_cb, raise_cb, *return_cb_args):
         """
@@ -77,7 +77,7 @@ class ModemSimple(dbus.service.Interface):
 
     # Remember to decorate your concrete implementation with
     # @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_MODEM_SIMPLE, out_signature='a{sv}')
+    @dbus.service.method(mm1_constants.I_MODEM_SIMPLE, out_signature='a{sv}')
     def GetStatus(self):
         """
         Gets the general modem status.

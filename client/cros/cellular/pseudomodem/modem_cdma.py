@@ -6,9 +6,11 @@ import dbus
 import dbus.types
 import logging
 
-import mm1
 import modem
+import pm_constants
 import utils
+
+from autotest_lib.client.cros.cellular import mm1_constants
 
 class ModemCdma(modem.Modem):
     """
@@ -66,54 +68,63 @@ class ModemCdma(modem.Modem):
     def _InitializeProperties(self):
         ip = modem.Modem._InitializeProperties(self)
         if self.home_network and self.home_network.activated:
-            activation_state = mm1.MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED
+            activation_state = \
+                mm1_constants.MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED
         else:
-            activation_state = mm1.MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED
-        ip[mm1.I_MODEM_CDMA] = {
+            activation_state = \
+                mm1_constants.MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED
+        ip[mm1_constants.I_MODEM_CDMA] = {
             'Meid' : 'A100000DCE2CA0',
             'Esn' : 'EDD1EDD1',
             'Sid' : dbus.types.UInt32(0),
             'Nid' : dbus.types.UInt32(0),
             'Cdma1xRegistrationState' : (
-            dbus.types.UInt32(mm1.MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN)),
+            dbus.types.UInt32(
+                mm1_constants.MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN)),
             'EvdoRegistrationState' : (
-            dbus.types.UInt32(mm1.MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN)),
+            dbus.types.UInt32(
+                mm1_constants.MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN)),
             'ActivationState' : dbus.types.UInt32(activation_state)
         }
-        props = ip[mm1.I_MODEM]
+        props = ip[mm1_constants.I_MODEM]
         props['SupportedCapabilities'] = [
-            dbus.types.UInt32(mm1.MM_MODEM_CAPABILITY_CDMA_EVDO)
+            dbus.types.UInt32(mm1_constants.MM_MODEM_CAPABILITY_CDMA_EVDO)
         ]
         props['CurrentCapabilities'] = (
-            dbus.types.UInt32(mm1.MM_MODEM_CAPABILITY_CDMA_EVDO))
+            dbus.types.UInt32(mm1_constants.MM_MODEM_CAPABILITY_CDMA_EVDO))
         props['MaxBearers'] = dbus.types.UInt32(1)
         props['MaxActiveBearers'] = dbus.types.UInt32(1)
-        props['EquipmentIdentifier'] = ip[mm1.I_MODEM_CDMA]['Meid']
+        props['EquipmentIdentifier'] = ip[mm1_constants.I_MODEM_CDMA]['Meid']
         props['AccessTechnologies'] = (
-            dbus.types.UInt32(mm1.MM_MODEM_ACCESS_TECHNOLOGY_EVDO0))
+            dbus.types.UInt32(mm1_constants.MM_MODEM_ACCESS_TECHNOLOGY_EVDO0))
         props['SupportedModes'] = [
-            dbus.types.Struct([dbus.types.UInt32(mm1.MM_MODEM_MODE_3G),
-                               dbus.types.UInt32(mm1.MM_MODEM_MODE_4G)],
-                              signature='uu')
+            dbus.types.Struct(
+                [dbus.types.UInt32(mm1_constants.MM_MODEM_MODE_3G),
+                 dbus.types.UInt32(mm1_constants.MM_MODEM_MODE_4G)],
+                signature='uu')
         ]
         props['CurrentModes'] = props['SupportedModes'][0]
         props['SupportedBands'] = [
-            dbus.types.UInt32(mm1.MM_MODEM_BAND_CDMA_BC0_CELLULAR_800),
-            dbus.types.UInt32(mm1.MM_MODEM_BAND_CDMA_BC1_PCS_1900),
-            dbus.types.UInt32(mm1.MM_MODEM_BAND_CDMA_BC2_TACS),
-            dbus.types.UInt32(mm1.MM_MODEM_BAND_CDMA_BC3_JTACS),
-            dbus.types.UInt32(mm1.MM_MODEM_BAND_CDMA_BC4_KOREAN_PCS),
-            dbus.types.UInt32(mm1.MM_MODEM_BAND_CDMA_BC5_NMT450),
-            dbus.types.UInt32(mm1.MM_MODEM_BAND_CDMA_BC6_IMT2000),
-            dbus.types.UInt32(mm1.MM_MODEM_BAND_CDMA_BC7_CELLULAR_700),
-            dbus.types.UInt32(mm1.MM_MODEM_BAND_CDMA_BC8_1800),
-            dbus.types.UInt32(mm1.MM_MODEM_BAND_CDMA_BC9_900),
-            dbus.types.UInt32(mm1.MM_MODEM_BAND_CDMA_BC10_SECONDARY_800),
-            dbus.types.UInt32(mm1.MM_MODEM_BAND_CDMA_BC11_PAMR_400)
+            dbus.types.UInt32(
+                mm1_constants.MM_MODEM_BAND_CDMA_BC0_CELLULAR_800),
+            dbus.types.UInt32(mm1_constants.MM_MODEM_BAND_CDMA_BC1_PCS_1900),
+            dbus.types.UInt32(mm1_constants.MM_MODEM_BAND_CDMA_BC2_TACS),
+            dbus.types.UInt32(mm1_constants.MM_MODEM_BAND_CDMA_BC3_JTACS),
+            dbus.types.UInt32(mm1_constants.MM_MODEM_BAND_CDMA_BC4_KOREAN_PCS),
+            dbus.types.UInt32(mm1_constants.MM_MODEM_BAND_CDMA_BC5_NMT450),
+            dbus.types.UInt32(mm1_constants.MM_MODEM_BAND_CDMA_BC6_IMT2000),
+            dbus.types.UInt32(
+                mm1_constants.MM_MODEM_BAND_CDMA_BC7_CELLULAR_700),
+            dbus.types.UInt32(mm1_constants.MM_MODEM_BAND_CDMA_BC8_1800),
+            dbus.types.UInt32(mm1_constants.MM_MODEM_BAND_CDMA_BC9_900),
+            dbus.types.UInt32(
+                mm1_constants.MM_MODEM_BAND_CDMA_BC10_SECONDARY_800),
+            dbus.types.UInt32(mm1_constants.MM_MODEM_BAND_CDMA_BC11_PAMR_400)
         ]
         props['CurrentBands'] = [
-            dbus.types.UInt32(mm1.MM_MODEM_BAND_CDMA_BC0_CELLULAR_800),
-            dbus.types.UInt32(mm1.MM_MODEM_BAND_CDMA_BC1_PCS_1900),
+            dbus.types.UInt32(
+                mm1_constants.MM_MODEM_BAND_CDMA_BC0_CELLULAR_800),
+            dbus.types.UInt32(mm1_constants.MM_MODEM_BAND_CDMA_BC1_PCS_1900),
         ]
         if self.home_network:
             props['OwnNumbers'] = [self.home_network.mdn]
@@ -123,7 +134,7 @@ class ModemCdma(modem.Modem):
         return ip
 
     @utils.log_dbus_method(return_cb_arg='return_cb', raise_cb_arg='raise_cb')
-    @dbus.service.method(mm1.I_MODEM_CDMA, in_signature='s',
+    @dbus.service.method(mm1_constants.I_MODEM_CDMA, in_signature='s',
                          async_callbacks=('return_cb', 'raise_cb'))
     def Activate(self, carrier, return_cb, raise_cb):
         """
@@ -141,14 +152,14 @@ class ModemCdma(modem.Modem):
         """
         logging.info('ModemCdma.Activate')
         machine = self._state_machine_factory.CreateMachine(
-                mm1.STATE_MACHINE_CDMA_ACTIVATE,
+                pm_constants.STATE_MACHINE_CDMA_ACTIVATE,
                 self,
                 return_cb,
                 raise_cb)
         machine.Start()
 
     @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_MODEM_CDMA, in_signature='a{sv}')
+    @dbus.service.method(mm1_constants.I_MODEM_CDMA, in_signature='a{sv}')
     def ActivateManual(self, properties):
         """
         Sets the modem provisioning data directly, without contacting the
@@ -163,7 +174,7 @@ class ModemCdma(modem.Modem):
         """
         raise NotImplementedError()
 
-    @dbus.service.signal(mm1.I_MODEM_CDMA, signature='uua{sv}')
+    @dbus.service.signal(mm1_constants.I_MODEM_CDMA, signature='uua{sv}')
     def ActivationStateChanged(
             self,
             activation_state,
@@ -211,10 +222,10 @@ class ModemCdma(modem.Modem):
 
         """
         status_changes = {}
-        if state == mm1.MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED:
+        if state == mm1_constants.MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED:
             self.home_network.activated = True
             status_changes['mdn'] = [self.home_network.mdn]
-            self.Set(mm1.I_MODEM, 'OwnNumbers', status_changes['mdn'])
+            self.Set(mm1_constants.I_MODEM, 'OwnNumbers', status_changes['mdn'])
 
             if self.IsPendingActivation():
                 logging.info("A CdmaActivationMachine is currently active. "
@@ -223,7 +234,7 @@ class ModemCdma(modem.Modem):
                              "complete.")
                 return
 
-        self.SetUInt32(mm1.I_MODEM_CDMA, 'ActivationState', state)
+        self.SetUInt32(mm1_constants.I_MODEM_CDMA, 'ActivationState', state)
         self.ActivationStateChanged(state, error, status_changes)
 
     def GetHomeNetwork(self):
@@ -244,22 +255,25 @@ class ModemCdma(modem.Modem):
         """
         logging.info('ModemCdma.SetRegistered')
         if network:
-            state = mm1.MM_MODEM_CDMA_REGISTRATION_STATE_HOME
+            state = mm1_constants.MM_MODEM_CDMA_REGISTRATION_STATE_HOME
             sid = network.sid
             nid = network.nid
             if network.activated:
-                activation_state = mm1.MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED
+                activation_state = \
+                    mm1_constants.MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED
             else:
                 activation_state = \
-                    mm1.MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED
+                    mm1_constants.MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED
         else:
-            state = mm1.MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN
+            state = mm1_constants.MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN
             sid = 0
             nid = 0
-            activation_state = mm1.MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED
-        self.SetUInt32(mm1.I_MODEM_CDMA, 'ActivationState', activation_state)
-        self.SetUInt32(mm1.I_MODEM_CDMA, 'Sid', sid)
-        self.SetUInt32(mm1.I_MODEM_CDMA, 'Nid', nid)
+            activation_state = \
+                mm1_constants.MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED
+        self.SetUInt32(mm1_constants.I_MODEM_CDMA, 'ActivationState',
+                       activation_state)
+        self.SetUInt32(mm1_constants.I_MODEM_CDMA, 'Sid', sid)
+        self.SetUInt32(mm1_constants.I_MODEM_CDMA, 'Nid', nid)
         self.SetRegistrationState(state)
 
     def SetRegistrationState(self, state):
@@ -269,8 +283,10 @@ class ModemCdma(modem.Modem):
         @param state: A MMModemCdmaRegistrationState value.
 
         """
-        self.SetUInt32(mm1.I_MODEM_CDMA, 'Cdma1xRegistrationState', state)
-        self.SetUInt32(mm1.I_MODEM_CDMA, 'EvdoRegistrationState', state)
+        self.SetUInt32(mm1_constants.I_MODEM_CDMA, 'Cdma1xRegistrationState',
+                       state)
+        self.SetUInt32(mm1_constants.I_MODEM_CDMA, 'EvdoRegistrationState',
+                       state)
 
     # Inherited from modem.Modem.
     def RegisterWithNetwork(
@@ -281,7 +297,7 @@ class ModemCdma(modem.Modem):
         """
         logging.info('ModemCdma.RegisterWithNetwork')
         machine = self._state_machine_factory.CreateMachine(
-                mm1.STATE_MACHINE_REGISTER_CDMA,
+                pm_constants.STATE_MACHINE_REGISTER_CDMA,
                 self,
                 operator_id,
                 return_cb,
@@ -294,13 +310,13 @@ class ModemCdma(modem.Modem):
 
         """
         logging.info('ModemCdma.UnregisterWithNetwork')
-        if self.Get(mm1.I_MODEM, 'State') != \
-            mm1.MM_MODEM_STATE_REGISTERED:
+        if self.Get(mm1_constants.I_MODEM, 'State') != \
+            mm1_constants.MM_MODEM_STATE_REGISTERED:
             logging.info('Currently not registered. Nothing to do.')
             return
         logging.info('Setting state to ENABLED.')
-        self.ChangeState(mm1.MM_MODEM_STATE_ENABLED,
-            mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED)
+        self.ChangeState(mm1_constants.MM_MODEM_STATE_ENABLED,
+            mm1_constants.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED)
         logging.info('Unregistering.')
         self.SetRegistered(None)
 
@@ -317,7 +333,7 @@ class ModemCdma(modem.Modem):
         """
         logging.info('ModemCdma.Connect')
         machine = self._state_machine_factory.CreateMachine(
-                mm1.STATE_MACHINE_CONNECT_CDMA,
+                pm_constants.STATE_MACHINE_CONNECT_CDMA,
                 self,
                 properties,
                 return_cb,
@@ -338,7 +354,7 @@ class ModemCdma(modem.Modem):
         """
         logging.info('ModemCdma.Disconnect: %s', bearer_path)
         machine = self._state_machine_factory.CreateMachine(
-                mm1.STATE_MACHINE_DISCONNECT,
+                pm_constants.STATE_MACHINE_DISCONNECT,
                 self,
                 bearer_path,
                 return_cb,
@@ -353,11 +369,11 @@ class ModemCdma(modem.Modem):
         Overridden from superclass.
 
         """
-        modem_props = self.GetAll(mm1.I_MODEM)
-        cdma_props = self.GetAll(mm1.I_MODEM_CDMA)
+        modem_props = self.GetAll(mm1_constants.I_MODEM)
+        cdma_props = self.GetAll(mm1_constants.I_MODEM_CDMA)
         retval = {}
         retval['state'] = modem_props['State']
-        if retval['state'] == mm1.MM_MODEM_STATE_REGISTERED:
+        if retval['state'] == mm1_constants.MM_MODEM_STATE_REGISTERED:
             retval['signal-quality'] = modem_props['SignalQuality'][0]
             retval['bands'] = modem_props['CurrentBands']
             retval['cdma-cdma1x-registration-state'] = \

@@ -7,11 +7,11 @@ import logging
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.cellular import mm1_constants
+from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
 from autotest_lib.client.cros.networking.chrome_testing \
         import chrome_networking_test_context as cntc
 from autotest_lib.client.cros.networking.chrome_testing import test_utils
-from autotest_lib.client.cros.cellular.pseudomodem import mm1
-from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
 
 class network_ChromeCellularSmokeTest(test.test):
     """
@@ -27,18 +27,21 @@ class network_ChromeCellularSmokeTest(test.test):
 
     def _setup_modem_proxy(self):
         self._bus = dbus.SystemBus()
-        manager = self._bus.get_object(mm1.I_MODEM_MANAGER, mm1.MM1)
-        imanager = dbus.Interface(manager, mm1.I_OBJECT_MANAGER)
+        manager = self._bus.get_object(mm1_constants.I_MODEM_MANAGER,
+                                       mm1_constants.MM1)
+        imanager = dbus.Interface(manager, mm1_constants.I_OBJECT_MANAGER)
         devices = imanager.GetManagedObjects().keys()
         if len(devices) != 1:
             raise error.TestFail('Expected exactly one modem object, found: ' +
                                  len(devices))
-        self._modem = self._bus.get_object(mm1.I_MODEM_MANAGER, devices[0])
+        self._modem = self._bus.get_object(mm1_constants.I_MODEM_MANAGER,
+                                           devices[0])
 
 
     def _get_modem_state(self):
-        iprops = dbus.Interface(self._modem, mm1.I_PROPERTIES)
-        return iprops.Get(mm1.I_MODEM, mm1.MM_MODEM_PROPERTY_NAME_STATE)
+        iprops = dbus.Interface(self._modem, mm1_constants.I_PROPERTIES)
+        return iprops.Get(mm1_constants.I_MODEM,
+                          mm1_constants.MM_MODEM_PROPERTY_NAME_STATE)
 
 
     def _get_cellular_network(self):
@@ -58,8 +61,9 @@ class network_ChromeCellularSmokeTest(test.test):
         if modem_state != expected_state:
             raise error.TestFail(
                     'Expected modem state to be "' +
-                    mm1.ModemStateToString(expected_state) + '", found: ' +
-                    mm1.ModemStateToString(modem_state))
+                    mm1_constants.ModemStateToString(expected_state) +
+                    '", found: ' +
+                    mm1_constants.ModemStateToString(modem_state))
 
 
     def _ensure_network_status(self, network_id, status, timeout):
@@ -80,7 +84,7 @@ class network_ChromeCellularSmokeTest(test.test):
                 network_id, 'NotConnected', test_utils.LONG_TIMEOUT)
         logging.info('The network is disconnected. Checking that the modem is '
                      'in the REGISTERED state.')
-        self._assert_modem_state(mm1.MM_MODEM_STATE_REGISTERED)
+        self._assert_modem_state(mm1_constants.MM_MODEM_STATE_REGISTERED)
         logging.info('Modem is disconnected. Disconnect was successful.')
 
 
@@ -97,7 +101,7 @@ class network_ChromeCellularSmokeTest(test.test):
                 network_id, 'Connected', test_utils.LONG_TIMEOUT)
         logging.info('The network is connected. Checking that the modem is in '
                      'the CONNECTED state.')
-        self._assert_modem_state(mm1.MM_MODEM_STATE_CONNECTED)
+        self._assert_modem_state(mm1_constants.MM_MODEM_STATE_CONNECTED)
         logging.info('Modem is connected. Connect was successful.')
 
 

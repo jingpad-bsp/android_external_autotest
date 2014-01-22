@@ -5,8 +5,10 @@
 import dbus
 
 import dbus_std_ifaces
-import mm1
+import pm_errors
 import utils
+
+from autotest_lib.client.cros.cellular import mm1_constants
 
 LOG_LEVELS = ['ERR', 'WARN', 'INFO', 'DEBUG']
 
@@ -16,11 +18,11 @@ class ModemManager(dbus_std_ifaces.DBusObjectManager):
 
     """
     def __init__(self, bus):
-        dbus_std_ifaces.DBusObjectManager.__init__(self, bus, mm1.MM1)
+        dbus_std_ifaces.DBusObjectManager.__init__(self, bus, mm1_constants.MM1)
         self.debug_level = 'INFO'
 
     @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_MODEM_MANAGER)
+    @dbus.service.method(mm1_constants.I_MODEM_MANAGER)
     def ScanDevices(self):
         """
         Starts a new scan for connected modem devices.
@@ -34,7 +36,7 @@ class ModemManager(dbus_std_ifaces.DBusObjectManager):
         pass
 
     @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_MODEM_MANAGER, in_signature='s')
+    @dbus.service.method(mm1_constants.I_MODEM_MANAGER, in_signature='s')
     def SetLogging(self, level):
         """
         Sets logging verbosity.
@@ -43,5 +45,4 @@ class ModemManager(dbus_std_ifaces.DBusObjectManager):
 
         """
         if level not in LOG_LEVELS:
-            raise mm1.MMCoreError(
-                mm1.MMCoreError.INVALID_ARGS)
+            raise pm_errors.MMCoreError(pm_errors.MMCoreError.INVALID_ARGS)

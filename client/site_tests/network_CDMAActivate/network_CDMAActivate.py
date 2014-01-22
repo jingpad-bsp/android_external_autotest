@@ -10,11 +10,18 @@ import dbus.types
 import gobject
 import time
 
-from autotest_lib.client.cros import backchannel, network, flimflam_test_path
+from autotest_lib.client.cros import backchannel
+# Disable warning about flimflam_test_path not being used.  It is used to set
+# up the path to the flimflam module.
+# pylint: disable=W0611
+from autotest_lib.client.cros import flimflam_test_path
+# pylint: enable=W0611
+from autotest_lib.client.cros import network
 from autotest_lib.client.cros.cellular import cell_tools
 from autotest_lib.client.cros.cellular import mm
-from autotest_lib.client.cros.cellular.pseudomodem import mm1
+from autotest_lib.client.cros.cellular import mm1_constants
 from autotest_lib.client.cros.cellular.pseudomodem import modem_cdma
+from autotest_lib.client.cros.cellular.pseudomodem import pm_errors
 from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
 import flimflam
 
@@ -54,11 +61,12 @@ class ActivationTest(object):
     def _set_modem_activation_state(self, state):
         interface = self._get_modem_properties_interface()
         interface.Set(
-                mm1.I_MODEM_CDMA, 'ActivationState', dbus.types.UInt32(state))
+                mm1_constants.I_MODEM_CDMA, 'ActivationState',
+                dbus.types.UInt32(state))
 
     def _get_modem_activation_state(self):
         interface = self._get_modem_properties_interface()
-        return interface.Get(mm1.I_MODEM_CDMA, 'ActivationState')
+        return interface.Get(mm1_constants.I_MODEM_CDMA, 'ActivationState')
 
     def _setup_test_modem(self):
         raise NotImplementedError()
@@ -79,29 +87,30 @@ class ActivationStateTest(ActivationTest):
         network.ResetAllModems(self.test.flim)
 
         # The modem state should be REGISTERED.
-        self.test.check_modem_state(mm1.MM_MODEM_STATE_REGISTERED)
+        self.test.check_modem_state(mm1_constants.MM_MODEM_STATE_REGISTERED)
 
         # Service should appear as 'activated'.
         self.test.check_service_activation_state('activated')
 
         # Service activation state should change to 'not-activated'.
         self._set_modem_activation_state(
-                mm1.MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED)
+                mm1_constants.MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED)
         self.test.check_service_activation_state('not-activated')
 
         # Service activation state should change to 'activating'.
         self._set_modem_activation_state(
-                mm1.MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING)
+                mm1_constants.MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING)
         self.test.check_service_activation_state('activating')
 
         # Service activation state should change to 'partially-activated'.
         self._set_modem_activation_state(
-                mm1.MM_MODEM_CDMA_ACTIVATION_STATE_PARTIALLY_ACTIVATED)
+                mm1_constants.
+                MM_MODEM_CDMA_ACTIVATION_STATE_PARTIALLY_ACTIVATED)
         self.test.check_service_activation_state('partially-activated')
 
         # Service activation state should change to 'activated'.
         self._set_modem_activation_state(
-                mm1.MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED)
+                mm1_constants.MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED)
         self.test.check_service_activation_state('activated')
 
 class ActivationSuccessTest(ActivationTest):
@@ -118,7 +127,7 @@ class ActivationSuccessTest(ActivationTest):
         network.ResetAllModems(self.test.flim)
 
         # The modem state should be REGISTERED.
-        self.test.check_modem_state(mm1.MM_MODEM_STATE_REGISTERED)
+        self.test.check_modem_state(mm1_constants.MM_MODEM_STATE_REGISTERED)
 
         # Service should appear as 'not-activated'.
         self.test.check_service_activation_state('not-activated')
@@ -182,8 +191,8 @@ class ActivationFailureRetryTest(ActivationTest):
                         self, carrier, return_cb, raise_cb)
                 else:
                     def _raise_activation_error():
-                        raise_cb(mm1.MMCdmaActivationError(
-                                mm1.MMCdmaActivationError.START_FAILED))
+                        raise_cb(pm_errors.MMCdmaActivationError(
+                                pm_errors.MMCdmaActivationError.START_FAILED))
                     gobject.idle_add(_raise_activation_error)
         return TestModem()
 
@@ -191,7 +200,7 @@ class ActivationFailureRetryTest(ActivationTest):
         network.ResetAllModems(self.test.flim)
 
         # The modem state should be REGISTERED.
-        self.test.check_modem_state(mm1.MM_MODEM_STATE_REGISTERED)
+        self.test.check_modem_state(mm1_constants.MM_MODEM_STATE_REGISTERED)
 
         # Service should appear as 'not-activated'.
         self.test.check_service_activation_state('not-activated')
@@ -241,7 +250,7 @@ class network_CDMAActivate(test.test):
 
         """
         modem = self.modem()
-        props = modem.GetAll(mm1.I_MODEM)
+        props = modem.GetAll(mm1_constants.I_MODEM)
         return props['State']
 
     def check_modem_state(self, expected_state, timeout=MODEM_STATE_TIMEOUT):

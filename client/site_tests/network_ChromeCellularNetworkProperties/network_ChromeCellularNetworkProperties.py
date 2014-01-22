@@ -8,11 +8,11 @@ import logging
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.cellular import mm1_constants
+from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
 from autotest_lib.client.cros.networking.chrome_testing \
         import chrome_networking_test_context as cntc
 from autotest_lib.client.cros.networking.chrome_testing import test_utils
-from autotest_lib.client.cros.cellular.pseudomodem import mm1
-from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
 
 class network_ChromeCellularNetworkProperties(test.test):
     """
@@ -105,14 +105,16 @@ class network_ChromeCellularNetworkProperties(test.test):
 
         def _get_modem_proxy(self):
             self._bus = dbus.SystemBus()
-            manager = self._bus.get_object(mm1.I_MODEM_MANAGER, mm1.MM1)
+            manager = self._bus.get_object(mm1_constants.I_MODEM_MANAGER,
+                                           mm1_constants.MM1)
             devices = manager.GetManagedObjects(
-                    dbus_interface=mm1.I_OBJECT_MANAGER).keys()
+                    dbus_interface=mm1_constants.I_OBJECT_MANAGER).keys()
             if len(devices) != 1:
                 raise error.TestFail(
                         'Expected exactly one modem object, found: '
                         + len(devices))
-            return self._bus.get_object(mm1.I_MODEM_MANAGER, devices[0])
+            return self._bus.get_object(mm1_constants.I_MODEM_MANAGER,
+                                        devices[0])
 
 
         def _find_cellular_network(self):
@@ -149,7 +151,7 @@ class network_ChromeCellularNetworkProperties(test.test):
                     logging.info('Assigning initial property (%s, %s)',
                                  prop, repr(value))
                     self._modem.Set(self._mm_iface, prop, value,
-                                    dbus_interface=mm1.I_PROPERTIES)
+                                    dbus_interface=mm1_constants.I_PROPERTIES)
 
             # Store the GUID of the fake test network.
             self._network_guid = self._find_cellular_network()['GUID']
@@ -164,7 +166,7 @@ class network_ChromeCellularNetworkProperties(test.test):
                 if self._dbus_type:
                     mm_value = self._dbus_type(mm_value)
                 self._modem.Set(self._mm_iface, mm_prop, mm_value,
-                                dbus_interface=mm1.I_PROPERTIES)
+                                dbus_interface=mm1_constants.I_PROPERTIES)
 
                 logging.info('Checking UI property: %s', ui_prop)
                 test_utils.check_ui_property(
@@ -176,18 +178,22 @@ class network_ChromeCellularNetworkProperties(test.test):
         name_prefix = pseudomodem.DEFAULT_TEST_NETWORK_PREFIX
         tests = [ self.SimplePropagationTest(
                         self._chrome_testing,
-                        { 'properties': ( 'AccessTechnologies',
-                                          'Cellular.NetworkTechnology' ),
-                          'values': [ ( mm1.MM_MODEM_ACCESS_TECHNOLOGY_LTE,
-                                        'LTE'),
-                                      ( mm1.MM_MODEM_ACCESS_TECHNOLOGY_EVDO0,
-                                        'EVDO' ),
-                                      ( mm1.MM_MODEM_ACCESS_TECHNOLOGY_UMTS,
-                                        'UMTS' ),
-                                      ( mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM,
-                                        'GSM' ) ]
+                        { 'properties': ('AccessTechnologies',
+                                         'Cellular.NetworkTechnology'),
+                          'values': [(mm1_constants.
+                                      MM_MODEM_ACCESS_TECHNOLOGY_LTE,
+                                      'LTE'),
+                                     (mm1_constants.
+                                      MM_MODEM_ACCESS_TECHNOLOGY_EVDO0,
+                                      'EVDO'),
+                                     (mm1_constants.
+                                      MM_MODEM_ACCESS_TECHNOLOGY_UMTS,
+                                      'UMTS'),
+                                     (mm1_constants.
+                                      MM_MODEM_ACCESS_TECHNOLOGY_GSM,
+                                      'GSM')]
                         },
-                        mm1.I_MODEM,
+                        mm1_constants.I_MODEM,
                         dbus.types.UInt32)
                 ]
 
@@ -195,104 +201,111 @@ class network_ChromeCellularNetworkProperties(test.test):
             tests.extend([
                 self.SimplePropagationTest(
                     self._chrome_testing,
-                    { 'properties': ( 'OperatorName', 'Name' ),
-                      'values': [ ( name_prefix + ' Service 1',
-                                    name_prefix + ' Service 1' ),
-                                  ( name_prefix + ' Service 2',
-                                    name_prefix + ' Service 2' ),
-                                  ( name_prefix + ' Service 3',
-                                    name_prefix + ' Service 3' ),
-                                  ( name_prefix + ' Service 4',
-                                    name_prefix + ' Service 4' ) ]
+                    { 'properties': ('OperatorName', 'Name'),
+                      'values': [(name_prefix + ' Service 1',
+                                  name_prefix + ' Service 1'),
+                                 (name_prefix + ' Service 2',
+                                  name_prefix + ' Service 2'),
+                                 (name_prefix + ' Service 3',
+                                  name_prefix + ' Service 3'),
+                                 (name_prefix + ' Service 4',
+                                  name_prefix + ' Service 4')]
                     },
-                    mm1.I_MODEM_3GPP),
+                    mm1_constants.I_MODEM_3GPP),
                 self.SimplePropagationTest(
                     self._chrome_testing,
-                    { 'properties': ( 'OperatorName',
-                                      'Cellular.ServingOperator.Name' ),
-                      'values': [ ( name_prefix + ' Service 1',
-                                    name_prefix + ' Service 1' ),
-                                  ( name_prefix + ' Service 2',
-                                    name_prefix + ' Service 2' ),
-                                  ( name_prefix + ' Service 3',
-                                    name_prefix + ' Service 3' ),
-                                  ( name_prefix + ' Service 4',
-                                    name_prefix + ' Service 4' ) ]
+                    { 'properties': ('OperatorName',
+                                     'Cellular.ServingOperator.Name'),
+                      'values': [(name_prefix + ' Service 1',
+                                  name_prefix + ' Service 1'),
+                                 (name_prefix + ' Service 2',
+                                  name_prefix + ' Service 2'),
+                                 (name_prefix + ' Service 3',
+                                  name_prefix + ' Service 3'),
+                                 (name_prefix + ' Service 4',
+                                  name_prefix + ' Service 4')]
                     },
-                    mm1.I_MODEM_3GPP),
+                    mm1_constants.I_MODEM_3GPP),
                 self.SimplePropagationTest(
                     self._chrome_testing,
-                    { 'properties': ( 'OperatorCode',
-                                      'Cellular.ServingOperator.Code' ),
-                      'values': [ ( '001001', '001001' ),
-                                  ( '001002', '001002' ),
-                                  ( '001003', '001003' ),
-                                  ( '001000', '001000' ) ]
+                    { 'properties': ('OperatorCode',
+                                     'Cellular.ServingOperator.Code'),
+                      'values': [('001001', '001001'),
+                                 ('001002', '001002'),
+                                 ('001003', '001003'),
+                                 ('001000', '001000')]
                     },
-                    mm1.I_MODEM_3GPP),
+                    mm1_constants.I_MODEM_3GPP),
                 self.SimplePropagationTest(
                     self._chrome_testing,
-                    { 'properties': ( 'RegistrationState',
-                                      'Cellular.RoamingState' ),
-                      'values': [
-                              ( mm1.MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING,
-                                'roaming' ),
-                              ( mm1.MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
-                                'home' ) ]
+                    { 'properties': ('RegistrationState',
+                                     'Cellular.RoamingState'),
+                      'values': [(mm1_constants.
+                                  MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING,
+                                  'roaming'),
+                                 (mm1_constants.
+                                  MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
+                                  'home')]
                     },
-                    mm1.I_MODEM_3GPP,
+                    mm1_constants.I_MODEM_3GPP,
                     dbus.types.UInt32)
             ])
         elif self._family == 'CDMA':
             tests.extend([
                 self.SimplePropagationTest(
                     self._chrome_testing,
-                    { 'properties': ( 'Sid',
-                                      'Cellular.ServingOperator.Code' ),
-                      'values': [ ( 99995, '99995' ),
-                                  ( 99996, '99996' ),
-                                  ( 99997, '99997' ),
-                                  ( 99998, '99998' ) ]
+                    { 'properties': ('Sid',
+                                     'Cellular.ServingOperator.Code'),
+                      'values': [(99995, '99995'),
+                                 (99996, '99996'),
+                                 (99997, '99997'),
+                                 (99998, '99998')]
                     },
-                    mm1.I_MODEM_CDMA,
+                    mm1_constants.I_MODEM_CDMA,
                     dbus.types.UInt32),
                 self.SimplePropagationTest(
                     self._chrome_testing,
-                    { 'properties': ( 'EvdoRegistrationState',
-                                      'Cellular.RoamingState' ),
-                      'values': [
-                              ( mm1.MM_MODEM_CDMA_REGISTRATION_STATE_ROAMING,
-                                'roaming' ),
-                              ( mm1.MM_MODEM_CDMA_REGISTRATION_STATE_HOME,
-                                'home' ) ]
+                    { 'properties': ('EvdoRegistrationState',
+                                     'Cellular.RoamingState'),
+                      'values': [(mm1_constants.
+                                  MM_MODEM_CDMA_REGISTRATION_STATE_ROAMING,
+                                  'roaming'),
+                                 (mm1_constants.
+                                  MM_MODEM_CDMA_REGISTRATION_STATE_HOME,
+                                  'home')]
                     },
-                    mm1.I_MODEM_CDMA,
+                    mm1_constants.I_MODEM_CDMA,
                     dbus.types.UInt32,
-                    [ ( 'EvdoRegistrationState',
-                         dbus.types.UInt32(
-                                mm1.MM_MODEM_CDMA_REGISTRATION_STATE_HOME) ),
-                      ( 'Cdma1xRegistrationState',
-                         dbus.types.UInt32(
-                                mm1.MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN) )
+                    [('EvdoRegistrationState',
+                      dbus.types.UInt32(
+                            mm1_constants.
+                            MM_MODEM_CDMA_REGISTRATION_STATE_HOME)),
+                     ('Cdma1xRegistrationState',
+                      dbus.types.UInt32(
+                            mm1_constants.
+                            MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN))
                     ]),
                 self.SimplePropagationTest(
                     self._chrome_testing,
-                    { 'properties': ( 'Cdma1xRegistrationState',
-                                      'Cellular.RoamingState' ),
-                      'values': [
-                              ( mm1.MM_MODEM_CDMA_REGISTRATION_STATE_ROAMING,
-                                'roaming' ),
-                              ( mm1.MM_MODEM_CDMA_REGISTRATION_STATE_HOME,
-                                'home' ) ]
+                    { 'properties': ('Cdma1xRegistrationState',
+                                     'Cellular.RoamingState'),
+                      'values': [(mm1_constants.
+                                  MM_MODEM_CDMA_REGISTRATION_STATE_ROAMING,
+                                  'roaming'),
+                                 (mm1_constants.
+                                  MM_MODEM_CDMA_REGISTRATION_STATE_HOME,
+                                  'home')]
                     },
-                    mm1.I_MODEM_CDMA,
+                    mm1_constants.I_MODEM_CDMA,
                     dbus.types.UInt32,
-                    [ ( 'Cdma1xRegistrationState',
-                         dbus.types.UInt32(
-                                mm1.MM_MODEM_CDMA_REGISTRATION_STATE_HOME) ),
-                      ( 'EvdoRegistrationState',
-                         dbus.types.UInt32(
-                                mm1.MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN) )
+                    [('Cdma1xRegistrationState',
+                      dbus.types.UInt32(
+                            mm1_constants.
+                            MM_MODEM_CDMA_REGISTRATION_STATE_HOME)),
+                     ('EvdoRegistrationState',
+                      dbus.types.UInt32(
+                            mm1_constants.
+                            MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN))
                     ])
             ])
         for test in tests:

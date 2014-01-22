@@ -6,8 +6,11 @@ import dbus
 import gobject
 import logging
 
-import mm1
+import pm_errors
+import pm_constants
 import utils
+
+from autotest_lib.client.cros.cellular import mm1_constants
 
 class StateMachine(dbus.service.Object):
     """
@@ -27,12 +30,12 @@ class StateMachine(dbus.service.Object):
 
     Using the StateMachine in |interactive| mode:
     In interactive mode, the state machine object exposes a dbus object under
-    the object path |mm1.TESTING_PATH|/|self._GetIsmObjectName()|, where
-    |self._GetIsmObjectName()| returns the dbus object name to be used.
+    the object path |pm_constants.TESTING_PATH|/|self._GetIsmObjectName()|,
+    where |self._GetIsmObjectName()| returns the dbus object name to be used.
 
     In this mode, the state machine waits for a dbus method call
-    |mm1.I_TESTING_ISM|.|Advance| when a state transition is possible before
-    actually executing the transition.
+    |pm_constants.I_TESTING_ISM|.|Advance| when a state transition is possible
+    before actually executing the transition.
 
     """
     def __init__(self, modem):
@@ -77,7 +80,7 @@ class StateMachine(dbus.service.Object):
             return
 
         self._interactive = True
-        self._ism_object_path = '/'.join([mm1.TESTING_PATH,
+        self._ism_object_path = '/'.join([pm_constants.TESTING_PATH,
                                           self._GetIsmObjectName()])
         self.add_to_connection(bus, self._ism_object_path)
         self._interactive = True
@@ -93,7 +96,7 @@ class StateMachine(dbus.service.Object):
         self.Step()
 
     @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_TESTING_ISM, out_signature='b')
+    @dbus.service.method(pm_constants.I_TESTING_ISM, out_signature='b')
     def Advance(self):
         """
         Advance a step on a state machine running in interactive mode.
@@ -104,7 +107,7 @@ class StateMachine(dbus.service.Object):
 
         """
         if not self._interactive:
-            raise mm1.TestError(
+            raise pm_errors.TestError(
                     'Can not advance a non-interactive state machine')
 
         if not self._waiting_for_advance:
@@ -118,7 +121,7 @@ class StateMachine(dbus.service.Object):
         self._ScheduleNextStep()
         return True
 
-    @dbus.service.signal(mm1.I_TESTING_ISM)
+    @dbus.service.signal(pm_constants.I_TESTING_ISM)
     def Waiting(self):
         """
         Signal sent out by an interactive machine when it is waiting for remote
@@ -128,7 +131,7 @@ class StateMachine(dbus.service.Object):
         logging.info('%s state machine waiting', self._GetIsmObjectName())
 
     @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_TESTING_ISM, out_signature='b')
+    @dbus.service.method(pm_constants.I_TESTING_ISM, out_signature='b')
     def IsWaiting(self):
         """
         Determine whether the state machine is waiting for user action.
@@ -254,4 +257,4 @@ class StateMachine(dbus.service.Object):
 
         @returns The modem state.
         """
-        return self._modem.Get(mm1.I_MODEM, 'State')
+        return self._modem.Get(mm1_constants.I_MODEM, 'State')

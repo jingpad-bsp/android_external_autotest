@@ -4,12 +4,12 @@
 
 import dbus
 
-import common
-from autotest_lib.client.cros.cellular import net_interface
-
 import dbus_std_ifaces
-import mm1
 import utils
+
+import common
+from autotest_lib.client.cros.cellular import mm1_constants
+from autotest_lib.client.cros.cellular import net_interface
 
 class Bearer(dbus_std_ifaces.DBusProperties):
     """
@@ -25,7 +25,7 @@ class Bearer(dbus_std_ifaces.DBusProperties):
     def __init__(self, bus, properties, config=None):
         self._active = False
         self._bearer_props = properties
-        path = '%s/Bearer/%d' % (mm1.MM1, Bearer.count)
+        path = '%s/Bearer/%d' % (mm1_constants.MM1, Bearer.count)
         Bearer.count += 1
         dbus_std_ifaces.DBusProperties.__init__(self, path, bus, config)
 
@@ -36,14 +36,14 @@ class Bearer(dbus_std_ifaces.DBusProperties):
             'Suspended': dbus.types.Boolean(False),
             'Properties': self._bearer_props
         }
-        return { mm1.I_BEARER: props }
+        return { mm1_constants.I_BEARER: props }
 
     def _AddProperty(self, property_key):
-        self._properties[mm1.I_BEARER][property_key] = None
+        self._properties[mm1_constants.I_BEARER][property_key] = None
 
     def _RemoveProperty(self, property_key):
         try:
-            self._properties[mm1.I_BEARER].pop(property_key)
+            self._properties[mm1_constants.I_BEARER].pop(property_key)
         except KeyError:
             pass
 
@@ -64,7 +64,7 @@ class Bearer(dbus_std_ifaces.DBusProperties):
         return self._bearer_props
 
     @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_BEARER)
+    @dbus.service.method(mm1_constants.I_BEARER)
     def Connect(self):
         """
         Requests activation of a packet data connection with the network using
@@ -84,21 +84,21 @@ class Bearer(dbus_std_ifaces.DBusProperties):
         """
         # Set the ip config property
         ip_family = self._bearer_props.get('ip-type', None)
-        if ip_family and ip_family >= mm1.MM_BEARER_IP_FAMILY_IPV6:
+        if ip_family and ip_family >= mm1_constants.MM_BEARER_IP_FAMILY_IPV6:
             config_prop = 'Ip6Config'
         else:
             config_prop = 'Ip4Config'
 
         self._AddProperty('Ip4Config')
-        self.Set(mm1.I_BEARER, config_prop, {
-            'method': dbus.types.UInt32(mm1.MM_BEARER_IP_METHOD_DHCP,
+        self.Set(mm1_constants.I_BEARER, config_prop, {
+            'method': dbus.types.UInt32(mm1_constants.MM_BEARER_IP_METHOD_DHCP,
                                         variant_level=1)
         })
         self._active = True
-        self.Set(mm1.I_BEARER, 'Connected', dbus.types.Boolean(True))
+        self.Set(mm1_constants.I_BEARER, 'Connected', dbus.types.Boolean(True))
 
     @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_BEARER)
+    @dbus.service.method(mm1_constants.I_BEARER)
     def Disconnect(self):
         """
         Disconnect and deactivate this packet data connection. In a real bearer,
@@ -110,4 +110,5 @@ class Bearer(dbus_std_ifaces.DBusProperties):
         self._RemoveProperty('Ip4Config')
         self._RemoveProperty('Ip6Config')
         self._active = False
-        self.Set(mm1.I_BEARER, 'Connected', dbus.types.Boolean(False))
+        self.Set(mm1_constants.I_BEARER, 'Connected',
+                 dbus.types.Boolean(False))

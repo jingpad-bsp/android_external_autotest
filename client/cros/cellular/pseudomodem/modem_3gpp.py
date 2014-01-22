@@ -6,9 +6,12 @@ import dbus
 import dbus.types
 import logging
 
-import mm1
 import modem
+import pm_constants
+import pm_errors
 import utils
+
+from autotest_lib.client.cros.cellular import mm1_constants
 
 class Modem3gpp(modem.Modem):
     """
@@ -71,55 +74,57 @@ class Modem3gpp(modem.Modem):
         self._scanned_networks = {}
         self._cached_pco_value = ''
         self._cached_subscription_state = (
-                mm1.MM_MODEM_3GPP_SUBSCRIPTION_STATE_PROVISIONED)
+                mm1_constants.MM_MODEM_3GPP_SUBSCRIPTION_STATE_PROVISIONED)
 
     def _InitializeProperties(self):
         ip = modem.Modem._InitializeProperties(self)
-        props = ip[mm1.I_MODEM]
+        props = ip[mm1_constants.I_MODEM]
         props3gpp = self._GetDefault3GPPProperties()
         if props3gpp:
-            ip[mm1.I_MODEM_3GPP] = props3gpp
+            ip[mm1_constants.I_MODEM_3GPP] = props3gpp
         props['SupportedCapabilities'] = [
-                dbus.types.UInt32(mm1.MM_MODEM_CAPABILITY_GSM_UMTS),
-                dbus.types.UInt32(mm1.MM_MODEM_CAPABILITY_LTE),
+                dbus.types.UInt32(mm1_constants.MM_MODEM_CAPABILITY_GSM_UMTS),
+                dbus.types.UInt32(mm1_constants.MM_MODEM_CAPABILITY_LTE),
                 dbus.types.UInt32(
-                        mm1.MM_MODEM_CAPABILITY_GSM_UMTS |
-                        mm1.MM_MODEM_CAPABILITY_LTE)
+                        mm1_constants.MM_MODEM_CAPABILITY_GSM_UMTS |
+                        mm1_constants.MM_MODEM_CAPABILITY_LTE)
         ]
         props['CurrentCapabilities'] = dbus.types.UInt32(
-                mm1.MM_MODEM_CAPABILITY_GSM_UMTS | mm1.MM_MODEM_CAPABILITY_LTE)
+                mm1_constants.MM_MODEM_CAPABILITY_GSM_UMTS |
+                mm1_constants.MM_MODEM_CAPABILITY_LTE)
         props['MaxBearers'] = dbus.types.UInt32(3)
         props['MaxActiveBearers'] = dbus.types.UInt32(2)
         props['EquipmentIdentifier'] = self.IMEI
         props['AccessTechnologies'] = dbus.types.UInt32((
-                mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM |
-                mm1.MM_MODEM_ACCESS_TECHNOLOGY_UMTS))
+                mm1_constants.MM_MODEM_ACCESS_TECHNOLOGY_GSM |
+                mm1_constants.MM_MODEM_ACCESS_TECHNOLOGY_UMTS))
         props['SupportedModes'] = [
-                dbus.types.Struct([dbus.types.UInt32(mm1.MM_MODEM_MODE_3G |
-                                                     mm1.MM_MODEM_MODE_4G),
-                                   dbus.types.UInt32(mm1.MM_MODEM_MODE_4G)],
-                                  signature='uu')
+                dbus.types.Struct(
+                        [dbus.types.UInt32(mm1_constants.MM_MODEM_MODE_3G |
+                                           mm1_constants.MM_MODEM_MODE_4G),
+                         dbus.types.UInt32(mm1_constants.MM_MODEM_MODE_4G)],
+                        signature='uu')
         ]
         props['CurrentModes'] = props['SupportedModes'][0]
         props['SupportedBands'] = [
-            dbus.types.UInt32(mm1.MM_MODEM_BAND_EGSM),
-            dbus.types.UInt32(mm1.MM_MODEM_BAND_DCS),
-            dbus.types.UInt32(mm1.MM_MODEM_BAND_PCS),
-            dbus.types.UInt32(mm1.MM_MODEM_BAND_G850),
-            dbus.types.UInt32(mm1.MM_MODEM_BAND_U2100),
-            dbus.types.UInt32(mm1.MM_MODEM_BAND_U1800),
-            dbus.types.UInt32(mm1.MM_MODEM_BAND_U17IV),
-            dbus.types.UInt32(mm1.MM_MODEM_BAND_U800),
-            dbus.types.UInt32(mm1.MM_MODEM_BAND_U850)
+            dbus.types.UInt32(mm1_constants.MM_MODEM_BAND_EGSM),
+            dbus.types.UInt32(mm1_constants.MM_MODEM_BAND_DCS),
+            dbus.types.UInt32(mm1_constants.MM_MODEM_BAND_PCS),
+            dbus.types.UInt32(mm1_constants.MM_MODEM_BAND_G850),
+            dbus.types.UInt32(mm1_constants.MM_MODEM_BAND_U2100),
+            dbus.types.UInt32(mm1_constants.MM_MODEM_BAND_U1800),
+            dbus.types.UInt32(mm1_constants.MM_MODEM_BAND_U17IV),
+            dbus.types.UInt32(mm1_constants.MM_MODEM_BAND_U800),
+            dbus.types.UInt32(mm1_constants.MM_MODEM_BAND_U850)
         ]
         props['CurrentBands'] = [
-            dbus.types.UInt32(mm1.MM_MODEM_BAND_EGSM),
-            dbus.types.UInt32(mm1.MM_MODEM_BAND_DCS),
-            dbus.types.UInt32(mm1.MM_MODEM_BAND_PCS),
-            dbus.types.UInt32(mm1.MM_MODEM_BAND_G850),
-            dbus.types.UInt32(mm1.MM_MODEM_BAND_U2100),
-            dbus.types.UInt32(mm1.MM_MODEM_BAND_U800),
-            dbus.types.UInt32(mm1.MM_MODEM_BAND_U850)
+            dbus.types.UInt32(mm1_constants.MM_MODEM_BAND_EGSM),
+            dbus.types.UInt32(mm1_constants.MM_MODEM_BAND_DCS),
+            dbus.types.UInt32(mm1_constants.MM_MODEM_BAND_PCS),
+            dbus.types.UInt32(mm1_constants.MM_MODEM_BAND_G850),
+            dbus.types.UInt32(mm1_constants.MM_MODEM_BAND_U2100),
+            dbus.types.UInt32(mm1_constants.MM_MODEM_BAND_U800),
+            dbus.types.UInt32(mm1_constants.MM_MODEM_BAND_U850)
         ]
         return ip
 
@@ -130,30 +135,31 @@ class Modem3gpp(modem.Modem):
             'Imei' : self.IMEI,
             'RegistrationState' : (
                     dbus.types.UInt32(
-                        mm1.MM_MODEM_3GPP_REGISTRATION_STATE_IDLE)),
+                        mm1_constants.MM_MODEM_3GPP_REGISTRATION_STATE_IDLE)),
             'OperatorCode' : '',
             'OperatorName' : '',
             'EnabledFacilityLocks' : (
                     dbus.types.UInt32(self.sim.enabled_locks)),
             'SubscriptionState' : dbus.types.UInt32(
-                    mm1.MM_MODEM_3GPP_SUBSCRIPTION_STATE_UNKNOWN),
+                    mm1_constants.MM_MODEM_3GPP_SUBSCRIPTION_STATE_UNKNOWN),
             'VendorPcoInfo': ''
         }
 
     def SyncScan(self):
         """ The synchronous implementation of |Scan| for this class. """
-        state = self.Get(mm1.I_MODEM, 'State')
-        if state < mm1.MM_MODEM_STATE_ENABLED:
-            raise mm1.MMCoreError(mm1.MMCoreError.WRONG_STATE,
+        state = self.Get(mm1_constants.I_MODEM, 'State')
+        if state < mm1_constants.MM_MODEM_STATE_ENABLED:
+            raise pm_errors.MMCoreError(
+                    pm_errors.MMCoreError.WRONG_STATE,
                     'Modem not enabled, cannot scan for networks.')
 
-        sim_path = self.Get(mm1.I_MODEM, 'Sim')
+        sim_path = self.Get(mm1_constants.I_MODEM, 'Sim')
         if not self.sim:
-            assert sim_path == mm1.ROOT_PATH
-            raise mm1.MMMobileEquipmentError(
-                mm1.MMMobileEquipmentError.SIM_NOT_INSERTED,
+            assert sim_path == mm1_constants.ROOT_PATH
+            raise pm_errors.MMMobileEquipmentError(
+                pm_errors.MMMobileEquipmentError.SIM_NOT_INSERTED,
                 'Cannot scan for networks because no SIM is inserted.')
-        assert sim_path != mm1.ROOT_PATH
+        assert sim_path != mm1_constants.ROOT_PATH
 
         # TODO(armansito): check here for SIM lock?
 
@@ -161,10 +167,10 @@ class Modem3gpp(modem.Modem):
                    for network in self.roaming_networks]
 
         # get home network
-        sim_props = self.sim.GetAll(mm1.I_SIM)
+        sim_props = self.sim.GetAll(mm1_constants.I_SIM)
         scanned.append({
             'status': dbus.types.UInt32(
-                    mm1.MM_MODEM_3GPP_NETWORK_AVAILABILITY_AVAILABLE),
+                    mm1_constants.MM_MODEM_3GPP_NETWORK_AVAILABILITY_AVAILABLE),
             'operator-long': sim_props['OperatorName'],
             'operator-short': sim_props['OperatorName'],
             'operator-code': sim_props['OperatorIdentifier'],
@@ -197,15 +203,15 @@ class Modem3gpp(modem.Modem):
         Updates the current PCO value based on the registration state.
 
         """
-        if not mm1.I_MODEM_3GPP in self._properties:
+        if not mm1_constants.I_MODEM_3GPP in self._properties:
             return
-        state = self.Get(mm1.I_MODEM_3GPP, 'RegistrationState')
-        if (state == mm1.MM_MODEM_3GPP_REGISTRATION_STATE_HOME or
-            state == mm1.MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING):
+        state = self.Get(mm1_constants.I_MODEM_3GPP, 'RegistrationState')
+        if (state == mm1_constants.MM_MODEM_3GPP_REGISTRATION_STATE_HOME or
+            state == mm1_constants.MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING):
             new_pco_value = self._cached_pco_value
         else:
             new_pco_value = ''
-        self.Set(mm1.I_MODEM_3GPP, 'VendorPcoInfo', new_pco_value)
+        self.Set(mm1_constants.I_MODEM_3GPP, 'VendorPcoInfo', new_pco_value)
 
     def AssignSubscriptionState(self, state):
         """
@@ -224,25 +230,30 @@ class Modem3gpp(modem.Modem):
         against |RegistrationState|.
 
         """
-        if not mm1.I_MODEM_3GPP in self._properties:
+        if not mm1_constants.I_MODEM_3GPP in self._properties:
             return
-        registration_state = self.Get(mm1.I_MODEM_3GPP, 'RegistrationState')
+        registration_state = self.Get(mm1_constants.I_MODEM_3GPP,
+                                      'RegistrationState')
         new_subscription_state = self._cached_subscription_state
-        if (registration_state == mm1.MM_MODEM_3GPP_REGISTRATION_STATE_HOME or
-            registration_state == mm1.MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING):
+        if (registration_state ==
+            mm1_constants.MM_MODEM_3GPP_REGISTRATION_STATE_HOME or
+            registration_state ==
+            mm1_constants.MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING):
             if ((new_subscription_state ==
-                 mm1.MM_MODEM_3GPP_SUBSCRIPTION_STATE_UNKNOWN) or
+                 mm1_constants.MM_MODEM_3GPP_SUBSCRIPTION_STATE_UNKNOWN) or
                 (new_subscription_state ==
-                 mm1.MM_MODEM_3GPP_SUBSCRIPTION_STATE_UNPROVISIONED)):
+                 mm1_constants.MM_MODEM_3GPP_SUBSCRIPTION_STATE_UNPROVISIONED)):
                 logging.warning(
                         '|SubscriptionState| can not be |%s| on registered '
                         'network. Setting it to '
                         'MM_MODEM_3GPP_SUBSCRIPTION_STATE_PROVISIONED',
-                        mm1.SubscriptionStateToString(new_subscription_state))
+                        mm1_constants.SubscriptionStateToString(
+                                new_subscription_state))
                 new_subscription_state = (
-                        mm1.MM_MODEM_3GPP_SUBSCRIPTION_STATE_PROVISIONED)
+                        mm1_constants.
+                        MM_MODEM_3GPP_SUBSCRIPTION_STATE_PROVISIONED)
 
-        self.SetUInt32(mm1.I_MODEM_3GPP,
+        self.SetUInt32(mm1_constants.I_MODEM_3GPP,
                        'SubscriptionState',
                        new_subscription_state)
 
@@ -253,8 +264,8 @@ class Modem3gpp(modem.Modem):
 
         """
         modem.Modem.UpdateLockStatus(self)
-        if mm1.I_MODEM_3GPP in self._properties:
-            self.SetUInt32(mm1.I_MODEM_3GPP,
+        if mm1_constants.I_MODEM_3GPP in self._properties:
+            self.SetUInt32(mm1_constants.I_MODEM_3GPP,
                      'EnabledFacilityLocks',
                      self.sim.enabled_locks)
 
@@ -280,7 +291,7 @@ class Modem3gpp(modem.Modem):
         """
         props = self._GetDefault3GPPProperties()
         if props:
-            self.SetAll(mm1.I_MODEM_3GPP, props)
+            self.SetAll(mm1_constants.I_MODEM_3GPP, props)
 
     def SetRegistrationState(self, state):
         """
@@ -292,7 +303,7 @@ class Modem3gpp(modem.Modem):
             PropertiesChanged
 
         """
-        self.SetUInt32(mm1.I_MODEM_3GPP, 'RegistrationState', state)
+        self.SetUInt32(mm1_constants.I_MODEM_3GPP, 'RegistrationState', state)
         self.UpdatePcoInfo()
         self.UpdateSubscriptionState()
 
@@ -306,7 +317,7 @@ class Modem3gpp(modem.Modem):
         return self._scanned_networks
 
     @utils.log_dbus_method(return_cb_arg='return_cb', raise_cb_arg='raise_cb')
-    @dbus.service.method(mm1.I_MODEM_3GPP, in_signature='s',
+    @dbus.service.method(mm1_constants.I_MODEM_3GPP, in_signature='s',
                          async_callbacks=('return_cb', 'raise_cb'))
     def Register(self, operator_id, return_cb=None, raise_cb=None):
         """
@@ -321,27 +332,31 @@ class Modem3gpp(modem.Modem):
         logging.info('Modem3gpp.Register: %s', operator_id)
 
         # Check if we're already registered with the given network.
-        if (self.Get(mm1.I_MODEM_3GPP, 'OperatorCode') == operator_id or
-            ((not operator_id and self.Get(mm1.I_MODEM, 'State') >=
-                    mm1.MM_MODEM_STATE_REGISTERED))):
+        if (self.Get(mm1_constants.I_MODEM_3GPP, 'OperatorCode') ==
+            operator_id or
+            ((not operator_id and self.Get(mm1_constants.I_MODEM, 'State') >=
+                    mm1_constants.MM_MODEM_STATE_REGISTERED))):
             message = 'Already registered.'
             logging.info(message)
-            raise mm1.MMCoreError(mm1.MMCoreError.FAILED, message)
+            raise pm_errors.MMCoreError(pm_errors.MMCoreError.FAILED, message)
 
-        if self.Get(mm1.I_MODEM, 'State') < mm1.MM_MODEM_STATE_ENABLED:
+        if (self.Get(mm1_constants.I_MODEM, 'State') <
+            mm1_constants.MM_MODEM_STATE_ENABLED):
             message = 'Cannot register the modem if not enabled.'
             logging.info(message)
-            raise mm1.MMCoreError(mm1.MMCoreError.FAILED, message)
+            raise pm_errors.MMCoreError(pm_errors.MMCoreError.FAILED, message)
 
         self.CancelAllStateMachines()
 
         def _Reregister():
-            if self.Get(mm1.I_MODEM, 'State') == mm1.MM_MODEM_STATE_REGISTERED:
+            if (self.Get(mm1_constants.I_MODEM, 'State') ==
+                mm1_constants.MM_MODEM_STATE_REGISTERED):
                 self.UnregisterWithNetwork()
             self.RegisterWithNetwork(operator_id, return_cb, raise_cb)
 
-        if self.Get(mm1.I_MODEM, 'State') == mm1.MM_MODEM_STATE_CONNECTED:
-            self.Disconnect(mm1.ROOT_PATH, _Reregister, raise_cb)
+        if (self.Get(mm1_constants.I_MODEM, 'State') ==
+            mm1_constants.MM_MODEM_STATE_CONNECTED):
+            self.Disconnect(mm1_constants.ROOT_PATH, _Reregister, raise_cb)
         else:
             _Reregister()
 
@@ -358,25 +373,27 @@ class Modem3gpp(modem.Modem):
         """
         if operator_code:
             assert self.sim
-            assert self.Get(mm1.I_MODEM, 'Sim') != mm1.ROOT_PATH
-            if operator_code == self.sim.Get(mm1.I_SIM, 'OperatorIdentifier'):
-                state = mm1.MM_MODEM_3GPP_REGISTRATION_STATE_HOME
+            assert (self.Get(mm1_constants.I_MODEM, 'Sim') !=
+                    mm1_constants.ROOT_PATH)
+            if (operator_code ==
+                self.sim.Get(mm1_constants.I_SIM, 'OperatorIdentifier')):
+                state = mm1_constants.MM_MODEM_3GPP_REGISTRATION_STATE_HOME
             else:
-                state = mm1.MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING
+                state = mm1_constants.MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING
         else:
-            state = mm1.MM_MODEM_3GPP_REGISTRATION_STATE_HOME
+            state = mm1_constants.MM_MODEM_3GPP_REGISTRATION_STATE_HOME
 
         logging.info('Modem3gpp.Register: Setting registration state to %s.',
-            mm1.RegistrationStateToString(state))
+            mm1_constants.RegistrationStateToString(state))
         self.SetRegistrationState(state)
         logging.info('Modem3gpp.Register: Setting state to REGISTERED.')
-        self.ChangeState(mm1.MM_MODEM_STATE_REGISTERED,
-            mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED)
-        self.Set(mm1.I_MODEM_3GPP, 'OperatorCode', operator_code)
-        self.Set(mm1.I_MODEM_3GPP, 'OperatorName', operator_name)
+        self.ChangeState(mm1_constants.MM_MODEM_STATE_REGISTERED,
+            mm1_constants.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED)
+        self.Set(mm1_constants.I_MODEM_3GPP, 'OperatorCode', operator_code)
+        self.Set(mm1_constants.I_MODEM_3GPP, 'OperatorName', operator_name)
 
     @utils.log_dbus_method(return_cb_arg='return_cb', raise_cb_arg='raise_cb')
-    @dbus.service.method(mm1.I_MODEM_3GPP, out_signature='aa{sv}',
+    @dbus.service.method(mm1_constants.I_MODEM_3GPP, out_signature='aa{sv}',
                          async_callbacks=('return_cb', 'raise_cb'))
     def Scan(self, return_cb, raise_cb):
         """
@@ -406,7 +423,7 @@ class Modem3gpp(modem.Modem):
 
         """
         machine = self._state_machine_factory.CreateMachine(
-                mm1.STATE_MACHINE_REGISTER,
+                pm_constants.STATE_MACHINE_REGISTER,
                 self,
                 operator_id,
                 return_cb,
@@ -420,12 +437,13 @@ class Modem3gpp(modem.Modem):
         """
         logging.info('Modem3gpp.UnregisterWithHomeNetwork')
         logging.info('Setting registration state to IDLE.')
-        self.SetRegistrationState(mm1.MM_MODEM_3GPP_REGISTRATION_STATE_IDLE)
+        self.SetRegistrationState(
+                mm1_constants.MM_MODEM_3GPP_REGISTRATION_STATE_IDLE)
         logging.info('Setting state to ENABLED.')
-        self.ChangeState(mm1.MM_MODEM_STATE_ENABLED,
-            mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED)
-        self.Set(mm1.I_MODEM_3GPP, 'OperatorName', '')
-        self.Set(mm1.I_MODEM_3GPP, 'OperatorCode', '')
+        self.ChangeState(mm1_constants.MM_MODEM_STATE_ENABLED,
+            mm1_constants.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED)
+        self.Set(mm1_constants.I_MODEM_3GPP, 'OperatorName', '')
+        self.Set(mm1_constants.I_MODEM_3GPP, 'OperatorCode', '')
 
     # Inherited from modem_simple.ModemSimple.
     @utils.log_dbus_method(return_cb_arg='return_cb', raise_cb_arg='raise_cb')
@@ -440,7 +458,7 @@ class Modem3gpp(modem.Modem):
         """
         logging.info('Connect')
         machine = self._state_machine_factory.CreateMachine(
-                mm1.STATE_MACHINE_CONNECT,
+                pm_constants.STATE_MACHINE_CONNECT,
                 self,
                 properties,
                 return_cb,
@@ -461,7 +479,7 @@ class Modem3gpp(modem.Modem):
         """
         logging.info('Disconnect: %s', bearer_path)
         machine = self._state_machine_factory.CreateMachine(
-                mm1.STATE_MACHINE_DISCONNECT,
+                pm_constants.STATE_MACHINE_DISCONNECT,
                 self,
                 bearer_path,
                 return_cb,
@@ -476,11 +494,11 @@ class Modem3gpp(modem.Modem):
         Overriden from superclass.
 
         """
-        modem_props = self.GetAll(mm1.I_MODEM)
-        m3gpp_props = self.GetAll(mm1.I_MODEM_3GPP)
+        modem_props = self.GetAll(mm1_constants.I_MODEM)
+        m3gpp_props = self.GetAll(mm1_constants.I_MODEM_3GPP)
         retval = {}
         retval['state'] = modem_props['State']
-        if retval['state'] == mm1.MM_MODEM_STATE_REGISTERED:
+        if retval['state'] == mm1_constants.MM_MODEM_STATE_REGISTERED:
             retval['signal-quality'] = modem_props['SignalQuality'][0]
             retval['bands'] = modem_props['CurrentBands']
             retval['access-technology'] = self.sim.access_technology

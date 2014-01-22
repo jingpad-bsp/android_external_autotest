@@ -8,7 +8,7 @@ import connect_machine
 import disable_machine
 import disconnect_machine
 import enable_machine
-import mm1
+import pm_constants
 import register_cdma_machine
 import register_machine
 
@@ -47,14 +47,14 @@ class StateMachineFactory(object):
         it in interactive mode.
 
         """
-        self.SetInteractive(mm1.STATE_MACHINE_CDMA_ACTIVATE)
-        self.SetInteractive(mm1.STATE_MACHINE_CONNECT)
-        self.SetInteractive(mm1.STATE_MACHINE_CONNECT_CDMA)
-        self.SetInteractive(mm1.STATE_MACHINE_DISABLE)
-        self.SetInteractive(mm1.STATE_MACHINE_DISCONNECT)
-        self.SetInteractive(mm1.STATE_MACHINE_ENABLE)
-        self.SetInteractive(mm1.STATE_MACHINE_REGISTER)
-        self.SetInteractive(mm1.STATE_MACHINE_REGISTER_CDMA)
+        self.SetInteractive(pm_constants.STATE_MACHINE_CDMA_ACTIVATE)
+        self.SetInteractive(pm_constants.STATE_MACHINE_CONNECT)
+        self.SetInteractive(pm_constants.STATE_MACHINE_CONNECT_CDMA)
+        self.SetInteractive(pm_constants.STATE_MACHINE_DISABLE)
+        self.SetInteractive(pm_constants.STATE_MACHINE_DISCONNECT)
+        self.SetInteractive(pm_constants.STATE_MACHINE_ENABLE)
+        self.SetInteractive(pm_constants.STATE_MACHINE_REGISTER)
+        self.SetInteractive(pm_constants.STATE_MACHINE_REGISTER_CDMA)
 
     def SetInteractive(self, machine_name):
         """
@@ -71,8 +71,8 @@ class StateMachineFactory(object):
         Create an instance of the given machine.
 
         @param machine_name: The name of the machine to be created. All
-                supported machine names are exported as constants in the |mm1|
-                module.
+                supported machine names are exported as constants in the
+                |pm_constants| module.
 
         @param *args, **kwargs: Arguments to pass to the machine constructor.
 
@@ -81,21 +81,21 @@ class StateMachineFactory(object):
         @raises:
 
         """
-        if machine_name == mm1.STATE_MACHINE_CDMA_ACTIVATE:
+        if machine_name == pm_constants.STATE_MACHINE_CDMA_ACTIVATE:
             machine = cdma_activate_machine.CdmaActivateMachine(*args, **kwargs)
-        elif machine_name == mm1.STATE_MACHINE_CONNECT:
+        elif machine_name == pm_constants.STATE_MACHINE_CONNECT:
             machine = connect_machine.ConnectMachine(*args, **kwargs)
-        elif machine_name == mm1.STATE_MACHINE_CONNECT_CDMA:
+        elif machine_name == pm_constants.STATE_MACHINE_CONNECT_CDMA:
             machine = connect_cdma_machine.ConnectCdmaMachine(*args, **kwargs)
-        elif machine_name == mm1.STATE_MACHINE_DISABLE:
+        elif machine_name == pm_constants.STATE_MACHINE_DISABLE:
             machine = disable_machine.DisableMachine(*args, **kwargs)
-        elif machine_name == mm1.STATE_MACHINE_DISCONNECT:
+        elif machine_name == pm_constants.STATE_MACHINE_DISCONNECT:
             machine = disconnect_machine.DisconnectMachine(*args, **kwargs)
-        elif machine_name == mm1.STATE_MACHINE_ENABLE:
+        elif machine_name == pm_constants.STATE_MACHINE_ENABLE:
             machine = enable_machine.EnableMachine(*args, **kwargs)
-        elif machine_name == mm1.STATE_MACHINE_REGISTER:
+        elif machine_name == pm_constants.STATE_MACHINE_REGISTER:
             machine = register_machine.RegisterMachine(*args, **kwargs)
-        elif machine_name == mm1.STATE_MACHINE_REGISTER_CDMA:
+        elif machine_name == pm_constants.STATE_MACHINE_REGISTER_CDMA:
             machine = register_cdma_machine.RegisterCdmaMachine(*args, **kwargs)
         else:
             # Reaching here is a non recoverable programming error.

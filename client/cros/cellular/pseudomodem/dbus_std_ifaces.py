@@ -15,10 +15,12 @@ import dbus.service
 import dbus.types
 import logging
 
-import mm1
+import pm_errors
 import utils
 
-class MMPropertyError(mm1.MMError):
+from autotest_lib.client.cros.cellular import mm1_constants
+
+class MMPropertyError(pm_errors.MMError):
     """
     MMPropertyError is raised by DBusProperties methods
     to indicate that a value for the given interface or
@@ -33,7 +35,7 @@ class MMPropertyError(mm1.MMError):
         super(MMPropertyError, self).__init__(errno, args, kwargs)
 
     def _Setup(self):
-        self._error_name_base = mm1.I_MODEM_MANAGER
+        self._error_name_base = mm1_constants.I_MODEM_MANAGER
         self._error_name_map = {
             self.UNKNOWN_PROPERTY : '.UnknownProperty',
             self.UNKNOWN_INTERFACE : '.UnknownInterface'
@@ -151,7 +153,8 @@ class DBusProperties(dbus.service.Object):
         self.Set(interface_name, property_name, dbus.types.Int32(value))
 
     @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_PROPERTIES, in_signature='ss', out_signature='v')
+    @dbus.service.method(mm1_constants.I_PROPERTIES, in_signature='ss',
+                         out_signature='v')
     def Get(self, interface_name, property_name):
         """
         Returns the value matching the given property and interface.
@@ -180,7 +183,7 @@ class DBusProperties(dbus.service.Object):
         return val
 
     @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_PROPERTIES, in_signature='ssv')
+    @dbus.service.method(mm1_constants.I_PROPERTIES, in_signature='ssv')
     def Set(self, interface_name, property_name, value):
         """
         Sets the value matching the given property and interface.
@@ -219,7 +222,7 @@ class DBusProperties(dbus.service.Object):
         self.PropertiesChanged(interface_name, changed, inv)
 
     @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_PROPERTIES,
+    @dbus.service.method(mm1_constants.I_PROPERTIES,
                          in_signature='s', out_signature='a{sv}')
     def GetAll(self, interface_name):
         """
@@ -246,7 +249,7 @@ class DBusProperties(dbus.service.Object):
                 interface_name)
         return props
 
-    @dbus.service.signal(mm1.I_PROPERTIES, signature='sa{sv}as')
+    @dbus.service.signal(mm1_constants.I_PROPERTIES, signature='sa{sv}as')
     def PropertiesChanged(
             self,
             interface_name,
@@ -364,7 +367,8 @@ class DBusObjectManager(dbus.service.Object):
         device.remove_from_connection()
 
     @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_OBJECT_MANAGER, out_signature='a{oa{sa{sv}}}')
+    @dbus.service.method(mm1_constants.I_OBJECT_MANAGER,
+                         out_signature='a{oa{sa{sv}}}')
     def GetManagedObjects(self):
         """
         Returns:
@@ -382,7 +386,8 @@ class DBusObjectManager(dbus.service.Object):
                      ', '.join(results.keys()))
         return results
 
-    @dbus.service.signal( mm1.I_OBJECT_MANAGER, signature='oa{sa{sv}}')
+    @dbus.service.signal(mm1_constants.I_OBJECT_MANAGER,
+                         signature='oa{sa{sv}}')
     def InterfacesAdded(self, object_path, interfaces_and_properties):
         """
         The InterfacesAdded signal is emitted when either a new object is added
@@ -396,7 +401,7 @@ class DBusObjectManager(dbus.service.Object):
         logging.info((self.path + ': InterfacesAdded(' + object_path +
                      ', ' + str(interfaces_and_properties)) + ')')
 
-    @dbus.service.signal(mm1.I_OBJECT_MANAGER, signature='oas')
+    @dbus.service.signal(mm1_constants.I_OBJECT_MANAGER, signature='oas')
     def InterfacesRemoved(self, object_path, interfaces):
         """
         The InterfacesRemoved signal is emitted whenever an object is removed

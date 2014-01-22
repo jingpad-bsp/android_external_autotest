@@ -8,17 +8,19 @@ import gobject
 import logging
 import random
 
-import common
-from autotest_lib.client.cros.cellular import net_interface
-
 import bearer
 import dbus_std_ifaces
 import messaging
-import mm1
 import modem_simple
+import pm_constants
+import pm_errors
 import sms_handler
 import state_machine_factory as smf
 import utils
+
+import common
+from autotest_lib.client.cros.cellular import mm1_constants
+from autotest_lib.client.cros.cellular import net_interface
 
 ALLOWED_BEARER_PROPERTIES = [
     'apn',
@@ -50,7 +52,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
                  state_machine_factory=None,
                  bus=None,
                  device='pseudomodem0',
-                 device_port_type=mm1.MM_MODEM_PORT_TYPE_AT,
+                 device_port_type=mm1_constants.MM_MODEM_PORT_TYPE_AT,
                  index=0,
                  roaming_networks=None,
                  config=None):
@@ -60,7 +62,8 @@ class Modem(dbus_std_ifaces.DBusProperties,
         These properties will be added to the underlying property dictionary,
         and must be one of the properties listed in the ModemManager Reference
         Manual. See _InitializeProperties for all of the properties that belong
-        to this interface. Possible values for each are enumerated in mm1.py
+        to this interface. Possible values for each are enumerated in
+        mm1_constants.py.
 
         """
         if state_machine_factory:
@@ -74,7 +77,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
 
         # The superclass construct will call _InitializeProperties
         dbus_std_ifaces.DBusProperties.__init__(self,
-            mm1.MM1 + '/Modem/' + str(index), bus, config)
+            mm1_constants.MM1 + '/Modem/' + str(index), bus, config)
 
         if roaming_networks is None:
             roaming_networks = []
@@ -110,50 +113,60 @@ class Modem(dbus_std_ifaces.DBusProperties,
                               signature='su'),
                       dbus.types.Struct(
                               [net_interface.PseudoNetInterface.IFACE_NAME,
-                               dbus.types.UInt32(mm1.MM_MODEM_PORT_TYPE_NET)],
+                               dbus.types.UInt32(
+                                       mm1_constants.MM_MODEM_PORT_TYPE_NET)],
                               signature='su')],
             'Drivers' : ['FakeDriver'],
             'Plugin' : 'Banana Plugin',
-            'UnlockRequired' : dbus.types.UInt32(mm1.MM_MODEM_LOCK_NONE),
+            'UnlockRequired' :
+                    dbus.types.UInt32(mm1_constants.MM_MODEM_LOCK_NONE),
             'UnlockRetries' : dbus.Dictionary(signature='uu'),
-            'State' : dbus.types.Int32(mm1.MM_MODEM_STATE_DISABLED),
+            'State' : dbus.types.Int32(mm1_constants.MM_MODEM_STATE_DISABLED),
             'SignalQuality' : dbus.types.Struct(
                                       [dbus.types.UInt32(100), True],
                                       signature='ub'),
             'OwnNumbers' : ['5555555555'],
-            'PowerState' : dbus.types.UInt32(mm1.MM_MODEM_POWER_STATE_ON),
+            'PowerState' :
+                    dbus.types.UInt32(mm1_constants.MM_MODEM_POWER_STATE_ON),
             'SupportedIpFamilies' :
-                dbus.types.UInt32(mm1.MM_BEARER_IP_FAMILY_ANY),
+                dbus.types.UInt32(mm1_constants.MM_BEARER_IP_FAMILY_ANY),
             'Bearers' : dbus.Array([], signature='o'),
 
             # specified by subclass:
             'SupportedCapabilities' :
-                [dbus.types.UInt32(mm1.MM_MODEM_CAPABILITY_NONE)],
+                    [dbus.types.UInt32(mm1_constants.MM_MODEM_CAPABILITY_NONE)],
             'CurrentCapabilities' :
-                dbus.types.UInt32(mm1.MM_MODEM_CAPABILITY_NONE),
+                    dbus.types.UInt32(mm1_constants.MM_MODEM_CAPABILITY_NONE),
             'MaxBearers' : dbus.types.UInt32(0),
             'MaxActiveBearers' : dbus.types.UInt32(0),
             'EquipmentIdentifier' : '',
             'AccessTechnologies' :
-                    dbus.types.UInt32(mm1.MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN),
+                    dbus.types.UInt32(
+                            mm1_constants.MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN),
             'SupportedModes' : [
                     dbus.types.Struct(
-                            [dbus.types.UInt32(mm1.MM_MODEM_MODE_NONE),
-                             dbus.types.UInt32(mm1.MM_MODEM_MODE_NONE)],
+                            [dbus.types.UInt32(
+                                    mm1_constants.MM_MODEM_MODE_NONE),
+                             dbus.types.UInt32(
+                                    mm1_constants.MM_MODEM_MODE_NONE)],
                             signature='uu')
             ],
             'CurrentModes' :
                     dbus.types.Struct(
-                            [dbus.types.UInt32(mm1.MM_MODEM_MODE_NONE),
-                             dbus.types.UInt32(mm1.MM_MODEM_MODE_NONE)],
+                            [dbus.types.UInt32(
+                                    mm1_constants.MM_MODEM_MODE_NONE),
+                             dbus.types.UInt32(
+                                    mm1_constants.MM_MODEM_MODE_NONE)],
                             signature='uu'),
-            'SupportedBands' : [dbus.types.UInt32(mm1.MM_MODEM_BAND_UNKNOWN)],
-            'CurrentBands' : [dbus.types.UInt32(mm1.MM_MODEM_BAND_UNKNOWN)],
-            'Sim' : dbus.types.ObjectPath(mm1.ROOT_PATH)
+            'SupportedBands' :
+                    [dbus.types.UInt32(mm1_constants.MM_MODEM_BAND_UNKNOWN)],
+            'CurrentBands' :
+                    [dbus.types.UInt32(mm1_constants.MM_MODEM_BAND_UNKNOWN)],
+            'Sim' : dbus.types.ObjectPath(mm1_constants.ROOT_PATH)
         }
         return {
-            mm1.I_MODEM : props,
-            mm1.I_MODEM_SIMPLE : {}
+            mm1_constants.I_MODEM : props,
+            mm1_constants.I_MODEM_SIMPLE : {}
         }
 
     def IncrementPath(self):
@@ -169,7 +182,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
 
         """
         self.index += 1
-        path = mm1.MM1 + '/Modem/' + str(self.index)
+        path = mm1_constants.MM1 + '/Modem/' + str(self.index)
         logging.info('Modem coming back as: ' + path)
         self.SetPath(path)
 
@@ -269,7 +282,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
             PropertiesChanged
 
         """
-        self.Set(mm1.I_MODEM, 'SignalQuality', (dbus.types.Struct(
+        self.Set(mm1_constants.I_MODEM, 'SignalQuality', (dbus.types.Struct(
             [dbus.types.UInt32(quality), True], signature='ub')))
 
     def ChangeState(self, state, reason):
@@ -284,8 +297,8 @@ class Modem(dbus_std_ifaces.DBusProperties,
             StateChanged
 
         """
-        old_state = self.Get(mm1.I_MODEM, 'State')
-        self.SetInt32(mm1.I_MODEM, 'State', state)
+        old_state = self.Get(mm1_constants.I_MODEM, 'State')
+        self.SetInt32(mm1_constants.I_MODEM, 'State', state)
         self.StateChanged(old_state, state, dbus.types.UInt32(reason))
 
     def SetSIM(self, sim):
@@ -301,13 +314,13 @@ class Modem(dbus_std_ifaces.DBusProperties,
         """
         self.sim = sim
         if not sim:
-            val = mm1.ROOT_PATH
+            val = mm1_constants.ROOT_PATH
         else:
             val = sim.path
             self.sim.SetBus(self.bus)
             self.sim.modem = self
             self.UpdateLockStatus()
-        self.Set(mm1.I_MODEM, 'Sim', dbus.types.ObjectPath(val))
+        self.Set(mm1_constants.I_MODEM, 'Sim', dbus.types.ObjectPath(val))
 
     def SetBus(self, bus):
         """
@@ -330,34 +343,39 @@ class Modem(dbus_std_ifaces.DBusProperties,
             logging.info('SIM lock is the only kind of lock that is currently '
                          'supported. No SIM present, nothing to do.')
             return
-        self.SetUInt32(mm1.I_MODEM, 'UnlockRequired', self.sim.lock_type)
-        self.Set(mm1.I_MODEM, 'UnlockRetries', self.sim.unlock_retries)
+        self.SetUInt32(mm1_constants.I_MODEM, 'UnlockRequired',
+                       self.sim.lock_type)
+        self.Set(mm1_constants.I_MODEM, 'UnlockRetries',
+                 self.sim.unlock_retries)
         if self.sim.locked:
             def _SetLocked():
                 logging.info('There is a SIM lock in place. Setting state to '
                              'LOCKED')
-                self.ChangeState(mm1.MM_MODEM_STATE_LOCKED,
-                                 mm1.MM_MODEM_STATE_CHANGE_REASON_UNKNOWN)
+                self.ChangeState(
+                        mm1_constants.MM_MODEM_STATE_LOCKED,
+                        mm1_constants.MM_MODEM_STATE_CHANGE_REASON_UNKNOWN)
 
             # If the modem is currently in an enabled state, disable it before
             # setting the modem state to LOCKED.
-            if self.Get(mm1.I_MODEM, 'State') >= mm1.MM_MODEM_STATE_ENABLED:
+            if (self.Get(mm1_constants.I_MODEM, 'State') >=
+                    mm1_constants.MM_MODEM_STATE_ENABLED):
                 logging.info('SIM got locked. Disabling modem.')
                 self.Enable(False, return_cb=_SetLocked)
             else:
                 _SetLocked()
-        elif self.Get(mm1.I_MODEM, 'State') == mm1.MM_MODEM_STATE_LOCKED:
+        elif (self.Get(mm1_constants.I_MODEM, 'State') ==
+                mm1_constants.MM_MODEM_STATE_LOCKED):
             # Change the state to DISABLED. Shill will see the property change
             # and automatically attempt to enable the modem.
             logging.info('SIM became unlocked! Setting state to INITIALIZING.')
-            self.ChangeState(mm1.MM_MODEM_STATE_INITIALIZING,
-                             mm1.MM_MODEM_STATE_CHANGE_REASON_UNKNOWN)
+            self.ChangeState(mm1_constants.MM_MODEM_STATE_INITIALIZING,
+                             mm1_constants.MM_MODEM_STATE_CHANGE_REASON_UNKNOWN)
             logging.info('SIM became unlocked! Setting state to DISABLED.')
-            self.ChangeState(mm1.MM_MODEM_STATE_DISABLED,
-                             mm1.MM_MODEM_STATE_CHANGE_REASON_UNKNOWN)
+            self.ChangeState(mm1_constants.MM_MODEM_STATE_DISABLED,
+                             mm1_constants.MM_MODEM_STATE_CHANGE_REASON_UNKNOWN)
 
     @utils.log_dbus_method(return_cb_arg='return_cb', raise_cb_arg='raise_cb')
-    @dbus.service.method(mm1.I_MODEM,
+    @dbus.service.method(mm1_constants.I_MODEM,
                          in_signature='b', async_callbacks=('return_cb',
                                                             'raise_cb'))
     def Enable(self, enable, return_cb=None, raise_cb=None):
@@ -380,14 +398,14 @@ class Modem(dbus_std_ifaces.DBusProperties,
         if enable:
             logging.info('Modem enable')
             machine = self._state_machine_factory.CreateMachine(
-                    mm1.STATE_MACHINE_ENABLE,
+                    pm_constants.STATE_MACHINE_ENABLE,
                     self,
                     return_cb,
                     raise_cb)
         else:
             logging.info('Modem disable')
             machine = self._state_machine_factory.CreateMachine(
-                    mm1.STATE_MACHINE_DISABLE,
+                    pm_constants.STATE_MACHINE_DISABLE,
                     self,
                     return_cb,
                     raise_cb)
@@ -449,11 +467,12 @@ class Modem(dbus_std_ifaces.DBusProperties,
         """
         for key in properties.iterkeys():
             if key not in ALLOWED_BEARER_PROPERTIES:
-                raise mm1.MMCoreError(mm1.MMCoreError.INVALID_ARGS,
+                raise pm_errors.MMCoreError(
+                        pm_errors.MMCoreError.INVALID_ARGS,
                         'Invalid property "%s", not creating bearer.' % key)
 
     @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_MODEM, out_signature='ao')
+    @dbus.service.method(mm1_constants.I_MODEM, out_signature='ao')
     def ListBearers(self):
         """
         Lists configured packet data bearers (EPS Bearers, PDP Contexts, or
@@ -462,10 +481,11 @@ class Modem(dbus_std_ifaces.DBusProperties,
         @return A list of bearer object paths.
 
         """
-        return self.Get(mm1.I_MODEM, 'Bearers')
+        return self.Get(mm1_constants.I_MODEM, 'Bearers')
 
     @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_MODEM, in_signature='a{sv}', out_signature='o')
+    @dbus.service.method(mm1_constants.I_MODEM, in_signature='a{sv}',
+                         out_signature='o')
     def CreateBearer(self, properties):
         """
         Creates a new packet data bearer using the given characteristics.
@@ -481,9 +501,10 @@ class Modem(dbus_std_ifaces.DBusProperties,
 
         """
         logging.info('CreateBearer')
-        maxbearers = self.Get(mm1.I_MODEM, 'MaxBearers')
+        maxbearers = self.Get(mm1_constants.I_MODEM, 'MaxBearers')
         if len(self.bearers) == maxbearers:
-            raise mm1.MMCoreError(mm1.MMCoreError.TOO_MANY,
+            raise pm_errors.MMCoreError(
+                    pm_errors.MMCoreError.TOO_MANY,
                     ('Maximum number of bearers reached. Cannot create new '
                      'bearer.'))
         else:
@@ -510,18 +531,20 @@ class Modem(dbus_std_ifaces.DBusProperties,
         if bearer is None:
             message = 'Could not find bearer with path "%s"' % bearer_path
             logging.info(message)
-            raise mm1.MMCoreError(mm1.MMCoreError.NOT_FOUND, message)
+            raise pm_errors.MMCoreError(pm_errors.MMCoreError.NOT_FOUND,
+                                        message)
 
-        max_active_bearers = self.Get(mm1.I_MODEM, 'MaxActiveBearers')
+        max_active_bearers = self.Get(mm1_constants.I_MODEM, 'MaxActiveBearers')
         if len(self.active_bearers) >= max_active_bearers:
             message = ('Cannot activate bearer: maximum active bearer count '
                        'reached.')
             logging.info(message)
-            raise mm1.MMCoreError(mm1.MMCoreError.TOO_MANY, message)
+            raise pm_errors.MMCoreError(pm_errors.MMCoreError.TOO_MANY, message)
         if bearer.IsActive():
             message = 'Bearer with path "%s" already active.', bearer_path
             logging.info(message)
-            raise mm1.MMCoreError(mm1.MMCoreError.CONNECTED, message)
+            raise pm_errors.MMCoreError(pm_errors.MMCoreError.CONNECTED,
+                                        message)
 
         self.active_bearers[bearer_path] = bearer
         bearer.Connect()
@@ -539,18 +562,20 @@ class Modem(dbus_std_ifaces.DBusProperties,
         logging.info('DeactivateBearer: %s', bearer_path)
         bearer = self.bearers.get(bearer_path, None)
         if bearer is None:
-            raise mm1.MMCoreError(mm1.MMCoreError.NOT_FOUND,
-                'Could not find bearer with path "%s".' % bearer_path)
+            raise pm_errors.MMCoreError(
+                    pm_errors.MMCoreError.NOT_FOUND,
+                    'Could not find bearer with path "%s".' % bearer_path)
         if not bearer.IsActive():
             assert bearer_path not in self.active_bearers
-            raise mm1.MMCoreError(mm1.MMCoreError.WRONG_STATE,
-                'Bearer with path "%s" is not active.' % bearer_path)
+            raise pm_errors.MMCoreError(
+                    pm_errors.MMCoreError.WRONG_STATE,
+                    'Bearer with path "%s" is not active.' % bearer_path)
         assert bearer_path in self.active_bearers
         bearer.Disconnect()
         self.active_bearers.pop(bearer_path)
 
     @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_MODEM, in_signature='o')
+    @dbus.service.method(mm1_constants.I_MODEM, in_signature='o')
     def DeleteBearer(self, bearer):
         """
         Deletes an existing packet data bearer.
@@ -586,7 +611,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
             self.DeleteBearer(b)
 
     @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_MODEM)
+    @dbus.service.method(mm1_constants.I_MODEM)
     def Reset(self):
         """
         Clears non-persistent configuration and state, and returns the device to
@@ -600,8 +625,8 @@ class Modem(dbus_std_ifaces.DBusProperties,
         logging.info('Resetting modem.')
 
         if self.resetting:
-            raise mm1.MMCoreError(mm1.MMCoreError.IN_PROGRESS,
-                                  'Reset already in progress.')
+            raise pm_errors.MMCoreError(pm_errors.MMCoreError.IN_PROGRESS,
+                                        'Reset already in progress.')
 
         self.resetting = True
 
@@ -626,7 +651,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
                     self.sim.Reset()
                 self._properties = self._InitializeProperties()
                 if self.sim:
-                    self.Set(mm1.I_MODEM,
+                    self.Set(mm1_constants.I_MODEM,
                              'Sim',
                              dbus.types.ObjectPath(self.sim.path))
                     self.UpdateLockStatus()
@@ -637,9 +662,9 @@ class Modem(dbus_std_ifaces.DBusProperties,
                 self.resetting = False
 
                 def _DelayedEnable():
-                    state = self.Get(mm1.I_MODEM, 'State')
+                    state = self.Get(mm1_constants.I_MODEM, 'State')
                     if not self.IsPendingEnable() and \
-                            state == mm1.MM_MODEM_STATE_DISABLED:
+                            state == mm1_constants.MM_MODEM_STATE_DISABLED:
                         self.Enable(True)
                     return False
 
@@ -651,13 +676,14 @@ class Modem(dbus_std_ifaces.DBusProperties,
         def _ErrorCallback(error):
             raise error
 
-        if self.Get(mm1.I_MODEM, 'State') == mm1.MM_MODEM_STATE_CONNECTED:
+        if (self.Get(mm1_constants.I_MODEM, 'State') ==
+                mm1_constants.MM_MODEM_STATE_CONNECTED):
             self.Disconnect('/', _ResetFunc, _ErrorCallback)
         else:
             gobject.idle_add(_ResetFunc)
 
     @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_MODEM, in_signature='s')
+    @dbus.service.method(mm1_constants.I_MODEM, in_signature='s')
     def FactoryReset(self, code):
         """
         Clears the modem's configuration (including persistent configuration and
@@ -673,7 +699,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
         raise NotImplementedError()
 
     @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_MODEM, in_signature='(uu)')
+    @dbus.service.method(mm1_constants.I_MODEM, in_signature='(uu)')
     def SetCurrentModes(self, modes):
         """
         Sets the access technologies (eg 2G/3G/4G preference) the device is
@@ -685,14 +711,14 @@ class Modem(dbus_std_ifaces.DBusProperties,
                 if any.
 
         """
-        allowed = self.Get(mm1.I_MODEM, 'SupportedModes')
+        allowed = self.Get(mm1_constants.I_MODEM, 'SupportedModes')
         if not modes in allowed:
-            raise mm1.MMCoreError(mm1.MMCoreError.FAILED,
-                                  'Mode not supported: ' + repr(modes))
-        self.Set(mm1.I_MODEM, 'CurrentModes', modes)
+            raise pm_errors.MMCoreError(pm_errors.MMCoreError.FAILED,
+                                        'Mode not supported: ' + repr(modes))
+        self.Set(mm1_constants.I_MODEM, 'CurrentModes', modes)
 
     @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_MODEM, in_signature='au')
+    @dbus.service.method(mm1_constants.I_MODEM, in_signature='au')
     def SetCurrentBands(self, bands):
         """
         Sets the radio frequency and technology bands the device is currently
@@ -703,10 +729,11 @@ class Modem(dbus_std_ifaces.DBusProperties,
 
         """
         band_list = [dbus.types.UInt32(band) for band in bands]
-        self.Set(mm1.I_MODEM, 'CurrentBands', band_list)
+        self.Set(mm1_constants.I_MODEM, 'CurrentBands', band_list)
 
     @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_MODEM, in_signature='su', out_signature='s')
+    @dbus.service.method(mm1_constants.I_MODEM, in_signature='su',
+                         out_signature='s')
     def Command(self, cmd, timeout):
         """
         Allows clients to send commands to the modem. By default, this method
@@ -727,7 +754,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
         return random.choice(messages)
 
     @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_MODEM, in_signature='u')
+    @dbus.service.method(mm1_constants.I_MODEM, in_signature='u')
     def SetPowerState(self, power_state):
         """
         Sets the power state of the modem. This action can only be run when the
@@ -739,14 +766,15 @@ class Modem(dbus_std_ifaces.DBusProperties,
         @raises MMCoreError if state is not DISABLED.
 
         """
-        if self.Get(mm1.I_MODEM, 'State') != mm1.MM_MODEM_STATE_DISABLED:
-            raise mm1.MMCoreError(mm1.MMCoreError.WRONG_STATE,
-                                  'Cannot set the power state if modem is not'
-                                  ' DISABLED.')
-        self.SetUInt32(mm1.I_MODEM, 'PowerState', power_state);
+        if (self.Get(mm1_constants.I_MODEM, 'State') !=
+                mm1_constants.MM_MODEM_STATE_DISABLED):
+            raise pm_errors.MMCoreError(
+                    pm_errors.MMCoreError.WRONG_STATE,
+                    'Cannot set the power state if modem is not DISABLED.')
+        self.SetUInt32(mm1_constants.I_MODEM, 'PowerState', power_state);
 
     @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_MODEM, in_signature='u')
+    @dbus.service.method(mm1_constants.I_MODEM, in_signature='u')
     def SetCurrentCapabilities(self, capabilities):
         """
         Set the capabilities of the device. A restart of the modem may be
@@ -756,14 +784,15 @@ class Modem(dbus_std_ifaces.DBusProperties,
                 capabilities to use.
 
         """
-        supported = self.Get(mm1.I_MODEM, 'SupportedCapabilities')
+        supported = self.Get(mm1_constants.I_MODEM, 'SupportedCapabilities')
         if not capabilities in supported:
-            raise mm1.MMCoreError(
-                    mm1.MMCoreError.FAILED,
+            raise pm_errors.MMCoreError(
+                    pm_errors.MMCoreError.FAILED,
                     'Given capabilities not supported: ' + capabilities)
-        self.SetUInt32(mm1.I_MODEM, 'CurrentCapabilities', capabilities)
+        self.SetUInt32(mm1_constants.I_MODEM, 'CurrentCapabilities',
+                       capabilities)
 
-    @dbus.service.signal(mm1.I_MODEM, signature='iiu')
+    @dbus.service.signal(mm1_constants.I_MODEM, signature='iiu')
     def StateChanged(self, old, new, reason):
         """
         Signals that the modem's 'State' property has changed.
@@ -795,7 +824,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
         """
         self._sms_handler.delete_message(path)
 
-    @dbus.service.signal(mm1.I_MODEM_MESSAGING, signature='ob')
+    @dbus.service.signal(mm1_constants.I_MODEM_MESSAGING, signature='ob')
     def Added(self, path, received):
         """
         Overriden from messaging.Messaging.
@@ -816,4 +845,4 @@ class Modem(dbus_std_ifaces.DBusProperties,
         bearers = dbus.Array(
                 [dbus.types.ObjectPath(key) for key in self.bearers.iterkeys()],
                 signature='o')
-        self.Set(mm1.I_MODEM, 'Bearers', bearers)
+        self.Set(mm1_constants.I_MODEM, 'Bearers', bearers)

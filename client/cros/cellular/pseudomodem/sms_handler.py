@@ -7,8 +7,9 @@ import dbus
 import dbus.types
 import logging
 
-import mm1
 import sms
+
+from autotest_lib.client.cros.cellular import mm1_constants
 
 class SmsHandlerException(Exception):
     """
@@ -148,12 +149,14 @@ class SmsHandler(object):
         # Use the current time for both DischargeTimestamp and Timestamp. Our
         # SMS messages travel faster than the speed of light.
         timestamp = datetime.datetime.isoformat(datetime.datetime.now())
-        sms_object.Set(mm1.I_SMS, 'Timestamp', timestamp)
-        sms_object.Set(mm1.I_SMS, 'DischargeTimestamp', timestamp)
+        sms_object.Set(mm1_constants.I_SMS, 'Timestamp', timestamp)
+        sms_object.Set(mm1_constants.I_SMS, 'DischargeTimestamp', timestamp)
 
         # Receive messages right away.
-        sms_object.Set(mm1.I_SMS, 'State', mm1.MM_SMS_STATE_RECEIVED)
-        sms_object.Set(mm1.I_SMS, 'PduType', mm1.MM_SMS_PDU_TYPE_DELIVER)
+        sms_object.Set(mm1_constants.I_SMS, 'State',
+                       mm1_constants.MM_SMS_STATE_RECEIVED)
+        sms_object.Set(mm1_constants.I_SMS, 'PduType',
+                       mm1_constants.MM_SMS_PDU_TYPE_DELIVER)
 
         # Emit an Added message.
         self._modem.Added(dbus.types.ObjectPath(sms_object.path), True)

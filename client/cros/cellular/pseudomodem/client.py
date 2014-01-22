@@ -8,7 +8,9 @@ import cmd
 import dbus
 import dbus.exceptions
 
-import mm1
+import pm_constants
+
+from autotest_lib.client.cros.cellular import mm1_constants
 
 
 class PseudoModemClient(cmd.Cmd):
@@ -21,11 +23,12 @@ class PseudoModemClient(cmd.Cmd):
         self.prompt = '> '
         self._bus = dbus.SystemBus()
 
-    def _get_proxy(self, path=mm1.TESTING_PATH):
-        return self._bus.get_object(mm1.I_MODEM_MANAGER, path)
+    def _get_proxy(self, path=pm_constants.TESTING_PATH):
+        return self._bus.get_object(mm1_constants.I_MODEM_MANAGER, path)
 
     def _get_ism_proxy(self, state_machine):
-        return self._get_proxy('/'.join([mm1.TESTING_PATH, state_machine]))
+        return self._get_proxy('/'.join([pm_constants.TESTING_PATH,
+                                         state_machine]))
 
     def Begin(self):
         """
@@ -51,8 +54,8 @@ class PseudoModemClient(cmd.Cmd):
             return
         try:
             props = self._get_proxy().GetAll(
-                            mm1.I_TESTING,
-                            dbus_interface=mm1.I_PROPERTIES)
+                            pm_constants.I_TESTING,
+                            dbus_interface=mm1_constants.I_PROPERTIES)
             print '\nProperties: '
             for k, v in props.iteritems():
                 print '   ' + k + ': ' + str(v)
@@ -91,7 +94,8 @@ class PseudoModemClient(cmd.Cmd):
             return
         try:
             self._get_proxy().ReceiveSms(
-                    arglist[0], arglist[1], dbus_interface=mm1.I_TESTING)
+                    arglist[0], arglist[1],
+                    dbus_interface=pm_constants.I_TESTING)
             print '\nSMS sent!\n'
         except dbus.exceptions.DBusException as e:
             print ('\nAn error occurred while communicating with '
@@ -127,7 +131,7 @@ class PseudoModemClient(cmd.Cmd):
             pco_value = arglist[1]
             try:
                 self._get_proxy().UpdatePcoInfo(
-                        pco_value, dbus_interface=mm1.I_TESTING)
+                        pco_value, dbus_interface=pm_constants.I_TESTING)
                 print '\nPCO value updated!\n'
             except dbus.exceptions.DBusException as e:
                 print ('\nAn error occurred while communicating with '
@@ -169,7 +173,8 @@ class PseudoModemClient(cmd.Cmd):
             return False
 
         try:
-            is_waiting = ism.IsWaiting(dbus_interface=mm1.I_TESTING_ISM)
+            is_waiting = ism.IsWaiting(
+                    dbus_interface=pm_constants.I_TESTING_ISM)
             print ('\nState machine is %swaiting.\n' %
                    ('' if is_waiting else 'not '))
         except dbus.exceptions.DBusException as e:
@@ -199,7 +204,7 @@ class PseudoModemClient(cmd.Cmd):
             return False
 
         try:
-            success = ism.Advance(dbus_interface=mm1.I_TESTING_ISM)
+            success = ism.Advance(dbus_interface=pm_constants.I_TESTING_ISM)
             print ('\nAdvanced!\n' if success else '\nCould not advance.\n')
         except dbus.exceptions.DBusException as e:
             print '\nError while advancing state machine: |%s|\n' % repr(e)

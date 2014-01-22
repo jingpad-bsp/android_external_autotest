@@ -9,8 +9,9 @@ import time
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros.cellular.pseudomodem import mm1
+from autotest_lib.client.cros.cellular import mm1_constants
 from autotest_lib.client.cros.cellular.pseudomodem import modem_3gpp
+from autotest_lib.client.cros.cellular.pseudomodem import pm_constants
 from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
 from autotest_lib.client.cros.cellular.pseudomodem import state_machine
 from autotest_lib.client.cros.cellular.pseudomodem import state_machine_factory
@@ -116,8 +117,9 @@ class network_3GScanningProperty(test.test):
 
         """
         object_manager = dbus.Interface(
-                self._bus.get_object(mm1.I_MODEM_MANAGER, mm1.MM1),
-                mm1.I_OBJECT_MANAGER)
+                self._bus.get_object(mm1_constants.I_MODEM_MANAGER,
+                                     mm1_constants.MM1),
+                mm1_constants.I_OBJECT_MANAGER)
         try:
             modems = object_manager.GetManagedObjects()
         except dbus.exceptions.DBusException as e:
@@ -128,15 +130,17 @@ class network_3GScanningProperty(test.test):
                                  len(modems))
 
         modem_path = modems.keys()[0]
-        modem_object = self._bus.get_object(mm1.I_MODEM_MANAGER, modem_path)
+        modem_object = self._bus.get_object(mm1_constants.I_MODEM_MANAGER,
+                                            modem_path)
         # Check that this object is valid
         try:
-            modem_object.GetAll(mm1.I_MODEM, dbus_interface=mm1.I_PROPERTIES)
+            modem_object.GetAll(mm1_constants.I_MODEM,
+                                dbus_interface=mm1_constants.I_PROPERTIES)
         except dbus.exceptions.DBusException as e:
             raise error.TestFail('Failed to obtain dbus object for the modem '
                                  'DBus error: |%s|', repr(e))
 
-        return dbus.Interface(modem_object, mm1.I_MODEM)
+        return dbus.Interface(modem_object, mm1_constants.I_MODEM)
 
 
     def _check_mm_state(self, modem, states):
@@ -150,14 +154,16 @@ class network_3GScanningProperty(test.test):
         """
         if not isinstance(states, list):
             states = [states]
-        properties = modem.GetAll(mm1.I_MODEM, dbus_interface=mm1.I_PROPERTIES)
-        actual_state = properties[mm1.MM_MODEM_PROPERTY_NAME_STATE]
+        properties = modem.GetAll(mm1_constants.I_MODEM,
+                                  dbus_interface=mm1_constants.I_PROPERTIES)
+        actual_state = properties[mm1_constants.MM_MODEM_PROPERTY_NAME_STATE]
         if actual_state not in states:
-            state_names = [mm1.ModemStateToString(x) for x in states]
+            state_names = [mm1_constants.ModemStateToString(x) for x in states]
             raise error.TestFail(
                     'Expected modemmanager modem state to be one of %s but '
                     'found %s' %
-                    (state_names, mm1.ModemStateToString(actual_state)))
+                    (state_names,
+                     mm1_constants.ModemStateToString(actual_state)))
 
 
     def _check_shill_property_update(self, cellular_device, property_name,
@@ -202,10 +208,10 @@ class network_3GScanningProperty(test.test):
         """
         def _get_machine():
             machine = self._bus.get_object(
-                    mm1.I_MODEM_MANAGER,
-                    '/'.join([mm1.TESTING_PATH, machine_name]))
+                    mm1_constants.I_MODEM_MANAGER,
+                    '/'.join([pm_constants.TESTING_PATH, machine_name]))
             if machine:
-                i_machine = dbus.Interface(machine, mm1.I_TESTING_ISM)
+                i_machine = dbus.Interface(machine, pm_constants.I_TESTING_ISM)
                 # Only way to know if this DBus object is valid is to call a
                 # method on it.
                 try:
@@ -293,8 +299,8 @@ class network_3GScanningProperty(test.test):
         activated 3GPP service connects.
         """
         sm_factory = state_machine_factory.StateMachineFactory()
-        sm_factory.SetInteractive(mm1.STATE_MACHINE_ENABLE)
-        sm_factory.SetInteractive(mm1.STATE_MACHINE_REGISTER)
+        sm_factory.SetInteractive(pm_constants.STATE_MACHINE_ENABLE)
+        sm_factory.SetInteractive(pm_constants.STATE_MACHINE_REGISTER)
         with pseudomodem.TestModemManagerContext(True,
                                                  family='3GPP',
                                                  sm_factory=sm_factory):
@@ -303,7 +309,8 @@ class network_3GScanningProperty(test.test):
             self._cellular_proxy.set_logging_for_cellular_test()
 
             logging.info('Sanity check initial values')
-            enable_machine = self._itesting_machine(mm1.STATE_MACHINE_ENABLE)
+            enable_machine = self._itesting_machine(
+                    pm_constants.STATE_MACHINE_ENABLE)
             utils.poll_for_condition(
                     enable_machine.IsWaiting,
                     exception=error.TestFail(
@@ -320,7 +327,8 @@ class network_3GScanningProperty(test.test):
             mm_modem = self._find_mm_modem()
 
             logging.info('Test Connect sequence')
-            self._check_mm_state(mm_modem, mm1.MM_MODEM_STATE_DISABLED)
+            self._check_mm_state(mm_modem,
+                                 mm1_constants.MM_MODEM_STATE_DISABLED)
             self._check_shill_property_update(
                     device,
                     self._cellular_proxy.DEVICE_PROPERTY_POWERED,
@@ -341,7 +349,8 @@ class network_3GScanningProperty(test.test):
                     exception=error.TestFail('EnableMachine failed to wait in '
                                              'Enabling state'),
                     timeout=SHORT_TIMEOUT_SECONDS)
-            self._check_mm_state(mm_modem, mm1.MM_MODEM_STATE_ENABLING)
+            self._check_mm_state(mm_modem,
+                                 mm1_constants.MM_MODEM_STATE_ENABLING)
             self._check_shill_property_update(
                     device,
                     self._cellular_proxy.DEVICE_PROPERTY_SCANNING,
@@ -360,7 +369,7 @@ class network_3GScanningProperty(test.test):
             # Finish the enable call.
             enable_machine.Advance()
 
-            self._check_mm_state(mm_modem, mm1.MM_MODEM_STATE_ENABLED)
+            self._check_mm_state(mm_modem, mm1_constants.MM_MODEM_STATE_ENABLED)
             self._check_shill_property_update(
                     device,
                     self._cellular_proxy.DEVICE_PROPERTY_POWERED,
@@ -373,7 +382,7 @@ class network_3GScanningProperty(test.test):
                     True)
 
             register_machine = self._itesting_machine(
-                    mm1.STATE_MACHINE_REGISTER)
+                    pm_constants.STATE_MACHINE_REGISTER)
             utils.poll_for_condition(
                     register_machine.IsWaiting,
                     exception=error.TestFail('SearchingMachine failed to wait '
@@ -389,7 +398,8 @@ class network_3GScanningProperty(test.test):
                     exception=error.TestFail('SearchingMachine failed to wait '
                                              'in Searching state'),
                     timeout=SHORT_TIMEOUT_SECONDS)
-            self._check_mm_state(mm_modem, mm1.MM_MODEM_STATE_SEARCHING)
+            self._check_mm_state(mm_modem,
+                                 mm1_constants.MM_MODEM_STATE_SEARCHING)
             enable_machine.Advance()
             self._check_shill_property_update(
                     device,
@@ -406,9 +416,11 @@ class network_3GScanningProperty(test.test):
                     error.TestFail('Failed to create Cellular Service for a '
                                    'registered modem'),
                     timeout=SHORT_TIMEOUT_SECONDS)
-            self._check_mm_state(mm_modem, [mm1.MM_MODEM_STATE_REGISTERED,
-                                            mm1.MM_MODEM_STATE_CONNECTING,
-                                            mm1.MM_MODEM_STATE_CONNECTED])
+            self._check_mm_state(
+                    mm_modem,
+                    [mm1_constants.MM_MODEM_STATE_REGISTERED,
+                     mm1_constants.MM_MODEM_STATE_CONNECTING,
+                     mm1_constants.MM_MODEM_STATE_CONNECTED])
             self._check_shill_property_update(
                     device,
                     self._cellular_proxy.DEVICE_PROPERTY_SCANNING,

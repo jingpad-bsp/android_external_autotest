@@ -6,13 +6,19 @@ import time
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros.cellular import cell_tools, mm
-from autotest_lib.client.cros.cellular.pseudomodem import mm1
+from autotest_lib.client.cros.cellular import cell_tools
+from autotest_lib.client.cros.cellular import mm
+from autotest_lib.client.cros.cellular import mm1_constants
 from autotest_lib.client.cros.cellular.pseudomodem import modem_3gpp
 from autotest_lib.client.cros.cellular.pseudomodem import modem_cdma
+from autotest_lib.client.cros.cellular.pseudomodem import pm_errors
 from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
 
+# Disable warning about flimflam_test_path not being used.  It is used to set
+# up the path to the flimflam module.
+# pylint: disable=W0611
 from autotest_lib.client.cros import backchannel, network, flimflam_test_path
+# pylint: enable=W0611
 import flimflam
 
 CONNECT_CONFIG_TIMEOUT = 120
@@ -85,10 +91,11 @@ class DisconnectWhileStateIsDisconnectingTest(DisconnectFailTest):
                         self, bearer_path, return_cb, raise_cb, return_cb_args)
                     return
 
-                self.ChangeState(mm1.MM_MODEM_STATE_DISCONNECTING,
-                                 mm1.MM_MODEM_STATE_CHANGE_REASON_UNKNOWN)
+                self.ChangeState(
+                    mm1_constants.MM_MODEM_STATE_DISCONNECTING,
+                    mm1_constants.MM_MODEM_STATE_CHANGE_REASON_UNKNOWN)
                 time.sleep(5)
-                raise mm1.MMCoreError(mm1.MMCoreError.FAILED)
+                raise pm_errors.MMCoreError(pm_errors.MMCoreError.FAILED)
         self.test_modem = _TestModem()
 
     def _RunTest(self):
@@ -143,11 +150,12 @@ class DisconnectWhileDisconnectInProgressTest(DisconnectFailTest):
                 # On the first call, set the state to DISCONNECTING.
                 self.disconnect_count += 1
                 if self.disconnect_count == 1:
-                    self.ChangeState(mm1.MM_MODEM_STATE_DISCONNECTING,
-                                     mm1.MM_MODEM_STATE_CHANGE_REASON_UNKNOWN)
+                    self.ChangeState(
+                        mm1_constants.MM_MODEM_STATE_DISCONNECTING,
+                        mm1_constants.MM_MODEM_STATE_CHANGE_REASON_UNKNOWN)
                     time.sleep(5)
                 else:
-                    raise mm1.MMCoreError(mm1.MMCoreError.FAILED)
+                    raise pm_errors.MMCoreError(pm_errors.MMCoreError.FAILED)
         self.test_modem = _TestModem()
 
     def _RunTest(self):
@@ -169,8 +177,8 @@ class DisconnectWhileDisconnectInProgressTest(DisconnectFailTest):
         # Modem state should be disconnecting.
         manager, modem_path  = mm.PickOneModem('')
         modem = manager.GetModem(modem_path)
-        props = modem.GetAll(mm1.I_MODEM)
-        if not props['State'] == mm1.MM_MODEM_STATE_DISCONNECTING:
+        props = modem.GetAll(mm1_constants.I_MODEM)
+        if not props['State'] == mm1_constants.MM_MODEM_STATE_DISCONNECTING:
             raise error.TestError('Modem should be in the DISCONNECTING state.')
 
         # Issue second disconnect. Service should remain connected.
@@ -205,7 +213,7 @@ class DisconnectFailOtherTest(DisconnectFailTest):
                         self, bearer_path, return_cb, raise_cb, return_cb_args)
                     return
 
-                raise mm1.MMCoreError(mm1.MMCoreError.FAILED)
+                raise pm_errors.MMCoreError(pm_errors.MMCoreError.FAILED)
         self.test_modem = _TestModem()
 
     def _RunTest(self):

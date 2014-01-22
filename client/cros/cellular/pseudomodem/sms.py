@@ -6,7 +6,8 @@
 import dbus
 
 import dbus_std_ifaces
-import mm1
+
+from autotest_lib.client.cros.cellular import mm1_constants
 
 class SMSConfigException(Exception):
     """
@@ -41,7 +42,7 @@ class SMS(dbus_std_ifaces.DBusProperties):
 
     @classmethod
     def _get_next_sms_path(cls):
-        path = mm1.SMS_PATH + '/' + str(cls._sms_index)
+        path = mm1_constants.SMS_PATH + '/' + str(cls._sms_index)
         cls._sms_index += 1
         return path
 
@@ -78,23 +79,26 @@ class SMS(dbus_std_ifaces.DBusProperties):
 
     def _InitializeProperties(self):
         props = {}
-        props['State'] = dbus.types.UInt32(mm1.MM_SMS_STATE_UNKNOWN)
-        props['PduType'] = dbus.types.UInt32(mm1.MM_SMS_PDU_TYPE_UNKNOWN)
+        props['State'] = dbus.types.UInt32(mm1_constants.MM_SMS_STATE_UNKNOWN)
+        props['PduType'] = dbus.types.UInt32(
+                mm1_constants.MM_SMS_PDU_TYPE_UNKNOWN)
         props['Number'] = self._sender_number
         # For now, only support 'Text' and not 'Data'
         props['Text'] = self._content
         props['SMSC'] = self._props_template.get('SMSC', '1231212')
         props['Validity'] = self._props_template.get('Validity',
                 dbus.types.Struct(
-                        [ dbus.types.UInt32(mm1.MM_SMS_VALIDITY_TYPE_UNKNOWN),
-                          dbus.types.UInt32(0) ],
+                        [dbus.types.UInt32(
+                                mm1_constants.MM_SMS_VALIDITY_TYPE_UNKNOWN),
+                         dbus.types.UInt32(0)],
                         signature='uv'))
         props['Class'] = self._props_template.get('Class', dbus.types.Int32(-1))
         props['DeliveryReportRequest'] = self._props_template.get(
                 'DeliveryReportRequest',
                 dbus.types.Boolean(False))
         props['Storage'] = self._props_template.get(
-                'Storage', dbus.types.UInt32(mm1.MM_SMS_STORAGE_UNKNOWN))
+                'Storage',
+                dbus.types.UInt32(mm1_constants.MM_SMS_STORAGE_UNKNOWN))
         # TODO(armansito): This may be useful for split SMS messages. Need to
         # study the SMS standard to figure out how to make use of this
         # property.
@@ -105,11 +109,11 @@ class SMS(dbus_std_ifaces.DBusProperties):
         # the SMS.
         props['Timestamp'] = ''
         props['DischargeTimestamp'] = ''
-        return { mm1.I_SMS: props }
+        return { mm1_constants.I_SMS: props }
 
     # Remember to decorate your concrete implementation with
     # @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_SMS)
+    @dbus.service.method(mm1_constants.I_SMS)
     def Send(self):
         """
         If the message has not yet been sent, queue it for delivery.
@@ -119,7 +123,7 @@ class SMS(dbus_std_ifaces.DBusProperties):
 
     # Remember to decorate your concrete implementation with
     # @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_SMS, in_signature='u')
+    @dbus.service.method(mm1_constants.I_SMS, in_signature='u')
     def Store(self, storage):
         """
         Stores the message in the device if not already done.

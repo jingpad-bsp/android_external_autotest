@@ -9,9 +9,8 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import network
 from autotest_lib.client.cros.cellular import mm
 
-# TODO(armansito): We should really move cros/cellular/pseudomodem/mm1.py to
-# cros/cellular/, as it deprecates the old mm1.py. See crosbug.com/37005
-from autotest_lib.client.cros.cellular.pseudomodem import mm1, pseudomodem, sim
+from autotest_lib.client.cros.cellular import mm1_constants
+from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem, sim
 
 import flimflam
 
@@ -89,7 +88,7 @@ class network_3GIdentifiers(test.test):
         """Calls by autotest to run this test."""
         self.use_pseudomodem = use_pseudomodem
         fake_sim = sim.SIM(sim.SIM.Carrier('att'),
-            mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM)
+            mm1_constants.MM_MODEM_ACCESS_TECHNOLOGY_GSM)
         with pseudomodem.TestModemManagerContext(use_pseudomodem, sim=fake_sim):
             flim = flimflam.FlimFlam()
             flim.SetDebugTags(

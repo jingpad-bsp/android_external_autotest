@@ -3,8 +3,11 @@
 # found in the LICENSE file.
 
 import logging
-import mm1
+
+import pm_errors
 import state_machine
+
+from autotest_lib.client.cros.cellular import mm1_constants
 
 class DisconnectMachine(state_machine.StateMachine):
     """
@@ -23,8 +26,9 @@ class DisconnectMachine(state_machine.StateMachine):
     def _HandleConnectedState(self):
         logging.info('DisconnectMachine: Modem state is CONNECTED.')
         logging.info('DisconnectMachine: Setting state to DISCONNECTING.')
-        reason = mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
-        self._modem.ChangeState(mm1.MM_MODEM_STATE_DISCONNECTING, reason)
+        reason = mm1_constants.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
+        self._modem.ChangeState(mm1_constants.MM_MODEM_STATE_DISCONNECTING,
+                                reason)
         return True
 
     def _HandleDisconnectingState(self):
@@ -35,22 +39,22 @@ class DisconnectMachine(state_machine.StateMachine):
         assert self._modem.active_bearers
         assert self._modem.bearers
 
-        dc_reason = mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
+        dc_reason = mm1_constants.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
         try:
-            if self.bearer_path == mm1.ROOT_PATH:
+            if self.bearer_path == mm1_constants.ROOT_PATH:
                 for bearer in self._modem.active_bearers.keys():
                     self._modem.DeactivateBearer(bearer)
             else:
                 self._modem.DeactivateBearer(self.bearer_path)
-        except mm1.MMError as e:
+        except pm_errors.MMError as e:
             logging.error('DisconnectMachine: Failed to disconnect: ' + str(e))
-            dc_reason = mm1.MM_MODEM_STATE_CHANGE_REASON_UNKNOWN
+            dc_reason = mm1_constants.MM_MODEM_STATE_CHANGE_REASON_UNKNOWN
             self.raise_cb(e)
         finally:
             # TODO(armansito): What should happen in a disconnect
             # failure? Should we stay connected or become REGISTERED?
             logging.info('DisconnectMachine: Setting state to REGISTERED.')
-            self._modem.ChangeState(mm1.MM_MODEM_STATE_REGISTERED,
+            self._modem.ChangeState(mm1_constants.MM_MODEM_STATE_REGISTERED,
                 dc_reason)
             self._modem.disconnect_step = None
             logging.info('DisconnectMachine: Calling return callback.')
@@ -59,10 +63,10 @@ class DisconnectMachine(state_machine.StateMachine):
 
     def _GetModemStateFunctionMap(self):
         return {
-            mm1.MM_MODEM_STATE_CONNECTED:
-                DisconnectMachine._HandleConnectedState,
-            mm1.MM_MODEM_STATE_DISCONNECTING:
-                DisconnectMachine._HandleDisconnectingState
+            mm1_constants.MM_MODEM_STATE_CONNECTED:
+                    DisconnectMachine._HandleConnectedState,
+            mm1_constants.MM_MODEM_STATE_DISCONNECTING:
+                    DisconnectMachine._HandleDisconnectingState
         }
 
     def _ShouldStartStateMachine(self):
@@ -72,29 +76,32 @@ class DisconnectMachine(state_machine.StateMachine):
             message = 'There is already an ongoing disconnect operation.'
             logging.error(message)
             self.raise_cb(
-                mm1.MMCoreError(mm1.MMCoreError.IN_PROGRESS, message))
+                pm_errors.MMCoreError(pm_errors.MMCoreError.IN_PROGRESS,
+                                      message))
             return False
         elif self._modem.disconnect_step is None:
             # There is no disconnect operation going on, canceled or otherwise.
-            state = self._modem.Get(mm1.I_MODEM, 'State')
-            if state != mm1.MM_MODEM_STATE_CONNECTED:
+            state = self._modem.Get(mm1_constants.I_MODEM, 'State')
+            if state != mm1_constants.MM_MODEM_STATE_CONNECTED:
                 message = 'Modem cannot be disconnected when not connected.'
                 logging.error(message)
                 self.raise_cb(
-                    mm1.MMCoreError(mm1.MMCoreError.WRONG_STATE, message))
+                    pm_errors.MMCoreError(pm_errors.MMCoreError.WRONG_STATE,
+                                          message))
                 return False
 
             assert self._modem.bearers
             assert self._modem.active_bearers
 
-            if self.bearer_path == mm1.ROOT_PATH:
+            if self.bearer_path == mm1_constants.ROOT_PATH:
                 logging.info('All bearers will be disconnected.')
             elif not (self.bearer_path in self._modem.bearers):
                 message = ('Bearer with path "%s" not found' %
                            self.bearer_path)
                 logging.error(message)
                 self.raise_cb(
-                    mm1.MMCoreError(mm1.MMCoreError.NOT_FOUND, message))
+                    pm_errors.MMCoreError(pm_errors.MMCoreError.NOT_FOUND,
+                                          message))
                 return False
             elif not (self.bearer_path in self._modem.active_bearers):
                 message = ('No active bearer with path ' +
@@ -102,8 +109,8 @@ class DisconnectMachine(state_machine.StateMachine):
                     ' found, current active bearers are ' +
                     str(self._modem.active_bearers))
                 logging.error(message)
-                self.raise_cb(mm1.MMCoreError(
-                    mm1.MMCoreError.NOT_FOUND, message))
+                self.raise_cb(pm_errors.MMCoreError(
+                        pm_errors.MMCoreError.NOT_FOUND, message))
                 return False
 
             assert not self._modem.IsPendingConnect()

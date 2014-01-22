@@ -5,8 +5,10 @@
 import gobject
 import logging
 
-import mm1
+import pm_errors
 import state_machine
+
+from autotest_lib.client.cros.cellular import mm1_constants
 
 class CdmaActivateMachine(state_machine.StateMachine):
     """
@@ -23,10 +25,10 @@ class CdmaActivateMachine(state_machine.StateMachine):
     def Cancel(self, message='Activation canceled.'):
         logging.info('CdmaActivateMachine: Canceling activate.')
         super(CdmaActivateMachine, self).Cancel()
-        state = self._modem.Get(mm1.I_MODEM_CDMA, 'ActivationState')
+        state = self._modem.Get(mm1_constants.I_MODEM_CDMA, 'ActivationState')
 
         # If activated, return success.
-        if state == mm1.MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED:
+        if state == mm1_constants.MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED:
             logging.info('CdmaActivateMachine: Already activated. '
                          'Returning success.')
             if self._return_cb:
@@ -34,13 +36,14 @@ class CdmaActivateMachine(state_machine.StateMachine):
             return
 
         self._modem.ChangeActivationState(
-            mm1.MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED,
-            mm1.MMCdmaActivationError.UNKNOWN)
+            mm1_constants.MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED,
+            pm_errors.MMCdmaActivationError.UNKNOWN)
 
         self._modem.cdma_activate_step = None
 
         if self._raise_cb:
-            self._raise_cb(mm1.MMCoreError(mm1.MMCoreError.CANCELLED, message))
+            self._raise_cb(
+                pm_errors.MMCoreError(pm_errors.MMCoreError.CANCELLED, message))
 
     def _GetDefaultHandler(self):
         return CdmaActivateMachine._HandleInvalidState
@@ -52,18 +55,18 @@ class CdmaActivateMachine(state_machine.StateMachine):
         gobject.timeout_add(self._step_delay * 1000, _DelayedStep)
 
     def _HandleInvalidState(self):
-        state = self._modem.Get(mm1.I_MODEM, 'State')
+        state = self._modem.Get(mm1_constants.I_MODEM, 'State')
         message = 'Modem transitioned to invalid state: ' + \
-            mm1.ModemStateToString(state)
+            mm1_constants.ModemStateToString(state)
         logging.info('CdmaActivateMachine: ' + message)
         self.Cancel(message)
         return False
 
     def _StepFunction(self):
-        state = self._modem.Get(mm1.I_MODEM_CDMA, 'ActivationState')
-        if state == mm1.MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED:
+        state = self._modem.Get(mm1_constants.I_MODEM_CDMA, 'ActivationState')
+        if state == mm1_constants.MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED:
             return self._HandleNotActivated()
-        if state == mm1.MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING:
+        if state == mm1_constants.MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING:
             return self._HandleActivating()
         message = 'Modem is in invalid activation state: ' + state
         logging.error(message)
@@ -74,8 +77,8 @@ class CdmaActivateMachine(state_machine.StateMachine):
         logging.info('CdmaActivationMachine: Modem is NOT_ACTIVATED.')
         logging.info('CdmaActivationMachine: Setting state to ACTIVATING')
         self._modem.ChangeActivationState(
-            mm1.MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING,
-            mm1.MMCdmaActivationError.NONE)
+            mm1_constants.MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING,
+            pm_errors.MMCdmaActivationError.NONE)
 
         # Make the modem reset after 5 seconds.
         self._step_delay = 5
@@ -85,8 +88,8 @@ class CdmaActivateMachine(state_machine.StateMachine):
         logging.info('CdmaActivationMachine: Modem is ACTIVATING.')
         logging.info('CdmaActivationMachine: Resetting modem.')
         self._modem.ChangeActivationState(
-            mm1.MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED,
-            mm1.MMCdmaActivationError.NONE)
+            mm1_constants.MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED,
+            pm_errors.MMCdmaActivationError.NONE)
         self._modem.Reset()
         self._modem.cdma_activate_step = None
         if self._return_cb:
@@ -95,7 +98,7 @@ class CdmaActivateMachine(state_machine.StateMachine):
 
     def _GetModemStateFunctionMap(self):
         return {
-            mm1.MM_MODEM_STATE_REGISTERED:
+            mm1_constants.MM_MODEM_STATE_REGISTERED:
                 CdmaActivateMachine._StepFunction
         }
 
@@ -104,23 +107,27 @@ class CdmaActivateMachine(state_machine.StateMachine):
             self._modem.cdma_activate_step != self:
             # There is already an activate operation in progress.
             logging.error('There is already an ongoing activate operation.')
-            raise mm1.MMCoreError(mm1.MMCoreError.IN_PROGRESS,
-                                  "Activation already in progress.")
+            raise pm_errors.MMCoreError(pm_errors.MMCoreError.IN_PROGRESS,
+                                        "Activation already in progress.")
 
         if self._modem.cdma_activate_step is None:
             # There is no activate operation going on, cancelled or otherwise.
-            state = self._modem.Get(mm1.I_MODEM_CDMA, 'ActivationState')
-            if state != mm1.MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED:
+            state = self._modem.Get(mm1_constants.I_MODEM_CDMA,
+                                    'ActivationState')
+            if (state !=
+                mm1_constants.MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED):
                 message = "Modem is not in state 'NOT_ACTIVATED'."
                 logging.error(message)
-                raise mm1.MMCoreError(mm1.MMCoreError.WRONG_STATE, message)
+                raise pm_errors.MMCoreError(pm_errors.MMCoreError.WRONG_STATE,
+                                            message)
 
-            state = self._modem.Get(mm1.I_MODEM, 'State')
-            if state != mm1.MM_MODEM_STATE_REGISTERED:
+            state = self._modem.Get(mm1_constants.I_MODEM, 'State')
+            if state != mm1_constants.MM_MODEM_STATE_REGISTERED:
                 message = 'Modem cannot be activated if not in the ' \
                           'REGISTERED state.'
                 logging.error(message)
-                raise mm1.MMCoreError(mm1.MMCoreError.WRONG_STATE, message)
+                raise pm_errors.MMCoreError(pm_errors.MMCoreError.WRONG_STATE,
+                                            message)
 
             self._modem.cdma_activate_step = self
         return True

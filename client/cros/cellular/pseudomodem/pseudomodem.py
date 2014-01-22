@@ -15,7 +15,6 @@ import signal
 import time
 
 import client
-import mm1
 import modem_3gpp
 import modem_cdma
 import modemmanager
@@ -26,7 +25,7 @@ import testing
 import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros.cellular import net_interface
+from autotest_lib.client.cros.cellular import net_interface, mm1_constants
 
 
 DEFAULT_TEST_NETWORK_PREFIX = 'Test Network'
@@ -102,7 +101,7 @@ class TestModemManagerContext(object):
             # with a local variable.
             simmodule = globals()['sim']
             sim = simmodule.SIM(simmodule.SIM.Carrier('test'),
-                                mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM)
+                                mm1_constants.MM_MODEM_ACCESS_TECHNOLOGY_GSM)
         self.sim = sim
         self.pseudo_modem_manager = None
 
@@ -286,7 +285,7 @@ class PseudoModemManager(object):
         self.modem_net_interface.Setup()
         dbus_loop = dbus.mainloop.glib.DBusGMainLoop()
         bus = dbus.SystemBus(private=True, mainloop=dbus_loop)
-        named_service = dbus.service.BusName(mm1.I_MODEM_MANAGER, bus)
+        named_service = dbus.service.BusName(mm1_constants.I_MODEM_MANAGER, bus)
         logging.info('Exported dbus service with well know name: |%s|',
                      named_service.get_name())
         self.manager = modemmanager.ModemManager(bus)
@@ -371,14 +370,14 @@ def Start(use_cdma=False, activated=True, sim_locked=False,
                     'Roaming Network Long ' + str(i),
                     'Roaming Network Short ' + str(i),
                     '00100' + str(i + 1),
+                    dbus.types.UInt32(mm1_constants.
+                            MM_MODEM_3GPP_NETWORK_AVAILABILITY_AVAILABLE),
                     dbus.types.UInt32(
-                            mm1.MM_MODEM_3GPP_NETWORK_AVAILABILITY_AVAILABLE),
-                    dbus.types.UInt32(
-                            mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM))
+                            mm1_constants.MM_MODEM_ACCESS_TECHNOLOGY_GSM))
                 for i in xrange(roaming_networks)]
         m = modem_3gpp.Modem3gpp(smf, roaming_networks=networks)
         s = sim.SIM(sim.SIM.Carrier(),
-                    mm1.MM_MODEM_ACCESS_TECHNOLOGY_GSM,
+                    mm1_constants.MM_MODEM_ACCESS_TECHNOLOGY_GSM,
                     locked=sim_locked)
 
     with PseudoModemManager(modem=m, sim=s, detach=interactive):

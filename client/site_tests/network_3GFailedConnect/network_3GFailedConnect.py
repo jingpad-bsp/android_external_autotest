@@ -9,12 +9,16 @@ import logging
 from autotest_lib.client.bin import test
 from autotest_lib.client.cros import backchannel
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros.cellular.pseudomodem import mm1
 from autotest_lib.client.cros.cellular.pseudomodem import modem_3gpp
 from autotest_lib.client.cros.cellular.pseudomodem import modem_cdma
+from autotest_lib.client.cros.cellular.pseudomodem import pm_errors
 from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
 
+# Disable warning about flimflam_test_path not being used.  It is used to set
+# up the path to the flimflam module.
+# pylint: disable=W0611
 from autotest_lib.client.cros import flimflam_test_path, network
+# pylint: enable=W0611
 import flimflam
 
 
@@ -47,7 +51,7 @@ class network_3GFailedConnect(test.test):
             """Custom fake Modem that always fails to connect."""
             def Connect(self, properties, return_cb, raise_cb):
                 logging.info('Connect call will fail.')
-                raise_cb(mm1.MMCoreError(mm1.MMCoreError.FAILED))
+                raise_cb(pm_errors.MMCoreError(pm_errors.MMCoreError.FAILED))
 
         return FailConnectModem()
 

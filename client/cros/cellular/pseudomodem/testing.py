@@ -5,8 +5,10 @@
 import dbus
 
 import dbus_std_ifaces
-import mm1
+import pm_constants
 import utils
+
+from autotest_lib.client.cros.cellular import mm1_constants
 
 class Testing(dbus_std_ifaces.DBusProperties):
     """
@@ -19,13 +21,15 @@ class Testing(dbus_std_ifaces.DBusProperties):
 
     def __init__(self, modem, bus):
         self._modem = modem
-        dbus_std_ifaces.DBusProperties.__init__(self, mm1.TESTING_PATH, bus)
+        dbus_std_ifaces.DBusProperties.__init__(self,
+                                                pm_constants.TESTING_PATH,
+                                                bus)
 
     def _InitializeProperties(self):
-        return { mm1.I_TESTING: { 'Modem': self._modem.path } }
+        return { pm_constants.I_TESTING: { 'Modem': self._modem.path } }
 
     @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_TESTING, in_signature='ss')
+    @dbus.service.method(pm_constants.I_TESTING, in_signature='ss')
     def ReceiveSms(self, sender, text):
         """
         Simulates a fake SMS.
@@ -37,7 +41,7 @@ class Testing(dbus_std_ifaces.DBusProperties):
         self._modem.sms_handler.receive_sms(text, sender)
 
     @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_TESTING, in_signature='s')
+    @dbus.service.method(pm_constants.I_TESTING, in_signature='s')
     def UpdatePcoInfo(self, pco_value):
         """
         Sets the VendorPcoInfo to the specified value. If the Modem.Modem3gpp
@@ -47,5 +51,5 @@ class Testing(dbus_std_ifaces.DBusProperties):
         @param pco_value: The PCO string.
 
         """
-        if mm1.I_MODEM_3GPP in self._modem.properties:
+        if mm1_constants.I_MODEM_3GPP in self._modem.properties:
             self._modem.AssignPcoValue(pco_value)

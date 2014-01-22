@@ -6,40 +6,42 @@ import dbus
 import logging
 
 import dbus_std_ifaces
-import mm1
+import pm_errors
 import utils
 
-class IncorrectPasswordError(mm1.MMMobileEquipmentError):
+from autotest_lib.client.cros.cellular import mm1_constants
+
+class IncorrectPasswordError(pm_errors.MMMobileEquipmentError):
     """
     Wrapper around MM_MOBILE_EQUIPMENT_ERROR_INCORRECT_PASSWORD.
 
     """
 
     def __init__(self):
-        mm1.MMMobileEquipmentError.__init__(
-                self, mm1.MMMobileEquipmentError.INCORRECT_PASSWORD,
+        pm_errors.MMMobileEquipmentError.__init__(
+                self, pm_errors.MMMobileEquipmentError.INCORRECT_PASSWORD,
                 'Incorrect password')
 
-class SimPukError(mm1.MMMobileEquipmentError):
+class SimPukError(pm_errors.MMMobileEquipmentError):
     """
     Wrapper around MM_MOBILE_EQUIPMENT_ERROR_SIM_PUK.
 
     """
 
     def __init__(self):
-        mm1.MMMobileEquipmentError.__init__(
-                self, mm1.MMMobileEquipmentError.SIM_PUK,
+        pm_errors.MMMobileEquipmentError.__init__(
+                self, pm_errors.MMMobileEquipmentError.SIM_PUK,
                 'SIM PUK required')
 
-class SimFailureError(mm1.MMMobileEquipmentError):
+class SimFailureError(pm_errors.MMMobileEquipmentError):
     """
     Wrapper around MM_MOBILE_EQUIPMENT_ERROR_SIM_FAILURE.
 
     """
 
     def __init__(self):
-        mm1.MMMobileEquipmentError.__init__(
-                self, mm1.MMMobileEquipmentError.SIM_FAILURE,
+        pm_errors.MMMobileEquipmentError.__init__(
+                self, pm_errors.MMMobileEquipmentError.SIM_FAILURE,
                 'SIM failure')
 
 class SIM(dbus_std_ifaces.DBusProperties):
@@ -121,7 +123,7 @@ class SIM(dbus_std_ifaces.DBusProperties):
                  config=None):
         if not carrier:
             raise TypeError('A carrier is required.')
-        path = mm1.MM1 + '/SIM/' + str(index)
+        path = mm1_constants.MM1 + '/SIM/' + str(index)
         self.msin = msin
         self._carrier = carrier
         self.imsi = carrier.operator_id + imsi
@@ -129,11 +131,11 @@ class SIM(dbus_std_ifaces.DBusProperties):
         self._total_pin_retries = pin_retries
         self._total_puk_retries = puk_retries
         self._lock_data = {
-            mm1.MM_MODEM_LOCK_SIM_PIN : {
+            mm1_constants.MM_MODEM_LOCK_SIM_PIN : {
                 'code' : pin,
                 'retries' : pin_retries
             },
-            mm1.MM_MODEM_LOCK_SIM_PUK : {
+            mm1_constants.MM_MODEM_LOCK_SIM_PUK : {
                 'code' : puk,
                 'retries' : puk_retries
             }
@@ -141,9 +143,9 @@ class SIM(dbus_std_ifaces.DBusProperties):
         self._lock_enabled = locked
         self._show_retries = locked
         if locked:
-            self._lock_type = mm1.MM_MODEM_LOCK_SIM_PIN
+            self._lock_type = mm1_constants.MM_MODEM_LOCK_SIM_PIN
         else:
-            self._lock_type = mm1.MM_MODEM_LOCK_NONE
+            self._lock_type = mm1_constants.MM_MODEM_LOCK_NONE
         self._modem = None
         self.access_technology = access_technology
         dbus_std_ifaces.DBusProperties.__init__(self, path, None, config)
@@ -161,7 +163,7 @@ class SIM(dbus_std_ifaces.DBusProperties):
 
         """
         self._index += 1
-        path = mm1.MM1 + '/SIM/' + str(self._index)
+        path = mm1_constants.MM1 + '/SIM/' + str(self._index)
         logging.info('SIM coming back as: ' + path)
         self.SetPath(path)
 
@@ -172,7 +174,7 @@ class SIM(dbus_std_ifaces.DBusProperties):
         """
         self.IncrementPath()
         if not self.locked and self._lock_enabled:
-            self._lock_type = mm1.MM_MODEM_LOCK_SIM_PIN
+            self._lock_type = mm1_constants.MM_MODEM_LOCK_SIM_PIN
 
     @property
     def lock_type(self):
@@ -211,8 +213,8 @@ class SIM(dbus_std_ifaces.DBusProperties):
 
         """
         if self._lock_enabled:
-            return mm1.MM_MODEM_3GPP_FACILITY_SIM
-        return mm1.MM_MODEM_3GPP_FACILITY_NONE
+            return mm1_constants.MM_MODEM_3GPP_FACILITY_SIM
+        return mm1_constants.MM_MODEM_3GPP_FACILITY_NONE
 
     @property
     def locked(self):
@@ -220,8 +222,8 @@ class SIM(dbus_std_ifaces.DBusProperties):
         @return True, if the SIM is locked. False, otherwise.
 
         """
-        return not (self._lock_type == mm1.MM_MODEM_LOCK_NONE or
-            self._lock_type == mm1.MM_MODEM_LOCK_UNKNOWN)
+        return not (self._lock_type == mm1_constants.MM_MODEM_LOCK_NONE or
+            self._lock_type == mm1_constants.MM_MODEM_LOCK_UNKNOWN)
 
     @property
     def modem(self):
@@ -269,10 +271,10 @@ class SIM(dbus_std_ifaces.DBusProperties):
         }
 
     def _InitializeProperties(self):
-        return { mm1.I_SIM : self._DBusPropertiesDict() }
+        return { mm1_constants.I_SIM : self._DBusPropertiesDict() }
 
     def _UpdateProperties(self):
-        self.SetAll(mm1.I_SIM, self._DBusPropertiesDict())
+        self.SetAll(mm1_constants.I_SIM, self._DBusPropertiesDict())
 
     def _CheckCode(self, code, lock_data, next_lock, error_to_raise):
         # Checks |code| against |lock_data['code']|. If the codes don't match:
@@ -304,16 +306,16 @@ class SIM(dbus_std_ifaces.DBusProperties):
         raise error_to_raise
 
     def _ResetRetries(self, lock_type):
-        if lock_type == mm1.MM_MODEM_LOCK_SIM_PIN:
+        if lock_type == mm1_constants.MM_MODEM_LOCK_SIM_PIN:
             value = self._total_pin_retries
-        elif lock_type == mm1.MM_MODEM_LOCK_SIM_PUK:
+        elif lock_type == mm1_constants.MM_MODEM_LOCK_SIM_PUK:
             value = self._total_puk_retries
         else:
             raise TypeError('Invalid SIM lock type')
         self._lock_data[lock_type]['retries'] = value
 
     @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_SIM, in_signature='s')
+    @dbus.service.method(mm1_constants.I_SIM, in_signature='s')
     def SendPin(self, pin):
         """
         Sends the PIN to unlock the SIM card.
@@ -325,7 +327,7 @@ class SIM(dbus_std_ifaces.DBusProperties):
             logging.info('SIM is not locked. Nothing to do.')
             return
 
-        if self._lock_type == mm1.MM_MODEM_LOCK_SIM_PUK:
+        if self._lock_type == mm1_constants.MM_MODEM_LOCK_SIM_PUK:
             if self._lock_data[self._lock_type]['retries'] == 0:
                 raise SimFailureError()
             else:
@@ -333,22 +335,22 @@ class SIM(dbus_std_ifaces.DBusProperties):
 
         lock_data = self._lock_data.get(self._lock_type, None)
         if not lock_data:
-            raise mm1.MMCoreError(
-                mm1.MMCoreError.FAILED,
+            raise pm_errors.MMCoreError(
+                pm_errors.MMCoreError.FAILED,
                 'Current lock type does not match the SIM lock capabilities.')
 
-        self._CheckCode(
-                pin, lock_data, mm1.MM_MODEM_LOCK_SIM_PUK, SimPukError())
+        self._CheckCode(pin, lock_data, mm1_constants.MM_MODEM_LOCK_SIM_PUK,
+                        SimPukError())
 
         logging.info('Entered correct PIN.')
-        self._ResetRetries(mm1.MM_MODEM_LOCK_SIM_PIN)
-        self._lock_type = mm1.MM_MODEM_LOCK_NONE
+        self._ResetRetries(mm1_constants.MM_MODEM_LOCK_SIM_PIN)
+        self._lock_type = mm1_constants.MM_MODEM_LOCK_NONE
         self._modem.UpdateLockStatus()
         self._modem.Expose3GPPProperties()
         self._UpdateProperties()
 
     @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_SIM, in_signature='ss')
+    @dbus.service.method(mm1_constants.I_SIM, in_signature='ss')
     def SendPuk(self, puk, pin):
         """
         Sends the PUK and a new PIN to unlock the SIM card.
@@ -357,14 +359,14 @@ class SIM(dbus_std_ifaces.DBusProperties):
         @param pin: A string containing the PIN code.
 
         """
-        if self._lock_type != mm1.MM_MODEM_LOCK_SIM_PUK:
+        if self._lock_type != mm1_constants.MM_MODEM_LOCK_SIM_PUK:
             logging.info('No PUK lock in place. Nothing to do.')
             return
 
         lock_data = self._lock_data.get(self._lock_type, None)
         if not lock_data:
-            raise mm1.MMCoreError(
-                    mm1.MMCoreError.FAILED,
+            raise pm_errors.MMCoreError(
+                    pm_errors.MMCoreError.FAILED,
                     'Current lock type does not match the SIM locks in place.')
 
         if lock_data['retries'] == 0:
@@ -373,16 +375,16 @@ class SIM(dbus_std_ifaces.DBusProperties):
         self._CheckCode(puk, lock_data, None, SimFailureError())
 
         logging.info('Entered correct PUK.')
-        self._ResetRetries(mm1.MM_MODEM_LOCK_SIM_PIN)
-        self._ResetRetries(mm1.MM_MODEM_LOCK_SIM_PUK)
-        self._lock_data[mm1.MM_MODEM_LOCK_SIM_PIN]['code'] = pin
-        self._lock_type = mm1.MM_MODEM_LOCK_NONE
+        self._ResetRetries(mm1_constants.MM_MODEM_LOCK_SIM_PIN)
+        self._ResetRetries(mm1_constants.MM_MODEM_LOCK_SIM_PUK)
+        self._lock_data[mm1_constants.MM_MODEM_LOCK_SIM_PIN]['code'] = pin
+        self._lock_type = mm1_constants.MM_MODEM_LOCK_NONE
         self._modem.UpdateLockStatus()
         self._modem.Expose3GPPProperties()
         self._UpdateProperties()
 
     @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_SIM, in_signature='sb')
+    @dbus.service.method(mm1_constants.I_SIM, in_signature='sb')
     def EnablePin(self, pin, enabled):
         """
         Enables or disables PIN checking.
@@ -402,12 +404,12 @@ class SIM(dbus_std_ifaces.DBusProperties):
         if self.locked or self._lock_enabled:
             raise SimFailureError()
 
-        lock_data = self._lock_data[mm1.MM_MODEM_LOCK_SIM_PIN]
-        self._CheckCode(
-                pin, lock_data, mm1.MM_MODEM_LOCK_SIM_PUK, SimPukError())
+        lock_data = self._lock_data[mm1_constants.MM_MODEM_LOCK_SIM_PIN]
+        self._CheckCode(pin, lock_data, mm1_constants.MM_MODEM_LOCK_SIM_PUK,
+                        SimPukError())
         self._lock_enabled = True
         self._show_retries = True
-        self._ResetRetries(mm1.MM_MODEM_LOCK_SIM_PIN)
+        self._ResetRetries(mm1_constants.MM_MODEM_LOCK_SIM_PIN)
         self._UpdateProperties()
         self.modem.UpdateLockStatus()
 
@@ -418,16 +420,16 @@ class SIM(dbus_std_ifaces.DBusProperties):
         if self.locked:
             self.SendPin(pin)
         else:
-            lock_data = self._lock_data[mm1.MM_MODEM_LOCK_SIM_PIN]
-            self._CheckCode(
-                    pin, lock_data, mm1.MM_MODEM_LOCK_SIM_PUK, SimPukError())
-            self._ResetRetries(mm1.MM_MODEM_LOCK_SIM_PIN)
+            lock_data = self._lock_data[mm1_constants.MM_MODEM_LOCK_SIM_PIN]
+            self._CheckCode(pin, lock_data,
+                            mm1_constants.MM_MODEM_LOCK_SIM_PUK, SimPukError())
+            self._ResetRetries(mm1_constants.MM_MODEM_LOCK_SIM_PIN)
         self._lock_enabled = False
         self._UpdateProperties()
         self.modem.UpdateLockStatus()
 
     @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_SIM, in_signature='ss')
+    @dbus.service.method(mm1_constants.I_SIM, in_signature='ss')
     def ChangePin(self, old_pin, new_pin):
         """
         Changes the PIN code.
@@ -439,10 +441,10 @@ class SIM(dbus_std_ifaces.DBusProperties):
         if not self._lock_enabled or self.locked:
             raise SimFailureError()
 
-        lock_data = self._lock_data[mm1.MM_MODEM_LOCK_SIM_PIN]
-        self._CheckCode(
-                old_pin, lock_data, mm1.MM_MODEM_LOCK_SIM_PUK, SimPukError())
-        self._ResetRetries(mm1.MM_MODEM_LOCK_SIM_PIN)
-        self._lock_data[mm1.MM_MODEM_LOCK_SIM_PIN]['code'] = new_pin
+        lock_data = self._lock_data[mm1_constants.MM_MODEM_LOCK_SIM_PIN]
+        self._CheckCode(old_pin, lock_data,
+                        mm1_constants.MM_MODEM_LOCK_SIM_PUK, SimPukError())
+        self._ResetRetries(mm1_constants.MM_MODEM_LOCK_SIM_PIN)
+        self._lock_data[mm1_constants.MM_MODEM_LOCK_SIM_PIN]['code'] = new_pin
         self._UpdateProperties()
         self.modem.UpdateLockStatus()

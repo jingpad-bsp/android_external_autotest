@@ -5,8 +5,9 @@
 import dbus
 import dbus.service
 
-import mm1
 import utils
+
+from autotest_lib.client.cros.cellular import mm1_constants
 
 # TODO(armansito): Have this class implement all Messaging methods
 # and make Modems have a reference to an instance of Messaging
@@ -21,7 +22,7 @@ class Messaging(dbus.service.Interface):
     """
 
     @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_MODEM_MESSAGING, out_signature='ao')
+    @dbus.service.method(mm1_constants.I_MODEM_MESSAGING, out_signature='ao')
     def List(self):
         """
         Retrieves all SMS messages.
@@ -35,7 +36,7 @@ class Messaging(dbus.service.Interface):
         raise NotImplementedError()
 
     @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_MODEM_MESSAGING, in_signature='o')
+    @dbus.service.method(mm1_constants.I_MODEM_MESSAGING, in_signature='o')
     def Delete(self, path):
         """
         Deletes an SMS message.
@@ -49,7 +50,7 @@ class Messaging(dbus.service.Interface):
         raise NotImplementedError()
 
     @utils.log_dbus_method()
-    @dbus.service.method(mm1.I_MODEM_MESSAGING,
+    @dbus.service.method(mm1_constants.I_MODEM_MESSAGING,
                          in_signature='a{sv}', out_signature='o')
     def Create(self, properties):
         """
@@ -64,7 +65,7 @@ class Messaging(dbus.service.Interface):
         """
         raise NotImplementedError()
 
-    @dbus.service.signal(mm1.I_MODEM_MESSAGING, signature='ob')
+    @dbus.service.signal(mm1_constants.I_MODEM_MESSAGING, signature='ob')
     def Added(self, path, received):
         """
         Emitted when any part of a new SMS has been received or added (but not
@@ -83,7 +84,7 @@ class Messaging(dbus.service.Interface):
         """
         raise NotImplementedError()
 
-    @dbus.service.signal(mm1.I_MODEM_MESSAGING, signature='o')
+    @dbus.service.signal(mm1_constants.I_MODEM_MESSAGING, signature='o')
     def Completed(self, path):
         """
         Emitted when the complete-ness status of an SMS message changes.
@@ -97,7 +98,7 @@ class Messaging(dbus.service.Interface):
         """
         raise NotImplementedError()
 
-    @dbus.service.signal(mm1.I_MODEM_MESSAGING, signature='o')
+    @dbus.service.signal(mm1_constants.I_MODEM_MESSAGING, signature='o')
     def Deleted(self, path):
         """
         Emitted when a message has been deleted.

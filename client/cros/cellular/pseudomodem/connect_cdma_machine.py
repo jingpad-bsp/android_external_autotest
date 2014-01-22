@@ -5,7 +5,9 @@
 import logging
 
 import connect_machine
-import mm1
+import pm_errors
+
+from autotest_lib.client.cros.cellular import mm1_constants
 
 class ConnectCdmaMachine(connect_machine.ConnectMachine):
     """
@@ -27,17 +29,18 @@ class ConnectCdmaMachine(connect_machine.ConnectMachine):
         if not network.activated:
             logging.info('ConnectCdmaMachine: Service is not activated. Cannot'
                          ' connect.')
-            self.raise_cb(mm1.MMCoreError(mm1.MMCoreError.FAILED,
-                                          'Service not activated.'))
+            self.raise_cb(pm_errors.MMCoreError(pm_errors.MMCoreError.FAILED,
+                                                'Service not activated.'))
             return False
 
         logging.info('ConnectCdmaMachine: Setting state to CONNECTING.')
-        reason = mm1.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
-        self._modem.ChangeState(mm1.MM_MODEM_STATE_CONNECTING, reason)
+        reason = mm1_constants.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
+        self._modem.ChangeState(mm1_constants.MM_MODEM_STATE_CONNECTING,
+                                reason)
         return True
 
     def _GetModemStateFunctionMap(self):
         fmap = super(ConnectCdmaMachine, self)._GetModemStateFunctionMap()
-        fmap[mm1.MM_MODEM_STATE_REGISTERED] = \
+        fmap[mm1_constants.MM_MODEM_STATE_REGISTERED] = \
             ConnectCdmaMachine._HandleRegisteredState
         return fmap
