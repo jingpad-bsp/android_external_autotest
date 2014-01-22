@@ -278,7 +278,7 @@ class RobotWrapper:
                 CENTER, CENTER, 45, starting_spacing,
                 CENTER, CENTER, 45, ending_spacing,
                 0, 1, 0, 1, self._speed_dict[GV.SLOW], 'basic')
-        return 'python %s %s.p %f %f %d %d %f %f %d %d %d %d %d %d %f %s' % para
+        return 'python %s %s_min.p %f %f %d %d %f %f %d %d %d %d %d %d %f %s' % para
 
     def _get_control_command_one_stationary_finger(self, robot_script, gesture,
                                                    variation):
@@ -305,7 +305,7 @@ class RobotWrapper:
 
         para = (robot_script, self._board, stationary_x, stationary_y,
                 start_x, start_y, end_x, end_y, speed)
-        cmd = 'python %s %s.p %f %f %f %f %f %f %s' % para
+        cmd = 'python %s %s_min.p %f %f %f %f %f %f %s' % para
         return cmd
 
     def _get_control_command_line(self, robot_script, gesture, variation):
