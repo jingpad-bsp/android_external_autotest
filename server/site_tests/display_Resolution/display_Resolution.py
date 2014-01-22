@@ -7,7 +7,6 @@
 import logging
 import os
 import time
-import xmlrpclib
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import test
@@ -36,14 +35,14 @@ class display_Resolution(test.test):
     ]
 
     def initialize(self, host):
-        self._connector_id = None
         self._errors = []
         self._host = host
         self._test_data_dir = os.path.join(
                 self.bindir, 'display_Resolution_test_data')
         self._display_client = display_client.DisplayClient(host)
         self._display_client.initialize(self._test_data_dir)
-        self._chameleon_board = host.chameleon
+        self._chameleon = host.chameleon
+        self._chameleon_port = None
 
     def cleanup(self):
         if self._display_client:
@@ -51,8 +50,8 @@ class display_Resolution(test.test):
 
     def run_once(self, host, usb_serial=None, test_mirrored=False,
                  test_suspend_resume=False):
-        self._connector_id, self._connector_type = self.get_external_output()
-        if self._connector_id is None:
+        self._chameleon_port = self.get_connected_port()
+        if self._chameleon_port is None:
             raise error.TestError('DUT and Chameleon board not connected')
 
         for resolution in self.RESOLUTION_TEST_LIST:
@@ -73,29 +72,26 @@ class display_Resolution(test.test):
 
                 self.test_display(resolution)
             finally:
-                self._chameleon_board.Reset()
+                self._chameleon.reset()
 
         if self._errors:
             raise error.TestError(', '.join(self._errors))
 
-    def get_external_output(self):
-        """Gets the first available external output port between Chameleon
-        and DUT.
+    def get_connected_port(self):
+        """Gets the first connected output port between Chameleon and DUT.
 
-        @return: A tuple (the ID of Chameleon connector,
-                          the name of Chameleon connector)
+        @return: A ChameleonPort object.
         """
         # TODO(waihong): Support multiple connectors.
-        for connector_id in self._chameleon_board.ProbeInputs():
+        for chameleon_port in self._chameleon.get_all_ports():
             # Plug to ensure the connector is plugged.
-            self._chameleon_board.Plug(connector_id)
-            connector_name = self._chameleon_board.GetConnectorType(
-                    connector_id)
+            chameleon_port.plug()
+            connector_type = chameleon_port.get_connector_type()
             output = self._display_client.get_connector_name()
             # TODO(waihong): Make sure eDP work in this way.
-            if output and output.startswith(connector_name):
-                return (connector_id, connector_name)
-        return (None, None)
+            if output and output.startswith(connector_type):
+                return chameleon_port
+        return None
 
     def set_up_chameleon(self, resolution):
         """Loads the EDID of the given resolution onto Chameleon.
@@ -104,34 +100,16 @@ class display_Resolution(test.test):
                 resolution to test.
         """
         logging.info('Setting up %r on port %d (%s)...',
-                     resolution, self._connector_id, self._connector_type)
-
+                     resolution,
+                     self._chameleon_port.get_connector_id(),
+                     self._chameleon_port.get_connector_type())
         edid_filename = os.path.join(
                 self._test_data_dir, 'edids', '%s_%dx%d' % resolution)
         if not os.path.exists(edid_filename):
             raise ValueError('EDID file %r does not exist' % edid_filename)
 
-        logging.info('Create edid: %s', edid_filename)
-        edid_id = self._chameleon_board.CreateEdid(
-                xmlrpclib.Binary(open(edid_filename).read()))
-
-        logging.info('Apply edid %d on port %d (%s)',
-                     edid_id, self._connector_id, self._connector_type)
-        self._chameleon_board.ApplyEdid(self._connector_id, edid_id)
-        self._chameleon_board.DestoryEdid(edid_id)
-
-    # TODO(waihong): Move the frame capture method to Chameleon wrapper.
-    def capture_chameleon_screen(self, file_path):
-        """Captures Chameleon framebuffer.
-
-        @param file_path: The path of file for output.
-
-        @return: The byte-array for the screen.
-        """
-        pixels = self._chameleon_board.DumpPixels(self._connector_id).data
-        # Write to file for debug.
-        open(file_path, 'w+').write(pixels)
-        return pixels
+        logging.info('Apply edid: %s', edid_filename)
+        self._chameleon_port.apply_edid(open(edid_filename).read())
 
     def test_display(self, resolution):
         """Main display testing logic.
@@ -161,7 +139,7 @@ class display_Resolution(test.test):
         time.sleep(self.CALIBRATION_IMAGE_SETUP_TIME)
 
         logging.info('Capturing framebuffer on Chameleon.')
-        chameleon_pixels = self.capture_chameleon_screen(chameleon_path)
+        chameleon_pixels = self._chameleon_port.capture_screen(chameleon_path)
         chameleon_pixels_len = len(chameleon_pixels)
 
         logging.info('Capturing framebuffer on DUT.')

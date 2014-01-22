@@ -285,13 +285,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         # a servo is required, i.e. when the servo_args is not None.
         if servo_args is not None:
             self.servo = self._servo_host.create_healthy_servo_object()
-        # TODO(waihong): Create a wrapper for the Chameleond Proxy such that
-        # we can hide the RPC specific logic, like wrapping the binary data
-        # in xmlrpclib.Binary().
-        # TODO(waihong): Add verify and repair logic which are required while
-        # deploying to Cros Lab.
         if chameleon_args is not None:
-            self.chameleon = self._chameleon_host.get_chameleond_proxy()
+            self.chameleon = self._chameleon_host.create_chameleon_board()
 
 
     def _create_chameleon_host(self, chameleon_args):

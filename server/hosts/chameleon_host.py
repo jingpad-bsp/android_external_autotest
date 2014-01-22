@@ -9,6 +9,7 @@
 import xmlrpclib
 
 from autotest_lib.client.bin import utils
+from autotest_lib.server.cros.chameleon import chameleon
 from autotest_lib.server.hosts import ssh_host
 
 
@@ -63,16 +64,6 @@ class ChameleonHost(ssh_host.SSHHost):
         return self._is_in_lab
 
 
-    def get_chameleond_proxy(self):
-        """Return a proxy that can be used to communicate with chameleond.
-
-        @returns: An xmlrpclib.ServerProxy that is connected to the chameleond
-                  on the host.
-
-        """
-        return self._chameleond_proxy
-
-
     def get_wait_up_processes(self):
         """Get the list of local processes to wait for in wait_up.
 
@@ -85,3 +76,9 @@ class ChameleonHost(ssh_host.SSHHost):
         processes = [self.CHAMELEOND_PROCESS]
         return processes
 
+
+    def create_chameleon_board(self):
+        """Create a ChameleonBoard object."""
+        # TODO(waihong): Add verify and repair logic which are required while
+        # deploying to Cros Lab.
+        return chameleon.ChameleonBoard(self._chameleond_proxy)
