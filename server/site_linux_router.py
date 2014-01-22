@@ -39,6 +39,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
     HOSTAPD_CONF_FILE_PATTERN = '/tmp/hostapd-test-%s.conf'
     HOSTAPD_LOG_FILE_PATTERN = '/tmp/hostapd-test-%s.log'
     HOSTAPD_PID_FILE_PATTERN = '/tmp/hostapd-test-%s.pid'
+    HOSTAPD_CONTROL_INTERFACE_PATTERN = '/tmp/hostapd-test-%s.ctrl'
     HOSTAPD_DRIVER_NAME = 'nl80211'
 
     STATION_CONF_FILE_PATTERN = '/tmp/wpa-supplicant-test-%s.conf'
@@ -137,7 +138,9 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         conf_file = self.HOSTAPD_CONF_FILE_PATTERN % interface
         log_file = self.HOSTAPD_LOG_FILE_PATTERN % interface
         pid_file = self.HOSTAPD_PID_FILE_PATTERN % interface
+        control_interface = self.HOSTAPD_CONTROL_INTERFACE_PATTERN % interface
         hostapd_conf_dict['interface'] = interface
+        hostapd_conf_dict['ctrl_interface'] = control_interface
 
         # Generate hostapd.conf.
         self.router.run("cat <<EOF >%s\n%s\nEOF\n" %
@@ -237,7 +240,6 @@ class LinuxRouter(site_linux_system.LinuxSystem):
     def __get_default_hostap_config(self):
         """@return dict of default options for hostapd."""
         return {'hw_mode': 'g',
-                'ctrl_interface': '/tmp/hostapd-test.control',
                 'logger_syslog': '-1',
                 'logger_syslog_level': '0',
                 # default RTS and frag threshold to ``off''
@@ -620,10 +622,9 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                deauthenticated.
 
         """
+        control_if = self.hostapd_instances[-1]['config_dict']['ctrl_interface']
         self.router.run('%s -p%s deauthenticate %s' %
-                        (self.cmd_hostapd_cli,
-                         self.hostapd_instances[-1]['ctrl_interface'],
-                         client_mac))
+                        (self.cmd_hostapd_cli, control_if, client_mac))
 
 
     def send_management_frame(self, frame_type, instance=0):
