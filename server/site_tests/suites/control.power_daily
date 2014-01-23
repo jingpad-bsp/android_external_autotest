@@ -16,7 +16,7 @@ take a long time (several hours) to run and are run only once a day.
 """
 
 from autotest_lib.server import site_host_attributes
-from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import error, global_config
 
 def _run_client_test(machine):
     client = hosts.create_host(machine)
@@ -54,14 +54,19 @@ def _run_client_test(machine):
     client.power_off()
 
     try:
-        if hasattr(client_attributes, 'wifi'):
-            wifi_ap, wifi_sec, wifi_pw = client_attributes.wifi.split(',')
+        client_at.run_test('power_LoadTest', loop_count=1, loop_time=3600,
+                           check_network=False, tag='WIRED_1hr')
+        wifi_ap = global_config.global_config.get_config_value('CLIENT',
+                'wireless_ssid', default=None)
+        wifi_sec = global_config.global_config.get_config_value('CLIENT',
+                'wireless_security', default=None)
+        wifi_pw = global_config.global_config.get_config_value('CLIENT',
+                'wireless_password', default=None)
+        if wifi_ap:
             client_at.run_test('power_LoadTest', loop_count=1, loop_time=3600,
                                force_wifi=True, wifi_ap=wifi_ap,
                                wifi_sec=wifi_sec, wifi_pw=wifi_pw,
                                tag='WIFI_1hr')
-        client_at.run_test('power_LoadTest', loop_count=1, loop_time=3600,
-                           check_network=False, tag='WIRED_1hr')
     finally:
         client.power_on()
 
