@@ -15,6 +15,9 @@ class hardware_TrimIntegrity(test.test):
     This test will write 1 GB of data and verify that trimmed data are gone and
     untrimmed data are unaffected. The verification will be run in 5 passes with
     0%, 25%, 50%, 75%, and 100% of data trimmed.
+
+    Also, perform 4K random read QD32 before and after trim. We should see some
+    speed / latency difference if the device firmware trim data properly.
     """
 
     version = 1
@@ -82,6 +85,12 @@ class hardware_TrimIntegrity(test.test):
         cmd = str('dd if=/dev/urandom of=%s bs=%d count=%d oflag=direct' %
                   (self._filename, chunk_size, chunk_count))
         utils.run(cmd)
+
+        # Check read speed/latency when reading real data.
+        self.job.run_test('hardware_StorageFio',
+                          filesize=file_size,
+                          requirements=[('4k_read_qd32', [])],
+                          tag='before_trim')
 
         # Calculate hash value for zero'ed and one'ed data
         cmd = str('dd if=/dev/zero of=/dev/stdout bs=%d count=1 | %s' %
@@ -155,6 +164,12 @@ class hardware_TrimIntegrity(test.test):
         keyval['trim_verify_non_delete'] = trim_verify_non_delete
         keyval['trim_deterministic'] = trim_deterministic
         self.write_perf_keyval(keyval)
+
+        # Check read speed/latency when reading from trimmed data.
+        self.job.run_test('hardware_StorageFio',
+                          filesize=file_size,
+                          requirements=[('4k_read_qd32', [])],
+                          tag='after_trim')
 
         # Raise error when untrimmed data changed only.
         # Don't care about trimmed data.
