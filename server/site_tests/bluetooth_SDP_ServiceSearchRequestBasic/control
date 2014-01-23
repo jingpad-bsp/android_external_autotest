@@ -14,7 +14,11 @@ DOC = """
 Verify the correct behaviour of the device when searching for services.
 
 The tester sends a Service Search Request to the DUT, searching the UUID of
-SDP Server Service.
+SDP Server Service, which is known to exist. Tester also searchs for Service
+Class ID = 0x0001, which should never exist.
+
+This test covers Bluetooth SIG test cases TP/SERVER/SS/BV-01-C and
+TP/SERVER/SS/BV-04-C
 """
 
 from autotest_lib.server.cros.bluetooth import bluetooth_tester

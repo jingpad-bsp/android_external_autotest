@@ -13,6 +13,7 @@ class bluetooth_SDP_ServiceSearchRequestBasic(bluetooth_test.BluetoothTest):
     version = 1
 
     SDP_SERVER_CLASS_ID = 0x1000
+    NO_EXISTING_SERVICE_CLASS_ID = 0x0001
 
 
     def correct_request(self):
@@ -23,11 +24,20 @@ class bluetooth_SDP_ServiceSearchRequestBasic(bluetooth_test.BluetoothTest):
         """
         # connect to the DUT via L2CAP using SDP socket
         self.tester.connect(self.adapter['Address'])
-        # at least the SDP server service exists
+
         for size in 16, 32, 128:
+            # test case TP/SERVER/SS/BV-01-C:
+            # at least the SDP server service exists
             resp = self.tester.service_search_request(
                    [self.SDP_SERVER_CLASS_ID], 3, size)
             if not 0 in resp:
+                return False
+            # test case TP/SERVER/SS/BV-04-C:
+            # Service with Class ID = 0x0001 should never exist, as this UUID is
+            # reserved as Bluetooth Core Specification UUID
+            resp = self.tester.service_search_request(
+                   [self.NO_EXISTING_SERVICE_CLASS_ID], 3, size)
+            if resp:
                 return False
         return True
 
