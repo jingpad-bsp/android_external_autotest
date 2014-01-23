@@ -79,7 +79,8 @@ class desktopui_ScreenLockerTelemetry(test.test):
         """Unlock the screen with the right password."""
         logging.debug('unlock_screen')
         self.attempt_unlock()
-        utils.poll_for_condition(lambda: not self._chrome.browser.oobe,
+        utils.poll_for_condition(
+                lambda: not self._chrome.browser.oobe_exists,
                 exception=error.TestFail('Failed to unlock screen'))
         if self.screen_locked:
             raise error.TestFail('Screen should be unlocked')
