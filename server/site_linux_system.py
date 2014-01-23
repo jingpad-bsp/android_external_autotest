@@ -199,6 +199,10 @@ class LinuxSystem(object):
                 if net_dev.phy == full_interface.phy]) == 1:
             self._packet_capturer.configure_raw_monitor(
                     self._capture_interface, frequency, ht_type=ht_type)
+        else:
+            self.host.run('%s link set %s up' %
+                          (self.cmd_ip, self._capture_interface))
+
         # Start the capture.
         self._packet_capturer.start_capture(self._capture_interface, './debug/',
                                             snaplen=snaplen)
