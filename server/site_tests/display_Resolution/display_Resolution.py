@@ -5,6 +5,7 @@
 """This is a server side resolution display test using the Chameleon board."""
 
 import logging
+import operator
 import os
 import time
 
@@ -22,7 +23,12 @@ class display_Resolution(test.test):
     """
     version = 1
     CALIBRATION_IMAGE_SETUP_TIME = 10
-    PIXEL_DIFF_MARGIN = 1
+
+    # Allow a range of pixel value difference.
+    PIXEL_DIFF_VALUE_MARGIN = 5
+    # Allow a number of pixels not matched, caused by the cursor.
+    TOTAL_WRONG_PIXELS_MARGIN = 20
+
     RESOLUTION_TEST_LIST = [
             # Mix DP and HDMI together to test the converter cases.
             ('DP', 1280, 800),
@@ -54,9 +60,9 @@ class display_Resolution(test.test):
         if self._chameleon_port is None:
             raise error.TestError('DUT and Chameleon board not connected')
 
-        for resolution in self.RESOLUTION_TEST_LIST:
+        for tag, width, height in self.RESOLUTION_TEST_LIST:
             try:
-                self.set_up_chameleon(resolution)
+                self.set_up_chameleon((tag, width, height))
                 logging.info('Reconnect output...')
                 self._display_client.reconnect_output_and_wait()
                 logging.info('Set mirrored: %s', test_mirrored)
@@ -70,8 +76,17 @@ class display_Resolution(test.test):
                     else:
                         raise error.TestError('DUT is not up after resume')
 
-                self.test_display(resolution)
+                logging.info('Waiting the calibration image stable.')
+                self._display_client.load_calibration_image((width, height))
+                self._display_client.move_cursor_to_bottom_right()
+                time.sleep(self.CALIBRATION_IMAGE_SETUP_TIME)
+
+                self.check_screen_with_chameleon(
+                        '%s-%dx%d' % (tag, width, height),
+                        self.PIXEL_DIFF_VALUE_MARGIN,
+                        self.TOTAL_WRONG_PIXELS_MARGIN)
             finally:
+                self._display_client.close_tab()
                 self._chameleon.reset()
 
         if self._errors:
@@ -111,32 +126,27 @@ class display_Resolution(test.test):
         logging.info('Apply edid: %s', edid_filename)
         self._chameleon_port.apply_edid(open(edid_filename).read())
 
-    def test_display(self, resolution):
-        """Main display testing logic.
+    def check_screen_with_chameleon(self,
+            tag, pixel_diff_value_margin=0, total_wrong_pixels_margin=0):
+        """Checks the DUT external screen with Chameleon.
 
-        1. Open a calibration image of the given resolution, and set it to
-           fullscreen on the external display.
-        2. Capture the whole screen from the display buffer of Chameleon.
-        3. Capture the framebuffer on DUT.
-        4. Verify that the captured screen match the content of DUT
-           framebuffer.
+        1. Capture the whole screen from the display buffer of Chameleon.
+        2. Capture the framebuffer on DUT.
+        3. Verify that the captured screen match the content of DUT framebuffer.
 
-        @param resolution: A tuple (tag, width, height) representing the
-                resolution to test.
+        @param tag: A string of tag for the prefix of output filenames.
+        @param pixel_diff_value_margin: The margin for comparing a pixel. Only
+                if a pixel difference exceeds this margin, will treat as a wrong
+                pixel.
+        @param total_wrong_pixels_margin: The margin for the number of wrong
+                pixels. If the total number of wrong pixels exceeds this margin,
+                the check fails.
+
+        @return: True if the check passed; otherwise False.
         """
-        logging.info('Testing %r...', resolution)
-        tag, width, height = resolution
-        resolution_str = '%dx%d' % (width, height)
-        chameleon_image_file = 'chameleon-%s-%s.bgra' % (tag, resolution_str)
-        chameleon_path = os.path.join(self.outputdir, chameleon_image_file)
-        dut_image_file = 'dut-%s-%s.bgra' % (tag, resolution_str)
-        dut_path = os.path.join(self.outputdir, dut_image_file)
-
-        self._display_client.move_cursor_to_bottom_right()
-
-        logging.info('Waiting the calibration image stable.')
-        self._display_client.load_calibration_image((width, height))
-        time.sleep(self.CALIBRATION_IMAGE_SETUP_TIME)
+        logging.info('Checking screen with Chameleon (tag: %s)...', tag)
+        chameleon_path = os.path.join(self.outputdir, '%s-chameleon.bgra' % tag)
+        dut_path = os.path.join(self.outputdir, '%s-dut.bgra' % tag)
 
         logging.info('Capturing framebuffer on Chameleon.')
         chameleon_pixels = self._chameleon_port.capture_screen(chameleon_path)
@@ -147,28 +157,37 @@ class display_Resolution(test.test):
         dut_pixels_len = len(dut_pixels)
 
         if chameleon_pixels_len != dut_pixels_len:
-            error_message = ('Lengths of pixels not the same: %d != %d' %
-                    (chameleon_pixels_len, dut_pixels_len))
-            logging.error(error_message)
-            self._errors.append(error_message)
+            message = ('Result of %s: lengths of pixels not match: %d != %d' %
+                    (tag, chameleon_pixels_len, dut_pixels_len))
+            logging.error(message)
+            self._errors.append(message)
             return
 
         logging.info('Comparing the pixels...')
-        for i in xrange(len(dut_pixels)):
-            chameleon_pixel = ord(chameleon_pixels[i])
-            dut_pixel = ord(dut_pixels[i])
+        total_wrong_pixels = 0
+        # The dut_pixels array are formatted in BGRA.
+        for i in xrange(0, len(dut_pixels), 4):
             # Skip the fourth byte, i.e. the alpha value.
-            if (i % 4 != 3 and abs(chameleon_pixel - dut_pixel) >
-                    self.PIXEL_DIFF_MARGIN):
-                error_message = ('The pixel, offset %d, on %s '
-                        'resolution %s, not match: %d != %d' %
-                        (i, tag, resolution_str, chameleon_pixel, dut_pixel))
-                logging.error(error_message)
-                self._errors.append(error_message)
-                break
+            chameleon_pixel = tuple(ord(p) for p in chameleon_pixels[i:i+3])
+            dut_pixel = tuple(ord(p) for p in dut_pixels[i:i+3])
+            # Compute the maximal difference for a pixel.
+            diff_value = max(map(abs, map(
+                    operator.sub, chameleon_pixel, dut_pixel)))
+            if (diff_value > pixel_diff_value_margin):
+                if total_wrong_pixels == 0:
+                    first_pixel_message = ('offset %d, %r != %r' %
+                            (i, chameleon_pixel, dut_pixel))
+                total_wrong_pixels += 1
+
+        if total_wrong_pixels > 0:
+            message = ('Result of %s: total %d wrong pixels, e.g. %s' %
+                    (tag, total_wrong_pixels, first_pixel_message))
+            if total_wrong_pixels > total_wrong_pixels_margin:
+                logging.error(message)
+                self._errors.append(message)
+            else:
+                logging.warn(message)
         else:
-            logging.info('All pixels match.')
+            logging.info('Result of %s: all pixels match', tag)
             for file_path in (chameleon_path, dut_path):
                 os.remove(file_path)
-
-        self._display_client.close_tab()
