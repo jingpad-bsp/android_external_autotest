@@ -502,8 +502,9 @@ def parse_arguments(argv):
                              'skip time consuming steps like sysinfo and '
                              'collecting crash information.')
     parser.add_argument('--args', metavar='ARGS',
-                        help='Argument string to pass through to test. Only '
-                             'supported for runs against a local DUT.')
+                        help='Whitespace separated argument string to pass '
+                             'through to test. Only supported for runs '
+                             'against a local DUT.')
     parser.add_argument('--autotest_dir', metavar='AUTOTEST_DIR',
                         help='Use AUTOTEST_DIR instead of normal board sysroot '
                              'copy of autotest, and skip the quickmerge step.')

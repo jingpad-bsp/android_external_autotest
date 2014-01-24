@@ -22,24 +22,32 @@ of a sonic host, and that the sonic host is on the same subnet as the
 Device Under Test.
 
 Usage: test_that <ip address of DUT> --board=<boardname of DUT>
-           --args="sonic_hostname=<ip or name of sonichost>,
-                   extension_path=/path/to/local/extension_in_testdir"
+           --args="sonic_hostname=<ip or name of sonichost>
+                   extension_dir=name of extension directory in test dir"
 
-The extension_path is optional, if none is specified the default ToT
+The extension_dir is optional, if none is specified the default ToT
 extension will get used. If one is specified, it must reside in the
 test's root directory (i.e autotest_checkout/client/site_tests/\
-                           desktopui_SonicExtension/).
+                           desktopui_SonicExtension/<some_name>), and
+you only need to specify <some_name> as the extension_dir argument.
+
+Example usage:
+test_that <dut ip> desktopui_SonicExtension
+    --board=lumpy --args="sonic_hostname=<sonic hostname>"
+
+test_that <dut ip> desktopui_SonicExtension
+    --board=lumpy
+    --args="sonic_hostname=<sonic hostname>,extension_dir=<dirname>"
 """
 
 args_dict = utils.args_to_dict(args)
 sonic_hostname = args_dict.get('sonic_hostname')
-extension_path = args_dict.get('extension_path')
+extension_dir = args_dict.get('extension_dir')
 if not sonic_hostname:
     raise error.TestError('Cannot run sonic_AppTest without a sonic host.'
                           'please specify --args="sonic_hostname=<ip>" with '
                           'test_that.')
 
-
 job.run_test('desktopui_SonicExtension',
-             extension_path=extension_path,
+             extension_dir=extension_dir,
              chromecast_ip=sonic_hostname)

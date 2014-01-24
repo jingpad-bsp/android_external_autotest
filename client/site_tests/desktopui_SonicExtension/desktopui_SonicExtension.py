@@ -19,13 +19,13 @@ class desktopui_SonicExtension(test.test):
     """Test loading the sonic extension through chromedriver."""
     version = 1
     cast_delay = 20
+    dep = 'sonic_extension'
 
 
-    def _install_extension(self):
-        dep = 'sonic_extension'
-        dep_dir = os.path.join(self.autodir, 'deps', dep)
-        self.job.install_pkg(dep, 'dep', dep_dir)
-        return os.path.join(dep_dir, 'src', dep)
+    def _install_sonic_extension(self):
+        dep_dir = os.path.join(self.autodir, 'deps', self.dep)
+        self.job.install_pkg(self.dep, 'dep', dep_dir)
+        return dep_dir
 
 
     def _check_manifest(self, extension_path):
@@ -68,17 +68,23 @@ class desktopui_SonicExtension(test.test):
         driver.find_element_by_id('mirrorUrl').click()
 
 
-    def initialize(self, extension_path=None, live=False):
+    def initialize(self, extension_dir=None, live=False):
         """Initialize the test.
 
-        @param extension_path: Path to the extension.
+        @param extension_dir: Directory of a custom extension.
+            If one isn't supplied, the latest ToT extension is
+            downloaded and loaded into chromedriver.
         @param live: Use a live url if True. Start a test server
             and server a hello world page if False.
         """
         super(desktopui_SonicExtension, self).initialize()
 
-        if not extension_path:
-            extension_path = self._install_extension()
+        if not extension_dir:
+            extension_path = self._install_sonic_extension()
+        else:
+            extension_path = os.path.join(self.autodir, 'tests',
+                                          'desktopui_SonicExtension',
+                                          extension_dir)
         if not os.path.exists(extension_path):
             raise error.TestError('Failed to install sonic extension.')
         self._check_manifest(extension_path)
@@ -106,10 +112,20 @@ class desktopui_SonicExtension(test.test):
     def _close_popups(self, driver):
         """Close any popup windows the extension might open by default.
 
+        Since we're going to handle the extension ourselves all we need is
+        the main browser window with a single tab. The safest way to handle
+        the popup however, is to close the currently active tab, so we don't
+        mess with webdrivers ui debugger.
+
         @param driver: Chromedriver instance.
+
+        @raises WebDriverException: If you close the tab associated with
+            the ui debugger.
         """
-        for h in driver.window_handles[1:]:
-            driver.switch_to_window(h)
+        # TODO: There are several, albeit hacky ways, to handle this popup
+        # that might need to change with different versions of the extension
+        # until the core issue is resolved. See crbug.com/338399.
+        if len(driver.window_handles) > 1:
             driver.close()
         driver.switch_to_window(driver.window_handles[0])
 

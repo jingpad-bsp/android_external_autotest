@@ -12,9 +12,9 @@ import urllib2
 
 import common
 
+from autotest_lib.client.common_lib import autotemp
 from autotest_lib.client.common_lib import utils
 
-version = 1
 
 TEST_EXTENSION_ID = 'hfaagokkkhdbgiakmmlclaapfelnkoah'
 UPDATE_CHECK_URL = ('https://clients2.google.com/service/update2/')
@@ -23,6 +23,11 @@ MANIFEST_KEY = ('MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC+hlN5FB+tjCsBszmBIvI'
                 'cD/djLLQm2zZfFygP4U4/o++ZM91EWtgII10LisoS47qT2TIOg4Un4+G57e'
                 'lZ9PjEIhcJfANqkYrD3t9dpEzMNr936TLB2u683B5qmbB68Nq1Eel7KVc+F'
                 '0BqhBondDqhvDvGPEV0vBsbErJFlNH7SQIDAQAB')
+
+
+class SonicDownloaderException(Exception):
+    """Generic sonic dowloader exception."""
+    pass
 
 
 def get_download_url_from_omaha(extension_id):
@@ -74,47 +79,43 @@ def fix_public_key(extracted_extension_folder):
         f.write(json.dumps(manifest_json))
 
 
-def setup(output_crx, unzipped_crx_dir):
+def setup_extension(unzipped_crx_dir):
     """Setup for tests that need a chromecast extension.
 
     Download the extension from an omaha server, unzip it and modify its
     manifest.json to include a public key.
 
-    @param output_crx: The name of the crx file into which we will download
-                       the extension. If this file already exists it will get
-                       re-written.
-    @param unzipped_crx_dir: A directory for the unzipped extension.
+    @param unzipped_crx_dir: Destination directory for the unzipped extension.
 
     @raises CmdTimeoutError: If we timeout unzipping the extension.
     """
-    download_extension(output_crx)
-    unzip_cmd = 'unzip -o "%s" -d "%s"' % (output_crx, unzipped_crx_dir)
+    output_crx_dir = autotemp.tempdir()
+    output_crx = os.path.join(output_crx_dir.name, 'sonic_extension.crx')
+    try:
+        download_extension(output_crx)
+        unzip_cmd = 'unzip -o "%s" -d "%s"' % (output_crx, unzipped_crx_dir)
 
-    # The unzip command will return a non-zero exit status if there are
-    # extra bytes at the start/end of the zipfile. This is not a critical
-    # failure and the extension will still work.
-    cmd_output = utils.run(unzip_cmd, ignore_status=True, timeout=1)
+        # The unzip command will return a non-zero exit status if there are
+        # extra bytes at the start/end of the zipfile. This is not a critical
+        # failure and the extension will still work.
+        cmd_output = utils.run(unzip_cmd, ignore_status=True, timeout=1)
+    except Exception as e:
+        if os.path.exists(unzipped_crx_dir):
+            shutil.rmtree()
+        raise SonicDownloaderException(e)
+    finally:
+        if os.path.exists(output_crx):
+            os.remove(output_crx)
+        output_crx_dir.clean()
+
     if not os.path.exists(unzipped_crx_dir):
-        raise IOError('Unzip failed, command %s, stderr %s', unzip_cmd,
-                       cmd_output.stderr)
+        raise SonicDownloaderException('Unable to download sonic extension.')
 
     # TODO(beeps): crbug.com/325869, investigate the limits of component
     # extensions. For now this is ok because even sonic testing inlines a
     # public key for their test extension.
-    fix_public_key(unzipped_crx_dir)
-
-
-srcdir = os.path.join(os.getcwd(), 'src')
-output_crx = os.path.join(srcdir, 'sonic_extension.crx')
-unzipped_crx_dir = os.path.join(os.path.dirname(output_crx),
-    re.split('[.]', os.path.basename(output_crx))[0])
-
-try:
-    setup(output_crx, unzipped_crx_dir)
-except:
-    if os.path.exists(unzipped_crx_dir):
-        shutil.rmtree(unzipped_crx_dir, ignore_errors=True)
-    raise
-finally:
-    if os.path.exists(output_crx):
-        os.remove(output_crx)
+    try:
+        fix_public_key(unzipped_crx_dir)
+    except Exception as e:
+        shutil.rmtree(unzipped_crx_dir)
+        raise SonicDownloaderException(e)

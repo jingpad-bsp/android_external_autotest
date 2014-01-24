@@ -31,6 +31,7 @@ args_dict = utils.args_to_dict(args)
 
 def run(machine):
     sonic_hostname = args_dict.get('sonic_hostname')
+    extension_dir = args_dict.get('extension_dir')
     if not sonic_hostname:
         raise error.TestError('Cannot run sonic_AppTest without a sonic host. '
                               'please specify --args="sonic_hostname=<ip>" with '
@@ -39,6 +40,6 @@ def run(machine):
     cros_host = hosts.create_host(machine)
     sonic_host = hosts.create_host(sonic_hostname)
     job.run_test('sonic_AppTest', cros_host=cros_host, sonic_host=sonic_host,
-                 disable_sysinfo=True)
+                 extension_dir=extension_dir, disable_sysinfo=True)
 
 parallel_simple(run, machines)
