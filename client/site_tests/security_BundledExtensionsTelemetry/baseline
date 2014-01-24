@@ -23,7 +23,7 @@
     },
     { "id": "pmfjbimdmchhbnneeidfognadeopoehp",
       "name": "Image Loader",
-      "effectiveHostPermissions": [],
+      "effectiveHostPermissions": ["https://www.googledrive.com/*"],
       "apiPermissions": ["fileBrowserHandler",
                          "fileBrowserHandlerInternal",
                          "fileBrowserPrivate"]
