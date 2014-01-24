@@ -22,6 +22,12 @@ class platform_Powerwash(test.test):
     version = 1
 
     def run_once(self, host):
+        # TODO(deymo): Remove this once we fix crbug.com/337574
+        host_board = host.get_board().split(':', 1)[1]
+        if host_board == 'peppy':
+            logging.error('Not running on peppy due to http://crbug.com/337574')
+            raise error.TestNAError('Test disabled on peppy.')
+
         self._host = host
 
         count_before = self._powerwash_count()
