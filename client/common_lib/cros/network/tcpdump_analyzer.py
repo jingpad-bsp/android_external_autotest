@@ -12,8 +12,8 @@ from autotest_lib.client.common_lib import utils
 
 Frame = collections.namedtuple('Frame', ['time_delta_seconds',
                                          'bit_rate',
-                                         'mcs_index'])
-
+                                         'mcs_index',
+                                         'probe_ssid'])
 
 def get_frames(pcap_path, remote_host=None, pcap_filter='',
                command_tcpdump='tcpdump'):
@@ -37,8 +37,7 @@ def get_frames(pcap_path, remote_host=None, pcap_filter='',
     bad_lines = 0
     for frame in result.stdout.splitlines():
         match = re.search(r'^(?P<ts>\d{2}:\d{2}:\d{2}\.\d{6}).* '
-                          r'(?P<rate>\d+.\d) Mb/s (MCS (?P<mcs_index>\d+))?',
-                          frame)
+                          r'(?P<rate>\d+.\d) Mb/s', frame)
         if not match:
             logging.debug('Found bad tcpdump line: %s', frame)
             bad_lines += 1
@@ -48,10 +47,23 @@ def get_frames(pcap_path, remote_host=None, pcap_filter='',
                                               '%H:%M:%S.%f')
         diff_seconds = rel_time.time()
         rate = float(match.group('rate'))
-        mcs_index = match.group('mcs_index')
-        if mcs_index:
-            mcs_index = int(mcs_index)
-        frames.append(Frame(diff_seconds, rate, mcs_index))
+
+        match = re.search(r'MCS (\d+)', frame)
+        if match:
+            mcs_index = int(match.group(1))
+        else:
+            mcs_index = None
+
+        # Note: this fails if the SSID contains a ')'
+        match = re.search(r'Probe Request \(([^)]*)\)', frame)
+        if match:
+            probe_ssid = match.group(1)
+        else:
+            probe_ssid = None
+
+        frames.append(Frame(diff_seconds, rate, mcs_index, probe_ssid))
+
     if bad_lines:
         logging.error('Failed to parse %d lines.', bad_lines)
+
     return frames
