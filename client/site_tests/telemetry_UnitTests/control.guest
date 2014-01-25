@@ -15,4 +15,5 @@ DOC = """
 Verifies that all Telemetry unit tests pass when run as guest (incognito).
 """
 
-job.run_test('telemetry_UnitTests', browser_type='system-guest', tag='guest')
+job.run_test('telemetry_UnitTests', browser_type='system-guest', tag='guest',
+             unit_tests=['BrowserTest'], perf_tests=[])
