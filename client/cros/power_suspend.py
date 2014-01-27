@@ -414,7 +414,10 @@ class Suspender(object):
             logging.error(message)
             self.failures.append(ex)
             if self._throw:
-                raise error.TestFail(message)
+                if isinstance(ex, sys_power.KernelError):
+                    raise error.TestWarn(message)
+                else:
+                    raise error.TestFail(message)
             return None
 
 
