@@ -21,6 +21,12 @@ class PacketCapturesDisabledError(Exception):
 RemoteCaptureResult = collections.namedtuple('RemoteCaptureResult',
                                              ['pcap_path', 'log_path'])
 
+# The number of bytes needed for a probe request is hard to define,
+# because the frame contents are variable (e.g. radiotap header may
+# contain different fields, maybe SSID isn't the first tagged
+# parameter?). The value here is 2x the largest frame size observed in
+# a quick sample.
+SNAPLEN_WIFI_PROBE_REQUEST = 600
 
 def get_packet_capturer(host, host_description=None, cmd_ifconfig=None,
                         cmd_ip=None, cmd_iw=None, cmd_netdump=None,

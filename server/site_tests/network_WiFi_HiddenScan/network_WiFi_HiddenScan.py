@@ -10,35 +10,25 @@ from autotest_lib.server.cros.network import packet_capturer
 from autotest_lib.server.cros.network import wifi_cell_test_base
 
 
-class network_WiFi_VisibleScan(wifi_cell_test_base.WiFiCellTestBase):
-    """Test scanning behavior when no hidden SSIDs are configured."""
+class network_WiFi_HiddenScan(wifi_cell_test_base.WiFiCellTestBase):
+    """Test scanning behavior when a hidden SSID is configured."""
 
     version = 1
 
     BROADCAST_SSID = ''
 
-    def parse_additional_arguments(self, commandline_args, additional_params):
-        """
-        Hook into super class to take control files parameters.
-
-        @param commandline_args: dict of parsed parameters from the autotest.
-        @param additional_params: list of HostapConfig objects.
-
-        """
-        self._ap_configs = additional_params
-
-
     def run_once(self):
         """Test body."""
-        ap_config = hostap_config.HostapConfig(channel=1)
+        ap_config = hostap_config.HostapConfig(channel=1, hide_ssid=True)
         # Set up the router and associate the client with it.
         self.context.configure(ap_config)
         self.context.router.start_capture(
                 ap_config.frequency,
                 ht_type=ap_config.ht_packet_capture_mode,
                 snaplen=packet_capturer.SNAPLEN_WIFI_PROBE_REQUEST)
+        test_ssid=self.context.router.get_ssid()
         assoc_params = xmlrpc_datatypes.AssociationParameters(
-                ssid=self.context.router.get_ssid())
+                ssid=test_ssid, is_hidden=True)
         self.context.assert_connect_wifi(assoc_params)
         results = self.context.router.stop_capture()
         if len(results) != 1:
@@ -49,9 +39,8 @@ class network_WiFi_VisibleScan(wifi_cell_test_base.WiFiCellTestBase):
                 results[0].pcap_path,
                 remote_host=self.context.router.host,
                 probe_sender=self.context.client.wifi_mac)
-        if len(probe_ssids) != 1:
-            raise error.TestError('Expected exactly one SSID, but got %s' %
+        if len(probe_ssids) != 2:
+            raise error.TestError('Expected exactly two SSIDs, but got %s' %
                                   probe_ssids)
-        if probe_ssids - {self.BROADCAST_SSID}:
-            raise error.TestError('Expected broadcast SSID, but got %s' %
-                                  probe_ssids)
+        if probe_ssids - {self.BROADCAST_SSID, test_ssid}:
+            raise error.TestError('Unexpected probe SSIDs: %s' % probe_ssids)
