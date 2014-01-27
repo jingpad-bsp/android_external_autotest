@@ -9,6 +9,12 @@ class platform_CryptohomeMount(test.test):
     version = 1
 
     def run_once(self):
+        try:
+            self.run_once_no_retry()
+        except Exception as err:
+            raise error.TestFailRetry(repr(err))
+
+    def run_once_no_retry(self):
         test_user = 'this_is_a_local_test_account@chromium.org';
         test_password = 'this_is_a_test_password';
         # Get the hash for the test user account
