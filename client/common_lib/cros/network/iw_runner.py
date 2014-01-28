@@ -40,7 +40,9 @@ IwNetDev = collections.namedtuple('IwNetDev', ['phy', 'if_name', 'if_type'])
 #   modes: List of strings containing interface modes supported, such as "AP".
 #   command: List of strings containing nl80211 commands supported, such as
 #          "authenticate".
-IwPhy = collections.namedtuple('Phy', ['name', 'bands', 'modes', 'commands'])
+#   max_scan_ssids: Maximum number of SSIDs which can be scanned at once.
+IwPhy = collections.namedtuple(
+    'Phy', ['name', 'bands', 'modes', 'commands', 'max_scan_ssids'])
 
 DEFAULT_COMMAND_IW = 'iw'
 
@@ -243,16 +245,35 @@ class IwRunner(object):
 
         """
         output = self._run('%s list' % self._command_iw).stdout
-        current_phy = None
+
+        pending_phy_name = None
         current_band = None
         current_section = None
         all_phys = []
+
+        def add_pending_phy():
+            """Add the pending phy into |all_phys|."""
+            bands = tuple(IwBand(band.num,
+                                 tuple(band.frequencies),
+                                 tuple(band.mcs_indices))
+                          for band in pending_phy_bands)
+            new_phy = IwPhy(pending_phy_name,
+                            bands,
+                            tuple(pending_phy_modes),
+                            tuple(pending_phy_commands),
+                            pending_phy_max_scan_ssids)
+            all_phys.append(new_phy)
+
         for line in output.splitlines():
             match_phy = re.search('Wiphy (.*)', line)
             if match_phy:
-                current_phy = IwPhy(name=match_phy.group(1), bands=[], modes=[],
-                                    commands=[])
-                all_phys.append(current_phy)
+                if pending_phy_name:
+                    add_pending_phy()
+                pending_phy_name = match_phy.group(1)
+                pending_phy_bands = []
+                pending_phy_modes = []
+                pending_phy_commands = []
+                pending_phy_max_scan_ssids = None
                 continue
 
             match_section = re.match('\s*(\w.*):\s*$', line)
@@ -263,22 +284,33 @@ class IwRunner(object):
                     current_band = IwBand(num=int(match_band.group(1)),
                                           frequencies=[],
                                           mcs_indices=[])
-                    current_phy.bands.append(current_band)
+                    pending_phy_bands.append(current_band)
                 continue
 
-            if current_section == 'Supported interface modes' and current_phy:
+            # Check for max_scan_ssids. This isn't a section, but it
+            # also isn't within a section.
+            match_max_scan_ssids = re.match('\s*max # scan SSIDs: (\d+)',
+                                            line)
+            if match_max_scan_ssids and pending_phy_name:
+                pending_phy_max_scan_ssids = int(
+                    match_max_scan_ssids.group(1))
+                continue
+
+            if (current_section == 'Supported interface modes' and
+                pending_phy_name):
                 mode_match = re.search('\* (\w+)', line)
                 if mode_match:
-                    current_phy.modes.append(mode_match.group(1))
+                    pending_phy_modes.append(mode_match.group(1))
                     continue
 
-            if current_section == 'Supported commands' and current_phy:
+            if current_section == 'Supported commands' and pending_phy_name:
                 command_match = re.search('\* (\w+)', line)
                 if command_match:
-                    current_phy.commands.append(command_match.group(1))
+                    pending_phy_commands.append(command_match.group(1))
                     continue
 
-            if not all([current_band, current_phy, line.startswith('\t')]):
+            if not all([current_band, pending_phy_name,
+                        line.startswith('\t')]):
                 continue
 
             mhz_match = re.search('(\d+) MHz', line)
@@ -299,6 +331,7 @@ class IwRunner(object):
                     else:
                         # Must be a single rate like '32   '
                         current_band.mcs_indices.append(int(piece))
+        add_pending_phy()
         return all_phys
 
 
