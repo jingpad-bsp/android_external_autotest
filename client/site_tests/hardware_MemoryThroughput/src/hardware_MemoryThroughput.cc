@@ -464,8 +464,8 @@ int main(int argc, char* argv[]) {
     // Any value is fine for "kValueInt" or "kValuePointer".
     const int kValueInt = 2010;
     const int* kValuePointer = reinterpret_cast<int*>(kValueInt);
-    scoped_array<int*> table(new int*[num_table_entry]);
-    scoped_array<int*> table2(new int*[num_table_entry]);
+    scoped_ptr<int*[]> table(new int*[num_table_entry]);
+    scoped_ptr<int*[]> table2(new int*[num_table_entry]);
     if (table == NULL || table2 == NULL)
       continue;
     double time_passed;
