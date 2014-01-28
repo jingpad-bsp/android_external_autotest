@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 AUTHOR = "deymo, chromeos-installer@google.com"
-EXPERIMENTAL = "True"
 NAME = "platform_Powerwash"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
