@@ -10,6 +10,7 @@ import dbus.exceptions
 
 import pm_constants
 
+import common
 from autotest_lib.client.cros.cellular import mm1_constants
 
 

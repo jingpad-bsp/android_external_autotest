@@ -9,6 +9,7 @@ This module provides exception classes for pseudomodem.
 
 import dbus.exceptions
 
+import common
 from autotest_lib.client.cros.cellular import mm1_constants
 
 class MMError(dbus.exceptions.DBusException):

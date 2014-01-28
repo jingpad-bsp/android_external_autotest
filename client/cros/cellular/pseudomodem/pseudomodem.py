@@ -1,484 +1,476 @@
 #!/usr/bin/env python
-
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# This module is the entry point for pseudomodem. Though honestly, I can't think
+# of any case when you want to use this module directly. Instead, use the
+# |pseudomodem_context| module that provides a way to launch pseudomodem in a
+# child process.
+
+import argparse
 import dbus
-import dbus.exceptions
 import dbus.mainloop.glib
 import gobject
+import imp
+import json
 import logging
-import optparse
 import os
 import signal
-import time
+import sys
 
-import client
-import modem_3gpp
+import logging_setup
 import modem_cdma
+import modem_3gpp
 import modemmanager
 import sim
-import state_machine_factory
-import testing
+import state_machine_factory as smf
 
 import common
-from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros.cellular import net_interface, mm1_constants
+from autotest_lib.client.cros.cellular import mm1_constants
 
-
-DEFAULT_TEST_NETWORK_PREFIX = 'Test Network'
-
-class TestModemManagerContextError(Exception):
-    """
-    Exception subclass for exceptions that can be raised by
-    TestModemManagerContext for specific errors related to it.
-
-    """
-    pass
-
-class TestModemManagerContext(object):
-    """
-    TestModemManagerContext is an easy way for an autotest to setup a pseudo
-    modem manager environment. A typical test will look like:
-
-    with pseudomodem.TestModemManagerContext(True):
-        ...
-        # Do stuff
-        ...
-
-    Which will stop the real modem managers that are executing and launch the
-    pseudo modem manager in a subprocess.
-
-    Passing False to the TestModemManagerContext constructor will simply render
-    this class a no-op, not affecting any environment configuration.
-
-    """
-
-    DEFAULT_MANAGERS = [ ('modemmanager', 'ModemManager'),
-                         ('cromo', 'cromo') ]
-
-    def __init__(self, use_pseudomodem,
-                 family='3GPP',
-                 sim=None,
-                 sm_factory=None,
-                 modem=None):
-        """
-        @param use_pseudomodem: Whether or not the context should create a
-                                pseudo modem manager.
-
-        @param family: If the value of |modem| is None, a default Modem of
-                       family 3GPP or CDMA is initialized based on the value of
-                       this parameter, which is a string that contains either
-                       '3GPP' or 'CDMA'. The default value is '3GPP'.
-
-        @param sim: An instance of sim.SIM. This is required for 3GPP modems
-                    as it encapsulates information about the carrier.
-
-        @param sm_factory: An instance of StateMachineFactory subclass. If
-                           None, an instance of StateMachineFactory is used.
-                           This argument is only used if |modem| is None.
-
-        @param modem: An instance of a modem.Modem subclass. If none is provided
-                      the default modem is defined by the |family| parameter.
-
-        """
-        self.use_pseudomodem = use_pseudomodem
-        if modem:
-            self.pseudo_modem = modem
-        elif family == '3GPP':
-            self.pseudo_modem = modem_3gpp.Modem3gpp(
-                    state_machine_factory=sm_factory)
-        elif family == 'CDMA':
-            self.pseudo_modem = modem_cdma.ModemCdma(
-                    state_machine_factory=sm_factory)
-        else:
-            raise TestModemManagerContextError(
-                "Invalid modem family value: " + str(family))
-        if not sim and family != 'CDMA':
-            # Get a handle to the global 'sim' module here, as the name clashes
-            # with a local variable.
-            simmodule = globals()['sim']
-            sim = simmodule.SIM(simmodule.SIM.Carrier('test'),
-                                mm1_constants.MM_MODEM_ACCESS_TECHNOLOGY_GSM)
-        self.sim = sim
-        self.pseudo_modem_manager = None
-
-    def __enter__(self):
-        if self.use_pseudomodem:
-            for manager in self.DEFAULT_MANAGERS:
-                try:
-                    utils.run('/sbin/stop %s' % manager[0])
-                except error.CmdError:
-                    logging.info('Failed to stop upstart job "%s". Will try to'
-                                 ' kill directly.', manager[0])
-                    try:
-                        utils.run('/usr/bin/pkill %s' % manager[1])
-                    except error.CmdError:
-                        logging.info(
-                                'Failed to kill "%s", assuming it is gone',
-                                manager[1])
-            self.pseudo_modem_manager = \
-                PseudoModemManager(modem=self.pseudo_modem, sim=self.sim)
-            self.pseudo_modem_manager.Start()
-        return self
-
-    def __exit__(self, *args):
-        if self.use_pseudomodem:
-            self.pseudo_modem_manager.Stop()
-            self.pseudo_modem_manager = None
-            for manager in self.DEFAULT_MANAGERS:
-                try:
-                    utils.run('/sbin/start %s' % manager[0])
-                except error.CmdError:
-                    pass
-
-    def GetPseudoModemManager(self):
-        """
-        Returns the underlying PseudoModemManager object.
-
-        @return An instance of PseudoModemManager, or None, if this object
-                was initialized with use_pseudomodem=False.
-
-        """
-        return self.pseudo_modem_manager
-
-
-class PseudoModemManagerException(Exception):
-    """Class for exceptions thrown by PseudoModemManager."""
-    pass
+# Flag used by pseudomodem_context that is defined below in ParserArguments.
+CLI_FLAG = '--cli'
 
 class PseudoModemManager(object):
     """
-    This class is responsible for setting up the virtual ethernet interfaces,
-    initializing the DBus objects and running the main loop.
+    The main class to be used to launch the pseudomodem.
 
-    This class can be utilized either using Python's with statement, or by
-    calling Start and Stop:
-
-        with PseudoModemManager(modem, sim):
-            ... do stuff ...
-
-    or
-
-        pmm = PseudoModemManager(modem, sim)
-        pmm.Start()
-        ... do stuff ...
-        pmm.Stop()
-
-    The PseudoModemManager constructor takes a variable called "detach". If a
-    value of True is given, the PseudoModemManager will run the main loop in
-    a child process. This is particularly useful when using PseudoModemManager
-    in an autotest:
-
-        with PseudoModemManager(modem, sim, detach=True):
-            ... This will run the modem manager in the background while this
-            block executes. When the code in this block finishes running, the
-            PseudoModemManager will automatically kill the child process.
-
-    If detach=False, then the pseudo modem manager will run the main process
-    until the process exits. PseudoModemManager is created with detach=False
-    when this file is run as an executable.
+    There should be only one instance of this class that orchestrates
+    pseudomodem.
 
     """
 
-    MODEM_INIT_TIMEOUT = 5
-
-    modem_net_interface = net_interface.PseudoNetInterface()
-
-    def __init__(self,
-                 modem,
-                 sim=None,
-                 detach=True):
-        self.modem = modem
-        self.sim = sim
-        self.detach = detach
-        self.child = None
-        self.started = False
-
-    def __enter__(self):
-        self.Start()
-        return self
-
-    def __exit__(self, *args):
-        self.Stop()
-
-    def Start(self):
+    def Setup(self, opts):
         """
-        Starts the pseudo modem manager based on the initialization parameters.
-        Depending on the configuration, this method may or may not fork. If a
-        subprocess is launched, a DBus mainloop will be initialized by the
-        subprocess. This method sets up the virtual Ethernet interfaces and
-        initializes tha DBus objects and servers.
+        Call |Setup| to prepare pseudomodem to be launched.
+
+        @param opts: The options accepted by pseudomodem. See top level function
+                |ParseArguments| for details.
 
         """
-        logging.info('Starting pseudo modem manager.')
-        self.started = True
+        self._opts = opts
 
-        if self.detach:
-            self.child = os.fork()
-            if self.child == 0:
-                self._Run()
-            else:
-                time.sleep(self.MODEM_INIT_TIMEOUT)
-        else:
-            self._Run()
+        self._in_exit_sequence = False
+        self._manager = None
+        self._modem = None
+        self._state_machine_factory = None
+        self._sim = None
+        self._mainloop = None
 
-    def Stop(self):
+        self._dbus_loop = dbus.mainloop.glib.DBusGMainLoop()
+        self._bus = dbus.SystemBus(private=True, mainloop=self._dbus_loop)
+        self._bus_name = dbus.service.BusName(mm1_constants.I_MODEM_MANAGER,
+                                              self._bus)
+        logging.info('Exported dbus service with well known name: |%s|',
+                     self._bus_name.get_name())
+
+        self._SetupPseudomodemParts()
+        logging.info('Pseudomodem setup completed!')
+
+    def StartBlocking(self):
         """
-        Stops the pseudo modem manager. This means killing the subprocess,
-        if any, stopping the DBus server, and tearing down the virtual Ethernet
-        pair.
+        Start pseudomodem operation.
+
+        This call blocks untill |GracefulExit| is called from some other
+        context.
 
         """
-        logging.info('Stopping pseudo modem manager.')
-        if not self.started:
-            logging.info('Not started, cannot stop.')
+        self._mainloop = gobject.MainLoop()
+        self._mainloop.run()
+
+    def GracefulExit(self):
+        """ Stop pseudomodem operation and clean up. """
+        if self._in_exit_sequence:
+            logging.debug('Already exiting.')
             return
-        if self.detach:
-            if self.child != 0:
-                os.kill(self.child, signal.SIGINT)
-                os.waitpid(self.child, 0)
-                self.child = 0
-        else:
-            self._Cleanup()
-        self.started = False
 
-    def Restart(self):
+        self._in_exit_sequence = True
+        logging.info('pseudomodem shutdown sequence initiated...')
+        try:
+            if self._manager:
+                self._manager.Remove(self._modem)
+            if self._mainloop:
+                self._mainloop.quit()
+        except Exception as e:
+            logging.warning('Error while exiting: %s', repr(e))
+        logging.info('pseudomodem: Bye! Bye!')
+
+    def _SetupPseudomodemParts(self):
         """
-        Restarts the pseudo modem manager.
+        Contructs all pseudomodem objects, but does not start operation.
 
-        """
-        self.Stop()
-        self.Start()
-
-    def SetModem(self, new_modem):
-        """
-        Sets the modem object that is exposed by the pseudo modem manager and
-        restarts the pseudo modem manager.
-
-        @param new_modem: An instance of modem.Modem to assign.
+        Three main objects are created: the |Modem|, the |Sim|, and the
+        |StateMachineFactory|. This objects may be instantiations of the default
+        classes, or of user provided classes, depending on options provided.
 
         """
-        self.modem = new_modem
-        self.Restart()
-        time.sleep(5)
+        self._ReadCustomParts()
 
-    def SetSIM(self, new_sim):
+        use_3gpp = (self._opts.family == '3GPP')
+
+        if not self._modem and not self._state_machine_factory:
+            self._state_machine_factory = smf.StateMachineFactory()
+            logging.info('Created default state machine factory.')
+
+        if use_3gpp and not self._sim:
+            self._sim = sim.SIM(sim.SIM.Carrier('test'),
+                                mm1_constants.MM_MODEM_ACCESS_TECHNOLOGY_GSM,
+                                locked=self._opts.locked)
+            logging.info('Created default 3GPP SIM.')
+
+        # Store this constant here because the variable name is too long.
+        network_available = dbus.types.UInt32(
+                mm1_constants.MM_MODEM_3GPP_NETWORK_AVAILABILITY_AVAILABLE)
+        if not self._modem:
+            if use_3gpp:
+                technology_gsm = dbus.types.UInt32(
+                        mm1_constants.MM_MODEM_ACCESS_TECHNOLOGY_GSM)
+                networks = [modem_3gpp.Modem3gpp.GsmNetwork(
+                        'Roaming Network Long ' + str(i),
+                        'Roaming Network Short ' + str(i),
+                        '00100' + str(i + 1),
+                        network_available,
+                        technology_gsm)
+                        for i in xrange(self._opts.roaming_networks)]
+                # TODO(armansito): Support "not activated" initialization option
+                # for 3GPP carriers.
+                self._modem = modem_3gpp.Modem3gpp(
+                        self._state_machine_factory,
+                        roaming_networks=networks)
+                logging.info('Created default 3GPP modem.')
+            else:
+                self._modem = modem_cdma.ModemCdma(
+                        self._state_machine_factory,
+                        modem_cdma.ModemCdma.CdmaNetwork(
+                                activated=self._opts.activated))
+                logging.info('Created default CDMA modem.')
+
+        # Everyone gets the |_bus|, woohoo!
+        self._manager = modemmanager.ModemManager(self._bus)
+        self._modem.SetBus(self._bus)  # Also sets it on StateMachineFactory.
+        self._manager.Add(self._modem)
+
+        # Unfortunately, setting the SIM has to be deferred until everyone has
+        # their BUS set. |self._sim| exists if the user provided one, or if the
+        # modem family is |3GPP|.
+        if self._sim:
+            self._modem.SetSIM(self._sim)
+
+    def _ReadCustomParts(self):
         """
-        Sets the SIM object that is exposed by the pseudo modem manager and
-        restarts the pseudo modem manager.
+        Loads user provided implementations of pseudomodem objects.
 
-        @param new_sim: An instance of sim.SIM to assign.
-
-        """
-        self.sim = new_sim
-        self.Restart()
-
-    def _Cleanup(self):
-        self.modem_net_interface.Teardown()
-
-    def _Run(self):
-        if not self.modem:
-            raise Exception('No modem object has been provided.')
-        self.modem_net_interface.Setup()
-        dbus_loop = dbus.mainloop.glib.DBusGMainLoop()
-        bus = dbus.SystemBus(private=True, mainloop=dbus_loop)
-        named_service = dbus.service.BusName(mm1_constants.I_MODEM_MANAGER, bus)
-        logging.info('Exported dbus service with well know name: |%s|',
-                     named_service.get_name())
-        self.manager = modemmanager.ModemManager(bus)
-
-        self.modem.SetBus(bus)
-        if self.sim:
-            self.modem.SetSIM(self.sim)
-        self.manager.Add(self.modem)
-
-        self.testing_object = testing.Testing(self.modem, bus)
-
-        self.mainloop = gobject.MainLoop()
-
-        def _SignalHandler(signum, frame):
-            logging.info('Signal handler called with signal %s', signum)
-            self.manager.Remove(self.modem)
-            self.mainloop.quit()
-            if self.detach:
-                self._Cleanup()
-                os._exit(0)
-
-        signal.signal(signal.SIGINT, _SignalHandler)
-        signal.signal(signal.SIGTERM, _SignalHandler)
-
-        self.mainloop.run()
-
-    def SendTextMessage(self, sender_no, text):
-        """
-        Allows sending a fake text message notification.
-
-        @param sender_no: TODO
-        @param text: TODO
+        The user can provide their own implementations of the |Modem|, |Sim| or
+        |StateMachineFactory| classes.
 
         """
-        # TODO(armansito): Implement
-        raise NotImplementedError()
+        if not self._opts.test_module:
+            return
+
+        test_module = self._LoadCustomPartsModule(self._opts.test_module)
+
+        if self._opts.test_modem_class:
+            self._modem = self._CreateCustomObject(test_module,
+                                                   self._opts.test_modem_class,
+                                                   self._opts.test_modem_arg)
+
+        if self._opts.test_sim_class:
+            self._sim = self._CreateCustomObject(test_module,
+                                                 self._opts.test_sim_class,
+                                                 self._opts.test_sim_arg)
+
+        if self._opts.test_state_machine_factory_class:
+            if self._opts.test_modem_class:
+                logging.warning(
+                        'User provided a |Modem| implementation as well as a '
+                        '|StateMachineFactory|. Ignoring the latter.')
+            else:
+                self._state_machine_factory = self._CreateCustomObject(
+                        test_module,
+                        self._opts.test_state_machine_factory_class,
+                        self._opts.test_state_machine_factory_arg)
+
+    def _CreateCustomObject(self, test_module, class_name, arg_file_name):
+        """
+        Create the custom object specified by test.
+
+        @param test_module: The loaded module that implemets the custom object.
+
+        @param class_name: Name of the class implementing the custom object.
+
+        @param arg_file_name: Absolute path to file containing list of arguments
+                taken by |test_module|.|class_name| constructor in json.
+
+        @return A brand new object of the custom type.
+
+        @raises AttributeError if the class definition is not found;
+                ValueError if |arg_file| does not contain valid json
+                representaiton of a python list.
+                Other errors may be raised during object creation.
+
+        """
+        arg = None
+        if arg_file_name:
+            arg_file = open(arg_file_name, 'rb')
+            try:
+                arg = json.load(arg_file)
+            finally:
+                arg_file.close()
+            if not isinstance(arg, list):
+                raise ValueError('Argument must be a python list.')
+
+        class_def = getattr(test_module, class_name)
+        try:
+            if arg:
+                logging.debug('Loading test class %s%s',
+                              class_name, str(arg))
+                return class_def(*arg)
+            else:
+                logging.debug('Loading test class %s', class_def)
+                return class_def()
+        except Exception as e:
+            logging.error('Exception raised when instantiating class %s: %s',
+                          class_name, str(e))
+            raise
+
+    def _LoadCustomPartsModule(self, module_abs_path):
+        """
+        Loads the given file as a python module.
+
+        The loaded module *is* added to |sys.modules|.
+
+        @param module_abs_path: Absolute path to the file to be loaded.
+
+        @returns: The loaded module.
+
+        @raises: ImportError if the module can not be loaded, or if another
+                 module with the same name is already loaded.
+
+        """
+        path, name = os.path.split(module_abs_path)
+        name, _ = os.path.splitext(name)
+
+        if name in sys.modules:
+            raise ImportError('A module named |%s| is already loaded.' %
+                              name)
+
+        logging.debug('Loading module %s from %s', name, path)
+        module_file, filepath, data = imp.find_module(name, [path])
+        try:
+            module = imp.load_module(name, module_file, filepath, data)
+        except Exception as e:
+            logging.error(
+                    'Exception raised when loading test module from %s: %s',
+                    module_abs_path, str(e))
+            raise
+        finally:
+            module_file.close()
+        return module
 
 
-def Start(use_cdma=False, activated=True, sim_locked=False,
-          roaming_networks=0, interactive=False, interactive_sm_all=False,
-          interactive_sm_list=None):
+def _NonNegInt(value):
+    value = int(value)
+    if value < 0:
+        raise argparse.ArgumentTypeError('%s is not a non-negative int' % value)
+    return value
+
+def ParseArguments(arg_string=None):
     """
-    Runs the pseudomodem in script mode. This function is called only by the
-    main function.
+    The main argument parser.
 
-    @param use_cdma: If True, the pseudo modem manager will be initialized with
-                     an instance of modem_cdma.ModemCdma, otherwise the default
-                     modem will be used, which is an instance of
-                     modem_3gpp.Modem3gpp.
-    @param activated: If True, the pseudo modem will be initialized as
-                      unactivated and will require service activation.
-    @param sim_locked: If True, the SIM will be initialized with a PIN lock.
-                       This option does nothing if 'use_cdma' is also True.
-    @param roaming_networks: The number networks that will be returned from a
-                             network scan in addition to the home network.
-    @param interactive: If True, the pseudomodem gets launched with an
-                        interactive shell.
-    @param interactive_sm_all: Start all state machines in interactive mode.
-    @param interactive_sm_list: List of state machines to start in interactive
-                                mode.
+    Pseudomodem is a command line tool.
+    Since pseudomodem is a highly customizable tool, the command line arguments
+    are expected to be quite complex.
+    We use argparse to keep the command line options easy to use.
+
+    @param arg_string: If not None, the string to parse. If none, |sys.argv| is
+            used to obtain the argument string.
+
+    @returns: The parsed options object.
+
     """
-    # TODO(armansito): Support "not activated" initialization option for 3GPP
-    #                  carriers.
-    networks = []
-    smf = state_machine_factory.StateMachineFactory()
-    if interactive_sm_all:
-        smf.SetInteractiveAll()
-    elif interactive_sm_list:
-        for sm in interactive_sm_list:
-            smf.SetInteractive(sm)
+    parser = argparse.ArgumentParser(
+            description="Run pseudomodem to simulate a modem using the "
+                        "modemmanager-next DBus interface.")
 
-    if use_cdma:
-        # Import modem_cdma here to avoid circular imports.
-        import modem_cdma
-        m = modem_cdma.ModemCdma(
-                    smf,
-                    modem_cdma.ModemCdma.CdmaNetwork(activated=activated))
-        s = None
-    else:
-        networks = [
-                modem_3gpp.Modem3gpp.GsmNetwork(
-                    'Roaming Network Long ' + str(i),
-                    'Roaming Network Short ' + str(i),
-                    '00100' + str(i + 1),
-                    dbus.types.UInt32(mm1_constants.
-                            MM_MODEM_3GPP_NETWORK_AVAILABILITY_AVAILABLE),
-                    dbus.types.UInt32(
-                            mm1_constants.MM_MODEM_ACCESS_TECHNOLOGY_GSM))
-                for i in xrange(roaming_networks)]
-        m = modem_3gpp.Modem3gpp(smf, roaming_networks=networks)
-        s = sim.SIM(sim.SIM.Carrier(),
-                    mm1_constants.MM_MODEM_ACCESS_TECHNOLOGY_GSM,
-                    locked=sim_locked)
+    parser.add_argument(
+            CLI_FLAG,
+            action='store_true',
+            default=False,
+            help='Launch the command line interface in foreground to interact '
+                 'with the launched pseudomodem process. This argument is used '
+                 'by |pseudomodem_context|. pseudomodem itself ignores it.')
 
-    with PseudoModemManager(modem=m, sim=s, detach=interactive):
-        if interactive:
-            pmclient = client.PseudoModemClient()
-            pmclient.Begin()
+    modem_arguments = parser.add_argument_group(
+            title='Modem options',
+            description='Options to customize the modem exported.')
+    modem_arguments.add_argument(
+            '--family', '-f',
+            choices=['3GPP', 'CDMA'],
+            default='3GPP')
+
+
+    gsm_arguments = parser.add_argument_group(
+            title='3GPP options',
+            description='Options specific to 3GPP modems. [Only make sense '
+                        'when modem family is 3GPP]')
+
+    gsm_arguments.add_argument(
+            '--roaming-networks', '-r',
+            type=_NonNegInt,
+            default=0,
+            metavar='<# networks>',
+            help='Number of roaming networks available')
+
+    cdma_arguments = parser.add_argument_group(
+            title='CDMA options',
+            description='Options specific to CDMA modems. [Only make sense '
+                        'when modem family is CDMA]')
+
+    sim_arguments = parser.add_argument_group(
+            title='SIM options',
+            description='Options to customize the SIM in the modem. [Only make '
+                        'sense when modem family is 3GPP]')
+    sim_arguments.add_argument(
+            '--activated',
+            type=bool,
+            default=True,
+            help='Determine whether the SIM is activated')
+    sim_arguments.add_argument(
+            '--locked', '-l',
+            type=bool,
+            default=False,
+            help='Determine whether the SIM is in locked state')
+
+    testing_arguments = parser.add_argument_group(
+            title='Testing interface options',
+            description='Options to modify how the tests or user interacts '
+                        'with pseudomodem')
+    testing_arguments = parser.add_argument(
+            '--interactive-state-machines-all',
+            type=bool,
+            default=False,
+            help='Launch all state machines in interactive mode.')
+    testing_arguments = parser.add_argument(
+            '--interactive-state-machine',
+            type=str,
+            default=None,
+            help='Launch the specified state machine in interactive mode. May '
+                 'be repeated to specify multiple machines.')
+
+    customize_arguments = parser.add_argument_group(
+            title='Customizable modem options',
+            description='Options to customize the emulated modem.')
+    customize_arguments.add_argument(
+            '--test-module',
+            type=str,
+            default=None,
+            metavar='CUSTOM_MODULE',
+            help='Absolute path to the module with custom definitions.')
+    customize_arguments.add_argument(
+            '--test-modem-class',
+            type=str,
+            default=None,
+            metavar='MODEM_CLASS',
+            help='Name of the class in CUSTOM_MODULE that implements the modem '
+                 'to load.')
+    customize_arguments.add_argument(
+            '--test-modem-arg',
+            type=str,
+            default=None,
+            help='Absolute path to the json description of argument list '
+                 'taken by MODEM_CLASS.')
+    customize_arguments.add_argument(
+            '--test-sim-class',
+            type=str,
+            default=None,
+            metavar='SIM_CLASS',
+            help='Name of the class in CUSTOM_MODULE that implements the SIM '
+                 'to load.')
+    customize_arguments.add_argument(
+            '--test-sim-arg',
+            type=str,
+            default=None,
+            help='Aboslute path to the json description of argument list '
+                 'taken by SIM_CLASS')
+    customize_arguments.add_argument(
+            '--test-state-machine-factory-class',
+            type=str,
+            default=None,
+            metavar='SMF_CLASS',
+            help='Name of the class in CUSTOM_MODULE that impelements the '
+                 'state machine factory to load. Only used if MODEM_CLASS is '
+                 'not provided.')
+    customize_arguments.add_argument(
+            '--test-state-machine-factory-arg',
+            type=str,
+            default=None,
+            help='Absolute path to the json description of argument list '
+                 'taken by SMF_CLASS')
+
+    opts = parser.parse_args(arg_string)
+
+    # Extra sanity checks.
+    if opts.family == 'CDMA' and opts.roaming_networks > 0:
+        raise argparse.ArgumentTypeError('CDMA networks do not support '
+                                         'roaming networks.')
+
+    test_objects = (opts.test_modem_class or
+                    opts.test_sim_class or
+                    opts.test_state_machine_factory_class)
+    if not opts.test_module and test_objects:
+        raise argparse.ArgumentTypeError('test_module is required with any '
+                                         'other customization arguments.')
+
+    if opts.test_modem_class and opts.test_state_machine_factory_class:
+        logging.warning('test-state-machine-factory-class will be ignored '
+                        'because test-modem-class was provided.')
+
+    return opts
+
+# The single global instance of PseudoModemManager.
+_pseudo_modem_manager = None
+
+def sig_handler(signum, frame):
+    """
+    Top level signal handler to handle user interrupt.
+
+    @param signum: The signal received.
+
+    @param frame: Ignored.
+    """
+    global _pseudo_modem_manager
+    logging.debug('Signal handler called with signal %d', signum)
+    if _pseudo_modem_manager:
+        _pseudo_modem_manager.GracefulExit()
 
 def main():
     """
-    The main method, executed when this file is executed as a script.
+    This is the entry point for raw pseudomodem.
+
+    You should not be running this module as a script. If you're trying to run
+    pseudomodem from the command line, see |pseudomodem_context| module.
 
     """
-    usage = """
+    global _pseudo_modem_manager
 
-      Run pseudomodem to simulate a modem using the modemmanager-next
-      DBus interfaces.
+    logging_setup.SetupLogging()
 
-      Use --help for info.
+    logging.info('Pseudomodem commandline: [%s]', str(sys.argv))
+    opts = ParseArguments()
 
-    """
+    signal.signal(signal.SIGINT, sig_handler)
+    signal.signal(signal.SIGTERM, sig_handler)
 
-    parser = optparse.OptionParser(usage=usage)
-    parser.add_option('--debug', dest='debug', action='store_true',
-                      help='Run pseudomodem in debug mode')
-    parser.add_option('--log-file', dest='log_file', action='store', default='',
-                      help='An alternative file to redirect logs to (especially'
-                           ' useful in interactive mode')
-    parser.add_option('-f', '--family', dest='family',
-                      metavar='<family>', type="string",
-                      help='<family> := 3GPP|CDMA')
-    parser.add_option('-n', '--not-activated', dest='not_activated',
-                      action='store_true', default=False,
-                      help='Initialize the service as not-activated.')
-    parser.add_option('-l', '--locked', dest='sim_locked',
-                      action='store_true', default=False,
-                      help='Initialize the SIM as locked.')
-    parser.add_option('-r', '--roaming-networks', dest='roaming_networks',
-                      default=0, type="int", metavar="<# networks>",
-                      help='Number of roaming networks available for scan '
-                           '(3GPP only).')
-    parser.add_option('-i', '--interactive', dest='interactive',
-                      action='store_true', default=False,
-                      help='Launch in interactive mode.')
-    parser.add_option('--interactive-state-machines-all',
-                      dest='interactive_sm_all', action='store_true',
-                      default=False,
-                      help='Initialize all state machines in interactive mode')
-    parser.add_option('--interactive-state-machine',
-                      dest='interactive_sm_list', action='append',
-                      default=None,
-                      help='Initialize a particular state machine in'
-                           'interactive mode. Use multiple times to specify'
-                           'multiple machines.')
-
-    (opts, args) = parser.parse_args()
-
-    # Do this first, before any logging can happen.
-    if opts.interactive and not opts.log_file:
-        opts.log_file = '/tmp/pseudomodem'
-    if opts.log_file:
-        print 'Logging to file %s\n' % opts.log_file
-        # Log to file, but multiplex messages at WARNING or above to the console
-        # If user explicitly requested logging to this particular file, clear
-        # the handlers setup by autotest during import.
-        root = logging.getLogger()
-        if root.handlers:
-            for handler in root.handlers:
-                root.removeHandler(handler)
-        logging.basicConfig(filename=opts.log_file, filemode='w')
-        console = logging.StreamHandler()
-        console.setLevel(logging.WARNING)
-        logging.getLogger().addHandler(console)
-
-    if opts.debug:
-        logging.getLogger().setLevel(logging.DEBUG)
-    else:
-        logging.getLogger().setLevel(logging.INFO)
-
-    if not opts.family:
-        print "A mandatory option '--family' is missing\n"
-        parser.print_help()
-        return
-
-    family = opts.family
-    if family not in [ '3GPP', 'CDMA' ]:
-        print 'Unsupported family: ' + family
-        return
-
-    if opts.roaming_networks < 0:
-        print ('Invalid number of roaming_networks: ' +
-               str(opts.roaming_networks))
-        return
-
-    if opts.roaming_networks > 0 and family == 'CDMA':
-        print 'Cannot initialize roaming networks for family: CDMA'
-        return
-
-    Start(family == 'CDMA', not opts.not_activated, opts.sim_locked,
-          opts.roaming_networks, opts.interactive, opts.interactive_sm_all,
-          opts.interactive_sm_list)
-
+    try:
+        _pseudo_modem_manager = PseudoModemManager()
+        _pseudo_modem_manager.Setup(opts)
+        _pseudo_modem_manager.StartBlocking()
+    except Exception as e:
+        logging.error('Caught exception at top level: %s', str(e))
+        _pseudo_modem_manager.GracefulExit()
+        raise
 
 if __name__ == '__main__':
     main()

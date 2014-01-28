@@ -6,6 +6,7 @@ import dbus
 import logging
 
 import dbus_std_ifaces
+import pm_constants
 import pm_errors
 import utils
 
@@ -87,7 +88,7 @@ class SIM(dbus_std_ifaces.DBusProperties):
         }
 
         CARRIER_LIST = {
-            'test' : ('test', '000', 'Test Network'),
+            'test' : ('test', '000', pm_constants.DEFAULT_TEST_NETWORK_PREFIX),
             'banana' : ('us', '001', 'Banana-Comm'),
             'att': ('us', '090', 'AT&T'),
             'tmobile': ('us', '026', 'T-Mobile'),
