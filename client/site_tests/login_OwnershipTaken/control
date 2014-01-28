@@ -2,20 +2,19 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "Chrome OS Team"
+AUTHOR = "cmasone, mnissler"
 NAME = "login_OwnershipTaken"
-PURPOSE = "Login and ensure that ownership of the device is taken."
-CRITERIA = """
-This test will succeed as long as a test account is able to log in, generate
-and register an 'Owner' keypair.
-"""
-SUITE = "regression"
+SUITE = "bvt, smoke"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"
 TEST_TYPE = "client"
 
+EXPERIMENTAL = "True"
+
 DOC = """
+Login and ensure that ownership of the device is taken.
+
 This is test will log a test user in through the login
 manager, and then simulate taking ownership of the device as the first
 user.

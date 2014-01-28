@@ -2,15 +2,15 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "Chrome OS Team"
+AUTHOR = "cmasone, mnissler"
 NAME = "login_OwnershipNotRetaken"
-PURPOSE = "Verify that only the first login gets ownership."
-CRITERIA = "This test will fail if cryptohome is not mounted after login."
-SUITE = "regression"
+SUITE = "bvt, smoke"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"
 TEST_TYPE = "client"
+
+EXPERIMENTAL = "True"
 
 DOC = """
 This test checks that, after taking ownership successfully, subsequent logins

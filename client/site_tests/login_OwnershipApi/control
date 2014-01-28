@@ -2,19 +2,16 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "Chrome OS Team"
-DOC = """
-Tests to ensure that the Ownership API works for a local device owner.
-"""
+AUTHOR = "cmasone, mnissler"
 NAME = "login_OwnershipApi"
-PURPOSE = "Validate Ownership DBus API"
-CRITERIA = """
-Fail if a call does not behave as expected
-"""
 SUITE = "bvt, smoke"
 TIME="SHORT"
 TEST_CLASS = "login"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"
+
+DOC = """
+Tests to ensure that the Ownership API works for a local device owner.
+"""
 
 job.run_test("login_OwnershipApi")

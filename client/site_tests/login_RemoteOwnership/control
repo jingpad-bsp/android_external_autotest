@@ -2,20 +2,19 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+AUTHOR = "cmasone, mnissler"
+NAME = "login_RemoteOwnership"
+SUITE = "bvt, smoke"
 TIME="SHORT"
-AUTHOR = "The Chromium OS Authors"
+TEST_CLASS = "login"
+TEST_CATEGORY = "Functional"
+TEST_TYPE = "client"
+
+EXPERIMENTAL = "True"
+
 DOC = """
 Tests to ensure that the Ownership API can be used, as an enterprise might,
 to set device policies.
 """
-NAME = "login_RemoteOwnership"
-PURPOSE = "Validate that the Ownership DBus API works for device policies"
-CRITERIA = """
-Fail if a call does not behave as expected
-"""
-SUITE = "regression"
-TEST_CLASS = "login"
-TEST_CATEGORY = "Functional"
-TEST_TYPE = "client"
 
 job.run_test("login_RemoteOwnership")
