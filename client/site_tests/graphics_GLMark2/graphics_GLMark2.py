@@ -10,12 +10,23 @@
 import logging
 import os
 import re
+import string
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import service_stopper
 
-GLMARK2_SCORE_RE = 'glmark2 Score: (\d+)'
+GLMARK2_TEST_RE = r"^\[(?P<scene>.*)\] (?P<options>.*): FPS: (?P<fps>\d+) FrameTime: (?P<frametime>\d+.\d+) ms$"
+GLMARK2_SCORE_RE = r"glmark2 Score: (\d+)"
+
+# perf value description strings may only contain letters, numbers, periods,
+# dashes and underscores.
+# But glmark2 test names are usually in the form:
+#   scene-name:opt=val:opt=v1,v2;v3,v4 or scene:<default>
+# which we convert to:
+#   scene-name.opt_val.opt_v1-v2_v3-v4 or scene.default
+description_table = string.maketrans(":,=;", ".-__")
+description_delete = "<>"
 
 class graphics_GLMark2(test.test):
     version = 1
@@ -72,13 +83,26 @@ class graphics_GLMark2(test.test):
                 raise error.TestFail(line)
 
         if not validation_mode:
+            keyvals = {}
             score = None
+            test_re = re.compile(GLMARK2_TEST_RE)
             for line in result.stdout.splitlines():
-                # glmark2 output the final performance score as:
-                #   glmark2 Score: 530
-                match = re.findall(GLMARK2_SCORE_RE, line)
+                match = test_re.match(line)
                 if match:
-                    score = int(match[0])
+                    test = '%s.%s' % (match.group('scene'),
+                                      match.group('options'))
+                    test = test.translate(description_table,
+                                          description_delete)
+                    frame_time = match.group('frametime')
+                    keyvals[test] = frame_time
+                    self.output_perf_value(description=test, value=frame_time,
+                                           units='ms', higher_is_better=False)
+                else:
+                    # glmark2 output the final performance score as:
+                    #  glmark2 Score: 530
+                    match = re.findall(GLMARK2_SCORE_RE, line)
+                    if match:
+                        score = int(match[0])
             if score is None:
                 raise error.TestFail('Unable to read benchmark score')
             # Output numbers for plotting by harness.
@@ -87,7 +111,6 @@ class graphics_GLMark2(test.test):
                 from autotest_lib.client.cros import factory_setup_modules
                 from cros.factory.event_log import EventLog
                 EventLog('graphics_GLMark2').Log('glmark2_score', score=score)
-            keyvals = {}
             keyvals['glmark2_score'] = score
             self.write_perf_keyval(keyvals)
             self.output_perf_value(description='Score', value=score,
