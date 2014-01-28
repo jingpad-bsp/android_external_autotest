@@ -9,7 +9,8 @@ import logging
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.cellular import mm1_constants
-from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
+from autotest_lib.client.cros.cellular.pseudomodem import pm_constants
+from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
 from autotest_lib.client.cros.networking.chrome_testing \
         import chrome_networking_test_context as cntc
 from autotest_lib.client.cros.networking.chrome_testing import test_utils
@@ -131,7 +132,7 @@ class network_ChromeCellularNetworkProperties(test.test):
             network = networks[0]
             test_utils.simple_network_sanity_check(
                     network,
-                    pseudomodem.DEFAULT_TEST_NETWORK_PREFIX,
+                    pm_constants.DEFAULT_TEST_NETWORK_PREFIX,
                     self._chrome.CHROME_NETWORK_TYPE_CELLULAR)
             return network
 
@@ -175,7 +176,7 @@ class network_ChromeCellularNetworkProperties(test.test):
 
 
     def _run_once_internal(self):
-        name_prefix = pseudomodem.DEFAULT_TEST_NETWORK_PREFIX
+        name_prefix = pm_constants.DEFAULT_TEST_NETWORK_PREFIX
         tests = [ self.SimplePropagationTest(
                         self._chrome_testing,
                         { 'properties': ('AccessTechnologies',
@@ -313,7 +314,9 @@ class network_ChromeCellularNetworkProperties(test.test):
 
 
     def run_once(self, family):
-        with pseudomodem.TestModemManagerContext(True, family):
+        with pseudomodem_context.PseudoModemManagerContext(
+                True,
+                {'family' : family}):
             with cntc.ChromeNetworkingTestContext() as testing_context:
                 self._family = family
                 self._chrome_testing = testing_context

@@ -33,5 +33,6 @@ modem state is DISCONNECTING and to clean up the service otherwise.
 job.run_test('network_3GDisconnectFailure', tag='3GPP')
 
 # CDMA
-job.run_test(
-    'network_3GDisconnectFailure', pseudomodem_family='CDMA', tag='CDMA')
+job.run_test('network_3GDisconnectFailure',
+             pseudomodem_family='CDMA',
+             tag='CDMA')

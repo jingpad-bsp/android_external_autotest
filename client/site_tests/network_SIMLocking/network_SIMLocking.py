@@ -5,11 +5,12 @@
 import dbus
 import logging
 import random
+import time
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
+from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
 from autotest_lib.client.cros.cellular.pseudomodem import sim
 
 from autotest_lib.client.cros.networking import cellular_proxy
@@ -166,38 +167,6 @@ class network_SIMLocking(test.test):
             raise error.TestFail('Expected SIM to be puk-locked.')
 
 
-    def run_with_fresh_test_mm_context(self, test_to_run):
-        """
-        Some of our tests render the pseudomodem useless.
-        Restart pseudomodem and refresh initial state-keeping.
-
-        @param test_to_run is a function that runs the required test.
-
-        """
-        logging.debug('Restarting pseudomodem to run test %s.',
-                      test_to_run.__name__)
-        self.pseudomodem.Restart()
-
-        self.current_pin = sim.SIM.DEFAULT_PIN
-        self.current_puk = sim.SIM.DEFAULT_PUK
-
-        # Resetting modemmanager invalidates the shill dbus object for the
-        # modem.
-        self.device = self.shill.find_cellular_device_object()
-        if not self.device:
-            raise error.TestFail('Failed to find a cellular device.')
-
-        # Be a little cynical and make sure that SIM locks are as expected
-        # before we begin.
-        if (self._is_sim_lock_enabled() or self._is_sim_pin_locked() or
-            self._is_sim_puk_locked()):
-            raise error.TestFail(
-                    'Cellular device in bad initial sim-lock state. '
-                    'LockEnabled: %b, PinLocked:%b, PukLocked:%b.' %
-                    (self._is_sim_lock_enabled(), self._is_sim_pin_locked(),
-                     self._is_sim_puk_locked()))
-
-        test_to_run()
 
 
     def test_unsuccessful_enable_lock(self):
@@ -400,26 +369,55 @@ class network_SIMLocking(test.test):
                                  'the new sim-pin')
 
 
+    def _run_internal(self, test_to_run):
+        """
+        Entry point to run all tests.
+
+        @param test_to_run is a function that runs the required test.
+
+        """
+        self.current_pin = sim.SIM.DEFAULT_PIN
+        self.current_puk = sim.SIM.DEFAULT_PUK
+
+        # Resetting modemmanager invalidates the shill dbus object for the
+        # modem.
+        self.device = self.shill.find_cellular_device_object()
+        if not self.device:
+            raise error.TestFail('Failed to find a cellular device.')
+
+        # Be a little cynical and make sure that SIM locks are as expected
+        # before we begin.
+        if (self._is_sim_lock_enabled() or self._is_sim_pin_locked() or
+            self._is_sim_puk_locked()):
+            raise error.TestFail(
+                    'Cellular device in bad initial sim-lock state. '
+                    'LockEnabled: %b, PinLocked:%b, PukLocked:%b.' %
+                    (self._is_sim_lock_enabled(), self._is_sim_pin_locked(),
+                     self._is_sim_puk_locked()))
+
+        test_to_run()
+
+
     def run_once(self):
         """Entry function into the test."""
         random.seed()
         self.shill = cellular_proxy.CellularProxy.get_proxy()
         self.shill.set_logging_for_cellular_test()
 
-        with pseudomodem.TestModemManagerContext(True) as pm_context:
-            self.pseudomodem = pm_context.GetPseudoModemManager()
+        test_list = [self.test_unsuccessful_enable_lock,
+                     self.test_cause_sim_pin_lock,
+                     self.test_unlock_sim_pin_lock,
+                     self.test_cause_sim_puk_lock,
+                     self.test_unlock_sim_puk_lock,
+                     self.test_brick_sim,
+                     self.test_change_pin]
 
-            self.run_with_fresh_test_mm_context(
-                    self.test_unsuccessful_enable_lock)
-            self.run_with_fresh_test_mm_context(
-                    self.test_cause_sim_pin_lock)
-            self.run_with_fresh_test_mm_context(
-                    self.test_unlock_sim_pin_lock)
-            self.run_with_fresh_test_mm_context(
-                    self.test_cause_sim_puk_lock)
-            self.run_with_fresh_test_mm_context(
-                    self.test_unlock_sim_puk_lock)
-            self.run_with_fresh_test_mm_context(
-                    self.test_brick_sim)
-            self.run_with_fresh_test_mm_context(
-                    self.test_change_pin)
+        # Some of these tests render the modem unusable, so run each test
+        # with a fresh pseudomodem.
+        for test in test_list:
+            with pseudomodem_context.PseudoModemManagerContext(
+                    True,
+                    {'family' : '3GPP'}):
+                # Give pseudomodem time to settle down.
+                time.sleep(1)
+                self._run_internal(test)

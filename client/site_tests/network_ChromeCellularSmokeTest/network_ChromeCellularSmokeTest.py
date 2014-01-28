@@ -8,7 +8,8 @@ import logging
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.cellular import mm1_constants
-from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
+from autotest_lib.client.cros.cellular.pseudomodem import pm_constants
+from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
 from autotest_lib.client.cros.networking.chrome_testing \
         import chrome_networking_test_context as cntc
 from autotest_lib.client.cros.networking.chrome_testing import test_utils
@@ -51,7 +52,7 @@ class network_ChromeCellularSmokeTest(test.test):
                     'Expected 1 cellular network, found ' + str(len(networks)))
         network = networks[0]
         test_utils.simple_network_sanity_check(
-                network, pseudomodem.DEFAULT_TEST_NETWORK_PREFIX,
+                network, pm_constants.DEFAULT_TEST_NETWORK_PREFIX,
                 self._chrome_testing.CHROME_NETWORK_TYPE_CELLULAR)
         return network
 
@@ -123,9 +124,9 @@ class network_ChromeCellularSmokeTest(test.test):
 
 
     def run_once(self, family):
-        with pseudomodem.TestModemManagerContext(
-                True, family) as manager_context:
+        with pseudomodem_context.PseudoModemManagerContext(
+                True,
+                {'family' : family}):
             with cntc.ChromeNetworkingTestContext() as testing_context:
-                self._manager_context = manager_context
                 self._chrome_testing = testing_context
                 self._run_once_internal()

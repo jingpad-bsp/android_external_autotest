@@ -5,22 +5,22 @@
 import dbus
 import dbus.mainloop.glib
 import logging
+import os
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.cros import backchannel
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros.cellular.pseudomodem import modem_3gpp
-from autotest_lib.client.cros.cellular.pseudomodem import modem_cdma
-from autotest_lib.client.cros.cellular.pseudomodem import pm_errors
-from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
+from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
 
-# Disable warning about flimflam_test_path not being used.  It is used to set
+# Disable warning about flimflam_test_path not being used. It is used to set
 # up the path to the flimflam module.
 # pylint: disable=W0611
 from autotest_lib.client.cros import flimflam_test_path, network
 # pylint: enable=W0611
 import flimflam
 
+TEST_MODEMS_MODULE_PATH = os.path.join(os.path.dirname(__file__), 'files',
+                                       'modems.py')
 
 class network_3GFailedConnect(test.test):
     """
@@ -31,29 +31,6 @@ class network_3GFailedConnect(test.test):
 
     """
     version = 1
-
-    def GetFailConnectModem(self, family):
-        """
-        Returns the correct modem subclass based on |family|.
-
-        @param family: A string containing either '3GPP' or 'CDMA'.
-        @raises error.TestError, if |family| is not one of '3GPP' or 'CDMA'.
-
-        """
-        if family == '3GPP':
-            modem_class = modem_3gpp.Modem3gpp
-        elif family == 'CDMA':
-            modem_class = modem_cdma.ModemCdma
-        else:
-            raise error.TestError('Invalid pseudo modem family: ' + str(family))
-
-        class FailConnectModem(modem_class):
-            """Custom fake Modem that always fails to connect."""
-            def Connect(self, properties, return_cb, raise_cb):
-                logging.info('Connect call will fail.')
-                raise_cb(pm_errors.MMCoreError(pm_errors.MMCoreError.FAILED))
-
-        return FailConnectModem()
 
     def ConnectTo3GNetwork(self, config_timeout):
         """
@@ -72,8 +49,8 @@ class network_3GFailedConnect(test.test):
 
         try:
           service.Connect()
-        except Exception, e:
-          print e
+        except Exception as e:
+          logging.error(e)
 
         state = self.flim.WaitForServiceState(
             service=service,
@@ -97,9 +74,11 @@ class network_3GFailedConnect(test.test):
     def run_once(self, connect_count=4,
                  pseudo_modem=False, pseudomodem_family='3GPP'):
         with backchannel.Backchannel():
-            with pseudomodem.TestModemManagerContext(
-                pseudo_modem,
-                modem=self.GetFailConnectModem(pseudomodem_family)):
+            with pseudomodem_context.PseudoModemManagerContext(
+                    pseudo_modem,
+                    {'test-module' : TEST_MODEMS_MODULE_PATH,
+                     'test-modem-class' : 'GetFailConnectModem',
+                     'test-modem-arg' : [pseudomodem_family]}):
                 self.flim = flimflam.FlimFlam()
                 self.device_manager = flimflam.DeviceManager(self.flim)
                 try:

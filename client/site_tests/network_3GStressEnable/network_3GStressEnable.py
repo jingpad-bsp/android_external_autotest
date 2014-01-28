@@ -6,7 +6,7 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import backchannel
 from autotest_lib.client.cros import network
-from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
+from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
 
 import time
 import dbus, dbus.mainloop.glib
@@ -74,6 +74,7 @@ class network_3GStressEnable(test.test):
     def run_once(self, cycles=3, min=15, max=25, use_pseudomodem=False,
                  pseudomodem_family='3GPP'):
         with backchannel.Backchannel():
-            with pseudomodem.TestModemManagerContext(
-                use_pseudomodem, family=pseudomodem_family):
+            with pseudomodem_context.PseudoModemManagerContext(
+                    use_pseudomodem,
+                    {'family' : pseudomodem_family}):
                 self._run_once_internal(cycles, min, max)

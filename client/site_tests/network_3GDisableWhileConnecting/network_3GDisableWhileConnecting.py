@@ -13,7 +13,7 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import backchannel, network
 from autotest_lib.client.cros.cellular import mm
-from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
+from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
 from autotest_lib.client.cros.mainloop import GenericTesterMainLoop
 from autotest_lib.client.cros.mainloop import ExceptionForward
 
@@ -291,8 +291,9 @@ class network_3GDisableWhileConnecting(test.test):
   def run_once(
       self, use_pseudomodem=False, pseudomodem_family='3GPP', **kwargs):
     with backchannel.Backchannel():
-      with pseudomodem.TestModemManagerContext(use_pseudomodem,
-                                               family=pseudomodem_family):
+      with pseudomodem_context.PseudoModemManagerContext(
+              use_pseudomodem,
+              {'family' : pseudomodem_family}):
         try:
           dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
           self.main_loop = gobject.MainLoop()

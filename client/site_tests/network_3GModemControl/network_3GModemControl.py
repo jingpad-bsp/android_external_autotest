@@ -13,10 +13,7 @@ from autotest_lib.client.cros import backchannel
 from autotest_lib.client.cros.cellular import cell_tools
 from autotest_lib.client.cros.cellular import emulator_config
 from autotest_lib.client.cros.cellular import mm
-
-# TODO(armansito): We should really move cros/cellular/pseudomodem/mm1.py to
-# cros/cellular/, as it deprecates the old mm1.py. See crosbug.com/37005
-from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
+from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
 
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam
@@ -364,8 +361,9 @@ class network_3GModemControl(test.test):
                 # 8960 (eg. lost connection, etc).
                 bs.ClearErrors()
 
-            with pseudomodem.TestModemManagerContext(
-                pseudo_modem, family=pseudomodem_family):
+            with pseudomodem_context.PseudoModemManagerContext(
+                pseudo_modem,
+                {'family' : pseudomodem_family}):
                 self.flim = flimflam.FlimFlam()
 
                 # Enabling flimflam debugging makes it easier to debug

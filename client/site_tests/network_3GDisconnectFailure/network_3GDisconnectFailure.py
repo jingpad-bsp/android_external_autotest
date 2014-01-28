@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
+import os
 import time
 
 from autotest_lib.client.bin import test
@@ -9,13 +11,10 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.cellular import cell_tools
 from autotest_lib.client.cros.cellular import mm
 from autotest_lib.client.cros.cellular import mm1_constants
-from autotest_lib.client.cros.cellular.pseudomodem import modem_3gpp
-from autotest_lib.client.cros.cellular.pseudomodem import modem_cdma
-from autotest_lib.client.cros.cellular.pseudomodem import pm_errors
-from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
+from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
 
-# Disable warning about flimflam_test_path not being used.  It is used to set
-# up the path to the flimflam module.
+# Disable warning about flimflam_test_path not being used. It is used to set up
+# the path to the flimflam module
 # pylint: disable=W0611
 from autotest_lib.client.cros import backchannel, network, flimflam_test_path
 # pylint: enable=W0611
@@ -24,17 +23,18 @@ import flimflam
 CONNECT_CONFIG_TIMEOUT = 120
 CONNECT_SERVICE_TIMEOUT = 30
 DISCONNECT_TIMEOUT = 60
+TEST_MODEMS_MODULE_PATH = os.path.join(os.path.dirname(__file__), 'files',
+                                       'modems.py')
 
 class DisconnectFailTest(object):
     """
     DisconnectFailTest implements common functionality in all test cases.
 
     """
-    def __init__(self, pmm_context, test):
-        self.pmm_context = pmm_context
-        self.test_modem = None
+    def __init__(self, test, pseudomodem_family):
         self.test = test
-        self._SetupTestModem()
+        self._pseudomodem_family = pseudomodem_family
+
 
     def Run(self):
         """
@@ -43,26 +43,22 @@ class DisconnectFailTest(object):
         @raises test.TestFail, if |test_modem| hasn't been initialized.
 
         """
-        if not self.test_modem:
-            raise test.TestFail('Uninitialized test modem')
-        self.pmm_context.SetModem(self.test_modem)
-        self._RunTest()
+        with pseudomodem_context.PseudoModemManagerContext(
+                True,
+                {'test-module' : TEST_MODEMS_MODULE_PATH,
+                 'test-modem-class' : self._GetTestModemFunctorName(),
+                 'test-modem-arg' : [self._pseudomodem_family]}):
+            self._RunTest()
 
-    def _SetupTestModem(self):
+
+    def _GetTestModemFunctorName(self):
+        """ Returns the modem to be used by the pseudomodem for this test. """
         raise NotImplementedError()
 
-    def _GetModemClass(self):
-        if self.test.family == '3GPP':
-            modem_class = modem_3gpp.Modem3gpp
-        elif self.test.family == 'CDMA':
-            modem_class = modem_cdma.ModemCdma
-        else:
-            raise error.TestError('Invalid pseudo modem family: ' + \
-                                  str(self.test.family))
-        return modem_class
 
     def _RunTest(self):
         raise NotImplementedError()
+
 
 class DisconnectWhileStateIsDisconnectingTest(DisconnectFailTest):
     """
@@ -70,33 +66,9 @@ class DisconnectWhileStateIsDisconnectingTest(DisconnectFailTest):
     Fails if the service doesn't remain connected.
 
     """
-    def _SetupTestModem(self):
-        modem_class = self._GetModemClass()
-        class _TestModem(modem_class):
-            def Disconnect(
-                self, bearer_path, return_cb, raise_cb, *return_cb_args):
-                """
-                Test implementation of
-                org.freedesktop.ModemManager1.Modem.Simple.Disconnect. Sets the
-                modem state to DISCONNECTING and then fails, fooling shill into
-                thinking that the disconnect failed while disconnecting.
+    def _GetTestModemFunctorName(self):
+        return 'GetModemDisconnectWhileStateIsDisconnecting'
 
-                Refer to modem_simple.ModemSimple.Connect for documentation.
-
-                """
-                # Proceed normally, if this Disconnect was initiated by a call
-                # to Disable, which may happen due to auto-connect.
-                if self.disable_step:
-                    modem_class.Disconnect(
-                        self, bearer_path, return_cb, raise_cb, return_cb_args)
-                    return
-
-                self.ChangeState(
-                    mm1_constants.MM_MODEM_STATE_DISCONNECTING,
-                    mm1_constants.MM_MODEM_STATE_CHANGE_REASON_UNKNOWN)
-                time.sleep(5)
-                raise pm_errors.MMCoreError(pm_errors.MMCoreError.FAILED)
-        self.test_modem = _TestModem()
 
     def _RunTest(self):
         network.ResetAllModems(self.test.flim)
@@ -116,47 +88,16 @@ class DisconnectWhileStateIsDisconnectingTest(DisconnectFailTest):
             raise error.TestError('Service should remain connected after '
                                   'disconnect failure.')
 
+
 class DisconnectWhileDisconnectInProgressTest(DisconnectFailTest):
     """
     Simulates a disconnect failure on successive disconnects. Fails if the
     service doesn't remain connected.
 
     """
-    def _SetupTestModem(self):
-        modem_class = self._GetModemClass()
-        class _TestModem(modem_class):
-            def __init__(self):
-                modem_class.__init__(self)
-                self.disconnect_count = 0
+    def _GetTestModemFunctorName(self):
+        return 'GetModemDisconnectWhileDisconnectInProgress'
 
-            def Disconnect(
-                self, bearer_path, return_cb, raise_cb, *return_cb_args):
-                """
-                Test implementation of
-                org.freedesktop.ModemManager1.Modem.Simple.Disconnect. Keeps
-                count of successive disconnect operations and fails during all
-                but the first one.
-
-                Refer to modem_simple.ModemSimple.Connect for documentation.
-
-                """
-                # Proceed normally, if this Disconnect was initiated by a call
-                # to Disable, which may happen due to auto-connect.
-                if self.disable_step:
-                    modem_class.Disconnect(
-                        self, bearer_path, return_cb, raise_cb, return_cb_args)
-                    return
-
-                # On the first call, set the state to DISCONNECTING.
-                self.disconnect_count += 1
-                if self.disconnect_count == 1:
-                    self.ChangeState(
-                        mm1_constants.MM_MODEM_STATE_DISCONNECTING,
-                        mm1_constants.MM_MODEM_STATE_CHANGE_REASON_UNKNOWN)
-                    time.sleep(5)
-                else:
-                    raise pm_errors.MMCoreError(pm_errors.MMCoreError.FAILED)
-        self.test_modem = _TestModem()
 
     def _RunTest(self):
         network.ResetAllModems(self.test.flim)
@@ -188,33 +129,15 @@ class DisconnectWhileDisconnectInProgressTest(DisconnectFailTest):
             raise error.TestError('Service should remain connected after '
                                   'disconnect failure.')
 
+
 class DisconnectFailOtherTest(DisconnectFailTest):
     """
     Simulates a disconnect failure. Fails if the service doesn't disconnect.
 
     """
-    def _SetupTestModem(self):
-        modem_class = self._GetModemClass()
-        class _TestModem(modem_class):
-            def Disconnect(
-                self, bearer_path, return_cb, raise_cb, *return_cb_args):
-                """
-                Test implementation of
-                org.freedesktop.ModemManager1.Modem.Simple.Disconnect.
-                Fails with an error.
+    def _GetTestModemFunctorName(self):
+        return 'GetModemDisconnectFailOther'
 
-                Refer to modem_simple.ModemSimple.Connect for documentation.
-
-                """
-                # Proceed normally, if this Disconnect was initiated by a call
-                # to Disable, which may happen due to auto-connect.
-                if self.disable_step:
-                    modem_class.Disconnect(
-                        self, bearer_path, return_cb, raise_cb, return_cb_args)
-                    return
-
-                raise pm_errors.MMCoreError(pm_errors.MMCoreError.FAILED)
-        self.test_modem = _TestModem()
 
     def _RunTest(self):
         network.ResetAllModems(self.test.flim)
@@ -232,6 +155,7 @@ class DisconnectFailOtherTest(DisconnectFailTest):
         # Service should be cleaned up as if disconnect succeeded.
         if not self.test.IsServiceDisconnected():
             raise error.TestError('Service should be disconnected.')
+
 
 class network_3GDisconnectFailure(test.test):
     """
@@ -254,6 +178,7 @@ class network_3GDisconnectFailure(test.test):
         state = properties.get('State', None)
         return state in ['portal', 'online']
 
+
     def IsServiceDisconnected(self):
         """
         @return True, if service is disconnected.
@@ -263,6 +188,7 @@ class network_3GDisconnectFailure(test.test):
         properties = service.GetProperties(utf8_strings=True)
         state = properties.get('State', None)
         return state == 'idle'
+
 
     def FindCellularService(self):
         """
@@ -277,27 +203,26 @@ class network_3GDisconnectFailure(test.test):
             raise error.TestError('Could not find cellular service.')
         return service
 
+
     def run_once(self, pseudomodem_family='3GPP'):
-        self.family = pseudomodem_family
         with backchannel.Backchannel():
-            with pseudomodem.TestModemManagerContext(True) as tmmc:
-                self.flim = flimflam.FlimFlam()
-                self.device_manager = flimflam.DeviceManager(self.flim)
-                self.flim.SetDebugTags(
-                    'dbus+service+device+modem+cellular+portal+network+'
-                    'manager+dhcp')
+            self.flim = flimflam.FlimFlam()
+            self.device_manager = flimflam.DeviceManager(self.flim)
+            self.flim.SetDebugTags(
+                'dbus+service+device+modem+cellular+portal+network+'
+                'manager+dhcp')
 
-                tests = [
-                    DisconnectWhileStateIsDisconnectingTest(
-                        tmmc.GetPseudoModemManager(), self),
-                    DisconnectWhileDisconnectInProgressTest(
-                        tmmc.GetPseudoModemManager(), self),
-                    DisconnectFailOtherTest(tmmc.GetPseudoModemManager(), self)
-                ]
+            tests = [
+                    DisconnectWhileStateIsDisconnectingTest(self,
+                                                            pseudomodem_family),
+                    DisconnectWhileDisconnectInProgressTest(self,
+                                                            pseudomodem_family),
+                    DisconnectFailOtherTest(self, pseudomodem_family),
+            ]
 
-                try:
-                    self.device_manager.ShutdownAllExcept('cellular')
-                    for test in tests:
-                        test.Run()
-                finally:
-                    self.device_manager.RestoreDevices()
+            try:
+                self.device_manager.ShutdownAllExcept('cellular')
+                for test in tests:
+                    test.Run()
+            finally:
+                self.device_manager.RestoreDevices()

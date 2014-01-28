@@ -16,10 +16,7 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import backchannel, network
 from autotest_lib.client.cros.cellular import cell_tools, mm
-
-# TODO(armansito): We should really move cros/cellular/pseudomodem/mm1.py to
-# cros/cellular/, as it deprecates the old mm1.py. See crosbug.com/37005
-from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
+from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
 from autotest_lib.client.cros.cellular.wardmodem import wardmodem
 
 
@@ -164,8 +161,9 @@ class network_3GSmokeTest(test.test):
         self.fetch_timeout = fetch_timeout
 
         with backchannel.Backchannel():
-            with pseudomodem.TestModemManagerContext(
-                    use_pseudomodem,family=pseudomodem_family):
+            with pseudomodem_context.PseudoModemManagerContext(
+                    use_pseudomodem,
+                    {'family' : pseudomodem_family}):
                 with wardmodem.WardModemContext(use_wardmodem,
                                                 args=['--modem',
                                                       wardmodem_modem]):

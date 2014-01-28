@@ -4,7 +4,8 @@
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
+from autotest_lib.client.cros.cellular.pseudomodem import pm_constants
+from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
 from autotest_lib.client.cros.networking.chrome_testing \
         import chrome_networking_test_context as cntc
 
@@ -18,7 +19,9 @@ class network_ChromeCellularNetworkPresent(test.test):
     version = 1
 
     def run_once(self, family):
-        with pseudomodem.TestModemManagerContext(True, family):
+        with pseudomodem_context.PseudoModemManagerContext(
+                True,
+                {'family' : family}):
             with cntc.ChromeNetworkingTestContext() as test_context:
                 networks = test_context.find_cellular_networks()
                 if len(networks) != 1:
@@ -33,6 +36,6 @@ class network_ChromeCellularNetworkPresent(test.test):
                             network["Type"])
 
                 if not network["Name"].startswith(
-                        pseudomodem.DEFAULT_TEST_NETWORK_PREFIX):
+                        pm_constants.DEFAULT_TEST_NETWORK_PREFIX):
                     raise error.TestFail('Network name is incorrect: ' +
                                          network["Name"])

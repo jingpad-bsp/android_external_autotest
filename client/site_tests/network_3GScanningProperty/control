@@ -24,7 +24,4 @@ updated correctly in the following two scenarios:
   (2) During the initial modem enable-register-connect sequence.
 """
 
-test_names = ['user_initiated_cellular_scan', 'activated_service_states']
-for test_name in test_names:
-    job.run_test('network_3GScanningProperty', test_name=test_name,
-                 tag=test_name)
+job.run_test('network_3GScanningProperty')

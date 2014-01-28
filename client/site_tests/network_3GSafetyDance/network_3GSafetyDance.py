@@ -12,7 +12,7 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import backchannel
 from autotest_lib.client.cros.cellular import cell_tools
-from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
+from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
 
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam
@@ -128,6 +128,7 @@ class network_3GSafetyDance(test.test):
         # test is over.  This ensures flimflam is in a known good
         # state even if this test fails.
         with backchannel.Backchannel():
-            with pseudomodem.TestModemManagerContext(
-                pseudo_modem, family=pseudomodem_family):
+            with pseudomodem_context.PseudoModemManagerContext(
+                    pseudo_modem,
+                    {'family' : pseudomodem_family}):
                 self._run_once_internal(ops, seed)

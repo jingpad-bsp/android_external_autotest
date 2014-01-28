@@ -4,97 +4,22 @@
 
 import dbus
 import logging
+import os
 import time
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.cellular import mm1_constants
-from autotest_lib.client.cros.cellular.pseudomodem import modem_3gpp
 from autotest_lib.client.cros.cellular.pseudomodem import pm_constants
-from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem
-from autotest_lib.client.cros.cellular.pseudomodem import state_machine
-from autotest_lib.client.cros.cellular.pseudomodem import state_machine_factory
+from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
 from autotest_lib.client.cros.networking import cellular_proxy
 
 # Used for software message propagation latencies.
 SHORT_TIMEOUT_SECONDS = 2
-
 STATE_MACHINE_SCAN = 'ScanMachine'
-class ScanMachine(state_machine.StateMachine):
-    """
-    Handle shill initiated 3GPP scan request.
-
-    A simple machine that allows the test to hook into the Scan asynchronous
-    call.
-
-    """
-    # State machine states.
-    SCAN_STATE = 'Scan'
-    DONE_STATE = 'Done'
-
-    def __init__(self, modem):
-        super(ScanMachine, self).__init__(modem)
-        self._state = ScanMachine.SCAN_STATE
-
-
-    def _HandleScanState(self):
-        """ The only real state in this machine. """
-        self._modem.DoScan()
-        self._state = ScanMachine.DONE_STATE
-        return True
-
-
-    def _GetCurrentState(self):
-        return self._state
-
-
-    def _GetModemStateFunctionMap(self):
-        return {
-                ScanMachine.SCAN_STATE: ScanMachine._HandleScanState,
-                # ScanMachine.DONE_STATE is the final state. So, no handler.
-        }
-
-
-    def _ShouldStartStateMachine(self):
-        return True
-
-
-class TestStateMachineFactory(state_machine_factory.StateMachineFactory):
-    """ Extend StateMachineFactory to create an interactive ScanMachine. """
-    def ScanMachine(self, *args, **kwargs):
-        """ Create a ScanMachine when needed in the modem. """
-        machine = ScanMachine(*args, **kwargs)
-        machine.EnterInteractiveMode(self._bus)
-        return machine
-
-
-class AsyncScanModem(modem_3gpp.Modem3gpp):
-    """ 3GPP modem that uses ScanMachine for the Scan call. """
-    def Scan(self, return_cb, raise_cb):
-        """ Overriden from Modem3gpp. """
-        # Stash away the scan_ok callback for when the Scan finishes.
-        logging.debug('Network scan initiated.')
-        self._scan_ok_callback = return_cb
-        self._scan_failed_callback = raise_cb
-        self._scan_machine = self._state_machine_factory.ScanMachine(self)
-        self._scan_machine.Start()
-
-
-    def DoScan(self):
-        """ Defer to Modem3gpp to take the original |SyncScan| action. """
-        # We're done scanning, drop |_scan_machine| reference.
-        self._scan_machine = None
-        try:
-            scan_result = super(AsyncScanModem, self).SyncScan()
-        except dbus.exceptions.DBusException as e:
-            logging.warning('Network scan failed')
-            self._scan_failed_callback(e)
-            return
-
-        logging.debug('Network scan completed.')
-        self._scan_ok_callback(scan_result)
-
+TEST_MODEMS_MODULE_PATH = os.path.join(os.path.dirname(__file__), 'files',
+                                       'modems.py')
 
 class network_3GScanningProperty(test.test):
     """
@@ -231,11 +156,10 @@ class network_3GScanningProperty(test.test):
         object correctly updates the cellular object |Scanning| property while
         the scan is in progress.
         """
-        test_modem = AsyncScanModem(
-                state_machine_factory=TestStateMachineFactory())
-        with pseudomodem.TestModemManagerContext(True,
-                                                 family='3GPP',
-                                                 modem=test_modem):
+        with pseudomodem_context.PseudoModemManagerContext(
+                True,
+                {'test-module' : TEST_MODEMS_MODULE_PATH,
+                 'test-modem-class' : 'AsyncScanModem'}):
             self._cellular_proxy = cellular_proxy.CellularProxy.get_proxy()
             self._bus = dbus.SystemBus()
             self._cellular_proxy.set_logging_for_cellular_test()
@@ -298,12 +222,13 @@ class network_3GScanningProperty(test.test):
         Test that shill |Scanning| property is updated correctly when an
         activated 3GPP service connects.
         """
-        sm_factory = state_machine_factory.StateMachineFactory()
-        sm_factory.SetInteractive(pm_constants.STATE_MACHINE_ENABLE)
-        sm_factory.SetInteractive(pm_constants.STATE_MACHINE_REGISTER)
-        with pseudomodem.TestModemManagerContext(True,
-                                                 family='3GPP',
-                                                 sm_factory=sm_factory):
+        with pseudomodem_context.PseudoModemManagerContext(
+                True,
+                {'test-module' : TEST_MODEMS_MODULE_PATH,
+                 'test-state-machine-factory-class' :
+                        'InteractiveStateMachineFactory'}):
+            # Give pseudomodem some time to settle down.
+            time.sleep(2)
             self._cellular_proxy = cellular_proxy.CellularProxy.get_proxy()
             self._bus = dbus.SystemBus()
             self._cellular_proxy.set_logging_for_cellular_test()
@@ -416,11 +341,10 @@ class network_3GScanningProperty(test.test):
                     error.TestFail('Failed to create Cellular Service for a '
                                    'registered modem'),
                     timeout=SHORT_TIMEOUT_SECONDS)
-            self._check_mm_state(
-                    mm_modem,
-                    [mm1_constants.MM_MODEM_STATE_REGISTERED,
-                     mm1_constants.MM_MODEM_STATE_CONNECTING,
-                     mm1_constants.MM_MODEM_STATE_CONNECTED])
+            self._check_mm_state(mm_modem,
+                                 [mm1_constants.MM_MODEM_STATE_REGISTERED,
+                                  mm1_constants.MM_MODEM_STATE_CONNECTING,
+                                  mm1_constants.MM_MODEM_STATE_CONNECTED])
             self._check_shill_property_update(
                     device,
                     self._cellular_proxy.DEVICE_PROPERTY_SCANNING,
@@ -430,12 +354,7 @@ class network_3GScanningProperty(test.test):
                          'Registered')
 
 
-    def run_once(self, test_name):
+    def run_once(self):
         """ Autotest entry function """
-        # TODO(pprabhu) Run both of these tests after crbug.com/328257 is fixed.
-        if test_name == 'user_initiated_cellular_scan':
-            self.test_user_initiated_cellular_scan()
-        elif test_name == 'activated_service_states':
-            self.test_activated_service_states()
-        else:
-            raise error.TestFail('Unknown test_name')
+        self.test_user_initiated_cellular_scan()
+        self.test_activated_service_states()
