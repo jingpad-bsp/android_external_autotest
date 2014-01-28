@@ -13,6 +13,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"
 TEST_TYPE = "client"
+RETRIES = 3
 # TODO(achuith): Remove login_CryptohomeMounted and login_CryptohomeUnmounted
 # tests.
 
