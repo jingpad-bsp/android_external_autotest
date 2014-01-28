@@ -599,8 +599,8 @@ class RPCFunctions(object):
                  False: if kernel A is the same as B.
         """
         rootdev = self._chromeos_interface.get_root_dev()
-        kernel_a = self._chromeos_interface.join_part(rootdev, '3')
-        kernel_b = self._chromeos_interface.join_part(rootdev, '5')
+        kernel_a = self._chromeos_interface.join_part(rootdev, '2')
+        kernel_b = self._chromeos_interface.join_part(rootdev, '4')
 
         # The signature (some kind of hash) for the kernel body is stored in
         # the beginning. So compare the first 64KB (including header, preamble,
