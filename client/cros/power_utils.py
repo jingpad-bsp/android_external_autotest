@@ -23,6 +23,8 @@ def get_x86_cpu_arch():
 
     if re.search(r'Intel.*Atom.*[NZ][2-6]', cpuinfo):
         return 'Atom'
+    if re.search(r'Intel.*Celeron.*N2[89][0-9][0-9]', cpuinfo):
+        return 'Celeron N2000'
     if re.search(r'Intel.*Celeron.*[0-9]{3,4}', cpuinfo):
         return 'Celeron'
     if re.search(r'Intel.*Core.*i[357]-[234][0-9][0-9][0-9]', cpuinfo):
@@ -49,8 +51,8 @@ def call_powerd_dbus_method(method_name, args=''):
     Calls a dbus method exposed by powerd.
 
     Arguments:
-      method_name: name of the dbus method.
-      args: string containing args to dbus method call.
+    @param method_name: name of the dbus method.
+    @param args: string containing args to dbus method call.
     """
     destination = 'org.chromium.PowerManager'
     path = '/org/chromium/PowerManager'
@@ -260,7 +262,7 @@ class KbdBacklight(object):
         """Set keyboard backlight percent.
 
         Args:
-            percent: percent to set keyboard backlight to.
+        @param percent: percent to set keyboard backlight to.
         """
         value = int((percent * self._get_max()) / 100)
         cmd = "echo %d > %s" % (value, os.path.join(self._path, 'brightness'))
@@ -296,7 +298,7 @@ class BacklightController(object):
         down key or button.
 
         Arguments
-          allow_off: Boolean flag indicating whether the brightness can be
+        @param allow_off: Boolean flag indicating whether the brightness can be
                      reduced to zero.
                      Set to true to simulate brightness down key.
                      set to false to simulate Chrome UI brightness down button.
@@ -333,7 +335,7 @@ class BacklightController(object):
         reaches the maximum number of brightness adjustments.
 
         Arguments
-          allow_off: Boolean flag indicating whether the brightness can be
+        @param allow_off: Boolean flag indicating whether the brightness can be
                      reduced to zero.
                      Set to true to simulate brightness down key.
                      set to false to simulate Chrome UI brightness down button.
@@ -362,6 +364,7 @@ class PowerPrefChanger(object):
 
 
     def finalize(self):
+        """finalize"""
         if os.path.exists(self._TEMPDIR):
             utils.system('umount %s' % self._PREFDIR, ignore_status=True)
             shutil.rmtree(self._TEMPDIR)
@@ -457,6 +460,11 @@ class Registers(object):
         return errors
 
     def verify_msr(self, match_list):
+        """
+        Verify MSR
+
+        @param match_list: match list
+        """
         errors = 0
         for cpu_id in xrange(0, max(utils.count_cpus(), 1)):
             self._cpu_id = cpu_id
@@ -464,12 +472,27 @@ class Registers(object):
         return errors
 
     def verify_dmi(self, match_list):
+        """
+        Verify DMI
+
+        @param match_list: match list
+        """
         return self._verify_registers('dmi', self._read_dmi_bar, match_list)
 
     def verify_mch(self, match_list):
+        """
+        Verify MCH
+
+        @param match_list: match list
+        """
         return self._verify_registers('mch', self._read_mch_bar, match_list)
 
     def verify_rcba(self, match_list):
+        """
+        Verify RCBA
+
+        @param match_list: match list
+        """
         return self._verify_registers('rcba', self._read_rcba, match_list)
 
 
