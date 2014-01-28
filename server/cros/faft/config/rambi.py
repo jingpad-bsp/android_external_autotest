@@ -8,7 +8,7 @@
 class Values(object):
     """FAFT config values for Rambi."""
     firmware_screen = 7
-    dev_screen = 4
+    dev_screen = 7
     chrome_ec = True
     long_rec_combo = True
     ec_capability = ['battery', 'charging', 'keyboard', 'lid', 'x86',
