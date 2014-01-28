@@ -430,7 +430,7 @@ class Suite(object):
 
         return (self._file_bugs and result.test_executed and
                 (is_not_experimental or self._file_experimental_bugs) and
-                result.is_worse_than(job_status.Status('WARN', '', 'reason')))
+                result.is_worse_than(job_status.Status('GOOD', '', 'reason')))
 
 
     def wait(self, record, bug_template={}):
@@ -468,7 +468,7 @@ class Suite(object):
                     job_views = self._tko.run('get_detailed_test_views',
                                               afe_job_id=result.id)
 
-                    failure = reporting.TestFailure(self._build,
+                    failure = reporting.TestBug(self._build,
                             site_utils.get_chrome_version(job_views),
                             self._tag,
                             result)

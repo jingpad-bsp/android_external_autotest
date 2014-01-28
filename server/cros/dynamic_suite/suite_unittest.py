@@ -527,8 +527,8 @@ class SuiteTest(mox.MoxTestBase):
             [test_results[0] + test_results[1]],
             self.recorder)
 
-        self.mox.StubOutWithMock(reporting, 'TestFailure')
-        reporting.TestFailure(self._BUILD, mox.IgnoreArg(),
+        self.mox.StubOutWithMock(reporting, 'TestBug')
+        reporting.TestBug(self._BUILD, mox.IgnoreArg(),
                               mox.IgnoreArg(), mox.Func(check_result))
 
         self.mox.StubOutClassWithMocks(phapi_lib, 'ProjectHostingApiClient')

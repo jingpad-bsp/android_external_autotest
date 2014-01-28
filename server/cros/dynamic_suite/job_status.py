@@ -575,6 +575,11 @@ class Status(object):
         return self._status == 'GOOD'
 
 
+    def is_warn(self):
+        """ Returns true if status is warn. """
+        return self._status == 'WARN'
+
+
     def is_worse_than(self, candidate):
         """
         Return whether |self| represents a "worse" failure than |candidate|.

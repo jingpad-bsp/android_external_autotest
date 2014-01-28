@@ -44,7 +44,7 @@ class ReportingTest(mox.MoxTestBase):
     }
 
     def _get_failure(self, is_server_job=False):
-        """Get a TestFailure so we can report it.
+        """Get a TestBug so we can report it.
 
         @param is_server_job: Set to True of failed job is a server job. Server
                 job's test name is formated as build/suite/test_name.
@@ -64,7 +64,7 @@ class ReportingTest(mox.MoxTestBase):
             owner=self.test_report.get('owner'),
             hostname=self.test_report.get('hostname'))
 
-        return reporting.TestFailure(self.test_report.get('build'),
+        return reporting.TestBug(self.test_report.get('build'),
             self.test_report.get('chrome_version'),
             self.test_report.get('suite'), expected_result)
 
@@ -97,7 +97,7 @@ class ReportingTest(mox.MoxTestBase):
         returns None.
         """
         self.mox.StubOutWithMock(reporting.Reporter, '_find_issue_by_marker')
-        self.mox.StubOutWithMock(reporting.TestFailure, 'summary')
+        self.mox.StubOutWithMock(reporting.TestBug, 'summary')
 
         client = phapi_lib.ProjectHostingApiClient(mox.IgnoreArg(),
                                                    mox.IgnoreArg())
@@ -105,7 +105,7 @@ class ReportingTest(mox.MoxTestBase):
             {'id': self._FAKE_ISSUE_ID})
         reporting.Reporter._find_issue_by_marker(mox.IgnoreArg()).AndReturn(
             None)
-        reporting.TestFailure.summary().AndReturn('')
+        reporting.TestBug.summary().AndReturn('')
 
         self.mox.ReplayAll()
         bug_id, bug_count = reporting.Reporter().report(self._get_failure())
@@ -121,7 +121,7 @@ class ReportingTest(mox.MoxTestBase):
         returned by the issue search.
         """
         self.mox.StubOutWithMock(reporting.Reporter, '_find_issue_by_marker')
-        self.mox.StubOutWithMock(reporting.TestFailure, 'summary')
+        self.mox.StubOutWithMock(reporting.TestBug, 'summary')
 
         issue = self.mox.CreateMock(phapi_lib.Issue)
         issue.id = self._FAKE_ISSUE_ID
@@ -134,7 +134,7 @@ class ReportingTest(mox.MoxTestBase):
         reporting.Reporter._find_issue_by_marker(mox.IgnoreArg()).AndReturn(
             issue)
 
-        reporting.TestFailure.summary().AndReturn('')
+        reporting.TestBug.summary().AndReturn('')
 
         self.mox.ReplayAll()
         bug_id, bug_count = reporting.Reporter().report(self._get_failure())
@@ -164,11 +164,11 @@ class ReportingTest(mox.MoxTestBase):
             return True
 
         self.mox.StubOutWithMock(reporting.Reporter, '_find_issue_by_marker')
-        self.mox.StubOutWithMock(reporting.TestFailure, 'summary')
+        self.mox.StubOutWithMock(reporting.TestBug, 'summary')
 
         reporting.Reporter._find_issue_by_marker(mox.IgnoreArg()).AndReturn(
             None)
-        reporting.TestFailure.summary().AndReturn('Summary')
+        reporting.TestBug.summary().AndReturn('Summary')
 
         mock_host = phapi_lib.ProjectHostingApiClient(mox.IgnoreArg(),
                                                       mox.IgnoreArg())

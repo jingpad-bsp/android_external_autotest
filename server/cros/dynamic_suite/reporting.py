@@ -78,11 +78,11 @@ class Bug(object):
         return self._search_marker
 
 
-class TestFailure(Bug):
+class TestBug(Bug):
     """
-    Wrap up all information needed to make an intelligent report about a
-    test failure. Each TestFailure has a search marker associated with it
-    that can be used to find reports of the same error.
+    Wrap up all information needed to make an intelligent report about an
+    issue. Each TestBug has a search marker associated with it that can be
+    used to find similar reports.
     """
 
     def __init__(self, build, chrome_version, suite, result):
@@ -92,9 +92,9 @@ class TestFailure(Bug):
         @param chrome_version: The chrome version associated with the build.
                                eg: 28.0.1498.1
         @param suite: The name of the suite that this test run is a part of.
-        @param result: The status of the job associated with this failure.
+        @param result: The status of the job associated with this issue.
                        This contains the status, job id, test name, hostname
-                       and reason for failure.
+                       and reason for issue.
         """
         self.build = build
         self.chrome_version = chrome_version
@@ -114,20 +114,29 @@ class TestFailure(Bug):
         # The owner is who the bug is assigned to.
         self.owner = ''
         self.cc = []
-        self.labels = []
+
+        if result.is_warn():
+            self.labels = ['Test-Warning']
+            self.status = 'Warning'
+        else:
+            self.labels = []
+            self.status = 'Failure'
 
 
     def title(self):
-        """Combines information about this failure into a title string."""
-        return '[%s] %s failed on %s' % (self.suite, self.name, self.build)
+        """Combines information about this bug into a title string."""
+        return '[%s] %s %s on %s' % (self.suite, self.name,
+                                     self.status, self.build)
 
 
     def summary(self):
-        """Combines information about this failure into a summary string."""
+        """Combines information about this bug into a summary string."""
 
         links = self._get_links_for_failure()
         template = ('This bug has been automatically filed to track the '
-                    'following failure:\nTest: %(test)s.\nSuite: %(suite)s.\n'
+                    'following %(status)s:\n'
+                    'Test: %(test)s.\n'
+                    'Suite: %(suite)s.\n'
                     'Chrome Version: %(chrome_version)s.\n'
                     'Build: %(build)s.\n\nReason:\n%(reason)s.\n'
                     'build artifacts: %(build_artifacts)s.\n'
@@ -137,6 +146,7 @@ class TestFailure(Bug):
                     'job link: %(job)s.\n')
 
         specifics = {
+            'status': self.status,
             'test': self.name,
             'suite': self.suite,
             'build': self.build,
@@ -153,8 +163,8 @@ class TestFailure(Bug):
 
 
     def search_marker(self):
-        """Return an Anchor that we can use to dedupe this exact failure."""
-        return "%s(%s,%s,%s)" % ('TestFailure', self.suite,
+        """Return an Anchor that we can use to dedupe this exact bug."""
+        return "%s(%s,%s,%s)" % ('Test%s' % self.status, self.suite,
                                  self.name, self.reason)
 
 
@@ -287,7 +297,7 @@ class Reporter(object):
     def _get_lab_error_template(self):
         """Return the lab error template.
 
-        @return: A dictionary representing the bug options for a failure that
+        @return: A dictionary representing the bug options for an issue that
                  requires investigation from the lab team.
         """
         lab_sheriff = site_utils.get_sheriffs(lab_only=True)
@@ -577,17 +587,17 @@ class Reporter(object):
 
 
     def report(self, bug, bug_template={}):
-        """Report a failure to the bug tracker.
+        """Report an issue to the bug tracker.
 
-        If this failure has happened before, post a comment on the
+        If this issue has happened before, post a comment on the
         existing bug about it occurring again, and update the
-        'autofiled-count' label.  If this is a new failure, create a
+        'autofiled-count' label.  If this is a new issue, create a
         new bug for it.
 
-        @param bug          A Bug instance about the failure.
+        @param bug          A Bug instance about the issue.
         @param bug_template A template dictionary specifying the
-                            default bug filing options for failures
-                            in this suite.
+                            default bug filing options for an issue
+                            with this suite.
         @return             A 2-tuple of the issue id of the issue
                             that was either created or modified, and
                             a count of the number of times the bug
