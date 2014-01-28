@@ -73,7 +73,7 @@ class logging_UdevCrash(crash_test.CrashTest):
 
         utils.poll_for_condition(
             self.CheckAtmelCrashes,
-            timeout=10,
+            timeout=60,
             exception=error.TestFail('No valid Atmel crash reports'))
 
     def run_once(self):
