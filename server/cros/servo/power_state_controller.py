@@ -380,7 +380,9 @@ _CONTROLLER_BOARD_MAP = {
     'parrot': _ParrotController,
     'stumpy': _StumpyController,
     'x86-alex': _AlexController,
-    'panther':_PantherController
+    'panther': _PantherController,
+    'monroe': _PantherController,
+    'zako': _PantherController,
 }
 
 
