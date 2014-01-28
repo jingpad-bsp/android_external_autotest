@@ -22,9 +22,6 @@ class graphics_GLMark2(test.test):
     preserve_srcdir = True
     _services = None
 
-    def setup(self):
-        self.job.setup_dep(['glmark2'])
-
     def initialize(self):
         self._services = service_stopper.ServiceStopper(['ui'])
 
@@ -33,15 +30,22 @@ class graphics_GLMark2(test.test):
            self._services.restore_services()
 
     def run_once(self, size='800x600', validation_mode=False, min_score=None):
-        dep = 'glmark2'
-        dep_dir = os.path.join(self.autodir, 'deps', dep)
-        self.job.install_pkg(dep, 'dep', dep_dir)
-        glmark2 = os.path.join(dep_dir, 'bin/glmark2')
 
-        if not os.path.isfile(glmark2):
-            glmark2 = os.path.join(dep_dir, 'bin/glmark2-es2')
-        if not os.path.isfile(glmark2):
-            error.TestFail('Could not find test binary. Test setup error.')
+        def check_exist(path):
+            # glmark2[-es2] --help will return 0 if present on PATH
+            try:
+                utils.run('%s --help' % path)
+                return True
+            except error.CmdError:
+                return False
+
+        # Either glmark or glmark-es2 should be on the PATH
+        if check_exist('glmark2'):
+            glmark2 = 'glmark2'
+        elif check_exist('glmark2-es2'):
+            glmark2 = 'glmark2-es2'
+        else:
+            raise error.TestFail('Could not find test binary. Test setup error.')
 
         options = []
         options.append('--size %s' % size)
