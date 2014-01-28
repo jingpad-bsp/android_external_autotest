@@ -1,10 +1,9 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 import logging
 import os
-import stat
 
 from autotest_lib.client.bin import utils, test
 from autotest_lib.client.common_lib import error
@@ -17,12 +16,28 @@ class platform_PartitionCheck(test.test):
     """
     version = 1
 
+    def isRemovable(self, device):
+        """
+        Check if the block device is removable.
+
+        Args:
+            @param device: string, name of the block device.
+
+        Returns:
+            bool, True if device is removable.
+        """
+
+        # Construct a pathname to 'removable' for this device
+        removable_file = os.path.join('/sys', 'block', device, 'removable')
+        return int(utils.read_one_line(removable_file)) == 1
+
     def get_block_size(self, device):
         """
         Check the block size of a block device.
 
         Args:
-            device: string, name of the block device.
+            @param device: string, name of the block device.
+
         Returns:
             int, size of block in bytes.
         """
@@ -38,7 +53,9 @@ class platform_PartitionCheck(test.test):
         Get the number of blocks in the partition.
 
         Args:
-            partition: string, partition name
+            @param device: string, name of the block device.
+            @param partition: string, partition name
+
         Returns:
             int, number of blocks
         """
@@ -49,9 +66,9 @@ class platform_PartitionCheck(test.test):
 
     def run_once(self):
         errors = []
-        cpu_type = utils.get_cpu_arch()
+        mmcpath = '/sys/block/mmcblk0'
 
-        if cpu_type == 'arm':
+        if os.path.exists(mmcpath) and (not self.isRemovable('mmcblk0')):
             device = 'mmcblk0'
             partitions = ['mmcblk0p3', 'mmcblk0p5']
         else:
