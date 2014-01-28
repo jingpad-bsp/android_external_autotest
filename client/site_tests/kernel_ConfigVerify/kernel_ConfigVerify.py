@@ -260,6 +260,13 @@ class kernel_ConfigVerify(test.test):
         # Locate and load the list of kernel config variables.
         self._config = self._load_configs()
 
+        # Adjust for kernel-version-specific changes
+        kernel_ver = os.uname()[2]
+        if utils.compare_versions(kernel_ver, "3.10") >= 0:
+            for entry in self.IS_EXCLUSIVE:
+                if entry['regex'] == 'BINFMT_':
+                    entry['builtin'].append('BINFMT_SCRIPT')
+
         # Run the static checks.
         map(self.has_builtin, self.IS_BUILTIN)
         map(self.has_module, self.IS_MODULE)
