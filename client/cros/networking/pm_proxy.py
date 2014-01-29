@@ -26,8 +26,10 @@ class PseudoMMProxy(mm1_proxy.ModemManager1Proxy):
     @property
     def iface_testing(self):
         """@return org.chromium.Pseudomodem.Testing DBus interface."""
-        return self._bus.get_object(mm1_constants.I_MODEM_MANAGER,
-                                    pm_constants.TESTING_PATH)
+        return dbus.Interface(
+                self._bus.get_object(mm1_constants.I_MODEM_MANAGER,
+                                     pm_constants.TESTING_PATH),
+                pm_constants.I_TESTING)
 
 
     def iface_ism(self, machine_name, timeout_seconds=SHORT_TIMEOUT_SECONDS):

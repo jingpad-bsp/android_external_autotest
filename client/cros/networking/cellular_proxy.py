@@ -15,6 +15,7 @@ class CellularProxy(shill_proxy.ShillProxy):
     # Properties exposed by shill.
     DEVICE_PROPERTY_DBUS_OBJECT = 'DBus.Object'
     DEVICE_PROPERTY_ICCID = 'Cellular.ICCID'
+    DEVICE_PROPERTY_OUT_OF_CREDITS = 'Cellular.OutOfCredits'
     DEVICE_PROPERTY_SIM_LOCK_STATUS = 'Cellular.SIMLockStatus'
 
     # Keys into the dictionaries exposed as properties.
@@ -29,6 +30,9 @@ class CellularProxy(shill_proxy.ShillProxy):
     # DBus errors raised by shill.
     ERROR_INCORRECT_PIN = 'org.chromium.flimflam.Error.IncorrectPin'
     ERROR_PIN_BLOCKED = 'org.chromium.flimflam.Error.PinBlocked'
+
+    # Various timeouts in seconds.
+    SERVICE_REGISTRATION_TIMEOUT = 60
 
     def set_logging_for_cellular_test(self):
         """Set the logging in shill for a test of cellular technology.
@@ -49,6 +53,21 @@ class CellularProxy(shill_proxy.ShillProxy):
 
         """
         return self.find_object('Service', {'Type': self.TECHNOLOGY_CELLULAR})
+
+
+    def wait_for_cellular_service_object(self):
+        """Waits for the cellular service object to show up.
+
+        @return DBus object for the first cellular service found.
+        @raises ShillProxyError if no cellular service is found within the
+            registration timeout period.
+
+        """
+        CellularProxy._poll_for_condition(
+                lambda: self.find_cellular_service_object() is not None,
+                'Failed to find cellular service object',
+                timeout=CellularProxy.SERVICE_REGISTRATION_TIMEOUT)
+        return self.find_cellular_service_object()
 
 
     def find_cellular_device_object(self):
