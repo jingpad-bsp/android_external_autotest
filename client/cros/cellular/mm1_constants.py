@@ -14,6 +14,9 @@ MM1 = '/org/freedesktop/ModemManager1'
 # The Root Object Path
 ROOT_PATH = '/'
 
+# Errors
+DBUS_SERVICE_UNKNOWN = 'org.freedesktop.DBus.Error.ServiceUnknown'
+
 # Interfaces
 # Standard Interfaces
 I_PROPERTIES = 'org.freedesktop.DBus.Properties'
