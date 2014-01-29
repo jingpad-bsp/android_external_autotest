@@ -96,7 +96,7 @@ class KernelHandler(object):
         key directory.
         """
         dev = self.partition_map[section]['device']
-        cmd_template = 'dd if=%s of=%s bs=4M count=1'
+        cmd_template = 'dd if=%s of=%s bs=16M count=1'
         self.chros_if.run_shell_command(cmd_template % (
                 dev, self.dump_file_name))
         bfile = open(self.dump_file_name, 'r')
