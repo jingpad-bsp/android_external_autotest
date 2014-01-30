@@ -40,6 +40,11 @@ class NetworkChroot(object):
     STARTUP_PID_FILE = 'var/run/vpn_startup.pid'
     STARTUP_SLEEPER_PID_FILE = 'var/run/vpn_sleeper.pid'
 
+    # These flags must track those given at boot in /sbin/chromeos_startup,
+    # otherwise we will end up changing the mount flags for the root
+    # filesystem's /dev/pts.
+    DEV_PTS_FLAGS = 'noexec,nosuid,gid=5,mode=0620'
+
     COPIED_CONFIG_FILES = [
         'etc/ld.so.cache'
     ]
@@ -52,11 +57,12 @@ class NetworkChroot(object):
             'sleep %(startup-delay-seconds)d &\n'
             'echo $! > /%(sleeper-pidfile)s &\n'
             'wait\n'
-            'mount -t devpts devpts /dev/pts\n'
+            'mount -t devpts -o %(dev-pts-flags)s devpts /dev/pts\n'
             'ip addr add %(local-ip-and-prefix)s dev %(local-interface-name)s\n'
             'ip link set %(local-interface-name)s up\n'
     }
     CONFIG_FILE_VALUES = {
+        'dev-pts-flags': DEV_PTS_FLAGS,
         'sleeper-pidfile': STARTUP_SLEEPER_PID_FILE,
         'startup-delay-seconds': STARTUP_DELAY_SECONDS,
         'startup-pidfile': STARTUP_PID_FILE
