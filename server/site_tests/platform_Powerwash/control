@@ -8,7 +8,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "server"
-SUITE = "bvt"
+SUITE = "au"
 
 DOC = """
 Tests that a device runs powerwash on the first reboot after the powerwash was
