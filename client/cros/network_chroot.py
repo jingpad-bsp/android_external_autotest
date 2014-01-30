@@ -25,26 +25,20 @@ class NetworkChroot(object):
       - Wait for the network namespace to be passed in, by performing
         a "sleep" and writing the pid of this process as well.  Our
         parent will kill this process to resume the startup process.
-      - Manually mount /dev/pts, since the bind mount that the
-        minijail0 command creates is read-only and xl2tpd is unable
-        to perform operations like chown() on it which is a fatal error.
       - We can now configure the network interface with an address.
       - At this point, we can now start any user-requested server
         processes.
     """
-    BIND_ROOT_DIRECTORIES = ('bin', 'dev', 'lib', 'lib32', 'lib64',
+    BIND_ROOT_DIRECTORIES = ('bin', 'dev', 'dev/pts', 'lib', 'lib32', 'lib64',
                              'proc', 'sbin', 'sys', 'usr', 'usr/local')
+    # Subset of BIND_ROOT_DIRECTORIES that should be mounted writable.
+    BIND_ROOT_WRITABLE_DIRECTORIES = frozenset(('dev/pts',))
+
     ROOT_DIRECTORIES = ('etc',  'tmp', 'var', 'var/log', 'var/run')
     STARTUP = 'etc/chroot_startup.sh'
     STARTUP_DELAY_SECONDS = 5
     STARTUP_PID_FILE = 'var/run/vpn_startup.pid'
     STARTUP_SLEEPER_PID_FILE = 'var/run/vpn_sleeper.pid'
-
-    # These flags must track those given at boot in /sbin/chromeos_startup,
-    # otherwise we will end up changing the mount flags for the root
-    # filesystem's /dev/pts.
-    DEV_PTS_FLAGS = 'noexec,nosuid,gid=5,mode=0620'
-
     COPIED_CONFIG_FILES = [
         'etc/ld.so.cache'
     ]
@@ -57,12 +51,10 @@ class NetworkChroot(object):
             'sleep %(startup-delay-seconds)d &\n'
             'echo $! > /%(sleeper-pidfile)s &\n'
             'wait\n'
-            'mount -t devpts -o %(dev-pts-flags)s devpts /dev/pts\n'
             'ip addr add %(local-ip-and-prefix)s dev %(local-interface-name)s\n'
             'ip link set %(local-interface-name)s up\n'
     }
     CONFIG_FILE_VALUES = {
-        'dev-pts-flags': DEV_PTS_FLAGS,
         'sleeper-pidfile': STARTUP_SLEEPER_PID_FILE,
         'startup-delay-seconds': STARTUP_DELAY_SECONDS,
         'startup-pidfile': STARTUP_PID_FILE
@@ -216,7 +208,10 @@ class NetworkChroot(object):
                 os.symlink(link_path, dst_path)
             else:
                 os.mkdir(dst_path)
-                self._jail_args += [ '-b', '%s,%s' % (src_path, src_path) ]
+                mount_arg = '%s,%s' % (src_path, src_path)
+                if rootdir in self.BIND_ROOT_WRITABLE_DIRECTORIES:
+                    mount_arg += ',1'
+                self._jail_args += [ '-b', mount_arg ]
 
         for config_file in self._copied_config_files:
             src_path = os.path.join('/', config_file)
