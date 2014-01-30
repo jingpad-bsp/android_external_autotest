@@ -281,7 +281,7 @@ def crash_cryptohomed():
     utils.poll_for_condition(
         lambda: utils.system('ps -p %d' % pid,
                              ignore_status=True) != 0,
-            timeout=60,
+            timeout=180,
             exception=error.TestError(
                 'Timeout waiting for cryptohomed to coredump'))
 
@@ -343,10 +343,11 @@ class CryptohomeProxy(DBusClient):
                       ' with async_id ' + str(out))
         result = {}
         try:
+            # __wait_for_specific_signal has a 10s timeout
             result = utils.poll_for_condition(
                 lambda: self.__wait_for_specific_signal(
                     self.ASYNC_CALL_STATUS_SIGNAL, {'async_id' : out}),
-                timeout=60,
+                timeout=180,
                 desc='matching %s signal' % self.ASYNC_CALL_STATUS_SIGNAL)
         except utils.TimeoutError, e:
             logging.error('Cryptohome timed out. Sending ABRT.')
