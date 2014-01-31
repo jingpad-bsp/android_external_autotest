@@ -5,7 +5,14 @@ import logging
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
+
+"""
+Reads from sysfs to determine kernel gem objects and memory info.
+"""
 class graphics_KernelMemory(test.test):
+    """
+    Reads from sysfs to determine kernel gem objects and memory info.
+    """
     version = 1
 
     # These are sysfs fields that will be read by this test.  For different
@@ -64,18 +71,21 @@ class graphics_KernelMemory(test.test):
                 break
 
             if not field_value:
-                logging.error('Unable to find any sysfs paths for field "%s"'
-                              % field_name)
+                logging.error('Unable to find any sysfs paths for field "%s"',
+                              field_name)
                 num_errors += 1
                 continue
 
-            parsed_results = self._parse_sysfs(field_value);
+            parsed_results = self._parse_sysfs(field_value)
 
             for key in parsed_results:
                 keyvals['%s_%s' % (field_name, key)] = parsed_results[key]
+                self.output_perf_value(description='%s_%s' % (field_name, key),
+                               value=parsed_results[key], units='bytes',
+                               higher_is_better=False)
 
             if 'bytes' in parsed_results and parsed_results['bytes'] == 0:
-                logging.error('%s reported 0 bytes' % field_name)
+                logging.error('%s reported 0 bytes', field_name)
                 num_errors += 1
 
         self.write_perf_keyval(keyvals)

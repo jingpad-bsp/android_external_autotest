@@ -16,11 +16,19 @@
     "master_name": "ChromeOS_Graphics"
   },
   {
+    "autotest_name": "graphics_KernelMemory",
+    "master_name": "ChromeOS_Graphics"
+  },
+  {
     "autotest_name": "graphics_Piglit",
     "master_name": "ChromeOS_Graphics"
   },
   {
     "autotest_name": "graphics_WebGLConformance",
+    "master_name": "ChromeOS_Graphics"
+  },
+  {
+    "autotest_name": "graphics_WebGLManyPlanetsDeep",
     "master_name": "ChromeOS_Graphics"
   },
   {

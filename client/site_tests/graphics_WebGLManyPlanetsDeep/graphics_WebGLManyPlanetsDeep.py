@@ -68,6 +68,10 @@ class graphics_WebGLManyPlanetsDeep(test.test):
                 'js_render_time_ms_std': std[1],
                 'js_render_time_ms_mean': mean[1]
         })
+        self.output_perf_value(description='average_fps',
+                               value=avg_fps, units='fps',
+                               higher_is_better=True)
+
         with open('frame_data', 'w') as f:
             line_format = '%10s %20s %20s %20s\n'
             f.write(line_format % ('seq', 'start_time', 'frame_render_time_ms',
