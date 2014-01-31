@@ -11,7 +11,6 @@ class TPMStore(object):
     """Context enclosing the use of the TPM."""
 
     CHAPS_CLIENT_COMMAND = 'chaps_client'
-    CHAPS_SYSTEM_TOKEN = '/var/lib/chaps'
     CONVERT_TYPE_RSA = 'rsa'
     CONVERT_TYPE_X509 = 'x509'
     CRYPTOHOME_ACTION_TAKE_OWNERSHIP = 'tpm_take_ownership'
@@ -74,8 +73,6 @@ class TPMStore(object):
     def reset(self):
         """Reset the crypto store and take ownership of the device."""
         utils.system('initctl restart chapsd')
-        utils.system('%s --unload --path=%s' %
-                     (self.CHAPS_CLIENT_COMMAND, self.CHAPS_SYSTEM_TOKEN))
         self._cryptohome_action(self.CRYPTOHOME_ACTION_TAKE_OWNERSHIP)
         self._cryptohome_action(self.CRYPTOHOME_ACTION_WAIT_OWNERSHIP)
 
