@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-NAME = 'hardware_StorageFio'
+NAME = 'hardware_StorageFio.integrity'
 AUTHOR = 'jcasse, grundler'
 PURPOSE = 'Verify that data written to disk remains valid after 72 hours.'
 TIME = 'LENGTHY'
