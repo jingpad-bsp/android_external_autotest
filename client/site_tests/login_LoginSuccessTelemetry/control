@@ -2,10 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "Chrome OS Team"
+AUTHOR = "cmasone, achuith"
 NAME = "login_LoginSuccessTelemetry"
-PURPOSE = "Login using Telemetry."
-CRITERIA = "This test will succeed as long as a test account is able to login."
 SUITE = "bvt, smoke"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
@@ -14,8 +12,13 @@ TEST_TYPE = "client"
 EXPERIMENTAL = "True"
 
 DOC = """
-This is a helper test that will login a system using Telemetry. Sets
-client_success to True on success so callers can verify it ran correctly.
+This test verifies that signing in via the UI (using Telemetry) works correctly.
+This includes listening to DBus to verify that the session_manager announces the
+start of a user session upon sign in, as well as the end of one on sign out.
+
+This test can also be used as a 'helper test' to sign into a system
+using Telemetry. To this end, it sets client_success to True on
+success so callers can verify it ran correctly.
 """
 
 job.run_test('login_LoginSuccessTelemetry')
