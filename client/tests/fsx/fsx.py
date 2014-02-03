@@ -8,6 +8,7 @@ from autotest_lib.client.bin import test, utils
 
 
 class fsx(test.test):
+    """Test to run fsx-linux."""
     version = 3
 
     def initialize(self):
@@ -19,33 +20,18 @@ class fsx(test.test):
         self.tarball = utils.unmap_url(self.bindir, tarball, self.tmpdir)
         utils.extract_tarball_to_dir(self.tarball, self.srcdir)
 
-        self.job.setup_dep(['libaio'])
-        ldflags = '-L' + self.autodir + '/deps/libaio/lib'
-        cflags = '-I' + self.autodir + '/deps/libaio/include'
-        var_ldflags = 'LDFLAGS="' + ldflags + '"'
-        var_cflags  = 'CFLAGS="' + cflags + '"'
-        self.make_flags = var_ldflags + ' ' + var_cflags
-
         os.chdir(self.srcdir)
-        p1 = '0001-Minor-fixes-to-PAGE_SIZE-handling.patch'
-        p2 = '0002-Enable-cross-compiling-for-fsx.patch'
-        utils.system('patch -p1 < ../%s' % p1)
-        utils.system('patch -p1 < ../%s' % p2)
-        utils.system(self.make_flags + ' make fsx-linux')
+        for p in ['0001-Minor-fixes-to-PAGE_SIZE-handling.patch',
+                  '0002-Enable-cross-compiling-for-fsx.patch',
+                  '0003-Fix-Link-Options.patch']:
+            utils.system('patch -p1 < ../%s' % p)
+        utils.system('make fsx-linux')
 
 
     def run_once(self, dir=None, repeat=100000):
-        dep = 'libaio'
-        dep_dir = os.path.join(self.autodir, 'deps', dep)
-        self.job.install_pkg(dep, 'dep', dep_dir)
-
         args = '-N %s' % repeat
         if not dir:
             dir = self.tmpdir
         os.chdir(dir)
-        libs = self.autodir+'/deps/libaio/lib/'
-        ld_path = utils.prepend_path(libs,
-                           utils.environ('LD_LIBRARY_PATH'))
-        var_ld_path = 'LD_LIBRARY_PATH=' + ld_path
-        cmd = self.srcdir + '/fsx-linux ' + args + ' poo'
-        utils.system(var_ld_path + ' ' + cmd)
+        utils.system(' '.join([os.path.join(self.srcdir,'/fsx-linux'),
+                               args, 'poo']))
