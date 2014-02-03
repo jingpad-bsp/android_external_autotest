@@ -42,6 +42,7 @@ OUTER_PINCH_SPACING = 70
 INNER_PINCH_SPACING = 25
 
 PHYSICAL_CLICK_SPACING = 20
+PHYSICAL_CLICK_FINGER_SIZE = 2
 
 TWO_CLOSE_FINGER_SPACING = 17
 TWO_FINGER_SPACING = 25
@@ -405,12 +406,21 @@ class RobotWrapper:
         # The tap commands have identical arguments as the click except with
         # two additional arguments at the end.  As such we generate the 'click'
         # command and add these on to make it work as a tap.
-        cmd = self._get_control_command_click(robot_script, gesture, variation)
+        cmd = self._get_control_command_click_tap(robot_script, gesture,
+                                                  variation)
         control_cmd = '%s %d tap' % (cmd, num_taps)
         return control_cmd
 
     def _get_control_command_click(self, robot_script, gesture, variation):
-        """Get robot control command for pysical click gestures """
+        """Get the robot control command for a physical click gesture"""
+        cmd = self._get_control_command_click_tap(robot_script, gesture,
+                                                  variation)
+        control_cmd = '%s %d' % (cmd, PHYSICAL_CLICK_FINGER_SIZE)
+
+    def _get_control_command_click_tap(self, robot_script, gesture, variation):
+        """Get robot control arguments that are common between pysical click
+        and tapping gestures
+        """
         location = None
         for element in variation:
             location = self._location_dict.get(element)
