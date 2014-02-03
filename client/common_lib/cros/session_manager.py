@@ -22,15 +22,12 @@ def connect():
 
 
 class SignalListener(object):
-    """A class to listen for ownership-related DBus signals.
+    """A class to listen for DBus signals from the session manager.
 
-    The session_manager emits a couple of DBus signals when certain events
-    related to device ownership occur.  This class provides a way to
-    listen for them and check on their status.
+    The session_manager emits several DBus signals when different events
+    of interest occur. This class provides a framework for derived classes
+    to use to listen for certain signals.
     """
-    _got_new_key = False
-    _got_new_policy = False
-    _main_loop = None
 
     def __init__(self, g_main_loop):
         """Constructor
@@ -38,14 +35,6 @@ class SignalListener(object):
         @param g_mail_loop: glib main loop object.
         """
         self._main_loop = g_main_loop
-
-
-    def listen_for_new_key_and_policy(self):
-        """Set to listen for signals indicating new owner key and device policy.
-        """
-        self.__listen_to_signal(self.__handle_new_key, 'SetOwnerKeyComplete')
-        self.__listen_to_signal(self.__handle_new_policy,
-                                'PropertyChangeComplete')
 
 
     def wait_for_signals(self, desc,
@@ -60,9 +49,10 @@ class SignalListener(object):
         """
         utils.poll_for_condition(
             condition=lambda: self.__received_signals(),
-            desc='Initial policy push complete.',
-            timeout=constants.DEFAULT_OWNERSHIP_TIMEOUT)
-        self.__reset_signal_state()
+            desc=desc,
+            timeout=timeout)
+        self.reset_signal_state()
+
 
     def __received_signals(self):
         """Run main loop until all pending events are done, checks for signals.
@@ -76,15 +66,20 @@ class SignalListener(object):
         context = self._main_loop.get_context()
         while context.iteration(False):
             pass
-        return self._got_new_key and self._got_new_policy
+        return self.all_signals_received()
 
 
-    def __reset_signal_state(self):
+    def reset_signal_state(self):
         """Resets internal signal tracking state."""
-        self._got_new_policy = self._got_new_key = False
+        raise NotImplementedError()
 
 
-    def __listen_to_signal(self, callback, signal):
+    def all_signals_received(self):
+        """Resets internal signal tracking state."""
+        raise NotImplementedError()
+
+
+    def listen_to_signal(self, callback, signal):
         """Connect a callback to a given session_manager dbus signal.
 
         Sets up a signal receiver for signal, and calls the provided callback
@@ -97,16 +92,108 @@ class SignalListener(object):
         bus.add_signal_receiver(
             handler_function=callback,
             signal_name=signal,
-            dbus_interface='org.chromium.Chromium',
+            dbus_interface='org.chromium.SessionManagerInterface',
             bus_name=None,
             path='/org/chromium/SessionManager')
 
 
+
+class OwnershipSignalListener(SignalListener):
+    """A class to listen for ownership-related DBus signals.
+
+    The session_manager emits a couple of DBus signals when certain events
+    related to device ownership occur.  This class provides a way to
+    listen for them and check on their status.
+    """
+
+    def __init__(self, g_main_loop):
+        """Constructor
+
+        @param g_mail_loop: glib main loop object.
+        """
+        super(OwnershipSignalListener, self).__init__(g_main_loop)
+        self._got_new_key = False
+        self._got_new_policy = False
+
+    def listen_for_new_key_and_policy(self):
+        """Set to listen for signals indicating new owner key and device policy.
+        """
+        self.listen_to_signal(self.__handle_new_key, 'SetOwnerKeyComplete')
+        self.listen_to_signal(self.__handle_new_policy,
+                              'PropertyChangeComplete')
+
+
+    def reset_signal_state(self):
+        """Resets internal signal tracking state."""
+        self._got_new_policy = self._got_new_key = False
+
+
+    def all_signals_received(self):
+        """Returns true when expected signals are all receieved."""
+        return self._got_new_key and self._got_new_policy
+
+
     def __handle_new_key(self, success):
-        """Callback to be used when a new key signal is received."""
+        """Callback to be used when a new key signal is received.
+
+        @param success: the string 'success' if the key was generated.
+        """
         self._got_new_key = (success == 'success')
 
 
     def __handle_new_policy(self, success):
-        """Callback to be used when a new policy signal is received."""
+        """Callback to be used when a new policy signal is received.
+
+        @param success: the string 'success' if the policy was stored.
+        """
         self._got_new_policy = (success == 'success')
+
+
+
+class SessionSignalListener(SignalListener):
+    """A class to listen for SessionStateChanged DBus signals.
+
+    The session_manager emits a DBus signal whenever a user signs in, when
+    the user session begins termination, and when the session is terminated.
+    This class allows this signal to be polled for
+    """
+
+    def __init__(self, g_main_loop):
+        """Constructor
+
+        @param g_mail_loop: glib main loop object.
+        """
+        super(SessionSignalListener, self).__init__(g_main_loop)
+        self._new_state = None
+        self._expected_state = None
+
+
+    def listen_for_session_state_change(self, expected):
+        """Set to listen for state changed signal with payload == |expected|.
+
+        @param expected: string representing the state transition we expect.
+                         One of 'started', 'stopping', or 'stopped'.
+        """
+        if expected not in {'started', 'stopping', 'stopped'}:
+            raise ValueError("expected must be one of 'started', 'stopping'," +
+                             " or 'stopped'.")
+        self.listen_to_signal(self.__handle_signal, 'SessionStateChanged')
+        self._expected_state = expected
+
+
+    def reset_signal_state(self):
+        """Resets internal signal tracking state."""
+        self._new_state = None
+
+
+    def all_signals_received(self):
+        """Returns true when expected signals are all receieved."""
+        return self._new_state == self._expected_state
+
+
+    def __handle_signal(self, state):
+        """Callback to be used when a new state-change signal is received.
+
+        @param state: the state transition being signaled.
+        """
+        self._new_state = state

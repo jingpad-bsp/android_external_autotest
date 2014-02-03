@@ -5,6 +5,7 @@
 import gobject, os
 
 from autotest_lib.client.bin import test, utils
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import policy, session_manager
 from autotest_lib.client.cros import constants, cros_ui, cryptohome, ownership
 
@@ -30,7 +31,8 @@ class login_GuestAndActualSession(test.test):
 
         DBusGMainLoop(set_as_default=True)
         self._session_manager = session_manager.connect()
-        self._listener = session_manager.SignalListener(gobject.MainLoop())
+        self._listener = session_manager.OwnershipSignalListener(
+                gobject.MainLoop())
         self._listener.listen_for_new_key_and_policy()
 
 
