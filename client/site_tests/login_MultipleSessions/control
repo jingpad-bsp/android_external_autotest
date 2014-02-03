@@ -5,7 +5,7 @@
 AUTHOR = "cmasone, joaodasilva"
 NAME = "login_MultipleSessions"
 EXPERIMENTAL = "True"
-SUITE = "regression"
+SUITE = "bvt, smoke"
 TIME = "FAST"
 TEST_CLASS = "login"
 TEST_TYPE = "client"

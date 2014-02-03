@@ -2,19 +2,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "joaodasilva"
+AUTHOR = "joaodasilva, cmasone"
 NAME = "login_UserPolicyKeys"
-PURPOSE = "Verifies the user policy key copy."
-CRITERIA = """
-Fails if the user policy key isn't stored in a location readable by chronos
-after storing a user policy at the session_manager.
-"""
-SUITE = "regression"
+EXPERIMENTAL = "True"
+SUITE = "bvt, smoke"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"
 TEST_TYPE = "client"
-EXPERIMENTAL = "True"
 
 DOC = """
 This test stores a user policy at the session_manager over dbus, and verifies

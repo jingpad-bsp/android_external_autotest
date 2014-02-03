@@ -4,12 +4,7 @@
 
 AUTHOR = "joaodasilva, cmasone"
 NAME = "login_MultiUserPolicy"
-PURPOSE = "Verifies user policy handling with multiple signins."
-CRITERIA = """
-Fails if users that sign-in after the first sign-in aren't able to store and
-retrieve their policies.
-"""
-SUITE = "regression"
+SUITE = "bvt, smoke"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"
@@ -19,6 +14,9 @@ EXPERIMENTAL = "True"
 DOC = """
 This test signs in two users at the session_manager over dbus, and verifies that
 both can store and retrieve their respective user policies.
+
+Fails if users that sign-in after the first sign-in aren't able to store and
+retrieve their policies.
 """
 
 job.run_test('login_MultiUserPolicy')
