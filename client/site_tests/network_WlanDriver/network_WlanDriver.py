@@ -31,42 +31,46 @@ class network_WlanDriver(test.test):
     }
     EXPECTED_DRIVER = {
             'Atheros AR9280': {
-                    '3.4': 'kernel/drivers/net/wireless/ath/ath9k/ath9k.ko',
-                    '3.8': 'kernel/drivers/net/wireless-3.4/ath/ath9k/ath9k.ko'
+                    '3.4': 'wireless/ath/ath9k/ath9k.ko',
+                    '3.8': 'wireless-3.4/ath/ath9k/ath9k.ko'
             },
             'Atheros AR9382': {
-                    '3.4': 'kernel/drivers/net/wireless/ath/ath9k/ath9k.ko',
-                    '3.8': 'kernel/drivers/net/wireless-3.4/ath/ath9k/ath9k.ko'
+                    '3.4': 'wireless/ath/ath9k/ath9k.ko',
+                    '3.8': 'wireless-3.4/ath/ath9k/ath9k.ko'
             },
             'Intel 7260': {
-                    '3.8': 'kernel/drivers/net/wireless/iwl7000/iwlwifi/'
-                           'iwlwifi.ko'
+                    '3.8': 'wireless/iwl7000/iwlwifi/iwlwifi.ko',
+                    '3.10': 'wireless-3.8/iwl7000/iwlwifi/iwlwifi.ko'
             },
             'Atheros AR9462': {
-                    '3.4': 'kernel/drivers/net/wireless/ath/ath9k_btcoex/'
-                           'ath9k_btcoex.ko',
-                    '3.8': 'kernel/drivers/net/wireless-3.4/ath/ath9k_btcoex/'
-                           'ath9k_btcoex.ko'
+                    '3.4': 'wireless/ath/ath9k_btcoex/ath9k_btcoex.ko',
+                    '3.8': 'wireless-3.4/ath/ath9k_btcoex/ath9k_btcoex.ko'
             },
             'Marvell 88W8797 SDIO': {
-                    '3.4': 'kernel/drivers/net/wireless/mwifiex/'
-                           'mwifiex_sdio.ko',
-                    '3.8': 'kernel/drivers/net/wireless-3.4/mwifiex/'
-                           'mwifiex_sdio.ko'
+                    '3.4': 'wireless/mwifiex/mwifiex_sdio.ko',
+                    '3.8': 'wireless-3.4/mwifiex/mwifiex_sdio.ko'
             },
             'Marvell 88W8897 PCIE': {
-                     '3.8': 'kernel/drivers/net/wireless/mwifiex/'
-                            'mwifiex_sdio.ko'
+                     '3.8': 'wireless/mwifiex/mwifiex_sdio.ko',
+                     '3.10': 'wireless-3.8/mwifiex/mwifiex_sdio.ko'
             },
             'Marvell 88W8897 SDIO': {
-                     '3.8': 'kernel/drivers/net/wireless/mwifiex/'
-                            'mwifiex_sdio.ko'
+                     '3.8': 'wireless/mwifiex/mwifiex_sdio.ko'
             },
             'Broadcom 4354 SDIO': {
-                     '3.8': 'kernel/drivers/net/wireless/brcm80211/'
-                            'brcmfmac/brcmfmac.ko'
+                     '3.8': 'wireless/brcm80211/brcmfmac/brcmfmac.ko'
             },
     }
+
+
+    def get_kernel_release(self):
+        """
+        Get the kernel release for a device under test.
+
+        @return string representing the kernel revision, e.g. "3.4.0".
+
+        """
+        return utils.system_output('uname -r')
 
 
     def get_kernel_base(self):
@@ -76,8 +80,7 @@ class network_WlanDriver(test.test):
         @return string representing the kernel base revision, e.g. "3.4".
 
         """
-        release = utils.system_output('uname -r')
-        return '.'.join(release.split('.')[:2])
+        return '.'.join(self.get_kernel_release().split('.')[:2])
 
 
     def get_net_device_info(self, device_name):
@@ -109,8 +112,11 @@ class network_WlanDriver(test.test):
 
         module_name = os.path.basename(os.readlink(os.path.join(
                 device_path, 'driver', 'module')))
-        module_path = utils.system_output('find /lib/modules/* -name %s.ko '
-                                          '-printf %%P' % module_name)
+        module_path = utils.system_output('find '
+                                          '/lib/modules/%s/kernel/drivers/net '
+                                          '-name %s.ko -printf %%P' %
+                                          (self.get_kernel_release(),
+                                           module_name))
         return (device_name, module_path)
 
 
