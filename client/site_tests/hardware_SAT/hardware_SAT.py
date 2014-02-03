@@ -8,6 +8,11 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
 def memory_channel_args_sandybridge(channel_modules):
+    """Add arguments for memory testing.
+
+    @param channel_modules: channel names.
+    """
+
     with open('/proc/bus/pci/00/00.0', 'r', 0) as fd:
         fd.seek(0x48)
         mchbar = struct.unpack('=I', fd.read(4))[0]
@@ -46,6 +51,8 @@ def memory_channel_args_sandybridge(channel_modules):
 
 
 class hardware_SAT(test.test):
+    """Run SAT."""
+
     version = 1
 
     # http://code.google.com/p/stressapptest/
@@ -57,18 +64,9 @@ class hardware_SAT(test.test):
         tarball = utils.unmap_url(self.bindir, tarball, self.tmpdir)
         utils.extract_tarball_to_dir(tarball, self.srcdir)
 
-        self.job.setup_dep(['libaio'])
-        ldflags = '-L' + self.autodir + '/deps/libaio/lib'
-        cflags = '-I' + self.autodir + '/deps/libaio/include'
-        # Add paths to libaio files.
-        var_flags = 'LDFLAGS="' + ldflags + '"'
-        var_flags += ' CXXFLAGS="' + cflags + '"'
-        var_flags += ' CFLAGS="' + cflags + '"'
-        var_flags += ' LIBS="-static -laio"'
-
         os.chdir(self.srcdir)
         # ./configure stores relevant path and environment variables.
-        utils.configure(configure=var_flags + ' ./configure')
+        utils.configure()
         utils.make()
 
 
