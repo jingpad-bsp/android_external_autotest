@@ -205,7 +205,9 @@ class ExpectedUpdateEventChain(object):
         self._expected_event_chain = expected_event_chain_args
 
 
-    def _format_event_with_timeout(self, timeout, expected_event):
+    @staticmethod
+    def _format_event_with_timeout(timeout, expected_event):
+        """Returns a string representation of the event, with timeout."""
         return ('%s %s' %
                 (expected_event,
                  ('within %s seconds' % timeout) if timeout
@@ -244,8 +246,8 @@ class ExpectedUpdateEventChain(object):
                         expected_event.error_message)
 
 
-    def _verify_event_with_timeout(self, timeout, expected_event,
-                                   get_next_event):
+    @staticmethod
+    def _verify_event_with_timeout(timeout, expected_event, get_next_event):
         """Verify an expected event occurs within a given timeout.
 
         @param timeout: specified in seconds
@@ -476,6 +478,7 @@ class OmahaDevserver(object):
                within the default timeouts (11 seconds).
         """
         def _devserver_down():
+            """Ensure that the devserver process is down."""
             return self._remote_devserver_pid() == None
 
         self._devserver_ssh.run('kill %s' % pid)
@@ -689,10 +692,10 @@ class autoupdate_EndToEndTest(test.test):
                         'DUT %s failed to boot after %d secs' %
                         (self._host.ip, self._host.BOOT_TIMEOUT))
         else:
-          # TODO(garnold) chromium-os:33766: implement waiting for MP-signed
-          # images; ideas include waiting for a ping reply, or using a GPIO
-          # signal.
-          pass
+            # TODO(garnold) chromium-os:33766: implement waiting for MP-signed
+            # images; ideas include waiting for a ping reply, or using a GPIO
+            # signal.
+            pass
 
 
     def _install_mp_image(self, staged_image_url):
@@ -727,9 +730,9 @@ class autoupdate_EndToEndTest(test.test):
         self._host.servo.install_recovery_image(staged_image_url)
         logging.info('Waiting for image to boot')
         if not self._host.wait_up(timeout=self._host.USB_BOOT_TIMEOUT):
-          raise error.TestFail(
-              'DUT %s boot from usb timed out after %d secs' %
-              (self._host, self._host.USB_BOOT_TIMEOUT))
+            raise error.TestFail(
+                    'DUT %s boot from usb timed out after %d secs' %
+                    (self._host, self._host.USB_BOOT_TIMEOUT))
         logging.info('Installing new image onto ssd')
         try:
             cmd_result = self._host.run(
@@ -798,7 +801,8 @@ class autoupdate_EndToEndTest(test.test):
             raise NotImplementedError()
 
 
-    def _stage_payload(self, autotest_devserver, devserver_label, filename,
+    @staticmethod
+    def _stage_payload(autotest_devserver, devserver_label, filename,
                        archive_url=None, artifacts=None):
         """Stage the given payload onto the devserver.
 
@@ -816,6 +820,8 @@ class autoupdate_EndToEndTest(test.test):
                          downloading.
         @param archive_url: An optional GS archive location, if not using the
                             devserver's default.
+        @param artifacts: A list of artifacts to stage along from the build.
+
 
         @return URL of the staged payload on the server.
 
@@ -854,10 +860,12 @@ class autoupdate_EndToEndTest(test.test):
         archive_url, _, filename = payload_uri.rpartition('/')
         devserver_label = urlparse.urlsplit(archive_url).path.strip('/')
         return self._stage_payload(autotest_devserver, devserver_label,
-                                   filename, archive_url=archive_url)
+                                   filename, archive_url=archive_url,
+                                   artifacts=artifacts)
 
 
-    def _payload_to_update_url(self, payload_url):
+    @staticmethod
+    def _payload_to_update_url(payload_url):
         """Given a update or stateful payload url, returns the update url."""
         # We want to transform it to the correct omaha url which is
         # <hostname>/update/...LABEL.
@@ -878,42 +886,49 @@ class autoupdate_EndToEndTest(test.test):
 
     def update_via_test_payloads(self, omaha_host, payload_url, stateful_url,
                                  clobber):
-      """Given the following update and stateful urls, update the DUT.
+        """Given the following update and stateful urls, update the DUT.
 
-      Only updates the rootfs/stateful if the respective url is provided.
+        Only updates the rootfs/stateful if the respective url is provided.
 
-      @param omaha_host: If updating rootfs, redirect updates through this
-                         host. Should be None iff payload_url is None.
-      @param payload_url: If set, the specified url to find the update payload.
-      @param stateful_url: If set, the specified url to find the stateful
-                           payload.
-      @param clobber: If True, do a clean install of stateful.
-      """
-      # We create a OmahaDevserver to redirect blah.bin to update/. This allows
-      # us to use any payload filename to serve an update.
-      temp_devserver = None
-      try:
-          if payload_url:
-              temp_devserver = OmahaDevserver(
-                      omaha_host, self._devserver_dir, self._host.ip,
-                      payload_url)
-              temp_devserver.start_devserver()
-              payload_url = temp_devserver.get_update_url()
+        @param omaha_host: If updating rootfs, redirect updates through this
+            host. Should be None iff payload_url is None.
+        @param payload_url: If set, the specified url to find the update
+            payload.
+        @param stateful_url: If set, the specified url to find the stateful
+            payload.
+        @param clobber: If True, do a clean install of stateful.
+        """
+        def perform_update(url, is_stateful):
+            """Perform a rootfs/stateful update using given URL.
 
-          stateful_url = self._payload_to_update_url(stateful_url)
+            @param url: URL to update from.
+            @param is_stateful: Whether this is a stateful or rootfs update.
+            """
+            if url:
+                updater = autoupdater.ChromiumOSUpdater(url, host=self._host)
+                if is_stateful:
+                    updater.update_stateful(clobber=clobber)
+                else:
+                    updater.update_rootfs()
 
-          for (url, is_stateful) in (payload_url, False), (stateful_url, True):
-              if not url:
-                  continue
+        # We create a OmahaDevserver to redirect blah.bin to update/. This
+        # allows us to use any payload filename to serve an update.
+        temp_devserver = None
+        try:
+            if payload_url:
+                temp_devserver = OmahaDevserver(
+                        omaha_host, self._devserver_dir, self._host.ip,
+                        payload_url)
+                temp_devserver.start_devserver()
+                payload_url = temp_devserver.get_update_url()
 
-              updater = autoupdater.ChromiumOSUpdater(url, host=self._host)
-              if not is_stateful:
-                  updater.update_rootfs()
-              else:
-                  updater.update_stateful(clobber=clobber)
-      finally:
-          if temp_devserver:
-              temp_devserver.kill()
+            stateful_url = self._payload_to_update_url(stateful_url)
+
+            perform_update(payload_url, False)
+            perform_update(stateful_url, True)
+        finally:
+            if temp_devserver:
+                temp_devserver.kill()
 
 
     def install_source_version(self, devserver_hostname, image_url,
