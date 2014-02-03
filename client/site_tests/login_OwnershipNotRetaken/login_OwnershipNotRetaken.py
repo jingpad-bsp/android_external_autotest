@@ -2,31 +2,38 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import hashlib, logging, os, time, utils
+import hashlib, os
+
+from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import constants, cros_logging, cros_ui
-from autotest_lib.client.cros import cros_ui_test, cryptohome, login
+from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.cros import constants, cryptohome, login
 
 
-class login_OwnershipNotRetaken(cros_ui_test.UITest):
-    version = 1
+class login_OwnershipNotRetaken(test.test):
+    """Subsequent logins after the owner must not clobber the owner's key."""
+    version = 2
 
     _TEST_USER = 'example@chromium.org'
     _TEST_PASS = 'testme'
 
-    def initialize(self, creds='$default'):
-        super(login_OwnershipNotRetaken, self).initialize(
-            creds, is_creating_owner=True)
-
 
     def run_once(self):
-        login.wait_for_ownership()
-        self.logout()
+        # Sign in. Sign out happens automatically when cr goes out of scope.
+        with chrome.Chrome() as cr:
+            login.wait_for_ownership()
+
         key = open(constants.OWNER_KEY_FILE, 'rb')
         hash = hashlib.md5(key.read())
         key.close()
         mtime = os.stat(constants.OWNER_KEY_FILE).st_mtime
-        self.login(self._TEST_USER, self._TEST_PASS)
+
+        # Sign in/sign out as a second user.
+        with chrome.Chrome(username=self._TEST_USER,
+                           password=self._TEST_PASS) as cr:
+            pass
+
+        # Checking mtime to see if key file was touched during second sign in.
         if os.stat(constants.OWNER_KEY_FILE).st_mtime > mtime:
             raise error.TestFail("Owner key was touched on second login!")
 

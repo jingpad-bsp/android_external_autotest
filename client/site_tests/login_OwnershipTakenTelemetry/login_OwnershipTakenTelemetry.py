@@ -21,10 +21,9 @@ class login_OwnershipTakenTelemetry(test.test):
 
 
     def initialize(self):
-        self.auto_login = False  # Will log in manually later.
         ownership.clear_ownership_files()
         if os.access(constants.OWNER_KEY_FILE, os.F_OK):
-            raise error.TestFail('Ownership already taken!')
+            raise error.TestError('Ownership already taken!')
 
 
     def _validate_policy(self, retrieved_policy, username):
