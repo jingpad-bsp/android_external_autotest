@@ -329,7 +329,12 @@ class CryptohomeProxy(DBusClient):
          Returns the resulting dict on success or {} on error.
       """
       self.clear_signal_content(signal)
-      result = self.wait_for_signal(signal)
+      # Do not bubble up the timeout here, just return {}.
+      result = {}
+      try:
+          result = self.wait_for_signal(signal)
+      except utils.TimeoutError:
+          return {}
       for k in data.keys():
           if not result.has_key(k) or result[k] != data[k]:
             return {}
