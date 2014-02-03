@@ -342,25 +342,19 @@ class OmahaDevserver(object):
     # How long to wait for a devserver to start.
     _WAIT_FOR_DEVSERVER_STARTED_SECONDS = 15
 
-    # How long to sleep between checks to see if a devserver is up.
+    # How long to sleep (seconds) between checks to see if a devserver is up.
     _WAIT_SLEEP_INTERVAL = 1
 
-    # If a previous devserver exists, how long to wait in seconds before
-    # attempting to reconnect.
-    _TIME_TO_LET_PORT_FREE = 15
-
-    # How many times to attempt to start a devserver.
-    _NUM_DEVSERVER_ATTEMPTS = 5
+    # Max devserver execution time (seconds); used with timelimit(1) to ensure
+    # we don't have defunct instances hogging the system.
+    _DEVSERVER_TIMELIMIT = 12 * 60 * 60
 
 
-    def __init__(self, omaha_host, devserver_dir, dut_ip_addr,
-                 update_payload_staged_url):
+    def __init__(self, omaha_host, devserver_dir, update_payload_staged_url):
         """Starts a private devserver instance, operating at Omaha capacity.
 
         @param omaha_host: host address where the devserver is spawned.
         @param devserver_dir: path to the devserver source directory
-        @param dut_ip_addr: the IP address of the client DUT, used for deriving
-               a unique port number.
         @param update_payload_staged_url: URL to provision for update requests.
 
         """
@@ -368,56 +362,105 @@ class OmahaDevserver(object):
             raise error.TestError('Missing update payload url')
 
         self._omaha_host = omaha_host
-        self._omaha_port = self._get_unique_port(dut_ip_addr)
+        self._devserver_pid = 0
+        self._devserver_port = 0  # Determined later from devserver portfile.
         self._devserver_dir = devserver_dir
         self._update_payload_staged_url = update_payload_staged_url
 
         self._devserver_ssh = hosts.SSHHost(self._omaha_host,
                                             user=os.environ['USER'])
-        self._devserver_output = '/tmp/devserver.%s' % self._omaha_port
-        self._devserver_pid = None
+
+        # Allocate temporary files for various server outputs.
+        self._devserver_logfile = self._create_tempfile_on_devserver('log')
+        self._devserver_portfile = self._create_tempfile_on_devserver('port')
+        self._devserver_pidfile = self._create_tempfile_on_devserver('pid')
+
+    def _create_tempfile_on_devserver(self, label):
+        """Creates a temporary file on the devserver and returns its path.
+
+        @param label: Identifier for the file context (string, no whitespaces).
+
+        @raises test.TestError: If we failed to invoke mktemp on the server.
+        @raises OmahaDevserverFailedToStart: If tempfile creation failed.
+        """
+        remote_cmd = 'mktemp --tmpdir devserver-%s.XXXXXX' % label
+        try:
+            result = self._devserver_ssh.run(remote_cmd, ignore_status=True)
+        except error.AutoservRunError as e:
+            self._log_and_raise_remote_ssh_error(e)
+        if result.exit_status != 0:
+            raise OmahaDevserverFailedToStart(
+                    'Could not create a temporary %s file on the devserver, '
+                    'error output:\n%s' % (label, result.stderr))
+        return result.stdout.strip()
+
+    @staticmethod
+    def _log_and_raise_remote_ssh_error(e):
+        """Logs failure to ssh remote, then raises a TestError."""
+        logging.debug('Failed to ssh into the devserver: %s', e)
+        logging.error('If you are running this locally it means you did not '
+                      'configure ssh correctly.')
+        raise error.TestError('Failed to ssh into the devserver: %s' % e)
+
+
+    def _read_int_from_devserver_file(self, filename):
+        """Reads and returns an integer value from a file on the devserver."""
+        return int(self._get_devserver_file_content(filename).strip())
 
 
     def _wait_for_devserver_to_start(self):
         """Waits until the devserver starts within the time limit.
 
+        Infers and sets the devserver PID and serving port.
+
         Raises:
             OmahaDevserverFailedToStart: If the time limit is reached and we
                                          cannot connect to the devserver.
         """
+        # Compute the overall timeout.
+        deadline = time.time() + self._WAIT_FOR_DEVSERVER_STARTED_SECONDS
+
+        # First, wait for port file to be filled and determine the server port.
         logging.warning('Waiting for devserver to start up.')
-        timeout = self._WAIT_FOR_DEVSERVER_STARTED_SECONDS
-        netloc = self.get_netloc()
-        current_time = time.time()
-        deadline = current_time + timeout
-        remote_cmd = 'test -e /proc/%s' % self._devserver_pid
-        result = self._devserver_ssh.run(remote_cmd, ignore_status=True)
-        if result.exit_status != 0:
-            self._devserver_pid = None
+        while time.time() < deadline:
+            try:
+                self._devserver_pid = self._read_int_from_devserver_file(
+                        self._devserver_pidfile)
+                self._devserver_port = self._read_int_from_devserver_file(
+                        self._devserver_portfile)
+                logging.info('Devserver pid is %d, serving on port %d',
+                             self._devserver_pid, self._devserver_port)
+                break
+            except Exception:  # Couldn't read file or corrupt content.
+                time.sleep(self._WAIT_SLEEP_INTERVAL)
+        else:
             raise OmahaDevserverFailedToStart(
-                    'Failed to start -- check devserver_dir path is correct.')
-        while(current_time < deadline):
-            if dev_server.DevServer.devserver_healthy('http://%s' % netloc,
-                                                      timeout_min=0.1):
-                return
+                    'The test failed to find the pid/port of the omaha '
+                    'devserver. Check the dumped devserver logs for more '
+                    'information.')
+
+        # Check that the server is reponsding to network requests.
+        logging.warning('Waiting for devserver to accept network requests.')
+        url = 'http://%s' % self.get_netloc()
+        while time.time() < deadline:
+            if dev_server.DevServer.devserver_healthy(url, timeout_min=0.1):
+                break
 
             # TODO(milleral): Refactor once crbug.com/221626 is resolved.
             time.sleep(self._WAIT_SLEEP_INTERVAL)
-            current_time = time.time()
         else:
             raise OmahaDevserverFailedToStart(
                     'The test failed to establish a connection to the omaha '
                     'devserver it set up on port %d. Check the dumped '
-                    'devserver logs for more information.' % self._omaha_port)
+                    'devserver logs for more information.' %
+                    self._devserver_port)
 
 
     def start_devserver(self):
         """Starts the devserver and confirms it is up.
 
-        Stores the remote pid in self._devserver_pid and raises an exception
-        if the devserver failed to start.
-
         Raises:
+            test.TestError: If we failed to spawn the remote devserver.
             OmahaDevserverFailedToStart: If the time limit is reached and we
                                          cannot connect to the devserver.
         """
@@ -425,93 +468,73 @@ class OmahaDevserver(object):
                 self._update_payload_staged_url)
         # Invoke the Omaha/devserver on the remote server.
         cmdlist = [
+                'timelimit', '-T', str(self._DEVSERVER_TIMELIMIT),
                 '%s/devserver.py' % self._devserver_dir,
                 '--payload=%s' % update_payload_path,
-                '--port=%d' % self._omaha_port,
+                '--port=0',
+                '--pidfile=%s' % self._devserver_pidfile,
+                '--portfile=%s' % self._devserver_portfile,
+                '--logfile=%s' % self._devserver_logfile,
                 '--remote_payload',
                 '--urlbase=%s' % update_payload_url_base,
                 '--max_updates=1',
                 '--host_log',
         ]
-        remote_cmd = '( %s ) </dev/null >%s 2>&1 & echo $!' % (
-                    ' '.join(cmdlist), self._devserver_output)
+        remote_cmd = '( %s ) </dev/null >/dev/null 2>&1 &' % ' '.join(cmdlist)
 
-        # Devserver may have some trouble re-using the port if previously
-        # created so create in a loop with a max number of attempts.
-        for i in range(self._NUM_DEVSERVER_ATTEMPTS):
-            # In the remote case that a previous devserver is still running,
-            # kill it.
-            devserver_pid = self._remote_devserver_pid()
-            if devserver_pid:
-                logging.warning('Previous devserver still running. Killing.')
-                self._kill_devserver_pid(devserver_pid)
-                self._devserver_ssh.run('rm -f %s' % self._devserver_output,
-                                        ignore_status=True)
-                time.sleep(self._TIME_TO_LET_PORT_FREE)
-
-            logging.info('Starting devserver with %r', remote_cmd)
-            try:
-                self._devserver_pid = self._devserver_ssh.run_output(remote_cmd)
-            except error.AutoservRunError as e:
-                logging.debug('Failed to ssh into the devserver: %s', e)
-                logging.error('If you are running this locally it means you '
-                              'did not configure ssh correctly.')
-                raise error.TestError('Failed to ssh into the devserver.')
-
-            try:
-                self._wait_for_devserver_to_start()
-                return
-            except OmahaDevserverFailedToStart:
-                if i + 1 < self._NUM_DEVSERVER_ATTEMPTS:
-                    logging.error('Devserver failed to start, re-attempting.')
-                else:
-                    self.dump_devserver_log()
-                    raise
-
-
-    def _kill_devserver_pid(self, pid):
-        """Kills devserver with given pid and verifies devserver is down.
-
-        @param pid: The pid of the devserver to kill.
-
-        @raise client_utils.TimeoutError if we are unable to kill the devserver
-               within the default timeouts (11 seconds).
-        """
-        def _devserver_down():
-            """Ensure that the devserver process is down."""
-            return self._remote_devserver_pid() == None
-
-        self._devserver_ssh.run('kill %s' % pid)
+        logging.info('Starting devserver with %r', remote_cmd)
         try:
-            client_utils.poll_for_condition(
-                    _devserver_down, sleep_interval=1, desc='devserver down')
+            self._devserver_ssh.run_output(remote_cmd)
+        except error.AutoservRunError as e:
+            self._log_and_raise_remote_ssh_error(e)
+
+        try:
+            self._wait_for_devserver_to_start()
+        except OmahaDevserverFailedToStart:
+            self._kill_remote_process()
+            self._dump_devserver_log()
+            raise
+
+
+    def _kill_remote_process(self):
+        """Kills the devserver and verifies it's down; clears the remote pid."""
+        def devserver_down():
+            """Ensure that the devserver process is down."""
+            return not self._remote_process_alive()
+
+        if devserver_down():
             return
-        except client_utils.TimeoutError:
-            logging.warning('Could not gracefully shut down devserver, '
-                            'retrying with SIGKILL')
 
-        self._devserver_ssh.run('kill -9 %s' % pid)
-        client_utils.poll_for_condition(
-                _devserver_down, timeout=5, sleep_interval=1,
-                desc='devserver down')
+        for signal in 'SIGTERM', 'SIGKILL':
+            remote_cmd = 'kill -s %s %s' % (signal, self._devserver_pid)
+            self._devserver_ssh.run(remote_cmd)
+            try:
+                client_utils.poll_for_condition(
+                        devserver_down, sleep_interval=1, desc='devserver down')
+                break
+            except client_utils.TimeoutError:
+                logging.warning('Could not kill devserver with %s.', signal)
+        else:
+            logging.warning('Failed to kill devserver, giving up.')
+
+        self._devserver_pid = None
 
 
-    def _remote_devserver_pid(self):
-        """If a devserver is running on our port, return its pid."""
-        # fuser returns pid in its stdout if found.
-        result = self._devserver_ssh.run('fuser -n tcp %d' % self._omaha_port,
-                                         ignore_status=True)
-        if result.exit_status == 0:
-            return result.stdout.strip()
+    def _remote_process_alive(self):
+        """Tests whether the remote devserver process is running."""
+        if not self._devserver_pid:
+            return False
+        remote_cmd = 'test -e /proc/%s' % self._devserver_pid
+        result = self._devserver_ssh.run(remote_cmd, ignore_status=True)
+        return result.exit_status == 0
 
 
     def get_netloc(self):
         """Returns the netloc (host:port) of the devserver."""
-        if not self._devserver_pid:
+        if not (self._devserver_pid and self._devserver_port):
             raise error.TestError('No running omaha/devserver')
 
-
-        return '%s:%s' % (self._omaha_host, self._omaha_port)
+        return '%s:%s' % (self._omaha_host, self._devserver_port)
 
 
     def get_update_url(self):
@@ -520,14 +543,23 @@ class OmahaDevserver(object):
                                     '', ''))
 
 
-    def dump_devserver_log(self, logging_level=logging.ERROR):
-        """Dump the devserver log to the autotest log.
+    def _get_devserver_file_content(self, filename):
+        """Returns the content of a file on the devserver."""
+        return self._devserver_ssh.run_output('cat %s' % filename)
+
+
+    def _get_devserver_log(self):
+        """Obtain the devserver output."""
+        return self._get_devserver_file_content(self._devserver_logfile)
+
+
+    def _dump_devserver_log(self, logging_level=logging.ERROR):
+        """Dump the devserver log to the autotest log, then remove the log file.
 
         @param logging_level: logging level (from logging) to log the output.
         """
-        if self._devserver_pid:
-            logging.log(logging_level, self._devserver_ssh.run_output(
-                    'cat %s' % self._devserver_output))
+        logging.log(logging_level, self._get_devserver_log())
+        self._devserver_ssh.run('rm -f %s' % self._devserver_logfile)
 
 
     @staticmethod
@@ -540,34 +572,16 @@ class OmahaDevserver(object):
         return url_base, url_path.lstrip('/')
 
 
-    @staticmethod
-    def _get_unique_port(dut_ip_addr):
-        """Compute a unique IP port based on the DUT's IP address.
-
-        We need a mapping that can be mirrored by a DUT running an official
-        image, based only on the DUT's own state. Here, we simply take the two
-        least significant bytes in the DUT's IPv4 address and bitwise-OR them
-        with 0xc0000, resulting in a 16-bit IP port within the
-        private/unallocated range. Using the least significant bytes of the IP
-        address guarantees (sort of) that we'll have a unique mapping in a
-        small lab setting.
-
-        """
-        ip_addr_bytes = [int(byte_str) for byte_str in dut_ip_addr.split('.')]
-        return (((ip_addr_bytes[2] << 8) | ip_addr_bytes[3] | 0x8000) & ~0x4000)
-
-
-    def kill(self):
-        """Kill private devserver, wait for it to die."""
+    def stop_devserver(self):
+        """Kill remote process and wait for it to die, dump its output."""
         if not self._devserver_pid:
             logging.error('No running omaha/devserver.')
             return
 
         logging.info('Killing omaha/devserver')
+        self._kill_remote_process()
         logging.debug('Final devserver log before killing')
-        self._kill_devserver_pid(self._devserver_pid)
-        self.dump_devserver_log(logging.DEBUG)
-        self._devserver_ssh.run('rm -f %s' % self._devserver_output)
+        self._dump_devserver_log(logging.DEBUG)
 
 
 class autoupdate_EndToEndTest(test.test):
@@ -911,8 +925,7 @@ class autoupdate_EndToEndTest(test.test):
         try:
             if payload_url:
                 temp_devserver = OmahaDevserver(
-                        omaha_host, self._devserver_dir, self._host.ip,
-                        payload_url)
+                        omaha_host, self._devserver_dir, payload_url)
                 temp_devserver.start_devserver()
                 payload_url = temp_devserver.get_update_url()
 
@@ -922,7 +935,7 @@ class autoupdate_EndToEndTest(test.test):
             perform_update(stateful_url, True)
         finally:
             if temp_devserver:
-                temp_devserver.kill()
+                temp_devserver.stop_devserver()
 
 
     def install_source_version(self, devserver_hostname, image_url,
@@ -1064,7 +1077,7 @@ class autoupdate_EndToEndTest(test.test):
     def cleanup(self):
         """Kill the omaha devserver if it's still around."""
         if self._omaha_devserver:
-            self._omaha_devserver.kill()
+            self._omaha_devserver.stop_devserver()
 
         self._omaha_devserver = None
 
@@ -1271,8 +1284,7 @@ class autoupdate_EndToEndTest(test.test):
                                     staged_urls.source_stateful_url)
 
         self._omaha_devserver = OmahaDevserver(
-                devserver_hostname, self._devserver_dir, self._host.ip,
-                staged_urls.target_url)
+                devserver_hostname, self._devserver_dir, staged_urls.target_url)
         self._omaha_devserver.start_devserver()
         try:
             self.run_update_test(staged_urls, test_conf)
