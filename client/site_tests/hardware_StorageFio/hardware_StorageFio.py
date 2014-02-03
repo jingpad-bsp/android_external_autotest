@@ -24,30 +24,6 @@ class hardware_StorageFio(test.test):
     # Initialize fail counter used to determine test pass/fail.
     _fail_count = 0
 
-    # http://brick.kernel.dk/snaps/
-    def setup(self, tarball='fio-2.1.2.tar.bz2'):
-        # clean
-        if os.path.exists(self.srcdir):
-            utils.system('rm -rf %s' % self.srcdir)
-
-        tarball = utils.unmap_url(self.bindir, tarball, self.tmpdir)
-        utils.extract_tarball_to_dir(tarball, self.srcdir)
-
-        self.job.setup_dep(['libaio'])
-        ldflags = '-L' + self.autodir + '/deps/libaio/lib'
-        cflags = '-I' + self.autodir + '/deps/libaio/include'
-        var_ldflags = 'LDFLAGS="' + ldflags + '"'
-        var_cflags = 'CFLAGS="' + cflags + '"'
-
-        os.chdir(self.srcdir)
-        utils.system('patch -p1 < ../add-condition-to-stop-issuing-io.patch')
-        utils.system('patch -p1 < ../add-check-for-rand_seed.patch')
-        utils.system('patch -p1 < ../add-check-for-numberio.patch')
-        utils.system('patch -p1 < ../add-verifyonly-option.patch')
-        utils.system('patch -p1 < ../Makefile.patch')
-        utils.make(make='%s %s make' % (var_ldflags, var_cflags))
-
-
     def __find_free_root_partition(self):
         """Locate the spare root partition that we didn't boot off"""
 
@@ -147,11 +123,10 @@ class hardware_StorageFio(test.test):
         @return fio results.
 
         """
-
-        os.chdir(self.srcdir)
-        vars = 'LD_LIBRARY_PATH="' + self.autodir + '/deps/libaio/lib"'
-        os.putenv('FILENAME', self.__filename)
-        os.putenv('FILESIZE', str(self.__filesize))
+        env_vars = ' '.join(
+            ['FILENAME=' + self.__filename,
+             'FILESIZE=' + str(self.__filesize)
+             ])
 
         # running fio with ionice -c 3 so it doesn't lock out other
         # processes from the disk while it is running.
@@ -160,15 +135,16 @@ class hardware_StorageFio(test.test):
         # "echo 0 > /proc/sys/kernel/hung_task_timeout_secs"
         # -c 3 = Idle
         # Tried lowest priority for "best effort" but still failed
-        ionice = ' ionice -c 3'
+        ionice = 'ionice -c 3'
 
         # Using the --minimal flag for easier results parsing
         # Newest fio doesn't omit any information in --minimal
         # Need to set terse-version to 4 for trim related output
-        options.append('--terse-version=4')
-
-        fio = utils.run(vars + ionice + ' ./fio --minimal %s "%s"' %
-                        (' '.join(options), os.path.join(self.bindir, job)))
+        options.extend(['--minimal', '--terse-version=4'])
+        fio_cmd_line = ' '.join([env_vars, ionice, 'fio',
+                                 ' '.join(options),
+                                 '"' + os.path.join(self.bindir, job + '"')])
+        fio = utils.run(fio_cmd_line)
 
         logging.debug(fio.stdout)
         output = self.__parse_fio(fio.stdout)
@@ -228,13 +204,6 @@ class hardware_StorageFio(test.test):
         @param wait: seconds to wait between a write and subsequent verify
 
         """
-
-        # TODO(ericli): need to find a general solution to install dep packages
-        # when tests are pre-compiled, so setup() is not called from client any
-        # more.
-        dep = 'libaio'
-        dep_dir = os.path.join(self.autodir, 'deps', dep)
-        self.job.install_pkg(dep, 'dep', dep_dir)
 
         if requirements is not None:
             pass
