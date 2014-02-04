@@ -35,7 +35,8 @@ class login_OwnershipRetaken(test.test):
         cros_ui.start()
 
         DBusGMainLoop(set_as_default=True)
-        self._listener = session_manager.SignalListener(gobject.MainLoop())
+        self._listener = session_manager.OwnershipSignalListener(
+                gobject.MainLoop())
         self._listener.listen_for_new_key_and_policy()
 
 
