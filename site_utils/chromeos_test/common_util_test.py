@@ -11,7 +11,6 @@ __author__ = 'dalecurtis@google.com (Dale Curtis)'
 
 import os
 import tempfile
-import time
 import unittest
 
 import common_util
@@ -59,21 +58,6 @@ class CommonUtilityTest(unittest.TestCase):
       common_util.RunCommand(cmd=cmd, error_msg='test', retries=2)
     except common_util.ChromeOSTestError:
       self.fail('Command failed after retry.')
-
-  def testRunCommandRetrySleep(self):
-    try_count = 2
-    try_sleep = 5
-
-    start_time = time.time()
-    try:
-      common_util.RunCommand(cmd='exit 1', error_msg='test', retries=try_count,
-                             retry_sleep=try_sleep)
-      self.fail('No exception raised for invalid command.')
-    except common_util.ChromeOSTestError:
-      pass
-
-    self.assertTrue(abs((time.time() - start_time)
-                        - (try_count * try_sleep)) < 2)
 
   def testIgnoreErrors(self):
     common_util.RunCommand(cmd='exit 1', ignore_errors=True)
