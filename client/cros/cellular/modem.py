@@ -152,6 +152,18 @@ class Modem(object):
         if 'esn' in status:
             props['Esn'] = status['esn']
 
+        # Operator information is not exposed through the properties interface.
+        # Try to get it directly. This may fail on a disabled modem.
+        try:
+            network = self.GsmNetwork()
+            _, operator_code, operator_name = network.GetRegistrationInfo()
+            if operator_code:
+                props['OperatorCode'] = operator_code
+            if operator_name:
+                props['OperatorName'] = operator_name
+        except dbus.DBusException:
+            pass
+
         return props
 
     def GetAccessTechnology(self):
