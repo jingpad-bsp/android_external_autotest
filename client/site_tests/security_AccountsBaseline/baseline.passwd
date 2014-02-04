@@ -51,6 +51,8 @@ avahi:*:238:238::/dev/null:/bin/false
 p2p:*:239:239::/dev/null:/bin/false
 brltty:*:240:240::/dev/null:/bin/false
 modem:*:241:241::/dev/null:/bin/false
+gpsd:*:242:242:GPS daemon:/dev/null:/bin/false
+radvd:*:243:243:router advertisement daemon:/dev/null:/bin/false
 ntfs-3g:*:300:300::/dev/null:/bin/false
 avfs:*:301:301::/dev/null:/bin/false
 fuse-exfat:*:302:302::/dev/null:/bin/false

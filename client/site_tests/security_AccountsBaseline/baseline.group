@@ -64,6 +64,7 @@ avahi:x:238:
 p2p:x:239:
 brltty:x:240:chronos
 modem:x:241:
+radvd:x:243:radvd
 ntfs-3g:x:300:
 avfs:x:301:
 fuse-exfat:x:302:
@@ -72,3 +73,4 @@ logs-access:x:401:debugd-logs
 serial:x:402:chronos,uucp
 devbroker-access:x:403:chronos
 i2c:x:404:power
+netdev:x:408:
