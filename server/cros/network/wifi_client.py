@@ -233,10 +233,10 @@ class WiFiClient(site_linux_system.LinuxSystem):
                     timeout_seconds=self.XMLRPC_BRINGUP_TIMEOUT_SECONDS)
             interfaces = self._shill_proxy.list_controlled_wifi_interfaces()
             if not interfaces:
-                # TODO(wiley) Handle a missing management interface by
-                #             recreating it (or rebooting).
-                raise error.TestFail('No interfaces managed by shill on %s',
-                                     self.host.hostname)
+                logging.debug('No interfaces managed by shill. Rebooting host')
+                self.host.reboot()
+                raise error.TestError('No interfaces managed by shill on %s',
+                                      self.host.hostname)
             self._wifi_if = interfaces[0]
             self._raise_logging_level()
         self._interface = interface.Interface(self._wifi_if, host=self.host)
