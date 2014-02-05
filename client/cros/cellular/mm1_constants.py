@@ -15,7 +15,12 @@ MM1 = '/org/freedesktop/ModemManager1'
 ROOT_PATH = '/'
 
 # Errors
+# TODO: Rename these to DBUS_ERROR_XXXX and put them in a common DBUS related
+# package (crbug.com/343753).
 DBUS_SERVICE_UNKNOWN = 'org.freedesktop.DBus.Error.ServiceUnknown'
+DBUS_UNKNOWN_INTERFACE = 'org.freedesktop.DBus.Error.UnknownInterface'
+DBUS_UNKNOWN_METHOD = 'org.freedesktop.DBus.Error.UnknownMethod'
+DBUS_UNKNOWN_OBJECT = 'org.freedesktop.DBus.Error.UnknownObject'
 
 # Interfaces
 # Standard Interfaces

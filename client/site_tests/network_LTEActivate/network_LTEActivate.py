@@ -2,22 +2,23 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import dbus
+import logging
+import os
+import time
+
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-
-import dbus
-import dbus.types
-import logging
-import time
-
 from autotest_lib.client.cros import backchannel
-from autotest_lib.client.cros.cellular import mm, mm1_constants
-from autotest_lib.client.cros.cellular.pseudomodem import modem_3gpp
-from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem, sim
+from autotest_lib.client.cros.cellular import mm1_constants
+from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
 from autotest_lib.client.cros.networking import cellular_proxy
+from autotest_lib.client.cros.networking import pm_proxy
 
 I_ACTIVATION_TEST = 'Interface.LTEActivationTest'
+TEST_MODEMS_MODULE_PATH = os.path.join(os.path.dirname(__file__), 'files',
+                                       'modems.py')
 
 LONG_TIMEOUT = 20
 SHORT_TIMEOUT = 10
@@ -28,51 +29,9 @@ class ActivationTest(object):
     tests.
 
     """
-    class TestModem(modem_3gpp.Modem3gpp):
-        """
-        Base class for the custom 3GPP fake modems that are defined in this
-        test.
-
-        """
-        def _InitializeProperties(self):
-            props = modem_3gpp.Modem3gpp._InitializeProperties(self)
-            modem_props = props[mm1_constants.I_MODEM]
-            modem_props['OwnNumbers'] = ['0000000000']
-            modem_props['AccessTechnologies'] = dbus.types.UInt32(
-                mm1_constants.MM_MODEM_ACCESS_TECHNOLOGY_LTE)
-            modem_props['ModemCapabilities'] = dbus.types.UInt32(
-                mm1_constants.MM_MODEM_CAPABILITY_LTE)
-            modem_props['CurrentCapabilities'] = dbus.types.UInt32(
-                mm1_constants.MM_MODEM_CAPABILITY_LTE)
-
-            # For the purposes of this test, introduce a property to help
-            # verify that a reset has taken place. Expose this under a test
-            # specific interface.
-            if hasattr(self, '_properties'):
-                reset_called = \
-                    self._properties[I_ACTIVATION_TEST]['ResetCalled']
-            else:
-                reset_called = False
-            props[I_ACTIVATION_TEST] = {
-                'ResetCalled' : dbus.types.Boolean(reset_called)
-            }
-            return props
-
-        def RegisterWithNetwork(
-                self, operator_id='', return_cb=None, raise_cb=None):
-            # Make this do nothing, so that we don't automatically
-            # register to a network after enable.
-            return
-
-        def Reset(self):
-            self.Set(
-                I_ACTIVATION_TEST, 'ResetCalled', dbus.types.Boolean(True))
-            modem_3gpp.Modem3gpp.Reset(self)
-
-    def __init__(self, pmm_context, test):
-        self.pmm_context = pmm_context
+    def __init__(self, test):
         self.test = test
-        self.test_modem = self.SetupTestModem()
+
 
     def Cleanup(self):
         """
@@ -83,13 +42,14 @@ class ActivationTest(object):
         # Set the MDN to a non-zero value, so that shill removes the ICCID from
         # activating_iccid_store.profile. This way, individual test runs won't
         # interfere with each other.
-        modem = self.test.GetModem()
-        modem.PropertiesInterface().Set(mm1_constants.I_MODEM,
-                                        'OwnNumbers',
-                                        ['1111111111'])
+        modem = self.test.pseudomm.get_modem()
+        modem.iface_properties.Set(mm1_constants.I_MODEM,
+                                   'OwnNumbers',
+                                   ['1111111111'])
         time.sleep(5)
         if self.test.FindCellularService(False):
             self.test.CheckServiceActivationState('activated')
+
 
     def Run(self):
         """
@@ -97,22 +57,21 @@ class ActivationTest(object):
         and cleans up.
 
         """
-        if not self.test_modem:
-            raise test.TestFail('Uninitialized test modem')
-        self.pmm_context.SetModem(self.test_modem)
-        time.sleep(5)
-        self.RunTest()
-        self.Cleanup()
+        with pseudomodem_context.PseudoModemManagerContext(
+                True,
+                {'family' : '3GPP',
+                 'test-module' : TEST_MODEMS_MODULE_PATH,
+                 'test-modem-class' : self._TestModemClass(),
+                 'test-sim-class' : 'TestSIM'}):
+            self.test.pseudomm = pm_proxy.PseudoMMProxy.get_proxy()
+            self.RunTest()
+            self.Cleanup()
 
-    def SetupTestModem(self):
-        """
-        Returns the modem.Modem3gpp implementation that will be used by the
-        test. Should be implemented by the subclass.
 
-        @return An instance of ActivationTest.TestModem.
-
-        """
+    def _TestModemClass(self):
+        """ Returns the name of the custom modem to use for this test. """
         raise NotImplementedError()
+
 
     def RunTest(self):
         """
@@ -121,14 +80,16 @@ class ActivationTest(object):
         """
         raise NotImplementedError()
 
+
 class TimeoutResetTest(ActivationTest):
     """
     This test verifies that the modem resets after a timeout following online
     payment.
 
     """
-    def SetupTestModem(self):
-        return ActivationTest.TestModem()
+    def _TestModemClass(self):
+        return 'TestModem'
+
 
     def RunTest(self):
         # Service should appear as 'not-activated'.
@@ -149,6 +110,7 @@ class TimeoutResetTest(ActivationTest):
         if self.test.FindCellularService(False):
             raise error.TestError('There should be no cellular service.')
 
+
 class TimeoutActivatedTest(ActivationTest):
     """
     This test verifies that the service eventually becomes 'activated' in the
@@ -156,19 +118,9 @@ class TimeoutActivatedTest(ActivationTest):
     to a network after a reset.
 
     """
-    def SetupTestModem(self):
-        class Modem(ActivationTest.TestModem):
-            """
-            Fake modem that only becomes registered if it has been reset at
-            least once.
+    def _TestModemClass(self):
+        return 'ResetRequiredForRegistrationModem'
 
-            """
-            def RegisterWithNetwork(
-                    self, operator_id='', return_cb=None, raise_cb=None):
-                if self.Get(I_ACTIVATION_TEST, 'ResetCalled'):
-                    modem_3gpp.Modem3gpp.RegisterWithNetwork(
-                            self, operator_id, return_cb, raise_cb)
-        return Modem()
 
     def RunTest(self):
         # Service should appear as 'not-activated'.
@@ -188,35 +140,16 @@ class TimeoutActivatedTest(ActivationTest):
         # The service should register and be marked as 'activated'.
         self.test.CheckServiceActivationState('activated')
 
+
 class ResetAfterRegisterTest(ActivationTest):
     """
     This test verifies that shill resets the modem if the modem registers
     with a network within the timeout interval.
 
     """
-    def SetupTestModem(self):
-        class Modem(ActivationTest.TestModem):
-            """
-            Fake modem that becomes registered once registration has been
-            triggered at least twice.
+    def _TestModemClass(self):
+        return 'RetryRegistrationModem'
 
-            """
-            def __init__(self):
-                ActivationTest.TestModem.__init__(self)
-                self.register_count = 0
-
-            def RegisterWithNetwork(
-                    self, operator_id='', return_cb=None, raise_cb=None):
-                # Make the initial registration due triggered by Enable do
-                # nothing. We expect exactly two Enable commands:
-                #   1. Triggered by shill to enable the modem,
-                #   2. Triggered by ResetCellularDevice in
-                #      ResetAfterRegisterTest.RunTest.
-                self.register_count += 1
-                if self.register_count > 1:
-                    modem_3gpp.Modem3gpp.RegisterWithNetwork(
-                            self, operator_id, return_cb, raise_cb)
-        return Modem()
 
     def RunTest(self):
         # Service should appear as 'not-activated'.
@@ -235,8 +168,11 @@ class ResetAfterRegisterTest(ActivationTest):
         self.test.EnsureModemStateReached(
                 mm1_constants.MM_MODEM_STATE_ENABLED, SHORT_TIMEOUT)
         time.sleep(5)
-        mccmnc = self.test.sim.Get(mm1_constants.I_SIM, 'OperatorIdentifier')
-        self.test.GetModem().GsmModem().Register(mccmnc)
+
+        modem = self.test.pseudomm.get_modem()
+        sim = modem.get_sim()
+        mccmnc = sim.properties(mm1_constants.I_SIM)['OperatorIdentifier']
+        modem.iface_gsm_modem.Register(mccmnc)
 
         time.sleep(5)
         self.test.CheckResetCalled(True)
@@ -244,26 +180,29 @@ class ResetAfterRegisterTest(ActivationTest):
         # The new service should get marked as 'activated'.
         self.test.CheckServiceActivationState('activated')
 
+
 class ActivatedDueToMdnTest(ActivationTest):
     """
     This test verifies that a valid MDN should cause the service to get marked
     as 'activated'.
 
     """
-    def SetupTestModem(self):
-        return ActivationTest.TestModem()
+    def _TestModemClass(self):
+        return 'TestModem'
+
 
     def RunTest(self):
         # Service should appear as 'not-activated'.
         self.test.CheckServiceActivationState('not-activated')
 
         # Update the MDN. The service should get marked as activated.
-        modem = self.test.GetModem()
-        modem.PropertiesInterface().Set(mm1_constants.I_MODEM,
-                                        'OwnNumbers',
-                                        ['1111111111'])
+        modem = self.test.pseudomm.get_modem()
+        modem.iface_properties.Set(mm1_constants.I_MODEM,
+                                   'OwnNumbers',
+                                   ['1111111111'])
         time.sleep(5)
         self.test.CheckServiceActivationState('activated')
+
 
 class network_LTEActivate(test.test):
     """
@@ -277,41 +216,12 @@ class network_LTEActivate(test.test):
     """
     version = 1
 
-    def FindModem(self):
-        """
-        Tries to find a modem object exposed by the current modem manager and
-        returns a proxy to it.
-
-        @return A modem proxy, or None if not found.
-
-        """
-        try:
-            manager, modem_path  = mm.PickOneModem('')
-            return manager.GetModem(modem_path)
-        except ValueError as e:
-            # TODO(armansito): PickOneModem, for some predictably beautiful
-            # reason, raises a ValueError instead of something more specific.
-            # We should change that.
-            logging.info('Error while getting modem: ' + repr(e))
-            return None
-
-    def GetModem(self):
-        """
-        Returns a modem proxy. This method will block for a LONG_TIMEOUT amount
-        of time and retry to obtain a modem proxy until the timeout expires.
-
-        """
-        utils.poll_for_condition(
-                lambda: self.FindModem() is not None,
-                exception=error.TestFail('Modem not found.'),
-                timeout=LONG_TIMEOUT)
-        return self.FindModem()
-
     def GetModemState(self):
         """Returns the current ModemManager modem state."""
-        modem = self.GetModem()
-        props = modem.GetAll(mm1_constants.I_MODEM)
+        modem = self.pseudomm.get_modem()
+        props = modem.properties(mm1_constants.I_MODEM)
         return props['State']
+
 
     def GetResetCalled(self, modem):
         """
@@ -321,19 +231,22 @@ class network_LTEActivate(test.test):
         @param modem: Modem proxy to send the query to.
 
         """
-        return modem.GetAll(I_ACTIVATION_TEST)['ResetCalled']
+        return modem.properties(I_ACTIVATION_TEST)['ResetCalled']
+
 
     def _CheckResetCalledHelper(self, expected_value):
-        modem = self.GetModem()
+        modem = self.pseudomm.get_modem()
+        if modem is None:
+            return False
         try:
             return self.GetResetCalled(modem) == expected_value
         except dbus.exceptions.DBusException as e:
             name = e.get_dbus_name()
-            unknown_method_str = 'org.feedesktop.DBus.Error.UnknownMethod'
-            unknown_object_str = 'org.feedesktop.DBus.Error.UnknowObject'
-            if name == unknown_method_str or name == unknown_object_str:
+            if (name == mm1_constants.DBUS_UNKNOWN_METHOD or
+                name == mm1_constants.DBUS_UNKNOWN_OBJECT):
                 return False
             raise e
+
 
     def CheckResetCalled(self, expected_value):
         """
@@ -348,6 +261,7 @@ class network_LTEActivate(test.test):
             exception=error.TestFail("\"ResetCalled\" did not match: " +
                                      str(expected_value)),
             timeout=LONG_TIMEOUT)
+
 
     def EnsureModemStateReached(self, expected_state, timeout):
         """
@@ -364,6 +278,7 @@ class network_LTEActivate(test.test):
                         'Modem failed to reach state ' +
                         mm1_constants.ModemStateToString(expected_state)),
                 timeout=timeout)
+
 
     def CheckServiceActivationState(self, expected_state):
         """
@@ -385,6 +300,7 @@ class network_LTEActivate(test.test):
             raise error.TestError(
                 'Service activation state should be \'%s\', but it is \'%s\'.'
                 % (expected_state, state))
+
 
     def FindCellularService(self, check_not_none=True):
         """
@@ -409,12 +325,14 @@ class network_LTEActivate(test.test):
             raise error.TestError('Could not find cellular service.')
         return service
 
+
     def FindCellularDevice(self):
         """Returns the current cellular device."""
         device = self.shill.find_cellular_device_object()
         if not device:
             raise error.TestError('Could not find cellular device.')
         return device
+
 
     def ResetCellularDevice(self):
         """
@@ -428,21 +346,18 @@ class network_LTEActivate(test.test):
         self.EnsureModemStateReached(
                 mm1_constants.MM_MODEM_STATE_ENABLED, SHORT_TIMEOUT)
 
+
     def run_once(self):
         with backchannel.Backchannel():
-            self.sim = sim.SIM(sim.SIM.Carrier('test'),
-                mm1_constants.MM_MODEM_ACCESS_TECHNOLOGY_LTE)
-            with pseudomodem.TestModemManagerContext(True,
-                                                     sim=self.sim) as tmmc:
-                self.shill = cellular_proxy.CellularProxy.get_proxy()
-                self.shill.set_logging_for_cellular_test()
+            self.shill = cellular_proxy.CellularProxy.get_proxy()
+            self.shill.set_logging_for_cellular_test()
 
-                tests = [
-                    TimeoutResetTest(tmmc.GetPseudoModemManager(), self),
-                    TimeoutActivatedTest(tmmc.GetPseudoModemManager(), self),
-                    ResetAfterRegisterTest(tmmc.GetPseudoModemManager(), self),
-                    ActivatedDueToMdnTest(tmmc.GetPseudoModemManager(), self)
-                ]
+            tests = [
+                TimeoutResetTest(self),
+                TimeoutActivatedTest(self),
+                ResetAfterRegisterTest(self),
+                ActivatedDueToMdnTest(self)
+            ]
 
-                for test in tests:
-                    test.Run()
+            for test in tests:
+                test.Run()

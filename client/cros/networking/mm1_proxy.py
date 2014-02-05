@@ -14,6 +14,14 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.cros.cellular import mm1_constants
 
 
+def _is_unknown_dbus_binding_exception(e):
+    return (isinstance(e, dbus.exceptions.DBusException) and
+            e.get_dbus_name() in [mm1_constants.DBUS_SERVICE_UNKNOWN,
+                                  mm1_constants.DBUS_UNKNOWN_METHOD,
+                                  mm1_constants.DBUS_UNKNOWN_OBJECT,
+                                  mm1_constants.DBUS_UNKNOWN_INTERFACE])
+
+
 class ModemManager1ProxyError(Exception):
     """Exceptions raised by ModemManager1ProxyError and it's children."""
     pass
@@ -47,14 +55,13 @@ class ModemManager1Proxy(object):
                 # called. This way, calling
                 # SubclassOfModemManager1Proxy.get_proxy() will get a proxy of
                 # the right type.
-                connection = cls()
+                return cls()
             except dbus.exceptions.DBusException as e:
-                if e.get_dbus_name() != mm1_constants.DBUS_SERVICE_UNKNOWN:
-                    raise ModemManager1ProxyError(
-                            'Error connecting to ModemManager1')
-                return None
-
-            return connection
+                if _is_unknown_dbus_binding_exception(e):
+                    return None
+                raise ModemManager1ProxyError(
+                        'Error connecting to ModemManager1. DBus error: |%s|',
+                        repr(e))
 
         utils.poll_for_condition(
             lambda: _connect_to_mm1() is not None,
@@ -130,6 +137,8 @@ class ModemManager1Proxy(object):
                                      dbus_interface=mm1_constants.I_PROPERTIES)
             return modem_proxy
         except dbus.exceptions.DBusException as e:
+            if _is_unknown_dbus_binding_exception(e):
+                return None
             raise ModemManager1ProxyError(
                     'Failed to obtain dbus object for the modem. DBus error: '
                     '|%s|', repr(e))
@@ -177,12 +186,6 @@ class ModemProxy(object):
 
 
     @property
-    def iface_sim(self):
-        """@return org.freedesktop.ModemManager1.Sim DBus interface."""
-        return dbus.Interface(self._modem, mm1_constants.I_SIM)
-
-
-    @property
     def iface_properties(self):
         """@return org.freedesktop.DBus.Properties DBus interface."""
         return dbus.Interface(self._modem, dbus.PROPERTIES_IFACE)
@@ -196,6 +199,29 @@ class ModemProxy(object):
 
         """
         return self.iface_properties.GetAll(iface)
+
+
+    def get_sim(self):
+        """
+        Return the SIM proxy object associated with this modem.
+
+        @return SimProxy object or None if no SIM exists.
+
+        """
+        sim_path = self.properties(mm1_constants.I_MODEM).get('Sim')
+        if not sim_path:
+            return None
+        sim_proxy = SimProxy(self._bus, sim_path)
+        # Check that this object is valid
+        try:
+            sim_proxy.properties(mm1_constants.I_SIM)
+            return sim_proxy
+        except dbus.exceptions.DBusException as e:
+            if _is_unknown_dbus_binding_exception(e):
+                return None
+            raise ModemManager1ProxyError(
+                    'Failed to obtain dbus object for the SIM. DBus error: '
+                    '|%s|', repr(e))
 
 
     def wait_for_states(self, states,
@@ -250,3 +276,39 @@ class ModemProxy(object):
         self.wait_for_states([mm1_constants.MM_MODEM_STATE_REGISTERED,
                               mm1_constants.MM_MODEM_STATE_CONNECTED],
                              timeout_seconds=timeout_seconds)
+
+
+class SimProxy(object):
+    """A wrapper around a DBus proxy for ModemManager1 SIM object."""
+
+    def __init__(self, bus, path):
+        self._bus = bus
+        self._sim = self._bus.get_object(mm1_constants.I_MODEM_MANAGER, path)
+
+
+    @property
+    def sim(self):
+        """@return the DBus SIM object."""
+        return self._sim
+
+
+    @property
+    def iface_properties(self):
+        """@return org.freedesktop.DBus.Properties DBus interface."""
+        return dbus.Interface(self._sim, dbus.PROPERTIES_IFACE)
+
+
+    @property
+    def iface_sim(self):
+        """@return org.freedesktop.ModemManager1.Sim DBus interface."""
+        return dbus.Interface(self._sim, mm1_constants.I_SIM)
+
+
+    def properties(self, iface=mm1_constants.I_SIM):
+        """Return the properties associated with the specified interface.
+
+        @param iface: Name of interface to retrieve the properties from.
+        @return array of properties.
+
+        """
+        return self.iface_properties.GetAll(iface)
