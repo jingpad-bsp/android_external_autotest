@@ -159,6 +159,10 @@ class PseudoModemManagerContext(object):
 
         cmd = [self._PseudoModemCommand()]
         cmd = cmd + self.cmd_line_flags
+
+        # Setup health checker for child process.
+        signal.signal(signal.SIGCHLD, self._SigchldHandler)
+
         if self._block_output:
             self._null_pipe = open(os.devnull, 'w')
             self._pseudomodem_process = subprocess.Popen(
@@ -179,15 +183,11 @@ class PseudoModemManagerContext(object):
         if not self._use_pseudomodem:
             return
 
-        pseudomodem_died_early = False
+        # Remove health check on child process.
+        signal.signal(signal.SIGCHLD, signal.SIG_DFL)
+
         if self._pseudomodem_process:
-            if self._pseudomodem_process.poll() is not None:
-                pseudomodem_died_early = True
-                logging.error(
-                        'PseudoModem process terminated before the context '
-                        'could nuke it. Please check exception raised by '
-                        'pseudomodem')
-            else:
+            if self._pseudomodem_process.poll() is None:
                 if (nuke_subprocess(self._pseudomodem_process,
                                     self.SHORT_TIMEOUT_SECONDS) is
                     None):
@@ -204,9 +204,6 @@ class PseudoModemManagerContext(object):
             self._net_interface = None
 
         self._service_stopper.restore_services()
-
-        if pseudomodem_died_early:
-            raise PseudoModemManagerContextException('PseudoModem died early.')
 
     def _ConvertMapToFlags(self, flags_map):
         """
@@ -311,3 +308,26 @@ class PseudoModemManagerContext(object):
         """
         toplvl = os.path.dirname(os.path.realpath(__file__))
         return os.path.join(toplvl, 'pseudomodem.py')
+
+    def _SigchldHandler(self, signum, frame):
+        """
+        Signal handler for SIGCHLD.
+
+        This is setup while the pseudomodem subprocess is running. A call to
+        this signal handler may signify early termination of the subprocess.
+
+        @param signum: The signal number.
+
+        @param frame: Ignored.
+
+        """
+        logging.debug('Called with signum:%d', signum)
+        if not self._pseudomodem_process:
+            # We can receive a SIGCHLD even before the setup of the child
+            # process is complete.
+            return
+        if self._pseudomodem_process.poll() is not None:
+            logging.error('pseudomodem child process quit early!')
+            raise PseudoModemManagerContextException('pseudomodem quit early!')
+        else:
+            logging.debug('Child process not dead yet.')

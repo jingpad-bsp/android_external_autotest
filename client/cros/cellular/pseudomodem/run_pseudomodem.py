@@ -3,6 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
 import sys
 import time
 
@@ -15,6 +16,15 @@ def main():
     pmc = None
     flags = sys.argv[1:]
     cli_flag = (pseudomodem.CLI_FLAG in flags)
+
+    # When run from the command line, override autotest logging defaults.
+    root = logging.getLogger()
+    for handler in root.handlers:
+        root.removeHandler(handler)
+    logging.basicConfig(
+        format='%(asctime)s %(levelname)-5.5s|%(module)10.10s:%(lineno)4.4d| '
+               '%(message)s',
+        datefmt='%H:%M:%S')
 
     try:
         pmc = pseudomodem_context.PseudoModemManagerContext(
