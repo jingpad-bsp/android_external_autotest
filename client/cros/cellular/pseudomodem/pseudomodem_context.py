@@ -120,6 +120,8 @@ class PseudoModemManagerContext(object):
                 self.REAL_MANAGER_SERVICES)
         self._net_interface = None
         self._null_pipe = None
+        self._exit_error_file_path = None
+        self._temp_files = []
         self._pseudomodem_process = None
 
     @property
@@ -157,8 +159,14 @@ class PseudoModemManagerContext(object):
         self._net_interface = net_interface.PseudoNetInterface()
         self._net_interface.Setup()
 
-        cmd = [self._PseudoModemCommand()]
+        toplevel = os.path.dirname(os.path.realpath(__file__))
+        cmd = [os.path.join(toplevel, 'pseudomodem.py')]
         cmd = cmd + self.cmd_line_flags
+
+        fd, self._exit_error_file_path = self._CreateTempFile()
+        os.close(fd)  # We don't need the fd.
+        cmd = cmd + [pseudomodem.EXIT_ERROR_FILE_FLAG,
+                     self._exit_error_file_path]
 
         # Setup health checker for child process.
         signal.signal(signal.SIGCHLD, self._SigchldHandler)
@@ -203,6 +211,7 @@ class PseudoModemManagerContext(object):
             self._net_interface.Teardown()
             self._net_interface = None
 
+        self._DeleteTempFiles()
         self._service_stopper.restore_services()
 
     def _ConvertMapToFlags(self, flags_map):
@@ -236,11 +245,7 @@ class PseudoModemManagerContext(object):
         @return Absolute path to the tempfile created.
 
         """
-        # TODO(pprabhu) Delete these temp files?
-        fd, arg_file_path = tempfile.mkstemp(prefix=self.TEMP_FILE_PREFIX)
-        # Set file permissions so that pseudomodem process can read it.
-        cur_mod = os.stat(arg_file_path).st_mode
-        os.chmod(arg_file_path, cur_mod | stat.S_IRGRP | stat.S_IROTH)
+        fd, arg_file_path = self._CreateTempFile()
         arg_file = os.fdopen(fd, 'wb')
         json.dump(arg, arg_file)
         arg_file.close()
@@ -299,15 +304,35 @@ class PseudoModemManagerContext(object):
                           pwd_data.pw_uid, str(e))
             sys.exit(1)
 
-    def _PseudoModemCommand(self):
+    def _CreateTempFile(self):
         """
-        Construct the command to run pseudomodem.
+        Creates a tempfile such that the child process can read/write it.
 
-        @return Command to run pseudomodem using absolute path.
+        The file path is stored in a list so that the file can be deleted later
+        using |_DeleteTempFiles|.
+
+        @return: (fd, arg_file_path)
+                 fd: A file descriptor for the created file.
+                 arg_file_path: Full path of the created file.
 
         """
-        toplvl = os.path.dirname(os.path.realpath(__file__))
-        return os.path.join(toplvl, 'pseudomodem.py')
+        fd, arg_file_path = tempfile.mkstemp(prefix=self.TEMP_FILE_PREFIX)
+        self._temp_files.append(arg_file_path)
+        # Set file permissions so that pseudomodem process can read/write it.
+        cur_mod = os.stat(arg_file_path).st_mode
+        os.chmod(arg_file_path,
+                 cur_mod | stat.S_IRGRP | stat.S_IROTH | stat.S_IWGRP |
+                 stat.S_IWOTH)
+        return fd, arg_file_path
+
+    def _DeleteTempFiles(self):
+        """ Deletes all temp files created by this context. """
+        for file_path in self._temp_files:
+            try:
+                os.remove(file_path)
+            except OSError as e:
+                logging.warning('Failed to delete temp file: %s (error %s)',
+                                file_path, str(e))
 
     def _SigchldHandler(self, signum, frame):
         """
@@ -327,7 +352,15 @@ class PseudoModemManagerContext(object):
             # process is complete.
             return
         if self._pseudomodem_process.poll() is not None:
+            # See if child process left detailed error report
+            error_reason, error_traceback = pseudomodem.ExtractExitError(
+                    self._exit_error_file_path)
             logging.error('pseudomodem child process quit early!')
-            raise PseudoModemManagerContextException('pseudomodem quit early!')
+            logging.error('Reason: %s', error_reason)
+            for line in error_traceback:
+                logging.error('Traceback: %s', line.strip())
+            raise PseudoModemManagerContextException(
+                    'pseudomodem quit early! (%s)' %
+                    error_reason)
         else:
             logging.debug('Child process not dead yet.')

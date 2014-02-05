@@ -16,8 +16,10 @@ import imp
 import json
 import logging
 import os
+import os.path
 import signal
 import sys
+import traceback
 
 import logging_setup
 import modem_cdma
@@ -29,8 +31,10 @@ import state_machine_factory as smf
 import common
 from autotest_lib.client.cros.cellular import mm1_constants
 
-# Flag used by pseudomodem_context that is defined below in ParserArguments.
+# Flags used by pseudomodem modules only that are defined below in
+# ParserArguments.
 CLI_FLAG = '--cli'
+EXIT_ERROR_FILE_FLAG = '--exit-error-file'
 
 class PseudoModemManager(object):
     """
@@ -268,13 +272,8 @@ class PseudoModemManager(object):
             module_file.close()
         return module
 
-
-def _NonNegInt(value):
-    value = int(value)
-    if value < 0:
-        raise argparse.ArgumentTypeError('%s is not a non-negative int' % value)
-    return value
-
+# ##############################################################################
+# Public static functions.
 def ParseArguments(arg_string=None):
     """
     The main argument parser.
@@ -301,6 +300,12 @@ def ParseArguments(arg_string=None):
             help='Launch the command line interface in foreground to interact '
                  'with the launched pseudomodem process. This argument is used '
                  'by |pseudomodem_context|. pseudomodem itself ignores it.')
+    parser.add_argument(
+            EXIT_ERROR_FILE_FLAG,
+            default=None,
+            help='If provided, full path to file to which pseudomodem should '
+                 'dump the error condition before exiting, in case of a crash. '
+                 'The file is not created if it does not already exist.')
 
     modem_arguments = parser.add_argument_group(
             title='Modem options',
@@ -429,8 +434,82 @@ def ParseArguments(arg_string=None):
 
     return opts
 
+def ExtractExitError(dump_file_path):
+    """
+    Gets the exit error left behind by a crashed pseudomodem.
+
+    If there is a file at |dump_file_path|, extracts the error and the traceback
+    left behind by the child process. This function is intended to be used by
+    the launching process to parse the error file left behind by pseudomodem.
+
+    @param dump_file_path: Full path to the file to read.
+
+    @return (error_reason, error_traceback)
+            error_reason: str. The one line reason for error that should be
+                    used to raise exceptions.
+            error_traceback: A list of str. This is the traceback left
+                    behind by the child process, if any. May be [].
+
+    """
+    error_reason = 'No detailed reason found :('
+    error_traceback = []
+    if dump_file_path:
+        try:
+            dump_file = open(dump_file_path, 'rb')
+            error_reason = dump_file.readline().strip()
+            error_traceback = dump_file.readlines()
+            dump_file.close()
+        except OSError as e:
+            logging.error('Could not open dump file %s: %s',
+                          dump_file_path, str(e))
+    return error_reason, error_traceback
+
 # The single global instance of PseudoModemManager.
 _pseudo_modem_manager = None
+
+# ##############################################################################
+# Private static functions.
+def _NonNegInt(value):
+    value = int(value)
+    if value < 0:
+        raise argparse.ArgumentTypeError('%s is not a non-negative int' % value)
+    return value
+
+def _DumpExitError(dump_file_path, exc):
+    """
+    Dump information about the raised exception in the exit error file.
+
+    Format of file dumped:
+    - First line is the reason for the crash.
+    - Subsequent lines are the traceback from the exception raised.
+
+    We expect the file to exist, because we want the launching context (that
+    will eventually read the error dump) to create and own the file.
+
+    @param dump_file_path: Full path to file to which we should dump.
+
+    @param exc: The exception raised.
+
+    """
+    if not dump_file_path:
+        return
+
+    if not os.path.isfile(dump_file_path):
+        logging.error('File |%s| does not exist. Can not dump exit error.',
+                      dump_file_path)
+        return
+
+    try:
+        dump_file = open(dump_file_path, 'wb')
+    except IOError as e:
+        logging.error('Could not open file |%s| to dump exit error. '
+                      'Exception raised when opening file: %s',
+                      dump_file_path, str(e))
+        return
+
+    dump_file.write(str(exc) + '\n')
+    dump_file.writelines(traceback.format_exc())
+    dump_file.close()
 
 def sig_handler(signum, frame):
     """
@@ -469,6 +548,7 @@ def main():
         _pseudo_modem_manager.StartBlocking()
     except Exception as e:
         logging.error('Caught exception at top level: %s', str(e))
+        _DumpExitError(opts.exit_error_file, e)
         _pseudo_modem_manager.GracefulExit()
         raise
 
