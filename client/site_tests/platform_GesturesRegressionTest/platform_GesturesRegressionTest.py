@@ -45,7 +45,7 @@ class platform_GesturesRegressionTest(test.test):
         runner = ParallelTestRunner(tests_dir)
 
         # run all tests for this platform and extract results
-        results = runner.RunAll('%s*/*' % platform)
+        results = runner.RunAll('%s*/*' % platform, verbose=True)
         # TODO(dennisjeffrey): Remove all uses of self.test_results below,
         # including the call to self.write_perf_keyval(), once we're ready to
         # switch over completely from perf keyvals to output_perf_value().
