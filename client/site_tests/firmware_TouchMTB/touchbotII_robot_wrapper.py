@@ -89,6 +89,8 @@ class RobotWrapper:
             conf.TWO_CLOSE_FINGERS_TRACKING: self._get_control_command_line,
             conf.RESTING_FINGER_PLUS_2ND_FINGER_MOVE:
                     self._get_control_command_one_stationary_finger,
+            conf.FIRST_FINGER_TRACKING_AND_SECOND_FINGER_TAPS:
+                    self._get_control_command_one_stationary_finger,
             conf.FINGER_CROSSING:
                     self._get_control_command_one_stationary_finger,
             conf.PINCH_TO_ZOOM: self._get_control_command_pinch,
@@ -288,6 +290,7 @@ class RobotWrapper:
     def _get_control_command_one_stationary_finger(self, robot_script, gesture,
                                                    variation):
         line = speed = None
+        num_taps = 0
         # The stationary finger should be in the bottom left corner for resting
         # finger tests, and various locations for finger crossing tests
         stationary_finger = (START, END)
@@ -297,6 +300,10 @@ class RobotWrapper:
                 line = self._line_dict[element]
                 if 'finger_crossing' in gesture:
                     stationary_finger = self._stationary_finger_dict[element]
+                elif 'second_finger_taps' in gesture:
+                    stationary_finger = self._location_dict[GV.BL]
+                    speed = self._speed_dict[GV.SLOW]
+                    num_taps = 3
             elif element in GV.GESTURE_SPEED:
                 speed = self._speed_dict[element]
 
@@ -309,8 +316,8 @@ class RobotWrapper:
         stationary_x, stationary_y = stationary_finger
 
         para = (robot_script, self._board, stationary_x, stationary_y,
-                start_x, start_y, end_x, end_y, speed)
-        cmd = 'python %s %s_min.p %f %f %f %f %f %f %s' % para
+                start_x, start_y, end_x, end_y, speed, num_taps)
+        cmd = 'python %s %s_min.p %f %f %f %f %f %f %s --taps=%d' % para
         return cmd
 
     def _get_control_command_line(self, robot_script, gesture, variation):
