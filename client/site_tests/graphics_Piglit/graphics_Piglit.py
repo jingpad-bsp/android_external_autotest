@@ -80,35 +80,16 @@ class graphics_Piglit(test.test):
         if not summary:
             raise error.TestError('Test summary was empty')
 
-        # get passed
-        report = re.findall(r'"result": "pass",', summary)
-        passed = len(report)
-        # get failed
-        report = re.findall(r'"result": "fail",', summary)
-        failed = len(report)
-        warned = 0
-        skipped = 0
-
-        # doesn't seem to send it to the host console
-        logging.info('Piglit: %d pass', passed)
-        logging.info('Piglit: %d fail', failed)
-
         # output numbers for plotting by harness
         keyvals = {}
-        keyvals['count_subtests_pass'] = passed
-        keyvals['count_subtests_fail'] = failed
-        keyvals['count_subtests_warn'] = warned
-        keyvals['count_subtests_skip'] = skipped
-        self.write_perf_keyval(keyvals)
+        for k in ['pass', 'fail', 'crash', 'warn', 'skip']:
+            num = len(re.findall(r'"result": "' + k + '",', summary))
+            keyvals['count_subtests_' + k] = num
+            logging.info('Piglit: %d ' + k, num)
+            self.output_perf_value(description=k, value=num,
+                                   units='count', higher_is_better=(k=='pass'))
 
-        self.output_perf_value(description='pass', value=passed,
-                               units='count', higher_is_better=True)
-        self.output_perf_value(description='fail', value=failed,
-                               units='count', higher_is_better=False)
-        self.output_perf_value(description='warn', value=warned,
-                               units='count', higher_is_better=False)
-        self.output_perf_value(description='skip', value=skipped,
-                               units='count', higher_is_better=False)
+        self.write_perf_keyval(keyvals)
 
         # generate human friendly html output
         cmd = 'python piglit-summary-html.py'
