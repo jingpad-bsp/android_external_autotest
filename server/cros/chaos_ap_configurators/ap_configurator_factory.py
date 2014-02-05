@@ -128,9 +128,15 @@ class APConfiguratorFactory(object):
         'BelkinF9KAPConfigurator':
             [PREFIX + 'belkinF9K_ap_configurator',
                 'BelkinF9KAPConfigurator'],
+        'BelkinF9K1001APConfigurator':
+            [PREFIX + 'belkinF9K1001_ap_configurator',
+                'BelkinF9K1001APConfigurator'],
         'BelkinF9K1102APConfigurator':
             [PREFIX + 'belkinF9K1102_ap_configurator',
                 'BelkinF9K1102APConfigurator'],
+        'BelkinF9K1103APConfigurator':
+            [PREFIX + 'belkinF9K1103_ap_configurator',
+                'BelkinF9K1103APConfigurator'],
         'BelkinF9K1105APConfigurator':
             [PREFIX + 'belkinF9K1105_ap_configurator',
                 'BelkinF9K1105APConfigurator'],
@@ -291,6 +297,7 @@ class APConfiguratorFactory(object):
                 aps.append(ap)
 
         return aps
+
 
     def _get_aps_by_configurator_type(self, configurator_type, ap_list):
         """Returns APs that match the given configurator type.

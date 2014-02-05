@@ -142,27 +142,30 @@ class WebDriverCoreHelpers(object):
         self._handle_alert(xpath, alert_handler)
 
 
-    def get_url(self, page_url, page_title=None):
+    def get_url(self, page_url, page_title=None, element_xpath=None):
         """Load page and check if the page loads completely, if not, reload.
 
         @param page_url: The url to load.
         @param page_title: The complete/partial title of the page after loaded.
-
-        @returns True if the page loaded properly. False if it did not.
+        @param element_xpath: The element that we search for to confirm that
+                              the page loaded.
 
         """
         self.driver.get(page_url)
         if page_title:
             try:
                 self.wait.until(lambda _: page_title in self.driver.title)
-            except:
+            except SeleniumTimeoutException, e:
                 self.driver.get(page_url)
                 self.wait.until(lambda _: self.driver.title)
             finally:
                 if not page_title in self.driver.title:
-                    raise RuntimeError('Page did not load. Expected %s in '
-                                       'title, but got %s as title.' %
-                                       (page_title, self.driver.title))
+                    raise WebDriverException('Page did not load. Expected %s in'
+                                             'title, but got %s as title.' %
+                                             (page_title, self.driver.title))
+        if element_xpath:
+            self.wait_for_object_by_xpath(element_xpath)
+
 
     def wait_for_object_by_id(self, element_id, wait_time=5):
         """Waits for an element to become available; returns a reference to it.
@@ -250,8 +253,7 @@ class WebDriverCoreHelpers(object):
         """
         if self.number_of_items_in_popup_by_xpath(xpath) == 0:
             raise SeleniumTimeoutException('The popup at xpath %s has no items.'
-                                           '\n WebDriver exception: %s' %
-                                           (xpath, str(e)))
+                                           % xpath)
         popup = self.driver.find_element_by_xpath(xpath)
         for option in popup.find_elements_by_tag_name('option'):
             if option.text == item:
