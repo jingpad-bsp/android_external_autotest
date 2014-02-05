@@ -129,6 +129,22 @@ class IwRunner(object):
         self._run('%s dev %s disconnect' % (self._command_iw, interface))
 
 
+    def get_interface(self, interface_name):
+        """Get full information about an interface given an interface name.
+
+        @param interface_name: string name of interface (e.g. 'wlan0').
+        @return IwNetDev tuple.
+
+        """
+        matching_interfaces = [iw_if for iw_if in self.list_interfaces()
+                                     if iw_if.if_name == interface_name]
+        if len(matching_interfaces) != 1:
+            raise error.TestFail('Could not find interface named %s' %
+                                 interface_name)
+
+        return matching_interfaces[0]
+
+
     def get_link_value(self, interface, iw_link_key, ignore_failures=False):
         """Get the value of a link property for |interface|.
 

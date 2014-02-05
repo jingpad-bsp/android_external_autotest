@@ -496,6 +496,22 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             raise error.TestFail("No IP address assigned")
 
 
+    def get_hostapd_interface(self, ap_num):
+        """Get the name of the interface associated with a hostapd instance.
+
+        @param ap_num: int hostapd instance number.
+        @return string interface name (e.g. 'managed0').
+
+        """
+        if ap_num not in range(len(self.hostapd_instances)):
+            raise error.TestFail('Invalid instance number (%d) with %d '
+                                 'instances configured.' %
+                                 (ap_num, len(self.hostapd_instances)))
+
+        instance = self.hostapd_instances[ap_num]
+        return instance['interface']
+
+
     def get_hostapd_mac(self, ap_num):
         """Return the MAC address of an AP in the test.
 
@@ -503,13 +519,22 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         @return string MAC address like 00:11:22:33:44:55.
 
         """
-        if not self.local_servers:
-            raise error.TestFail('Cannot retrieve MAC: '
-                                 'no AP instances configured.')
-
-        instance = self.hostapd_instances[ap_num]
-        ap_interface = interface.Interface(instance['interface'], self.host)
+        interface = self.get_hostapd_interface(ap_num)
+        ap_interface = interface.Interface(interface, self.host)
         return ap_interface.mac_address
+
+
+    def get_hostapd_phy(self, ap_num):
+        """Get name of phy for hostapd instance.
+
+        @param ap_num int index of hostapd instance.
+        @return string phy name of phy corresponding to hostapd's
+                managed interface.
+
+        """
+        interface = self.iw_runner.get_interface(
+                self.get_hostapd_interface(ap_num))
+        return interface.phy
 
 
     def deconfig(self):
