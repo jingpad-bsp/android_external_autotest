@@ -367,7 +367,11 @@ class APConfiguratorFactory(object):
         aps = _get_unique_aps(aps, self._get_aps_by_security(spec.security))
         aps = _get_unique_aps(aps, self._get_aps_by_visibility(spec.visible))
         matching_aps = list(aps)
-        matching_aps = self._get_aps_by_lab_location(spec.lab_ap, matching_aps)
+        # If APs hostnames are provided, assume the tester knows the location
+        # of the AP and skip AFE calls.
+        if spec.hostnames is None:
+            matching_aps = self._get_aps_by_lab_location(spec.lab_ap,
+                                                         matching_aps)
 
         if spec.configurator_type != ap_spec.CONFIGURATOR_ANY:
             matching_aps = self._get_aps_by_configurator_type(
