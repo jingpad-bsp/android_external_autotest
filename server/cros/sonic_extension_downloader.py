@@ -5,6 +5,7 @@
 
 import httplib2
 import json
+import logging
 import os
 import re
 import shutil
@@ -44,6 +45,8 @@ def get_download_url_from_omaha(extension_id):
     response_xml = httplib2.Http().request(update_check_link, 'GET')[1]
     codebase_match = re.compile(r'codebase="(.*crx)"').search(response_xml)
     if codebase_match is not None:
+        logging.info('Omaha response while downloading extension: %s',
+                     response_xml)
         return codebase_match.groups()[0]
     raise IOError('Omaha response is invalid %s.' % response_xml)
 
@@ -54,6 +57,7 @@ def download_extension(dest_file):
     @param dest_file: Path to a destination file for the extension.
     """
     download_url = get_download_url_from_omaha(TEST_EXTENSION_ID)
+    logging.info('Downloading extension from %s', download_url)
     response = urllib2.urlopen(download_url)
     with open(dest_file, 'w') as f:
         f.write(response.read())
@@ -110,6 +114,8 @@ def setup_extension(unzipped_crx_dir):
 
     if not os.path.exists(unzipped_crx_dir):
         raise SonicDownloaderException('Unable to download sonic extension.')
+    logging.info('Sonic extension successfully downloaded into %s.',
+                 unzipped_crx_dir)
 
     # TODO(beeps): crbug.com/325869, investigate the limits of component
     # extensions. For now this is ok because even sonic testing inlines a

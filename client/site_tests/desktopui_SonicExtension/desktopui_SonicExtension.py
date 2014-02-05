@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
 import os
 import json
 import time
@@ -24,6 +25,7 @@ class desktopui_SonicExtension(test.test):
 
     def _install_sonic_extension(self):
         dep_dir = os.path.join(self.autodir, 'deps', self.dep)
+        logging.info('Installing sonic extension into %s', dep_dir)
         self.job.install_pkg(self.dep, 'dep', dep_dir)
         return dep_dir
 
@@ -64,6 +66,8 @@ class desktopui_SonicExtension(test.test):
                                   % driver.title)
         driver.find_element_by_id('receiverIpAddress').send_keys(
                 chromecast_ip)
+
+        logging.info('Attempting to cast %s', self._test_url)
         driver.find_element_by_id('urlToOpen').send_keys(self._test_url)
         driver.find_element_by_id('mirrorUrl').click()
 
@@ -135,6 +139,7 @@ class desktopui_SonicExtension(test.test):
 
         # TODO: When we've cloned the sonic test repo get these from their
         # test config files.
+        logging.info('Starting sonic client test.')
         kwargs = {
             'extension_paths' : [self._extension_path],
             'is_component' : True,
@@ -151,7 +156,12 @@ class desktopui_SonicExtension(test.test):
             self._close_popups(driver)
             extension = chromedriver_instance.get_extension(
                           self._extension_path)
+            logging.info('Starting tabcast to extension: %s',
+                         extension.extension_id)
             self.tab_cast(driver, chromecast_ip, extension.extension_id)
             time.sleep(self.cast_delay)
-            utils.take_screenshot(self.resultsdir, 'sonic_screenshot_e2e_page')
+            screenshot_file = 'sonic_screenshot'
+            utils.take_screenshot(self.resultsdir, screenshot_file)
+            logging.info('Screenshot of cast extension saved to %s',
+                         os.path.join(self.resultsdir, screenshot_file))
 

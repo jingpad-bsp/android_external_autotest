@@ -5,14 +5,13 @@
 import contextlib
 import datetime
 import logging
-import random
 
-from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import chaos_constants
 from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.server import hosts
 from autotest_lib.server import frontend
 from autotest_lib.server import site_linux_system
+from autotest_lib.server import site_utils
 from autotest_lib.server.cros import host_lock_manager
 from autotest_lib.server.cros.chaos_ap_configurators import ap_batch_locker
 from autotest_lib.server.cros.chaos_ap_configurators import ap_cartridge
@@ -51,28 +50,14 @@ class ChaosRunner(object):
         @param lock_manager HostLockManager object.
         @param hostname string optional hostname of a packet capture machine.
 
+        @return: An SSHHost object representing a locked packet_capture machine.
         """
         if hostname is not None:
             return hosts.SSHHost(hostname)
 
         afe = frontend.AFE(debug=True)
-        potential_hosts = afe.get_hosts(multiple_labels=['packet_capture'])
-        if not potential_hosts:
-            raise error.TestError('No packet capture machines available.')
-
-        # Shuffle hosts so that we don't lock the same packet capture host
-        # every time.  This prevents errors where a fault might seem repeatable
-        # because we lock the same packet capturer for each test run.
-        random.shuffle(potential_hosts)
-        for host in potential_hosts:
-            if lock_manager.lock([host.hostname]):
-                logging.info('Locked packet capture host %s.', host.hostname)
-                return hosts.SSHHost(host.hostname + '.cros')
-            else:
-                logging.info('Unable to lock packet capture host %s.',
-                             host.hostname)
-
-        raise error.TestError('Could not allocate a packet tracer.')
+        return hosts.SSHHost(site_utils.lock_host_with_labels(
+                afe, lock_manager, labels=['packet_capture']) + '.cros')
 
 
     def _power_down_aps(self, aps):

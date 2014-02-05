@@ -2,8 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
+
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
+from autotest_lib.server.cros import host_lock_manager
+from autotest_lib.server.cros import sonic_client_utils
+
 
 AUTHOR = "Chrome OS Team"
 NAME = "sonic_AppTest"
@@ -30,16 +35,25 @@ Usage: test_that <ip of Cros DUT> --board=<boardname of DUT>
 args_dict = utils.args_to_dict(args)
 
 def run(machine):
-    sonic_hostname = args_dict.get('sonic_hostname')
     extension_dir = args_dict.get('extension_dir')
-    if not sonic_hostname:
-        raise error.TestError('Cannot run sonic_AppTest without a sonic host. '
-                              'please specify --args="sonic_hostname=<ip>" with '
-                              'test_that.')
+    lock_manager = host_lock_manager.HostLockManager()
 
-    cros_host = hosts.create_host(machine)
-    sonic_host = hosts.create_host(sonic_hostname)
-    job.run_test('sonic_AppTest', cros_host=cros_host, sonic_host=sonic_host,
-                 extension_dir=extension_dir, disable_sysinfo=True)
+    # If the hostname of a sonic device to use with this test
+    # is passed through --args, just try to lock it, otherwise
+    # look for an unlocked host with the sonic label. The context
+    # manager handles unlocking hosts locked through the lock_manager.
+    with host_lock_manager.HostsLockedBy(lock_manager):
+        sonic_hostname = args_dict.get('sonic_hostname')
+        if sonic_hostname:
+            lock_manager.lock([sonic_hostname])
+        else:
+            sonic_hostname = sonic_client_utils.acquire_sonic(lock_manager)
+        logging.info('Using sonic host: %s', sonic_hostname)
+        cros_host = hosts.create_host(machine)
+        sonic_host = hosts.create_host(sonic_hostname)
+        job.run_test('sonic_AppTest', cros_host=cros_host,
+                     sonic_host=sonic_host, extension_dir=extension_dir,
+                     disable_sysinfo=True)
+
 
 parallel_simple(run, machines)

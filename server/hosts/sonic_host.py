@@ -39,6 +39,9 @@ class SonicHost(abstract_ssh.AbstractSSHHost):
     OTA_LOCATION = '/cache/ota.zip'
     RECOVERY_DIR = '/cache/recovery'
     COMMAND_FILE = os.path.join(RECOVERY_DIR, 'command')
+    PLATFORM = 'sonic'
+    LABELS = [sonic_client_utils.SONIC_BOARD_LABEL]
+
 
     @staticmethod
     def check_host(host, timeout=10):
@@ -114,6 +117,14 @@ class SonicHost(abstract_ssh.AbstractSSHHost):
         BOOT_ID_FILE = '/proc/sys/kernel/random/boot_id'
         cmd = 'cat %r' % (BOOT_ID_FILE)
         return self.run(cmd, timeout=timeout).stdout.strip()
+
+
+    def get_platform(self):
+        return self.PLATFORM
+
+
+    def get_labels(self):
+        return self.LABELS
 
 
     def ssh_ping(self, timeout=60, base_cmd=''):

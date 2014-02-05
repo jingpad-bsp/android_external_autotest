@@ -19,14 +19,18 @@ class sonic_AppTest(test.test):
 
 
     def initialize(self, sonic_host, extension_dir=None):
-        """Download the latest extension."""
-        # TODO(beeps): crbug.com/337708
+        """Download the latest extension, or use a local path if specified."""
+        # TODO: crbug.com/337708
         if not extension_dir:
+            logging.info('Downloading ToT extension for test since no local '
+                         'extension specified.')
             extension_path = os.path.join(self.job.clientdir, 'deps',
                                           'sonic_extension')
             sonic_extension_downloader.setup_extension(extension_path)
             self.extension_path = extension_path
         else:
+            logging.info('Using local extension for test %s.',
+                         self.extension_dir)
             self.extension_path = None
 
 
@@ -49,6 +53,8 @@ class sonic_AppTest(test.test):
         @raises TestError: If the app didn't start, or the app was unrecognized,
             or the payload is invalid.
         """
+        logging.info('Testing app %s, sonic_host %s and chromeos device %s ',
+                     app, sonic_host.hostname, cros_host.hostname)
         if app == 'ChromeCast':
             sonic_host.enable_test_extension()
             client_at = autotest.Autotest(cros_host)

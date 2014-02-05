@@ -6,12 +6,15 @@
 import httplib
 import json
 import logging
+import random
 import re
 import time
 import urllib2
 
 import common
-from autotest_lib.client.common_lib import base_utils, global_config
+from autotest_lib.client.common_lib import base_utils
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.server.cros.dynamic_suite import constants
 
 
@@ -232,3 +235,40 @@ def check_lab_status(build):
         logging.warn('Could not get a status from %s', status_url)
         return
     _decode_lab_status(json_status, build)
+
+
+def lock_host_with_labels(afe, lock_manager, labels):
+    """Lookup and lock one host that matches the list of input labels.
+
+    @param afe: An instance of the afe class, as defined in server.frontend.
+    @param lock_manager: A lock manager capable of locking hosts, eg the
+        one defined in server.cros.host_lock_manager.
+    @param labels: A list of labels to look for on hosts.
+
+    @return: The hostname of a host matching all labels, and locked through the
+        lock_manager. The hostname will be as specified in the database the afe
+        object is associated with, i.e if it exists in afe_hosts with a .cros
+        suffix, the hostname returned will contain a .cros suffix.
+
+    @raises: error.NoEligibleHostException: If no hosts matching the list of
+        input labels are available.
+    @raises: error.TestError: If unable to lock a host matching the labels.
+    """
+    potential_hosts = afe.get_hosts(multiple_labels=labels)
+    if not potential_hosts:
+        raise error.NoEligibleHostException(
+                'No devices found with labels %s.' % labels)
+
+    # This prevents errors where a fault might seem repeatable
+    # because we lock, say, the same packet capturer for each test run.
+    random.shuffle(potential_hosts)
+    for host in potential_hosts:
+        if lock_manager.lock([host.hostname]):
+            logging.info('Locked device %s with labels %s.',
+                         host.hostname, labels)
+            return host.hostname
+        else:
+            logging.info('Unable to lock device %s with labels %s.',
+                         host.hostname, labels)
+
+    raise error.TestError('Could not lock a device with labels %s' % labels)

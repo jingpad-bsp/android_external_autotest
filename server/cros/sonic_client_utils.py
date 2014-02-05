@@ -21,8 +21,11 @@ except ImportError:
 
 import common
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import retry
+from autotest_lib.server import frontend
+from autotest_lib.server import site_utils
 
 
 # Give all our rpcs about six seconds of retry time. If a longer timeout
@@ -36,6 +39,7 @@ MANIFEST_KEY = ('MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC+hlN5FB+tjCsBszmBIvI'
                 'cD/djLLQm2zZfFygP4U4/o++ZM91EWtgII10LisoS47qT2TIOg4Un4+G57e'
                 'lZ9PjEIhcJfANqkYrD3t9dpEzMNr936TLB2u683B5qmbB68Nq1Eel7KVc+F'
                 '0BqhBondDqhvDvGPEV0vBsbErJFlNH7SQIDAQAB')
+SONIC_BOARD_LABEL = 'board:sonic'
 
 
 def get_extension_id(pub_key_pem=MANIFEST_KEY):
@@ -129,6 +133,33 @@ def _post(url, data):
     request = urllib2.Request(url, json.dumps(data),
                               headers=JSON_HEADERS)
     urllib2.urlopen(request)
+
+
+@retry.retry(RPC_EXCEPTIONS + (error.TestError,), timeout_min=30)
+def acquire_sonic(lock_manager, additional_labels=None):
+    """Lock a host that has the sonic host labels.
+
+    @param lock_manager: A manager for locking/unlocking hosts, as defined by
+        server.cros.host_lock_manager.
+    @param additional_labels: A list of additional labels to apply in the search
+        for a sonic device.
+
+    @return: A string specifying the hostname of a locked sonic host.
+
+    @raises ValueError: Is no hosts matching the given labels are found.
+    """
+    sonic_host = None
+    afe = frontend.AFE(debug=True)
+    labels = [SONIC_BOARD_LABEL]
+    if additional_labels:
+        labels += additional_labels
+    sonic_hostname = utils.poll_for_condition(
+            lambda: site_utils.lock_host_with_labels(afe, lock_manager, labels),
+            sleep_interval=60,
+            exception=SonicProxyException('Timed out trying to find a sonic '
+                                          'host with labels %s.' % labels))
+    logging.info('Acquired sonic host returned %s', sonic_hostname)
+    return sonic_hostname
 
 
 class SonicProxyException(Exception):
