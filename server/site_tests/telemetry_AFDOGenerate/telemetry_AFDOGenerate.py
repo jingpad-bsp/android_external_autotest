@@ -10,6 +10,13 @@ the monitoring of the linux "perf" tool. The resulting perf.data
 file will then be copied to Google Storage (GS) where it can be
 used by the AFDO optimized build.
 
+Given that the telemetry benchmarks are quite unstable on ChromeOS at
+this point, this test also supports a mode where the benchmarks are
+executed outside of the telemetry framework. It is not the same as
+executing the benchmarks under telemetry because there is no telemetry
+measurement taken but, for the purposes of profiling Chrome, it should
+be pretty close.
+
 Example invocation:
 /usr/bin/test_that --debug --board=lumpy <DUT IP>
   --args="ignore_failures=True local=True gs_test_location=True"
@@ -21,6 +28,8 @@ import logging
 import os
 
 from autotest_lib.client.common_lib import error, utils
+from autotest_lib.server import autotest
+from autotest_lib.server import profilers
 from autotest_lib.server import test
 from autotest_lib.server import utils
 from autotest_lib.server.cros import telemetry_runner
@@ -52,14 +61,13 @@ class telemetry_AFDOGenerate(test.test):
     version = 1
 
 
-    def run_once(self, host, args, stdout='', stderr=''):
-        """Run a single telemetry test.
+    def run_once(self, host, args):
+        """Run a set of telemetry benchmarks.
 
         @param host: Host machine where test is run
         @param args: A dictionary of the arguments that were passed
                 to this test.
-        @returns A TelemetryResult instance with the results of this
-                execution.
+        @returns None.
         """
         self._host = host
         host_board = host.get_board().split(':')[1]
@@ -68,11 +76,15 @@ class telemetry_AFDOGenerate(test.test):
                     'This test cannot be run on board %s' % host_board)
 
         self._parse_args(args)
-        self._telemetry_runner = telemetry_runner.TelemetryRunner(
-                host, self._local)
 
-        for benchmark in TELEMETRY_AFDO_BENCHMARKS:
-            self._run_test(benchmark)
+        if self._minimal_telemetry:
+            self._run_tests_minimal_telemetry()
+        else:
+            self._telemetry_runner = telemetry_runner.TelemetryRunner(
+                    self._host, self._local)
+
+            for benchmark in TELEMETRY_AFDO_BENCHMARKS:
+                self._run_test(benchmark)
 
 
     def after_run_once(self):
@@ -118,6 +130,10 @@ class telemetry_AFDOGenerate(test.test):
         self._local = False
         # Chrome version to which the AFDO data corresponds.
         self._version, _ = self._host.get_chrome_version()
+        # Try to use the minimal support from Telemetry. The Telemetry
+        # benchmarks in ChromeOS are too flaky at this point. So, initially,
+        # this will be set to True by default.
+        self._minimal_telemetry = True
 
         for option_name, value in args.iteritems():
             if option_name == 'arch':
@@ -128,6 +144,8 @@ class telemetry_AFDOGenerate(test.test):
                 self._ignore_failures = (value == 'True')
             elif option_name == 'local':
                 self._local = (value == 'True')
+            elif option_name == 'minimal_telemetry':
+                self._minimal_telemetry = (value == 'True')
             elif option_name == 'version':
                 self._version = value
             else:
@@ -137,7 +155,7 @@ class telemetry_AFDOGenerate(test.test):
     def _run_test(self, benchmark):
         """Run the benchmark using Telemetry.
 
-        @param Name of the benchmark to run.
+        @param benchmark: Name of the benchmark to run.
         @raises if failures are not being ignored raises error.TestFail if
                 execution of test failed. Also re-raise any exceptions thrown
                 by run_telemetry benchmark.
@@ -163,6 +181,40 @@ class telemetry_AFDOGenerate(test.test):
                                       ' benchmark: %s' % benchmark)
             else:
                 logging.info('Ignoring failure from benchmark %s', benchmark)
+
+
+    def _run_tests_minimal_telemetry(self):
+        """Run the benchmarks using the minimal support from Telemetry.
+
+        The benchmarks are run using a client side autotest test. This test
+        will control Chrome directly using the chrome.Chrome support and it
+        will ask Chrome to display the benchmark pages directly instead of
+        using the "page sets" and "measurements" support from Telemetry.
+        In this way we avoid using Telemetry benchmark support which is not
+        stable on ChromeOS yet.
+        """
+        AFDO_GENERATE_CLIENT_TEST = 'pagereplay_AFDOGenerate'
+
+        # We dont want to "inherit" the profiler settings for this test
+        # to the client test. Doing so will end up in two instances of
+        # the profiler (perf) being executed at the same time.
+        # Filed a feature request about this. See crbug/342958.
+
+        # Save the current settings for profilers.
+        saved_profilers = self.job.profilers
+        saved_default_profile_only = self.job.default_profile_only
+
+        # Reset the state of the profilers.
+        self.job.default_profile_only = False
+        self.job.profilers = profilers.profilers(self.job)
+
+        # Execute the client side test.
+        client_at = autotest.Autotest(self._host)
+        client_at.run_test(AFDO_GENERATE_CLIENT_TEST, args='')
+
+        # Restore the settings for the profilers.
+        self.job.default_profile_only = saved_default_profile_only
+        self.job.profiler = saved_profilers
 
 
     @staticmethod
