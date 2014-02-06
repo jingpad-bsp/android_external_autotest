@@ -148,7 +148,7 @@ class Chrome(object):
                 return False
             tab.Close()
             return True
-        util.WaitFor(lambda: _BrowserReady(self), poll_interval=1, timeout=10)
+        util.WaitFor(lambda: _BrowserReady(self), timeout=10)
 
 
     def did_browser_crash(self, func):
@@ -163,4 +163,3 @@ class Chrome(object):
                 exceptions.BrowserConnectionGoneException):
             return True
         return False
-
