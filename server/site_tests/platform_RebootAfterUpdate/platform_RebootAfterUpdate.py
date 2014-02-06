@@ -83,7 +83,7 @@ class platform_RebootAfterUpdate(test.test):
                      'login and logout after performing an update.')
         client_at = autotest.Autotest(host)
         self.job.set_state('client_success', False)
-        client_at.run_test('login_LoginSuccessTelemetry')
+        client_at.run_test('login_LoginSuccess')
         if not self.job.get_state('client_success'):
             raise error.TestFail(
                     'Failed to login successfully after an update.')

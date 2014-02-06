@@ -1296,9 +1296,6 @@ class autoupdate_EndToEndTest(test.test):
         # '5116.0.0' -> ('5116', '0', '0') -> 5116
         if int(test_conf['target_release'].split('.')[0]) > 5110:
             # Login, to prove we can after the update.
-            #
-            # TODO(dgarrett): Telemetry login is not yet robust. When it is,
-            # switch test to 'login_LoginSuccessTelemetry'
             logging.info('Attempting to login to verify image.')
 
             client_at = autotest.Autotest(self._host)

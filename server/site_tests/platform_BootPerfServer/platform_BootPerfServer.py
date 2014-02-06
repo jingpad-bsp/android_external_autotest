@@ -53,8 +53,7 @@ class platform_BootPerfServer(test.test):
         except error.AutoservRunError:
             logging.info('Taking client through OOBE.')
             client_at = autotest.Autotest(self.client)
-            client_at.run_test('login_LoginSuccessTelemetry',
-                               disable_sysinfo=True)
+            client_at.run_test('login_LoginSuccess', disable_sysinfo=True)
 
         # Reboot the client
         logging.info('BootPerfServer: reboot %s', self.client.hostname)
