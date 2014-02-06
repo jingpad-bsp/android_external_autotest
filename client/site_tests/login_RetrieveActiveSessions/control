@@ -4,7 +4,6 @@
 
 AUTHOR = "cmasone, nkostylev"
 NAME = "login_RetrieveActiveSessions"
-EXPERIMENTAL = "True"
 SUITE = "bvt, smoke"
 TIME = "FAST"
 TEST_CLASS = "login"

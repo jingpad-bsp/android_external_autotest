@@ -10,8 +10,6 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"
 TEST_TYPE = "client"
 
-EXPERIMENTAL = "True"
-
 DOC = """
 Ensure that ownership is re-taken upon loss of owner's cryptohome.
 

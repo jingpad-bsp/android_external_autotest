@@ -4,7 +4,6 @@
 
 AUTHOR = "joaodasilva, cmasone"
 NAME = "login_UserPolicyKeys"
-EXPERIMENTAL = "True"
 SUITE = "bvt, smoke"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
