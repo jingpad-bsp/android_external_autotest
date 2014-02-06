@@ -5,8 +5,8 @@
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
 from autotest_lib.server import hosts
-from autotest_lib.server import site_attenuator
 from autotest_lib.server.cros import wifi_test_utils
+from autotest_lib.server.cros.network import attenuator_controller
 from autotest_lib.server.cros.network import wifi_test_context_manager
 
 
@@ -55,7 +55,8 @@ class RvRTestContextManager(wifi_test_context_manager.WiFiTestContextManager):
 
         self._attenuator_address = self._get_attenuator_address()
         attenuator_host = hosts.SSHHost(self._attenuator_address, port=22)
-        self._attenuator = site_attenuator.Attenuator(attenuator_host)
+        self._attenuator = attenuator_controller.AttenuatorController(
+                attenuator_host)
 
 
     @property
@@ -66,8 +67,8 @@ class RvRTestContextManager(wifi_test_context_manager.WiFiTestContextManager):
 
     def teardown(self):
         """Tears down the state used in a WiFi RvR test."""
+        self._attenuator.close()
         super(RvRTestContextManager, self).teardown()
-        self._attenuator.cleanup()
 
 
     def configure(self, ap_config, multi_interface=None, is_ibss=None):
@@ -82,4 +83,3 @@ class RvRTestContextManager(wifi_test_context_manager.WiFiTestContextManager):
         super(RvRTestContextManager, self).configure(
                 configuration_parameters=ap_config,
                 multi_interface=multi_interface, is_ibss=is_ibss)
-        self._attenuator.config(self.client.host.hostname, ap_config.frequency)

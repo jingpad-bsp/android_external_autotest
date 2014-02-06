@@ -82,7 +82,8 @@ class network_WiFi_AttenuatedPerf(rvr_test_base.RvRTestBase):
                            self.FINAL_ATTENUATION + 1,
                            self.ATTENUATION_STEP):
             atten_tag = 'atten%03d' % atten
-            self.context.attenuator.set_total_attenuation(atten)
+            self.context.attenuator.set_total_attenuation(
+                    atten, self._ap_config.frequency)
             logging.info('RvR test: current attenuation = %d dB', atten)
             for config in self.NETPERF_CONFIGS:
                 results = session.run(config)

@@ -7,7 +7,7 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
-from autotest_lib.server import site_attenuator
+from autotest_lib.server.cros.network import attenuator_controller
 from autotest_lib.server.cros.network import hostap_config
 from autotest_lib.server.cros.network import rvr_test_base
 
@@ -37,7 +37,7 @@ class network_WiFi_VerifyAttenuator(rvr_test_base.RvRTestBase):
         return int(phy[3:])
 
 
-    def _verify_attenuator(self, ap_num, attenuator_num):
+    def _verify_attenuator(self, ap_num, frequency_mhz, attenuator_num):
         """Verify that each phy has two attenuators controlling its signal.
 
         @param ap_num: int hostapd instance to test against.
@@ -51,10 +51,10 @@ class network_WiFi_VerifyAttenuator(rvr_test_base.RvRTestBase):
         self.context.client.shill.init_test_network_state()
         # Isolate the client entirely.
         self.context.attenuator.set_variable_attenuation(
-                site_attenuator.Attenuator.MAX_VARIABLE_ATTENUATION)
+                attenuator_controller.MAX_VARIABLE_ATTENUATION)
         # But allow one antenna on this phy.
-        self.context.attenuator.set_variable_attenuation_on_port(
-                attenuator_num, 0)
+        self.context.attenuator.set_variable_attenuation(
+                0, attenuator_num=attenuator_num)
         # Leave a little time for client state to settle down.
         time.sleep(5)
         client_conf = xmlrpc_datatypes.AssociationParameters(
@@ -70,8 +70,8 @@ class network_WiFi_VerifyAttenuator(rvr_test_base.RvRTestBase):
         for atten in range(STARTING_ATTENUATION,
                            FINAL_ATTENUATION + 1,
                            ATTENUATION_STEP):
-            self.context.attenuator.set_total_attenuation_on_port(
-                    attenuator_num, atten)
+            self.context.attenuator.set_total_attenuation(
+                    atten, frequency_mhz, attenuator_num=attenuator_num)
             time.sleep(2)
             logging.info('Attenuator %d signal at attenuation=%d is %d dBm.',
                          attenuator_num, atten,
@@ -92,7 +92,7 @@ class network_WiFi_VerifyAttenuator(rvr_test_base.RvRTestBase):
         """
         # Turn up all attenuation.
         self.context.attenuator.set_variable_attenuation(
-                site_attenuator.Attenuator.MAX_VARIABLE_ATTENUATION)
+                attenuator_controller.MAX_VARIABLE_ATTENUATION)
         # Turn down attenuation for phys other than the instance we're
         # interested in.
         for other_instance in [x for x in range(self.num_phys)
@@ -137,7 +137,8 @@ class network_WiFi_VerifyAttenuator(rvr_test_base.RvRTestBase):
                 for attenuator_offset in range(ATTENUATORS_PER_PHY):
                     attenuator_num = (phy_num * ATTENUATORS_PER_PHY +
                                       attenuator_offset)
-                    if not self._verify_attenuator(instance, attenuator_num):
+                    if not self._verify_attenuator(
+                            instance, ap_config.frequency, attenuator_num):
                         any_failed = True
         if any_failed:
             raise error.TestFail('One or more attenuators are broken!')
