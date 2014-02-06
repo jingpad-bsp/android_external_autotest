@@ -10,7 +10,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://*/ManyPlanetsDeep.html"],
+      "matches": ["*://*/graphics_test.html"],
       "js": ["fullscreen.js"]
     }
   ],

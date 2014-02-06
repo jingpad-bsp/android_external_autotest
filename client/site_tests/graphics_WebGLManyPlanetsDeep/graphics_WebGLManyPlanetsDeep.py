@@ -9,6 +9,7 @@ import os
 import time
 
 from autotest_lib.client.bin import test
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 
@@ -19,10 +20,24 @@ class graphics_WebGLManyPlanetsDeep(test.test):
 
     def setup(self):
         self.job.setup_dep(['webgl_mpd'])
+        self.job.setup_dep(['graphics'])
 
     def initialize(self):
         self.frame_data = {}
         self.perf_keyval = {}
+
+    def poll_for_condition(self, tab, condition, error_msg):
+        """Waits until javascript condition is true.
+
+        @param tab:       The tab the javascript/condition runs on.
+        @param condition: The javascript condition to evaluate.
+        @param error_msg: Test failure error string on timeout.
+        """
+        utils.poll_for_condition(
+            lambda: tab.EvaluateJavaScript(condition),
+            exception=error.TestError(error_msg),
+            timeout=self.test_duration_secs,
+            sleep_interval=1)
 
     def run_many_planets_deep_test(self, browser, test_url):
         """Runs the many planets deep test from the given url.
@@ -33,8 +48,11 @@ class graphics_WebGLManyPlanetsDeep(test.test):
         tab = browser.tabs.New()
         tab.Navigate(test_url)
         tab.Activate()
+        self.poll_for_condition(tab, 'typeof start !== \'undefined\'',
+                                'Timed out loading the test.')
 
         # Wait 3 seconds for the page to stabilize.
+        # TODO(ihf): Add a function that waits for low system load.
         time.sleep(3)
 
         # Reset our own FPS counter and start recording FPS and rendering time.
@@ -94,7 +112,8 @@ class graphics_WebGLManyPlanetsDeep(test.test):
         ext_paths = []
         if fullscreen:
             ext_paths.append(
-                    os.path.join(self.bindir, 'graphics_test_extension'))
+                    os.path.join(self.autodir, 'deps', 'graphics',
+                                 'graphics_test_extension'))
 
         with chrome.Chrome(extension_paths=ext_paths) as cr:
             websrc_dir = os.path.join(self.autodir, 'deps', 'webgl_mpd', 'src')
