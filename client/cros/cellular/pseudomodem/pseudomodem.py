@@ -19,6 +19,7 @@ import os
 import os.path
 import signal
 import sys
+import testing
 import traceback
 
 import logging_setup
@@ -160,6 +161,9 @@ class PseudoModemManager(object):
         # modem family is |3GPP|.
         if self._sim:
             self._modem.SetSIM(self._sim)
+
+        # The testing interface can be brought up now that we have the bus.
+        self._testing_object = testing.Testing(self._modem, self._bus)
 
     def _ReadCustomParts(self):
         """
