@@ -151,7 +151,8 @@ class ChaosRunner(object):
 
 
     def run(self, job, batch_size=15, tries=10, capturer_hostname=None,
-            conn_worker=None, work_client_hostname=None):
+            conn_worker=None, work_client_hostname=None,
+            disabled_sysinfo=False):
         """Executes Chaos test.
 
         @param job: an Autotest job object.
@@ -161,6 +162,7 @@ class ChaosRunner(object):
         @param conn_worker: ConnectionWorkerAbstract or None, to run extra
                             work after successful connection.
         @param work_client_hostname: a string or None, hostname of work client
+        @param disabled_sysinfo: a bool, disable collection of logs from DUT.
 
         """
 
@@ -254,7 +256,7 @@ class ChaosRunner(object):
                                      tries=tries,
                                      debug_info=ap.name,
                                      # Copy all logs from the system
-                                     disabled_sysinfo=False,
+                                     disabled_sysinfo=disabled_sysinfo,
                                      conn_worker=conn_worker,
                                      tag=ap.ssid if conn_worker is None else
                                          '%s.%s' % (conn_worker.name, ap.ssid))
