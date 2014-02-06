@@ -10,6 +10,7 @@
 # command line. To avoid confusion, please use the shell script run_pseudomodem
 # to run pseudomodem from command line.
 
+import dbus
 import json
 import logging
 import os
@@ -24,6 +25,7 @@ import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import service_stopper
+from autotest_lib.client.cros.cellular import mm1_constants
 from autotest_lib.client.cros.cellular import net_interface
 
 import pm_constants
@@ -184,6 +186,7 @@ class PseudoModemManagerContext(object):
                     cmd,
                     preexec_fn=PseudoModemManagerContext._SetUserModem,
                     close_fds=True)
+        self._EnsurePseudoModemUp()
         return self
 
     def Stop(self, *args):
@@ -303,6 +306,24 @@ class PseudoModemManagerContext(object):
             logging.error('Could not set uid to %d [%s]',
                           pwd_data.pw_uid, str(e))
             sys.exit(1)
+
+    def _EnsurePseudoModemUp(self):
+        """ Makes sure that pseudomodem in child process is ready. """
+        bus = dbus.SystemBus()
+        def _LivenessCheck():
+            try:
+                testing_object = bus.get_object(mm1_constants.I_MODEM_MANAGER,
+                                                pm_constants.TESTING_PATH)
+                return testing_object.IsAlive(
+                        dbus_interface=pm_constants.I_TESTING)
+            except dbus.DBusException:
+                return False
+
+        utils.poll_for_condition(
+                _LivenessCheck,
+                timeout=self.SHORT_TIMEOUT_SECONDS,
+                exception=PseudoModemManagerContextException(
+                        'pseudomodem did not initialize properly.'))
 
     def _CreateTempFile(self):
         """

@@ -43,6 +43,22 @@ class PseudoModemClient(cmd.Cmd):
         """Override"""
         return True
 
+    def do_is_alive(self, args):
+        """
+        Handles the 'is_alive' command.
+
+        @params args: ignored.
+
+        """
+        if args:
+            print '\nCommand "is_alive" expects no arguments.\n'
+            return
+        print self._get_proxy().IsAlive(dbus_interface=pm_constants.I_TESTING)
+
+    def help_is_alive(self):
+        """ Handles the 'help is_alive' command. """
+        print '\nChecks that pseudomodem child process is alive.\n'
+
     def do_properties(self, args):
         """
         Handles the 'properties' command.

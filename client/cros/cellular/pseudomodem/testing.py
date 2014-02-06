@@ -25,6 +25,18 @@ class Testing(dbus_std_ifaces.DBusProperties):
                                                 pm_constants.TESTING_PATH,
                                                 bus)
 
+    @utils.log_dbus_method()
+    @dbus.service.method(pm_constants.I_TESTING, out_signature='b')
+    def IsAlive(self):
+        """
+        A heartbeat method.
+
+        This method can be called by clients to check that pseudomodem is alive.
+
+        @return: True, always.
+        """
+        return True
+
     def _InitializeProperties(self):
         return { pm_constants.I_TESTING: { 'Modem': self._modem.path } }
 

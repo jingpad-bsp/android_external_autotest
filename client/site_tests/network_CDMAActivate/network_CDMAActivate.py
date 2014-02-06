@@ -49,8 +49,6 @@ class ActivationTest(object):
         with pseudomodem_context.PseudoModemManagerContext(
                 True,
                 flags_map=self._pseudomodem_flags()):
-            # Give pseudomodem time to settle down
-            time.sleep(1)
             self._run_test()
 
 

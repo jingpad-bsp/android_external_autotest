@@ -227,8 +227,6 @@ class network_3GScanningProperty(test.test):
                 {'test-module' : TEST_MODEMS_MODULE_PATH,
                  'test-state-machine-factory-class' :
                         'InteractiveStateMachineFactory'}):
-            # Give pseudomodem some time to settle down.
-            time.sleep(2)
             self._cellular_proxy = cellular_proxy.CellularProxy.get_proxy()
             self._bus = dbus.SystemBus()
             self._cellular_proxy.set_logging_for_cellular_test()

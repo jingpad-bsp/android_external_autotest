@@ -5,7 +5,6 @@
 import dbus
 import logging
 import random
-import time
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
@@ -418,6 +417,4 @@ class network_SIMLocking(test.test):
             with pseudomodem_context.PseudoModemManagerContext(
                     True,
                     {'family' : '3GPP'}):
-                # Give pseudomodem time to settle down.
-                time.sleep(1)
                 self._run_internal(test)
