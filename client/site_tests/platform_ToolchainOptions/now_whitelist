@@ -13,6 +13,8 @@
 /usr/bin/cros_installer
 /usr/bin/cvt
 /usr/bin/gtf
+# crbug.com/341095
+/usr/bin/intel-virtual-output
 /usr/bin/synclient
 /usr/bin/syndaemon
 /usr/bin/Xorg
