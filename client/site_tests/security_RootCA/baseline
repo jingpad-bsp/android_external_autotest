@@ -159,8 +159,6 @@
             "thawte Primary Root CA",
           "92:5A:8F:8D:2C:6D:04:E0:66:5F:59:6A:FF:22:D8:63:E8:25:6F:3F":
             "Starfield Services Root Certificate Authority - G2",
-          "93:E6:AB:22:03:03:B5:23:28:DC:DA:56:9E:BA:E4:D1:D1:CC:FB:65":
-            "Wells Fargo Root CA",
           "97:81:79:50:D8:1C:96:70:CC:34:D8:09:CF:79:44:31:36:7E:F4:74":
             "GTE CyberTrust Global Root",
           "99:A6:9B:E6:1A:FE:88:6B:4D:2B:82:00:7C:B8:54:FC:31:7E:15:39":
@@ -293,8 +291,12 @@
             "D-TRUST Root Class 3 CA 2 2009",
           "8E:1C:74:F8:A6:20:B9:E5:8A:F4:61:FA:EC:2B:47:56:51:1A:52:C6":
             "CA Disig Root R1",
+          "93:05:7A:88:15:C6:4F:CE:88:2F:FA:91:16:52:28:78:BC:53:64:17":
+            "ACCVRAIZ1",
           "96:C9:1B:0B:95:B4:10:98:42:FA:D0:D8:22:79:FE:60:FA:B9:16:83":
             "D-TRUST Root Class 3 CA 2 EV 2009",
+          "9C:BB:48:53:F6:A4:F6:D3:52:A4:E8:32:52:55:60:13:F5:AD:AF:65":
+            "TWCA Global Root CA",
           "E7:A1:90:29:D3:D5:52:DC:0D:0F:C6:92:D3:EA:88:0D:15:2E:1A:6B":
             "Swisscom Root EV CA 2",
           "77:47:4F:C6:30:E4:0F:4C:47:64:3F:84:BA:B8:C6:95:4A:8A:41:EC":
@@ -307,6 +309,8 @@
             "Entrust.net Premium 2048 Secure Server CA",
           "81:96:8B:3A:EF:1C:DC:70:F5:FA:32:69:C2:92:A3:63:5B:D1:23:D3":
             "Digital Signature Trust Co. Global CA 1",
+          "93:E6:AB:22:03:03:B5:23:28:DC:DA:56:9E:BA:E4:D1:D1:CC:FB:65":
+            "Wells Fargo Root CA",
           "96:56:CD:7B:57:96:98:95:D0:E1:41:46:68:06:FB:B8:C6:11:06:87":
             "TC TrustCenter Universal CA III",
           "AB:48:F3:33:DB:04:AB:B9:C0:72:DA:5B:0C:C1:D0:57:F0:36:9B:46":
