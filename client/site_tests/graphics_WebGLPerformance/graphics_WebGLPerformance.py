@@ -1,88 +1,103 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, shutil, time, urllib
+"""This is a client side WebGL performance test."""
+
+import logging, os, time
+
+from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui, cros_ui_test, graphics_ui_test
-from autotest_lib.client.cros import httpd
+from autotest_lib.client.common_lib.cros import chrome
 
-class graphics_WebGLPerformance(graphics_ui_test.GraphicsUITest):
+
+class graphics_WebGLPerformance(test.test):
+    """WebGL performance graphics test."""
     version = 1
 
-    def initialize(self, creds='$default'):
-        self._test_url = 'http://localhost:8000/webgl-performance-tests.html'
-        self._testServer = httpd.HTTPListener(8000, docroot=self.srcdir)
-        self._testServer.run()
-        graphics_ui_test.GraphicsUITest.initialize(self, creds,
-                                       extra_chrome_flags=['--enable-webgl'])
+    def setup(self):
+        self.job.setup_dep(['webgl_perf'])
+        self.job.setup_dep(['graphics'])
 
-    def setup(self, tarball='webgl-performance-0.0.1.tar.bz2'):
-        shutil.rmtree(self.srcdir, ignore_errors=True)
-        tarball_path = os.path.join(self.bindir, tarball)
-        if not os.path.exists(self.srcdir):
-            if not os.path.exists(tarball_path):
-                utils.get_file(
-                    'http://commondatastorage.googleapis.com/'
-                    'chromeos-localmirror/distfiles/' + tarball,
-                    tarball_path)
-            os.mkdir(self.srcdir)
-            utils.extract_tarball_to_dir(tarball_path, self.srcdir)
-        os.chdir(self.srcdir)
-        utils.system('patch -p2 < ../webgl-performance-0.0.1.patch')
-        shutil.copy('../favicon.ico', self.srcdir)
+    def initialize(self):
+        self.perf_keyval = {}
 
-    def cleanup(self):
-        self._testServer.stop()
-        graphics_ui_test.GraphicsUITest.cleanup(self)
+    def poll_for_condition(self, tab, condition, error_msg):
+        """Waits until javascript condition is true.
 
-    def run_once(self, timeout=600):
-        # TODO(ihf): Remove when stable. For now we have to expect crashes.
-        self.crash_blacklist.append('chrome')
-        self.crash_blacklist.append('chromium')
+        @param tab:       The tab the javascript/condition runs on.
+        @param condition: The javascript condition to evaluate.
+        @param error_msg: Test failure error string on timeout.
+        """
+        utils.poll_for_condition(
+            lambda: tab.EvaluateJavaScript(condition),
+            exception=error.TestError(error_msg),
+            timeout=self.test_duration_secs,
+            sleep_interval=1)
 
-        latch = self._testServer.add_wait_url('/WebGL/results')
-        # Loading the url might take longer than pyauto automation timeout.
-        # Temporarily increment pyauto timeout.
-        pyauto_timeout_changer = self.pyauto.ActionTimeoutChanger(
-            self.pyauto, timeout * 1000)
-        logging.info('Going to %s' % self._test_url)
-        # TODO(ihf): Use the pyauto perf mechanisms to calm the system down.
-        utils.system('sync')
-        time.sleep(10.0)
-        self.pyauto.NavigateToURL(self._test_url)
-        del pyauto_timeout_changer
-        latch.wait(timeout)
+    def run_performance_test(self, browser, test_url):
+        """Runs the performance test from the given url.
 
-        if not latch.is_set():
-            raise error.TestFail('Timeout after ' + str(timeout) +
-                  ' seconds - never received callback from browser.')
+        @param browser: The Browser object to run the test with.
+        @param test_url: The URL to the performance test site.
+        """
+        # Wait 5 seconds for the system to stabilize.
+        # TODO(ihf): Add a function that waits for low system load.
+        time.sleep(5)
 
-        # Receive data from webgl-performance-tests.html::postFinalResults.
-        results = self._testServer.get_form_entries()
-        time_ms_geom_mean = float(results['time_ms_geom_mean'])
+        # Kick off test.
+        tab = browser.tabs.New()
+        tab.Navigate(test_url)
+        tab.Activate()
+
+        # Wait for test completion.
+        self.poll_for_condition(tab, 'time_ms_geom_mean > 0.0',
+            'Timed out running the test.')
+
+        # Get the geometric mean of individual runtimes.
+        time_ms_geom_mean = tab.EvaluateJavaScript(
+                               'time_ms_geom_mean')
+        logging.info('WebGLPerformance: time_ms_geom_mean = %f',
+                                      time_ms_geom_mean)
 
         # Output numbers for plotting by harness.
         keyvals = {}
         keyvals['time_ms_geom_mean'] = time_ms_geom_mean
-        logging.info('WebGLPerformance: time_ms_geom_mean = %f'\
-                                      % time_ms_geom_mean)
         self.write_perf_keyval(keyvals)
-        # TODO(ihf): Switch this test to Telemetry (in cros_ui_test.py) so that
-        # the numbers actually make it to the perf dashboard.
         self.output_perf_value(description='time_geom_mean',
                                value=time_ms_geom_mean, units='ms',
                                higher_is_better=False)
 
-        # Write transmitted summary to graphics_WebGLPerformance/summary.html.
-        summary = urllib.unquote_plus(results['summary'])
-        logging.info('\n' + summary)
+        # Get a copy of the test report.
+        test_report = tab.EvaluateJavaScript('test_report')
         results_path = os.path.join(self.bindir,
-              "../../results/default/graphics_WebGLPerformance/summary.html")
+            "../../results/default/graphics_WebGLPerformance/test_report.html")
         f = open(results_path, 'w+')
-        f.write(summary)
+        f.write(test_report)
         f.close()
-        # Allow somebody to take a look at the screen.
-        time.sleep(10.0)
+
+        tab.Close()
+
+    def run_once(self, test_duration_secs=600, fullscreen=True):
+        """Finds a brower with telemetry, and run the test.
+
+        @param test_duration_secs: The test duration in seconds.
+        @param fullscreen: Whether to run the test in fullscreen.
+        """
+        self.test_duration_secs = test_duration_secs
+
+        ext_paths = []
+        if fullscreen:
+            ext_paths.append(
+                    os.path.join(self.autodir, 'deps', 'graphics',
+                                 'graphics_test_extension'))
+
+        with chrome.Chrome(extension_paths=ext_paths) as cr:
+            websrc_dir = os.path.join(self.autodir, 'deps', 'webgl_perf', 'src')
+            if not cr.browser.SetHTTPServerDirectories(websrc_dir):
+                raise error.TestError('Unable to start HTTP server')
+            test_url = cr.browser.http_server.UrlOf(
+                    os.path.join(websrc_dir, 'webgl-performance-tests.html'))
+            self.run_performance_test(cr.browser, test_url)
 
