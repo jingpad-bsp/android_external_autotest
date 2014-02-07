@@ -27,6 +27,8 @@ class firmware_RollbackKernel(FAFTSequence):
         If not, it may be a test failure during step 2 or 3, try to recover to
         the requested kernel on normal/dev mode by recovering the whole OS
         and rebooting.
+
+        @param part: The expected kernel partition number.
         """
         if not self.check_root_part_on_non_recovery(part):
             logging.info('Recover the disk OS by running chromeos-install...')
@@ -38,6 +40,7 @@ class firmware_RollbackKernel(FAFTSequence):
 
     def initialize(self, host, cmdline_args, dev_mode=False):
         super(firmware_RollbackKernel, self).initialize(host, cmdline_args)
+        self.backup_kernel()
         self.setup_dev_mode(dev_mode)
         self.setup_usbkey(usbkey=True, host=False)
         self.setup_kernel('a')
@@ -45,6 +48,7 @@ class firmware_RollbackKernel(FAFTSequence):
 
     def cleanup(self):
         self.ensure_kernel_on_non_recovery('a')
+        self.restore_kernel()
         super(firmware_RollbackKernel, self).cleanup()
 
 
