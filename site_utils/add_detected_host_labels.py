@@ -19,6 +19,7 @@ Limitations:
 """
 
 
+from multiprocessing import pool
 import logging
 import socket
 import argparse
@@ -31,13 +32,13 @@ from autotest_lib.server import frontend
 from autotest_lib.client.common_lib import error
 
 
-def add_missing_labels(hostname, afe):
+def add_missing_labels(afe, hostname):
     """
     Queries the detectable labels supported by the given host,
     and adds those labels to the host.
 
-    @param hostname: The host to query and update.
     @param afe: A frontend.AFE() instance.
+    @param hostname: The host to query and update.
 
     @return: True on success.
              False on failure to fetch labels or to add any individual label.
@@ -54,23 +55,23 @@ def add_missing_labels(hostname, afe):
         logging.warning('Unable to query labels on hostname %s. Skipping.',
                          hostname)
         return False
+    finally:
+        host.close()
 
-    success = True
+    label_matches = afe.get_labels(name__in=labels)
 
+    for label in label_matches:
+        label.add_hosts(hosts=[hostname])
 
-    for label_name in labels:
-        label_matches = afe.get_labels(name=label_name)
+    missing_labels = set(labels) - set([l.name for l in label_matches])
 
-        if not label_matches:
-            success = False
+    if missing_labels:
+        for label in missing_labels:
             logging.warning('Unable to add label %s to host %s. '
-                            'Skipping unknown label.', label_name,
-                            hostname)
-            continue
+                            'Skipping unknown label.', label, hostname)
+        return False
 
-        label_matches[0].add_hosts(hosts=[hostname])
-
-    return success
+    return True
 
 
 def main():
@@ -80,9 +81,11 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-s', '--silent', dest='silent', action='store_true',
-                      help='Suppress logging messages below.')
+                        help='Suppress all but critical logging messages.')
     parser.add_argument('-i', '--info', dest='info_only', action='store_true',
-                      help='Suppress logging messages below INFO priority.')
+                        help='Suppress logging messages below INFO priority.')
+    parser.add_argument('-m', '--machines', dest='machines',
+                        help='Comma separated list of machines to check.')
     options = parser.parse_args()
 
     if options.silent and options.info_only:
@@ -97,20 +100,21 @@ def main():
     if options.info_only:
         logging.disable(logging.DEBUG)
 
+    threadpool = pool.ThreadPool()
     afe = frontend.AFE()
-    labels = afe.get_labels()
 
-    hostnames = afe.get_hostnames()
-    failures = 0
-    attempts = 0
-    for hostname in hostnames:
-        if not add_missing_labels(hostname, afe):
-            failures += 1
+    if options.machines:
+        hostnames = [m.strip() for m in options.machines.split(',')]
+    else:
+        hostnames = afe.get_hostnames()
 
+    successes = sum(threadpool.imap_unordered(
+                        lambda x: add_missing_labels(afe, x),
+                        hostnames))
     attempts = len(hostnames)
 
     logging.info('Label updating finished. Failed update on %d out of %d '
-                 'hosts.', failures, attempts)
+                 'hosts.', attempts-successes, attempts)
 
     return 0
 
