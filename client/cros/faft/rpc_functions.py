@@ -614,6 +614,26 @@ class RPCFunctions(object):
         """Resign kernel with temporary key."""
         self._kernel_handler.resign_kernel(section, key_path)
 
+    def _kernel_dump(self, section, kernel_path):
+        """Dump the specified kernel to a file.
+
+        @param section: The kernel to dump. May be A or B.
+        @param kernel_path: The path to the kernel image to be written.
+        """
+        self._kernel_handler.dump_kernel(section, kernel_path)
+
+    def _kernel_write(self, section, kernel_path):
+        """Write a kernel image to the specified section.
+
+        @param section: The kernel to dump. May be A or B.
+        @param kernel_path: The path to the kernel image.
+        """
+        self._kernel_handler.write_kernel(section, kernel_path)
+
+    def _kernel_get_sha(self, section):
+        """Return the SHA1 hash of the specified kernel section."""
+        return self._kernel_handler.get_sha(section)
+
     def _tpm_get_firmware_version(self):
         """Retrieve tpm firmware body version."""
         return self._tpm_handler.get_fw_version()

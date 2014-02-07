@@ -4,6 +4,7 @@
 
 """A module containing kernel handler class used by SAFT."""
 
+import hashlib
 import os
 import re
 
@@ -30,6 +31,9 @@ class KernelHandler(object):
     # image. First added to corrupt the image, then subtracted to restore the
     # image.
     DELTA = 1
+
+    # The maximum kernel size in MB.
+    KERNEL_SIZE_MB = 16
 
     def __init__(self):
         self.chros_if = None
@@ -77,6 +81,28 @@ class KernelHandler(object):
             part_info['datakey_version'] = self._get_datakey_version(device)
             self.partition_map[label] = part_info
 
+    def dump_kernel(self, section, kernel_path):
+        """Dump the specified kernel to a file.
+
+        @param section: The kernel to dump. May be A or B.
+        @param kernel_path: The path to the kernel image.
+        """
+        dev = self.partition_map[section.upper()]['device']
+        cmd = 'dd if=%s of=%s bs=%dM count=1' % (
+                dev, kernel_path, self.KERNEL_SIZE_MB)
+        self.chros_if.run_shell_command(cmd)
+
+    def write_kernel(self, section, kernel_path):
+        """Write a kernel image to the specified section.
+
+        @param section: The kernel to write. May be A or B.
+        @param kernel_path: The path to the kernel image to write.
+        """
+        dev = self.partition_map[section.upper()]['device']
+        cmd = 'dd if=%s of=%s bs=%dM count=1' % (
+                kernel_path, dev, self.KERNEL_SIZE_MB)
+        self.chros_if.run_shell_command(cmd)
+
     def _modify_kernel(self, section,
                        delta,
                        modification_type=KERNEL_BODY_MOD,
@@ -95,10 +121,7 @@ class KernelHandler(object):
         argument key_path. If key_path is None, choose dev_key_path as resign
         key directory.
         """
-        dev = self.partition_map[section]['device']
-        cmd_template = 'dd if=%s of=%s bs=16M count=1'
-        self.chros_if.run_shell_command(cmd_template % (
-                dev, self.dump_file_name))
+        self.dump_kernel(section, self.dump_file_name)
         bfile = open(self.dump_file_name, 'r')
         data = list(bfile.read())
         bfile.close()
@@ -133,7 +156,7 @@ class KernelHandler(object):
                     os.path.join(resign_key_path, 'kernel.keyblock')))
         else:
             return  # Unsupported mode, ignore.
-        self.chros_if.run_shell_command(cmd_template % (kernel_to_write, dev))
+        self.write_kernel(section, kernel_to_write)
 
     def corrupt_kernel(self, section):
         """Corrupt a kernel section (add DELTA to the first byte)."""
@@ -150,6 +173,14 @@ class KernelHandler(object):
     def get_datakey_version(self, section):
         """Return datakey version read from this section blob's header."""
         return self.partition_map[section.upper()]['datakey_version']
+
+    def get_sha(self, section):
+        """Return the SHA1 hash of the section blob."""
+        s = hashlib.sha1()
+        dev = self.partition_map[section.upper()]['device']
+        with open(dev, 'rb') as f:
+            s.update(f.read())
+        return s.hexdigest()
 
     def set_version(self, section, version):
         """Set version of this kernel blob and re-sign it."""

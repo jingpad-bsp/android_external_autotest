@@ -157,6 +157,7 @@ class FAFTSequence(FAFTBase):
     _firmware_update = False
 
     _backup_firmware_sha = ()
+    _backup_kernel_sha = dict()
 
     # Class level variable, keep track the states of one time setup.
     # This variable is preserved across tests which inherit this class.
@@ -337,6 +338,18 @@ class FAFTSequence(FAFTBase):
                     return
                 except ConnectionError:
                     logging.warn('Restoring firmware doesn\'t help, still '
+                                 'connection error.')
+
+        # Perhaps it's kernel that's broken. Let's try restoring it.
+        if self.is_kernel_saved():
+            self._ensure_client_in_recovery()
+            logging.info('Try restore the original kernel...')
+            if self.is_kernel_changed():
+                try:
+                    self.restore_kernel()
+                    return
+                except ConnectionError:
+                    logging.warn('Restoring kernel doesn\'t help, still '
                                  'connection error.')
 
         # DUT may be broken by a corrupted OS image. Restore OS image.
@@ -605,6 +618,7 @@ class FAFTSequence(FAFTBase):
         if firmware_update:
             install_cmd += ' && chromeos-firmwareupdate --mode recovery'
             self.backup_firmware()
+        self.backup_kernel()
 
         self.register_faft_sequence((
             {   # Step 1, request recovery boot
@@ -636,6 +650,7 @@ class FAFTSequence(FAFTBase):
 
         if firmware_update:
             self.clear_saved_firmware()
+        self.clear_saved_kernel()
 
         # 'Unplug' any USB keys in the servo from the dut.
         self.servo.switch_usbkey('host')
@@ -1695,3 +1710,71 @@ class FAFTSequence(FAFTBase):
                 raise error.TestFail(
                     'The given shellball is not a shell script.')
             return updater_path
+
+    def is_kernel_changed(self):
+        """Check if the current kernel is changed, by comparing its SHA1 hash.
+
+        @return: True if it is changed; otherwise, False.
+        """
+        changed = False
+        for p in ('A', 'B'):
+            backup_sha = self._backup_kernel_sha.get(p, None)
+            current_sha = self.faft_client.kernel.get_sha(p)
+            if backup_sha != current_sha:
+                changed = True
+                logging.info('Kernel %s is changed', p)
+        return changed
+
+    def backup_kernel(self, suffix='.original'):
+        """Backup kernel to files, and the send them to host.
+
+        @param suffix: a string appended to backup file name.
+        """
+        remote_temp_dir = self.faft_client.system.create_temp_dir()
+        for p in ('A', 'B'):
+            remote_path = os.path.join(remote_temp_dir, 'kernel_%s' % p)
+            self.faft_client.kernel.dump(p, remote_path)
+            self._client.get_file(
+                    remote_path,
+                    os.path.join(self.resultsdir, 'kernel_%s%s' % (p, suffix)))
+            self._backup_kernel_sha[p] = self.faft_client.kernel.get_sha(p)
+        logging.info('Backup kernel stored in %s with suffix %s',
+            self.resultsdir, suffix)
+
+    def is_kernel_saved(self):
+        """Check if kernel images are saved (backup_kernel called before).
+
+        @return: True if the kernel is saved; otherwise, False.
+        """
+        return len(self._backup_kernel_sha) != 0
+
+    def clear_saved_kernel(self):
+        """Clear the kernel saved by backup_kernel()."""
+        self._backup_kernel_sha = dict()
+
+    def restore_kernel(self, suffix='.original'):
+        """Restore kernel from host in resultsdir.
+
+        @param suffix: a string appended to backup file name.
+        """
+        if not self.is_kernel_changed():
+            return
+
+        # Backup current corrupted kernel.
+        self.backup_kernel(suffix='.corrupt')
+
+        # Restore kernel.
+        remote_temp_dir = self.faft_client.system.create_temp_dir()
+        for p in ('A', 'B'):
+            remote_path = os.path.join(remote_temp_dir, 'kernel_%s' % p)
+            self._client.send_file(
+                    os.path.join(self.resultsdir, 'kernel_%s%s' % (p, suffix)),
+                    remote_path)
+            self.faft_client.kernel.write(p, remote_path)
+
+        self.sync_and_warm_reboot()
+        self.wait_for_client_offline()
+        self.wait_dev_screen_and_ctrl_d()
+        self.wait_for_client()
+
+        logging.info('Successfully restored kernel.')
