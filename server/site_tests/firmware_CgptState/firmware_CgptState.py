@@ -27,6 +27,7 @@ class firmware_CgptState(FAFTSequence):
 
 
     def run_test_step(self):
+        """Run the actual test steps."""
         # Show the client log messages in another thread.
         show_client_log = subprocess.Popen([
                 'ssh -o StrictHostKeyChecking=no '
@@ -44,13 +45,14 @@ class firmware_CgptState(FAFTSequence):
     def initialize(self, host, cmdline_args):
         super(firmware_CgptState, self).initialize(host, cmdline_args)
         self.host = host
+        self.backup_cgpt_attributes()
         self.setup_dev_mode(dev_mode=False)
         self.setup_usbkey(usbkey=False)
         self.setup_kernel('a')
 
 
     def cleanup(self):
-        self.ensure_kernel_boot('a')
+        self.restore_cgpt_attributes()
         super(firmware_CgptState, self).cleanup()
 
 

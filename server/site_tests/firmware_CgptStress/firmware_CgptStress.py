@@ -21,13 +21,14 @@ class firmware_CgptStress(FAFTSequence):
         dict_args = utils.args_to_dict(cmdline_args)
         self.faft_iterations = int(dict_args.get('faft_iterations', 1))
         super(firmware_CgptStress, self).initialize(host, cmdline_args)
+        self.backup_cgpt_attributes()
         self.setup_dev_mode(dev_mode)
         self.setup_usbkey(usbkey=False)
         self.setup_kernel('a')
 
 
     def cleanup(self):
-        self.ensure_kernel_boot('a')
+        self.restore_cgpt_attributes()
         super(firmware_CgptStress, self).cleanup()
 
 

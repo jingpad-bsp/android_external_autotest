@@ -41,6 +41,7 @@ class firmware_CorruptBothKernelAB(FAFTSequence):
     def initialize(self, host, cmdline_args, dev_mode=False):
         super(firmware_CorruptBothKernelAB, self).initialize(host, cmdline_args)
         self.backup_kernel()
+        self.backup_cgpt_attributes()
         self.setup_dev_mode(dev_mode)
         self.setup_usbkey(usbkey=True, host=False)
         self.setup_kernel('a')
@@ -48,6 +49,7 @@ class firmware_CorruptBothKernelAB(FAFTSequence):
 
     def cleanup(self):
         self.ensure_kernel_on_non_recovery('a')
+        self.restore_cgpt_attributes()
         self.restore_kernel()
         super(firmware_CorruptBothKernelAB, self).cleanup()
 

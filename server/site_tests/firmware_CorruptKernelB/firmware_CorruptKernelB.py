@@ -19,13 +19,14 @@ class firmware_CorruptKernelB(FAFTSequence):
     def initialize(self, host, cmdline_args, dev_mode=False):
         super(firmware_CorruptKernelB, self).initialize(host, cmdline_args)
         self.backup_kernel()
+        self.backup_cgpt_attributes()
         self.setup_dev_mode(dev_mode)
         self.setup_usbkey(usbkey=False)
         self.setup_kernel('a')
 
 
     def cleanup(self):
-        self.ensure_kernel_boot('a')
+        self.restore_cgpt_attributes()
         self.restore_kernel()
         super(firmware_CorruptKernelB, self).cleanup()
 
