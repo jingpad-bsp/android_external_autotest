@@ -100,6 +100,7 @@ class RobotWrapper:
                     self._get_control_command_one_stationary_finger,
             conf.PINCH_TO_ZOOM: self._get_control_command_pinch,
             conf.DRUMROLL: self._get_control_command_drumroll,
+            conf.TWO_FAT_FINGERS_TRACKING: self._get_control_command_line,
             conf.ONE_FINGER_PHYSICAL_CLICK: self._get_control_command_click,
             conf.TWO_FINGER_PHYSICAL_CLICK: self._get_control_command_click,
             conf.THREE_FINGER_PHYSICAL_CLICK: self._get_control_command_click,
@@ -201,7 +202,6 @@ class RobotWrapper:
             None: (CENTER, CENTER),
         }
 
-        self.fingertip_size = 2
         self.fingertips = [None, None, None, None]
 
         self._build_robot_script_paths()
@@ -209,27 +209,47 @@ class RobotWrapper:
         if should_calibrate:
             self._calibrate_device(board)
 
-    def get_fingertips(self, size):
-        script = os.path.join(self._robot_script_dir,
-                              'manipulate_fingertips.py')
-        cmd = ('python %s %d %d %d %d %d %s' %
-                 (script, 1, 1, 1, 1, size, str(True)))
-        if self._execute_control_command(cmd):
-            raise RobotWrapperError('Error getting the fingertips!')
-        self.fingertip_size = size
-        self.fingertips = [size, size, size, size]
+    def _get_fingertips(self, tips_to_get):
+        if self.fingertips != [None, None, None, None]:
+            print 'Error, there are still fingertips on'
+            sys.exit(1)
 
-        reset_script = os.path.join(self._robot_script_dir, SCRIPT_RESET)
-        para = (reset_script, self._board, self._speed_dict[GV.FAST])
-        self._execute_control_command('python %s %s.p %d' % para)
+        for size in conf.ALL_FINGERTIP_SIZES:
+            fingers = [1 if f == size else 0 for f in tips_to_get]
+            print 'size: %d\tfingers: %s' % (size, str(fingers))
+            if fingers == [0, 0, 0, 0]:
+                continue
 
-    def return_fingertips(self):
-        script = os.path.join(self._robot_script_dir,
-                              'manipulate_fingertips.py')
-        cmd = ('python %s %d %d %d %d %d %s' %
-                 (script, 1, 1, 1, 1, self.fingertip_size, str(False)))
-        if self._execute_control_command(cmd):
-            raise RobotWrapperError('Error returning the fingertips!')
+            script = os.path.join(self._robot_script_dir,
+                                  'manipulate_fingertips.py')
+            para = (script, fingers[0], fingers[1], fingers[2], fingers[3],
+                    size, str(True))
+            cmd = 'python %s %d %d %d %d %d %s' % para
+
+            if self._execute_control_command(cmd):
+                raise RobotWrapperError('Error getting the fingertips!')
+        self.fingertips = tips_to_get
+
+    def _return_fingertips(self):
+        """ Return all the fingertips to the nest, one size at a time.
+        This function uses the self.fingertips member variable to know which
+        finger has which tip size, then returns them all to the nest
+        """
+        for size in conf.ALL_FINGERTIP_SIZES:
+            # See which (if any) of the fingers currently have this size tip
+            fingers = [1 if f == size else 0 for f in self.fingertips]
+            if fingers == [0, 0, 0, 0]:
+                continue
+
+            script = os.path.join(self._robot_script_dir,
+                                  'manipulate_fingertips.py')
+            para = (script, fingers[0], fingers[1], fingers[2], fingers[3],
+                    size, str(False))
+            cmd = 'python %s %d %d %d %d %d %s' % para
+
+            if self._execute_control_command(cmd):
+                raise RobotWrapperError('Error returning the fingertips!')
+
         self.fingertips = [None, None, None, None]
 
     def _calibrate_device(self, board):
@@ -340,11 +360,11 @@ class RobotWrapper:
             elif element in GV.GESTURE_SPEED:
                 speed = self._speed_dict[element]
 
-        if line_type is 'swipe' and speed is None:
-            speed = self._speed_dict[GV.FAST]
-
-        if 'two_close_fingers' in gesture and speed is None:
-            speed = self._speed_dict[GV.NORMAL]
+        if not speed:
+            if line_type is 'swipe':
+                speed = self._speed_dict[GV.FAST]
+            if 'two_close_fingers' in gesture or 'fat' in gesture:
+                speed = self._speed_dict[GV.NORMAL]
 
         if line is None or speed is None:
             msg = 'Cannot derive the line/speed parameters from %s %s.'
@@ -502,12 +522,10 @@ class RobotWrapper:
 
     def control(self, gesture, variation):
         """Have the robot perform the gesture variation."""
-        if (gesture.name in conf.robot_must_start_without_fingertips
-            and self.fingertips != [None, None, None, None]):
-            self.return_fingertips()
-        elif (gesture.name not in conf.robot_must_start_without_fingertips
-              and self.fingertips == [None, None, None, None]):
-            self.get_fingertips(self.fingertip_size)
+        tips_needed = conf.finger_tips_required[gesture.name]
+        if self.fingertips != tips_needed:
+            self._return_fingertips()
+            self._get_fingertips(tips_needed)
 
         if not isinstance(variation, tuple):
             variation = (variation,)

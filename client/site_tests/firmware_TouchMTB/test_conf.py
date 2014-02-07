@@ -6,6 +6,7 @@
 
 """This configuration file defines the gestures to perform."""
 
+from collections import defaultdict
 from firmware_constants import DEV, GV, VAL
 from validators import (CountPacketsValidator,
                         CountTrackingIDNormalFingerValidator,
@@ -195,18 +196,30 @@ robot_capability_list = [
     FINGER_CROSSING,
     PINCH_TO_ZOOM,
     DRUMROLL,
+    TWO_FAT_FINGERS_TRACKING,
     ONE_FINGER_PHYSICAL_CLICK,
     TWO_FINGER_PHYSICAL_CLICK,
     THREE_FINGER_PHYSICAL_CLICK,
     FOUR_FINGER_PHYSICAL_CLICK,
 ]
 
-robot_must_start_without_fingertips = [
-    ONE_FINGER_PHYSICAL_CLICK,
-    TWO_FINGER_PHYSICAL_CLICK,
-    THREE_FINGER_PHYSICAL_CLICK,
-    FOUR_FINGER_PHYSICAL_CLICK,
-]
+NO_FINGER = None
+TINY_FINGER = 0
+SMALL_FINGER = 1
+NORMAL_FINGER = 2
+FAT_FINGER = 3
+ALL_FINGERTIP_SIZES = [TINY_FINGER, SMALL_FINGER, NORMAL_FINGER, FAT_FINGER]
+custom_tips_required = {
+    ONE_FINGER_PHYSICAL_CLICK: [NO_FINGER, NO_FINGER, NO_FINGER, NO_FINGER],
+    TWO_FINGER_PHYSICAL_CLICK: [NO_FINGER, NO_FINGER, NO_FINGER, NO_FINGER],
+    THREE_FINGER_PHYSICAL_CLICK: [NO_FINGER, NO_FINGER, NO_FINGER, NO_FINGER],
+    FOUR_FINGER_PHYSICAL_CLICK: [NO_FINGER, NO_FINGER, NO_FINGER, NO_FINGER],
+    TWO_FAT_FINGERS_TRACKING: [FAT_FINGER, FAT_FINGER, FAT_FINGER, FAT_FINGER]
+}
+default_tips_required = [NORMAL_FINGER, NORMAL_FINGER,
+                         NORMAL_FINGER, NORMAL_FINGER]
+finger_tips_required = defaultdict(lambda:default_tips_required,
+                                   custom_tips_required)
 
 def get_gesture_names_for_robot(device):
     """Get the gesture names that a robot can do for a specified device."""
