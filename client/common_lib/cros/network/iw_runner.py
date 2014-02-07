@@ -347,7 +347,8 @@ class IwRunner(object):
                     else:
                         # Must be a single rate like '32   '
                         current_band.mcs_indices.append(int(piece))
-        add_pending_phy()
+        if pending_phy_name:
+            add_pending_phy()
         return all_phys
 
 

@@ -235,7 +235,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
             if not interfaces:
                 logging.debug('No interfaces managed by shill. Rebooting host')
                 self.host.reboot()
-                raise error.TestError('No interfaces managed by shill on %s',
+                raise error.TestError('No interfaces managed by shill on %s' %
                                       self.host.hostname)
             self._wifi_if = interfaces[0]
             self._raise_logging_level()
