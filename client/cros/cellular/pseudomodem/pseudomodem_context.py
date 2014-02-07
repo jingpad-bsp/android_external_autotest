@@ -96,7 +96,8 @@ class PseudoModemManagerContext(object):
     def __init__(self,
                  use_pseudomodem,
                  flags_map=None,
-                 block_output=True):
+                 block_output=True,
+                 bus=None):
         """
         @param use_pseudomodem: This flag can be used to treat pseudomodem as a
                 no-op. When |True|, pseudomodem is launched as expected. When
@@ -112,6 +113,11 @@ class PseudoModemManagerContext(object):
         @param block_output: If True, output from the pseudomodem process is not
                 piped to stdout. This is the default.
 
+        @param bus: A handle to the dbus.SystemBus. If you use dbus in your
+                tests, you should obtain a handle to the bus and pass it in
+                here. Not doing so can cause incompatible mainloop settings in
+                the dbus module.
+
         """
         self._use_pseudomodem = use_pseudomodem
         self._block_output = block_output
@@ -125,6 +131,16 @@ class PseudoModemManagerContext(object):
         self._null_pipe = None
         self._exit_error_file_path = None
         self._pseudomodem_process = None
+
+        self._bus = bus
+        if not self._bus:
+            # Currently, the glib mainloop, or a wrapper thereof are the only
+            # mainloops we ever use with dbus. So, it's a comparatively safe bet
+            # to set that up as the mainloop here.
+            # Ideally, if a test wants to use dbus, it should pass us its own
+            # bus.
+            dbus_loop = dbus.mainloop.glib.DBusGMainLoop()
+            self._bus = dbus.SystemBus(private=True, mainloop=dbus_loop)
 
     @property
     def cmd_line_flags(self):
@@ -309,11 +325,11 @@ class PseudoModemManagerContext(object):
 
     def _EnsurePseudoModemUp(self):
         """ Makes sure that pseudomodem in child process is ready. """
-        bus = dbus.SystemBus()
         def _LivenessCheck():
             try:
-                testing_object = bus.get_object(mm1_constants.I_MODEM_MANAGER,
-                                                pm_constants.TESTING_PATH)
+                testing_object = self._bus.get_object(
+                        mm1_constants.I_MODEM_MANAGER,
+                        pm_constants.TESTING_PATH)
                 return testing_object.IsAlive(
                         dbus_interface=pm_constants.I_TESTING)
             except dbus.DBusException:

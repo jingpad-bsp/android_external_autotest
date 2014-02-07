@@ -62,8 +62,6 @@ class network_3GFailedConnect(test.test):
                                  state)
 
     def _run_once_internal(self, connect_count):
-        bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-        self.bus = dbus.SystemBus(mainloop=bus_loop)
 
         # Get to a good starting state
         network.ResetAllModems(self.flim)
@@ -73,12 +71,15 @@ class network_3GFailedConnect(test.test):
 
     def run_once(self, connect_count=4,
                  pseudo_modem=False, pseudomodem_family='3GPP'):
+        bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+        self.bus = dbus.SystemBus(mainloop=bus_loop)
         with backchannel.Backchannel():
             with pseudomodem_context.PseudoModemManagerContext(
                     pseudo_modem,
                     {'test-module' : TEST_MODEMS_MODULE_PATH,
                      'test-modem-class' : 'GetFailConnectModem',
-                     'test-modem-arg' : [pseudomodem_family]}):
+                     'test-modem-arg' : [pseudomodem_family]},
+                     bus=self.bus):
                 self.flim = flimflam.FlimFlam()
                 self.device_manager = flimflam.DeviceManager(self.flim)
                 try:

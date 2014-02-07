@@ -9,7 +9,7 @@ from autotest_lib.client.cros import network
 from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
 
 import time
-import dbus, dbus.mainloop.glib
+import dbus
 
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam

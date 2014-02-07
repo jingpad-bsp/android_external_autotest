@@ -291,13 +291,14 @@ class network_3GDisableWhileConnecting(test.test):
   def run_once(
       self, use_pseudomodem=False, pseudomodem_family='3GPP', **kwargs):
     with backchannel.Backchannel():
+      dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+      self.main_loop = gobject.MainLoop()
+      self.bus = dbus.SystemBus()
       with pseudomodem_context.PseudoModemManagerContext(
               use_pseudomodem,
-              {'family' : pseudomodem_family}):
+              {'family' : pseudomodem_family},
+              bus=self.bus):
         try:
-          dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-          self.main_loop = gobject.MainLoop()
-
           logging.info('Flimflam-level test')
           flimflam = FlimflamDisableTester(self, self.main_loop)
           flimflam.run(**kwargs)

@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 import dbus
-import dbus.mainloop.glib
 import logging
 import random
 import time
