@@ -255,6 +255,7 @@ class FAFTSequence(FAFTBase):
             # don't fail.
             self._restore_routine_from_timeout()
         self.restore_ec_write_protect()
+        self.start_service('update-engine')
         self.record_servo_log()
         self.record_faft_client_log()
         self.cleanup_uart_capture()
@@ -658,6 +659,24 @@ class FAFTSequence(FAFTBase):
         # Mark usb_check done so it won't check a test image in USB anymore.
         self.mark_setup_done('usb_check')
         self.mark_setup_done('reimage')
+
+    def stop_service(self, service):
+        """Stops a upstart service on the client.
+
+        @param service: The name of the upstart service.
+        """
+        logging.info('Stopping %s...', service)
+        command = 'status %s | grep stop || stop %s' % (service, service)
+        self.faft_client.system.run_shell_command(command)
+
+    def start_service(self, service):
+        """Starts a upstart service on the client.
+
+        @param service: The name of the upstart service.
+        """
+        logging.info('Starting %s...', service)
+        command = 'status %s | grep start || start %s' % (service, service)
+        self.faft_client.system.run_shell_command(command)
 
     def clear_set_gbb_flags(self, clear_mask, set_mask):
         """Clear and set the GBB flags in the current flashrom.
@@ -1574,10 +1593,7 @@ class FAFTSequence(FAFTBase):
                 else:
                     self.wait_for_client()
                 # Stop update-engine as it may change firmware/kernel.
-                logging.info('Stopping update-engine...')
-                daemon = 'update-engine'
-                command = 'status %s | grep stop || stop %s' % (daemon, daemon)
-                self.faft_client.system.run_shell_command(command)
+                self.stop_service('update-engine')
             except ConnectionError:
                 logging.error('wait_for_client() timed out.')
                 self._restore_routine_from_timeout(next_step)
