@@ -1,0 +1,27 @@
+# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "chromeos-perf"
+NAME = "Telemetry Media Benchmark"
+SUITE = "perf_v2"
+TIME = "LONG"
+TEST_CATEGORY = "Benchmark"
+TEST_CLASS = "performance"
+TEST_TYPE = "server"
+EXPERIMENTAL = "True"
+DEPENDENCIES = "4k_video"
+
+DOC = """
+This server side test suite executes the Telemetry Media Benchmark for ChromeOS.
+This is part of Chrome for Chrome OS performance testing.
+"""
+
+def run_benchmark(machine):
+    host = hosts.create_host(machine)
+    job.run_test("telemetry_Benchmarks", host=host,
+                 benchmark="media.chromeOS4kOnly.tough_video_cases",
+                 tag="media.chromeOS4kOnly.tough_video_cases")
+
+
+parallel_simple(run_benchmark, machines)
