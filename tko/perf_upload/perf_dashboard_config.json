@@ -1,6 +1,6 @@
 [
   {
-    "autotest_name": "audiovideo_VDAPerf",
+    "autotest_name": "video_VDAPerf",
     "master_name": "ChromeOSVideo"
   },
   {
