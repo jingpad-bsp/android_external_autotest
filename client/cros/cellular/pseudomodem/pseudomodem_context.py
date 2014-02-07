@@ -116,6 +116,7 @@ class PseudoModemManagerContext(object):
         self._use_pseudomodem = use_pseudomodem
         self._block_output = block_output
 
+        self._temp_files = []
         self.cmd_line_flags = self._ConvertMapToFlags(flags_map if flags_map
                                                       else {})
         self._service_stopper = service_stopper.ServiceStopper(
@@ -123,7 +124,6 @@ class PseudoModemManagerContext(object):
         self._net_interface = None
         self._null_pipe = None
         self._exit_error_file_path = None
-        self._temp_files = []
         self._pseudomodem_process = None
 
     @property
