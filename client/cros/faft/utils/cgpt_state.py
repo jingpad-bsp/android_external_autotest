@@ -5,9 +5,6 @@
 """CGPT state machine for cgpt tests"""
 
 import os
-import sys
-
-import cgpt_handler
 
 
 # cgpt test state step number is stored in this file
@@ -103,6 +100,7 @@ CGPT_STATE_SEQ_BODY = {'MANUAL':CGPT_STATE_SEQ_MANUAL,
 
 
 class CgptStateError(Exception):
+    """The exception to throw when there is an error in CgptState."""
     pass
 
 
@@ -114,7 +112,7 @@ class CgptState:
     PROP_NAME = ['priority', 'tries' , 'successful']
     PARA_POS = {'ACTION':0, 'EXPECTED':1, 'BOOT_VEC':2}
 
-    def __init__(self, choice, chros_if, base_storage_dev):
+    def __init__(self, choice, chros_if, base_storage_dev, handler):
         """Initializer: read CGPT_STATE_SEQ
 
         cgpt_state_seq - a sequence of tuples by which to carry on cgpt tests
@@ -133,7 +131,7 @@ class CgptState:
         self.num_steps = len(self.cgpt_state_seq)
         self.base_storage_dev = base_storage_dev
         self.chros_if = chros_if
-        self.cgpth = cgpt_handler.CgptHandler(self.chros_if)
+        self.cgpth = handler
         self.step_file = None
 
     def get_step(self):

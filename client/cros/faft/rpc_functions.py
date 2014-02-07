@@ -11,6 +11,7 @@ import functools, os, shutil, tempfile
 
 import common
 from autotest_lib.client.cros.faft.utils import (cgpt_state,
+                                                 cgpt_handler,
                                                  chromeos_interface,
                                                  firmware_updater,
                                                  flashrom_handler,
@@ -133,8 +134,10 @@ class RPCFunctions(object):
         self._tpm_handler = tpm_handler.TpmHandler()
         self._tpm_handler.init(self._chromeos_interface)
 
+        self._cgpt_handler = cgpt_handler.CgptHandler(self._chromeos_interface)
         self._cgpt_state = cgpt_state.CgptState(
-                'SHORT', self._chromeos_interface, self._system_get_root_dev())
+                'SHORT', self._chromeos_interface, self._system_get_root_dev(),
+                self._cgpt_handler)
 
         self._updater = firmware_updater.FirmwareUpdater(self._chromeos_interface)
 
@@ -663,6 +666,27 @@ class RPCFunctions(object):
         @return: A test step number.
         """
         return self._cgpt_state.get_step()
+
+    def _cgpt_get_attributes(self):
+        """Get kernel attributes."""
+        rootdev = self._system_get_root_dev()
+        self._cgpt_handler.read_device_info(rootdev)
+        return {'A': self._cgpt_handler.get_partition(rootdev, 'KERN-A'),
+                'B': self._cgpt_handler.get_partition(rootdev, 'KERN-B')}
+
+    def _cgpt_set_attributes(self, attributes):
+        """Set kernel attributes."""
+        rootdev = self._system_get_root_dev()
+        allowed = ['priority', 'tries', 'successful']
+        for p in ('A', 'B'):
+            if p not in attributes:
+                continue
+            attr = dict()
+            for k in allowed:
+                if k in attributes[p]:
+                    attr[k] = attributes[p][k]
+            if attr:
+                self._cgpt_handler.set_partition(rootdev, 'KERN-%s' % p, attr)
 
     def _updater_setup(self, shellball=None):
         """Setup the updater.

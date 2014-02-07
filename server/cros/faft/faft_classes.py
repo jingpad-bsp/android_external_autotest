@@ -158,6 +158,7 @@ class FAFTSequence(FAFTBase):
 
     _backup_firmware_sha = ()
     _backup_kernel_sha = dict()
+    _backup_cgpt_attr = dict()
 
     # Class level variable, keep track the states of one time setup.
     # This variable is preserved across tests which inherit this class.
@@ -1778,3 +1779,24 @@ class FAFTSequence(FAFTBase):
         self.wait_for_client()
 
         logging.info('Successfully restored kernel.')
+
+    def backup_cgpt_attributes(self):
+        """Backup CGPT partition table attributes."""
+        self._backup_cgpt_attr = self.faft_client.cgpt.get_attributes()
+
+    def restore_cgpt_attributes(self):
+        """Restore CGPT partition table attributes."""
+        current_table = self.faft_client.cgpt.get_attributes()
+        if current_table == self._backup_cgpt_attr:
+            return
+        logging.info('CGPT table is changed. Original: %r. Current: %r.',
+                     self._backup_cgpt_attr,
+                     current_table)
+        self.faft_client.cgpt.set_attributes(self._backup_cgpt_attr)
+
+        self.sync_and_warm_reboot()
+        self.wait_for_client_offline()
+        self.wait_dev_screen_and_ctrl_d()
+        self.wait_for_client()
+
+        logging.info('Successfully restored CGPT table.')
