@@ -20,6 +20,7 @@ class DisableMachine(state_machine.StateMachine):
         self.return_cb = return_cb
         self.raise_cb = raise_cb
 
+
     def _HandleConnectedState(self):
         logging.info('DisableMachine: Modem is CONNECTED.')
         assert self._modem.connect_step is None
@@ -30,6 +31,7 @@ class DisableMachine(state_machine.StateMachine):
                                DisableMachine.Step, self)
         return True
 
+
     def _HandleConnectingState(self):
         logging.info('DisableMachine: Modem is CONNECTING.')
         assert self._modem.connect_step
@@ -37,12 +39,14 @@ class DisableMachine(state_machine.StateMachine):
         self._modem.connect_step.Cancel()
         return True
 
+
     def _HandleDisconnectingState(self):
         logging.info('DisableMachine: Modem is DISCONNECTING.')
         assert self._modem.disconnect_step
         logging.info('DisableMachine: Waiting for disconnect.')
         # wait until disconnect ends
         return True
+
 
     def _HandleRegisteredState(self):
         logging.info('DisableMachine: Modem is REGISTERED.')
@@ -56,6 +60,7 @@ class DisableMachine(state_machine.StateMachine):
         self._modem.ChangeState(mm1_constants.MM_MODEM_STATE_DISABLING, reason)
         return True
 
+
     def _HandleSearchingState(self):
         logging.info('DisableMachine: Modem is SEARCHING.')
         assert self._modem.register_step
@@ -64,6 +69,7 @@ class DisableMachine(state_machine.StateMachine):
         logging.info('DisableMachine: Canceling register.')
         self._modem.register_step.Cancel()
         return True
+
 
     def _HandleEnabledState(self):
         logging.info('DisableMachine: Modem is ENABLED.')
@@ -74,6 +80,7 @@ class DisableMachine(state_machine.StateMachine):
         reason = mm1_constants.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
         self._modem.ChangeState(mm1_constants.MM_MODEM_STATE_DISABLING, reason)
         return True
+
 
     def _HandleDisablingState(self):
         logging.info('DisableMachine: Modem is DISABLING.')
@@ -88,6 +95,7 @@ class DisableMachine(state_machine.StateMachine):
         if self.return_cb:
             self.return_cb()
         return False
+
 
     def _GetModemStateFunctionMap(self):
         return {
@@ -106,6 +114,7 @@ class DisableMachine(state_machine.StateMachine):
             mm1_constants.MM_MODEM_STATE_DISABLING:
                     DisableMachine._HandleDisablingState
         }
+
 
     def _ShouldStartStateMachine(self):
         if self._modem.disable_step and self._modem.disable_step != self:

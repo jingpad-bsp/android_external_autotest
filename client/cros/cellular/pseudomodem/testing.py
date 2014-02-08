@@ -25,6 +25,7 @@ class Testing(dbus_std_ifaces.DBusProperties):
                                                 pm_constants.TESTING_PATH,
                                                 bus)
 
+
     @utils.log_dbus_method()
     @dbus.service.method(pm_constants.I_TESTING, out_signature='b')
     def IsAlive(self):
@@ -33,12 +34,15 @@ class Testing(dbus_std_ifaces.DBusProperties):
 
         This method can be called by clients to check that pseudomodem is alive.
 
-        @return: True, always.
+        @returns: True, always.
+
         """
         return True
 
+
     def _InitializeProperties(self):
         return { pm_constants.I_TESTING: { 'Modem': self._modem.path } }
+
 
     @utils.log_dbus_method()
     @dbus.service.method(pm_constants.I_TESTING, in_signature='ss')
@@ -51,6 +55,7 @@ class Testing(dbus_std_ifaces.DBusProperties):
 
         """
         self._modem.sms_handler.receive_sms(text, sender)
+
 
     @utils.log_dbus_method()
     @dbus.service.method(pm_constants.I_TESTING, in_signature='s')

@@ -30,10 +30,11 @@ class Messaging(dbus.service.Interface):
         retrieved either by listening for the "Added" and "Completed" signals,
         or by querying the specific SMS object of interest.
 
-        @return The list of SMS object paths.
+        @returns: The list of SMS object paths.
 
         """
         raise NotImplementedError()
+
 
     @utils.log_dbus_method()
     @dbus.service.method(mm1_constants.I_MODEM_MESSAGING, in_signature='o')
@@ -42,12 +43,12 @@ class Messaging(dbus.service.Interface):
         Deletes an SMS message.
 
         @param path: The object path of the SMS to delete.
-
         Emits:
             Deleted
 
         """
         raise NotImplementedError()
+
 
     @utils.log_dbus_method()
     @dbus.service.method(mm1_constants.I_MODEM_MESSAGING,
@@ -59,11 +60,11 @@ class Messaging(dbus.service.Interface):
         required, the default SMSC is used.
 
         @param properties: Message properties from the SMS D-Bus interface.
-
-        @return The object path of the new message object.
+        @returns: The object path of the new message object.
 
         """
         raise NotImplementedError()
+
 
     @dbus.service.signal(mm1_constants.I_MODEM_MESSAGING, signature='ob')
     def Added(self, path, received):
@@ -77,12 +78,12 @@ class Messaging(dbus.service.Interface):
         "Completed" signal will also be emitted when the message is complete.
 
         @param path: Object path of the new SMS.
-
         @param received: True if the message was received from the network, as
                          opposed to being added locally.
 
         """
         raise NotImplementedError()
+
 
     @dbus.service.signal(mm1_constants.I_MODEM_MESSAGING, signature='o')
     def Completed(self, path):
@@ -97,6 +98,7 @@ class Messaging(dbus.service.Interface):
 
         """
         raise NotImplementedError()
+
 
     @dbus.service.signal(mm1_constants.I_MODEM_MESSAGING, signature='o')
     def Deleted(self, path):

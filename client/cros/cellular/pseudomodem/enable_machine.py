@@ -20,11 +20,9 @@ class EnableMachine(state_machine.StateMachine):
         self.return_cb = return_cb
         self.raise_cb = raise_cb
 
-    def Cancel(self):
-        """
-        Overriden from superclass.
 
-        """
+    def Cancel(self):
+        """ Overriden from superclass. """
         logging.info('EnableMachine: Canceling enable.')
         super(EnableMachine, self).Cancel()
         state = self._modem.Get(mm1_constants.I_MODEM, 'State')
@@ -38,6 +36,7 @@ class EnableMachine(state_machine.StateMachine):
             self.raise_cb(pm_errors.MMCoreError(
                     pm_errors.MMCoreError.CANCELLED, 'Operation cancelled'))
 
+
     def _HandleDisabledState(self):
         assert self._modem.disable_step is None
         assert self._modem.disconnect_step is None
@@ -49,6 +48,7 @@ class EnableMachine(state_machine.StateMachine):
         self._modem.ChangeState(mm1_constants.MM_MODEM_STATE_ENABLING, reason)
         return True
 
+
     def _HandleEnablingState(self):
         assert self._modem.disable_step is None
         assert self._modem.disconnect_step is None
@@ -56,6 +56,7 @@ class EnableMachine(state_machine.StateMachine):
         reason = mm1_constants.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
         self._modem.ChangeState(mm1_constants.MM_MODEM_STATE_ENABLED, reason)
         return True
+
 
     def _HandleEnabledState(self):
         assert self._modem.disable_step is None
@@ -67,6 +68,7 @@ class EnableMachine(state_machine.StateMachine):
         self._modem.RegisterWithNetwork()
         return False
 
+
     def _GetModemStateFunctionMap(self):
         return {
             mm1_constants.MM_MODEM_STATE_DISABLED:
@@ -76,6 +78,7 @@ class EnableMachine(state_machine.StateMachine):
             mm1_constants.MM_MODEM_STATE_ENABLED:
                     EnableMachine._HandleEnabledState
         }
+
 
     def _ShouldStartStateMachine(self):
         state = self._modem.Get(mm1_constants.I_MODEM, 'State')

@@ -43,9 +43,10 @@ class Modem3gpp(modem.Modem):
             self.operator_code = operator_code
             self.access_technology = access_technology
 
+
         def ToScanDictionary(self):
             """
-            @return Dictionary containing operator data as defined by
+            @returns: Dictionary containing operator data as defined by
                     org.freedesktop.ModemManager1.Modem.Modem3gpp.Scan.
 
             """
@@ -56,6 +57,7 @@ class Modem3gpp(modem.Modem):
               'operator-code': self.operator_code,
               'access-technology': dbus.types.UInt32(self.access_technology),
             }
+
 
     def __init__(self,
                  state_machine_factory=None,
@@ -75,6 +77,7 @@ class Modem3gpp(modem.Modem):
         self._cached_pco_value = ''
         self._cached_subscription_state = (
                 mm1_constants.MM_MODEM_3GPP_SUBSCRIPTION_STATE_PROVISIONED)
+
 
     def _InitializeProperties(self):
         ip = modem.Modem._InitializeProperties(self)
@@ -128,6 +131,7 @@ class Modem3gpp(modem.Modem):
         ]
         return ip
 
+
     def _GetDefault3GPPProperties(self):
         if not self.sim or self.sim.locked:
             return None
@@ -144,6 +148,7 @@ class Modem3gpp(modem.Modem):
                     mm1_constants.MM_MODEM_3GPP_SUBSCRIPTION_STATE_UNKNOWN),
             'VendorPcoInfo': ''
         }
+
 
     def SyncScan(self):
         """ The synchronous implementation of |Scan| for this class. """
@@ -181,6 +186,7 @@ class Modem3gpp(modem.Modem):
                 {network['operator-code']: network for network in scanned})
         return scanned
 
+
     def AssignPcoValue(self, pco_value):
         """
         Stores the given value so that it is shown as the value of VendorPcoInfo
@@ -198,6 +204,7 @@ class Modem3gpp(modem.Modem):
         self._cached_pco_value = pco_value
         self.UpdatePcoInfo()
 
+
     def UpdatePcoInfo(self):
         """
         Updates the current PCO value based on the registration state.
@@ -213,6 +220,7 @@ class Modem3gpp(modem.Modem):
             new_pco_value = ''
         self.Set(mm1_constants.I_MODEM_3GPP, 'VendorPcoInfo', new_pco_value)
 
+
     def AssignSubscriptionState(self, state):
         """
         Caches the given |SubscriptionState| value and updates the property
@@ -223,6 +231,7 @@ class Modem3gpp(modem.Modem):
         """
         self._cached_subscription_state = state
         self.UpdateSubscriptionState()
+
 
     def UpdateSubscriptionState(self):
         """
@@ -257,6 +266,7 @@ class Modem3gpp(modem.Modem):
                        'SubscriptionState',
                        new_subscription_state)
 
+
     def UpdateLockStatus(self):
         """
         Overloads superclass implementation. Also updates
@@ -269,19 +279,20 @@ class Modem3gpp(modem.Modem):
                      'EnabledFacilityLocks',
                      self.sim.enabled_locks)
 
+
     def SetSIM(self, sim):
         """
         Overrides modem.Modem.SetSIM. Once the SIM has been assigned, attempts
         to expose 3GPP properties if SIM readable.
 
         @param sim: An instance of sim.SIM
-
         Emits:
             PropertiesChanged
 
         """
         modem.Modem.SetSIM(self, sim)
         self.Expose3GPPProperties()
+
 
     def Expose3GPPProperties(self):
         """
@@ -293,12 +304,12 @@ class Modem3gpp(modem.Modem):
         if props:
             self.SetAll(mm1_constants.I_MODEM_3GPP, props)
 
+
     def SetRegistrationState(self, state):
         """
         Sets the 'RegistrationState' property.
 
         @param state: An MMModem3gppRegistrationState value.
-
         Emits:
             PropertiesChanged
 
@@ -307,14 +318,16 @@ class Modem3gpp(modem.Modem):
         self.UpdatePcoInfo()
         self.UpdateSubscriptionState()
 
+
     @property
     def scanned_networks(self):
         """
-        @return Dictionary containing the result of the most recent network
+        @returns: Dictionary containing the result of the most recent network
                 scan, where the keys are the operator code.
 
         """
         return self._scanned_networks
+
 
     @utils.log_dbus_method(return_cb_arg='return_cb', raise_cb_arg='raise_cb')
     @dbus.service.method(mm1_constants.I_MODEM_3GPP, in_signature='s',
@@ -324,7 +337,7 @@ class Modem3gpp(modem.Modem):
         Request registration with a given modem network.
 
         @param operator_id: The operator ID to register. An empty string can be
-                            used to register to the home network.
+                used to register to the home network.
         @param return_cb: Async success callback.
         @param raise_cb: Async error callback.
 
@@ -360,15 +373,16 @@ class Modem3gpp(modem.Modem):
         else:
             _Reregister()
 
+
     def SetRegistered(self, operator_code, operator_name):
         """
         Sets the modem to be registered with the give network. Sets the Modem
         and Modem3gpp registration states.
 
         @param operator_code: The operator code that should be displayed by
-                              the modem.
+                the modem.
         @param operator_name: The operator name that should be displayed by
-                              the modem.
+                the modem.
 
         """
         if operator_code:
@@ -392,6 +406,7 @@ class Modem3gpp(modem.Modem):
         self.Set(mm1_constants.I_MODEM_3GPP, 'OperatorCode', operator_code)
         self.Set(mm1_constants.I_MODEM_3GPP, 'OperatorName', operator_name)
 
+
     @utils.log_dbus_method(return_cb_arg='return_cb', raise_cb_arg='raise_cb')
     @dbus.service.method(mm1_constants.I_MODEM_3GPP, out_signature='aa{sv}',
                          async_callbacks=('return_cb', 'raise_cb'))
@@ -401,16 +416,15 @@ class Modem3gpp(modem.Modem):
 
         @param return_cb: This function is called with the result.
         @param raise_cb: This function may be called with error.
-
-        Returns:
-            An array of dictionaries with each array element describing a
-            mobile network found in the scan. See the ModemManager reference
-            manual for the list of keys that may be included in the returned
-            dictionary.
+        @returns: An array of dictionaries with each array element describing a
+                mobile network found in the scan. See the ModemManager reference
+                manual for the list of keys that may be included in the returned
+                dictionary.
 
         """
         scan_result = self.SyncScan()
         return_cb(scan_result)
+
 
     def RegisterWithNetwork(
             self, operator_id="", return_cb=None, raise_cb=None):
@@ -430,6 +444,7 @@ class Modem3gpp(modem.Modem):
                 raise_cb)
         machine.Start()
 
+
     def UnregisterWithNetwork(self):
         """
         Overridden from superclass.
@@ -444,6 +459,7 @@ class Modem3gpp(modem.Modem):
             mm1_constants.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED)
         self.Set(mm1_constants.I_MODEM_3GPP, 'OperatorName', '')
         self.Set(mm1_constants.I_MODEM_3GPP, 'OperatorCode', '')
+
 
     # Inherited from modem_simple.ModemSimple.
     @utils.log_dbus_method(return_cb_arg='return_cb', raise_cb_arg='raise_cb')
@@ -464,6 +480,7 @@ class Modem3gpp(modem.Modem):
                 return_cb,
                 raise_cb)
         machine.Start()
+
 
     # Inherited from modem_simple.ModemSimple.
     @utils.log_dbus_method(return_cb_arg='return_cb', raise_cb_arg='raise_cb')
@@ -486,6 +503,7 @@ class Modem3gpp(modem.Modem):
                 raise_cb,
                 return_cb_args)
         machine.Start()
+
 
     # Inherited from modem_simple.ModemSimple.
     @utils.log_dbus_method()

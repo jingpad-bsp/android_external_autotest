@@ -23,6 +23,7 @@ class DisconnectMachine(state_machine.StateMachine):
         self.raise_cb = raise_cb
         self.return_cb_args = return_cb_args
 
+
     def _HandleConnectedState(self):
         logging.info('DisconnectMachine: Modem state is CONNECTED.')
         logging.info('DisconnectMachine: Setting state to DISCONNECTING.')
@@ -30,6 +31,7 @@ class DisconnectMachine(state_machine.StateMachine):
         self._modem.ChangeState(mm1_constants.MM_MODEM_STATE_DISCONNECTING,
                                 reason)
         return True
+
 
     def _HandleDisconnectingState(self):
         logging.info('DisconnectMachine: Modem state is DISCONNECTING.')
@@ -61,6 +63,7 @@ class DisconnectMachine(state_machine.StateMachine):
             self.return_cb(*self.return_cb_args)
             return False
 
+
     def _GetModemStateFunctionMap(self):
         return {
             mm1_constants.MM_MODEM_STATE_CONNECTED:
@@ -68,6 +71,7 @@ class DisconnectMachine(state_machine.StateMachine):
             mm1_constants.MM_MODEM_STATE_DISCONNECTING:
                     DisconnectMachine._HandleDisconnectingState
         }
+
 
     def _ShouldStartStateMachine(self):
         if (self._modem.disconnect_step and

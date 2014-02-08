@@ -37,6 +37,7 @@ class RegisterCdmaMachine(register_machine.RegisterMachine):
                     pm_errors.MMCoreError(pm_errors.MMCoreError.CANCELLED,
                                           'Cancelled'))
 
+
     def _GetModemStateFunctionMap(self):
         return {
             mm1_constants.MM_MODEM_STATE_ENABLED:
@@ -45,6 +46,7 @@ class RegisterCdmaMachine(register_machine.RegisterMachine):
                     RegisterCdmaMachine._HandleSearchingState
         }
 
+
     def _HandleEnabledState(self):
         logging.info('RegisterCdmaMachine: Modem is ENABLED.')
         logging.info('RegisterCdmaMachine: Setting state to SEARCHING.')
@@ -52,6 +54,7 @@ class RegisterCdmaMachine(register_machine.RegisterMachine):
                 mm1_constants.MM_MODEM_STATE_SEARCHING,
                 mm1_constants.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED)
         return True
+
 
     def _HandleSearchingState(self):
         logging.info('RegisterCdmaMachine: Modem is SEARCHING.')

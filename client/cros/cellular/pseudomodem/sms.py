@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-
 import dbus
 
 import dbus_std_ifaces
@@ -15,6 +14,7 @@ class SMSConfigException(Exception):
 
     """
     pass
+
 
 class SMS(dbus_std_ifaces.DBusProperties):
     """
@@ -40,11 +40,13 @@ class SMS(dbus_std_ifaces.DBusProperties):
         dbus_std_ifaces.DBusProperties.__init__(
                 self, self._get_next_sms_path(), bus)
 
+
     @classmethod
     def _get_next_sms_path(cls):
         path = mm1_constants.SMS_PATH + '/' + str(cls._sms_index)
         cls._sms_index += 1
         return path
+
 
     @classmethod
     def set_config(cls, params):
@@ -57,8 +59,7 @@ class SMS(dbus_std_ifaces.DBusProperties):
                 which are contained in |_settable_props|. A value of "default"
                 can be used (which is a string) to use the default value for
                 that dictionary when constructing the next SMS object.
-
-        @raises SMSConfigException, if params is malformed or contains a
+        @raises: SMSConfigException, if params is malformed or contains a
                 disallowed property.
 
         """
@@ -76,6 +77,7 @@ class SMS(dbus_std_ifaces.DBusProperties):
                 cls._props_template.pop(key)
             else:
                 cls._props_template[key] = value
+
 
     def _InitializeProperties(self):
         props = {}
@@ -111,15 +113,14 @@ class SMS(dbus_std_ifaces.DBusProperties):
         props['DischargeTimestamp'] = ''
         return { mm1_constants.I_SMS: props }
 
+
     # Remember to decorate your concrete implementation with
     # @utils.log_dbus_method()
     @dbus.service.method(mm1_constants.I_SMS)
     def Send(self):
-        """
-        If the message has not yet been sent, queue it for delivery.
-
-        """
+        """ If the message has not yet been sent, queue it for delivery. """
         raise NotImplementedError()
+
 
     # Remember to decorate your concrete implementation with
     # @utils.log_dbus_method()

@@ -22,11 +22,9 @@ class RegisterMachine(state_machine.StateMachine):
         self._return_cb = return_cb
         self._raise_cb = raise_cb
 
-    def Cancel(self):
-        """
-        Overriden from superclass.
 
-        """
+    def Cancel(self):
+        """ Overriden from superclass. """
         logging.info('RegisterMachine: Canceling register.')
         super(RegisterMachine, self).Cancel()
         state = self._modem.Get(mm1_constants.I_MODEM, 'State')
@@ -42,6 +40,7 @@ class RegisterMachine(state_machine.StateMachine):
             self._raise_cb(
                     pm_errors.MMCoreError(pm_errors.MMCoreError.CANCELLED,
                                           'Cancelled'))
+
 
     def _HandleEnabledState(self):
         logging.info('RegisterMachine: Modem is ENABLED.')
@@ -68,6 +67,7 @@ class RegisterMachine(state_machine.StateMachine):
             return False
         logging.info('RegisterMachine: Found networks: ' + str(self._networks))
         return True
+
 
     def _HandleSearchingState(self):
         logging.info('RegisterMachine: Modem is SEARCHING.')
@@ -116,6 +116,7 @@ class RegisterMachine(state_machine.StateMachine):
             self._return_cb()
         return False
 
+
     def _GetModemStateFunctionMap(self):
         return {
             mm1_constants.MM_MODEM_STATE_ENABLED:
@@ -123,6 +124,7 @@ class RegisterMachine(state_machine.StateMachine):
             mm1_constants.MM_MODEM_STATE_SEARCHING:
                     RegisterMachine._HandleSearchingState
         }
+
 
     def _ShouldStartStateMachine(self):
         if self._modem.register_step and self._modem.register_step != self:

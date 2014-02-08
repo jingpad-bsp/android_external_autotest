@@ -96,11 +96,9 @@ class Modem(dbus_std_ifaces.DBusProperties,
 
         self._sms_handler = sms_handler.SmsHandler(self, bus)
 
-    def _InitializeProperties(self):
-        """
-        Sets up the default values for the properties
 
-        """
+    def _InitializeProperties(self):
+        """ Sets up the default values for the properties. """
         props = {
             'Manufacturer' : 'Banana Technologies', # be creative here
             'Model' : 'Banana Peel 3000', # yep
@@ -169,6 +167,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
             mm1_constants.I_MODEM_SIMPLE : {}
         }
 
+
     def IncrementPath(self):
         """
         Increments the current index at which this modem is exposed on DBus.
@@ -186,16 +185,18 @@ class Modem(dbus_std_ifaces.DBusProperties,
         logging.info('Modem coming back as: ' + path)
         self.SetPath(path)
 
+
     @property
     def manager(self):
         """
         The current modemmanager.ModemManager instance that is managing this
         modem.
 
-        @return A modemmanager.ModemManager object.
+        @returns: A modemmanager.ModemManager object.
 
         """
         return self._modemmanager
+
 
     @manager.setter
     def manager(self, manager):
@@ -208,59 +209,63 @@ class Modem(dbus_std_ifaces.DBusProperties,
         """
         self._modemmanager = manager
 
+
     @property
     def sms_handler(self):
         """
-        @return sms_handler.SmsHandler responsible for handling SMS.
+        @returns: sms_handler.SmsHandler responsible for handling SMS.
 
         """
         return self._sms_handler
 
+
     def IsPendingEnable(self):
         """
-        @return True, if a current enable state machine is active and hasn't
+        @returns: True, if a current enable state machine is active and hasn't
                 been cancelled.
 
         """
         return self.enable_step and not self.enable_step.cancelled
 
+
     def IsPendingDisable(self):
         """
-        @return True, if a current disable state machine is active and hasn't
+        @returns: True, if a current disable state machine is active and hasn't
                 been cancelled.
 
         """
         return self.disable_step and not self.disable_step.cancelled
 
+
     def IsPendingConnect(self):
         """
-        @return True, if a current connect state machine is active and hasn't
+        @returns: True, if a current connect state machine is active and hasn't
                 been cancelled.
 
         """
         return self.connect_step and not self.connect_step.cancelled
 
+
     def IsPendingDisconnect(self):
         """
-        @return True, if a current disconnect state machine is active and
+        @returns: True, if a current disconnect state machine is active and
                 hasn't been cancelled.
 
         """
         return self.disconnect_step and not self.disconnect_step.cancelled
 
+
     def IsPendingRegister(self):
         """
-        @return True, if a current register state machine is active and hasn't
+        @returns: True, if a current register state machine is active and hasn't
                 been cancelled.
 
         """
         return self.register_step and not self.register_step.cancelled
 
-    def CancelAllStateMachines(self):
-        """
-        Cancels all state machines that are active.
 
-        """
+    def CancelAllStateMachines(self):
+        """ Cancels all state machines that are active. """
         if self.IsPendingEnable():
             self.enable_step.Cancel()
         if self.IsPendingDisable():
@@ -272,12 +277,12 @@ class Modem(dbus_std_ifaces.DBusProperties,
         if self.IsPendingRegister():
             self.register_step.Cancel()
 
+
     def SetSignalQuality(self, quality):
         """
         Sets the 'SignalQuality' property to the given value.
 
         @param quality: An integer value in the range 0-100.
-
         Emits:
             PropertiesChanged
 
@@ -285,13 +290,13 @@ class Modem(dbus_std_ifaces.DBusProperties,
         self.Set(mm1_constants.I_MODEM, 'SignalQuality', (dbus.types.Struct(
             [dbus.types.UInt32(quality), True], signature='ub')))
 
+
     def ChangeState(self, state, reason):
         """
         Changes the modem state and emits the StateChanged signal.
 
         @param state: A MMModemState value.
         @param reason: A MMModemStateChangeReason value.
-
         Emits:
             PropertiesChanged
             StateChanged
@@ -301,13 +306,13 @@ class Modem(dbus_std_ifaces.DBusProperties,
         self.SetInt32(mm1_constants.I_MODEM, 'State', state)
         self.StateChanged(old_state, state, dbus.types.UInt32(reason))
 
+
     def SetSIM(self, sim):
         """
         Assigns a SIM object to this Modem. It exposes the SIM object via DBus
         and sets 'Sim' property of this Modem to the path of the SIM.
 
         @param sim: An instance of sim.SIM.
-
         Emits:
             PropertiesChanged
 
@@ -322,6 +327,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
             self.UpdateLockStatus()
         self.Set(mm1_constants.I_MODEM, 'Sim', dbus.types.ObjectPath(val))
 
+
     def SetBus(self, bus):
         """
         Overridden from dbus_std_ifaces.DBusProperties.
@@ -332,6 +338,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
         dbus_std_ifaces.DBusProperties.SetBus(self, bus)
         self._state_machine_factory.SetBus(bus)
         self._sms_handler.bus = bus
+
 
     def UpdateLockStatus(self):
         """
@@ -374,6 +381,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
             self.ChangeState(mm1_constants.MM_MODEM_STATE_DISABLED,
                              mm1_constants.MM_MODEM_STATE_CHANGE_REASON_UNKNOWN)
 
+
     @utils.log_dbus_method(return_cb_arg='return_cb', raise_cb_arg='raise_cb')
     @dbus.service.method(mm1_constants.I_MODEM,
                          in_signature='b', async_callbacks=('return_cb',
@@ -391,8 +399,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
         @param enable: True to enable the modem and False to disable it.
         @param return_cb: The asynchronous callback to invoke on success.
         @param raise_cb: The asynchronous callback to invoke on failure. Has to
-                         take a python Exception or Error as its single
-                         argument.
+                take a python Exception or Error as its single argument.
 
         """
         if enable:
@@ -410,6 +417,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
                     return_cb,
                     raise_cb)
         machine.Start()
+
 
     def RegisterWithNetwork(
             self, operator_id="", return_cb=None, raise_cb=None):
@@ -437,12 +445,12 @@ class Modem(dbus_std_ifaces.DBusProperties,
                 Note: CDMA doesn't support a network scan. In this case, the
                 only possible option is to register with the home network and
                 ignore the value of |operator_id|.
-
         @param return_cb: Async success callback.
         @param raise_cb: Async failure callback.
 
         """
         raise NotImplementedError()
+
 
     def UnregisterWithNetwork(self):
         """
@@ -454,6 +462,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
         """
         raise NotImplementedError()
 
+
     def ValidateBearerProperties(self, properties):
         """
         The default implementation makes sure that all keys in properties are
@@ -461,8 +470,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
         method to provide CDMA/3GPP specific checks.
 
         @param properties: The dictionary of properties and values to validate.
-
-        @raises MMCoreError, if one or more properties are invalid.
+        @raises: MMCoreError, if one or more properties are invalid.
 
         """
         for key in properties.iterkeys():
@@ -471,6 +479,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
                         pm_errors.MMCoreError.INVALID_ARGS,
                         'Invalid property "%s", not creating bearer.' % key)
 
+
     @utils.log_dbus_method()
     @dbus.service.method(mm1_constants.I_MODEM, out_signature='ao')
     def ListBearers(self):
@@ -478,10 +487,11 @@ class Modem(dbus_std_ifaces.DBusProperties,
         Lists configured packet data bearers (EPS Bearers, PDP Contexts, or
         CDMA2000 Packet Data Sessions).
 
-        @return A list of bearer object paths.
+        @returns: A list of bearer object paths.
 
         """
         return self.Get(mm1_constants.I_MODEM, 'Bearers')
+
 
     @utils.log_dbus_method()
     @dbus.service.method(mm1_constants.I_MODEM, in_signature='a{sv}',
@@ -496,8 +506,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
         @param properties: A dictionary containing the properties to assign to
                 the bearer after creating it. The allowed property values are
                 contained in modem.ALLOWED_PROPERTIES.
-
-        @return On success, the object path of the newly created bearer.
+        @returns: On success, the object path of the newly created bearer.
 
         """
         logging.info('CreateBearer')
@@ -514,6 +523,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
             self.bearers[bearer_obj.path] = bearer_obj
             self._UpdateBearersProperty()
             return bearer_obj.path
+
 
     def ActivateBearer(self, bearer_path):
         """
@@ -549,6 +559,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
         self.active_bearers[bearer_path] = bearer
         bearer.Connect()
 
+
     def DeactivateBearer(self, bearer_path):
         """
         Deactivates data bearer by setting its 'Connected' property to False.
@@ -573,6 +584,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
         assert bearer_path in self.active_bearers
         bearer.Disconnect()
         self.active_bearers.pop(bearer_path)
+
 
     @utils.log_dbus_method()
     @dbus.service.method(mm1_constants.I_MODEM, in_signature='o')
@@ -602,13 +614,12 @@ class Modem(dbus_std_ifaces.DBusProperties,
         self.bearers.pop(bearer)
         self._UpdateBearersProperty()
 
-    def ClearBearers(self):
-        """
-        Deletes all bearers that are managed by this modem.
 
-        """
+    def ClearBearers(self):
+        """ Deletes all bearers that are managed by this modem. """
         for b in self.bearers.keys():
             self.DeleteBearer(b)
+
 
     @utils.log_dbus_method()
     @dbus.service.method(mm1_constants.I_MODEM)
@@ -682,6 +693,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
         else:
             gobject.idle_add(_ResetFunc)
 
+
     @utils.log_dbus_method()
     @dbus.service.method(mm1_constants.I_MODEM, in_signature='s')
     def FactoryReset(self, code):
@@ -697,6 +709,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
 
         """
         raise NotImplementedError()
+
 
     @utils.log_dbus_method()
     @dbus.service.method(mm1_constants.I_MODEM, in_signature='(uu)')
@@ -717,6 +730,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
                                         'Mode not supported: ' + repr(modes))
         self.Set(mm1_constants.I_MODEM, 'CurrentModes', modes)
 
+
     @utils.log_dbus_method()
     @dbus.service.method(mm1_constants.I_MODEM, in_signature='au')
     def SetCurrentBands(self, bands):
@@ -731,6 +745,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
         band_list = [dbus.types.UInt32(band) for band in bands]
         self.Set(mm1_constants.I_MODEM, 'CurrentBands', band_list)
 
+
     @utils.log_dbus_method()
     @dbus.service.method(mm1_constants.I_MODEM, in_signature='su',
                          out_signature='s')
@@ -742,8 +757,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
 
         @param cmd: Command to send to the modem.
         @param timeout: The timeout interval for the command.
-
-        @return A string containing the response from the modem.
+        @returns: A string containing the response from the modem.
 
         """
         messages = ['Bananas are tasty and fresh. Have one!',
@@ -752,6 +766,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
                     'Believe in yourself and others will too.',
                     'Carve your name on your heart and not on marble.']
         return random.choice(messages)
+
 
     @utils.log_dbus_method()
     @dbus.service.method(mm1_constants.I_MODEM, in_signature='u')
@@ -762,8 +777,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
 
         @param power_state: Specifies the desired power state as a
                 MMModemPowerState value.
-
-        @raises MMCoreError if state is not DISABLED.
+        @raises: MMCoreError if state is not DISABLED.
 
         """
         if (self.Get(mm1_constants.I_MODEM, 'State') !=
@@ -772,6 +786,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
                     pm_errors.MMCoreError.WRONG_STATE,
                     'Cannot set the power state if modem is not DISABLED.')
         self.SetUInt32(mm1_constants.I_MODEM, 'PowerState', power_state);
+
 
     @utils.log_dbus_method()
     @dbus.service.method(mm1_constants.I_MODEM, in_signature='u')
@@ -792,6 +807,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
         self.SetUInt32(mm1_constants.I_MODEM, 'CurrentCapabilities',
                        capabilities)
 
+
     @dbus.service.signal(mm1_constants.I_MODEM, signature='iiu')
     def StateChanged(self, old, new, reason):
         """
@@ -806,6 +822,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
         logging.info('Modem state changed from %u to %u for reason %u',
                 old, new, reason)
 
+
     # org.freedesktop.ModemManager1.Messaging
 
     def List(self):
@@ -815,6 +832,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
         """
         return self._sms_handler.list_messages()
 
+
     def Delete(self, path):
         """
         Overriden from messaging.Messaging.
@@ -823,6 +841,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
 
         """
         self._sms_handler.delete_message(path)
+
 
     @dbus.service.signal(mm1_constants.I_MODEM_MESSAGING, signature='ob')
     def Added(self, path, received):
@@ -835,6 +854,7 @@ class Modem(dbus_std_ifaces.DBusProperties,
         """
         logging.info('New SMS added: path: ' + path + ' received: ' +
                      str(received))
+
 
     def _UpdateBearersProperty(self):
         """

@@ -29,6 +29,7 @@ class Bearer(dbus_std_ifaces.DBusProperties):
         Bearer.count += 1
         dbus_std_ifaces.DBusProperties.__init__(self, path, bus, config)
 
+
     def _InitializeProperties(self):
         props = {
             'Interface': net_interface.PseudoNetInterface.IFACE_NAME,
@@ -38,8 +39,10 @@ class Bearer(dbus_std_ifaces.DBusProperties):
         }
         return { mm1_constants.I_BEARER: props }
 
+
     def _AddProperty(self, property_key):
         self._properties[mm1_constants.I_BEARER][property_key] = None
+
 
     def _RemoveProperty(self, property_key):
         try:
@@ -47,21 +50,24 @@ class Bearer(dbus_std_ifaces.DBusProperties):
         except KeyError:
             pass
 
+
     def IsActive(self):
         """
-        @return True, if the bearer is currently active.
+        @returns: True, if the bearer is currently active.
 
         """
         return self._active
 
+
     @property
     def bearer_properties(self):
         """
-        @return The current bearer properties that were set during a call to
+        @returns: The current bearer properties that were set during a call to
                 org.freedesktop.ModemManager1.Modem.Simple.Connect.
 
         """
         return self._bearer_props
+
 
     @utils.log_dbus_method()
     @dbus.service.method(mm1_constants.I_BEARER)
@@ -96,6 +102,7 @@ class Bearer(dbus_std_ifaces.DBusProperties):
         })
         self._active = True
         self.Set(mm1_constants.I_BEARER, 'Connected', dbus.types.Boolean(True))
+
 
     @utils.log_dbus_method()
     @dbus.service.method(mm1_constants.I_BEARER)

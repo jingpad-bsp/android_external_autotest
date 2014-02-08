@@ -19,13 +19,10 @@ def log_dbus_method(return_logger=logging.debug, raise_logger=logging.warning,
 
     @param return_logger: A function that accepts a string argument to log the
             response from the decorated function.
-
     @param raise_logger: A function accepts a string argument to log the
             exception raised by the decorated function.
-
     @param return_cb_arg: str name of the async callback argument for the return
             value, if the function takes one.
-
     @param raise_cb_arg: str name of the async callback argument for the error
             return value, if the function takes one.
 
@@ -111,12 +108,9 @@ def _wrap_async_return(return_cb, fname, logger):
     Wrap return_cb to log the return value.
 
     @param return_cb: The function to be wrapped.
-
     @param fname: Name of the DBus function called.
-
     @param logger: The logger to use for logging.
-
-    @return: Wrapped |return_cb| that additionally logs its arguments.
+    @returns: Wrapped |return_cb| that additionally logs its arguments.
 
     """
     @functools.wraps(return_cb)
@@ -127,17 +121,15 @@ def _wrap_async_return(return_cb, fname, logger):
 
     return wrapped_return_cb
 
+
 def _wrap_async_raise(raise_cb, fname, logger):
     """
     Wrap raise_cb to log the raised error.
 
     @param raise_cb: The function to be wrapped.
-
     @param fname: Name of the DBus function called.
-
     @param logger: The logger to use for logging.
-
-    @return: Wrapped |raise_cb| that additionally logs its arguments.
+    @returns: Wrapped |raise_cb| that additionally logs its arguments.
 
     """
     @functools.wraps(raise_cb)

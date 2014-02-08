@@ -46,17 +46,20 @@ class StateMachine(dbus.service.Object):
         self._interactive = False
         self._trans_func_map = self._GetModemStateFunctionMap()
 
+
     def __exit__(self):
         self.remove_from_connection()
+
 
     @property
     def cancelled(self):
         """
-        @return True, if the state machine has been cancelled or has
+        @returns: True, if the state machine has been cancelled or has
                 transitioned to a terminal state. False, otherwise.
 
         """
         return self._done
+
 
     def Cancel(self):
         """
@@ -64,6 +67,7 @@ class StateMachine(dbus.service.Object):
 
         """
         self._done = True
+
 
     def EnterInteractiveMode(self, bus):
         """
@@ -88,12 +92,11 @@ class StateMachine(dbus.service.Object):
         logging.info('Running state machine in interactive mode')
         logging.info('Exported test object at %s', self._ism_object_path)
 
-    def Start(self):
-        """
-        Start the state machine.
 
-        """
+    def Start(self):
+        """ Start the state machine. """
         self.Step()
+
 
     @utils.log_dbus_method()
     @dbus.service.method(pm_constants.I_TESTING_ISM, out_signature='b')
@@ -101,8 +104,7 @@ class StateMachine(dbus.service.Object):
         """
         Advance a step on a state machine running in interactive mode.
 
-        @return: True if the state machine was advanced. False otherwise.
-
+        @returns: True if the state machine was advanced. False otherwise.
         @raises: TestError if called on a non-interactive state machine.
 
         """
@@ -121,6 +123,7 @@ class StateMachine(dbus.service.Object):
         self._ScheduleNextStep()
         return True
 
+
     @dbus.service.signal(pm_constants.I_TESTING_ISM)
     def Waiting(self):
         """
@@ -130,16 +133,18 @@ class StateMachine(dbus.service.Object):
         """
         logging.info('%s state machine waiting', self._GetIsmObjectName())
 
+
     @utils.log_dbus_method()
     @dbus.service.method(pm_constants.I_TESTING_ISM, out_signature='b')
     def IsWaiting(self):
         """
         Determine whether the state machine is waiting for user action.
 
-        @return: True if machine is waiting for |Advance| call.
+        @returns: True if machine is waiting for |Advance| call.
 
         """
         return self._waiting_for_advance
+
 
     def Step(self):
         """
@@ -175,6 +180,7 @@ class StateMachine(dbus.service.Object):
         else:
             self._done = True
 
+
     def _ScheduleNextStep(self):
         """
         Schedules the next state transition to execute on the idle loop.
@@ -183,6 +189,7 @@ class StateMachine(dbus.service.Object):
 
         """
         gobject.idle_add(StateMachine.Step, self)
+
 
     def _GetIsmObjectName(self):
         """
@@ -193,6 +200,7 @@ class StateMachine(dbus.service.Object):
 
         """
         return self.__class__.__name__
+
 
     def _GetDefaultHandler(self):
         """
@@ -207,6 +215,7 @@ class StateMachine(dbus.service.Object):
 
         """
         return None
+
 
     def _GetModemStateFunctionMap(self):
         """
@@ -227,6 +236,7 @@ class StateMachine(dbus.service.Object):
         """
         raise NotImplementedError()
 
+
     def _ShouldStartStateMachine(self):
         """
         This method will be called when the state machine is in a starting
@@ -243,6 +253,7 @@ class StateMachine(dbus.service.Object):
         """
         raise NotImplementedError()
 
+
     def _GetCurrentState(self):
         """
         Get the current state of the state machine.
@@ -255,6 +266,7 @@ class StateMachine(dbus.service.Object):
         Subclasses can override this function to use custom states in the state
         machine.
 
-        @returns The modem state.
+        @returns: The modem state.
+
         """
         return self._modem.Get(mm1_constants.I_MODEM, 'State')

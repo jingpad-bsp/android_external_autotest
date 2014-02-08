@@ -13,7 +13,6 @@ import pm_constants
 import common
 from autotest_lib.client.cros.cellular import mm1_constants
 
-
 class PseudoModemClient(cmd.Cmd):
     """
     Interactive client for PseudoModemManager.
@@ -24,12 +23,15 @@ class PseudoModemClient(cmd.Cmd):
         self.prompt = '> '
         self._bus = dbus.SystemBus()
 
+
     def _get_proxy(self, path=pm_constants.TESTING_PATH):
         return self._bus.get_object(mm1_constants.I_MODEM_MANAGER, path)
+
 
     def _get_ism_proxy(self, state_machine):
         return self._get_proxy('/'.join([pm_constants.TESTING_PATH,
                                          state_machine]))
+
 
     def Begin(self):
         """
@@ -39,9 +41,11 @@ class PseudoModemClient(cmd.Cmd):
         print '\nWelcome to the PseudoModemManager shell!\n'
         self.cmdloop()
 
+
     def can_exit(self):
         """Override"""
         return True
+
 
     def do_is_alive(self, args):
         """
@@ -55,9 +59,11 @@ class PseudoModemClient(cmd.Cmd):
             return
         print self._get_proxy().IsAlive(dbus_interface=pm_constants.I_TESTING)
 
+
     def help_is_alive(self):
         """ Handles the 'help is_alive' command. """
         print '\nChecks that pseudomodem child process is alive.\n'
+
 
     def do_properties(self, args):
         """
@@ -83,9 +89,11 @@ class PseudoModemClient(cmd.Cmd):
                    e.message + '\n')
         return False
 
+
     def help_properties(self):
         """Handles the 'help properties' command."""
         print '\nReturns the properties under the testing interface.\n'
+
 
     def do_sms(self, args):
         """
@@ -119,6 +127,7 @@ class PseudoModemClient(cmd.Cmd):
                    'PseudoModemManager: ' + e.get_dbus_name() + ' - ' +
                    e.message + '\n')
         return False
+
 
     def help_sms(self):
         """Handles the 'help sms' command."""
@@ -164,6 +173,7 @@ class PseudoModemClient(cmd.Cmd):
         print ('\nUsage: set pco <pco-value>\n<pco-value> can be empty to set'
                ' the PCO value to an empty string.\n')
 
+
     def _get_state_machine(self, args):
         arglist = args.split()
         if len(arglist) != 1:
@@ -176,12 +186,12 @@ class PseudoModemClient(cmd.Cmd):
             print 'Error obtained: |%s|\n' % repr(e)
             return None
 
+
     def do_is_waiting(self, machine):
         """
         Determine if a machine is waiting for an advance call.
 
         @param machine: Case sensitive name of the machine.
-
         @return: True if |machine| is waiting to be advanced by the user.
 
         """
@@ -199,6 +209,7 @@ class PseudoModemClient(cmd.Cmd):
                    (machine, repr(e)))
         return False
 
+
     def help_is_waiting(self):
         """Handles the 'help is_waiting' command"""
         print ('\nUsage: is_waiting <state-machine-name>\n'
@@ -207,13 +218,13 @@ class PseudoModemClient(cmd.Cmd):
                'state-machine-name is the case sensitive name of the machine'
                'whose status is to be queried.\n')
 
+
     def do_advance(self, machine):
         """
         Advance the given state machine.
 
         @param machine: Case sensitive name of the state machine to advance.
-
-        @return: True if |machine| was successfully advanced, False otherwise.
+        @returns: True if |machine| was successfully advanced, False otherwise.
 
         """
         ism = self._get_state_machine(machine)
@@ -227,12 +238,14 @@ class PseudoModemClient(cmd.Cmd):
             print '\nError while advancing state machine: |%s|\n' % repr(e)
         return False
 
+
     def help_advance(self):
         """Handles the 'help advance' command"""
         print ('\nUsage: advance <state-machine-name>\n'
                'Advance a waiting state machine to the next step.\n'
                'state-machine-name is the case sensitive name of the machine'
                'to advance.\n')
+
 
     def do_exit(self, args):
         """
@@ -252,21 +265,22 @@ class PseudoModemClient(cmd.Cmd):
             print '\nDid not understand: ' + resp + '\n'
         return False
 
+
     def help_exit(self):
         """Handles the 'help exit' command."""
         print ('\nExits the interpreter. Shuts down the pseudo modem manager '
                'if the interpreter was launched by running pseudomodem.py')
 
+
     do_EOF = do_exit
     help_EOF = help_exit
 
-def main():
-    """
-    main method, run when this module is executed as stand-alone.
 
-    """
+def main():
+    """ main method, run when this module is executed as stand-alone. """
     client = PseudoModemClient()
     client.Begin()
+
 
 if __name__ == '__main__':
     main()

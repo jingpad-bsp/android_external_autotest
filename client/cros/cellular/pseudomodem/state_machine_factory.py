@@ -29,6 +29,7 @@ class StateMachineFactory(object):
         self._bus = None
         self._interactive = set()
 
+
     def SetBus(self, bus):
         """
         Set the default dbus bus.
@@ -37,6 +38,7 @@ class StateMachineFactory(object):
 
         """
         self._bus = bus
+
 
     def SetInteractiveAll(self):
         """
@@ -56,6 +58,7 @@ class StateMachineFactory(object):
         self.SetInteractive(pm_constants.STATE_MACHINE_REGISTER)
         self.SetInteractive(pm_constants.STATE_MACHINE_REGISTER_CDMA)
 
+
     def SetInteractive(self, machine_name):
         """
         Set the given machine to be launched in interative mode.
@@ -66,6 +69,7 @@ class StateMachineFactory(object):
         """
         self._interactive.add(machine_name)
 
+
     def CreateMachine(self, machine_name, *args, **kwargs):
         """
         Create an instance of the given machine.
@@ -73,12 +77,8 @@ class StateMachineFactory(object):
         @param machine_name: The name of the machine to be created. All
                 supported machine names are exported as constants in the
                 |pm_constants| module.
-
         @param *args, **kwargs: Arguments to pass to the machine constructor.
-
-        @return: A new instance of the deseried machine
-
-        @raises:
+        @returns: A new instance of the deseried machine
 
         """
         if machine_name == pm_constants.STATE_MACHINE_CDMA_ACTIVATE:

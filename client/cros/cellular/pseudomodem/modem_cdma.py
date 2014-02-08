@@ -21,6 +21,7 @@ class ModemCdma(modem.Modem):
     capabilities.
 
     """
+
     class CdmaNetwork(object):
         """
         Stores carrier specific information needed for a CDMA network.
@@ -38,16 +39,19 @@ class ModemCdma(modem.Modem):
             self.activated = activated
             self._mdn = mdn
 
+
         @property
         def mdn(self):
             """
-            Returns the 'Mobile Directory Number' assigned to this modem by the
-            carrier. If not activated, the first 6 digits will contain '0'.
+            @returns: The 'Mobile Directory Number' assigned to this modem by
+                    the carrier. If not activated, the first 6 digits will
+                    contain '0'.
 
             """
             if self.activated:
                 return self._mdn
             return '000000' + self._mdn[6:]
+
 
     def __init__(self,
                  state_machine_factory=None,
@@ -64,6 +68,7 @@ class ModemCdma(modem.Modem):
                              device=device,
                              roaming_networks=roaming_networks,
                              config=config)
+
 
     def _InitializeProperties(self):
         ip = modem.Modem._InitializeProperties(self)
@@ -133,6 +138,7 @@ class ModemCdma(modem.Modem):
 
         return ip
 
+
     @utils.log_dbus_method(return_cb_arg='return_cb', raise_cb_arg='raise_cb')
     @dbus.service.method(mm1_constants.I_MODEM_CDMA, in_signature='s',
                          async_callbacks=('return_cb', 'raise_cb'))
@@ -145,7 +151,6 @@ class ModemCdma(modem.Modem):
         @param return_cb: Asynchronous success callback.
         @param raise_cb: Asynchronous failure callback. Has to take an instance
                          of Exception or Error.
-
         Emits:
             ActivationStateChanged
 
@@ -158,6 +163,7 @@ class ModemCdma(modem.Modem):
                 raise_cb)
         machine.Start()
 
+
     @utils.log_dbus_method()
     @dbus.service.method(mm1_constants.I_MODEM_CDMA, in_signature='a{sv}')
     def ActivateManual(self, properties):
@@ -167,12 +173,12 @@ class ModemCdma(modem.Modem):
 
         @param properties: A dictionary of properties to set on the modem,
                            including "mdn" and "min".
-
         Emits:
             ActivationStateChanged
 
         """
         raise NotImplementedError()
+
 
     @dbus.service.signal(mm1_constants.I_MODEM_CDMA, signature='uua{sv}')
     def ActivationStateChanged(
@@ -184,12 +190,11 @@ class ModemCdma(modem.Modem):
         The device activation state changed.
 
         @param activation_state: Current activation state, given as a
-                                 MMModemCdmaActivationState.
+                MMModemCdmaActivationState.
         @param activation_error: Carrier-specific error code, given as a
-                                 MMCdmaActivationError.
+                MMCdmaActivationError.
         @param status_changes: Properties that have changed as a result of this
-                               activation state chage, including "mdn" and
-                               "min".
+                activation state chage, including "mdn" and "min".
 
         """
         logging.info('ModemCdma: activation state changed: state: %u, error: '
@@ -198,13 +203,15 @@ class ModemCdma(modem.Modem):
                      activation_error,
                      str(status_changes))
 
+
     def IsPendingActivation(self):
         """
-        @return True, if a CdmaActivationMachine is currently active.
+        @returns: True, if a CdmaActivationMachine is currently active.
 
         """
         return self.cdma_activate_step and \
             not self.cdma_activate_step.cancelled
+
 
     def ChangeActivationState(self, state, error):
         """
@@ -216,9 +223,9 @@ class ModemCdma(modem.Modem):
         properties until after the modem has reset.
 
         @param state: Requested activation state, given as a
-                      MMModemCdmaActivationState.
+                MMModemCdmaActivationState.
         @param error: Carrier-specific error code, given as a
-                      MMCdmaActivationError.
+                MMCdmaActivationError.
 
         """
         status_changes = {}
@@ -237,13 +244,15 @@ class ModemCdma(modem.Modem):
         self.SetUInt32(mm1_constants.I_MODEM_CDMA, 'ActivationState', state)
         self.ActivationStateChanged(state, error, status_changes)
 
+
     def GetHomeNetwork(self):
         """
-        @return A instance of CdmaNetwork that represents the
+        @returns: A instance of CdmaNetwork that represents the
                 current home network that is assigned to this modem.
 
         """
         return self.home_network
+
 
     def SetRegistered(self, network):
         """
@@ -276,6 +285,7 @@ class ModemCdma(modem.Modem):
         self.SetUInt32(mm1_constants.I_MODEM_CDMA, 'Nid', nid)
         self.SetRegistrationState(state)
 
+
     def SetRegistrationState(self, state):
         """
         Sets the CDMA1x and EVDO registration states to the provided value.
@@ -288,13 +298,11 @@ class ModemCdma(modem.Modem):
         self.SetUInt32(mm1_constants.I_MODEM_CDMA, 'EvdoRegistrationState',
                        state)
 
+
     # Inherited from modem.Modem.
     def RegisterWithNetwork(
             self, operator_id="", return_cb=None, raise_cb=None):
-        """
-        Overridden from superclass.
-
-        """
+        """ Overridden from superclass. """
         logging.info('ModemCdma.RegisterWithNetwork')
         machine = self._state_machine_factory.CreateMachine(
                 pm_constants.STATE_MACHINE_REGISTER_CDMA,
@@ -304,11 +312,9 @@ class ModemCdma(modem.Modem):
                 raise_cb)
         machine.Start()
 
-    def UnregisterWithNetwork(self):
-        """
-        Overridden from superclass.
 
-        """
+    def UnregisterWithNetwork(self):
+        """ Overridden from superclass. """
         logging.info('ModemCdma.UnregisterWithNetwork')
         if self.Get(mm1_constants.I_MODEM, 'State') != \
             mm1_constants.MM_MODEM_STATE_REGISTERED:
@@ -319,6 +325,7 @@ class ModemCdma(modem.Modem):
             mm1_constants.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED)
         logging.info('Unregistering.')
         self.SetRegistered(None)
+
 
     # Inherited from modem_simple.ModemSimple.
     @utils.log_dbus_method(return_cb_arg='return_cb', raise_cb_arg='raise_cb')
@@ -339,6 +346,7 @@ class ModemCdma(modem.Modem):
                 return_cb,
                 raise_cb)
         machine.Start()
+
 
     # Inherited from modem_simple.ModemSimple.
     @utils.log_dbus_method(return_cb_arg='return_cb', raise_cb_arg='raise_cb')
@@ -362,13 +370,11 @@ class ModemCdma(modem.Modem):
                 return_cb_args)
         machine.Start()
 
+
     # Inherited from modem_simple.ModemSimple.
     @utils.log_dbus_method()
     def GetStatus(self):
-        """
-        Overridden from superclass.
-
-        """
+        """ Overridden from superclass. """
         modem_props = self.GetAll(mm1_constants.I_MODEM)
         cdma_props = self.GetAll(mm1_constants.I_MODEM_CDMA)
         retval = {}

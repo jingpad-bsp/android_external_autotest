@@ -13,27 +13,23 @@ from autotest_lib.client.cros.cellular import mm1_constants
 LOG_LEVELS = ['ERR', 'WARN', 'INFO', 'DEBUG']
 
 class ModemManager(dbus_std_ifaces.DBusObjectManager):
-    """
-    Pseudomodem implementation of org.freedesktop.ModemManager1
-
-    """
+    """ Pseudomodem implementation of org.freedesktop.ModemManager1. """
     def __init__(self, bus):
         dbus_std_ifaces.DBusObjectManager.__init__(self, bus, mm1_constants.MM1)
         self.debug_level = 'INFO'
 
+
     @utils.log_dbus_method()
     @dbus.service.method(mm1_constants.I_MODEM_MANAGER)
     def ScanDevices(self):
-        """
-        Starts a new scan for connected modem devices.
-
-        """
+        """ Starts a new scan for connected modem devices. """
         # TODO(armansito): For now this method is a noop. shill
         # doesn't use this method afaik, but it doesn't make sense
         # for a fake modem to do anything here anyway. Perhaps
         # we can give the pseudo modem manager a list of fake
         # modems upon initialization, and this method would add them?
         pass
+
 
     @utils.log_dbus_method()
     @dbus.service.method(mm1_constants.I_MODEM_MANAGER, in_signature='s')

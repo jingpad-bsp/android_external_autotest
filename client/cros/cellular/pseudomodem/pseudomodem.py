@@ -73,6 +73,7 @@ class PseudoModemManager(object):
         self._SetupPseudomodemParts()
         logging.info('Pseudomodem setup completed!')
 
+
     def StartBlocking(self):
         """
         Start pseudomodem operation.
@@ -83,6 +84,7 @@ class PseudoModemManager(object):
         """
         self._mainloop = gobject.MainLoop()
         self._mainloop.run()
+
 
     def GracefulExit(self):
         """ Stop pseudomodem operation and clean up. """
@@ -100,6 +102,7 @@ class PseudoModemManager(object):
         except Exception as e:
             logging.warning('Error while exiting: %s', repr(e))
         logging.info('pseudomodem: Bye! Bye!')
+
 
     def _SetupPseudomodemParts(self):
         """
@@ -165,6 +168,7 @@ class PseudoModemManager(object):
         # The testing interface can be brought up now that we have the bus.
         self._testing_object = testing.Testing(self._modem, self._bus)
 
+
     def _ReadCustomParts(self):
         """
         Loads user provided implementations of pseudomodem objects.
@@ -199,20 +203,17 @@ class PseudoModemManager(object):
                         self._opts.test_state_machine_factory_class,
                         self._opts.test_state_machine_factory_arg)
 
+
     def _CreateCustomObject(self, test_module, class_name, arg_file_name):
         """
         Create the custom object specified by test.
 
         @param test_module: The loaded module that implemets the custom object.
-
         @param class_name: Name of the class implementing the custom object.
-
         @param arg_file_name: Absolute path to file containing list of arguments
                 taken by |test_module|.|class_name| constructor in json.
-
-        @return A brand new object of the custom type.
-
-        @raises AttributeError if the class definition is not found;
+        @returns: A brand new object of the custom type.
+        @raises: AttributeError if the class definition is not found;
                 ValueError if |arg_file| does not contain valid json
                 representaiton of a python list.
                 Other errors may be raised during object creation.
@@ -242,6 +243,7 @@ class PseudoModemManager(object):
                           class_name, str(e))
             raise
 
+
     def _LoadCustomPartsModule(self, module_abs_path):
         """
         Loads the given file as a python module.
@@ -249,9 +251,7 @@ class PseudoModemManager(object):
         The loaded module *is* added to |sys.modules|.
 
         @param module_abs_path: Absolute path to the file to be loaded.
-
         @returns: The loaded module.
-
         @raises: ImportError if the module can not be loaded, or if another
                  module with the same name is already loaded.
 
@@ -276,6 +276,7 @@ class PseudoModemManager(object):
             module_file.close()
         return module
 
+
 # ##############################################################################
 # Public static functions.
 def ParseArguments(arg_string=None):
@@ -289,7 +290,6 @@ def ParseArguments(arg_string=None):
 
     @param arg_string: If not None, the string to parse. If none, |sys.argv| is
             used to obtain the argument string.
-
     @returns: The parsed options object.
 
     """
@@ -318,7 +318,6 @@ def ParseArguments(arg_string=None):
             '--family', '-f',
             choices=['3GPP', 'CDMA'],
             default='3GPP')
-
 
     gsm_arguments = parser.add_argument_group(
             title='3GPP options',
@@ -438,6 +437,7 @@ def ParseArguments(arg_string=None):
 
     return opts
 
+
 def ExtractExitError(dump_file_path):
     """
     Gets the exit error left behind by a crashed pseudomodem.
@@ -447,8 +447,7 @@ def ExtractExitError(dump_file_path):
     the launching process to parse the error file left behind by pseudomodem.
 
     @param dump_file_path: Full path to the file to read.
-
-    @return (error_reason, error_traceback)
+    @returns: (error_reason, error_traceback)
             error_reason: str. The one line reason for error that should be
                     used to raise exceptions.
             error_traceback: A list of str. This is the traceback left
@@ -468,8 +467,10 @@ def ExtractExitError(dump_file_path):
                           dump_file_path, str(e))
     return error_reason, error_traceback
 
+
 # The single global instance of PseudoModemManager.
 _pseudo_modem_manager = None
+
 
 # ##############################################################################
 # Private static functions.
@@ -478,6 +479,7 @@ def _NonNegInt(value):
     if value < 0:
         raise argparse.ArgumentTypeError('%s is not a non-negative int' % value)
     return value
+
 
 def _DumpExitError(dump_file_path, exc):
     """
@@ -491,7 +493,6 @@ def _DumpExitError(dump_file_path, exc):
     will eventually read the error dump) to create and own the file.
 
     @param dump_file_path: Full path to file to which we should dump.
-
     @param exc: The exception raised.
 
     """
@@ -515,18 +516,19 @@ def _DumpExitError(dump_file_path, exc):
     dump_file.writelines(traceback.format_exc())
     dump_file.close()
 
+
 def sig_handler(signum, frame):
     """
     Top level signal handler to handle user interrupt.
 
     @param signum: The signal received.
-
     @param frame: Ignored.
     """
     global _pseudo_modem_manager
     logging.debug('Signal handler called with signal %d', signum)
     if _pseudo_modem_manager:
         _pseudo_modem_manager.GracefulExit()
+
 
 def main():
     """
@@ -555,6 +557,7 @@ def main():
         _DumpExitError(opts.exit_error_file, e)
         _pseudo_modem_manager.GracefulExit()
         raise
+
 
 if __name__ == '__main__':
     main()

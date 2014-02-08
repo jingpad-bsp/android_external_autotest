@@ -26,17 +26,18 @@ class ModemManagerFormatter(logging.Formatter):
         super(ModemManagerFormatter, self).__init__(*args, **kwargs)
         self._pid = os.getpid()
 
+
     def format(self, record):
         """
         The main function that converts log records to strings.
 
         @param record: The log record.
-
-        @return: The formatted log string.
+        @returns: The formatted log string.
 
         """
         result = super(ModemManagerFormatter, self).format(record)
         return 'pseudomodem[%d]: %s' % (self._pid, result)
+
 
 def SetupLogging():
     """

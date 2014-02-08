@@ -13,10 +13,7 @@ import utils
 from autotest_lib.client.cros.cellular import mm1_constants
 
 class IncorrectPasswordError(pm_errors.MMMobileEquipmentError):
-    """
-    Wrapper around MM_MOBILE_EQUIPMENT_ERROR_INCORRECT_PASSWORD.
-
-    """
+    """ Wrapper around MM_MOBILE_EQUIPMENT_ERROR_INCORRECT_PASSWORD. """
 
     def __init__(self):
         pm_errors.MMMobileEquipmentError.__init__(
@@ -24,10 +21,7 @@ class IncorrectPasswordError(pm_errors.MMMobileEquipmentError):
                 'Incorrect password')
 
 class SimPukError(pm_errors.MMMobileEquipmentError):
-    """
-    Wrapper around MM_MOBILE_EQUIPMENT_ERROR_SIM_PUK.
-
-    """
+    """ Wrapper around MM_MOBILE_EQUIPMENT_ERROR_SIM_PUK. """
 
     def __init__(self):
         pm_errors.MMMobileEquipmentError.__init__(
@@ -35,10 +29,7 @@ class SimPukError(pm_errors.MMMobileEquipmentError):
                 'SIM PUK required')
 
 class SimFailureError(pm_errors.MMMobileEquipmentError):
-    """
-    Wrapper around MM_MOBILE_EQUIPMENT_ERROR_SIM_FAILURE.
-
-    """
+    """ Wrapper around MM_MOBILE_EQUIPMENT_ERROR_SIM_FAILURE. """
 
     def __init__(self):
         pm_errors.MMMobileEquipmentError.__init__(
@@ -110,6 +101,7 @@ class SIM(dbus_std_ifaces.DBusProperties):
               self.operator_name = self.operator_name + ' - Fake'
            self.operator_id = self.mcc + self.mnc
 
+
     def __init__(self,
                  carrier,
                  access_technology,
@@ -151,6 +143,7 @@ class SIM(dbus_std_ifaces.DBusProperties):
         self.access_technology = access_technology
         dbus_std_ifaces.DBusProperties.__init__(self, path, None, config)
 
+
     def IncrementPath(self):
         """
         Increments the current index at which this modem is exposed on DBus.
@@ -168,14 +161,13 @@ class SIM(dbus_std_ifaces.DBusProperties):
         logging.info('SIM coming back as: ' + path)
         self.SetPath(path)
 
-    def Reset(self):
-        """
-        Resets the SIM. This will lock the SIM if locks are enabled.
 
-        """
+    def Reset(self):
+        """ Resets the SIM. This will lock the SIM if locks are enabled. """
         self.IncrementPath()
         if not self.locked and self._lock_enabled:
             self._lock_type = mm1_constants.MM_MODEM_LOCK_SIM_PIN
+
 
     @property
     def lock_type(self):
@@ -183,17 +175,18 @@ class SIM(dbus_std_ifaces.DBusProperties):
         Returns the current lock type of the SIM. Can be used to determine
         whether or not the SIM is locked.
 
-        @return The lock type, as a MMModemLock value.
+        @returns: The lock type, as a MMModemLock value.
 
         """
         return self._lock_type
+
 
     @property
     def unlock_retries(self):
         """
         Returns the number of unlock retries left.
 
-        @return The number of unlock retries for each lock type the SIM
+        @returns: The number of unlock retries for each lock type the SIM
                 supports as a dictionary.
 
         """
@@ -204,12 +197,13 @@ class SIM(dbus_std_ifaces.DBusProperties):
             retries[dbus.types.UInt32(k)] = dbus.types.UInt32(v['retries'])
         return retries
 
+
     @property
     def enabled_locks(self):
         """
         Returns the currently enabled facility locks.
 
-        @return The currently enabled facility locks, as a MMModem3gppFacility
+        @returns: The currently enabled facility locks, as a MMModem3gppFacility
                 value.
 
         """
@@ -217,22 +211,22 @@ class SIM(dbus_std_ifaces.DBusProperties):
             return mm1_constants.MM_MODEM_3GPP_FACILITY_SIM
         return mm1_constants.MM_MODEM_3GPP_FACILITY_NONE
 
+
     @property
     def locked(self):
-        """
-        @return True, if the SIM is locked. False, otherwise.
-
-        """
+        """ @returns: True, if the SIM is locked. False, otherwise. """
         return not (self._lock_type == mm1_constants.MM_MODEM_LOCK_NONE or
             self._lock_type == mm1_constants.MM_MODEM_LOCK_UNKNOWN)
+
 
     @property
     def modem(self):
         """
-        Returns the modem object that this SIM is currently plugged into.
+        @returns: the modem object that this SIM is currently plugged into.
 
         """
         return self._modem
+
 
     @modem.setter
     def modem(self, modem):
@@ -245,14 +239,16 @@ class SIM(dbus_std_ifaces.DBusProperties):
         """
         self._modem = modem
 
+
     @property
     def carrier(self):
         """
-        @return An instance of SIM.Carrier that contains the carrier
+        @returns: An instance of SIM.Carrier that contains the carrier
                 information assigned to this SIM.
 
         """
         return self._carrier
+
 
     def _DBusPropertiesDict(self):
         imsi = self.imsi
@@ -271,11 +267,14 @@ class SIM(dbus_std_ifaces.DBusProperties):
             'OperatorName' : op_name
         }
 
+
     def _InitializeProperties(self):
         return { mm1_constants.I_SIM : self._DBusPropertiesDict() }
 
+
     def _UpdateProperties(self):
         self.SetAll(mm1_constants.I_SIM, self._DBusPropertiesDict())
+
 
     def _CheckCode(self, code, lock_data, next_lock, error_to_raise):
         # Checks |code| against |lock_data['code']|. If the codes don't match:
@@ -306,6 +305,7 @@ class SIM(dbus_std_ifaces.DBusProperties):
         self._modem.UpdateLockStatus()
         raise error_to_raise
 
+
     def _ResetRetries(self, lock_type):
         if lock_type == mm1_constants.MM_MODEM_LOCK_SIM_PIN:
             value = self._total_pin_retries
@@ -314,6 +314,7 @@ class SIM(dbus_std_ifaces.DBusProperties):
         else:
             raise TypeError('Invalid SIM lock type')
         self._lock_data[lock_type]['retries'] = value
+
 
     @utils.log_dbus_method()
     @dbus.service.method(mm1_constants.I_SIM, in_signature='s')
@@ -350,6 +351,7 @@ class SIM(dbus_std_ifaces.DBusProperties):
         self._modem.Expose3GPPProperties()
         self._UpdateProperties()
 
+
     @utils.log_dbus_method()
     @dbus.service.method(mm1_constants.I_SIM, in_signature='ss')
     def SendPuk(self, puk, pin):
@@ -384,6 +386,7 @@ class SIM(dbus_std_ifaces.DBusProperties):
         self._modem.Expose3GPPProperties()
         self._UpdateProperties()
 
+
     @utils.log_dbus_method()
     @dbus.service.method(mm1_constants.I_SIM, in_signature='sb')
     def EnablePin(self, pin, enabled):
@@ -398,6 +401,7 @@ class SIM(dbus_std_ifaces.DBusProperties):
             self._EnablePin(pin)
         else:
             self._DisablePin(pin)
+
 
     def _EnablePin(self, pin):
         # Operation fails if the SIM is locked or PIN lock is already
@@ -414,6 +418,7 @@ class SIM(dbus_std_ifaces.DBusProperties):
         self._UpdateProperties()
         self.modem.UpdateLockStatus()
 
+
     def _DisablePin(self, pin):
         if not self._lock_enabled:
             raise SimFailureError()
@@ -428,6 +433,7 @@ class SIM(dbus_std_ifaces.DBusProperties):
         self._lock_enabled = False
         self._UpdateProperties()
         self.modem.UpdateLockStatus()
+
 
     @utils.log_dbus_method()
     @dbus.service.method(mm1_constants.I_SIM, in_signature='ss')

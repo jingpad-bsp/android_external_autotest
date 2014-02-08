@@ -39,18 +39,18 @@ class ModemSimple(dbus.service.Interface):
         using the given "apn", and connect that bearer.
 
         @param properties: See the ModemManager Reference Manual for the allowed
-                           key/value pairs in properties.
+                key/value pairs in properties.
         @param return_cb: The callback to execute to send an asynchronous
-                          response for the initial Connect request.
+                response for the initial Connect request.
         @param raise_cb: The callback to execute to send an asynchronous error
-                         in response to the initial Connect request.
-
-        @return On successfult connect, returns the object path of the connected
+                in response to the initial Connect request.
+        @returns: On successfult connect, returns the object path of the connected
                 packet data bearer used for the connection attempt. The value
                 is returned asynchronously via return_cb.
 
         """
         raise NotImplementedError()
+
 
     # Remember to decorate your concrete implementation with
     # @utils.log_dbus_method(return_cb_arg='return_cb', raise_cb_arg='raise_cb')
@@ -61,19 +61,19 @@ class ModemSimple(dbus.service.Interface):
         Disconnect an active packet data connection.
 
         @param bearer: The object path of the data bearer to disconnect. If the
-                       path is "/" (i.e. no object given) this method will
-                       disconnect all active packet data bearers.
+                path is "/" (i.e. no object given) this method will disconnect
+                all active packet data bearers.
         @param return_cb: The callback to execute to send an asynchronous
-                          response for the initial Disconnect request.
+                response for the initial Disconnect request.
         @param raise_cb: The callback to execute to send an asynchronous error
-                         in response to the initial Disconnect request.
-
+                in response to the initial Disconnect request.
         @param return_cb_args: Optional arguments which will be supplied to
-                               return_cb. This allows control flow to be set
-                               when this method is called from within the
-                               pseudo modem manager.
+                return_cb. This allows control flow to be set when this method
+                is called from within the pseudo modem manager.
+
         """
         raise NotImplementedError()
+
 
     # Remember to decorate your concrete implementation with
     # @utils.log_dbus_method()
@@ -82,7 +82,7 @@ class ModemSimple(dbus.service.Interface):
         """
         Gets the general modem status.
 
-        @return Dictionary of properties. See the ModemManager Reference Manual
+        @returns: Dictionary of properties. See the ModemManager Reference Manual
                 for the predefined common properties.
 
         """

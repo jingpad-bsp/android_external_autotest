@@ -45,10 +45,8 @@ def nuke_subprocess(subproc, timeout_hint_seconds=0):
     finish.
 
     @param subproc: The python subprocess to nuke.
-
     @param timeout_hint_seconds: The time to wait between successive attempts.
-
-    @return The result from the subprocess, None if we failed to kill it.
+    @returns: The result from the subprocess, None if we failed to kill it.
 
     """
     # check if the subprocess is still alive, first
@@ -67,9 +65,11 @@ def nuke_subprocess(subproc, timeout_hint_seconds=0):
             pass
     return None
 
+
 class PseudoModemManagerContextException(Exception):
     """ Exception class for exceptions raised by PseudoModemManagerContext. """
     pass
+
 
 class PseudoModemManagerContext(object):
     """
@@ -103,16 +103,13 @@ class PseudoModemManagerContext(object):
                 no-op. When |True|, pseudomodem is launched as expected. When
                 |False|, this operation is a no-op, and pseudomodem will not be
                 launched.
-
         @param flags_map: This is a map of pseudomodem arguments. See
                 |pseudomodem| module for the list of supported arguments. For
                 example, to launch pseudomodem with a modem of family 3GPP, use:
                     with PseudoModemManager(True, flags_map={'family' : '3GPP}):
                         # Do stuff
-
         @param block_output: If True, output from the pseudomodem process is not
                 piped to stdout. This is the default.
-
         @param bus: A handle to the dbus.SystemBus. If you use dbus in your
                 tests, you should obtain a handle to the bus and pass it in
                 here. Not doing so can cause incompatible mainloop settings in
@@ -142,10 +139,12 @@ class PseudoModemManagerContext(object):
             dbus_loop = dbus.mainloop.glib.DBusGMainLoop()
             self._bus = dbus.SystemBus(private=True, mainloop=dbus_loop)
 
+
     @property
     def cmd_line_flags(self):
         """ The command line flags that will be passed to pseudomodem. """
         return self._cmd_line_flags
+
 
     @cmd_line_flags.setter
     def cmd_line_flags(self, val):
@@ -158,11 +157,14 @@ class PseudoModemManagerContext(object):
         logging.info('Command line flags for pseudomodem set to: |%s|', val)
         self._cmd_line_flags = val
 
+
     def __enter__(self):
         return self.Start()
 
+
     def __exit__(self, *args):
         return self.Stop(*args)
+
 
     def Start(self):
         """ Start the context. This launches pseudomodem. """
@@ -205,6 +207,7 @@ class PseudoModemManagerContext(object):
         self._EnsurePseudoModemUp()
         return self
 
+
     def Stop(self, *args):
         """ Exit the context. This terminates pseudomodem. """
         if not self._use_pseudomodem:
@@ -233,6 +236,7 @@ class PseudoModemManagerContext(object):
         self._DeleteTempFiles()
         self._service_stopper.restore_services()
 
+
     def _ConvertMapToFlags(self, flags_map):
         """
         Convert the argument map given to the context to flags for pseudomodem.
@@ -240,8 +244,7 @@ class PseudoModemManagerContext(object):
         @param flags_map: A map of flags. The keys are the names of the flags
                 accepted by pseudomodem. The value, if not None, is the value
                 for that flag. We do not support |None| as the value for a flag.
-
-        @return the list of flags to pass to pseudomodem.
+        @returns: the list of flags to pass to pseudomodem.
 
         """
         cmd_line_flags = []
@@ -253,6 +256,7 @@ class PseudoModemManagerContext(object):
                 cmd_line_flags.append(value)
         return cmd_line_flags
 
+
     def _DumpArgToFile(self, arg):
         """
         Dump a given python list to a temp file in json format.
@@ -261,7 +265,7 @@ class PseudoModemManagerContext(object):
         are to be instantiated by pseudomodem. The argument must be a list. When
         running pseudomodem, this list will be unpacked to get the arguments.
 
-        @return Absolute path to the tempfile created.
+        @returns: Absolute path to the tempfile created.
 
         """
         fd, arg_file_path = self._CreateTempFile()
@@ -269,6 +273,7 @@ class PseudoModemManagerContext(object):
         json.dump(arg, arg_file)
         arg_file.close()
         return arg_file_path
+
 
     def _WarnAboutRealManagers(self):
         """
@@ -288,6 +293,7 @@ class PseudoModemManagerContext(object):
             except error.CmdError:
                 pass
 
+
     def _CheckPseudoModemArguments(self):
         """
         Parse the given pseudomodem arguments.
@@ -297,6 +303,7 @@ class PseudoModemManagerContext(object):
 
         """
         pseudomodem.ParseArguments(self.cmd_line_flags)
+
 
     @staticmethod
     def _SetUserModem():
@@ -323,6 +330,7 @@ class PseudoModemManagerContext(object):
                           pwd_data.pw_uid, str(e))
             sys.exit(1)
 
+
     def _EnsurePseudoModemUp(self):
         """ Makes sure that pseudomodem in child process is ready. """
         def _LivenessCheck():
@@ -341,6 +349,7 @@ class PseudoModemManagerContext(object):
                 exception=PseudoModemManagerContextException(
                         'pseudomodem did not initialize properly.'))
 
+
     def _CreateTempFile(self):
         """
         Creates a tempfile such that the child process can read/write it.
@@ -348,7 +357,7 @@ class PseudoModemManagerContext(object):
         The file path is stored in a list so that the file can be deleted later
         using |_DeleteTempFiles|.
 
-        @return: (fd, arg_file_path)
+        @returns: (fd, arg_file_path)
                  fd: A file descriptor for the created file.
                  arg_file_path: Full path of the created file.
 
@@ -362,6 +371,7 @@ class PseudoModemManagerContext(object):
                  stat.S_IWOTH)
         return fd, arg_file_path
 
+
     def _DeleteTempFiles(self):
         """ Deletes all temp files created by this context. """
         for file_path in self._temp_files:
@@ -371,6 +381,7 @@ class PseudoModemManagerContext(object):
                 logging.warning('Failed to delete temp file: %s (error %s)',
                                 file_path, str(e))
 
+
     def _SigchldHandler(self, signum, frame):
         """
         Signal handler for SIGCHLD.
@@ -379,7 +390,6 @@ class PseudoModemManagerContext(object):
         this signal handler may signify early termination of the subprocess.
 
         @param signum: The signal number.
-
         @param frame: Ignored.
 
         """

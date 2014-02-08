@@ -33,10 +33,7 @@ class MMError(dbus.exceptions.DBusException):
 
 
 class MMConnectionError(MMError):
-    """
-    DBusException wrapper for MMConnectionError values.
-
-    """
+    """ DBusException wrapper for MMConnectionError values. """
 
     UNKNOWN = 0
     NO_CARRIER = 1
@@ -97,10 +94,7 @@ class MMCoreError(MMError):
 
 
 class MMMessageError(MMError):
-    """
-    DBusException wrapper for MMMessageError values.
-
-    """
+    """ DBusException wrapper for MMMessageError values. """
 
     ME_FAILURE = 300
     SMS_SERVICE_RESERVED = 301
@@ -158,10 +152,7 @@ class MMMessageError(MMError):
 
 
 class MMMobileEquipmentError(MMError):
-    """
-    DBusException wrapper for MMMobileEquipmentError values.
-
-    """
+    """ DBusException wrapper for MMMobileEquipmentError values. """
 
     PHONE_FAILURE = 0
     NO_CONNECTION = 1
@@ -287,10 +278,7 @@ class MMMobileEquipmentError(MMError):
 
 
 class MMSerialError(MMError):
-    """
-    DBusException wrapper for MMSerialError values.
-
-    """
+    """ DBusException wrapper for MMSerialError values. """
 
     UNKNOWN = 0
     OPEN_FAILED = 1
@@ -314,10 +302,7 @@ class MMSerialError(MMError):
 
 
 class MMCdmaActivationError(MMError):
-    """
-    DBusException wrapper for MMCdmaActivationError values.
-
-    """
+    """ DBusException wrapper for MMCdmaActivationError values. """
 
     NONE = 0
     UNKNOWN = 1
@@ -354,6 +339,7 @@ class MMCdmaActivationError(MMError):
             self.START_FAILED :
                 '.StartFailed'
         }
+
 
 class TestError(dbus.exceptions.DBusException):
     """

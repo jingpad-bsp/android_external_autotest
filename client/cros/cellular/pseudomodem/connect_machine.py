@@ -24,11 +24,9 @@ class ConnectMachine(state_machine.StateMachine):
         self.enable_initiated = False
         self.register_initiated = False
 
-    def Cancel(self):
-        """
-        Overriden from superclass.
 
-        """
+    def Cancel(self):
+        """ Overriden from superclass. """
         logging.info('ConnectMachine: Canceling connect.')
         super(ConnectMachine, self).Cancel()
         state = self._modem.Get(mm1_constants.I_MODEM, 'State')
@@ -40,6 +38,7 @@ class ConnectMachine(state_machine.StateMachine):
         elif self.enable_initiated and self._modem.enable_step:
             self._modem.enable_step.Cancel()
         self._modem.connect_step = None
+
 
     def _HandleDisabledState(self):
         logging.info('ConnectMachine: Modem is DISABLED.')
@@ -61,11 +60,13 @@ class ConnectMachine(state_machine.StateMachine):
             # or if enable fails
             return True
 
+
     def _HandleEnablingState(self):
         logging.info('ConnectMachine: Modem is ENABLING.')
         assert self._modem.IsPendingEnable()
         logging.info('ConnectMachine: Waiting for enable.')
         return True
+
 
     def _HandleEnabledState(self):
         logging.info('ConnectMachine: Modem is ENABLED.')
@@ -88,12 +89,14 @@ class ConnectMachine(state_machine.StateMachine):
             self.register_initiated = True
             return True
 
+
     def _HandleSearchingState(self):
         logging.info('ConnectMachine: Modem is SEARCHING.')
         logging.info('ConnectMachine: Waiting for modem to register.')
         assert self.register_initiated
         assert self._modem.IsPendingRegister()
         return True
+
 
     def _HandleRegisteredState(self):
         logging.info('ConnectMachine: Modem is REGISTERED.')
@@ -106,6 +109,7 @@ class ConnectMachine(state_machine.StateMachine):
         self._modem.ChangeState(mm1_constants.MM_MODEM_STATE_CONNECTING,
                                 reason)
         return True
+
 
     def _GetBearerToActivate(self):
         # Import modem here to avoid circular imports.
@@ -131,6 +135,7 @@ class ConnectMachine(state_machine.StateMachine):
             bearer_path = self._modem.CreateBearer(self.connect_props)
 
         return bearer_path
+
 
     def _HandleConnectingState(self):
         logging.info('ConnectMachine: Modem is CONNECTING.')
@@ -158,6 +163,7 @@ class ConnectMachine(state_machine.StateMachine):
             self._modem.connect_step = None
         return False
 
+
     def _GetModemStateFunctionMap(self):
         return {
             mm1_constants.MM_MODEM_STATE_DISABLED:
@@ -173,6 +179,7 @@ class ConnectMachine(state_machine.StateMachine):
             mm1_constants.MM_MODEM_STATE_CONNECTING:
                     ConnectMachine._HandleConnectingState
         }
+
 
     def _ShouldStartStateMachine(self):
         if self._modem.connect_step and self._modem.connect_step != self:

@@ -12,11 +12,9 @@ import sms
 from autotest_lib.client.cros.cellular import mm1_constants
 
 class SmsHandlerException(Exception):
-    """
-    Exception class for errors raised by SmsHandler.
-
-    """
+    """ Exception class for errors raised by SmsHandler. """
     pass
+
 
 class SmsHandler(object):
     """
@@ -37,16 +35,18 @@ class SmsHandler(object):
         self._messages = {}  # Mapping from DBus Object paths to sms.SMS.
         self._bus = bus
 
+
     @property
     def bus(self):
         """
         Returns the current bus assigned to this object. This is the bus
         on which new SMS objects will be created.
 
-        @return An instance of dbus.Bus.
+        @returns: An instance of dbus.Bus.
 
         """
         return self._bus
+
 
     @bus.setter
     def bus(self, bus):
@@ -58,16 +58,16 @@ class SmsHandler(object):
         """
         self._bus = bus
 
+
     @classmethod
     def set_char_limit(cls, limit):
         cls.SMS_CHAR_LIMIT = limit
 
-    def clear_messages(self):
-        """
-        Clears all SMS messages.
 
-        """
+    def clear_messages(self):
+        """ Clears all SMS messages. """
         self._messages.clear()
+
 
     def delete_message(self, path):
         """
@@ -83,6 +83,7 @@ class SmsHandler(object):
             logging.info('SMS object with path "%s" not found.', path)
             pass
 
+
     def list_messages(self):
         """
         Returns a list of DBus object paths belonging to stored SMS messages.
@@ -90,12 +91,13 @@ class SmsHandler(object):
         """
         return self._messages.keys()
 
+
     def get_message_with_path(self, path):
         """
         Returns the SMS message with the DBus object path that matches |path|.
 
         @param path: DBus object path of the requested SMS object.
-        @return An instance of sms.SMS or None, if an SMS object with the
+        @returns: An instance of sms.SMS or None, if an SMS object with the
                 requested path is not found.
 
         """
@@ -103,6 +105,7 @@ class SmsHandler(object):
         if sms_object:
             assert sms_object.path == path
         return sms_object
+
 
     def construct_sms(self, text, sender):
         """
@@ -112,7 +115,7 @@ class SmsHandler(object):
 
         @param text: The message contents, in UTF-8 format.
         @param sender: The phone number of the sender.
-        @return An instance of sms.SMS.
+        @returns: An instance of sms.SMS.
 
         """
         if self._bus is None:
@@ -122,6 +125,7 @@ class SmsHandler(object):
         self._messages[sms_object.path] = sms_object
         # TODO(armansito): Split SMSs that are too big into multiple chunks.
         return sms_object
+
 
     def send_sms(self, text, sender):
         """
@@ -133,6 +137,7 @@ class SmsHandler(object):
         """
         # TODO(armansito): Support this if it's ever needed (unlikely).
         raise SmsHandlerException('Sending SMSs is not supported.')
+
 
     def receive_sms(self, text, sender, is_status_report=False):
         """

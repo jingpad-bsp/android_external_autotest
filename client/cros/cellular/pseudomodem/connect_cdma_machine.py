@@ -39,6 +39,7 @@ class ConnectCdmaMachine(connect_machine.ConnectMachine):
                                 reason)
         return True
 
+
     def _GetModemStateFunctionMap(self):
         fmap = super(ConnectCdmaMachine, self)._GetModemStateFunctionMap()
         fmap[mm1_constants.MM_MODEM_STATE_REGISTERED] = \
