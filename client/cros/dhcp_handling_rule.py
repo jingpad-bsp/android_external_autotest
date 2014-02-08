@@ -44,8 +44,9 @@ class DhcpHandlingRule(object):
     respond().
     """
 
-    def __init__(self, additional_options, custom_fields):
+    def __init__(self, message_type, additional_options, custom_fields):
         """
+        |message_type| should be a MessageType, from DhcpPacket.
         |additional_options| should be a dictionary that maps from
         dhcp_packet.OPTION_* to values.  For instance:
 
@@ -62,6 +63,7 @@ class DhcpHandlingRule(object):
         self._target_time_seconds = None
         self._allowable_time_delta_seconds = 0.5
         self._force_reply_options = []
+        self._message_type = message_type
 
     @property
     def logger(self):
@@ -225,6 +227,23 @@ class DhcpHandlingRule(object):
         for field, value in self.fields.items():
             packet.set_field(field, value)
 
+    def is_our_message_type(self, packet):
+        """
+        Checks if the Message Type DHCP Option in |packet| matches the message
+        type handled by this rule. Logs a warning if the types do not match.
+
+        @param packet: a DhcpPacket
+
+        @returns True or False
+        """
+        if packet.message_type == self._message_type:
+            return True
+        else:
+            self.logger.warning("Packet's message type was %s, not %s.",
+                                packet.message_type.name,
+                                self._message_type.name)
+            return False
+
 
 class DhcpHandlingRule_RespondToDiscovery(DhcpHandlingRule):
     """
@@ -246,15 +265,14 @@ class DhcpHandlingRule_RespondToDiscovery(DhcpHandlingRule):
         |additional_options| is handled as explained by DhcpHandlingRule.
         """
         super(DhcpHandlingRule_RespondToDiscovery, self).__init__(
-                additional_options, custom_fields)
+                dhcp_packet.MESSAGE_TYPE_DISCOVERY, additional_options,
+                custom_fields)
         self._intended_ip = intended_ip
         self._server_ip = server_ip
         self._should_respond = should_respond
 
     def handle_impl(self, query_packet):
-        if (query_packet.message_type !=
-            dhcp_packet.OPTION_VALUE_DHCP_MESSAGE_TYPE_DISCOVERY):
-            self.logger.info("Packet type was not DISCOVERY.  Ignoring.")
+        if not self.is_our_message_type(query_packet):
             return RESPONSE_NO_ACTION
 
         self.logger.info("Received valid DISCOVERY packet.  Processing.")
@@ -266,11 +284,9 @@ class DhcpHandlingRule_RespondToDiscovery(DhcpHandlingRule):
         return ret
 
     def respond(self, query_packet):
-        if (query_packet.message_type !=
-            dhcp_packet.OPTION_VALUE_DHCP_MESSAGE_TYPE_DISCOVERY):
-            self.logger.error("Server erroneously asked for a response to an "
-                               "invalid packet.")
+        if not self.is_our_message_type(query_packet):
             return None
+
         self.logger.info("Responding to DISCOVERY packet.")
         response_packet = dhcp_packet.DhcpPacket.create_offer_packet(
                 query_packet.transaction_id,
@@ -309,7 +325,8 @@ class DhcpHandlingRule_RespondToRequest(DhcpHandlingRule):
         |additional_options| is handled as explained by DhcpHandlingRule.
         """
         super(DhcpHandlingRule_RespondToRequest, self).__init__(
-                additional_options, custom_fields)
+                dhcp_packet.MESSAGE_TYPE_REQUEST, additional_options,
+                custom_fields)
         self._expected_requested_ip = expected_requested_ip
         self._expected_server_ip = expected_server_ip
         self._should_respond = should_respond
@@ -321,9 +338,7 @@ class DhcpHandlingRule_RespondToRequest(DhcpHandlingRule):
             self._server_ip = self._expected_server_ip
 
     def handle_impl(self, query_packet):
-        if (query_packet.message_type !=
-            dhcp_packet.OPTION_VALUE_DHCP_MESSAGE_TYPE_REQUEST):
-            self.logger.info("Packet type was not REQUEST, ignoring.")
+        if not self.is_our_message_type(query_packet):
             return RESPONSE_NO_ACTION
 
         self.logger.info("Received REQUEST packet, checking fields...")
@@ -355,10 +370,7 @@ class DhcpHandlingRule_RespondToRequest(DhcpHandlingRule):
         return ret
 
     def respond(self, query_packet):
-        if (query_packet.message_type !=
-            dhcp_packet.OPTION_VALUE_DHCP_MESSAGE_TYPE_REQUEST):
-            self.logger.error("Server erroneously asked for a response to an "
-                              "invalid packet.")
+        if not self.is_our_message_type(query_packet):
             return None
 
         self.logger.info("Responding to REQUEST packet.")
@@ -405,9 +417,7 @@ class DhcpHandlingRule_RespondToPostT2Request(
                 response_granted_ip=response_granted_ip)
 
     def handle_impl(self, query_packet):
-        if (query_packet.message_type !=
-            dhcp_packet.OPTION_VALUE_DHCP_MESSAGE_TYPE_REQUEST):
-            self.logger.info("Packet type was not REQUEST, ignoring.")
+        if not self.is_our_message_type(query_packet):
             return RESPONSE_NO_ACTION
 
         self.logger.info("Received REQUEST packet, checking fields...")
@@ -453,13 +463,12 @@ class DhcpHandlingRule_AcceptRelease(DhcpHandlingRule):
         |additional_options| is handled as explained by DhcpHandlingRule.
         """
         super(DhcpHandlingRule_AcceptRelease, self).__init__(
-                additional_options, custom_fields)
+                dhcp_packet.MESSAGE_TYPE_RELEASE, additional_options,
+                custom_fields)
         self._expected_server_ip = expected_server_ip
 
     def handle_impl(self, query_packet):
-        if (query_packet.message_type !=
-            dhcp_packet.OPTION_VALUE_DHCP_MESSAGE_TYPE_RELEASE):
-            self.logger.info("Packet type was not RELEASE, ignoring.")
+        if not self.is_our_message_type(query_packet):
             return RESPONSE_NO_ACTION
 
         self.logger.info("Received RELEASE packet, checking fields...")

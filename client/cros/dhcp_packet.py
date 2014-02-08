@@ -391,16 +391,29 @@ FIELD_VALUE_HWADDR_LEN_10MB_ETH = 6
 FIELD_VALUE_MAGIC_COOKIE = 0x63825363
 
 OPTIONS_START_OFFSET = 240
+
+MessageType = collections.namedtuple('MessageType', 'name option_value')
 # From RFC2132, the valid DHCP message types are:
-OPTION_VALUE_DHCP_MESSAGE_TYPE_DISCOVERY = 1
-OPTION_VALUE_DHCP_MESSAGE_TYPE_OFFER     = 2
-OPTION_VALUE_DHCP_MESSAGE_TYPE_REQUEST   = 3
-OPTION_VALUE_DHCP_MESSAGE_TYPE_DECLINE   = 4
-OPTION_VALUE_DHCP_MESSAGE_TYPE_ACK       = 5
-OPTION_VALUE_DHCP_MESSAGE_TYPE_NAK       = 6
-OPTION_VALUE_DHCP_MESSAGE_TYPE_RELEASE   = 7
-OPTION_VALUE_DHCP_MESSAGE_TYPE_INFORM    = 8
-OPTION_VALUE_DHCP_MESSAGE_TYPE_UNKNOWN   = -1
+MESSAGE_TYPE_UNKNOWN = MessageType('UNKNOWN', 0)
+MESSAGE_TYPE_DISCOVERY = MessageType('DISCOVERY', 1)
+MESSAGE_TYPE_OFFER = MessageType('OFFER', 2)
+MESSAGE_TYPE_REQUEST = MessageType('REQUEST', 3)
+MESSAGE_TYPE_DECLINE = MessageType('DECLINE', 4)
+MESSAGE_TYPE_ACK = MessageType('ACK', 5)
+MESSAGE_TYPE_NAK = MessageType('NAK', 6)
+MESSAGE_TYPE_RELEASE = MessageType('RELEASE', 7)
+MESSAGE_TYPE_INFORM = MessageType('INFORM', 8)
+MESSAGE_TYPE_BY_NUM = [
+    None,
+    MESSAGE_TYPE_DISCOVERY,
+    MESSAGE_TYPE_OFFER,
+    MESSAGE_TYPE_REQUEST,
+    MESSAGE_TYPE_DECLINE,
+    MESSAGE_TYPE_ACK,
+    MESSAGE_TYPE_NAK,
+    MESSAGE_TYPE_RELEASE,
+    MESSAGE_TYPE_INFORM
+]
 
 OPTION_VALUE_PARAMETER_REQUEST_LIST_DEFAULT = [
         OPTION_REQUESTED_IP.number,
@@ -506,7 +519,7 @@ class DhcpPacket(object):
         packet.set_field(FIELD_CLIENT_HWADDR, hwmac_addr)
         packet.set_field(FIELD_MAGIC_COOKIE, FIELD_VALUE_MAGIC_COOKIE)
         packet.set_option(OPTION_DHCP_MESSAGE_TYPE,
-                          OPTION_VALUE_DHCP_MESSAGE_TYPE_DISCOVERY)
+                          MESSAGE_TYPE_DISCOVERY.option_value)
         return packet
 
     @staticmethod
@@ -534,7 +547,7 @@ class DhcpPacket(object):
         packet.set_field(FIELD_CLIENT_HWADDR, hwmac_addr)
         packet.set_field(FIELD_MAGIC_COOKIE, FIELD_VALUE_MAGIC_COOKIE)
         packet.set_option(OPTION_DHCP_MESSAGE_TYPE,
-                          OPTION_VALUE_DHCP_MESSAGE_TYPE_OFFER)
+                          MESSAGE_TYPE_OFFER.option_value)
         return packet
 
     @staticmethod
@@ -556,7 +569,7 @@ class DhcpPacket(object):
         packet.set_field(FIELD_CLIENT_HWADDR, hwmac_addr)
         packet.set_field(FIELD_MAGIC_COOKIE, FIELD_VALUE_MAGIC_COOKIE)
         packet.set_option(OPTION_DHCP_MESSAGE_TYPE,
-                          OPTION_VALUE_DHCP_MESSAGE_TYPE_REQUEST)
+                          MESSAGE_TYPE_REQUEST.option_value)
         return packet
 
     @staticmethod
@@ -580,7 +593,7 @@ class DhcpPacket(object):
         packet.set_field(FIELD_CLIENT_HWADDR, hwmac_addr)
         packet.set_field(FIELD_MAGIC_COOKIE, FIELD_VALUE_MAGIC_COOKIE)
         packet.set_option(OPTION_DHCP_MESSAGE_TYPE,
-                          OPTION_VALUE_DHCP_MESSAGE_TYPE_ACK)
+                          MESSAGE_TYPE_ACK.option_value)
         return packet
 
     def __init__(self, byte_str=None):
@@ -627,7 +640,7 @@ class DhcpPacket(object):
             option = get_dhcp_option_by_number(data_type)
             if option is None:
                 logging.warning("Unsupported DHCP option found.  "
-                                "Option number: %d" % data_type)
+                                "Option number: %d", data_type)
                 continue
             if option == OPTION_DNS_DOMAIN_SEARCH_LIST:
                 # In a cruel twist of fate, the server is allowed to give
@@ -638,7 +651,7 @@ class DhcpPacket(object):
                 continue
             option_value = option.unpack(data)
             if option == OPTION_PARAMETER_REQUEST_LIST:
-                logging.info("Requested options: %s" % str(option_value))
+                logging.info("Requested options: %s", str(option_value))
             self._options[option] = option_value
         if domain_search_list_byte_string:
             self._options[OPTION_DNS_DOMAIN_SEARCH_LIST] = option_value
@@ -656,7 +669,7 @@ class DhcpPacket(object):
         """
         for field in DHCP_REQUIRED_FIELDS:
             if self._fields.get(field) is None:
-                logging.warning("Missing field %s in packet." % field)
+                logging.warning("Missing field %s in packet.", field)
                 return False
         if self._fields[FIELD_MAGIC_COOKIE] != FIELD_VALUE_MAGIC_COOKIE:
             return False
@@ -664,8 +677,20 @@ class DhcpPacket(object):
 
     @property
     def message_type(self):
-        return self._options.get(OPTION_DHCP_MESSAGE_TYPE,
-                                 OPTION_VALUE_DHCP_MESSAGE_TYPE_UNKNOWN)
+        """
+        Gets the value of the DHCP Message Type option in this packet.
+
+        If the option is not present, or the value of the option is not
+        recognized, returns MESSAGE_TYPE_UNKNOWN.
+
+        @returns The MessageType for this packet, or MESSAGE_TYPE_UNKNOWN.
+        """
+        if (self._options.has_key(OPTION_DHCP_MESSAGE_TYPE) and
+            self._options[OPTION_DHCP_MESSAGE_TYPE] > 0 and
+            self._options[OPTION_DHCP_MESSAGE_TYPE] < len(MESSAGE_TYPE_BY_NUM)):
+            return MESSAGE_TYPE_BY_NUM[self._options[OPTION_DHCP_MESSAGE_TYPE]]
+        else:
+            return MESSAGE_TYPE_UNKNOWN
 
     @property
     def transaction_id(self):

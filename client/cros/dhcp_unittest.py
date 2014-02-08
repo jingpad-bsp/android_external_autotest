@@ -188,8 +188,7 @@ def test_simple_server_exchange(server):
     if offer_packet is None:
         return False
 
-    if (offer_packet.message_type !=
-        dhcp_packet.OPTION_VALUE_DHCP_MESSAGE_TYPE_OFFER):
+    if (offer_packet.message_type != dhcp_packet.MESSAGE_TYPE_OFFER):
         print "Type of DHCP response is not offer."
         return False
 
@@ -219,8 +218,7 @@ def test_simple_server_exchange(server):
     if ack_packet is None:
         return False
 
-    if (ack_packet.message_type !=
-        dhcp_packet.OPTION_VALUE_DHCP_MESSAGE_TYPE_ACK):
+    if (ack_packet.message_type != dhcp_packet.MESSAGE_TYPE_ACK):
         print "Type of DHCP response is not acknowledgement."
         return False
 
