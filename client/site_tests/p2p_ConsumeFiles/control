@@ -12,11 +12,11 @@ tested scenarios, a case where p2p-client should hang (because there are too
 many connections) is included.
 """
 NAME = 'p2p_ConsumeFiles'
-PURPOSE = 'Check that P2P can discover peers and download from them.'
-CRITERIA = 'Fails if p2p-client is not able to discover and get the URLs.'
 SUITE = 'bvt'
 TEST_CLASS = 'platform'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'client'
+
+EXPERIMENTAL = "True"
 
 job.run_test('p2p_ConsumeFiles')

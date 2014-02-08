@@ -10,11 +10,11 @@ network can discover both the P2P service and the files shared on this service
 simulating a fake client on the network.
 """
 NAME = 'p2p_ShareFiles'
-PURPOSE = 'Check that P2P daemon shares files on the network.'
-CRITERIA = "Fails if p2p-server doesn't announce its shared files via mDNS."
 SUITE = 'bvt'
 TEST_CLASS = 'platform'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'client'
+
+EXPERIMENTAL = "True"
 
 job.run_test('p2p_ShareFiles')
