@@ -142,5 +142,6 @@ class login_UserPolicyKeys(test.test):
 
 
     def cleanup(self):
-        cryptohome.unmount_vault(ownership.TESTUSER)
+        cros_ui.restart()
+        cryptohome.remove_vault(ownership.TESTUSER)
         super(login_UserPolicyKeys, self).cleanup()
