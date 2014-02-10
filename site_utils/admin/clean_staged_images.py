@@ -28,6 +28,7 @@ import sys
 import shutil
 import time
 
+import common
 from autotest_lib.client.common_lib import global_config
 
 # This filename must be kept in sync with devserver's downloader.py
