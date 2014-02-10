@@ -193,7 +193,7 @@ class telemetry_AFDOGenerate(test.test):
         In this way we avoid using Telemetry benchmark support which is not
         stable on ChromeOS yet.
         """
-        AFDO_GENERATE_CLIENT_TEST = 'pagereplay_AFDOGenerate'
+        AFDO_GENERATE_CLIENT_TEST = 'telemetry_AFDOGenerateClient'
 
         # We dont want to "inherit" the profiler settings for this test
         # to the client test. Doing so will end up in two instances of
