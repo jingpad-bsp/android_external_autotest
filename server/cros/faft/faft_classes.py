@@ -159,6 +159,7 @@ class FAFTSequence(FAFTBase):
     _backup_firmware_sha = ()
     _backup_kernel_sha = dict()
     _backup_cgpt_attr = dict()
+    _backup_gbb_flags = None
 
     # Class level variable, keep track the states of one time setup.
     # This variable is preserved across tests which inherit this class.
@@ -256,6 +257,7 @@ class FAFTSequence(FAFTBase):
             self._restore_routine_from_timeout()
         self.restore_ec_write_protect()
         self.start_service('update-engine')
+        self.restore_gbb_flags()
         self.record_servo_log()
         self.record_faft_client_log()
         self.cleanup_uart_capture()
@@ -678,6 +680,25 @@ class FAFTSequence(FAFTBase):
         command = 'status %s | grep start || start %s' % (service, service)
         self.faft_client.system.run_shell_command(command)
 
+    def write_gbb_flags(self, new_flags):
+        """Write the GBB flags to the current firmware.
+
+        @param new_flags: The flags to write.
+        """
+        gbb_flags = self.faft_client.bios.get_gbb_flags()
+        if gbb_flags == new_flags:
+            return
+        logging.info('Changing GBB flags from 0x%x to 0x%x.',
+                     gbb_flags, new_flags)
+        self.faft_client.system.run_shell_command(
+                '/usr/share/vboot/bin/set_gbb_flags.sh 0x%x' % new_flags)
+        self.faft_client.bios.reload()
+        # If changing FORCE_DEV_SWITCH_ON flag, reboot to get a clear state
+        if ((gbb_flags ^ new_flags) & vboot.GBB_FLAG_FORCE_DEV_SWITCH_ON):
+            self.run_faft_step({
+                'firmware_action': self.wait_dev_screen_and_ctrl_d,
+            })
+
     def clear_set_gbb_flags(self, clear_mask, set_mask):
         """Clear and set the GBB flags in the current flashrom.
 
@@ -686,18 +707,7 @@ class FAFTSequence(FAFTBase):
         """
         gbb_flags = self.faft_client.bios.get_gbb_flags()
         new_flags = gbb_flags & ctypes.c_uint32(~clear_mask).value | set_mask
-
-        if (gbb_flags != new_flags):
-            logging.info('Change the GBB flags from 0x%x to 0x%x.',
-                         gbb_flags, new_flags)
-            self.faft_client.system.run_shell_command(
-                    '/usr/share/vboot/bin/set_gbb_flags.sh 0x%x' % new_flags)
-            self.faft_client.bios.reload()
-            # If changing FORCE_DEV_SWITCH_ON flag, reboot to get a clear state
-            if ((gbb_flags ^ new_flags) & vboot.GBB_FLAG_FORCE_DEV_SWITCH_ON):
-                self.run_faft_step({
-                    'firmware_action': self.wait_dev_screen_and_ctrl_d,
-                })
+        self.write_gbb_flags(new_flags)
 
     def check_ec_capability(self, required_cap=None, suppress_warning=False):
         """Check if current platform has required EC capabilities.
@@ -1051,6 +1061,8 @@ class FAFTSequence(FAFTBase):
         if self.check_setup_done('gbb_flags'):
             return
 
+        self._backup_gbb_flags = self.faft_client.bios.get_gbb_flags()
+
         logging.info('Set proper GBB flags for test.')
         self.clear_set_gbb_flags(vboot.GBB_FLAG_DEV_SCREEN_SHORT_DELAY |
                                  vboot.GBB_FLAG_FORCE_DEV_SWITCH_ON |
@@ -1059,6 +1071,13 @@ class FAFTSequence(FAFTBase):
                                  vboot.GBB_FLAG_ENTER_TRIGGERS_TONORM |
                                  vboot.GBB_FLAG_FAFT_KEY_OVERIDE)
         self.mark_setup_done('gbb_flags')
+
+    def restore_gbb_flags(self):
+        """Restore GBB flags to their original state."""
+        if not self._backup_gbb_flags:
+            return
+        self.write_gbb_flags(self._backup_gbb_flags)
+        self.unmark_setup_done('gbb_flags')
 
     def setup_tried_fwb(self, tried_fwb):
         """Setup for fw B tried state.
