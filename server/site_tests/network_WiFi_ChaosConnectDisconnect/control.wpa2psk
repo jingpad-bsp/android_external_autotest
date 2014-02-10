@@ -28,9 +28,10 @@ def run_chaos_wpa2psk(machine):
                                band=ap_spec.BAND_5GHZ,
                                channel=48,
                                configurator_type=ap_spec.CONFIGURATOR_STATIC)]
+    lab_status = []
     for spec in ap_specs:
         runner = chaos_runner.ChaosRunner(
-                'network_WiFi_ChaosConnectDisconnect', host, spec)
+                'network_WiFi_ChaosConnectDisconnect', host, spec, lab_status)
         runner.run(job)
 
 

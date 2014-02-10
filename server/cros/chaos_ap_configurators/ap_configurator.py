@@ -4,7 +4,18 @@
 
 import logging
 
+from autotest_lib.client.common_lib.cros.network import chaos_constants
+from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.server.cros.chaos_ap_configurators import ap_spec
+
+
+class PduNotResponding(Exception):
+    """PDU exception class."""
+    def __init__(self, PDU):
+        self.PDU = PDU
+
+    def __str__(self):
+        return repr('Caught PDU exception for %s' % self.PDU)
 
 
 class APConfiguratorAbstract(object):
@@ -23,9 +34,21 @@ class APConfiguratorAbstract(object):
         raise NotImplementedError('Missing subclass implementation')
 
 
-    def get_configuration_success(self):
-        """Returns True if the configuration was a success; False otherwise"""
-        return True
+    @property
+    def configuration_success(self):
+        """Returns configuration status as defined in chaos_constants"""
+        return self._configuration_success
+
+
+    @configuration_success.setter
+    def configuration_success(self, value):
+        """
+        Set the configuration status.
+
+        @param value: the status of AP configuration.
+
+        """
+        self._configuration_success = value
 
 
     @property
@@ -38,6 +61,18 @@ class APConfiguratorAbstract(object):
     def short_name(self):
         """Returns a short string to describe the router."""
         raise NotImplementedError('Missing subclass implementation')
+
+
+    def check_pdu_status(self):
+        """Check if the PDU is up before making any request."""
+        ping_options = ping_runner.PingConfig(self.pdu, count=2,
+                                              ignore_status=True,
+                                              ignore_result=True)
+        runner = ping_runner.PingRunner()
+        ping_result = runner.ping(ping_options)
+        if ping_result.loss:
+            self.configuration_success = chaos_constants.PDU_FAIL
+            raise PduNotResponding(self.pdu)
 
 
     def get_supported_bands(self):

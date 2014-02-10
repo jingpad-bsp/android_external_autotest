@@ -7,6 +7,7 @@ import copy
 import datetime
 import logging
 import os
+import re
 import sys
 import time
 import xmlrpclib
@@ -15,6 +16,7 @@ import ap_spec
 import download_chromium_prebuilt as prebuilt
 import web_driver_core_helpers
 
+from autotest_lib.client.common_lib.cros.network import chaos_constants
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
 from autotest_lib.server.cros.chaos_ap_configurators import ap_configurator
@@ -55,6 +57,8 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
         self._short_name = ap_config.get_model()
         self.mac_address = ap_config.get_wan_mac()
         self.host_name = ap_config.get_wan_host()
+        # Get corresponding PDU from host name.
+        self.pdu = re.sub('host\d+', 'rpm1', self.host_name) + '.cros'
         self.config_data = ap_config
 
         self._name = ('Router name: %s, Controller class: %s,'
@@ -72,7 +76,7 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
 
         self.driver_connection_established = False
         self.router_on = False
-        self.configuration_success = False
+        self._configuration_success = chaos_constants.CONFIG_SUCCESS
         self._webdriver_port = 9515
 
         self.ap_spec = None
@@ -126,7 +130,6 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
     def reset_command_list(self):
         """Resets all internal command state."""
         logging.error('Dumping command list %s', self._command_list)
-        self.configuration_success = False
         self._command_list = []
         self.destroy_driver_connection()
 
@@ -216,7 +219,7 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
         """
         Returns the traceback of a configuration error as a string.
 
-        Note that if get_configuration_success returns True this will
+        Note that if configuration_success returns CONFIG_SUCCESS this will
         be none.
 
         """
@@ -258,11 +261,6 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
     def name(self):
         """Returns a string to describe the router."""
         return self._name
-
-
-    def get_configuration_success(self):
-        """Returns True if the configuration was a success; False otherwise"""
-        return self.configuration_success
 
 
     @property
@@ -422,6 +420,7 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
 
     def _power_down_router(self):
         """Turns off the power to the ap via the power strip."""
+        self.check_pdu_status()
         self.rpm_client.queue_request(self.host_name, 'OFF')
         self.router_on = False
 
@@ -440,6 +439,7 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
         """
         if self.router_on:
             return
+        self.check_pdu_status()
         self.rpm_client.queue_request(self.host_name, 'ON')
         self.establish_driver_connection()
         # Give the router 40 seconds to come up and load page
@@ -661,7 +661,7 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
                                         executed successfully.
 
         """
-        self.configuration_success = False
+        self.configuration_success = chaos_constants.CONFIG_FAIL
         if len(self._command_list) == 0:
             return
 
@@ -713,7 +713,7 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
                     command['method'](*command['args'])
                 self.save_page(i)
         self._command_list = []
-        self.configuration_success = True
+        self.configuration_success = chaos_constants.CONFIG_SUCCESS
         self._traceback = None
         self.destroy_driver_connection()
 
@@ -758,9 +758,10 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
 
         @param outputdir: a string directory path for debug files
         """
-        self._save_all_pages()
-        self._write_screenshots('final_configuration', outputdir)
-        self.clear_screenshot_list()
+        if self.configuration_success != chaos_constants.PDU_FAIL:
+            self._save_all_pages()
+            self._write_screenshots('final_configuration', outputdir)
+            self.clear_screenshot_list()
         self.reset_command_list()
 
 

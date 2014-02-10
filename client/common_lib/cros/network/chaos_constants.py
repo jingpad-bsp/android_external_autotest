@@ -8,3 +8,8 @@ AP_CONFIG_FAIL = 'AP configuration failed'
 AP_SECURITY_MISMATCH = 'AP security mismatch'
 AP_SSID_NOTFOUND = 'SSID was not found'
 WORK_CLI_CONNECT_FAIL = 'Work client was not able to connect to the AP'
+# These constants are used by the AP configurator to indicate the type of
+# configuration failure or success.
+CONFIG_SUCCESS = 0
+PDU_FAIL = 1
+CONFIG_FAIL = 2

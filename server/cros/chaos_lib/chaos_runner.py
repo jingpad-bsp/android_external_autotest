@@ -5,6 +5,7 @@
 import contextlib
 import datetime
 import logging
+import pprint
 
 from autotest_lib.client.common_lib.cros.network import chaos_constants
 from autotest_lib.client.common_lib.cros.network import iw_runner
@@ -23,17 +24,19 @@ class ChaosRunner(object):
     """Object to run a network_WiFi_ChaosXXX test."""
 
 
-    def __init__(self, test, host, spec):
+    def __init__(self, test, host, spec, broken_pdus):
         """Initializes and runs test.
 
         @param test: a string, test name.
         @param host: an Autotest host object, device under test.
-        @param spec: an APSpec object
+        @param spec: an APSpec object.
+        @param broken_pdus: list of offline PDUs.
 
         """
         self._test = test
         self._host = host
         self._ap_spec = spec
+        self._broken_pdus = broken_pdus
         # Log server and DUT times
         dt = datetime.datetime.now()
         logging.info('Server time: %s', dt.strftime('%a %b %d %H:%M:%S %Y'))
@@ -70,7 +73,7 @@ class ChaosRunner(object):
          for ap in aps:
              ap.power_down_router()
              cartridge.push_configurator(ap)
-         cartridge.run_configurators()
+         cartridge.run_configurators(self._broken_pdus)
 
 
     def _configure_aps(self, aps):
@@ -83,7 +86,7 @@ class ChaosRunner(object):
         for ap in aps:
             ap.set_using_ap_spec(self._ap_spec)
             cartridge.push_configurator(ap)
-        cartridge.run_configurators()
+        cartridge.run_configurators(self._broken_pdus)
 
 
     def _return_available_networks(self, ap, capturer, wifi_if, job):
@@ -193,6 +196,18 @@ class ChaosRunner(object):
                         logging.info('No more APs to test.')
                         break
 
+                    # Filter the ap list before creating the cartridge by
+                    # removing all those APs that use the known broken pdus.
+                    for ap in aps:
+                        if ap.pdu in self._broken_pdus:
+                            ap.configuration_success = chaos_constants.PDU_FAIL
+                            job.run_test('network_WiFi_ChaosConfigFailure',
+                                         ap=ap,
+                                         error_string=
+                                             chaos_constants.AP_PDU_DOWN,
+                                         tag=ap.ssid)
+                            aps.remove(ap)
+
                     # Power down all of the APs because some can get grumpy
                     # if they are configured several times and remain on.
                     # User the cartridge to down group power downs and
@@ -206,13 +221,18 @@ class ChaosRunner(object):
                             logging.error('The SSID was not set for the AP:%s',
                                           ap)
 
-                        if not ap.get_configuration_success():
+                         if (ap.configuration_success !=
+                            chaos_constants.CONFIG_SUCCESS):
+                            if (ap.configuration_success ==
+                                chaos_constants.PDU_FAIL):
+                                error_string = chaos_constants.AP_PDU_DOWN
+                            else:
+                                error_string = chaos_constants.AP_CONFIG_FAIL
                             logging.error('The AP %s was not configured '
                                           'correctly', ap.ssid)
                             job.run_test('network_WiFi_ChaosConfigFailure',
                                          ap=ap,
-                                         error_string=
-                                             chaos_constants.AP_CONFIG_FAIL,
+                                         error_string=error_string,
                                          tag=ap.ssid)
                             continue
 
@@ -266,3 +286,6 @@ class ChaosRunner(object):
                             conn_worker.cleanup()
 
                 batch_locker.unlock_aps()
+            if self._broken_pdus:
+                logging.info('PDU is down!!!\nThe following PDUs are down')
+                pprint.pprint(self._broken_pdus)

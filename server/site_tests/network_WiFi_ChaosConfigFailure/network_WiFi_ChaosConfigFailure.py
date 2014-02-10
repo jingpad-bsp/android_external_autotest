@@ -29,6 +29,11 @@ class network_WiFi_ChaosConfigFailure(test.test):
 
         ap.debug_full_state(self.outputdir)
 
+        if chaos_constants.AP_PDU_DOWN in error_string:
+            raise error.TestError('The AP was not configured because the PDU '
+                                  'is down. See the ERROR log for more details.'
+                                  '\n%s', ap.name)
+
         if chaos_constants.AP_CONFIG_FAIL in error_string:
             raise error.TestError('The AP was not configured correctly. Please '
                                   'see the ERROR log for more details.\n%s',

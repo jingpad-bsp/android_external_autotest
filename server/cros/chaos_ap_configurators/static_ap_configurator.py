@@ -3,8 +3,10 @@
 # found in the LICENSE file.
 
 import collections
+import re
 import xmlrpclib
 
+from autotest_lib.client.common_lib.cros.network import chaos_constants
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
 from autotest_lib.server.cros.chaos_ap_configurators import ap_configurator
@@ -31,6 +33,8 @@ class StaticAPConfigurator(ap_configurator.APConfiguratorAbstract):
         self._short_name = ap_config.get_model()
         self.mac_address = ap_config.get_wan_mac()
         self.host_name = ap_config.get_wan_host()
+        # Get corresponding PDU from host name.
+        self.pdu = re.sub('host\d+', 'rpm1', self.host_name) + '.cros'
         self.channel = ap_config.get_channel()
         self.band = ap_config.get_band()
         self.current_band = ap_config.get_band()
@@ -39,6 +43,7 @@ class StaticAPConfigurator(ap_configurator.APConfiguratorAbstract):
         self._ssid = ap_config.get_ssid()
         self.rpm_managed = ap_config.get_rpm_managed()
 
+        self._configuration_success = chaos_constants.CONFIG_SUCCESS
         self.config_data = ap_config
 
         self._name = ('Router name: %s, Controller class: %s,'
@@ -99,6 +104,7 @@ class StaticAPConfigurator(ap_configurator.APConfiguratorAbstract):
 
     def apply_settings(self):
         """Allow cartridge to run commands in _command_list"""
+        self.check_pdu_status()
         for command in self._command_list:
             command.method(*command.args)
 
@@ -113,10 +119,6 @@ class StaticAPConfigurator(ap_configurator.APConfiguratorAbstract):
         """Returns a string to describe the router."""
         return self._name
 
-
-    def get_configuration_success(self):
-        """Returns True, there is no config step for Static APs"""
-        return True
 
     @property
     def short_name(self):
