@@ -97,18 +97,6 @@ class PingResult(object):
 
     """
 
-    @property
-    def old_style_output(self):
-        """@return old style dict of ping results."""
-        return {'xmit': str(self.sent),
-                'recv': str(self.received),
-                'loss': str(self.loss),
-                'min': str(self.min_latency),
-                'avg': str(self.avg_latency),
-                'max': str(self.max_latency),
-                'dev': str(self.dev_latency)}
-
-
     @staticmethod
     def _regex_int_from_string(regex, value):
         m = re.search(regex, value)
@@ -118,39 +106,60 @@ class PingResult(object):
         return int(m.group(1))
 
 
-    def __init__(self,ping_output):
-        """Construct a PingResult.
+    @staticmethod
+    def parse_from_output(ping_output):
+        """Construct a PingResult from ping command output.
 
         @param ping_output string stdout from a ping command.
 
         """
-        super(PingResult, self).__init__()
         loss_line = (filter(lambda x: x.find('packets transmitted') > 0,
                             ping_output.splitlines()) or [''])[0]
-        self.sent = self._regex_int_from_string('([0-9]+) packets transmitted',
-                                                loss_line)
-        self.received = self._regex_int_from_string('([0-9]+) received',
-                                                    loss_line)
-        self.loss = self._regex_int_from_string('([0-9]+)% packet loss',
-                                                loss_line)
-        if None in (self.sent, self.received, self.loss):
+        sent = PingResult._regex_int_from_string('([0-9]+) packets transmitted',
+                                                 loss_line)
+        received = PingResult._regex_int_from_string('([0-9]+) received',
+                                                     loss_line)
+        loss = PingResult._regex_int_from_string('([0-9]+)% packet loss',
+                                                 loss_line)
+        if None in (sent, received, loss):
             raise error.TestFail('Failed to parse transmission statistics.')
 
         m = re.search('(round-trip|rtt) min[^=]*= '
                       '([0-9.]+)/([0-9.]+)/([0-9.]+)/([0-9.]+)', ping_output)
         if m is not None:
-            self.min_latency = float(m.group(2))
-            self.avg_latency = float(m.group(3))
-            self.max_latency = float(m.group(4))
-            self.dev_latency = float(m.group(5))
-        else:
-            if self.received > 0:
-                raise error.TestFail('Failed to parse latency statistics.')
+            return PingResult(sent, received, loss,
+                              min_latency=float(m.group(2)),
+                              avg_latency=float(m.group(3)),
+                              max_latency=float(m.group(4)),
+                              dev_latency=float(m.group(5)))
+        if received > 0:
+            raise error.TestFail('Failed to parse latency statistics.')
 
-            self.min_latency = -1.0
-            self.avg_latency = -1.0
-            self.max_latency = -1.0
-            self.dev_latency = -1.0
+        return PingResult(sent, received, loss)
+
+
+    def __init__(self, sent, received, loss,
+                 min_latency=-1.0, avg_latency=-1.0,
+                 max_latency=-1.0, dev_latency=-1.0):
+        """Construct a PingResult.
+
+        @param sent: int number of packets sent.
+        @param received: int number of replies received.
+        @param loss: int loss as a percentage (0-100)
+        @param min_latency: float min response latency in ms.
+        @param avg_latency: float average response latency in ms.
+        @param max_latency: float max response latency in ms.
+        @param dev_latency: float response latency deviation in ms.
+
+        """
+        super(PingResult, self).__init__()
+        self.sent = sent
+        self.received = received
+        self.loss = loss
+        self.min_latency = min_latency
+        self.avg_latency = avg_latency
+        self.max_latency = max_latency
+        self.dev_latency = dev_latency
 
 
     def __repr__(self):
@@ -192,8 +201,20 @@ class PingRunner(object):
         command = ' '.join(command_pieces)
         command_result = self._run(command,
                                    timeout=ping_config.command_timeout_seconds,
-                                   ignore_status=ping_config.ignore_status)
-        ping_result = PingResult(command_result.stdout)
+                                   ignore_status=True,
+                                   ignore_timeout=True)
+        if not command_result:
+            if ping_config.ignore_status:
+                logging.warning('Ping command timed out; cannot parse output.')
+                return PingResult(ping_config.count, 0, 100)
+
+            raise error.TestFail('Ping command timed out unexpectedly.')
+
+        if command_result.exit_status and not ping_config.ignore_status:
+            raise error.TestFail('Ping command failed with code=%d' %
+                                 command_result.exit_status)
+
+        ping_result = PingResult.parse_from_output(command_result.stdout)
         if ping_config.ignore_result:
             return ping_result
 
