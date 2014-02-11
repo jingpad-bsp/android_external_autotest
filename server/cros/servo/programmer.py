@@ -137,7 +137,7 @@ class OpenocdEcProgrammer(_BaseProgrammer):
     # structure/maintenance is formalized. (see http://crosbug.com/35988 for
     # details).
     OPENOCD_SCRIPTS_LOCAL_PATH = os.path.join(os.path.dirname(
-            __file__), 'openocd_scripts')
+            __file__), '..', 'openocd_scripts')
     OPENOCD_SCRIPTS_SERVO_PATH = '/home/chromeos-test/ec/chip/lm4/openocd'
     OPENOCD_CONFIG_SCRIPT = 'servo_v2_slower.cfg'
     OPENOCD_WRITE_COMMAND = """
