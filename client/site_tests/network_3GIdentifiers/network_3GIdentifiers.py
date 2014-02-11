@@ -10,7 +10,8 @@ from autotest_lib.client.cros import network
 from autotest_lib.client.cros.cellular import mm
 
 from autotest_lib.client.cros.cellular import mm1_constants
-from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem, sim
+from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
+from autotest_lib.client.cros.cellular.pseudomodem import sim
 
 import flimflam
 
@@ -20,6 +21,13 @@ import flimflam
 # pylint: disable=W1201
 
 SERVICE_REGISTRATION_TIMEOUT = 60
+class TestSIM(sim.SIM):
+    """ sim.SIM subclass to set the network as needed. """
+    def __init__(self):
+        sim.SIM.__init__(self,
+                         sim.SIM.Carrier('att'),
+                         mm1_constants.MM_MODEM_ACCESS_TECHNOLOGY_GSM)
+
 
 class network_3GIdentifiers(test.test):
     """This test verifies that a modem returns valid identifiers."""
@@ -87,9 +95,11 @@ class network_3GIdentifiers(test.test):
     def run_once(self, use_pseudomodem=False):
         """Calls by autotest to run this test."""
         self.use_pseudomodem = use_pseudomodem
-        fake_sim = sim.SIM(sim.SIM.Carrier('att'),
-            mm1_constants.MM_MODEM_ACCESS_TECHNOLOGY_GSM)
-        with pseudomodem.TestModemManagerContext(use_pseudomodem, sim=fake_sim):
+        with pseudomodem_context.PseudoModemManagerContext(
+                use_pseudomodem,
+                {'family' : '3GPP',
+                 'test-module' : __file__,
+                 'test-sim-class' : 'TestSIM'}):
             flim = flimflam.FlimFlam()
             flim.SetDebugTags(
                 'dbus+service+device+modem+cellular+portal+network+'
