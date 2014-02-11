@@ -83,6 +83,44 @@ class FlashromProgrammer(_BaseProgrammer):
     def __init__(self, servo):
         """Configure required servo state."""
         super(FlashromProgrammer, self).__init__(servo, ['flashrom',])
+        self._fw_path = None
+        self._tmp_path = '/tmp'
+        self._fw_main = os.path.join(self._tmp_path, 'fw_main')
+        self._ro_vpd = os.path.join(self._tmp_path, 'ro_vpd')
+        self._rw_vpd = os.path.join(self._tmp_path, 'rw_vpd')
+
+
+    def program(self):
+        """Program the firmware but preserve VPD and HWID."""
+        assert self._fw_path is not None
+        self._set_servo_state()
+        try:
+            vpd_sections = [('RW_VPD', self._rw_vpd), ('RO_VPD', self._ro_vpd)]
+
+            # Save VPD from current firmware
+            for section in vpd_sections:
+                self._servo.system(' '.join([
+                    'flashrom', '-p', 'ft2232_spi:type=servo-v2',
+                    '-r', self._fw_main, '-i', '%s:%s' % section]))
+
+            # Pack the saved VPD into new firmware
+            self._servo.system('cp %s %s' % (self._fw_path, self._fw_main))
+            img_size = self._servo.system_output(
+                    "stat -c '%%s' %s" % self._fw_main)
+            pack_cmd = ['flashrom',
+                    '-p', 'dummy:image=%s,size=%s,emulate=VARIABLE_SIZE' % (
+                        self._fw_main, img_size),
+                    '-w', self._fw_main]
+            for section in vpd_sections:
+                pack_cmd.extend(['-i', '%s:%s' % section])
+            self._servo.system(' '.join(pack_cmd))
+
+            # Flash the new firmware
+            self._servo.system(' '.join([
+                'flashrom', '-p', 'ft2232_spi:type=servo-v2',
+                '-w', self._fw_main]))
+        finally:
+            self._restore_servo_state()
 
 
     def prepare_programmer(self, path, board):
@@ -91,9 +129,8 @@ class FlashromProgrammer(_BaseProgrammer):
         @param path: a string, name of the file containing the firmware image.
         @param board: a string, used to find servo voltage setting.
         """
-        self._program_command = 'flashrom -p ft2232_spi:type=servo-v2 -w %s' % (
-            path)
         faft_config = FAFTConfig(board)
+        self._fw_path = path
         self._servo_prog_state = (
             'spi2_vref:%s' % faft_config.wp_voltage,
             'spi2_buf_en:on',
