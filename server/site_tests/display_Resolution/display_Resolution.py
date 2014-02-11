@@ -71,7 +71,7 @@ class display_Resolution(test.test):
                 if test_suspend_resume:
                     logging.info('Suspend and resume')
                     self._display_client.suspend_resume()
-                    if self._host.wait_up(timeout=20)
+                    if self._host.wait_up(timeout=20):
                         logging.info('DUT is up')
                     else:
                         raise error.TestError('DUT is not up after resume')
