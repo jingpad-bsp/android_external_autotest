@@ -31,8 +31,9 @@ class display_Resolution(chameleon_test.ChameleonTest):
     ]
     # Allow a range of pixel value difference.
     PIXEL_DIFF_VALUE_MARGIN = 5
-    # Allow a number of pixels not matched, caused by the cursor.
-    TOTAL_WRONG_PIXELS_MARGIN = 20
+    # A range of pixel number which a cursor covers. We accept this number
+    # of pixels not matched in the case of a cursor showed.
+    CURSOR_PIXEL_NUMBER = 100
     # Time to wait the calibration image stable, like waiting the info
     # window "DisplayTestExtension triggered full screen" disappeared.
     CALIBRATION_IMAGE_SETUP_TIME = 10
@@ -72,7 +73,7 @@ class display_Resolution(chameleon_test.ChameleonTest):
                 error_message = self.check_screen_with_chameleon(
                         '%s-%dx%d' % (tag, width, height),
                         self.PIXEL_DIFF_VALUE_MARGIN,
-                        self.TOTAL_WRONG_PIXELS_MARGIN)
+                        self.CURSOR_PIXEL_NUMBER if test_mirrored else 0)
                 if error_message:
                     self._errors.append(error_message)
 
