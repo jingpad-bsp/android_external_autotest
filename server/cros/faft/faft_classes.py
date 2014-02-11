@@ -1280,7 +1280,10 @@ class FAFTSequence(FAFTBase):
         @param part: A string of kernel partition number or 'a'/'b'.
         """
         self.ensure_kernel_boot(part)
-        if self.faft_client.kernel.diff_a_b():
+        logging.info('Checking the integrity of kernel B and rootfs B...')
+        if (self.faft_client.kernel.diff_a_b() or
+                not self.faft_client.rootfs.verify_rootfs('B')):
+            logging.info('Copying kernel and rootfs from A to B...')
             self.copy_kernel_and_rootfs(from_part=part,
                                         to_part=self.OTHER_KERNEL_MAP[part])
         self.reset_and_prioritize_kernel(part)

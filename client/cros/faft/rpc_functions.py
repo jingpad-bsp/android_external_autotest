@@ -16,6 +16,7 @@ from autotest_lib.client.cros.faft.utils import (cgpt_state,
                                                  firmware_updater,
                                                  flashrom_handler,
                                                  kernel_handler,
+                                                 rootfs_handler,
                                                  saft_flashrom_util,
                                                  tpm_handler,
                                                 )
@@ -139,6 +140,9 @@ class RPCFunctions(object):
                 'SHORT', self._chromeos_interface, self._system_get_root_dev(),
                 self._cgpt_handler)
 
+        self._rootfs_handler = rootfs_handler.RootfsHandler()
+        self._rootfs_handler.init(self._chromeos_interface)
+
         self._updater = firmware_updater.FirmwareUpdater(self._chromeos_interface)
 
         # Initialize temporary directory path
@@ -158,7 +162,7 @@ class RPCFunctions(object):
             method = method.rsplit('.', 1)[0]
 
         categories = ('system', 'bios', 'ec', 'kernel',
-                      'tpm', 'cgpt', 'updater')
+                      'tpm', 'cgpt', 'updater', 'rootfs')
         try:
             if method.split('.', 1)[0] in categories:
                 func = getattr(self, '_%s_%s' % (method.split('.', 1)[0],
@@ -757,6 +761,13 @@ class RPCFunctions(object):
     def _updater_get_work_path(self):
         """Get updater's work directory path."""
         return self._updater.get_work_path()
+
+    def _rootfs_verify_rootfs(self, section):
+        """Verifies the integrity of the root FS.
+
+        @param section: The rootfs to verify. May be A or B.
+        """
+        return self._rootfs_handler.verify_rootfs(section)
 
     def cleanup(self):
         """Cleanup for the RPC server. Currently nothing."""
