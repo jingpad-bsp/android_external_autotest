@@ -221,7 +221,7 @@ class ChaosRunner(object):
                             logging.error('The SSID was not set for the AP:%s',
                                           ap)
 
-                         if (ap.configuration_success !=
+                        if (ap.configuration_success !=
                             chaos_constants.CONFIG_SUCCESS):
                             if (ap.configuration_success ==
                                 chaos_constants.PDU_FAIL):
