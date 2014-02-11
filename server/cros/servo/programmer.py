@@ -13,6 +13,8 @@ Servo state is preserved across the programming process.
 
 import os
 
+from autotest_lib.server.cros.faft.config.config import Config as FAFTConfig
+
 class ProgrammerError(Exception):
     """Local exception class wrapper."""
     pass
@@ -81,23 +83,24 @@ class FlashromProgrammer(_BaseProgrammer):
     def __init__(self, servo):
         """Configure required servo state."""
         super(FlashromProgrammer, self).__init__(servo, ['flashrom',])
+
+
+    def prepare_programmer(self, path, board):
+        """Prepare programmer for programming.
+
+        @param path: a string, name of the file containing the firmware image.
+        @param board: a string, used to find servo voltage setting.
+        """
+        self._program_command = 'flashrom -p ft2232_spi:type=servo-v2 -w %s' % (
+            path)
+        faft_config = FAFTConfig(board)
         self._servo_prog_state = (
-            'spi2_vref:pp3300',
+            'spi2_vref:%s' % faft_config.wp_voltage,
             'spi2_buf_en:on',
             'spi2_buf_on_flex_en:on',
             'spi_hold:off',
             'cold_reset:on',
             )
-
-
-    def prepare_programmer(self, path, board='unused'):
-        """Prepare programmer for programming.
-
-        @param path: a string, name of the file containing the firmware image.
-        @param board: unused by this class
-        """
-        self._program_command = 'flashrom -p ft2232_spi:type=servo-v2 -w %s' % (
-            path)
 
 
 class CrosProgrammer(_BaseProgrammer):
@@ -202,9 +205,9 @@ def program_ec(board, servo, image):
     @param servo: a servo object controlling the servo device
     @param image: a string, name of the file containing the new firmware image
     """
-    if board in ('link',):
+    if board in ('link', 'rambi'):
         prog = OpenocdEcProgrammer(servo)
-    elif board in ('snow'):
+    elif board in ('snow',):
         prog = Stm32monEcProgrammer(servo)
     else:
         raise ProgrammerError('unsupported board %s' % board)
@@ -220,9 +223,9 @@ def program_bootprom(board, servo, image):
     @param servo: a servo object controlling the servo device
     @param image: a string, name of the file containing the new firmware image
     """
-    if board in ('link',):
+    if board in ('link', 'rambi'):
         prog = FlashromProgrammer(servo)
-    elif board in ('snow'):
+    elif board in ('snow',):
         prog = CrosProgrammer(servo)
     else:
         raise ProgrammerError('unsupported board %s' % board)
