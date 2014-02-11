@@ -17,6 +17,7 @@ from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server import test, utils
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
+from autotest_lib.server.cros.faft.config.config import Config as FAFTConfig
 
 
 _CONFIG = global_config.global_config
@@ -49,7 +50,11 @@ class provision_FirmwareUpdate(test.test):
         # crbug.com/271834 is fixed.
         self._board = host._get_board_from_afe()
         self._build = value
-        self._ap_image = 'image-%s.bin' % self._board
+        self._config = FAFTConfig(self._board)
+        if self._config.use_u_boot:
+            self._ap_image = 'image-%s.bin' % self._board
+        else: # Depthcharge platform
+            self._ap_image = 'image.bin'
         self._ec_image = 'ec.bin'
         self.tmpd = autotemp.tempdir(unique_id='fwimage')
         self._servo = host.servo
