@@ -44,7 +44,6 @@ CLIENT_TESTS = [
 ]
 
 SERVER_TESTS = [
-    'network_3GLoadFirmware'
 ]
 
 
