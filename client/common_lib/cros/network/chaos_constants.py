@@ -5,6 +5,7 @@
 # These constants are used by the chaos_runner to raise TestError based on
 # failure
 AP_CONFIG_FAIL = 'AP configuration failed'
+AP_PDU_DOWN = 'PDU is down'
 AP_SECURITY_MISMATCH = 'AP security mismatch'
 AP_SSID_NOTFOUND = 'SSID was not found'
 WORK_CLI_CONNECT_FAIL = 'Work client was not able to connect to the AP'
