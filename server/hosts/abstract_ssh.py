@@ -104,7 +104,8 @@ class AbstractSSHHost(remote.RemoteHost):
             symlink_flag = ""
         else:
             symlink_flag = "-L"
-        command = "rsync %s %s --timeout=1800 --rsh='%s' -az %s %s"
+        command = ("rsync %s %s --timeout=1800 --rsh='%s' -az --no-o --no-g "
+                   "%s %s")
         return command % (symlink_flag, delete_flag, ssh_cmd,
                           " ".join(sources), dest)
 
