@@ -80,9 +80,10 @@ class security_ProfilePermissionsTelemetry(test.test):
                  ' -path "%s/shill" -prune -o '
                  ' -path "%s/.chaps" -prune -o '
                  ' -path "%s/u-*" -prune -o '
+                 ' -path "%s/crash" -prune -o '
                  ' \\( -perm /022 -o \\! -user chronos \\) -ls') %
                 (homepath, homepath, homepath, user_mountpt, user_mountpt,
-                user_mountpt, user_mountpt, homepath),
+                user_mountpt, user_mountpt, homepath, homepath),
                 # /home/chronos/user and /home/chronos/user/Downloads are owned
                 # by the chronos-access group and with a group execute
                 # permission.
