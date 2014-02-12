@@ -136,8 +136,14 @@ class kernel_ConfigVerify(test.test):
         if value in wanted:
             self._passed('"%s" was "%s" in kernel config' % (name, value))
         else:
+            states = []
+            for state in wanted:
+                if state == None:
+                    states.append("unset")
+                else:
+                    states.append(state)
             self._failed('"%s" was "%s" (wanted one of "%s") in kernel config' %
-                         (name, value, '|'.join(wanted)))
+                         (name, value, '|'.join(states)))
 
     def has_value(self, name, value):
         """Determine if the name config item has a specific value.
