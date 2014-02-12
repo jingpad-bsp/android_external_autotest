@@ -519,8 +519,8 @@ def parse_arguments(argv):
                         dest='no_quickmerge',
                         help='Skip the quickmerge step and use the sysroot '
                              'as it currently is. May result in un-merged '
-                             'source tree changes not being reflected in run.'
-                             'If using --autotest_dir, this flag is '
+                             'source tree changes not being reflected in the '
+                             'run. If using --autotest_dir, this flag is '
                              'automatically applied.')
     parser.add_argument('--no-experimental', action='store_true',
                         default=False, dest='no_experimental',
