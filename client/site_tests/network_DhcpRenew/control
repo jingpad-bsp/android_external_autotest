@@ -4,7 +4,7 @@
 
 AUTHOR = 'wiley, pstew, quiche'
 NAME = 'network_DhcpRenew'
-SUITE = 'bvt, network_nightly'
+SUITE = 'network_nightly'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
 
