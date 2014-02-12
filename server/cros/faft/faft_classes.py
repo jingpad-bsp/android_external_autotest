@@ -160,6 +160,7 @@ class FAFTSequence(FAFTBase):
     _backup_kernel_sha = dict()
     _backup_cgpt_attr = dict()
     _backup_gbb_flags = None
+    _backup_dev_mode = None
 
     # Class level variable, keep track the states of one time setup.
     # This variable is preserved across tests which inherit this class.
@@ -255,6 +256,7 @@ class FAFTSequence(FAFTBase):
             # Remote is not responding. Revive DUT so that subsequent tests
             # don't fail.
             self._restore_routine_from_timeout()
+        self.restore_dev_mode()
         self.restore_ec_write_protect()
         self.start_service('update-engine')
         self.restore_gbb_flags()
@@ -1232,6 +1234,8 @@ class FAFTSequence(FAFTBase):
             if not self.checkers.crossystem_checker({'devsw_boot': '1',
                     'mainfw_type': 'developer'}):
                 logging.info('System is not in dev mode. Reboot into it.')
+                if self._backup_dev_mode is None:
+                    self._backup_dev_mode = False
                 self.run_faft_step({
                     'userspace_action': None if self.faft_config.keyboard_dev
                         else (self.faft_client.system.run_shell_command,
@@ -1247,6 +1251,8 @@ class FAFTSequence(FAFTBase):
             if not self.checkers.crossystem_checker({'devsw_boot': '0',
                     'mainfw_type': 'normal'}):
                 logging.info('System is not in normal mode. Reboot into it.')
+                if self._backup_dev_mode is None:
+                    self._backup_dev_mode = True
                 self.run_faft_step({
                     'userspace_action': None if self.faft_config.keyboard_dev
                         else (self.faft_client.system.run_shell_command,
@@ -1254,6 +1260,12 @@ class FAFTSequence(FAFTBase):
                     'reboot_action': self.disable_keyboard_dev_mode if
                         self.faft_config.keyboard_dev else None,
                 })
+
+    def restore_dev_mode(self):
+        """Restores original dev mode status if it has changed."""
+        if self._backup_dev_mode is not None:
+            self.setup_dev_mode(self._backup_dev_mode)
+            self._backup_dev_mode = None
 
     def setup_rw_boot(self, section='a'):
         """Make sure firmware is in RW-boot mode.
