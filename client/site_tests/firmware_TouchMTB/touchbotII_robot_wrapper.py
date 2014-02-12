@@ -23,6 +23,10 @@ SCRIPT_CLICK = 'click.py'
 SCRIPT_ONE_STATIONARY_FINGER = 'one_stationary_finger.py'
 SCRIPT_STATIONARY_WITH_TAPS = 'stationary_finger_with_taps_around_it.py'
 
+# A script to "reset" the robot by having it move safely to a spot just above
+# the center of the touchpad.
+SCRIPT_RESET = 'reset.py'
+
 # Define constants for coordinates.
 # Normally, a gesture is performed within [START, END].
 # For tests involved with RangeValidator which intends to verify
@@ -214,6 +218,10 @@ class RobotWrapper:
             raise RobotWrapperError('Error getting the fingertips!')
         self.fingertip_size = size
         self.fingertips = [size, size, size, size]
+
+        reset_script = os.path.join(self._robot_script_dir, SCRIPT_RESET)
+        para = (reset_script, self._board, self._speed_dict[GV.FAST])
+        self._execute_control_command('python %s %s.p %d' % para)
 
     def return_fingertips(self):
         script = os.path.join(self._robot_script_dir,
