@@ -192,6 +192,11 @@ class autoupdate_CatchBadSignatures(test.test):
         return staged_url
 
 
+    def cleanup(self):
+        if self._host:
+            self._host.reboot()
+
+
     def run_once(self, host):
         """Runs the test on the DUT represented by |host|."""
 
