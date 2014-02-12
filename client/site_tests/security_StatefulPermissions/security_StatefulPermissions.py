@@ -22,7 +22,7 @@ class security_StatefulPermissions(test.test):
                      "avfs": [],
                      "bin": [],
                      "bluetooth": ["/encrypted/var/lib/bluetooth"],
-                     "chaps": [],
+                     "chaps": ["/encrypted/var/lib/chaps"],
                      "chronos": ["/encrypted/chronos",
                                  "/encrypted/var/cache/app_pack",
                                  "/encrypted/var/cache/device_local_account_extensions",
