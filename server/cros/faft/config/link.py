@@ -10,6 +10,7 @@ class Values(object):
     dev_screen = 4
     chrome_ec = True
     long_rec_combo = True
+    use_u_boot = True
     ec_capability = ['adc_ectemp', 'battery', 'charging',
                      'keyboard', 'lid', 'x86', 'thermal',
                      'usb', 'peci', 'kblight', 'smart_usb_charge']

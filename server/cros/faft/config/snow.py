@@ -9,3 +9,4 @@ class Values(object):
     chrome_ec = True
     ec_capability = (['battery', 'keyboard', 'arm'])
     ec_boot_to_console = 0.4
+    use_u_boot = True

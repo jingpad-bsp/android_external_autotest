@@ -8,4 +8,5 @@
 class Values(object):
     software_sync_update = 6
     chrome_ec = True
+    use_u_boot = True
     ec_capability = (['battery', 'keyboard', 'arm', 'lid'])

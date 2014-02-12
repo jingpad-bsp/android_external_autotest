@@ -23,6 +23,7 @@ class Values(object):
     keyboard_dev = True
     rec_button_dev_switch = False
     long_rec_combo = False
+    use_u_boot = False
     ec_capability = list()
     gbb_version = 1.1
     wp_voltage = 'pp1800'
