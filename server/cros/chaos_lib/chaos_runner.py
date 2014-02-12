@@ -24,7 +24,7 @@ class ChaosRunner(object):
     """Object to run a network_WiFi_ChaosXXX test."""
 
 
-    def __init__(self, test, host, spec, broken_pdus):
+    def __init__(self, test, host, spec, broken_pdus=list()):
         """Initializes and runs test.
 
         @param test: a string, test name.
@@ -205,7 +205,7 @@ class ChaosRunner(object):
                                          ap=ap,
                                          error_string=
                                              chaos_constants.AP_PDU_DOWN,
-                                         tag=ap.ssid)
+                                         tag=ap.host_name)
                             aps.remove(ap)
 
                     # Power down all of the APs because some can get grumpy
