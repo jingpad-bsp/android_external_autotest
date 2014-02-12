@@ -11,9 +11,6 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "logging"
 TEST_TYPE = "client"
-EXPERIMENTAL = "True"
-# TODO(achuith,dennisjeffrey): Replace logging_AsanCrash with this test once
-# this test is promoted to non-experimental smoke. crbug.com/266124
 
 DOC = """
 This is a positive test for Address Sanitizer.
