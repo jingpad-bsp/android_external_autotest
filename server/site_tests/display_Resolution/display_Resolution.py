@@ -40,15 +40,13 @@ class display_Resolution(chameleon_test.ChameleonTest):
 
 
     def initialize(self, host):
-        self._errors = []
-        self._host = host
         self._test_data_dir = os.path.join(
                 self.bindir, 'display_Resolution_test_data')
         super(display_Resolution, self).initialize(host, self._test_data_dir)
 
 
-    def run_once(self, host, usb_serial=None, test_mirrored=False,
-                 test_suspend_resume=False):
+    def run_once(self, host, test_mirrored=False, test_suspend_resume=False):
+        errors = []
         for tag, width, height in self.RESOLUTION_TEST_LIST:
             self.set_up_chameleon((tag, width, height))
             try:
@@ -60,7 +58,7 @@ class display_Resolution(chameleon_test.ChameleonTest):
                 if test_suspend_resume:
                     logging.info('Suspend and resume')
                     self.display_client.suspend_resume()
-                    if self._host.wait_up(timeout=20):
+                    if host.wait_up(timeout=20):
                         logging.info('DUT is up')
                     else:
                         raise error.TestError('DUT is not up after resume')
@@ -75,14 +73,14 @@ class display_Resolution(chameleon_test.ChameleonTest):
                         self.PIXEL_DIFF_VALUE_MARGIN,
                         self.CURSOR_PIXEL_NUMBER if test_mirrored else 0)
                 if error_message:
-                    self._errors.append(error_message)
+                    errors.append(error_message)
 
             finally:
                 self.display_client.close_tab()
                 self.chameleon.reset()
 
-        if self._errors:
-            raise error.TestFail('; '.join(self._errors))
+        if errors:
+            raise error.TestFail('; '.join(errors))
 
 
     def set_up_chameleon(self, resolution):

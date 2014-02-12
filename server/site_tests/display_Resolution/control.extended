@@ -4,12 +4,12 @@
 
 from autotest_lib.server import utils
 
-AUTHOR = "jcliang, chromeos-chameleon"
+AUTHOR = "chromeos-chameleon"
 NAME = "display_Resolution.extended"
 PURPOSE = "Remotely controlled display resolution test."
 CRITERIA = "This test will fail if the captured display checksum mismatches."
-EXPERIMENTAL = True
-TIME = "MEDIUM"
+SUITE = "chameleon"
+TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "display"
 TEST_TYPE = "server"
@@ -23,6 +23,6 @@ chameleon_args = hosts.CrosHost.get_chameleon_arguments(args_dict)
 
 def run(machine):
     host = hosts.create_host(machine, chameleon_args=chameleon_args)
-    job.run_test("display_Resolution", host=host)
+    job.run_test("display_Resolution", host=host, tag="extended")
 
 parallel_simple(run, machines)
