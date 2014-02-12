@@ -301,11 +301,18 @@ class kernel_ConfigVerify(test.test):
 
         # Security; marks data segments as RO/NX.
         if self._arch.startswith('arm'):
-            # TODO(kees): ARM kernel needs the module RO/NX logic added.
+            # On ARM RODATA is not a config option, it is hardcoded.
             self.is_missing('DEBUG_RODATA')
-            self.is_missing('DEBUG_SET_MODULE_RONX')
         else:
             self.has_builtin('DEBUG_RODATA')
+        # DEBUG_SET_MODULE_RONX exists on all x86 and on ARM in 3.8.
+        if self._arch.startswith('arm'):
+            if utils.compare_versions(kernel_ver, "3.8") >= 0 and \
+               utils.compare_versions(kernel_ver, "3.10") < 0:
+                self.has_builtin('DEBUG_SET_MODULE_RONX')
+            else:
+                self.is_missing('DEBUG_SET_MODULE_RONX')
+        else:
             self.has_builtin('DEBUG_SET_MODULE_RONX')
 
         # Kernel: make sure port 0xED is the one used for I/O delay
