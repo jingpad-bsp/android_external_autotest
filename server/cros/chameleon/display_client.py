@@ -44,17 +44,7 @@ class DisplayClient(object):
         # is there when we try to call it.
         client_at = autotest.Autotest(self._client)
         client_at.install()
-
-        # Start up the XML-RPC proxy on the client.
-        self._display_xmlrpc_client = self._client.xmlrpc_connect(
-                constants.DISPLAY_TESTING_XMLRPC_SERVER_COMMAND,
-                constants.DISPLAY_TESTING_XMLRPC_SERVER_PORT,
-                command_name=(
-                    constants.DISPLAY_TESTING_XMLRPC_SERVER_CLEANUP_PATTERN
-                ),
-                ready_test_name=(
-                    constants.DISPLAY_TESTING_XMLRPC_SERVER_READY_METHOD),
-                timeout_seconds=self.XMLRPC_CONNECT_TIMEOUT)
+        self.connect()
 
         if run_httpd:
             # TODO(waihong): Auto-generate the calibration images.
@@ -70,6 +60,19 @@ class DisplayClient(object):
             self._server_ip = re.search(
                     r'([0-9.]+) \d+ [0-9.]+ \d+',
                     self._client.run('echo $SSH_CONNECTION').stdout).group(1)
+
+
+    def connect(self):
+        """Connects the XML-RPC proxy on the client."""
+        self._display_xmlrpc_client = self._client.xmlrpc_connect(
+                constants.DISPLAY_TESTING_XMLRPC_SERVER_COMMAND,
+                constants.DISPLAY_TESTING_XMLRPC_SERVER_PORT,
+                command_name=(
+                    constants.DISPLAY_TESTING_XMLRPC_SERVER_CLEANUP_PATTERN
+                ),
+                ready_test_name=(
+                    constants.DISPLAY_TESTING_XMLRPC_SERVER_READY_METHOD),
+                timeout_seconds=self.XMLRPC_CONNECT_TIMEOUT)
 
 
     def cleanup(self):
