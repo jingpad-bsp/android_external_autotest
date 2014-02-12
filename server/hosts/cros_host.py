@@ -1037,7 +1037,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                         '%s.SUCCEEDED' % repair_func.__name__).increment()
                 if board:
                     stats.Counter(
-                        '%s.SUCCEEDED.%s' % (repair_func.__name__,
+                        '%s.%s.SUCCEEDED' % (repair_func.__name__,
                                              board)).increment()
                 return
             except error.AutoservRepairMethodNA as e:
@@ -1045,7 +1045,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                         '%s.RepairNA' % repair_func.__name__).increment()
                 if board:
                     stats.Counter(
-                        '%s.RepairNA.%s' % (repair_func.__name__,
+                        '%s.%s.RepairNA' % (repair_func.__name__,
                                             board)).increment()
                 logging.warn('Repair function NA: %s', e)
                 errors.append(str(e))
@@ -1054,7 +1054,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                         '%s.FAILED' % repair_func.__name__).increment()
                 if board:
                     stats.Counter(
-                        '%s.FAILED.%s' % (repair_func.__name__,
+                        '%s.%s.FAILED' % (repair_func.__name__,
                                           board)).increment()
                 logging.warn('Failed to repair device: %s', e)
                 errors.append(str(e))
