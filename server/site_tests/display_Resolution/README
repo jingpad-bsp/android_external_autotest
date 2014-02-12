@@ -1,8 +1,8 @@
 The test data needed by this test is fetched from:
 
-gs://chromeos-localmirror-private/distfiles/display_Resolution_test_data-<version>.tar.bz2
+gs://chromeos-localmirror/distfiles/display_Resolution_test_data-<version>.tar.bz2
 
-The link is specified in SRC_URI of autotest-private-tests-display ebuild.
+The link is specified in SRC_URI of autotest-testdata-display ebuild.
 
 If you need to update the test data, please do:
 
