@@ -86,6 +86,9 @@ class PseudoModemManagerContext(object):
 
     """
     SHORT_TIMEOUT_SECONDS = 4
+    # Some actions are dependent on hardware cooperating. We need to wait longer
+    # for these. Try to minimize using this constant.
+    WAIT_FOR_HARDWARE_TIMEOUT_SECONDS = 12
     TEMP_FILE_PREFIX = 'pseudomodem_'
     REAL_MANAGER_SERVICES = ['modemmanager', 'cromo']
     REAL_MANAGER_PROCESSES = ['ModemManager', 'cromo']
@@ -174,7 +177,7 @@ class PseudoModemManagerContext(object):
         self._CheckPseudoModemArguments()
 
         self._service_stopper.stop_services()
-        self._WarnAboutRealManagers()
+        self._WaitForRealModemManagersToDie()
 
         self._net_interface = net_interface.PseudoNetInterface()
         self._net_interface.Setup()
@@ -275,23 +278,40 @@ class PseudoModemManagerContext(object):
         return arg_file_path
 
 
-    def _WarnAboutRealManagers(self):
+    def _WaitForRealModemManagersToDie(self):
         """
-        Warn if real modemmanager are running.
+        Wait for real modem managers to quit. Die otherwise.
 
         Sometimes service stopper does not kill ModemManager process, if it is
-        launched by something other than upstart. At least add a warning to help
-        debugging.
+        launched by something other than upstart. We want to ensure that the
+        process is dead before continuing.
 
+        This method can block for up to a minute. Sometimes, ModemManager can
+        take up to a 10 seconds to die after service stopper has stopped it. We
+        wait for it to clean up before concluding that the process is here to
+        stay.
+
+        @raises: PseudoModemManagerContextException if a modem manager process
+                does not quit in a reasonable amount of time.
         """
+        def _IsProcessRunning(process):
+            try:
+                utils.run('pgrep -x %s' % process)
+                return True
+            except error.CmdError:
+                return False
+
         for manager in self.REAL_MANAGER_PROCESSES:
             try:
-                utils.run('pgrep -x %s' % manager)
-                logging.warning('%s is still running. '
-                                'It may interfere with pseudomodem.',
-                                manager)
-            except error.CmdError:
-                pass
+                utils.poll_for_condition(
+                        lambda:not _IsProcessRunning(manager),
+                        timeout=self.WAIT_FOR_HARDWARE_TIMEOUT_SECONDS)
+            except utils.TimeoutError:
+                err_msg = ('%s is still running. '
+                           'It may interfere with pseudomodem.' %
+                           manager)
+                logging.error(err_msg)
+                raise PseudoModemManagerContextException(err_msg)
 
 
     def _CheckPseudoModemArguments(self):
@@ -340,7 +360,8 @@ class PseudoModemManagerContext(object):
                         pm_constants.TESTING_PATH)
                 return testing_object.IsAlive(
                         dbus_interface=pm_constants.I_TESTING)
-            except dbus.DBusException:
+            except dbus.DBusException as e:
+                logging.debug('LivenessCheck: No luck yet. (%s)', str(e))
                 return False
 
         utils.poll_for_condition(
