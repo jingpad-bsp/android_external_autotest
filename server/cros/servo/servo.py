@@ -130,6 +130,11 @@ class Servo(object):
         return self._servo_host.is_localhost()
 
 
+    def get_servo_version(self):
+        """Returns the version of the servo board."""
+        return self._server.get_version()
+
+
     def power_long_press(self):
         """Simulate a long power button press."""
         # After a long power press, the EC may ignore the next power
