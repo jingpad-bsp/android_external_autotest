@@ -65,8 +65,7 @@ class PseudoNetInterface(object):
                 '--dhcp-leasefile=/tmp/dnsmasq.leases '
                 '--dhcp-range=%s.2,%s.254 '
                 '--no-resolv '
-                '--no-hosts '
-                '--bind-interfaces ' %
+                '--no-hosts ' %
                 (PseudoNetInterface.IFACE_IP_BASE,
                  PseudoNetInterface.IFACE_IP_BASE))
         test_fetch_url_host = \
