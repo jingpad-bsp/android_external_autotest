@@ -10,10 +10,10 @@ import time
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server.cros.network import netperf_runner
 from autotest_lib.server.cros.network import netperf_session
-from autotest_lib.server.cros.network import rvr_test_base
+from autotest_lib.server.cros.network import wifi_cell_test_base
 
 
-class network_WiFi_AttenuatedPerf(rvr_test_base.RvRTestBase):
+class network_WiFi_AttenuatedPerf(wifi_cell_test_base.WiFiCellTestBase):
     """Test maximal achievable bandwidth while varying attenuation.
 
     Performs a performance test for a specified router configuration as

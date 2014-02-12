@@ -9,7 +9,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server.cros.network import attenuator_controller
 from autotest_lib.server.cros.network import hostap_config
-from autotest_lib.server.cros.network import rvr_test_base
+from autotest_lib.server.cros.network import wifi_cell_test_base
 
 STARTING_ATTENUATION = 60
 ATTENUATION_STEP = 4
@@ -17,7 +17,7 @@ FINAL_ATTENUATION = 80
 ATTENUATORS_PER_PHY = 2
 
 
-class network_WiFi_VerifyAttenuator(rvr_test_base.RvRTestBase):
+class network_WiFi_VerifyAttenuator(wifi_cell_test_base.WiFiCellTestBase):
     """Test that all connected attenuators are functioning correctly."""
     version = 1
 

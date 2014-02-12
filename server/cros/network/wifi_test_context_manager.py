@@ -14,6 +14,7 @@ from autotest_lib.server import hosts
 from autotest_lib.server import site_linux_router
 from autotest_lib.server import site_linux_server
 from autotest_lib.server.cros import wifi_test_utils
+from autotest_lib.server.cros.network import attenuator_controller
 from autotest_lib.server.cros.network import wifi_client
 
 
@@ -27,6 +28,7 @@ class WiFiTestContextManager(object):
     manager rather than building it into the test class logic.
 
     """
+    CMDLINE_ATTEN_ADDR = 'atten_addr'
     CMDLINE_CLIENT_PACKET_CAPTURES = 'client_capture'
     CMDLINE_PACKET_CAPTURE_SNAPLEN = 'capture_snaplen'
     CMDLINE_ROUTER_ADDR = 'router_addr'
@@ -36,7 +38,21 @@ class WiFiTestContextManager(object):
 
 
     @property
-    def router_address(self):
+    def _attenuator_address(self):
+        """@return string address of WiFi attenuator host in test."""
+        hostname = self.client.host.hostname
+        if utils.host_is_in_lab_zone(hostname):
+            return wifi_test_utils.get_attenuator_addr_in_lab(hostname)
+
+        elif self.CMDLINE_ATTEN_ADDR in self._cmdline_args:
+            return self._cmdline_args[self.CMDLINE_ATTEN_ADDR]
+
+        raise error.TestError('Test not running in lab zone and no '
+                              'attenuator address given')
+
+
+    @property
+    def _router_address(self):
         """@return string address of WiFi router host in test."""
         hostname = self.client.host.hostname
         if utils.host_is_in_lab_zone(hostname):
@@ -50,35 +66,13 @@ class WiFiTestContextManager(object):
                               'router address given')
 
 
-    def __init__(self, test_name, host, cmdline_args, debug_dir):
-        """Construct a WiFiTestContextManager.
+    @property
+    def attenuator(self):
+        """@return attenuator object (e.g. a BeagleBone)."""
+        if self._attenuator is None:
+            raise error.TestNAError('No attenuator available in this setup.')
 
-        Optionally can pull addresses of the server address, router address,
-        or router port from cmdline_args.
-
-        @param test_name string descriptive name for this test.
-        @param host host object representing the DUT.
-        @param cmdline_args dict of key, value settings from command line.
-
-        """
-        super(WiFiTestContextManager, self).__init__()
-        self._test_name = test_name
-        self._cmdline_args = cmdline_args.copy()
-        self._client_proxy = wifi_client.WiFiClient(host, debug_dir)
-        self._router = None
-        self._server = None
-        self._enable_client_packet_captures = False
-        self._enable_router_packet_captures = False
-        self._packet_capture_snaplen = None
-
-
-    def __enter__(self):
-        self.setup()
-        return self
-
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.teardown()
+        return self._attenuator
 
 
     @property
@@ -97,6 +91,49 @@ class WiFiTestContextManager(object):
     def server(self):
         """@return server object representing the server in the test."""
         return self._server
+
+
+    def __init__(self, test_name, host, cmdline_args, debug_dir):
+        """Construct a WiFiTestContextManager.
+
+        Optionally can pull addresses of the server address, router address,
+        or router port from cmdline_args.
+
+        @param test_name string descriptive name for this test.
+        @param host host object representing the DUT.
+        @param cmdline_args dict of key, value settings from command line.
+
+        """
+        super(WiFiTestContextManager, self).__init__()
+        self._test_name = test_name
+        self._cmdline_args = cmdline_args.copy()
+        self._client_proxy = wifi_client.WiFiClient(host, debug_dir)
+        self._attenuator = None
+        self._router = None
+        self._server = None
+        self._enable_client_packet_captures = False
+        self._enable_router_packet_captures = False
+        self._packet_capture_snaplen = None
+
+
+    def __enter__(self):
+        self.setup()
+        return self
+
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.teardown()
+
+
+    def _is_hostname_pingable(self, hostname):
+        ping_helper = ping_runner.PingRunner()
+        ping_config = ping_runner.PingConfig(hostname, count=3,
+                                             interval=0.5, ignore_result=True,
+                                             ignore_status=True)
+        ping_result = ping_helper.ping(ping_config)
+        if ping_result is None or ping_result.loss:
+            return False
+        return True
 
 
     def get_wifi_addr(self, ap_num=0):
@@ -173,25 +210,27 @@ class WiFiTestContextManager(object):
         # figuring out what kind of test setup we're using.
         router_port = int(self._cmdline_args.get(self.CMDLINE_ROUTER_PORT, 22))
         logging.info('Connecting to router at %s:%d',
-                     self.router_address, router_port)
-        ping_helper = ping_runner.PingRunner()
-        ping_config = ping_runner.PingConfig(self.router_address, count=3,
-                                             interval=0.5, ignore_result=True,
-                                             ignore_status=True)
-        ping_result = ping_helper.ping(ping_config).loss
-        if ping_result is None or ping_result:
-            raise error.TestFail('Router at %s is not pingable!' %
-                                 self.router_address)
+                     self._router_address, router_port)
+        if not self._is_hostname_pingable(self._router_address):
+            raise error.TestError('Router at %s is not pingable.',
+                                  self._router_address)
 
         self._router = site_linux_router.LinuxRouter(
-                hosts.SSHHost(self.router_address, port=router_port),
+                hosts.SSHHost(self._router_address, port=router_port),
                 self._test_name)
         # The '_server' is a machine which hosts network services, such as
         # OpenVPN or StrongSwan.  Note that we make a separate SSHHost instance
         # here because both the server and the router expect to close() their
         # host, and only one close() is permitted.
         self._server = site_linux_server.LinuxServer(
-                hosts.SSHHost(self.router_address, port=router_port), {})
+                hosts.SSHHost(self._router_address, port=router_port), {})
+        # The attenuator host gives us the ability to attenuate particular
+        # antennas on the router.  Most setups don't have this capability
+        # and most tests do not require it.  We use this for RvR
+        # (network_WiFi_AttenuatedPerf) and some roaming tests.
+        if self._is_hostname_pingable(self._attenuator_address):
+            self._attenuator = attenuator_controller.AttenuatorController(
+                    hosts.SSHHost(self._attenuator_address, port=22))
         # Set up a clean context to conduct WiFi tests in.
         self.client.shill.init_test_network_state()
         if self.CMDLINE_CLIENT_PACKET_CAPTURES in self._cmdline_args:
@@ -208,7 +247,7 @@ class WiFiTestContextManager(object):
     def teardown(self):
         """Teardown the state used in a WiFi test."""
         logging.debug('Tearing down the test context.')
-        for system in [self.client, self._router, self._server]:
+        for system in [self.attenuator, self.client, self.router, self.server]:
             if system is not None:
                 system.close()
 
