@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 from autotest_lib.client.bin import test
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import power_utils, sys_power
 
 
