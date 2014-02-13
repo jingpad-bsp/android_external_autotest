@@ -47,6 +47,17 @@ class platform_FilePerms(test.test):
             'type': 'ext4',
             'options': standard_rw_options},
         '/proc': {'type': 'proc', 'options': standard_rw_options},
+        '/run': { # Special case, we want to track mode too.
+            'type': 'tmpfs',
+            'options': ['rw', 'nosuid', 'nodev', 'noexec', 'relatime',
+                        'mode=755']},
+        # Special case, we want to track group/mode too.
+        # gid 236 == debugfs-access
+        '/run/debugfs_gpu': {
+            'type': 'debugfs',
+            'options': ['rw', 'nosuid', 'nodev', 'noexec', 'relatime',
+                        'gid=236', 'mode=750']},
+        '/run/lock': {'type': 'tmpfs', 'options': standard_rw_options},
         '/sys': {'type': 'sysfs', 'options': standard_rw_options},
         '/sys/fs/cgroup': {
             'type': 'tmpfs',
@@ -65,17 +76,6 @@ class platform_FilePerms(test.test):
             'options': standard_rw_options},
         '/tmp': {'type': 'tmpfs', 'options': standard_rw_options},
         '/var': {'type': 'ext4', 'options': standard_rw_options},
-        '/var/lock': {'type': 'tmpfs', 'options': standard_rw_options},
-        '/var/run': { # Special case, we want to track mode too.
-            'type': 'tmpfs',
-            'options': ['rw', 'nosuid', 'nodev', 'noexec', 'relatime',
-                        'mode=755']},
-        # Special case, we want to track group/mode too.
-        # gid 236 == debugfs-access
-        '/var/run/debugfs_gpu': {
-            'type': 'debugfs',
-            'options': ['rw', 'nosuid', 'nodev', 'noexec', 'relatime',
-                        'gid=236', 'mode=750']},
         '/usr/share/oem': {
             'type': 'ext4',
             'options': ['ro', 'nosuid', 'nodev', 'noexec', 'relatime']},
@@ -98,7 +98,7 @@ class platform_FilePerms(test.test):
         gid = os.stat(fs)[stat.ST_GID]
 
         if userid != uid:
-            logging.error('Wrong uid in filesystem "%s"',fs)
+            logging.error('Wrong uid in filesystem "%s"', fs)
             errors += 1
         if userid != gid:
             logging.error('Wrong gid in filesystem "%s"', fs)
@@ -300,6 +300,7 @@ class platform_FilePerms(test.test):
                      '/mnt/stateful_partition': ['0755'],
                      '/opt': ['0755'],
                      '/proc': ['0555'],
+                     '/run': ['0755'],
                      '/sbin': ['0755'],
                      '/sys': ['0555', '0755'],
                      '/tmp': ['0777'],
@@ -318,7 +319,7 @@ class platform_FilePerms(test.test):
                    '/usr/sbin', '/usr/share']
 
         # Root directories writable by root
-        root_rw_dirs = ['/var', '/var/lib', '/var/cache', '/var/log',
+        root_rw_dirs = ['/run', '/var', '/var/lib', '/var/cache', '/var/log',
                         '/usr/local']
 
         # Ensure you cannot write files in read only directories.
