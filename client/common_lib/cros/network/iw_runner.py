@@ -438,12 +438,29 @@ class IwRunner(object):
 
     def set_regulatory_domain(self, domain_string):
         """
-        Set the regulatory domain of the current machine.
+        Set the regulatory domain of the current machine.  Note that
+        the regulatory change happens asynchronously to the exit of
+        this function.
 
         @param domain_string: string regulatory domain name (e.g. 'US').
 
         """
         self._run('%s reg set %s' % (self._command_iw, domain_string))
+
+
+    def get_regulatory_domain(self):
+        """
+        Get the regulatory domain of the current machine.
+
+        @returns a string containing the 2-letter regulatory domain name
+            (e.g. 'US').
+
+        """
+        output = self._run('%s reg get' % self._command_iw).stdout
+        m = re.match('^country (..):', output)
+        if not m:
+            return None
+        return m.group(1)
 
 
     def wait_for_scan_result(self, interface, bss=None, ssid=None,
