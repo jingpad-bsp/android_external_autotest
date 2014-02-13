@@ -138,9 +138,44 @@ class _PowerStateController(object):
         """
         raise NotImplementedError()
 
+
+class _ServodController(_PowerStateController):
+
+    """Controller based on the servod `power_state` control.
+
+    TODO(jrbarnette):  This is a transitional class.  Servod is
+    adding support for operations like `set('power_state', 'off')`,
+    which will supersede `_PowerStateController`.  However, not all
+    boards are both implemented and tested in servod.  To manage
+    the transition, boards that support the new feature are mapped
+    to this class.
+
+    Once support in hdctools is complete for all boards, this class
+    should be removed, and the functionality should be refactored to
+    be board-independent.
+
+    """
+
+    @_inherit_docstring(_PowerStateController)
+    def recovery_supported(self):
+        return True
+
+    @_inherit_docstring(_PowerStateController)
+    def power_off(self):
+        self._servo.set_nocheck('power_state', 'off')
+
+    @_inherit_docstring(_PowerStateController)
+    def power_on(self, rec_mode=REC_OFF):
+        if rec_mode == REC_OFF:
+            state = 'on'
+        else:
+            state = 'rec'
+        self._servo.set_nocheck('power_state', state)
+
+
 class _PantherController(_PowerStateController):
 
-    """Power-state controller for Pantherand compatible boards.
+    """Power-state controller for Panther and compatible boards.
 
     For Panther, the 'cold_reset' signal is now connected (from DVT)
     However releasing the 'cold_reset' line does not power on the
@@ -343,39 +378,11 @@ class _DaisyController(_ChromeECController):
     _EC_CONSOLE_DELAY = 0.4
 
 
-class _LinkController(_ChromeECController):
-
-    """Power-state controller for Link.
-
-    Link has a Chrome EC, but the hardware supports the rec_mode
-    signal.
-
-    """
-
-    # Time in seconds to allow the BIOS and EC to detect the
-    # 'rec_mode' signal after cold reset.
-    _RECOVERY_DETECTION_DELAY = 2.5
-
-    @_inherit_docstring(_ChromeECController)
-    def power_off(self):
-        self._ec.send_command('x86shutdown')
-
-    @_inherit_docstring(_ChromeECController)
-    def power_on(self, rec_mode=REC_OFF):
-        if rec_mode == REC_ON:
-            self._servo.set('rec_mode', REC_ON)
-            self.cold_reset()
-            time.sleep(self._RECOVERY_DETECTION_DELAY)
-            self._servo.set('rec_mode', REC_OFF)
-        else:
-            self._servo.power_short_press()
-
-
 _CONTROLLER_BOARD_MAP = {
     'daisy': _DaisyController,
     'spring': _DaisyController,
     'peach_pit': _DaisyController,
-    'link': _LinkController,
+    'link': _ServodController,
     'lumpy': _LumpyController,
     'parrot': _ParrotController,
     'stumpy': _StumpyController,
