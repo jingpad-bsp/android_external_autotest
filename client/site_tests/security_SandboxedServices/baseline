@@ -9,7 +9,7 @@ X,xorg,No,No,No,No,No
 chapsd,chaps,No,No,No,No,No
 cryptohomed,root,No,No,No,No,No
 powerd,power,Yes,Yes,No,No,No
-ModemManager,modem,Yes,Yes,No,Yes,No
+ModemManager,modem,No,No,No,No,No
 dhcpcd,dhcp,No,No,No,No,No
 metrics_daemon,root,No,No,No,No,No
 disks,root,No,No,No,No,No
