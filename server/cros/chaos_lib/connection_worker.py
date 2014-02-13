@@ -13,6 +13,7 @@ from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 
 WORK_CLIENT_CONNECTION_RETRIES = 3
+WAIT_FOR_CONNECTION = 10
 
 class ConnectionWorker(object):
     """ ConnectionWorker is a thin layer of interfaces for worker classes """
@@ -125,12 +126,68 @@ class ConnectionDuration(ConnectionWorker):
         @param client: WiFiClient object representing the DUT
 
         """
-        ping_config = ping_runner.PingConfig(
-                             self.work_client._interface.ipv4_address, count=10)
-        logging.info('Pinging work client ip: %s',
-                     self.work_client._interface.ipv4_address)
+        ping_config = ping_runner.PingConfig(self.work_client.wifi_ip, count=10)
+        logging.info('Pinging work client ip: %s', self.work_client.wifi_ip)
         start_time = time.time()
         while time.time() - start_time < self.duration_sec:
             time.sleep(10)
             ping_result = client.ping(ping_config)
-            logging.info('Connection liveness ping results:\n%r', ping_result)
+            logging.info('Connection liveness %r', ping_result)
+
+
+class ConnectionSuspend(ConnectionWorker):
+    """
+    This test is to check the liveliness of the connection to the AP with
+    suspend resume cycle involved.
+
+    """
+
+    def __init__(self, suspend_sec=30):
+        """
+        Construct a ConnectionSuspend.
+
+        @param suspend_sec: amount of time to suspend in seconds
+
+        """
+
+        self._suspend_sec = suspend_sec
+
+
+    @property
+    def name(self):
+        """@return a string: representing name of this class"""
+        return 'suspend'
+
+
+    def run(self, client):
+        """
+        Check the liveliness of the connection to the AP by pinging the work
+        client before and after a suspend resume.
+
+        @param client: WiFiClient object representing the DUT
+
+        """
+        ping_config = ping_runner.PingConfig(self.work_client.wifi_ip, count=10)
+        # pinging work client to ensure we have a connection
+        logging.info('work client ip: %s', self.work_client.wifi_ip)
+        ping_result = client.ping(ping_config)
+        logging.info('before suspend:%r', ping_result)
+        client.do_suspend(self._suspend_sec)
+        # After resume, DUT could either be in a connected state from before or
+        # would be in process of connecting to the AP. Let us wait for five
+        # seconds before we start querying the connection state.
+        time.sleep(5)
+
+        # Wait for WAIT_FOR_CONNECTION time before trying to ping.
+        success, state, elapsed_time = client.wait_for_service_states(
+                self.ssid, ('ready', 'portal', 'online'), WAIT_FOR_CONNECTION)
+        if not success:
+            raise error.TestFail('DUT failed to connect to AP (%s state) after'
+                                 'resume in %d seconds' %
+                                 (state, WAIT_FOR_CONNECTION))
+        else:
+            logging.info('DUT entered %s state after %s seconds',
+                         state, elapsed_time)
+            # ping work client to ensure we have connection after resume.
+            ping_result = client.ping(ping_config)
+            logging.info('after resume:%r', ping_result)
