@@ -88,6 +88,7 @@ class FlashromProgrammer(_BaseProgrammer):
         self._fw_main = os.path.join(self._tmp_path, 'fw_main')
         self._ro_vpd = os.path.join(self._tmp_path, 'ro_vpd')
         self._rw_vpd = os.path.join(self._tmp_path, 'rw_vpd')
+        self._gbb = os.path.join(self._tmp_path, 'gbb')
 
 
     def program(self):
@@ -96,9 +97,10 @@ class FlashromProgrammer(_BaseProgrammer):
         self._set_servo_state()
         try:
             vpd_sections = [('RW_VPD', self._rw_vpd), ('RO_VPD', self._ro_vpd)]
+            gbb_section = [('GBB', self._gbb)]
 
-            # Save VPD from current firmware
-            for section in vpd_sections:
+            # Save needed sections from current firmware
+            for section in vpd_sections + gbb_section:
                 self._servo.system(' '.join([
                     'flashrom', '-p', 'ft2232_spi:type=servo-v2',
                     '-r', self._fw_main, '-i', '%s:%s' % section]))
@@ -114,6 +116,16 @@ class FlashromProgrammer(_BaseProgrammer):
             for section in vpd_sections:
                 pack_cmd.extend(['-i', '%s:%s' % section])
             self._servo.system(' '.join(pack_cmd))
+
+            # Read original HWID. The output format is:
+            #    hardware_id: RAMBI TEST A_A 0128
+            gbb_hwid_output = self._servo.system_output(
+                    'gbb_utility -g --hwid %s' % self._gbb)
+            original_hwid = gbb_hwid_output.split(':', 1)[1].strip()
+
+            # Write HWID to new firmware
+            self._servo.system("gbb_utility -s --hwid='%s' %s" %
+                    (original_hwid, self._fw_main))
 
             # Flash the new firmware
             self._servo.system(' '.join([
