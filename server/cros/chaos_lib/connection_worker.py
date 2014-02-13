@@ -14,74 +14,13 @@ from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 
 WORK_CLIENT_CONNECTION_RETRIES = 3
 
-class ConnectionWorkerAbstract(object):
-    """Abstract class for Connection Worker"""
+class ConnectionWorker(object):
+    """ ConnectionWorker is a thin layer of interfaces for worker classes """
 
     @property
     def name(self):
-        """The type of task the worker is going to run"""
-        raise NotImplementedError('Missing derived class implementation')
-
-
-    def cleanup(self):
-        """Teardown work client"""
-        raise NotImplementedError('Missing derived class implementation')
-
-
-    def prepare_work_client(self, work_client_machine):
-        """Prepare the SSHHost object into WiFiClient object
-
-        @param work_client_machine: a SSHHost object to be wrapped
-
-        """
-        raise NotImplementedError('Missing derived class implementation')
-
-
-    def connect_work_client(self, assoc_params):
-        """
-        Connect client to the AP.
-
-        Tries to connect the work client to AP in WORK_CLIENT_CONNECTION_RETRIES
-        tries. If we fail to connect in all tries then we would return False
-        otherwise returns True on successful connection to the AP.
-
-        @param assoc_params: an AssociationParameters object.
-
-        """
-        raise NotImplementedError('Missing derived class implementation')
-
-
-    def run(self, client):
-        """Executes the connection worker
-
-        @param client: WiFiClient object representing the DUT
-
-        """
-        raise NotImplementedError('Missing derived class implementation')
-
-
-    def cleanup(self):
-        """Teardown work_client"""
-
-
-class ConnectionDuration(ConnectionWorkerAbstract):
-    """This test is to check the liveliness of the connection to the AP. """
-
-    def __init__(self, duration_sec=30):
-        """
-        Holds WiFi connection open with periodic pings
-
-        @param duration_sec: amount of time to hold connection in seconds
-
-        """
-
-        self.duration_sec = duration_sec
-
-
-    @property
-    def name(self):
-        """Returns name of this class"""
-        return 'duration'
+        """@return a string: representing name of the worker class"""
+        raise NotImplementedError('Missing subclass implementation')
 
 
     def prepare_work_client(self, work_client_machine):
@@ -120,6 +59,8 @@ class ConnectionDuration(ConnectionWorkerAbstract):
         otherwise returns True on successful connection to the AP.
 
         @param assoc_params: an AssociationParameters object.
+        @return a boolean: True if work client is successfully connected to AP
+                or False on failing to connect to the AP
 
         """
         if not self.work_client.shill.init_test_network_state():
@@ -147,6 +88,35 @@ class ConnectionDuration(ConnectionWorkerAbstract):
         """Teardown work_client"""
         self.work_client.shill.disconnect(self.ssid)
         self.work_client.shill.clean_profiles()
+
+
+    def run(self, client):
+        """Executes the connection worker
+
+        @param client: WiFiClient object representing the DUT
+
+        """
+        raise NotImplementedError('Missing subclass implementation')
+
+
+class ConnectionDuration(ConnectionWorker):
+    """This test is to check the liveliness of the connection to the AP. """
+
+    def __init__(self, duration_sec=30):
+        """
+        Holds WiFi connection open with periodic pings
+
+        @param duration_sec: amount of time to hold connection in seconds
+
+        """
+
+        self.duration_sec = duration_sec
+
+
+    @property
+    def name(self):
+        """@return a string: representing name of this class"""
+        return 'duration'
 
 
     def run(self, client):
