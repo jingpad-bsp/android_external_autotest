@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, time
+import logging, os, time
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import constants, cros_ui
@@ -17,6 +17,11 @@ class desktopui_Respawn(test.test):
     version = 1
 
     UNREASONABLY_HIGH_RESPAWN_COUNT = 90
+
+    def initialize(self):
+        """Clear out respawn timestamp files."""
+        cros_ui.clear_respawn_state()
+
 
     def _nuke_ui_with_prejudice_and_wait(self, timeout):
         """Nuke the UI with prejudice, then wait for it to come up.
@@ -63,5 +68,7 @@ class desktopui_Respawn(test.test):
 
 
     def cleanup(self):
+        """Ensure the UI is up, and that state from testing is cleared out."""
+        cros_ui.clear_respawn_state()
         # If the UI is already up, we want to tolerate that.
         cros_ui.start(allow_fail=True)

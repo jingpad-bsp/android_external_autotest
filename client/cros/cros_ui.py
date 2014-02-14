@@ -187,6 +187,16 @@ def is_up():
     return 'start/running' in utils.system_output('initctl status ui')
 
 
+def clear_respawn_state():
+    """Removes bookkeeping related to respawning crashed UI."""
+    for filename in [constants.UI_RESPAWN_TIMESTAMPS_FILE,
+                     constants.UI_TOO_CRASHY_TIMESTAMPS_FILE]:
+        try:
+            os.unlink(filename)
+        except OSError:
+            pass  # It's already gone.
+
+
 class ChromeSession(object):
     """
     A class to open a tab within the running browser process.

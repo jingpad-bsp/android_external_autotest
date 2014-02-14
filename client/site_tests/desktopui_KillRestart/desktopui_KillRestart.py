@@ -5,9 +5,15 @@
 import logging, os, time
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import cros_ui
 
 class desktopui_KillRestart(test.test):
+    """Validate that the given binary can crash and get restarted."""
     version = 1
+
+    def initialize(self):
+        """Clear out respawn timestamp files."""
+        cros_ui.clear_respawn_state()
 
     def run_once(self, binary = 'chrome'):
         # Ensure the binary is running.
@@ -29,3 +35,8 @@ class desktopui_KillRestart(test.test):
             lambda: os.system('pgrep %s >/dev/null' % binary) == 0,
             error.TestFail('%s is not running after kill' % binary),
             timeout=60)
+
+
+    def cleanup(self):
+        """Ensure that state from testing is cleared out."""
+        cros_ui.clear_respawn_state()
