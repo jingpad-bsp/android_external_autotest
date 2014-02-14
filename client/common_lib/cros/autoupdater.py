@@ -22,7 +22,7 @@ UPDATER_BIN = '/usr/bin/update_engine_client'
 UPDATER_IDLE = 'UPDATE_STATUS_IDLE'
 UPDATER_NEED_REBOOT = 'UPDATE_STATUS_UPDATED_NEED_REBOOT'
 UPDATED_MARKER = '/var/run/update_engine_autoupdate_completed'
-UPDATER_LOGS = '/var/log/messages /var/log/update_engine'
+UPDATER_LOGS = ['/var/log/messages', '/var/log/update_engine']
 # A list of update engine client states that occur after an update is triggered.
 UPDATER_PROCESSING_UPDATE = ['UPDATE_STATUS_CHECKING_FORUPDATE',
                              'UPDATE_STATUS_UPDATE_AVAILABLE',
