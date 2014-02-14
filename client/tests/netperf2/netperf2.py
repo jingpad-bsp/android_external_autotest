@@ -1,4 +1,4 @@
-import os, time, re, logging
+import os, time, logging
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.bin.net import net_utils
 from autotest_lib.client.common_lib import error
@@ -20,8 +20,6 @@ class netperf2(test.test):
         utils.configure()
         utils.make()
 
-        self.job.setup_dep(['sysstat'])
-
 
     def initialize(self):
         self.server_prog = '%s&' % os.path.join(self.srcdir, 'src/netserver')
@@ -33,10 +31,6 @@ class netperf2(test.test):
         self.netif = ''
         self.network = net_utils.network()
         self.network_utils = net_utils.network_utils()
-
-        dep = 'sysstat'
-        dep_dir = os.path.join(self.autodir, 'deps', dep)
-        self.job.install_pkg(dep, 'dep', dep_dir)
 
 
     def run_once(self, server_ip, client_ip, role, test = 'TCP_STREAM',
@@ -147,11 +141,6 @@ class netperf2(test.test):
                test_specific_args, cpu_affinity):
         args = '-H %s -t %s -l %d' % (server_ip, test, test_time)
 
-        if os.path.exists('/usr/bin/mpstat'):
-            mpstat = '/usr/bin/mpstat'
-        else:
-            mpstat = os.path.join(self.autodir + '/deps/sysstat/src/mpstat')
-
         if self.wait_time:
             args += ' -s %d ' % self.wait_time
 
@@ -171,8 +160,8 @@ class netperf2(test.test):
             # take a long time to start up all the streams, we'll toss out the
             # first and last sample when recording results
             interval = max(1, test_time / 5)
-            cmds.append('sleep %d && %s -P ALL %s 5' % (self.wait_time, mpstat,
-                                                        interval))
+            cmds.append('sleep %d && %s -P ALL %s 5' %
+                        (self.wait_time, 'mpstat', interval))
 
             # Add the netperf commands
             for i in xrange(num_streams):
