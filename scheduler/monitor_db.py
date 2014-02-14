@@ -842,13 +842,10 @@ class BaseDispatcher(object):
             subject = 'Host with agents assigned to an HQE'
             message = ('HQE: %s assigned host %s, but the host has '
                        'agent: %s for queue_entry %s. The HQE '
-                       'will remain in a queued state till the '
-                       'the host is usable.' %
+                       'will have to try and acquire a host next tick ' %
                        (queue_entry, host.hostname, host_agent_task,
                         host_agent_task.queue_entry))
             email_manager.manager.enqueue_notify_email(subject, message)
-            queue_entry.set_host(None)
-            queue_entry.update_field('active', False)
         else:
             if queue_entry.host_id is None:
                 queue_entry.set_host(host)
