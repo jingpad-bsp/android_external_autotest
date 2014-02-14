@@ -803,7 +803,7 @@ class autoupdate_EndToEndTest(test.test):
 
     @staticmethod
     def _stage_payload(autotest_devserver, devserver_label, filename,
-                       archive_url=None, artifacts=None):
+                       archive_url=None):
         """Stage the given payload onto the devserver.
 
         Works for either a stateful or full/delta test payload. Expects the
@@ -820,8 +820,6 @@ class autoupdate_EndToEndTest(test.test):
                          downloading.
         @param archive_url: An optional GS archive location, if not using the
                             devserver's default.
-        @param artifacts: A list of artifacts to stage along from the build.
-
 
         @return URL of the staged payload on the server.
 
@@ -830,16 +828,15 @@ class autoupdate_EndToEndTest(test.test):
         """
         try:
             autotest_devserver.stage_artifacts(
-                    image=devserver_label, artifacts=artifacts,
-                    files=[filename], archive_url=archive_url)
+                    image=devserver_label, files=[filename],
+                    archive_url=archive_url)
             return autotest_devserver.get_staged_file_url(filename,
                                                           devserver_label)
         except dev_server.DevServerException, e:
             raise error.TestError('Failed to stage payload: %s' % e)
 
 
-    def _stage_payload_by_uri(self, autotest_devserver, payload_uri,
-                              artifacts=None):
+    def _stage_payload_by_uri(self, autotest_devserver, payload_uri):
         """Stage a payload based on its GS URI.
 
         This infers the build's label, filename and GS archive from the
@@ -850,8 +847,6 @@ class autoupdate_EndToEndTest(test.test):
                                    build.
         @param payload_uri: The full GS URI of the payload.
 
-        @param artifacts: A list of artifacts to stage along from the build.
-
         @return URL of the staged payload on the server.
 
         @raise error.TestError if there's a problem with staging.
@@ -860,8 +855,7 @@ class autoupdate_EndToEndTest(test.test):
         archive_url, _, filename = payload_uri.rpartition('/')
         devserver_label = urlparse.urlsplit(archive_url).path.strip('/')
         return self._stage_payload(autotest_devserver, devserver_label,
-                                   filename, archive_url=archive_url,
-                                   artifacts=artifacts)
+                                   filename, archive_url=archive_url)
 
 
     @staticmethod
@@ -1031,11 +1025,6 @@ class autoupdate_EndToEndTest(test.test):
 
             staged_target_stateful_url = self._stage_payload_by_uri(
                     autotest_devserver, target_stateful_uri)
-
-        # Stage artifacts for client login test.
-        self._stage_payload_by_uri(autotest_devserver,
-                                   target_payload_uri,
-                                   ['autotest'])
 
         # Log all the urls.
         logging.info('Source %s from %s staged at %s',
