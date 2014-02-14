@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "Chrome OS Team"
+AUTHOR = "cmasone"
 NAME = "desktopui_KillRestart"
 PURPOSE = "Verify Chrome is automatically restarted if it dies."
 CRITERIA = "This test will fail if Chrome is not restarted after it is killed."
