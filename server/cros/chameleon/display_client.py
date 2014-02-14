@@ -122,10 +122,22 @@ class DisplayClient(object):
         return self._display_xmlrpc_client.set_mirrored(is_mirrored)
 
 
-    def suspend_resume(self):
-        """Suspends the DUT for 10 seconds."""
+    def suspend_resume(self, suspend_time=10):
+        """Suspends the DUT for a given time in second.
+
+        @param suspend_time: Suspend time in second, default: 10s.
+        """
         # TODO(waihong): Use other general API instead of this RPC.
-        return self._display_xmlrpc_client.suspend_resume()
+        return self._display_xmlrpc_client.suspend_resume(suspend_time)
+
+
+    def suspend_resume_bg(self, suspend_time=10):
+        """Suspends the DUT for a given time in second in the background.
+
+        @param suspend_time: Suspend time in second, default: 10s.
+        """
+        # TODO(waihong): Use other general API instead of this RPC.
+        return self._display_xmlrpc_client.suspend_resume_bg(suspend_time)
 
 
     def reconnect_output_and_wait(self):

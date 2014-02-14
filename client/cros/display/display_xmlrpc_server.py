@@ -8,6 +8,7 @@
 import argparse
 import code
 import logging
+import multiprocessing
 import os
 import re
 import time
@@ -121,9 +122,22 @@ class DisplayTestingXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             retries -= 1
         return _is_mirrored_enabled() == is_mirrored
 
-    def suspend_resume(self):
-        """Suspends the DUT for 10 seconds."""
-        sys_power.do_suspend(10)
+    def suspend_resume(self, suspend_time=10):
+        """Suspends the DUT for a given time in second.
+
+        @param suspend_time: Suspend time in second.
+        """
+        sys_power.do_suspend(suspend_time)
+        return True
+
+    def suspend_resume_bg(self, suspend_time=10):
+        """Suspends the DUT for a given time in second in the background.
+
+        @param suspend_time: Suspend time in second.
+        """
+        process = multiprocessing.Process(target=self.suspend_resume,
+                                          args=(suspend_time,))
+        process.start()
         return True
 
     def get_ext_connector_name(self):
