@@ -163,6 +163,7 @@ class security_OpenFDs(test.test):
 
         filters.extend([r'0[57]00 /dev/shm/..*',
                         r'0500 /opt/google/chrome/.*.pak',
+                        r'0500 /opt/google/chrome/icudtl.dat',
                        ])
         passes.append(self.check_process('chrome', 'type=renderer', filters,
                                          permitted_fd_type_check))
