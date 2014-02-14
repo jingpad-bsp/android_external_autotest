@@ -13,8 +13,9 @@ class IwRunnerTest(unittest.TestCase):
     class host_cmd(object):
         """Mock host command class."""
 
-        def __init__(self, stdout, exit_status):
+        def __init__(self, stdout, stderr, exit_status):
             self._stdout = stdout
+            self._stderr = stderr
             self._exit_status = exit_status
 
 
@@ -22,6 +23,12 @@ class IwRunnerTest(unittest.TestCase):
         def stdout(self):
             """Returns stdout."""
             return self._stdout
+
+
+        @property
+        def stderr(self):
+            """Returns stderr."""
+            return self._stderr
 
 
         @property
@@ -34,7 +41,7 @@ class IwRunnerTest(unittest.TestCase):
         """Mock host class."""
 
         def __init__(self, host_cmd):
-            self._host_cmd = IwRunnerTest.host_cmd(host_cmd, 0)
+            self._host_cmd = IwRunnerTest.host_cmd(host_cmd, 1.0, 0)
 
 
         def run(self, cmd, ignore_status=False):

@@ -417,6 +417,57 @@ class WiFiClient(site_linux_system.LinuxSystem):
         self.host.run('iw dev %s set power_save %s' % (self.wifi_if, mode))
 
 
+    def timed_scan(self, frequencies, ssids, scan_timeout_seconds=10,
+                   retry_timeout_seconds=10):
+        """Request timed scan to discover given SSIDs.
+
+        This method will retry for a default of |retry_timeout_seconds| until it
+        is able to successfully kick off a scan.  Sometimes, the device on the
+        DUT claims to be busy and rejects our requests. It will raise error
+        if the scan did not complete within |scan_timeout_seconds| or it was
+        not able to discover the given SSIDs.
+
+        @param frequencies list of int WiFi frequencies to scan for.
+        @param ssids list of string ssids to probe request for.
+        @param scan_timeout_seconds: float number of seconds the scan
+                operation not to exceed.
+        @param retry_timeout_seconds: float number of seconds to retry scanning
+                if the interface is busy.  This does not retry if certain
+                SSIDs are missing from the results.
+
+        """
+        start_time = time.time()
+        while time.time() - start_time < retry_timeout_seconds:
+            scan_result = self.iw_runner.timed_scan(
+                    self.wifi_if, frequencies=frequencies, ssids=ssids)
+
+            if scan_result is not None:
+                break
+
+            time.sleep(0.5)
+        else:
+            raise error.TestFail('Unable to trigger scan on client.')
+
+        # Verify scan operation completed within given timeout
+        if scan_result.time > scan_timeout_seconds:
+            raise error.TestFail('Scan time %.2fs exceeds the scan timeout' %
+                                 (scan_result.time))
+
+        # Verify all ssids are discovered
+        for ssid in ssids:
+            if not ssid:
+                continue
+
+            for bss in scan_result.bss_list:
+                if bss.ssid == ssid:
+                    break
+            else:
+                raise error.TestFail('SSID %s is not in scan results: %r' %
+                                     (ssid, scan_result.bss_list))
+
+        logging.info('Wifi scan completed in %.2f seconds', scan_result.time)
+
+
     def scan(self, frequencies, ssids, timeout_seconds=10):
         """Request a scan and check that certain SSIDs appear in the results.
 

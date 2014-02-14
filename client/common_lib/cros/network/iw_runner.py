@@ -33,6 +33,7 @@ IwBand = collections.namedtuple('Band', ['num', 'frequencies', 'mcs_indices'])
 IwBss = collections.namedtuple('IwBss', ['bss', 'frequency', 'ssid', 'security',
                                          'ht'])
 IwNetDev = collections.namedtuple('IwNetDev', ['phy', 'if_name', 'if_type'])
+IwTimedScan = collections.namedtuple('IwTimedScan', ['time', 'bss_list'])
 
 # The fields for IwPhy are as follows:
 #   name: string name of the phy, such as "phy0"
@@ -46,6 +47,10 @@ IwPhy = collections.namedtuple(
             'avail_tx_antennas', 'avail_rx_antennas'])
 
 DEFAULT_COMMAND_IW = 'iw'
+
+# Time command to get elapsed time. Full path is used to avoid using the
+# built-in 'time' command from the bash shell
+IW_TIME_COMMAND = '/usr/local/bin/time -f "%e"'
 
 IW_LINK_KEY_BEACON_INTERVAL = 'beacon int'
 IW_LINK_KEY_DTIM_PERIOD = 'dtim period'
@@ -405,6 +410,22 @@ class IwRunner(object):
         @returns a list of IwBss namedtuples; None if the scan fails
 
         """
+        scan_result = self.timed_scan(interface, frequencies, ssids)
+        if scan_result is None:
+            return None
+        return scan_result.bss_list
+
+
+    def timed_scan(self, interface, frequencies=(), ssids=()):
+        """Performs a timed scan.
+
+        @param interface: the interface to run the iw command against
+        @param frequencies: list of int frequencies in Mhz to scan.
+        @param ssids: list of string SSIDs to send probe requests for.
+
+        @returns a IwTimedScan namedtuple; None if the scan fails
+
+        """
         freq_param = ''
         if frequencies:
             freq_param = ' freq %s' % ' '.join(map(str, frequencies))
@@ -412,15 +433,17 @@ class IwRunner(object):
         if ssids:
            ssid_param = ' ssid "%s"' % '" "'.join(ssids)
 
-        command = str('%s dev %s scan%s%s' % (self._command_iw, interface,
-                                              freq_param, ssid_param))
+        command = '%s %s dev %s scan%s%s' % (IW_TIME_COMMAND,
+                self._command_iw, interface, freq_param, ssid_param)
         scan = self._run(command, ignore_status=True)
         if scan.exit_status != 0:
             # The device was busy
             logging.debug('scan exit_status: %d', scan.exit_status)
             return None
 
-        return self._parse_scan_results(scan.stdout)
+        bss_list = self._parse_scan_results(scan.stdout)
+        scan_time = float(scan.stderr)
+        return IwTimedScan(scan_time, bss_list)
 
 
     def scan_dump(self, interface):
