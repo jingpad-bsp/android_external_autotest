@@ -91,6 +91,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
     SLEEP_TIMEOUT = 2
     RESUME_TIMEOUT = 10
+    SHUTDOWN_TIMEOUT = 5
     BOOT_TIMEOUT = 60
     USB_BOOT_TIMEOUT = 150
     POWERWASH_BOOT_TIMEOUT = 60
