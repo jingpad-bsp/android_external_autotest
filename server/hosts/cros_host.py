@@ -267,28 +267,18 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         self._rpc_proxy_map = {}
         self._ssh_verbosity_flag = ssh_verbosity_flag
         self._ssh_options = ssh_options
-        self.servo = None
         # TODO(fdeng): We need to simplify the
         # process of servo and servo_host initialization.
         # crbug.com/298432
-        self._servo_host = self._create_servo_host(servo_args)
+        self._servo_host = servo_host.create_servo_host(dut=self.hostname,
+                                                        servo_args=servo_args)
         # TODO(waihong): Do the simplication on Chameleon too.
         self._chameleon_host = self._create_chameleon_host(chameleon_args)
-        # TODO(fdeng): 'servo_args is not None' is used to determine whether
-        # a test needs a servo. Better solution is needed.
-        # There are three possible cases here:
-        # 1. servo_arg is None
-        # 2. servo arg is an empty dictionary
-        # 3. servo_arg is a dictionary that has entries of 'servo_host',
-        #    'servo_port'(optional).
-        # We assume that:
-        # a. A test that requires a servo always calls get_servo_arguments
-        # and passes in its return value as |servo_args|.
-        # b. get_servo_arguments never returns None.
-        # Based on the assumptions, we reason that only in case 2 and 3
-        # a servo is required, i.e. when the servo_args is not None.
-        if servo_args is not None:
-            self.servo = self._servo_host.create_healthy_servo_object()
+        if self._servo_host is not None:
+            self.servo = self._servo_host.get_servo()
+        else:
+            self.servo = None
+
         if chameleon_args is not None:
             self.chameleon = self._chameleon_host.create_chameleon_board()
 
@@ -317,35 +307,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             return chameleon_host.ChameleonHost(chameleon_host=hostname)
         elif chameleon_args is not None:
             return chameleon_host.ChameleonHost(**chameleon_args)
-        else:
-            return None
-
-
-    def _create_servo_host(self, servo_args):
-        """Create a ServoHost object.
-
-        There three possible cases:
-        1) If the DUT is in Cros Lab and has a beaglebone and a servo, then
-           create a ServoHost object pointing to the beaglebone. servo_args
-           is ignored.
-        2) If not case 1) and servo_args is neither None nor empty, then
-           create a ServoHost object using servo_args.
-        3) If neither case 1) or 2) applies, return None.
-
-        @param servo_args: A dictionary that contains args for creating
-                           a ServoHost object,
-                           e.g. {'servo_host': '172.11.11.111',
-                                 'servo_port': 9999}.
-                           See comments above.
-
-        @returns: A ServoHost object or None. See comments above.
-
-        """
-        hostname = servo_host.make_servo_hostname(self.hostname)
-        if utils.host_is_in_lab_zone(hostname):
-            return servo_host.ServoHost(servo_host=hostname)
-        elif servo_args is not None:
-            return servo_host.ServoHost(**servo_args)
         else:
             return None
 
@@ -1016,12 +977,12 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 to ssh to the servo host due to permission error.
 
         """
-        if self._servo_host:
+        if self._servo_host and not self.servo:
             try:
-                self.servo = self._servo_host.create_healthy_servo_object()
+                self._servo_host.repair_full()
             except Exception as e:
-                self.servo = None
                 logging.error('Could not create a healthy servo: %s', e)
+            self.servo = self._servo_host.get_servo()
 
         # TODO(scottz): This should use something similar to label_decorator,
         # but needs to be populated in order so DUTs are repaired with the

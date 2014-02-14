@@ -84,7 +84,7 @@ class ServoHost(ssh_host.SSHHost):
 
 
     def _initialize(self, servo_host='localhost', servo_port=9999,
-                    *args, **dargs):
+                    required_by_test=True, is_in_lab=None, *args, **dargs):
         """Initialize a ServoHost instance.
 
         A ServoHost instance represents a host that controls a servo.
@@ -92,11 +92,18 @@ class ServoHost(ssh_host.SSHHost):
         @param servo_host: Name of the host where the servod process
                            is running.
         @param servo_port: Port the servod process is listening on.
+        @param required_by_test: True if servo is required by test.
+        @param is_in_lab: True if the servo host is in Cros Lab. Default is set
+                          to None, for which utils.host_is_in_lab_zone will be
+                          called to check if the servo host is in Cros lab.
 
         """
         super(ServoHost, self)._initialize(hostname=servo_host,
                                            *args, **dargs)
-        self._is_in_lab = utils.host_is_in_lab_zone(self.hostname)
+        if is_in_lab is None:
+            self._is_in_lab = utils.host_is_in_lab_zone(self.hostname)
+        else:
+            self._is_in_lab = is_in_lab
         self._is_localhost = (self.hostname == 'localhost')
         remote = 'http://%s:%s' % (self.hostname, servo_port)
         self._servod_server = xmlrpclib.ServerProxy(remote)
@@ -108,6 +115,14 @@ class ServoHost(ssh_host.SSHHost):
             self._sudo_required = utils.system_output('id -u') != '0'
         else:
             self._sudo_required = False
+        # Create a cache of Servo object. This must be called at the end of
+        # _initialize to make sure all attributes are set.
+        self._servo = None
+        try:
+            self.verify()
+        except:
+            if required_by_test:
+                self.repair_full()
 
 
     def is_in_lab(self):
@@ -419,8 +434,14 @@ class ServoHost(ssh_host.SSHHost):
 
         logging.info('Verifying servo host %s with sanity checks.',
                      self.hostname)
-        self._check_servod()
         self._check_servo_host_usb()
+        # If servo is already initialized, we don't need to do it again, call
+        # _check_servod should be enough.
+        if self._servo:
+            self._check_servod()
+        else:
+            self._servo = servo.Servo(servo_host=self)
+
         logging.info('Sanity checks pass on servo host %s', self.hostname)
 
 
@@ -500,6 +521,8 @@ class ServoHost(ssh_host.SSHHost):
                          self.hostname)
             return
         logging.info('Attempting to repair servo host %s.', self.hostname)
+        # Reset the cache to guarantee servo initialization being called later.
+        self._servo = None
         # TODO(dshi): add self._powercycle_to_repair back to repair_funcs
         # after crbug.com/336606 is fixed.
         repair_funcs = [self._repair_with_sysrq_reboot,]
@@ -525,26 +548,47 @@ class ServoHost(ssh_host.SSHHost):
                 '\n'.join(errors))
 
 
-    def create_healthy_servo_object(self):
-        """Create a servo.Servo object.
+    def get_servo(self):
+        """Get the cached servo.Servo object.
 
-        Create a servo.Servo object. If the servo host is in Cros Lab,
-        this method will first verify the servo host and attempt to repair it if
-        error is detected.
-
-        @raises ServoHostRepairTotalFailure if it fails to fix the servo host.
-        @raises AutoservSshPermissionDeniedError if the DUT is not ssh-able
-                due to permission error.
-
+        @return: a servo.Servo object.
         """
-        if self.is_in_lab():
-            try:
-                self.verify()
-            except (error.AutoservSSHTimeout,
-                    error.AutoservSshPingHostError,
-                    error.AutoservHostIsShuttingDownError,
-                    ServoHostVerifyFailure):
-                self.repair_full()
-            except error.AutoservSshPermissionDeniedError:
-                raise
-        return servo.Servo(servo_host=self)
+        return self._servo
+
+
+def create_servo_host(dut, servo_args):
+    """Create a ServoHost object.
+
+    There three possible cases:
+    1) If the DUT is in Cros Lab and has a beaglebone and a servo, then
+       create a ServoHost object pointing to the beaglebone. servo_args
+       is ignored.
+    2) If not case 1) and servo_args is neither None nor empty, then
+       create a ServoHost object using servo_args.
+    3) If neither case 1) or 2) applies, return None.
+    When the servo_args is not None, we assume the servo is required by the
+    test. If servo failed to be verified, we will attempt to repair it. If servo
+    is not required, we will initialize ServoHost without initializing a servo
+    object.
+
+    @param dut: host name of the host that servo connects. It can be used to
+                lookup the servo in test lab using naming convention.
+    @param servo_args: A dictionary that contains args for creating
+                       a ServoHost object,
+                       e.g. {'servo_host': '172.11.11.111',
+                             'servo_port': 9999}.
+                       See comments above.
+
+    @returns: A ServoHost object or None. See comments above.
+
+    """
+    lab_servo_hostname = make_servo_hostname(dut)
+    is_in_lab = utils.host_is_in_lab_zone(lab_servo_hostname)
+
+    if is_in_lab:
+        return ServoHost(servo_host=lab_servo_hostname, is_in_lab=is_in_lab,
+                         required_by_test=(servo_args is not None))
+    elif servo_args is not None:
+        return ServoHost(required_by_test=True, is_in_lab=False, **servo_args)
+    else:
+        return None
