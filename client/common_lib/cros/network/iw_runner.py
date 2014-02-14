@@ -79,14 +79,15 @@ class IwRunner(object):
         bss_list = []
         for line in output.splitlines():
             line = line.strip()
-            if line.startswith('BSS'):
+            bss_match = re.match('BSS ([0-9a-f:]+)', line)
+            if bss_match:
                 if bss != None:
                     security = self.determine_security(supported_securities)
                     iwbss = IwBss(bss, frequency, ssid, security, ht)
                     bss_list.append(iwbss)
                     bss = frequency = ssid = security = ht = None
                     supported_securities = []
-                bss = line.split()[1]
+                bss = bss_match.group(1)
             if line.startswith('freq:'):
                 frequency = int(line.split()[1])
             if line.startswith('SSID:'):
