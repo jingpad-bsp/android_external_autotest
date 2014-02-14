@@ -8,6 +8,7 @@ PURPOSE = 'Test cros_ec driver and sysfs interface'
 CRITERIA = 'Fails if EC sysfs interface is not present'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
+DEPENDENCIES = 'ec:cros'
 
 DOC = 'Checks that the sysfs interface to the EC is present and working.'
 

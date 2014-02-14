@@ -21,7 +21,6 @@ from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.cros import constants
 from autotest_lib.client.cros import cros_ui
 from autotest_lib.server import autoserv_parser
-from autotest_lib.server import autotest
 from autotest_lib.server import utils as server_utils
 from autotest_lib.server.cros.dynamic_suite import constants as ds_constants
 from autotest_lib.server.cros.dynamic_suite import tools, frontend_wrappers
@@ -1872,6 +1871,45 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         if 'arm' in uname:
             return 'graphics:gles'
         return 'graphics:gl'
+
+
+    @label_decorator('ec')
+    def get_ec(self):
+        """
+        Determine the type of EC on this host.
+
+        @returns a string representing this host's embedded controller type.
+        At present, it only returns "ec:cros", for Chrome OS ECs. Other types
+        of EC (or none) don't return any strings, since no tests depend on
+        those.
+        """
+        cmd = 'mosys ec info'
+        # The output should look like these, so that the last field should
+        # match our EC version scheme:
+        #
+        #   stm | stm32f100 | snow_v1.3.139-375eb9f
+        #   ti | Unknown-10de | peppy_v1.5.114-5d52788
+        #
+        # Non-Chrome OS ECs will look like these:
+        #
+        #   ENE | KB932 | 00BE107A00
+        #   ite | it8518 | 3.08
+        #
+        # And some systems don't have ECs at all (Lumpy, for example).
+        regexp = r'^.*\|\s*(\S+_v\d+\.\d+\.\d+-[0-9a-f]+)\s*$'
+
+        ecinfo = self.run(command=cmd, ignore_status=True)
+        if ecinfo.exit_status == 0:
+            res = re.search(regexp, ecinfo.stdout)
+            if res:
+                logging.info("EC version is %s", res.groups()[0])
+                return 'ec:cros'
+            logging.info("%s got: %s", cmd, ecinfo.stdout)
+            # Has an EC, but it's not a Chrome OS EC
+            return None
+        logging.info("%s exited with status %d", cmd, ecinfo.exit_status)
+        # No EC present
+        return None
 
 
     def get_labels(self):

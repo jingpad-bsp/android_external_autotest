@@ -56,10 +56,8 @@ class kernel_CrosECSysfs(test.test):
         """
         # If /dev/cros_ec isn't present, then the MFD_CROS_EC_DEV driver isn't
         # present, so there's no point to looking for the sysfs interface to it.
-        try:
-            dontcase = utils.read_file(self.cros_ec)
-        except Exception as err:
-            raise error.TestFail("driver not present? %s" % err)
+        if not os.path.exists(self.cros_ec):
+            raise error.TestFail("%s not found. No driver?" % self.cros_ec)
 
         flashsize = self._read_field('flashinfo', 'FlashSize')
         logging.info("flashsize is %s", flashsize)
