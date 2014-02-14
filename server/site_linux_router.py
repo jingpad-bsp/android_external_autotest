@@ -519,8 +519,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         @return string MAC address like 00:11:22:33:44:55.
 
         """
-        interface = self.get_hostapd_interface(ap_num)
-        ap_interface = interface.Interface(interface, self.host)
+        interface_name = self.get_hostapd_interface(ap_num)
+        ap_interface = interface.Interface(interface_name, self.host)
         return ap_interface.mac_address
 
 
