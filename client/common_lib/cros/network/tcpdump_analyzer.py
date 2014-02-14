@@ -32,8 +32,8 @@ def get_frames(pcap_path, remote_host=None, pcap_filter='',
     run = utils.run
     if remote_host:
         run = remote_host.run
-    result = run('%s -ttttt -r %s "%s"' % (command_tcpdump, pcap_path,
-                                           pcap_filter))
+    result = run('%s -n -ttttt -r %s "%s"' % (command_tcpdump, pcap_path,
+                                              pcap_filter))
     frames = []
     logging.info('Parsing frames')
     bad_lines = 0
