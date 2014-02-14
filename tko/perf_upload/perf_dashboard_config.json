@@ -1,11 +1,7 @@
 [
   {
-    "autotest_name": "video_VDAPerf",
-    "master_name": "ChromeOSVideo"
-  },
-  {
     "autotest_name": "build_RootFileSystemSize",
-    "master_name": "ChromiumPerf"
+    "master_name": "ChromeOSPerf"
   },
   {
     "autotest_name": "graphics_GLBench",
@@ -132,7 +128,7 @@
   },
   {
     "autotest_name": "platform_BootPerfServer",
-    "master_name": "ChromiumPerf"
+    "master_name": "ChromeOSPerf"
   },
   {
     "autotest_name": "platform_GesturesRegressionTest",
@@ -197,6 +193,10 @@
     "autotest_name": "telemetry_Benchmarks.sunspider",
     "master_name": "ChromiumPerf",
     "dashboard_test_name": "sunspider"
+  },
+  {
+    "autotest_name": "video_VDAPerf",
+    "master_name": "ChromeOSVideo"
   },
   {
     "autotest_name": "video_VideoDecodeMemoryUsage",
