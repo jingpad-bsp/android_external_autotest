@@ -1074,6 +1074,13 @@ class FAFTSequence(FAFTBase):
                                  vboot.GBB_FLAG_FAFT_KEY_OVERIDE)
         self.mark_setup_done('gbb_flags')
 
+    def drop_backup_gbb_flags(self):
+        """Drops the backup GBB flags.
+
+        This can be used when a test intends to permanently change GBB flags.
+        """
+        self._backup_gbb_flags = None
+
     def restore_gbb_flags(self):
         """Restore GBB flags to their original state."""
         if not self._backup_gbb_flags:
