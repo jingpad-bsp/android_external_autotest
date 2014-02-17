@@ -39,12 +39,6 @@ class display_Resolution(chameleon_test.ChameleonTest):
     CALIBRATION_IMAGE_SETUP_TIME = 10
 
 
-    def initialize(self, host):
-        self._test_data_dir = os.path.join(
-                self.bindir, 'display_Resolution_test_data')
-        super(display_Resolution, self).initialize(host, self._test_data_dir)
-
-
     def run_once(self, host, test_mirrored=False, test_suspend_resume=False):
         errors = []
         for tag, width, height in self.RESOLUTION_TEST_LIST:
@@ -94,7 +88,9 @@ class display_Resolution(chameleon_test.ChameleonTest):
                      self.chameleon_port.get_connector_id(),
                      self.chameleon_port.get_connector_type())
         edid_filename = os.path.join(
-                self._test_data_dir, 'edids', '%s_%dx%d' % resolution)
+                self.bindir,
+                'display_Resolution_test_data',
+                'edids', '%s_%dx%d' % resolution)
         if not os.path.exists(edid_filename):
             raise ValueError('EDID file %r does not exist' % edid_filename)
 

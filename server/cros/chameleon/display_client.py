@@ -4,11 +4,11 @@
 
 import os
 import re
+import sys
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.cros import constants, httpd
 from autotest_lib.server import autotest
-
 
 class DisplayClient(object):
     """DisplayClient is a layer to control display logic over a remote DUT.
@@ -18,7 +18,6 @@ class DisplayClient(object):
 
     """
 
-    HTTPD_PORT = 12345
     X_ENV_VARIABLES = 'DISPLAY=:0.0 XAUTHORITY=/home/chronos/.Xauthority'
     XMLRPC_CONNECT_TIMEOUT = 30
 
@@ -32,14 +31,14 @@ class DisplayClient(object):
         self._display_xmlrpc_client = None
         self._http_listener = None
         self._server_ip = None
+        self._server_port = None
 
 
-    def initialize(self, test_data_dir=None):
+    def initialize(self, run_httpd=True):
         """Initializes some required servers, like HTTP daemon, RPC connection.
 
-        @param test_data_dir: Path to the test data directory. A HTTP daemon
-                serves this directory as its root. If None, the HTTP daemon
-                doesn't run.
+        @param run_httpd: True to run HTTP daemon, to serve the calibration
+                          images.
         """
         # Make sure the client library is on the device so that the proxy code
         # is there when we try to call it.
@@ -57,11 +56,14 @@ class DisplayClient(object):
                     constants.DISPLAY_TESTING_XMLRPC_SERVER_READY_METHOD),
                 timeout_seconds=self.XMLRPC_CONNECT_TIMEOUT)
 
-        if test_data_dir:
-            # TODO(waihong): Move the test data to a centralized place.
+        if run_httpd:
+            # TODO(waihong): Auto-generate the calibration images.
+            module_dir = os.path.dirname(sys.modules[__name__].__file__)
+            image_dir = os.path.join(module_dir, 'calibration_images')
+            self._server_port = utils.get_unused_port()
             self._http_listener = httpd.HTTPListener(
-                    port=self.HTTPD_PORT,
-                    docroot=os.path.join(test_data_dir, 'calibration_images'))
+                    port=self._server_port,
+                    docroot=image_dir)
             self._http_listener.run()
             # SSH_CONNECTION is of the form:
             # [client_ip] [client_port] [server_ip] [server_port]
@@ -97,7 +99,7 @@ class DisplayClient(object):
         """
         resolution_str = '%dx%d' % resolution
         page_url = ('http://%s:%s/%s.png' %
-                    (self._server_ip, self.HTTPD_PORT, resolution_str))
+                    (self._server_ip, self._server_port, resolution_str))
         self._display_xmlrpc_client.load_url(page_url)
 
 

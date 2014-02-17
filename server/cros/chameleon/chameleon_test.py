@@ -19,16 +19,15 @@ class ChameleonTest(test.test):
     on cleanup.
     """
 
-    def initialize(self, host, test_data_dir=None):
+    def initialize(self, host, run_httpd=True):
         """Initializes.
 
         @param host: The Host object of DUT.
-        @param test_data_dir: Path to the test data directory. A HTTP daemon
-                serves this directory as its root. If None, the HTTP daemon
-                doesn't run.
+        @param run_httpd: True to run HTTP daemon, to serve the calibration
+                          images.
         """
         self.display_client = display_client.DisplayClient(host)
-        self.display_client.initialize(test_data_dir)
+        self.display_client.initialize(run_httpd)
         self.chameleon = host.chameleon
         self.chameleon_port = self._get_connected_port()
         if self.chameleon_port is None:
