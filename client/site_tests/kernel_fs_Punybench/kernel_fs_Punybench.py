@@ -15,7 +15,7 @@ class kernel_fs_Punybench(test.test):
     """Run a selected subset of the puny benchmarks
     """
     version = 1
-    Bin = '/usr/local/opt/punybench/bin/'
+    Bin = '/opt/punybench/bin/'
 
 
     def initialize(self):
