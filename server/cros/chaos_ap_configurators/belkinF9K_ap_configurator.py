@@ -12,6 +12,7 @@ import ap_spec
 from selenium.common.exceptions import WebDriverException
 from selenium.common.exceptions import TimeoutException as \
     SeleniumTimeoutException
+from selenium.webdriver.support import expected_conditions as ec
 
 
 class BelkinF9KAPConfigurator(
@@ -101,13 +102,15 @@ class BelkinF9KAPConfigurator(
             try:
                 self.get_url(page_url, page_title='wireless')
                 self.wait_for_object_by_xpath(self.security_popup)
-            except WebDriverException, e:
+            except (WebDriverException, SeleniumTimeoutException), e:
                 message = str(e)
-                if (not any(alert in message for alert in
-                    ['unexpected alert open', 'An open modal dialog blocked'])):
+                if 'Timed out receiving message from renderer' in message:
+                    self.driver.refresh()
+                    self.wait_for_object_by_xpath(self.security_popup)
+                elif ec.alert_is_present:
+                    self._security_alert(self.driver.switch_to_alert())
+                else:
                     raise RuntimeError(message)
-                    return
-                self._security_alert(self.driver.switch_to_alert())
         else:
             raise RuntimeError('Invalid page number passed. Number of pages '
                                '%d, page value sent was %d' %
@@ -127,10 +130,14 @@ class BelkinF9KAPConfigurator(
         try:
             self.wait.until(lambda _:'setup.htm' in self.driver.title)
         except SeleniumTimeoutException, e:
+            self.driver.refresh()
             xpath= '//h1[contains(text(), "Duplicate Administrator")]'
-            if (self.driver.find_element_by_xpath(xpath)):
-                logging.info("We got a 'Duplicate Administrator' page "
-                             "when we saved the changes.")
+            try:
+                if (self.driver.find_element_by_xpath(xpath)):
+                    logging.info("We got a 'Duplicate Administrator' page "
+                                 "when we saved the changes.")
+            except:
+                raise SeleniumTimeoutException(str(e))
         finally:
             self.restore_default_wait_time()
 

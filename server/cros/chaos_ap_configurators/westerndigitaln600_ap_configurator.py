@@ -9,7 +9,10 @@ import time
 import dynamic_ap_configurator
 import ap_spec
 
+from selenium.common.exceptions import TimeoutException
 from selenium.common.exceptions import WebDriverException
+from selenium.webdriver.support import expected_conditions as ec
+from selenium.webdriver.common.by import By
 
 class WesternDigitalN600APConfigurator(
         dynamic_ap_configurator.DynamicAPConfigurator):
@@ -95,25 +98,12 @@ class WesternDigitalN600APConfigurator(
         page_url = urlparse.urljoin(self.admin_interface_url, 'wlan.php')
         self.get_url(page_url, page_title='WESTERN DIGITAL')
         xpath_found = self.wait_for_objects_by_id(['loginusr', 'ssid'])
-        switch = '//input[@id="en_wifi"]/../span[@class="checkbox"]'
         if 'loginusr' in xpath_found:
             self._login_to_router()
         elif 'ssid' not in xpath_found:
             raise RuntimeError('The page %s did not load or Radio is switched'
                                'off' % page_url)
-        else:
-            if self.current_band == ap_spec.BAND_5GHZ:
-                switch = '//input[@id="en_wifi_Aband"]/../ \
-                          span[@class="checkbox"]'
-            for timer in range(30):   # Waiting for the page to reload
-                on_off = self.driver.find_element_by_xpath(switch)
-                try:
-                    if ('checkbox.png' in
-                        on_off.value_of_css_property('background-image')):
-                        return None
-                except:
-                    pass
-                time.sleep(1)
+        self.set_radio(enabled=True)
 
 
     def _login_to_router(self):
@@ -123,7 +113,6 @@ class WesternDigitalN600APConfigurator(
         self.set_content_of_text_field_by_id('password', 'loginpwd',
                                              abort_check=True)
         self.click_button_by_xpath('//input[@value="Submit"]')
-        # Give some time to go to Wireless settings page.
         self.wait_for_object_by_id('ssid')
 
 
@@ -161,6 +150,9 @@ class WesternDigitalN600APConfigurator(
 
 
     def _set_mode(self, mode, band=None):
+        # This is a dummy wait to give enough time for the popup to
+        # load all options.
+        self._wait_for_page_reload()
         mode_mapping = {ap_spec.MODE_B | ap_spec.MODE_G:'Mixed 802.11 b+g',
                         ap_spec.MODE_G:'802.11g only',
                         ap_spec.MODE_B:'802.11b only',
@@ -176,20 +168,6 @@ class WesternDigitalN600APConfigurator(
         mode_name = ''
         if mode in mode_mapping.keys():
             mode_name = mode_mapping[mode]
-            if ((mode & ap_spec.MODE_A) and
-                (self.current_band != ap_spec.BAND_5GHZ)):
-                # a mode only in 5Ghz
-                logging.debug('Mode \'a\' is not supported for 2.4Ghz band.')
-                return
-            elif ((mode & (ap_spec.MODE_B | ap_spec.MODE_G) ==
-                  (ap_spec.MODE_B | ap_spec.MODE_G)) or
-                 (mode & ap_spec.MODE_B == ap_spec.MODE_B) or
-                 (mode & ap_spec.MODE_G == ap_spec.MODE_G)) and \
-                 (self.current_band != ap_spec.BAND_2GHZ):
-                # b/g, b, g mode only in 2.4Ghz
-                logging.debug('Mode \'%s\' is not available for 5Ghz band.',
-                              mode_name)
-                return
         else:
             raise RuntimeError('The mode selected \'%d\' is not supported by '
                                ' \'%s\'.', hex(mode), self.name)
@@ -207,7 +185,7 @@ class WesternDigitalN600APConfigurator(
 
 
     def _set_ssid(self, ssid):
-        self._enable_radio(True)
+        self._set_radio(True)
         ssid_id = 'ssid'
         if self.current_band == ap_spec.BAND_5GHZ:
             ssid_id = 'ssid_Aband'
@@ -216,11 +194,60 @@ class WesternDigitalN600APConfigurator(
         self._ssid = ssid
 
 
+    def _wait_for_page_reload(self):
+        """
+        This router has a tendency to reload the webpage right after we load
+        it. To avoid any exceptions because of this we wait for the page to
+        reload by default.
+        """
+        elements = self.driver.find_elements_by_css_selector('span.checkbox')
+        checkbox = elements[0]
+        if self.current_band == ap_spec.BAND_5GHZ:
+            checkbox = elements[3]
+        for timer in range(5):   # Waiting for the page to reload
+            try:
+                if ('checkbox.png' in
+                    checkbox.value_of_css_property('background-image')):
+                    break
+            except:
+                pass
+            time.sleep(1)
+
+
+    def set_radio(self, enabled=True):
+        self.add_item_to_command_list(self._set_radio, (enabled, ), 1, 1000)
+
+
+    def _set_radio(self, enabled=True):
+        self._wait_for_page_reload()
+        elements = self.driver.find_elements_by_css_selector('span.checkbox')
+        checkbox = elements[0]
+        ssid = 'ssid'
+        if self.current_band == ap_spec.BAND_5GHZ:
+            checkbox = elements[3]
+            ssid = 'ssid_Aband'
+        image = 'checkbox_off.png'
+        if enabled:
+            image = 'checkbox.png'
+            try:
+                self.wait.until(ec.element_to_be_clickable((By.ID, ssid)))
+            except TimeoutException, e:
+                if not (image in
+                        checkbox.value_of_css_property('background-image')):
+                    checkbox.click()
+                else:
+                    message = 'Radio is not enabled. ' + str(e)
+                    raise TimeoutException(message)
+        elif not (image in checkbox.value_of_css_property('background-image')):
+            checkbox.click()
+
+
     def set_channel(self, channel):
         self.add_item_to_command_list(self._set_channel, (channel,), 1, 900)
 
 
     def _set_channel(self, channel):
+        self._wait_for_page_reload()
         position = self._get_channel_popup_position(channel)
         channel_id = 'channel'
         channel_choices = ['Auto', '2.412 GHz - CH 1', '2.417 GHz - CH 2',
@@ -254,25 +281,6 @@ class WesternDigitalN600APConfigurator(
                                           width_id)
 
 
-    def _enable_radio(self, enabled=True):
-        if not enabled:
-            raise RuntimeError('Incorrect value for Radio sent')
-        radio = '//input[@id="en_wifi"]/../span[@class="checkbox"]'
-        ssid = 'ssid'
-        if self.current_band == ap_spec.BAND_5GHZ:
-            radio = '//input[@id="en_wifi_Aband"]/../span[@class="checkbox"]'
-            ssid = 'ssid_Aband'
-        self.wait_for_object_by_id(ssid)
-        try:
-            # Getting the background-image property for Radio button always
-            # returns OFF. Same with ssid background-color. Hence try writing
-            # to the ssid text field. It will fail if Radio is disabled.
-            self.set_content_of_text_field_by_id('testradio', ssid,
-                                                  abort_check=False)
-        except:
-            self.click_button_by_xpath(radio)
-
-
     def set_band(self, band):
         if band == ap_spec.BAND_5GHZ:
             self.current_band = ap_spec.BAND_5GHZ
@@ -283,6 +291,7 @@ class WesternDigitalN600APConfigurator(
 
 
     def _set_security(self, security_type, wait_path=None):
+        self._wait_for_page_reload()
         sec_id = 'security_type'
         if self.current_band == ap_spec.BAND_5GHZ:
             sec_id = 'security_type_Aband'
