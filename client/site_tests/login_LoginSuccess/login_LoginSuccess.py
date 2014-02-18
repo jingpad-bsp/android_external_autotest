@@ -35,6 +35,8 @@ class login_LoginSuccess(test.test):
             # To enable use as a 'helper test'.
             self.job.set_state('client_success', True)
 
-        self._listener.listen_for_session_state_change('stopped')
+            # Start listening to stop signal before logging out.
+            self._listener.listen_for_session_state_change('stopped')
+
         self._listener.wait_for_signals(desc='Session stopped.',
                                         timeout=self._SESSION_STOP_TIMEOUT)
