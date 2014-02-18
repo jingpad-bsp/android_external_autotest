@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, fcntl, struct, random
+import os, fcntl, struct, random
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -67,18 +67,28 @@ class hardware_TrimIntegrity(test.test):
 
         self._find_free_root_partition()
 
-        # Check for trim support in ioctl. Gracefully exit if not support.
+        # Check for trim support in ioctl. Raise TestNAError if not support.
         try:
             fd = os.open(self._filename, os.O_RDWR, 0666)
             self._do_trim(fd, 0, chunk_size)
         except IOError, err:
             if err.errno == self.IOCTL_NOT_SUPPORT_ERRNO:
-                logging.info("IOCTL Does not support trim.")
-                return 0
+                raise error.TestNAError("IOCTL Does not support trim.")
             else:
                 raise
         finally:
             os.close(fd)
+
+        # Calculate hash value for zero'ed and one'ed data
+        cmd = str('dd if=/dev/zero bs=%d count=1 | %s' %
+                  (chunk_size, self.HASH_CMD))
+        zero_hash = utils.run(cmd).stdout.strip()
+
+        cmd = str("dd if=/dev/zero bs=%d count=1 | tr '\\0' '\\xff' | %s" %
+                  (chunk_size, self.HASH_CMD))
+        one_hash = utils.run(cmd).stdout.strip()
+
+        trim_hash = ""
 
         # Write random data to disk
         chunk_count = file_size / chunk_size
@@ -86,24 +96,13 @@ class hardware_TrimIntegrity(test.test):
                   (self._filename, chunk_size, chunk_count))
         utils.run(cmd)
 
+        ref_hash = self._get_hash(chunk_count, chunk_size)
+
         # Check read speed/latency when reading real data.
         self.job.run_test('hardware_StorageFio',
                           filesize=file_size,
                           requirements=[('4k_read_qd32', [])],
                           tag='before_trim')
-
-        # Calculate hash value for zero'ed and one'ed data
-        cmd = str('dd if=/dev/zero of=/dev/stdout bs=%d count=1 | %s' %
-                  (chunk_size, self.HASH_CMD))
-        zero_hash = utils.run(cmd).stdout.strip()
-
-        cmd = str('dd if=/dev/ibe of=/dev/stdout bs=%d count=1 | %s' %
-                  (chunk_size, self.HASH_CMD))
-        one_hash = utils.run(cmd).stdout.strip()
-
-        trim_hash = ""
-
-        ref_hash = self._get_hash(chunk_count, chunk_size)
 
         # Generate random order of chunk to trim
         trim_order = list(range(0, chunk_count))
