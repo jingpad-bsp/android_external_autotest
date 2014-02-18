@@ -165,6 +165,11 @@
     "dashboard_test_name": "media.tough_media_cases"
   },
   {
+    "autotest_name": "telemetry_Benchmarks.media.chromeOS4kOnly.tough_video_cases",
+    "master_name": "ChromiumPerf",
+    "dashboard_test_name": "media.tough_media_cases"
+  },
+  {
     "autotest_name": "telemetry_Benchmarks.memory.top_25",
     "master_name": "ChromiumPerf",
     "dashboard_test_name": "memory.top_25"
