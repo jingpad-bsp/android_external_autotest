@@ -4,6 +4,7 @@
 
 import logging
 import os
+import time
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
@@ -29,6 +30,7 @@ class network_DefaultProfileCreation(test.test):
         'PortalURL=http://www.gstatic.com/generate_204',
         'PortalCheckInterval=30',
         ]
+    PROFILE_LOAD_TIMEOUT_SECONDS = 5
     version = 1
 
 
@@ -37,7 +39,15 @@ class network_DefaultProfileCreation(test.test):
         utils.run('stop shill')
         os.remove(self.DEFAULT_PROFILE_PATH)
         utils.run('start shill')
-        shill_proxy.ShillProxy.get_proxy()
+        shill = shill_proxy.ShillProxy.get_proxy()
+        start_time = time.time()
+        while time.time() - start_time < self.PROFILE_LOAD_TIMEOUT_SECONDS:
+            if shill.get_profiles():
+                break
+        else:
+            raise error.TestFail('shill should load a profile within '
+                                 '%d seconds.' %
+                                 self.PROFILE_LOAD_TIMEOUT_SECONDS)
 
         profile = open(self.DEFAULT_PROFILE_PATH).read()
         for setting in self.EXPECTED_SETTINGS:
