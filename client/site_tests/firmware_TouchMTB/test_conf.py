@@ -84,8 +84,9 @@ merged_validators = [StationaryValidator,]
 
 
 # Define the path to find the robot gestures library path
+robot_lib_path_local = '/usr/local/lib*'
 robot_lib_path = '/usr/lib*'
-python_package = 'python*'
+python_package = 'python*\.*'
 gestures_sub_path = 'site-packages/touchbotII'
 
 
