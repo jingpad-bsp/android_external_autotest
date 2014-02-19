@@ -70,36 +70,38 @@ def get_autox():
     return autox.AutoX()
 
 
-def _clear_login_prompt_state():
-    """Clear the magic file indicating that the login prompt is ready."""
-    if os.access(constants.LOGIN_PROMPT_VISIBLE_MAGIC_FILE, os.F_OK):
-        os.unlink(constants.LOGIN_PROMPT_VISIBLE_MAGIC_FILE)
+def _get_login_prompt_state():
+    """Return the "state" of the most recent login.
+
+    The returned value will change each time Chrome restarts and
+    displays the login screen.  The change in the value can be used
+    to detect a successful Chrome startup.
+
+    """
+    return utils.run(constants.LOGIN_PROMPT_STATUS_COMMAND).stdout
 
 
-def _wait_for_login_prompt(timeout=DEFAULT_TIMEOUT):
-    """Wait until the login prompt is on screen and ready.
+def _wait_for_login_prompt(old_state, timeout=DEFAULT_TIMEOUT):
+    """Wait until a new login prompt is on screen and ready.
 
-    When the login prompt appears, the session manager will log this via
-    bootstat, creating a magic file in /tmp. We can check whether the prompt
-    has appeared yet using the following pattern:
+    The standard formula to check whether the prompt has appeared yet
+    is with a pattern like the following:
 
-       _clear_login_prompt_state()
+       state = _get_login_prompt_state()
        logout()
-       _wait_for_login_prompt()
-
-    TODO(davidjames): Reimplement this function using dbus messages so we
-                      don't depend on magic files.
+       _wait_for_login_prompt(state)
 
     Args:
+        old_state:  state of the login prompt prior to restarting
+            Chrome.
         timeout: float number of seconds to wait
 
     Raises:
         TimeoutError: Login prompt didn't get up before timeout
-    """
 
+    """
     utils.poll_for_condition(
-        condition=lambda: os.access(
-            constants.LOGIN_PROMPT_VISIBLE_MAGIC_FILE, os.F_OK),
+        condition=lambda: old_state != _get_login_prompt_state(),
         exception=utils.TimeoutError('Timed out waiting for login prompt'),
         timeout=timeout)
 
@@ -137,12 +139,12 @@ def stop(allow_fail=False):
 
 def start(allow_fail=False, wait_for_login_prompt=True):
     """Start the login manager and wait for the prompt to show up."""
-    _clear_login_prompt_state()
+    state = _get_login_prompt_state()
     result = utils.system("start ui", ignore_status=allow_fail)
     # If allow_fail is set, the caller might be calling us when the UI job
     # is already running. In that case, the above command fails.
     if result == 0 and wait_for_login_prompt:
-        _wait_for_login_prompt()
+        _wait_for_login_prompt(state)
     return result
 
 
@@ -156,9 +158,9 @@ def restart(impl=None):
     Args:
         impl: Method to use to restart the session manager. By
               default, the session manager is restarted using upstart.
-    """
 
-    _clear_login_prompt_state()
+    """
+    state = _get_login_prompt_state()
 
     # Log what we're about to do to /var/log/messages. Used to log crashes later
     # in cleanup by cros_ui_test.UITest.
@@ -172,7 +174,7 @@ def restart(impl=None):
 
         # Wait for login prompt to appear to indicate that all processes are
         # up and running again.
-        _wait_for_login_prompt()
+        _wait_for_login_prompt(state)
     finally:
         utils.system('logger "%s"' % UI_RESTART_COMPLETE_MSG)
 
