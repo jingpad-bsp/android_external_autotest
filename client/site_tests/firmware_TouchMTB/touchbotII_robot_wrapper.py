@@ -107,6 +107,8 @@ class RobotWrapper:
             conf.FOUR_FINGER_PHYSICAL_CLICK: self._get_control_command_click,
             conf.STATIONARY_FINGER_NOT_AFFECTED_BY_2ND_FINGER_TAPS:
                     self._get_control_command_stationary_with_taps,
+            conf.FAT_FINGER_MOVE_WITH_RESTING_FINGER:
+                    self._get_control_command_one_stationary_finger,
         }
 
         self._line_dict = {
@@ -274,7 +276,8 @@ class RobotWrapper:
     def _get_robot_script_dir(self):
         """Get the directory of the robot control scripts."""
         for lib_path in [conf.robot_lib_path_local, conf.robot_lib_path]:
-            cmd = 'find %s -type d -name %s' % (lib_path, conf.python_package)
+            cmd = ('find %s -maxdepth 1 -type d -name %s' %
+                        (lib_path, conf.python_package))
             path = common_util.simple_system_output(cmd)
             if path:
                 robot_script_dir = os.path.join(path, conf.gestures_sub_path)
@@ -333,6 +336,9 @@ class RobotWrapper:
                     stationary_finger = self._location_dict[GV.BL]
                     speed = self._speed_dict[GV.SLOW]
                     num_taps = 3
+                elif 'fat_finger' in gesture:
+                    stationary_finger = self._stationary_finger_dict[element]
+                    speed = self._speed_dict[GV.SLOW]
             elif element in GV.GESTURE_SPEED:
                 speed = self._speed_dict[element]
 
