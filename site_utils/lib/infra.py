@@ -36,7 +36,9 @@ def host_object_runner(host):
     try:
         host_object = _host_objects[host]
     except KeyError:
-        host_object = ssh_host.SSHHost(host)
+        username = global_config.global_config.get_config_value(
+                'CROS', 'infrastructure_user')
+        host_object = ssh_host.SSHHost(host, user=username)
         _host_objects[host] = host_object
 
     def runner(cmd):
@@ -49,7 +51,7 @@ def host_object_runner(host):
         @raises CalledProcessError: If there was a non-0 return code.
         """
         try:
-            return host_object.run(cmd)
+            return host_object.run(cmd).stdout
         except error.AutotestHostRunError as e:
             exit_status = e.result_obj.exit_status
             command = e.result_obj.command
@@ -127,7 +129,7 @@ def sam_servers():
     from the rest of the system.
     """
     sams_config = global_config.global_config.get_config_value(
-            'SERVER', 'instances', default='')
+            'SERVER', 'sam_instances', default='')
     sams = _csv_to_list(sams_config)
     return sams
 
