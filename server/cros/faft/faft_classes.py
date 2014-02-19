@@ -249,6 +249,9 @@ class FAFTSequence(FAFTBase):
 
     def cleanup(self):
         """Autotest cleanup function."""
+        # Unset state checker in case it's set by subclass
+        self.register_faft_template({'state_checker': None})
+
         logging.info('FAFTSequence cleaning up (id=%s)', self.run_id)
         try:
             self.faft_client.system.is_available()
