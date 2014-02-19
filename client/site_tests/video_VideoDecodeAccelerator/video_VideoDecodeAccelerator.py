@@ -28,8 +28,8 @@ class video_VideoDecodeAccelerator(chrome_test.ChromeBinaryTest):
     def run_once(self, videos, use_cr_source_dir=True, gtest_filter=''):
         # Check if using test video under source test-data directory.
         if use_cr_source_dir:
-            path = os.path.join(self.cr_source_dir, 'content', 'common',
-                                'gpu', 'testdata', '')
+            path = os.path.join(self.cr_source_dir, 'media', 'test',
+                                'data', '')
         else:
             path = ''
 
