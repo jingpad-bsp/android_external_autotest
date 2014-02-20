@@ -20,7 +20,7 @@ TESTS = [
   ('platform_ToolchainOptions', {}),
   ('security_AccountsBaseline', {}),
   ('security_ASLR', {}),
-  ('security_BundledExtensions', {}),
+  ('security_BundledExtensionsTelemetry', {}),
   ('security_DbusOwners', {}),
   ('security_HardlinkRestrictions', {}),
   ('security_HtpdateHTTP', {}),
