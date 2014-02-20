@@ -47,8 +47,10 @@ class WiFiTestContextManager(object):
         elif self.CMDLINE_ATTEN_ADDR in self._cmdline_args:
             return self._cmdline_args[self.CMDLINE_ATTEN_ADDR]
 
-        raise error.TestError('Test not running in lab zone and no '
-                              'attenuator address given')
+        # Unlike routers, attenuators are optional.
+        logging.debug('Test not running in lab zone and no '
+                      'attenuator address given')
+        return None
 
 
     @property
@@ -228,7 +230,8 @@ class WiFiTestContextManager(object):
         # antennas on the router.  Most setups don't have this capability
         # and most tests do not require it.  We use this for RvR
         # (network_WiFi_AttenuatedPerf) and some roaming tests.
-        if self._is_hostname_pingable(self._attenuator_address):
+        attenuator_addr = self._attenuator_address
+        if attenuator_addr and self._is_hostname_pingable(attenuator_addr):
             self._attenuator = attenuator_controller.AttenuatorController(
                     hosts.SSHHost(self._attenuator_address, port=22))
         # Set up a clean context to conduct WiFi tests in.
@@ -247,7 +250,8 @@ class WiFiTestContextManager(object):
     def teardown(self):
         """Teardown the state used in a WiFi test."""
         logging.debug('Tearing down the test context.')
-        for system in [self.attenuator, self.client, self.router, self.server]:
+        for system in [self._attenuator, self._client_proxy,
+                       self._router, self._server]:
             if system is not None:
                 system.close()
 

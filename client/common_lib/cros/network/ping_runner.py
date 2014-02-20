@@ -210,6 +210,13 @@ class PingRunner(object):
 
             raise error.TestFail('Ping command timed out unexpectedly.')
 
+        if not command_result.stdout:
+            logging.warning('Ping command returned no output; stderr was %s.',
+                            command_result.stderr)
+            if ping_config.ignore_result:
+                return PingResult(ping_config.count, 0, 100)
+            raise error.TestFail('Ping command failed to yield any output')
+
         if command_result.exit_status and not ping_config.ignore_status:
             raise error.TestFail('Ping command failed with code=%d' %
                                  command_result.exit_status)
