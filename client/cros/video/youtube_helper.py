@@ -54,7 +54,8 @@ class YouTubeHelper(object):
     def get_player_status(self):
         """Returns the player status."""
         return self._tab.EvaluateJavaScript(
-                'playerStatus && playerStatus.innerHTML')
+                '(typeof playerStatus !== \'undefined\') && '
+                'playerStatus.innerHTML')
 
 
     def set_playback_quality(self, quality):
