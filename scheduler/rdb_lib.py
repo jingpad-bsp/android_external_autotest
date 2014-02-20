@@ -184,7 +184,8 @@ class JobQueryManager(object):
         job_acls = self._job_acls.get(job_id, [])
 
         return {'deps': job_deps, 'acls': job_acls,
-                'host_id': queue_entry.host_id}
+                'host_id': queue_entry.host_id,
+                'priority': queue_entry.job.priority}
 
 
 def acquire_hosts(host_scheduler, queue_entries):

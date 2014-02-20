@@ -116,15 +116,17 @@ class AcquireHostRequest(HostRequest):
     """Defines requests to acquire hosts.
 
     Eg:
-        AcquireHostRequest(host_id=None, deps=[d1, d2], acls=[a1, a2]): Will
-            acquire and return a host that matches the specified deps/acls.
-        AcquireHostRequest(host_id=x, deps=[d1, d2], acls=[a1, a2]) : Will
-            acquire and return host x, after checking deps/acls match.
+        AcquireHostRequest(host_id=None, deps=[d1, d2], acls=[a1], priority=40)
+            Will acquire and return a host that matches the specified deps/acls
+            after doing so for all requests of higher priority first.
+        AcquireHostRequest(host_id=x, deps=[d1, d2], acls=[a1, a2], priority=40)
+            Will acquire and return host x, if the there are any left after
+            satisfying requests of a higher priority.
 
     @raises RDBException: If the the input arguments don't contain the expected
         fields to make a request, or are of the wrong type.
     """
-    _request_args = set(['deps', 'acls'])
+    _request_args = set(['deps', 'acls', 'priority'])
 
 
     def __init__(self, **kwargs):

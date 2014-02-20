@@ -225,8 +225,13 @@ class AvailableHostRequestHandler(BaseHostRequestHandler):
 
         @param host_requests: A list of requests to acquire hosts.
         """
-        batched_host_request = collections.Counter(host_requests)
-        for request, count in batched_host_request.iteritems():
+        # Group similar requests and sort by priority, so we don't invert
+        # priorities and lease hosts based on demand alone.
+        batched_host_request = sorted(
+                collections.Counter(host_requests).items(),
+                key=lambda request: request[0].priority, reverse=True)
+
+        for request, count in batched_host_request:
             hosts = self.host_query_manager.find_hosts(
                             request.deps, request.acls)
             num_hosts = min(len(hosts), count)
