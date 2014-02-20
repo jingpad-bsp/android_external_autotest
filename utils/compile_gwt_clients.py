@@ -1,6 +1,6 @@
 #!/usr/bin/python
 import common
-import sys, os, shutil, errno, optparse, logging
+import sys, os, shutil, optparse, logging
 from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.common_lib import logging_config, logging_manager
 """
@@ -8,16 +8,16 @@ Compile All Autotest GWT Clients Living in autotest/frontend/client/src
 """
 
 _AUTOTEST_DIR = common.autotest_dir
-_DEFAULT_GWT_DIR = '/usr/local/lib/gwt'
+_DEFAULT_GWT_DIRS = ['/usr/local/lib/gwt', '/opt/google-web-toolkit']
 _DEFAULT_APP_DIR = os.path.join(_AUTOTEST_DIR, 'frontend/client')
 _DEFAULT_INSTALL_DIR = os.path.join(_DEFAULT_APP_DIR, 'www')
 _TMP_COMPILE_DIR = _DEFAULT_INSTALL_DIR + '.new'
 
-_COMPILE_LINE = ('java  -Xmx512M '
+_COMPILE_LINE = ('java  -Xmx512M %(extra_args)s '
                  '-cp "%(app_dir)s/src:%(app_dir)s/bin:%(gwt_dir)s/gwt-user.jar'
                  ':%(gwt_dir)s/gwt-dev.jar" -Djava.awt.headless=true '
                  'com.google.gwt.dev.Compiler -war "%(compile_dir)s" '
-                 '%(extra_args)s %(project_client)s')
+                 '%(project_client)s')
 
 class CompileClientsLoggingConfig(logging_config.LoggingConfig):
     def configure_logging(self, results_dir=None, verbose=False):
@@ -40,19 +40,17 @@ def enumerate_projects():
 
 def find_gwt_dir():
     """See if GWT is installed in site-packages or in the system,
-       site-packages is favored over a system install.
+       site-packages is favored over a system install or a /usr/local install.
     """
     site_gwt = os.path.join(_AUTOTEST_DIR, 'site-packages', 'gwt')
+    gwt_dirs = [site_gwt] + _DEFAULT_GWT_DIRS
 
-    if os.path.isdir(site_gwt):
-        return site_gwt
-
-    if not os.path.isdir(_DEFAULT_GWT_DIR):
-        logging.error('Unable to find GWT. '
-                      'You can use utils/build_externals.py to install it.')
-        sys.exit(1)
-
-    return _DEFAULT_GWT_DIR
+    for gwt_dir in gwt_dirs:
+        if os.path.isdir(gwt_dir):
+            return gwt_dir
+    logging.error('Unable to find GWT. '
+                  'You can use utils/build_externals.py to install it.')
+    sys.exit(1)
 
 
 def install_completed_client(compiled_dir, project_client):
@@ -119,7 +117,7 @@ def compile_and_install_client(project_client, extra_args='',
     return False
 
 
-def compile_all_projects(projects, extra_args=''):
+def compile_all_projects(extra_args=''):
     """Compile all projects available as defined by enumerate_projects.
        @returns list of failed client installations
     """
