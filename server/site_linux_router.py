@@ -111,6 +111,9 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         # Place us in the US by default
         self.iw_runner.set_regulatory_domain('US')
 
+        # Reset all antennas to be active
+        self.set_default_antenna_bitmap()
+
 
     def close(self):
         """Close global resources held by this system."""

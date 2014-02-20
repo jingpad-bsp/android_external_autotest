@@ -337,3 +337,21 @@ class LinuxSystem(object):
         if missing:
             raise to_be_raised('AP on %s is missing required capabilites: %r' %
                                (self.role, missing))
+
+
+    def set_antenna_bitmap(self, tx_bitmap, rx_bitmap):
+        """Setup antenna bitmaps for all the phys.
+
+        @param tx_bitmap int bitmap of allowed antennas to use for TX
+        @param rx_bitmap int bitmap of allowed antennas to use for RX
+
+        """
+        for phy in self.phy_list:
+            self.iw_runner.set_antenna_bitmap(phy.name, tx_bitmap, rx_bitmap)
+
+
+    def set_default_antenna_bitmap(self):
+        """Setup default antenna bitmaps for all the phys."""
+        for phy in self.phy_list:
+            self.iw_runner.set_antenna_bitmap(phy.name, phy.avail_tx_antennas,
+                                              phy.avail_rx_antennas)

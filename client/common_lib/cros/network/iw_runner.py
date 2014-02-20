@@ -42,7 +42,8 @@ IwNetDev = collections.namedtuple('IwNetDev', ['phy', 'if_name', 'if_type'])
 #          "authenticate".
 #   max_scan_ssids: Maximum number of SSIDs which can be scanned at once.
 IwPhy = collections.namedtuple(
-    'Phy', ['name', 'bands', 'modes', 'commands', 'max_scan_ssids'])
+    'Phy', ['name', 'bands', 'modes', 'commands', 'max_scan_ssids',
+            'avail_tx_antennas', 'avail_rx_antennas'])
 
 DEFAULT_COMMAND_IW = 'iw'
 
@@ -278,7 +279,9 @@ class IwRunner(object):
                             bands,
                             tuple(pending_phy_modes),
                             tuple(pending_phy_commands),
-                            pending_phy_max_scan_ssids)
+                            pending_phy_max_scan_ssids,
+                            pending_phy_tx_antennas,
+                            pending_phy_rx_antennas)
             all_phys.append(new_phy)
 
         for line in output.splitlines():
@@ -291,6 +294,8 @@ class IwRunner(object):
                 pending_phy_modes = []
                 pending_phy_commands = []
                 pending_phy_max_scan_ssids = None
+                pending_phy_tx_antennas = 0
+                pending_phy_rx_antennas = 0
                 continue
 
             match_section = re.match('\s*(\w.*):\s*$', line)
@@ -325,6 +330,15 @@ class IwRunner(object):
                 if command_match:
                     pending_phy_commands.append(command_match.group(1))
                     continue
+
+            match_avail_antennas = re.match('\s*Available Antennas: TX (\S+)'
+                                            ' RX (\S+)', line)
+            if match_avail_antennas and pending_phy_name:
+                pending_phy_tx_antennas = int(
+                        match_avail_antennas.group(1), 16)
+                pending_phy_rx_antennas = int(
+                        match_avail_antennas.group(2), 16)
+                continue
 
             if not all([current_band, pending_phy_name,
                         line.startswith('\t')]):
@@ -523,3 +537,20 @@ class IwRunner(object):
                 return True
             time.sleep(1)
         return False
+
+
+    def set_antenna_bitmap(self, phy, tx_bitmap, rx_bitmap):
+        """Set antenna chain mask on given phy (radio).
+
+        This function will set the antennas allowed to use for TX and
+        RX on the |phy| based on the |tx_bitmap| and |rx_bitmap|.
+        This command is only allowed when the interfaces on the phy are down.
+
+        @param phy: phy name
+        @param tx_bitmap: bitmap of allowed antennas to use for TX
+        @param rx_bitmap: bitmap of allowed antennas to use for RX
+
+        """
+        command = '%s phy %s set antenna %d %d' % (self._command_iw, phy,
+                                                   tx_bitmap, rx_bitmap)
+        self._run(command)
