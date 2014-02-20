@@ -5,9 +5,9 @@
 import logging
 import os
 
-from autotest_lib.client.bin import utils
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui_test
+from autotest_lib.client.common_lib.cros import chrome
 
 # Since we parse lsof output in several places, these centralize the
 # column numbering for finding things in lsof output.  For example:
@@ -18,15 +18,16 @@ _LSOF_USER = 2
 _LSOF_FD = 3
 _LSOF_TYPE = 4
 _LSOF_DEVICE = 5
+_LSOF_NAME = 7
 # In certain cases, the size/offset column is empty, making it more
 # reliable to locate the last couple columns by counting from the right.
 _LSOF_SIZE_OFF = 6
 _LSOF_NODE = -3
 _LSOF_NAME = -2
 
-# We do this as a UITest so that we include any daemons that
-# might be spawned at login, in our test results.
-class security_NetworkListeners(cros_ui_test.UITest):
+# We log in so that we include any daemons that
+# might be spawned at login in our test results.
+class security_NetworkListeners(test.test):
     """Check the system against a whitelist of expected network-listeners."""
     version = 1
 
@@ -53,7 +54,7 @@ class security_NetworkListeners(cros_ui_test.UITest):
         autotest. That leads to crazy-looking test failures where
         e.g. "sed" and "bash" appear to be listening on ports
         80/443. So, this takes the output of lsof and returns a
-        filtered subset of it, with autotest stuff removed.
+        filtered subset of it, with autotest and telemetry stuff removed.
 
         @param lsof_lines: a list of lines as output by the 'lsof' util.
         """
@@ -61,8 +62,11 @@ class security_NetworkListeners(cros_ui_test.UITest):
         sockets_to_ignore = set([])
         for line in lsof_lines:
             fields = line.split()
-            if fields[_LSOF_COMMAND] == 'autotest':
+            if (fields[_LSOF_COMMAND] == 'autotest' or
+                fields[_LSOF_NAME] == '127.0.0.1:%d' %
+                        utils.get_chrome_remote_debugging_port()):
                 sockets_to_ignore.add(fields[_LSOF_DEVICE])
+
         # Now that we know which ones to ignore, iterate the output again.
         lines_to_keep = []
         for line in lsof_lines:
@@ -79,37 +83,39 @@ class security_NetworkListeners(cros_ui_test.UITest):
         Compare a list of processes, listening on TCP ports, to a
         baseline. Test fails if there are mismatches.
         """
-        cmd = (r'lsof -n -i -sTCP:LISTEN | '
-               # Workaround for crosbug.com/28235 using a dynamic port #.
-               r'sed "s/\\(shill.*127.0.0.1\\):.*/\1:DYNAMIC LISTEN/g"')
-        cmd_output = utils.system_output(cmd, ignore_status=True,
-                                         retain_output=True)
-        # Use the [1:] slice to discard line 0, the lsof output header.
-        lsof_lines = cmd_output.splitlines()[1:]
-        # Unlike ps, we don't have a format option so we have to parse
-        # lines that look like this:
-        # sshd 1915 root 3u IPv4 9221 0t0 TCP *:ssh (LISTEN)
-        # Out of that, we just want e.g. sshd *:ssh
-        observed_set = set([])
-        for line in self.remove_autotest_noise(lsof_lines):
-            fields = line.split()
-            observed_set.add('%s %s' % (fields[_LSOF_COMMAND],
-                                        fields[_LSOF_NAME]))
+        with chrome.Chrome():
+            cmd = (r'lsof -n -i -sTCP:LISTEN | '
+                   # Workaround for crosbug.com/28235 using a dynamic port #.
+                   r'sed "s/\\(shill.*127.0.0.1\\):.*/\1:DYNAMIC LISTEN/g"')
+            cmd_output = utils.system_output(cmd, ignore_status=True,
+                                             retain_output=True)
+            # Use the [1:] slice to discard line 0, the lsof output header.
+            lsof_lines = cmd_output.splitlines()[1:]
+            # Unlike ps, we don't have a format option so we have to parse
+            # lines that look like this:
+            # sshd 1915 root 3u IPv4 9221 0t0 TCP *:ssh (LISTEN)
+            # Out of that, we just want e.g. sshd *:ssh
+            observed_set = set([])
+            for line in self.remove_autotest_noise(lsof_lines):
+                fields = line.split()
+                observed_set.add('%s %s' % (fields[_LSOF_COMMAND],
+                                            fields[_LSOF_NAME]))
 
-        baseline_set = self.load_baseline()
+            baseline_set = self.load_baseline()
 
-        # If something in the observed set is not
-        # covered by the baseline...
-        diff = observed_set.difference(baseline_set)
-        if diff:
-            for daemon in diff:
-                logging.error('Unexpected network listener: %s', daemon)
+            # If something in the observed set is not
+            # covered by the baseline...
+            diff = observed_set.difference(baseline_set)
+            if diff:
+                for daemon in diff:
+                    logging.error('Unexpected network listener: %s', daemon)
 
-        # Or, things in baseline are missing from the system:
-        diff2 = baseline_set.difference(observed_set)
-        if diff2:
-            for daemon in diff2:
-                logging.error('Missing expected network listener: %s', daemon)
+            # Or, things in baseline are missing from the system:
+            diff2 = baseline_set.difference(observed_set)
+            if diff2:
+                for daemon in diff2:
+                    logging.error('Missing expected network listener: %s',
+                                  daemon)
 
-        if diff or diff2:
-            raise error.TestFail('Baseline mismatch')
+            if diff or diff2:
+                raise error.TestFail('Baseline mismatch')
