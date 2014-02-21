@@ -12,6 +12,7 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "client"
 RETRIES = 3
+EXPERIMENTAL = "True"
 
 DOC = """
 This test checks that cryptohome can create and mount an encrypted vault.
