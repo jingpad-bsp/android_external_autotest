@@ -73,9 +73,8 @@ LOGGED_IN_MAGIC_FILE = '/var/run/state/logged-in'
 
 LOGIN_PROFILE = USER_DATA_DIR + '/Default'
 LOGIN_ERROR = 'Error=BadAuthentication'
+LOGIN_PROMPT_VISIBLE_MAGIC_FILE = '/tmp/uptime-login-prompt-visible'
 LOGIN_TRUST_ROOTS = '/etc/login_trust_root.pem'
-
-LOGIN_PROMPT_STATUS_COMMAND = 'bootstat_get_last login-prompt-visible'
 
 MOCK_OWNER_CERT = 'mock_owner_cert.pem'
 MOCK_OWNER_KEY = 'mock_owner_private.key'
