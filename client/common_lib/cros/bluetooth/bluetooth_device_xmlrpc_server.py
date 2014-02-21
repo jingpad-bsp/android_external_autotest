@@ -44,6 +44,8 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
     BLUEZ_MANAGER_IFACE = 'org.freedesktop.DBus.ObjectManager'
     BLUEZ_ADAPTER_IFACE = 'org.bluez.Adapter1'
     BLUEZ_DEVICE_IFACE = 'org.bluez.Device1'
+    BLUEZ_PROFILE_MANAGER_PATH = '/org/bluez'
+    BLUEZ_PROFILE_MANAGER_IFACE = 'org.bluez.ProfileManager1'
 
     BLUETOOTH_LIBDIR = '/var/lib/bluetooth'
 
@@ -338,6 +340,27 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
         """
         self._adapter.StopDiscovery(dbus_interface=self.BLUEZ_ADAPTER_IFACE)
+        return True
+
+
+    @xmlrpc_server.dbus_safe(False)
+    def register_profile(self, path, uuid, options):
+        """Register new profile (service).
+
+        @param path: Path to the profile object.
+        @param uuid: Service Class ID of the service as string.
+        @param options: Dictionary of options for the new service, compliant
+                        with BlueZ D-Bus Profile API standard.
+
+        @return True on success, False otherwise.
+
+        """
+        profile_manager = dbus.Interface(
+                              self._system_bus.get_object(
+                                  self.BLUEZ_SERVICE_NAME,
+                                  self.BLUEZ_PROFILE_MANAGER_PATH),
+                              self.BLUEZ_PROFILE_MANAGER_IFACE)
+        profile_manager.RegisterProfile(path, uuid, options)
         return True
 
 

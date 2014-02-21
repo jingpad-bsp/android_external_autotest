@@ -149,6 +149,20 @@ class BluetoothDevice(object):
         return self._proxy.stop_discovery()
 
 
+    def register_profile(self, path, uuid, options):
+        """Register new profile (service).
+
+        @param path: Path to the profile object.
+        @param uuid: Service Class ID of the service as string.
+        @param options: Dictionary of options for the new service, compliant
+                        with BlueZ D-Bus Profile API standard.
+
+        @return True on success, False otherwise.
+
+        """
+        return self._proxy.register_profile(path, uuid, options)
+
+
     def close(self):
         """Tear down state associated with the client."""
         # Turn off the discoverable flag since it may affect future tests.

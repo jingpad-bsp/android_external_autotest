@@ -4,7 +4,7 @@
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.bluetooth import bluetooth_test
-
+import uuid
 
 class bluetooth_SDP_ServiceSearchRequestBasic(bluetooth_test.BluetoothTest):
     """
@@ -12,8 +12,12 @@ class bluetooth_SDP_ServiceSearchRequestBasic(bluetooth_test.BluetoothTest):
     """
     version = 1
 
-    SDP_SERVER_CLASS_ID = 0x1000
+    SDP_SERVER_CLASS_ID          = 0x1000
     NO_EXISTING_SERVICE_CLASS_ID = 0x0001
+    FAKE_SERVICES_CNT            = 300
+    FAKE_SERVICES_PATH           = '/autotest/fake_service_'
+    FAKE_SERVICES_CLASS_ID       = 0xABCD
+    BLUETOOTH_BASE_UUID          = 0x0000000000001000800000805F9B34FB
 
 
     def correct_request(self):
@@ -39,6 +43,16 @@ class bluetooth_SDP_ServiceSearchRequestBasic(bluetooth_test.BluetoothTest):
                    [self.NO_EXISTING_SERVICE_CLASS_ID], 3, size)
             if resp:
                 return False
+            # test case TP/SERVER/SS/BV-03-C:
+            # request the fake services' Class ID to force SDP to use
+            # continuation state
+            resp = self.tester.service_search_request(
+                   [self.FAKE_SERVICES_CLASS_ID],
+                   self.FAKE_SERVICES_CNT * 2,
+                   size)
+            if len(resp) != self.FAKE_SERVICES_CNT:
+                return False
+
         return True
 
 
@@ -53,6 +67,14 @@ class bluetooth_SDP_ServiceSearchRequestBasic(bluetooth_test.BluetoothTest):
         # Setup the tester as a generic computer.
         if not self.tester.setup('computer'):
             raise error.TestFail('Tester could not be initialized')
+
+        # Create many fake services with the same Class ID
+        for num in range(0, self.FAKE_SERVICES_CNT):
+            path_str = self.FAKE_SERVICES_PATH + str(num)
+            uuid128 = ((self.FAKE_SERVICES_CLASS_ID << 96) +
+                      self.BLUETOOTH_BASE_UUID)
+            uuid_str = str(uuid.UUID(int=uuid128))
+            self.device.register_profile(path_str, uuid_str, {})
 
         # Since radio is involved, this test is not 100% reliable; instead we
         # repeat a few times until it succeeds.
