@@ -27,7 +27,7 @@ params_dict = {
 class power_LoadTest(cros_ui_test.UITest):
     """test class"""
     version = 2
-    _creds = 'power.loadtest@gmail.com:power_LoadTest'
+    _creds = 'power.loadtest@gmail.com:power_LoadTest1'
 
 
     def start_authserver(self):
