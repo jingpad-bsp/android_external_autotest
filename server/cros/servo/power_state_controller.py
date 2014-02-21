@@ -184,7 +184,6 @@ class _PantherController(_PowerStateController):
 
     _RESET_HOLD_TIME = 0.5
     _RESET_DELAY = 5.0
-    _TIME_TO_BOOT = 10.0
     _TIME_TO_HOLD_POWER_BUTTON = 1.2
 
     @_inherit_docstring(_PowerStateController)
@@ -197,7 +196,6 @@ class _PantherController(_PowerStateController):
         self._servo.set('pwr_button', 'press')
         time.sleep(self._TIME_TO_HOLD_POWER_BUTTON)
         self._servo.set('pwr_button', 'release')
-        time.sleep(self._TIME_TO_BOOT)
 
 
 class _AlexController(_PowerStateController):
