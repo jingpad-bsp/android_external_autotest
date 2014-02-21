@@ -49,7 +49,7 @@ def wait_for_condition(condition, timeout_msg, timeout, process, crash_msg):
             raise e
 
 
-def wait_for_browser(timeout=cros_ui.DEFAULT_TIMEOUT):
+def wait_for_browser(timeout=cros_ui.RESTART_UI_TIMEOUT):
     """Wait until a Chrome process is running.
 
     Args:
@@ -66,7 +66,7 @@ def wait_for_browser(timeout=cros_ui.DEFAULT_TIMEOUT):
         crash_msg='Chrome crashed while starting up.')
 
 
-def wait_for_browser_exit(crash_msg, timeout=cros_ui.DEFAULT_TIMEOUT):
+def wait_for_browser_exit(crash_msg, timeout=cros_ui.RESTART_UI_TIMEOUT):
     """Wait for the Chrome process to exit.
 
     Args:
@@ -91,7 +91,7 @@ def wait_for_browser_exit(crash_msg, timeout=cros_ui.DEFAULT_TIMEOUT):
       return False
 
 
-def wait_for_cryptohome(user, timeout=cros_ui.DEFAULT_TIMEOUT):
+def wait_for_cryptohome(user, timeout=cros_ui.RESTART_UI_TIMEOUT):
     """Wait until cryptohome is mounted.
 
     Args:

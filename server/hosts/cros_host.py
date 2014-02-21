@@ -19,6 +19,7 @@ from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.cros import constants
+from autotest_lib.client.cros import cros_ui
 from autotest_lib.server import autoserv_parser
 from autotest_lib.server import autotest
 from autotest_lib.server import utils as server_utils
@@ -79,30 +80,32 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     # SLEEP_TIMEOUT:  Time to allow for suspend to memory.
     # RESUME_TIMEOUT: Time to allow for resume after suspend, plus
     #   time to restart the netwowrk.
+    # SHUTDOWN_TIMEOUT: Time to allow for shut down.
     # BOOT_TIMEOUT: Time to allow for boot from power off.  Among
     #   other things, this must account for the 30 second dev-mode
     #   screen delay and time to start the network.
     # USB_BOOT_TIMEOUT: Time to allow for boot from a USB device,
     #   including the 30 second dev-mode delay and time to start the
     #   network.
-    # SHUTDOWN_TIMEOUT: Time to allow for shut down.
-    # REBOOT_TIMEOUT: How long to wait for a reboot.
     # INSTALL_TIMEOUT: Time to allow for chromeos-install.
+    # POWERWASH_BOOT_TIMEOUT: Time to allow for a reboot that
+    #   includes powerwash.
 
     SLEEP_TIMEOUT = 2
     RESUME_TIMEOUT = 10
     SHUTDOWN_TIMEOUT = 5
     BOOT_TIMEOUT = 60
     USB_BOOT_TIMEOUT = 150
+    INSTALL_TIMEOUT = 240
     POWERWASH_BOOT_TIMEOUT = 60
 
+    # REBOOT_TIMEOUT: How long to wait for a reboot.
+    #
     # We have a long timeout to ensure we don't flakily fail due to other
     # issues. Shorter timeouts are vetted in platform_RebootAfterUpdate.
     # TODO(sbasi - crbug.com/276094) Restore to 5 mins once the 'host did not
     # return from reboot' bug is solved.
     REBOOT_TIMEOUT = 480
-
-    INSTALL_TIMEOUT = 240
 
     # _USB_POWER_TIMEOUT: Time to allow for USB to power toggle ON and OFF.
     # _POWER_CYCLE_TIMEOUT: Time to allow for manual power cycle.
@@ -1105,7 +1108,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
 
     def _restart_ui(self):
-        """Restarts ui.
+        """Restart the Chrome UI.
 
         @raises: FactoryImageCheckerException for factory images, since
                  we cannot attempt to restart ui on them.
@@ -1116,12 +1119,13 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
            raise FactoryImageCheckerException('Cannot restart ui on factory '
                                               'images')
 
-        client_at = autotest.Autotest(self)
-        client_at.run_static_method('autotest_lib.client.cros.cros_ui',
-                                    '_clear_login_prompt_state')
-        self.run('restart ui')
-        client_at.run_static_method('autotest_lib.client.cros.cros_ui',
-                                    '_wait_for_login_prompt')
+        # TODO(jrbarnette):  The command to stop/start the ui job
+        # should live inside cros_ui, too.  However that would seem
+        # to imply interface changes to the existing start()/restart()
+        # functions, which is a bridge too far (for now).
+        prompt = cros_ui.get_login_prompt_state(self)
+        self.run('stop ui; start ui')
+        cros_ui.wait_for_chrome_ready(prompt, self)
 
 
     def cleanup(self):

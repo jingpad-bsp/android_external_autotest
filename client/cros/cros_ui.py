@@ -12,7 +12,7 @@ from autotest_lib.client.cros import constants, httpd
 # crashes by cros_ui_test.UITest.
 UI_RESTART_ATTEMPT_MSG = 'cros_ui.py: Attempting StopSession...'
 UI_RESTART_COMPLETE_MSG = 'cros_ui.py: StopSession complete.'
-DEFAULT_TIMEOUT = 90  # longer because we may be crash dumping now.
+RESTART_UI_TIMEOUT = 90  # longer because we may be crash dumping now.
 
 def xcommand(cmd):
     """
@@ -70,38 +70,48 @@ def get_autox():
     return autox.AutoX()
 
 
-def _clear_login_prompt_state():
-    """Clear the magic file indicating that the login prompt is ready."""
-    if os.access(constants.LOGIN_PROMPT_VISIBLE_MAGIC_FILE, os.F_OK):
-        os.unlink(constants.LOGIN_PROMPT_VISIBLE_MAGIC_FILE)
+def get_login_prompt_state(host=None):
+    """Return the "state" of the most recent login.
 
-
-def _wait_for_login_prompt(timeout=DEFAULT_TIMEOUT):
-    """Wait until the login prompt is on screen and ready.
-
-    When the login prompt appears, the session manager will log this via
-    bootstat, creating a magic file in /tmp. We can check whether the prompt
-    has appeared yet using the following pattern:
-
-       _clear_login_prompt_state()
-       logout()
-       _wait_for_login_prompt()
-
-    TODO(davidjames): Reimplement this function using dbus messages so we
-                      don't depend on magic files.
+    The returned value will change each time Chrome restarts and
+    displays the login screen.  The change in the value can be used
+    to detect a successful Chrome startup.
 
     Args:
+        host:  If not None, a host object on which to test Chrome
+            state, rather than running commands on the local host.
+
+    """
+    if host:
+        return host.run(constants.LOGIN_PROMPT_STATUS_COMMAND).stdout
+    return utils.run(constants.LOGIN_PROMPT_STATUS_COMMAND).stdout
+
+
+def wait_for_chrome_ready(old_state, host=None, timeout=RESTART_UI_TIMEOUT):
+    """Wait until a new Chrome login prompt is on screen and ready.
+
+    The standard formula to check whether the prompt has appeared yet
+    is with a pattern like the following:
+
+       state = get_login_prompt_state()
+       logout()
+       wait_for_chrome_ready(state)
+
+    Args:
+        old_state:  state of the login prompt prior to restarting
+            Chrome.
+        host:  If not None, a host object on which to test Chrome
+            state, rather than running commands on the local host.
         timeout: float number of seconds to wait
 
     Raises:
         TimeoutError: Login prompt didn't get up before timeout
-    """
 
+    """
     utils.poll_for_condition(
-        condition=lambda: os.access(
-            constants.LOGIN_PROMPT_VISIBLE_MAGIC_FILE, os.F_OK),
+        condition=lambda: old_state != get_login_prompt_state(host),
         exception=utils.TimeoutError('Timed out waiting for login prompt'),
-        timeout=timeout)
+        timeout=timeout, sleep_interval=1.0)
 
 
 def stop_and_wait_for_chrome_to_exit(timeout_secs=40):
@@ -137,12 +147,12 @@ def stop(allow_fail=False):
 
 def start(allow_fail=False, wait_for_login_prompt=True):
     """Start the login manager and wait for the prompt to show up."""
-    _clear_login_prompt_state()
+    state = get_login_prompt_state()
     result = utils.system("start ui", ignore_status=allow_fail)
     # If allow_fail is set, the caller might be calling us when the UI job
     # is already running. In that case, the above command fails.
     if result == 0 and wait_for_login_prompt:
-        _wait_for_login_prompt()
+        wait_for_chrome_ready(state)
     return result
 
 
@@ -156,9 +166,9 @@ def restart(impl=None):
     Args:
         impl: Method to use to restart the session manager. By
               default, the session manager is restarted using upstart.
-    """
 
-    _clear_login_prompt_state()
+    """
+    state = get_login_prompt_state()
 
     # Log what we're about to do to /var/log/messages. Used to log crashes later
     # in cleanup by cros_ui_test.UITest.
@@ -172,7 +182,7 @@ def restart(impl=None):
 
         # Wait for login prompt to appear to indicate that all processes are
         # up and running again.
-        _wait_for_login_prompt()
+        wait_for_chrome_ready(state)
     finally:
         utils.system('logger "%s"' % UI_RESTART_COMPLETE_MSG)
 
