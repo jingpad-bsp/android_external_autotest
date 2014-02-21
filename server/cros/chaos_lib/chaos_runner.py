@@ -15,6 +15,7 @@ from autotest_lib.server import site_linux_system
 from autotest_lib.server import site_utils
 from autotest_lib.server.cros import host_lock_manager
 from autotest_lib.server.cros.chaos_ap_configurators import ap_batch_locker
+from autotest_lib.server.cros.chaos_ap_configurators import ap_configurator
 from autotest_lib.server.cros.chaos_ap_configurators import ap_cartridge
 from autotest_lib.server.cros.chaos_ap_configurators import ap_spec
 from autotest_lib.server.cros.network import wifi_client
@@ -143,7 +144,11 @@ class ChaosRunner(object):
 
         """
         ap.power_down_router()
-        ap.apply_settings()
+        try:
+            ap.apply_settings()
+        except ap_configurator.PduNotResponding as e:
+            if ap.pdu not in self._broken_pdus:
+                self._broken_pdus.append(ap.pdu)
         batch_locker.unlock_one_ap(ap.host_name)
 
 
@@ -233,7 +238,7 @@ class ChaosRunner(object):
                             job.run_test('network_WiFi_ChaosConfigFailure',
                                          ap=ap,
                                          error_string=error_string,
-                                         tag=ap.ssid)
+                                         tag=ap.host_name)
                             continue
 
                         # Setup a managed interface to perform scanning on the
