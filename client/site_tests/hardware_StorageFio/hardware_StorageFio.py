@@ -166,24 +166,35 @@ class hardware_StorageFio(test.test):
         # Newest fio doesn't omit any information in --minimal
         # Need to set terse-version to 4 for trim related output
         options.append('--terse-version=4')
+
         fio = utils.run(vars + ionice + ' ./fio --minimal %s "%s"' %
                         (' '.join(options), os.path.join(self.bindir, job)))
 
         logging.debug(fio.stdout)
         output = self.__parse_fio(fio.stdout)
-        self._fail_count += int(output['_' + job + '_error'])
+        for k, v in output.iteritems():
+            if k.endswith('_error'):
+                self._fail_count += int(v)
         return output
-
 
     def initialize(self, dev='', filesize=DEFAULT_FILE_SIZE):
         """
         Set up local variables.
 
-        @param dev: block device to test.
+        @param dev: block device / file to test.
                 Spare partition on root device by default
         @param filesize: size of the file. 0 means whole partition.
                 by default, 1GB.
         """
+        if dev != '' and (os.path.isfile(dev) or not os.path.exists(dev)):
+            if filesize == 0:
+                raise error.TestError(
+                    'Nonzero file size is required to test file systems')
+            self.__filename = dev
+            self.__filesize = filesize
+            self.__description = ''
+            return
+
         if dev in ['', utils.system_output('rootdev -s -d')]:
             if filesize == 0:
                 raise error.TestError(

@@ -4,7 +4,6 @@
 
 from UserDict import UserDict
 
-
 class fio_parser_exception(Exception):
     """
     Exception class for fio_job_output.
@@ -39,7 +38,6 @@ class fio_job_output(UserDict):
     This class accepts fio output as a list of values.
 
     """
-
 
     def _parse_gen(self, job, field, val):
         """
@@ -100,7 +98,7 @@ class fio_job_output(UserDict):
             self._fio_table.append((field, i, self._parse_percentile))
 
 
-    def _build_fio_2_0_table(self):
+    def _build_fio_terse_4_table(self):
         """
         Creates map from field name to fio output index and parse function.
 
@@ -231,16 +229,20 @@ class fio_job_output(UserDict):
         # Create table that relates field name to fio output index and
         # parsing function to be used for the field.
         self._fio_table = []
-        version = fio_version(data[1])
-        version_2x = ['2.0', '2.1']
+        terse_version = int(data[0])
+        fio_terse_parser = { 4 : self._build_fio_terse_4_table }
 
-        if version[0:3] in version_2x:
-            self._build_fio_2_0_table()
+        if terse_version in fio_terse_parser:
+            fio_terse_parser[terse_version]()
         else:
-            raise fio_parser_exception('fio-%s output unsupported.'
-               'fio_parser supports version(s) %s' % (version, version_2x))
+            raise fio_parser_exception('fio terse version %s unsupported.'
+               'fio_parser supports terse version %s' %
+               (terse_version, fio_terse_parser.keys()))
 
         # Fill dictionary object.
         self._job_name = data[2]
         for field, idx, parser in self._fio_table:
+            # Field 162-170 only reported when we test on block device.
+            if len(data) <= idx:
+                break
             parser(self._job_name, field, data[idx])
