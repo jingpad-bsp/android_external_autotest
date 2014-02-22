@@ -6,6 +6,7 @@ import contextlib
 import datetime
 import logging
 import pprint
+import time
 
 from autotest_lib.client.common_lib.cros.network import chaos_constants
 from autotest_lib.client.common_lib.cros.network import iw_runner
@@ -206,11 +207,13 @@ class ChaosRunner(object):
                     for ap in aps:
                         if ap.pdu in self._broken_pdus:
                             ap.configuration_success = chaos_constants.PDU_FAIL
+                            tag = (ap.host_name + '_PDU_' +
+                                   str(int(round(time.time()))))
                             job.run_test('network_WiFi_ChaosConfigFailure',
                                          ap=ap,
                                          error_string=
                                              chaos_constants.AP_PDU_DOWN,
-                                         tag=ap.host_name)
+                                         tag=tag)
                             aps.remove(ap)
 
                     # Power down all of the APs because some can get grumpy
@@ -230,15 +233,18 @@ class ChaosRunner(object):
                             chaos_constants.CONFIG_SUCCESS):
                             if (ap.configuration_success ==
                                 chaos_constants.PDU_FAIL):
+                                tag = ap.host_name + '_PDU'
                                 error_string = chaos_constants.AP_PDU_DOWN
                             else:
                                 error_string = chaos_constants.AP_CONFIG_FAIL
+                                tag = ap.host_name
                             logging.error('The AP %s was not configured '
                                           'correctly', ap.ssid)
+                            tag += '_' + str(int(round(time.time())))
                             job.run_test('network_WiFi_ChaosConfigFailure',
                                          ap=ap,
                                          error_string=error_string,
-                                         tag=ap.host_name)
+                                         tag=tag)
                             continue
 
                         # Setup a managed interface to perform scanning on the
