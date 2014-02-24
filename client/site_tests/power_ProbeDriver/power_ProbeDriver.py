@@ -7,10 +7,16 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
 
 class power_ProbeDriver(test.test):
+    """Confirms that AC driver is loaded and functioning
+    unless device is AC only."""
     version = 1
     power_supply_path = '/sys/class/power_supply/*'
 
     def run_once(self, test_which='Mains'):
+        # This test doesn't apply to systems that run on AC only.
+        cmd = "mosys psu type"
+        if utils.system_output(cmd, ignore_status=True).strip() == "AC_only":
+            return
         ac_paths  = []
         bat_paths = []
         # Gather power supplies
@@ -31,6 +37,11 @@ class power_ProbeDriver(test.test):
             raise error.TestNAError('Unknown test type: %s' % test_which)
 
     def run_ac(self, ac_paths, bat_paths):
+        """Checks AC driver.
+
+        @param ac_paths: sysfs AC entries
+        @param bat_paths: sysfs battery entries
+        """
         if len(ac_paths) != 1:
             raise error.TestFail('Not exactly one AC found: %d' %
                                  len(ac_paths))
@@ -46,6 +57,11 @@ class power_ProbeDriver(test.test):
             raise error.TestFail('One of batteries is discharging')
 
     def run_bat(self, ac_paths, bat_paths):
+        """ Checks batteries.
+
+        @param ac_paths: sysfs AC entries
+        @param bat_paths: sysfs battery entries
+        """
         if len(bat_paths) == 0:
             raise error.TestFail('Find no batteries')
 
