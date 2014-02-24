@@ -244,6 +244,7 @@ class FAFTSequence(FAFTBase):
         self.install_test_image(self._install_image_path, self._firmware_update)
         self.record_system_info()
         self.setup_gbb_flags()
+        self.stop_service('update-engine')
         self.setup_ec_write_protect(ec_wp)
         logging.info('FAFTSequence initialize done (id=%s)', self.run_id)
 
