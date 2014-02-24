@@ -10,8 +10,6 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"
 TEST_TYPE = "client"
 
-EXPERIMENTAL = "True"
-
 DOC = """
 This test checks that, after taking ownership successfully, subsequent logins
 do not clobber the owner's registered public key.

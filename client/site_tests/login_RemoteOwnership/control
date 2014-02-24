@@ -10,8 +10,6 @@ TEST_CLASS = "login"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"
 
-EXPERIMENTAL = "True"
-
 DOC = """
 Tests to ensure that the Ownership API can be used, as an enterprise might,
 to set device policies.
