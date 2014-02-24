@@ -29,6 +29,10 @@ class WiFiClient(site_linux_system.LinuxSystem):
 
     MAX_SERVICE_GONE_TIMEOUT_SECONDS = 60
 
+    # List of interface names we won't consider for use as "the" WiFi interface
+    # on Android hosts.
+    WIFI_IF_BLACKLIST = ['p2p0']
+
     UNKNOWN_BOARD_TYPE = 'unknown'
 
 
@@ -209,6 +213,8 @@ class WiFiClient(site_linux_system.LinuxSystem):
         if isinstance(self.host, adb_host.ADBHost):
             # Look up the WiFi device (and its MAC) on the client.
             devs = self.iw_runner.list_interfaces(desired_if_type='managed')
+            devs = [dev for dev in devs
+                    if dev.if_name not in self.WIFI_IF_BLACKLIST]
             if not devs:
                 raise error.TestFail('No wlan devices found on %s.' %
                                      self.host.hostname)
