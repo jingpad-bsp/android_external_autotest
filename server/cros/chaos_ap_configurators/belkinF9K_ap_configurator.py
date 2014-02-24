@@ -12,7 +12,6 @@ import ap_spec
 from selenium.common.exceptions import WebDriverException
 from selenium.common.exceptions import TimeoutException as \
     SeleniumTimeoutException
-from selenium.webdriver.support import expected_conditions as ec
 
 
 class BelkinF9KAPConfigurator(
@@ -107,7 +106,8 @@ class BelkinF9KAPConfigurator(
                 if 'Timed out receiving message from renderer' in message:
                     self.driver.refresh()
                     self.wait_for_object_by_xpath(self.security_popup)
-                elif ec.alert_is_present:
+                elif (not any(alert in message for alert in
+                    ['unexpected alert open', 'An open modal dialog blocked'])):
                     self._security_alert(self.driver.switch_to_alert())
                 else:
                     raise RuntimeError(message)
