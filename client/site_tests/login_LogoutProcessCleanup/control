@@ -1,26 +1,19 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "Chrome OS Team"
+AUTHOR = "cmasone, achuith"
 NAME = "login_LogoutProcessCleanup"
-PURPOSE = "Verify all chronos owned processes are destroyed at log out."
-CRITERIA = "Fails if a process started by chronos is running after logout."
+SUITE = "regression"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"
 TEST_TYPE = "client"
+EXPERIMENTAL = "True"
 
 DOC = """
-This tests that all processes owned by chronos are destoryed on logout.
+This tests that all processes owned by chronos are destroyed on logout.
 """
 
-# TODO(bryeung): this will likely fail due to the pulseaudio process, see
-# http://code.google.com/p/chromium-os/issues/detail?id=2045
-job.run_test('login_LogoutProcessCleanup', tag='success')
+job.run_test('login_LogoutProcessCleanup')
 
-# TODO(cmasone): enable this when we start testing newer versions of the OS.
-# job.run_test('login_LogoutProcessCleanup',
-#              script='backdoor_creds.json',
-#              is_control=True,
-#              tag='control')
