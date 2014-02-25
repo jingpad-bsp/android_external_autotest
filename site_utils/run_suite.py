@@ -254,16 +254,18 @@ class LogLink(object):
                                            'log_url_pattern', type=str)
 
 
-    def __init__(self, anchor, server, job_string, bug_info=None):
+    def __init__(self, anchor, server, job_string, bug_info=None, reason=None):
         """Initialize the LogLink by generating the log URL.
 
         @param anchor      The link text.
         @param server      The hostname of the server this suite ran on.
         @param job_string  The job whose logs we'd like to link to.
         @param bug_info    Info about the bug, if one was filed.
+        @param reason      A string representing the reason of failure if any.
         """
         self.anchor = anchor
         self.url = self._URL_PATTERN % (server, job_string)
+        self.reason = reason
         if bug_info:
             self.bug_id, self.bug_count = bug_info
         else:
@@ -282,17 +284,21 @@ class LogLink(object):
         if self.bug_id:
             url = '%s%s' % (self._BUG_URL_PREFIX, self.bug_id)
             if self.bug_count is None:
-                anchor_text = "%s (Unknown number of reports)" % (
+                anchor_text = '%s (Unknown number of reports)' % (
                         self.anchor.strip())
             elif self.bug_count == 1:
-                anchor_text = "%s (new)" % self.anchor.strip()
+                anchor_text = '%s (new)' % self.anchor.strip()
             else:
-                anchor_text = "%s (%s reports)" % (
+                anchor_text = '%s (%s reports)' % (
                         self.anchor.strip(), self.bug_count)
         else:
             url = self.url
             anchor_text = self.anchor.strip()
-        return "@@@STEP_LINK@%s@%s@@@"% (anchor_text, url)
+
+        if self.reason:
+            anchor_text = '%s - %s' % (anchor_text, self.reason)
+
+        return '@@@STEP_LINK@%s@%s@@@'% (anchor_text, url)
 
 
     def GenerateTextLink(self):
@@ -300,7 +306,7 @@ class LogLink(object):
 
         @return A link formatted for human readability.
         """
-        return "%s%s" % (self.anchor, self.url)
+        return '%s%s' % (self.anchor, self.url)
 
 
 class Timings(object):
@@ -682,7 +688,8 @@ def main():
             bug_info = tools.get_test_failure_bug_info(
                     view['job_keyvals'], view['test_name'])
 
-            link = LogLink(test_view, instance_server, job_name, bug_info)
+            link = LogLink(test_view, instance_server, job_name,
+                           bug_info)
             web_links.append(link)
 
             # Don't show links on the buildbot waterfall for tests with
@@ -690,6 +697,7 @@ def main():
             if view['status'] != 'GOOD':
                 logging.info("%s  %s: %s", test_view, view['status'],
                              view['reason'])
+                link.reason = '%s: %s' % (view['status'], view['reason'])
                 if view['status'] == 'TEST_NA':
                     # Didn't run; nothing to do here!
                     continue
