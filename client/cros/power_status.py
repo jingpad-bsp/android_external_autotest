@@ -321,7 +321,7 @@ class BatteryStat(DevStat):
         self.energy_rate =  self.voltage_now * self.current_now
 
         self.remaining_time = 0
-        if self.current_now:
+        if self.current_now and self.energy_rate:
             self.remaining_time =  self.energy / self.energy_rate
 
 
