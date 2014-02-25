@@ -108,6 +108,8 @@ class platform_BootPerf(test.test):
     _UPTIME_FILE_GLOB = os.path.join('/tmp', _UPTIME_PREFIX + '*')
     _DISK_FILE_GLOB = os.path.join('/tmp', _DISK_PREFIX + '*')
 
+    _RAMOOPS_FILE = "/dev/pstore/console-ramoops"
+
 
     def _copy_timestamp_files(self):
         """Copy raw data files to the test results."""
@@ -120,6 +122,13 @@ class platform_BootPerf(test.test):
         except Exception:
             pass
 
+    def _copy_console_ramoops(self):
+        """Copy console_ramoops from previous reboot."""
+        # If reboot was misbehaving, looking at ramoops may provide clues.
+        try:
+            shutil.copy(self._RAMOOPS_FILE, self.resultsdir)
+        except Exception:
+            pass
 
     def _parse_bootstat(self, filename, fieldnum):
         """Read values from a bootstat event file.
@@ -454,5 +463,6 @@ class platform_BootPerf(test.test):
         self._gather_reboot_keyvals(results)
 
         self._copy_timestamp_files()
+        self._copy_console_ramoops()
 
         self.write_perf_keyval(results)
