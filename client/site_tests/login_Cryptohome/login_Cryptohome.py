@@ -12,7 +12,7 @@ from autotest_lib.client.cros import cryptohome
 TEST_USER = 'cryptohome_test@chromium.org'
 TEST_PASS = 'testme'
 
-class login_CryptohomeTelemetry(test.test):
+class login_Cryptohome(test.test):
     """Verify the cryptohome is mounted only after login."""
     version = 1
 

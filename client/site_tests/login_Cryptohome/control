@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "login_CryptohomeTelemetry"
+NAME = "login_Cryptohome"
 PURPOSE = "Verify the cryptohome is mounted only after login."
 CRITERIA = """
 This test will fail if cryptohome is mounted when not logged in, or vice versa.
@@ -19,4 +19,4 @@ DOC = """
 This test checks that a cryptohome was mounted only after logging in.
 """
 
-job.run_test('login_CryptohomeTelemetry')
+job.run_test('login_Cryptohome')
