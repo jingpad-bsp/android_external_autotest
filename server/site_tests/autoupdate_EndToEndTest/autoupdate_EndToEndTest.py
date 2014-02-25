@@ -969,10 +969,10 @@ class autoupdate_EndToEndTest(test.test):
             except error.AutoservRunError:
                 logging.fatal('Error re-imaging the machine with the source '
                               'image %s', image_url)
-                raise error.TestError(
-                        'Could not update to pre-conditions of test. This is '
-                        'most likely a problem with the autotest lab and not '
-                        'autoupdate.')
+                raise error.TestError('Could not update to pre-conditions of '
+                                      'the test: we failed to start the '
+                                      'private devserver, connect to the host '
+                                      'and/or make it reboot.')
 
 
     def stage_artifacts_onto_devserver(self, autotest_devserver, test_conf):
