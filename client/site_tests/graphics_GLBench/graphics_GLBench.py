@@ -4,6 +4,7 @@
 
 import logging
 import os
+import time
 import pprint
 import urllib2
 import httplib
@@ -152,6 +153,10 @@ class graphics_GLBench(test.test):
     kill_cmd = '. /sbin/killers; term_process "^X$"'
     cmd = 'X :1 vt1 & sleep 1; chvt 1 && DISPLAY=:1 %s; %s' % (cmd, kill_cmd)
 
+    # TODO(ihf): Remove this sleep once this test is guaranteed to run on a
+    # cold machine.
+    logging.info('Sleeping machine for one minute to physically cool down.')
+    time.sleep(60)
     summary = utils.system_output(cmd, retain_output=True)
 
     # write a copy of stdout to help debug failures

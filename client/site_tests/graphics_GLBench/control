@@ -10,11 +10,12 @@ Various performance metrics must be met or exceeded or the test will fail. See
 constraints for triangle setup, solid fill, tex nearest fill, and bilinear tex
 fill.
 """
-SUITE = 'graphics, graphicsGLES'
+SUITE = 'bvt, graphics, graphicsGLES'
 TIME='MEDIUM'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = "gl"
 TEST_TYPE = 'client'
+EXPERIMENTAL = 'True'
 
 DOC = """
 This benchmark executes glbench, a graphics benchmark designed to time how long
