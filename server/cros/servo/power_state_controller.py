@@ -198,73 +198,6 @@ class _PantherController(_PowerStateController):
         self._servo.set('pwr_button', 'release')
 
 
-class _AlexController(_PowerStateController):
-
-    """Power-state controller for Alex and compatible boards.
-
-    For Alex, Lumpy, et al., the 'cold_reset' signal forces the unit
-    off, and leaves it off.  Recovery mode and developer mode are
-    controlled by signals from the Servo board.
-
-    """
-
-    # Time in seconds to allow the firmware to initialize itself and
-    # present the "INSERT" screen in recovery mode before actually
-    # inserting a USB stick to boot from.
-    _RECOVERY_INSERT_DELAY = 10.0
-
-    @_inherit_docstring(_PowerStateController)
-    def recovery_supported(self):
-        return True
-
-    @_inherit_docstring(_PowerStateController)
-    def power_off(self):
-        self.cold_reset()
-
-    @_inherit_docstring(_PowerStateController)
-    def power_on(self, rec_mode=REC_OFF):
-        self._servo.set_nocheck('rec_mode', rec_mode)
-        self._servo.power_short_press()
-        if rec_mode == REC_ON:
-            time.sleep(self._RECOVERY_INSERT_DELAY)
-            self._servo.set('rec_mode', REC_OFF)
-
-
-class _LumpyController(_AlexController):
-
-    """Power-state controller for Lumpy."""
-
-    @_inherit_docstring(_AlexController)
-    def power_off(self):
-        # The debug header for MP Lumpy's are missing a resistor to support
-        # cold_reset. Therefore to do a power off we simply long hold the
-        # power button. This should cover the most common types of failures
-        # in the lab. However if the unit is already off this will cause it to
-        # power on instead. In this case, re-run repair a second time to
-        # recover the device.
-        self._servo.power_long_press()
-
-
-class _StumpyController(_AlexController):
-
-    """Power-state controller for Stumpy."""
-
-    @_inherit_docstring(_AlexController)
-    def power_off(self):
-        # In test images in the lab, the 'autoreboot' upstart job will
-        # commonly configure the unit so that it reboots after cold
-        # reset.  Since we mustn't rely on the OS, we can't know for
-        # sure whether the unit will be on or off after cold reset.
-        #
-        # Fortunately, the autoreboot setting only applies through one
-        # reset.  So, after one reset, the unit may be on or off, but
-        # autoreboot is disabled.  We can be sure to be off after a
-        # second reset as long as it happens before the unit has a
-        # chance to run the autoreboot job.
-        self.cold_reset()
-        self.cold_reset()
-
-
 class _ParrotController(_PowerStateController):
 
     """Power-state controller for Parrot.
@@ -381,10 +314,10 @@ _CONTROLLER_BOARD_MAP = {
     'spring': _DaisyController,
     'peach_pit': _DaisyController,
     'link': _ServodController,
-    'lumpy': _LumpyController,
+    'lumpy': _ServodController,
     'parrot': _ParrotController,
-    'stumpy': _StumpyController,
-    'x86-alex': _AlexController,
+    'stumpy': _ServodController,
+    'x86-alex': _ServodController,
     'panther': _PantherController,
     'monroe': _PantherController,
     'zako': _PantherController,
