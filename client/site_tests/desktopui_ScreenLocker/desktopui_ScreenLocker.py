@@ -9,7 +9,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 
 
-class desktopui_ScreenLockerTelemetry(test.test):
+class desktopui_ScreenLocker(test.test):
     """This is a client side test that exercises the screenlocker."""
     version = 1
 

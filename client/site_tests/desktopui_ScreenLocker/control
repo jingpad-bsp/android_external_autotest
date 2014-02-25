@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "desktopui_ScreenLockerTelemetry"
+NAME = "desktopui_ScreenLocker"
 PURPOSE = "Verify screen locker is functional."
 CRITERIA = """
 This test will fail if the screen cannot be locked with
@@ -21,6 +21,6 @@ DOC = """
 This test checks if the screen locker can lock and unlock the screen.
 """
 
-job.run_test('desktopui_ScreenLockerTelemetry')
+job.run_test('desktopui_ScreenLocker')
 
 
