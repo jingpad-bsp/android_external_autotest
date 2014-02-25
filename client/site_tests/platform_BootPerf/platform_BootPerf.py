@@ -117,7 +117,7 @@ class platform_BootPerf(test.test):
             shutil.copy(fname, self.resultsdir)
         try:
             shutil.copy(self._FIRMWARE_TIME_FILE, self.resultsdir)
-        except:
+        except Exception:
             pass
 
 
@@ -336,7 +336,7 @@ class platform_BootPerf(test.test):
             try:
                 key = 'rdbytes_' + keyval_name
                 results[key] = 512 * self._parse_diskstat(event_name)
-            except:
+            except Exception:
                 pass
 
 
