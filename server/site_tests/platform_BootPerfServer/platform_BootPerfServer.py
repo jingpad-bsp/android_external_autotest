@@ -93,15 +93,16 @@ class platform_BootPerfServer(test.test):
             self.upload_perf_keyvals(perf_keyvals)
 
         # Everything that isn't the client 'keyval' file is raw data
-        # from the client test:  copy it to a per-iteration
-        # subdirectory.
+        # from the client test:  move it to a per-iteration
+        # subdirectory.  We move instead of copying so we can be sure
+        # we don't have any stale results in the next iteration
         if self.iteration is not None:
             rawdata_dir = "rawdata.%03d" % self.iteration
         else:
             rawdata_dir = "rawdata"
         rawdata_dir = os.path.join(self.resultsdir, rawdata_dir)
-        os.mkdir(rawdata_dir)
-        for fn in os.listdir(client_results_dir):
-            if fn == "keyval":
-                continue
-            shutil.copy(os.path.join(client_results_dir, fn), rawdata_dir)
+        shutil.move(client_results_dir, rawdata_dir)
+        try:
+            os.remove(os.path.join(rawdata_dir, "keyval"))
+        except Exception:
+            pass
