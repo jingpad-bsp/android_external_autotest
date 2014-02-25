@@ -9,7 +9,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import cryptohome
 
-class login_CryptohomeIncognitoTelemetry(test.test):
+class login_CryptohomeIncognito(test.test):
     version = 1
 
 
@@ -23,7 +23,5 @@ class login_CryptohomeIncognitoTelemetry(test.test):
             if cryptohome.is_guest_vault_mounted(allow_fail=True):
                 raise error.TestFail('Expected to NOT find a guest vault '
                                      'mounted.')
-        # TODO(achuith, dennisjeffrey): Make this more fine-grained.
-        # See crbug.com/225542.
         except Exception as err:
             raise error.TestFailRetry(err)
