@@ -14,7 +14,8 @@ This test will fail if:
   - If GL extensions don't include needed extensions
   - If X extensions don't include DAMAGE and Composite
 """
-SUITE = 'graphics, hwqual'
+SUITE = 'bvt, graphics, hwqual'
+EXPERIMENTAL = 'True'
 TIME='SHORT'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = "graphics"
