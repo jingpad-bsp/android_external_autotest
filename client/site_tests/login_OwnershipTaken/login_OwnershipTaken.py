@@ -21,8 +21,9 @@ class login_OwnershipTaken(test.test):
 
 
     def initialize(self):
-        ownership.clear_ownership_files()
-        if os.access(constants.OWNER_KEY_FILE, os.F_OK):
+        ownership.restart_ui_to_clear_ownership_files()
+        if (os.access(constants.OWNER_KEY_FILE, os.F_OK) or
+            os.access(constants.SIGNED_POLICY_FILE, os.F_OK)):
             raise error.TestError('Ownership already taken!')
 
 

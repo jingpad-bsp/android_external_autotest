@@ -2,14 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import random
-import string
-import os
+import logging, random, string, os
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import policy, session_manager
-from autotest_lib.client.cros import cros_ui, cryptohome, ownership
+from autotest_lib.client.cros import cryptohome, ownership
 
 
 class login_RemoteOwnership(test.test):
@@ -26,9 +24,7 @@ class login_RemoteOwnership(test.test):
 
     def initialize(self):
         # Start with a clean slate wrt ownership
-        cros_ui.stop()
-        ownership.clear_ownership_files()
-        cros_ui.start()
+        ownership.restart_ui_to_clear_ownership_files()
         super(login_RemoteOwnership, self).initialize()
 
 

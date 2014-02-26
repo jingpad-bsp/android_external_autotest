@@ -28,11 +28,8 @@ class login_OwnershipRetaken(test.test):
     def initialize(self):
         super(login_OwnershipRetaken, self).initialize()
         # Start clean, wrt ownership and the desired user.
-        cros_ui.stop()
-        ownership.clear_ownership_files()
+        ownership.restart_ui_to_clear_ownership_files()
         cryptohome.remove_vault(ownership.TESTUSER)
-
-        cros_ui.start()
 
         DBusGMainLoop(set_as_default=True)
         self._listener = session_manager.OwnershipSignalListener(

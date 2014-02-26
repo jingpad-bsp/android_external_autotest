@@ -8,7 +8,7 @@ import os
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import policy, session_manager
-from autotest_lib.client.cros import cros_ui, cryptohome, ownership
+from autotest_lib.client.cros import cryptohome, ownership
 
 
 class login_MultiUserPolicy(test.test):
@@ -32,11 +32,9 @@ class login_MultiUserPolicy(test.test):
         # Clear the user's vault, to make sure the test starts without any
         # policy or key lingering around. At this stage the session isn't
         # started and there's no user signed in.
-        cros_ui.stop()
-        ownership.clear_ownership_files()
+        ownership.restart_ui_to_clear_ownership_files()
         cryptohome.ensure_clean_cryptohome_for(self._user1)
         cryptohome.ensure_clean_cryptohome_for(self._user2)
-        cros_ui.start()
 
 
     def run_once(self):

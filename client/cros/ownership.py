@@ -7,6 +7,7 @@ import logging, os, shutil, tempfile
 import common, constants, cryptohome
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import autotemp, error
+from autotest_lib.client.cros import cros_ui
 
 
 PK12UTIL = 'nsspk12util'
@@ -38,7 +39,7 @@ class scoped_tempfile(object):
     used in system commands, so they can't be used for my purposes.
     """
 
-    tempdir = autotemp.tempdir(unique_id=__module__)
+    tempdir = autotemp.tempdir(unique_id='ownership')
 
     def __init__(self, name=None):
         self.name = name
@@ -80,8 +81,25 @@ def __unlink(filename):
         logging.info(error)
 
 
-def clear_ownership_files():
-    """Remove on-disk state related to device ownership."""
+def restart_ui_to_clear_ownership_files():
+    """Remove on-disk state related to device ownership.
+
+    The UI must be stopped while we do this, or the session_manager will
+    write the policy and key files out again.
+    """
+    cros_ui.stop()
+    clear_ownership_files_no_restart()
+    cros_ui.start()
+
+
+def clear_ownership_files_no_restart():
+    """Remove on-disk state related to device ownership.
+
+    The UI must be stopped while we do this, or the session_manager will
+    write the policy and key files out again.
+    """
+    if cros_ui.is_up():
+        raise error.TestError("Tried to clear ownership with UI running.")
     __unlink(constants.OWNER_KEY_FILE)
     __unlink(constants.SIGNED_POLICY_FILE)
 

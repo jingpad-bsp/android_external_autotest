@@ -25,9 +25,7 @@ class login_MultipleSessions(test.test):
     def initialize(self):
         super(login_MultipleSessions, self).initialize()
         # Ensure a clean beginning.
-        cros_ui.stop()
-        ownership.clear_ownership_files()
-        cros_ui.start()
+        ownership.restart_ui_to_clear_ownership_files()
 
         DBusGMainLoop(set_as_default=True)
         self._session_manager = session_manager.connect()

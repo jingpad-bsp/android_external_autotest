@@ -26,10 +26,9 @@ class login_OwnershipApi(test.test):
 
     def initialize(self):
         super(login_OwnershipApi, self).initialize()
-        # Start clean.
+        # Clear existing ownership and inject known keys.
         cros_ui.stop()
-        ownership.clear_ownership_files()
-        cryptohome.remove_vault(ownership.TESTUSER)
+        ownership.clear_ownership_files_no_restart()
 
         # Make device already owned by ownership.TESTUSER.
         cryptohome.mount_vault(ownership.TESTUSER,

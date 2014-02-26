@@ -75,10 +75,8 @@ class login_UserPolicyKeys(test.test):
         # Clear the user's vault, to make sure the test starts without any
         # policy or key lingering around. At this stage the session isn't
         # started and there's no user signed in.
-        cros_ui.stop()
-        ownership.clear_ownership_files()
+        ownership.restart_ui_to_clear_ownership_files()
         cryptohome.remove_vault(ownership.TESTUSER)
-        cros_ui.start()
 
 
     def run_once(self):
