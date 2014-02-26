@@ -4,11 +4,11 @@
 
 AUTHOR = 'arakhov@chromium.org'
 NAME = 'bluetooth_SDP_ServiceSearchRequestBasic'
-SUITE = 'bluetooth,bluetooth_sdp'
+SUITE = 'bluetooth,bluetooth_qualification'
 TIME = 'SHORT'
 TEST_CLASS = 'bluetooth'
 TEST_TYPE = 'Server'
-DEPENDENCIES = 'bluetooth'
+DEPENDENCIES = 'bluetooth,wificell'
 
 DOC = """
 Verify the correct behaviour of the device when searching for services.

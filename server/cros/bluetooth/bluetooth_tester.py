@@ -150,7 +150,7 @@ def create_host_from(device_host):
     device_hostname = device_host.hostname
 
     parts = device_hostname.split('.')
-    parts[0] = parts[0] + '-bluetooth'
+    parts[0] = parts[0] + '-router'
     tester_hostname = '.'.join(parts)
 
     return hosts.create_host(tester_hostname)
