@@ -5,7 +5,7 @@
 import logging
 import socket
 
-from autotest_lib.client.bin import test
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
 
@@ -67,6 +67,7 @@ class security_ProtocolFamilies(test.test):
     version = 1
     PF_BASELINE = ["PF_FILE", "PF_PACKET", "PF_INET", "PF_INET6", "PF_ROUTE",
                    "PF_LOCAL", "PF_NETLINK", "PF_UNIX", "PF_BLUETOOTH"]
+    PER_BOARD = {"samus" : ["PF_NFC"]}
 
 
     def pf_name(self, pfn):
@@ -116,8 +117,16 @@ class security_ProtocolFamilies(test.test):
             pf_available = self.is_protocol_family_available(pfn)
             protocol_family = self.pf_name(pfn)
 
-            if pf_available and protocol_family not in self.PF_BASELINE:
-                unexpected_protocol_families.append(protocol_family)
+            if pf_available:
+                # If PF is in baseline, continue.
+                if protocol_family in self.PF_BASELINE:
+                    continue
+
+                # Check the board-specific whitelist.
+                current_board = utils.get_current_board()
+                board_pfs = self.PER_BOARD.get(current_board, None)
+                if not board_pfs or protocol_family not in board_pfs:
+                    unexpected_protocol_families.append(protocol_family)
 
         if len(unexpected_protocol_families) > 0:
             failure_string = "Unexpected protocol families available: "
