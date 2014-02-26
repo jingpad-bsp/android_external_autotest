@@ -36,7 +36,7 @@ def run_chaos_wpa2psk(machine):
     for spec in ap_specs:
         runner = chaos_runner.ChaosRunner(
                 'network_WiFi_ChaosLongConnect', host, spec)
-        runner.run(job, batch_size=2, conn_worker=conn_worker)
+        runner.run(job, conn_worker=conn_worker)
 
 
 parallel_simple(run_chaos_wpa2psk, machines)
