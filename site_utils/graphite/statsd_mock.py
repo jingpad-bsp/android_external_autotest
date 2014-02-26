@@ -50,5 +50,13 @@ class Timer(statsd_mock_base):
     """Mock class for statsd.Timer."""
 
 
+    def __enter__(self):
+        pass
+
+
+    def __exit__(self):
+        pass
+
+
 class Raw(statsd_mock_base):
     """Mock class for statsd.Raw."""
