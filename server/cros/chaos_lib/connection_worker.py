@@ -5,12 +5,13 @@
 import logging
 import time
 
-from autotest_lib.server import hosts
-from autotest_lib.server.cros.network import wifi_client
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
+from autotest_lib.server import hosts
+from autotest_lib.server.cros.network import wifi_client
+from autotest_lib.server.cros.network import netperf_runner
 
 WORK_CLIENT_CONNECTION_RETRIES = 3
 WAIT_FOR_CONNECTION = 10
@@ -201,3 +202,62 @@ class ConnectionSuspend(ConnectionWorker):
             # ping work client to ensure we have connection after resume.
             ping_result = client.ping(ping_config)
             logging.info('after resume:%r', ping_result)
+
+
+class ConnectionNetperf(ConnectionWorker):
+    """
+    This ConnectionWorker is used to run a sustained data transfer between the
+    DUT and the work_client through an AP.
+
+    """
+
+    # Minimum expected throughput for netperf streaming tests
+    NETPERF_MIN_THROUGHPUT = 2.0 # Mbps
+
+    def __init__(self, netperf_config):
+        """
+        Construct a ConnectionNetperf object.
+
+        @param netperf_config: NetperfConfig object to define transfer test.
+
+        """
+        self._config = netperf_config
+
+
+    @property
+    def name(self):
+        """@return a string: representing name of this class"""
+        return 'netperf_%s' % self._config.human_readable_tag
+
+
+    def run(self, client):
+        """
+        Create a NetperfRunner, run netperf between DUT and work_client.
+
+        @param client: WiFiClient object representing the DUT
+
+        """
+        with netperf_runner.NetperfRunner(
+                client, self.work_client, self._config) as netperf:
+            ping_config = ping_runner.PingConfig(
+                    self.work_client.wifi_ip, count=10)
+            # pinging work client to ensure we have a connection
+            logging.info('work client ip: %s', self.work_client.wifi_ip)
+            ping_result = client.ping(ping_config)
+
+            result = netperf.run(self._config)
+            logging.info('Netperf Result: %s', result)
+
+        if result is None:
+            raise error.TestError('Failed to create NetperfResult')
+
+        if result.duration_seconds < self._config.test_time:
+            raise error.TestFail(
+                    'Netperf duration too short: %0.2f < %0.2f' %
+                    (result.duration_seconds, self._config.test_time))
+
+        # TODO: Convert this limit to a perf metric crbug.com/348780
+        if result.throughput <self.NETPERF_MIN_THROUGHPUT:
+            raise error.TestFail(
+                    'Netperf throughput too low: %0.2f < %0.2f' %
+                    (result.throughput, self.NETPERF_MIN_THROUGHPUT))
