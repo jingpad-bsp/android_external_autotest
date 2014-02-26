@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = 'asnagarajan, wiley, jabele'
-NAME = 'network_WiFi_ChaosConnectDisconnect.debug'
+NAME = 'network_WiFi_ChaosLongConnect.debug'
 TIME = 'LONG'
 TEST_TYPE = 'server'
 
