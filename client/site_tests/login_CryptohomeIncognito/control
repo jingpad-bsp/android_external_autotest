@@ -2,11 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "Chrome OS Team"
+AUTHOR = "cmasone, achuith"
 NAME = "login_CryptohomeIncognito"
-PURPOSE = "Verify the cryptohome is mounted only after login as guest."
+PURPOSE = "Verify guest cryptohome is mounted only after login as guest."
 CRITERIA = """
-This test will fail if cryptohome is not mounted after login as guest,
+This test will fail if guest cryptohome is not mounted when logged in as guest,
 or if it is mounted when not logged in as guest.
 """
 SUITE = "bvt"
@@ -14,12 +14,9 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"
 TEST_TYPE = "client"
-EXPERIMENTAL = "True"
 
 DOC = """
-This test checks that, after logging in as guest successfully,
-guest cryptohome was mounted. And upon logout, the guest cryptohome
-is no longer mounted.
+This test checks that guest cryptohome is mounted when logged in as guest.
 """
 
 job.run_test('login_CryptohomeIncognito')
