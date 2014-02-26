@@ -35,7 +35,8 @@ from autotest_lib.server.cros.dynamic_suite import reporting
 CONFIG = global_config.global_config
 
 MAIL_FROM = 'chromeos-test@google.com'
-DEVSERVER = 'http://chromeos-devserver3.cros:8082'
+DEVSERVER = CONFIG.get_config_value('CROS', 'dev_server', type=list,
+                                    default=[])[0]
 RUN_SUITE_COMMAND = 'run_suite.py'
 PUSH_TO_PROD_SUITE = 'push_to_prod'
 AU_SUITE = 'paygen_au_canary'
@@ -136,8 +137,6 @@ def do_run_suite(suite_name, arguments):
            '-f', arguments.file_bugs]
 
     suite_job_id = None
-    # Reset the run_suite output.
-    run_suite_output = []
 
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT)
@@ -316,7 +315,7 @@ def main():
                       [],
                       'Test for pushing to prod failed. Do NOT push!',
                       ('Errors occurred during the test:\n\n%s\n\n' % str(e) +
-                       'run_suite output:\n%s' % '\n'.join(run_suite_output)))
+                       'run_suite output:\n\n%s' % '\n'.join(run_suite_output)))
         raise
 
     message = ('\nAll tests are completed successfully, prod branch is ready to'
