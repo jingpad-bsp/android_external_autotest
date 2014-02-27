@@ -409,6 +409,15 @@ class platform_BootPerf(test.test):
         if not bootstat_archives:
             return
         bootstat_dir = max(bootstat_archives)
+        boot_id = open("/proc/sys/kernel/random/boot_id", "r").read()
+        didrun_path = os.path.join(bootstat_dir, "bootperf_ran")
+        if not os.path.exists(didrun_path):
+            with open(didrun_path, "w") as didrun:
+                didrun.write(boot_id)
+        elif open(didrun_path, "r").read() != boot_id:
+            logging.warn("Ignoring reboot based on stale shutdown %s",
+                         os.path.basename(bootstat_dir))
+            return
         timestamp_path = os.path.join(bootstat_dir, 'timestamp')
         try:
             with open(timestamp_path) as timestamp:
