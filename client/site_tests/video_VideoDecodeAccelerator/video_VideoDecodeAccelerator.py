@@ -5,13 +5,11 @@
 import logging
 import os
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import chrome_test
+from autotest_lib.client.cros import chrome_binary_test
 
-SKIP_DEPS_ARG = 'skip_deps'
-
-class video_VideoDecodeAccelerator(chrome_test.ChromeBinaryTest):
+class video_VideoDecodeAccelerator(chrome_binary_test.ChromeBinaryTest):
     """
-    This test is a wrapper of the chrome binary test:
+    This test is a wrapper of the chrome unittest binary:
     video_decode_accelerator_unittest.
     """
 
@@ -19,17 +17,20 @@ class video_VideoDecodeAccelerator(chrome_test.ChromeBinaryTest):
     binary = 'video_decode_accelerator_unittest'
 
 
-    def initialize(self, arguments=[]):
-        chrome_test.ChromeBinaryTest.initialize(
-            self, nuke_browser_norestart=True,
-            skip_deps=bool(SKIP_DEPS_ARG in arguments))
-
-
     def run_once(self, videos, use_cr_source_dir=True, gtest_filter=''):
-        # Check if using test video under source test-data directory.
+        """
+        Runs video_decode_accelerator_unittest on the videos.
+
+        @param videos: The test videos for video_decode_accelerator_unittest.
+        @param use_cr_source_dir:  Videos are under chrome source directory.
+        @param gtest_filter: gtest_filter parameter for the unittest.
+
+        @raises: error.TestFail for video_decode_accelerator_unittest failures.
+        """
+        logging.debug('Starting video_VideoDecodeAccelerator: %s', videos)
+
         if use_cr_source_dir:
-            path = os.path.join(self.cr_source_dir, 'media', 'test',
-                                'data', '')
+            path = os.path.join(self.cr_source_dir, 'media', 'test', 'data', '')
         else:
             path = ''
 
@@ -41,7 +42,7 @@ class video_VideoDecodeAccelerator(chrome_test.ChromeBinaryTest):
               cmd_line = '%s --gtest_filter=%s' % (cmd_line, gtest_filter)
 
             try:
-                self.run_chrome_binary_test(self.binary, cmd_line)
+                self.run_chrome_test_binary(self.binary, cmd_line)
             except error.TestFail as test_failure:
                 # Continue to run the remaining test videos and raise
                 # the last failure after finishing all videos.
