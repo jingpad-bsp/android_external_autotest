@@ -62,10 +62,19 @@ class display_Resolution(chameleon_test.ChameleonTest):
                 self.display_client.move_cursor_to_bottom_right()
                 time.sleep(self.CALIBRATION_IMAGE_SETUP_TIME)
 
-                error_message = self.check_screen_with_chameleon(
-                        '%s-%dx%d' % (tag, width, height),
-                        self.PIXEL_DIFF_VALUE_MARGIN,
-                        self.CURSOR_PIXEL_NUMBER if test_mirrored else 0)
+                logging.info('Checking the resolution.')
+                actual_resolution = self.chameleon_port.get_resolution()
+                if (width, height) != actual_resolution:
+                    error_message = ('Chameleon detected a wrong resolution: '
+                                     '%r; expected %r' %
+                                     (actual_resolution, (width, height)))
+                    logging.error(error_message)
+                else:
+                    error_message = self.check_screen_with_chameleon(
+                            '%s-%dx%d' % (tag, width, height),
+                            self.PIXEL_DIFF_VALUE_MARGIN,
+                            self.CURSOR_PIXEL_NUMBER if test_mirrored else 0)
+
                 if error_message:
                     errors.append(error_message)
 

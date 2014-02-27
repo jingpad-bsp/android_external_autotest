@@ -125,4 +125,6 @@ class ChameleonPort(object):
 
         @return: A (width, height) tuple.
         """
-        return self._chameleond_proxy.DetectResolution(self._input_id)
+        # The return value of RPC is converted to a list. Convert it back to
+        # a tuple.
+        return tuple(self._chameleond_proxy.DetectResolution(self._input_id))
