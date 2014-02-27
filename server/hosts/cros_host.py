@@ -1113,8 +1113,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         command.
         """
         if 'reboot_cmd' not in dargs:
-            dargs['reboot_cmd'] = ('((reboot & sleep 10; reboot -f &)'
-                                   ' </dev/null >/dev/null 2>&1 &)')
+            reboot_timeout = dargs.get('reboot_timeout', 10)
+            dargs['reboot_cmd'] = ('((reboot & sleep %d; reboot -f &)'
+                                   ' </dev/null >/dev/null 2>&1 &)' %
+                                   reboot_timeout)
         # Enable fastsync to avoid running extra sync commands before reboot.
         if 'fastsync' not in dargs:
             dargs['fastsync'] = True
