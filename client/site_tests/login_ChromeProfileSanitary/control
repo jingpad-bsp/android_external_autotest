@@ -12,8 +12,11 @@ TEST_TYPE = "client"
 EXPERIMENTAL = "True"
 
 DOC = """
-This test checks that, after logging in successfully and crashing Chrome, the
-browser is still using the correct profile (the one on encrypted storage).
+This test checks that a browser crash during a user session does not cause the
+browser to flip over to using the 'Default' profile, which is neither
+unprotected nor user-specific.
+
+This is a regression test for http://crbug.com/183736
 """
 
 job.run_test('login_ChromeProfileSanitary')
