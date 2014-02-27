@@ -20,11 +20,14 @@ In order to verify the correct behaviour of continuation state, some number of
 fake Bluetooth services are registered on the device. This is needed to create
 a request with a very long response, and to force the SDP server on the device
 to use this continuation state functionality.
+The tester sends a Service Search Request with intentionally invalid PDU size
+parameter to verify that the IUT reacts correctly in this case.
 
 This test covers the following Bluetooth SIG test cases:
 TP/SERVER/SS/BV-01-C
 TP/SERVER/SS/BV-03-C
 TP/SERVER/SS/BV-04-C
+TP/SERVER/SS/BI-01-C
 """
 
 from autotest_lib.server.cros.bluetooth import bluetooth_tester

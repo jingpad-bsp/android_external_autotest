@@ -122,18 +122,22 @@ class BluetoothTester(object):
         self._proxy.connect(address)
 
 
-    def service_search_request(self, uuids, max_rec_cnt, preferred_size=32):
+    def service_search_request(self, uuids, max_rec_cnt, preferred_size=32,
+                               forced_pdu_size=None):
         """Send a Service Search Request
 
-        @param uuids: List of UUIDs (in 32-bit format) to look for.
+        @param uuids: List of UUIDs (as integers) to look for.
         @param max_rec_cnt: Maximum count of returned service records.
         @param preferred_size: Preffered size of UUIDs in bits (16, 32, or 128).
+        @param forced_pdu_size: Use certain PDU size parameter instead of
+               calculating actual length of sequence.
 
-        @return list of found services' service record handles
+        @return list of found services' service record handles or Error Code
 
         """
         return self._proxy.service_search_request(uuids, max_rec_cnt,
-                                                  preferred_size)
+                                                  preferred_size,
+                                                  forced_pdu_size)
 
 
 def create_host_from(device_host):

@@ -106,17 +106,22 @@ class BluetoothSDPSocket(btsocket.socket):
         super(BluetoothSDPSocket, self).connect((address, SDP_PSM))
 
 
-    def send_request(self, code, tid, data):
+    def send_request(self, code, tid, data, forced_pdu_size=None):
         """Send a request to the socket.
 
         @param code: Request code.
         @param tid: Transaction ID.
         @param data: Parameters as bytearray or str.
+        @param forced_pdu_size: Use certain PDU size parameter instead of
+               calculating actual length of sequence.
 
         @raise BluetoothSDPSocketError: if 'send' to the socket didn't succeed.
 
         """
-        msg = struct.pack(SDP_HDR_FORMAT, code, tid, len(data)) + data
+        size = len(data)
+        if forced_pdu_size != None:
+            size = forced_pdu_size
+        msg = struct.pack(SDP_HDR_FORMAT, code, tid, size) + data
 
         length = self.send(msg)
         if length != len(msg):
@@ -152,13 +157,15 @@ class BluetoothSDPSocket(btsocket.socket):
         return code, tid, data
 
 
-    def send_request_and_wait(self, req_code, req_data):
+    def send_request_and_wait(self, req_code, req_data, forced_pdu_size=None):
         """Send a request to the socket and wait for the response.
 
         The response data is not parsed.
 
         @param req_code: Request code.
         @param req_data: Parameters as bytearray or str.
+        @param forced_pdu_size: Use certain PDU size parameter instead of
+               calculating actual length of sequence.
 
         Use settimeout() to set whether this method will block if there is no
         reply, return immediately or wait for a specific length of time before
@@ -170,7 +177,7 @@ class BluetoothSDPSocket(btsocket.socket):
 
         """
         req_tid = self.gen_tid()
-        self.send_request(req_code, req_tid, req_data)
+        self.send_request(req_code, req_tid, req_data, forced_pdu_size)
         rsp_code, rsp_tid, rsp_data = self.recv_response()
 
         if req_tid != rsp_tid:
@@ -233,7 +240,7 @@ class BluetoothSDPSocket(btsocket.socket):
 
         @param response: body of raw SDP response.
 
-        @return tople of (uuids, cont_state)
+        @return tuple of (uuids, cont_state)
 
         """
         total_cnt, cur_cnt = struct.unpack_from(SDP_BODY_CNT_FORMAT, response)
@@ -248,14 +255,29 @@ class BluetoothSDPSocket(btsocket.socket):
         return uuids, cont_state
 
 
-    def service_search_request(self, uuids, max_rec_cnt, preferred_size=32):
+    def _unpack_error_code(self, response):
+        """Unpack Error Code from SDP error response
+
+        @param response: Body of raw SDP response.
+
+        @return Error Code as int
+
+        """
+        error_code, = struct.unpack_from('>H', response)
+        return error_code
+
+
+    def service_search_request(self, uuids, max_rec_cnt, preferred_size=32,
+                               forced_pdu_size=None):
         """Send a Service Search Request
 
         @param uuids: List of UUIDs (as integers) to look for.
         @param max_rec_cnt: Maximum count of returned service records.
         @param preferred_size: Preffered size of UUIDs in bits (16, 32, or 128).
+        @param forced_pdu_size: Use certain PDU size parameter instead of
+               calculating actual length of sequence.
 
-        @return list of found services' service record handles
+        @return list of found services' service record handles or Error Code
         @raise BluetoothSDPSocketError: arguments do not match the SDP
                restrictions or if the response has an incorrect code
 
@@ -275,7 +297,10 @@ class BluetoothSDPSocket(btsocket.socket):
         while True:
             request = pattern + cont_state
             code, response = self.send_request_and_wait(
-                    SDP_SVC_SEARCH_REQ, request)
+                    SDP_SVC_SEARCH_REQ, request, forced_pdu_size)
+
+            if code == SDP_ERROR_RSP:
+                return self._unpack_error_code(response)
 
             if code != SDP_SVC_SEARCH_RSP:
                 raise BluetoothSDPSocketError('Incorrect response code')

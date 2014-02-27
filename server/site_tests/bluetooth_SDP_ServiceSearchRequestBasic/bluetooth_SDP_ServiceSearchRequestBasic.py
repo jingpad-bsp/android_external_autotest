@@ -18,6 +18,8 @@ class bluetooth_SDP_ServiceSearchRequestBasic(bluetooth_test.BluetoothTest):
     FAKE_SERVICES_PATH           = '/autotest/fake_service_'
     FAKE_SERVICES_CLASS_ID       = 0xABCD
     BLUETOOTH_BASE_UUID          = 0x0000000000001000800000805F9B34FB
+    INVALID_PDU_SIZE             = 9875
+    ERROR_CODE_INVALID_PDU_SIZE  = 0x0004
 
 
     def correct_request(self):
@@ -34,14 +36,14 @@ class bluetooth_SDP_ServiceSearchRequestBasic(bluetooth_test.BluetoothTest):
             # at least the SDP server service exists
             resp = self.tester.service_search_request(
                    [self.SDP_SERVER_CLASS_ID], 3, size)
-            if not 0 in resp:
+            if resp != [0]:
                 return False
             # test case TP/SERVER/SS/BV-04-C:
             # Service with Class ID = 0x0001 should never exist, as this UUID is
             # reserved as Bluetooth Core Specification UUID
             resp = self.tester.service_search_request(
                    [self.NO_EXISTING_SERVICE_CLASS_ID], 3, size)
-            if resp:
+            if resp != []:
                 return False
             # test case TP/SERVER/SS/BV-03-C:
             # request the fake services' Class ID to force SDP to use
@@ -51,6 +53,12 @@ class bluetooth_SDP_ServiceSearchRequestBasic(bluetooth_test.BluetoothTest):
                    self.FAKE_SERVICES_CNT * 2,
                    size)
             if len(resp) != self.FAKE_SERVICES_CNT:
+                return False
+            # test case TP/SERVER/SS/BI-01-C:
+            # send a Service Search Request with intentionally invalid PDU size
+            resp = self.tester.service_search_request(
+                   [self.SDP_SERVER_CLASS_ID], 3, size, self.INVALID_PDU_SIZE)
+            if resp != self.ERROR_CODE_INVALID_PDU_SIZE:
                 return False
 
         return True
