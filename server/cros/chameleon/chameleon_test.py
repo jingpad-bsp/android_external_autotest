@@ -36,7 +36,10 @@ class ChameleonTest(test.test):
 
     def cleanup(self):
         """Cleans up."""
-        if self.display_client:
+        # Unplug the Chameleon port, not to affect other test cases.
+        if hasattr(self, 'chameleon_port') and self.chameleon_port:
+            self.chameleon_port.unplug()
+        if hasattr(self, 'display_client') and self.display_client:
             self.display_client.cleanup()
 
 
@@ -55,6 +58,8 @@ class ChameleonTest(test.test):
             # TODO(waihong): Make sure eDP work in this way.
             if output and output.startswith(connector_type):
                 return chameleon_port
+            # Unplug the port if it is not the connected.
+            chameleon_port.unplug()
         return None
 
 

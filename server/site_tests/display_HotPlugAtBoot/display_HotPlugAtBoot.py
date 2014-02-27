@@ -34,12 +34,6 @@ class display_HotPlugAtBoot(chameleon_test.ChameleonTest):
     CALIBRATION_IMAGE_SETUP_TIME = 10
 
 
-    def cleanup(self):
-        # Make the connector plugged at the end.
-        self.chameleon_port.plug()
-        super(display_HotPlugAtBoot, self).cleanup()
-
-
     def run_once(self, host, test_mirrored=False):
         width, height = self.chameleon_port.get_resolution()
         logging.info('See the display on Chameleon: port %d (%s) %dx%d',
