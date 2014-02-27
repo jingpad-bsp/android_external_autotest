@@ -12,9 +12,8 @@ from autotest_lib.server.cros.network import wifi_cell_test_base
 
 
 class network_WiFi_LowInitialBitrates(wifi_cell_test_base.WiFiCellTestBase):
-    """Test that we can connect to router configured in various ways."""
+    """Test that the WiFi chip honors our request to disable high bitrates."""
     version = 1
-
 
     def check_bitrates_in_capture(self, pcap_result):
         """
@@ -44,7 +43,7 @@ class network_WiFi_LowInitialBitrates(wifi_cell_test_base.WiFiCellTestBase):
                                  'negotiation!')
 
         for frame in frames:
-            if frame.time_delta_seconds > dhcp_frames[-1].time_delta_seconds:
+            if frame.datetime > dhcp_frames[-1].datetime:
                 # We're past the last DHCP packet, so higher bitrates are
                 # permissable and expected.
                 break
@@ -53,13 +52,14 @@ class network_WiFi_LowInitialBitrates(wifi_cell_test_base.WiFiCellTestBase):
                 if frame.mcs_index > 1:
                     # wpa_supplicant should ask that all but the 2 lowest rates
                     # be disabled.
-                    raise error.TestFail('Found packet sent with MCS index %d '
-                                         'during association process.' %
-                                         frame.mcs_index)
+                    raise error.TestFail(
+                        'Frame at %s was sent with MCS index %d.' %
+                        (frame.time_string, frame.mcs_index))
+
             elif frame.bit_rate >= 12:
-                raise error.TestFail('Found packet sent with bitrate %f '
-                                     'during association process.' %
-                                     frame.bit_rate)
+                raise error.TestFail(
+                    'Frame at %s was sent at %f Mbps.' %
+                    (frame.time_string, frame.bit_rate))
 
 
     def run_once(self):
