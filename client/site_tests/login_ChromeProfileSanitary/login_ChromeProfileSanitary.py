@@ -1,16 +1,24 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import errno, logging, os, stat, time
-from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import constants, cros_ui, cros_ui_test
-from autotest_lib.client.cros import httpd, login, pyauto_test
+import errno, os, stat
 
-def respond_with_cookies(handler, url_args):
-    """Responds with a Set-Cookie header to any GET request, and redirects
-    to a chosen URL.
+from autotest_lib.client.bin import test, utils
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.cros import constants, httpd
+
+
+def _respond_with_cookies(handler, url_args):
+    """set_cookie response.
+
+    Responds with a Set-Cookie header to any GET request, and redirects to a
+    chosen URL.
+
+    @param handler: handler for set_cookie.
+    @param url_args: arguments passed through the url.
+
     """
     handler.send_response(303)
     handler.send_header('Set-Cookie', 'name=value')
@@ -20,7 +28,8 @@ def respond_with_cookies(handler, url_args):
     handler.wfile.write('%s:\n' % url_args)
 
 
-class login_ChromeProfileSanitary(cros_ui_test.UITest):
+class login_ChromeProfileSanitary(test.test):
+    """Tests that the browser uses the correct profile after a crash."""
     version = 1
 
 
@@ -34,47 +43,42 @@ class login_ChromeProfileSanitary(cros_ui_test.UITest):
             raise
 
 
-    def initialize(self, creds='$default'):
+    def initialize(self):
         spec = 'http://localhost:8000'
         path = '/set_cookie'
         self._wait_path = '/test_over'
         self._test_url = spec + path + '?continue=' + spec + self._wait_path
         self._testServer = httpd.HTTPListener(8000, docroot=self.srcdir)
-        self._testServer.add_url_handler('/set_cookie', respond_with_cookies)
+        self._testServer.add_url_handler(path, _respond_with_cookies)
         self._testServer.run()
-        super(login_ChromeProfileSanitary, self).initialize(creds)
 
 
     def cleanup(self):
         self._testServer.stop()
-        cros_ui_test.UITest.cleanup(self)
 
 
     def run_once(self, timeout=10):
-        # Get Default/Cookies mtime.
-        cookies_mtime = self.__get_cookies_mtime()
+        with chrome.Chrome() as cr:
+            # Get Default/Cookies mtime.
+            cookies_mtime = self.__get_cookies_mtime()
 
-        # Wait for chrome to show, then "crash" it.
-        utils.nuke_process_by_name(constants.BROWSER, with_prejudice=True)
+            # Wait for chrome to show, then "crash" it.
+            utils.nuke_process_by_name(constants.BROWSER, with_prejudice=True)
 
-        # Re-connect to automation channel.
-        self.pyauto.setUp()
+            cr.wait_for_browser_to_come_up()
 
-        # Navigate to site that leaves cookies.
-        if not self.logged_in():
-            raise error.TestError('Logged out unexpectedly!')
-        latch = self._testServer.add_wait_url(self._wait_path)
-        self.pyauto.NavigateToURL(self._test_url)
-        latch.wait(timeout)  # Redundant, but not a problem.
-        if not latch.is_set():
-            raise error.TestError('Never received callback from browser.')
+            latch = self._testServer.add_wait_url(self._wait_path)
+
+            # Navigate to site that leaves cookies.
+            cr.browser.tabs[0].Navigate(self._test_url)
+            latch.wait(timeout)
+            if not latch.is_set():
+                raise error.TestError('Never received callback from browser.')
 
         # Ensure chrome writes state to disk.
-        self.logout()
-        self.login()
+        with chrome.Chrome():
+            # Check mtime of Default/Cookies.  If changed, KABLOOEY.
+            new_cookies_mtime = self.__get_cookies_mtime()
 
-        # Check mtime of Default/Cookies.  If changed, KABLOOEY.
-        new_cookies_mtime = self.__get_cookies_mtime()
-
-        if new_cookies_mtime and cookies_mtime != new_cookies_mtime:
-            raise error.TestFail('Cookies in Default profile changed!')
+            if not new_cookies_mtime or cookies_mtime != new_cookies_mtime:
+                raise error.TestFail('Cookies in Default profile changed!')
