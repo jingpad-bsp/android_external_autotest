@@ -58,7 +58,7 @@ class platform_BootPerfServer(test.test):
         # Reboot the client
         logging.info('BootPerfServer: reboot %s', self.client.hostname)
         try:
-            self.client.reboot()
+            self.client.reboot(reboot_timeout=90)
         except error.AutoservRebootError as e:
             raise error.TestFail('%s.\nTest failed with error %s' % (
                     traceback.format_exc(), str(e)))
