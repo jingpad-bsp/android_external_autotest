@@ -126,15 +126,12 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         return bool(self.local_servers)
 
 
-    def start_hostapd(self, hostapd_conf_dict, configuration):
+    def start_hostapd(self, configuration):
         """Start a hostapd instance described by conf.
 
-        @param hostapd_conf_dict dict of hostapd configuration parameters.
         @param configuration HostapConfig object.
 
         """
-        logging.info('Starting hostapd with parameters: %r',
-                     hostapd_conf_dict)
         # Figure out the correct interface.
         interface = self.get_wlanif(configuration.frequency, 'managed')
 
@@ -142,8 +139,10 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         log_file = self.HOSTAPD_LOG_FILE_PATTERN % interface
         pid_file = self.HOSTAPD_PID_FILE_PATTERN % interface
         control_interface = self.HOSTAPD_CONTROL_INTERFACE_PATTERN % interface
-        hostapd_conf_dict['interface'] = interface
-        hostapd_conf_dict['ctrl_interface'] = control_interface
+        hostapd_conf_dict = configuration.generate_dict(
+                interface, control_interface,
+                self._build_ssid(configuration.ssid_suffix))
+        logging.info('Starting hostapd with parameters: %r', hostapd_conf_dict)
 
         # Generate hostapd.conf.
         self.router.run("cat <<EOF >%s\n%s\nEOF\n" %
@@ -240,18 +239,6 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.kill_hostapd_instance(None)
 
 
-    def __get_default_hostap_config(self):
-        """@return dict of default options for hostapd."""
-        return {'hw_mode': 'g',
-                'logger_syslog': '-1',
-                'logger_syslog_level': '0',
-                # default RTS and frag threshold to ``off''
-                'rts_threshold': '2347',
-                'fragm_threshold': '2346',
-                'driver': self.HOSTAPD_DRIVER_NAME,
-                'ssid': self._build_ssid('') }
-
-
     def _build_ssid(self, suffix):
         unique_salt = ''.join([random.choice(self.SUFFIX_LETTERS)
                                for x in range(5)])
@@ -270,35 +257,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         if multi_interface is None and (self.hostapd_instances or
                                         self.station_instances):
             self.deconfig()
-        # Start with the default hostapd config parameters.
-        conf = self.__get_default_hostap_config()
-        conf['ssid'] = (configuration.ssid or
-                        self._build_ssid(configuration.ssid_suffix))
-        if configuration.bssid:
-            conf['bssid'] = configuration.bssid
-        conf['channel'] = configuration.channel
-        conf['hw_mode'] = configuration.hw_mode
-        if configuration.hide_ssid:
-            conf['ignore_broadcast_ssid'] = 1
-        if configuration.is_11n:
-            conf['ieee80211n'] = 1
-            conf['ht_capab'] = configuration.hostapd_ht_capabilities
-        if configuration.wmm_enabled:
-            conf['wmm_enabled'] = 1
-        if configuration.require_ht:
-            conf['require_ht'] = 1
-        if configuration.beacon_interval:
-            conf['beacon_int'] = configuration.beacon_interval
-        if configuration.dtim_period:
-            conf['dtim_period'] = configuration.dtim_period
-        if configuration.frag_threshold:
-            conf['fragm_threshold'] = configuration.frag_threshold
-        if configuration.pmf_support:
-            conf['ieee80211w'] = configuration.pmf_support
-        if configuration.obss_interval:
-            conf['obss_interval'] = configuration.obss_interval
-        conf.update(configuration.get_security_hostapd_conf())
-        self.start_hostapd(conf, configuration)
+        self.start_hostapd(configuration)
         interface = self.hostapd_instances[-1]['interface']
         self.iw_runner.set_tx_power(interface, 'auto')
         self.start_local_server(interface)

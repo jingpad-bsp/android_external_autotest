@@ -104,6 +104,8 @@ class HostapConfig(object):
                           PMF_SUPPORT_ENABLED,
                           PMF_SUPPORT_REQUIRED)
 
+    DRIVER_NAME = 'nl80211'
+
 
     @staticmethod
     def get_channel_for_frequency(frequency):
@@ -131,6 +133,89 @@ class HostapConfig(object):
                 return frequency
         else:
             raise error.TestFail('Unknown channel value: %r.' % channel)
+
+
+    @property
+    def _get_default_config(self):
+        """@return dict of default options for hostapd."""
+        return {'hw_mode': 'g',
+                'logger_syslog': '-1',
+                'logger_syslog_level': '0',
+                # default RTS and frag threshold to ``off''
+                'rts_threshold': '2347',
+                'fragm_threshold': '2346',
+                'driver': self.DRIVER_NAME }
+
+
+    @property
+    def _ht40_plus_allowed(self):
+        """@return True iff HT40+ is enabled for this configuration."""
+        channel_supported = (self.channel in
+                             self.HT40_ALLOW_MAP[self.N_CAPABILITY_HT40_PLUS])
+        return ((self.N_CAPABILITY_HT40_PLUS in self._n_capabilities or
+                 self.N_CAPABILITY_HT40 in self._n_capabilities) and
+                channel_supported)
+
+
+    @property
+    def _ht40_minus_allowed(self):
+        """@return True iff HT40- is enabled for this configuration."""
+        channel_supported = (self.channel in
+                             self.HT40_ALLOW_MAP[self.N_CAPABILITY_HT40_MINUS])
+        return ((self.N_CAPABILITY_HT40_MINUS in self._n_capabilities or
+                 self.N_CAPABILITY_HT40 in self._n_capabilities) and
+                channel_supported)
+
+
+    @property
+    def _hostapd_ht_capabilities(self):
+        """@return string suitable for the ht_capab= line in a hostapd config"""
+        ret = []
+        if self._ht40_plus_allowed:
+            ret.append('[HT40+]')
+        elif self._ht40_minus_allowed:
+            ret.append('[HT40-]')
+        if self.N_CAPABILITY_GREENFIELD in self._n_capabilities:
+            logging.warning('Greenfield flag is ignored for hostap...')
+        if self.N_CAPABILITY_SGI20 in self._n_capabilities:
+            ret.append('[SHORT-GI-20]')
+        if self.N_CAPABILITY_SGI40 in self._n_capabilities:
+            ret.append('[SHORT-GI-40]')
+        return ''.join(ret)
+
+
+    @property
+    def _require_ht(self):
+        """@return True iff clients should be required to support HT."""
+        # TODO(wiley) Why? (crbug.com/237370)
+        logging.warning('Not enforcing pure N mode because Snow does '
+                        'not seem to support it...')
+        return False
+
+
+    @property
+    def _hw_mode(self):
+        """@return string hardware mode understood by hostapd."""
+        if self._mode == self.MODE_11A:
+            return self.MODE_11A
+        if self._mode == self.MODE_11B:
+            return self.MODE_11B
+        if self._mode == self.MODE_11G:
+            return self.MODE_11G
+        if self._mode in (self.MODE_11N_MIXED, self.MODE_11N_PURE):
+            # For their own historical reasons, hostapd wants it this way.
+            if self._frequency > 5000:
+                return self.MODE_11A
+
+            return self.MODE_11G
+
+        raise error.TestFail('Invalid mode.')
+
+
+    @property
+    def _is_11n(self):
+        """@return True iff we're trying to host an 802.11n network."""
+        return self._mode in (self.MODE_11N_MIXED, self.MODE_11N_PURE)
 
 
     @property
@@ -170,40 +255,19 @@ class HostapConfig(object):
 
 
     @property
-    def hostapd_ht_capabilities(self):
-        """@return string suitable for the ht_capab= line in a hostapd config"""
-        ret = []
-        if self.ht40_plus_allowed:
-            ret.append('[HT40+]')
-        elif self.ht40_minus_allowed:
-            ret.append('[HT40-]')
-        if self.N_CAPABILITY_GREENFIELD in self._n_capabilities:
-            logging.warning('Greenfield flag is ignored for hostap...')
-        if self.N_CAPABILITY_SGI20 in self._n_capabilities:
-            ret.append('[SHORT-GI-20]')
-        if self.N_CAPABILITY_SGI40 in self._n_capabilities:
-            ret.append('[SHORT-GI-40]')
-        return ''.join(ret)
+    def ssid(self):
+        """@return string SSID."""
+        return self._ssid
 
 
-    @property
-    def ht40_plus_allowed(self):
-        """@return True iff HT40+ is enabled for this configuration."""
-        channel_supported = (self.channel in
-                             self.HT40_ALLOW_MAP[self.N_CAPABILITY_HT40_PLUS])
-        return ((self.N_CAPABILITY_HT40_PLUS in self._n_capabilities or
-                 self.N_CAPABILITY_HT40 in self._n_capabilities) and
-                channel_supported)
+    @ssid.setter
+    def ssid(self, value):
+        """Sets the ssid for the hostapd.
 
+        @param value: string ssid name.
 
-    @property
-    def ht40_minus_allowed(self):
-        """@return True iff HT40- is enabled for this configuration."""
-        channel_supported = (self.channel in
-                             self.HT40_ALLOW_MAP[self.N_CAPABILITY_HT40_MINUS])
-        return ((self.N_CAPABILITY_HT40_MINUS in self._n_capabilities or
-                 self.N_CAPABILITY_HT40 in self._n_capabilities) and
-                channel_supported)
+        """
+        self._ssid = value
 
 
     @property
@@ -220,41 +284,16 @@ class HostapConfig(object):
         @return string HT parameter for frequency configuration.
 
         """
-        if not self.is_11n:
+        if not self._is_11n:
             return None
 
-        if self.ht40_plus_allowed:
+        if self._ht40_plus_allowed:
             return 'HT40+'
 
-        if self.ht40_minus_allowed:
+        if self._ht40_minus_allowed:
             return 'HT40-'
 
         return 'HT20'
-
-
-    @property
-    def hw_mode(self):
-        """@return string hardware mode understood by hostapd."""
-        if self._mode == self.MODE_11A:
-            return self.MODE_11A
-        if self._mode == self.MODE_11B:
-            return self.MODE_11B
-        if self._mode == self.MODE_11G:
-            return self.MODE_11G
-        if self._mode in (self.MODE_11N_MIXED, self.MODE_11N_PURE):
-            # For their own historical reasons, hostapd wants it this way.
-            if self.frequency > 5000:
-                return self.MODE_11A
-
-            return self.MODE_11G
-
-        raise error.TestFail('Invalid mode.')
-
-
-    @property
-    def is_11n(self):
-        """@return True iff we're trying to host an 802.11n network."""
-        return self._mode in (self.MODE_11N_MIXED, self.MODE_11N_PURE)
 
 
     @property
@@ -263,31 +302,34 @@ class HostapConfig(object):
         mode = 'mode%s' % (
                 self.printable_mode.replace('+', 'p').replace('-', 'm'))
         channel = 'ch%03d' % self.channel
-        return '_'.join([channel, mode, self.security_config.security])
+        return '_'.join([channel, mode, self._security_config.security])
 
 
     @property
     def printable_mode(self):
         """@return human readable mode string."""
-        if self.is_11n:
+        if self._is_11n:
             return self.ht_packet_capture_mode
 
-        return '11' + self.hw_mode.upper()
-
-
-    @property
-    def require_ht(self):
-        """@return True iff clients should be required to support HT."""
-        # TODO(wiley) Why? (crbug.com/237370)
-        logging.warning('Not enforcing pure N mode because Snow does '
-                        'not seem to support it...')
-        return False
+        return '11' + self._hw_mode.upper()
 
 
     @property
     def ssid_suffix(self):
         """@return meaningful suffix for SSID."""
         return '_ch%d' % self.channel
+
+
+    @property
+    def security_config(self):
+        """@return SecurityConfig security config object"""
+        return self._security_config
+
+
+    @property
+    def hide_ssid(self):
+        """@return bool _hide_ssid flag."""
+        return self._hide_ssid
 
 
     def __init__(self, mode=MODE_11B, channel=None, frequency=None,
@@ -326,7 +368,7 @@ class HostapConfig(object):
             raise error.TestError('Specify either frequency or channel '
                                   'but not both.')
 
-        self.wmm_enabled = False
+        self._wmm_enabled = False
         unknown_caps = [cap for cap in n_capabilities
                         if cap not in self.ALL_N_CAPABILITIES]
         if unknown_caps:
@@ -334,7 +376,7 @@ class HostapConfig(object):
 
         self._n_capabilities = set(n_capabilities)
         if self._n_capabilities:
-            self.wmm_enabled = True
+            self._wmm_enabled = True
         if self._n_capabilities and mode is None:
             mode = self.MODE_11N_PURE
         self._mode = mode
@@ -351,25 +393,25 @@ class HostapConfig(object):
             raise error.TestFail('Configured a mode %s that does not support '
                                  'frequency %d' % (self._mode, self.frequency))
 
-        self.hide_ssid = hide_ssid
-        self.beacon_interval = beacon_interval
-        self.dtim_period = dtim_period
-        self.frag_threshold = frag_threshold
+        self._hide_ssid = hide_ssid
+        self._beacon_interval = beacon_interval
+        self._dtim_period = dtim_period
+        self._frag_threshold = frag_threshold
         if ssid and len(ssid) > 32:
             raise error.TestFail('Tried to specify SSID that was too long.')
 
-        self.ssid = ssid
-        self.bssid = bssid
+        self._ssid = ssid
+        self._bssid = bssid
         if force_wmm is not None:
-            self.wmm_enabled = force_wmm
+            self._wmm_enabled = force_wmm
         if pmf_support not in self.PMF_SUPPORT_VALUES:
             raise error.TestFail('Invalid value for pmf_support: %r' %
                                  pmf_support)
 
-        self.pmf_support = pmf_support
-        self.security_config = (copy.copy(security_config) or
+        self._pmf_support = pmf_support
+        self._security_config = (copy.copy(security_config) or
                                 xmlrpc_security_types.SecurityConfig())
-        self.obss_interval = obss_interval
+        self._obss_interval = obss_interval
 
 
     def __repr__(self):
@@ -382,19 +424,14 @@ class HostapConfig(object):
                         self.channel,
                         self.frequency,
                         self._n_capabilities,
-                        self.hide_ssid,
-                        self.beacon_interval,
-                        self.dtim_period,
-                        self.frag_threshold,
-                        self.ssid,
-                        self.bssid,
-                        self.wmm_enabled,
-                        self.security_config))
-
-
-    def get_security_hostapd_conf(self):
-        """@return dict of hostapd settings related to security."""
-        return self.security_config.get_hostapd_config()
+                        self._hide_ssid,
+                        self._beacon_interval,
+                        self._dtim_period,
+                        self._frag_threshold,
+                        self._ssid,
+                        self._bssid,
+                        self._wmm_enabled,
+                        self._security_config))
 
 
     def supports_channel(self, value):
@@ -445,3 +482,46 @@ class HostapConfig(object):
             return False
 
         return True
+
+
+    def generate_dict(self, interface, control_interface, ssid):
+        """Generate config dictionary.
+
+        Generate config dictionary for the given |interface|.
+
+        @param interface: string interface to generate config dict for.
+        @param control_interface: string control interface
+        @param ssid: string SSID of the AP.
+        @return dict of hostap configurations.
+
+        """
+        # Start with the default config parameters.
+        conf = self._get_default_config
+        conf['ssid'] = (self._ssid or ssid)
+        if self._bssid:
+            conf['bssid'] = self._bssid
+        conf['channel'] = self.channel
+        conf['hw_mode'] = self._hw_mode
+        if self._hide_ssid:
+            conf['ignore_broadcast_ssid'] = 1
+        if self._is_11n:
+            conf['ieee80211n'] = 1
+            conf['ht_capab'] = self._hostapd_ht_capabilities
+        if self._wmm_enabled:
+            conf['wmm_enabled'] = 1
+        if self._require_ht:
+            conf['require_ht'] = 1
+        if self._beacon_interval:
+            conf['beacon_int'] = self._beacon_interval
+        if self._dtim_period:
+            conf['dtim_period'] = self._dtim_period
+        if self._frag_threshold:
+            conf['fragm_threshold'] = self._frag_threshold
+        if self._pmf_support:
+            conf['ieee80211w'] = self._pmf_support
+        if self._obss_interval:
+            conf['obss_interval'] = self._obss_interval
+        conf['interface'] = interface
+        conf['ctrl_interface'] = control_interface
+        conf.update(self._security_config.get_hostapd_config())
+        return conf
