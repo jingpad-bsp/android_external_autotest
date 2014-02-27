@@ -33,6 +33,7 @@ class CellularProxy(shill_proxy.ShillProxy):
 
     # Various timeouts in seconds.
     SERVICE_REGISTRATION_TIMEOUT = 60
+    SLEEP_INTERVAL = 0.1
 
     def set_logging_for_cellular_test(self):
         """Set the logging in shill for a test of cellular technology.
@@ -162,8 +163,40 @@ class CellularProxy(shill_proxy.ShillProxy):
         return new_modem, new_service
 
 
+    def disable_modem_for_test_setup(self, timeout_seconds=10):
+        """
+        Disables all cellular modems.
+
+        Use this method only for setting up tests.  Do not use this method to
+        test disable functionality because this method repeatedly attempts to
+        disable the cellular technology until it succeeds (ignoring all DBus
+        errors) since the DisableTechnology() call may fail for various reasons
+        (eg. an enable is in progress).
+
+        @param timeout_seconds: Amount of time to wait until the modem is
+                disabled.
+        @raises ShillProxyError if the modems fail to disable within
+                |timeout_seconds|.
+
+        """
+        def _disable_cellular_technology(self):
+            try:
+                self._manager.DisableTechnology(self.TECHNOLOGY_CELLULAR)
+                return True
+            except dbus.DBusException as e:
+                return False
+
+        CellularProxy._poll_for_condition(
+                lambda: _disable_cellular_technology(self),
+                'Failed to disable cellular technology.',
+                timeout=timeout_seconds)
+        modem = self.find_cellular_device_object()
+        self.wait_for_property_in(modem, self.DEVICE_PROPERTY_POWERED,
+                                  [self.VALUE_POWERED_OFF],
+                                  timeout_seconds=timeout_seconds)
+
+
     # TODO(pprabhu) Use utils.poll_for_condition instead
-    SLEEP_INTERVAL = 0.1
     @staticmethod
     def _poll_for_condition(condition, desc, timeout=10):
         """Poll till |condition| is satisfied.

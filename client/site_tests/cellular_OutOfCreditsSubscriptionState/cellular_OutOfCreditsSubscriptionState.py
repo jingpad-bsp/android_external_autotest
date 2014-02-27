@@ -27,9 +27,7 @@ class cellular_OutOfCreditsSubscriptionState(test.test):
     def _initialize_modem(self, subscription_state):
         # Simulate an Altair 3100 modem since that modem supports subscription
         # state information.
-        self.shill.manager.DisableTechnology(
-                cellular_proxy.CellularProxy.TECHNOLOGY_CELLULAR)
-        self.modem.wait_for_states([mm1_constants.MM_MODEM_STATE_DISABLED])
+        self.shill.disable_modem_for_test_setup()
         # TODO(thieule): Set the modem model using the pseudomodem testing
         # interface (crbug.com/343258).
         self.pseudomm.get_modem().iface_properties.Set(
