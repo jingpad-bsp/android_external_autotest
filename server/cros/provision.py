@@ -211,6 +211,53 @@ def join(provision_type, provision_value):
     return '%s:%s' % (provision_type, provision_value)
 
 
+class SpecialTaskActionException(Exception):
+    """
+    Exception raised when a special task fails to successfully run a test that
+    is required.
+
+    This is also a literally meaningless exception.  It's always just discarded.
+    """
+
+
+def run_special_task_actions(job, host, labels, task):
+    """
+    Iterate through all `label`s and run any tests on `host` that `task` has
+    corresponding to the passed in labels.
+
+    Emits status lines for each run test, and INFO lines for each skipped label.
+
+    @param job: A job object from a control file.
+    @param host: The host to run actions on.
+    @param labels: The list of job labels to work on.
+    @param task: An instance of _SpecialTaskAction.
+    @returns: None
+    @raises: SpecialTaskActionException if a test fails.
+
+    """
+    capabilities, configuration = filter_labels(labels)
+
+    for label in capabilities:
+        if task.acts_on(label):
+            test = task.test_for(label)
+            success = job.run_test(test, host=host)
+            if not success:
+                raise SpecialTaskActionException()
+        else:
+            job.record('INFO', None, task.name,
+                       "Can't %s label '%s'." % (task.name, label))
+
+    for name, value in split_labels(configuration).items():
+        if task.acts_on(name):
+            test = task.test_for(name)
+            success = job.run_test(test, host=host, value=value)
+            if not success:
+                raise SpecialTaskActionException()
+        else:
+            job.record('INFO', None, task.name,
+                       "Can't %s label '%s:%s'." % (task.name, name, value))
+
+
 # This has been copied out of dynamic_suite's reimager.py, which no longer
 # exists.  I'd prefer if this would go away by doing http://crbug.com/249424,
 # so that labels are just automatically made when we try to add them to a host.

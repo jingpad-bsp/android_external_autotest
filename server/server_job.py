@@ -371,7 +371,7 @@ class base_server_job(base_job.base_job):
         return namespace
 
 
-    def verify(self):
+    def verify(self, labels=''):
         """Verify machines are all ssh-able."""
         if not self.machines:
             raise error.AutoservError('No machines specified to verify')
@@ -379,14 +379,14 @@ class base_server_job(base_job.base_job):
             os.chdir(self.resultdir)
         try:
             namespace = self._make_namespace()
+            namespace.update({'job_labels': labels, 'args': ''})
             self._execute_code(VERIFY_CONTROL_FILE, namespace, protect=False)
         except Exception, e:
             msg = ('Verify failed\n' + str(e) + '\n' + traceback.format_exc())
-            self.record('ABORT', None, None, msg)
             raise
 
 
-    def reset(self):
+    def reset(self, labels=''):
         """Reset machines by first cleanup then verify each machine."""
         if not self.machines:
             raise error.AutoservError('No machines specified to reset.')
@@ -395,22 +395,23 @@ class base_server_job(base_job.base_job):
 
         try:
             namespace = self._make_namespace()
+            namespace.update({'job_labels': labels, 'args': ''})
             self._execute_code(RESET_CONTROL_FILE, namespace, protect=False)
         except Exception as e:
             msg = ('Reset failed\n' + str(e) + '\n' +
                    traceback.format_exc())
-            self.record('ABORT', None, None, msg)
             raise
 
 
-    def repair(self, host_protection):
+    def repair(self, host_protection, labels=''):
         if not self.machines:
             raise error.AutoservError('No machines specified to repair')
         if self.resultdir:
             os.chdir(self.resultdir)
 
         namespace = self._make_namespace()
-        namespace.update({'protection_level' : host_protection})
+        namespace.update({'protection_level' : host_protection,
+                          'job_labels': labels, 'args': ''})
 
         self._execute_code(REPAIR_CONTROL_FILE, namespace, protect=False)
 
@@ -423,7 +424,7 @@ class base_server_job(base_job.base_job):
                        host to.
 
         """
-        namespace = {'provision_labels': labels}
+        namespace = {'job_labels': labels}
         control = self._load_control_file(PROVISION_CONTROL_FILE)
         self.run(control=control, namespace=namespace)
 

@@ -77,7 +77,9 @@ class base_autoserv_parser(object):
                                default=False,
                                help="cleanup all machines after the job")
         self.parser.add_option("--provision", action="store",
-                               help="Labels to provision the machine to.")
+                               help="Provision the machine.")
+        self.parser.add_option("--job-labels", action="store",
+                               help="Comma seperated job labels.")
         self.parser.add_option("-T", "--reset", action="store_true",
                                default=False,
                                help="Reset (cleanup and verify) all machines"
@@ -171,6 +173,15 @@ class base_autoserv_parser(object):
         self.options, self.args = self.parser.parse_args()
         if self.options.args:
             self.args += shlex.split(self.options.args)
+
+        # We want to translate labels being passed to --provision into provision
+        # being true and --job-labels having the argument.  The code below is
+        # just temporary migration code.
+        # TODO(milleral): Remove this code.
+        if (self.options.provision and isinstance(self.options.provision, str)
+            and not self.options.job_labels):
+            self.options.job_labels = self.options.provision
+            self.options.provision = True
 
 
 site_autoserv_parser = utils.import_site_class(

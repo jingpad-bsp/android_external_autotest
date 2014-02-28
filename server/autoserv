@@ -105,6 +105,7 @@ def run_autoserv(pid_file_manager, results, parser):
     cleanup = parser.options.cleanup
     provision = parser.options.provision
     reset = parser.options.reset
+    job_labels = parser.options.job_labels
     no_tee = parser.options.no_tee
     parse_job = parser.options.parse_job
     execution_tag = parser.options.execution_tag
@@ -187,13 +188,13 @@ def run_autoserv(pid_file_manager, results, parser):
     try:
         try:
             if repair:
-                job.repair(host_protection)
+                job.repair(host_protection, job_labels)
             elif verify:
-                job.verify()
+                job.verify(job_labels)
             elif provision:
-                job.provision(provision)
+                job.provision(job_labels)
             elif reset:
-                job.reset()
+                job.reset(job_labels)
             else:
                 job.run(cleanup, install_before, install_after,
                         verify_job_repo_url=verify_job_repo_url,

@@ -1,5 +1,12 @@
 from autotest_lib.client.common_lib import host_protections
 from autotest_lib.server.cros import repair_utils
+from autotest_lib.server.cros import provision
+
+
+# A string of the form 'label1,label2:value,label3'.
+job_labels = locals().get('job_labels') or ','.join(args)
+labels_list = [l.strip() for l in job_labels.split(',') if l]
+
 
 def _call_repair(machine):
     protection = host_protections.Protection
@@ -16,13 +23,22 @@ def _call_repair(machine):
 
 def repair(machine):
     try:
+        job.record('START', None, 'repair')
         _call_repair(machine)
-        job.record('GOOD', None, 'repair', '%s repaired successfully' % machine)
-    except Exception, e:
+
+        provision.run_special_task_actions(job, host, labels_list,
+                                           provision.Repair)
+    except Exception as e:
         repair_utils.flag_problem_test(machine)
-        msg = 'repair failed on %s: %s\n' % (machine, str(e))
-        job.record('FAIL', None, 'repair', msg)
-        raise
+        job.record('END FAIL', None, 'repair')
+        # See the provision control segment for the explanation of why we're
+        # doing this.
+        raise Exception('')
+    else:
+        job.record('END GOOD', None, 'repair',
+                   '%s repaired successfully' % machine)
 
 
 job.parallel_simple(repair, machines)
+
+# vim: set syntax=python :

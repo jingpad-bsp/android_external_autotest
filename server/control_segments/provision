@@ -7,43 +7,26 @@ from autotest_lib.client.cros import constants
 from autotest_lib.server.cros import provision
 
 
-# provision_labels should be a string like "name:setting,name:setting"
+# job_labels should be a string like "name:setting,name:setting"
 # non-provisionable labels are currently skipped, so they're safe to pass in.
-# However, this is more of a current safeguard/leftover from some shady code in
-# the proof of concept, so I don't assure that passing in non-provisionable
-# labels will always be an okay and accepted thing to do.
-provision_labels = locals().get('provision_labels') or ','.join(args)
+job_labels = locals().get('job_labels') or ','.join(args)
+labels_list = [label.strip() for label in job_labels.split(',') if label]
 
 
 def provision_machine(machine):
     """
     Run the appropriate provisioning tests to make the machine's labels match
-    those given in provision_labels.
+    those given in job_labels.
     """
     host = hosts.create_host(machine)
 
-    labels_list = provision_labels.split(',')
     fixed, provisionable = provision.filter_labels(labels_list)
 
     job.record('START', None, 'provision')
-    for label in fixed:
-        job.record('INFO', None, 'provision',
-                   "Can't provision label '%s'. Skipping." % label)
-
     try:
-        for name, value in provision.split_labels(provisionable).items():
-            # Save preserved log after autoupdate is completed.
-            job.sysinfo.add_logdir(constants.AUTOUPDATE_PRESERVE_LOG)
-
-            test = provision.provisioner_for(name)
-            # sysinfo isn't really going to get us anything incredibly
-            # interesting here, and it takes a non-trivial amount of time, so
-            # we might as well just turn it off.
-            success = job.run_test(test, host=host, value=value)
-            if not success:
-                raise Exception('This exception will be immediately discarded,'
-                                ' and exists only to force all errors to the'
-                                ' same error handling codepath below.')
+        job.sysinfo.add_logdir(constants.AUTOUPDATE_PRESERVE_LOG)
+        provision.run_special_task_actions(job, host, labels_list,
+                                           provision.Provision)
     except Exception as e:
         job.record('END FAIL', None, 'provision')
         # Raising a blank exception is done here because any message we can
