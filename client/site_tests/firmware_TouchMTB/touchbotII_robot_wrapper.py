@@ -422,8 +422,7 @@ class RobotWrapper:
         """Get the robot control command for a physical click gesture"""
         cmd = self._get_control_command_click_tap(robot_script, gesture,
                                                   variation)
-        control_cmd = ('%s %d --manual-fingertips' %
-                       (cmd, PHYSICAL_CLICK_FINGER_SIZE))
+        control_cmd = '%s %d' % (cmd, PHYSICAL_CLICK_FINGER_SIZE)
         return control_cmd
 
     def _get_control_command_click_tap(self, robot_script, gesture, variation):
