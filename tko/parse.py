@@ -3,11 +3,14 @@
 import os, sys, optparse, fcntl, errno, traceback, socket
 
 import common
+from autotest_lib.frontend import setup_django_environment
 from autotest_lib.client.common_lib import mail, pidfile
+from autotest_lib.frontend.tko import models as tko_models
 from autotest_lib.tko import db as tko_db, utils as tko_utils
 from autotest_lib.tko import models, status_lib
 from autotest_lib.tko.perf_upload import perf_uploader
 from autotest_lib.client.common_lib import utils
+from autotest_lib.server.cros.dynamic_suite import constants
 
 
 def parse_args():
@@ -69,6 +72,85 @@ def mailfailure(jobname, job, message):
 
     subject = "AUTOTEST: FAILED tests from job %s" % jobname
     mail.send("", job.user, "", subject, message_header + message)
+
+
+def _invalidate_original_tests(orig_job_idx, retry_job_idx):
+    """Retry tests invalidates original tests.
+
+    Whenever a retry job is complete, we want to invalidate the original
+    job's test results, such that the consumers of the tko database
+    (e.g. tko frontend, wmatrix) could figure out which results are the latest.
+
+    When a retry job is parsed, we retrieve the original job's afe_job_id
+    from the retry job's keyvals, which is then converted to tko job_idx and
+    passed into this method as |orig_job_idx|.
+
+    In this method, we are going to invalidate the rows in tko_tests that are
+    associated with the original job by flipping their 'invalid' bit to True.
+    In addition, in tko_tests, we also maintain a pointer from the retry results
+    to the original results, so that later we can always know which rows in
+    tko_tests are retries and which are the corresponding original results.
+    This is done by setting the field 'invalidates_test_idx' of the tests
+    associated with the retry job.
+
+    For example, assume Job(job_idx=105) are retried by Job(job_idx=108), after
+    this method is run, their tko_tests rows will look like:
+    __________________________________________________________________________
+    test_idx| job_idx | test            | ... | invalid | invalidates_test_idx
+    10      | 105     | dummy_Fail.Error| ... | 1       | NULL
+    11      | 105     | dummy_Fail.Fail | ... | 1       | NULL
+    ...
+    20      | 108     | dummy_Fail.Error| ... | 0       | 10
+    21      | 108     | dummy_Fail.Fail | ... | 0       | 11
+    __________________________________________________________________________
+    Note the invalid bits of the rows for Job(job_idx=105) are set to '1'.
+    And the 'invalidates_test_idx' fields of the rows for Job(job_idx=108)
+    are set to 10 and 11 (the test_idx of the rows for the original job).
+
+    @param orig_job_idx: An integer representing the original job's
+                         tko job_idx. Tests associated with this job will
+                         be marked as 'invalid'.
+    @param retry_job_idx: An integer representing the retry job's
+                          tko job_idx. The field 'invalidates_test_idx'
+                          of the tests associated with this job will be updated.
+
+    """
+    msg = 'orig_job_idx: %s, retry_job_idx: %s' % (orig_job_idx, retry_job_idx)
+    if not orig_job_idx or not retry_job_idx:
+        tko_utils.dprint('ERROR: Could not invalidate tests: ' + msg)
+    # Using django models here makes things easier, but make sure that
+    # before this method is called, all other relevant transactions have been
+    # committed to avoid race condition. In the long run, we might consider
+    # to make the rest of parser use django models.
+    orig_tests = tko_models.Test.objects.filter(job__job_idx=orig_job_idx)
+    retry_tests = tko_models.Test.objects.filter(job__job_idx=retry_job_idx)
+
+    # Invalidate original tests.
+    orig_tests.update(invalid=True)
+
+    # Maintain a dictionary that maps (test, subdir) to original tests.
+    # Note that within the scope of a job, (test, subdir) uniquelly
+    # identifies a test run, but 'test' does not.
+    # In a control file, one could run the same test with different
+    # 'subdir_tag', for example,
+    #     job.run_test('dummy_Fail', tag='Error', subdir_tag='subdir_1')
+    #     job.run_test('dummy_Fail', tag='Error', subdir_tag='subdir_2')
+    # In tko, we will get
+    #    (test='dummy_Fail.Error', subdir='dummy_Fail.Error.subdir_1')
+    #    (test='dummy_Fail.Error', subdir='dummy_Fail.Error.subdir_2')
+    invalidated_tests = {(orig_test.test, orig_test.subdir): orig_test
+                         for orig_test in orig_tests}
+    for retry in retry_tests:
+        # It is possible that (retry.test, retry.subdir) doesn't exist
+        # in invalidated_tests. This could happen when the original job
+        # didn't run some of its tests. For example, a dut goes offline
+        # since the beginning of the job, in which case invalidated_tests
+        # will only have one entry for 'SERVER_JOB'.
+        orig_test = invalidated_tests.get((retry.test, retry.subdir), None)
+        if orig_test:
+            retry.invalidates_test = orig_test
+            retry.save()
+    tko_utils.dprint('DEBUG: Invalidated tests associated to job: ' + msg)
 
 
 def parse_one(db, jobname, path, reparse, mail_on_failure):
@@ -158,12 +240,25 @@ def parse_one(db, jobname, path, reparse, mail_on_failure):
                          % (jobname, job.user))
         mailfailure(jobname, job, message)
 
-    # write the job into the database
+    # write the job into the database.
     db.insert_job(jobname, job)
 
     # Upload perf values to the perf dashboard, if applicable.
     for test in job.tests:
         perf_uploader.upload_test(job, test)
+
+    # Although the cursor has autocommit, we still need to force it to commit
+    # existing changes before we can use django models, otherwise it
+    # will go into deadlock when django models try to start a new trasaction
+    # while the current one has not finished yet.
+    db.commit()
+
+    # Handle retry job.
+    orig_afe_job_id = job_keyval.get(constants.RETRY_ORIGINAL_JOB_ID, None)
+    if orig_afe_job_id:
+        orig_job_idx = tko_models.Job.objects.get(
+                afe_job_id=orig_afe_job_id).job_idx
+        _invalidate_original_tests(orig_job_idx, job.index)
 
     # Serializing job into a binary file
     try:
