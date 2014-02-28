@@ -133,7 +133,7 @@ class RobotWrapper:
         }
 
         # The angle wrt the pad that the fingers should take when doing a 2f
-        # gesture along these lines.
+        # gesture along these lines, or doing 2f taps at different angles.
         self._angle_dict = {
             GV.LR: -45,
             GV.RL: -45,
@@ -142,6 +142,9 @@ class RobotWrapper:
             GV.TLBR: 90,
             GV.BLTR: 0,
             GV.TRBL: 0,
+            GV.HORIZONTAL: -45,
+            GV.VERTICAL: 45,
+            GV.DIAGONAL: 0,
         }
 
         # The stationary finger locations corresponding the line specifications
@@ -172,36 +175,6 @@ class RobotWrapper:
             GV.LS: (START, CENTER),
             GV.RS: (END, CENTER),
             GV.CENTER: (CENTER, CENTER),
-
-            # location parameters for
-            #   stationary_finger_not_affected_by_2nd_finger_taps
-            GV.AROUND: (
-                CENTER, START,
-                RIGHT_TO_CENTER, ABOVE_CENTER,
-                END, CENTER,
-                RIGHT_TO_CENTER, BELOW_CENTER,
-                CENTER, END,
-            ),
-
-            # location parameters for two-finger taps
-            #   In the manual mode:
-            #     The original meanings of the following gesture variations:
-            #       HORIZONTAL: two fingers aligned horizontally
-            #       VERTICAL: two fingers aligned vertically
-            #       DIAGONAL: two fingers aligned diagonally
-            #
-            #   In the robot mode:
-            #     The robot fingers cannot rotate automatically. Have the robot
-            #     perform taps on distinct locations instead for convenience.
-            #     Note: the location is specified by the first finger, and the
-            #           second finger is on the left. Choose the tap locations
-            #           that guarantee both fingers on the touch surface.
-            GV.HORIZONTAL: (CENTER, CENTER),
-            GV.VERTICAL: (END, CENTER),
-            GV.DIAGONAL: (CENTER, END),
-
-            # location parameters for one_finger_click and two_finger_click
-            None: (CENTER, CENTER),
         }
 
         self.fingertips = [None, None, None, None]
@@ -458,12 +431,16 @@ class RobotWrapper:
         and tapping gestures
         """
         location = None
+        angle = 45
         for element in variation:
-            location = self._location_dict.get(element)
-            if location:
-                location_str = ' '.join(
-                    map(str, self._reverse_coord_if_is_touchscreen(location)))
-                break
+            if element in self._location_dict:
+                location = self._location_dict[element]
+            if 'two' in gesture and element in self._angle_dict:
+                angle = self._angle_dict[element]
+
+        # All non-one finger taps are simply perfomed in the middle of the pad
+        if 'one' not in gesture and location is None:
+            location = self._location_dict[GV.CENTER]
 
         if location is None:
             msg = 'Cannot determine the location parameters from %s %s.'
@@ -477,7 +454,10 @@ class RobotWrapper:
         elif 'four' in gesture:
             fingers = [1, 1, 1, 1]
 
-        para = (robot_script, self._board, location_str, 45,
+        location_str = ' '.join(
+            map(str, self._reverse_coord_if_is_touchscreen(location)))
+
+        para = (robot_script, self._board, location_str, angle,
                 PHYSICAL_CLICK_SPACING,
                 fingers[0], fingers[1], fingers[2], fingers[3])
         control_cmd = 'python %s %s.p %s %d %d %d %d %d %d' % para
