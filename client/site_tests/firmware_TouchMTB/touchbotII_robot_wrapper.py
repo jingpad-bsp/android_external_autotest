@@ -504,7 +504,7 @@ class RobotWrapper:
         print 'Executing: "%s"' % control_cmd
         if self._is_robot_action_mode():
             # Pausing to give everything time to settle
-            time.sleep(2)
+            time.sleep(0.5)
             return common_util.simple_system(control_cmd)
         return 0
 
