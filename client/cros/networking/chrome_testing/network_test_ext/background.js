@@ -87,6 +87,17 @@ Networking.prototype.disconnectFromNetwork = function(networkId) {
   });
 };
 
+Networking.prototype.setWifiTDLSEnabledState = function(ip_or_mac, enable) {
+  if (!this._setupFunctionCall("setWifiTDLSEnabledState"))
+    return;
+  var self = this;
+  chrome.networkingPrivate.setWifiTDLSEnabledState(
+      ip_or_mac, enable, function(result) {
+    self._setResult("setWifiTDLSEnabledState", result);
+  });
+};
+
+
 var chromeTesting = {
   STATUS_PENDING: "chrome-test-call-status-pending",
   STATUS_SUCCESS: "chrome-test-call-status-success",
