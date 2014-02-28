@@ -1,0 +1,23 @@
+# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = 'chromeos-gfx'
+NAME = 'GPU WebGL Conformance Test'
+SUITE = 'graphics, perf_v2'
+TIME = 'LONG'
+TEST_CATEGORY = 'Functional'
+TEST_CLASS = 'gl'
+TEST_TYPE = 'server'
+
+DOC = """
+This server control file executes the GPU telemetry test: webgl_conformance.
+"""
+
+def run_test(machine):
+    host = hosts.create_host(machine)
+    job.run_test("telemetry_GpuTests", host=host,
+                 test="webgl_conformance")
+
+
+parallel_simple(run_test, machines)
