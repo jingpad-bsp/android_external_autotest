@@ -5,7 +5,8 @@
 NAME = 'graphics_GLMark2'
 AUTHOR = 'The Chromium OS Authors'
 PURPOSE = 'Benchmark the graphics library performance.'
-SUITE = 'graphics'
+SUITE = 'bvt, graphics'
+EXPERIMENTAL = 'False'
 TIME='MEDIUM'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = "gl"
