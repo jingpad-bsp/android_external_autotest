@@ -19,5 +19,4 @@ direct=1
 do_verify=1
 verify=meta
 verify_interval=64k
-verify_pattern=0x5a5a5a5a
 continue_on_error=verify

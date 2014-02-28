@@ -9,7 +9,7 @@ rwmixwrite=33
 bsrange=16K-256K
 direct=0
 end_fsync=1
-;verify=crc32
+verify=crc32
 ;ioscheduler=x
 numjobs=4
 

@@ -15,8 +15,7 @@ bs=8k
 loops=1
 randrepeat=1
 do_verify=1
-verify=meta
-verify_pattern=0xffffffffffffffff
+verify=md5
 verify_dump=1
 continue_on_error=verify
 

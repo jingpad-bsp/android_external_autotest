@@ -23,7 +23,6 @@ do_verify=1
 verify=meta
 verify_interval=64k
 verify_dump=1
-verify_pattern=0xa5a5a5a5
 continue_on_error=verify
 
 ; write partition/file twice
