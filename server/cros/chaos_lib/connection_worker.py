@@ -173,10 +173,20 @@ class ConnectionSuspend(ConnectionWorker):
         ping_result = client.ping(ping_config)
         logging.info('before suspend:%r', ping_result)
         client.do_suspend(self._suspend_sec)
-        # After resume, DUT could either be in a connected state from before or
-        # would be in process of connecting to the AP. Let us wait for five
-        # seconds before we start querying the connection state.
-        time.sleep(5)
+        # When going to suspend, DUTs using ath9k devices do not disassociate
+        # from the AP. On resume, DUTs would re-use the association from prior
+        # to suspend. However, this leads to some confused state for some APs
+        # (see crbug.com/346417) where the AP responds to actions frames like
+        # NullFunc but not to any data frames like DHCP/ARP packets from the
+        # DUT.  Let us sleep for:
+        #       + 2 seconds for linkmonitor to detect failure if any
+        #       + 10 seconds for ReconnectTimer timeout
+        #       + 5 seconds to reconnect to the AP
+        #       + 3 seconds let us not have a very strict timeline.
+        # 20 seconds before we start to query shill about the connection state.
+        # TODO (krisr): add board detection code in wifi_client and adjust the
+        # sleep time here based on the wireless chipset
+        time.sleep(20)
 
         # Wait for WAIT_FOR_CONNECTION time before trying to ping.
         success, state, elapsed_time = client.wait_for_service_states(
