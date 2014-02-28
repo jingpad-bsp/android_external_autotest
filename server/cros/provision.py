@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 
+import abc
 import logging
 
 import common
@@ -27,37 +28,115 @@ def cros_version_to_label(image):
     return CROS_VERSION_PREFIX + ':' + image
 
 
-# TODO(milleral): http://crbug.com/249555
-# Create some way to discover and register provisioning tests so that we don't
-# need to hand-maintain a list of all of them.
-_provision_types = {
-    CROS_VERSION_PREFIX:'provision_AutoUpdate',
-    FW_VERSION_PREFIX:'provision_FirmwareUpdate',
-}
-
-
-def can_provision(label):
+class _SpecialTaskAction(object):
     """
-    Returns True if the label is a label that we recognize as something we
-    know how to provision.
-
-    @param label: The label as a string.
-    @returns: True if there exists a test to provision the label.
-
+    Base class to give a template for mapping labels to tests.
     """
-    return label.split(':')[0] in _provision_types
+
+    __metaclass__ = abc.ABCMeta
 
 
-def provisioner_for(name):
+    # One cannot do
+    #     @abc.abstractproperty
+    #     _actions = {}
+    # so this is the next best thing
+    @abc.abstractproperty
+    def _actions(self):
+        """A dictionary mapping labels to test names."""
+        pass
+
+
+    @abc.abstractproperty
+    def name(self):
+        """The name of this special task to be used in output."""
+        pass
+
+
+    @classmethod
+    def acts_on(cls, label):
+        """
+        Returns True if the label is a label that we recognize as something we
+        know how to act on, given our _actions.
+
+        @param label: The label as a string.
+        @returns: True if there exists a test to run for this label.
+
+        """
+        return label.split(':')[0] in cls._actions
+
+
+    @classmethod
+    def test_for(cls, label):
+        """
+        Returns the test associated with the given (string) label name.
+
+        @param label: The label for which the action is being requested.
+        @returns: The string name of the test that should be run.
+        @raises KeyError: If the name was not recognized as one we care about.
+
+        """
+        return cls._actions[label]
+
+
+class Verify(_SpecialTaskAction):
     """
-    Returns the provisioning class associated with the given (string) name.
-
-    @param name: The name of the provision type being requested.
-    @returns: The subclass of Provisioner that was requested.
-    @raises KeyError: If the name was not recognized as a provision type.
-
+    Tests to verify that the DUT is in a sane, known good state that we can run
+    tests on.  Failure to verify leads to running Repair.
     """
-    return _provision_types[name]
+
+    _actions = {
+    }
+
+    name = 'verify'
+
+
+class Provision(_SpecialTaskAction):
+    """
+    Provisioning runs to change the configuration of the DUT from one state to
+    another.  It will only be run on verified DUTs.
+    """
+
+    # TODO(milleral): http://crbug.com/249555
+    # Create some way to discover and register provisioning tests so that we
+    # don't need to hand-maintain a list of all of them.
+    _actions = {
+        CROS_VERSION_PREFIX: 'provision_AutoUpdate',
+        FW_VERSION_PREFIX: 'provision_FirmwareUpdate',
+    }
+
+    name = 'provision'
+
+
+class Cleanup(_SpecialTaskAction):
+    """
+    Cleanup runs after a test fails to try and remove artifacts of tests and
+    ensure the DUT will be in a sane state for the next test run.
+    """
+
+    _actions = {
+    }
+
+    name = 'cleanup'
+
+
+class Repair(_SpecialTaskAction):
+    """
+    Repair runs when one of the other special tasks fails.  It should be able
+    to take a component of the DUT that's in an unknown state and restore it to
+    a good state.
+    """
+
+    _actions = {
+    }
+
+    name = 'repair'
+
+
+# For backwards compatibility with old control files, we still need the
+# following:
+
+can_provision = Provision.acts_on
+provisioner_for = Provision.test_for
 
 
 def filter_labels(labels):
