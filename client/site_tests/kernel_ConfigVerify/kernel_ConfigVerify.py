@@ -305,10 +305,9 @@ class kernel_ConfigVerify(test.test):
             self.is_missing('DEBUG_RODATA')
         else:
             self.has_builtin('DEBUG_RODATA')
-        # DEBUG_SET_MODULE_RONX exists on all x86 and on ARM in 3.8.
+        # DEBUG_SET_MODULE_RONX exists on all x86 and on ARM in 3.8+.
         if self._arch.startswith('arm'):
-            if utils.compare_versions(kernel_ver, "3.8") >= 0 and \
-               utils.compare_versions(kernel_ver, "3.10") < 0:
+            if utils.compare_versions(kernel_ver, "3.8") >= 0:
                 self.has_builtin('DEBUG_SET_MODULE_RONX')
             else:
                 self.is_missing('DEBUG_SET_MODULE_RONX')
