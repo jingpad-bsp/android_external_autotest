@@ -322,14 +322,7 @@ class ProvisionTask(PreJobTask):
         # so that we can pass the --provision args into the __init__ call.
         labels = {x.name for x in task.queue_entry.job.labels}
         _, provisionable = provision.filter_labels(labels)
-        # TODO(milleral): remove migration hack.
-        # Labels are being moved from --provision to --job-labels, so in the
-        # meantime, we need to make sure that --provision still has an argument
-        # so that there's no window during the deploy that things won't work.
-        # The only way to do this is to pass '--provision' as the argument to
-        # --provision, since when --provision no longer takes an argument, we'll
-        # just be setting the same flag twice, which is fine.
-        extra_command_args = ['--provision', '--provision',
+        extra_command_args = ['--provision',
                               '--job-labels', ','.join(provisionable)]
         super(ProvisionTask, self).__init__(task, extra_command_args)
         self._set_ids(host=self.host, queue_entries=[self.queue_entry])
