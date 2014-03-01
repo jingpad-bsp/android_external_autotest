@@ -18,6 +18,7 @@ from autotest_lib.frontend import settings, thread_local
 from autotest_lib.client.common_lib import enum, host_protections, global_config
 from autotest_lib.client.common_lib import host_queue_entry_states
 from autotest_lib.client.common_lib import control_data, priorities
+from autotest_lib.client.common_lib import decorators
 
 # job options and user preferences
 DEFAULT_REBOOT_BEFORE = model_attributes.RebootBefore.IF_DIRTY
@@ -1081,6 +1082,15 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
 
     # custom manager
     objects = JobManager()
+
+
+    @decorators.cached_property
+    def labels(self):
+        """All the labels of this job"""
+        # We need to convert dependency_labels to a list, because all() gives us
+        # back an iterator, and storing/caching an iterator means we'd only be
+        # able to read from it once.
+        return list(self.dependency_labels.all())
 
 
     def is_server_job(self):

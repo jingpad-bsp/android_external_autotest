@@ -176,7 +176,10 @@ class VerifyTask(PreJobTask):
 
 
     def __init__(self, task):
-        super(VerifyTask, self).__init__(task, ['-v'])
+        args = ['-v']
+        if task.queue_entry:
+            args.extend(self._generate_autoserv_label_args(task))
+        super(VerifyTask, self).__init__(task, args)
         self._set_ids(host=self.host, queue_entries=[self.queue_entry])
 
 
@@ -212,7 +215,10 @@ class CleanupTask(PreJobTask):
 
 
     def __init__(self, task, recover_run_monitor=None):
-        super(CleanupTask, self).__init__(task, ['--cleanup'])
+        args = ['--cleanup']
+        if task.queue_entry:
+            args.extend(self._generate_autoserv_label_args(task))
+        super(CleanupTask, self).__init__(task, args)
         self._set_ids(host=self.host, queue_entries=[self.queue_entry])
 
 
@@ -263,7 +269,10 @@ class ResetTask(PreJobTask):
 
 
     def __init__(self, task, recover_run_monitor=None):
-        super(ResetTask, self).__init__(task, ['--reset'])
+        args = ['--reset']
+        if task.queue_entry:
+            args.extend(self._generate_autoserv_label_args(task))
+        super(ResetTask, self).__init__(task, args)
         self._set_ids(host=self.host, queue_entries=[self.queue_entry])
 
 
@@ -311,9 +320,17 @@ class ProvisionTask(PreJobTask):
         # it gets constructed and assigned in __init__, so it's not available
         # yet.  Therefore, we're stuck pulling labels off of the afe model
         # so that we can pass the --provision args into the __init__ call.
-        labels = {x.name for x in task.queue_entry.job.dependency_labels.all()}
+        labels = {x.name for x in task.queue_entry.job.labels}
         _, provisionable = provision.filter_labels(labels)
-        extra_command_args = ['--provision', ','.join(provisionable)]
+        # TODO(milleral): remove migration hack.
+        # Labels are being moved from --provision to --job-labels, so in the
+        # meantime, we need to make sure that --provision still has an argument
+        # so that there's no window during the deploy that things won't work.
+        # The only way to do this is to pass '--provision' as the argument to
+        # --provision, since when --provision no longer takes an argument, we'll
+        # just be setting the same flag twice, which is fine.
+        extra_command_args = ['--provision', '--provision',
+                              '--job-labels', ','.join(provisionable)]
         super(ProvisionTask, self).__init__(task, extra_command_args)
         self._set_ids(host=self.host, queue_entries=[self.queue_entry])
 
@@ -371,8 +388,11 @@ class RepairTask(agent_task.SpecialAgentTask):
         # normalize the protection name
         protection = host_protections.Protection.get_attr_name(protection)
 
-        super(RepairTask, self).__init__(
-                task, ['-R', '--host-protection', protection])
+        args = ['-R', '--host-protection', protection]
+        if task.queue_entry:
+            args.extend(self._generate_autoserv_label_args(task))
+
+        super(RepairTask, self).__init__(task, args)
 
         # *don't* include the queue entry in IDs -- if the queue entry is
         # aborted, we want to leave the repair task running

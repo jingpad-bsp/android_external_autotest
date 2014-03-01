@@ -634,3 +634,14 @@ class SpecialAgentTask(AgentTask, TaskWithJobKeyvals):
         if keep_last_one:
             queued_special_tasks = queued_special_tasks.exclude(id=self.task.id)
         queued_special_tasks.delete()
+
+
+    def _generate_autoserv_label_args(self, task):
+        """
+        @param task: An instance of afe model's SpecialTask.
+        @returns: The list of arguments to pass to autoserv to tell it what the
+                  labels of a job are.
+
+        """
+        labels = {x.name for x in task.queue_entry.job.labels}
+        return ['--job-labels', ','.join(labels)]
