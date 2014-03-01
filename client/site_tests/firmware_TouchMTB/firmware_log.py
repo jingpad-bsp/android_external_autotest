@@ -403,7 +403,8 @@ class GestureLog:
 
 class RoundLog:
     """Manipulate the test result log generated in a single round."""
-    def __init__(self, fw=None, round_name=None):
+    def __init__(self, test_version, fw=None, round_name=None):
+        self._test_version = test_version
         self._fw = fw
         self._round_name = round_name
         self._glogs = []
@@ -412,7 +413,8 @@ class RoundLog:
         """Dump the log to the specified filename."""
         try:
             with open(filename, 'w') as log_file:
-                pickle.dump([self._fw, self._round_name, self._glogs], log_file)
+                pickle.dump([self._fw, self._round_name, self._test_version,
+                             self._glogs], log_file)
         except Exception, e:
             msg = 'Error in dumping to the log file (%s): %s' % (filename, e)
             print_and_exit(msg)
@@ -572,11 +574,21 @@ class SummaryLog:
         """Add the round log, decompose the validator logs, and build
         a flat summary log.
         """
-        fw, round_name, glogs = RoundLog.load(log_filename)
+        log_data = RoundLog.load(log_filename)
+        if len(log_data) == 3:
+            fw, round_name, glogs = log_data
+            self.test_version = 'test_version: NA'
+        elif len(log_data) == 4:
+            fw, round_name, self.test_version, glogs = log_data
+        else:
+            print 'Error: the log format is unknown.'
+            sys.exit(1)
+
         if round_no is not None:
             fw = '%s_%d' % (fw, round_no)
         self.fws.add(fw)
         debug_print('  fw(%s) round(%s)' % (fw, round_name))
+
         # Iterate through every gesture_variation of the round log,
         # and generate a flat dictionary of the validator logs.
         for glog in glogs:

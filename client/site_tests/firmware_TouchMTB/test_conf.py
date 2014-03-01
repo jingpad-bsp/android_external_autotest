@@ -64,6 +64,7 @@ ENVIRONMENT_REPORT_HTML_NAME = 'REPORT_HTML_NAME'
 log_root_dir = '/var/tmp/touch_firmware_test'
 fw_prefix = 'fw_'
 device_description_dir = 'tests/device'
+version_filename = '.version'
 
 
 # Define parameters for GUI

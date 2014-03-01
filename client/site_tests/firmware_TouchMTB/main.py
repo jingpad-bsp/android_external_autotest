@@ -49,6 +49,8 @@ class firmware_TouchMTB:
     def __init__(self, options):
         self.options = options
 
+        self.test_version = 'test_' + self._get_test_version()
+
         # Get the board name
         self._get_board()
 
@@ -110,7 +112,8 @@ class firmware_TouchMTB:
         self.report_html = ReportHtml(self.report_html_name,
                                       self.screen_size,
                                       self.touch_device_window_size,
-                                      conf.score_colors)
+                                      conf.score_colors,
+                                      self.test_version)
         self.output = firmware_utils.Output(self.log_dir,
                                             self.report_name,
                                             self.win, self.report_html)
@@ -122,6 +125,7 @@ class firmware_TouchMTB:
                                             self.win,
                                             self.parser,
                                             self.output,
+                                            self.test_version,
                                             self.board,
                                             firmware_version,
                                             options)
@@ -145,6 +149,20 @@ class firmware_TouchMTB:
         if not device.exists():
             logging.error('Cannot find device_node.')
             exit(1)
+
+    def _get_test_version(self):
+        """Get the test suite version number."""
+        if not os.path.isfile(conf.version_filename):
+            err_msg = ('Error: cannot find the test version file: %s\n'
+                       'You need to perform the following steps in chroot '
+                       'which will copy the test version to the test machine.\n'
+                       'Step 1: cd to the firmware_TouchMTB directory\n'
+                       'Step 2: (cr) $ ./version.sh -r $MACHINE_IP')
+            print err_msg % conf.version_filename
+            sys.exit(1)
+
+        with open(conf.version_filename) as version_file:
+            return version_file.read()
 
     def _get_board(self):
         """Get the board.

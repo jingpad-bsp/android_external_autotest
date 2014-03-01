@@ -35,14 +35,16 @@ class TestFlow:
     """Guide the user to perform gestures. Record and validate the gestures."""
 
     def __init__(self, device_geometry, device, keyboard, win, parser, output,
-                 board, firmware_version, options):
+                 test_version, board, firmware_version, options):
         self.device_geometry = device_geometry
         self.device = device
         self.device_node = self.device.device_node
         self.keyboard = keyboard
         self.firmware_version = firmware_version
-        self.board = board
         self.output = output
+        self.board = board
+        self.test_version = test_version
+        self.output.print_report('%s' % test_version)
         self._get_record_cmd()
         self.win = win
         self.parser = parser

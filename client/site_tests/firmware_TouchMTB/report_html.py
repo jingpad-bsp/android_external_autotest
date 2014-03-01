@@ -23,7 +23,7 @@ class TemplateHtml:
         self.score_colors = score_colors
 
         # Define the template of the doc
-        self.doc = Template('$head $summary $logs $tail')
+        self.doc = Template('$head $test_version $logs $tail')
         self.table = Template('<table border="3" width="100%"> $gestures '
                               '</table>')
         self.gestures = []
@@ -119,10 +119,11 @@ $criteria
                 vlogs=vlogs_content)
         self.gestures.append(gesture)
 
-    def get_doc(self):
+    def get_doc(self, test_version):
         gestures = ''.join(self.gestures)
         new_table = self.table.safe_substitute(gestures=gestures)
-        new_doc = self.doc.safe_substitute(logs=new_table)
+        new_doc = self.doc.safe_substitute(test_version=test_version,
+                                           logs=new_table)
         return new_doc
 
 
@@ -130,7 +131,7 @@ class ReportHtml:
     """Firmware Report in html format."""
 
     def __init__(self, filename, screen_size, touch_device_window_size,
-                 score_colors):
+                 score_colors, test_version):
         self.html_filename = filename
         self.screen_size = screen_size
         self.image_width = self.screen_size[0] * 0.5
@@ -139,8 +140,9 @@ class ReportHtml:
         self.doc = TemplateHtml(self.image_width, self.image_height,
                                 score_colors)
         self._reset_content()
+        self.test_version = test_version
         fw_and_date = get_fw_and_date(filename)
-        self.rlog = firmware_log.RoundLog(*fw_and_date)
+        self.rlog = firmware_log.RoundLog(test_version, *fw_and_date)
 
     def __del__(self):
         self.stop()
@@ -148,7 +150,7 @@ class ReportHtml:
     def stop(self):
         """Close the file."""
         with open(self.html_filename, 'w') as report_file:
-            report_file.write(self.doc.get_doc())
+            report_file.write(self.doc.get_doc(self.test_version))
         # Make a copy to /tmp so that it could be viewed in Chrome.
         tmp_copy = os.path.join(conf.docroot,
                                 os.path.basename(self.html_filename))

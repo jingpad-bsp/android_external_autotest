@@ -353,6 +353,7 @@ class FirmwareSummary:
 
     def print_result_summary(self):
         """Print the summary of the test results."""
+        print self.slog.test_version
         if self.display_metrics:
             self._print_statistics_of_metrics(detailed=False)
             self._print_statistics_of_metrics(detailed=True)
