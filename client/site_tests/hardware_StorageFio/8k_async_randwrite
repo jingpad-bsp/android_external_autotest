@@ -10,6 +10,7 @@
 
 filename=${FILENAME}
 size=${FILESIZE}
+verify_only=${VERIFY_ONLY}
 bs=8k
 
 loops=1

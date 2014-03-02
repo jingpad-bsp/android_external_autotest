@@ -20,6 +20,7 @@ class hardware_StorageFio(test.test):
 
     version = 7
     DEFAULT_FILE_SIZE = 1024 * 1024 * 1024
+    VERIFY_OPTION = 'v'
 
     # Initialize fail counter used to determine test pass/fail.
     _fail_count = 0
@@ -116,16 +117,19 @@ class hardware_StorageFio(test.test):
         return results
 
 
-    def __RunFio(self, job, options):
+    def __RunFio(self, job):
         """
         Runs fio.
+
+        @param job: fio config file to use
 
         @return fio results.
 
         """
         env_vars = ' '.join(
             ['FILENAME=' + self.__filename,
-             'FILESIZE=' + str(self.__filesize)
+             'FILESIZE=' + str(self.__filesize),
+             'VERIFY_ONLY=' + str(int(self.__verify_only))
              ])
 
         # running fio with ionice -c 3 so it doesn't lock out other
@@ -140,7 +144,7 @@ class hardware_StorageFio(test.test):
         # Using the --minimal flag for easier results parsing
         # Newest fio doesn't omit any information in --minimal
         # Need to set terse-version to 4 for trim related output
-        options.extend(['--minimal', '--terse-version=4'])
+        options = ['--minimal', '--terse-version=4']
         fio_cmd_line = ' '.join([env_vars, ionice, 'fio',
                                  ' '.join(options),
                                  '"' + os.path.join(self.bindir, job + '"')])
@@ -191,6 +195,7 @@ class hardware_StorageFio(test.test):
         if filesize != 0:
             self.__filesize = min(self.__filesize, filesize)
 
+        self.__verify_only = False
 
     def run_once(self, dev='', quicktest=False, requirements=None,
                  integrity=False, wait=60 * 60 * 72):
@@ -215,7 +220,7 @@ class hardware_StorageFio(test.test):
         elif integrity:
             requirements = [
                 ('8k_async_randwrite', []),
-                ('8k_async_randwrite', ['--verifyonly'])
+                ('8k_async_randwrite', [self.VERIFY_OPTION])
             ]
         elif dev in ['', utils.system_output('rootdev -s -d')]:
             requirements = [
@@ -242,9 +247,12 @@ class hardware_StorageFio(test.test):
         for job, options in requirements:
             # Keys are labeled according to the test case name, which is
             # unique per run, so they cannot clash
-            if '--verifyonly' in options:
+            if self.VERIFY_OPTION in options:
                 time.sleep(wait)
-            results.update(self.__RunFio(job, options))
+                self.__verify_only = True
+            else:
+                self.__verify_only = False
+            results.update(self.__RunFio(job))
 
         # Output keys relevant to the performance, larger filesize will run
         # slower, and sda5 should be slightly slower than sda3 on a rotational
