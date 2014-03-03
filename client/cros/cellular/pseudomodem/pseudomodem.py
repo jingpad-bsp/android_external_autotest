@@ -94,13 +94,19 @@ class PseudoModemManager(object):
 
         self._in_exit_sequence = True
         logging.info('pseudomodem shutdown sequence initiated...')
+        # Guard each step by its own try...catch, because we want to attempt
+        # each step irrespective of whether the earlier ones succeeded.
         try:
             if self._manager:
                 self._manager.Remove(self._modem)
+        except Exception as e:
+            logging.warning('Error while exiting: %s', repr(e))
+        try:
             if self._mainloop:
                 self._mainloop.quit()
         except Exception as e:
             logging.warning('Error while exiting: %s', repr(e))
+
         logging.info('pseudomodem: Bye! Bye!')
 
 
