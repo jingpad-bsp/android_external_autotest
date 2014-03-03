@@ -2,7 +2,7 @@
 
 import logging, os, shutil, sys, tempfile, time, urllib2
 import subprocess, re
-from autotest_lib.client.common_lib import revision_control, utils
+from autotest_lib.client.common_lib import autotemp, revision_control, utils
 
 _READ_SIZE = 64*1024
 _MAX_PACKAGE_SIZE = 100*1024*1024
@@ -1112,3 +1112,60 @@ class DevServerRepo(_ExternalGitRepo):
         if git_repo.get_latest_commit_hash():
             return True
         return False
+
+
+class BtsocketRepo(_ExternalGitRepo):
+    """Clones or updates the btsocket repo."""
+
+    _GIT_URL = ('https://chromium.googlesource.com/'
+                'chromiumos/platform/btsocket')
+
+    def fetch(self, unused_dest_dir):
+        """
+        Fetch repo to a temporary location.
+
+        We use an intermediate temp directory because we have to build an
+        egg for installation.  If we can't get at the top commit hash after
+        fetching something is wrong. This can happen when we've cloned/pulled
+        an empty repo. Not something we expect to do.
+
+        @parma unused_dest_dir: passed in because we inherit from
+            ExternalPackage.
+
+        @return: True if repo sync was successful.
+        """
+        self.temp_btsocket_dir = autotemp.tempdir(unique_id='btsocket')
+        try:
+            git_repo = revision_control.GitRepo(
+                            self.temp_btsocket_dir.name,
+                            self._GIT_URL,
+                            None,
+                            abs_work_tree=self.temp_btsocket_dir.name)
+            git_repo.pull_or_clone()
+
+            if git_repo.get_latest_commit_hash():
+                return True
+        except:
+            self.temp_btsocket_dir.clean()
+            raise
+
+        self.temp_btsocket_dir.clean()
+        return False
+
+
+    def build_and_install(self, install_dir):
+        """
+        Install the btsocket module using setup.py
+
+        @param install_dir: Target installation directory.
+
+        @return: A boolean indicating success of failure.
+        """
+        work_dir = os.getcwd()
+        try:
+            os.chdir(self.temp_btsocket_dir.name)
+            rv = self._build_and_install_current_dir_setup_py(install_dir)
+        finally:
+            os.chdir(work_dir)
+            self.temp_btsocket_dir.clean()
+        return rv
