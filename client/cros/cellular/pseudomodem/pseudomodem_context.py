@@ -55,6 +55,7 @@ def nuke_subprocess(subproc, timeout_hint_seconds=0):
 
     signal_queue = [signal.SIGINT, signal.SIGTERM, signal.SIGKILL]
     for sig in signal_queue:
+        logging.info('Nuking %s with %s', subproc.pid, sig)
         utils.signal_pid(subproc.pid, sig)
         try:
             utils.poll_for_condition(
