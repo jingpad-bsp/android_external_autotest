@@ -7,6 +7,7 @@ import cgi
 import collections
 import HTMLParser
 import logging
+import os
 import re
 
 from xml.parsers import expat
@@ -253,14 +254,9 @@ class Reporter(object):
     """
     Files external reports about bugs that happened inside autotest.
     """
+    # Credentials for access to the project hosting api
     _project_name = global_config.global_config.get_config_value(
         BUG_CONFIG_SECTION, 'project_name', default='')
-    _username = global_config.global_config.get_config_value(
-        BUG_CONFIG_SECTION, 'username', default='')
-    _password = global_config.global_config.get_config_value(
-        BUG_CONFIG_SECTION, 'password', default='')
-
-    # Credentials for access to the project hosting api
     _oauth_credentials = global_config.global_config.get_config_value(
         BUG_CONFIG_SECTION, 'credentials', default='')
 
@@ -274,16 +270,26 @@ class Reporter(object):
     _SEARCH_MARKER = 'ANCHOR  '
 
 
+    @classmethod
+    def get_creds_abspath(cls):
+        """Returns the abspath of the bug filer credentials file.
+
+        @return: A path to the oauth2 credentials file.
+        """
+        auth_creds = cls._oauth_credentials
+        #TODO: crbug.com/349505
+        if os.path.isabs(auth_creds):
+            return auth_creds
+        return os.path.join(common.autotest_dir, auth_creds)
+
+
     def __init__(self):
         if not fundamental_libs:
             logging.warning("Bug filing disabled due to missing imports.")
             return
-
         try:
             self._phapi_client = phapi_lib.ProjectHostingApiClient(
-                self._oauth_credentials,
-                self._project_name)
-
+                self.get_creds_abspath(), self._project_name)
         except phapi_lib.ProjectHostingApiException as e:
             logging.error('Unable to create project hosting api client: %s', e)
             self._phapi_client = None
@@ -292,6 +298,19 @@ class Reporter(object):
     def _check_tracker(self):
         """Returns True if we have a tracker object to use for filing bugs."""
         return fundamental_libs and self._phapi_client
+
+
+    def get_bug_tracker_client(self):
+        """Returns the client used to communicate with the project hosting api.
+
+        @return: The instance of the ProjectHostingApiClient associated with
+            this reporter.
+        """
+        if self._check_tracker():
+            return self._phapi_client
+        raise phapi_lib.ProjectHostingApiException('Project hosting client not '
+                'initialized for project:%s, using auth file: %s' %
+                (self._project_name, self.get_creds_abspath()))
 
 
     def _get_lab_error_template(self):

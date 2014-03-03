@@ -73,20 +73,14 @@ class ReportingTest(mox.MoxTestBase):
         super(ReportingTest, self).setUp()
         self.mox.StubOutClassWithMocks(phapi_lib, 'ProjectHostingApiClient')
         self._orig_project_name = reporting.Reporter._project_name
-        self._orig_username = reporting.Reporter._username
-        self._orig_password = reporting.Reporter._password
 
         # We want to have some data so that the Reporter doesn't fail at
         # initialization.
         reporting.Reporter._project_name = 'project'
-        reporting.Reporter._username = 'username'
-        reporting.Reporter._password = 'password'
 
 
     def tearDown(self):
         reporting.Reporter._project_name = self._orig_project_name
-        reporting.Reporter._username = self._orig_username
-        reporting.Reporter._password = self._orig_password
         super(ReportingTest, self).tearDown()
 
 
@@ -237,20 +231,14 @@ class FindIssueByMarkerTests(mox.MoxTestBase):
         super(FindIssueByMarkerTests, self).setUp()
         self.mox.StubOutClassWithMocks(phapi_lib, 'ProjectHostingApiClient')
         self._orig_project_name = reporting.Reporter._project_name
-        self._orig_username = reporting.Reporter._username
-        self._orig_password = reporting.Reporter._password
 
         # We want to have some data so that the Reporter doesn't fail at
         # initialization.
         reporting.Reporter._project_name = 'project'
-        reporting.Reporter._username = 'username'
-        reporting.Reporter._password = 'password'
 
 
     def tearDown(self):
         reporting.Reporter._project_name = self._orig_project_name
-        reporting.Reporter._username = self._orig_username
-        reporting.Reporter._password = self._orig_password
         super(FindIssueByMarkerTests, self).tearDown()
 
 
@@ -271,20 +259,14 @@ class AnchorSummaryTests(mox.MoxTestBase):
         super(AnchorSummaryTests, self).setUp()
         self.mox.StubOutClassWithMocks(phapi_lib, 'ProjectHostingApiClient')
         self._orig_project_name = reporting.Reporter._project_name
-        self._orig_username = reporting.Reporter._username
-        self._orig_password = reporting.Reporter._password
 
         # We want to have some data so that the Reporter doesn't fail at
         # initialization.
         reporting.Reporter._project_name = 'project'
-        reporting.Reporter._username = 'username'
-        reporting.Reporter._password = 'password'
 
 
     def tearDown(self):
         reporting.Reporter._project_name = self._orig_project_name
-        reporting.Reporter._username = self._orig_username
-        reporting.Reporter._password = self._orig_password
         super(AnchorSummaryTests, self).tearDown()
 
 
@@ -322,20 +304,14 @@ class LabelUpdateTests(mox.MoxTestBase):
         super(LabelUpdateTests, self).setUp()
         self.mox.StubOutClassWithMocks(phapi_lib, 'ProjectHostingApiClient')
         self._orig_project_name = reporting.Reporter._project_name
-        self._orig_username = reporting.Reporter._username
-        self._orig_password = reporting.Reporter._password
 
         # We want to have some data so that the Reporter doesn't fail at
         # initialization.
         reporting.Reporter._project_name = 'project'
-        reporting.Reporter._username = 'username'
-        reporting.Reporter._password = 'password'
 
 
     def tearDown(self):
         reporting.Reporter._project_name = self._orig_project_name
-        reporting.Reporter._username = self._orig_username
-        reporting.Reporter._password = self._orig_password
         super(LabelUpdateTests, self).tearDown()
 
 

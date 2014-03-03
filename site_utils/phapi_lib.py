@@ -27,7 +27,17 @@ class ProjectHostingApiException(Exception):
     """
 
 
-class Issue(gdata_lib.Issue):
+class BaseIssue(gdata_lib.Issue):
+    """Base issue class with the minimum data to describe a tracker bug.
+    """
+    def __init__(self, t_issue):
+        kwargs = {}
+        kwargs.update((keys, t_issue.get(keys))
+                       for keys in gdata_lib.Issue.SlotDefaults.keys())
+        super(BaseIssue, self).__init__(**kwargs)
+
+
+class Issue(BaseIssue):
     """
     Class representing an Issue and it's related metadata.
     """
@@ -37,27 +47,31 @@ class Issue(gdata_lib.Issue):
 
         @param t_issue: The base issue we want to use to populate
                         the member variables of this object.
+
+        @raises ProjectHostingApiException: If the tracker issue doesn't
+            contain all expected fields needed to create a complete issue.
         """
-        kwargs={}
-        kwargs.update((keys, t_issue.get(keys))
-                      for keys in gdata_lib.Issue.SlotDefaults.keys())
+        super(Issue, self).__init__(t_issue)
 
-        super(Issue, self).__init__(**kwargs)
+        try:
+            # The value keyed under 'summary' in the tracker issue
+            # is, unfortunately, not the summary but the title. The
+            # actual summary is the update at index 0.
+            self.summary = t_issue.get('updates')[0]
+            self.comments = t_issue.get('updates')[1:]
 
-        # The value keyed under 'summary' in the tracker issue
-        # is, unfortunately, not the summary but the title. The
-        # actual summary is the update at index 0.
-        self.summary = t_issue.get('updates')[0]
-        self.comments = t_issue.get('updates')[1:]
-
-        # open or closed statuses are classified according to labels like
-        # unconfirmed, verified, fixed etc just like through the front end.
-        self.state = t_issue.get(constants.ISSUE_STATE)
-        self.merged_into = None
-        if (t_issue.get(constants.ISSUE_STATUS) == constants.ISSUE_DUPLICATE and
-            constants.ISSUE_MERGEDINTO in t_issue):
-            parent_issue_dict = t_issue.get(constants.ISSUE_MERGEDINTO)
-            self.merged_into = parent_issue_dict.get('issueId')
+            # open or closed statuses are classified according to labels like
+            # unconfirmed, verified, fixed etc just like through the front end.
+            self.state = t_issue.get(constants.ISSUE_STATE)
+            self.merged_into = None
+            if (t_issue.get(constants.ISSUE_STATUS)
+                    == constants.ISSUE_DUPLICATE and
+                constants.ISSUE_MERGEDINTO in t_issue):
+                parent_issue_dict = t_issue.get(constants.ISSUE_MERGEDINTO)
+                self.merged_into = parent_issue_dict.get('issueId')
+        except KeyError as e:
+            raise ProjectHostingApiException('Cannot create a '
+                    'complete issue %s, tracker issue: %s' % (e, t_issue))
 
 
 class ProjectHostingApiClient():
@@ -65,8 +79,9 @@ class ProjectHostingApiClient():
     Client class for interaction with the project hosting api.
     """
 
-    # Maximum number of results we would like when qurying the tracker.
+    # Maximum number of results we would like when querying the tracker.
     _max_results_for_issue = 50
+    _start_index = 1
 
 
     def __init__(self, oauth_credentials, project_name):
@@ -196,7 +211,24 @@ class ProjectHostingApiClient():
         return self._execute_request(request)
 
 
-    def _list_issues(self, search_marker, search_space='all'):
+    def set_max_results(self, max_results):
+        """Set the max results to return.
+
+        @param max_results: An integer representing the maximum number of
+            matching results to return per query.
+        """
+        self._max_results_for_issue = max_results
+
+
+    def set_start_index(self, start_index):
+        """Set the start index, for paging.
+
+        @param start_index: The new start index to use.
+        """
+        self._start_index = start_index
+
+
+    def list_issues(self, **kwargs):
         """
         List issues containing the search marker. This method will only list
         the summary, title and id of an issue, though it searches through the
@@ -204,19 +236,28 @@ class ProjectHostingApiClient():
         contain a comment of '123' will appear in the output, but the string
         '123' itself may not, because the output only contains issue summaries.
 
-        @param search_marker: The anchor string used in the search.
-        @param search_space: a string representing the search space that is
-                             passed to the google api, can be 'all', 'new',
-                             'open', 'owned', 'reported', 'starred',
-                             or 'to-verify', defaults to 'all'.
-        @raises: ProjectHostingApiException, if the request execution fails.
+        @param kwargs:
+            q: The anchor string used in the search.
+            can: a string representing the search space that is passed to the
+                 google api, can be 'all', 'new', 'open', 'owned', 'reported',
+                 'starred', or 'to-verify', defaults to 'all'.
+            label: A string representing a single label to match.
 
         @return: A json formatted python dict of all matching issues.
+
+        @raises: ProjectHostingApiException, if the request execution fails.
         """
         issues = self._codesite_service.issues()
+
+        # Asking for issues with None or '' labels will restrict the query
+        # to those issues without labels.
+        if not kwargs['label']:
+            del kwargs['label']
+
         request = issues.list(projectId=self._project_name,
-                              q=search_marker, can=search_space,
-                              maxResults=self._max_results_for_issue)
+                              startIndex=self._start_index,
+                              maxResults=self._max_results_for_issue,
+                              **kwargs)
         return self._execute_request(request)
 
 
@@ -373,7 +414,7 @@ class ProjectHostingApiClient():
 
 
     def get_tracker_issues_by_text(self, search_text, full_text=True,
-                                   include_dupes=False):
+                                   include_dupes=False, label=None):
         """
         Find all Tracker issues that contain the specified search text.
 
@@ -384,13 +425,16 @@ class ProjectHostingApiClient():
         @param include_dupes: If True, search over both open issues as well as
                           closed issues whose status is 'Duplicate'. If False,
                           only search over open issues.
+        @param label: A string representing a single label to match.
+
         @return: A list of issues that contain the search text, or an empty list
                  when we're either unable to list issues or none match the text.
         """
         issue_list = []
         try:
             search_space = 'all' if include_dupes else 'open'
-            feed = self._list_issues(search_text, search_space)
+            feed = self.list_issues(q=search_text, can=search_space,
+                                    label=label)
         except ProjectHostingApiException as e:
             logging.error('Unable to search for issues with marker %s: %s',
                           search_text, e)
@@ -407,16 +451,21 @@ class ProjectHostingApiClient():
             # returns a bad Http response code but doesn't throw an exception
             # we won't find an issue id in the returned json.
             if t_issue.get('id') and is_open_or_dup:
-                # TODO(beeps): If this method turns into a performance bottle
-                # neck yield each issue and refactor the reporter. For now
-                # passing all issues allows us to detect when deduping fails
-                # because multiple issues will match a given query exactly.
+                # TODO(beeps): If this method turns into a performance
+                # bottle neck yield each issue and refactor the reporter.
+                # For now passing all issues allows us to detect when
+                # deduping fails, because multiple issues will match a
+                # given query exactly.
                 try:
-                    issue_list.append(
-                        Issue(self._populate_issue_updates(t_issue)))
+                    if full_text:
+                        issue = Issue(self._populate_issue_updates(t_issue))
+                    else:
+                        issue = BaseIssue(t_issue)
                 except ProjectHostingApiException as e:
                     logging.error('Unable to list the updates of issue %s: %s',
-                                   t_issue.get('id'), str(e))
+                                  t_issue.get('id'), str(e))
+                else:
+                    issue_list.append(issue)
         return issue_list
 
 
