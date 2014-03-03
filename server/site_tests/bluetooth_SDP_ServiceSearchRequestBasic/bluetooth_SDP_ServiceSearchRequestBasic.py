@@ -12,14 +12,15 @@ class bluetooth_SDP_ServiceSearchRequestBasic(bluetooth_test.BluetoothTest):
     """
     version = 1
 
-    SDP_SERVER_CLASS_ID          = 0x1000
-    NO_EXISTING_SERVICE_CLASS_ID = 0x0001
-    FAKE_SERVICES_CNT            = 300
-    FAKE_SERVICES_PATH           = '/autotest/fake_service_'
-    FAKE_SERVICES_CLASS_ID       = 0xABCD
-    BLUETOOTH_BASE_UUID          = 0x0000000000001000800000805F9B34FB
-    INVALID_PDU_SIZE             = 9875
-    ERROR_CODE_INVALID_PDU_SIZE  = 0x0004
+    SDP_SERVER_CLASS_ID                = 0x1000
+    NO_EXISTING_SERVICE_CLASS_ID       = 0x0001
+    FAKE_SERVICES_CNT                  = 300
+    FAKE_SERVICES_PATH                 = '/autotest/fake_service_'
+    FAKE_SERVICES_CLASS_ID             = 0xABCD
+    BLUETOOTH_BASE_UUID                = 0x0000000000001000800000805F9B34FB
+    INVALID_PDU_SIZE                   = 9875
+    ERROR_CODE_INVALID_REQUEST_SYNTAX  = 0x0003
+    ERROR_CODE_INVALID_PDU_SIZE        = 0x0004
 
 
     def correct_request(self):
@@ -57,8 +58,15 @@ class bluetooth_SDP_ServiceSearchRequestBasic(bluetooth_test.BluetoothTest):
             # test case TP/SERVER/SS/BI-01-C:
             # send a Service Search Request with intentionally invalid PDU size
             resp = self.tester.service_search_request(
-                   [self.SDP_SERVER_CLASS_ID], 3, size, self.INVALID_PDU_SIZE)
+                   [self.SDP_SERVER_CLASS_ID], 3, size,
+                   forced_pdu_size=self.INVALID_PDU_SIZE)
             if resp != self.ERROR_CODE_INVALID_PDU_SIZE:
+                return False
+            # test case TP/SERVER/SS/BI-02-C:
+            # send a Service Search Request with invalid syntax
+            resp = self.tester.service_search_request(
+                   [self.SDP_SERVER_CLASS_ID], 3, size, invalid_request=True)
+            if resp != self.ERROR_CODE_INVALID_REQUEST_SYNTAX:
                 return False
 
         return True
