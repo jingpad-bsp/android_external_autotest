@@ -28,11 +28,17 @@ class network_WiFi_LowInitialBitrates(wifi_cell_test_base.WiFiCellTestBase):
         logging.info('Analyzing packet capture...')
         dut_src_pcap_filter = ('ether src host %s' %
                                self.context.client.wifi_mac)
+        # Some chips use self-addressed frames to tune channel
+        # performance. They don't carry host-generated traffic, so
+        # filter them out.
+        dut_dst_pcap_filter = ('ether dst host %s' %
+                               self.context.client.wifi_mac)
         # Get all the frames in chronological order.
         frames = tcpdump_analyzer.get_frames(
                 pcap_result.pcap_path,
                 remote_host=self.context.router.host,
-                pcap_filter=dut_src_pcap_filter)
+                pcap_filter=('%s and not %s' % (
+                    dut_src_pcap_filter, dut_dst_pcap_filter)))
         # Get just the DHCP related packets.
         dhcp_frames = tcpdump_analyzer.get_frames(
                 pcap_result.pcap_path,
