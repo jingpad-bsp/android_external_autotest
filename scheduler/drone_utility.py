@@ -66,9 +66,15 @@ class BaseDroneUtility(object):
         if os.path.exists(temporary_directory):
             shutil.rmtree(temporary_directory)
         self._ensure_directory_exists(temporary_directory)
-        build_extern_cmd = os.path.join(common.autotest_dir,
-                                        'utils/build_externals.py')
-        utils.run(build_extern_cmd)
+        # TODO (sbasi) crbug.com/345011 - Remove this configuration variable
+        # and clean up build_externals so it NO-OP's.
+        build_externals = global_config.global_config.get_config_value(
+                scheduler_config.CONFIG_SECTION, 'drone_build_externals',
+                default=True, type=bool)
+        if build_externals:
+            build_extern_cmd = os.path.join(common.autotest_dir,
+                                            'utils', 'build_externals.py')
+            utils.run(build_extern_cmd)
 
 
     def _warn(self, warning):
