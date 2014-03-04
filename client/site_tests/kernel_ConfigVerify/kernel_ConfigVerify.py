@@ -60,6 +60,8 @@ class kernel_ConfigVerify(test.test):
         'KEXEC',
         # Dangerous; allows replacement of running kernel.
         'HIBERNATION',
+        # Assists heap memory attacks; best to keep interface disabled.
+        'INET_DIAG',
     ]
     IS_EXCLUSIVE = [
         # Security; no surprise binary formats.
