@@ -310,6 +310,23 @@ def get_cpu_arch():
     else:
         return 'i386'
 
+def get_arm_soc_family():
+    """Work out which ARM SoC we're running on"""
+    f = open('/proc/cpuinfo', 'r')
+    cpuinfo = f.readlines()
+    f.close()
+    if list_grep(cpuinfo, 'EXYNOS5'):
+        return 'exynos5'
+    elif list_grep(cpuinfo, 'Tegra'):
+        return 'tegra'
+    return 'arm'
+
+def get_cpu_family():
+    """Like get_cpu_arch, but for ARM, returns the SoC family name"""
+    family = get_cpu_arch()
+    if family == 'arm':
+       family = get_arm_soc_family()
+    return family
 
 def get_current_kernel_arch():
     """Get the machine architecture, now just a wrap of 'uname -m'."""
