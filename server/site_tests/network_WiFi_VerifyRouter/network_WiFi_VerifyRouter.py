@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import time
 
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server import site_linux_system
@@ -34,6 +35,11 @@ class network_WiFi_VerifyRouter(wifi_cell_test_base.WiFiCellTestBase):
             ap_config = hostap_config.HostapConfig(channel=channel, mode=n_mode)
             self.context.configure(ap_config)
             self.context.configure(ap_config, multi_interface=True)
+            # Added delay to allow APs to "stabilize" before connection attempt.
+            # Connection will fail randomly with antenna bitmap of 2 and AP
+            # configured with channel 136. Leave this hack here until we figure
+            # out the root cause of the random connection failures.
+            time.sleep(5.0)
             # Verify connectivity to both APs
             for instance in range(2):
                 client_conf = xmlrpc_datatypes.AssociationParameters(
