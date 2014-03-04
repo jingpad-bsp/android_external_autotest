@@ -43,7 +43,7 @@ class network_WiFi_LowInitialBitrates(wifi_cell_test_base.WiFiCellTestBase):
                                  'negotiation!')
 
         for frame in frames:
-            if frame.datetime > dhcp_frames[-1].datetime:
+            if frame.time_datetime > dhcp_frames[-1].time_datetime:
                 # We're past the last DHCP packet, so higher bitrates are
                 # permissable and expected.
                 break
