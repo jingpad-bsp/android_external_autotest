@@ -69,6 +69,7 @@ class ChameleonTest(test.test):
 
         @return: A ChameleonPort object.
         """
+        self.chameleon.reset()
         # TODO(waihong): Support multiple connectors.
         for chameleon_port in self.chameleon.get_all_ports():
             # Plug to ensure the connector is plugged.

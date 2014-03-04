@@ -80,7 +80,6 @@ class display_Resolution(chameleon_test.ChameleonTest):
 
             finally:
                 self.display_client.close_tab()
-                self.chameleon.reset()
 
         if errors:
             raise error.TestFail('; '.join(errors))
