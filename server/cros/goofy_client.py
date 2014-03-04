@@ -192,7 +192,7 @@ class GoofyProxy(object):
 
     @retry_goofy_rpc(socket.error, timeout_min=BASE_RPC_TIMEOUT*2)
     def _set_test_list(self, next_list):
-        """Set the given test list for execution.
+        """Set the given test list for execution and turn on test automation.
 
         Confirm that the given test list is a test that has been baked into
         the image, then run it. Some test lists are configured to start
@@ -222,7 +222,12 @@ class GoofyProxy(object):
         self._wait_for_goofy()
         logging.info('Switching to test list %s', next_list)
         try:
-            self._client.SwitchTestList(next_list)
+            # Enable full factory test automation. Full test automation mode
+            # skips all manual tests and test barriers, which is what we want in
+            # the test lab. There are other automation modes: partial and none.
+            # In partial automation mode manual tests and barrier are enabled
+            # and user intervention is required; none disables automation.
+            self._client.SwitchTestList(next_list, 'full')
         except httplib.BadStatusLine:
             logging.info('Switched to list %s, goofy restarting', next_list)
 
@@ -230,13 +235,13 @@ class GoofyProxy(object):
     @retry_goofy_rpc((httplib.BadStatusLine, socket.error),
                      timeout_min=BASE_RPC_TIMEOUT*2)
     def _stop_running_tests(self):
-       """Stop all running tests.
+        """Stop all running tests.
 
-       Wrap the StopTest rpc so we can attempt to stop tests even while a DUT
-       is suspended or rebooting.
-       """
-       logging.info('Stopping tests.')
-       self._client.StopTest()
+        Wrap the StopTest rpc so we can attempt to stop tests even while a DUT
+        is suspended or rebooting.
+        """
+        logging.info('Stopping tests.')
+        self._client.StopTest()
 
 
     def _get_test_map(self):
@@ -287,50 +292,50 @@ class GoofyProxy(object):
                           test_name)
 
 
-    def _wait_on_barrier(self, barrier_name):
-        """Wait on a barrier.
+    @retry_goofy_rpc((httplib.BadStatusLine, socket.error),
+                     timeout_min=BASE_RPC_TIMEOUT*2)
+    def _get_test_run_info(self, run_id):
+        """Get the information about the given test run.
 
-        This method is designed to wait on the Barrier of a suite. A Barrier
-        is used to synchronize several tests that run in parallel within a
-        suite; it will cause the suite to hang while it attempts to show
-        an operator the status of each test, and is activated once all the
-        tests in the suite are done.
+        @param run_id: The ID of the test run.
 
-        @param barrier_name: The name of the barrier.
+        @return: A dict of test run status.
         """
-        logging.info('Waiting on barrier %s', barrier_name)
-
-        # TODO(beeps): crbug.com/279473
-        while self._get_test_info(barrier_name)['status'] != 'ACTIVE':
-            time.sleep(self.POLLING_INTERVAL)
+        return self._client.GetTestRunStatus(run_id)
 
 
-    def _wait_on_suite(self, suite_name):
-        """Wait till a suite stops being active.
+    def _wait_on_run(self, run_id):
+        """Wait until the given test run to end.
 
-        This method is designed to wait on the suite to change
-        status if it lacks a 'Barrier'. If a suite has a barrier
-        one should use _wait_on_barrier instead.
+        @param run_id: The ID of the test run.
 
-        @param suite_name: The name of the suite to wait on.
+        @raises GoofyRuntimeException: If the test run does not finish
+            gracefully.
         """
-        logging.info('Waiting on suite %s', suite_name)
-
-        while self._get_test_info(suite_name)['status'] == 'ACTIVE':
+        finished_tests = set()
+        run_info = self._get_test_run_info(run_id)
+        while run_info['status'] == 'RUNNING':
+            finished = [(t['path'], t['status']) for t in
+                        run_info['scheduled_tests']
+                        if t['status'] in ('PASSED', 'FAILED')]
+            for t in finished:
+                if t not in finished_tests:
+                    logging.info('[%s] %s', t[1], t[0])
+                    finished_tests.add(t)
             time.sleep(self.POLLING_INTERVAL)
+            run_info = self._get_test_run_info(run_id)
+        if run_info['status'] != 'FINISHED':
+            raise GoofyRuntimeException(
+                    'The requested test run was interrupted.')
 
 
-    def _synchronous_run_suite(self, suite_name, barrier_name=None):
+    def _synchronous_run_suite(self, suite_name):
         """Run one suite and wait for it to finish.
 
-        Will wait till the specified suite_name becomes active,
-        then wait till it switches out of active. If the suite
-        has a barrier, will wait till the barrier becomes active
-        instead, as this indicates that all tests have finished
-        running.
+        Will start a test run for the specified suite_name and wait until it
+        ends.
 
         @param suite_name: The name of the suite to wait for.
-        @param barrier_name: The name of the barrier, if any.
 
         @raises GoofyProxyException: If the status of the suite
             doesn't switch to active after we call RunTest.
@@ -338,27 +343,9 @@ class GoofyProxy(object):
         @return: The result of the suite.
         """
         logging.info('Starting suite: %s', suite_name)
-        self._client.RunTest(suite_name)
-        result = self._get_test_info(suite_name)
-
-        #TODO(beeps): crbug.com/292975
-        if result['status'] != 'ACTIVE':
-            raise GoofyProxyException('Not waiting for test list %s. Either we '
-                                      'could not start it or the test list '
-                                      'already finished.' % suite_name)
-
-        if barrier_name:
-            self._wait_on_barrier(barrier_name)
-        else:
-            self._wait_on_suite(suite_name)
-
-        # Since the barrier itself counts as a 'test' we need to stop
-        # it before asking goofy for the suites results, or goofy will
-        # think that the suite is still running. We also need to stop
-        # any orphaned test that might have been kicked off during this
-        # suite.
-        self._stop_running_tests()
-        return self._get_test_info(suite_name)
+        run_id = self._client.RunTest(suite_name)
+        self._wait_on_run(run_id)
+        return self._get_test_run_info(run_id)
 
 
     def monitor_tests(self, test_list):
@@ -395,17 +382,7 @@ class GoofyProxy(object):
         for current_suite in test_map.keys():
             logging.info('Processing suite %s', current_suite)
 
-            # Check if any of these tests are actually a Barrier.
-            barrier = None
-            for test in test_map.get(current_suite):
-                if '.' in test and 'Barrier' in test.split('.')[1]:
-                    barrier = test
-                    break
-
-            logging.info('Current suite = %s, barrier: %s', current_suite,
-                         barrier)
-
-            result = self._synchronous_run_suite(current_suite, barrier)
+            result = self._synchronous_run_suite(current_suite)
             logging.info(result)
 
             for test_names in test_map.get(current_suite):
@@ -458,5 +435,3 @@ class GoofyProxy(object):
         finally:
             if os.path.exists(local_factory_bug_tar):
                 os.remove(local_factory_bug_tar)
-
-
