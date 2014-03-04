@@ -9,6 +9,7 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
+from autotest_lib.client.common_lib.cros.network import iw_event_logger
 
 
 HT20 = 'HT20'
@@ -55,6 +56,7 @@ IW_TIME_COMMAND = '/usr/local/bin/time -f "%e"'
 IW_LINK_KEY_BEACON_INTERVAL = 'beacon int'
 IW_LINK_KEY_DTIM_PERIOD = 'dtim period'
 IW_LINK_KEY_FREQUENCY = 'freq'
+IW_LOCAL_EVENT_LOG_FILE = './debug/iw_event_%d.log'
 
 
 class IwRunner(object):
@@ -63,9 +65,11 @@ class IwRunner(object):
 
     def __init__(self, remote_host=None, command_iw=DEFAULT_COMMAND_IW):
         self._run = utils.run
+        self._host = remote_host
         if remote_host:
             self._run = remote_host.run
         self._command_iw = command_iw
+        self._log_id = 0
 
 
     def _parse_scan_results(self, output):
@@ -577,3 +581,15 @@ class IwRunner(object):
         command = '%s phy %s set antenna %d %d' % (self._command_iw, phy,
                                                    tx_bitmap, rx_bitmap)
         self._run(command)
+
+
+    def get_event_logger(self):
+        """Create and return a IwEventLogger object.
+
+        @returns a IwEventLogger object.
+
+        """
+        local_file = IW_LOCAL_EVENT_LOG_FILE % (self._log_id)
+        self._log_id += 1
+        return iw_event_logger.IwEventLogger(self._host, self._command_iw,
+                                             local_file)

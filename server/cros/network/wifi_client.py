@@ -675,3 +675,32 @@ class WiFiClient(site_linux_system.LinuxSystem):
             self.scan(frequencies=[], ssids=[], timeout_seconds=30)
         else:
             raise error.TestFail('shill should mark the BSS as not present')
+
+
+    def reassociate(self, timeout_seconds=10):
+        """Reassociate to the connected network.
+
+        @param timeout_seconds: float number of seconds to wait for operation
+                to complete.
+
+        """
+        logging.info('Attempt to reassociate')
+        with self.iw_runner.get_event_logger() as logger:
+            logger.start()
+            # Issue reassociate command to wpa_supplicant
+            result = self.host.run('su wpa -s /usr/bin/wpa_cli reassociate')
+            if not result.stdout.strip().endswith('OK'):
+                raise error.TestFail('wpa_cli reassociate command failed')
+
+            # Wait for the timeout seconds for association to complete
+            time.sleep(timeout_seconds)
+
+            # Stop iw event logger
+            logger.stop()
+
+            # Get association time based on the iw event log
+            reassociate_time = logger.get_association_time()
+            if reassociate_time is None or reassociate_time > timeout_seconds:
+                raise error.TestFail(
+                        'Failed to reassociate within given timeout')
+            logging.info('Reassociate time: %.2f seconds', reassociate_time)
