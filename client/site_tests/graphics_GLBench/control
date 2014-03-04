@@ -10,7 +10,10 @@ Various performance metrics must be met or exceeded or the test will fail. See
 constraints for triangle setup, solid fill, tex nearest fill, and bilinear tex
 fill.
 """
-SUITE = 'bvt, graphics, graphicsGLES'
+# TODO(ihf): before making GLBench part of bvt make sure it runs strictly less
+# than 20 minutes. Also decide if reference image changes should block bvt or
+# maybe for BVT failures should just consider crashes.
+SUITE = 'graphics, graphicsGLES, graphics_per-build'
 TIME='MEDIUM'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = "gl"

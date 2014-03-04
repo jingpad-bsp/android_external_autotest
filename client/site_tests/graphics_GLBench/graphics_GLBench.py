@@ -126,7 +126,28 @@ class graphics_GLBench(test.test):
     if self._services:
       self._services.restore_services()
 
-  def run_once(self, options=''):
+  def report_temperature(self, keyname):
+    try:
+      f = open('/sys/class/hwmon/hwmon0/temp1_input')
+      temperature = float(f.readline()) * 0.001
+    except Exception:
+      temperature = - 1000.0
+    logging.info('%s = %f degree Celsius', keyname, temperature)
+    self.output_perf_value(description=keyname, value=temperature,
+                           units='Celsius', higher_is_better=False)
+
+  def report_temperature_critical(self):
+    keyname = 'temperature_critical'
+    try:
+      f = open('/sys/class/hwmon/hwmon0/temp1_crit')
+      temperature = float(f.readline()) * 0.001
+    except Exception:
+      temperature = - 1000.0
+    logging.info('%s = %f degree Celsius', keyname, temperature)
+    self.output_perf_value(description=keyname, value=temperature,
+                           units='Celsius', higher_is_better=False)
+
+  def run_once(self, options='', raise_error_on_checksum=True):
     dep = 'glbench'
     dep_dir = os.path.join(self.autodir, 'deps', dep)
     self.job.install_pkg(dep, 'dep', dep_dir)
@@ -155,8 +176,12 @@ class graphics_GLBench(test.test):
 
     # TODO(ihf): Remove this sleep once this test is guaranteed to run on a
     # cold machine.
+    self.report_temperature_critical()
+    self.report_temperature('temperature_1_start')
     logging.info('Sleeping machine for one minute to physically cool down.')
     time.sleep(60)
+    self.report_temperature('temperature_2_before_test')
+
     summary = utils.system_output(cmd, retain_output=True)
 
     # write a copy of stdout to help debug failures
@@ -232,11 +257,13 @@ class graphics_GLBench(test.test):
             keyvals[testname] = -2.0
             failed_tests[testname] = imagefile
             f.write('# unknown [' + imagefile + '] (setting perf as -2.0)\n')
+
+    self.report_temperature('temperature_3_after_test')
     f.close()
     self.write_perf_keyval(keyvals)
 
     # raise exception
-    if failed_tests:
+    if failed_tests and raise_error_on_checksum:
       logging.info('GLBench board_id: %s', board_id)
       logging.info('Some images are not matching their reference in %s or %s.',
                    self.reference_images_file,
