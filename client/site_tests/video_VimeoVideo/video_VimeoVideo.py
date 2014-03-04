@@ -52,6 +52,9 @@ class video_VimeoVideo(test.test):
 
     def _video_current_time(self):
         "Returns current video time."""
+        self._tab.WaitForJavaScriptExpression(
+                'typeof vimeo_player.duration !== \'string\'',
+                self._WAIT_TIMEOUT_S)
         return float(self._tab.EvaluateJavaScript('vimeo_player.duration'))
 
 
@@ -66,6 +69,13 @@ class video_VimeoVideo(test.test):
                 os.path.join(self.bindir, 'vimeo.html')))
         self._wait_for_player()
         self._wait_for_player_status(self._PLAYER_PLAY_STATE)
+        # Abort the test if video is not playing.
+        utils.poll_for_condition(
+                lambda: self._video_current_time() > 5.0,
+                exception=error.TestError(
+                        'Init: video isn\'t playing.'),
+                timeout=self._WAIT_TIMEOUT_S,
+                sleep_interval=1)
 
         # Verify that Vimeo is playing the video in html5 mode.
         prc = utils.get_process_list('chrome', '--type=ppapi')
