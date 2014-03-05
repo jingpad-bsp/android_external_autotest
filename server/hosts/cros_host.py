@@ -987,9 +987,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         # TODO(scottz): This should use something similar to label_decorator,
         # but needs to be populated in order so DUTs are repaired with the
         # least amount of effort.
-        repair_funcs = [self._install_repair,
+        repair_funcs = [self._servo_repair_power,
+                        self._install_repair,
                         self._install_repair_with_powerwash,
-                        self._servo_repair_power,
                         self._servo_repair_reinstall,
                         self._powercycle_to_repair]
         errors = []
