@@ -27,10 +27,12 @@ class graphics_LibDRM(test.test):
 
         # Determine which tests to run based on the architecture type.
         tests_intel = ['gem_basic', 'gem_flink', 'gem_mmap', 'gem_readwrite']
-        arch_tests = { 'arm'   : [],
-                       'i386'  : tests_intel,
-                       'x86_64': tests_intel }
-        arch = utils.get_cpu_arch()
+        tests_exynos5 = ['kmstest']
+        arch_tests = { 'arm'    : [],
+                       'exynos5': tests_exynos5,
+                       'i386'   : tests_intel,
+                       'x86_64' : tests_intel }
+        arch = utils.get_cpu_soc_family()
         if not arch in arch_tests:
             raise error.TestFail('Architecture "%s" not supported.', arch)
         tests = tests_common + arch_tests[arch]
