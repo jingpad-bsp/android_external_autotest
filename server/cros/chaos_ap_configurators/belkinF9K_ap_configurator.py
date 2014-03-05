@@ -106,7 +106,7 @@ class BelkinF9KAPConfigurator(
                 if 'Timed out receiving message from renderer' in message:
                     self.driver.refresh()
                     self.wait_for_object_by_xpath(self.security_popup)
-                elif (not any(alert in message for alert in
+                elif (any(alert in message for alert in
                     ['unexpected alert open', 'An open modal dialog blocked'])):
                     self._security_alert(self.driver.switch_to_alert())
                 else:

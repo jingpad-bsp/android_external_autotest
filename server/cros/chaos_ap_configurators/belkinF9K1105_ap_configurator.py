@@ -101,20 +101,30 @@ class BelkinF9K1105APConfigurator(
         try:
             self.get_url(page_url)
             self.wait.until(lambda _:page_title in self.driver.title)
+            if 'dashboard' in self.driver.title:
+                # This is a workaround for an issue where the wait would return
+                # even though the page title is not what we expect.
+                self._login(page_url, page_title)
         except TimeoutException, e:
+            dup = '//h1[contains(text(), "Duplicate Administrator")]'
             if self.driver.find_element_by_id('p1210a005'):
-                self._login(page_url)
+                self._login(page_url, page_title)
+            elif self.driver.find_element_by_xpath(dup).is_displayed():
+                raise RuntimeError('We got the Duplicate admin message. '
+                                   'Some one has already logged into the '
+                                   'router. So we cannot login.')
         finally:
             self.set_wait_time(20)
             self.wait.until(lambda _:page_title in self.driver.title)
             self.restore_default_wait_time()
 
 
-    def _login(self, page_url):
+    def _login(self, page_url, page_title):
         """
         Login to the router.
 
         @param page_url: The url of the page to load.
+        @param page_title: The title of the page we are loading.
 
         """
         try:
@@ -129,6 +139,13 @@ class BelkinF9K1105APConfigurator(
         self.set_content_of_text_field_by_id('password', 'p1210Password',
                                                 abort_check=True)
         self.click_button_by_id('p1210a005')
+        pwd_wrong = '//small[@class="error" and @id="errpwderr"]'
+        if self.driver.find_element_by_xpath(pwd_wrong).is_displayed():
+            try:
+                self.wait.until(lambda _:page_title in self.driver.title)
+            except TimeoutException, e:
+                raise RuntimeError('Incorrect password error: '
+                                   'The router is not accepting the password.')
 
 
     def save_page(self, page_number):
