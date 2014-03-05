@@ -7,8 +7,8 @@ Convenience functions for use by tests or whomever.
 Note that this file is mixed in by utils.py - note very carefully the
 precedence order defined there
 """
-import os, shutil, sys, signal, commands, pickle, glob, statvfs
-import math, re, string, fnmatch, logging, multiprocessing
+import os, shutil, commands, pickle, glob
+import math, re, fnmatch, logging, multiprocessing
 from autotest_lib.client.common_lib import error, utils, magic
 
 
@@ -121,14 +121,14 @@ def hash_file(filename, size=None, method="md5"):
     try:
         hash = utils.hash(method)
     except ValueError:
-        logging.error("Unknown hash type %s, returning None" % method)
+        logging.error("Unknown hash type %s, returning None", method)
 
     while size > 0:
         if chunksize > size:
             chunksize = size
         data = f.read(chunksize)
         if len(data) == 0:
-            logging.debug("Nothing left to read but size=%d" % size)
+            logging.debug("Nothing left to read but size=%d", size)
             break
         hash.update(data)
         size -= len(data)
@@ -170,7 +170,7 @@ def unmap_url_cache(cachedir, url, expected_hash, method="md5"):
             else:
                 # Let's download the package again, it's corrupted...
                 logging.error("Seems that file %s is corrupted, trying to "
-                              "download it again" % file_from_url)
+                              "download it again", file_from_url)
                 src = url
                 failure_counter += 1
         else:
@@ -182,7 +182,7 @@ def unmap_url_cache(cachedir, url, expected_hash, method="md5"):
                                    "attempts. This might mean either the "
                                    "network connection has problems or the "
                                    "expected hash string that was determined "
-                                   "for this file is wrong" % file_from_url)
+                                   "for this file is wrong", file_from_url)
         file_path = utils.unmap_url(cachedir, src, cachedir)
 
     return file_path
@@ -673,9 +673,9 @@ def unload_module(module_name):
             for submodule in submodules:
                 unload_module(submodule)
         utils.system("/sbin/modprobe -r %s" % module_name)
-        logging.info("Module %s unloaded" % module_name)
+        logging.info("Module %s unloaded", module_name)
     else:
-        logging.info("Module %s is already unloaded" % module_name)
+        logging.info("Module %s is already unloaded", module_name)
 
 
 def module_is_loaded(module_name):
@@ -770,7 +770,7 @@ def get_hwclock_seconds(utc=True):
                       hwclock_output, re.DOTALL)
     if match:
         seconds = int(match.group(1)) + float(match.group(2))
-        logging.debug('hwclock seconds = %f' % seconds)
+        logging.debug('hwclock seconds = %f', seconds)
         return seconds
 
     raise ValueError('Unable to read the hardware clock -- ' +
