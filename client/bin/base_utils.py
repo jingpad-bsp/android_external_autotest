@@ -321,7 +321,7 @@ def get_arm_soc_family():
         return 'tegra'
     return 'arm'
 
-def get_cpu_family():
+def get_cpu_soc_family():
     """Like get_cpu_arch, but for ARM, returns the SoC family name"""
     family = get_cpu_arch()
     if family == 'arm':
