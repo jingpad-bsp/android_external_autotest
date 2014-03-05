@@ -53,7 +53,7 @@ class video_VimeoVideo(test.test):
     def _video_current_time(self):
         "Returns current video time."""
         self._tab.WaitForJavaScriptExpression(
-                'typeof vimeo_player.duration !== \'string\'',
+                'typeof vimeo_player.duration == \'number\'',
                 self._WAIT_TIMEOUT_S)
         return float(self._tab.EvaluateJavaScript('vimeo_player.duration'))
 

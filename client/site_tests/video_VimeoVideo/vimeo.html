@@ -14,14 +14,17 @@
 
                 // When the player is ready, add listeners for
                 // pause, finish, and playProgress
-                vimeo_player = player.addEvent('ready', function() {
+                vimeo_player = player.addEvent('ready', onReady);
+
+                function onReady(id) {
                         status.text('ready');
                         player.addEvent('pause', onPause);
                         player.addEvent('finish', onFinish);
                         player.addEvent('play', onPlay);
                         player.addEvent('playProgress', onPlayProgress);
+                        vimeo_player.duration = 0.0;
                         play.click();
-                });
+                }
 
                 // Call the API when a button is pressed
                 $('button').bind('click', function() {
