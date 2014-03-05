@@ -115,12 +115,18 @@ class power_DarkResumeShutdownServer(test.test):
         # restart host
         host.power_on()
         host.servo.power_normal_press()
-        host.wait_up(timeout=BOOT_WAIT_SECONDS)
+        if not host.wait_up(timeout=BOOT_WAIT_SECONDS):
+            raise error.TestFail('DUT did not turn back on after shutting down')
 
 
     def cleanup(self, host):
+        # make sure that the machine is not suspended and that the power is on
+        # when exiting the test
+        host.power_on()
+        host.servo.ctrl_key()
+
         # try to clean up the mess we've made if shutdown failed
-        if host.get_boot_id() == self.orig_boot_id:
+        if host.is_up() and host.get_boot_id() == self.orig_boot_id:
             # clean up mounts
             logging.info('cleaning up bind mounts')
             host.run('umount %s' % POWER_DIR,
@@ -128,8 +134,3 @@ class power_DarkResumeShutdownServer(test.test):
 
             # restart powerd to pick up old retry settings
             host.run('restart powerd')
-
-        # make sure that the machine is not suspended and that the power is on
-        # when exiting the test
-        host.servo.ctrl_key()
-        host.power_on()
