@@ -66,10 +66,10 @@ import mtb
 from collections import namedtuple
 from inspect import isfunction
 
-from common_util import print_and_exit
+from common_util import print_and_exit, simple_system_output
 from firmware_constants import AXIS, GV, MTB, UNIT, VAL
 from geometry.elements import Point
-
+from quickstep import latency_measurement
 
 # Define the ratio of points taken at both ends of a line for edge tests.
 END_PERCENTAGE = 0.1
@@ -259,6 +259,52 @@ class BaseValidator(object):
         list_t = self.packets.get_ordered_finger_path(self.finger, 'syn_time')
         return (list_x, list_y, list_t)
 
+class DragLatencyValidator(BaseValidator):
+    """ Validator to make check the touchpad's latency
+
+    This is used in conjunction with a Quickstep latency measuring device. To
+    compute the latencies, this validator imports the Quickstep software in the
+    touchbot project and pulls the data from the Quickstep device and the
+    packets collected by mtplot.  If there is no device plugged in, the
+    validator will fail with an obviously erroneous value
+    """
+    def __init__(self, criteria_str, mf=None):
+        name = self.__class__.__name__
+        super(DragLatencyValidator, self).__init__(criteria_str, mf=mf,
+                                                   name=name)
+
+    def check(self, packets, variation=None):
+        self.init_check(packets)
+
+        # Reformat the touch events for latency measurement
+        points = self.packets.get_ordered_finger_path(0, 'point')
+        times = self.packets.get_ordered_finger_path(0, 'syn_time')
+        finger_positions = [latency_measurement.FingerPosition(t, pt.x, pt.y)
+                            for t, pt in zip(times, points)]
+
+        # Find the sysfs entries for the Quickstep device and parse the logs
+        laser_files = simple_system_output('find / -name laser')
+        laser_crossings = []
+        for f in laser_files.splitlines():
+            laser_crossings = latency_measurement.get_laser_crossings(f)
+            if laser_crossings:
+                break
+
+        # Crunch the numbers using the Quickstep latency measurement module
+        latencies = latency_measurement.measure_latencies(finger_positions,
+                                                          laser_crossings)
+        # If there is no Quickstep plugged in, there will be no readings, so
+        # to keep the test suite from crashing insert a dummy value
+        if not latencies:
+            latencies = [9.999]
+
+        avg = 1000.0 * sum(latencies) / len(latencies)
+        self.vlog.score = self.fc.mf.grade(avg)
+        self.log_details('Average drag latency (ms): %f' % avg)
+        self.log_details('Max drag latency (ms): %f' % (1000 * max(latencies)))
+        self.log_details('Min drag latency (ms): %f' % (1000 * min(latencies)))
+        self.vlog.metrics = [firmware_log.Metric(self.mnprops.AVG_LATENCY, avg)]
+        return self.vlog
 
 class LinearityValidator1(BaseValidator):
     """Validator to verify linearity.

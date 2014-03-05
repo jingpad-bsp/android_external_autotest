@@ -11,6 +11,7 @@ from firmware_constants import DEV, GV, VAL
 from validators import (CountPacketsValidator,
                         CountTrackingIDNormalFingerValidator,
                         CountTrackingIDFatFingerValidator,
+                        DragLatencyValidator,
                         DrumrollValidator,
                         HysteresisValidator,
                         LinearityFatFingerValidator,
@@ -52,6 +53,7 @@ report_rate_criteria = '>= %d' % min_report_rate
 stationary_finger_criteria = '<= 1.0'
 stationary_tap_criteria = '<= 1.0'
 hysteresis_criteria = '<= 2.0'
+drag_latency_criteria = '<= 28.0'
 
 MIN_MOVING_DISTANCE = 20
 
@@ -118,6 +120,7 @@ FIRST_FINGER_TRACKING_AND_SECOND_FINGER_TAPS = \
 DRUMROLL = 'drumroll'
 RAPID_TAPS = 'rapid_taps_20'
 ONE_FINGER_TRACKING_FROM_CENTER = 'one_finger_tracking_from_center'
+DRAG_LATENCY = 'drag_latency'
 # This following gesture is for pressure calibration.
 PRESSURE_CALIBRATION = 'pressure_calibration'
 
@@ -153,6 +156,7 @@ gesture_names_complete = {
         FIRST_FINGER_TRACKING_AND_SECOND_FINGER_TAPS,
         DRUMROLL,
         RAPID_TAPS,
+        DRAG_LATENCY,
     ],
     DEV.TOUCHSCREEN: [
         ONE_FINGER_TRACKING,
@@ -174,6 +178,7 @@ gesture_names_complete = {
         FIRST_FINGER_TRACKING_AND_SECOND_FINGER_TAPS,
         DRUMROLL,
         RAPID_TAPS,
+        DRAG_LATENCY,
     ],
 }
 
@@ -198,6 +203,7 @@ robot_capability_list = [
     FINGER_CROSSING,
     PINCH_TO_ZOOM,
     DRUMROLL,
+    DRAG_LATENCY,
     TWO_FAT_FINGERS_TRACKING,
     FAT_FINGER_MOVE_WITH_RESTING_FINGER,
     ONE_FINGER_PHYSICAL_CLICK,
@@ -213,6 +219,7 @@ NORMAL_FINGER = 2
 FAT_FINGER = 3
 ALL_FINGERTIP_SIZES = [TINY_FINGER, SMALL_FINGER, NORMAL_FINGER, FAT_FINGER]
 custom_tips_required = {
+    DRAG_LATENCY: [NO_FINGER, NO_FINGER, NORMAL_FINGER, NO_FINGER],
     ONE_FINGER_PHYSICAL_CLICK: [NORMAL_FINGER, NO_FINGER, NO_FINGER, NO_FINGER],
     TWO_FINGER_PHYSICAL_CLICK: [NO_FINGER, NORMAL_FINGER, NO_FINGER,
                                 NORMAL_FINGER],
@@ -269,6 +276,7 @@ weight_critical = 3
 validator_weights = {'CountPacketsValidator': weight_common,
                      'CountTrackingIDNormalFingerValidator': weight_critical,
                      'CountTrackingIDFatFingerValidator': weight_rare,
+                     'DragLatencyValidator': weight_critical,
                      'DrumrollValidator': weight_rare,
                      'LinearityNormalFingerValidator': weight_common,
                      'LinearityFatFingerValidator': weight_rare,
@@ -785,6 +793,20 @@ def get_gesture_dict():
             },
             validators=(
                 HysteresisValidator(hysteresis_criteria, finger=0),
+            ),
+        ),
+
+        DRAG_LATENCY:
+        Gesture(
+            name=DRAG_LATENCY,
+            variations=None,
+            prompt='Run one finger back and forth across the pad making sure '
+                   'to break the laser completely on each pass.  Make at least '
+                   'twenty passes.',
+            subprompt=None,
+            validators=(
+                CountTrackingIDNormalFingerValidator('== 1'),
+                DragLatencyValidator(drag_latency_criteria),
             ),
         ),
 

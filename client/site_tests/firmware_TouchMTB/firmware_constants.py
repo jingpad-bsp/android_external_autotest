@@ -108,7 +108,8 @@ GV.ZOOM_OUT = 'zoom_out'
 GV.SLOW = 'slow'
 GV.NORMAL = 'normal'
 GV.FAST = 'fast'
-GV.GESTURE_SPEED = [GV.SLOW, GV.NORMAL, GV.FAST]
+GV.FULL_SPEED = 'full_speed'
+GV.GESTURE_SPEED = [GV.SLOW, GV.NORMAL, GV.FAST, GV.FULL_SPEED]
 # constants about metal finger sizes
 GV.SIZE = 'size'
 size_str = lambda i: GV.SIZE + str(i)

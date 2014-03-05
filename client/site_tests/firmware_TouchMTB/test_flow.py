@@ -162,7 +162,7 @@ class TestFlow:
         """Get the device event record command."""
         # Run mtplot with settings to disable clearing the display if the robot
         # clicks the pad, and adding a visible click indicator in the output
-        self.record_program = 'mtplot -s1 -c0'
+        self.record_program = 'mtplot -s1 -c0 -m0'
         if not common_util.program_exists(self.record_program):
             msg = 'Error: the program "%s" does not exist in $PATH.'
             self.output.print_report(msg % self.record_program)

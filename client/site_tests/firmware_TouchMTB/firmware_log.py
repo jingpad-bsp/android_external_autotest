@@ -234,6 +234,12 @@ class MetricNameProps:
                     'of fingers detected',
                 '(actual tracking IDs, expected tracking IDs)',
                 pct_by_cases_neq),
+            'AVG_LATENCY': (
+                'average latency (ms)',
+                None,
+                'The average drag-latency in milliseconds',
+                None,
+                average),
             # Drumroll Validator
             'CIRCLE_RADIUS': (
                 'circle radius (mm)',

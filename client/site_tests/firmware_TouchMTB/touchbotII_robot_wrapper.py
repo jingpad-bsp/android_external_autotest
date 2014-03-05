@@ -22,6 +22,7 @@ SCRIPT_TAP = 'tap.py'
 SCRIPT_CLICK = 'click.py'
 SCRIPT_ONE_STATIONARY_FINGER = 'one_stationary_finger.py'
 SCRIPT_STATIONARY_WITH_TAPS = 'stationary_finger_with_taps_around_it.py'
+SCRIPT_QUICKSTEP = 'quickstep.py'
 
 # A script to "reset" the robot by having it move safely to a spot just above
 # the center of the touchpad.
@@ -77,6 +78,7 @@ class RobotWrapper:
             self._get_control_command_pinch: SCRIPT_LINE,
             self._get_control_command_stationary_with_taps:
                     SCRIPT_STATIONARY_WITH_TAPS,
+            self._get_control_command_quickstep: SCRIPT_QUICKSTEP,
         }
 
         # Each gesture maps to a get_contorol_command method
@@ -109,6 +111,8 @@ class RobotWrapper:
                     self._get_control_command_stationary_with_taps,
             conf.FAT_FINGER_MOVE_WITH_RESTING_FINGER:
                     self._get_control_command_one_stationary_finger,
+            conf.DRAG_LATENCY:
+                    self._get_control_command_quickstep,
         }
 
         self._line_dict = {
@@ -162,6 +166,7 @@ class RobotWrapper:
             GV.SLOW: 10,
             GV.NORMAL: 20,
             GV.FAST: 30,
+            GV.FULL_SPEED: 100,
         }
 
         self._location_dict = {
@@ -291,6 +296,11 @@ class RobotWrapper:
                 CENTER, CENTER, 45, ending_spacing,
                 0, 1, 0, 1, self._speed_dict[GV.SLOW], 'basic')
         return 'python %s %s_min.p %f %f %d %d %f %f %d %d %d %d %d %d %f %s' % para
+
+    def _get_control_command_quickstep(self, robot_script, gesture, variation):
+        """have the robot do the zig-zag gesture for latency testing."""
+        para = (robot_script, self._board, self._speed_dict[GV.FULL_SPEED])
+        return 'python %s %s.p %d' % para
 
     def _get_control_command_one_stationary_finger(self, robot_script, gesture,
                                                    variation):
