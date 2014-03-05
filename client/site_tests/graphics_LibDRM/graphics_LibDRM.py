@@ -49,7 +49,7 @@ class graphics_LibDRM(test.test):
 
             # Run the test and check for success based on return value.
             return_value = utils.system(test)
-            if utils.system(test):
+            if return_value:
                 logging.error('%s returned %d', test, return_value)
                 num_errors += 1
                 keyvals[test] = 'FAILED'
