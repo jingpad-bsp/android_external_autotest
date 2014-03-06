@@ -195,44 +195,18 @@ class platform_KernelErrorPaths(test.test):
         self._trigger_sysrq_x()
         self._wait_for_restart_and_check(boot_id, trigger, text)
 
-    def _test_panic_paths(self):
+    def _test_panic_path(self, lkdtm, kcrash_tuple):
         """
         Test the kernel panic paths.
         """
-        # Each tuple consists of several components: the lkdtm string to write
-        # to /sys/kernel/debug/provoke-crash/DIRECT on the target, or the if
-        # lkdtm is not available, the string to write to /proc/breakme.
-        # The third component is the timeout and the fourth is whether we run
-        # the tests on all CPUs or not. Some tests take less to run than other
-        # (null pointer and panic) so it would be best if we would run them on
-        # all the CPUS as it wouldn't add that much time to the total.
-        # The final component is the crash report string to look for in the
-        # crash dump after target restarts.
-        test_tuples = (
-            ('LOOP',          'softlockup',  25, False, 'BUG: soft lockup'),
-            ('BUG',           'bug',         10, False, 'kernel BUG at'),
-            ('HUNG_TASK',     'hungtask',   300, False,
-             'hung_task: blocked tasks'),
-            ('SOFTLOCKUP',    None,          25, False, 'BUG: soft lockup'),
-            ('HARDLOCKUP',    'nmiwatchdog', 50, False,
-             'Watchdog detected hard LOCKUP',),
-            ('SPINLOCKUP',    None,          25, False,
-             'softlockup: hung tasks'),
-            ('EXCEPTION',     'nullptr',     10, True,
-             # x86 gives "BUG: unable to" while ARM gives "Unable to".
-             'nable to handle kernel NULL pointer dereference at'),
-            ('PANIC',         'panic',       10, True,
-             'Kernel panic - not syncing:'),
-            ('CORRUPT_STACK', None,          10, True,
-             'stack-protector: Kernel stack is corrupted in:'),
-            )
 
         # Figure out which kernel crash interface is available.
         interface = "/sys/kernel/debug/provoke-crash/DIRECT"
-        trigger_index = 0
+        trigger = lkdtm
+        breakme, timeout, all_cpu, text = kcrash_tuple
         if not self._exists_on_client(interface):
             interface = "/proc/breakme"
-            trigger_index = 1
+            trigger = breakme
             logging.info("Falling back to %s", interface)
 
         # Find out how many cpus we have
@@ -241,53 +215,94 @@ class platform_KernelErrorPaths(test.test):
                             .stdout.strip())
         no_cpus = 1
 
-        for item in test_tuples:
-            lkdtm, breakme, timeout, all_cpu, text = item
-            trigger = item[trigger_index]
-            # Skip any triggers that are undefined for the given interface.
-            if trigger == None:
-                logging.info("Skipping unavailable trigger %s", trigger)
+        # Skip any triggers that are undefined for the given interface.
+        if trigger == None:
+            logging.info("Skipping unavailable trigger %s", lkdtm)
+            return
+        if lkdtm == "HARDLOCKUP":
+            # ARM systems do not (presently) have NMI, so skip them for now.
+            arch = self.client.get_arch()
+            if arch.startswith('arm'):
+                logging.info("Skipping %s on architecture %s.",
+                             trigger, arch)
                 return
-            if lkdtm == "HARDLOCKUP":
-                # ARM systems do not (presently) have NMI, so skip them for now.
-                arch = self.client.get_arch()
-                if arch.startswith('arm'):
-                    logging.info("Skipping %s on architecture %s.",
-                                 trigger, arch)
-                    continue
-                # Make sure a soft lockup detection doesn't get in the way.
-                self.client.run("sysctl -w kernel.softlockup_panic=0")
+            # Make sure a soft lockup detection doesn't get in the way.
+            self.client.run("sysctl -w kernel.softlockup_panic=0")
 
-            if trigger == "SPINLOCKUP":
-                # This needs to be pre-triggered so the second one locks.
-                self._provoke_crash(interface, trigger, None)
+        if trigger == "SPINLOCKUP":
+            # This needs to be pre-triggered so the second one locks.
+            self._provoke_crash(interface, trigger, None)
 
-            if not all_cpu:
-                no_cpus = 1
+        if not all_cpu:
+            no_cpus = 1
+        else:
+            no_cpus = client_no_cpus
+        for cpu in range(no_cpus):
+            # Always run on at least one cpu
+            # Delete crash results, if any
+            self.client.run('rm -f %s/*' % self._crash_log_dir)
+            boot_id = self.client.get_boot_id()
+            # This should cause target reset.
+            # Run on a specific cpu if we're running on all of them,
+            # otherwise run normally
+            if all_cpu :
+                self._provoke_crash(interface, trigger, cpu)
             else:
-                no_cpus = client_no_cpus
-            for cpu in range(no_cpus):
-                # Always run on at least one cpu
-                # Delete crash results, if any
-                self.client.run('rm -f %s/*' % self._crash_log_dir)
-                boot_id = self.client.get_boot_id()
-                # This should cause target reset.
-                # Run on a specific cpu if we're running on all of them,
-                # otherwise run normally
-                if all_cpu :
-                    self._provoke_crash(interface, trigger, cpu)
-                else:
-                    self._provoke_crash(interface, trigger, None)
-                self._wait_for_restart_and_check(boot_id, trigger, text,
-                                                 cpu=cpu, timeout=timeout)
+                self._provoke_crash(interface, trigger, None)
+            self._wait_for_restart_and_check(boot_id, trigger, text,
+                                             cpu=cpu, timeout=timeout)
 
-    def run_once(self, host=None):
+    def run_once(self, kcrashes, host=None):
         self.client = host
         self._enable_consent()
         self._crash_log_dir = CrashTestDefs._SYSTEM_CRASH_DIR
 
-        self._test_panic_paths()
-        self._test_sysrq_x()
+        # kcrash data is given by a dictionary with key lkdtm string to write
+        # to /sys/kernel/debug/provoke-crash/DIRECT on the target. The dict
+        # value is a tupple conraining 1) the string to write to /proc/breakme.
+        # if lkdtm is not available, 2) the timeout, and 3)whether we run
+        # the tests on all CPUs or not. Some tests take less to run than other
+        # (null pointer and panic) so it would be best if we would run them on
+        # all the CPUS as it wouldn't add that much time to the total.
+        # The final component is the crash report string to look for in the
+        # crash dump after target restarts.
+        kcrash_types = {
+            'LOOP' : ('softlockup', 25, False, 'BUG: soft lockup'),
+            'BUG' : ('bug', 10, False, 'kernel BUG at'),
+            'HUNG_TASK' : ('hungtask', 300, False, 'hung_task: blocked tasks'),
+            'SOFTLOCKUP' : (None, 25, False, 'BUG: soft lockup'),
+            'HARDLOCKUP' : ('nmiwatchdog', 50, False,
+                            'Watchdog detected hard LOCKUP'),
+            'SPINLOCKUP' : (None, 25, False, 'softlockup: hung tasks'),
+            'EXCEPTION' : ('nullptr',     10, True,
+             # x86 gives "BUG: unable to" while ARM gives "Unableto".
+                           'nable to handle kernel NULL pointer '
+                           'dereference at'),
+            'PANIC' : ('panic', 10, True, 'Kernel panic - not syncing:'),
+            'CORRUPT_STACK' : (None, 10, True,
+                               'stack-protector: Kernel stack is '
+                               'corrupted in:')
+            }
+
+        bad_kcrashes = []
+
+        #Expected input is comma-delimited kcrashes string
+        kcrash_list = kcrashes.split(',')
+        if 'SYSRQ_X' in kcrash_list or 'ALL' in kcrash_list:
+            self._test_sysrq_x()
+            if 'SYSRQ_X' in kcrash_list:
+                kcrash_list.remove('SYSRQ_X')
+            if 'ALL' in kcrash_list:
+                kcrash_list = kcrash_types.keys()
+        for kcrash in kcrash_list:
+            if kcrash_types.get(kcrash) == None:
+                bad_kcrashes.append(kcrash)
+                continue
+            self._test_panic_path(kcrash,kcrash_types[kcrash])
+
+        if len(bad_kcrashes) > 0:
+            raise error.TestFail("Wrong kcrash type "
+                                 "requested (%s)" % str(bad_kcrashes))
 
     def cleanup(self):
         self._restore_consent_files()

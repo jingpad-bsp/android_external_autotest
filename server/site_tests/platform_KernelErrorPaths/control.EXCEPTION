@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-NAME = "KernelErrorPaths"
+NAME = "platform_KernelErrorPaths.EXCEPTION"
 AUTHOR = "Chrome OS Team"
 SUITE = "jailed_daily"
 TIME = "SHORT"
@@ -15,10 +15,12 @@ This test uses /proc/breakme to cause the machine to have various
 serious failures (kernel panic, kernel bug, deadlock, etc.), and then
 check to make sure that these failures were properly logged and had
 appropritate consequences (reboot, logging, etc.).
+
+Pass the kernel crashes as a comma-delimited string of crash types.
 """
 
 def run_kernel_error_paths(machine):
     host = hosts.create_host(machine)
-    job.run_test("platform_KernelErrorPaths", host=host)
+    job.run_test("platform_KernelErrorPaths", kcrashes="EXCEPTION", host=host)
 
 parallel_simple(run_kernel_error_paths, machines)
