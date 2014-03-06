@@ -2,27 +2,15 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import chrome_test
+from autotest_lib.client.cros import chrome_binary_test
 
 
-class security_SandboxLinuxUnittests(chrome_test.ChromeBinaryTest):
+class security_SandboxLinuxUnittests(chrome_binary_test.ChromeBinaryTest):
     """Runs sandbox_linux_unittests."""
 
     version = 1
-    binary_to_run = 'sandbox_linux_unittests'
-
-
-    def initialize(self):
-        chrome_test.ChromeBinaryTest.initialize(self,
-                                                nuke_browser_norestart=False)
+    BINARY = 'sandbox_linux_unittests'
 
 
     def run_once(self):
-        try:
-            self.run_chrome_binary_test(self.binary_to_run, '',
-                                        as_chronos=True)
-
-        except error.TestFail as test_failure:
-            raise error.TestFail("%s failed: '%s'" % (self.binary_to_run,
-                                                      test_failure.message))
+        self.run_chrome_test_binary(self.BINARY)
