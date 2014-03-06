@@ -476,7 +476,6 @@ class ImageServer(DevServer):
                 image.
 
         @raise DevServerException upon any return code that's not HTTP OK.
-        @raise DevServerException upon any return code that's not HTTP OK.
         """
         assert artifacts or files, 'Must specify something to stage.'
         if not archive_url:
@@ -494,6 +493,23 @@ class ImageServer(DevServer):
                            artifacts=artifacts_arg,
                            files=files_arg,
                            error_message=error_message)
+
+
+    @remote_devserver_call(timeout_min=0.5)
+    def list_image_dir(self, image):
+        """List the contents of the image stage directory, on the devserver.
+
+        @param image: The image name, eg: <board>-<branch>/<Milestone>-<build>.
+
+        @raise DevServerException upon any return code that's not HTTP OK.
+        """
+        logging.info('Requesting contents from devserver %s for image %s',
+                     self.url(), image)
+        archive_url = _get_storage_server_for_artifacts() + image
+        call = self.build_call('list_image_dir', archive_url=archive_url)
+        response = urllib2.urlopen(call)
+        for line in [line.rstrip() for line in response]:
+            logging.info(line)
 
 
     @remote_devserver_call()
