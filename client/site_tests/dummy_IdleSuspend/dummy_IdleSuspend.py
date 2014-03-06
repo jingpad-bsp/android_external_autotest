@@ -4,11 +4,13 @@
 
 import os, time
 
+from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui_test, power_suspend, power_utils
+from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.cros import power_suspend, power_utils
 
 
-class dummy_IdleSuspend(cros_ui_test.UITest):
+class dummy_IdleSuspend(test.test):
     """
     This is not a complete test. It is a dummy test that must be run in parallel
     with power_SuspendStress(method='idle') to control powerd idle values and
@@ -31,27 +33,23 @@ class dummy_IdleSuspend(cros_ui_test.UITest):
     # creating the HWCLOCK_FILE, we might otherwise wait forever
     _TEST_START_TIMEOUT = 70
 
-    def initialize(self, creds='$default'):
-        # It's important to log in with a real user. If logged in as
-        # guest, powerd will shut down instead of suspending.
-        super(dummy_IdleSuspend, self).initialize(creds=creds)
-
-
     def run_once(self):
-        # We just idle while power_SuspendStress does all the work. Existance of
-        # the HWCLOCK_FILE tells us when it starts and when it's done.
-        for _ in xrange(self._TEST_START_TIMEOUT):
-            time.sleep(1)
-            if os.path.exists(power_suspend.Suspender.HWCLOCK_FILE):
-                break
-        else:
-            raise error.TestError("Parallel test failed to create Suspender.")
+        with chrome.Chrome():
+            # Just idle while power_SuspendStress does all the work. Existence
+            # of the HWCLOCK_FILE tells us when it starts and when it's done.
+            for _ in xrange(self._TEST_START_TIMEOUT):
+                time.sleep(1)
+                if os.path.exists(power_suspend.Suspender.HWCLOCK_FILE):
+                    break
+            else:
+                raise error.TestError("Parallel test didn't create Suspender.")
 
-        # These must not be enabled too soon, or the system may suspend before a
-        # wakeup is scheduled. They must not be disabled too late either...
-        power_prefs = power_utils.PowerPrefChanger(self._IDLE_TIMINGS)
+            # These must not be enabled too soon, or the system might suspend
+            # before a wakeup is scheduled. They must not be disabled too late
+            # either, or we might suspend again after the parallel test is done.
+            power_prefs = power_utils.PowerPrefChanger(self._IDLE_TIMINGS)
 
-        while os.path.exists(power_suspend.Suspender.HWCLOCK_FILE):
-            time.sleep(1)
+            while os.path.exists(power_suspend.Suspender.HWCLOCK_FILE):
+                time.sleep(1)
 
-        power_prefs.finalize()
+            power_prefs.finalize()
