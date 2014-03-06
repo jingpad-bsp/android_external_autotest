@@ -4,7 +4,7 @@
 
 NAME = "platform_KernelErrorPaths.BUG"
 AUTHOR = "Chrome OS Team"
-SUITE = "jailed_daily"
+SUITE = "kernel_per-build_regression"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
