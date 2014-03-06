@@ -77,6 +77,10 @@ class graphics_GLMark2(test.test):
             from autotest_lib.client.cros import factory_setup_modules
             from cros.factory.test import ui
             ui.start_reposition_thread('^glmark')
+
+        if not utils.wait_for_cool_idle_perf_machine():
+            raise error.TestFail('Could not get cool/idle machine for test.')
+
         result = utils.run(cmd)
         for line in result.stderr.splitlines():
             if line.startswith('Error:'):

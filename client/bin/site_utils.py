@@ -400,3 +400,112 @@ def set_from_keyval_output(out, delimiter=' '):
         if match:
             results.add((match.group(1), match.group(2)))
     return results
+
+
+def get_cpu_usage():
+    """Returns machine's CPU usage.
+
+    This function uses /proc/stat to identify CPU usage.
+    Returns:
+        A dictionary with 'user', 'nice', 'system' and 'idle' values.
+        Sample dictionary:
+        {
+            'user': 254544,
+            'nice': 9,
+            'system': 254768,
+            'idle': 2859878,
+        }
+    """
+    proc_stat = open('/proc/stat')
+    cpu_usage_str = proc_stat.readline().split()
+    proc_stat.close()
+    return {
+        'user': int(cpu_usage_str[1]),
+        'nice': int(cpu_usage_str[2]),
+        'system': int(cpu_usage_str[3]),
+        'idle': int(cpu_usage_str[4])
+    }
+
+
+def compute_active_cpu_time(cpu_usage_start, cpu_usage_end):
+    """Computes the fraction of CPU time spent non-idling.
+
+    This function should be invoked using before/after values from calls to
+    get_cpu_usage().
+    """
+    time_active_end = (cpu_usage_end['user'] + cpu_usage_end['nice'] +
+                                                  cpu_usage_end['system'])
+    time_active_start = (cpu_usage_start['user'] + cpu_usage_start['nice'] +
+                                                      cpu_usage_start['system'])
+    total_time_end = (cpu_usage_end['user'] + cpu_usage_end['nice'] +
+                      cpu_usage_end['system'] + cpu_usage_end['idle'])
+    total_time_start = (cpu_usage_start['user'] + cpu_usage_start['nice'] +
+                        cpu_usage_start['system'] + cpu_usage_start['idle'])
+    return ((float(time_active_end) - time_active_start) /
+                    (total_time_end - total_time_start))
+
+
+def is_pgo_mode():
+    return 'USE_PGO' in os.environ
+
+
+def wait_for_idle_cpu(timeout, utilization):
+    """Waits for the CPU to become idle (< utilization).
+
+    Args:
+        timeout: The longest time in seconds to wait before throwing an error.
+        utilization: The CPU usage below which the system should be considered
+                idle (between 0 and 1.0 independent of cores/hyperthreads).
+    """
+    time_passed = 0.0
+    fraction_active_time = 1.0
+    sleep_time = 1
+    logging.info('Starting to wait up to %.1fs for idle CPU...', timeout)
+    while fraction_active_time >= utilization:
+        cpu_usage_start = get_cpu_usage()
+        # Split timeout interval into not too many chunks to limit log spew.
+        # Start at 1 second, increase exponentially
+        time.sleep(sleep_time)
+        time_passed += sleep_time
+        sleep_time = min(16.0, 2.0 * sleep_time)
+        cpu_usage_end = get_cpu_usage()
+        fraction_active_time = \
+                compute_active_cpu_time(cpu_usage_start, cpu_usage_end)
+        logging.info('After waiting %.1fs CPU utilization is %f.',
+                     time_passed, fraction_active_time)
+        if time_passed > timeout:
+            logging.warning('CPU did not become idle.')
+            log_process_activity()
+            # crosbug.com/37389
+            if is_pgo_mode():
+                logging.info('Still continuing because we are in PGO mode.')
+                return True
+
+            return False
+    logging.info('Wait for idle CPU took %fs (utilization = %f).',
+                              time_passed, fraction_active_time)
+    return True
+
+
+def log_process_activity():
+    """Logs the output of top.
+
+    Useful to debug performance tests and to find runaway processes.
+    """
+    logging.info('Logging current process activity using top.')
+    cmd = 'top -b -n1 -c'
+    output = utils.run(cmd)
+    logging.info(output)
+
+
+def wait_for_cool_cpu():
+    # TODO(ihf): Implement this.
+    return True
+
+
+def wait_for_cool_idle_perf_machine():
+    # Wait for 60 seconds for the CPU usage to fall under 10%.
+    if not wait_for_idle_cpu(60, 0.1):
+        return False
+    return wait_for_cool_cpu()
+

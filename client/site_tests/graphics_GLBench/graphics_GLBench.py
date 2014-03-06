@@ -10,7 +10,7 @@ import urllib2
 import httplib
 
 from autotest_lib.client.bin import test, utils
-from autotest_lib.client.common_lib import error, utils
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import service_stopper
 
 # to run this test manually on a test target
@@ -147,6 +147,21 @@ class graphics_GLBench(test.test):
     self.output_perf_value(description=keyname, value=temperature,
                            units='Celsius', higher_is_better=False)
 
+  def get_unit_from_test(self, testname):
+    if testname.startswith('mpixels_sec_'):
+      return ('mpixels_sec', True)
+    if testname.startswith('mtexel_sec_'):
+      return ('mtexel_sec', True)
+    if testname.startswith('mtri_sec_'):
+      return ('mtri_sec', True)
+    if testname.startswith('mvtx_sec_'):
+      return ('mvtx_sec', True)
+    if testname.startswith('us_'):
+      return ('us', False)
+    if testname.startswith('1280x768_fps_'):
+      return ('fps', True)
+    raise error.TestFail('Unknown test unit in ' + testname)
+
   def run_once(self, options='', raise_error_on_checksum=True):
     dep = 'glbench'
     dep_dir = os.path.join(self.autodir, 'deps', dep)
@@ -173,6 +188,9 @@ class graphics_GLBench(test.test):
     # process are really dead before returning; this is what stop ui uses.
     kill_cmd = '. /sbin/killers; term_process "^X$"'
     cmd = 'X :1 vt1 & sleep 1; chvt 1 && DISPLAY=:1 %s; %s' % (cmd, kill_cmd)
+
+    if not utils.wait_for_cool_idle_perf_machine():
+      raise error.TestFail('Could not get cool/idle machine for test.')
 
     # TODO(ihf): Remove this sleep once this test is guaranteed to run on a
     # cold machine.
@@ -231,8 +249,10 @@ class graphics_GLBench(test.test):
       testname = key.strip()
       testrating = float(val)
       imagefile = remainder.split(']')[0]
+      unit, higher = self.get_unit_from_test(testname)
+      logging.info('%s %s %d', testname, unit, higher)
       self.output_perf_value(description=testname, value=testrating,
-                             units='Hz', higher_is_better=True)
+                             units=unit, higher_is_better=higher)
 
       # classify result image
       if ReferenceImageExists(knownbad_imagenames,
