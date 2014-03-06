@@ -2,7 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os
+import logging
+import os
+import time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -23,6 +25,7 @@ class Backchannel(object):
     def __init__(self, *args, **kwargs):
         self.args = args
         self.kwargs = kwargs
+        self.gateway = None
         self.interface = None
 
     def __enter__(self):
@@ -61,7 +64,7 @@ class Backchannel(object):
                             'Timed out waiting for route information'),
                     timeout=30)
             line = get_route_information()
-            gateway, self.interface = line.strip().split(' ')
+            self.gateway, self.interface = line.strip().split(' ')
 
             # Retrieve list of open ssh sessions so we can reopen
             # routes afterward.
@@ -81,12 +84,12 @@ class Backchannel(object):
             if create_ssh_routes:
                 for ip in open_ssh:
                     # Add route using the pre-backchannel gateway.
-                    backchannel('reach %s %s' % (ip, gateway))
+                    backchannel('reach %s %s' % (ip, self.gateway))
 
             # Make sure we have a route to the gateway before continuing.
-            logging.info('Waiting for route to gateway %s', gateway)
+            logging.info('Waiting for route to gateway %s', self.gateway)
             utils.poll_for_condition(
-                    lambda: is_route_ready(gateway),
+                    lambda: is_route_ready(self.gateway),
                     exception=utils.TimeoutError('Timed out waiting for route'),
                     timeout=30)
         except Exception, e:
@@ -104,6 +107,36 @@ class Backchannel(object):
         """Tears down the backchannel."""
         if self.interface:
             backchannel('teardown %s' % self.interface)
+
+        # Hack around broken Asix network adaptors that may flake out when we
+        # bring them up and down (crbug.com/349264).
+        # TODO(thieule): Remove this when the adaptor/driver is fixed
+        # (crbug.com/350172).
+        try:
+            if self.gateway:
+                logging.info('Waiting for route restore to gateway %s',
+                             self.gateway)
+                utils.poll_for_condition(
+                        lambda: is_route_ready(self.gateway),
+                        exception=utils.TimeoutError(
+                                'Timed out waiting for route'),
+                        timeout=30)
+        except utils.TimeoutError:
+            self._reset_usb_ethernet_device()
+
+    def _reset_usb_ethernet_device(self):
+        try:
+            # Use the absolute path to the USB device instead of accessing it
+            # via the path with the interface name because once we
+            # deauthorize the USB device, the interface name will be gone.
+            usb_authorized_path = os.path.realpath(
+                    '/sys/class/net/%s/device/../authorized' % self.interface)
+            logging.info('Reset ethernet device at %s', usb_authorized_path)
+            utils.system('echo 0 > %s' % usb_authorized_path)
+            time.sleep(10)
+            utils.system('echo 1 > %s' % usb_authorized_path)
+        except error.CmdError:
+            pass
 
 
 def backchannel(args):
@@ -153,9 +186,10 @@ def is_route_ready(dest):
 
     """
     try:
-        out = utils.system_output('ping -c 1 %s' % dest)
+        utils.system_output('ping -c 1 %s' % dest)
+        logging.info('Route to %s is ready.', dest)
     except error.CmdError, e:
-        logging.error(e)
+        logging.warning('Route to %s is not ready.', dest)
         return False
 
     return True
