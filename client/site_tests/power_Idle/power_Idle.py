@@ -3,12 +3,14 @@
 # found in the LICENSE file.
 
 import logging, time
-from autotest_lib.client.cros import cros_ui_test
+
+from autotest_lib.client.bin import test
+from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import power_rapl, power_status, power_utils
 from autotest_lib.client.cros import service_stopper
 
 
-class power_Idle(cros_ui_test.UITest):
+class power_Idle(test.test):
     version = 1
 
     def initialize(self):
@@ -29,36 +31,36 @@ class power_Idle(cros_ui_test.UITest):
 
     def run_once(self, idle_time=120, sleep=10):
 
-        self._idle_time = idle_time
-        self._services = service_stopper.ServiceStopper(
-            service_stopper.ServiceStopper.POWER_DRAW_SERVICES)
-        self._services.stop_services()
+        with chrome.Chrome():
+            self._services = service_stopper.ServiceStopper(
+                service_stopper.ServiceStopper.POWER_DRAW_SERVICES)
+            self._services.stop_services()
 
-        self._backlight = power_utils.Backlight()
-        self._backlight.set_default()
+            self._backlight = power_utils.Backlight()
+            self._backlight.set_default()
 
-        self._start_time = time.time()
-        self.status = power_status.get_status()
-        self._stats = power_status.StatoMatic()
+            self._start_time = time.time()
+            self.status = power_status.get_status()
+            self._stats = power_status.StatoMatic()
 
-        measurements = []
-        if not self.status.linepower[0].online:
-            measurements.append(
-                power_status.SystemPower(self.status.battery_path))
-        if power_utils.has_rapl_support():
-            measurements += power_rapl.create_rapl()
-        self._plog = power_status.PowerLogger(measurements,
-                                              seconds_period=sleep)
-        self._tlog = power_status.TempLogger([], seconds_period=sleep)
-        self._plog.start()
-        self._tlog.start()
+            measurements = []
+            if not self.status.linepower[0].online:
+                measurements.append(
+                    power_status.SystemPower(self.status.battery_path))
+            if power_utils.has_rapl_support():
+                measurements += power_rapl.create_rapl()
+            self._plog = power_status.PowerLogger(measurements,
+                                                  seconds_period=sleep)
+            self._tlog = power_status.TempLogger([], seconds_period=sleep)
+            self._plog.start()
+            self._tlog.start()
 
-        for _ in xrange(0, idle_time, sleep):
-            time.sleep(sleep)
+            for _ in xrange(0, idle_time, sleep):
+                time.sleep(sleep)
+                self.status.refresh()
             self.status.refresh()
-        self.status.refresh()
-        self._plog.checkpoint('', self._start_time)
-        self._tlog.checkpoint('', self._start_time)
+            self._plog.checkpoint('', self._start_time)
+            self._tlog.checkpoint('', self._start_time)
 
 
     def postprocess_iteration(self):
