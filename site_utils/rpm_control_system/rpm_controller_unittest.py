@@ -12,7 +12,32 @@ import dli
 import rpm_controller
 
 
+class TestRPMControllerQueue(mox.MoxTestBase):
+    """Test request can be queued and processed in controller.
+    """
+
+    def setUp(self):
+        super(TestRPMControllerQueue, self).setUp()
+        self.rpm = rpm_controller.SentryRPMController('chromeos-rack1-host8')
+
+
+    def testQueueRequest(self):
+        """Should create a new process to handle request."""
+        dut_hostname = 'chromos-rack1-host8'
+        new_state = 'ON'
+        process = self.mox.CreateMockAnything()
+        rpm_controller.multiprocessing.Process = self.mox.CreateMockAnything()
+        rpm_controller.multiprocessing.Process(target=mox.IgnoreArg(),
+                args=mox.IgnoreArg()).AndReturn(process)
+        process.start()
+        process.join()
+        self.mox.ReplayAll()
+        self.assertFalse(self.rpm.queue_request(dut_hostname, new_state))
+        self.mox.VerifyAll()
+
+
 class TestSentryRPMController(mox.MoxTestBase):
+    """Test SentryRPMController."""
 
 
     def setUp(self):
@@ -37,7 +62,7 @@ class TestSentryRPMController(mox.MoxTestBase):
         self.ssh.sendline('logout')
         self.ssh.close(force=True)
         self.mox.ReplayAll()
-        self.assertTrue(self.rpm.queue_request(dut_hostname, new_state))
+        self.assertTrue(self.rpm.set_power_state(dut_hostname, new_state))
         self.mox.VerifyAll()
 
 
@@ -56,11 +81,12 @@ class TestSentryRPMController(mox.MoxTestBase):
         self.ssh.sendline('logout')
         self.ssh.close(force=True)
         self.mox.ReplayAll()
-        self.assertFalse(self.rpm.queue_request(dut_hostname, new_state))
+        self.assertFalse(self.rpm.set_power_state(dut_hostname, new_state))
         self.mox.VerifyAll()
 
 
 class TestWebPoweredRPMController(mox.MoxTestBase):
+    """Test WebPoweredRPMController."""
 
 
     def setUp(self):
@@ -83,7 +109,7 @@ class TestWebPoweredRPMController(mox.MoxTestBase):
         self.dli_ps.off(8)
         self.dli_ps.statuslist().AndReturn(test_status_list_final)
         self.mox.ReplayAll()
-        self.assertTrue(self.web_rpm.queue_request('chromeos-rack8a-host8',
+        self.assertTrue(self.web_rpm.set_power_state('chromeos-rack8a-host8',
                                                    'OFF'))
         self.mox.VerifyAll()
 
@@ -95,7 +121,7 @@ class TestWebPoweredRPMController(mox.MoxTestBase):
         self.dli_ps.off(8)
         self.dli_ps.statuslist().AndReturn(test_status_list_final)
         self.mox.ReplayAll()
-        self.assertFalse(self.web_rpm.queue_request('chromeos-rack8a-host8',
+        self.assertFalse(self.web_rpm.set_power_state('chromeos-rack8a-host8',
                                                     'OFF'))
         self.mox.VerifyAll()
 
@@ -104,7 +130,7 @@ class TestWebPoweredRPMController(mox.MoxTestBase):
         """Should return False if DUT hostname is not on the RPM device."""
         self.dli_ps.statuslist().AndReturn(self.test_status_list_initial)
         self.mox.ReplayAll()
-        self.assertFalse(self.web_rpm.queue_request('chromeos-rack8a-host1',
+        self.assertFalse(self.web_rpm.set_power_state('chromeos-rack8a-host1',
                                                     'OFF'))
         self.mox.VerifyAll()
 
@@ -196,7 +222,7 @@ class TestCiscoPOEController(mox.MoxTestBase):
                 mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(self.STREAM_DEVICE)
         pexpect.spawn.sendline('exit')
         self.mox.ReplayAll()
-        self.assertTrue(self.poe.queue_request(self.SERVO, 'ON'))
+        self.assertTrue(self.poe.set_power_state(self.SERVO, 'ON'))
         self.mox.VerifyAll()
 
 
@@ -205,7 +231,7 @@ class TestCiscoPOEController(mox.MoxTestBase):
         self._EnterConfigurationHelper(success=False)
         pexpect.spawn.sendline('exit')
         self.mox.ReplayAll()
-        self.assertFalse(self.poe.queue_request(self.SERVO, 'ON'))
+        self.assertFalse(self.poe.set_power_state(self.SERVO, 'ON'))
         self.mox.VerifyAll()
 
 
@@ -225,7 +251,7 @@ class TestCiscoPOEController(mox.MoxTestBase):
         pexpect.spawn.__str__().AndReturn('A pexpect.spawn object.')
         pexpect.spawn.sendline('exit')
         self.mox.ReplayAll()
-        self.assertFalse(self.poe.queue_request(self.SERVO, 'ON'))
+        self.assertFalse(self.poe.set_power_state(self.SERVO, 'ON'))
         self.mox.VerifyAll()
 
 
@@ -248,7 +274,7 @@ class TestCiscoPOEController(mox.MoxTestBase):
         pexpect.spawn.__str__().AndReturn('A pexpect.spawn object.')
         pexpect.spawn.sendline('exit')
         self.mox.ReplayAll()
-        self.assertFalse(self.poe.queue_request(self.SERVO, 'ON'))
+        self.assertFalse(self.poe.set_power_state(self.SERVO, 'ON'))
         self.mox.VerifyAll()
 
 

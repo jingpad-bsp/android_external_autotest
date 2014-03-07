@@ -2,8 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import ctypes
 import datetime
 import logging
+import multiprocessing
 import pexpect
 import Queue
 import re
@@ -15,10 +17,16 @@ from config import rpm_config
 import dli_urllib
 import utils
 
+import common
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros import retry
+
 # Format Appears as: [Date] [Time] - [Msg Level] - [Message]
 LOGGING_FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
 RPM_CALL_TIMEOUT_MINS = rpm_config.getint('RPM_INFRASTRUCTURE',
                                           'call_timeout_mins')
+SET_POWER_STATE_TIMEOUT_SECONDS = rpm_config.getint(
+        'RPM_INFRASTRUCTURE', 'set_power_state_timeout_seconds')
 
 
 class RPMController(object):
@@ -52,8 +60,8 @@ class RPMController(object):
     """
 
 
-    SSH_LOGIN_CMD = 'ssh -l %s -o StrictHostKeyChecking=no ' \
-                    '-o UserKnownHostsFile=/dev/null %s'
+    SSH_LOGIN_CMD = ('ssh -l %s -o StrictHostKeyChecking=no '
+                     '-o ConnectTimeout=90 -o UserKnownHostsFile=/dev/null %s')
     USERNAME_PROMPT = 'Username:'
     HYRDA_RETRY_SLEEP_SECS = 10
     HYDRA_MAX_CONNECT_RETRIES = 3
@@ -148,27 +156,65 @@ class RPMController(object):
         Run will set the result with the correct value.
         """
         while not self.request_queue.empty():
-            request = self.request_queue.get()
-            if (datetime.datetime.utcnow() > (request['start_time'] +
-                    datetime.timedelta(minutes=RPM_CALL_TIMEOUT_MINS))):
-                logging.error('Request has timed out already. Not processing.')
-                request['result_queue'].put(False)
-                continue
             try:
-                result = self.set_power_state(request['dut'],
-                                              request['new_state'])
-                if not result:
+                result = multiprocessing.Value(ctypes.c_bool, False)
+                request = self.request_queue.get()
+                if (datetime.datetime.utcnow() > (request['start_time'] +
+                        datetime.timedelta(minutes=RPM_CALL_TIMEOUT_MINS))):
+                    logging.error('The request was waited for too long to be '
+                                  "processed. It is timed out and won't be "
+                                  'processed.')
+                    request['result_queue'].put(False)
+                    continue
+
+                is_timeout = multiprocessing.Value(ctypes.c_bool, False)
+                process = multiprocessing.Process(target=self._process_request,
+                                                  args=(request, result,
+                                                        is_timeout))
+                process.start()
+                process.join()
+
+                if is_timeout.value:
+                    raise error.TimeoutException(
+                            'Attempt to set power state is timed out after %s '
+                            'seconds.' % SET_POWER_STATE_TIMEOUT_SECONDS)
+                if not result.value:
                     logging.error('Request to change %s to state %s failed.',
                                   request['dut'], request['new_state'])
             except Exception as e:
                 logging.error('Request to change %s to state %s failed: '
                               'Raised exception: %s', request['dut'],
                               request['new_state'], e)
-                result = False
+                result.value = False
 
             # Put result inside the result Queue to allow the caller to resume.
-            request['result_queue'].put(result)
+            request['result_queue'].put(result.value)
         self._stop_processing_requests()
+
+
+    def _process_request(self, request, result, is_timeout):
+        """Process the request to change a DUT's outlet state.
+
+        The call of set_power_state is made in a new running process. If it
+        takes longer than SET_POWER_STATE_TIMEOUT_SECONDS, the request will be
+        timed out.
+
+        @param request: A request to change a DUT's outlet state.
+        @param result: A Value object passed to the new process for the caller
+                       thread to retrieve the result.
+        @param is_timeout: A Value object passed to the new process for the
+                           caller thread to retrieve the information about if
+                           the set_power_state call timed out.
+        """
+        kwargs = {'dut_hostname':request['dut'],
+                  'new_state':request['new_state']}
+        is_timeout_value, result_value = retry.timeout(
+                self.set_power_state,
+                args=(),
+                kwargs=kwargs,
+                timeout_sec=SET_POWER_STATE_TIMEOUT_SECONDS)
+        result.value = result_value
+        is_timeout.value = is_timeout_value
 
 
     def queue_request(self, dut_hostname, new_state):
