@@ -687,8 +687,8 @@ class WiFiClient(site_linux_system.LinuxSystem):
         logging.info('Attempt to reassociate')
         with self.iw_runner.get_event_logger() as logger:
             logger.start()
-            # Issue reassociate command to wpa_supplicant
-            result = self.host.run('su wpa -s /usr/bin/wpa_cli reassociate')
+            # Issue reattach command to wpa_supplicant
+            result = self.host.run('su wpa -s /usr/bin/wpa_cli reattach')
             if not result.stdout.strip().endswith('OK'):
                 raise error.TestFail('wpa_cli reassociate command failed')
 
