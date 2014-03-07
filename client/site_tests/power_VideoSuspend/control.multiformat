@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "power_VideoSuspend"
+NAME = "power_VideoSuspend.multiformat"
 SUITE = "kernel_daily_regression"
 TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"

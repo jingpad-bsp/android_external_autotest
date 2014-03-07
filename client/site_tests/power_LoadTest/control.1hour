@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "power_LoadTest"
+NAME = "power_LoadTest.1hour"
 PURPOSE = "Measure power draw when system is under load."
 CRITERIA = "This test is a benchmark."
 TIME = "LONG"

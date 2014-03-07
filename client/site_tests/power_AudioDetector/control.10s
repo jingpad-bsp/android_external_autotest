@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "sque"
-NAME = "power_AudioDetector"
+NAME = "power_AudioDetector.10s"
 PURPOSE = "Verify the system does not suspend while playing audio."
 CRITERIA = """
 Fail if any of the following occur:

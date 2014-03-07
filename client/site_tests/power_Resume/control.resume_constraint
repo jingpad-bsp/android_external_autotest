@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "power_Resume seconds_system_resume <= 1.0"
+NAME = "power_Resume.resume_constraint"
 PURPOSE = "Measure the amount of time it takes to resume from suspend."
 CRITERIA = "This test is a benchmark."
 SUITE = "hwqual"

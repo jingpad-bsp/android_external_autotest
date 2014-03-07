@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "The Chromium OS Authors"
-NAME = "power_CheckAfterSuspend"
+NAME = "power_CheckAfterSuspend.TPMCheckStress"
 SUITE = "kernel_weekly_regression"
 PURPOSE = "Check of the TPM state after S3"
 CRITERIA = "Check that the TPM is in the expected state after many S3 Resumes."

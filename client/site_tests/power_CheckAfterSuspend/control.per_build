@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "The Chromium OS Authors"
-NAME = "power_CheckAfterSuspend"
+NAME = "power_CheckAfterSuspend.per_build"
 SUITE = "jailed_build"
 PURPOSE = "Check of the system state after S3"
 CRITERIA = "Check that the system is in the expected state after S3 Resume."

@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "power_ProbeDriver"
+NAME = "power_ProbeDriver.probe_bat"
 PURPOSE = "Confirm that battery driver is loaded and functioning."
 CRITERIA = """\
 Unplug AC before run this test.

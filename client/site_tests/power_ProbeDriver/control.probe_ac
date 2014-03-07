@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "power_ProbeDriver"
+NAME = "power_ProbeDriver.probe_ac"
 SUITE = "power_build"
 PURPOSE = "Confirm that AC driver is loaded and functioning."
 CRITERIA = """\
