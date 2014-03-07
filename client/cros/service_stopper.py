@@ -26,7 +26,7 @@ class ServiceStopper(object):
       _services_stopped: list of services that were successfully stopped
     """
 
-    POWER_DRAW_SERVICES = ['powerd', 'update-engine', 'bluetoothd']
+    POWER_DRAW_SERVICES = ['powerd', 'update-engine', 'bluetoothd', 'vnc']
 
     def __init__(self, services_to_stop=[]):
         """Initialize instance of class.
