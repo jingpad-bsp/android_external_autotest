@@ -82,7 +82,7 @@ class ChameleonPort(object):
         """
         edid_id = self._chameleond_proxy.CreateEdid(xmlrpclib.Binary(edid_data))
         self._chameleond_proxy.ApplyEdid(self._input_id, edid_id)
-        self._chameleond_proxy.DestoryEdid(edid_id)
+        self._chameleond_proxy.DestroyEdid(edid_id)
 
 
     def plug(self):
