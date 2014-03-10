@@ -10,7 +10,7 @@ import re
 import urllib2
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import chrome_test
+from autotest_lib.client.cros import chrome_binary_test
 
 from contextlib import closing
 from math import ceil, floor
@@ -62,20 +62,13 @@ def _remove_if_exists(filepath):
             raise
 
 
-class video_VDAPerf(chrome_test.ChromeBinaryTest):
+class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
     """
-    This test monitors several performance metrics reported by the
-    "video_decode_accelerator_unittest".
+    This test monitors several performance metrics reported by Chrome test
+    binary, video_decode_accelerator_unittest.
     """
 
     version = 1
-
-
-    def initialize(self, arguments=[]):
-        chrome_test.ChromeBinaryTest.initialize(
-            self,
-            nuke_browser_norestart=True,
-            skip_deps=False)
 
 
     def _logperf(self, name, key, value, units, higher_is_better=False):
@@ -190,7 +183,7 @@ class video_VDAPerf(chrome_test.ChromeBinaryTest):
                     '--gtest_filter=DecodeVariations/*/0 ' +
                     '--disable_rendering ' +
                     '--output_log="%s"' % TEST_OUTPUT_LOG)
-        self.run_chrome_binary_test(BINARY, cmd_line)
+        self.run_chrome_test_binary(BINARY, cmd_line)
 
         frame_delivery_times = self._load_frame_delivery_times()
         self._analyze_frame_delivery_times(name, frame_delivery_times)
@@ -203,7 +196,7 @@ class video_VDAPerf(chrome_test.ChromeBinaryTest):
                     '--output_log="%s"' % TEST_OUTPUT_LOG)
         time_cmd = ('%s -f "%s" -o "%s" ' %
                     (TIME_BINARY, TIME_OUTPUT_FORMAT, TIME_LOG))
-        self.run_chrome_binary_test(BINARY, cmd_line, prefix=time_cmd)
+        self.run_chrome_test_binary(BINARY, cmd_line, prefix=time_cmd)
 
         # Ignore if no log was generated. See comment above.
         frame_delivery_times = self._load_frame_delivery_times()
@@ -215,7 +208,7 @@ class video_VDAPerf(chrome_test.ChromeBinaryTest):
         cmd_line = ('--test_video_data="%s" ' % test_video_data +
                     '--gtest_filter=*TestDecodeTimeMedian ' +
                     '--output_log="%s"' % TEST_OUTPUT_LOG)
-        self.run_chrome_binary_test(BINARY, cmd_line)
+        self.run_chrome_test_binary(BINARY, cmd_line)
         line = open(TEST_OUTPUT_LOG, 'r').read()
         m = RE_DECODE_TIME_MEDIAN.match(line)
         assert m, 'invalid format: %s' % line
@@ -225,7 +218,6 @@ class video_VDAPerf(chrome_test.ChromeBinaryTest):
         _remove_if_exists(TEST_OUTPUT_LOG)
 
     def run_once(self, test_cases):
-
         last_error = None
         for (path, width, height, frame_num, frag_num, profile,
              fps)  in test_cases:
