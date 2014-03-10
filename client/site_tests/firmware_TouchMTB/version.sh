@@ -36,11 +36,13 @@ if [ -z ${FLAGS_remote} ]; then
   die "Error: you need to provide the IP address of the test machine."
 fi
 
-if ! tools/create_version.py "$VERSION_FILE"; then
+create_version="`dirname $PROG`"/tools/create_version.py
+if ! $create_version "$VERSION_FILE"; then
   die "Error: failed to create version info"
 fi
 
-if ! scp "$VERSION_FILE" "root@${FLAGS_remote}:${TEST_DIR}"; then
+expect_scp="`dirname $PROG`"/tools/expect_scp
+if ! $expect_scp "root@${FLAGS_remote}:${TEST_DIR}" "$VERSION_FILE"; then
   die "Error: scp version file $VERSION_FILE to ${FLAGS_remote}:${TEST_DIR}"
 fi
 
