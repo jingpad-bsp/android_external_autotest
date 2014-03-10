@@ -56,3 +56,27 @@ def in_context(context_name):
                 return func(self, *args, **kwargs)
         return wrapped_manager
     return wrap
+
+
+class _Property(object):
+    def __init__(self, func):
+        self._func = func
+        self._cache = None
+
+    def __get__(self, obj, type=None):
+        if self._cache is None:
+            self._cache = self._func(obj)
+        return self._cache
+
+
+def cached_property(func):
+    """
+    A read-only property that is only run the first time the attribute is
+    accessed, and then the result is saved and returned on each future
+    reference.
+
+    @param func: The function to calculate the property value.
+    @returns: An object that abides by the descriptor protocol.
+    """
+    return _Property(func)
+

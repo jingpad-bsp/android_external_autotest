@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -5,7 +6,9 @@
 import mox
 import threading
 import time
+import unittest
 
+import common
 from autotest_lib.client.common_lib import decorators
 
 
@@ -39,3 +42,21 @@ class InContextTest(mox.MoxTestBase):
         for thread in threads:
             thread.join()
         self.assertEquals(iters * num_threads, self.count)
+
+
+class CachedPropertyTest(unittest.TestCase):
+    def testIt(self):
+        """cached_property"""
+        class Example(object):
+            def __init__(self):
+                self.val = 1
+
+            @decorators.cached_property
+            def prop(self):
+                return self.val
+        ex = Example()
+        self.assertEquals(1, ex.prop)
+
+
+if __name__ == '__main__':
+    unittest.main()
