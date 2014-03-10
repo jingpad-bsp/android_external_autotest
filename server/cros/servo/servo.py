@@ -85,11 +85,11 @@ class Servo(object):
         self.switch_usbkey('off')
 
         # Initialize firmware programmer
-        if self._server.get_version() == "servo_v2":
+        if self.get_version() == "servo_v2":
             self._programmer = firmware_programmer.ProgrammerV2(self)
         else:
-            logging.warn("No firmware programmer for servo version: %s" %
-                    self._version)
+            logging.warn("No firmware programmer for servo version: %s",
+                         self.get_version())
 
 
     def get_power_state_controller(self):
@@ -135,11 +135,6 @@ class Servo(object):
           True if local hosted; otherwise, False.
         """
         return self._servo_host.is_localhost()
-
-
-    def get_servo_version(self):
-        """Returns the version of the servo board."""
-        return self._server.get_version()
 
 
     def power_long_press(self):
