@@ -6,13 +6,13 @@ import mox
 import threading
 import time
 
-from autotest_lib.client.common_lib.cros.in_context import in_context
+from autotest_lib.client.common_lib import decorators
 
 
 class InContextTest(mox.MoxTestBase):
     """ Unit tests for the in_context decorator. """
 
-    @in_context('lock')
+    @decorators.in_context('lock')
     def inc_count(self):
         """ Do a slow, racy read/write. """
         temp = self.count
