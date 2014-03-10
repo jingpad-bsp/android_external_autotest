@@ -45,25 +45,38 @@ LOCAL_BR = 'HEAD'
 TOT_BR = 'cros/master'
 
 
+def _run_git_cmd(cmd):
+    """Run git command.
+
+    When a server test is invoked, the present working directory may look
+    like "/tmp/run_remote_tests.xxxx/..."  To be able to run git commands
+    against the autotest repo, it is required to pushd to autotest project
+    temporarily.
+    """
+    new_cmd = ('pushd %s > /dev/null; %s; popd > /dev/null' %
+               (common.client_dir, cmd))
+    return simple_system_output(new_cmd)
+
+
 def _get_common_ancestor(branch_a, branch_b):
     """Get the nearest common ancestor of the given branches."""
-    return simple_system_output('git merge-base %s %s' % (branch_a, branch_b))
+    return _run_git_cmd('git merge-base %s %s' % (branch_a, branch_b))
 
 
 def _get_first_commit_matching_pattern(commit, pattern):
     """Get the first commit previous to this commit that matches the pattern."""
     cmd = 'git log {} --grep="{}" --pretty=format:"%H" -1'
-    return simple_system_output(cmd.format(commit, pattern))
+    return _run_git_cmd(cmd.format(commit, pattern))
 
 
 def _get_git_commit(branch):
-    return simple_system_output('git rev-parse %s' % branch)
+    return _run_git_cmd('git rev-parse %s' % branch)
 
 
 def _get_date_time(commit):
     """Get the commit date time in ISO 8601 format."""
     cmd = 'git log {} --pretty=format:"%ci" -1'
-    ts = simple_system_output(cmd.format(commit))
+    ts = _run_git_cmd(cmd.format(commit))
     date, time, _ = ts.split()
     return '%s.%s' % (date, time)
 
