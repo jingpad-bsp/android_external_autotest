@@ -81,7 +81,7 @@ class telemetry_UnitTests(test.test):
             raise error.TestFail('No results found.')
 
 
-    def run_once(self, browser_type, unit_tests=[''], perf_tests=['']):
+    def run_once(self, browser_type, unit_tests, perf_tests):
         """
         Runs telemetry/perf unit tests.
 
