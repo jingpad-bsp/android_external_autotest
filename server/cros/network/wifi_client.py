@@ -9,7 +9,6 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import interface
-from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.cros import constants
 from autotest_lib.server import autotest
 from autotest_lib.server import site_linux_system
@@ -119,24 +118,6 @@ class WiFiClient(site_linux_system.LinuxSystem):
 
 
     @property
-    def command_iw(self):
-        """@return string path to iw command."""
-        return self._command_iw
-
-
-    @property
-    def command_netperf(self):
-        """@return string path to netperf command."""
-        return self._command_netperf
-
-
-    @property
-    def command_netserv(self):
-        """@return string path to netserv command."""
-        return self._command_netserv
-
-
-    @property
     def command_ping6(self):
         """@return string path to ping6 command."""
         return self._command_ping6
@@ -201,13 +182,9 @@ class WiFiClient(site_linux_system.LinuxSystem):
         self._board = None
         self._command_ip = 'ip'
         self._command_iptables = 'iptables'
-        self._command_iw = 'iw'
-        self._command_netperf = 'netperf'
-        self._command_netserv = 'netserver'
         self._command_ping6 = 'ping6'
         self._command_wpa_cli = 'wpa_cli'
         self._machine_id = None
-        self._ping_runner = ping_runner.PingRunner(host=self.host)
         self._ping_thread = None
         self._result_dir = result_dir
         if isinstance(self.host, adb_host.ADBHost):
@@ -304,17 +281,6 @@ class WiFiClient(site_linux_system.LinuxSystem):
         self.powersave_switch(False)
         self.shill.clean_profiles()
         super(WiFiClient, self).close()
-
-
-    def ping(self, ping_config):
-        """Ping an address from the client and return the command output.
-
-        @param ping_config parameters for the ping command.
-        @return a PingResult object.
-
-        """
-        logging.info('Pinging from the client.')
-        return self._ping_runner.ping(ping_config)
 
 
     def ping_bg(self, ping_ip, ping_args):

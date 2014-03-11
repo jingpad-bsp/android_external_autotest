@@ -68,6 +68,19 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         return self.host
 
 
+    @property
+    def wifi_ip(self):
+        """Simple accessor for the WiFi IP when there is only one AP.
+
+        @return string IP of WiFi interface.
+
+        """
+        if len(self.local_servers) != 1:
+            raise error.TestError('Could not pick a WiFi IP to return.')
+
+        return self.get_wifi_ip(0)
+
+
     def __init__(self, host, test_name):
         """Build a LinuxRouter.
 

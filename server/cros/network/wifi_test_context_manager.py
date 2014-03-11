@@ -12,7 +12,6 @@ from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server import hosts
 from autotest_lib.server import site_linux_router
-from autotest_lib.server import site_linux_server
 from autotest_lib.server.cros import wifi_test_utils
 from autotest_lib.server.cros.network import attenuator_controller
 from autotest_lib.server.cros.network import wifi_client
@@ -89,12 +88,6 @@ class WiFiTestContextManager(object):
         return self._router
 
 
-    @property
-    def server(self):
-        """@return server object representing the server in the test."""
-        return self._server
-
-
     def __init__(self, test_name, host, cmdline_args, debug_dir):
         """Construct a WiFiTestContextManager.
 
@@ -112,7 +105,6 @@ class WiFiTestContextManager(object):
         self._client_proxy = wifi_client.WiFiClient(host, debug_dir)
         self._attenuator = None
         self._router = None
-        self._server = None
         self._enable_client_packet_captures = False
         self._enable_router_packet_captures = False
         self._packet_capture_snaplen = None
@@ -145,9 +137,7 @@ class WiFiTestContextManager(object):
         @return string IPv4 address.
 
         """
-        if self.router.has_local_server():
-            return self.router.local_server_address(ap_num)
-        return self.server.wifi_ip
+        return self.router.local_server_address(ap_num)
 
 
     def get_wifi_if(self, ap_num=0):
@@ -157,18 +147,12 @@ class WiFiTestContextManager(object):
         @return string interface name "e.g. wlan0".
 
         """
-        if self.router.has_local_server():
-            return self.router.local_servers[ap_num]['interface']
-
-        return self.server.wifi_if
+        return self.router.get_hostapd_interface(ap_num)
 
 
     def get_wifi_host(self):
         """@return host object representing a pingable machine."""
-        if self.router.has_local_server():
-            return self.router.host
-
-        return self.server.host
+        return self.router.host
 
 
     def configure(self, configuration_parameters, multi_interface=None,
@@ -220,12 +204,6 @@ class WiFiTestContextManager(object):
         self._router = site_linux_router.LinuxRouter(
                 hosts.SSHHost(self._router_address, port=router_port),
                 self._test_name)
-        # The '_server' is a machine which hosts network services, such as
-        # OpenVPN or StrongSwan.  Note that we make a separate SSHHost instance
-        # here because both the server and the router expect to close() their
-        # host, and only one close() is permitted.
-        self._server = site_linux_server.LinuxServer(
-                hosts.SSHHost(self._router_address, port=router_port), {})
         # The attenuator host gives us the ability to attenuate particular
         # antennas on the router.  Most setups don't have this capability
         # and most tests do not require it.  We use this for RvR
@@ -243,7 +221,7 @@ class WiFiTestContextManager(object):
         if self.CMDLINE_PACKET_CAPTURE_SNAPLEN in self._cmdline_args:
             self._packet_capture_snaplen = int(
                     self._cmdline_args[self.CMDLINE_PACKET_CAPTURE_SNAPLEN])
-        for system in (self.client, self.server, self.router):
+        for system in (self.client, self.router):
             system.sync_host_times()
 
 
@@ -251,7 +229,7 @@ class WiFiTestContextManager(object):
         """Teardown the state used in a WiFi test."""
         logging.debug('Tearing down the test context.')
         for system in [self._attenuator, self._client_proxy,
-                       self._router, self._server]:
+                       self._router]:
             if system is not None:
                 system.close()
 
@@ -325,7 +303,7 @@ class WiFiTestContextManager(object):
         if ping_config is None:
             ping_ip = self.client.wifi_ip
             ping_config = ping_runner.PingConfig(ping_ip)
-        self.server.ping(ping_config)
+        self.router.ping(ping_config)
 
 
     def wait_for_connection(self, ssid, freq=None, ap_num=None,

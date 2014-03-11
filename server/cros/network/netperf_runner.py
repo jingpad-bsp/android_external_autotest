@@ -10,6 +10,7 @@ import time
 import os.path
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.server.cros import wifi_test_utils
 
 
 class NetperfResult(object):
@@ -476,7 +477,7 @@ class NetperfRunner(object):
         """Construct a NetperfRunner.
 
         @param client WiFiClient object.
-        @param server LinuxServer object.
+        @param server LinuxSystem object.
 
         """
         self._client_proxy = client_proxy
@@ -484,15 +485,15 @@ class NetperfRunner(object):
         if config.server_serves:
             self._server_host = server_proxy.host
             self._client_host = client_proxy.host
-            self._command_netserv = server_proxy.cmd_netserv
-            self._command_netperf = client_proxy.command_netperf
             self._target_ip = server_proxy.wifi_ip
         else:
             self._server_host = client_proxy.host
             self._client_host = server_proxy.host
-            self._command_netserv = client_proxy.command_netserv
-            self._command_netperf = server_proxy.cmd_netperf
             self._target_ip = client_proxy.wifi_ip
+        self._command_netserv = wifi_test_utils.must_be_installed(
+                self._server_host, 'netserver')
+        self._command_netperf = wifi_test_utils.must_be_installed(
+                self._client_host, 'netperf')
         self._config = config
 
 

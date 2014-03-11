@@ -9,6 +9,7 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import iw_runner
+from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.server.cros import wifi_test_utils
 from autotest_lib.server.cros.network import packet_capturer
 
@@ -80,6 +81,7 @@ class LinuxSystem(object):
         # is not desired.
         self._wlanifs_initialized = False
         self._capabilities = None
+        self._ping_runner = ping_runner.PingRunner(host=self.host)
 
 
     @property
@@ -355,3 +357,14 @@ class LinuxSystem(object):
         for phy in self.phy_list:
             self.iw_runner.set_antenna_bitmap(phy.name, phy.avail_tx_antennas,
                                               phy.avail_rx_antennas)
+
+
+    def ping(self, ping_config):
+        """Ping an IP from this system.
+
+        @param ping_config PingConfig object describing the ping command to run.
+        @return a PingResult object.
+
+        """
+        logging.info('Pinging from the %s.', self.role)
+        return self._ping_runner.ping(ping_config)

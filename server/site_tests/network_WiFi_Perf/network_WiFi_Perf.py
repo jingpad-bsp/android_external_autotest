@@ -54,7 +54,7 @@ class network_WiFi_Perf(wifi_cell_test_base.WiFiCellTestBase):
                     security_config=ap_config.security_config)
             self.context.assert_connect_wifi(assoc_params)
             session = netperf_session.NetperfSession(self.context.client,
-                                                     self.context.server)
+                                                     self.context.router)
             # Conduct the performance tests while toggling powersave mode.
             for power_save in (True, False):
                 self.context.client.powersave_switch(power_save)

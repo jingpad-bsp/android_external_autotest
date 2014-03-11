@@ -34,7 +34,7 @@ class NetperfSession(object):
         """Construct a NetperfSession.
 
         @param client_proxy: WiFiClient object.
-        @param server_proxy: LinuxServer object.
+        @param server_proxy: LinuxSystem object.
 
         """
         self._client_proxy = client_proxy

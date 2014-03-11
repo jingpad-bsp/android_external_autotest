@@ -77,7 +77,7 @@ class LaunchIwEvent(object):
     as regular expressions.
 
     Expected to be called as follows:
-        launch_iw_event = LaunchIwEvent(self.context.client.command_iw,
+        launch_iw_event = LaunchIwEvent('iw',
                                         self.context.client.host,
                                         timeout_seconds=60.0)
         # Do things that cause nl80211 traffic
@@ -331,7 +331,7 @@ class network_WiFi_RoamOnLowPower(rvr_test_base.RvRTestBase):
                     mode=hostap_config.HostapConfig.MODE_11G),
                                    multi_interface=True)
 
-            launch_iw_event = LaunchIwEvent(self.context.client.command_iw,
+            launch_iw_event = LaunchIwEvent('iw',
                                             self.context.client.host,
                                             timeout_seconds=60.0)
 

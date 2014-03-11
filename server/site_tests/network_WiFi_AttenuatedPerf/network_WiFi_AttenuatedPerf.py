@@ -75,7 +75,7 @@ class network_WiFi_AttenuatedPerf(wifi_cell_test_base.WiFiCellTestBase):
         # at high attenuations, sometimes the control connection
         # is unable to terminate the test properly.
         session = netperf_session.NetperfSession(self.context.client,
-                                                 self.context.server,
+                                                 self.context.router,
                                                  ignore_failures=True)
         session.warmup_stations()
         for atten in range(self.STARTING_ATTENUATION,

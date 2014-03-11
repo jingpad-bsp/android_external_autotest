@@ -134,7 +134,7 @@ class network_WiFi_RateControl(wifi_cell_test_base.WiFiCellTestBase):
                     ssid=self.context.router.get_ssid())
             self.context.assert_connect_wifi(assoc_params)
             with netperf_runner.NetperfRunner(self.context.client,
-                                              self.context.server,
+                                              self.context.router,
                                               netperf_config) as runner:
                 runner.run()
             results = self.context.router.stop_capture()
