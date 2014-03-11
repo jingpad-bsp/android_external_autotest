@@ -6,6 +6,7 @@ import collections
 import re
 import xmlrpclib
 
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros.network import chaos_constants
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
@@ -51,9 +52,10 @@ class StaticAPConfigurator(ap_configurator.APConfiguratorAbstract):
                       self.mac_address))
 
         if self.rpm_managed:
+            rpm_frontend_server = global_config.global_config.get_config_value(
+                    'CROS', 'rpm_frontend_uri')
             self.rpm_client = xmlrpclib.ServerProxy(
-                    'http://chromeos-rpmserver1.cbf.corp.google.com:9999',
-                    verbose=False)
+                    rpm_frontend_server, verbose=False)
 
 
     def __str__(self):
