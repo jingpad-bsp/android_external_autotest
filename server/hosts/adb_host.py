@@ -394,3 +394,13 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         # attached.
         #self._adb_run('kill-server')
         return super(ADBHost, self).close()
+
+
+    def syslog(self, message, tag='autotest'):
+        """Logs a message to syslog on host.
+
+        @param message String message to log into syslog
+        @param tag String tag prefix for syslog
+
+        """
+        self._adb_run('log -t "%s" "%s"' % (tag, message), shell=True)
