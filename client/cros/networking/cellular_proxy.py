@@ -14,7 +14,7 @@ class CellularProxy(shill_proxy.ShillProxy):
 
     # Properties exposed by shill.
     DEVICE_PROPERTY_DBUS_OBJECT = 'DBus.Object'
-    DEVICE_PROPERTY_ICCID = 'Cellular.ICCID'
+    DEVICE_PROPERTY_MODEL_ID = 'Cellular.ModelID'
     DEVICE_PROPERTY_OUT_OF_CREDITS = 'Cellular.OutOfCredits'
     DEVICE_PROPERTY_SIM_LOCK_STATUS = 'Cellular.SIMLockStatus'
 
@@ -113,12 +113,12 @@ class CellularProxy(shill_proxy.ShillProxy):
         """
         logging.info('Resetting modem')
         # Obtain identifying information about the modem.
-        # ICCID is the only property we are guaranteed to obtain whenever the
-        # device is present. Others, like imei/imsi are not present if the
-        # device is locked.
         properties = modem.GetProperties(utf8_strings=True)
-        iccid = properties.get(self.DEVICE_PROPERTY_ICCID)
-        if not iccid:
+        # NOTE: Using the Model ID means that this will break if we have two
+        # identical cellular modems in a DUT. Fortunately, we only support one
+        # modem at a time.
+        model_id = properties.get(self.DEVICE_PROPERTY_MODEL_ID)
+        if not model_id:
             raise shill_proxy.ShillProxyError(
                     'Failed to get identifying information for the modem.')
         old_modem_path = modem.object_path
@@ -141,10 +141,11 @@ class CellularProxy(shill_proxy.ShillProxy):
         # The timeout here should be sufficient for our slowest modem to
         # reappear.
         CellularProxy._poll_for_condition(
-                lambda: self._get_reappeared_modem(iccid, old_modem_mm_object),
+                lambda: self._get_reappeared_modem(model_id,
+                                                   old_modem_mm_object),
                 desc='The modem reappeared after reset.',
                 timeout=60)
-        new_modem = self._get_reappeared_modem(iccid, old_modem_mm_object)
+        new_modem = self._get_reappeared_modem(model_id, old_modem_mm_object)
 
         # (3) Check powered state of the device
         if not expect_powered:
@@ -241,10 +242,10 @@ class CellularProxy(shill_proxy.ShillProxy):
             return False
 
 
-    def _get_reappeared_modem(self, iccid, old_modem_mm_object):
+    def _get_reappeared_modem(self, model_id, old_modem_mm_object):
         """Check that a vanished modem reappers.
 
-        @param iccid: The unique constant ICCID reported by the vanished modem.
+        @param model_id: The model ID reported by the vanished modem.
         @param old_modem_mm_object: The previously reported modemmanager object
                 path for this modem.
 
@@ -257,7 +258,7 @@ class CellularProxy(shill_proxy.ShillProxy):
         if not device:
             return None
         properties = device.GetProperties(utf8_strings=True)
-        if (iccid == properties.get(self.DEVICE_PROPERTY_ICCID) and
+        if (model_id == properties.get(self.DEVICE_PROPERTY_MODEL_ID) and
             (old_modem_mm_object !=
              properties.get(self.DEVICE_PROPERTY_DBUS_OBJECT))):
             return device
