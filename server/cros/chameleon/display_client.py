@@ -150,12 +150,9 @@ class DisplayClient(object):
                 expected_value=2)
 
 
-    def move_cursor_to_bottom_right(self):
-        """Moves mouse cursor to the bottom-right corner."""
-        output = self.get_connector_name()
-        fb_w, fb_h, _, _ = self._display_xmlrpc_client.get_resolution(output)
-        self._client.run('%s xdotool mousemove %d %d' %
-                       (self.X_ENV_VARIABLES, fb_w, fb_h))
+    def hide_cursor(self):
+        """Hides mouse cursor by sending a keystroke."""
+        self._client.run('%s xdotool key Up' % self.X_ENV_VARIABLES)
 
 
     def capture_external_screen(self, file_path):

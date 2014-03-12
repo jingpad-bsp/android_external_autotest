@@ -35,9 +35,6 @@ class display_HotPlugAtSuspend(chameleon_test.ChameleonTest):
     TIME_MARGIN_BEFORE_RESUME = 5
     # Allow a range of pixel value difference.
     PIXEL_DIFF_VALUE_MARGIN = 5
-    # A range of pixel number which a cursor covers. We accept this number
-    # of pixels not matched in the case of a cursor showed.
-    CURSOR_PIXEL_NUMBER = 100
     # Time to wait the calibration image stable, like waiting the info
     # window "DisplayTestExtension triggered full screen" disappeared.
     CALIBRATION_IMAGE_SETUP_TIME = 10
@@ -111,7 +108,7 @@ class display_HotPlugAtSuspend(chameleon_test.ChameleonTest):
 
                 logging.info('Waiting the calibration image stable.')
                 self.display_client.load_calibration_image((width, height))
-                self.display_client.move_cursor_to_bottom_right()
+                self.display_client.hide_cursor()
                 time.sleep(self.CALIBRATION_IMAGE_SETUP_TIME)
 
                 error_message = self.check_screen_with_chameleon(
@@ -119,8 +116,7 @@ class display_HotPlugAtSuspend(chameleon_test.ChameleonTest):
                              width, height,
                              'P' if plugged_before_suspend else 'U',
                              'P' if plugged_after_suspend else 'U'),
-                        self.PIXEL_DIFF_VALUE_MARGIN,
-                        self.CURSOR_PIXEL_NUMBER)
+                        self.PIXEL_DIFF_VALUE_MARGIN, 0)
                 if error_message:
                     errors.append(error_message)
             else:
