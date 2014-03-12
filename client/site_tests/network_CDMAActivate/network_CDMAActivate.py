@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.bin import site_utils, test
+from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 
 import dbus
@@ -11,17 +11,11 @@ import os
 import time
 
 from autotest_lib.client.cros import backchannel
-# Disable warning about flimflam_test_path not being used. It is used to set up
-# the path to the flimflam module.
-# pylint: disable=W0611
-from autotest_lib.client.cros import flimflam_test_path
-# pylint: enable=W0611
-from autotest_lib.client.cros import network
 from autotest_lib.client.cros.cellular import cell_tools
-from autotest_lib.client.cros.cellular import mm
 from autotest_lib.client.cros.cellular import mm1_constants
 from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
-import flimflam
+from autotest_lib.client.cros.networking import cellular_proxy
+from autotest_lib.client.cros.networking import pm_proxy
 
 I_ACTIVATION_TEST = 'Interface.CDMAActivationTest'
 ACTIVATION_STATE_TIMEOUT = 10
@@ -49,28 +43,20 @@ class ActivationTest(object):
         with pseudomodem_context.PseudoModemManagerContext(
                 True,
                 flags_map=self._pseudomodem_flags()):
+            self.pseudomm = pm_proxy.PseudoMMProxy.get_proxy()
             self._run_test()
 
 
-    def _get_modem_properties_interface(self):
-        if not self.modem_properties_interface:
-            self.modem_properties_interface = \
-                    self.test.modem().PropertiesInterface()
-        return self.modem_properties_interface
-
-
     def _set_modem_activation_state(self, state):
-        interface = self._get_modem_properties_interface()
-        interface.Set(
+        self.pseudomm.get_modem().iface_properties.Set(
                 mm1_constants.I_MODEM_CDMA,
                 'ActivationState',
                 dbus.types.UInt32(state))
 
 
     def _get_modem_activation_state(self):
-        interface = self._get_modem_properties_interface()
-        return interface.Get(mm1_constants.I_MODEM_CDMA,
-                             'ActivationState')
+        modem = self.pseudomm.get_modem()
+        return modem.properties(mm1_constants.I_MODEM_CDMA)['ActivationState']
 
 
     def _pseudomodem_flags(self):
@@ -96,7 +82,7 @@ class ActivationStateTest(ActivationTest):
 
 
     def _run_test(self):
-        network.ResetAllModems(self.test.flim)
+        self.test.reset_modem()
 
         # The modem state should be REGISTERED.
         self.test.check_modem_state(mm1_constants.MM_MODEM_STATE_REGISTERED)
@@ -137,7 +123,7 @@ class ActivationSuccessTest(ActivationTest):
 
 
     def _run_test(self):
-        network.ResetAllModems(self.test.flim)
+        self.test.reset_modem()
 
         # The modem state should be REGISTERED.
         self.test.check_modem_state(mm1_constants.MM_MODEM_STATE_REGISTERED)
@@ -147,7 +133,7 @@ class ActivationSuccessTest(ActivationTest):
 
         # Call 'CompleteActivation' on the service. The service should become
         # 'activating'.
-        service = self.test.find_cellular_service()
+        service = self.test.shill.find_cellular_service_object()
         service.CompleteCellularActivation()
         self.test.check_service_activation_state('activating')
 
@@ -171,7 +157,7 @@ class ActivationFailureRetryTest(ActivationTest):
 
 
     def _run_test(self):
-        network.ResetAllModems(self.test.flim)
+        self.test.reset_modem()
 
         # The modem state should be REGISTERED.
         self.test.check_modem_state(mm1_constants.MM_MODEM_STATE_REGISTERED)
@@ -181,12 +167,12 @@ class ActivationFailureRetryTest(ActivationTest):
 
         # Call 'CompleteActivation' on the service. The service should remain
         # 'not-activated'.
-        service = self.test.find_cellular_service()
+        service = self.test.shill.find_cellular_service_object()
         service.CompleteCellularActivation()
 
-        modem_props = self._get_modem_properties_interface()
-        while modem_props.Get(I_ACTIVATION_TEST, 'ActivateCount') < \
-            self.NUM_ACTIVATE_RETRIES:
+        modem = self.pseudomm.get_modem()
+        while (modem.properties(I_ACTIVATION_TEST)['ActivateCount'] <
+            self.NUM_ACTIVATE_RETRIES):
             self.test.check_service_activation_state('not-activated')
 
         # Activation should succeed after the latest retry.
@@ -206,30 +192,6 @@ class network_CDMAActivate(test.test):
     """
     version = 1
 
-    def modem(self):
-        """
-        Returns a D-Bus proxy for the current modem object exposed by the
-        modem manager.
-
-        @return A dbus.service.Object instance.
-
-        """
-        manager, modem_path  = mm.PickOneModem('')
-        return manager.GetModem(modem_path)
-
-
-    def modem_state(self):
-        """
-        Gets the current modem state from the current modem manager.
-
-        @return The modem state, as a uint32 value.
-
-        """
-        modem = self.modem()
-        props = modem.GetAll(mm1_constants.I_MODEM)
-        return props['State']
-
-
     def check_modem_state(self, expected_state, timeout=MODEM_STATE_TIMEOUT):
         """
         Polls until the modem has the expected state within |timeout| seconds.
@@ -237,29 +199,12 @@ class network_CDMAActivate(test.test):
         @param expected_state: The modem state the modem is expected to be in.
         @param timeout: The timeout interval for polling.
 
-        @raises error.TestFail, if the modem doesn't transition to
-                |expected_state| within |timeout|.
+        @raises pm_proxy.ModemManager1ProxyError if the modem doesn't
+                transition to |expected_state| within |timeout|.
 
         """
-        site_utils.poll_for_condition(
-            lambda: self.modem_state() == expected_state,
-            exception=error.TestFail('Timed out waiting for modem state ' +
-                                     str(expected_state)),
-            timeout=timeout);
-
-
-    def find_cellular_service(self):
-        """
-        Searches for a cellular service and returns it.
-
-        @return A dbus.service.Object instance.
-        @raises error.TestFail, if no cellular service is found.
-
-        """
-        service = self.flim.FindCellularService()
-        if not service:
-            raise error.TestFail('Could not find cellular service.')
-        return service
+        modem = pm_proxy.PseudoMMProxy.get_proxy().get_modem()
+        modem.wait_for_states([expected_state], timeout_seconds=timeout)
 
 
     def check_service_activation_state(self, expected_state):
@@ -273,25 +218,30 @@ class network_CDMAActivate(test.test):
                 activation state doesn't match |expected_state| within timeout.
 
         """
-        service = self.find_cellular_service()
-        state = self.flim.WaitForServiceState(
-            service=service,
-            expected_states=[expected_state],
-            timeout=ACTIVATION_STATE_TIMEOUT,
-            property_name='Cellular.ActivationState')[0]
-        if state != expected_state:
+        success, state, _ = self.shill.wait_for_property_in(
+                self.shill.find_cellular_service_object(),
+                'Cellular.ActivationState',
+                [expected_state],
+                ACTIVATION_STATE_TIMEOUT)
+        if not success:
             raise error.TestFail(
                     'Service activation state should be \'%s\', but it is '
                     '\'%s\'.' % (expected_state, state))
 
 
+    def reset_modem(self):
+        """
+        Resets the one and only modem in the DUT.
+
+        """
+        modem = self.shill.find_cellular_device_object()
+        self.shill.reset_modem(modem)
+
+
     def run_once(self):
         with backchannel.Backchannel():
-            self.flim = flimflam.FlimFlam()
-            self.device_manager = flimflam.DeviceManager(self.flim)
-            self.flim.SetDebugTags(
-                    'dbus+service+device+modem+cellular+portal+network+'
-                    'manager+dhcp')
+            self.shill = cellular_proxy.CellularProxy.get_proxy()
+            self.shill.set_logging_for_cellular_test()
 
             tests = [
                 ActivationStateTest(self),
