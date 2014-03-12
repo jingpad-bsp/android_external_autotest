@@ -5,6 +5,7 @@
 import logging
 import time
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros.network import hostap_config
@@ -14,6 +15,18 @@ from autotest_lib.server.cros.network import wifi_cell_test_base
 class network_WiFi_VerifyRouter(wifi_cell_test_base.WiFiCellTestBase):
     """Test that a dual radio router can use both radios."""
     version = 1
+
+    def _connect(self, wifi_params):
+        assoc_result = xmlrpc_datatypes.deserialize(
+                self.context.client.shill.connect_wifi(wifi_params))
+        logging.info('Finished connection attempt to %s with times: '
+                     'discovery=%.2f, association=%.2f, configuration=%.2f.',
+                     wifi_params.ssid,
+                     assoc_result.discovery_time,
+                     assoc_result.association_time,
+                     assoc_result.configuration_time)
+        return assoc_result.success
+
 
     def _antenna_test(self, channel):
         """Test to verify each antenna is working on given band.
@@ -27,7 +40,7 @@ class network_WiFi_VerifyRouter(wifi_cell_test_base.WiFiCellTestBase):
 
         """
         # Connect to AP with only one antenna active at a time
-        for bitmap in (1,2):
+        for bitmap in (3, 1, 2):
             self.context.router.deconfig()
             self.context.router.set_antenna_bitmap(bitmap, bitmap)
             # Setup two APs in the same band
@@ -42,12 +55,22 @@ class network_WiFi_VerifyRouter(wifi_cell_test_base.WiFiCellTestBase):
             time.sleep(5.0)
             # Verify connectivity to both APs
             for instance in range(2):
+                context_message = ('bitmap=%d, ap_instance=%d, channel=%d' %
+                                   (bitmap, instance, channel))
+                logging.info('Connecting to AP with settings %s.',
+                             context_message)
                 client_conf = xmlrpc_datatypes.AssociationParameters(
                         ssid=self.context.router.get_ssid(instance=instance))
-                self.context.assert_connect_wifi(client_conf)
-                logging.info('Signal level for AP %d with bitmap %d is %d',
-                             instance, bitmap,
-                             self.context.client.wifi_signal_level)
+                if self._connect(client_conf):
+                    signal_level = self.context.client.wifi_signal_level
+                    logging.info('Signal level for AP %d with bitmap %d is %d',
+                                 instance, bitmap, signal_level)
+                    self.write_perf_keyval(
+                            {'signal_for_ap_%d_bm_%d_ch_%d' %
+                                     (instance, bitmap, channel):
+                             signal_level})
+                else:
+                    self.failures.append(context_message)
 
 
     def cleanup(self):
@@ -65,19 +88,12 @@ class network_WiFi_VerifyRouter(wifi_cell_test_base.WiFiCellTestBase):
         """Set up two APs connect to both and then exit."""
         self.context.router.require_capabilities(
                 [site_linux_system.LinuxSystem.CAPABILITY_MULTI_AP_SAME_BAND])
-        ap_config = hostap_config.HostapConfig(channel=6)
-        # Create an AP, manually specifying both the SSID and BSSID.
-        self.context.configure(ap_config)
-        self.context.configure(ap_config, multi_interface=True)
-        for instance in range(2):
-            client_conf = xmlrpc_datatypes.AssociationParameters(
-                    ssid=self.context.router.get_ssid(instance=instance))
-            self.context.assert_connect_wifi(client_conf)
-            logging.info('Signal level for AP %d is %d', instance,
-                         self.context.client.wifi_signal_level)
-            self.write_perf_keyval({'signal_for_ap_%d' % instance:
-                                    self.context.client.wifi_signal_level})
 
+        self.failures = []
         # Run antenna test for 2GHz band and 5GHz band
         self._antenna_test(6)
         self._antenna_test(136)
+        if self.failures:
+            all_failures = ', '.join(
+                    ['(' + message + ')' for message in self.failures])
+            raise error.TestFail('Failed to connect when %s.' % all_failures)
