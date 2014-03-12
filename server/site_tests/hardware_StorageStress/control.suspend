@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-NAME = 'hardware_StorageStress'
+NAME = 'hardware_StorageStress.suspend'
 AUTHOR = 'puthik, grundler'
 PURPOSE = 'Check storage data integrity after multiple reboot/suspend'
 TIME = 'LENGTHY'
