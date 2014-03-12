@@ -61,7 +61,13 @@ class display_Resolution(chameleon_test.ChameleonTest):
 
                 logging.info('Checking the resolution.')
                 actual_resolution = self.chameleon_port.get_resolution()
-                if (width, height) != actual_resolution:
+                # Verify the actual resolution detected by chameleon is the same
+                # as what is expected.
+                # Note: In mirrored mode, the device may be in hardware mirror
+                # (as opposed to software mirror). If so, the actual resolution
+                # could be different from the expected one. So we skip the check
+                # in mirrored mode.
+                if not test_mirrored and (width, height) != actual_resolution:
                     error_message = ('Chameleon detected a wrong resolution: '
                                      '%r; expected %r' %
                                      (actual_resolution, (width, height)))
