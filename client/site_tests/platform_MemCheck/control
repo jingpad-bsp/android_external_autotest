@@ -1,4 +1,4 @@
-NAME = "Platform_MemCheck"
+NAME = "platform_MemCheck"
 PURPOSE = "Verify memory values look reasonable."
 CRITERIA = """
 This test will fail if unexpected values are found for:
@@ -24,8 +24,8 @@ Swap Memory Cached
 Swap Total
 Virtual Memory Total
 
-We are assuming that we should have at least 1/2 of total memory free, that swap
-is turned off, and that virtual memory should be at least 102400 kb.
+We are assuming that we should have at least 1/2 of total memory free and
+that virtual memory should be at least 102400 KB.
 """
 
 job.run_test('platform_MemCheck')
