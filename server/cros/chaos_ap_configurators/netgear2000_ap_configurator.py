@@ -2,6 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import os
+import urlparse
+
 import ap_spec
 import netgear_single_band_configurator
 from netgear_single_band_configurator import *
@@ -37,16 +40,12 @@ class Netgear2000APConfigurator(netgear_single_band_configurator.
     def logout_from_previous_netgear(self):
         """Some netgear routers dislike you being logged into another
            one of their kind. So make sure that you are not."""
-        print 'Logging out of older router'
         self.click_button_by_id('yes', alert_handler=self._alert_handler)
-        self.navigate_to_page(page_number)
+        self.navigate_to_page()
 
 
-    def navigate_to_page(self, page_number):
-        """Navigates to the given page.
-
-        @param page_number: the page to navigate to.
-        """
+    def navigate_to_page(self):
+        """Navigates to the admin page."""
         try:
             self.get_url(urlparse.urljoin(self.admin_interface_url,
                          'adv_index.htm'), page_title='WNR2000v3')
