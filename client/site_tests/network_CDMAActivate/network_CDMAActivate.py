@@ -10,6 +10,7 @@ import dbus.types
 import os
 import time
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.cros import backchannel
 from autotest_lib.client.cros.cellular import cell_tools
 from autotest_lib.client.cros.cellular import mm1_constants
@@ -165,18 +166,22 @@ class ActivationFailureRetryTest(ActivationTest):
         # Service should appear as 'not-activated'.
         self.test.check_service_activation_state('not-activated')
 
-        # Call 'CompleteActivation' on the service. The service should remain
-        # 'not-activated'.
+        # Call 'CompleteActivation' on the service.
         service = self.test.shill.find_cellular_service_object()
         service.CompleteCellularActivation()
 
+        # Wait for shill to retry the failed activations, except the last retry
+        # will succeed.
+        # NOTE: Don't check for transitory service activation states while this
+        # is happening because shill will reset the modem once the activation
+        # succeeds which will cause the existing service to get deleted.
         modem = self.pseudomm.get_modem()
-        while (modem.properties(I_ACTIVATION_TEST)['ActivateCount'] <
-            self.NUM_ACTIVATE_RETRIES):
-            self.test.check_service_activation_state('not-activated')
-
-        # Activation should succeed after the latest retry.
-        self.test.check_service_activation_state('activating')
+        utils.poll_for_condition(
+                lambda: (modem.properties(I_ACTIVATION_TEST)['ActivateCount'] ==
+                         self.NUM_ACTIVATE_RETRIES),
+                exception=error.TestFail(
+                        'Shill did not retry failed activation'),
+                timeout=10)
 
         # The modem should reset in 5 seconds. Wait 5 more seconds to make sure
         # a new service gets created.
