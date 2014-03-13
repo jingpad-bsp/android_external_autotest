@@ -6,8 +6,8 @@ from autotest_lib.client.common_lib.cros.network import iw_runner
 
 
 # Supported bands
-BAND_2GHZ = object()
-BAND_5GHZ = object()
+BAND_2GHZ = '2.4GHz'
+BAND_5GHZ = '5GHz'
 
 # List of valid bands.
 VALID_BANDS = [BAND_2GHZ, BAND_5GHZ]
@@ -62,9 +62,9 @@ CHANNEL_TABLE = {2412: 1, 2417: 2, 2422: 3,
 FREQUENCY_TABLE = dict((v,k) for k,v in CHANNEL_TABLE.iteritems())
 
 # Configurator type
-CONFIGURATOR_STATIC = object()
-CONFIGURATOR_DYNAMIC = object()
-CONFIGURATOR_ANY = object()
+CONFIGURATOR_STATIC = 1
+CONFIGURATOR_DYNAMIC = 2
+CONFIGURATOR_ANY = 3
 
 # Default values
 DEFAULT_BAND = BAND_2GHZ
