@@ -327,16 +327,6 @@ class ShillProxy(object):
         """
         start_time = time.time()
         duration = lambda: time.time() - start_time
-        # Check to make sure we're not already in a target state.
-        try:
-            properties = self.dbus2primitive(
-                    dbus_object.GetProperties(utf8_strings=True))
-            last_value = properties.get(property_name, '(no value found)')
-            if last_value in expected_values:
-                return True, last_value, duration()
-
-        except dbus.exceptions.DBusException:
-            return False, '(object reference became invalid)', duration()
 
         update_queue = collections.deque()
         signal_receiver = lambda key, value: update_queue.append((key, value))
@@ -345,11 +335,23 @@ class ShillProxy(object):
                 signal_name='PropertyChanged',
                 dbus_interface=dbus_object.dbus_interface,
                 path=dbus_object.object_path)
-        context = gobject.MainLoop().get_context()
         try:
+            # Check to make sure we're not already in a target state.
+            try:
+                properties = self.dbus2primitive(
+                        dbus_object.GetProperties(utf8_strings=True))
+                last_value = properties.get(property_name, '(no value found)')
+                if last_value in expected_values:
+                    return True, last_value, duration()
+
+            except dbus.exceptions.DBusException:
+                return False, '(object reference became invalid)', duration()
+
+            context = gobject.MainLoop().get_context()
             while duration() < timeout_seconds:
+                # This has caused 1 or fewer events to be dispatched.
                 while context.iteration(False):
-                    pass  # This has caused 1 or fewer events to be dispatched.
+                    time.sleep(0.2)
 
                 while update_queue:
                     updated_property, last_value = map(self.dbus2primitive,
