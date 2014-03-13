@@ -9,9 +9,11 @@ import multiprocessing
 import os
 import re
 import urlparse
+import urllib2
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error, global_config
+from autotest_lib.client.common_lib.cros import dev_server
 
 # Local stateful update path is relative to the CrOS source directory.
 LOCAL_STATEFUL_UPDATE_PATH = 'src/platform/dev/stateful_update'
@@ -70,6 +72,55 @@ def url_to_image_name(update_url):
 
     """
     return '/'.join(urlparse.urlparse(update_url).path.split('/')[-2:])
+
+
+def _get_devserver_build_from_update_url(update_url):
+    """Get the devserver and build from the update url.
+
+    @param update_url: The url for update.
+        Eg: http://devserver:port/update/build.
+
+    @return: A tuple of (devserver url, build) or None if the update_url
+        doesn't match the expected pattern.
+
+    @raises ValueError: If the update_url doesn't match the expected pattern.
+    @raises ValueError: If no global_config was found, or it doesn't contain an
+        image_url_pattern.
+    """
+    pattern = global_config.global_config.get_config_value(
+            'CROS', 'image_url_pattern', type=str, default='')
+    if not pattern:
+        raise ValueError('Cannot parse update_url, the global config needs '
+                'an image_url_pattern.')
+    re_pattern = pattern.replace('%s', '(\S+)')
+    parts = re.search(re_pattern, update_url)
+    if not parts or len(parts.groups()) < 2:
+        raise ValueError('%s is not an update url' % update_url)
+    return parts.groups()
+
+
+def list_image_dir_contents(update_url):
+    """Lists the contents of the devserver for a given build/update_url.
+
+    @param update_url: An update url. Eg: http://devserver:port/update/build.
+    """
+    if not update_url:
+        logging.warning('Need update_url to list contents of the devserver.')
+        return
+    error_msg = 'Cannot check contents of devserver, update url %s' % update_url
+    try:
+        devserver_url, build = _get_devserver_build_from_update_url(update_url)
+    except ValueError as e:
+        logging.warning('%s: %s', error_msg, e)
+        return
+    devserver = dev_server.ImageServer(devserver_url)
+    try:
+        devserver.list_image_dir(build)
+    # The devserver will retry on URLError to avoid flaky connections, but will
+    # eventually raise the URLError if it persists. All HTTPErrors get
+    # converted to DevServerExceptions.
+    except (dev_server.DevServerException, urllib2.URLError) as e:
+        logging.warning('%s: %s', error_msg, e)
 
 
 class ChromiumOSUpdater():
@@ -241,6 +292,7 @@ class ChromiumOSUpdater():
 
             # We have ruled out all SSH cases, the error code is from
             # update_engine_client, though we still don't know why.
+            list_image_dir_contents(self.update_url)
             raise RootFSUpdateError(
                     'devserver unreachable, payload unavailable, '
                     'or AU bug (unlikely) on %s: %s' %
@@ -278,6 +330,7 @@ class ChromiumOSUpdater():
             self._run(rollback_cmd)
             self._run(wait_for_update_to_complete_cmd)
         except error.AutoservRunError as e:
+            list_image_dir_contents(self.update_url)
             raise RootFSUpdateError('Rollback failed on %s: %s' %
                                     (self.host.hostname, str(e)))
 
@@ -294,6 +347,7 @@ class ChromiumOSUpdater():
                 UPDATER_BIN, self.update_url)
             self._run(autoupdate_cmd, timeout=900)
         except error.AutoservRunError:
+            list_image_dir_contents(self.update_url)
             update_error = RootFSUpdateError('update-engine failed on %s' %
                                              self.host.hostname)
             self._update_error_queue.put(update_error)
@@ -395,6 +449,7 @@ class ChromiumOSUpdater():
                 self.host.get_file(
                     UPDATER_LOGS, self.host.job.sysinfo.sysinfodir,
                     preserve_perm=False)
+            list_image_dir_contents(self.update_url)
             raise
         finally:
             self.host.show_update_engine_log()
