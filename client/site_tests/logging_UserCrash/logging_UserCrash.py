@@ -30,7 +30,7 @@ class logging_UserCrash(crash_test.CrashTest):
         # Turn off crash filtering so we see the original setting.
         self.disable_crash_filtering()
         output = utils.read_file(self._CORE_PATTERN).rstrip()
-        expected_core_pattern = ('|%s --user=%%p:%%s:%%u:%%e' %
+        expected_core_pattern = ('|%s --user=%%P:%%s:%%u:%%e' %
                                  self._CRASH_REPORTER_PATH)
         if output != expected_core_pattern:
             raise error.TestFail('core pattern should have been %s, not %s' %
