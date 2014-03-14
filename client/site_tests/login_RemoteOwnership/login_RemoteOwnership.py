@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging, random, string, os
+from dbus.mainloop.glib import DBusGMainLoop
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -27,32 +28,34 @@ class login_RemoteOwnership(test.test):
         ownership.restart_ui_to_clear_ownership_files()
         super(login_RemoteOwnership, self).initialize()
 
+        bus_loop = DBusGMainLoop(set_as_default=True)
+        self._cryptohome_proxy = cryptohome.CryptohomeProxy(bus_loop)
+        self._sm = session_manager.connect(bus_loop)
+
 
     def run_once(self):
-        sm = session_manager.connect()
-
         # Initial policy setup.
         poldata = policy.build_policy_data(self.srcdir)
         priv = ownership.known_privkey()
         pub = ownership.known_pubkey()
         policy.push_policy_and_verify(
-            policy.generate_policy(self.srcdir, priv, pub, poldata), sm)
+            policy.generate_policy(self.srcdir, priv, pub, poldata), self._sm)
 
         # Force re-key the device
         (priv, pub) = ownership.pairgen_as_data()
         policy.push_policy_and_verify(
-            policy.generate_policy(self.srcdir, priv, pub, poldata), sm)
+            policy.generate_policy(self.srcdir, priv, pub, poldata), self._sm)
 
         # Rotate key gracefully.
         self.username = (''.join(random.sample(string.ascii_lowercase,6)) +
                          "@foo.com")
         password = ''.join(random.sample(string.ascii_lowercase,6))
-        cryptohome.remove_vault(self.username)
-        cryptohome.mount_vault(self.username, password, create=True)
+        self._cryptohome_proxy.remove(self.username)
+        self._cryptohome_proxy.mount(self.username, password, create=True)
 
         (new_priv, new_pub) = ownership.pairgen_as_data()
 
-        if not sm.StartSession(self.username, ''):
+        if not self._sm.StartSession(self.username, ''):
             raise error.TestFail('Could not start session for random user')
 
         policy.push_policy_and_verify(
@@ -61,15 +64,15 @@ class login_RemoteOwnership(test.test):
                                    pubkey=new_pub,
                                    policy=poldata,
                                    old_key=priv),
-            sm)
+            self._sm)
 
         try:
-            sm.StopSession('')
+            self._sm.StopSession('')
         except error.TestError as e:
             logging.error(str(e))
             raise error.TestFail('Could not stop session for random user')
 
 
     def cleanup(self):
-        cryptohome.unmount_vault(self.username)
+        self._cryptohome_proxy.unmount(self.username)
         super(login_RemoteOwnership, self).cleanup()

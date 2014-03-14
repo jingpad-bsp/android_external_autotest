@@ -3,13 +3,14 @@
 # found in the LICENSE file.
 
 import gobject, os
+from dbus.mainloop.glib import DBusGMainLoop
+
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import policy, session_manager
 from autotest_lib.client.cros import constants, cros_ui, cryptohome, ownership
 
-from dbus.mainloop.glib import DBusGMainLoop
 
 class login_GuestAndActualSession(test.test):
     """Ensure that the session_manager correctly handles ownership when a guest
@@ -27,21 +28,24 @@ class login_GuestAndActualSession(test.test):
         # Ensure a clean beginning.
         ownership.restart_ui_to_clear_ownership_files()
 
-        DBusGMainLoop(set_as_default=True)
-        self._session_manager = session_manager.connect()
+        bus_loop = DBusGMainLoop(set_as_default=True)
+        self._session_manager = session_manager.connect(bus_loop)
         self._listener = session_manager.OwnershipSignalListener(
                 gobject.MainLoop())
         self._listener.listen_for_new_key_and_policy()
+
+        self._cryptohome_proxy = cryptohome.CryptohomeProxy(bus_loop)
 
 
     def run_once(self):
         owner = 'first_user@nowhere.com'
 
+        # TODO(cmasone): enable CryptohomeProxy to do a guest mount, then use.
         cryptohome.mount_guest()
         if not self._session_manager.StartSession(constants.GUEST_USER, ''):
             raise error.TestFail('Could not start session for guest')
 
-        cryptohome.ensure_clean_cryptohome_for(owner)
+        self._cryptohome_proxy.ensure_clean_cryptohome_for(owner)
         if not self._session_manager.StartSession(owner, ''):
             raise error.TestFail('Could not start session for ' + owner)
 

@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from dbus.mainloop.glib import DBusGMainLoop
+
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import session_manager
@@ -20,11 +22,13 @@ class login_RetrieveActiveSessions(test.test):
 
 
     def run_once(self):
-        sm = session_manager.connect()
+        bus_loop = DBusGMainLoop(set_as_default=True)
+        sm = session_manager.connect(bus_loop)
 
+        cryptohome_proxy = cryptohome.CryptohomeProxy(bus_loop)
         users = ['first_user@nowhere.com', 'second_user@nowhere.com']
         for user in users:
-            cryptohome.ensure_clean_cryptohome_for(user)
+            cryptohome_proxy.ensure_clean_cryptohome_for(user)
 
         if not sm.StartSession(users[0], ''):
             raise error.TestError('Could not start session for ' + users[0])

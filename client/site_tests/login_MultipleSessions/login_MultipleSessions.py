@@ -3,13 +3,13 @@
 # found in the LICENSE file.
 
 import gobject, os
+from dbus.mainloop.glib import DBusGMainLoop
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import policy, session_manager
 from autotest_lib.client.cros import cros_ui, cryptohome, ownership
 
-from dbus.mainloop.glib import DBusGMainLoop
 
 class login_MultipleSessions(test.test):
     """Ensure that the session_manager can handle multiple calls to StartSession
@@ -27,11 +27,13 @@ class login_MultipleSessions(test.test):
         # Ensure a clean beginning.
         ownership.restart_ui_to_clear_ownership_files()
 
-        DBusGMainLoop(set_as_default=True)
-        self._session_manager = session_manager.connect()
+        self._bus_loop = DBusGMainLoop(set_as_default=True)
+        self._session_manager = session_manager.connect(self._bus_loop)
         self._listener = session_manager.OwnershipSignalListener(
                 gobject.MainLoop())
         self._listener.listen_for_new_key_and_policy()
+
+        self._cryptohome_proxy = cryptohome.CryptohomeProxy(self._bus_loop)
 
 
     def run_once(self):
@@ -51,7 +53,7 @@ class login_MultipleSessions(test.test):
         # bounce the session manager and wait for it to come back up before
         # reconnecting.
         cros_ui.restart()
-        self._session_manager = session_manager.connect()
+        self._session_manager = session_manager.connect(self._bus_loop)
 
         # Destroy the owner's cryptohome and start sessions again in a
         # different order
@@ -77,7 +79,7 @@ class login_MultipleSessions(test.test):
 
         @raises error.TestFail: if the session cannot be started.
         """
-        cryptohome.CryptohomeProxy().ensure_clean_cryptohome_for(user)
+        self._cryptohome_proxy.ensure_clean_cryptohome_for(user)
         if not self._session_manager.StartSession(user, ''):
             raise error.TestFail('Could not start session for ' + user)
 

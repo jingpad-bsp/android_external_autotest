@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import hashlib, os
+from dbus.mainloop.glib import DBusGMainLoop
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
@@ -47,4 +48,5 @@ class login_OwnershipNotRetaken(test.test):
 
     def cleanup(self):
         super(login_OwnershipNotRetaken, self).cleanup()
-        cryptohome.remove_vault(self._TEST_USER)
+        bus_loop = DBusGMainLoop(set_as_default=True)
+        cryptohome.CryptohomeProxy(bus_loop).remove(self._TEST_USER)

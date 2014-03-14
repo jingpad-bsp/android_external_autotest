@@ -3,11 +3,10 @@
 # found in the LICENSE file.
 
 import gobject
+from dbus.mainloop.glib import DBusGMainLoop
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib.cros import chrome, session_manager
-
-from dbus.mainloop.glib import DBusGMainLoop
 
 
 class login_LoginSuccess(test.test):
@@ -21,8 +20,8 @@ class login_LoginSuccess(test.test):
     def initialize(self):
         super(login_LoginSuccess, self).initialize()
 
-        DBusGMainLoop(set_as_default=True)
-        self._session_manager = session_manager.connect()
+        bus_loop = DBusGMainLoop(set_as_default=True)
+        self._session_manager = session_manager.connect(bus_loop)
         self._listener = session_manager.SessionSignalListener(
                 gobject.MainLoop())
 

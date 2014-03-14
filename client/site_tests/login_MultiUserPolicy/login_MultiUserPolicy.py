@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus
-import os
+import dbus, os
+from dbus.mainloop.glib import DBusGMainLoop
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -28,17 +28,19 @@ class login_MultiUserPolicy(test.test):
 
     def initialize(self):
         super(login_MultiUserPolicy, self).initialize()
+        self._bus_loop = DBusGMainLoop(set_as_default=True)
 
         # Clear the user's vault, to make sure the test starts without any
         # policy or key lingering around. At this stage the session isn't
         # started and there's no user signed in.
         ownership.restart_ui_to_clear_ownership_files()
-        cryptohome.ensure_clean_cryptohome_for(self._user1)
-        cryptohome.ensure_clean_cryptohome_for(self._user2)
+        cryptohome_proxy = cryptohome.CryptohomeProxy(self._bus_loop)
+        cryptohome_proxy.ensure_clean_cryptohome_for(self._user1)
+        cryptohome_proxy.ensure_clean_cryptohome_for(self._user2)
 
 
     def run_once(self):
-        sm = session_manager.connect()
+        sm = session_manager.connect(self._bus_loop)
 
         # Start a session for the first user, and verify that no policy exists
         # for that user yet.

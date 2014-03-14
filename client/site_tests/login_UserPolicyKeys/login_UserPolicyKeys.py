@@ -2,11 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus
-import grp
-import os
-import pwd
-import stat
+import dbus, grp, os, pwd, stat
+from dbus.mainloop.glib import DBusGMainLoop
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -23,18 +20,18 @@ class login_UserPolicyKeys(test.test):
     def _can_read(self, uid, gid, info):
         """Returns true if uid or gid can read a file with the info stat."""
         if uid == info.st_uid:
-          return info.st_mode & stat.S_IRUSR
+            return info.st_mode & stat.S_IRUSR
         if gid == info.st_gid:
-          return info.st_mode & stat.S_IRGRP
+            return info.st_mode & stat.S_IRGRP
         return info.st_mode & stat.S_IROTH
 
 
     def _can_execute(self, uid, gid, info):
         """Returns true if uid or gid can execute a file with the info stat."""
         if uid == info.st_uid:
-          return info.st_mode & stat.S_IXUSR
+            return info.st_mode & stat.S_IXUSR
         if gid == info.st_gid:
-          return info.st_mode & stat.S_IXGRP
+            return info.st_mode & stat.S_IXGRP
         return info.st_mode & stat.S_IXOTH
 
 
@@ -71,20 +68,22 @@ class login_UserPolicyKeys(test.test):
 
     def initialize(self):
         super(login_UserPolicyKeys, self).initialize()
+        self._bus_loop = DBusGMainLoop(set_as_default=True)
+        self._cryptohome_proxy = cryptohome.CryptohomeProxy(self._bus_loop)
 
         # Clear the user's vault, to make sure the test starts without any
         # policy or key lingering around. At this stage the session isn't
         # started and there's no user signed in.
         ownership.restart_ui_to_clear_ownership_files()
-        cryptohome.remove_vault(ownership.TESTUSER)
+        self._cryptohome_proxy.remove(ownership.TESTUSER)
 
 
     def run_once(self):
         # Mount the vault, connect to session_manager and start the session.
-        cryptohome.mount_vault(ownership.TESTUSER,
-                               ownership.TESTPASS,
-                               create=True)
-        sm = session_manager.connect()
+        self._cryptohome_proxy.mount(ownership.TESTUSER,
+                                     ownership.TESTPASS,
+                                     create=True)
+        sm = session_manager.connect(self._bus_loop)
         if not sm.StartSession(ownership.TESTUSER, ''):
             raise error.TestError('Could not start session')
 
@@ -122,7 +121,7 @@ class login_UserPolicyKeys(test.test):
         self._verify_key_file(key_file)
 
         # Restart the ui; the key should be deleted.
-        cryptohome.unmount_vault(ownership.TESTUSER)
+        self._cryptohome_proxy.unmount(ownership.TESTUSER)
         cros_ui.restart()
         if os.path.exists(key_file):
             raise error.TestFail('%s exists after restarting ui!' %
@@ -130,10 +129,10 @@ class login_UserPolicyKeys(test.test):
 
         # Starting a new session will restore the key that was previously
         # stored. Reconnect to the session_manager, since the restart killed it.
-        cryptohome.mount_vault(ownership.TESTUSER,
-                               ownership.TESTPASS,
-                               create=True)
-        sm = session_manager.connect()
+        self._cryptohome_proxy.mount(ownership.TESTUSER,
+                                     ownership.TESTPASS,
+                                     create=True)
+        sm = session_manager.connect(self._bus_loop)
         if not sm.StartSession(ownership.TESTUSER, ''):
             raise error.TestError('Could not start session after restart')
         self._verify_key_file(key_file)
@@ -141,5 +140,5 @@ class login_UserPolicyKeys(test.test):
 
     def cleanup(self):
         cros_ui.restart()
-        cryptohome.remove_vault(ownership.TESTUSER)
+        self._cryptohome_proxy.remove(ownership.TESTUSER)
         super(login_UserPolicyKeys, self).cleanup()

@@ -2,9 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
-import os
-import tempfile
+import logging, os, tempfile
+from dbus.mainloop.glib import DBusGMainLoop
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import autotemp, error
@@ -26,14 +25,17 @@ class login_OwnershipApi(test.test):
 
     def initialize(self):
         super(login_OwnershipApi, self).initialize()
+        self._bus_loop = DBusGMainLoop(set_as_default=True)
+        self._cryptohome_proxy = cryptohome.CryptohomeProxy(self._bus_loop)
+
         # Clear existing ownership and inject known keys.
         cros_ui.stop()
         ownership.clear_ownership_files_no_restart()
 
         # Make device already owned by ownership.TESTUSER.
-        cryptohome.mount_vault(ownership.TESTUSER,
-                               ownership.TESTPASS,
-                               create=True)
+        self._cryptohome_proxy.mount(ownership.TESTUSER,
+                                     ownership.TESTPASS,
+                                     create=True)
         ownership.use_known_ownerkeys(ownership.TESTUSER)
 
         self._tempdir = autotemp.tempdir(unique_id=self.__class__.__name__)
@@ -51,7 +53,7 @@ class login_OwnershipApi(test.test):
     def run_once(self):
         pkey = ownership.known_privkey()
         pubkey = ownership.known_pubkey()
-        sm = session_manager.connect()
+        sm = session_manager.connect(self._bus_loop)
         if not sm.StartSession(ownership.TESTUSER, ''):
             raise error.TestFail('Could not start session for owner')
 
@@ -101,7 +103,7 @@ class login_OwnershipApi(test.test):
 
 
     def cleanup(self):
-        cryptohome.unmount_vault(ownership.TESTUSER)
+        self._cryptohome_proxy.unmount(ownership.TESTUSER)
         if self._tempdir: self._tempdir.clean()
         cros_ui.start(allow_fail=True)
         super(login_OwnershipApi, self).cleanup()

@@ -3,9 +3,11 @@
 # found in the LICENSE file.
 
 import dbus
+from dbus.mainloop.glib import DBusGMainLoop
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib.cros import session_manager
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_ui, cryptohome
 
 
@@ -21,10 +23,11 @@ class login_SameSessionTwice(test.test):
 
 
     def run_once(self):
-        sm = session_manager.connect()
+        bus_loop = DBusGMainLoop(set_as_default=True)
+        sm = session_manager.connect(bus_loop)
 
         user = 'first_user@nowhere.com'
-        cryptohome.ensure_clean_cryptohome_for(user)
+        cryptohome.CryptohomeProxy(bus_loop).ensure_clean_cryptohome_for(user)
 
         if not sm.StartSession(user, ''):
             raise error.TestFail('Could not start session for ' + user)

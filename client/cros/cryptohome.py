@@ -299,9 +299,10 @@ class CryptohomeProxy(DBusClient):
     DBUS_PROPERTIES_INTERFACE = 'org.freedesktop.DBus.Properties'
 
 
-    def __init__(self):
+    def __init__(self, bus_loop=None):
         self.main_loop = gobject.MainLoop()
-        bus_loop = DBusGMainLoop(set_as_default=True)
+        if bus_loop is not None:
+            bus_loop = DBusGMainLoop(set_as_default=True)
         self.bus = dbus.SystemBus(mainloop=bus_loop)
         super(CryptohomeProxy, self).__init__(self.main_loop, self.bus,
                                               self.CRYPTOHOME_BUS_NAME,

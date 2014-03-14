@@ -7,15 +7,17 @@ import dbus
 from autotest_lib.client.bin import utils
 from autotest_lib.client.cros import constants
 
-def connect():
+def connect(bus_loop):
     """Create and return a DBus connection to session_manager.
 
     Connects to the session manager over the DBus system bus.  Returns
     appropriately configured DBus interface object.
 
+    @param bus_loop: An externally-owned DBusGMainLoop.
+
     @return a dbus.Interface object connection to the session_manager.
     """
-    bus = dbus.SystemBus()
+    bus = dbus.SystemBus(mainloop=bus_loop)
     proxy = bus.get_object('org.chromium.SessionManager',
                            '/org/chromium/SessionManager')
     return dbus.Interface(proxy, 'org.chromium.SessionManagerInterface')

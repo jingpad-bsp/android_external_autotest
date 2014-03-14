@@ -3,13 +3,12 @@
 # found in the LICENSE file.
 
 import gobject, os
+from dbus.mainloop.glib import DBusGMainLoop
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import policy, session_manager
 from autotest_lib.client.cros import constants, cros_ui, cryptohome, ownership
-
-from dbus.mainloop.glib import DBusGMainLoop
 
 
 class login_OwnershipRetaken(test.test):
@@ -29,9 +28,12 @@ class login_OwnershipRetaken(test.test):
         super(login_OwnershipRetaken, self).initialize()
         # Start clean, wrt ownership and the desired user.
         ownership.restart_ui_to_clear_ownership_files()
-        cryptohome.remove_vault(ownership.TESTUSER)
 
-        DBusGMainLoop(set_as_default=True)
+        bus_loop = DBusGMainLoop(set_as_default=True)
+        self._cryptohome_proxy = cryptohome.CryptohomeProxy(bus_loop)
+        self._cryptohome_proxy.remove(ownership.TESTUSER)
+
+        self._sm = session_manager.connect(bus_loop)
         self._listener = session_manager.OwnershipSignalListener(
                 gobject.MainLoop())
         self._listener.listen_for_new_key_and_policy()
@@ -40,7 +42,6 @@ class login_OwnershipRetaken(test.test):
     def run_once(self):
         pkey = ownership.known_privkey()
         pubkey = ownership.known_pubkey()
-        sm = session_manager.connect()
 
         # Pre-configure some owner settings, including initial key.
         poldata = policy.build_policy_data(self.srcdir,
@@ -55,7 +56,7 @@ class login_OwnershipRetaken(test.test):
                                                pkey,
                                                pubkey,
                                                poldata)
-        policy.push_policy_and_verify(policy_string, sm)
+        policy.push_policy_and_verify(policy_string, self._sm)
 
         self._listener.wait_for_signals(desc='Initial policy push complete.')
 
@@ -64,10 +65,10 @@ class login_OwnershipRetaken(test.test):
             raise error.TestFail('Owner key should not have changed!')
 
         # Start a new session, which will trigger the re-taking of ownership.
-        cryptohome.mount_vault(ownership.TESTUSER,
-                               ownership.TESTPASS,
-                               create=True)
-        if not sm.StartSession(ownership.TESTUSER, ''):
+        self._cryptohome_proxy.mount(ownership.TESTUSER,
+                                     ownership.TESTPASS,
+                                     create=True)
+        if not self._sm.StartSession(ownership.TESTUSER, ''):
             raise error.TestFail('Could not start session for owner')
 
         self._listener.wait_for_signals(desc='Re-taking of ownership complete.')
@@ -77,7 +78,7 @@ class login_OwnershipRetaken(test.test):
             raise error.TestFail('Owner key should have changed!')
 
         # RetrievePolicy, check sig against new key, check properties
-        retrieved_policy = sm.RetrievePolicy(byte_arrays=True)
+        retrieved_policy = self._sm.RetrievePolicy(byte_arrays=True)
         if retrieved_policy is None:
             raise error.TestFail('Policy not found')
         policy.compare_policy_response(self.srcdir,
@@ -91,7 +92,7 @@ class login_OwnershipRetaken(test.test):
 
 
     def cleanup(self):
-        cryptohome.unmount_vault(ownership.TESTUSER)
+        self._cryptohome_proxy.unmount(ownership.TESTUSER)
         if self._tempdir: self._tempdir.clean()
         cros_ui.start(allow_fail=True)
         super(login_OwnershipRetaken, self).cleanup()

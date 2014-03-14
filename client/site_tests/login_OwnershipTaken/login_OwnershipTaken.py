@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import os, sys
+from dbus.mainloop.glib import DBusGMainLoop
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -51,10 +52,11 @@ class login_OwnershipTaken(test.test):
 
 
     def run_once(self):
+        bus_loop = DBusGMainLoop(set_as_default=True)
         with chrome.Chrome() as cr:
             login.wait_for_ownership()
 
-            sm = session_manager.connect()
+            sm = session_manager.connect(bus_loop)
             retrieved_policy = sm.RetrievePolicy(byte_arrays=True)
             if retrieved_policy is None:
                 raise error.TestFail('Policy not found.')
