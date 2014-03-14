@@ -316,7 +316,7 @@ class CryptohomeProxy(DBusClient):
     # Wrap all proxied calls to catch cryptohomed failures.
     def __call(self, method, *args):
         try:
-            return method(*args)
+            return method(*args, timeout=180)
         except dbus.exceptions.DBusException, e:
             if e.get_dbus_name() == 'org.freedesktop.DBus.Error.NoReply':
                 logging.error('Cryptohome is not responding. Sending ABRT')
