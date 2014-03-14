@@ -1043,7 +1043,7 @@ def _wait_for_commands(bg_jobs, start_time, timeout):
                      bg_job.command)
         if nuke_subprocess(bg_job.sp) is None:
             # If process could not be SIGKILL'd, log kernel stack.
-            logging.warn(utils.read_file('/proc/' + bg_job.sp.pid + '/stack'))
+            logging.warn(read_file('/proc/' + bg_job.sp.pid + '/stack'))
         bg_job.result.exit_status = bg_job.sp.poll()
         bg_job.result.duration = time.time() - start_time
 
@@ -1469,12 +1469,6 @@ def get_arch_userspace(run_function=run):
             return a
 
     return get_arch()
-
-def get_board():
-    """
-    Get the board name from /etc/lsb-release.
-    """
-    return re.search('BOARD=(.*)', read_file('/etc/lsb-release')).group(1)
 
 
 def get_num_logical_cpus_per_socket(run_function=run):

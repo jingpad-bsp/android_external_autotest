@@ -2,15 +2,15 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import httplib
 import logging
 import os
-import time
 import pprint
 import urllib2
-import httplib
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import perf
 from autotest_lib.client.cros import service_stopper
 
 # to run this test manually on a test target
@@ -127,22 +127,13 @@ class graphics_GLBench(test.test):
       self._services.restore_services()
 
   def report_temperature(self, keyname):
-    try:
-      f = open('/sys/class/hwmon/hwmon0/temp1_input')
-      temperature = float(f.readline()) * 0.001
-    except Exception:
-      temperature = - 1000.0
+    temperature = utils.get_temperature_input_max()
     logging.info('%s = %f degree Celsius', keyname, temperature)
     self.output_perf_value(description=keyname, value=temperature,
                            units='Celsius', higher_is_better=False)
 
-  def report_temperature_critical(self):
-    keyname = 'temperature_critical'
-    try:
-      f = open('/sys/class/hwmon/hwmon0/temp1_crit')
-      temperature = float(f.readline()) * 0.001
-    except Exception:
-      temperature = - 1000.0
+  def report_temperature_critical(self, keyname):
+    temperature = utils.get_temperature_critical()
     logging.info('%s = %f degree Celsius', keyname, temperature)
     self.output_perf_value(description=keyname, value=temperature,
                            units='Celsius', higher_is_better=False)
@@ -163,6 +154,7 @@ class graphics_GLBench(test.test):
     raise error.TestFail('Unknown test unit in ' + testname)
 
   def run_once(self, options='', raise_error_on_checksum=True):
+    logging.info(utils.get_board_with_frequency_and_memory())
     dep = 'glbench'
     dep_dir = os.path.join(self.autodir, 'deps', dep)
     self.job.install_pkg(dep, 'dep', dep_dir)
@@ -189,20 +181,22 @@ class graphics_GLBench(test.test):
     kill_cmd = '. /sbin/killers; term_process "^X$"'
     cmd = 'X :1 vt1 & sleep 1; chvt 1 && DISPLAY=:1 %s; %s' % (cmd, kill_cmd)
 
-    if not utils.wait_for_cool_idle_perf_machine():
-      raise error.TestFail('Could not get cool/idle machine for test.')
-
-    # TODO(ihf): Remove this sleep once this test is guaranteed to run on a
-    # cold machine.
-    self.report_temperature_critical()
+    self.report_temperature_critical('temperature_critical')
     self.report_temperature('temperature_1_start')
-    logging.info('Sleeping machine for one minute to physically cool down.')
-    time.sleep(60)
-    self.report_temperature('temperature_2_before_test')
+    summary = None
+    # Wrap the test run inside of a PerfControl instance to make machine
+    # behavior more consistent.
+    with perf.PerfControl() as pc:
+      if not pc.verify_is_valid():
+        raise error.TestError(pc.get_error_reason())
+      self.report_temperature('temperature_2_before_test')
 
-    summary = utils.system_output(cmd, retain_output=True)
+      # Run the test. If it gets the CPU too hot pc should notice.
+      summary = utils.system_output(cmd, retain_output=True)
+      if not pc.verify_is_valid():
+        raise error.TestError(pc.get_error_reason())
 
-    # write a copy of stdout to help debug failures
+    # Write a copy of stdout to help debug failures.
     results_path = os.path.join(self.outputdir, 'summary.txt')
     f = open(results_path, 'w+')
     f.write('# ---------------------------------------------------\n')
@@ -242,15 +236,14 @@ class graphics_GLBench(test.test):
     keyvals = {}
     failed_tests = {}
     for line in results:
-      if line.strip().startswith('#'):
+      if not line.strip().startswith('@RESULT: '):
         continue
-      keyval, remainder = line.split('[')
+      keyval, remainder = line[9:].split('[')
       key, val = keyval.split('=')
       testname = key.strip()
       testrating = float(val)
       imagefile = remainder.split(']')[0]
       unit, higher = self.get_unit_from_test(testname)
-      logging.info('%s %s %d', testname, unit, higher)
       self.output_perf_value(description=testname, value=testrating,
                              units=unit, higher_is_better=higher)
 
