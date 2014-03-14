@@ -366,7 +366,8 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
                       ignore_deps=True,
                       results_directory=None, ssh_verbosity=0,
                       ssh_options=None,
-                      autoserv_verbose=False):
+                      autoserv_verbose=False,
+                      iterations=1):
     """Perform local run of tests.
 
     This method enforces satisfaction of test dependencies for tests that are
@@ -394,6 +395,7 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
                           autoserv_utils.
     @param ssh_options: Additional ssh options to be passed to autoserv_utils
     @param autoserv_verbose: If true, pass the --verbose flag to autoserv.
+    @param iterations: int number of times to schedule tests.
     """
 
     # Create host in afe, add board and build labels.
@@ -420,16 +422,19 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
             return
 
     # Schedule tests / suites in local afe
-    for test in tests:
-        (predicate, description) = get_predicate_for_test_arg(test)
-        logging.info('Scheduling %s...', description)
-        ntests = schedule_local_suite(autotest_path, predicate, afe,
-                                      remote=remote,
-                                      build=build, board=board,
-                                      results_directory=results_directory,
-                                      no_experimental=no_experimental,
-                                      ignore_deps=ignore_deps)
-        logging.info('... scheduled %s job(s).', ntests)
+    for iteration in range(iterations):
+        if iteration > 0:
+            logging.info('Repeating scheduling for iteration %d:', iteration)
+        for test in tests:
+            (predicate, description) = get_predicate_for_test_arg(test)
+            logging.info('Scheduling %s...', description)
+            ntests = schedule_local_suite(autotest_path, predicate, afe,
+                                          remote=remote,
+                                          build=build, board=board,
+                                          results_directory=results_directory,
+                                          no_experimental=no_experimental,
+                                          ignore_deps=ignore_deps)
+            logging.info('... scheduled %s job(s).', ntests)
 
     if not afe.get_jobs():
         logging.info('No jobs scheduled. End of local run.')
@@ -548,6 +553,8 @@ def parse_arguments(argv):
                              'these messages will be included in output log '
                              'file regardless. In addition, turn on autoserv '
                              'verbosity.')
+    parser.add_argument('--iterations', action='store', type=int, default=1,
+                        help='Number of times to run the tests specified.')
     return parser.parse_args(argv)
 
 
@@ -723,7 +730,8 @@ def _perform_run_from_autotest_root(arguments, autotest_path, argv):
                       results_directory=results_directory,
                       ssh_verbosity=arguments.ssh_verbosity,
                       ssh_options=arguments.ssh_options,
-                      autoserv_verbose=arguments.debug)
+                      autoserv_verbose=arguments.debug,
+                      iterations=arguments.iterations)
     if arguments.pretend:
         logging.info('Finished pretend run. Exiting.')
         return 0
