@@ -42,7 +42,7 @@ class ActivationTest(object):
         # Set the MDN to a non-zero value, so that shill removes the ICCID from
         # activating_iccid_store.profile. This way, individual test runs won't
         # interfere with each other.
-        modem = self.test.pseudomm.get_modem()
+        modem = self.test.pseudomm.wait_for_modem(timeout_seconds=LONG_TIMEOUT)
         modem.iface_properties.Set(mm1_constants.I_MODEM,
                                    'OwnNumbers',
                                    ['1111111111'])

@@ -144,6 +144,24 @@ class ModemManager1Proxy(object):
                     '|%s|', repr(e))
 
 
+    def wait_for_modem(self, timeout_seconds):
+        """
+        Wait for the modem to appear.
+
+        @param timeout_seconds: Number of seconds to wait for modem to appear.
+        @return a ModemProxy object.
+        @raise ModemManager1ProxyError if no modem is found within the timeout
+                or if more than one modem is found. NOTE: This method does not
+                wait for a second modem. The exception is raised if there is
+                more than one modem at the time of polling.
+
+        """
+        return utils.poll_for_condition(
+                self.get_modem,
+                exception=ModemManager1ProxyError('No modem found'),
+                timeout=timeout_seconds)
+
+
 class ModemProxy(object):
     """A wrapper around a DBus proxy for ModemManager1 modem object."""
 
