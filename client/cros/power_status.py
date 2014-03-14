@@ -1185,11 +1185,14 @@ class MeasurementLogger(threading.Thread):
     def run(self):
         """Threads run method."""
         while(not self.done):
-            self.times.append(time.time())
             readings = []
             for meas in self._measurements:
                 readings.append(meas.refresh())
+            # TODO (dbasehore): We probably need proper locking in this file
+            # since there have been race conditions with modifying and accessing
+            # data.
             self.readings.append(readings)
+            self.times.append(time.time())
             time.sleep(self.seconds_period)
 
 
@@ -1255,8 +1258,17 @@ class MeasurementLogger(threading.Thread):
                 else:
                     prefix = domain
                 keyvals[prefix+'_duration'] = tend - tstart
-                # Select all readings taken between tstart and tend timestamps
-                meas_array = meas[numpy.bitwise_and(tstart < t, t < tend)]
+                # Select all readings taken between tstart and tend timestamps.
+                # Try block just in case
+                # code.google.com/p/chromium/issues/detail?id=318892
+                # is not fixed.
+                try:
+                    meas_array = meas[numpy.bitwise_and(tstart < t, t < tend)]
+                finally:
+                    logging.debug('timestamps %s' % t)
+                    logging.debug('timestamp start, end %f %f' % (tstart, tend))
+                    logging.debug('measurements %s' % meas)
+
                 # If sub-test terminated early, avoid calculating avg, std and
                 # min
                 if not meas_array.size:
