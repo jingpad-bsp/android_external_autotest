@@ -47,6 +47,5 @@ class network_WiFi_Roam(wifi_cell_test_base.WiFiCellTestBase):
 
         # Expect that the DUT will re-connect to the new AP.
         self.context.wait_for_connection(router_ssid,
-                                         self._router1_conf.frequency,
-                                         ap_num=1);
+                                         self._router1_conf.frequency)
         self.context.router.deconfig()

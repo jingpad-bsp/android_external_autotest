@@ -4,11 +4,10 @@
 
 import logging
 import re
-import socket
-import struct
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros.network import netblock
 
 class Interface:
     """Interace is a class that contains the queriable address properties
@@ -118,33 +117,29 @@ class Interface:
     @property
     def ipv4_address(self):
         """@return the (first) IPv4 address, e.g., "192.168.0.1"."""
-        address = self.ipv4_address_and_prefix
-        return address if not address else address.split('/')[0]
+        netblock_addr = self.netblock
+        return netblock_addr.addr if netblock_addr else None
 
 
     @property
     def ipv4_prefix(self):
         """@return the IPv4 address prefix e.g., 24."""
-        address = self.ipv4_address_and_prefix
-        if not address or '/' not in address:
-            return None
-        return int(address.split('/')[1])
-        return address if not address else address.split('/')[0]
+        addr = self.netblock
+        return addr.prefix if addr else None
+
+
+    @property
+    def ipv4_subnet(self):
+        """@return string subnet of IPv4 address (e.g. '192.168.0.0')"""
+        addr = self.netblock
+        return addr.subnet if addr else None
 
 
     @property
     def ipv4_subnet_mask(self):
         """@return the IPv4 subnet mask e.g., "255.255.255.0"."""
-        prefix_size = self.ipv4_prefix
-        if not prefix_size:
-            return None
-        if prefix_size <= 0 or prefix_size >= 32:
-            logging.error("Very oddly configured IP address with a /%d "
-                          "prefix size", prefix_size)
-            return None
-        all_ones = 0xffffffff
-        int_mask = ((1 << 32 - prefix_size) - 1) ^ all_ones
-        return socket.inet_ntoa(struct.pack("!I", int_mask))
+        addr = self.netblock
+        return addr.netmask if addr else None
 
 
     def is_wifi_device(self):
@@ -155,6 +150,17 @@ class Interface:
                           self._name)
             return False
         return True
+
+
+    @property
+    def netblock(self):
+        """Return Netblock object for this interface's IPv4 address.
+
+        @return Netblock object (or None if no IPv4 address found).
+
+        """
+        netblock_str = self.ipv4_address_and_prefix
+        return netblock.Netblock(netblock_str) if netblock_str else None
 
 
     @property

@@ -148,6 +148,12 @@ class WiFiClient(site_linux_system.LinuxSystem):
 
 
     @property
+    def wifi_ip_subnet(self):
+        """@return string IPv4 subnet prefix of self.wifi_if."""
+        return self._interface.ipv4_subnet
+
+
+    @property
     def wifi_signal_level(self):
         """Returns the signal level of this DUT's WiFi interface.
 

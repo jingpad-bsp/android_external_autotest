@@ -10,6 +10,7 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import interface
+from autotest_lib.client.common_lib.cros.network import netblock
 from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros import wifi_test_utils
 from autotest_lib.server.cros.network import hostap_config
@@ -277,34 +278,6 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         logging.info('AP configured.')
 
 
-    @staticmethod
-    def ip_addr(netblock, idx):
-        """Simple IPv4 calculator.
-
-        Takes host address in "IP/bits" notation and returns netmask, broadcast
-        address as well as integer offsets into the address range.
-
-        @param netblock string host address in "IP/bits" notation.
-        @param idx string describing what to return.
-        @return string containing something you hopefully requested.
-
-        """
-        addr_str,bits = netblock.split('/')
-        addr = map(int, addr_str.split('.'))
-        mask_bits = (-1 << (32-int(bits))) & 0xffffffff
-        mask = [(mask_bits >> s) & 0xff for s in range(24, -1, -8)]
-        if idx == 'local':
-            return addr_str
-        elif idx == 'netmask':
-            return '.'.join(map(str, mask))
-        elif idx == 'broadcast':
-            offset = [m ^ 0xff for m in mask]
-        else:
-            offset = [(idx >> s) & 0xff for s in range(24, -1, -8)]
-        return '.'.join(map(str, [(a & m) + o
-                                  for a, m, o in zip(addr, mask, offset)]))
-
-
     def ibss_configure(self, config):
         """Configure a station based AP in IBSS mode.
 
@@ -372,33 +345,32 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         @param interface string (e.g. wlan0)
 
         """
-        logging.info("Starting up local server...")
+        logging.info('Starting up local server...')
 
         if len(self.local_servers) >= 256:
             raise error.TestFail('Exhausted available local servers')
 
-        netblock = '%s/24' % self.local_server_address(len(self.local_servers))
+        server_addr = netblock.Netblock.from_addr(
+                self.local_server_address(len(self.local_servers)),
+                prefix_len=24)
 
         params = {}
-        params['netblock'] = netblock
-        params['subnet'] = self.ip_addr(netblock, 0)
-        params['netmask'] = self.ip_addr(netblock, 'netmask')
+        params['netblock'] = server_addr
         params['dhcp_range'] = ' '.join(
-            (self.ip_addr(netblock, self.dhcp_low),
-             self.ip_addr(netblock, self.dhcp_high)))
+            (server_addr.get_addr_in_block(1),
+             server_addr.get_addr_in_block(128)))
         params['interface'] = interface
-
-        params['ip_params'] = ("%s broadcast %s dev %s" %
-                               (netblock,
-                                self.ip_addr(netblock, 'broadcast'),
+        params['ip_params'] = ('%s broadcast %s dev %s' %
+                               (server_addr.netblock,
+                                server_addr.broadcast,
                                 interface))
         self.local_servers.append(params)
 
-        self.router.run("%s addr flush %s" %
+        self.router.run('%s addr flush %s' %
                         (self.cmd_ip, interface))
-        self.router.run("%s addr add %s" %
+        self.router.run('%s addr add %s' %
                         (self.cmd_ip, params['ip_params']))
-        self.router.run("%s link set %s up" %
+        self.router.run('%s link set %s up' %
                         (self.cmd_ip, interface))
         self.start_dhcp_server(interface)
 
@@ -416,13 +388,14 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         else:
             raise error.TestFail('Could not find local server '
                                  'to match interface: %r' % interface)
-
+        server_addr = params['netblock']
         dhcpd_conf_file = self.dhcpd_conf % interface
         dhcp_conf = '\n'.join([
             'port=0',  # disables DNS server
             'bind-interfaces',
             'log-dhcp',
-            'dhcp-range=%s' % params['dhcp_range'].replace(' ', ','),
+            'dhcp-range=%s' % ','.join((server_addr.get_addr_in_block(1),
+                                        server_addr.get_addr_in_block(128))),
             'interface=%s' % params['interface'],
             'dhcp-leasefile=%s' % self.dhcpd_leases])
         self.router.run('cat <<EOF >%s\n%s\nEOF\n' %
@@ -464,11 +437,24 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         @param ap_num int which local server to get an address from.
 
         """
-        if self.local_servers:
-            return self.ip_addr(self.local_servers[ap_num]['netblock'],
-                                'local')
-        else:
-            raise error.TestFail("No IP address assigned")
+        if not self.local_servers:
+            raise error.TestError('No IP address assigned')
+
+        return self.local_servers[ap_num]['netblock'].addr
+
+
+    def get_wifi_ip_subnet(self, ap_num):
+        """Return subnet of WiFi AP instance.
+
+        If no APs are configured a TestError will be raised.
+
+        @param ap_num int which local server to get an address from.
+
+        """
+        if not self.local_servers:
+            raise error.TestError('No APs configured.')
+
+        return self.local_servers[ap_num]['netblock'].subnet
 
 
     def get_hostapd_interface(self, ap_num):

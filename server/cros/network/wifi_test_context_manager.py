@@ -285,7 +285,7 @@ class WiFiTestContextManager(object):
         if ap_num is None:
             ap_num = 0
         if ping_config is None:
-            ping_ip = self.get_wifi_addr(ap_num=ap_num)
+            ping_ip = self.router.get_wifi_ip(ap_num=ap_num)
             ping_config = ping_runner.PingConfig(ping_ip)
         self.client.ping(ping_config)
 
@@ -321,6 +321,9 @@ class WiFiTestContextManager(object):
         start_time = time.time()
         duration = lambda: time.time() - start_time
         success = False
+        if ap_num is None:
+            ap_num = 0
+        desired_subnet = self.router.get_wifi_ip_subnet(ap_num)
         while duration() < timeout_seconds:
             success, state, _ = self.client.wait_for_service_states(
                     ssid, self.CONNECTED_STATES, timeout_seconds - duration())
@@ -332,8 +335,17 @@ class WiFiTestContextManager(object):
                 actual_freq = self.client.get_iw_link_value(
                         iw_runner.IW_LINK_KEY_FREQUENCY)
                 if str(freq) != actual_freq:
+                    logging.debug('Waiting for desired frequency %s (got %s).',
+                                  freq, actual_freq)
                     time.sleep(POLLING_INTERVAL_SECONDS)
                     continue
+
+            actual_subnet = self.client.wifi_ip_subnet
+            if actual_subnet != desired_subnet:
+                logging.debug('Waiting for desired subnet %s (got %s).',
+                              desired_subnet, actual_subnet)
+                time.sleep(POLLING_INTERVAL_SECONDS)
+                continue
 
             self.assert_ping_from_dut(ap_num=ap_num)
             return
