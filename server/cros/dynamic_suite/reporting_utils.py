@@ -49,9 +49,9 @@ _debug_dir = global_config.global_config.get_config_value(
     BUG_CONFIG_SECTION, 'debug_dir', default='')
 
 
-# cautotest url used to generate the link to the job
-_cautotest_job_view = global_config.global_config.get_config_value(
-    BUG_CONFIG_SECTION, 'cautotest_job_view', default='')
+# Template for the url used to generate the link to the job
+_job_view = global_config.global_config.get_config_value(
+    BUG_CONFIG_SECTION, 'job_view', default='')
 
 
 # gs prefix to perform file like operations (gs://)
@@ -79,17 +79,24 @@ def link_build_artifacts(build):
             _chromeos_image_archive + build)
 
 
-def link_job(job_id):
+def link_job(job_id, instance_server=None):
     """Returns an url to the job on cautotest.
 
     @param job_id: A string, representing the job id.
+    @param instance_server: The instance server.
+        Eg: cautotest, cautotest-cq, localhost.
 
     @returns: An url to the job on cautotest.
 
     """
     if not job_id:
         return 'Job did not run, or was aborted prematurely'
-    return '%s=%s' % (_cautotest_job_view, job_id)
+    if not instance_server:
+        instance_server = global_config.global_config.get_config_value(
+            'SERVER', 'hostname', default='localhost')
+    if 'cautotest' in instance_server:
+        instance_server += '.corp.google.com'
+    return _job_view % (instance_server, job_id)
 
 
 def _base_results_log(job_id, result_owner, hostname):

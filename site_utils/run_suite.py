@@ -14,6 +14,7 @@ This is intended for use only with Chrome OS test suits that leverage the
 dynamic suite infrastructure in server/cros/dynamic_suite.py.
 """
 
+import datetime as datetime_base
 import getpass, hashlib, logging, optparse, os, re, sys, time
 from datetime import datetime
 
@@ -21,12 +22,15 @@ import common
 
 from autotest_lib.client.common_lib import global_config, enum
 from autotest_lib.client.common_lib import priorities
+from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.server import utils
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import job_status
+from autotest_lib.server.cros.dynamic_suite import reporting_utils
 from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.site_utils.graphite import stats
+from autotest_lib.site_utils import diagnosis_utils
 
 CONFIG = global_config.global_config
 
@@ -617,6 +621,8 @@ def main():
 
     wait = options.no_wait == 'False'
     file_bugs = options.file_bugs == 'True'
+    logging.info('%s Submitted create_suite_job rpc',
+                 diagnosis_utils.JobTimer.format_time(datetime.now()))
     if options.mock_job_id:
         job_id = int(options.mock_job_id)
     else:
@@ -627,14 +633,28 @@ def main():
                          suite_args=options.suite_args,
                          wait_for_results=wait,
                          timeout_mins=options.timeout_mins)
+    job_timer = diagnosis_utils.JobTimer(
+            time.time(), float(options.timeout_mins))
+    logging.info('%s Created suite job: %s',
+                 job_timer.format_time(job_timer.job_created_time),
+                 reporting_utils.link_job(
+                        job_id, instance_server=instance_server))
+
     TKO = frontend_wrappers.RetryingTKO(server=instance_server,
                                         timeout_min=options.afe_timeout_mins,
                                         delay_sec=options.delay_sec)
-    logging.info('Started suite job: %s', job_id)
-
     code = RETURN_CODES.OK
+    rpc_helper = diagnosis_utils.RPCHelper(afe)
     if wait:
         while not afe.get_jobs(id=job_id, finished=True):
+            # Note that this call logs output, preventing buildbot's
+            # 9000 second silent timeout from kicking in. Let there be no
+            # doubt, this is a hack. The timeout is from upstream buildbot and
+            # this is the easiest work around.
+            if job_timer.first_past_halftime():
+                rpc_helper.diagnose_job(job_id)
+                logging.info('The suite job has another %s till timeout \n',
+                             job_timer.timeout_hours - job_timer.elapsed_time())
             time.sleep(10)
 
         views = TKO.run('get_detailed_test_views', afe_job_id=job_id)
@@ -732,6 +752,22 @@ def main():
         logging.info('\n'
                      'Will return from run_suite with status:  %s',
                      returnmessage)
+
+        # There is a minor race condition here where we might have aborted for
+        # some reason other than a timeout, and the job_timer thinks it's a
+        # timeout because of the jitter in waiting for results. This shouldn't
+        # harm us since all diagnose_pool does is log information about a pool.
+        if job_timer.is_suite_timeout():
+            logging.info('\nAttempting to diagnose pool: %s', options.pool)
+            try:
+                # Add some jitter to make up for any latency in
+                # aborting the suite or checking for results.
+                cutoff = (job_timer.timeout_hours +
+                          datetime_base.timedelta(hours=0.3))
+                rpc_helper.diagnose_pool(
+                        options.board, options.pool, cutoff)
+            except proxy.JSONRPCException as e:
+                logging.warning('Unable to diagnose suite abort.')
 
         logging.info('\n'
                      'Output below this line is for buildbot consumption:')
