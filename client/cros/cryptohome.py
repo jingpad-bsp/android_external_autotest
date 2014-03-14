@@ -298,6 +298,7 @@ class CryptohomeProxy(DBusClient):
     )
     DBUS_PROPERTIES_INTERFACE = 'org.freedesktop.DBus.Properties'
 
+
     def __init__(self):
         self.main_loop = gobject.MainLoop()
         bus_loop = DBusGMainLoop(set_as_default=True)
@@ -313,6 +314,7 @@ class CryptohomeProxy(DBusClient):
                            self.ASYNC_CALL_STATUS_SIGNAL,
                            self.ASYNC_CALL_STATUS_SIGNAL_ARGUMENTS)
 
+
     # Wrap all proxied calls to catch cryptohomed failures.
     def __call(self, method, *args):
         try:
@@ -323,6 +325,7 @@ class CryptohomeProxy(DBusClient):
                 crash_cryptohomed()
                 raise ChromiumOSError('cryptohomed aborted. Check crashes!')
             raise e
+
 
     def __wait_for_specific_signal(self, signal, data):
       """Wait for the |signal| with matching |data|
@@ -339,6 +342,7 @@ class CryptohomeProxy(DBusClient):
           if not result.has_key(k) or result[k] != data[k]:
             return {}
       return result
+
 
     # Perform a data-less async call.
     # TODO(wad) Add __async_data_call.
@@ -360,6 +364,7 @@ class CryptohomeProxy(DBusClient):
             raise ChromiumOSError('cryptohomed aborted. Check crashes!')
         return result
 
+
     def mount(self, user, password, create=False, async=True):
         """Mounts a cryptohome.
 
@@ -374,6 +379,7 @@ class CryptohomeProxy(DBusClient):
         # Sync returns (return code, return status)
         return out[1] if len(out) > 1 else False
 
+
     def unmount(self, user):
         """Unmounts a cryptohome.
 
@@ -383,15 +389,18 @@ class CryptohomeProxy(DBusClient):
         """
         return self.__call(self.iface.Unmount)
 
+
     def is_mounted(self, user):
         """Tests whether a user's cryptohome is mounted."""
         return (utils.is_mountpoint(user_path(user))
                 and utils.is_mountpoint(system_path(user)))
 
+
     def require_mounted(self, user):
         """Raises a test failure if a user's cryptohome is not mounted."""
         utils.require_mountpoint(user_path(user))
         utils.require_mountpoint(system_path(user))
+
 
     def migrate(self, user, oldkey, newkey, async=True):
         """Migrates the specified user's cryptohome from one key to another."""
@@ -400,8 +409,21 @@ class CryptohomeProxy(DBusClient):
                                      user, oldkey, newkey)['return_status']
         return self.__call(self.iface.MigrateKey, user, oldkey, newkey)
 
+
     def remove(self, user, async=True):
         if async:
             return self.__async_call(self.iface.AsyncRemove,
                                      user)['return_status']
         return self.__call(self.iface.Remove, user)
+
+
+    def ensure_clean_cryptohome_for(self, user, password=None):
+        """Ensure a fresh cryptohome exists for user.
+
+        @param user: user who needs a shiny new cryptohome.
+        @param password: if unset, a random password will be used.
+        """
+        if not password:
+            password = ''.join(random.sample(string.ascii_lowercase, 6))
+        self.remove(user)
+        self.mount(user, password, create=True)

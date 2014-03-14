@@ -77,7 +77,7 @@ class login_MultipleSessions(test.test):
 
         @raises error.TestFail: if the session cannot be started.
         """
-        cryptohome.ensure_clean_cryptohome_for(user)
+        cryptohome.CryptohomeProxy().ensure_clean_cryptohome_for(user)
         if not self._session_manager.StartSession(user, ''):
             raise error.TestFail('Could not start session for ' + user)
 
