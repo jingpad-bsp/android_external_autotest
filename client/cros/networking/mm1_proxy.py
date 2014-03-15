@@ -278,24 +278,6 @@ class ModemProxy(object):
                 timeout=timeout_seconds)
 
 
-    def wait_for_registered_state(
-            self, timeout_seconds=STATE_TRANSITION_WAIT_SECONDS):
-        """
-        Wait for the modem to transition to the registered state.
-
-        The modem is considered registered as long as the state is greater than
-        or equal to the modem registered state.
-
-        @param timeout_seconds: Max number of seconds to wait.
-        @raise ModemManager1ProxyError if the modem does not transition to
-            the registered state.
-
-        """
-        self.wait_for_states([mm1_constants.MM_MODEM_STATE_REGISTERED,
-                              mm1_constants.MM_MODEM_STATE_CONNECTED],
-                             timeout_seconds=timeout_seconds)
-
-
 class SimProxy(object):
     """A wrapper around a DBus proxy for ModemManager1 SIM object."""
 

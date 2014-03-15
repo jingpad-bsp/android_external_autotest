@@ -39,7 +39,9 @@ class cellular_OutOfCreditsSubscriptionState(test.test):
                 subscription_state)
         self.shill.manager.EnableTechnology(
                 cellular_proxy.CellularProxy.TECHNOLOGY_CELLULAR)
-        self.modem.wait_for_registered_state()
+        # Wait for a registered state.
+        self.modem.wait_for_states([mm1_constants.MM_MODEM_STATE_REGISTERED,
+                                    mm1_constants.MM_MODEM_STATE_CONNECTED])
 
 
     def _is_out_of_credits(self, cellular_service):
