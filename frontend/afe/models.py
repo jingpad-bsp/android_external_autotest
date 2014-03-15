@@ -14,6 +14,7 @@ except django.core.exceptions.ImproperlyConfigured:
 from xml.sax import saxutils
 import common
 from autotest_lib.frontend.afe import model_logic, model_attributes
+from autotest_lib.frontend.afe import rdb_model_extensions
 from autotest_lib.frontend import settings, thread_local
 from autotest_lib.client.common_lib import enum, host_protections, global_config
 from autotest_lib.client.common_lib import host_queue_entry_states
@@ -341,7 +342,7 @@ class User(dbmodels.Model, model_logic.ModelExtensions):
         return unicode(self.login)
 
 
-class Host(model_logic.ModelWithInvalid, dbmodels.Model,
+class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
            model_logic.ModelWithAttributes):
     """\
     Required:
@@ -351,38 +352,23 @@ class Host(model_logic.ModelWithInvalid, dbmodels.Model,
     locked: if true, host is locked and will not be queued
 
     Internal:
-    synch_id: currently unused
-    status: string describing status of host
-    invalid: true if the host has been deleted
-    protection: indicates what can be done to this host during repair
-    locked_by: user that locked the host, or null if the host is unlocked
-    lock_time: DateTime at which the host was locked
-    dirty: true if the host has been used without being rebooted
+    From AbstractHostModel:
+        synch_id: currently unused
+        status: string describing status of host
+        invalid: true if the host has been deleted
+        protection: indicates what can be done to this host during repair
+        lock_time: DateTime at which the host was locked
+        dirty: true if the host has been used without being rebooted
+    Local:
+        locked_by: user that locked the host, or null if the host is unlocked
     """
-    Status = enum.Enum('Verifying', 'Running', 'Ready', 'Repairing',
-                       'Repair Failed', 'Cleaning', 'Pending', 'Resetting',
-                       'Provisioning', string_values=True)
-    Protection = host_protections.Protection
 
-    hostname = dbmodels.CharField(max_length=255, unique=True)
+    # Note: Only specify foreign keys here, specify all native host columns in
+    # rdb_model_extensions instead.
+    Protection = host_protections.Protection
     labels = dbmodels.ManyToManyField(Label, blank=True,
                                       db_table='afe_hosts_labels')
-    locked = dbmodels.BooleanField(default=False)
-    leased = dbmodels.BooleanField(default=True)
-    synch_id = dbmodels.IntegerField(blank=True, null=True,
-                                     editable=settings.FULL_ADMIN)
-    status = dbmodels.CharField(max_length=255, default=Status.READY,
-                                choices=Status.choices(),
-                                editable=settings.FULL_ADMIN)
-    invalid = dbmodels.BooleanField(default=False,
-                                    editable=settings.FULL_ADMIN)
-    protection = dbmodels.SmallIntegerField(null=False, blank=True,
-                                            choices=host_protections.choices,
-                                            default=host_protections.default)
     locked_by = dbmodels.ForeignKey(User, null=True, blank=True, editable=False)
-    lock_time = dbmodels.DateTimeField(null=True, blank=True, editable=False)
-    dirty = dbmodels.BooleanField(default=True, editable=settings.FULL_ADMIN)
-
     name_field = 'hostname'
     objects = model_logic.ModelWithInvalidManager()
     valid_objects = model_logic.ValidObjectsManager()

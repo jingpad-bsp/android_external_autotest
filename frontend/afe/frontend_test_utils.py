@@ -84,7 +84,7 @@ class FrontendTestMixin(object):
     def _create_job(self, hosts=[], metahosts=[], priority=0, active=False,
                     synchronous=False, atomic_group=None, hostless=False,
                     drone_set=None, control_file='control',
-                    parameterized_job=None):
+                    parameterized_job=None, owner='autotest_system'):
         """
         Create a job row in the test database.
 
@@ -102,6 +102,8 @@ class FrontendTestMixin(object):
                 This does not support creating an active atomic group job.
         @param hostless - if True, this job is intended to be hostless (in that
                 case, hosts, metahosts, and atomic_group must all be empty)
+        @param owner - The owner of the job. Aclgroups from which a job can
+                acquire hosts change with the aclgroups of the owners.
 
         @returns A Django frontend.afe.models.Job instance.
         """
@@ -116,7 +118,7 @@ class FrontendTestMixin(object):
         if active:
             status = models.HostQueueEntry.Status.RUNNING
         job = models.Job.objects.create(
-            name='test', owner='autotest_system', priority=priority,
+            name='test', owner=owner, priority=priority,
             synch_count=synch_count, created_on=created_on,
             reboot_before=model_attributes.RebootBefore.NEVER,
             drone_set=drone_set, control_file=control_file,

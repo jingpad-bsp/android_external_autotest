@@ -8,9 +8,11 @@ from django.db import models as dbmodels, backend, connection
 from django.db.models.sql import query
 import django.db.models.sql.where
 from django.utils import datastructures
+from autotest_lib.frontend.afe import rdb_model_extensions
 from autotest_lib.frontend.afe import readonly_connection
 
-class ValidationError(Exception):
+
+class ValidationError(django.core.exceptions.ValidationError):
     """\
     Data validation error in adding or updating an object. The associated
     value is a dictionary mapping field names to error strings.
@@ -552,85 +554,13 @@ class ValidObjectsManager(ModelWithInvalidManager):
         return queryset.filter(invalid=False)
 
 
-class ModelExtensions(object):
+class ModelExtensions(rdb_model_extensions.ModelValidators):
     """\
-    Mixin with convenience functions for models, built on top of the
-    default Django model functions.
+    Mixin with convenience functions for models, built on top of
+    the model validators in rdb_model_extensions.
     """
     # TODO: at least some of these functions really belong in a custom
     # Manager class
-
-    field_dict = None
-    # subclasses should override if they want to support smart_get() by name
-    name_field = None
-
-
-    @classmethod
-    def get_field_dict(cls):
-        if cls.field_dict is None:
-            cls.field_dict = {}
-            for field in cls._meta.fields:
-                cls.field_dict[field.name] = field
-        return cls.field_dict
-
-
-    @classmethod
-    def clean_foreign_keys(cls, data):
-        """\
-        -Convert foreign key fields in data from <field>_id to just
-        <field>.
-        -replace foreign key objects with their IDs
-        This method modifies data in-place.
-        """
-        for field in cls._meta.fields:
-            if not field.rel:
-                continue
-            if (field.attname != field.name and
-                field.attname in data):
-                data[field.name] = data[field.attname]
-                del data[field.attname]
-            if field.name not in data:
-                continue
-            value = data[field.name]
-            if isinstance(value, dbmodels.Model):
-                data[field.name] = value._get_pk_val()
-
-
-    @classmethod
-    def _convert_booleans(cls, data):
-        """
-        Ensure BooleanFields actually get bool values.  The Django MySQL
-        backend returns ints for BooleanFields, which is almost always not
-        a problem, but it can be annoying in certain situations.
-        """
-        for field in cls._meta.fields:
-            if type(field) == dbmodels.BooleanField and field.name in data:
-                data[field.name] = bool(data[field.name])
-
-
-    # TODO(showard) - is there a way to not have to do this?
-    @classmethod
-    def provide_default_values(cls, data):
-        """\
-        Provide default values for fields with default values which have
-        nothing passed in.
-
-        For CharField and TextField fields with "blank=True", if nothing
-        is passed, we fill in an empty string value, even if there's no
-        default set.
-        """
-        new_data = dict(data)
-        field_dict = cls.get_field_dict()
-        for name, obj in field_dict.iteritems():
-            if data.get(name) is not None:
-                continue
-            if obj.default is not dbmodels.fields.NOT_PROVIDED:
-                new_data[name] = obj.default
-            elif (isinstance(obj, dbmodels.CharField) or
-                  isinstance(obj, dbmodels.TextField)):
-                new_data[name] = ''
-        return new_data
-
 
     @classmethod
     def convert_human_readable_values(cls, data, to_human_readable=False):
@@ -682,29 +612,6 @@ class ModelExtensions(object):
                     data[field_name] = dest_obj
 
 
-    @classmethod
-    def validate_field_names(cls, data):
-        'Checks for extraneous fields in data.'
-        errors = {}
-        field_dict = cls.get_field_dict()
-        for field_name in data:
-            if field_name not in field_dict:
-                errors[field_name] = 'No field of this name'
-        return errors
-
-
-    @classmethod
-    def prepare_data_args(cls, data, kwargs):
-        'Common preparation for add_object and update_object'
-        data = dict(data) # don't modify the default keyword arg
-        data.update(kwargs)
-        # must check for extraneous field names here, while we have the
-        # data in a dict
-        errors = cls.validate_field_names(data)
-        if errors:
-            raise ValidationError(errors)
-        cls.convert_human_readable_values(data)
-        return data
 
 
     def _validate_unique(self):
@@ -784,8 +691,12 @@ class ModelExtensions(object):
         mapping field names to values). Merges any extra keyword args
         into data.
         """
-        data = cls.prepare_data_args(data, kwargs)
+        data = dict(data)
+        data.update(kwargs)
+        data = cls.prepare_data_args(data)
+        cls.convert_human_readable_values(data)
         data = cls.provide_default_values(data)
+
         obj = cls(**data)
         obj.do_validate()
         obj.save()
@@ -798,7 +709,11 @@ class ModelExtensions(object):
         field names to values).  Merges any extra keyword args into
         data.
         """
-        data = self.prepare_data_args(data, kwargs)
+        data = dict(data)
+        data.update(kwargs)
+        data = self.prepare_data_args(data)
+        self.convert_human_readable_values(data)
+
         for field_name, value in data.iteritems():
             setattr(self, field_name, value)
         self.do_validate()

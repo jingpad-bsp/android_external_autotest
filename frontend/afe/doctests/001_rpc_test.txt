@@ -133,8 +133,8 @@ ValidationError: {'locked': 'Host already unlocked.'}
 ...     rpc_interface.modify_host('ipaj1000', locked=True)
 ... except model_logic.ValidationError, err:
 ...     pass
->>> assert ('locked' in err.args[0]
-...         and err.args[0]['locked'].startswith('Host already locked'))
+>>> assert ('locked' in err.message_dict
+...         and err.message_dict['locked'].startswith('Host already locked'))
 >>> rpc_interface.delete_host('ipaj1000')
 >>> rpc_interface.get_hosts() == []
 True

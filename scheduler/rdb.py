@@ -1,3 +1,7 @@
+# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
 """Rdb server module.
 """
 
@@ -10,6 +14,8 @@ from django.core import exceptions as django_exceptions
 from django.db.models import fields
 from django.db.models import Q
 from autotest_lib.frontend.afe import models
+from autotest_lib.scheduler import rdb_hosts
+from autotest_lib.scheduler import rdb_requests
 from autotest_lib.scheduler import rdb_utils
 from autotest_lib.site_utils.graphite import stats
 
@@ -36,7 +42,7 @@ class BaseHostQueryManager(object):
         self.host_objects.filter(id__in=host_ids).update(**kwargs)
 
 
-    @rdb_utils.return_rdb_host
+    @rdb_hosts.return_rdb_host
     def get_hosts(self, ids):
         """Get host objects for the given ids.
 
@@ -47,7 +53,7 @@ class BaseHostQueryManager(object):
         return self.host_objects.filter(id__in=ids).order_by('id')
 
 
-    @rdb_utils.return_rdb_host
+    @rdb_hosts.return_rdb_host
     def find_hosts(self, deps, acls):
         """Finds valid hosts matching deps, acls.
 
@@ -137,7 +143,7 @@ class BaseHostRequestHandler(object):
         """Updates host tables with a payload.
 
         @param update_requests: A list of update requests, as defined in
-            rdb_utils.UpdateHostRequest.
+            rdb_requests.UpdateHostRequest.
         """
         # Last payload for a host_id wins in the case of conflicting requests.
         unique_host_requests = {}
@@ -163,7 +169,7 @@ class BaseHostRequestHandler(object):
                 for host in hosts:
                     # Since update requests have a consistent hash this will map
                     # to the same key as the original request.
-                    request = rdb_utils.UpdateHostRequest(
+                    request = rdb_requests.UpdateHostRequest(
                             host_id=host, payload=payload).get_request()
                     self._record_exceptions(request, [e])
 
@@ -209,7 +215,8 @@ class AvailableHostRequestHandler(BaseHostRequestHandler):
 
         @param hosts: A list of hosts to lease.
         """
-        requests = [rdb_utils.UpdateHostRequest(host_id=host.id,
+        #TODO(beeps): crbug.com/353183, we're abusing the response_map here.
+        requests = [rdb_requests.UpdateHostRequest(host_id=host.id,
                 payload={'leased': 1}).get_request() for host in hosts]
         super(AvailableHostRequestHandler, self).update_hosts(requests)
 
