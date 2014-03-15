@@ -19,13 +19,19 @@ class network_WiFi_IBSS(wifi_cell_test_base.WiFiCellTestBase):
                 [site_linux_system.LinuxSystem.CAPABILITY_IBSS])
         configuration = hostap_config.HostapConfig(
                 frequency=2412, mode=hostap_config.HostapConfig.MODE_11B)
+        # TODO(wiley): This packet capture is purely to help us debug flake
+        #              in this test.  Remove it if we're not seeing flake.
+        self.context.router.start_capture(configuration.frequency)
         self.context.configure(configuration, is_ibss=True)
         assoc_params = xmlrpc_datatypes.AssociationParameters(
                 ssid=self.context.router.get_ssid(),
                 discovery_timeout=30,
+                association_timeout=30,
+                configuration_timeout=30,
                 station_type=xmlrpc_datatypes.
                         AssociationParameters.STATION_TYPE_IBSS)
         self.context.assert_connect_wifi(assoc_params)
         self.context.assert_ping_from_dut()
         self.context.client.shill.disconnect(assoc_params.ssid)
-        self.context.router.deconfig()
+        self.context.router.stop_capture()
+        self.context.router.deconfig_aps()
