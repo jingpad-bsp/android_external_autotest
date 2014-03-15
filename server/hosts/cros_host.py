@@ -1920,6 +1920,68 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             return None
 
 
+    @label_decorator('storage')
+    def get_storage(self):
+        """
+        Determine the type of boot device for this host.
+
+        Determine if the internal device is SCSI or dw_mmc device.
+        Then check that it is SSD or HDD or eMMC or something else.
+
+        @returns a string representing this host's internal device type.
+                 'storage:ssd' when internal device is solid state drive
+                 'storage:hdd' when internal device is hard disk drive
+                 'storage:mmc' when internal device is mmc drive
+                 None          When internal device is something else or
+                               when we are unable to determine the type
+        """
+        # The output should be /dev/mmcblk* for SD/eMMC or /dev/sd* for scsi
+        rootdev_cmd = ' '.join(['. /usr/sbin/write_gpt.sh;',
+                                '. /usr/share/misc/chromeos-common.sh;',
+                                'load_base_vars;',
+                                'get_fixed_dst_drive'])
+        rootdev = self.run(command=rootdev_cmd)
+        rootdev_str = rootdev.stdout.strip()
+
+        if not rootdev_str:
+            return None
+
+        rootdev_base = os.path.basename(rootdev_str)
+
+        mmc_pattern = '/dev/mmcblk[0-9]'
+        if re.match(mmc_pattern, rootdev_str):
+            # Use type to determine if the internal device is eMMC or somthing
+            # else. We can assume that MMC is always an internal device.
+            type_cmd = 'cat /sys/block/%s/device/type' % rootdev_base
+            type = self.run(command=type_cmd)
+            type_str = type.stdout.strip()
+
+            if type_str == 'MMC':
+                return 'storage:mmc'
+
+        scsi_pattern = '/dev/sd[a-z]+'
+        if re.match(scsi_pattern, rootdev.stdout):
+            # Read symlink for /sys/block/sd* to determine if the internal
+            # device is connected via ata or usb.
+            link_cmd = 'readlink /sys/block/%s' % rootdev_base
+            link = self.run(command=link_cmd)
+            link_str = link.stdout.strip()
+            if 'usb' in link_str:
+                return None
+
+            # Read rotation to determine if the internal device is ssd or hdd.
+            rotate_cmd = str('cat /sys/block/%s/queue/rotational'
+                              % rootdev_base)
+            rotate = self.run(command=rotate_cmd)
+            rotate_str = rotate.stdout.strip()
+
+            rotate_dict = {'0':'storage:ssd', '1':'storage:hdd'}
+            return rotate_dict.get(rotate_str)
+
+        # All other internal device / error case will always fall here
+        return None
+
+
     def get_labels(self):
         """Return a list of labels for this given host.
 
