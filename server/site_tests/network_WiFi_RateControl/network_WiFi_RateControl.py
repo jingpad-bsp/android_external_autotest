@@ -5,6 +5,7 @@
 import logging
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.client.common_lib.cros.network import tcpdump_analyzer
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
@@ -116,6 +117,18 @@ class network_WiFi_RateControl(wifi_cell_test_base.WiFiCellTestBase):
 
     def run_once(self):
         """Test body."""
+        # Just abort the test if we're in the lab and not on a machine known
+        # to be conducted.  This test assumes a really great RF environment.
+        # TODO(wiley) This is pretty hacky.  Maybe there is a way to encode
+        #             this in a more general way?
+        hostname = self.context.client.host.hostname
+        if utils.host_is_in_lab_zone(hostname):
+            in_oyster_bay = hostname.startswith('chromeos1-')
+            in_grover_cell = hostname.startswith('chromeos1-grover-')
+            if in_oyster_bay and not in_grover_cell:
+                raise error.TestNAError(
+                        'This test requires a great RF environment.')
+
         caps = [hostap_config.HostapConfig.N_CAPABILITY_GREENFIELD,
                 hostap_config.HostapConfig.N_CAPABILITY_HT40]
         mode_11n = hostap_config.HostapConfig.MODE_11N_PURE
