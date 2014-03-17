@@ -146,7 +146,11 @@ class Chrome(object):
             except (exceptions.BrowserGoneException,
                     exceptions.BrowserConnectionGoneException):
                 return False
-            tab.Close()
+            try:
+                tab.Close()
+            except (util.TimeoutException):
+                # crbug.com/350941
+                logging.error('Timed out closing tab')
             return True
         util.WaitFor(lambda: _BrowserReady(self), timeout=10)
 
