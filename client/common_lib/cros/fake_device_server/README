@@ -1,0 +1,10 @@
+# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+A simple web service used by Buffet to test interactions with a
+device server. Implements basic functionality for registration, device commands
+and state changes.
+
+To start the test server yourself, run server.py. Otherwise, server.py exposes
+start_server/stop_server methods.
