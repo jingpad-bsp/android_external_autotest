@@ -41,11 +41,14 @@ class Netgear2000APConfigurator(netgear_single_band_configurator.
         """Some netgear routers dislike you being logged into another
            one of their kind. So make sure that you are not."""
         self.click_button_by_id('yes', alert_handler=self._alert_handler)
-        self.navigate_to_page()
+        self.navigate_to_page(1)
 
 
-    def navigate_to_page(self):
-        """Navigates to the admin page."""
+    def navigate_to_page(self, page_number):
+        """Navigates to the given page.
+
+        @param page_number: the page to navigate to.
+        """
         try:
             self.get_url(urlparse.urljoin(self.admin_interface_url,
                          'adv_index.htm'), page_title='WNR2000v3')
