@@ -370,6 +370,7 @@ def wait_for_child_results(afe, tko, parent_job_id):
     """
     Wait for results of all tests in jobs with given parent id.
 
+    New jobs could be added by calling send(new_jobs) on the generator.
     Currently polls for results every 5s.  Yields one Status object per test
     as results become available.
 
@@ -390,7 +391,19 @@ def wait_for_child_results(afe, tko, parent_job_id):
 
             remaining_child_jobs.remove(job.id)
             for result in _yield_job_results(afe, tko, job):
-                yield result
+                # To figure out what new jobs (like retry jobs) have been
+                # created since last iteration, we could re-poll for
+                # the set of child jobs in each iteration and
+                # calculate the set difference against the set we got in
+                # last iteration. As an alternative, we could just make
+                # the caller 'send' new jobs to this generator. We go
+                # with the latter to avoid unnecessary overhead.
+                new_child_jobs = (yield result)
+                if new_child_jobs:
+                    remaining_child_jobs.update([new_job.id for new_job in
+                                                 new_child_jobs])
+                    # Return nothing if 'send' is called
+                    yield None
 
         time.sleep(5)
 
@@ -399,6 +412,7 @@ def wait_for_results(afe, tko, jobs):
     """
     Wait for results of all tests in all jobs in |jobs|.
 
+    New jobs could be added by calling send(new_jobs) on the generator.
     Currently polls for results every 5s.  Yields one Status object per test
     as results become available.
 
@@ -415,7 +429,13 @@ def wait_for_results(afe, tko, jobs):
 
             local_jobs.remove(job)
             for result in _yield_job_results(afe, tko, job):
-                yield result
+                # The caller can 'send' new jobs (i.e. retry jobs)
+                # to this generator at any time.
+                new_jobs = (yield result)
+                if new_jobs:
+                    local_jobs.extend(new_jobs)
+                    # Return nothing if 'send' is called
+                    yield None
 
         time.sleep(5)
 

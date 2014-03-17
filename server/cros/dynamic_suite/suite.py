@@ -8,8 +8,10 @@ import common
 
 from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.client.common_lib import control_data
+from autotest_lib.client.common_lib import enum
 from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib import site_utils, utils, error
+from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
@@ -17,6 +19,193 @@ from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.server.cros.dynamic_suite import reporting
 from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.server.cros.dynamic_suite.job_status import Status
+
+
+class RetryHandler(object):
+    """Maintain retry information.
+
+    @var _retry_map: A dictionary that stores retry history.
+            The key is afe job id. The value is a dictionary.
+            {job_id: {'state':RetryHandler.States, 'retry_max':int}}
+            - state:
+                The retry state of a job.
+                NOT_ATTEMPTED:
+                    We haven't done anything about the job.
+                ATTEMPTED:
+                    We've made an attempt to schedule a retry job. The
+                    scheduling may or may not be successful, e.g.
+                    it might encounter an rpc error. Note failure
+                    in scheduling a retry is different from a retry job failure.
+                    For each job, we only attempt to schedule a retry once.
+                    For example, assume we have a test with JOB_RETRIES=5 and
+                    its second retry job failed. When we attempt to create
+                    a third retry job to retry the second, we hit an rpc
+                    error. In such case, we will give up on all following
+                    retries.
+                RETRIED:
+                    A retry job has already been successfully
+                    scheduled.
+            - retry_max:
+                The maximum of times the job can still
+                be retried, taking into account retries
+                that have occurred.
+    @var _retry_level: A retry might be triggered only if the result
+            is worse than the level.
+    """
+
+    States = enum.Enum('NOT_ATTEMPTED', 'ATTEMPTED', 'RETRIED',
+                       start_value=1, step=1)
+
+    def __init__(self, initial_jobs_to_tests, retry_level='WARN'):
+        """Initialize RetryHandler.
+
+        @param initial_jobs_to_tests: A dictionary that maps a job id to
+                a ControlData object. This dictionary should contain
+                jobs that are originally scheduled by the suite.
+        @param retry_level: A retry might be triggered only if the result is
+                worse than the level.
+
+        """
+        self._retry_map = {}
+        self._retry_level = retry_level
+        for job_id, test in initial_jobs_to_tests.items():
+            if test.job_retries > 0:
+                self.add_job(new_job_id=job_id,
+                             retry_max=test.job_retries)
+
+
+    def add_job(self, new_job_id, retry_max):
+        """Add a newly-created job to the retry map.
+
+        @param new_job_id: The afe_job_id of a newly created job.
+        @param retry_max: The maximum of times that we could retry
+                          the test if the job fails.
+
+        @raises ValueError if new_job_id is already in retry map.
+
+        """
+        if new_job_id in self._retry_map:
+            raise ValueError('add_job called when job is already in retry map.')
+
+        self._retry_map[new_job_id] = {
+                'state': self.States.NOT_ATTEMPTED,
+                'retry_max': retry_max}
+
+
+    def should_retry(self, result):
+        """Check whether we should retry a job based on its result.
+
+        We will retry the job that corresponds to the result
+        when all of the following are true.
+        a) The test was actually executed, meaning that if
+           a job was aborted before it could ever reach the state
+           of 'Running', the job will not be retried.
+        b) The result is worse than |self._retry_level| which
+           defaults to 'WARN'.
+        c) The test requires retry, i.e. the job has an entry in the retry map.
+        d) We haven't made any retry attempt yet, i.e. state == NOT_ATTEMPTED
+           Note that if a test has JOB_RETRIES=5, and the second time
+           it was retried it hit an rpc error, we will give up on
+           all following retries.
+        e) The job has not reached its retry max, i.e. retry_max > 0
+
+        @param result: A result, encapsulating the status of the job.
+
+        @returns: True if we should retry the job.
+
+        """
+        if (not result.test_executed or
+            not result.is_worse_than(
+                job_status.Status(self._retry_level, '', 'reason'))):
+            return False
+        failed_job_id = result.id
+        return (failed_job_id in self._retry_map and
+                self._retry_map[failed_job_id]['state'] ==
+                        self.States.NOT_ATTEMPTED and
+                self._retry_map[failed_job_id]['retry_max'] > 0)
+
+
+    def add_retry(self, old_job_id, new_job_id):
+        """Record a retry.
+
+        Update retry map with the retry information.
+
+        @param old_job_id: The afe_job_id of the job that is retried.
+        @param new_job_id: The afe_job_id of the retry job.
+
+        @raises KeyError if old_job_id isn't in the retry map.
+        @raises ValueError if we have already retried or made an attempt
+                to retry the old job.
+
+        """
+        old_record = self._retry_map[old_job_id]
+        if old_record['state'] != self.States.NOT_ATTEMPTED:
+            raise ValueError(
+                    'We have already retried or attempted to retry job %d' %
+                    old_job_id)
+        old_record['state'] = self.States.RETRIED
+        self.add_job(new_job_id=new_job_id,
+                     retry_max=old_record['retry_max'] - 1)
+
+
+    def set_attempted(self, job_id):
+        """Set the state of the job to ATTEMPTED.
+
+        @param job_id: afe_job_id of a job.
+
+        @raises KeyError if job_id isn't in the retry map.
+        @raises ValueError if the current state is not NOT_ATTEMPTED.
+
+        """
+        current_state = self._retry_map[job_id]['state']
+        if current_state != self.States.NOT_ATTEMPTED:
+            # We are supposed to retry or attempt to retry each job
+            # only once. Raise an error if this is not the case.
+            raise ValueError('Unexpected state transition: %s -> %s' %
+                             (self.States.get_string(current_state),
+                              self.States.get_string(self.States.ATTEMPTED)))
+        else:
+            self._retry_map[job_id]['state'] = self.States.ATTEMPTED
+
+
+    def has_following_retry(self, result):
+        """Check whether there will be a following retry.
+
+        We have the following cases for a given job id (result.id),
+        - no retry map entry -> retry not required, no following retry
+        - has retry map entry:
+            - already retried -> has following retry
+            - has not retried
+                (this branch can be handled by checking should_retry(result))
+                - retry_max == 0 --> the last retry job, no more retry
+                - retry_max > 0
+                   - attempted, but has failed in scheduling a
+                     following retry due to rpc error  --> no more retry
+                   - has not attempped --> has following retry if test failed.
+
+        @param result: A result, encapsulating the status of the job.
+
+        @returns: True, if there will be a following retry.
+                  False otherwise.
+
+        """
+        return (result.test_executed and result.id in self._retry_map and (
+                self._retry_map[result.id]['state'] == self.States.RETRIED or
+                self.should_retry(result)))
+
+
+    def get_retry_max(self, job_id):
+        """Get the maximum times the job can still be retried.
+
+        @param job_id: afe_job_id of a job.
+
+        @returns: An int, representing the maximum times the job can still be
+                  retried.
+        @raises KeyError if job_id isn't in the retry map.
+
+        """
+        return self._retry_map[job_id]['retry_max']
+
 
 class Suite(object):
     """
@@ -34,7 +223,13 @@ class Suite(object):
     @var _afe: an instance of AFE as defined in server/frontend.py.
     @var _tko: an instance of TKO as defined in server/frontend.py.
     @var _jobs: currently scheduled jobs, if any.
+    @var _jobs_to_tests: a dictionary that maps job ids to tests represented
+                         ControlData objects.
     @var _cf_getter: a control_file_getter.ControlFileGetter
+    @var _retry: a bool value indicating whether jobs should be retried on
+                 failure.
+    @var _retry_handler: a RetryHandler object.
+
     """
 
 
@@ -236,7 +431,7 @@ class Suite(object):
                  file_experimental_bugs=False, suite_job_id=None,
                  ignore_deps=False, extra_deps=[],
                  priority=priorities.Priority.DEFAULT, forgiving_parser=True,
-                 wait_for_results=True):
+                 wait_for_results=True, job_retry=True):
         """
         Constructor
 
@@ -268,6 +463,10 @@ class Suite(object):
         @param wait_for_results: Set to False to run the suite job without
                                  waiting for test jobs to finish. Default is
                                  True.
+        @param job_retry: A bool value indicating whether jobs should be retired
+                          on failure. If True, the field 'JOB_RETRIES' in
+                          control files will be respected. If False, do not
+                          retry.
 
         """
         def combined_predicate(test):
@@ -288,6 +487,7 @@ class Suite(object):
                                                          debug=False)
         self._pool = pool
         self._jobs = []
+        self._jobs_to_tests = {}
         self._tests = Suite.find_and_parse_tests(self._cf_getter,
                         self._predicate, self._tag, add_experimental=True,
                         forgiving_parser=forgiving_parser)
@@ -300,6 +500,9 @@ class Suite(object):
         self._ignore_deps = ignore_deps
         self._extra_deps = extra_deps
         self._priority = priority
+        self._job_retry=job_retry
+        # RetryHandler to be initialized in schedule()
+        self._retry_handler = None
         self.wait_for_results = wait_for_results
 
 
@@ -325,14 +528,18 @@ class Suite(object):
         return filter(lambda t: t.experimental, self.tests)
 
 
-    def _create_job(self, test):
+    def _create_job(self, test, retry_for=None):
         """
         Thin wrapper around frontend.AFE.create_job().
 
         @param test: ControlData object for a test to run.
-        @return a frontend.Job object with an added test_name member.
-                test_name is used to preserve the higher level TEST_NAME
-                name of the job.
+        @param retry_for: If the to-be-created job is a retry for an
+                          old job, the afe_job_id of the old job will
+                          be passed in as |retry_for|, which will be
+                          recorded in the new job's keyvals.
+        @returns: A frontend.Job object with an added test_name member.
+                  test_name is used to preserve the higher level TEST_NAME
+                  name of the job.
         """
         if self._ignore_deps:
             job_deps = []
@@ -348,6 +555,15 @@ class Suite(object):
         # the afe from a suite job, as only the latter will get requeued
         # when a special task fails.
         job_deps.append(self._board)
+        keyvals={constants.JOB_BUILD_KEY: self._build,
+                 constants.JOB_SUITE_KEY: self._tag,
+                 constants.JOB_EXPERIMENTAL_KEY: test.experimental}
+        if retry_for:
+            # We drop the old job's id in the new job's keyval file
+            # so that later our tko parser can figure out the retring
+            # relationship and invalidate the results of the old job
+            # in tko database.
+            keyvals[constants.RETRY_ORIGINAL_JOB_ID] = retry_for
 
         test_obj = self._afe.create_job(
             control_file=test.text,
@@ -355,9 +571,7 @@ class Suite(object):
             control_type=test.test_type.capitalize(),
             meta_hosts=[self._board]*test.sync_count,
             dependencies=job_deps,
-            keyvals={constants.JOB_BUILD_KEY: self._build,
-                     constants.JOB_SUITE_KEY: self._tag,
-                     constants.JOB_EXPERIMENTAL_KEY: test.experimental},
+            keyvals=keyvals,
             max_runtime_mins=self._max_runtime_mins,
             timeout_mins=self._timeout_mins,
             parent_job_id=self._suite_job_id,
@@ -370,6 +584,104 @@ class Suite(object):
         return test_obj
 
 
+    def _schedule_test(self, record, test, retry_for=None, ignore_errors=False):
+        """Schedule a single test and return the job.
+
+        Schedule a single test by creating a job.
+        And then update relevant data structures that are used to
+        keep track of all running jobs.
+
+        Emit TEST_NA if it failed to schedule the test due to
+        NoEligibleHostException or a non-existent board label.
+
+        @param record: A callable to use for logging.
+                       prototype: record(base_job.status_log_entry)
+        @param test: ControlData for a test to run.
+        @param retry_for: If we are scheduling a test to retry an
+                          old job, the afe_job_id of the old job
+                          will be passed in as |retry_for|.
+        @param ignore_errors: If True, when an rpc error occur, ignore
+                             the error and will return None.
+                             If False, rpc errors will be raised.
+
+        @returns: A frontend.Job object if the test is successfully scheduled.
+                  Returns None if scheduling failed due to
+                  NoEligibleHostException or a non-existent board label.
+                  Returns None if it encounters other rpc errors we don't know
+                  how to handle and ignore_errors is False.
+
+        """
+        msg = 'Scheduling %s' % test.name
+        if retry_for:
+            msg = msg + ', to retry afe job %d' % retry_for
+        logging.debug(msg)
+        begin_time_str = datetime.datetime.now().strftime(job_status.TIME_FMT)
+        try:
+            job = self._create_job(test, retry_for=retry_for)
+        except error.NoEligibleHostException:
+            logging.debug('%s not applicable for this board/pool. '
+                          'Emitting TEST_NA.', test.name)
+            Status('TEST_NA', test.name, 'Unsatisfiable DEPENDENCIES',
+                   begin_time_str=begin_time_str).record_all(record)
+        except proxy.ValidationError as e:
+            # The goal here is to treat a dependency on a
+            # non-existent board label the same as a
+            # dependency on a board that exists, but for which
+            # there's no hardware.
+            #
+            # As of this writing, the particular case we
+            # want looks like this:
+            #  1) e.problem_keys is a dictionary
+            #  2) e.problem_keys['meta_hosts'] exists as
+            #     the only key in the dictionary.
+            #  3) e.problem_keys['meta_hosts'] matches this
+            #     pattern: "Label "board:.*" not found"
+            #
+            # We check for conditions 1) and 2) on the
+            # theory that they're relatively immutable.
+            # We don't check condition 3) because it seems
+            # likely to be a maintenance burden, and for the
+            # times when we're wrong, being right shouldn't
+            # matter enough (we _hope_).
+            #
+            # If we don't recognize the error, we pass
+            # the buck to the outer try in this function,
+            # which immediately fails the suite.
+            if (not isinstance(e.problem_keys, dict) or
+                    len(e.problem_keys) != 1 or
+                    'meta_hosts' not in e.problem_keys):
+                raise e
+            logging.debug('Validation error: %s', str(e))
+            logging.debug('Assuming label not found')
+            Status('TEST_NA', test.name, e.problem_keys.values()[0],
+                   begin_time_str=begin_time_str).record_all(record)
+        except (error.RPCException, proxy.JSONRPCException) as e:
+            if retry_for:
+                # Mark that we've attempted to retry the old job.
+                self._retry_handler.set_attempted(job_id=retry_for)
+            if ignore_errors:
+                logging.error('Failed to schedule test: %s, Reason: %s',
+                              test.name, e)
+            else:
+                raise e
+        else:
+            self._jobs.append(job)
+            self._jobs_to_tests[job.id] = test
+            if retry_for:
+                # A retry job was just created, record it.
+                self._retry_handler.add_retry(
+                        old_job_id=retry_for, new_job_id=job.id)
+                retry_count = (test.job_retries -
+                               self._retry_handler.get_retry_max(job.id))
+                logging.debug('Job %d created to retry job %d. '
+                              'Have retried for %d time(s)',
+                              job.id, retry_for, retry_count)
+            if self._results_dir:
+                self._remember_provided_job_id(job)
+            return job
+        return None
+
+
     def schedule(self, record, add_experimental=True):
         #pylint: disable-msg=C0111
         """
@@ -378,6 +690,8 @@ class Suite(object):
         frontend.Job objects representing each scheduled job will be put in
         |self._jobs|.
 
+        @param record: A callable to use for logging.
+                       prototype: record(base_job.status_log_entry)
         @param add_experimental: schedule experimental tests as well, or not.
         @returns: The number of tests that were scheduled.
         """
@@ -386,7 +700,6 @@ class Suite(object):
                       len(self.unstable_tests()))
         n_scheduled = 0
 
-        begin_time_str = datetime.datetime.now().strftime(job_status.TIME_FMT)
         Status('INFO', 'Start %s' % self._tag).record_result(record)
         try:
             tests = self.stable_tests()
@@ -396,57 +709,15 @@ class Suite(object):
                     tests.append(test)
 
             for test in tests:
-                logging.debug('Scheduling %s', test.name)
-                try:
-                    job = self._create_job(test)
-                except error.NoEligibleHostException:
-                    logging.debug('%s not applicable for this board/pool. '
-                                  'Emitting TEST_NA.', test.name)
-                    Status('TEST_NA', test.name, 'Unsatisfiable DEPENDENCIES',
-                           begin_time_str=begin_time_str).record_all(record)
-                except proxy.ValidationError as e:
-                    # The goal here is to treat a dependency on a
-                    # non-existent board label the same as a
-                    # dependency on a board that exists, but for which
-                    # there's no hardware.
-                    #
-                    # As of this writing, the particular case we
-                    # want looks like this:
-                    #  1) e.problem_keys is a dictionary
-                    #  2) e.problem_keys['meta_hosts'] exists as
-                    #     the only key in the dictionary.
-                    #  3) e.problem_keys['meta_hosts'] matches this
-                    #     pattern: "Label "board:.*" not found"
-                    #
-                    # We check for conditions 1) and 2) on the
-                    # theory that they're relatively immutable.
-                    # We don't check condition 3) because it seems
-                    # likely to be a maintenance burden, and for the
-                    # times when we're wrong, being right shouldn't
-                    # matter enough (we _hope_).
-                    #
-                    # If we don't recognize the error, we pass
-                    # the buck to the outer try in this function,
-                    # which immediately fails the suite.
-                    if (not isinstance(e.problem_keys, dict) or
-                            len(e.problem_keys) != 1 or
-                            'meta_hosts' not in e.problem_keys):
-                        raise e
-                    logging.debug('Validation error: %s', str(e))
-                    logging.debug('Assuming label not found')
-                    Status('TEST_NA', self._tag, e.problem_keys.values()[0],
-                           begin_time_str=begin_time_str).record_all(record)
-                else:
-                    self._jobs.append(job)
+                if self._schedule_test(record, test):
                     n_scheduled += 1
-
-            if self._results_dir:
-                self._remember_scheduled_job_ids()
         except Exception:  # pylint: disable=W0703
             logging.error(traceback.format_exc())
             Status('FAIL', self._tag,
                    'Exception while scheduling suite').record_result(record)
 
+        self._retry_handler = RetryHandler(
+                initial_jobs_to_tests=self._jobs_to_tests)
         return n_scheduled
 
 
@@ -457,6 +728,9 @@ class Suite(object):
         @param result: A result, encapsulating the status of the failed job.
         @return: True if we should file bugs for this failure.
         """
+        if self._retry_handler.has_following_retry(result):
+            return False
+
         is_not_experimental = (
             constants.EXPERIMENTAL_PREFIX not in result._test_name and
             constants.EXPERIMENTAL_PREFIX not in result._job_name)
@@ -497,6 +771,16 @@ class Suite(object):
                 elif (self._results_dir and isinstance(result, Status)):
                     self._remember_test_status_job_id(result)
 
+                if self._job_retry and self._retry_handler.should_retry(result):
+                    new_job = self._schedule_test(
+                            record=record, test=self._jobs_to_tests[result.id],
+                            retry_for=result.id, ignore_errors=True)
+                    if new_job:
+                        results_generator.send([new_job])
+
+                # TODO (fdeng): If the suite times out before a retry could
+                # finish, we would lose the chance to file a bug for the
+                # original job.
                 if self.should_file_bug(result):
                     job_views = self._tko.run('get_detailed_test_views',
                                               afe_job_id=result.id)
@@ -532,14 +816,6 @@ class Suite(object):
         if self._jobs:
             job_ids = [job.id for job in self._jobs]
             self._afe.run('abort_host_queue_entries', job__id__in=job_ids)
-
-
-    def _remember_scheduled_job_ids(self):
-        """
-        Record scheduled job ids as keyvals, so they can be referenced later.
-        """
-        for job in self._jobs:
-            self._remember_provided_job_id(job)
 
 
     def _remember_provided_job_id(self, job):

@@ -237,7 +237,7 @@ class SuiteSpec(object):
                  suite_dependencies=[], version_prefix=None,
                  bug_template={}, devserver_url=None,
                  priority=priorities.Priority.DEFAULT, predicate=None,
-                 wait_for_results=True, **dargs):
+                 wait_for_results=True, job_retry=True, **dargs):
         """
         Vets arguments for reimage_and_run() and populates self with supplied
         values.
@@ -338,6 +338,7 @@ class SuiteSpec(object):
         self.priority = priority
         self.predicate = predicate
         self.wait_for_results = wait_for_results
+        self.job_retry = job_retry
 
 
 def skip_reimage(g):
@@ -387,6 +388,9 @@ def reimage_and_run(**dargs):
                       included in suite. If argument is absent, suite
                       behavior will default to creating a suite of based
                       on the SUITE field of control files.
+    @param job_retry: A bool value indicating whether jobs should be retired
+                      on failure. If True, the field 'JOB_RETRIES' in control
+                      files will be respected. If False, do not retry.
 
     @raises AsynchronousBuildFailure: if there was an issue finishing staging
                                       from the devserver.
@@ -476,7 +480,8 @@ def _perform_reimage_and_run(spec, afe, tko, predicate, suite_job_id=None):
         file_bugs=spec.file_bugs,
         file_experimental_bugs=spec.file_experimental_bugs,
         suite_job_id=suite_job_id, extra_deps=spec.suite_dependencies,
-        priority=spec.priority, wait_for_results=spec.wait_for_results)
+        priority=spec.priority, wait_for_results=spec.wait_for_results,
+        job_retry=spec.job_retry)
 
     # Now we get to asychronously schedule tests.
     suite.schedule(spec.job.record_entry, spec.add_experimental)

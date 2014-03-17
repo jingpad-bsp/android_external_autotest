@@ -52,6 +52,7 @@ class ControlData(object):
         self.test_category = ''
         self.test_class = ''
         self.retries = 0
+        self.job_retries = 0
 
         diff = REQUIRED_VARS - set(vars)
         if len(diff) > 0:
@@ -178,6 +179,9 @@ class ControlData(object):
 
     def set_retries(self, val):
         self._set_int('retries', val)
+
+    def set_job_retries(self, val):
+        self._set_int('job_retries', val)
 
 
     def set_bug_template(self, val):
