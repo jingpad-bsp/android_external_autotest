@@ -106,7 +106,10 @@ class TimeoutResetTest(ActivationTest):
         time.sleep(LONG_TIMEOUT)
         self.test.CheckResetCalled(True)
 
-        # At this point, a service should never get created.
+        # The reset above will destroy the current service.
+        # Wait a bit for the current service to get destroyed and make sure a
+        # new service doesn't get created.
+        time.sleep(LONG_TIMEOUT)
         if self.test.FindCellularService(False):
             raise error.TestError('There should be no cellular service.')
 
