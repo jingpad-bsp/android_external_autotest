@@ -3,11 +3,10 @@
 # found in the LICENSE file.
 
 import os
-import re
 import sys
 
 from autotest_lib.client.bin import utils
-from autotest_lib.client.cros import constants, httpd
+from autotest_lib.client.cros import constants
 from autotest_lib.server import autotest
 
 class DisplayClient(object):
@@ -29,37 +28,19 @@ class DisplayClient(object):
         """
         self._client = host
         self._display_xmlrpc_client = None
-        self._http_listener = None
-        self._server_ip = None
-        self._server_port = None
+        module_dir = os.path.dirname(sys.modules[__name__].__file__)
+        self._source_images_dir = os.path.join(module_dir, 'calibration_images')
+        self._dest_tmp_dir = '/tmp'
 
 
-    def initialize(self, run_httpd=True):
+    def initialize(self):
         """Initializes some required servers, like HTTP daemon, RPC connection.
-
-        @param run_httpd: True to run HTTP daemon, to serve the calibration
-                          images.
         """
         # Make sure the client library is on the device so that the proxy code
         # is there when we try to call it.
         client_at = autotest.Autotest(self._client)
         client_at.install()
         self.connect()
-
-        if run_httpd:
-            # TODO(waihong): Auto-generate the calibration images.
-            module_dir = os.path.dirname(sys.modules[__name__].__file__)
-            image_dir = os.path.join(module_dir, 'calibration_images')
-            self._server_port = utils.get_unused_port()
-            self._http_listener = httpd.HTTPListener(
-                    port=self._server_port,
-                    docroot=image_dir)
-            self._http_listener.run()
-            # SSH_CONNECTION is of the form:
-            # [client_ip] [client_port] [server_ip] [server_port]
-            self._server_ip = re.search(
-                    r'([0-9.]+) \d+ [0-9.]+ \d+',
-                    self._client.run('echo $SSH_CONNECTION').stdout).group(1)
 
 
     def connect(self):
@@ -77,8 +58,6 @@ class DisplayClient(object):
 
     def cleanup(self):
         """Cleans up."""
-        if self._http_listener:
-            self._http_listener.stop()
         self._client.rpc_disconnect_all()
 
 
@@ -100,9 +79,10 @@ class DisplayClient(object):
 
         @param resolution: A tuple (width, height) of resolution.
         """
-        resolution_str = '%dx%d' % resolution
-        page_url = ('http://%s:%s/%s.png' %
-                    (self._server_ip, self._server_port, resolution_str))
+        filename = '%dx%d.png' % resolution
+        image_path = os.path.join(self._source_images_dir, filename)
+        self._client.send_file(image_path, self._dest_tmp_dir)
+        page_url = ('file://%s/%s' % (self._dest_tmp_dir, filename))
         self._display_xmlrpc_client.load_url(page_url)
 
 

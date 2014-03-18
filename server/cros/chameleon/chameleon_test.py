@@ -19,15 +19,13 @@ class ChameleonTest(test.test):
     on cleanup.
     """
 
-    def initialize(self, host, run_httpd=True):
+    def initialize(self, host):
         """Initializes.
 
         @param host: The Host object of DUT.
-        @param run_httpd: True to run HTTP daemon, to serve the calibration
-                          images.
         """
         self.display_client = display_client.DisplayClient(host)
-        self.display_client.initialize(run_httpd)
+        self.display_client.initialize()
         self.chameleon = host.chameleon
         self.chameleon_port = self._get_connected_port()
         if self.chameleon_port is None:
