@@ -1,0 +1,4 @@
+# LOAD section with no flags set at all.
+/opt/google/chrome/nacl_helper_bootstrap
+# TODO(keescook): futility is built weird: crbug.com/224734
+/usr/bin/futility

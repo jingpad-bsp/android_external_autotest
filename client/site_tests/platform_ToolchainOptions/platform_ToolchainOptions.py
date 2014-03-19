@@ -13,6 +13,9 @@ from optparse import OptionParser
 FILE_CMD="file -m /usr/local/share/misc/magic.mgc"
 
 class ToolchainOptionSet:
+    """
+    Handles a set of hits, along with potential whitelists to ignore.
+    """
     def __init__(self, description, bad_files, whitelist_file):
         self.description = description
         self.bad_set = set(bad_files.splitlines())
@@ -21,6 +24,12 @@ class ToolchainOptionSet:
 
 
     def process_whitelist_with_private(self, whitelist_file):
+        """
+        Filter out hits found on non-comment lines in the whitelist and
+        and private whitelist.
+
+        @param whitelist_file: path to whitelist file
+        """
         whitelist_files = [whitelist_file]
         private_file = os.path.join(os.path.dirname(whitelist_file),
                                     "private_" +
@@ -30,6 +39,11 @@ class ToolchainOptionSet:
 
 
     def process_whitelist(self, whitelist_file):
+        """
+        Filter out hits found on non-comment lines in the whitelist.
+
+        @param whitelist_file: path to whitelist file
+        """
         if not os.path.isfile(whitelist_file):
             self.whitelist_set = self.whitelist_set.union(set([]))
         else:
@@ -43,6 +57,11 @@ class ToolchainOptionSet:
 
 
     def process_whitelists(self, whitelist_files):
+        """
+        Filter out hits found in a list of whitelist files.
+
+        @param whitelist_files: list of paths to whitelist files
+        """
         for whitelist_file in whitelist_files:
             self.process_whitelist(whitelist_file)
 
@@ -86,6 +105,9 @@ class ToolchainOptionSet:
 
 
 class platform_ToolchainOptions(test.test):
+    """
+    Tests for various expected conditions on ELF binaries in the image.
+    """
     version = 2
 
     def get_cmd(self, test_cmd, find_options=""):
@@ -114,6 +136,17 @@ class platform_ToolchainOptions(test.test):
 
     def create_and_filter(self, description, cmd, whitelist_file,
                           find_options=""):
+        """
+        Runs a command, with "{}" replaced (via "find -exec") with the
+        target ELF binary. If the command fails, the file is marked as
+        failing the test. Results are filtered against the provided
+        whitelist file.
+
+        @param description: text name of the check being done
+        @param cmd: command to run via find's -exec option
+        @param whitelist_file: list of failures to ignore
+        @param find_options: additional options for find to limit the scope
+        """
         full_cmd = self.get_cmd(cmd, find_options)
         bad_files = utils.system_output(full_cmd)
         cso = ToolchainOptionSet(description, bad_files, whitelist_file)
@@ -204,6 +237,16 @@ class platform_ToolchainOptions(test.test):
                                                   stack_cmd,
                                                   stack_whitelist))
 
+        # Verify all binaries have W^X LOAD program headers.
+        loadwx_cmd = ("%s -lW {} 2>&1 | "
+                      "grep \"LOAD\" | egrep -v \"(RW |R E)\" | "
+                      "wc -l | grep -q \"^0$\"" % readelf_cmd)
+        loadwx_whitelist = os.path.join(self.bindir, "loadwx_whitelist")
+        option_sets.append(self.create_and_filter("LOAD Writable and Exec",
+                                                  loadwx_cmd,
+                                                  loadwx_whitelist))
+
+        # Verify ARM binaries are all using VFP registers.
         if (options.enable_hardfp and utils.get_cpu_arch() == 'arm'):
             hardfp_cmd = ("%s -A {} 2>&1 | "
                           "egrep -q \"Tag_ABI_VFP_args: VFP registers\"" %
