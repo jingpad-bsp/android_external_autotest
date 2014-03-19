@@ -11,7 +11,7 @@ kmem::9:
 wheel::10:root
 floppy::11:root
 news::13:news
-uucp::14:uucp
+uucp::14:uucp,gpsd
 console::17:
 audio::18:cras,chronos
 cdrom::19:
