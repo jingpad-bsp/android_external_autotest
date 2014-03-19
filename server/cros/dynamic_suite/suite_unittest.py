@@ -222,7 +222,8 @@ class SuiteTest(mox.MoxTestBase):
         @param suite_deps: If True, add suite level dependencies.
         """
         recorder.record_entry(
-            StatusContains.CreateFromStrings('INFO', 'Start %s' % self._TAG))
+            StatusContains.CreateFromStrings('INFO', 'Start %s' % self._TAG),
+            log_in_subdir=False)
         for test in self.files.values():
             if not add_experimental and test.experimental:
                 continue
@@ -253,11 +254,14 @@ class SuiteTest(mox.MoxTestBase):
             if raises:
               job_mock.AndRaise(error.NoEligibleHostException())
               recorder.record_entry(
-                      StatusContains.CreateFromStrings('START', test.name))
+                      StatusContains.CreateFromStrings('START', test.name),
+                      log_in_subdir=False)
               recorder.record_entry(
-                      StatusContains.CreateFromStrings('TEST_NA', test.name))
+                      StatusContains.CreateFromStrings('TEST_NA', test.name),
+                      log_in_subdir=False)
               recorder.record_entry(
-                      StatusContains.CreateFromStrings('END', test.name))
+                      StatusContains.CreateFromStrings('END', test.name),
+                      log_in_subdir=False)
             else:
               job_mock.AndReturn(FakeJob())
 
@@ -383,11 +387,14 @@ class SuiteTest(mox.MoxTestBase):
             status = result[0]
             test_name = result[1]
             recorder.record_entry(
-                StatusContains.CreateFromStrings('START', test_name))
+                StatusContains.CreateFromStrings('START', test_name),
+                log_in_subdir=False)
             recorder.record_entry(
-                StatusContains.CreateFromStrings(*result)).InAnyOrder('results')
+                StatusContains.CreateFromStrings(*result),
+                log_in_subdir=False).InAnyOrder('results')
             recorder.record_entry(
-                StatusContains.CreateFromStrings('END %s' % status, test_name))
+                StatusContains.CreateFromStrings('END %s' % status, test_name),
+                log_in_subdir=False)
 
 
     def schedule_and_expect_these_results(self, suite, results, recorder):
@@ -428,7 +435,8 @@ class SuiteTest(mox.MoxTestBase):
 
         recorder = self.mox.CreateMock(base_job.base_job)
         recorder.record_entry(
-            StatusContains.CreateFromStrings('FAIL', self._TAG, 'waiting'))
+            StatusContains.CreateFromStrings('FAIL', self._TAG, 'waiting'),
+            log_in_subdir=False)
 
         self.mox.StubOutWithMock(suite, 'schedule')
         suite.schedule(recorder.record_entry, True)
@@ -449,10 +457,12 @@ class SuiteTest(mox.MoxTestBase):
 
         recorder = self.mox.CreateMock(base_job.base_job)
         recorder.record_entry(
-            StatusContains.CreateFromStrings('INFO', 'Start %s' % self._TAG))
+            StatusContains.CreateFromStrings('INFO', 'Start %s' % self._TAG),
+            log_in_subdir=False)
 
         recorder.record_entry(
-            StatusContains.CreateFromStrings('FAIL', self._TAG, 'scheduling'))
+            StatusContains.CreateFromStrings('FAIL', self._TAG, 'scheduling'),
+            log_in_subdir=False)
 
         self.mox.StubOutWithMock(suite, '_create_job')
         suite._create_job(mox.IgnoreArg()).AndRaise(

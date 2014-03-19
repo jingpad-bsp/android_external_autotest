@@ -12,6 +12,10 @@ import mox
 import shutil
 import tempfile
 import time
+import unittest
+import os
+
+import common
 
 from autotest_lib.server import frontend
 from autotest_lib.server.cros import host_lock_manager
@@ -532,6 +536,32 @@ class StatusTest(mox.MoxTestBase):
                 self.assertTrue(True in map(status.equals_record, results))
 
 
+    def testYieldSubdir(self):
+        """Make sure subdir are properly set for test and non-test status."""
+        job_tag = '0-owner/172.33.44.55'
+        job_name = 'broken_infra_job'
+        job = FakeJob(0, [FakeStatus('ERROR', 'SERVER_JOB', 'server error',
+                                     subdir='---', job_tag=job_tag),
+                          FakeStatus('GOOD', 'T0', '',
+                                     subdir='T0.subdir', job_tag=job_tag)],
+                      parent_job_id=54321)
+        for status in job.statuses:
+            status.entry['job'] = {'name': job_name}
+        self.expect_yield_job_entries(job)
+        self.mox.ReplayAll()
+        results = list(job_status._yield_job_results(self.afe, self.tko, job))
+        for i in range(len(results)):
+            result = results[i]
+            if result.test_name.endswith('SERVER_JOB'):
+                expected_name = '%s_%s' % (job_name, job.statuses[i].test_name)
+                expected_subdir = job_tag
+            else:
+                expected_name = job.statuses[i].test_name
+                expected_subdir = os.path.join(job_tag, job.statuses[i].subdir)
+            self.assertEqual(results[i].test_name, expected_name)
+            self.assertEqual(results[i].subdir, expected_subdir)
+
+
     def testGatherPerHostResults(self):
         """Should gather per host results."""
         # For the 0th job, the 1st entry is more bad/specific.
@@ -621,3 +651,7 @@ class StatusTest(mox.MoxTestBase):
                                                               group,
                                                               record_entity)
         self.assertFalse(success)
+
+
+if __name__ == '__main__':
+    unittest.main()

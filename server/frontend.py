@@ -140,8 +140,9 @@ class TKO(RpcClient):
         """
         if self._db is None:
           self._db = db.db()
-        fields = ['status', 'test_name', 'reason', 'test_started_time',
-                  'test_finished_time', 'afe_job_id', 'job_owner', 'hostname']
+        fields = ['status', 'test_name', 'subdir', 'reason',
+                  'test_started_time', 'test_finished_time', 'afe_job_id',
+                  'job_owner', 'hostname', 'job_tag']
         table = 'tko_test_view_2'
         where = 'job_tag like "%s-%%"' % job_id
         test_status = []

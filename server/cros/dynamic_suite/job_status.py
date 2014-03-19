@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import datetime, logging, time
+import datetime, logging, os, time
 
 
 from autotest_lib.client.common_lib import base_job, global_config, log
@@ -341,10 +341,20 @@ def _yield_job_results(afe, tko, job):
     contains_test_failure = any(_status_for_test(s) and s.status != 'GOOD'
                                 for s in statuses)
     for s in statuses:
+        # TKO parser uniquelly identifies a test run by
+        # (test_name, subdir). In dynamic suite, we need to emit
+        # a subdir for each status and make sure (test_name, subdir)
+        # in the suite job's status log is unique.
+        # For non-test status (i.e.SERVER_JOB, CLIENT_JOB),
+        # we use 'job_tag' from tko_test_view_2, which looks like
+        # '1246-owner/172.22.33.44'
+        # For normal test status, we use 'job_tag/subdir'
+        # which looks like '1246-owner/172.22.33.44/my_DummyTest.tag.subdir_tag'
         if _status_for_test(s):
             yield Status(s.status, s.test_name, s.reason,
                          s.test_started_time, s.test_finished_time,
-                         job.id, job.owner, s.hostname, job.name)
+                         job.id, job.owner, s.hostname, job.name,
+                         subdir=os.path.join(s.job_tag, s.subdir))
         else:
             if s.status != 'GOOD' and not contains_test_failure:
                 yield Status(s.status,
@@ -352,7 +362,8 @@ def _yield_job_results(afe, tko, job):
                                         s.test_name),
                              s.reason, s.test_started_time,
                              s.test_finished_time, job.id,
-                             job.owner, s.hostname, job.name)
+                             job.owner, s.hostname, job.name,
+                             subdir=s.job_tag)
 
 
 def wait_for_child_results(afe, tko, parent_job_id):
@@ -525,7 +536,7 @@ class Status(object):
 
     def __init__(self, status, test_name, reason='', begin_time_str=None,
                  end_time_str=None, job_id=None, owner=None, hostname=None,
-                 job_name=''):
+                 job_name='', subdir=None):
         """
         Constructor
 
@@ -542,6 +553,8 @@ class Status(object):
                          result ran on.
         @param job_name: The job name; Contains the test name with/without the
                          experimental prefix, the tag and the build.
+        @param subdir: The result directory of the test. It will be recorded
+                       as the subdir in the status.log file.
         """
         self._status = status
         self._test_name = test_name
@@ -550,6 +563,7 @@ class Status(object):
         self._owner = owner
         self._hostname = hostname
         self._job_name = job_name
+        self._subdir = subdir
         # Autoserv drops a keyval of the started time which eventually makes its
         # way here.  Therefore, if we have a starting time, we may assume that
         # the test reached Running and actually began execution on a drone.
@@ -608,8 +622,10 @@ class Status(object):
                prototype:
                    record_entry(base_job.status_log_entry)
         """
-        record_entry(Status.sle('START', None, self._test_name, '',
-                                None, self._begin_timestamp))
+        log_entry = Status.sle('START', self._subdir,
+                                self._test_name, '',
+                                None, self._begin_timestamp)
+        record_entry(log_entry, log_in_subdir=False)
 
 
     def record_result(self, record_entry):
@@ -620,8 +636,10 @@ class Status(object):
                prototype:
                    record_entry(base_job.status_log_entry)
         """
-        record_entry(Status.sle(self._status, None, self._test_name,
-                                self._reason, None, self._end_timestamp))
+        log_entry = Status.sle(self._status, self._subdir,
+                                self._test_name, self._reason, None,
+                                self._end_timestamp)
+        record_entry(log_entry, log_in_subdir=False)
 
 
     def record_end(self, record_entry):
@@ -632,8 +650,9 @@ class Status(object):
                prototype:
                    record_entry(base_job.status_log_entry)
         """
-        record_entry(Status.sle('END %s' % self._status, None, self._test_name,
-                                '', None, self._end_timestamp))
+        log_entry = Status.sle('END %s' % self._status, self._subdir,
+                               self._test_name, '', None, self._end_timestamp)
+        record_entry(log_entry, log_in_subdir=False)
 
 
     def record_all(self, record_entry):
@@ -702,3 +721,8 @@ class Status(object):
     def test_executed(self):
         """ If the test reached running an autoserv instance or not. """
         return self._test_executed
+
+    @property
+    def subdir(self):
+        """Subdir of test this status corresponds to."""
+        return self._subdir

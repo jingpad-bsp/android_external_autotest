@@ -66,7 +66,9 @@ class FakeStatus(object):
     @var reason: reason for failure, if any
     @var aborted: present and True if the job was aborted.  Optional.
     """
-    def __init__(self, code, name, reason, aborted=None, hostname=None):
+    def __init__(self, code, name, reason, aborted=None,
+                 hostname=None, subdir='fake_Test.tag.subdir_tag',
+                 job_tag='id-owner/hostname'):
         self.status = code
         self.test_name = name
         self.reason = reason
@@ -74,6 +76,8 @@ class FakeStatus(object):
         self.entry = {}
         self.test_started_time = '2012-11-11 11:11:11'
         self.test_finished_time = '2012-11-11 12:12:12'
+        self.job_tag=job_tag
+        self.subdir=subdir
         if aborted:
             self.entry['aborted'] = True
         if hostname:

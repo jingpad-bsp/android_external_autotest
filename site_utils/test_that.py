@@ -120,7 +120,7 @@ def schedule_local_suite(autotest_path, suite_predicate, afe, remote,
                              'test dependencies: %s', test.name,
                              unsatisfiable_deps)
     # Schedule tests, discard record calls.
-    return my_suite.schedule(lambda x: None,
+    return my_suite.schedule(lambda log_entry, log_in_subdir=False: None,
                              add_experimental=not no_experimental)
 
 
