@@ -1264,10 +1264,11 @@ class MeasurementLogger(threading.Thread):
                 # is not fixed.
                 try:
                     meas_array = meas[numpy.bitwise_and(tstart < t, t < tend)]
-                finally:
-                    logging.debug('timestamps %s' % t)
+                except ValueError, e:
+                    logging.debug('Error logging measurements: %s', str(e))
+                    logging.debug('timestamps %d %s' % (t.len, t))
                     logging.debug('timestamp start, end %f %f' % (tstart, tend))
-                    logging.debug('measurements %s' % meas)
+                    logging.debug('measurements %d %s' % (meas.len, meas))
 
                 # If sub-test terminated early, avoid calculating avg, std and
                 # min
