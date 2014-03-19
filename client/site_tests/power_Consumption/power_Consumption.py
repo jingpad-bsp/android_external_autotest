@@ -91,6 +91,10 @@ class power_Consumption(test.test):
         """Download audio and video files.
 
         This is also used as payload for download test.
+
+        Note, can reach payload via browser at
+          https://console.developers.google.com/storage/chromeos-test-public/big_buck_bunny
+        Start with README
         """
 
         repo = 'http://commondatastorage.googleapis.com/chromeos-test-public/'
@@ -100,14 +104,17 @@ class power_Consumption(test.test):
                 repo + 'big_buck_bunny/big_buck_bunny_trailer_400p.ogg',
                 repo + 'big_buck_bunny/big_buck_bunny_trailer_400p.webm',
                 repo + 'big_buck_bunny/big_buck_bunny_trailer_400p.vp8.webm',
+                repo + 'big_buck_bunny/big_buck_bunny_trailer_400p.vp9.webm',
                 repo + 'big_buck_bunny/big_buck_bunny_trailer_720p.mp4',
                 repo + 'big_buck_bunny/big_buck_bunny_trailer_720p.ogg',
                 repo + 'big_buck_bunny/big_buck_bunny_trailer_720p.webm',
                 repo + 'big_buck_bunny/big_buck_bunny_trailer_720p.vp8.webm',
+                repo + 'big_buck_bunny/big_buck_bunny_trailer_720p.vp9.webm',
                 repo + 'big_buck_bunny/big_buck_bunny_trailer_1080p.mp4',
                 repo + 'big_buck_bunny/big_buck_bunny_trailer_1080p.ogg',
                 repo + 'big_buck_bunny/big_buck_bunny_trailer_1080p.webm',
                 repo + 'big_buck_bunny/big_buck_bunny_trailer_1080p.vp8.webm',
+                repo + 'big_buck_bunny/big_buck_bunny_trailer_1080p.vp9.webm',
                 repo + 'wikimedia/Greensleeves.ogg',
                 ]
 
@@ -287,14 +294,17 @@ class power_Consumption(test.test):
                 ('vid400p_ogg', 'big_buck_bunny_trailer_400p.ogg'),
                 ('vid400p_vp8', 'big_buck_bunny_trailer_400p.webm'),
                 ('vid400p_vp8_1', 'big_buck_bunny_trailer_400p.vp8.webm'),
+                ('vid400p_vp9', 'big_buck_bunny_trailer_400p.vp9.webm'),
                 ('vid720_h264', 'big_buck_bunny_trailer_720p.mp4'),
                 ('vid720_ogg', 'big_buck_bunny_trailer_720p.ogg'),
                 ('vid720_vp8', 'big_buck_bunny_trailer_720p.webm'),
                 ('vid720_vp8_1', 'big_buck_bunny_trailer_720p.vp8.webm'),
+                ('vid720_vp9', 'big_buck_bunny_trailer_720p.vp9.webm'),
                 ('vid1080_h264', 'big_buck_bunny_trailer_1080p.mp4'),
                 ('vid1080_ogg', 'big_buck_bunny_trailer_1080p.ogg'),
                 ('vid1080_vp8', 'big_buck_bunny_trailer_1080p.webm'),
                 ('vid1080_vp8_1', 'big_buck_bunny_trailer_1080p.vp8.webm'),
+                ('vid1080_vp9', 'big_buck_bunny_trailer_1080p.vp9.webm'),
                 ('audio', 'Greensleeves.ogg'),
                 ]
 
@@ -302,9 +312,11 @@ class power_Consumption(test.test):
                 ('vid720_h264_fs', 'big_buck_bunny_trailer_720p.mp4'),
                 ('vid720_vp8_fs', 'big_buck_bunny_trailer_720p.webm'),
                 ('vid720_vp8_1_fs', 'big_buck_bunny_trailer_720p.vp8.webm'),
+                ('vid720_vp9_fs', 'big_buck_bunny_trailer_720p.vp9.webm'),
                 ('vid1080_h264_fs', 'big_buck_bunny_trailer_1080p.mp4'),
                 ('vid1080_vp8_fs', 'big_buck_bunny_trailer_1080p.webm'),
                 ('vid1080_vp8_1_fs', 'big_buck_bunny_trailer_1080p.vp8.webm'),
+                ('vid1080_vp9_fs', 'big_buck_bunny_trailer_1080p.vp9.webm'),
                 ]
 
             bg_urls += [
