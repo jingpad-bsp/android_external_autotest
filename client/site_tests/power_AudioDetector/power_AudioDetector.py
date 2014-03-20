@@ -3,12 +3,13 @@
 # found in the LICENSE file.
 
 import logging, threading, time
-from autotest_lib.client.bin import utils
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui_test, power_utils, rtc
+from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.cros import power_utils, rtc
 from autotest_lib.client.cros.audio import audio_helper
 
-class power_AudioDetector(cros_ui_test.UITest):
+class power_AudioDetector(test.test):
     version = 1
 
     def run_once(self, run_time_sec=60):
@@ -36,43 +37,42 @@ class power_AudioDetector(cros_ui_test.UITest):
         # time, so that the total playback time doesn't exceed it by much.
         audio_loop_time_sec = (react_ms + 500) / 1000
 
-        self.login()
+        with chrome.Chrome():
 
-        # Set a low audio volume to avoid annoying people during tests.
-        audio_helper.set_volume_levels(10, 100)
+            # Set a low audio volume to avoid annoying people during tests.
+            audio_helper.set_volume_levels(10, 100)
 
-        # Start playing audio file.
-        self._enable_audio_playback = True
-        thread = threading.Thread(target=self._play_audio,
-                                  args=(audio_loop_time_sec,))
-        thread.start()
+            # Start playing audio file.
+            self._enable_audio_playback = True
+            thread = threading.Thread(target=self._play_audio,
+                                      args=(audio_loop_time_sec,))
+            thread.start()
 
-        # Set an alarm to wake up the system in case the audio detector fails
-        # and the system suspends.
-        alarm_time = rtc.get_seconds() + run_time_sec
-        rtc.set_wake_alarm(alarm_time)
+            # Set an alarm to wake up the system in case the audio detector
+            # fails and the system suspends.
+            alarm_time = rtc.get_seconds() + run_time_sec
+            rtc.set_wake_alarm(alarm_time)
 
-        time.sleep(run_time_sec)
+            time.sleep(run_time_sec)
 
-        # Stop powerd to avoid suspending when the audio stops.
-        utils.system_output('stop powerd')
+            # Stop powerd to avoid suspending when the audio stops.
+            utils.system_output('stop powerd')
 
-        # Stop audio and wait for the audio thread to terminate.
-        self._enable_audio_playback = False
-        thread.join(timeout=(audio_loop_time_sec * 2))
-        if thread.is_alive():
-            logging.error('Audio thread did not terminate at end of test.')
+            # Stop audio and wait for the audio thread to terminate.
+            self._enable_audio_playback = False
+            thread.join(timeout=(audio_loop_time_sec * 2))
+            if thread.is_alive():
+                logging.error('Audio thread did not terminate at end of test.')
 
-        # Check powerd's log to make sure that no suspend took place.
-        powerd_log_path = '/var/log/power_manager/powerd.LATEST'
-        log = open(powerd_log_path, 'r').read()
-        if log.find('Starting suspend') != -1:
-            raise error.TestFail('System suspended while audio was playing.')
+            # Check powerd's log to make sure that no suspend took place.
+            powerd_log_path = '/var/log/power_manager/powerd.LATEST'
+            log = open(powerd_log_path, 'r').read()
+            if log.find('Starting suspend') != -1:
+                err_str = 'System suspended while audio was playing.'
+                raise error.TestFail(err_str)
 
 
     def cleanup(self):
-        if self.logged_in():
-            self.logout()
         utils.restart_job('powerd')
 
 
