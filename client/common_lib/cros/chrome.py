@@ -18,7 +18,8 @@ class Chrome(object):
 
     def __init__(self, logged_in=True, extension_paths=[], autotest_ext=False,
                  is_component=True, num_tries=3, extra_browser_args=None,
-                 auto_login=True, username=None, password=None):
+                 auto_login=True, gaia_login=False,
+                 username=None, password=None):
         """
         Constructor of telemetry wrapper.
 
@@ -30,9 +31,10 @@ class Chrome(object):
                              extensions.
         @param num_tries: Number of attempts to log in.
         @param extra_browser_args: Additional argument(s) to pass to the
-            browser. It can be a string or a list.
+                                   browser. It can be a string or a list.
         @param auto_login: Does not login automatically if this is False.
-            Useful if you need to examine oobe.
+                           Useful if you need to examine oobe.
+        @param gaia_login: Logs in to real gaia.
         @param username: Log in using this username instead of the default.
         @param username: Log in using this password instead of the default.
         """
@@ -67,6 +69,7 @@ class Chrome(object):
         b_options.create_browser_with_oobe = True
 
         b_options.auto_login = auto_login
+        b_options.gaia_login = gaia_login
         self.username = b_options.username if username is None else username
         self.password = b_options.password if password is None else password
         b_options.username = self.username
