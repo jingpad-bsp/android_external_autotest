@@ -252,11 +252,6 @@ class platform_FilePerms(test.test):
                     logging.warn('Ignoring filesystem "%s" with type "%s"',
                                  fs, fs_type)
                     continue
-                if fs.startswith('/media/removable'):
-                    # Work around lab issues, see crbug.com/335617.
-                    # TODO(jorgelo): remove this.
-                    logging.warn('Removable media "%s" present', fs)
-                    continue
                 if not fs in self.expected_mount_options:
                     logging.error('No expectations entry for "%s"', fs)
                     errors += 1
