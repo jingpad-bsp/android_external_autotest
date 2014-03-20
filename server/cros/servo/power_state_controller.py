@@ -4,8 +4,6 @@
 
 import time
 
-from autotest_lib.server.cros.servo import chrome_ec
-
 
 def _inherit_docstring(cls):
     """Decorator to propagate a docstring to a subclass's method.
@@ -198,126 +196,7 @@ class _PantherController(_PowerStateController):
         self._servo.set('pwr_button', 'release')
 
 
-class _ParrotController(_PowerStateController):
-
-    """Power-state controller for Parrot.
-
-    On Parrot, uncontrolled assertion of `cold_reset` sometimes
-    leaves the DUT unresponsive.  The `cold_reset()` method
-    implemented in this class is the only known, reliable way to
-    assert the `cold_reset` signal on Parrot.
-
-    The `rec_mode` signal on Parrot is finicky.  These are the
-    rules:
-     1. You can't read or write the signal unless the DUT is on.
-     2. The setting of the signal is only sampled during a cold
-        reset.  The sampled setting applies to every boot until the
-        next cold reset.
-     3. After cold reset, the signal is turned off.
-    N.B.  Rule 3 is subtle.  Although `rec_mode` is off after reset,
-    because of rule 2, the DUT will continue to boot with the prior
-    recovery mode setting until the next cold reset.
-
-    """
-
-    _RESET_HOLD_TIME = 0.0
-    _EC_RESET_DELAY = 0.5
-
-    # _PWR_BUTTON_READY_TIME: This represents the time after cold
-    #   reset until the EC will be able to see a power button press.
-    #   Used in power_off().
-    _PWR_BUTTON_READY_TIME = 4
-
-    # _REC_MODE_READY_TIME: This represents the time after power on
-    #   until the EC will be able to see changes to rec_mode.  Used
-    #   in power_on().
-    _REC_MODE_READY_TIME = 0.75
-
-    @_inherit_docstring(_PowerStateController)
-    def recovery_supported(self):
-        return True
-
-    @_inherit_docstring(_PowerStateController)
-    def cold_reset(self):
-        # The sequence here leaves the DUT powered on, similar to
-        # Chrome EC devices.
-        self._servo.set_nocheck('pwr_button', 'press')
-        super(_ParrotController, self).cold_reset()
-        self._servo.set_nocheck('pwr_button', 'release')
-
-    @_inherit_docstring(_PowerStateController)
-    def power_off(self):
-        self.cold_reset()
-        time.sleep(self._PWR_BUTTON_READY_TIME)
-        self._servo.power_short_press()
-
-    @_inherit_docstring(_PowerStateController)
-    def power_on(self, rec_mode=REC_OFF):
-        self._servo.power_short_press()
-        time.sleep(self._REC_MODE_READY_TIME)
-        self._servo.set_nocheck('rec_mode', rec_mode)
-        self.cold_reset()
-
-
-class _ChromeECController(_PowerStateController):
-
-    """Power-state controller for systems with a Chrome EC.
-
-    For these systems, after releasing 'cold_reset' the DUT is left
-    powered on.  Recovery mode is triggered by simulating keyboard
-    recovery by issuing commands to the EC.
-
-    """
-
-    _RESET_HOLD_TIME = 0.1
-    _EC_RESET_DELAY = 0.0
-
-    _EC_CONSOLE_DELAY = 1.2
-
-    @_inherit_docstring(_PowerStateController)
-    def __init__(self, servo):
-        super(_ChromeECController, self).__init__(servo)
-        self._ec = chrome_ec.ChromeEC(servo)
-
-    @_inherit_docstring(_PowerStateController)
-    def recovery_supported(self):
-        return True
-
-    @_inherit_docstring(_PowerStateController)
-    def power_off(self):
-        self.cold_reset()
-        time.sleep(self._EC_CONSOLE_DELAY)
-        self._servo.power_long_press()
-
-    @_inherit_docstring(_PowerStateController)
-    def power_on(self, rec_mode=REC_OFF):
-        if rec_mode == REC_ON:
-            # Reset the EC to force it back into RO code; this clears
-            # the EC_IN_RW signal, so the system CPU will trust the
-            # upcoming recovery mode request.
-            self.cold_reset()
-            # Restart the EC, but leave the system CPU off...
-            self._ec.reboot('ap-off')
-            time.sleep(self._EC_CONSOLE_DELAY)
-            # ... and tell the EC to tell the CPU we're in recovery mode.
-            self._ec.set_hostevent(chrome_ec.HOSTEVENT_KEYBOARD_RECOVERY)
-        self._servo.power_short_press()
-
-
-class _DaisyController(_ChromeECController):
-    """Power-state controller for Snow/Daisy systems."""
-    _EC_CONSOLE_DELAY = 0.4
-
-
 _CONTROLLER_BOARD_MAP = {
-    'daisy': _DaisyController,
-    'spring': _DaisyController,
-    'peach_pit': _DaisyController,
-    'link': _ServodController,
-    'lumpy': _ServodController,
-    'parrot': _ParrotController,
-    'stumpy': _ServodController,
-    'x86-alex': _ServodController,
     'panther': _PantherController,
     'monroe': _PantherController,
     'zako': _PantherController,
@@ -327,16 +206,17 @@ _CONTROLLER_BOARD_MAP = {
 def create_controller(servo, board):
     """Create a power state controller instance.
 
-    The controller class will be selected based on the provided
-    board type, and instantiated with the provided servo instance.
+    The controller class will be selected based on the provided board type, and
+    instantiated with the provided servo instance. Default controller is
+    _ServodController.
 
     @param servo Servo object that will be used to manipulate DUT
                  power states.
     @param board Board name of the DUT to be controlled.
 
     @returns An instance of a power state controller appropriate to
-             the given board type, or `None` if the board is
-             unsupported.
+             the given board type, default controller is _ServodController if no
+             controller is specified for the board.
 
     """
-    return _CONTROLLER_BOARD_MAP.get(board, _PowerStateController)(servo)
+    return _CONTROLLER_BOARD_MAP.get(board, _ServodController)(servo)
