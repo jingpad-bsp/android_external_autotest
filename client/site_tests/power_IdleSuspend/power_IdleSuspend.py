@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import errno, logging, os, shutil, tempfile, threading
+import logging, os, tempfile, threading
 from autotest_lib.client.bin import test, utils
-from autotest_lib.client.cros import pyauto_test, rtc, sys_power
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros import chrome
 
 POWER_MANAGER_SETTINGS = {
     'plugged_dim_ms': 1000,
@@ -21,7 +21,7 @@ POWER_MANAGER_SETTINGS = {
 SUSPEND_TIMEOUT_MS = 30000
 
 
-class power_IdleSuspend(pyauto_test.PyAutoTest):
+class power_IdleSuspend(test.test):
     """
     Verify power manager tries to suspend while idle.
 
@@ -66,36 +66,38 @@ class power_IdleSuspend(pyauto_test.PyAutoTest):
 
 
     def run_once(self):
-        # stop power manager before reconfiguring
-        logging.info('stopping powerd')
-        utils.run('stop powerd')
+        with chrome.Chrome():
+            # stop power manager before reconfiguring
+            logging.info('stopping powerd')
+            utils.run('stop powerd')
 
-        # override power manager settings
-        self.setup_power_manager()
+            # override power manager settings
+            self.setup_power_manager()
 
-        # start thread to wait for suspend
-        self.new_power_state = None
-        thread = threading.Thread(target=self.wait_for_suspend)
-        thread.start()
+            # start thread to wait for suspend
+            self.new_power_state = None
+            thread = threading.Thread(target=self.wait_for_suspend)
+            thread.start()
 
-        # restart powerd to pick up new settings
-        logging.info('restarting powerd')
-        utils.run('start powerd')
+            # restart powerd to pick up new settings
+            logging.info('restarting powerd')
+            utils.run('start powerd')
 
-        # wait for idle suspend
-        thread.join(SUSPEND_TIMEOUT_MS / 1000.)
+            # wait for idle suspend
+            thread.join(SUSPEND_TIMEOUT_MS / 1000.)
 
-        if thread.is_alive():
-            # thread join timed out - powerd didn't write to /sys/power/state
-            raise error.TestFail('timed out waiting for suspend')
+            if thread.is_alive():
+                # join timed out - powerd didn't write to /sys/power/state
+                raise error.TestFail('timed out waiting for suspend')
 
-        if self.new_power_state is None:
-            # probably an exception in the thread, check the log
-            raise error.TestError('reader thread crashed')
+            if self.new_power_state is None:
+                # probably an exception in the thread, check the log
+                raise error.TestError('reader thread crashed')
 
-        if self.new_power_state.strip() != 'mem':
-            # oops, power manager wrote something other than "mem"
-            raise error.TestFail('bad power state written to /sys/power/state')
+            if self.new_power_state.strip() != 'mem':
+                # oops, power manager wrote something other than "mem"
+                err_str = 'bad power state written to /sys/power/state'
+                raise error.TestFail(err_str)
 
 
     def cleanup(self):
