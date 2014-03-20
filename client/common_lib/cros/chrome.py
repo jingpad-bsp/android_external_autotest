@@ -17,7 +17,7 @@ class Chrome(object):
 
 
     def __init__(self, logged_in=True, extension_paths=[], autotest_ext=False,
-                 is_component=True, num_tries=1, extra_browser_args=None,
+                 is_component=True, num_tries=3, extra_browser_args=None,
                  auto_login=True, username=None, password=None):
         """
         Constructor of telemetry wrapper.
@@ -28,8 +28,7 @@ class Chrome(object):
                              invoke chrome.autotestPrivate.
         @param is_component: Whether extensions should be loaded as component
                              extensions.
-        @param num_tries: Number of attempts to log in. (Temporary for
-                          debugging).
+        @param num_tries: Number of attempts to log in.
         @param extra_browser_args: Additional argument(s) to pass to the
             browser. It can be a string or a list.
         @param auto_login: Does not login automatically if this is False.
