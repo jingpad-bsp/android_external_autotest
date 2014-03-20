@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 NAME = 'graphics_Piglit'
-AUTHOR = 'The Chromium OS Authors'
+AUTHOR = 'chromeos-gfx'
 PURPOSE = 'Collection of automated tests for OpenGL implementations.'
 CRITERIA = """
 TODO(ihf) For now Piglit shall never fail except for crashes outside of

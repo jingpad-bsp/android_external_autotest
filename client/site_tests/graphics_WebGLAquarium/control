@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "Chrome OS Team"
+AUTHOR = 'chromeos-gfx'
 NAME = "graphics_WebGLAquarium"
 PURPOSE = "Execute the WebGL aquarium test suite."
 CRITERIA = "All suite tests must not crash/hang."

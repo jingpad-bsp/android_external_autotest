@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 NAME = 'graphics_GLMark2'
-AUTHOR = 'The Chromium OS Authors'
+AUTHOR = 'chromeos-gfx'
 PURPOSE = 'Benchmark the graphics library performance.'
 SUITE = 'bvt, graphics'
 EXPERIMENTAL = 'False'

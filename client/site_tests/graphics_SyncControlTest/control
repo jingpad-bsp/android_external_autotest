@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 NAME = 'graphics_SyncControlTest'
-AUTHOR = 'rharrison'
+AUTHOR = 'chromeos-gfx'
 PURPOSE = """
 Verify that sync control extensions allow us to track when vsyncs occur.
 """

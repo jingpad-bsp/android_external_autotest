@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 NAME = 'graphics_GpuReset'
-AUTHOR = 'The Chromium OS Authors'
+AUTHOR = 'chromeos-gfx'
 PURPOSE = 'Reset the GPU and check recovery mechanism.'
 CRITERIA = """
 Detection of udev event notification of a GPU hang.

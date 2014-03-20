@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 NAME = 'graphics_TearTest'
-AUTHOR = 'The Chromium OS Authors'
+AUTHOR = 'chromeos-gfx'
 PURPOSE = 'Verify Chrome does not tear with veritcal synchronization.'
 CRITERIA = """
 This test will fail if there is tearing in the two vertical lines that are 

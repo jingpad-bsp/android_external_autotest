@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 NAME = 'graphics_GLAPICheck'
-AUTHOR = 'The Chromium OS Authors'
+AUTHOR = 'chromeos-gfx'
 PURPOSE = 'Verify correctness of OpenGL/GLES and X11 versions/extensions.'
 CRITERIA = """
 This test will fail if:
