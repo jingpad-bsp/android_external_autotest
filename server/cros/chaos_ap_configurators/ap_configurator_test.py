@@ -40,13 +40,13 @@ class ConfiguratorTest(unittest.TestCase):
     """
 
     # Enter the hostname of the AP to test against
-    AP_SPEC = ap_spec.APSpec(hostnames=['chromeos3-row2-rack2-host6'])
+    AP_SPEC = ap_spec.APSpec(hostnames=['chromeos3-row4-rack1-host9'])
 
     @classmethod
     def setUpClass(self):
         lock_manager = host_lock_manager.HostLockManager()
         self.batch_locker = ap_batch_locker.ApBatchLocker(lock_manager,
-                                                          self.AP_SPEC)
+                            self.AP_SPEC, hostname_matching_only=True)
         ap_batch = self.batch_locker.get_ap_batch(batch_size=1)
         if not ap_batch:
             raise RuntimeError('Unable to lock AP %r' % self.AP_SPEC)

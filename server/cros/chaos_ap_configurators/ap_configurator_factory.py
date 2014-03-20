@@ -284,7 +284,7 @@ class APConfiguratorFactory(object):
         return set(aps)
 
 
-    def _get_aps_by_hostnames(self, hostnames, ap_list):
+    def get_aps_by_hostnames(self, hostnames, ap_list=None):
         """Returns specific APs by host name.
 
         @param hostnames: a list of strings, AP's wan_hostname defined in
@@ -293,6 +293,9 @@ class APConfiguratorFactory(object):
 
         @return a list of APConfigurators.
         """
+        if ap_list == None:
+            ap_list = self.ap_list
+
         aps = []
         for ap in ap_list:
             if ap.host_name in hostnames:
@@ -388,7 +391,7 @@ class APConfiguratorFactory(object):
                            spec.configurator_type, matching_aps)
         if spec.hostnames is not None:
             matching_aps = self._get_aps_by_hostnames(spec.hostnames,
-                                                      matching_aps)
+                                                      ap_list=matching_aps)
         if pre_configure:
             for ap in matching_aps:
                 ap.set_using_ap_spec(spec)

@@ -48,17 +48,25 @@ class ApLocker(object):
                 self.retries)
 
 
-def construct_ap_lockers(ap_spec, retries):
+def construct_ap_lockers(ap_spec, retries, hostname_matching_only=False):
     """Convert APConfigurator objects to ApLocker objects for locking.
 
     @param ap_spec: an APSpec object
     @param retries: an integer, max number of retry attempts to lock ap.
+    @param hostname_matching_only: a boolean, if True matching against
+                                   all other APSpec parameters is not
+                                   performed.
+
     @return a list of ApLocker objects.
     """
     ap_lockers_list = []
     factory = ap_configurator_factory.APConfiguratorFactory()
-    for ap in factory.get_ap_configurators_by_spec(ap_spec):
-        ap_lockers_list.append(ApLocker(ap, retries))
+    if hostname_matching_only:
+        for ap in factory.get_aps_by_hostnames(ap_spec.hostnames):
+            ap_lockers_list.append(ApLocker(ap, retries))
+    else:
+        for ap in factory.get_ap_configurators_by_spec(ap_spec):
+            ap_lockers_list.append(ApLocker(ap, retries))
 
     if not len(ap_lockers_list):
         raise error.TestError('Found no matching APs to test against.')
@@ -84,14 +92,19 @@ class ApBatchLocker(object):
     MAX_SECONDS_TO_SLEEP = 120
 
 
-    def __init__(self, lock_manager, ap_spec, retries=MAX_RETRIES):
+    def __init__(self, lock_manager, ap_spec, retries=MAX_RETRIES,
+                 hostname_matching_only=False):
         """Initialize.
 
         @param ap_spec: an APSpec object
         @param retries: an integer, max number of retry attempts to lock ap.
                         Defaults to MAX_RETRIES.
+        @param hostname_matching_only : a boolean, if True matching against
+                                        all other APSpec parameters is not
+                                        performed.
         """
-        self.aps_to_lock = construct_ap_lockers(ap_spec, retries)
+        self.aps_to_lock = construct_ap_lockers(ap_spec, retries,
+                           hostname_matching_only=hostname_matching_only)
         self.manager = lock_manager
         self._locked_aps = []
 
