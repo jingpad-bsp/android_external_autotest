@@ -41,15 +41,27 @@ class network_DefaultProfileCreation(test.test):
         utils.run('start shill')
         shill = shill_proxy.ShillProxy.get_proxy()
         start_time = time.time()
+        profile = None
         while time.time() - start_time < self.PROFILE_LOAD_TIMEOUT_SECONDS:
             if shill.get_profiles():
-                break
-        else:
-            raise error.TestFail('shill should load a profile within '
-                                 '%d seconds.' %
-                                 self.PROFILE_LOAD_TIMEOUT_SECONDS)
+                with open(self.DEFAULT_PROFILE_PATH) as f:
+                    profile = f.read()
+                    if profile:
+                        break
 
-        profile = open(self.DEFAULT_PROFILE_PATH).read()
+            time.sleep(1)
+        else:
+            if  profile is None:
+                raise error.TestFail('shill should load a profile within '
+                                     '%d seconds.' %
+                                     self.PROFILE_LOAD_TIMEOUT_SECONDS)
+            else:
+                raise error.TestFail('shill profile is still empty after '
+                                     '%d seconds.' %
+                                     self.PROFILE_LOAD_TIMEOUT_SECONDS)
+
+        logging.info('Profile contents after %d seconds:\%s',
+                     time.time() - start_time, profile)
         for setting in self.EXPECTED_SETTINGS:
             if setting not in profile:
                 logging.error('Did not find setting %s', setting)
