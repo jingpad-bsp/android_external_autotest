@@ -4,13 +4,15 @@
 
 import copy, logging, os, pprint, re, threading, time, urllib
 
-from autotest_lib.client.bin import utils
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui, cros_ui_test, httpd
+from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.cros import httpd
 from autotest_lib.client.cros.audio import audio_helper
 
+
 # HTML templates.
-_STATIC_CSS ='''
+_STATIC_CSS = '''
 form {
   margin: 0;
 }
@@ -32,20 +34,20 @@ th {
 }
 '''
 
-_RESULT_PASS_CSS ='''
+_RESULT_PASS_CSS = '''
 td#%s {
     background-color: green;
 }
 '''
 
-_RESULT_FAIL_CSS ='''
+_RESULT_FAIL_CSS = '''
 td#%s {
     background-color: red;
 }
 '''
 
 _HTML_HEADER_TMPL = '''<html>
-<head><title>AudioVideo_PlaybackRecordSemiAuto Test</title>
+<head><title>Audio_PlaybackRecordSemiAuto Test</title>
 <style type="text/css"> <!--
 %s
 -->
@@ -65,6 +67,7 @@ is listed.
 _DEVICE_LIST_START = '<div class="device_table">'
 _DEVICE_LIST_END = '</div>'
 
+_MAX_TIMEOUT = 60
 _PLAYBACK_SECTION_LABEL = '''Playback Devices'''
 _RECORD_SECTION_LABEL = '''Capture Devices'''
 
@@ -398,7 +401,7 @@ class VolumeChangeThread(threading.Thread):
         self.audio.do_set_volume_alsa(self.card, self.control, self.end_volume)
 
 
-class audio_PlaybackRecordSemiAuto(cros_ui_test.UITest):
+class audio_PlaybackRecordSemiAuto(test.test):
     version = 1
     preserve_srcdir = True
     crash_handling_enabled = False
@@ -429,7 +432,7 @@ class audio_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         utils.make()
 
 
-    def initialize(self, creds = '$default'):
+    def initialize(self):
         id = 0
         for test in _TESTS:
             test['id'] = id
@@ -458,15 +461,14 @@ class audio_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         self._server_root = 'http://localhost:8000/'
         self._testServer = httpd.HTTPListener(port=8000, docroot=self.bindir)
         self._testServer.run()
-        super(audio_PlaybackRecordSemiAuto, self).initialize(creds)
 
 
     def cleanup(self):
-        self._testServer.stop()
-        super(audio_PlaybackRecordSemiAuto, self).cleanup()
+        if self._testServer:
+            self._testServer.stop()
 
 
-    def run_once(self, timeout=10000):
+    def run_semiauto_test(self, browser):
         self._testServer.add_url_handler(
                 '/%s' % _CONTROL_ENDPOINT,
                 lambda server, form, o=self: o.handle_control(server, form))
@@ -479,13 +481,11 @@ class audio_PlaybackRecordSemiAuto(cros_ui_test.UITest):
 
         latch = self._testServer.add_wait_url('/done')
 
-        # Temporarily increment pyauto timeout
-        pyauto_timeout_changer = self.pyauto.ActionTimeoutChanger(
-            self.pyauto, timeout * 1000)
-        self.pyauto.NavigateToURL(self._server_root + _CONTROL_ENDPOINT)
-        del pyauto_timeout_changer
+        tab = browser.tabs[0]
+        tab.Navigate(self._server_root + _CONTROL_ENDPOINT,
+                     timeout=_MAX_TIMEOUT)
 
-        latch.wait(timeout)
+        latch.wait(_MAX_TIMEOUT)
         if not latch.is_set():
             raise error.TestFail('Timeout.')
 
@@ -508,6 +508,11 @@ class audio_PlaybackRecordSemiAuto(cros_ui_test.UITest):
                 raise error.TestFail(
                     'User indicated test failure(s). Failed: %s' %
                     self._pp.pformat(failed_tests))
+
+
+    def run_once(self):
+        with chrome.Chrome() as cr:
+            self.run_semiauto_test(cr.browser)
 
 
     def get_pass_fail_div(self, endpoint, dict):
@@ -840,7 +845,6 @@ class audio_PlaybackRecordSemiAuto(cros_ui_test.UITest):
         """Parses the output of an "aplay -l" or "arecord -l" call."""
         device_info = { 'info' : [] }
         current_device = None
-        port_parsing_mode = False
         list_index = 0
         for line in device_info_output.split('\n'):
             m = _CARD_RE.match(line)
