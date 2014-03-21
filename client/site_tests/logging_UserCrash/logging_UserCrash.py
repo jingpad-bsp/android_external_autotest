@@ -227,7 +227,7 @@ class logging_UserCrash(crash_test.CrashTest):
 
         # Wait until no crash_reporter is running.
         utils.poll_for_condition(
-            lambda: utils.system('pgrep crash_reporter',
+            lambda: utils.system('pgrep -f crash_reporter.*:%s' % basename,
                                  ignore_status=True) != 0,
             timeout=10,
             exception=error.TestError(
