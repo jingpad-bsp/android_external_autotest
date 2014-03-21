@@ -10,9 +10,9 @@ from autotest_lib.client.common_lib import error
 
 # The following VA_XXX values are copied from va/va.h
 # VA profiles that we are interested in
-VAProfileH264Baseline = 5
 VAProfileH264Main = 6
 VAProfileH264High = 7
+VAProfileH264ConstrainedBaseline = 13
 
 # VA Entrypoint that we are interested in
 VAEntrypointVLD = 1
@@ -29,7 +29,7 @@ class hardware_VideoDecodeCapable(test.test):
     version = 1
 
     REQUESTED_VAAPI_PROFILES = [
-        VAProfileH264Baseline,
+        VAProfileH264ConstrainedBaseline,
         VAProfileH264Main,
         VAProfileH264High]
 
