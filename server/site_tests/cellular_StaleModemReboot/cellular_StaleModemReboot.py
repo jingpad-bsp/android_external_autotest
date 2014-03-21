@@ -113,6 +113,7 @@ class cellular_StaleModemReboot(test.test):
             'ENABLED',
             'SEARCHING',
             'REGISTERED',
+            'DISCONNECTING',
             'CONNECTING',
             'CONNECTED'
         ]
@@ -215,7 +216,7 @@ class cellular_StaleModemReboot(test.test):
         self._servo = host.servo
         original_modem_state = self._get_modem_state()
 
-        logging.info('Modem state for host %s: %s',
+        logging.info('Modem state before reboot on host %s: %s',
                      host.hostname,
                      self._modem_state_to_string(original_modem_state))
 
@@ -230,6 +231,8 @@ class cellular_StaleModemReboot(test.test):
             # will show as 'orange' color code in the test results, instead of
             # green, which is reserved for when the modem was in a bad state
             # that was fixed by rebooting via this test.
+            logging.info('Modem state after default reboot: %s',
+                         self._modem_state_to_string(self._get_modem_state()))
             raise error.TestError('Modem was in stable state at the start of '
                                   'this test and is still in stable state '
                                   'after one reboot.')
