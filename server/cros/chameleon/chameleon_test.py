@@ -11,6 +11,22 @@ from autotest_lib.server import test
 from autotest_lib.server.cros.chameleon import display_client
 
 
+def _unlevel(p):
+    """Unlevel a color value from TV level back to PC level
+
+    @param p: The color value in one character byte
+
+    @return: The color value in integer in PC level
+    """
+    # TV level: 16~236; PC level: 0~255
+    p = (ord(p) - 126) * 128 / 110 + 128
+    if p < 0:
+        p = 0
+    elif p > 255:
+        p = 255
+    return p
+
+
 class ChameleonTest(test.test):
     """This is the base class of Chameleon tests.
 
@@ -32,6 +48,7 @@ class ChameleonTest(test.test):
             raise error.TestError('DUT and Chameleon board not connected')
         self._backup_edid()
         self._arch = host.get_architecture()
+        self._unlevel_func = _unlevel if self._arch == 'arm' else ord
 
 
     def is_edid_supported(self, tag, width, height):
@@ -143,7 +160,7 @@ class ChameleonTest(test.test):
         # The dut_pixels array are formatted in BGRA.
         for i in xrange(0, len(dut_pixels), 4):
             # Skip the fourth byte, i.e. the alpha value.
-            chameleon_pixel = tuple(ord(p) for p in chameleon_pixels[i:i+3])
+            chameleon_pixel = map(self._unlevel_func, chameleon_pixels[i:i+3])
             dut_pixel = tuple(ord(p) for p in dut_pixels[i:i+3])
             # Compute the maximal difference for a pixel.
             diff_value = max(map(abs, map(
