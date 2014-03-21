@@ -40,6 +40,11 @@ class StaticAPConfigurator(ap_configurator.APConfiguratorAbstract):
         self.band = ap_config.get_band()
         self.current_band = ap_config.get_band()
         self.security = ap_config.get_security()
+        if self.security == ap_spec.SECURITY_TYPE_MIXED:
+           self.security = [ap_spec.SECURITY_TYPE_WPA2PSK,
+                            ap_spec.SECURITY_TYPE_WPAPSK]
+        else:
+           self.security = [self.security]
         self.psk = ap_config.get_psk()
         self._ssid = ap_config.get_ssid()
         self.rpm_managed = ap_config.get_rpm_managed()
@@ -214,7 +219,7 @@ class StaticAPConfigurator(ap_configurator.APConfiguratorAbstract):
         @return True if the security mode is supported; False otherwise.
 
         """
-        return self.security == security_mode
+        return security_mode in self.security
 
 
     def get_association_parameters(self):
@@ -225,8 +230,8 @@ class StaticAPConfigurator(ap_configurator.APConfiguratorAbstract):
 
         """
         security_config = None
-        if self.security in [ap_spec.SECURITY_TYPE_WPAPSK,
-                             ap_spec.SECURITY_TYPE_WPA2PSK]:
+        if (ap_spec.SECURITY_TYPE_WPAPSK in self.security or
+            ap_spec.SECURITY_TYPE_WPA2PSK in self.security):
             # Not all of this is required but doing it just in case.
             security_config = xmlrpc_security_types.WPAConfig(
                     psk=self.psk,

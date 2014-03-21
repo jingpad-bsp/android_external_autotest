@@ -120,16 +120,24 @@ class ChaosRunner(object):
                          tag=ap.ssid)
             return None
 
-        # Sanitize the only security setting that doesn't match
-        # before doing the comparison
+        # Sanitize MIXED security setting for both Static and Dynamic
+        # configurators before doing the comparison.
         security = networks[0].security
-        if security == iw_runner.SECURITY_MIXED:
-            security = iw_runner.SECURITY_WPA2
+        if security == iw_runner.SECURITY_MIXED and (ap.configurator_type ==
+            ap_spec.CONFIGURATOR_STATIC):
+            security = [iw_runner.SECURITY_WPA, iw_runner.SECURITY_WPA2]
+        # We have only seen WPA2 be backwards compatible, and we want to verify
+        # the configurator did the right thing. So we promote this to WPA2 only.
+        elif security == iw_runner.SECURITY_MIXED and (ap.configurator_type ==
+            ap_spec.CONFIGURATOR_DYNAMIC):
+            security = [iw_runner.SECURITY_WPA2]
+        else:
+            security = [security]
 
-        if security != self._ap_spec.security:
+        if self._ap_spec.security not in security:
             # Check if AP is configured with the expected security.
             logging.error('%s was the expected security but got %s',
-                          self._ap_spec.security, security)
+                          self._ap_spec.security, str(security).strip('[]'))
             job.run_test('network_WiFi_ChaosConfigFailure', ap=ap,
                          error_string=chaos_constants.AP_SECURITY_MISMATCH,
                          tag=ap.ssid)
