@@ -4,13 +4,17 @@
 
 """This module provides GUI for touch device firmware test using GTK."""
 
+import os
 import re
+import shutil
 
 import gobject
 import gtk
 import gtk.gdk
 import pango
+import tempfile
 
+import common_util
 import firmware_utils
 import test_conf as conf
 
@@ -224,6 +228,8 @@ class FirmwareWindow(object):
 
     def __init__(self, size=None, prompt_size=None, result_size=None,
                  image_size=None):
+        # Setup gtk environment correctly.
+        self._setup_gtk_environment()
 
         # Create a new window
         self.win = gtk.Window(gtk.WINDOW_TOPLEVEL)
@@ -261,6 +267,130 @@ class FirmwareWindow(object):
 
         # Show all widgets.
         self.win.show_all()
+
+    def _setup_gtk_environment(self):
+        """Set up the gtk environment correctly."""
+
+        def _warning(msg=None):
+            print 'Warning: fail to setup gtk environment.'
+            if msg:
+                print '\t' + msg
+            print '\tImage files would not be shown properly.'
+            print '\tIt does not affect the test results though.'
+
+        def _make_symlink(path, symlink):
+            """Remove the symlink if exists. Create a new symlink to point to
+            the given path.
+            """
+            if os.path.islink(symlink):
+                os.remove(symlink)
+            os.symlink(real_gtk_dir, self.gtk_symlink)
+            self.new_symlink = True
+
+        self.gtk_symlink = None
+        self.tmp = tempfile.mkdtemp()
+        self.moved_flag = False
+        self.original_gtk_realpath = None
+        self.new_symlink = False
+
+        # Get LoaderDir:
+        # The output of gdk-pixbuf-query-loaders looks like:
+        #
+        #   GdkPixbuf Image Loader Modules file
+        #   Automatically generated file, do not edit
+        #   Created by gdk-pixbuf-query-loaders from gtk+-2.20.1
+        #
+        #   LoaderDir = /usr/lib64/gtk-2.0/2.10.0/loaders
+        loader_dir_str = common_util.simple_system_output(
+                'gdk-pixbuf-query-loaders | grep LoaderDir')
+        result = re.search('(/.*?)/(gtk-.*?)/', loader_dir_str)
+        if result:
+            prefix = result.group(1)
+            self.gtk_version = result.group(2)
+        else:
+            _warning('Cannot derive gtk version from LoaderDir.')
+            return
+
+        # Verify the existence of the loaders file.
+        gdk_pixbuf_loaders = ('/usr/local/etc/%s/gdk-pixbuf.loaders' %
+                              self.gtk_version)
+        if not os.path.isfile(gdk_pixbuf_loaders):
+            msg = 'The loaders file "%s" does not exist.' % gdk_pixbuf_loaders
+            _warning(msg)
+            return
+
+        # Setup the environment variable for GdkPixbuf Image Loader Modules file
+        # so that gtk library could find it.
+        os.environ['GDK_PIXBUF_MODULE_FILE'] = gdk_pixbuf_loaders
+
+        # In the loaders file, it specifies the paths of various
+        # sharable objects (.so) which are used to load images of corresponding
+        # image formats. For example, for png loader, the path looks like
+        #
+        # "/usr/lib64/gtk-2.0/2.10.0/loaders/libpixbufloader-png.so"
+        # "png" 5 "gtk20" "The PNG image format" "LGPL"
+        # "image/png" ""
+        # "png" ""
+        # "\211PNG\r\n\032\n" "" 100
+        #
+        # However, the real path for the .so file is under
+        # "/usr/local/lib64/..."
+        # Hence, we would like to make a temporary symlink so that
+        # gtk library could find the .so file correctly.
+        self.gtk_symlink = os.path.join(prefix, self.gtk_version)
+        prefix_list = prefix.split('/')
+        prefix_list.insert(prefix_list.index('usr') + 1, 'local')
+        real_gtk_dir = os.path.join('/', *(prefix_list + [self.gtk_version]))
+
+        # Make sure that the directory of .so files does exist.
+        if not os.path.isdir(real_gtk_dir):
+            msg = 'The directory of gtk image loaders "%s" does not exist.'
+            _warning(msg % real_gtk_dir)
+            return
+
+        # Take care of an existing symlink.
+        if os.path.islink(self.gtk_symlink):
+            # If the symlink does not point to the correct path,
+            # save the real path of the symlink and re-create the symlink.
+            if not os.path.samefile(self.gtk_symlink, real_gtk_dir):
+                self.original_gtk_realpath = os.path.realpath(self.gtk_symlink)
+                _make_symlink(real_gtk_dir, self.gtk_symlink)
+
+        # Take care of an existing directory.
+        elif os.path.isdir(self.gtk_symlink):
+            # Move the directory only if it is not what we expect.
+            if not os.path.samefile(self.gtk_symlink, real_gtk_dir):
+                shutil.move(self.gtk_symlink, self.tmp)
+                self.moved_flag = True
+                _make_symlink(real_gtk_dir, self.gtk_symlink)
+
+        # Take care of an existing file.
+        # Such a file is not supposed to exist here. Move it anyway.
+        elif os.path.isfile(self.gtk_symlink):
+            shutil.move(self.gtk_symlink, self.tmp)
+            self.moved_flag = True
+            _make_symlink(real_gtk_dir, self.gtk_symlink)
+
+        # Just create the temporary symlink since there is nothing here.
+        else:
+            _make_symlink(real_gtk_dir, self.gtk_symlink)
+
+    def close(self):
+        """Cleanup by restoring any symlink, file, or directory if necessary."""
+        # Remove the symlink that the test created.
+        if self.new_symlink:
+            os.remove(self.gtk_symlink)
+
+        # Restore the original symlink.
+        if self.original_gtk_realpath:
+            os.symlink(self.original_gtk_realpath, self.gtk_symlink)
+        # Restore the original file or directory.
+        elif self.moved_flag:
+            tmp_gtk_path = os.path.join(self.tmp, self.gtk_version)
+            if (os.path.isdir(tmp_gtk_path) or os.path.isfile(tmp_gtk_path)):
+                shutil.move(tmp_gtk_path, os.path.dirname(self.gtk_symlink))
+                self.moved_flag = False
+                shutil.rmtree(self.tmp)
 
     def register_callback(self, event, callback):
         """Register a callback function for an event."""
@@ -326,6 +456,7 @@ class FirmwareWindow(object):
 
     def stop(self):
         """Quit the window."""
+        self.close()
         gtk.main_quit()
 
     def main(self):
