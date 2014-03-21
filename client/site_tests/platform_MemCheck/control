@@ -8,7 +8,7 @@ This test will fail if unexpected values are found for:
   - Swap Total
   - Virtual Memory
 """
-AUTHOR = "kdlucas@chromium.org (Kelly Lucas)"
+AUTHOR = "kdlucas, puthik"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
