@@ -10,7 +10,9 @@ This test will fail if the URL fails to load or the cookie is not saved.
 """
 TIME = "SHORT"
 TEST_CATEGORY = "General"
-SUITE = "bvt"
+# TODO(dshi): crbug.com/355075 After that bug is fixed, add the test back to
+# bvt suite.
+#SUITE = "bvt"
 TEST_CLASS = "desktopui"
 TEST_TYPE = "client"
 EXPERIMENTAL = "True"
