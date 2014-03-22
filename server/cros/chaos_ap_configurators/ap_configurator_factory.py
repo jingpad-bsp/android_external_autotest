@@ -390,8 +390,8 @@ class APConfiguratorFactory(object):
             matching_aps = self._get_aps_by_configurator_type(
                            spec.configurator_type, matching_aps)
         if spec.hostnames is not None:
-            matching_aps = self._get_aps_by_hostnames(spec.hostnames,
-                                                      ap_list=matching_aps)
+            matching_aps = self.get_aps_by_hostnames(spec.hostnames,
+                                                     ap_list=matching_aps)
         if pre_configure:
             for ap in matching_aps:
                 ap.set_using_ap_spec(spec)
