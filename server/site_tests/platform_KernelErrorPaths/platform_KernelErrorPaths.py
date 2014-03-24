@@ -110,6 +110,17 @@ class platform_KernelErrorPaths(test.test):
 
         # give the crash_reporter some time to log the crash
         time.sleep(5)
+
+        # check if dir /var/spool/crash exists on client or not
+        if not self._exists_on_client(self._crash_log_dir):
+            raise error.TestFail(
+                '%s does not exists on client' % self._crash_log_dir)
+
+        # check if kernel.*.kcrash files are on the client or not
+        kcrash_file_path = '%s/kernel.*.kcrash' % self._crash_log_dir
+        if not self.client.list_files_glob(kcrash_file_path):
+            raise error.TestFail('No kcrash files found on client')
+
         result = self.client.run('cat %s/kernel.*.kcrash' %
                                  self._crash_log_dir)
         if text not in result.stdout:
