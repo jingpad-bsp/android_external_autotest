@@ -28,8 +28,15 @@ class statsd_mock_base(object):
         def decorate(f):
             return f
 
+        # TODO (dshi) crbug.com/256111 - Find better solution for mocking
+        # statsd.
+        def get_client(*args, **kwargs):
+            return self
+
         if name == 'decorate':
             return decorate
+        elif name == 'get_client':
+            return get_client
 
         return any_call
 
