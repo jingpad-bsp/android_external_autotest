@@ -84,7 +84,8 @@ class LinksyseSingleBandAPConfigurator(
             self._handle_alert('//input[@id="divBT1"]', self._sec_alert)
         xpath_continue = '//input[@value="Continue"]'
         self.wait_for_object_by_xpath(xpath_continue, wait_time=20)
-        self.click_button_by_xpath(xpath_continue)
+        self.click_button_by_xpath(xpath_continue,
+                                   alert_handler=self._sec_alert)
 
 
     def set_mode(self, mode, band=None):

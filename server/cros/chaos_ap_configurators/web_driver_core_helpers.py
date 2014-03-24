@@ -25,9 +25,25 @@ class WebDriverCoreHelpers(object):
         self.wait = WebDriverWait(self.driver, timeout=5)
 
 
+    def _check_for_alert_in_message(self, message, alert_handler):
+        """Check for an alert in error message and handle it.
+
+        @param message: The error message.
+        @param alert_handler: The handler method to call.
+
+        """
+        if (message.find('An open modal dialog blocked') == 1 and
+            message.find('unexpected alert open') == 1):
+            alert = self.driver.switch_to_alert()
+            alert_handler(alert)
+        else:
+            raise RuntimeError(message)
+
+
     def _handle_alert(self, xpath, alert_handler):
         """Calls the alert handler if there is an alert.
 
+        @param xpath: The xpath that could raise the alert.
         @param alert_handler: the handler method to call.
 
         """
@@ -40,6 +56,17 @@ class WebDriverCoreHelpers(object):
             if (message.find('An open modal dialog blocked') == -1 and
                 message.find('unexpected alert open') == -1):
                 return
+            self._handler(alert_handler)
+        # Sometimes routers put out multiple alert statements on the same page.
+        self._handle_alert(xpath, alert_handler)
+
+
+    def _handler(self, alert_handler):
+        """Handles the alert.
+
+        @param alert_handler: The custom handler method to call.
+
+        """
         alert = self.driver.switch_to_alert()
         if not alert_handler:
             # The caller did not provide us with a handler, dismiss and raise.
@@ -55,8 +82,6 @@ class WebDriverCoreHelpers(object):
                                'specified.  The text from the alert was: %s'
                                % alert_text)
         alert_handler(alert)
-        # Sometimes routers put out multiple alert statements on the same page.
-        self._handle_alert(xpath, alert_handler)
 
 
     def set_wait_time(self, time):

@@ -157,22 +157,9 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
                                             window_size['height'])
             except Exception as e:
                 # The messages differ based on the webdriver version
-                message = str(e)
-                if (message.find('An open modal dialog blocked') == 1 or
-                    message.find('unexpected alert open') == 1):
-                   alert = self.driver.switch_to_alert()
-                   try:
-                       alert_text = alert.text
-                   except WebDriverException:
-                       # There is a bug in selenium where the alert object will
-                       # exist but you can't get to the text object right away.
-                       time.sleep(1)
-                       alert_text = alert.text
-                   alert.accept()
-                   logging.error('A dialog was opened with the text: %s',
-                                 alert_text)
-
                 logging.error('Getting the screenshot failed. %s', e)
+                self._check_for_alert_in_message(str(e),
+                                                 self._handler())
                 screenshot = None
             if screenshot:
                 self._screenshot_list.append(screenshot)

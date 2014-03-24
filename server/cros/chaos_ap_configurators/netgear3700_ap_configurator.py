@@ -6,6 +6,7 @@ import ap_spec
 import netgear_WNDR_dual_band_configurator
 from netgear_WNDR_dual_band_configurator import *
 
+
 class Netgear3700APConfigurator(netgear_WNDR_dual_band_configurator.
                                 NetgearDualBandAPConfigurator):
     """Derived class to control Netgear 3700 router."""
@@ -48,7 +49,7 @@ class Netgear3700APConfigurator(netgear_WNDR_dual_band_configurator.
 
     def get_supported_bands(self):
         return [{'band': ap_spec.BAND_2GHZ,
-                 'channels': ['Auto', 1, 2, 3, 4, 5, 6, 7, 8, 9 , 10, 11]},
+                 'channels': ['Auto', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]},
                 {'band': ap_spec.BAND_5GHZ,
                  'channels': [36, 40, 44, 48, 149, 153, 157, 161]}]
 
@@ -79,7 +80,6 @@ class Netgear3700APConfigurator(netgear_WNDR_dual_band_configurator.
 
 
     def _set_channel(self, channel):
-        self._switch_to_default()
         position = self._get_channel_popup_position(channel)
         channel_choices = ['Auto', '01', '02', '03', '04', '05', '06', '07',
                            '08', '09', '10', '11']
@@ -87,7 +87,7 @@ class Netgear3700APConfigurator(netgear_WNDR_dual_band_configurator.
         if self.current_band == ap_spec.BAND_5GHZ:
             xpath = '//select[@name="w_channel_an"]'
             channel_choices = ['36', '40', '44', '48', '149', '153',
-                               '157', '161']
+                               '157', '161', '165']
         self.select_item_from_popup_by_xpath(channel_choices[position], xpath)
 
 

@@ -16,6 +16,14 @@ class LinksysAPConfigurator(
     """Derived class to control Linksys WRT54G2 router."""
 
 
+    def _sec_alert(self, alert):
+        text = alert.text
+        if 'Invalid Key, must be between 8 and 63 ASCII' in text:
+            raise RuntimeError('We got a modal dialog. ' + text)
+        else:
+            raise RuntimeError('Unhandled alert message: %s' % text)
+
+
     def get_number_of_pages(self):
         return 2
 
@@ -61,7 +69,8 @@ class LinksysAPConfigurator(
         # Wait for the continue button
         continue_xpath = '//input[@value="Continue" and @type="button"]'
         self.wait_for_object_by_xpath(continue_xpath)
-        self.click_button_by_xpath(continue_xpath)
+        self.click_button_by_xpath(continue_xpath,
+                                   alert_handler=self._sec_alert)
 
 
     def set_mode(self, mode, band=None):
@@ -150,10 +159,12 @@ class LinksysAPConfigurator(
         self.wait_for_object_by_xpath(popup)
         text_field = ('//input[@name="wl_passphrase"]')
         self.select_item_from_popup_by_xpath('WEP', popup,
-                                             wait_for_xpath=text_field)
+                                             wait_for_xpath=text_field,
+                                             alert_handler=self._sec_alert)
         self.set_content_of_text_field_by_xpath(key_value, text_field,
                                                 abort_check=True)
-        self.click_button_by_xpath('//input[@value="Generate"]')
+        self.click_button_by_xpath('//input[@value="Generate"]',
+                                   alert_handler=self._sec_alert)
 
 
     def set_security_wpapsk(self, security, shared_key, update_interval=1800):
@@ -177,7 +188,8 @@ class LinksysAPConfigurator(
         else:
             wpa_item = 'WPA2 Personal'
         self.select_item_from_popup_by_xpath(wpa_item, popup,
-                                             wait_for_xpath=key_field)
+                                             wait_for_xpath=key_field,
+                                             alert_handler=self._sec_alert)
         self.set_content_of_text_field_by_xpath(shared_key, key_field,
                                                 abort_check=True)
         interval_field = ('//input[@name="GkuInterval"]')

@@ -30,6 +30,10 @@ class Netgear4300APConfigurator(netgear_WNDR_dual_band_configurator.
             alert.accept()
         elif 'WPS is going to become inaccessible' in text:
             alert.accept()
+        elif 'Keys length should be 10 Hex' in text:
+            alert.accept()
+            raise RuntimeError('We got a dialog with Invalid Key Error. '
+                               + text)
         else:
             super(Netgear4300APConfigurator, self)._alert_handler(alert)
 
@@ -71,8 +75,8 @@ class Netgear4300APConfigurator(netgear_WNDR_dual_band_configurator.
             elif os.path.basename(
                 self.driver.current_url) == 'multi_login.html':
                 self.logout_from_previous_netgear()
-        setframe = self.driver.find_element_by_xpath(
-                   '//iframe[@name="formframe"]')
+        setframe = self.wait_for_object_by_xpath('//iframe[@name="formframe"]',
+                                                 wait_time=20)
         settings = self.driver.switch_to_frame(setframe)
         self.wait_for_object_by_xpath('//input[@name="ssid"]')
 
@@ -82,8 +86,17 @@ class Netgear4300APConfigurator(netgear_WNDR_dual_band_configurator.
 
         @param page_number: the page to save.
         """
-        self.click_button_by_xpath('//input[@name="Apply"]',
-                                   alert_handler=self._alert_handler)
+        # Router throws 3 different alerts when the settings are applied.
+        try:
+            self.click_button_by_xpath('//input[@name="Apply"]',
+                                       alert_handler=self._alert_handler)
+        except Exception, e1:
+            try:
+                self._check_for_alert_in_message(str(e1),
+                        alert_handler=self._alert_handler)
+            except Exception, e2:
+                self._check_for_alert_in_message(str(e2),
+                        alert_handler=self._alert_handler)
 
 
     def _set_mode(self, mode, band=None):
@@ -128,13 +141,11 @@ class Netgear4300APConfigurator(netgear_WNDR_dual_band_configurator.
     def _set_security_wep(self, key_value, authentication):
         xpath = ('//input[@name="security_type" and @value="WEP" and '
                  '@type="radio"]')
-        text_field = '//input[@name="passphraseStr"]'
-        button = '//input[@name="Generate"]'
+        text_field = '//input[@name="KEY1"]'
         if self.current_band == ap_spec.BAND_5GHZ:
             xpath = '//input[@name="security_type_an" and @value="WEP" and\
                      @type="radio"]'
-            text_field = '//input[@name="passphraseStr_an"]'
-            button = '//input[@name="Generate_an"]'
+            text_field = '//input[@name="KEY1_an"]'
         try:
             self.wait_for_object_by_xpath(xpath)
             self.click_button_by_xpath(xpath, alert_handler=self._alert_handler)
@@ -144,4 +155,3 @@ class Netgear4300APConfigurator(netgear_WNDR_dual_band_configurator.
         self.wait_for_object_by_xpath(text_field)
         self.set_content_of_text_field_by_xpath(key_value, text_field,
                                                 abort_check=True)
-        self.click_button_by_xpath(button, alert_handler=self._alert_handler)
