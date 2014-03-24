@@ -17,13 +17,15 @@ class kernel_TPMPing(test.test):
     else:
       logging.info(tpm_version)
 
-    # If the "gentle shutdown" string is missing from the log, we
-    # forgot to carry over an important patch.
-    tpm_device_re = "tpm_tis: 1.2 TPM (device"
-    tpm_gentle_re = "\\[gentle shutdown\\]"
-    log_file_glob = "$(echo /var/log/messages* | tac -s ' ')"
+    # If the "[gentle shutdown]" string  followed by 'Linux Version'
+    # is missing from the /var/log/messages,
+    # we forgot to carry over an important patch.
+    result = utils.system_output('awk \'/Linux version [0-9]+\./ '
+                                 '{gentle=0;} /\[gentle shutdown\]/ {gentle=1;}'
+                                 ' END {print gentle}\' '
+                                 '$(ls -t /var/log/messages*)',
+                                  ignore_status=True)
+
     # We only care about the most recent instance of the TPM driver message.
-    if utils.system("grep '%s' %s | tail -1 | grep '%s'" %
-                    (tpm_device_re, log_file_glob, tpm_gentle_re),
-                    ignore_status=True) != 0:
-      raise error.TestFail("no 'gentle shutdown' TPM driver init message")
+    if result == '0':
+      raise error.TestFail('no \'gentle shutdown\' TPM driver init message')
