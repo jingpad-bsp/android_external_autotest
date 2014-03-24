@@ -231,16 +231,11 @@ class power_LoadTest(cros_ui_test.UITest):
 
         for i in range(self._loop_count):
             start_time = time.time()
-            # the power test extension will report its status here
-            latch = self._testServer.add_wait_url('/status')
-
             # Installing the extension will also fire it up.
             ext_id = self.pyauto.InstallExtension(ext_path)
 
-            # reset X settings since X gets restarted upon login
-            # TODO(tbroch) This requirement is likely no longer true.  Deprecate
-            # after testing.
-            self._do_xset()
+            # the power test extension will report its status here
+            latch = self._testServer.add_wait_url('/status')
 
             # reset backlight level since powerd might've modified it
             # based on ambient light
@@ -430,18 +425,6 @@ class power_LoadTest(cros_ui_test.UITest):
             logging.debug("Didn't get status back from power extension")
 
         return low_battery
-
-
-    def _do_xset(self):
-        XSET = 'LD_LIBRARY_PATH=/usr/local/lib xset'
-        # Disable X screen saver
-        cros_ui.xsystem('%s s 0 0' % XSET)
-        # Disable DPMS Standby/Suspend/Off
-        cros_ui.xsystem('%s dpms 0 0 0' % XSET)
-        # Force monitor on
-        cros_ui.xsystem('%s dpms force on' % XSET)
-        # Save off X settings
-        cros_ui.xsystem('%s q' % XSET)
 
 
     def _set_backlight_level(self):
