@@ -444,8 +444,11 @@ class IwRunner(object):
             # The device was busy
             logging.debug('scan exit_status: %d', scan.exit_status)
             return None
-
-        bss_list = self._parse_scan_results(scan.stdout)
+        if not scan.stdout:
+            logging.debug('Empty scan result')
+            bss_list = []
+        else:
+            bss_list = self._parse_scan_results(scan.stdout)
         scan_time = float(scan.stderr)
         return IwTimedScan(scan_time, bss_list)
 
@@ -476,6 +479,18 @@ class IwRunner(object):
         """
         self._run('%s dev %s set txpower %s' %
                   (self._command_iw, interface, power))
+
+
+    def set_freq(self, interface, freq):
+        """
+        Set the frequency for an interface.
+
+        @param interface: string name of interface to set frequency on.
+        @param freq: int frequency
+
+        """
+        self._run('%s dev %s set freq %d' %
+                  (self._command_iw, interface, freq))
 
 
     def set_regulatory_domain(self, domain_string):

@@ -41,8 +41,8 @@ class network_WiFi_Regulatory(wifi_cell_test_base.WiFiCellTestBase):
             for attempt in range(10):
                 # Since the client might be in power-save, we are not
                 # guaranteed it will hear this message the first time around.
-                self.context.router.send_management_frame(
-                        'channel_switch:%d' % alternate_channel)
+                self.context.router.send_management_frame_on_ap(
+                        'channel_switch', alternate_channel)
 
                 # Test to see if the router received a deauth message from
                 # the client.

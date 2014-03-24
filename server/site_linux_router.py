@@ -47,6 +47,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
     STATION_LOG_FILE_PATTERN = '/tmp/wpa-supplicant-test-%s.log'
     STATION_PID_FILE_PATTERN = '/tmp/wpa-supplicant-test-%s.pid'
 
+    MGMT_FRAME_SENDER_LOG_FILE = '/tmp/send_management_frame-test.log'
+
     def get_capabilities(self):
         """@return iterable object of AP capabilities for this system."""
         caps = set([self.CAPABILITY_IBSS])
@@ -613,19 +615,73 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                         (self.cmd_hostapd_cli, control_if, client_mac))
 
 
-    def send_management_frame(self, frame_type, instance=0):
+    def send_management_frame_on_ap(self, frame_type, channel, instance=0):
         """Injects a management frame into an active hostapd session.
 
         @param frame_type string the type of frame to send.
+        @param channel int targeted channel
         @param instance int indicating which hostapd instance to inject into.
 
         """
         hostap_interface = self.hostapd_instances[instance]['interface']
         interface = self.get_wlanif(0, 'monitor', same_phy_as=hostap_interface)
         self.router.run("%s link set %s up" % (self.cmd_ip, interface))
-        self.router.run('%s %s %s' %
-                        (self.cmd_send_management_frame, interface, frame_type))
+        self.router.run('%s -i %s -t %s -c %d' %
+                        (self.cmd_send_management_frame, interface, frame_type,
+                         channel))
         self.release_interface(interface)
+
+
+    def setup_management_frame_interface(self, channel):
+        """
+        Setup interface for injecting management frames.
+
+        @param channel int channel to inject the frames.
+
+        @return string name of the interface.
+
+        """
+        frequency = hostap_config.HostapConfig.get_frequency_for_channel(
+                channel)
+        interface = self.get_wlanif(frequency, 'monitor')
+        self.iw_runner.set_freq(interface, frequency)
+        self.router.run('%s link set %s up' % (self.cmd_ip, interface))
+        return interface
+
+
+    def send_management_frame(self, interface, frame_type, channel,
+                              ssid_prefix=None, num_bss=None,
+                              frame_count=None, delay=None):
+        """
+        Injects management frames on specify channel |frequency|.
+
+        This function will spawn off a new process to inject specified
+        management frames |frame_type| at the specified interface |interface|.
+
+        @param interface string interface to inject frames.
+        @param frame_type string message type.
+        @param channel int targeted channel.
+        @param ssid_prefix string SSID prefix.
+        @param num_bss int number of BSS.
+        @param frame_count int number of frames to send.
+        @param delay int milliseconds delay between frames.
+
+        @return int PID of the newly created process.
+
+        """
+        command = '%s -i %s -t %s -c %d' % (self.cmd_send_management_frame,
+                                interface, frame_type, channel)
+        if ssid_prefix is not None:
+            command += ' -s %s' % (ssid_prefix)
+        if num_bss is not None:
+            command += ' -b %d' % (num_bss)
+        if frame_count is not None:
+            command += ' -n %d' % (frame_count)
+        if delay is not None:
+            command += ' -d %d' % (delay)
+        command += ' > %s 2>&1 & echo $!' % (self.MGMT_FRAME_SENDER_LOG_FILE)
+        pid = int(self.router.run(command).stdout)
+        return pid
 
 
     def detect_client_deauth(self, client_mac, instance=0):
