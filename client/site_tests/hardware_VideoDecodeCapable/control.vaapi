@@ -20,7 +20,7 @@ TEST_CATEGORY = 'Functional'
 TEST_CLASS = 'hardware'
 TEST_TYPE = 'client'
 DEPENDENCIES = 'vaapi'
-EXPERIMENTAL = 'True'
+EXPERIMENTAL = 'False'
 RETRIES = 1
 
 DOC = """
