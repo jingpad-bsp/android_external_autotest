@@ -3,42 +3,44 @@
 # found in the LICENSE file.
 
 import logging
+import os
 import time
 
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui_test
+from autotest_lib.client.common_lib.cros import chrome
 
-class platform_MemoryPressure(cros_ui_test.UITest):
+class platform_MemoryPressure(test.test):
     version = 1
 
-    def run_once(self):
+    def run_once(self, tab_open_secs=1.5, timeout_secs=180):
         perf_results = {}
-        tab_open_period = 1.5  # seconds
-        timeout = 120  # seconds
-        time_limit = time.time() + timeout
-        # start observing pyauto events
-        event_id = self.pyauto.AddPyAutoEventObserver(recurring = True)
+        time_limit = time.time() + timeout_secs
+        err = False
+        # 1 for initial tab opened
+        n_tabs = 1
+
         # Open tabs until a tab discard notification arrives, or a time limit
         # is reached.
-        while True:
-            # The program in js-bloat.html allocates a few large arrays and
-            # forces them in memory by touching some of their elements.
-            self.pyauto.AppendTab("file://%s/js-bloat.html" % self.srcdir)
-            time.sleep(tab_open_period)
-            e = self.pyauto.GetNextEvent(event_id, blocking=False)
-            logging.info("received event: %s" % e)
-            if e and e.get('event_name') == 'tab_discard':
-                break
-            if time.time() > time_limit:
-                e = None
-                break;
-        n_tabs = self.pyauto.GetTabCount()
-        if e:
+        with chrome.Chrome() as cr:
+            cr.browser.SetHTTPServerDirectories(self.bindir)
+            while time.time() <= time_limit and not err:
+                tab = cr.browser.tabs.New()
+                n_tabs += 1
+                # The program in js-bloat.html allocates a few large arrays and
+                # forces them in memory by touching some of their elements.
+                tab.Navigate(cr.browser.http_server.UrlOf(
+                        os.path.join(self.bindir, 'js-bloat.html')))
+                tab.WaitForDocumentReadyStateToBeComplete()
+                time.sleep(tab_open_secs)
+                if n_tabs > len(cr.browser.tabs):
+                    err = True
+
+        if err:
             logging.info("tab discard after %d tabs", n_tabs)
         else:
             msg = "FAIL: no tab discard after opening %d tabs in %ds" % \
-                (n_tabs, timeout)
+                (n_tabs, timeout_secs)
             logging.error(msg)
             raise error.TestError(msg)
         perf_results["NumberOfTabsAtFirstDiscard"] = n_tabs
