@@ -2013,6 +2013,18 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         return None
 
 
+    @label_decorator('servo')
+    def get_servo(self):
+        """Determine if the host has a servo attached.
+
+        If the host has a working servo attached, it should have a servo label.
+
+        @return: string 'servo' if the host has servo attached. Otherwise,
+                 returns None.
+        """
+        return 'servo' if self._servo_host else None
+
+
     def get_labels(self):
         """Return a list of labels for this given host.
 
