@@ -7,6 +7,7 @@
 import math
 import os
 import re
+import shutil
 import sys
 import time
 
@@ -60,7 +61,7 @@ class RobotWrapperError(Exception):
 class RobotWrapper:
     """A class to wrap and manipulate the robot library."""
 
-    def __init__(self, board, mode, is_touchscreen, should_calibrate=True):
+    def __init__(self, board, mode, is_touchscreen):
         self._board = board
         self._mode = mode
         self.is_touchscreen = is_touchscreen
@@ -186,8 +187,26 @@ class RobotWrapper:
 
         self._build_robot_script_paths()
 
-        if should_calibrate:
-            self._calibrate_device(board)
+        self._get_device_spec(board)
+
+    def _get_device_spec(self, board):
+        # First check if there is already a device spec in this directory
+        if (os.path.isfile('%s.p' % board) and
+            os.path.isfile('%s_min.p' % board)):
+            return
+
+        # Next, check if maybe there is a spec in the touchbotII directory
+        spec_path = os.path.join(self._robot_script_dir,
+                                 'touchbotII/device_specs/%s.p' % board)
+        spec_min_path = os.path.join(self._robot_script_dir,
+                                     'touchbotII/device_specs/%s_min.p' % board)
+        if os.path.isfile(spec_path) and os.path.isfile(spec_min_path):
+            shutil.copy(spec_path, '.')
+            shutil.copy(spec_min_path, '.')
+            return
+
+        # If both of those fail, then generate a new device spec
+        self._calibrate_device(board)
 
     def _get_fingertips(self, tips_to_get):
         if self.fingertips != [None, None, None, None]:
