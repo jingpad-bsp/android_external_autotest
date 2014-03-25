@@ -72,10 +72,14 @@ class platform_CrashStateful(test.test):
         system. No chance for any flushing of I/O or cleaning up.
         """
         logging.info('CrashStateful: force panic %s', self.client.hostname)
+        interface = "/sys/kernel/debug/provoke-crash/DIRECT"
+        cmd = 'echo PANIC > %s' % interface
+        if not self.client.run('ls %s' % interface,
+                               ignore_status=True).exit_status == 0:
+            interface = "/proc/breakme"
+            cmd = 'echo panic > %s' % interface
         try:
-            lkdtm = "echo PANIC > /sys/kernel/debug/provoke-crash/DIRECT"
-            breakme = "echo panic > /proc/breakme"
-            self.client.reboot(reboot_cmd='(%s || %s) &' % (lkdtm, breakme))
+            self.client.reboot(reboot_cmd='%s &' % cmd)
         except error.AutoservRebootError as e:
             raise error.TestFail('%s.\nTest failed with error %s' % (
                     traceback.format_exc(), str(e)))
@@ -100,7 +104,7 @@ class platform_CrashStateful(test.test):
         result = self.client.run('cat %s/charlie' % dir)
         hi = result.stdout.strip()
         if hi != 'charlie smith':
-            failed
+            raise error.TestFail('Test failed, Sync mechanism failed')
         self._run('rm -fr %s' % dir)
 
 
