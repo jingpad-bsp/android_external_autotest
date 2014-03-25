@@ -48,14 +48,20 @@ class CachedPropertyTest(unittest.TestCase):
     def testIt(self):
         """cached_property"""
         class Example(object):
-            def __init__(self):
-                self.val = 1
+            def __init__(self, v=0):
+                self.val = v
 
             @decorators.cached_property
             def prop(self):
+                self.val = self.val + 1
                 return self.val
+
         ex = Example()
         self.assertEquals(1, ex.prop)
+        self.assertEquals(1, ex.prop)
+
+        ex2 = Example(v=5)
+        self.assertEquals(6, ex2.prop)
 
 
 if __name__ == '__main__':

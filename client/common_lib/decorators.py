@@ -61,12 +61,13 @@ def in_context(context_name):
 class _Property(object):
     def __init__(self, func):
         self._func = func
-        self._cache = None
 
     def __get__(self, obj, type=None):
-        if self._cache is None:
-            self._cache = self._func(obj)
-        return self._cache
+        if not hasattr(obj, '_property_cache'):
+            obj._property_cache = {}
+        if self._func not in obj._property_cache:
+            obj._property_cache[self._func] = self._func(obj)
+        return obj._property_cache[self._func]
 
 
 def cached_property(func):
