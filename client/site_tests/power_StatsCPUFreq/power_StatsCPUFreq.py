@@ -15,13 +15,15 @@ class power_StatsCPUFreq(test.test):
         cpufreq_stats = power_status.CPUFreqStats()
 
         # log CPU frequency stats since boot
-        current_stats = cpufreq_stats.refresh(incremental=False)
+        cpufreq_stats.incremental = False
+        current_stats = cpufreq_stats.refresh()
         logging.info('CPUFreq stats since boot:\n %s', current_stats)
 
         # sleep for some time to allow the system to go into idle state
         time.sleep(test_time)
 
         # get updated CPU frequency stats
+        cpufreq_stats.incremental = True
         current_stats = cpufreq_stats.refresh()
         logging.info('CPUFreq stats in the last %d seconds :\n %s',
                      test_time, current_stats)

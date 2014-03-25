@@ -489,6 +489,11 @@ def get_status():
 class AbstractStats(object):
     """
     Common superclass for measurements of percentages per state over time.
+
+    Public Attributes:
+        incremental:  If False, stats returned are from a single
+        _read_stats.  Otherwise, stats are from the difference between
+        the current and last refresh.
     """
 
     @staticmethod
@@ -524,20 +529,16 @@ class AbstractStats(object):
         if not name:
             error.TestFail("Need to name AbstractStats instance please.")
         self.name = name
-        self._incremental = incremental
+        self.incremental = incremental
         self._stats = self._read_stats()
 
 
     def refresh(self):
         """
         Returns dict mapping state names to percentage of time spent in them.
-
-        @incremental: If False, stats returned are from a single _read_stats.
-                      Otherwise, stats are from the difference between the
-                      current and last refresh.
         """
         raw_stats = result = self._read_stats()
-        if self._incremental:
+        if self.incremental:
             result = self.do_diff(result, self._stats)
         self._stats = raw_stats
         return self.to_percent(result)
