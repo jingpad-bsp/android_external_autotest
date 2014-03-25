@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import dbus
+import json
 import logging
 
 from autotest_lib.client.bin import test
@@ -16,6 +17,9 @@ BUFFET_ROOT_OBJECT_PATH = '/org/chromium/Buffet'
 
 BUFFET_MANAGER_INTERFACE = 'org.chromium.Buffet.Manager'
 BUFFET_MANAGER_OBJECT_PATH = '/org/chromium/Buffet/Manager'
+
+TEST_STATE_KEY = 'test_state_key'
+TEST_STATE_VALUE = 'test_state_value'
 
 class buffet_BasicDBusAPI(test.test):
     """Check that basic buffet daemon DBus APIs are functional."""
@@ -38,7 +42,22 @@ class buffet_BasicDBusAPI(test.test):
                                  'return a ticket id.')
 
         logging.info('Returned ticket id is %s.', ticket_id)
-        # Updating state has no response, and we can't read the state yet,
-        # because we want to expose that as a property.
-        manager_proxy.UpdateState('this should be a json blob',
-                                  dbus_interface=BUFFET_MANAGER_INTERFACE)
+
+        logging.info('Getting state via GetAll()')
+        properties = manager_proxy.GetAll(BUFFET_MANAGER_INTERFACE,
+                                          dbus_interface=dbus.PROPERTIES_IFACE)
+        if 'State' not in properties:
+            raise error.TestFail('Manager should have a State property.')
+
+        logging.info('Getting state via Get()')
+        state_property = manager_proxy.Get(BUFFET_MANAGER_INTERFACE, 'State',
+                                           dbus_interface=dbus.PROPERTIES_IFACE)
+        if state_property != properties['State']:
+            raise error.TestFail('State property from GetAll does not match '
+                                 'Get: (%s vs %s).' % (properties['State'],
+                                                       state_property))
+
+        logging.info('Updating state.')
+        manager_proxy.UpdateState(
+                json.dumps({TEST_STATE_KEY: TEST_STATE_VALUE}),
+                dbus_interface=BUFFET_MANAGER_INTERFACE)
