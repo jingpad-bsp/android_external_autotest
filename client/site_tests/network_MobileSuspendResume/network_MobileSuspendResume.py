@@ -9,8 +9,9 @@ import time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui_test
 from autotest_lib.client.cros import rtc, sys_power
+from autotest_lib.client.cros.networking.chrome_testing \
+        import chrome_networking_test_context as cntc
 
 # Special import to define the location of the flimflam library.
 from autotest_lib.client.cros import flimflam_test_path
@@ -18,7 +19,7 @@ import flimflam
 
 SHILL_LOG_SCOPES = 'cellular+dbus+device+dhcp+manager+modem+portal+service'
 
-class network_MobileSuspendResume(cros_ui_test.UITest):
+class network_MobileSuspendResume(test.test):
     version = 1
     TIMEOUT = 60
 
@@ -326,26 +327,28 @@ class network_MobileSuspendResume(cros_ui_test.UITest):
     def run_once(self, scenario_group='all', autoconnect=False,
                  device_type=flimflam.FlimFlam.DEVICE_CELLULAR, **kwargs):
 
-        # Replace the test type with the list of tests
-        if scenario_group not in network_MobileSuspendResume.scenarios.keys():
-            scenario_group = 'all'
-        logging.info('Running scenario group: %s' % scenario_group)
-        scenarios = network_MobileSuspendResume.scenarios[scenario_group]
+        with cntc.ChromeNetworkingTestContext():
+            # Replace the test type with the list of tests
+            if (scenario_group not in
+                    network_MobileSuspendResume.scenarios.keys()):
+                scenario_group = 'all'
+            logging.info('Running scenario group: %s' % scenario_group)
+            scenarios = network_MobileSuspendResume.scenarios[scenario_group]
 
-        self.init_flimflam(device_type)
+            self.init_flimflam(device_type)
 
-        device = self.__get_mobile_device()
-        if not device:
-            raise error.TestFail('Cannot find mobile device.')
-        self.enable_device(device, True)
+            device = self.__get_mobile_device()
+            if not device:
+                raise error.TestFail('Cannot find mobile device.')
+            self.enable_device(device, True)
 
-        service = self.FindMobileService(self.TIMEOUT)
-        if not service:
-            raise error.TestFail('Cannot find mobile service.')
+            service = self.FindMobileService(self.TIMEOUT)
+            if not service:
+                raise error.TestFail('Cannot find mobile service.')
 
-        service.SetProperty('AutoConnect', dbus.Boolean(autoconnect))
+            service.SetProperty('AutoConnect', dbus.Boolean(autoconnect))
 
-        logging.info('Running scenarios with autoconnect %s.' % autoconnect)
+            logging.info('Running scenarios with autoconnect %s.' % autoconnect)
 
-        for t in scenarios:
-            self.run_scenario(t, **kwargs)
+            for t in scenarios:
+                self.run_scenario(t, **kwargs)
