@@ -121,10 +121,11 @@ class ServoHost(ssh_host.SSHHost):
         try:
             self.verify()
         except:
-            if required_by_test and self.is_in_lab():
-                self.repair_full()
-            else:
-                raise
+            if required_by_test:
+                if not self.is_in_lab():
+                    raise
+                else:
+                    self.repair_full()
 
 
     def is_in_lab(self):
