@@ -4,6 +4,7 @@
 
 AUTHOR = "Chrome OS Team"
 NAME = "platform_MemoryPressure"
+SUITE = "kernel_per-build_regression"
 PURPOSE = "Measure system performance under heavy memory usage."
 CRITERIA = "This test is a benchmark."
 TIME = "SHORT"
