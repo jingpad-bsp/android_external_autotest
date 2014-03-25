@@ -17,8 +17,7 @@ Runs eight minutes of suspend/resume cycles in the background of a file I/O benc
 """
 
 job.parallel([lambda: job.run_test('power_SuspendStress', tag='disk',
-                                   duration=480, init_delay=10, min_suspend=7,
-                                   tolerated_aborts=1)],
+                                   duration=480, init_delay=10, min_suspend=7)],
              [lambda: job.run_test('hardware_StorageFio',
                                    quicktest=True, iterations=8,
                                    tag='power_SuspendStress')])

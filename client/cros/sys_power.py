@@ -18,7 +18,7 @@ class SuspendFailure(Exception):
     pass
 
 
-class SuspendAbort(SuspendFailure):
+class SuspendTimeout(SuspendFailure):
     """Suspend took too long, got wakeup event (RTC tick) before it was done."""
     pass
 
@@ -40,10 +40,22 @@ class FirmwareError(SuspendFailure):
         ]
 
 
-class EarlyWakeupError(SuspendFailure):
-    """Unexpected early wakeup from suspend (spurious interrupts?)."""
-    pass
-
+class SpuriousWakeupError(SuspendFailure):
+    """Received spurious wakeup while suspending or woke before schedule."""
+    S3_WHITELIST = [  # (<board>, <eventlog wake source>, <syslog wake source>)
+            # crbug.com/220014: spurious trackpad IRQs
+            ('^link', 'Wake Source | GPIO | 12', ''),
+            # crbug.com/345327: unknown, probably same as crbug.com/290923
+            ('^x86-alex', '', ''),   # alex can report neither, blanket ignore
+            # crbug.com/355106: unknown, possibly related to crbug.com/290923
+            ('^lumpy', '', 'PM1_STS: WAK PWRBTN'),
+        ]
+    S0_WHITELIST = [  # (<board>, <kernel wake source>)
+            # crbug.com/290923: spurious keyboard IRQ, believed to be from Servo
+            ('^x86-alex', 'serio0'),
+            # unknown, probably the same as crbug.com/355106 & crbug.com/290923
+            ('^lumpy', 'serio0'),
+        ]
 
 class MemoryError(SuspendFailure):
     """memory_suspend_test found memory corruption."""
@@ -75,7 +87,7 @@ def check_wakeup(alarm):
     now = rtc.get_seconds()
     if now < alarm:
         logging.error('Woke up early at %d', now)
-        raise EarlyWakeupError('Woke from suspend early')
+        raise SpuriousWakeupError('Woke from suspend early')
 
 
 def do_suspend(suspend_seconds, delay_seconds=0):
@@ -120,8 +132,8 @@ def kernel_suspend(seconds):
         logging.exception('Writing to %s failed', SYSFS_POWER_STATE)
         if e.errno == errno.EBUSY and rtc.get_seconds() >= alarm:
             # The kernel returns EBUSY if it has to abort because
-            # the RTC alarm fires before we've reached suspend.
-            raise SuspendAbort('Suspend took too long, RTC alarm fired')
+            # another wakeup fires before we've reached suspend.
+            raise SpuriousWakeupError('Received spurious wakeup in kernel.')
         else:
             # Some driver probably failed to suspend properly.
             # A hint as to what failed is in errno.
@@ -203,6 +215,6 @@ def write_wakeup_count(wakeup_count):
             sysfs_file.write(str(wakeup_count))
     except IOError as e:
         if (e.errno == errno.EINVAL and read_wakeup_count() != wakeup_count):
-            raise SuspendAbort('wakeup_count changed before suspend')
+            raise SpuriousWakeupError('wakeup_count changed before suspend')
         else:
             raise

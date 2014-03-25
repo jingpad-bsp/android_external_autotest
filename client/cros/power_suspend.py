@@ -41,49 +41,44 @@ class Suspender(object):
         _hwclock_ts: Read RTC timestamp left on resume in hwclock-on-resume
         _device_resume_time: Read seconds overall device resume took from logs.
         _individual_device_times: Reads individual device suspend/resume times.
+        _identify_driver: Return the driver name of a device (or "unknown").
     """
 
     # board-specific "time to suspend" values determined empirically
     # TODO: migrate to separate file with http://crosbug.com/38148
     _SUSPEND_DELAY = {
         # TODO: Reevaluate this when http://crosbug.com/38460 is fixed
-        'daisy': 5,
-        'daisy_spring': 5,
-        'peach_pit': 5,
-
-        # TODO: Reevaluate this when http://crosbug.com/36766 is fixed
-        'x86-zgb': 4,
+        'daisy': 6,
+        'daisy_spring': 6,
+        'peach_pit': 6,
 
         # TODO: Reevaluate these when http://crosbug.com/38225 is fixed
-        'x86-mario': 9,
-        'x86-alex': 8,
-
-        # TODO: Reevaluate this when http://crosbug.com/38239 is fixed
-        # edit: bumping this even more to make it work for now...
-        # TODO(jwerner): figure out how to deal with the UMH/firmware delays
-        # once crosbug/p 16981 and 17115 are solved.
-        'stout': 10,
+        'x86-mario': 6,
+        'x86-alex': 5,
 
         # Lumpy and Stumpy need high values, because it seems to mitigate their
         # RTC interrupt problem. See http://crosbug.com/36004
+        'lumpy': 5,
+        'stumpy': 5,
 
-        # TODO: Reevaluate these when http://crbug.com/223313 is fixed
-        'lumpy': 7,
-        'stumpy': 7,
-        'butterfly': 7,
+        # RTS5209 card reader has a really bad staging driver, can take ~1 sec
+        'butterfly': 4,
 
         # Hard disk sync and overall just slow
         'parrot': 8,
         'kiev': 9,
     }
-    # alarm/not_before value guaranteed to raise EarlyWakeup in _hwclock_ts
-    _EARLY_WAKEUP = 2147483647
+
+    # alarm/not_before value guaranteed to raise SpuriousWakeup in _hwclock_ts
+    _ALARM_FORCE_EARLY_WAKEUP = 2147483647
+    # alarm constant used to signify that we should retry the suspend attempt
+    _ALARM_FORCE_RETRY = 0
 
     # File written by send_metrics_on_resume containing timing information about
     # the last resume.
     _TIMINGS_FILE = '/var/run/power_manager/root/last_resume_timings'
 
-    # Amount of lines to dump from the eventlog on an EarlyWakeup. Should be
+    # Amount of lines to dump from the eventlog on a SpuriousWakeup. Should be
     # enough to include ACPI Wake Reason... 10 should be far on the safe side.
     _RELEVANT_EVENTLOG_LINES = 10
 
@@ -208,8 +203,7 @@ class Suspender(object):
             early_wakeup = False
             if os.path.exists(self.HWCLOCK_FILE):
                 match = re.search(r'([0-9]+) seconds since .+ (-?[0-9.]+) sec',
-                                  utils.read_file(self.HWCLOCK_FILE),
-                                  re.DOTALL)
+                                  utils.read_file(self.HWCLOCK_FILE), re.DOTALL)
                 if match:
                     seconds = int(match.group(1)) + float(match.group(2))
                     logging.debug('RTC resume timestamp read: %f', seconds)
@@ -219,13 +213,24 @@ class Suspender(object):
             time.sleep(0.05 * retry)
         if early_wakeup:
             logging.debug('Early wakeup, dumping eventlog if it exists:\n')
-            eventlog = utils.system_output('mosys eventlog list | tail -n %d' %
+            elog = utils.system_output('mosys eventlog list | tail -n %d' %
                     self._RELEVANT_EVENTLOG_LINES, ignore_status=True)
-            why = (['unknown'] + re.findall(r'Wake Source \| .*', eventlog))[-1]
-            if why == 'Wake Source | GPIO | 12' and utils.get_board() == 'link':
-                logging.warn('Whitelisted EarlyWakeup (crbug/220014), retrying')
-                return None
-            raise sys_power.EarlyWakeupError('Woke up early due to ' + why)
+            wake_elog = (['unknown'] + re.findall(r'Wake Source.*', elog))[-1]
+            for line in reversed(self._logs):
+                match = re.search(r'PM1_STS: WAK.*', line)
+                if match:
+                    wake_syslog = match.group(0)
+                    break
+            else:
+                wake_syslog = 'unknown'
+            for b, e, s in sys_power.SpuriousWakeupError.S3_WHITELIST:
+                if (re.search(b, utils.get_board()) and
+                        re.search(e, wake_elog) and re.search(s, wake_syslog)):
+                    logging.warn('Whitelisted spurious wake in S3: %s | %s'
+                            % (wake_elog, wake_syslog))
+                    return None
+            raise sys_power.SpuriousWakeupError('Spurious wake in S3: %s | %s'
+                    % (wake_elog, wake_syslog))
         if utils.get_board() in ['lumpy', 'stumpy', 'kiev']:
             logging.debug('RTC read failure (crosbug/36004), dumping nvram:\n' +
                     utils.system_output('mosys nvram dump', ignore_status=True))
@@ -308,16 +313,16 @@ class Suspender(object):
         try:
             iteration = len(self.failures) + len(self.successes) + 1
 
-            # Retry suspend until we get clear HwClock reading on buggy boards
+            # Retry suspend in case we hit a known (whitelisted) bug
             for _ in xrange(10):
                 self._reset_logs()
                 utils.system('sync')
                 board_delay = self._SUSPEND_DELAY.get(utils.get_board(), 3)
                 try:
                     alarm = self._suspend(duration + board_delay)
-                except sys_power.EarlyWakeupError:
-                    # might be a SuspendAbort... we check for it ourselves below
-                    alarm = self._EARLY_WAKEUP
+                except sys_power.SpuriousWakeupError:
+                    # might be another error, we check for it ourselves below
+                    alarm = self._ALARM_FORCE_EARLY_WAKEUP
 
                 # look for errors
                 if os.path.exists('/sys/firmware/log'):
@@ -360,16 +365,30 @@ class Suspender(object):
                                 '\n'.join(self._logs[i-5:i+3]), re.MULTILINE)
                         if match:
                             wake_source = match.group(1)
-                        raise sys_power.SuspendAbort('Spurious wake from %s|%s'
-                            % (wake_source, self._identify_driver(wake_source)))
+                        driver = self._identify_driver(wake_source)
+                        for b, w in sys_power.SpuriousWakeupError.S0_WHITELIST:
+                            if (re.search(b, utils.get_board()) and
+                                    re.search(w, wake_source)):
+                                logging.warn('Whitelisted spurious wake before '
+                                        'S3: %s | %s' % (wake_source, driver))
+                                alarm = self._ALARM_FORCE_RETRY
+                        if alarm == self._ALARM_FORCE_RETRY:
+                            break
+                        if "rtc" in driver:
+                            raise sys_power.SuspendTimeout('System took too '
+                                                           'long to suspend.')
+                        raise sys_power.SpuriousWakeupError('Spurious wake '
+                                'before S3: %s | %s' % (wake_source, driver))
                     if unknown_regex.search(line):
                         raise sys_power.SuspendFailure('Unidentified problem.')
 
+                if alarm == self._ALARM_FORCE_RETRY:
+                    continue
                 hwclock_ts = self._hwclock_ts(alarm)
                 if hwclock_ts:
                     break
             else:
-                raise error.TestError('Ten tries failed due to whitelisted bug')
+                raise error.TestWarn('Ten tries failed due to whitelisted bug')
 
             # calculate general measurements
             start_resume = self._ts('start_resume_time')
@@ -414,7 +433,7 @@ class Suspender(object):
             logging.error(message)
             self.failures.append(ex)
             if self._throw:
-                if isinstance(ex, sys_power.KernelError):
+                if type(ex).__name__ in ['KernelError', 'SuspendTimeout']:
                     raise error.TestWarn(message)
                 else:
                     raise error.TestFail(message)
