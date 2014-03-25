@@ -300,7 +300,7 @@ class RobotWrapper:
     def _get_control_command_quickstep(self, robot_script, gesture, variation):
         """have the robot do the zig-zag gesture for latency testing."""
         para = (robot_script, self._board, self._speed_dict[GV.FULL_SPEED])
-        return 'python %s %s.p %d' % para
+        return 'python %s %s_min.p %d' % para
 
     def _get_control_command_one_stationary_finger(self, robot_script, gesture,
                                                    variation):
