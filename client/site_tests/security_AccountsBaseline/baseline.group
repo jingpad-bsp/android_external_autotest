@@ -31,7 +31,7 @@ syslog:x:202:
 ntp:x:203:
 sshd:x:204:
 polkituser:x:206:
-tss:x:207:root,chaps
+tss:x:207:root,chaps,attestation
 pkcs11:x:208:root,ipsec,chronos,chaps,wpa
 qdlservice:x:209:
 cromo:x:210:
@@ -65,6 +65,7 @@ p2p:x:239:
 brltty:x:240:chronos
 modem:x:241:
 radvd:x:243:radvd
+attestation:!:247:attestation
 ntfs-3g:x:300:
 avfs:x:301:
 fuse-exfat:x:302:
