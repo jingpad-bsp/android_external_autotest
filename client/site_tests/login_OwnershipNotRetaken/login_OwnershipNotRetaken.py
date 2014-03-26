@@ -2,13 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import hashlib, os
+import gobject, hashlib, os
 from dbus.mainloop.glib import DBusGMainLoop
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import chrome
-from autotest_lib.client.cros import constants, cryptohome, login
+from autotest_lib.client.common_lib.cros import chrome, session_manager
+from autotest_lib.client.cros import constants, cryptohome, ownership
 
 
 class login_OwnershipNotRetaken(test.test):
@@ -19,10 +19,21 @@ class login_OwnershipNotRetaken(test.test):
     _TEST_PASS = 'testme'
 
 
+    def initialize(self):
+        super(login_OwnershipNotRetaken, self).initialize()
+        # Start clean, wrt ownership and the desired user.
+        ownership.restart_ui_to_clear_ownership_files()
+
+        bus_loop = DBusGMainLoop(set_as_default=True)
+        self._cryptohome_proxy = cryptohome.CryptohomeProxy(bus_loop)
+
+
     def run_once(self):
+        listener = session_manager.OwnershipSignalListener(gobject.MainLoop())
+        listener.listen_for_new_key_and_policy()
         # Sign in. Sign out happens automatically when cr goes out of scope.
         with chrome.Chrome() as cr:
-            login.wait_for_ownership()
+            listener.wait_for_signals(desc='Owner settings written to disk.')
 
         key = open(constants.OWNER_KEY_FILE, 'rb')
         hash = hashlib.md5(key.read())
@@ -48,5 +59,4 @@ class login_OwnershipNotRetaken(test.test):
 
     def cleanup(self):
         super(login_OwnershipNotRetaken, self).cleanup()
-        bus_loop = DBusGMainLoop(set_as_default=True)
-        cryptohome.CryptohomeProxy(bus_loop).remove(self._TEST_USER)
+        self._cryptohome_proxy.remove(self._TEST_USER)

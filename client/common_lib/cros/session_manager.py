@@ -114,20 +114,36 @@ class OwnershipSignalListener(SignalListener):
         @param g_mail_loop: glib main loop object.
         """
         super(OwnershipSignalListener, self).__init__(g_main_loop)
+        self._listen_for_new_key = False
         self._got_new_key = False
+        self._listen_for_new_policy = False
         self._got_new_policy = False
+
 
     def listen_for_new_key_and_policy(self):
         """Set to listen for signals indicating new owner key and device policy.
         """
+        self._listen_for_new_key = self._listen_for_new_policy = True
         self.listen_to_signal(self.__handle_new_key, 'SetOwnerKeyComplete')
         self.listen_to_signal(self.__handle_new_policy,
                               'PropertyChangeComplete')
+        self.reset_signal_state()
+
+
+    def listen_for_new_policy(self):
+        """Set to listen for signal indicating new device policy.
+        """
+        self._listen_for_new_key = False
+        self._listen_for_new_policy = True
+        self.listen_to_signal(self.__handle_new_policy,
+                              'PropertyChangeComplete')
+        self.reset_signal_state()
 
 
     def reset_signal_state(self):
         """Resets internal signal tracking state."""
-        self._got_new_policy = self._got_new_key = False
+        self._got_new_key = not self._listen_for_new_key
+        self._got_new_policy = not self._listen_for_new_policy
 
 
     def all_signals_received(self):

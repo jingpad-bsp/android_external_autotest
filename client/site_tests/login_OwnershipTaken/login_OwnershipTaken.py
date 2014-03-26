@@ -2,13 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os, sys
+import gobject, os, sys
 from dbus.mainloop.glib import DBusGMainLoop
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome, session_manager
-from autotest_lib.client.cros import constants, login, ownership
+from autotest_lib.client.cros import constants, ownership
 
 
 class login_OwnershipTaken(test.test):
@@ -22,6 +22,7 @@ class login_OwnershipTaken(test.test):
 
 
     def initialize(self):
+        super(login_OwnershipTaken, self).initialize()
         ownership.restart_ui_to_clear_ownership_files()
         if (os.access(constants.OWNER_KEY_FILE, os.F_OK) or
             os.access(constants.SIGNED_POLICY_FILE, os.F_OK)):
@@ -53,8 +54,10 @@ class login_OwnershipTaken(test.test):
 
     def run_once(self):
         bus_loop = DBusGMainLoop(set_as_default=True)
+        listener = session_manager.OwnershipSignalListener(gobject.MainLoop())
+        listener.listen_for_new_key_and_policy()
         with chrome.Chrome() as cr:
-            login.wait_for_ownership()
+            listener.wait_for_signals(desc='Owner settings written to disk.')
 
             sm = session_manager.connect(bus_loop)
             retrieved_policy = sm.RetrievePolicy(byte_arrays=True)

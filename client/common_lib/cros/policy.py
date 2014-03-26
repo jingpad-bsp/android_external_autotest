@@ -2,11 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus, sys
+import dbus, gobject, sys
 
 import common
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import login, ownership
+from autotest_lib.client.common_lib.cros import session_manager
+from autotest_lib.client.cros import ownership
 
 
 """Utility class for tests that generate, push and fetch policies.
@@ -165,8 +166,10 @@ def push_policy_and_verify(policy_string, sm):
 
     @raises error.TestFail if policy push failed.
     """
+    listener = session_manager.OwnershipSignalListener(gobject.MainLoop())
+    listener.listen_for_new_policy()
     sm.StorePolicy(dbus.ByteArray(policy_string), byte_arrays=True)
-    login.wait_for_ownership()
+    listener.wait_for_signals(desc='Policy push.')
 
     retrieved_policy = sm.RetrievePolicy(byte_arrays=True)
     if retrieved_policy != policy_string:

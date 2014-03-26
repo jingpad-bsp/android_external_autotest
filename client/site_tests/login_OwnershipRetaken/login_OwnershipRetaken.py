@@ -34,9 +34,6 @@ class login_OwnershipRetaken(test.test):
         self._cryptohome_proxy.remove(ownership.TESTUSER)
 
         self._sm = session_manager.connect(bus_loop)
-        self._listener = session_manager.OwnershipSignalListener(
-                gobject.MainLoop())
-        self._listener.listen_for_new_key_and_policy()
 
 
     def run_once(self):
@@ -58,20 +55,20 @@ class login_OwnershipRetaken(test.test):
                                                poldata)
         policy.push_policy_and_verify(policy_string, self._sm)
 
-        self._listener.wait_for_signals(desc='Initial policy push complete.')
-
         # grab key, ensure that it's the same as the known key.
         if (utils.read_file(constants.OWNER_KEY_FILE) != pubkey):
             raise error.TestFail('Owner key should not have changed!')
 
         # Start a new session, which will trigger the re-taking of ownership.
+        listener = session_manager.OwnershipSignalListener(gobject.MainLoop())
+        listener.listen_for_new_key_and_policy()
         self._cryptohome_proxy.mount(ownership.TESTUSER,
                                      ownership.TESTPASS,
                                      create=True)
         if not self._sm.StartSession(ownership.TESTUSER, ''):
-            raise error.TestFail('Could not start session for owner')
+            raise error.TestError('Could not start session for owner')
 
-        self._listener.wait_for_signals(desc='Re-taking of ownership complete.')
+        listener.wait_for_signals(desc='Re-taking of ownership complete.')
 
         # grab key, ensure that it's different than known key
         if (utils.read_file(constants.OWNER_KEY_FILE) == pubkey):
@@ -80,7 +77,7 @@ class login_OwnershipRetaken(test.test):
         # RetrievePolicy, check sig against new key, check properties
         retrieved_policy = self._sm.RetrievePolicy(byte_arrays=True)
         if retrieved_policy is None:
-            raise error.TestFail('Policy not found')
+            raise error.TestError('Policy not found')
         policy.compare_policy_response(self.srcdir,
                                        retrieved_policy,
                                        owner=ownership.TESTUSER,
