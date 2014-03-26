@@ -79,6 +79,7 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      num=self._NUM,
                      priority=self._PRIORITY,
                      timeout=self._TIMEOUT,
+                     file_bugs=False,
                      wait_for_results=False).AndReturn(7)
         self.mox.ReplayAll()
         self.assertTrue(self.scheduler.ScheduleSuite(self._SUITE,
@@ -134,6 +135,7 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      pool=self._POOL,
                      priority=self._PRIORITY,
                      timeout=self._TIMEOUT,
+                     file_bugs=False,
                      wait_for_results=False).AndReturn(7)
         self.mox.ReplayAll()
         self.assertTrue(self.scheduler.ScheduleSuite(self._SUITE,
@@ -183,6 +185,7 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      pool=None,
                      priority=self._PRIORITY,
                      timeout=self._TIMEOUT,
+                     file_bugs=False,
                      wait_for_results=False).AndReturn(None)
         self.mox.ReplayAll()
         self.assertRaises(deduping_scheduler.ScheduleException,
@@ -213,6 +216,7 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      pool=None,
                      priority=self._PRIORITY,
                      timeout=self._TIMEOUT,
+                     file_bugs=False,
                      wait_for_results=False).AndRaise(Exception())
         self.mox.ReplayAll()
         self.assertRaises(deduping_scheduler.ScheduleException,
@@ -249,6 +253,7 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      num=self._NUM,
                      priority=self._PRIORITY,
                      timeout=self._TIMEOUT,
+                     file_bugs=False,
                      wait_for_results=False).AndRaise(exception)
         site_utils.get_sheriffs(
                 lab_only=True).AndReturn(['dummy@chromium.org'])

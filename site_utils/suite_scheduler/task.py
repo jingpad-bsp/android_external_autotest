@@ -66,7 +66,7 @@ class Task(object):
             raise MalformedConfigEntry('unknown section %s' % section)
 
         allowed = set(['suite', 'run_on', 'branch_specs', 'pool', 'num',
-                       'boards'])
+                       'boards', 'file_bugs'])
         # The parameter of union() is the keys under the section in the config
         # The union merges this with the allowed set, so if any optional keys
         # are omitted, then they're filled in. If any extra keys are present,
@@ -82,6 +82,7 @@ class Task(object):
         branches = config.getstring(section, 'branch_specs')
         pool = config.getstring(section, 'pool')
         boards = config.getstring(section, 'boards')
+        file_bugs = config.getboolean(section, 'file_bugs')
         for klass in driver.Driver.EVENT_CLASSES:
             if klass.KEYWORD == keyword:
                 priority = klass.PRIORITY
@@ -103,7 +104,8 @@ class Task(object):
             specs = re.split('\s*,\s*', branches)
             Task.CheckBranchSpecs(specs)
         return keyword, Task(section, suite, specs, pool, num, boards,
-                             priority, timeout)
+                             priority, timeout,
+                             file_bugs=file_bugs if file_bugs else False)
 
 
     @staticmethod
@@ -129,7 +131,7 @@ class Task(object):
 
 
     def __init__(self, name, suite, branch_specs, pool=None, num=None,
-                 boards=None, priority=None, timeout=None):
+                 boards=None, priority=None, timeout=None, file_bugs=False):
         """Constructor
 
         Given an iterable in |branch_specs|, pre-vetted using CheckBranchSpecs,
@@ -170,6 +172,8 @@ class Task(object):
         @param priority: The string name of a priority from
                          client.common_lib.priorities.Priority.
         @param timeout: The max lifetime of the suite in hours.
+        @param file_bugs: True if bug filing is desired for the suite created
+                          for this task.
         """
         self._name = name
         self._suite = suite
@@ -178,6 +182,7 @@ class Task(object):
         self._num = num
         self._priority = priority
         self._timeout = timeout
+        self._file_bugs = file_bugs
 
         self._bare_branches = []
         self._version_equal_constraint = False
@@ -212,9 +217,10 @@ class Task(object):
             self._boards = set([x.strip() for x in boards.split(',')])
             boardsStr = boards
 
-        self._str = ('%s: %s on %s with pool %s, boards [%s], '
-                     'across %s machines' % (self.__class__.__name__,
-                     suite, branch_specs, pool, boardsStr, numStr))
+        self._str = ('%s: %s on %s with pool %s, boards [%s], file_bugs = %s '
+                     'across %s machines.' % (self.__class__.__name__,
+                     suite, branch_specs, pool, boardsStr, self._file_bugs,
+                     numStr))
 
 
     def _FitsSpec(self, branch):
@@ -342,7 +348,7 @@ class Task(object):
         if self._pool:
             labels.append(Labels.POOL_PREFIX + self._pool)
 
-        return scheduler.GetHosts(multiple_labels=labels)
+        return scheduler.CheckHostsExist(multiple_labels=labels)
 
 
     def ShouldHaveAvailableHosts(self):
@@ -385,7 +391,8 @@ class Task(object):
                 if not scheduler.ScheduleSuite(self._suite, board, build,
                                                self._pool, self._num,
                                                self._priority, self._timeout,
-                                               force):
+                                               force,
+                                               file_bugs=self._file_bugs):
                     logging.info('Skipping scheduling %s on %s for %s',
                                  self._suite, build, board)
             except deduping_scheduler.DedupingSchedulerException as e:

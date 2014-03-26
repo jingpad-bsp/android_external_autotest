@@ -38,6 +38,7 @@ class TaskTestBase(mox.MoxTestBase):
     _TASK_NAME = 'fake_task_name'
     _PRIORITY = build_event.BuildEvent.PRIORITY
     _TIMEOUT = build_event.BuildEvent.TIMEOUT
+    _FILE_BUGS=False
 
 
     def setUp(self):
@@ -167,6 +168,13 @@ class TaskCreateTest(TaskTestBase):
                           'not_a_thing')
 
 
+    def testFileBugsNoConfigValue(self):
+        """Ensure not setting file bugs in a config leads to file_bugs=False."""
+        keyword, new_task = task.Task.CreateFromConfigSection(self.config,
+                                                              self._TASK_NAME)
+        self.assertFalse(new_task._file_bugs)
+
+
 class TaskTest(TaskTestBase):
     """Unit tests for Task."""
 
@@ -182,7 +190,8 @@ class TaskTest(TaskTestBase):
         """Test running a recurring task."""
         self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
                                  None, None, self._PRIORITY, self._TIMEOUT,
-                                 False).AndReturn(True)
+                                 False, file_bugs=self._FILE_BUGS).AndReturn(
+                                        True)
         self.mox.ReplayAll()
         self.assertTrue(self.task.Run(self.sched, self._MAP, self._BOARD))
 
@@ -194,7 +203,8 @@ class TaskTest(TaskTestBase):
                            num=expected_sharding)
         self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
                                  None, expected_sharding, None, None,
-                                 False).AndReturn(True)
+                                 False, file_bugs=self._FILE_BUGS).AndReturn(
+                                        True)
         self.mox.ReplayAll()
         self.assertTrue(mytask.Run(self.sched, self._MAP, self._BOARD))
 
@@ -203,14 +213,16 @@ class TaskTest(TaskTestBase):
         """Test running a task that schedules a duplicate suite task."""
         self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
                                  None, None, self._PRIORITY, self._TIMEOUT,
-                                 False).AndReturn(False)
+                                 False, file_bugs=self._FILE_BUGS).AndReturn(
+                                         False)
         self.mox.ReplayAll()
         self.assertTrue(self.task.Run(self.sched, self._MAP, self._BOARD))
 
 
     def testRunUnrunnablePool(self):
         """Test running a task that cannot run on this pool."""
-        self.sched.GetHosts(multiple_labels=mox.IgnoreArg()).AndReturn(None)
+        self.sched.CheckHostsExist(
+                multiple_labels=mox.IgnoreArg()).AndReturn(None)
         self.mox.ReplayAll()
         t = task.Task(self._TASK_NAME, self._SUITE,
                       [self._BRANCH_SPEC], "BadPool")
@@ -244,7 +256,8 @@ class TaskTest(TaskTestBase):
         t = task.Task(self._TASK_NAME, self._SUITE, [])
         self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
                                  None, None, None, None,
-                                 False).AndReturn(True)
+                                 False, file_bugs=self._FILE_BUGS).AndReturn(
+                                         True)
         self.mox.ReplayAll()
         self.assertTrue(t.Run(self.sched, self._MAP, self._BOARD))
 
@@ -254,7 +267,7 @@ class TaskTest(TaskTestBase):
         # Barf while scheduling.
         self.sched.ScheduleSuite(
             self._SUITE, self._BOARD, self._BUILD, None, None, self._PRIORITY,
-            self._TIMEOUT, False).AndRaise(
+            self._TIMEOUT, False, file_bugs=self._FILE_BUGS).AndRaise(
                 deduping_scheduler.ScheduleException('Simulated Failure'))
         self.mox.ReplayAll()
         self.assertTrue(self.task.Run(self.sched, self._MAP, self._BOARD))
@@ -264,7 +277,8 @@ class TaskTest(TaskTestBase):
         """Test force running a recurring task."""
         self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
                                  None, None, self._PRIORITY, self._TIMEOUT,
-                                 True).AndReturn(True)
+                                 True, file_bugs=self._FILE_BUGS).AndReturn(
+                                         True)
         self.mox.ReplayAll()
         self.assertTrue(self.task.Run(self.sched, self._MAP, self._BOARD, True))
 
@@ -292,7 +306,8 @@ class OneShotTaskTest(TaskTestBase):
     def testRun(self):
         """Test running a one-shot task."""
         self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
-                                 None, None, None, None, False).AndReturn(True)
+                                 None, None, None, None, False,
+                                 file_bugs=self._FILE_BUGS).AndReturn(True)
         self.mox.ReplayAll()
         self.assertFalse(self.task.Run(self.sched, self._MAP, self._BOARD))
 
@@ -300,7 +315,8 @@ class OneShotTaskTest(TaskTestBase):
     def testRunDuplicate(self):
         """Test running a one-shot task that schedules a dup suite task."""
         self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
-                                 None, None, None, None, False).AndReturn(False)
+                                 None, None, None, None, False,
+                                 file_bugs=self._FILE_BUGS).AndReturn(False)
         self.mox.ReplayAll()
         self.assertFalse(self.task.Run(self.sched, self._MAP, self._BOARD))
 
@@ -310,7 +326,7 @@ class OneShotTaskTest(TaskTestBase):
         # Barf while scheduling.
         self.sched.ScheduleSuite(
             self._SUITE, self._BOARD, self._BUILD, None, None,
-            None, None, False).AndRaise(
+            None, None, False, file_bugs=self._FILE_BUGS).AndRaise(
                 deduping_scheduler.ScheduleException('Simulated Failure'))
         self.mox.ReplayAll()
         self.assertFalse(self.task.Run(self.sched, self._MAP, self._BOARD))
@@ -319,10 +335,22 @@ class OneShotTaskTest(TaskTestBase):
     def testForceRun(self):
         """Test force running a one-shot task."""
         self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
-                                 None, None, None, None, True).AndReturn(True)
+                                 None, None, None, None, True,
+                                 file_bugs=self._FILE_BUGS).AndReturn(True)
         self.mox.ReplayAll()
         self.assertFalse(self.task.Run(self.sched, self._MAP, self._BOARD,
-                                      force=True))
+                                       force=True))
+
+
+    def testFileBugs(self):
+        """Test that file_bugs is passed from the task to ScheduleSuite."""
+        self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
+                                 None, None, None, None, True,
+                                 file_bugs=True).AndReturn(True)
+        self.mox.ReplayAll()
+        self.task._file_bugs = True
+        self.assertFalse(self.task.Run(self.sched, self._MAP, self._BOARD,
+                                       force=True))
 
 
 if __name__ == '__main__':

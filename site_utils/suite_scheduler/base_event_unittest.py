@@ -25,7 +25,8 @@ class FakeTask(task.Task):
 
 
     def CanArm(self, scheduler):
-        scheduler.GetHosts(multiple_labels=mox.IgnoreArg()).AndReturn(['host1'])
+        scheduler.CheckHostsExist(
+                multiple_labels=mox.IgnoreArg()).AndReturn(['host1'])
 
 
     def Arm(self):

@@ -93,7 +93,8 @@ class DedupingScheduler(object):
             labels=['Hardware-lab'])
 
 
-    def _Schedule(self, suite, board, build, pool, num, priority, timeout):
+    def _Schedule(self, suite, board, build, pool, num, priority, timeout,
+                  file_bugs=False):
         """Schedule |suite|, if it hasn't already been run.
 
         @param suite: the name of the suite to run, e.g. 'bvt'
@@ -108,6 +109,7 @@ class DedupingScheduler(object):
         @param priority: One of the values from
                          client.common_lib.priorities.Priority.
         @param timeout: The max lifetime of the suite in hours.
+        @param file_bugs: True if bug filing is desired for this suite.
         @return True if the suite got scheduled
         @raise ScheduleException if an error occurs while scheduling.
         """
@@ -117,8 +119,8 @@ class DedupingScheduler(object):
             if self._afe.run(
                         'create_suite_job', suite_name=suite, board=board,
                         build=build, check_hosts=False, num=num, pool=pool,
-                        priority=priority, timeout=timeout,
-                        wait_for_results=False) is not None:
+                        priority=priority, timeout=timeout, file_bugs=file_bugs,
+                        wait_for_results=file_bugs) is not None:
                 return True
             else:
                 raise ScheduleException(
@@ -138,7 +140,7 @@ class DedupingScheduler(object):
 
 
     def ScheduleSuite(self, suite, board, build, pool, num, priority, timeout,
-                      force=False):
+                      force=False, file_bugs=False):
         """Schedule |suite|, if it hasn't already been run.
 
         If |suite| has not already been run against |build| on |board|,
@@ -155,16 +157,17 @@ class DedupingScheduler(object):
                          client.common_lib.priorities.Priority.
         @param timeout: The max lifetime of the suite in hours.
         @param force: Always schedule the suite.
+        @param file_bugs: True if bug filing is desired for this suite.
         @return True if the suite got scheduled, False if not
         @raise DedupException if we can't check for dups.
         @raise ScheduleException if the suite cannot be scheduled.
         """
         if force or self._ShouldScheduleSuite(suite, board, build):
             return self._Schedule(suite, board, build, pool, num, priority,
-                                  timeout)
+                                  timeout, file_bugs=file_bugs)
         return False
 
 
-    def GetHosts(self, *args, **kwargs):
-        """Forward a request to get hosts onto the AFE instance's get_hosts."""
-        return self._afe.get_hosts(*args, **kwargs)
+    def CheckHostsExist(self, *args, **kwargs):
+        """Forward a request to check if hosts matching args, kwargs exist."""
+        return self._afe.get_hostnames(*args, **kwargs)
