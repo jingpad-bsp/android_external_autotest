@@ -67,6 +67,7 @@ class network_WiFi_ChaosConnectDisconnect(test.test):
             # here so it is clearer to read in the status.log file.
             msg = str('Failed on the following attempts:\n%s\n'
                       'With the assoc_params:\n%s\n'
-                      'Debug info: %s' % (pprint.pformat(results),
-                      assoc_params, debug_info))
+                      'Debug info: %s\nDUT MAC:%s' %
+                      (pprint.pformat(results), assoc_params, debug_info,
+                       client.wifi_mac))
             raise error.TestFail(msg)

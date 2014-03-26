@@ -63,9 +63,10 @@ class network_WiFi_ChaosLongConnect(test.test):
 
             if not success:
                 msg = str('DUT failed to connect to the AP in %d tries:\n%s\n'
-                          'With the assoc_params:\n%s\n Debug info: %s' %
+                          'With the assoc_params:\n%s\n Debug info: %s\n '
+                          'DUT MAC: %s' %
                           (DUT_CONNECTION_RETRIES, pprint.pformat(results),
-                          assoc_params, debug_info))
+                          assoc_params, debug_info, client.wifi_mac))
                 raise error.TestError(msg)
         finally:
             filename = str('connect_try_%s.trc' %
