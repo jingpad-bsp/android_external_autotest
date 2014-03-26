@@ -41,7 +41,7 @@ class graphics_GLMark2(test.test):
 
     def cleanup(self):
         if self._services:
-           self._services.restore_services()
+            self._services.restore_services()
 
     def run_once(self, size='800x600', validation_mode=False, min_score=None):
         dep = 'glmark2'
@@ -50,7 +50,7 @@ class graphics_GLMark2(test.test):
 
         glmark2 = os.path.join(self.autodir, 'deps/glmark2/glmark2')
         if not os.path.exists(glmark2):
-            raise error.TestFail('Could not find test binary. Test setup error.')
+            raise error.TestFail('Could not find test binary. Setup error.')
 
         glmark2_data = os.path.join(self.autodir, 'deps/glmark2/data')
 
@@ -58,9 +58,9 @@ class graphics_GLMark2(test.test):
         options.append('--data-path %s' % glmark2_data)
         options.append('--size %s' % size)
         if validation_mode:
-           options.append('--validate')
+            options.append('--validate')
         else:
-           options.append('--annotate')
+            options.append('--annotate')
         cmd = '%s %s' % (glmark2, ' '.join(options))
 
         # If UI is running, we must stop it and restore later.
@@ -71,7 +71,8 @@ class graphics_GLMark2(test.test):
         # The term_process function of /sbin/killers makes sure that all X
         # process are really dead before returning; this is what stop ui uses.
         kill_cmd = '. /sbin/killers; term_process "^X$"'
-        cmd = 'X :1 vt1 & sleep 1; chvt 1 && DISPLAY=:1 %s; %s' % (cmd, kill_cmd)
+        cmd = 'X :1 vt1 & sleep 1; chvt 1 && DISPLAY=:1 %s; %s' % (cmd,
+                                                                   kill_cmd)
 
         if os.environ.get('CROS_FACTORY'):
             from autotest_lib.client.cros import factory_setup_modules
@@ -82,6 +83,7 @@ class graphics_GLMark2(test.test):
             raise error.TestFail('Could not get cool/idle machine for test.')
 
         result = utils.run(cmd)
+        logging.info(result)
         for line in result.stderr.splitlines():
             if line.startswith('Error:'):
                 raise error.TestFail(line)
