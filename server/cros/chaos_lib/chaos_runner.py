@@ -305,6 +305,7 @@ class ChaosRunner(object):
                             conn_worker.cleanup()
 
                 batch_locker.unlock_aps()
+            capturer.close()
             if self._broken_pdus:
                 logging.info('PDU is down!!!\nThe following PDUs are down')
                 pprint.pprint(self._broken_pdus)
