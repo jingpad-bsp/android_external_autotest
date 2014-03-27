@@ -49,9 +49,14 @@ class network_WiFi_VisibleScan(wifi_cell_test_base.WiFiCellTestBase):
                 results[0].pcap_path,
                 remote_host=self.context.router.host,
                 probe_sender=self.context.client.wifi_mac)
-        if len(probe_ssids) != 1:
-            raise error.TestError('Expected exactly one SSID, but got %s' %
-                                  probe_ssids)
-        if probe_ssids - {self.BROADCAST_SSID}:
-            raise error.TestError('Expected broadcast SSID, but got %s' %
-                                  probe_ssids)
+        expected_ssids = frozenset([self.BROADCAST_SSID])
+        permitted_ssids = (expected_ssids |
+                frozenset([self.context.router.get_ssid()]))
+        # Verify expected ssids are contained in the probe result
+        if expected_ssids - probe_ssids:
+            raise error.TestError('Expected SSIDs %s, but got %s' %
+                                  (expected_ssids, probe_ssids))
+        # Verify probe result does not contain any unpermitted ssids
+        if probe_ssids - permitted_ssids:
+            raise error.TestError('Permitted SSIDs %s, but got %s' %
+                                  (permitted_ssids, probe_ssids))
