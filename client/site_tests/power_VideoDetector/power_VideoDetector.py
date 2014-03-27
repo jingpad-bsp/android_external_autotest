@@ -24,12 +24,12 @@ class power_VideoDetector(test.test):
             # update from Chrome every ten seconds.
             dim_ms = 10000
             off_ms = max(3600000, run_time_ms * 10)
-            prefs = { 'disable_als'            : 1,
-                      'ignore_external_policy' : 1,
-                      'plugged_dim_ms'         : dim_ms,
-                      'plugged_off_ms'         : off_ms,
-                      'unplugged_dim_ms'       : dim_ms,
-                      'unplugged_off_ms'       : off_ms, }
+            prefs = { 'has_ambient_light_sensor' : 0,
+                      'ignore_external_policy'   : 1,
+                      'plugged_dim_ms'           : dim_ms,
+                      'plugged_off_ms'           : off_ms,
+                      'unplugged_dim_ms'         : dim_ms,
+                      'unplugged_off_ms'         : off_ms, }
             self._pref_change = power_utils.PowerPrefChanger(prefs)
 
             keyvals = {}
