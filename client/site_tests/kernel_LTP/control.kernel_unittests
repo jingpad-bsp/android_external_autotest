@@ -5,7 +5,9 @@
 NAME = "kernel_ltp"
 AUTHOR = "The Chromium OS Authors,chromeos-kernel-test@google.com"
 TIME = "MEDIUM"
-SUITE = "kernel_weekly_regression"
+# TODO (jimishs) - crbug.com/354547.
+# Uncomment the suite line below once the test can be properly ran in the lab.
+#SUITE = "kernel_weekly_regression"
 EXPERIMENTAL = "True"
 TEST_CATEGORY = "FUNCTIONAL"
 TEST_CLASS = "KERNEL"
