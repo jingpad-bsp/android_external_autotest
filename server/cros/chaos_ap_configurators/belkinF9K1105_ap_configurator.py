@@ -168,10 +168,11 @@ class BelkinF9K1105APConfigurator(
                 self.set_wait_time(120)
                 self.wait.until(lambda _: page_title in self.driver.title)
             except:
+                self.driver.refresh()
+                # If page did not load even after a refresh just continue
+                # because we already clicked the save button.
                 if not page_title in self.driver.title:
-                    raise RuntimeError('Expected %s in title, but got %s as '
-                                       'title.' % (page_title,
-                                       self.driver.title))
+                    pass
             finally:
                 self.restore_default_wait_time()
         else:

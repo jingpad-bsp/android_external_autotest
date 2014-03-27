@@ -252,7 +252,7 @@ class BelkinF9KAPConfigurator(
 
 
     def _set_security_wpapsk(self, security, shared_key, update_interval=None):
-        key_field = '//input[@name="wpa_key_text"]'
+        key_field = '//input[@name="wpa_key_pass"]'
         psk = '//select[@name="authentication"]'
         self.select_item_from_popup_by_xpath('WPA/WPA2-Personal (PSK)',
                                              self.security_popup,
