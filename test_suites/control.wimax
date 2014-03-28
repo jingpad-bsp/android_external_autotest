@@ -43,7 +43,7 @@ _BUG_TEMPLATE = {
     'status': None,
     'summary': None,
     'title': None,
-    'ccs': ['agnescheng@chromium.org', 'alexpau@chromium.org']
+    'cc': ['agnescheng@chromium.org', 'alexpau@chromium.org']
 }
 
 # TODO(benchan): Enable auto bug filing when the tests are stable and no longer
