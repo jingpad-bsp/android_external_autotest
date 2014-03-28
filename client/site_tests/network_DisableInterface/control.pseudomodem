@@ -18,9 +18,6 @@ This test depends on the ifconfig utility to both disable and reenable a
 network interface.
 """
 
-from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
-
-with pseudomodem_context.PseudoModemManagerContext(True, {'family': '3GPP'}):
-    job.run_test('network_DisableInterface',
-                 iface_name='pseudomodem0',
-                 tag='pseudomodem')
+job.run_test('network_DisableInterface',
+             iface_name='pseudomodem0',
+             tag='pseudomodem')
