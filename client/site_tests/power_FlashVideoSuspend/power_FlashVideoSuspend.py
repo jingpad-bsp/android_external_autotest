@@ -14,7 +14,7 @@ from autotest_lib.client.cros import sys_power
 
 class power_FlashVideoSuspend(test.test):
     """Suspend the system with a video playing."""
-    version = 1
+    version = 2
 
     def run_once(self, video_urls=None):
         with chrome.Chrome() as cr:
@@ -26,7 +26,13 @@ class power_FlashVideoSuspend(test.test):
 
 
     def check_video_is_playing(self, tab):
+        """
+        Checks if video is playing or not.
+
+        @param tab: Object to the browser tab
+        """
         def get_current_time():
+            """Get current time from the javascript."""
             return tab.EvaluateJavaScript('player.getCurrentTime()')
 
         old_time = get_current_time()
@@ -36,9 +42,15 @@ class power_FlashVideoSuspend(test.test):
 
 
     def suspend_with_youtube(self, tab):
+        """
+        Suspends kernel while video is running in browser.
 
+        @param tab: Object to the browser tab
+        """
         def player_is_ready():
-            return tab.EvaluateJavaScript('player != undefined')
+            """Check if player is ready to play video."""
+            tab.WaitForDocumentReadyStateToBeInteractiveOrBetter()
+            return tab.EvaluateJavaScript('typeof player != "undefined"')
 
         utils.poll_for_condition(
             condition=player_is_ready,
@@ -47,7 +59,11 @@ class power_FlashVideoSuspend(test.test):
         self.check_video_is_playing(tab)
 
         time.sleep(2)
-        sys_power.kernel_suspend(10)
+        try:
+            sys_power.kernel_suspend(10)
+        except Exception as e:
+            logging.error(e)
+            raise error.TestFail('====Kernel suspend failed====')
         time.sleep(2)
 
         self.check_video_is_playing(tab)
