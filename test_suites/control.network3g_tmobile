@@ -33,11 +33,8 @@ _BUG_TEMPLATE = {
     'status': None,
     'summary': None,
     'title': None,
-    'ccs': ['armansito@chromium.org', 'benchan@chromium.org',
-            'byronk@chromium.org' , 'jnugent@chromium.org',
-            'krisr@chromium.org', 'pprabhu@chromium.org',
-            'rtc@chromium.org', 'thieule@chromium.org',
-            'trond@chromium.org']
+    'cc': ['benchan@chromium.org', 'krisr@chromium.org',
+           'pprabhu@chromium.org', 'thieule@chromium.org']
 }
 
 # TODO(benchan): Re-enable automated bug filing for network3g_pseudomodem
