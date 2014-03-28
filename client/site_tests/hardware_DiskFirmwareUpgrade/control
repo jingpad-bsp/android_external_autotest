@@ -19,4 +19,5 @@ Use it in conjonction with the server test,
 hardware_DiskFirmwareUpgrade_Server.
 """
 
+job.add_sysinfo_logfile('/var/log/storage_info.txt', on_every_test=True)
 job.run_test('hardware_DiskFirmwareUpgrade')

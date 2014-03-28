@@ -14,6 +14,7 @@ This test done the following. Fill the drive 2 times using random write.
 Measure write performance. Trim all the disk. Measure write performance.
 """
 
+job.add_sysinfo_logfile('/var/log/storage_info.txt', on_every_test=True)
 job.run_test('hardware_StorageTrim', dev='/dev/mmcblk0')
 
 

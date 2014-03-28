@@ -17,4 +17,5 @@ This test will find the disk where /dev is located by searching /proc/cmdline,
 and will then determine the size of the main disk by reading /proc/partitions.
 """
 
+job.add_sysinfo_logfile('/var/log/storage_info.txt', on_every_test=True)
 job.run_test('hardware_DiskSize', constraints=['gb_main_disk_size >= 8'])

@@ -19,5 +19,6 @@ NOTE: If autoupdate or another program accesses the spare root partition
 while this test is running, corruption may occur.
 """
 
+job.add_sysinfo_logfile('/var/log/storage_info.txt', on_every_test=True)
 job.run_test(url='hardware_StorageFio', dev='/dev/mmcblk0', filesize=0,
              requirements = [('64k_stress', [])])

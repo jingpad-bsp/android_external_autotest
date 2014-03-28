@@ -14,5 +14,5 @@ Currently this test doesn't support eMMC discard command and will fail
 when run on eMMC device.
 """
 
-
+job.add_sysinfo_logfile('/var/log/storage_info.txt', on_every_test=True)
 job.run_test(url='hardware_StorageFio', requirements = [('rand_trim', [])])

@@ -16,6 +16,5 @@ it will be treat as data not available. The test will be failed if there is
 SMART value is failing or eMMC wear out is in 90-100% band or higher.
 """
 
+job.add_sysinfo_logfile('/var/log/storage_info.txt', on_every_test=True)
 job.run_test('hardware_StorageWearoutDetect')
-
-

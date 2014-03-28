@@ -15,5 +15,6 @@ I/O. This test will write data to the spare root partition, wait for 1 minute,
 then verify the data is still valid.
 """
 
+job.add_sysinfo_logfile('/var/log/storage_info.txt', on_every_test=True)
 job.run_test(url='hardware_StorageFio',
              integrity='True', wait=60)

@@ -17,4 +17,5 @@ untrimmed data are unaffected. The verification will be run in 5 passes with
 
 """
 
+job.add_sysinfo_logfile('/var/log/storage_info.txt', on_every_test=True)
 job.run_test('hardware_TrimIntegrity')

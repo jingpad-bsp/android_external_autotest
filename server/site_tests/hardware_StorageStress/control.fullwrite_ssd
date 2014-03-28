@@ -16,6 +16,7 @@ hardware_StorageStress/result.csv
 """
 
 def run_hardware_storage_stress(machine):
+    job.add_sysinfo_logfile('/var/log/storage_info.txt', on_every_test=True)
     job.run_test('hardware_StorageStress', client_ip=machine,
                   power_command='nothing', storage_test_command='full_write',
                   storage_test_argument='/dev/sda')

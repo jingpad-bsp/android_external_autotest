@@ -38,6 +38,7 @@ DISK_FW_PACKAGES = {
 }
 
 def run_hardware_disk_firmware_upgrade(machine):
+    job.add_sysinfo_logfile('/var/log/storage_info.txt', on_every_test=True)
     job.run_test('hardware_DiskFirmwareUpgrade',
                  host=hosts.create_host(machine),
                  disk_fw_packages=DISK_FW_PACKAGES)

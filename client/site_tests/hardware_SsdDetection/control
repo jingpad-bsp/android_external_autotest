@@ -17,5 +17,6 @@ This test uses hdparm to determine if the rotation rate properties match that of
 a solid state device.
 """
 
+job.add_sysinfo_logfile('/var/log/storage_info.txt', on_every_test=True)
 job.run_test('hardware_SsdDetection',
               constraints=['mb_ssd_device_size >= 8000'])
