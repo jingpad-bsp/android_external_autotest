@@ -45,9 +45,18 @@ class chromedriver(object):
                                      is_component=is_component,
                                      extra_browser_args=extra_chrome_flags)
         self._browser = self._chrome.browser
+        # Close all tabs owned and opened by Telemetry, as these cannot be
+        # transferred to ChromeDriver.
+        self._browser.tabs[0].Close()
 
         # Start ChromeDriver server
         self._server = chromedriver_server(CHROMEDRIVER_EXE_PATH)
+
+        # Open a new tab using Chrome remote debugging. ChromeDriver expects
+        # a tab opened for remote to work. Tabs opened using Telemetry will be
+        # owned by Telemetry, and will be inaccessible to ChromeDriver.
+        urllib2.urlopen('http://localhost:%i/json/new' %
+                        utils.get_chrome_remote_debugging_port())
 
         chromeOptions = {'debuggerAddress':
                          ('localhost:%d' %
