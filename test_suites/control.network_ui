@@ -39,8 +39,8 @@ _BUG_TEMPLATE = {
     'status': None,
     'summary': None,
     'title': None,
-    'ccs': ['armansito@chromium.org', 'gspencer@chromium.org',
-            'pneubeck@chromium.org', 'stevenjb@chromium.org']
+    'cc': ['armansito@chromium.org', 'benchan@chromium.org',
+           'pneubeck@chromium.org', 'stevenjb@chromium.org']
 }
 
 dynamic_suite.reimage_and_run(
