@@ -8,3 +8,13 @@ and state changes.
 
 To start the test server yourself, run server.py. Otherwise, server.py exposes
 start_server/stop_server methods.
+
+To test locally:
+./server.py
+
+# Register a device.
+curl -X POST -d "" http://localhost:8080/clouddevices/v1/registrationTickets
+curl -X PATCH  -d '{"userEmail": "me"}' -H "ACCESS_TOKEN: 1/TEST-ME" \
+    http://localhost:8080/clouddevices/v1/registrationTickets/<id>
+curl -X POST -d "" \
+    http://localhost:8080/clouddevices/v1/registrationTickets/<id>/finalize

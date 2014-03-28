@@ -5,6 +5,7 @@
 """Module contains a simple implementation of the registrationTickets RPC."""
 
 import json
+import logging
 import time
 import uuid
 
@@ -30,8 +31,8 @@ class RegistrationTickets(object):
     # Constants for additional rest operations i.e.
     # .../<ticket_number>/claim | finalize
     FINALIZE = 'finalize'
-    CLAIM = 'claim'
-    SUPPORTED_OPERATIONS = set([FINALIZE, CLAIM])
+    TEST_ACCESS_TOKEN = '1/TEST-ME'
+    SUPPORTED_OPERATIONS = set([FINALIZE])
 
     # Needed for cherrypy to expose this to requests.
     exposed = True
@@ -117,15 +118,32 @@ class RegistrationTickets(object):
         return self._update_ticket(id, api_key, new_data)
 
 
-    def _claim(self, id, api_key):
-        """Claims the ticket with fake test account.
+    def _add_claim_data(self, data):
+        """Adds userEmail to |data| to claim ticket.
 
         Raises:
-            server_errors.HTTPError if the ticket doesn't exist.
+            server_errors.HTTPError if there is an authorization error.
         """
-        # TODO(sosa): Make more intelligent.
-        data = {'userEmail': 'test_account@chromium.org'}
-        return self._update_ticket(id, api_key, data)
+        access_token = common_util.grab_header_field('Authorization')
+        if not access_token:
+            raise server_errors.HTTPError(401, 'Missing Authorization.')
+
+        # Authorization should contain "<type> <token>"
+        access_token_list = access_token.split()
+        if len(access_token_list) != 2:
+            raise server_errors.HTTPError(400, 'Malformed Authorization field')
+
+        [type, code] = access_token_list
+        # TODO(sosa): Consider adding HTTP WWW-Authenticate response header
+        # field
+        if type != 'Bearer':
+            raise server_errors.HTTPError(403, 'Authorization requires '
+                                          'bearer token.')
+        elif code != RegistrationTickets.TEST_ACCESS_TOKEN:
+            raise server_errors.HTTPError(403, 'Wrong access token.')
+        else:
+            logging.info('Ticket is being claimed.')
+            data['userEmail'] = 'test_account@chromium.org'
 
 
     def _update_ticket(self, id, api_key, data=None, update=True):
@@ -148,8 +166,16 @@ class RegistrationTickets(object):
             self._tickets[(id, api_key)] = data
             return data
 
-        # Update or replace the existing ticket.
         ticket = self._get_ticket(id, api_key)
+        if not data:
+            logging.warning('Received empty data update. Doing nothing.')
+            return ticket
+
+        # Handle claiming a ticket with an authorized request.
+        if data.get('userEmail') == 'me':
+            self._add_claim_data(data)
+
+        # Update or replace the existing ticket.
         if update:
             ticket.update(data)
         else:
@@ -189,9 +215,7 @@ class RegistrationTickets(object):
                                                     operation_ok=True)
         if operation:
             ticket = self._get_ticket(id, api_key)
-            if operation == RegistrationTickets.CLAIM:
-                return json.dumps(self._claim(id, api_key))
-            elif operation == RegistrationTickets.FINALIZE:
+            if operation == RegistrationTickets.FINALIZE:
                 return json.dumps(self._finalize(id, api_key, ticket))
             else:
                 raise server_errors.HTTPError(

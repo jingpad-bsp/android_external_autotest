@@ -33,12 +33,12 @@ class RegistrationTicketsTest(mox.MoxTestBase):
         key = 'boogity'
 
         # Should parse all values.
-        id, api_key, op = self.registration._common_parse((ticket_id, 'claim',),
-                                                          dict(key=key),
-                                                          operation_ok=True)
+        id, api_key, op = self.registration._common_parse(
+                (ticket_id, 'finalize',),
+                dict(key=key), operation_ok=True)
         self.assertEquals(ticket_id, id)
         self.assertEquals(key, api_key)
-        self.assertEquals('claim', op)
+        self.assertEquals('finalize', op)
 
         # Missing op.
         id, api_key, op = self.registration._common_parse((ticket_id,),
@@ -67,7 +67,7 @@ class RegistrationTicketsTest(mox.MoxTestBase):
         # Operation when it's not expected.
         self.assertRaises(server_errors.HTTPError,
                           self.registration._common_parse,
-                          (ticket_id, 'claim'), dict())
+                          (ticket_id, 'finalize'), dict())
 
 
     def testFinalize(self):
@@ -92,8 +92,19 @@ class RegistrationTicketsTest(mox.MoxTestBase):
     def testClaim(self):
         """Tests that we can claim a ticket."""
         self.tickets[(1234, None)] = dict(id=1234)
-        returned_json = json.loads(self.registration.POST(1234, 'claim'))
+        self.mox.StubOutWithMock(common_util, 'grab_header_field')
+        self.mox.StubOutWithMock(common_util, 'parse_serialized_json')
+        update_ticket = dict(userEmail='me')
+        common_util.parse_serialized_json().AndReturn(update_ticket)
+        common_util.grab_header_field('Authorization').AndReturn(
+                'Bearer %s' % self.registration.TEST_ACCESS_TOKEN)
+
+        self.mox.ReplayAll()
+        returned_json = json.loads(self.registration.PATCH(1234))
         self.assertIn('userEmail', returned_json)
+        # This should have changed to an actual user.
+        self.assertNotEquals(returned_json['userEmail'], 'me')
+        self.mox.VerifyAll()
 
 
     def testInsert(self):
