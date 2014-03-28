@@ -415,7 +415,6 @@ class PseudoModemManagerContext(object):
         @param frame: Ignored.
 
         """
-        logging.debug('Called with signum:%d', signum)
         if not self._pseudomodem_process:
             # We can receive a SIGCHLD even before the setup of the child
             # process is complete.
