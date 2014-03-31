@@ -27,7 +27,7 @@ class desktopui_AudioFeedback(audio_helper.chrome_rms_test):
         tab.Navigate(video_url)
 
         def player_is_ready():
-            return tab.EvaluateJavaScript('player != undefined')
+            return tab.EvaluateJavaScript('typeof player != "undefined"')
 
         utils.poll_for_condition(
             condition=player_is_ready,
