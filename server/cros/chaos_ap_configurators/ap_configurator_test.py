@@ -42,6 +42,9 @@ class ConfiguratorTest(unittest.TestCase):
     # Enter the hostname of the AP to test against
     AP_SPEC = ap_spec.APSpec(hostnames=['chromeos3-row4-rack1-host9'])
 
+    # Do not actually power up the AP, assume it is on.
+    OVERRIDE_POWER = True
+
     @classmethod
     def setUpClass(self):
         lock_manager = host_lock_manager.HostLockManager()
@@ -51,17 +54,22 @@ class ConfiguratorTest(unittest.TestCase):
         if not ap_batch:
             raise RuntimeError('Unable to lock AP %r' % self.AP_SPEC)
         self.ap = ap_batch[0]
-        print('Powering up the AP (this may take a minute...)')
         # Use a development webdriver server
         self.ap.webdriver_port = 9516
-        self.ap._power_up_router()
+        if not self.OVERRIDE_POWER:
+            print('Powering up the AP (this may take a minute...)')
+            self.ap._power_up_router()
+        else:
+            print('Assuming AP is not, skipping power on.')
+            self.ap.router_on = True
 
 
     @classmethod
     def tearDownClass(self):
         if self.batch_locker:
             self.batch_locker.unlock_aps()
-        self.ap._power_down_router()
+        if not self.OVERRIDE_POWER:
+            self.ap._power_down_router()
 
 
     def setUp(self):
