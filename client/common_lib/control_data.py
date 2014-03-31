@@ -180,34 +180,71 @@ class ControlData(object):
         self._set_int('retries', val)
 
 
-def _extract_const(n):
+    def set_bug_template(self, val):
+        if type(val) == dict:
+            setattr(self, 'bug_template', val)
+
+
+def _extract_const(expr):
+    assert(expr.__class__ == compiler.ast.Const)
+    assert(expr.value.__class__ in (str, int, float, unicode))
+    return str(expr.value).strip()
+
+
+def _extract_dict(expr):
+    assert(expr.__class__ == compiler.ast.Dict)
+    assert(expr.items.__class__ == list)
+    cf_dict = {}
+    for key, value in expr.items:
+        try:
+            key = _extract_const(key)
+            val = _extract_expression(value)
+        except (AssertionError, ValueError):
+            pass
+        else:
+            cf_dict[key] = val
+    return cf_dict
+
+
+def _extract_list(expr):
+    assert(expr.__class__ == compiler.ast.List)
+    list_values = []
+    for value in expr.nodes:
+        try:
+            list_values.append(_extract_expression(value))
+        except (AssertionError, ValueError):
+            pass
+    return list_values
+
+
+def _extract_name(expr):
+    assert(expr.__class__ == compiler.ast.Name)
+    assert(expr.name in ('False', 'True', 'None'))
+    return str(expr.name)
+
+
+def _extract_expression(expr):
+    if expr.__class__ == compiler.ast.Const:
+        return _extract_const(expr)
+    if expr.__class__ == compiler.ast.Name:
+        return _extract_name(expr)
+    if expr.__class__ == compiler.ast.Dict:
+        return _extract_dict(expr)
+    if expr.__class__ == compiler.ast.List:
+        return _extract_list(expr)
+    raise ValueError('Unknown rval %s' % expr)
+
+
+def _extract_assignment(n):
     assert(n.__class__ == compiler.ast.Assign)
-    assert(n.expr.__class__ == compiler.ast.Const)
-    assert(n.expr.value.__class__ in (str, int, float, unicode))
     assert(n.nodes.__class__ == list)
     assert(len(n.nodes) == 1)
     assert(n.nodes[0].__class__ == compiler.ast.AssName)
     assert(n.nodes[0].flags.__class__ == str)
     assert(n.nodes[0].name.__class__ == str)
 
+    val = _extract_expression(n.expr)
     key = n.nodes[0].name.lower()
-    val = str(n.expr.value).strip()
-
-    return (key, val)
-
-
-def _extract_name(n):
-    assert(n.__class__ == compiler.ast.Assign)
-    assert(n.expr.__class__ == compiler.ast.Name)
-    assert(n.nodes.__class__ == list)
-    assert(len(n.nodes) == 1)
-    assert(n.nodes[0].__class__ == compiler.ast.AssName)
-    assert(n.nodes[0].flags.__class__ == str)
-    assert(n.nodes[0].name.__class__ == str)
-    assert(n.expr.name in ('False', 'True', 'None'))
-
-    key = n.nodes[0].name.lower()
-    val = str(n.expr.name)
 
     return (key, val)
 
@@ -236,12 +273,9 @@ def finish_parse(mod, path, raise_warnings):
 
     vars = {}
     for n in mod.node.nodes:
-        for fn in (_extract_const, _extract_name):
-            try:
-                key, val = fn(n)
-
-                vars[key] = val
-            except AssertionError, e:
-                pass
-
+        try:
+            key, val = _extract_assignment(n)
+            vars[key] = val
+        except (AssertionError, ValueError):
+            pass
     return ControlData(vars, path, raise_warnings)

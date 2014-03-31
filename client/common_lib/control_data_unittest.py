@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # pylint: disable-msg=C0111
 
+import json
 import os, unittest
 
 import common
@@ -51,6 +52,73 @@ class ParseControlTest(unittest.TestCase):
         self.assertEquals(cd.test_category, "stress")
         self.assertEquals(cd.test_type, "client")
         self.assertEquals(cd.retries, 5)
+
+
+class ParseControlFileBugTemplate(unittest.TestCase):
+    def setUp(self):
+        self.control_tmp = autotemp.tempfile(unique_id='control_unit',
+                                             text=True)
+        self.bug_template = {
+            'owner': 'someone@something.org',
+            'labels': ['a', 'b'],
+            'status': None,
+            'summary': None,
+            'title': None,
+            'cc': ['a@something, b@something'],
+        }
+
+
+    def tearDown(self):
+        self.control_tmp.clean()
+
+
+    def insert_bug_template(self, control_file_string):
+        """Insert a bug template into the control file string.
+
+        @param control_file_string: A string of the control file contents
+            this test will run on.
+
+        @return: The control file string with the BUG_TEMPLATE line.
+        """
+        bug_template_line = 'BUG_TEMPLATE = %s' % json.dumps(self.bug_template)
+        return control_file_string + bug_template_line
+
+
+    def verify_bug_template(self, new_bug_template):
+        """Verify that the bug template given matches the original.
+
+        @param new_bug_template: A bug template pulled off parsing the
+            control file.
+
+        @raises AssetionError: If a value under a give key in the bug template
+            doesn't match the value in self.bug_template.
+        @raises KeyError: If a key in either bug template is missing.
+        """
+        for key, value in new_bug_template.iteritems():
+            self.assertEqual(value, self.bug_template[key])
+
+
+    def test_bug_template_parsing(self):
+        """Basic parsing test for a bug templates in a test control file."""
+        os.write(self.control_tmp.fd, self.insert_bug_template(CONTROL))
+        cd = control_data.parse_control(self.control_tmp.name, True)
+        self.verify_bug_template(cd.bug_template)
+
+
+    def test_bug_template_list(self):
+        """Test that lists in the bug template can handle other datatypes."""
+        self.bug_template['labels'].append({'foo': 'bar'})
+        os.write(self.control_tmp.fd, self.insert_bug_template(CONTROL))
+        cd = control_data.parse_control(self.control_tmp.name, True)
+        self.verify_bug_template(cd.bug_template)
+
+
+    def test_bad_template(self):
+        """Test that a bad bug template doesn't result in a bad control data."""
+        self.bug_template = 'foobarbug_template'
+        os.write(self.control_tmp.fd, self.insert_bug_template(CONTROL))
+        cd = control_data.parse_control(self.control_tmp.name, True)
+        self.assertFalse(hasattr(cd, 'bug_template'))
 
 
 class SetMethodTests(unittest.TestCase):
