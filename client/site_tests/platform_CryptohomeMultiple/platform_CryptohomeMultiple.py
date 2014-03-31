@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from dbus.mainloop.glib import DBusGMainLoop
+
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cryptohome
@@ -23,5 +25,6 @@ class platform_CryptohomeMultiple(test.test):
             raise error.TestFail('Unmount failed for %s' % user)
 
     def run_once(self):
-        self.cryptohome_proxy = cryptohome.CryptohomeProxy()
+        self._bus_loop = DBusGMainLoop(set_as_default=True)
+        self.cryptohome_proxy = cryptohome.CryptohomeProxy(self._bus_loop)
         self.test_mount_single()

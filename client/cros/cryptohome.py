@@ -115,7 +115,7 @@ def remove_vault(user):
     __run_cmd(cmd)
     # Ensure that the vault does not exist.
     if os.path.exists(os.path.join(constants.SHADOW_ROOT, user_hash)):
-        raise ChromiumOSError('Cryptohome could not remove the user''s vault.')
+        raise ChromiumOSError('Cryptohome could not remove the user\'s vault.')
 
 
 def remove_all_vaults():

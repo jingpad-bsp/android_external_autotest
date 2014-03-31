@@ -4,6 +4,8 @@
 
 
 import os
+from dbus.mainloop.glib import DBusGMainLoop
+
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cryptohome
@@ -28,7 +30,8 @@ class platform_CryptohomeNonDirs(test.test):
         os.rename(src, dest)
 
     def run_once(self):
-        self.cryptohome_proxy = cryptohome.CryptohomeProxy()
+        self._bus_loop = DBusGMainLoop(set_as_default=True)
+        self.cryptohome_proxy = cryptohome.CryptohomeProxy(self._bus_loop)
 
         # Leaf element of user path is non-dir.
         user = utils.random_username()

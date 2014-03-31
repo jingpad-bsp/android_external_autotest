@@ -2,10 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
-import os
-import re
-import shutil
+from dbus.mainloop.glib import DBusGMainLoop
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -53,7 +50,8 @@ class platform_CryptohomeMigrateKey(test.test):
             raise error.TestFail('Migration nonexistent user.')
 
     def run_once(self):
-        self.proxy = cryptohome.CryptohomeProxy()
+        self._bus_loop = DBusGMainLoop(set_as_default=True)
+        self.proxy = cryptohome.CryptohomeProxy(self._bus_loop)
         self.good()
         self.bad_password()
         self.nonexistent_user()
