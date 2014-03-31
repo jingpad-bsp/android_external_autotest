@@ -14,6 +14,7 @@ import cherrypy
 
 import common
 from cros_lib.fake_device_server import registration_tickets
+from cros_lib.fake_device_server import resource_delegate
 
 
 def stop_server():
@@ -23,7 +24,7 @@ def stop_server():
 
 def start_server():
     """Starts the cherrypy server and blocks."""
-    tickets = {}
+    tickets = resource_delegate.ResourceDelegate({})
     registration_tickets_handler = registration_tickets.RegistrationTickets(
             tickets)
     cherrypy.tree.mount(

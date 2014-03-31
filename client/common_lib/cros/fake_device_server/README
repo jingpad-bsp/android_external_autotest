@@ -14,7 +14,7 @@ To test locally:
 
 # Register a device.
 curl -X POST -d "" http://localhost:8080/clouddevices/v1/registrationTickets
-curl -X PATCH  -d '{"userEmail": "me"}' -H "ACCESS_TOKEN: 1/TEST-ME" \
+curl -X PATCH  -d '{"userEmail": "me"}' -H "Authorization: Bearer 1/TEST-ME" \
     http://localhost:8080/clouddevices/v1/registrationTickets/<id>
 curl -X POST -d "" \
     http://localhost:8080/clouddevices/v1/registrationTickets/<id>/finalize

@@ -23,82 +23,29 @@ class RegistrationTickets(object):
     PATCH .../<id> with json blob # Updates ticket with device info.
     POST .../<id>/claim # Claims the device for a user.
     POST .../<id>/finalize # Finalize the device registration (robot info).
-
-    We store the tickets based on a combination of <ticket_number> + <api_key>
-    combo. The api_key can be passed in to any command with ?key=<api_key>.
-    This isn't necessary though as using a default of None is ok.
     """
-    # Constants for additional rest operations i.e.
-    # .../<ticket_number>/claim | finalize
-    FINALIZE = 'finalize'
+    # OAUTH2 Bearer Access Token
     TEST_ACCESS_TOKEN = '1/TEST-ME'
-    SUPPORTED_OPERATIONS = set([FINALIZE])
 
     # Needed for cherrypy to expose this to requests.
     exposed = True
 
-    def __init__(self, registration_tickets):
-        # Dictionary of tickets with keys of <id, api_key> pairs.
-        self._tickets = registration_tickets
 
+    def __init__(self, resource):
+        """Initializes a registration ticket.
 
-    def _common_parse(self, args_tuple, kwargs, operation_ok=False):
-        """Common method to parse the args to this REST method.
-
-        |args| contains all the sections of the URL after CherryPy removes the
-        pieces that dispatched the URL to this handler. For instance,
-        '.../<ticket number>/claim would manifest as:
-        _common_parse('<ticket number>', 'claim').
-        Some operations take no arguments: e.g., POST to this object creates a
-        new registration ticket and takes no arguments). Other operations take
-        a single argument (the ticket number): e.g., GET to this object
-        returns a registration ticket resource. Still other operations take
-        one of SUPPORTED_OPERATIONS as a second argument: e.g., POST with a
-        ticket number and 'claim' should claim a ticket as belonging to a
-        user.
-
-        Args:
-            args_tuple: Tuple of positional args.
-            kwargs: Dictionary of named args passed in.
-            operation_ok: If true, parse args[1] as an additional operation.
-
-        Raises:
-            server_error.HTTPError if combination or args/kwargs doesn't make
-            sense.
+        @param resource: A resource delegate.
         """
-        args = list(args_tuple)
-        api_key = kwargs.get('key')
-        id = args.pop(0) if args else None
-        operation = args.pop(0) if args else None
-        if operation:
-            if not operation_ok:
-                raise server_errors.HTTPError(
-                        400, 'Received operation when operation was not '
-                        'expected: %s!' % operation)
-            elif not operation in RegistrationTickets.SUPPORTED_OPERATIONS:
-                raise server_errors.HTTPError(
-                        400, 'Unsupported operation: %s' % operation)
-
-        # All expected args should be popped off already.
-        if args:
-            raise server_errors.HTTPError(
-                    400, 'Could not parse all args: %s' % args)
-
-        return id, api_key, operation
+        self.resource = resource
 
 
-    def _get_ticket(self, id, api_key):
-        """Returns a ticket for the given id, api_key pair.
-
-        Raises:
-            server_errors.HTTPError if the ticket doesn't exist.
-        """
-        ticket = self._tickets.get((id, api_key))
-        if ticket:
-            return ticket
-        else:
-            raise server_errors.HTTPError(
-                    400, 'Invalid registration ticket ID: %s' % id)
+    def _default_registration_ticket(self):
+        """Creates and returns a new registration ticket."""
+        current_time_ms = time.time() * 1000
+        ticket = {'kind': 'clouddevices#registrationTicket',
+                  'creationTimeMs': current_time_ms,
+                  'expirationTimeMs': current_time_ms + (10 * 1000)}
+        return ticket
 
 
     def _finalize(self, id, api_key, ticket):
@@ -114,8 +61,7 @@ class RegistrationTickets(object):
         robot_auth = uuid.uuid4().hex
         new_data = {'robotAccountEmail': robot_account_email,
                     'robotAccountAuthorizationCode':robot_auth}
-
-        return self._update_ticket(id, api_key, new_data)
+        return self.resource.update_data_val(id, api_key, new_data)
 
 
     def _add_claim_data(self, data):
@@ -146,56 +92,14 @@ class RegistrationTickets(object):
             data['userEmail'] = 'test_account@chromium.org'
 
 
-    def _update_ticket(self, id, api_key, data=None, update=True):
-        """Helper method for all mutations to tickets.
-
-        If the id isn't given, creates a new template ticket with a new id.
-        Otherwise updates/replaces the given ticket with data based on update.
-
-        Raises:
-            server_errors.HTTPError if the ticket doesn't exist.
-        """
-        if not id:
-            # Creating a new ticket.
-            id = uuid.uuid4().hex
-            current_time_ms = time.time() * 1000
-            data = {'kind': 'clouddevices#registrationTicket',
-                    'id': id,
-                    'creationTimeMs': current_time_ms,
-                    'expirationTimeMs': current_time_ms + (10 * 1000)}
-            self._tickets[(id, api_key)] = data
-            return data
-
-        ticket = self._get_ticket(id, api_key)
-        if not data:
-            logging.warning('Received empty data update. Doing nothing.')
-            return ticket
-
-        # Handle claiming a ticket with an authorized request.
-        if data.get('userEmail') == 'me':
-            self._add_claim_data(data)
-
-        # Update or replace the existing ticket.
-        if update:
-            ticket.update(data)
-        else:
-            if ticket.get('id') != data.get('id'):
-                raise server_errors.HTTPError(400, "Ticket id doesn't match")
-
-            ticket = data
-            self._tickets[(id, api_key)] = data
-
-        return ticket
-
-
     def GET(self, *args, **kwargs):
         """GET .../ticket_number returns info about the ticket.
 
         Raises:
             server_errors.HTTPError if the ticket doesn't exist.
         """
-        id, api_key, _ = self._common_parse(args, kwargs)
-        return json.dumps(self._get_ticket(id, api_key))
+        id, api_key, _ = common_util.parse_common_args(args, kwargs)
+        return json.dumps(self.resource.get_data_val(id, api_key))
 
 
     def POST(self, *args, **kwargs):
@@ -211,20 +115,28 @@ class RegistrationTickets(object):
             server_errors.HTTPError if the ticket should exist but doesn't
             (claim/finalize) or if we can't parse all the args.
         """
-        id, api_key, operation = self._common_parse(args, kwargs,
-                                                    operation_ok=True)
+        id, api_key, operation = common_util.parse_common_args(
+                args, kwargs, supported_operations=set(['finalize']))
         if operation:
-            ticket = self._get_ticket(id, api_key)
-            if operation == RegistrationTickets.FINALIZE:
+            ticket = self.resource.get_data_val(id, api_key)
+            if operation == 'finalize':
                 return json.dumps(self._finalize(id, api_key, ticket))
             else:
                 raise server_errors.HTTPError(
                         400, 'Unsupported method call %s' % operation)
 
         else:
-            # We have an insert operation.
             data = common_util.parse_serialized_json()
-            return json.dumps(self._update_ticket(id, api_key, data=data))
+            if not data:
+                data = {}
+
+            # We have an insert operation so make sure we have all required
+            # fields.
+            if not id:
+                data.update(self._default_registration_ticket())
+
+            return json.dumps(self.resource.update_data_val(
+                    id, api_key, data_in=data))
 
 
     def PATCH(self, *args, **kwargs):
@@ -238,9 +150,15 @@ class RegistrationTickets(object):
         Raises:
             server_errors.HTTPError if the ticket doesn't exist.
         """
-        id, api_key, _ = self._common_parse(args, kwargs)
+        id, api_key, _ = common_util.parse_common_args(args, kwargs)
         data = common_util.parse_serialized_json()
-        return json.dumps(self._update_ticket(id, api_key, data=data))
+
+        # Handle claiming a ticket with an authorized request.
+        if data and data.get('userEmail') == 'me':
+            self._add_claim_data(data)
+
+        return json.dumps(self.resource.update_data_val(
+                id, api_key, data_in=data))
 
 
     def PUT(self, *args, **kwargs):
@@ -252,9 +170,13 @@ class RegistrationTickets(object):
         Caller must define a json blob to patch the ticket with.
 
         Raises:
-            server_errors.HTTPError if the ticket doesn't exist.
         """
-        id, api_key, _ = self._common_parse(args, kwargs)
+        id, api_key, _ = common_util.parse_common_args(args, kwargs)
         data = common_util.parse_serialized_json()
-        return json.dumps(self._update_ticket(id, api_key, data=data,
-                                              update=False))
+
+        # Handle claiming a ticket with an authorized request.
+        if data and data.get('userEmail') == 'me':
+            self._add_claim_data(data)
+
+        return json.dumps(self.resource.update_data_val(
+                id, api_key, data_in=data, update=False))

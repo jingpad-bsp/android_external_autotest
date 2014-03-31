@@ -4,7 +4,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Unit tests for fake_device_server.py."""
+"""Unit tests for common_util methods."""
 
 import cherrypy
 import json
@@ -13,6 +13,7 @@ import unittest
 
 import common
 from cros_lib.fake_device_server import common_util
+from cros_lib.fake_device_server import server_errors
 
 
 class FakeDeviceServerTests(unittest.TestCase):
@@ -39,6 +40,48 @@ class FakeDeviceServerTests(unittest.TestCase):
 
         self.assertEquals(common_util.parse_serialized_json(), None)
         json_file.close()
+
+
+    def testParseCommonArgs(self):
+        """Tests various flavors of the parse common args method."""
+        id = 123456
+        key = 'boogity'
+
+        # Should parse all values.
+        id, api_key, op = common_util.parse_common_args(
+                (id, 'boogity',),
+                dict(key=key), supported_operations=set(['boogity']))
+        self.assertEquals(id, id)
+        self.assertEquals(key, api_key)
+        self.assertEquals('boogity', op)
+
+        # Missing op.
+        id, api_key, op = common_util.parse_common_args((id,), dict(key=key))
+        self.assertEquals(id, id)
+        self.assertEquals(key, api_key)
+        self.assertIsNone(op)
+
+        # Missing key.
+        id, api_key, op = common_util.parse_common_args((id,), dict())
+        self.assertEquals(id, id)
+        self.assertIsNone(api_key)
+        self.assertIsNone(op)
+
+        # Missing all.
+        id, api_key, op = common_util.parse_common_args(tuple(), dict())
+        self.assertIsNone(id)
+        self.assertIsNone(api_key)
+        self.assertIsNone(op)
+
+        # Too many args.
+        self.assertRaises(server_errors.HTTPError,
+                          common_util.parse_common_args,
+                          (id, 'lame', 'stuff',), dict())
+
+        # Operation when it's not expected.
+        self.assertRaises(server_errors.HTTPError,
+                          common_util.parse_common_args,
+                          (id, 'boogity'), dict())
 
 
 if __name__ == '__main__':

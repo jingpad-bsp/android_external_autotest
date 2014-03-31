@@ -13,6 +13,7 @@ import unittest
 import common
 from cros_lib.fake_device_server import common_util
 from cros_lib.fake_device_server import registration_tickets
+from cros_lib.fake_device_server import resource_delegate
 from cros_lib.fake_device_server import server_errors
 
 
@@ -24,50 +25,7 @@ class RegistrationTicketsTest(mox.MoxTestBase):
         mox.MoxTestBase.setUp(self)
         self.tickets = {}
         self.registration = registration_tickets.RegistrationTickets(
-                self.tickets)
-
-
-    def testCommonParse(self):
-        """Tests various flavors of the common parse method."""
-        ticket_id = 123456
-        key = 'boogity'
-
-        # Should parse all values.
-        id, api_key, op = self.registration._common_parse(
-                (ticket_id, 'finalize',),
-                dict(key=key), operation_ok=True)
-        self.assertEquals(ticket_id, id)
-        self.assertEquals(key, api_key)
-        self.assertEquals('finalize', op)
-
-        # Missing op.
-        id, api_key, op = self.registration._common_parse((ticket_id,),
-                                                          dict(key=key))
-        self.assertEquals(ticket_id, id)
-        self.assertEquals(key, api_key)
-        self.assertIsNone(op)
-
-        # Missing key.
-        id, api_key, op = self.registration._common_parse((ticket_id,), dict())
-        self.assertEquals(ticket_id, id)
-        self.assertIsNone(api_key)
-        self.assertIsNone(op)
-
-        # Missing all.
-        id, api_key, op = self.registration._common_parse(tuple(), dict())
-        self.assertIsNone(id)
-        self.assertIsNone(api_key)
-        self.assertIsNone(op)
-
-        # Too many args.
-        self.assertRaises(server_errors.HTTPError,
-                          self.registration._common_parse,
-                          (ticket_id, 'lame', 'stuff',), dict())
-
-        # Operation when it's not expected.
-        self.assertRaises(server_errors.HTTPError,
-                          self.registration._common_parse,
-                          (ticket_id, 'finalize'), dict())
+                resource_delegate.ResourceDelegate(self.tickets))
 
 
     def testFinalize(self):
