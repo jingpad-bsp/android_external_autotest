@@ -17,15 +17,22 @@ class kernel_TPMPing(test.test):
     else:
       logging.info(tpm_version)
 
+    # This autotest is not compatible with kernel version < 3.8
+    version = utils.system_output('/bin/uname -r').strip()
+    logging.info(version)
+
     # If the "[gentle shutdown]" string  followed by 'Linux Version'
     # is missing from the /var/log/messages,
     # we forgot to carry over an important patch.
-    result = utils.system_output('awk \'/Linux version [0-9]+\./ '
-                                 '{gentle=0;} /\[gentle shutdown\]/ {gentle=1;}'
-                                 ' END {print gentle}\' '
-                                 '$(ls -t /var/log/messages*)',
-                                  ignore_status=True)
+    if version >= '3.8':
+      result = utils.system_output('awk \'/Linux version [0-9]+\./ '
+                                   '{gentle=0;} /\[gentle shutdown\]/ '
+                                   '{gentle=1;} END {print gentle}\' '
+                                   '$(ls -t /var/log/messages* | tac)',
+                                    ignore_status=True)
 
-    # We only care about the most recent instance of the TPM driver message.
-    if result == '0':
-      raise error.TestFail('no \'gentle shutdown\' TPM driver init message')
+      # We only care about the most recent instance of the TPM driver message.
+      if result == '0':
+        raise error.TestFail('no \'gentle shutdown\' TPM driver init message')
+    else:
+      logging.info('Bypassing the test as kernel version is < 3.8')
