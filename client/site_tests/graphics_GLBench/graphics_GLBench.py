@@ -154,7 +154,7 @@ class graphics_GLBench(test.test):
     raise error.TestFail('Unknown test unit in ' + testname)
 
   def run_once(self, options='', raise_error_on_checksum=True):
-    logging.info(utils.get_board_with_frequency_and_memory())
+    #logging.info(utils.get_board_with_frequency_and_memory())
     dep = 'glbench'
     dep_dir = os.path.join(self.autodir, 'deps', dep)
     self.job.install_pkg(dep, 'dep', dep_dir)
