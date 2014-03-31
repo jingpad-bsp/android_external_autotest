@@ -612,8 +612,9 @@ def get_ec_temperatures():
     Uses ectool to return a list of all sensor temperatures in Celsius.
     """
     temperatures = []
-    # TODO(ihf): On my spring ectool temps all returns 200K for all sensors.
-    if 'spring' in get_board():
+    # TODO(ihf): On all ARM boards I tested 'ectool temps all' returns 200K
+    # for all sensors. Remove this check once crbug.com/358342 is fixed.
+    if 'arm' in utils.get_arch():
         return temperatures
     try:
         full_cmd = 'ectool temps all'
