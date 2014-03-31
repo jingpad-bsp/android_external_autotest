@@ -9,7 +9,7 @@ CRITERIA = """
 Detection of udev event notification of a GPU hang.
 """
 SUITE = 'bvt, graphics'
-EXPERIMENTAL = 'True'
+EXPERIMENTAL = 'False'
 TIME='MEDIUM'
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = "gl"

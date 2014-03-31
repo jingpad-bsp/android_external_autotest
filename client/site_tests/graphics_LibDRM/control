@@ -10,11 +10,11 @@ If one or more of the libdrm test apps fails, this autotest will fail.
 """
 TIME = "FAST"
 TEST_CATEGORY = "Functional"
-TEST_CLASS = "bvt, graphics"
+TEST_CLASS = "graphics"
 TEST_TYPE = "client"
 
-SUITE = "graphics"
-EXPERIMENTAL = "True"
+SUITE = "bvt, graphics"
+EXPERIMENTAL = "False"
 
 DOC = """
 Runs libdrm test apps.
