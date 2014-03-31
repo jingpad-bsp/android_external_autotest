@@ -1,5 +1,13 @@
 [
   {
+    "autotest_name": "bluetooth_Sanity_Discoverable",
+    "master_name": "ChromeOSPerf"
+  },
+  {
+    "autotest_name": "bluetooth_Sanity_Discovery",
+    "master_name": "ChromeOSPerf"
+  },
+  {
     "autotest_name": "build_RootFileSystemSize",
     "master_name": "ChromeOSPerf"
   },

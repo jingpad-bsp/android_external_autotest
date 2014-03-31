@@ -49,9 +49,10 @@ class bluetooth_Sanity_Discovery(bluetooth_test.BluetoothTest):
                                                   self.name))
                     # Found the device
                     device_found = True
-                    # Write out the RSSI now we've found it. It might
-                    # be useful to graph this over time.
+                    # Write out the RSSI now we've found it.
                     self.write_perf_keyval({'rssi': int(device.get('RSSI', 0))})
+                    self.output_perf_value('rssi', int(device.get('RSSI', 0)),
+                                           'dBm')
 
             if self.interactive:
                 item_name = device['Address'].replace(':', '')
@@ -147,6 +148,7 @@ class bluetooth_Sanity_Discovery(bluetooth_test.BluetoothTest):
         # out a way to reduce this to zero and then the loop above can go
         # away.
         self.write_perf_keyval({'failed_attempts': failed_attempts })
+        self.output_perf_value('failed_attempts', failed_attempts, 'attempts')
 
 
     def cleanup(self):

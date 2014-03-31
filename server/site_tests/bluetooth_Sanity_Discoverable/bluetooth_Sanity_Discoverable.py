@@ -46,9 +46,9 @@ class bluetooth_Sanity_Discoverable(bluetooth_test.BluetoothTest):
                                 '"%s" != "%s"' %
                                 (eir_name, self.adapter['Alias']))
 
-                    # Write out the RSSI now we've found it. It might
-                    # be useful to graph this over time.
+                    # Write out the RSSI now we've found it.
                     self.write_perf_keyval({'rssi': int(rssi)})
+                    self.output_perf_value('rssi', int(rssi), 'dBm')
                     return True
                 except KeyError:
                     logging.warning('Device did not have a name')
@@ -91,6 +91,8 @@ class bluetooth_Sanity_Discoverable(bluetooth_test.BluetoothTest):
             # out a way to reduce this to zero and then the loop above can go
             # away.
             self.write_perf_keyval({'failed_attempts': failed_attempts })
+            self.output_perf_value('failed_attempts', failed_attempts,
+                                   'attempts')
 
         if self.interactive:
             self.interactive.append_buttons('Device Found', 'Device Not Found')
