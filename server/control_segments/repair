@@ -1,3 +1,5 @@
+import logging
+
 from autotest_lib.client.common_lib import host_protections
 from autotest_lib.server.cros import repair_utils
 from autotest_lib.server.cros import provision
@@ -8,7 +10,7 @@ job_labels = locals().get('job_labels') or ','.join(args)
 labels_list = [l.strip() for l in job_labels.split(',') if l]
 
 
-def _call_repair(machine):
+def _call_repair(host):
     protection = host_protections.Protection
 
     try:
@@ -17,15 +19,18 @@ def _call_repair(machine):
         raise NotImplementedError("Unknown host protection level %s" %
                                   protection_level)
 
-    host = hosts.create_host(machine, initialize=False, auto_monitor=False)
+    logging.debug('Protection level of host %s is %s: %s',
+                  host.hostname, protection_level, level)
     host.repair_with_protection(level)
 
 
 def repair(machine):
     try:
         job.record('START', None, 'repair')
-        _call_repair(machine)
+        host = hosts.create_host(machine, initialize=False, auto_monitor=False)
+        _call_repair(host)
 
+        logging.debug('Repair with labels list %s', labels_list)
         provision.run_special_task_actions(job, host, labels_list,
                                            provision.Repair)
     except Exception as e:
