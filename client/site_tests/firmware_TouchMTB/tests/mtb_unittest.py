@@ -365,6 +365,59 @@ class MtbTest(unittest.TestCase):
         self._test_finger_path(filename, tid, expected_slot, expected_data,
                                request_data_ready=False)
 
+    def test_get_ordered_finger_paths4(self):
+        """Test get_ordered_finger_paths
+
+        This test is to verify if it could handle the case when a finger-off
+        event is followed immediately by a finger-on event in the same packet.
+        This situation may occur occasionally in two_close_fingers_tracking
+        gestures. Basically, this could be considered as a firmware bug.
+        However, our test should be able to handle the situation gracefully.
+
+        A problematic packet may look like:
+
+        Event: time .., type 3 (EV_ABS), code 57 (ABS_MT_TRACKING_ID), value -1
+        Event: time .., type 3 (EV_ABS), code 57 (ABS_MT_TRACKING_ID), value 202
+        Event: time .., type 3 (EV_ABS), code 53 (ABS_MT_POSITION_X), value 1577
+        Event: time .., type 3 (EV_ABS), code 54 (ABS_MT_POSITION_Y), value 1018
+        Event: time .., type 3 (EV_ABS), code 58 (ABS_MT_PRESSURE), value 99
+        Event: time .., type 3 (EV_ABS), code 48 (ABS_MT_TOUCH_MAJOR), value 19
+        Event: time .., type 3 (EV_ABS), code 49 (ABS_MT_TOUCH_MINOR), value 19
+        Event: time .., type 3 (EV_ABS), code 0 (ABS_X), value 1577
+        Event: time .., type 3 (EV_ABS), code 1 (ABS_Y), value 1018
+        Event: time .., type 3 (EV_ABS), code 24 (ABS_PRESSURE), value 99
+        Event: time .., -------------- SYN_REPORT ------------
+        """
+        # Get the actual finger_paths from the gesture data file.
+        filename = 'two_close_fingers_tracking.dat'
+        mtb_packets = get_mtb_packets(self._get_filepath(filename))
+        finger_paths = mtb_packets.get_ordered_finger_paths(
+                request_data_ready=False)
+
+        data_list = [
+                # (tid, packet_idx, syn_time, (x, y), z, number_packets)
+                (197, -1, 1395784288.323233, (1619, 1019), 98, 435),
+                (202, 0, 1395784288.323233, (1577, 1018), 99, 261),
+        ]
+
+        for tid, packet_idx, syn_time, xy, z, number_packets in data_list:
+            expected_packet = TidPacket(syn_time, Point(*xy), z)
+
+            # Derive the actual finger path and the actual packet.
+            actual_finger_path = finger_paths[tid]
+            actual_packet = actual_finger_path.tid_packets[packet_idx]
+
+            # Assert that the number of packets in the actual finger path
+            # is equal to the specified number.
+            self.assertEqual(number_packets,
+                             len(actual_finger_path.tid_packets))
+
+            # Assert that the expected packet is equal to the actual packet.
+            self.assertEqual(expected_packet.syn_time, actual_packet.syn_time)
+            self.assertTrue(expected_packet.point == actual_packet.point)
+            self.assertEqual(expected_packet.pressure, actual_packet.pressure)
+
+
     def test_get_slot_data(self):
         """Test if it can get the data from the correct slot.
 

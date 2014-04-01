@@ -1279,14 +1279,18 @@ class MtbParser:
             ev_dict[MTB.EV_VALUE] = int(result.group(4))
         return ev_dict
 
+    def _make_syn_report_ev_dict(self, syn_time):
+        """Make the event dictionary for a SYN_REPORT event."""
+        ev_dict = {}
+        ev_dict[MTB.EV_TIME] = float(syn_time)
+        ev_dict[MTB.SYN_REPORT] = True
+        return ev_dict
+
     def _get_event_dict_SYN_REPORT(self, line):
         """Construct the event dictionary for a SYN_REPORT event."""
         result = self.event_re_patt_SYN_REPORT.search(line)
-        ev_dict = {}
-        if result is not None:
-            ev_dict[MTB.EV_TIME] = float(result.group(1))
-            ev_dict[MTB.SYN_REPORT] = True
-        return ev_dict
+        return ({} if result is None else
+                self._make_syn_report_ev_dict(result.group(1)))
 
     def _get_event_dict(self, line):
         """Construct the event dictionary."""
@@ -1307,14 +1311,30 @@ class MtbParser:
         ev_list = []
         packets = []
         start_flag = False
+        finger_off = False
         for line in raw_event:
             ev_dict = self._get_event_dict(line)
             if ev_dict:
                 start_flag = True
+
+                # Handle the case when a finger-off event is followed
+                # immediately by a finger-on event in the same packet.
+                if MtbEvent.is_finger_leaving(ev_dict):
+                    finger_off = True
+                # Append a SYN_REPORT event and flush the ev_list to packets
+                # when the case described above does occur.
+                elif MtbEvent.is_new_contact(ev_dict) and finger_off:
+                    last_ev_time = ev_list[-1][MTB.EV_TIME]
+                    ev_list.append(self._make_syn_report_ev_dict(last_ev_time))
+                    packets.append(ev_list)
+                    ev_list = []
+
                 ev_list.append(ev_dict)
                 if self._is_SYN_REPORT(ev_dict):
                     packets.append(ev_list)
                     ev_list = []
+                    finger_off = False
+
             elif start_flag:
                 logging.warn('  Warn: format problem in event:\n  %s' % line)
         return packets
