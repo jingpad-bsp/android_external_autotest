@@ -41,8 +41,8 @@ class network_SIMLocking(test.test):
     def _bad_pin(self):
         """ Obtain a pin that does not match the valid sim-pin. """
         # Restricting the values to be  >= 1000 ensures four digit string.
-        bad_pin = random.randint(1000,9999)
-        if bad_pin == self.current_pin:
+        bad_pin = random.randint(1000, 9999)
+        if str(bad_pin) == self.current_pin:
             bad_pin += 1
         return str(bad_pin)
 
@@ -50,8 +50,8 @@ class network_SIMLocking(test.test):
     def _bad_puk(self):
         """ Obtain a puk that does not match the valid sim-puk. """
         # Restricting the values to be  >= 10000000 ensures 8 digit string.
-        bad_puk = random.randint(10000000,99999999)
-        if bad_puk == self.current_puk:
+        bad_puk = random.randint(10000000, 99999999)
+        if str(bad_puk) == self.current_puk:
             bad_puk += 1
         return str(bad_puk)
 
