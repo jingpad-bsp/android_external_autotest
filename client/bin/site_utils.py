@@ -508,17 +508,9 @@ def wait_for_cool_machine():
 
 # System paths for machine performance state.
 _CPUINFO = '/proc/cpuinfo'
-_CPUINFO_MAX_FREQ_FMT = '/sys/devices/system/cpu/cpu%d/cpufreq/cpuinfo_max_freq'
-_CPUINFO_MIN_FREQ_FMT = '/sys/devices/system/cpu/cpu%d/cpufreq/cpuinfo_min_freq'
 _KERNEL_MAX = '/sys/devices/system/cpu/kernel_max'
 _LSB_RELEASE = '/etc/lsb-release'
 _MEMINFO = '/proc/meminfo'
-_SCALING_GOVERNOR_FMT = '/sys/devices/system/cpu/cpu%d/cpufreq/scaling_governor'
-_TEMP_CRIT_FMT = '/sys/class/hwmon/hwmon0/temp%d_crit'
-_TEMP_INPUT_FMT = '/sys/class/hwmon/hwmon0/temp%d_input'
-# Same temperatures for daisy_spring.
-_TEMP_CRIT_VIRT = '/sys/devices/virtual/hwmon/hwmon1/temp1_crit'
-_TEMP_INPUT_VIRT = '/sys/devices/virtual/hwmon/hwmon1/temp1_input'
 _TEMP_SENSOR_RE = 'Reading temperature...([0-9]*)'
 
 
@@ -569,17 +561,24 @@ def _get_hex_from_file(path, line, prefix, postfix):
     return int(match, 16)
 
 
+def _get_hwmon_paths(file_pattern):
+    """
+    Returns a list of paths to the temperature sensors.
+    """
+    # Some systems like daisy_spring only have the virtual hwmon.
+    cmd = ('ls /sys/class/hwmon/hwmon*/' + file_pattern +
+           ' /sys/devices/virtual/hwmon/hwmon*/' + file_pattern)
+    paths = utils.run(cmd, verbose=False).stdout.splitlines()
+    return paths
+
+
 def get_temperature_critical():
     """
     Returns temperature at which we will see some throttling in the system.
     """
     min_temperature = 1000.0
-    cpus = _get_number_cpus()
-    for cpu in range(1, cpus + 1):
-        path = _TEMP_CRIT_FMT % cpu
-        #TODO(ihf): Figure out a more consistent way to obtain temperatures.
-        if 'spring' in get_board():
-            path = _TEMP_CRIT_VIRT
+    paths = _get_hwmon_paths('temp*_crit')
+    for path in paths:
         temperature = _get_float_from_file(path, 0, None, None) * 0.001
         min_temperature = min(temperature, min_temperature)
     # Sanity check for real world values.
@@ -593,12 +592,8 @@ def get_temperature_input_max():
     Returns the maximum currently observed temperature.
     """
     max_temperature = -1000.0
-    cpus = _get_number_cpus()
-    for cpu in range(1, cpus + 1):
-        path = _TEMP_INPUT_FMT % cpu
-        #TODO(ihf): Figure out a more consistent way to obtain temperatures.
-        if 'spring' in get_board():
-            path = _TEMP_INPUT_VIRT
+    paths = _get_hwmon_paths('temp*_input')
+    for path in paths:
         temperature = _get_float_from_file(path, 0, None, None) * 0.001
         max_temperature = max(temperature, max_temperature)
     # Sanity check for real world values.
@@ -618,7 +613,7 @@ def get_ec_temperatures():
         return temperatures
     try:
         full_cmd = 'ectool temps all'
-        lines = utils.system_output(full_cmd).splitlines()
+        lines = utils.run(full_cmd, verbose=False).stdout.splitlines()
         for line in lines:
             temperature = int(line.split(': ')[1]) - 273
             temperatures.append(temperature)
@@ -655,9 +650,8 @@ def get_cpu_max_frequency():
     Returns the largest of the max CPU core frequencies. The unit is Hz.
     """
     max_frequency = -1
-    cpus = _get_number_cpus()
-    for cpu in range(1, cpus + 1):
-        path = _CPUINFO_MAX_FREQ_FMT % (cpu + 1)
+    paths = _get_cpufreq_paths('cpuinfo_max_freq')
+    for path in paths:
         # Convert from kHz to Hz.
         frequency = 1000 * _get_float_from_file(path, 0, None, None)
         max_frequency = max(frequency, max_frequency)
@@ -671,9 +665,8 @@ def get_cpu_min_frequency():
     Returns the smallest of the minimum CPU core frequencies.
     """
     min_frequency = 1e20
-    cpus = _get_number_cpus()
-    for cpu in range(1, cpus + 1):
-        path = _CPUINFO_MIN_FREQ_FMT % cpu
+    paths = _get_cpufreq_paths('cpuinfo_min_freq')
+    for path in paths:
         frequency = _get_float_from_file(path, 0, None, None)
         min_frequency = min(frequency, min_frequency)
     # Sanity check.
@@ -753,17 +746,6 @@ def get_kernel_max():
     return kernel_max
 
 
-def _get_number_cpus():
-    """
-    Returns the number of CPUs available.
-    """
-    # TODO(ihf): apparently get_kernel_max() + 1 is not right here due to
-    #            hyperthreading. We only need this right now to get sensible
-    #            temperature and frequency baselines. But to make the functions
-    #            more useful this needs to be fixed.
-    return 1
-
-
 def set_high_performance_mode():
     """
     Sets the kernel governor mode to the highest setting.
@@ -779,20 +761,19 @@ def set_scaling_governors(value):
     Sets all scaling governor to string value.
     Sample values: 'performance', 'interactive', 'ondemand', 'powersave'.
     """
-    paths = _get_scaling_governor_paths()
+    paths = _get_cpufreq_paths('scaling_governor')
     for path in paths:
         cmd = 'sudo echo %s > %s' % (value, path)
         logging.info('Writing scaling governor mode \'%s\' -> %s', value, path)
         utils.system(cmd)
 
 
-def _get_scaling_governor_paths():
+def _get_cpufreq_paths(filename):
     """
     Returns a list of paths to the governors.
     """
-    cmd = 'ls /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor'
-    paths = utils.system_output(cmd).splitlines()
-    logging.info(paths)
+    cmd = 'ls /sys/devices/system/cpu/cpu*/cpufreq/' + filename
+    paths = utils.run(cmd, verbose=False).stdout.splitlines()
     return paths
 
 
@@ -800,7 +781,7 @@ def get_scaling_governor_states():
     """
     Returns a list of (performance governor path, current state) tuples.
     """
-    paths = _get_scaling_governor_paths()
+    paths = _get_cpufreq_paths('scaling_governor')
     path_value_list = []
     for path in paths:
         value = _get_line_from_file(path, 0)
