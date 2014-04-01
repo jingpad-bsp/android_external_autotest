@@ -39,6 +39,11 @@ class display_Resolution(chameleon_test.ChameleonTest):
     def run_once(self, host, test_mirrored=False, test_suspend_resume=False):
         errors = []
         for tag, width, height in self.RESOLUTION_TEST_LIST:
+            if not self.is_edid_supported(tag, width, height):
+                logging.info('skip unsupported EDID: %s_%dx%d', tag, width,
+                             height)
+                continue
+
             self.set_up_chameleon((tag, width, height))
             try:
                 logging.info('Reconnect output...')

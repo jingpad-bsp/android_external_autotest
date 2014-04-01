@@ -1747,6 +1747,16 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         return platform.replace('google_', '')
 
 
+    def get_architecture(self):
+        """Determine the correct architecture label for this host.
+
+        @returns a string representing this host's architecture.
+        """
+        crossystem = utils.Crossystem(self)
+        crossystem.init()
+        return crossystem.arch()
+
+
     def get_chrome_version(self):
         """Gets the Chrome version number and milestone as strings.
 
