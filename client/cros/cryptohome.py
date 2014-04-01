@@ -301,7 +301,7 @@ class CryptohomeProxy(DBusClient):
 
     def __init__(self, bus_loop=None):
         self.main_loop = gobject.MainLoop()
-        if bus_loop is not None:
+        if bus_loop is None:
             bus_loop = DBusGMainLoop(set_as_default=True)
         self.bus = dbus.SystemBus(mainloop=bus_loop)
         super(CryptohomeProxy, self).__init__(self.main_loop, self.bus,
