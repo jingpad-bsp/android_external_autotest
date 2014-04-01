@@ -110,6 +110,7 @@ class WesternDigitalN600APConfigurator(
         self.wait_for_object_by_id('loginusr')
         self.set_content_of_text_field_by_id('admin', 'loginusr',
                                              abort_check=True)
+        self.wait_for_object_by_id('loginpwd')
         self.set_content_of_text_field_by_id('password', 'loginpwd',
                                              abort_check=True)
         self.click_button_by_xpath('//input[@value="Submit"]')
@@ -202,8 +203,10 @@ class WesternDigitalN600APConfigurator(
         """
         elements = self.driver.find_elements_by_css_selector('span.checkbox')
         checkbox = elements[0]
+        ssid_id = 'ssid'
         if self.current_band == ap_spec.BAND_5GHZ:
             checkbox = elements[3]
+            ssid_id = 'ssid_Aband'
         for timer in range(5):   # Waiting for the page to reload
             try:
                 if ('checkbox.png' in
@@ -212,6 +215,11 @@ class WesternDigitalN600APConfigurator(
             except:
                 pass
             time.sleep(1)
+        try:
+            if(self.wait_for_object_by_id(ssid_id).is_enabled()):
+                logging.info('The page reload succeeded.')
+        except:
+            raise RuntimeError('The page reload after login failed.')
 
 
     def set_radio(self, enabled=True):
@@ -288,6 +296,7 @@ class WesternDigitalN600APConfigurator(
             self.current_band = ap_spec.BAND_2GHZ
         else:
             raise RuntimeError('Invalid band sent %s' % band)
+        self.set_radio(True)
 
 
     def _set_security(self, security_type, wait_path=None):
@@ -302,9 +311,9 @@ class WesternDigitalN600APConfigurator(
                                               wait_for_xpath=wait_path,
                                               alert_handler=self._sec_alert)
         elif security_type == 'WEP':
-            raise RuntimeError('Could not set up WEP security. '
-                               'Please check the mode. Mode-N does not '
-                               'support WEP.')
+            raise RuntimeError('Could not find WEP security_type in dropdown. '
+                               'Please check the network mode. '
+                               'Some of the modes do not support WEP.')
         else:
             raise RuntimeError('The dropdown %s does not have item %s' %
                                (sec_id, security_type))
