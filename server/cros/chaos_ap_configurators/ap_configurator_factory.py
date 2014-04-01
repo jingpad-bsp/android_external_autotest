@@ -179,6 +179,9 @@ class APConfiguratorFactory(object):
         'Edimax6475ndAPConfigurator':
             [PREFIX + 'edimax6475nd_ap_configurator',
                 'Edimax6475ndAPConfigurator'],
+        'Edimax6428nsAPConfigurator':
+            [PREFIX + 'edimax6428ns_ap_configurator',
+                'Edimax6428nsAPConfigurator'],
         'StaticAPConfigurator':
             [PREFIX + 'static_ap_configurator',
                 'StaticAPConfigurator'],
