@@ -143,6 +143,24 @@ class BluetoothTester(object):
                                                   invalid_request)
 
 
+    def service_attribute_request(self, handle, max_attr_byte_count, attr_ids):
+        """Send a Service Attribute Request
+
+        @param handle: service record from which attribute values are to be
+               retrieved.
+        @param max_attr_byte_count: maximum number of bytes of attribute data to
+               be returned in the response to this request.
+        @param attr_ids: a list, where each element is either an attribute ID
+               or a range of attribute IDs.
+
+        @return list of found attributes IDs and their values or Error Code
+
+        """
+        return self._proxy.service_attribute_request(handle,
+                                                     max_attr_byte_count,
+                                                     attr_ids)
+
+
 def create_host_from(device_host):
     """Creates a host object for the Tester associated with a DUT.
 
