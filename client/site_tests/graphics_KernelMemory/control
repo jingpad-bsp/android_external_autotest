@@ -16,7 +16,7 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "graphics"
 TEST_TYPE = "client"
 
-SUITE = "kernel_per-build_regression"
+SUITE = "bvt"
 
 DOC = """
 Reads from sysfs to determine kernel gem objects and memory info.
