@@ -62,8 +62,8 @@ class TestThatUnittests(unittest.TestCase):
         self.assertEqual('some_remote', args.remote)
         self.assertEqual(['test1', 'test2'], args.tests)
 
-    def test_schedule_local_suite(self):
-        # Deferred until schedule_local_suite knows about non-local builds.
+    def test_fetch_local_suite(self):
+        # Deferred until fetch_local_suite knows about non-local builds.
         pass
 
     def test_get_predicate_for_test_arg(self):
@@ -184,19 +184,26 @@ class TestThatUnittests(unittest.TestCase):
         args = 'matey'
         ignore_deps = False
 
-        def fake_suite_callback(*args, **dargs):
-            for control_file in suite_control_files:
-                afe.create_job(control_file, hosts=[remote])
+        # Fake suite objects that will be returned by fetch_local_suite
+        class fake_suite(object):
+            def __init__(self, suite_control_files, hosts):
+                self._suite_control_files = suite_control_files
+                self._hosts = hosts
+
+            def schedule(self, *args, **kwargs):
+                for control_file in self._suite_control_files:
+                    afe.create_job(control_file, hosts=self._hosts)
 
         # Mock out scheduling of suite and running of jobs.
         self.mox = mox.Mox()
 
-        self.mox.StubOutWithMock(test_that, 'schedule_local_suite')
-        test_that.schedule_local_suite(autotest_path, mox.IgnoreArg(),
+        self.mox.StubOutWithMock(test_that, 'fetch_local_suite')
+        test_that.fetch_local_suite(autotest_path, mox.IgnoreArg(),
                 afe, remote=remote, build=build,
                 board=board, results_directory=results_dir,
-                no_experimental=False, ignore_deps=ignore_deps
-                ).WithSideEffects(fake_suite_callback)
+                no_experimental=False,
+                ignore_deps=ignore_deps
+                ).AndReturn(fake_suite(suite_control_files, [remote]))
         self.mox.StubOutWithMock(test_that, 'run_job')
         self.mox.StubOutWithMock(test_that, 'run_provisioning_job')
         self.mox.StubOutWithMock(test_that, '_auto_detect_labels')

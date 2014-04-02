@@ -68,11 +68,11 @@ class TestThatProvisioningError(Exception):
     """Raised when it fails to provision the DUT to the requested build."""
 
 
-def schedule_local_suite(autotest_path, suite_predicate, afe, remote,
+def fetch_local_suite(autotest_path, suite_predicate, afe, remote,
                          build=_NO_BUILD, board=_NO_BOARD,
                          results_directory=None, no_experimental=False,
                          ignore_deps=True):
-    """Schedule a suite against a mock afe object, for a local suite run.
+    """Create a suite from the given suite predicate.
 
     Satisfaction of dependencies is enforced by Suite.schedule() if
     ignore_deps is False. Note that this method assumes only one host,
@@ -94,7 +94,7 @@ def schedule_local_suite(autotest_path, suite_predicate, afe, remote,
     @param no_experimental: Skip experimental tests when scheduling a suite.
     @param ignore_deps: If True, test dependencies will be ignored.
 
-    @returns: The number of tests scheduled.
+    @returns: A suite.Suite object.
 
     """
     fs_getter = suite.Suite.create_fs_getter(autotest_path)
@@ -119,10 +119,7 @@ def schedule_local_suite(autotest_path, suite_predicate, afe, remote,
                 logging.warn('%s will be skipped, unsatisfiable '
                              'test dependencies: %s', test.name,
                              unsatisfiable_deps)
-    # Schedule tests, discard record calls.
-    return my_suite.schedule(lambda log_entry, log_in_subdir=False: None,
-                             add_experimental=not no_experimental)
-
+    return my_suite
 
 def _run_autoserv(command, pretend=False):
     """Run autoserv command.
@@ -421,19 +418,29 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
                           remote, cros_version_label, e)
             return
 
-    # Schedule tests / suites in local afe
+    # Create suites that will be scheduled.
+    suites_and_descriptions = []
+    for test in tests:
+        (predicate, description) = get_predicate_for_test_arg(test)
+        logging.info('Fetching suite for %s...', description)
+        suite = fetch_local_suite(autotest_path, predicate, afe,
+                                  remote=remote,
+                                  build=build, board=board,
+                                  results_directory=results_directory,
+                                  no_experimental=no_experimental,
+                                  ignore_deps=ignore_deps)
+        suites_and_descriptions.append((suite, description))
+
+    # Schedule the suites, looping over iterations if necessary.
     for iteration in range(iterations):
         if iteration > 0:
             logging.info('Repeating scheduling for iteration %d:', iteration)
-        for test in tests:
-            (predicate, description) = get_predicate_for_test_arg(test)
-            logging.info('Scheduling %s...', description)
-            ntests = schedule_local_suite(autotest_path, predicate, afe,
-                                          remote=remote,
-                                          build=build, board=board,
-                                          results_directory=results_directory,
-                                          no_experimental=no_experimental,
-                                          ignore_deps=ignore_deps)
+
+        for suite, description in suites_and_descriptions:
+            logging.info('Scheduling suite for %s...', description)
+            ntests = suite.schedule(
+                    lambda log_entry, log_in_subdir=False: None,
+                    add_experimental=not no_experimental)
             logging.info('... scheduled %s job(s).', ntests)
 
     if not afe.get_jobs():
