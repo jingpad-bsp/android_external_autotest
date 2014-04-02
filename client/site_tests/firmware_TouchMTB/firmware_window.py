@@ -461,4 +461,7 @@ class FirmwareWindow(object):
 
     def main(self):
         """Main function of the window."""
-        gtk.main()
+        try:
+            gtk.main()
+        except KeyboardInterrupt:
+            self.close()
