@@ -122,6 +122,9 @@ class APConfiguratorFactory(object):
         'BelkinF7DAPConfigurator':
             [PREFIX + 'belkinF7D_ap_configurator',
                 'BelkinF7DAPConfigurator'],
+        'BelkinF9K1002v4APConfigurator':
+            [PREFIX + 'belkinF9k1002v4_ap_configurator',
+                'BelkinF9K1002v4APConfigurator'],
         'BelkinF7D1301APConfigurator':
             [PREFIX + 'belkinF7D1301_ap_configurator',
                 'BelkinF7D1301APConfigurator'],
