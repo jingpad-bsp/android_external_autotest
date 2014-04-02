@@ -108,6 +108,11 @@ class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
         drop_rate = float(total - decoded) / total
         self._logperf(name, KEY_FRAME_DROP_RATE, drop_rate, UNIT_PERCENT)
 
+        # The performance keys would be used as names of python variables when
+        # evaluating the test constraints. So we cannot use '.' as we did in
+        # _logperf.
+        self._perf_keyvals['%s_%s' % (name, KEY_FRAME_DROP_RATE)] = drop_rate
+
 
     def _analyze_cpu_usage(self, name, time_log_file):
         with open(time_log_file) as f:
@@ -225,6 +230,7 @@ class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
         # We need to write to tmpdir as user "chronos"
         os.chmod(self.tmpdir, 0777)
 
+        self._perf_keyvals = {}
         last_error = None
         for (path, width, height, frame_num, frag_num, profile,
              fps)  in test_cases:
@@ -243,3 +249,5 @@ class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
 
         if last_error:
             raise # the last error
+
+        self.write_perf_keyval(self._perf_keyvals)

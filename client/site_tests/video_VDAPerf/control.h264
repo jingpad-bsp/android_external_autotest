@@ -24,8 +24,15 @@ performance of the Chromium hardware Video Decode Accelerator.
 #   [download_path, width, height, frame_num, fragment_num, profile, fps]
 test_cases = [
     ['crowd/crowd1080-8a06b8d0da05bb62166c199be855d617.h264', 1920, 1080, 500, 506, 1, 50],
+    ['crowd/crowd720-8f5d51b87ca7942133b76c9132438883.h264', 1280, 720, 500, 502, 1, 50],
     ['crowd/crowd360-08d3e8eb857d7cba25402cd90d30d798.h264', 640, 360, 500, 506, 1, 50],
     ['tulip2/tulip2-79c74bcb4c95cae22292c99b03acd466.h264', 1280, 720, 500, 506, 1, 29.97]
 ]
 
-job.run_test('video_VDAPerf', test_cases=test_cases)
+constraints = [
+    'crowd1080_h264_frame_drop_rate == 0',
+    'crowd720_h264_frame_drop_rate == 0',
+    'crowd360_h264_frame_drop_rate == 0',
+    'tulip2_h264_frame_drop_rate == 0']
+
+job.run_test('video_VDAPerf', test_cases=test_cases, constraints=constraints)

@@ -29,4 +29,10 @@ test_cases = [
     ['tulip2/tulip2-9ef92a22540328bb324c980201adca9e.vp8', 1280, 720, 500, 550, 11, 29.97]
 ]
 
-job.run_test('video_VDAPerf', test_cases=test_cases)
+constraints = [
+    'crowd1080_vp8_frame_drop_rate == 0',
+    'crowd720_vp8_frame_drop_rate == 0',
+    'crowd360_vp8_frame_drop_rate == 0',
+    'tulip2_vp8_frame_drop_rate == 0']
+
+job.run_test('video_VDAPerf', test_cases=test_cases, constraints=constraints)
