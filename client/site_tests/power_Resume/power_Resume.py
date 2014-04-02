@@ -15,9 +15,9 @@ class power_Resume(test.test):
                 throw=True, device_times=True)
 
 
-    def run_once(self, max_devs_returned=10):
+    def run_once(self, max_devs_returned=10, seconds=3):
         # TODO: Reduce duration to 0 once stress tests have proven it to be safe
-        (results, device_times) = self._suspender.suspend(3)
+        (results, device_times) = self._suspender.suspend(seconds)
 
         # return as keyvals the slowest n devices
         slowest_devs = sorted(
