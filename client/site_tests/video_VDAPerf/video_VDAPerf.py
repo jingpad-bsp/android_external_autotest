@@ -118,7 +118,7 @@ class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
         self._logperf(name, KEY_CPU_KERNEL_USAGE, s / r, UNIT_PERCENT)
 
 
-    def _load_frame_delivery_times(self):
+    def _load_frame_delivery_times(self, test_log_file):
         """Gets the frame delivery times from the log_file.
 
         The first line is the frame number of the first decoder. For exmplae:
@@ -132,7 +132,7 @@ class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
         delivery times, and so on so forth.
         """
         result = []
-        with open(TEST_OUTPUT_LOG, 'r') as f:
+        with open(test_log_file, 'r') as f:
             while True:
                 line = f.readline()
                 if not line: break
@@ -176,48 +176,55 @@ class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
 
 
     def _run_test_case(self, name, test_video_data, frame_num, rendering_fps):
+        test_log_file = os.path.join(self.tmpdir, TEST_OUTPUT_LOG)
+        time_log_file = os.path.join(self.tmpdir, TIME_LOG)
 
         # Get frame delivery time, decode as fast as possible.
-        _remove_if_exists(TEST_OUTPUT_LOG)
+        _remove_if_exists(test_log_file)
+        _remove_if_exists(time_log_file)
         cmd_line = ('--test_video_data="%s" ' % test_video_data +
                     '--gtest_filter=DecodeVariations/*/0 ' +
                     '--disable_rendering ' +
-                    '--output_log="%s"' % TEST_OUTPUT_LOG)
+                    '--output_log="%s"' % test_log_file)
         self.run_chrome_test_binary(BINARY, cmd_line)
 
-        frame_delivery_times = self._load_frame_delivery_times()
+        frame_delivery_times = self._load_frame_delivery_times(test_log_file)
         self._analyze_frame_delivery_times(name, frame_delivery_times)
 
         # Get frame drop rate & CPU usage, decode at the specified fps
-        _remove_if_exists(TEST_OUTPUT_LOG)
+        _remove_if_exists(test_log_file)
+        _remove_if_exists(time_log_file)
         cmd_line = ('--test_video_data="%s" ' % test_video_data +
                     '--gtest_filter=DecodeVariations/*/0 ' +
                     ('--rendering_fps=%s ' % rendering_fps) +
-                    '--output_log="%s"' % TEST_OUTPUT_LOG)
+                    '--output_log="%s"' % test_log_file)
         time_cmd = ('%s -f "%s" -o "%s" ' %
-                    (TIME_BINARY, TIME_OUTPUT_FORMAT, TIME_LOG))
+                    (TIME_BINARY, TIME_OUTPUT_FORMAT, time_log_file))
         self.run_chrome_test_binary(BINARY, cmd_line, prefix=time_cmd)
 
-        # Ignore if no log was generated. See comment above.
-        frame_delivery_times = self._load_frame_delivery_times()
+        frame_delivery_times = self._load_frame_delivery_times(test_log_file)
         self._analyze_frame_drop_rate(name, frame_num, frame_delivery_times)
-        self._analyze_cpu_usage(name, TIME_LOG)
+        self._analyze_cpu_usage(name, time_log_file)
 
         # Get decode time median.
-        _remove_if_exists(TEST_OUTPUT_LOG)
+        _remove_if_exists(test_log_file)
         cmd_line = ('--test_video_data="%s" ' % test_video_data +
                     '--gtest_filter=*TestDecodeTimeMedian ' +
-                    '--output_log="%s"' % TEST_OUTPUT_LOG)
+                    '--output_log="%s"' % test_log_file)
         self.run_chrome_test_binary(BINARY, cmd_line)
-        line = open(TEST_OUTPUT_LOG, 'r').read()
+        line = open(test_log_file, 'r').read()
         m = RE_DECODE_TIME_MEDIAN.match(line)
         assert m, 'invalid format: %s' % line
         decode_time = int(m.group(1))
         self._logperf(name, KEY_DECODE_TIME_50, decode_time, UNIT_MICROSECOND)
 
-        _remove_if_exists(TEST_OUTPUT_LOG)
+        _remove_if_exists(test_log_file)
+        _remove_if_exists(time_log_file)
 
     def run_once(self, test_cases):
+        # We need to write to tmpdir as user "chronos"
+        os.chmod(self.tmpdir, 0777)
+
         last_error = None
         for (path, width, height, frame_num, frag_num, profile,
              fps)  in test_cases:
