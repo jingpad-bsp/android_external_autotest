@@ -153,11 +153,13 @@ class firmware_TouchMTB:
     def _get_test_version(self):
         """Get the test suite version number."""
         if not os.path.isfile(conf.version_filename):
-            err_msg = ('Error: cannot find the test version file: %s\n'
-                       'You need to perform the following steps in chroot '
-                       'which will copy the test version to the test machine.\n'
-                       'Step 1: cd to the firmware_TouchMTB directory\n'
-                       'Step 2: (cr) $ ./version.sh -r $MACHINE_IP')
+            err_msg = ('Error: cannot find the test version file: %s\n\n'
+                       'Perform the following steps in chroot to install '
+                       'the test suite correctly:\n'
+                       'Step 1: (cr) $ cd ~/trunk/src/scripts\n'
+                       'Step 2: (cr) $ ./run_remote_tests.sh --autotest_dir '
+                       '~/trunk/src/third_party/autotest/files '
+                       '--remote=$MACHINE_IP firmware_TouchMTBSetup\n')
             print err_msg % conf.version_filename
             sys.exit(1)
 
