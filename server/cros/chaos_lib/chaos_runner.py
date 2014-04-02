@@ -183,9 +183,6 @@ class ChaosRunner(object):
 
         """
 
-        logging.debug('Going to cleanup logs and reboot host!!!')
-        self._sanitize_client()
-
         lock_manager = host_lock_manager.HostLockManager()
         with host_lock_manager.HostsLockedBy(lock_manager):
             capture_host = self._allocate_packet_capturer(
@@ -201,6 +198,8 @@ class ChaosRunner(object):
                                                          self._ap_spec)
 
             while batch_locker.has_more_aps():
+                # Work around crbug.com/358716
+                self._sanitize_client()
                 with contextlib.closing(wifi_client.WiFiClient(
                     hosts.create_host(self._host.hostname),
                     './debug')) as client:
