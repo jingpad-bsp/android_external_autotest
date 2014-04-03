@@ -430,5 +430,3 @@ class PseudoModemManagerContext(object):
             raise PseudoModemManagerContextException(
                     'pseudomodem quit early! (%s)' %
                     error_reason)
-        else:
-            logging.debug('Child process not dead yet.')
