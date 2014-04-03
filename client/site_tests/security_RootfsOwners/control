@@ -12,7 +12,7 @@ PURPOSE = "Ensures there is no files owned by chronos on the rootfs."
 CRITERIA = """
 Fail if there are any files owned by the chronos on the rootfs.
 """
-SUITE = "bvt"
+SUITE = "security"
 TEST_CLASS = "security"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"

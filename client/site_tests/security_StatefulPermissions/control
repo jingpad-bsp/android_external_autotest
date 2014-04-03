@@ -13,7 +13,7 @@ CRITERIA = """
 Fail if any files are found which are unaccounted for by given owner-specific
 criteria.
 """
-SUITE = "smoke, bvt"
+SUITE = "security"
 TEST_CLASS = "security"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"
