@@ -14,5 +14,7 @@ SUITE = "smoke,bvt"
 TEST_CLASS = "security"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"
+# TODO(jorgelo): remove this.
+EXPERIMENTAL = "true"
 
 job.run_test("security_AccountsBaseline")
