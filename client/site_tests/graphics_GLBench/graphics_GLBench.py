@@ -215,10 +215,6 @@ class graphics_GLBench(test.test):
       raise error.TestFail('No output from test. Check /tmp/' +
                            'run_remote_tests.../graphics_GLBench/summary.txt' +
                            ' for details.')
-    # analyze summary header
-    if results[0].startswith('# board_id: '):
-      board_id = results[0].split('board_id:', 1)[1].strip()
-      del results[0]
 
     # initialize reference images index for lookup
     reference_imagenames = os.path.join(self.autodir,
@@ -277,13 +273,11 @@ class graphics_GLBench(test.test):
 
     # raise exception
     if failed_tests and raise_error_on_checksum:
-      logging.info('GLBench board_id: %s', board_id)
       logging.info('Some images are not matching their reference in %s or %s.',
                    self.reference_images_file,
                    self.reference_images_url)
       logging.info('Please verify that the output images are correct '
-                   'and if so copy them to the reference directory:\n' +
-                   pprint.pformat((board_id, failed_tests)) + ',')
+                   'and if so copy them to the reference directory.')
       raise error.TestFail('Some images are not matching their '
                            'references. Check /tmp/'
                            'run_remote_tests.../graphics_GLBench/summary.txt'
