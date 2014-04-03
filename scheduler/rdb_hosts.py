@@ -85,17 +85,36 @@ class RDBServerHostWrapper(RDBHost):
     """
 
     def __init__(self, host):
+        """Create an RDBServerHostWrapper.
+
+        @param host: An instance of the Host model class.
+        """
         host_fields = RDBHost.get_required_fields_from_host(host)
         super(RDBServerHostWrapper, self).__init__(**host_fields)
-        self.labels = rdb_utils.LabelIterator(
-                (label for label in host.labels.all()))
-        self.acls = rdb_utils.RememberingIterator(
-                (acl.id for acl in host.aclgroup_set.all()))
+        self.labels = rdb_utils.LabelIterator(host.labels.all())
+        self.acls = [aclgroup.id for aclgroup in host.aclgroup_set.all()]
         self.protection = host.protection
         platform = host.platform()
         # Platform needs to be a method, not an attribute, for
         # backwards compatibility with the rest of the host model.
         self.platform_name = platform.name if platform else None
+        self._host = host
+
+
+    def lease(self):
+        """Set the leased bit on the host object, and in the database.
+
+        @raises RDBException: If the host is already leased, or the
+            RDBServerHostWrapper leased bit is set.
+        """
+        if self._host.leased or self.leased:
+            raise rdb_utils.RDBException(
+                    'Error leasing host %s, RDBServerHostWrapper leased: %s, '
+                    'Host db object leased: %s' %
+                    (self.hostname, self.leased, self._host.leased))
+        self._host.leased = 1
+        self._host.save()
+        self.leased = 1
 
 
     def wire_format(self, unwrap_foreign_keys=True):
@@ -110,8 +129,8 @@ class RDBServerHostWrapper(RDBHost):
         host_info = super(RDBServerHostWrapper, self).wire_format()
 
         if unwrap_foreign_keys:
-            host_info['labels'] = self.labels.get_all_items()
-            host_info['acls'] = self.acls.get_all_items()
+            host_info['labels'] = self.labels.get_label_names()
+            host_info['acls'] = self.acls
             host_info['platform_name'] = self.platform_name
             host_info['protection'] = self.protection
         return host_info

@@ -61,14 +61,14 @@ class BaseHostQueryManager(object):
         @param acls: A list of acls, at least one of which must coincide with
             an acl group the chosen host is in.
 
-        @return: A list of matching hosts available.
+        @return: A set of matching hosts available.
         """
         hosts_available = self.host_objects.filter(invalid=0)
         queries = [Q(labels__id=dep) for dep in deps]
         queries += [Q(aclgroup__id__in=acls)]
         for query in queries:
             hosts_available = hosts_available.filter(query)
-        return hosts_available
+        return set(hosts_available)
 
 
 class AvailableHostQueryManager(BaseHostQueryManager):
@@ -165,7 +165,7 @@ class BaseHostRequestHandler(object):
             try:
                 response = self.host_query_manager.update_hosts(hosts, **payload)
             except (django_exceptions.FieldError,
-                    fields.FieldDoesNotExist) as e:
+                    fields.FieldDoesNotExist, ValueError) as e:
                 for host in hosts:
                     # Since update requests have a consistent hash this will map
                     # to the same key as the original request.
@@ -211,14 +211,52 @@ class AvailableHostRequestHandler(BaseHostRequestHandler):
 
 
     def lease_hosts(self, hosts):
-        """Leases a list hosts.
+        """Leases a list of hosts.
 
-        @param hosts: A list of hosts to lease.
+        @param hosts: A list of RDBServerHostWrapper instances to lease.
+
+        @return: The list of RDBServerHostWrappers that were successfully
+            leased.
         """
-        #TODO(beeps): crbug.com/353183, we're abusing the response_map here.
-        requests = [rdb_requests.UpdateHostRequest(host_id=host.id,
-                payload={'leased': 1}).get_request() for host in hosts]
-        super(AvailableHostRequestHandler, self).update_hosts(requests)
+        #TODO(beeps): crbug.com/353183.
+        unleased_hosts = set(hosts)
+        leased_hosts = set([])
+        for host in unleased_hosts:
+            try:
+                host.lease()
+            except rdb_utils.RDBException as e:
+                logging.error('Unable to lease host %s: %s', host.hostname, e)
+            else:
+                leased_hosts.add(host)
+        return list(leased_hosts)
+
+
+    @classmethod
+    def valid_host_assignment(cls, request, host):
+        """Check if a host, request pairing is valid.
+
+        @param request: The request to match against the host.
+        @param host: An RDBServerHostWrapper instance.
+
+        @return: True if the host, request assignment is valid.
+
+        @raises RDBException: If the request already has another host_ids
+            associated with it.
+        """
+        if request.host_id and request.host_id != host.id:
+            raise rdb_utils.RDBException(
+                    'Cannot assign a different host for request: %s, it '
+                    'already has one: %s ' % (request, host.id))
+
+        # Getting all labels and acls might result in large queries, so
+        # bail early if the host is already leased.
+        if host.leased:
+            return False
+        # If a host is invalid it must be a one time host added to the
+        # afe specifically for this purpose, so it doesn't require acl checking.
+        acl_match = (request.acls.intersection(host.acls) or host.invalid)
+        label_match = (request.deps.intersection(host.labels) == request.deps)
+        return acl_match and label_match
 
 
     @_timer.decorate
@@ -243,9 +281,11 @@ class AvailableHostRequestHandler(BaseHostRequestHandler):
                             request.deps, request.acls)
             num_hosts = min(len(hosts), count)
             if num_hosts:
-                # TODO(beeps): Only reserve hosts we have successfully leased.
-                self.lease_hosts(hosts[:num_hosts])
-                self.update_response_map(request, hosts[:num_hosts])
+                # Try leasing num hosts, but only update the response map with
+                # those that we could successfully lease.
+                leased_hosts = self.lease_hosts(hosts[:num_hosts])
+                self.update_response_map(request, leased_hosts)
+                num_hosts = len(leased_hosts)
             if num_hosts < count:
                 logging.warning('%s Unsatisfied rdb acquisition request:%s ',
                                 count-num_hosts, request)
@@ -259,29 +299,39 @@ class AvailableHostRequestHandler(BaseHostRequestHandler):
         request-host pairings. Lease the remaining hsots.
 
         @param requests: A list of requests to validate.
+
+        @raises RDBException: If multiple hosts or the wrong host is returned
+            for a response.
         """
-        # Multiple requests can have the same host (but different acls/deps),
-        # and multiple jobs can submit identical requests (same host_id,
-        # acls, deps). In both these cases the first request to check the host
-        # map wins, though in the second case it doesn't matter.
+        # The following cases are possible for frontend requests:
+        # 1. Multiple requests for 1 host, with different acls/deps/priority:
+        #    These form distinct requests because they hash differently.
+        #    The response map will contain entries like: {r1: h1, r2: h1}
+        #    after the batch_get_hosts call. There are 2 sub-cases:
+        #        a. Same deps/acls, different priority:
+        #           Since we sort the requests based on priority, the
+        #           higher priority request r1, will lease h1. The
+        #           validation of r2, h1 will fail because of the r1 lease.
+        #        b. Different deps/acls, only one of which matches the host:
+        #           The matching request will lease h1. The other host
+        #           pairing will get dropped from the response map.
+        # 2. Multiple requests with the same acls/deps/priority and 1 host:
+        #    These all have the same request hash, so the response map will
+        #    contain: {r: h}, regardless of the number of r's. If this is not
+        #    a valid host assignment it will get dropped from the response.
         self.batch_get_hosts(set(requests))
-        for request in self.response_map.keys():
+        for request in sorted(self.response_map.keys(),
+                key=lambda request: request.priority, reverse=True):
             hosts = self.response_map[request]
             if len(hosts) > 1:
                 raise rdb_utils.RDBException('Got multiple hosts for a single '
                         'request. Hosts: %s, request %s.' % (hosts, request))
-            host = hosts[0]
-            if not ((request.acls.intersection(host.acls) or host.invalid) and
-                    request.deps.intersection(host.labels) == request.deps):
-                if request.host_id != host.id:
-                    raise rdb_utils.RDBException('Cannot assign a different '
-                            'host for requset: %s, it already has one: %s ' %
-                            (request, host.id))
-                del self.response_map[request]
-                logging.warning('Failed rdb validation request:%s ', request)
-
-        # TODO(beeps): Update acquired hosts with failed leases.
-        self.lease_hosts([hosts[0] for hosts in self.response_map.values()])
+            if (self.valid_host_assignment(request, hosts[0]) and
+                    self.lease_hosts(hosts)):
+                continue
+            del self.response_map[request]
+            logging.warning('Request %s was not able to lease host %s',
+                            request, hosts[0])
 
 
 # Request dispatchers: Create the appropriate request handler, send a list

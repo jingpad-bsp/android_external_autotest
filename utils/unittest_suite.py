@@ -43,6 +43,8 @@ REQUIRES_DJANGO = set((
         'execution_engine_unittest.py',
         'service_proxy_lib_test.py',
         'rdb_integration_tests.py',
+        'rdb_unittest.py',
+        'rdb_hosts_unittest.py',
         ))
 
 REQUIRES_MYSQLDB = set((

@@ -6,7 +6,6 @@
 
 Do not import rdb or autotest modules here to avoid cyclic dependencies.
 """
-import itertools
 
 
 class RDBException(Exception):
@@ -18,55 +17,27 @@ class RDBException(Exception):
         return str(self)
 
 
-# Custom iterators: Used by the rdb to lazily convert the iteration of a
-# queryset to a database query and return an appropriately formatted response.
-class RememberingIterator(object):
-    """An iterator capable of reproducing all values in the input generator.
-    """
-
-    #pylint: disable-msg=C0111
-    def __init__(self, gen):
-        self.current, self.history = itertools.tee(gen)
-        self.items = []
-
-
-    def __iter__(self):
-        return self
-
-
-    def next(self):
-        return self.current.next()
-
-
-    def get_all_items(self):
-        """Get all the items in the generator this object was created with.
-
-        @return: A list of items.
-        """
-        if not self.items:
-            self.items = list(self.history)
-        return self.items
-
-
-class LabelIterator(RememberingIterator):
-    """A RememberingIterator for labels.
+class LabelIterator(object):
+    """An Iterator for labels.
 
     Within the rdb any label/dependency comparisons are performed based on label
     ids. However, the host object returned needs to contain label names instead.
-    This class returns the label id when iterated over, but a list of all label
-    names when accessed through get_all_items.
+    This class returns label ids for iteration, but a list of all label names
+    when accessed through get_label_names.
     """
 
+    def __init__(self, labels):
+        self.labels = labels
 
-    def next(self):
-        return super(LabelIterator, self).next().id
+
+    def __iter__(self):
+        return iter(label.id for label in self.labels)
 
 
-    def get_all_items(self):
-        """Get all label names of the labels in the input generator.
+    def get_label_names(self):
+        """Get all label names of the labels associated with this class.
 
         @return: A list of label names.
         """
-        return [label.name
-                for label in super(LabelIterator, self).get_all_items()]
+        return [label.name for label in self.labels]
 

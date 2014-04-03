@@ -8,15 +8,22 @@
 import collections
 
 import common
-from autotest_lib.frontend import setup_django_environment
-from autotest_lib.frontend.afe import frontend_test_utils
+
+from autotest_lib.client.common_lib import host_queue_entry_states
 from autotest_lib.client.common_lib.test_utils import unittest
 from autotest_lib.database import database_connection
+from autotest_lib.frontend import setup_django_environment
+from autotest_lib.frontend.afe import frontend_test_utils
 from autotest_lib.frontend.afe import models
+from autotest_lib.frontend.afe import rdb_model_extensions
 from autotest_lib.scheduler import monitor_db
 from autotest_lib.scheduler import monitor_db_functional_test
 from autotest_lib.scheduler import scheduler_models
-from autotest_lib.scheduler import rdb_lib, rdb_requests
+from autotest_lib.scheduler import rdb
+from autotest_lib.scheduler import rdb_hosts
+from autotest_lib.scheduler import rdb_lib
+from autotest_lib.scheduler import rdb_requests
+
 
 # Set for verbose table creation output.
 _DEBUG = False
@@ -35,9 +42,28 @@ class DBHelper(object):
 
 
     @classmethod
-    def create_label(cls, name):
-        label = models.Label.objects.filter(name=name)
-        return models.Label.add_object(name=name) if not label else label[0]
+    def get_labels(cls, **kwargs):
+        """Get a label queryset based on the kwargs."""
+        return models.Label.objects.filter(**kwargs)
+
+
+    @classmethod
+    def get_acls(cls, **kwargs):
+        """Get an aclgroup queryset based on the kwargs."""
+        return models.AclGroup.objects.filter(**kwargs)
+
+
+    @classmethod
+    def get_host(cls, **kwargs):
+        """Get a host queryset based on the kwargs."""
+        return models.Host.objects.filter(**kwargs)
+
+
+    @classmethod
+    def create_label(cls, name, **kwargs):
+        label = cls.get_labels(name=name, **kwargs)
+        return (models.Label.add_object(name=name, **kwargs)
+                if not label else label[0])
 
 
     @classmethod
@@ -55,18 +81,18 @@ class DBHelper(object):
 
 
     @classmethod
+    def create_acl_group(cls, name):
+        aclgroup = cls.get_acls(name=name)
+        return (models.AclGroup.add_object(name=name)
+                if not aclgroup else aclgroup[0])
+
+
+    @classmethod
     def add_deps_to_job(cls, job, dep_names=set([])):
         label_objects = set([])
         for label in dep_names:
             label_objects.add(cls.create_label(label))
         job.dependency_labels.add(*label_objects)
-
-
-    @classmethod
-    def create_acl_group(cls, name):
-        aclgroup = models.AclGroup.objects.filter(name=name)
-        return (models.AclGroup.add_object(name=name)
-                if not aclgroup else aclgroup[0])
 
 
     @classmethod
@@ -114,7 +140,24 @@ class DBHelper(object):
         # Though we can return the host object above, this proves that the host
         # actually got saved in the database. For example, this will return none if
         # save() wasn't called on the model.Host instance.
-        return models.Host.objects.filter(hostname=name)[0]
+        return cls.get_host(hostname=name)[0]
+
+
+    @classmethod
+    def add_host_to_job(cls, host, job_id):
+        """Add a host to the hqe of a job.
+
+        @param host: An instance of the host model.
+        @param job_id: The job to which we need to add the host.
+
+        @raises ValueError: If the hqe for the job already has a host,
+            or if the host argument isn't a Host instance.
+        """
+        hqe = models.HostQueueEntry.objects.get(job_id=job_id)
+        if hqe.host:
+            raise ValueError('HQE for job %s already has a host' % job_id)
+        hqe.host = host
+        hqe.save()
 
 
     @classmethod
@@ -124,7 +167,7 @@ class DBHelper(object):
         job.save()
 
 
-class PriorityAssignmentValidator(object):
+class AssignmentValidator(object):
     """Utility class to check that priority inversion doesn't happen. """
 
 
@@ -156,7 +199,7 @@ class PriorityAssignmentValidator(object):
         if not hosts or not request:
             return None
         for host in hosts:
-            if PriorityAssignmentValidator.check_acls_deps(host, request):
+            if AssignmentValidator.check_acls_deps(host, request):
                 return host
 
 
@@ -170,6 +213,27 @@ class PriorityAssignmentValidator(object):
         """
         return sorted(collections.Counter(requests).items(),
                 key=lambda request: request[0].priority, reverse=True)
+
+
+    @staticmethod
+    def verify_priority(request_queue, result):
+        requests = AssignmentValidator.sort_requests(request_queue)
+        for request, count in requests:
+            hosts = result.get(request)
+            # The request was completely satisfied.
+            if hosts and len(hosts) == count:
+                continue
+            # Go through all hosts given to lower priority requests and
+            # make sure we couldn't have allocated one of them for this
+            # unsatisfied higher priority request.
+            lower_requests = requests[requests.index((request,count))+1:]
+            for lower_request, count in lower_requests:
+                if (lower_request.priority < request.priority and
+                    AssignmentValidator.find_matching_host_for_request(
+                            result.get(lower_request), request)):
+                    raise ValueError('Priority inversion occured between '
+                            'priorities %s and %s' %
+                            (request.priority, lower_request.priority))
 
 
     @staticmethod
@@ -189,26 +253,13 @@ class PriorityAssignmentValidator(object):
         # could not have been satisfied by hosts assigned to requests lower
         # down in the list.
         result = request_manager.api_call(request_manager.request_queue)
-        requests = PriorityAssignmentValidator.sort_requests(
-                request_manager.request_queue)
-        for request, count in requests:
-            hosts = result.get(request)
-            # The request was completely satisfied.
-            if hosts and len(hosts) == count:
-                continue
-            # Go through all hosts given to lower priority requests and
-            # make sure we couldn't have allocated one of them for this
-            # unsatisfied higher priority request.
-            lower_requests = requests[requests.index((request,count))+1:]
-            for lower_request, count in lower_requests:
-                if (PriorityAssignmentValidator.find_matching_host_for_request(
-                    result.get(lower_request), request)):
-                    raise ValueError('Priority inversion occured between '
-                            'priorities %s and %s' %
-                            (request.priority, lower_request.priority))
-        # Though we've confirmed behavior, the rdb_lib method that is using this
-        # request manager needs to exit cleanly.
-        yield None
+        if not result:
+            raise ValueError('Expected results but got none.')
+        AssignmentValidator.verify_priority(
+                request_manager.request_queue, result)
+        for hosts in result.values():
+            for host in hosts:
+                yield host
 
 
 class BaseRDBTest(unittest.TestCase, frontend_test_utils.FrontendTestMixin):
@@ -238,6 +289,7 @@ class BaseRDBTest(unittest.TestCase, frontend_test_utils.FrontendTestMixin):
 
     def tearDown(self):
         """Teardown the host/job database established through setUp. """
+        self.god.unstub_all()
         self._database.disconnect()
         self._frontend_common_teardown()
 
@@ -261,13 +313,47 @@ class BaseRDBTest(unittest.TestCase, frontend_test_utils.FrontendTestMixin):
         # another label to the rdb.
         if not deps:
             raise ValueError('Need at least one dep for metahost')
-        metahost = DBHelper.create_label(list(deps)[0])
-        job = self._create_job(metahosts=[metahost.id], priority=priority,
-                owner=user)
+
+        # TODO: This is a hack around the fact that frontend_test_utils still
+        # need a metahost, but metahost is treated like any other label.
+        metahost = self.db_helper.create_label(list(deps)[0])
+        job = self._create_job(
+                metahosts=[metahost.id], priority=priority, owner=user)
         self.assert_(len(job.hostqueueentry_set.all()) == 1)
-        DBHelper.add_deps_to_job(job, dep_names=list(deps)[1:])
-        DBHelper.add_user_to_aclgroups(user, aclgroup_names=acls)
+        self.db_helper.add_deps_to_job(job, dep_names=list(deps)[1:])
+        self.db_helper.add_user_to_aclgroups(user, aclgroup_names=acls)
         return models.Job.objects.filter(id=job.id)[0]
+
+
+    def assert_host_db_status(self, host_id):
+        """Assert host state right after acquisition.
+
+        Call this method to check the status of any host leased by the
+        rdb before it has been assigned to an hqe. It must be leased and
+        ready at this point in time.
+
+        @param host_id: Id of the host to check.
+
+        @raises AssertionError: If the host is either not leased or Ready.
+        """
+        host = models.Host.objects.get(id=host_id)
+        self.assert_(host.leased)
+        self.assert_(host.status == 'Ready')
+
+
+    def check_hosts(self, host_iter):
+        """Sanity check all hosts in the host_gen.
+
+        @param host_iter: A generator/iterator of RDBClientHostWrappers.
+            eg: The generator returned by rdb_lib.acquire_hosts. If a request
+            was not satisfied this iterator can contain None.
+
+        @raises AssertionError: If any of the sanity checks fail.
+        """
+        for host in host_iter:
+            if host:
+                self.assert_host_db_status(host.id)
+                self.assert_(host.leased == 1)
 
 
     def check_host_assignment(self, job_id, host_id):
@@ -285,7 +371,6 @@ class BaseRDBTest(unittest.TestCase, frontend_test_utils.FrontendTestMixin):
         @param host_id: The id of the host to check for compatibility.
 
         @raises AssertionError: If the job and the host are incompatible.
-            This will happen
         """
         job = models.Job.objects.get(id=job_id)
         host = models.Host.objects.get(id=host_id)
@@ -296,10 +381,7 @@ class BaseRDBTest(unittest.TestCase, frontend_test_utils.FrontendTestMixin):
         all_hqes = models.HostQueueEntry.objects.filter(host_id=host_id, complete=0)
         self.assert_(len(all_hqes) <= 1)
         self.assert_(hqe.host_id == None)
-
-        # Assert basic host status.
-        self.assert_(host.leased)
-        self.assert_(host.status == 'Ready')
+        self.assert_host_db_status(host_id)
 
         # Assert that all deps of the job are satisfied.
         job_deps = set([d.name for d in job.dependency_labels.all()])
@@ -315,6 +397,97 @@ class BaseRDBTest(unittest.TestCase, frontend_test_utils.FrontendTestMixin):
         self.assert_(job_owner_aclgroups.intersection(host_aclgroups))
 
 
+    def testAcquireLeasedHostBasic(self):
+        """Test that acquisition of a leased host doesn't happen.
+
+        @raises AssertionError: If the one host that satisfies the request
+            is acquired.
+        """
+        job = self.create_job(deps=set(['a']))
+        host = self.db_helper.create_host('h1', deps=set(['a']))
+        host.leased = 1
+        host.save()
+        queue_entries = self._dispatcher._refresh_pending_queue_entries()
+        hosts = list(rdb_lib.acquire_hosts(
+            self.host_scheduler, queue_entries))
+        self.assertTrue(len(hosts) == 1 and hosts[0] is None)
+
+
+    def testAcquireLeasedHostRace(self):
+        """Test behaviour when hosts are leased just before acquisition.
+
+        If a fraction of the hosts somehow get leased between finding and
+        acquisition, the rdb should just return the remaining hosts for the
+        request to use.
+
+        @raises AssertionError: If both the requests get a host successfully,
+            since one host gets leased before the final attempt to lease both.
+        """
+        j1 = self.create_job(deps=set(['a']))
+        j2 = self.create_job(deps=set(['a']))
+        hosts = [self.db_helper.create_host('h1', deps=set(['a'])),
+                 self.db_helper.create_host('h2', deps=set(['a']))]
+
+        @rdb_hosts.return_rdb_host
+        def local_find_hosts(host_query_maanger, deps, acls):
+            """Return a predetermined list of hosts, one of which is leased."""
+            h1 = models.Host.objects.get(hostname='h1')
+            h1.leased = 1
+            h1.save()
+            h2 = models.Host.objects.get(hostname='h2')
+            return [h1, h2]
+
+        self.god.stub_with(rdb.AvailableHostQueryManager, 'find_hosts',
+                           local_find_hosts)
+        queue_entries = self._dispatcher._refresh_pending_queue_entries()
+        hosts = list(rdb_lib.acquire_hosts(
+            self.host_scheduler, queue_entries))
+        self.assertTrue(len(hosts) == 2 and None in hosts)
+        self.check_hosts(iter(hosts))
+
+
+    def testHostReleaseStates(self):
+        """Test that we will only release an unused host if it is in Ready.
+
+        @raises AssertionError: If the host gets released in any other state.
+        """
+        host = self.db_helper.create_host('h1', deps=set(['x']))
+        for state in rdb_model_extensions.AbstractHostModel.Status.names:
+            host.status = state
+            host.leased = 1
+            host.save()
+            self._release_unused_hosts()
+            host = models.Host.objects.get(hostname='h1')
+            self.assertTrue(host.leased == (state != 'Ready'))
+
+
+    def testHostReleseHQE(self):
+        """Test that we will not release a ready host if it's being used.
+
+        @raises AssertionError: If the host is released even though it has
+            been assigned to an active hqe.
+        """
+        # Create a host and lease it out in Ready.
+        host = self.db_helper.create_host('h1', deps=set(['x']))
+        host.status = 'Ready'
+        host.leased = 1
+        host.save()
+
+        # Create a job and give its hqe the leased host.
+        job = self.create_job(deps=set(['x']))
+        self.db_helper.add_host_to_job(host, job.id)
+        hqe = models.HostQueueEntry.objects.get(job_id=job.id)
+
+        # Activate the hqe by setting its state.
+        hqe.status = host_queue_entry_states.ACTIVE_STATUSES[0]
+        hqe.save()
+
+        # Make sure the hqes host isn't released, even if its in ready.
+        self._release_unused_hosts()
+        host = models.Host.objects.get(hostname='h1')
+        self.assertTrue(host.leased == 1)
+
+
     def testBasicDepsAcls(self):
         """Test a basic deps/acls request.
 
@@ -326,12 +499,13 @@ class BaseRDBTest(unittest.TestCase, frontend_test_utils.FrontendTestMixin):
         """
         deps = set(['a', 'b'])
         acls = set(['a', 'b'])
-        DBHelper.create_host('h1', deps=deps, acls=acls)
+        self.db_helper.create_host('h1', deps=deps, acls=acls)
         job = self.create_job(user='autotest_system', deps=deps, acls=acls)
         queue_entries = self._dispatcher._refresh_pending_queue_entries()
         matching_host  = rdb_lib.acquire_hosts(
                 self.host_scheduler, queue_entries).next()
         self.check_host_assignment(job.id, matching_host.id)
+        self.assertTrue(matching_host.leased == 1)
 
 
     def testBadDeps(self):
@@ -343,7 +517,7 @@ class BaseRDBTest(unittest.TestCase, frontend_test_utils.FrontendTestMixin):
         host_labels = set(['a'])
         job_deps = set(['b'])
         acls = set(['a', 'b'])
-        DBHelper.create_host('h1', deps=host_labels, acls=acls)
+        self.db_helper.create_host('h1', deps=host_labels, acls=acls)
         job = self.create_job(user='autotest_system', deps=job_deps, acls=acls)
         queue_entries = self._dispatcher._refresh_pending_queue_entries()
         matching_host  = rdb_lib.acquire_hosts(
@@ -360,7 +534,7 @@ class BaseRDBTest(unittest.TestCase, frontend_test_utils.FrontendTestMixin):
         deps = set(['a'])
         host_acls = set(['a'])
         job_acls = set(['b'])
-        DBHelper.create_host('h1', deps=deps, acls=host_acls)
+        self.db_helper.create_host('h1', deps=deps, acls=host_acls)
 
         # Create the job as a new user who is only in the 'b' and 'Everyone'
         # aclgroups. Though there are several hosts in the Everyone group, the
@@ -377,14 +551,14 @@ class BaseRDBTest(unittest.TestCase, frontend_test_utils.FrontendTestMixin):
 
         Schedule 2 jobs with the same deps, acls and user, but different
         priorities, and confirm that the higher priority request gets the host.
-        This confirmation happens through the PriorityAssignmentValidator.
+        This confirmation happens through the AssignmentValidator.
 
         @raises AssertionError: If the un important request gets host h1 instead
             of the important request.
         """
         deps = set(['a', 'b'])
         acls = set(['a', 'b'])
-        DBHelper.create_host('h1', deps=deps, acls=acls)
+        self.db_helper.create_host('h1', deps=deps, acls=acls)
         important_job = self.create_job(user='autotest_system',
                 deps=deps, acls=acls, priority=2)
         un_important_job = self.create_job(user='autotest_system',
@@ -392,8 +566,9 @@ class BaseRDBTest(unittest.TestCase, frontend_test_utils.FrontendTestMixin):
         queue_entries = self._dispatcher._refresh_pending_queue_entries()
 
         self.god.stub_with(rdb_requests.BaseHostRequestManager, 'response',
-                PriorityAssignmentValidator.priority_checking_response_handler)
-        list(rdb_lib.acquire_hosts(self.host_scheduler, queue_entries))
+                AssignmentValidator.priority_checking_response_handler)
+        self.check_hosts(rdb_lib.acquire_hosts(
+            self.host_scheduler, queue_entries))
 
 
     def testPriorityLevels(self):
@@ -408,7 +583,7 @@ class BaseRDBTest(unittest.TestCase, frontend_test_utils.FrontendTestMixin):
         """
         deps = set(['a', 'b'])
         acls = set(['a', 'b'])
-        DBHelper.create_host('h1', deps=deps, acls=acls)
+        self.db_helper.create_host('h1', deps=deps, acls=acls)
 
         # Create jobs that will bucket differently and confirm that jobs in an
         # earlier bucket get a host.
@@ -421,20 +596,88 @@ class BaseRDBTest(unittest.TestCase, frontend_test_utils.FrontendTestMixin):
         queue_entries = self._dispatcher._refresh_pending_queue_entries()
 
         self.god.stub_with(rdb_requests.BaseHostRequestManager, 'response',
-                PriorityAssignmentValidator.priority_checking_response_handler)
-        list(rdb_lib.acquire_hosts(self.host_scheduler, queue_entries))
+                AssignmentValidator.priority_checking_response_handler)
+        self.check_hosts(rdb_lib.acquire_hosts(
+            self.host_scheduler, queue_entries))
 
         # Elevate the priority of the unimportant job, so we now have
         # 2 jobs at the same priority.
         self.db_helper.increment_priority(job_id=unimportant_job.id)
         queue_entries = self._dispatcher._refresh_pending_queue_entries()
         self._release_unused_hosts()
-        list(rdb_lib.acquire_hosts(self.host_scheduler, queue_entries))
+        self.check_hosts(rdb_lib.acquire_hosts(
+            self.host_scheduler, queue_entries))
 
         # Prioritize the first job, and confirm that it gets the host over the
         # jobs that got it the last time.
         self.db_helper.increment_priority(job_id=unimportant_job.id)
         queue_entries = self._dispatcher._refresh_pending_queue_entries()
         self._release_unused_hosts()
-        list(rdb_lib.acquire_hosts(self.host_scheduler, queue_entries))
+        self.check_hosts(rdb_lib.acquire_hosts(
+            self.host_scheduler, queue_entries))
+
+
+    def testFrontendJobScheduling(self):
+        """Test that basic frontend job scheduling.
+
+        @raises AssertionError: If the received and requested host don't match,
+            or the mis-matching host is returned instead.
+        """
+        deps = set(['x', 'y'])
+        acls = set(['a', 'b'])
+
+        # Create 2 frontend jobs and only one matching host.
+        matching_job = self.create_job(acls=acls, deps=deps)
+        matching_host = self.db_helper.create_host('h1', acls=acls, deps=deps)
+        mis_matching_job = self.create_job(acls=acls, deps=deps)
+        mis_matching_host = self.db_helper.create_host(
+                'h2', acls=acls, deps=deps.pop())
+        self.db_helper.add_host_to_job(matching_host, matching_job.id)
+        self.db_helper.add_host_to_job(mis_matching_host, mis_matching_job.id)
+
+        # Check that only the matching host is returned, and that we get 'None'
+        # for the second request.
+        queue_entries = self._dispatcher._refresh_pending_queue_entries()
+        hosts = list(rdb_lib.acquire_hosts(self.host_scheduler, queue_entries))
+        self.assertTrue(len(hosts) == 2 and None in hosts)
+        returned_host = [host for host in hosts if host].pop()
+        self.assertTrue(matching_host.id == returned_host.id)
+
+
+    def testFrontendJobPriority(self):
+        """Test that frontend job scheduling doesn't ignore priorities.
+
+        @raises ValueError: If the priorities of frontend jobs are ignored.
+        """
+        board = 'x'
+        high_priority = self.create_job(priority=2, deps=set([board]))
+        low_priority = self.create_job(priority=1, deps=set([board]))
+        host = self.db_helper.create_host('h1', deps=set([board]))
+        self.db_helper.add_host_to_job(host, low_priority.id)
+        self.db_helper.add_host_to_job(host, high_priority.id)
+
+        queue_entries = self._dispatcher._refresh_pending_queue_entries()
+
+        def local_response_handler(request_manager):
+            """Confirms that a higher priority frontend job gets a host.
+
+            @raises ValueError: If priority inversion happens and the job
+                with priority 1 gets the host instead.
+            """
+            result = request_manager.api_call(request_manager.request_queue)
+            if not result:
+                raise ValueError('Excepted the high priority request to '
+                                 'get a host, but the result is empty.')
+            for request, hosts in result.iteritems():
+                if request.priority == 1:
+                    raise ValueError('Priority of frontend job ignored.')
+                if len(hosts) > 1:
+                    raise ValueError('Multiple hosts returned against one '
+                                     'frontend job scheduling request.')
+                yield hosts[0]
+
+        self.god.stub_with(rdb_requests.BaseHostRequestManager, 'response',
+                           local_response_handler)
+        self.check_hosts(rdb_lib.acquire_hosts(
+            self.host_scheduler, queue_entries))
 
