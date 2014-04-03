@@ -1,6 +1,5 @@
-Power load test now uses a pre-packed extension (extension.crx).
-Therefore, changes to the unpacked extension either on client or on server
-will not be used.
+power_LoadTest does not need to pack the extension to run it, but it
+can be packed to run it in your browser.
 
 In order to update extension.crx, use chrome's built in packer. You must close
 all chrome windows before running this command.

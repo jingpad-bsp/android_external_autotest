@@ -3,11 +3,12 @@
 # found in the LICENSE file.
 
 import collections, logging, numpy, os, time
-from autotest_lib.client.bin import utils
+from autotest_lib.client.bin import utils, test
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
-from autotest_lib.client.cros import backchannel, cros_ui, cros_ui_test, httpd
+from autotest_lib.client.cros import backchannel, httpd
 from autotest_lib.client.cros import power_rapl, power_status, power_utils
 from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.audio import audio_helper
@@ -24,10 +25,10 @@ params_dict = {
 }
 
 
-class power_LoadTest(cros_ui_test.UITest):
+class power_LoadTest(test.test):
     """test class"""
     version = 2
-    _creds = 'power.loadtest@gmail.com:power_LoadTest1'
+    _creds = 'powerloadtest@gmail.com:power_LoadTest1'
 
 
     def start_authserver(self):
@@ -100,6 +101,7 @@ class power_LoadTest(cros_ui_test.UITest):
         self._force_wifi = force_wifi
         self._testServer = None
         self._tasks = '\'' + tasks.replace(' ','') + '\''
+        self._creds = creds.split(':')
         self._backchannel = None
         self._shill_proxy = None
         self._kblight_percent = kblight_percent
@@ -200,13 +202,8 @@ class power_LoadTest(cros_ui_test.UITest):
         self._ah_charge_start = self._power_status.battery[0].charge_now
         self._wh_energy_start = self._power_status.battery[0].energy
 
-        super(power_LoadTest, self).initialize(creds=creds)
-
     def run_once(self):
-        import pyauto
-
         t0 = time.time()
-        ext_path = os.path.join(os.path.dirname(__file__), 'extension.crx')
 
         try:
             kblight = power_utils.KbdBacklight()
@@ -229,11 +226,15 @@ class power_LoadTest(cros_ui_test.UITest):
         self._plog.start()
         self._tlog.start()
 
+        ext_path = os.path.join(os.path.dirname(__file__), 'extension')
+        # the extension starts when it is loaded
+        browser = chrome.Chrome(extension_paths=[ext_path], gaia_login=True,
+                                username=self._creds[0],
+                                password=self._creds[1])
+        extension = browser.get_extension(ext_path)
+
         for i in range(self._loop_count):
             start_time = time.time()
-            # Installing the extension will also fire it up.
-            ext_id = self.pyauto.InstallExtension(ext_path)
-
             # the power test extension will report its status here
             latch = self._testServer.add_wait_url('/status')
 
@@ -258,11 +259,9 @@ class power_LoadTest(cros_ui_test.UITest):
                 logging.info('Exiting due to low battery')
                 break
 
-            try:
-                self.pyauto.UninstallExtensionById(ext_id)
-            except pyauto.AutomationCommandFail, e:
-                # Seems harmles, so treat as non-fatal?
-                logging.warn("Error uninstalling extension: %s", str(e))
+            # this restarts the extension for the next loop if there is one
+            if i != self._loop_count - 1:
+                extension.ExecuteJavaScript('initialize();')
 
         t1 = time.time()
         self._tmp_keyvals['minutes_battery_life_tested'] = (t1 - t0) / 60
@@ -366,7 +365,6 @@ class power_LoadTest(cros_ui_test.UITest):
             self._backchannel.teardown()
         if self._testServer:
             self._testServer.stop()
-        super(power_LoadTest, self).cleanup()
 
 
     def _write_ext_params(self):
