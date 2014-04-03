@@ -41,6 +41,7 @@ class JobQueryManager(object):
 
         return {'deps': job_deps, 'acls': job_acls,
                 'host_id': queue_entry.host_id,
+                'parent_job_id': queue_entry.job.parent_job_id,
                 'priority': queue_entry.job.priority}
 
 

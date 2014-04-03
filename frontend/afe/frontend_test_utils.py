@@ -84,7 +84,8 @@ class FrontendTestMixin(object):
     def _create_job(self, hosts=[], metahosts=[], priority=0, active=False,
                     synchronous=False, atomic_group=None, hostless=False,
                     drone_set=None, control_file='control',
-                    parameterized_job=None, owner='autotest_system'):
+                    parameterized_job=None, owner='autotest_system',
+                    parent_job_id=None):
         """
         Create a job row in the test database.
 
@@ -104,6 +105,11 @@ class FrontendTestMixin(object):
                 case, hosts, metahosts, and atomic_group must all be empty)
         @param owner - The owner of the job. Aclgroups from which a job can
                 acquire hosts change with the aclgroups of the owners.
+        @param parent_job_id - The id of a parent_job. If a job with the id
+                doesn't already exist one will be created.
+
+        @raises model.DoesNotExist: If parent_job_id is specified but a job with
+            id=parent_job_id does not exist.
 
         @returns A Django frontend.afe.models.Job instance.
         """
@@ -117,12 +123,15 @@ class FrontendTestMixin(object):
         status = models.HostQueueEntry.Status.QUEUED
         if active:
             status = models.HostQueueEntry.Status.RUNNING
+
+        parent_job = (models.Job.objects.get(id=parent_job_id)
+                      if parent_job_id else None)
         job = models.Job.objects.create(
             name='test', owner=owner, priority=priority,
             synch_count=synch_count, created_on=created_on,
             reboot_before=model_attributes.RebootBefore.NEVER,
             drone_set=drone_set, control_file=control_file,
-            parameterized_job=parameterized_job)
+            parameterized_job=parameterized_job, parent_job=parent_job)
 
         # Update the job's dependencies to include the metahost.
         for metahost_label in metahosts:
@@ -152,12 +161,14 @@ class FrontendTestMixin(object):
 
 
     def _create_job_simple(self, hosts, use_metahost=False,
-                          priority=0, active=False, drone_set=None):
+                           priority=0, active=False, drone_set=None,
+                           parent_job_id=None):
         """An alternative interface to _create_job"""
         args = {'hosts' : [], 'metahosts' : []}
         if use_metahost:
             args['metahosts'] = hosts
         else:
             args['hosts'] = hosts
-        return self._create_job(priority=priority, active=active,
-                                drone_set=drone_set, **args)
+        return self._create_job(
+                priority=priority, active=active, drone_set=drone_set,
+                parent_job_id=parent_job_id, **args)

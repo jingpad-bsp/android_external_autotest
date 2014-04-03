@@ -23,6 +23,7 @@ from autotest_lib.scheduler import rdb
 from autotest_lib.scheduler import rdb_hosts
 from autotest_lib.scheduler import rdb_lib
 from autotest_lib.scheduler import rdb_requests
+from autotest_lib.server.cros import provision
 
 
 # Set for verbose table creation output.
@@ -141,6 +142,23 @@ class DBHelper(object):
         # actually got saved in the database. For example, this will return none if
         # save() wasn't called on the model.Host instance.
         return cls.get_host(hostname=name)[0]
+
+
+    @classmethod
+    def add_host_to_job(cls, host, job_id):
+        """Add a host to the hqe of a job.
+
+        @param host: An instance of the host model.
+        @param job_id: The job to which we need to add the host.
+
+        @raises ValueError: If the hqe for the job already has a host,
+            or if the host argument isn't a Host instance.
+        """
+        hqe = models.HostQueueEntry.objects.get(job_id=job_id)
+        if hqe.host:
+            raise ValueError('HQE for job %s already has a host' % job_id)
+        hqe.host = host
+        hqe.save()
 
 
     @classmethod
@@ -295,7 +313,8 @@ class BaseRDBTest(unittest.TestCase, frontend_test_utils.FrontendTestMixin):
 
 
     def create_job(self, user='autotest_system',
-                   deps=set([]), acls=set([]), priority=0):
+                   deps=set([]), acls=set([]), hostless_job=False,
+                   priority=0, parent_job_id=None):
         """Create a job owned by user, with the deps and acls specified.
 
         This method is a wrapper around frontend_test_utils.create_job, that
@@ -316,13 +335,15 @@ class BaseRDBTest(unittest.TestCase, frontend_test_utils.FrontendTestMixin):
 
         # TODO: This is a hack around the fact that frontend_test_utils still
         # need a metahost, but metahost is treated like any other label.
-        metahost = self.db_helper.create_label(list(deps)[0])
-        job = self._create_job(
-                metahosts=[metahost.id], priority=priority, owner=user)
+        metahost = DBHelper.create_label(list(deps)[0])
+        job = self._create_job(metahosts=[metahost.id], priority=priority,
+                owner=user, parent_job_id=parent_job_id)
         self.assert_(len(job.hostqueueentry_set.all()) == 1)
-        self.db_helper.add_deps_to_job(job, dep_names=list(deps)[1:])
-        self.db_helper.add_user_to_aclgroups(user, aclgroup_names=acls)
+
+        DBHelper.add_deps_to_job(job, dep_names=list(deps)[1:])
+        DBHelper.add_user_to_aclgroups(user, aclgroup_names=acls)
         return models.Job.objects.filter(id=job.id)[0]
+
 
 
     def assert_host_db_status(self, host_id):
@@ -354,6 +375,26 @@ class BaseRDBTest(unittest.TestCase, frontend_test_utils.FrontendTestMixin):
             if host:
                 self.assert_host_db_status(host.id)
                 self.assert_(host.leased == 1)
+
+
+    def create_suite(self, user='autotest_system', num=2, priority=0,
+                     board='z', build='x'):
+        """Create num jobs with the same parent_job_id, board, build, priority.
+
+        @return: A dictionary with the parent job object keyed as 'parent_job'
+            and all other jobs keyed at an index from 0-num.
+        """
+        jobs = {}
+        # Create a hostless parent job without an hqe or deps. Since the
+        # hostless job does nothing, we need to hand craft cros-version.
+        parent_job = self._create_job(owner=user, priority=priority)
+        jobs['parent_job'] = parent_job
+        build = '%s:%s' % (provision.CROS_VERSION_PREFIX, build)
+        for job_index in range(0, num):
+            jobs[job_index] = self.create_job(user=user, priority=priority,
+                                              deps=set([board, build]),
+                                              parent_job_id=parent_job.id)
+        return jobs
 
 
     def check_host_assignment(self, job_id, host_id):
@@ -680,4 +721,73 @@ class BaseRDBTest(unittest.TestCase, frontend_test_utils.FrontendTestMixin):
                            local_response_handler)
         self.check_hosts(rdb_lib.acquire_hosts(
             self.host_scheduler, queue_entries))
+
+
+    def testSuiteOrderedHostAcquisition(self):
+        """Test that older suite jobs acquire hosts first.
+
+        Make sure older suite jobs get hosts first, but not at the expense of
+        higher priority jobs.
+
+        @raises ValueError: If unexpected acquisitions occur, eg:
+            suite_job_2 acquires the last 2 hosts instead of suite_job_1.
+            isolated_important_job doesn't get any hosts.
+            Any job acquires more hosts than necessary.
+        """
+        board = 'x'
+        suite_without_dep = self.create_suite(num=2, priority=0, board=board)
+        suite_with_dep = self.create_suite(num=1, priority=0, board=board)
+        DBHelper.add_deps_to_job(suite_with_dep[0], dep_names=list('y'))
+        isolated_important_job = self.create_job(priority=3, deps=set([board]))
+
+        for i in range(0, 3):
+            DBHelper.create_host('h%s' % i, deps=set([board, 'y']))
+
+        queue_entries = self._dispatcher._refresh_pending_queue_entries()
+
+        def local_response_handler(request_manager):
+            """Reorder requests and check host acquisition.
+
+            @raises ValueError: If unexpected/no acquisitions occur.
+            """
+            if any([request for request in request_manager.request_queue
+                    if request.parent_job_id is None]):
+                raise ValueError('Parent_job_id can never be None.')
+
+            # This will result in the ordering:
+            # [suite_2_1, suite_1_*, suite_1_*, isolated_important_job]
+            # The priority scheduling order should be:
+            # [isolated_important_job, suite_1_*, suite_1_*, suite_2_1]
+            # Since:
+            #   a. the isolated_important_job is the most important.
+            #   b. suite_1 was created before suite_2, regardless of deps
+            disorderly_queue = sorted(request_manager.request_queue,
+                    key=lambda r: -r.parent_job_id)
+            request_manager.request_queue = disorderly_queue
+            result = request_manager.api_call(request_manager.request_queue)
+            if not result:
+                raise ValueError('Expected results but got none.')
+
+            # Verify that the isolated_important_job got a host, and that the
+            # first suite got both remaining free hosts.
+            for request, hosts in result.iteritems():
+                if request.parent_job_id == 0:
+                    if len(hosts) > 1:
+                        raise ValueError('First job acquired more hosts than '
+                                'necessary. Response map: %s' % result)
+                    continue
+                if request.parent_job_id == 1:
+                    if len(hosts) < 2:
+                        raise ValueError('First suite job requests were not '
+                                'satisfied. Response_map: %s' % result)
+                    continue
+                # The second suite job got hosts instead of one of
+                # the others. Eitherway this is a failure.
+                raise ValueError('Unexpected host acquisition '
+                        'Response map: %s' % result)
+            yield None
+
+        self.god.stub_with(rdb_requests.BaseHostRequestManager, 'response',
+                           local_response_handler)
+        list(rdb_lib.acquire_hosts(self.host_scheduler, queue_entries))
 

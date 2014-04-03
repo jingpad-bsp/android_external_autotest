@@ -259,6 +259,23 @@ class AvailableHostRequestHandler(BaseHostRequestHandler):
         return acl_match and label_match
 
 
+    @classmethod
+    def batch_requests(cls, requests):
+        """ Group similar requests, sort by priority and parent_job_id.
+
+        @param requests: A list or unsorted, unordered requests.
+
+        @return: A list of tuples of the form (request, number of occurances)
+            formed by counting the number of requests with the same acls/deps/
+            priority in the input list of requests, and sorting by priority.
+            The order of this list ensures against priority inversion.
+        """
+        sort_function = lambda request: (request[0].priority,
+                                         -request[0].parent_job_id)
+        return sorted(collections.Counter(requests).items(), key=sort_function,
+                      reverse=True)
+
+
     @_timer.decorate
     def batch_acquire_hosts(self, host_requests):
         """Acquire hosts for a list of requests.
@@ -270,13 +287,7 @@ class AvailableHostRequestHandler(BaseHostRequestHandler):
 
         @param host_requests: A list of requests to acquire hosts.
         """
-        # Group similar requests and sort by priority, so we don't invert
-        # priorities and lease hosts based on demand alone.
-        batched_host_request = sorted(
-                collections.Counter(host_requests).items(),
-                key=lambda request: request[0].priority, reverse=True)
-
-        for request, count in batched_host_request:
+        for request, count in self.batch_requests(host_requests):
             hosts = self.host_query_manager.find_hosts(
                             request.deps, request.acls)
             num_hosts = min(len(hosts), count)

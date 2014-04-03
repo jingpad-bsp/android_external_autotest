@@ -181,21 +181,29 @@ class AcquireHostRequest(HostRequest):
     """Defines requests to acquire hosts.
 
     Eg:
-        AcquireHostRequest(host_id=None, deps=[d1, d2], acls=[a1, a2]): Will
-            acquire and return a host that matches the specified deps/acls.
+        AcquireHostRequest(host_id=None, deps=[d1, d2], acls=[a1, a2],
+                priority=None, parent_job_id=None): Will acquire and return a
+                host that matches the specified deps/acls.
         AcquireHostRequest(host_id=x, deps=[d1, d2], acls=[a1, a2]) : Will
             acquire and return host x, after checking deps/acls match.
 
     @raises RDBException: If the the input arguments don't contain the expected
         fields to make a request, or are of the wrong type.
     """
-    _request_args = set(['priority', 'deps', 'acls'])
+    # TODO(beeps): Priority and parent_job_id shouldn't be a part of the
+    # core request.
+    _request_args = set(['priority', 'deps', 'acls', 'parent_job_id'])
 
 
     def __init__(self, **kwargs):
         try:
             kwargs['deps'] = frozenset(kwargs['deps'])
             kwargs['acls'] = frozenset(kwargs['acls'])
+
+            # parent_job_id defaults to NULL but always serializing it as an int
+            # fits the rdb's type assumptions. Note that job ids are 1 based.
+            if kwargs['parent_job_id'] is None:
+                kwargs['parent_job_id'] = 0
         except (KeyError, TypeError) as e:
             raise rdb_utils.RDBException('Creating %s requires args %s got %s' %
                     (self.__class__, self.template._fields, kwargs.keys()))
