@@ -6,8 +6,7 @@ In order to update extension.crx, use chrome's built in packer. You must close
 all chrome windows before running this command.
 
 /opt/google/chrome/chrome --pack-extension=./extension \
-  --pack-extension-key=./extension.pem --no-message-box \
-  --allow-legacy-extension-manifests
+  --pack-extension-key=./extension.pem --no-message-box
 
 
 Alternatively, extension developer mode will provide a 

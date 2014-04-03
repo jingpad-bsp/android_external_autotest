@@ -13,11 +13,7 @@ var tasks = [
     type: 'window',
     name: 'background',
     start: 0,
-    // TODO(dbasehore) We have a race condition between the browser closing and
-    // uninstalling the extension. Pyauto does not have the proper tools to fix
-    // this, so leave this window open for 70 minutes instead of 60. Revisit
-    // once telemetry is used for power_LoadTest
-    duration: minutes(70),
+    duration: minutes(60),
     focus: false,
     tabs: [
      'http://www.google.com',

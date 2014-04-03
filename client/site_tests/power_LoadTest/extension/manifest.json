@@ -1,8 +1,8 @@
 {
-  "format_version": 1,
-  "id": "00023456789ABCDEF0123456789ABCDEF012CEEE",
-  "version": "2.0",
+  "key": "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQD69MHTFB90q+MCBlimEUDAwv9aAUS5Utkfs8YNSJein64VxlZKNFSCO501ork0MB92uH02Ic5CzwGkfAucdaj/KBM0vg7HJINZUzKYJjBXgaeOO00WCT29VilNdKyEkXLSHGuK9gIK/i72FNEldHJJ6JvWSvXUbZyBP4ZaxQsgtwIDAQAB",
+  "manifest_version": 2,
   "name": "Power Test",
+  "version": "2.0",
   "browser_action": {
     "default_icon": "skin/chrome_bug.png",
     "default_title": "test the web with the web"
@@ -12,7 +12,9 @@
   "permissions": [
     "http://*/", "https://*/", "tabs"
   ],
-  "background_page": "background.html",
+  "background": {
+    "page": "bg.html"
+  },
   "description": "GoogleTest",
   "content_scripts": [
     {

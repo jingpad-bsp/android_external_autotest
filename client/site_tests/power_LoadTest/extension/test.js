@@ -1,30 +1,6 @@
-<!---
-Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
-Use of this source code is governed by a BSD-style license that can be
-found in the LICENSE file.
---->
-
-<html>
-
-<script>
-// Convert seconds to milliseconds
-function seconds(s) {
-    return s * 1000;
-}
-
-// Convert minutes to milliseconds
-function minutes(m) {
-    return seconds(m * 60);
-}
-</script>
-
-<script src='/urls.js'>
-</script>
-
-<script src='/params.js'>
-</script>
-
-<script>
+// Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
 
 var cycle_tabs = {};
 var cycles = {};
@@ -34,11 +10,10 @@ var preexisting_windows = [];
 function setupTest() {
   chrome.windows.getAll(null, function(windows) {
     preexisting_windows = windows;
-    var end = 0;
     for (var i = 0; i < tasks.length; i++) {
-      end = Math.max(end, (tasks[i].start + tasks[i].duration) / time_ratio);
       setTimeout(launch_task, tasks[i].start / time_ratio, tasks[i]);
     }
+    var end = 3600 * 1000 / time_ratio
     setTimeout(send_status, end);
     // Add a 5sec delay between sending the status back and closing browser
     // so that status message can reach autotest safely
@@ -111,37 +86,6 @@ function parseTaskList(tasks_string) {
 }
 
 var task_list = [];
-
-chrome.extension.onRequest.addListener(
-  function paramsSetupListener(request, sender) {
-    if (undefined != request._test_time_ms &&
-        undefined != request._should_scroll &&
-        undefined != request._should_scroll_up &&
-        undefined != request._scroll_loop &&
-        undefined != request._scroll_interval_ms &&
-        undefined != request._scroll_by_pixels &&
-        undefined != request._tasks) {
-      // Update test parameters from content script.
-      test_time_ms = request._test_time_ms;
-      should_scroll = request._should_scroll;
-      should_scroll_up = request._should_scroll_up;
-      scroll_loop = request._scroll_loop;
-      scroll_interval_ms = request._scroll_interval_ms;
-      scroll_by_pixels = request._scroll_by_pixels;
-      task_list = parseTaskList(request._tasks);
-      if (task_list.length != 0)
-        tasks = task_list;
-      time_ratio = 3600 * 1000 / test_time_ms; // default test time is 1 hour
-      chrome.extension.onRequest.removeListener(paramsSetupListener);
-      chrome.extension.onRequest.addListener(testListener);
-      setTimeout(setupTest, 1000);
-    } else {
-      console.log("Error. Test parameters not received.");
-    }
-  }
-);
-
-
 
 function close_preexisting_windows() {
   for (var i = 0; i < preexisting_windows.length; i++) {
@@ -237,27 +181,53 @@ function send_status() {
   console.log(post.join("&"));
 }
 
-chrome.windows.getAll(null, function(windows) {
-  // delay starting test by short amount of time to allow chromeos
-  // login process to settle down
-  setTimeout(startTest, test_startup_delay);
-});
-
 function startTest() {
   chrome.windows.create({'url': 'http://localhost:8001/testparams.html'});
 
 }
 
-// Called when the user clicks on the browser action.
-chrome.browserAction.onClicked.addListener(function(tab) {
-  // Start the test with default settings.
-  chrome.extension.onRequest.addListener(testListener);
-  setupTest();
-});
+function initialize() {
+  chrome.extension.onRequest.addListener(
+    function paramsSetupListener(request, sender) {
+      if (undefined != request._test_time_ms &&
+          undefined != request._should_scroll &&
+          undefined != request._should_scroll_up &&
+          undefined != request._scroll_loop &&
+          undefined != request._scroll_interval_ms &&
+          undefined != request._scroll_by_pixels &&
+          undefined != request._tasks) {
+        // Update test parameters from content script.
+        test_time_ms = request._test_time_ms;
+        should_scroll = request._should_scroll;
+        should_scroll_up = request._should_scroll_up;
+        scroll_loop = request._scroll_loop;
+        scroll_interval_ms = request._scroll_interval_ms;
+        scroll_by_pixels = request._scroll_by_pixels;
+        task_list = parseTaskList(request._tasks);
+        if (task_list.length != 0)
+          tasks = task_list;
+        time_ratio = 3600 * 1000 / test_time_ms; // default test time is 1 hour
+        chrome.extension.onRequest.removeListener(paramsSetupListener);
+        chrome.extension.onRequest.addListener(testListener);
+        setTimeout(setupTest, 1000);
+      } else {
+        console.log("Error. Test parameters not received.");
+      }
+    }
+  );
 
+  chrome.windows.getAll(null, function(windows) {
+    // delay starting test by short amount of time to allow chromeos
+    // login process to settle down
+    setTimeout(startTest, test_startup_delay);
+  });
 
-</script>
+  // Called when the user clicks on the browser action.
+  chrome.browserAction.onClicked.addListener(function(tab) {
+    // Start the test with default settings.
+    chrome.extension.onRequest.addListener(testListener);
+    setupTest();
+  });
+}
 
-<body>
-</body>
-</html>
+window.addEventListener("load", initialize);
