@@ -90,7 +90,9 @@ class graphics_Sanity(test.test):
         # If UI is running, we must stop it and restore later.
         self._services.stop_services()
 
-        utils.system(cmd)
+        utils.run(cmd,
+                  stdout_tee=utils.TEE_TO_LOGS,
+                  stderr_tee=utils.TEE_TO_LOGS)
 
         # convert -resize -depth 8 does not work. But resize honors previously
         # chosen bit depth.

@@ -192,7 +192,9 @@ class graphics_GLBench(test.test):
       self.report_temperature('temperature_2_before_test')
 
       # Run the test. If it gets the CPU too hot pc should notice.
-      summary = utils.system_output(cmd, retain_output=True)
+      summary = utils.run(cmd,
+                          stdout_tee=utils.TEE_TO_LOGS,
+                          stderr_tee=utils.TEE_TO_LOGS).stdout
       if not pc.verify_is_valid():
         raise error.TestError(pc.get_error_reason())
 

@@ -66,7 +66,9 @@ class graphics_Piglit(test.test):
             cmd = cmd + ' | tee ' + log_path
             cmd = cros_ui.xcommand(cmd)
             logging.info('Calling %s', cmd)
-            utils.run(cmd)
+            utils.run(cmd,
+                      stdout_tee=utils.TEE_TO_LOGS,
+                      stderr_tee=utils.TEE_TO_LOGS)
             # count number of pass, fail, warn and skip in the test summary
             summary_path = os.path.join(results_path, 'main')
             f = open(summary_path, 'r')
