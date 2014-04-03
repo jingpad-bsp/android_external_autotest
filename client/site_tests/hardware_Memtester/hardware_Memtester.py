@@ -16,30 +16,21 @@ class hardware_Memtester(test.test):
 
     version = 1
 
-    # Region in /proc/meminfo to used for testing
-    USABLE_MEM = ['MemFree:', 'Buffers:', 'Cached:']
-
-    # Size reserved for os, etc. when specified size=0
-    RESERVED_SIZE = 30 * 1024
-
     def run_once(self, size=0, loop=10):
         """
         Executes the test and logs the output.
 
-        @param size: size to test in KB. 0 means all available minus 30 MB
+        @param size: size to test in KB. 0 means all usable
         @param loop: number of iteration to test memory
         """
         if size == 0:
-            with open('/proc/meminfo', 'r') as f:
-                for lines in f.readlines():
-                    items = lines.split()
-                    if items[0] in self.USABLE_MEM:
-                        size += int(items[1])
-            # minus 30 MB (arbitrary chosen) for OS use
-            size -= self.RESERVED_SIZE
+            size = utils.usable_memtotal()
+        elif size > utils.memtotal():
+            raise error.TestFail('Specified size is more than total memory.')
 
         if size <= 0:
-            error.testFail('Size is less than zero.')
+            raise error.TestFail('Size must be more than zero.')
+
 
         logging.info('Memory test size: %dK', size)
 

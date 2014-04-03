@@ -372,6 +372,15 @@ def memtotal():
 def freememtotal():
     return read_from_meminfo('MemFree')
 
+def usable_memtotal():
+    # Assume 30MB reserved by the OS
+    reserved = 30 * 1024
+    ret = read_from_meminfo('MemFree')
+    ret += read_from_meminfo('Buffers')
+    ret += read_from_meminfo('Cached')
+    ret = max(0, ret - reserved)
+    return ret
+
 
 def rounded_memtotal():
     # Get total of all physical mem, in kbytes
@@ -392,7 +401,7 @@ def rounded_memtotal():
     #   tighter spread between min and max possible deductions
 
     # increase mem size by at least min deduction, without rounding
-    min_kbytes   = int(usable_kbytes / (1.0 - mindeduct))
+    min_kbytes = int(usable_kbytes / (1.0 - mindeduct))
     # increase mem size further by 2**n rounding, by 0..roundKb or more
     round_kbytes = int(usable_kbytes / (1.0 - maxdeduct)) - min_kbytes
     # find least binary roundup 2**n that covers worst-cast roundKb
@@ -457,7 +466,7 @@ def dump_object(object):
     for item in object.__dict__.iteritems():
         print item
         try:
-            (key,value) = item
+            (key, value) = item
             dump_object(value)
         except:
             continue
@@ -510,7 +519,7 @@ def avgtime_print(dir):
 
     f.close()
     return "Elapsed: %0.2fs User: %0.2fs System: %0.2fs CPU: %0.0f%%" % \
-          (elapsed/count, user/count, system/count, cpu/count)
+          (elapsed / count, user / count, system / count, cpu / count)
 
 
 def running_config():
