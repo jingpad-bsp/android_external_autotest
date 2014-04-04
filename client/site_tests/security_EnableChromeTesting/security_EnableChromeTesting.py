@@ -46,9 +46,13 @@ class security_EnableChromeTesting(test.test):
 
         # Try DBus call and make sure it fails.
         try:
-            session_manager.EnableChromeTesting(True, [])
-        except dbus.exceptions.DBusException:
-            pass
+            # DBus cannot infer the type of an empty Python list.
+            # Pass an empty dbus.Array with the correct signature, taken from
+            # platform/login_manager/org.chromium.SessionManagerInterface.xml.
+            empty_string_array = dbus.Array(signature="as")
+            session_manager.EnableChromeTesting(True, empty_string_array)
+        except dbus.exceptions.DBusException as dbe:
+            logging.error(dbe)
         else:
             raise error.TestFail('DBus EnableChromeTesting call '
                                  'succeeded when it should fail.')
