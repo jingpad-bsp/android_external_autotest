@@ -699,3 +699,44 @@ class AbstractSSHHost(remote.RemoteHost):
         # Clear out the file by opening it for writing and then closing.
         fh = open(self.known_hosts_file, "w")
         fh.close()
+
+
+    def collect_logs(self, remote_src_dir, local_dest_dir, ignore_errors=True):
+        """Copy log directories from a host to a local directory.
+
+        @param remote_src_dir: A destination directory on the host.
+        @param local_dest_dir: A path to a local destination directory.
+            If it doesn't exist it will be created.
+        @param ignore_errors: If True, ignore exceptions.
+
+        @raises OSError: If there were problems creating the local_dest_dir and
+            ignore_errors is False.
+        @raises AutoservRunError, AutotestRunError: If something goes wrong
+            while copying the directories and ignore_errors is False.
+        """
+        locally_created_dest = False
+        if (not os.path.exists(local_dest_dir)
+                or not os.path.isdir(local_dest_dir)):
+            try:
+                os.makedirs(local_dest_dir)
+                locally_created_dest = True
+            except OSError as e:
+                logging.warning('Unable to collect logs from host '
+                                '%s: %s', self.hostname, e)
+                if not ignore_errors:
+                    raise
+                return
+        try:
+            self.get_file(
+                    remote_src_dir, local_dest_dir, preserve_symlinks=True)
+        except (error.AutotestRunError, error.AutoservRunError,
+                error.AutoservSSHTimeout) as e:
+            logging.warning('Collection of %s to local dir %s from host %s '
+                            'failed: %s', remote_src_dir, local_dest_dir,
+                            self.hostname, e)
+            if locally_created_dest:
+                shutil.rmtree(local_dest_dir, ignore_errors=ignore_errors)
+            if not ignore_errors:
+                raise
+
+

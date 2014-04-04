@@ -1,4 +1,5 @@
 import logging
+import os
 
 from autotest_lib.client.common_lib import host_protections
 from autotest_lib.server.cros import repair_utils
@@ -33,6 +34,8 @@ def repair(machine):
         logging.debug('Repair with labels list %s', labels_list)
         provision.run_special_task_actions(job, host, labels_list,
                                            provision.Repair)
+        local_log_dir = os.path.join(job.resultdir, machine)
+        host.collect_logs('/var/log', local_log_dir, ignore_errors=True)
     except Exception as e:
         repair_utils.flag_problem_test(machine)
         job.record('END FAIL', None, 'repair')

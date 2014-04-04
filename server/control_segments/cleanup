@@ -1,4 +1,5 @@
 import logging
+import os
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.site_utils.graphite import stats
@@ -17,24 +18,19 @@ def cleanup(machine):
         host = hosts.create_host(machine, initialize=False, auto_monitor=False)
         timer = stats.Timer('cleanup_time.%s' % host._get_board_from_afe())
         timer.start()
+
         # Try to save /var/log files. If the dut is not sshable, try to restart
         # with servo. This is a temp fix to collect log for test failed with dut
         # not returning from reboot.
         # TODO(dshi): This temp fix should be removed after crash collect work
         # is completed, crbug.com/336985
         try:
-            try:
-                host.ssh_ping()
-            except error.AutoservSshPingHostError:
-                # Try to restart dut with servo.
-                host._servo_repair_power()
-            # Copy log
-            log_dir = os.path.join(job.resultdir, machine)
-            os.makedirs(log_dir)
-            host.get_file('/var/log/', log_dir, preserve_symlinks=True)
-        except Exception as e:
-            logging.error('Collect /var/log failed with error: %s', e)
-            raise
+            host.ssh_ping()
+        except error.AutoservSshPingHostError:
+            # Try to restart dut with servo.
+            host._servo_repair_power()
+        local_log_dir = os.path.join(job.resultdir, machine)
+        host.collect_logs('/var/log', local_log_dir, ignore_errors=True)
 
         host.cleanup()
         provision.run_special_task_actions(job, host, labels_list,
