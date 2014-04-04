@@ -50,22 +50,28 @@ GOBI_MODEM_STATES = [
     GOBI_MODEM_STATE_CONNECTED
 ]
 
+ENABLED_MODEM_STATES = [
+    MM_MODEM_STATE_ENABLED,
+    GOBI_MODEM_STATE_ENABLED
+]
+
 WAIT_DELAY_MODEM_STATES = [
     MM_MODEM_STATE_INITIALIZING,
     MM_MODEM_STATE_ENABLING,
     MM_MODEM_STATE_ENABLED,
     MM_MODEM_STATE_SEARCHING,
+    MM_MODEM_STATE_CONNECTING,
     GOBI_MODEM_STATE_ENABLING,
     GOBI_MODEM_STATE_ENABLED,
-    GOBI_MODEM_STATE_SEARCHING
+    GOBI_MODEM_STATE_SEARCHING,
+    GOBI_MODEM_STATE_CONNECTING
 ]
 
 STABLE_MODEM_STATES = [
+    MM_MODEM_STATE_DISABLED,
     MM_MODEM_STATE_REGISTERED,
-    MM_MODEM_STATE_CONNECTING,
     MM_MODEM_STATE_CONNECTED,
     GOBI_MODEM_STATE_REGISTERED,
-    GOBI_MODEM_STATE_CONNECTING,
     GOBI_MODEM_STATE_CONNECTED
 ]
 
@@ -125,7 +131,6 @@ class cellular_StaleModemReboot(test.test):
         Formats the modem status data and inserts it into a dictionary.
 
         @param modem_status: Command line output of 'modem status'.
-
         @return modem status dictionary
 
         """
@@ -175,45 +180,52 @@ class cellular_StaleModemReboot(test.test):
         self._servo.get_power_state_controller().power_on()
         time.sleep(self._servo.BOOT_DELAY)
         self._client.wait_for_restart(old_boot_id=boot_id)
-        self._wait_for_modem()
+        self._wait_for_stable_modem_state()
 
 
-    def _wait_for_modem(self):
+    def _wait_for_stable_modem_state(self):
         """
-        Tries to get the modem status by polling the modem every 10 seconds for
-        a maximum time of _MODEM_WAIT_DELAY. We do not want the test to
-        terminate incase there is an Exception, but instead would like it to
-        continue with rebooting the device again for maximum number of 'tries'
+        Wait for a maximum of _MODEM_WAIT_DELAY seconds for the modem to get
+        into stable state. Also, because we do not want the test to terminate
+        in case there is an exception, we are catching and logging the exception
+        so the test can continue with rebooting the device again as needed.
 
         """
 
         try:
             utils.poll_for_condition(
-                  lambda: self._get_modem_status(),
-                  exception=utils.TimeoutError('Could not get modem status '
-                                               'within %s seconds' %
+                  lambda: self._get_modem_state() in STABLE_MODEM_STATES,
+                  exception=utils.TimeoutError('Modem not in stable state '
+                                               'after %s seconds.' %
                                                _MODEM_WAIT_DELAY),
                   timeout=_MODEM_WAIT_DELAY,
-                  sleep_interval=10)
+                  sleep_interval=5)
         except utils.TimeoutError as e:
-            logging.debug("TimeoutError is: %s", e)
+            logging.debug("Stable modem state TimeoutError is: %s", e)
 
 
-    def run_once(self, host, tries):
+    def run_once(self, host, tries=2, expect_auto_registration=True):
         """
         Runs the test.
 
         @param host: A host object representing the DUT.
-
         @param tries: Maximum number of times test will try to reboot the DUT.
                 Default number of tries is 2, which is set in the control file.
-
+        @param expect_auto_registration: To be used with an exceptional modem
+                that does not auto-register by passing False from modem specific
+                control file.
         @raise error.TestFail if modem cannot be brought to a testable stated.
 
         """
 
         self._client = host
         self._servo = host.servo
+
+        if not expect_auto_registration:
+            STABLE_MODEM_STATES.extend(ENABLED_MODEM_STATES)
+            WAIT_DELAY_MODEM_STATES.remove(MM_MODEM_STATE_ENABLED)
+            WAIT_DELAY_MODEM_STATES.remove(GOBI_MODEM_STATE_ENABLED)
+
         original_modem_state = self._get_modem_state()
 
         logging.info('Modem state before reboot on host %s: %s',
@@ -240,9 +252,6 @@ class cellular_StaleModemReboot(test.test):
         num_tries = 0
 
         while True:
-            if new_modem_state in WAIT_DELAY_MODEM_STATES:
-                time.sleep(_MODEM_WAIT_DELAY)
-                new_modem_state = self._get_modem_state()
             if new_modem_state in STABLE_MODEM_STATES:
                 logging.info('Modem was fixed and is now in testable state: '
                              '%s', self._modem_state_to_string(new_modem_state))

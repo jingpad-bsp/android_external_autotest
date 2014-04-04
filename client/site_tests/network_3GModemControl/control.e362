@@ -13,7 +13,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
-DEPENDENCIES = "modem:e362"
+DEPENDENCIES = "modem:e362, modem_repair"
 
 # The E362 modems may fail while connecting and disconnecting.  These
 # failures go away if the test is retried.  See crbug.com/224026,

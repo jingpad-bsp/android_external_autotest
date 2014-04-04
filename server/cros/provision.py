@@ -85,6 +85,7 @@ class Verify(_SpecialTaskAction):
     """
 
     _actions = {
+        'modem_repair': 'cellular_StaleModemReboot'
     }
 
     name = 'verify'
