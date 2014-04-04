@@ -14,7 +14,7 @@ To maintain a minimal set of reserved privileged processes on the system
 CRITERIA = """
 Fail if the list of reserved privileged processes doesn't match the baseline
 """
-SUITE = "security"
+SUITE = ""
 TEST_CLASS = "security"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"
