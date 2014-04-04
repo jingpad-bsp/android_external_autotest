@@ -46,6 +46,26 @@ class ResourceDelegate(object):
             raise server_errors.HTTPError(400, 'Invalid data ID: %s' % id)
 
 
+    def get_data_vals(self):
+        """Returns a list of all data values."""
+        return self._data.values()
+
+
+    def del_data_val(self, id, api_key):
+        """Deletes the data value for the given id, api_key pair.
+
+        @param id: ID for data val.
+        @param api_key: optional api_key for the data_val.
+
+        Raises:
+            server_errors.HTTPError if the data_val doesn't exist.
+        """
+        if (id, api_key) in self._data:
+            del self._data[(id, api_key)]
+        else:
+            raise server_errors.HTTPError(400, 'Invalid data ID: %s' % id)
+
+
     def update_data_val(self, id, api_key, data_in=None, update=True):
         """Helper method for all mutations to data vals.
 

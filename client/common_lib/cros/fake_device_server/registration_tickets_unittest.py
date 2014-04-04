@@ -12,6 +12,8 @@ import unittest
 
 import common
 from cros_lib.fake_device_server import common_util
+from cros_lib.fake_device_server import commands
+from cros_lib.fake_device_server import devices
 from cros_lib.fake_device_server import registration_tickets
 from cros_lib.fake_device_server import resource_delegate
 from cros_lib.fake_device_server import server_errors
@@ -24,8 +26,15 @@ class RegistrationTicketsTest(mox.MoxTestBase):
         """Sets up mox and a ticket / registration objects."""
         mox.MoxTestBase.setUp(self)
         self.tickets = {}
+        self.devices_resource = {}
+        self.commands = commands.Commands(
+                resource_delegate.ResourceDelegate({}))
+        self.devices = devices.Devices(
+                resource_delegate.ResourceDelegate(self.devices_resource),
+                self.commands)
+
         self.registration = registration_tickets.RegistrationTickets(
-                resource_delegate.ResourceDelegate(self.tickets))
+                resource_delegate.ResourceDelegate(self.tickets), self.devices)
 
 
     def testFinalize(self):
@@ -36,10 +45,11 @@ class RegistrationTicketsTest(mox.MoxTestBase):
                           self.registration.POST, 1234, 'finalize')
 
         # Claimed ticket
-        expected_ticket = dict(id=1234, userEmail='buffet@tasty.org')
+        expected_ticket = dict(id=1234, userEmail='buffet@tasty.org',
+                               systemName='buffet_device', deviceKind='vendor',
+                               channel=dict(supportedType='xmpp'))
         self.tickets[(1234, None)] = expected_ticket
         returned_json = json.loads(self.registration.POST(1234, 'finalize'))
-
         self.assertEquals(returned_json['id'], expected_ticket['id'])
         self.assertEquals(returned_json['userEmail'],
                           expected_ticket['userEmail'])

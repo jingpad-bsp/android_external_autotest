@@ -13,8 +13,19 @@ To test locally:
 ./server.py
 
 # Register a device.
-curl -X POST -d "" http://localhost:8080/clouddevices/v1/registrationTickets
+curl -X POST -d "" http://localhost:8080/buffet/registrationTickets
 curl -X PATCH  -d '{"userEmail": "me"}' -H "Authorization: Bearer 1/TEST-ME" \
-    http://localhost:8080/clouddevices/v1/registrationTickets/<id>
+    http://localhost:8080/buffet/registrationTickets/<id>
 curl -X POST -d "" \
-    http://localhost:8080/clouddevices/v1/registrationTickets/<id>/finalize
+    http://localhost:8080/buffet/registrationTickets/<id>/finalize
+
+# List devices
+curl -X GET -d "" http://localhost:8080/buffet/devices
+
+# Send your device a command.
+curl -X POST -d '{"base": { "Reboot": {}}' http://localhost:8080/buffet/devices\
+  ?deviceId=<device_id>
+
+# Update the status of your command
+curl -X PATCH -d '{"state": "done"}' http://localhost:8080/buffet/devices/\
+    <command_id>

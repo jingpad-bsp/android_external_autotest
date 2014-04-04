@@ -19,9 +19,9 @@ class RegistrationTickets(object):
 
     A common workflow of using this API is:
 
-    POST .../ # Creates a new ticket with <id>
-    PATCH .../<id> with json blob # Updates ticket with device info.
-    POST .../<id>/claim # Claims the device for a user.
+    POST .../ # Creates a new ticket with id <id>.
+    PATCH .../<id> with json blob # Updates ticket with device info including
+             OAUTH2 bearer token + userEmail: me to claim the device.
     POST .../<id>/finalize # Finalize the device registration (robot info).
     """
     # OAUTH2 Bearer Access Token
@@ -31,12 +31,13 @@ class RegistrationTickets(object):
     exposed = True
 
 
-    def __init__(self, resource):
+    def __init__(self, resource, devices_instance):
         """Initializes a registration ticket.
 
         @param resource: A resource delegate.
         """
         self.resource = resource
+        self.devices_instance = devices_instance
 
 
     def _default_registration_ticket(self):
@@ -61,7 +62,8 @@ class RegistrationTickets(object):
         robot_auth = uuid.uuid4().hex
         new_data = {'robotAccountEmail': robot_account_email,
                     'robotAccountAuthorizationCode':robot_auth}
-        return self.resource.update_data_val(id, api_key, new_data)
+        updated_data_val = self.resource.update_data_val(id, api_key, new_data)
+        return self.devices_instance.create_device(api_key, updated_data_val)
 
 
     def _add_claim_data(self, data):
@@ -151,6 +153,9 @@ class RegistrationTickets(object):
             server_errors.HTTPError if the ticket doesn't exist.
         """
         id, api_key, _ = common_util.parse_common_args(args, kwargs)
+        if not id:
+            server_errors.HTTPError(400, 'Missing id for operation')
+
         data = common_util.parse_serialized_json()
 
         # Handle claiming a ticket with an authorized request.
@@ -172,6 +177,9 @@ class RegistrationTickets(object):
         Raises:
         """
         id, api_key, _ = common_util.parse_common_args(args, kwargs)
+        if not id:
+            server_errors.HTTPError(400, 'Missing id for operation')
+
         data = common_util.parse_serialized_json()
 
         # Handle claiming a ticket with an authorized request.
