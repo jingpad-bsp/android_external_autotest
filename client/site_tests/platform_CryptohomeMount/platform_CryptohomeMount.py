@@ -1,7 +1,6 @@
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-from dbus.mainloop.glib import DBusGMainLoop
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
@@ -21,8 +20,7 @@ class platform_CryptohomeMount(test.test):
         test_password = 'this_is_a_test_password';
         # Get the hash for the test user account
         user_hash = cryptohome.get_user_hash(test_user)
-        bus_loop = DBusGMainLoop(set_as_default=True)
-        proxy = cryptohome.CryptohomeProxy(bus_loop)
+        proxy = cryptohome.CryptohomeProxy()
 
         # Remove the test user account
         proxy.remove(test_user)

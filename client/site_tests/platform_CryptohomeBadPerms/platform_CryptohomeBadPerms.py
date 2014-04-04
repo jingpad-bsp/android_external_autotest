@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 import os
-from dbus.mainloop.glib import DBusGMainLoop
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -18,8 +17,7 @@ class platform_CryptohomeBadPerms(test.test):
             raise error.TestFail('Mount unexpectedly succeeded for %s' % user)
 
     def run_once(self):
-        self._bus_loop = DBusGMainLoop(set_as_default=True)
-        self.cryptohome_proxy = cryptohome.CryptohomeProxy(self._bus_loop)
+        self.cryptohome_proxy = cryptohome.CryptohomeProxy()
 
         # Leaf element of user path not owned by user.
         user = utils.random_username()
