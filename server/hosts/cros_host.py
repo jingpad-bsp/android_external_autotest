@@ -1891,6 +1891,38 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         return None
 
 
+    @label_decorator('accels')
+    def get_accels(self):
+        """
+        Determine the type of accelerometers on this host.
+
+        @returns a string representing this host's accelerometer type.
+        At present, it only returns "accel:cros-ec", for accelerometers
+        attached to a Chrome OS EC, or none, if no accelerometers.
+        """
+        # Check to make sure we have ectool
+        rv = self.run('which ectool', ignore_status=True)
+        if rv.exit_status:
+            logging.info("No ectool cmd found, assuming no EC accelerometers")
+            return None
+
+        # Check that the EC supports the motionsense command
+        rv = self.run('ectool motionsense', ignore_status=True)
+        if rv.exit_status:
+            logging.info("EC does not support motionsense command "
+                         "assuming no EC accelerometers")
+            return None
+
+        # Check that EC motion sensors are active
+        active = self.run('ectool motionsense active').stdout.split('\n')
+        if active[0] == "0":
+            logging.info("Motion sense inactive, assuming no EC accelerometers")
+            return None
+
+        logging.info("EC accelerometers found")
+        return 'accel:cros-ec'
+
+
     def get_labels(self):
         """Return a list of labels for this given host.
 
