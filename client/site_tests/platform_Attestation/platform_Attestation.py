@@ -34,7 +34,7 @@ class platform_Attestation(test.test):
         utils.system(cryptohome.CRYPTOHOME_CMD +
                      ' --action=tpm_attestation_finish_cert_request' +
                      ' --file=/tmp/__attestation_cert_response' +
-                     ' --name=test')
+                     ' --name=attest-ent-machine')
 
     def run_once(self):
         status = cryptohome.get_tpm_attestation_status()
