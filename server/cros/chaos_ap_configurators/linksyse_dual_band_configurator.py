@@ -38,6 +38,8 @@ class LinksyseDualBandAPConfigurator(
             raise RuntimeError('Security modes are not compatible. %s' % text)
         elif 'security mode is not compatible with Wireless-N' in text:
             alert.accept()
+        elif 'Please select WPA2-Personal or WPA2-Enterprise' in text:
+            alert.accept()
         elif 'The wifi interface is current busy.' in text:
             alert.accept()
             self.click_button_by_xpath('//a[text()="Save Settings"]',

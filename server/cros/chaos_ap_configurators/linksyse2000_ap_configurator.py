@@ -219,11 +219,11 @@ class Linksyse2000APConfigurator(
         if not self.item_in_popup_by_xpath_exist('WEP', popup):
             raise RuntimeError ('Unable to find wep security item in popup.  '
                                 'Is the mode set to N?')
-        self.select_item_from_popup_by_xpath(self.security_wep, popup,
+        self.select_item_from_popup_by_xpath('WEP', popup,
                                              alert_handler=self._sec_alert)
         text = '//input[@name="wl_passphrase"]'
         self.set_content_of_text_field_by_xpath(key_value, text,
-                                                abort_check=False)
+                                                abort_check=True)
         xpath = '//input[@value="Generate"]'
         self.click_button_by_xpath(xpath, alert_handler=self._sec_alert)
 
@@ -244,7 +244,7 @@ class Linksyse2000APConfigurator(
                                              alert_handler=self._sec_alert)
         text = '//input[@name="wl_wpa_psk"]'
         self.set_content_of_text_field_by_xpath(shared_key, text,
-                                                abort_check=False)
+                                                abort_check=True)
 
 
     def is_update_interval_supported(self):

@@ -110,6 +110,24 @@ class APConfiguratorFactory(object):
         'Linksyse2000APConfigurator':
             [PREFIX + 'linksyse2000_ap_configurator',
                 'Linksyse2000APConfigurator'],
+        'LinksyseWRT320APConfigurator':
+            [PREFIX + 'linksyswrt320_ap_configurator',
+                'LinksysWRT320APConfigurator'],
+        'Linksyse1500APConfigurator':
+            [PREFIX + 'linksyse1500_ap_configurator',
+                'Linksyse1500APConfigurator'],
+        'LinksysWRT54GS2APConfigurator':
+            [PREFIX + 'linksyswrt54gs2_ap_configurator',
+                'LinksysWRT54GS2APConfigurator'],
+        'LinksysWRT600APConfigurator':
+            [PREFIX + 'linksyswrt600_ap_configurator',
+                'LinksysWRT600APConfigurator'],
+        'LinksysM10APConfigurator':
+            [PREFIX + 'linksysm10_ap_configurator',
+                'LinksysM10APConfigurator'],
+        'LinksysWRT54GLAPConfigurator':
+            [PREFIX + 'linksyswrt54gl_ap_configurator',
+                'LinksysWRT54GLAPConfigurator'],
         'NetgearDualBandAPConfigurator':
             [PREFIX + 'netgear_WNDR_dual_band_configurator',
                 'NetgearDualBandAPConfigurator'],

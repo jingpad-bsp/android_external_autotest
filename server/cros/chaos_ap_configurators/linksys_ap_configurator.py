@@ -99,7 +99,6 @@ class LinksysAPConfigurator(
 
 
     def _set_radio(self, enabled=True):
-        xpath = ('//select[@onchange="SelWL()" and @name="Mode"]')
         # To turn off we pick disabled, to turn on we set to G
         if not enabled:
             self._set_mode('Disabled')

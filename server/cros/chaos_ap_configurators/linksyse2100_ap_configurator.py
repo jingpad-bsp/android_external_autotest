@@ -17,7 +17,7 @@ class Linksyse2100APConfigurator(linksyse_single_band_configurator.
                         ap_spec.MODE_G:'Wireless-G Only',
                         ap_spec.MODE_B:'Wireless-B Only',
                         ap_spec.MODE_N:'Wireless-N Only',
-                        ap_spec.MODE_D:'Disabled'}
+                        'Disabled':'Disabled'}
         mode_name = mode_mapping.get(mode)
         if not mode_name:
             raise RuntimeError('The mode %d not supported by router %s. ',
@@ -27,8 +27,23 @@ class Linksyse2100APConfigurator(linksyse_single_band_configurator.
                                              alert_handler=self._sec_alert)
 
 
+    def set_radio(self, enabled=True):
+        # If we are enabling we are activating all other UI components, do it
+        # first.  Otherwise we are turning everything off so do it last.
+        weight = 1 if enabled else 1000
+        self.add_item_to_command_list(self._set_radio, (enabled,), 1, weight)
+
+
+    def _set_radio(self, enabled=True):
+        # To turn off we pick disabled, to turn on we set to G
+        if not enabled:
+            self._set_mode('Disabled')
+        else:
+            self._set_mode(ap_spec.MODE_G)
+
+
     def _set_ssid(self, ssid):
-        xpath = '//input[@maxlength="32" and @name="wl_ssid"]'
+        xpath = '//input[@name="wl_ssid"]'
         self.set_content_of_text_field_by_xpath(ssid, xpath, abort_check=False)
         self._ssid = ssid
 
