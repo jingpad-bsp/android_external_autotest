@@ -13,7 +13,6 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"
 TEST_TYPE = "client"
-EXPERIMENTAL = "True"
 
 DOC = """
 This test checks that a cryptohome was mounted only after logging in.
