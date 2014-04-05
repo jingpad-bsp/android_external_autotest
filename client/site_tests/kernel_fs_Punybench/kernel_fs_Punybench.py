@@ -8,6 +8,7 @@ import logging
 import optparse
 import os, re
 from autotest_lib.client.bin import utils, test
+from autotest_lib.client.common_lib import error
 
 re_float = r"[+-]? *(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?"
 
@@ -15,7 +16,7 @@ class kernel_fs_Punybench(test.test):
     """Run a selected subset of the puny benchmarks
     """
     version = 1
-    Bin = '/opt/punybench/bin/'
+    Bin = '/usr/local/opt/punybench/bin/'
 
 
     def initialize(self):
@@ -388,6 +389,9 @@ size=409600 n=100 4.84 4. timer avg= 4.52 stdv= 0.27 0.0885 MiB/s 22.15 IOPs/sec
 
         if test_args:
             raise error.TestFail("Unknown args: %s" % repr(test_args))
+
+        if not os.path.exists(self.Bin):
+            raise error.TestFail("%s does not exist" % self.Bin)
 
         try:
             restart_swap = True
