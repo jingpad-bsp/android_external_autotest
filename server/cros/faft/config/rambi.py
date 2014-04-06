@@ -7,10 +7,11 @@
 
 class Values(object):
     """FAFT config values for Rambi."""
-    firmware_screen = 7
-    dev_screen = 7
     chrome_ec = True
-    long_rec_combo = True
+    dev_screen = 7
+    ec_boot_to_console = 0.3
     ec_capability = ['battery', 'charging', 'keyboard', 'lid', 'x86',
                      'usb', 'smart_usb_charge']
+    firmware_screen = 7
+    long_rec_combo = True
     wp_voltage = 'pp1800'
