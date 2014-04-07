@@ -103,10 +103,9 @@ def parse_options():
     return parser, options, args
 
 
-def verify_options_and_args(parser, options, args):
+def verify_options_and_args(options, args):
     """Verify the validity of options and args.
 
-    @param parser: An OptionParser instance.
     @param options: The parsed options to verify.
     @param args: The parsed args to verify.
 
@@ -541,14 +540,15 @@ class ResultCollector(object):
         self._build = build
         self._suite_name = suite_name
         self._suite_job_id = suite_job_id
-        self._suite_views =[]
-        self._child_views =[]
+        self._suite_views = []
+        self._child_views = []
         self._test_views = []
         self._web_links = []
         self._buildbot_links = []
         self._display_names = {}
+        self._max_testname_width = 0
         self.return_code = None
-        self.return_message=''
+        self.return_message = ''
         self.is_aborted = None
         self.timings = None
 
@@ -608,8 +608,8 @@ class ResultCollector(object):
         @returns: A list of relevant test views of the suite job.
 
         """
-        views = self._tko.run('get_detailed_test_views',
-                             afe_job_id=self._suite_job_id)
+        views = self._tko.run(call='get_detailed_test_views',
+                              afe_job_id=self._suite_job_id)
         relevant_views = []
         for v in views:
             if v['test_name'] == 'SERVER_JOB':
@@ -637,13 +637,18 @@ class ResultCollector(object):
 
         For test views of real test runs, we just keep them all.
 
+        If a test has been retried, it will be marked as invalid by tko parser.
+        We will ignore such tests so that only the retry will be shown in the
+        output of run_suite.
+
         """
         child_job_ids = set(job.id for job in
                             self._afe.get_jobs(
                                 parent_job_id=self._suite_job_id))
         child_views = []
         for job_id in child_job_ids:
-            views = self._tko.run('get_detailed_test_views', afe_job_id=job_id)
+            views = self._tko.run(call='get_detailed_test_views',
+                                  afe_job_id=job_id, invalid=0)
             contains_test_failure = any(
                     ResultCollector._is_view_for_test(v) and
                     v['status'] != 'GOOD' for v in views)
@@ -832,7 +837,7 @@ def main():
     Entry point for run_suite script.
     """
     parser, options, args = parse_options()
-    if not verify_options_and_args(parser, options, args):
+    if not verify_options_and_args(options, args):
         parser.print_help()
         return
 
@@ -935,6 +940,7 @@ def main():
         # harm us since all diagnose_pool does is log information about a pool.
         if job_timer.is_suite_timeout():
             logging.info('\nAttempting to diagnose pool: %s', options.pool)
+            stats.Counter('run_suite_timeouts').increment()
             try:
                 # Add some jitter to make up for any latency in
                 # aborting the suite or checking for results.
