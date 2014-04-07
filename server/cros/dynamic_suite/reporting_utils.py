@@ -1,5 +1,7 @@
+import copy
 import json
 import logging
+import re
 
 import common
 
@@ -29,7 +31,6 @@ _GS_RETRIES = 1
 
 _HTTP_ERROR_THRESHOLD = 400
 BUG_CONFIG_SECTION = 'BUG_REPORTING'
-
 
 # global configurations needed for build artifacts
 _gs_domain = global_config.global_config.get_config_value(
@@ -65,6 +66,95 @@ _buildbot_builders = global_config.global_config.get_config_value(
 _build_prefix = global_config.global_config.get_config_value(
     BUG_CONFIG_SECTION, 'build_prefix', default='')
 
+
+class InvalidBugTemplateException(Exception):
+    """Exception raised when a bug template is not valid, e.g., missing value
+    for essential attributes.
+    """
+    pass
+
+
+class BugTemplate(object):
+    """Wrapper class to merge a suite and test bug templates, and do validation.
+    """
+
+    # Names of expected attributes.
+    EXPECTED_BUG_TEMPLATE_ATTRIBUTES = ['owner', 'labels', 'status', 'title',
+                                        'cc', 'summary']
+    LIST_ATTRIBUTES = ['cc', 'labels']
+    EMAIL_ATTRIBUTES = ['owner', 'cc']
+
+    EMAIL_REGEX = re.compile(r'[^@]+@[^@]+\.[^@]+')
+
+
+    def __init__(self, bug_template):
+        """Initialize a BugTemplate object.
+
+        @param bug_template: initial bug template, e.g., bug template from suite
+                             control file.
+        """
+        self.bug_template = bug_template
+
+
+    @classmethod
+    def _validate_bug_template(cls, bug_template):
+        """Verify if a bug template has value for all essential attributes.
+
+        @param bug_template: bug template to be verified.
+        @raise InvalidBugTemplateException: raised when a bug template
+                is invalid, e.g., has missing essential attribute, or any given
+                template is not a dictionary.
+        """
+        if not type(bug_template) is dict:
+            raise InvalidBugTemplateException('Bug template must be a '
+                                              'dictionary.')
+
+        unexpected_keys = []
+        for key, value in bug_template.iteritems():
+            if not key in cls.EXPECTED_BUG_TEMPLATE_ATTRIBUTES:
+                raise InvalidBugTemplateException('Key %s is not expected in '
+                                                  'bug template.' % key)
+            if (key in cls.LIST_ATTRIBUTES and
+                not isinstance(value, list)):
+                raise InvalidBugTemplateException('Value for %s must be a list.'
+                                                  % key)
+            if key in cls.EMAIL_ATTRIBUTES:
+                emails = value if isinstance(value, list) else [value]
+                for email in emails:
+                    if not email or not cls.EMAIL_REGEX.match(email):
+                        raise InvalidBugTemplateException(
+                                'Invalid email address: %s.' % email)
+
+
+    def finalize_bug_template(self, test_template):
+        """Merge test and suite bug templates.
+
+        @param test_template: Bug template from test control file.
+        @return: Merged bug template.
+
+        @raise InvalidBugTemplateException: raised when the merged template is
+                invalid, e.g., has missing essential attribute, or any given
+                template is not a dictionary.
+        """
+        self._validate_bug_template(self.bug_template)
+        self._validate_bug_template(test_template)
+
+        merged_template = copy.deepcopy(test_template)
+        merged_template.update((k, v) for k, v in self.bug_template.iteritems()
+                               if k not in merged_template)
+
+        # test_template wins for common keys, unless values are list that can be
+        # merged.
+        for key in set(merged_template.keys()).intersection(
+                                                    self.bug_template.keys()):
+            if (type(merged_template[key]) is list and
+                type(self.bug_template[key]) is list):
+                merged_template[key] = (merged_template[key] +
+                                        self.bug_template[key])
+            elif not merged_template[key]:
+                merged_template[key] = self.bug_template[key]
+        self._validate_bug_template(merged_template)
+        return merged_template
 
 
 def link_build_artifacts(build):
