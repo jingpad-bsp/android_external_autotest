@@ -189,22 +189,25 @@ _BUG_ID_KEYVAL = '-Bug_Id'
 _BUG_COUNT_KEYVAL = '-Bug_Count'
 
 
-def create_bug_keyvals(testname, bug_info):
+def create_bug_keyvals(job_id, testname, bug_info):
     """Create keyvals to record a bug filed against a test failure.
 
     @param testname  Name of the test for which to record a bug.
     @param bug_info  Pair with the id of the bug and the count of
                      the number of times the bug has been seen.
+    @param job_id    The afe job id of job which the test is associated to.
+                     job_id will be a part of the key.
     @return          Keyvals to be recorded for the given test.
     """
-    keyval_base = _testname_to_keyval_key(testname)
+    testname = _testname_to_keyval_key(testname)
+    keyval_base = '%s_%s' % (job_id, testname) if job_id else testname
     return {
         keyval_base + _BUG_ID_KEYVAL: bug_info[0],
         keyval_base + _BUG_COUNT_KEYVAL: bug_info[1]
     }
 
 
-def get_test_failure_bug_info(keyvals, testname):
+def get_test_failure_bug_info(keyvals, job_id, testname):
     """Extract information about a bug filed against a test failure.
 
     This method tries to extract bug_id and bug_count from the keyvals
@@ -221,12 +224,14 @@ def get_test_failure_bug_info(keyvals, testname):
     the bug has occured in the buildbot stages.
 
     @param keyvals  Keyvals associated with a suite job.
+    @param job_id   The afe job id of the job that runs the test.
     @param testname Name of a test from the suite.
     @return         None if there is no bug info, or a pair with the
                     id of the bug, and the count of the number of
                     times the bug has been seen.
     """
-    keyval_base = _testname_to_keyval_key(testname)
+    testname = _testname_to_keyval_key(testname)
+    keyval_base = '%s_%s' % (job_id, testname) if job_id else testname
     bug_id = keyvals.get(keyval_base + _BUG_ID_KEYVAL)
     if not bug_id:
         return None, None

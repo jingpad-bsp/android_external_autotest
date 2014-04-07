@@ -15,7 +15,7 @@ dynamic suite infrastructure in server/cros/dynamic_suite.py.
 """
 
 import datetime as datetime_base
-import getpass, hashlib, logging, optparse, os, re, sys, time
+import getpass, logging, optparse, os, re, sys, time
 from datetime import datetime
 
 import common
@@ -103,6 +103,41 @@ def parse_options():
     return parser, options, args
 
 
+def verify_options_and_args(parser, options, args):
+    """Verify the validity of options and args.
+
+    @param parser: An OptionParser instance.
+    @param options: The parsed options to verify.
+    @param args: The parsed args to verify.
+
+    @returns: True if verification passes, False otherwise.
+
+    """
+    if not options.mock_job_id:
+        if args:
+            print 'Unknown arguments: ' + str(args)
+            return False
+        if not options.build:
+            print 'Need to specify which build to use'
+            return False
+        if not options.board:
+            print 'Need to specify board'
+            return False
+        if not options.name:
+            print 'Need to specify suite name'
+            return False
+    if options.num is not None and options.num < 1:
+        print 'Number of machines must be more than 0, if specified.'
+        return False
+    if options.no_wait != 'True' and options.no_wait != 'False':
+        print 'Please specify "True" or "False" for --no_wait.'
+        return False
+    if options.file_bugs != 'True' and options.file_bugs != 'False':
+        print 'Please specify "True" or "False" for --file_bugs.'
+        return False
+    return True
+
+
 def get_pretty_status(status):
     """
     Converts a status string into a pretty-for-printing string.
@@ -120,6 +155,7 @@ def get_pretty_status(status):
         return '[  INFO  ]'
     return '[ FAILED ]'
 
+
 def is_fail_status(status):
     """
     Check if the given status corresponds to a failure.
@@ -132,112 +168,6 @@ def is_fail_status(status):
     if status in ['FAIL', 'ERROR', 'ABORT']:
         return True
     return False
-
-
-def get_view_info(suite_job_id, view, build, suite):
-    """
-    Parse a view for the slave job name and job_id.
-
-    @param suite_job_id: The job id of our master suite job.
-    @param view: Test result view.
-    @param build: build passed in via the -b option.
-        eg: lumpy-release/R28-3947.0.0
-    @param suite: suite passed in via the -s option.
-        eg: dummy
-    @return A tuple job_name, experimental, name of the slave test run
-            described by view. eg:
-            experimental_dummy_Pass fails: (1130-owner, True, dummy_Pass)
-            experimental_dummy_Pass aborts: (1130-owner, True,
-                                             experimental_dummy_Pass)
-            dummy_Fail: (1130-owner, False, dummy_Fail.Error)
-    """
-    # By default, we are the main suite job since there is no
-    # keyval entry for our job_name.
-    job_name = '%s-%s' % (suite_job_id, getpass.getuser())
-    experimental = False
-    test_name = ''
-    # raw test name is the test_name from tko status view. tko_job_keyvals may
-    # have a record of the hash of this name mapping to job_id-owner, which can
-    # be used to reference the test to its job url. The change is made to
-    # support tests in different jobs within a suite that shares the same test
-    # class, e.g., AU suite.
-    raw_test_name = view['test_name']
-    if 'job_keyvals' in view:
-        # For a test invocation like:
-        # NAME = "dummy_Fail"
-        # job.run_test('dummy_Fail', tag='Error', to_throw='TestError')
-        # we will:
-        # Record a keyval of the jobs test_name field: dummy_Fail
-        # On success, yield a tko status with the tagged name:
-        #    dummy_Fail.Error
-        # On abort, yield a status (not from tko) with the job name:
-        #   /build/suite/dummy_Fail.Error
-        # Note the last 2 options include the tag. The tag is seperated
-        # from the rest of the name with a '.'. The tag or test name can
-        # also include a /, and we must isolate the tag before we compare it
-        # to the hashed keyval. Based on this we have the following cases:
-        # 1. Regular test failure with or without a tag '.': std_job_name is
-        #    set to the view test_name, after removing the tag.
-        # 2. Regular test Aborts: we know that dynamic_suite inserted a name
-        #    like build/suite/test.name (eg:
-        #    lumpy-release/R28-3947.0.0/dummy/dummy_Fail.Error), so we
-        #    intersect the build/suite/ string we already have with the
-        #    test_name in the view. The name of the aborted test is
-        #    instrumental in generating the job_name, which is used in
-        #    creating a link to the logs.
-        # 3. Experimental tests, Aborts and Failures: The test view
-        #    corresponding to the afe_job_id of the suite job contains
-        #    stubs for each test in this suite. The names of these jobs
-        #    will contain an experimental prefix if they were aborted;
-        #    If they failed the same names will not contain an experimental
-        #    prefix but we would have hashed the name with a prefix. Eg:
-        #       Test name = experimental_pass
-        #       keyval contains: hash(experimental_pass)
-        #       Fail/Pass view['test_name'] = pass
-        #       Abort view['test_name'] = board/build/experimental_pass
-        #    So we need to add the experimental prefix only if the test was
-        #    aborted. Everything else is the same as [2].
-        # 4. Experimental server job failures: eg verify passes, something on
-        #    the DUT crashes, the experimental server job fails to ssh in. We
-        #    need to manually set the experimental flag in this case because the
-        #    server job name isn't recorded in the keyvals. For a normal suite
-        #    the views will contain: SERVER_JOB, try_new_image, test_name. i.e
-        #    the test server jobs should be handled transparently and only the
-        #    suite server job should appear in the view. If a server job fails
-        #    (for an experimental test or otherwise) we insert the server job
-        #    entry into the tko database instead. Put more generally we insert
-        #    the last stage we knew about into the db record associated with
-        #    that suites afe_job_id. This could lead to a view containing:
-        #    SERVER_JOB, try_new_image,
-        #    lumpy-release/R28-4008.0.0/bvt/experimental_pass_SERVER_JOB.
-        # Neither of these operations will stomp on a pristine string.
-        test_name = tools.get_test_name(build, suite, view['test_name'])
-        std_job_name = test_name.split('.')[0]
-
-        if (job_status.view_is_for_infrastructure_fail(view) and
-            std_job_name.startswith(constants.EXPERIMENTAL_PREFIX)):
-                experimental = True
-
-        if std_job_name.startswith(constants.EXPERIMENTAL_PREFIX):
-            exp_job_name = std_job_name
-        else:
-            exp_job_name = constants.EXPERIMENTAL_PREFIX + std_job_name
-        std_job_hash = hashlib.md5(std_job_name).hexdigest()
-        exp_job_hash = hashlib.md5(exp_job_name).hexdigest()
-        raw_test_name_hash = hashlib.md5(raw_test_name).hexdigest()
-
-        # In the experimental abort case both these clauses can evaluate
-        # to True.
-        if std_job_hash in view['job_keyvals']:
-            job_name = view['job_keyvals'][std_job_hash]
-        if exp_job_hash in view['job_keyvals']:
-            experimental = True
-            job_name = view['job_keyvals'][exp_job_hash]
-        if raw_test_name_hash in view['job_keyvals']:
-            job_name = view['job_keyvals'][raw_test_name_hash]
-
-    # If the name being returned is the test name it needs to include the tag
-    return job_name, experimental, std_job_name if not test_name else test_name
 
 
 class LogLink(object):
@@ -318,26 +248,36 @@ class Timings(object):
 
     All timestamps are datetime.datetime objects.
 
+    @var suite_job_id: the afe job id of the suite job for which
+                       we are recording the timing for.
+    @var download_start_time: the time the devserver starts staging
+                              the build artifacts. Recorded in create_suite_job.
+    @var payload_end_time: the time when the artifacts only necessary to start
+                           installsing images onto DUT's are staged.
+                           Recorded in create_suite_job.
+    @var artifact_end_time: the remaining artifacts are downloaded after we kick
+                            off the reimaging job, at which point we record
+                            artifact_end_time. Recorded in dynamic_suite.py.
     @var suite_start_time: the time the suite started.
     @var tests_start_time: the time the first test started running.
+    @var tests_end_time: the time the last test finished running.
     """
 
-    # Recorded in create_suite_job as we're staging the components of a
-    # build on the devserver. Only the artifacts necessary to start
-    # installing images onto DUT's will be staged when we record
-    # payload_end_time, the remaining artifacts are downloaded after we kick
-    # off the reimaging job, at which point we record artifact_end_time.
-    download_start_time = None
-    payload_end_time = None
-    artifact_end_time = None
+    def __init__(self, suite_job_id):
+        self.suite_job_id = suite_job_id
+        # Timings related to staging artifacts on devserver.
+        self.download_start_time = None
+        self.payload_end_time = None
+        self.artifact_end_time = None
 
-    # The test_start_time, but taken off the view that corresponds to the
-    # suite instead of an individual test.
-    suite_start_time = None
+        # The test_start_time, but taken off the view that corresponds to the
+        # suite instead of an individual test.
+        self.suite_start_time = None
 
-    # Earliest and Latest tests in the set of TestViews passed to us.
-    tests_start_time = None
-    tests_end_time = None
+        # Earliest and Latest tests in the set of TestViews passed to us.
+        self.tests_start_time = None
+        self.tests_end_time = None
+
 
 
     def _GetDatetime(self, timing_string, timing_string_format):
@@ -375,12 +315,12 @@ class Timings(object):
             end_candidate = datetime.strptime(view['test_finished_time'],
                                               job_status.TIME_FMT)
 
-        if job_status.view_is_for_suite_prep(view):
+        if view['test_name'] == ResultCollector.SUITE_PREP:
             self.suite_start_time = start_candidate
         else:
             self._UpdateFirstTestStartTime(start_candidate)
             self._UpdateLastTestEndTime(end_candidate)
-        if 'job_keyvals' in view:
+        if view['afe_job_id'] == self.suite_job_id and 'job_keyvals' in view:
             keyvals = view['job_keyvals']
             self.download_start_time = self._GetDatetime(
                 keyvals.get(constants.DOWNLOAD_STARTED_TIME),
@@ -517,26 +457,6 @@ class Timings(object):
                      self.tests_start_time).total_seconds())
 
 
-def _full_test_name(job_id, view, build, suite):
-    """
-    Generates the full test name for printing to logs and generating a link to
-    the results.
-
-    @param job_id: the job id.
-    @param view: the view for which we are generating the name.
-    @param build: the build for this invocation of run_suite.
-    @param suite: the suite for this invocation of run_suite.
-    @return The test name, possibly with a descriptive prefix appended.
-    """
-    experimental, test_name = get_view_info(job_id, view, build, suite)[1:]
-
-    # If an experimental test is aborted get_view_info returns a name which
-    # includes the prefix.
-    prefix = constants.EXPERIMENTAL_PREFIX if (experimental and
-        not test_name.startswith(constants.EXPERIMENTAL_PREFIX)) else ''
-    return prefix + test_name
-
-
 _DEFAULT_AUTOTEST_INSTANCE = CONFIG.get_config_value(
         'SERVER', 'hostname', type=str)
 
@@ -554,47 +474,377 @@ def instance_for_pool(pool_name):
             default=_DEFAULT_AUTOTEST_INSTANCE)
 
 
+class ResultCollector(object):
+    """Collect test results of a suite.
+
+    Once a suite job has finished, use this class to collect test results.
+    `run` is the core method that is to be called first. Then the caller
+    could retrieve information like return code, return message, is_aborted,
+    and timings by accessing the collector's public attributes. And output
+    the test results and links by calling the 'output_*' methods.
+
+    Here is a overview of what `run` method does.
+
+    1) Collect the suite job's results from tko_test_view_2.
+    For the suite job, we only pull test views without a 'subdir'.
+    A NULL subdir indicates that the test was _not_ executed. This could be
+    that no child job was scheduled for this test or the child job got
+    aborted before starts running.
+    (Note 'SERVER_JOB'/'CLIENT_JOB' are handled specially)
+
+    2) Collect the child jobs' results from tko_test_view_2.
+    For child jobs, we pull all the test views associated with them.
+    (Note 'SERVER_JOB'/'CLIENT_JOB' are handled speically)
+
+    3) Generate display names.
+    Remove 'build/suite' prefix if any. And append 'exprimental' prefix
+    for experimental tests.
+
+    4) Compute timings of the suite run.
+    5) Compute the return code based on test results.
+
+    @var _instance_server: The hostname of the server that is used
+                           to service the suite.
+    @var _afe: The afe rpc client.
+    @var _tko: The tko rpc client.
+    @var _build: The build for which the suite is run,
+                 e.g. 'lumpy-release/R35-5712.0.0'
+    @var _suite_name: The suite name, e.g. 'bvt', 'dummy'.
+    @var _suite_job_id: The job id of the suite for which we are going to
+                        collect results.
+    @var _suite_views: A list of relevant test views of the suite job.
+    @var _child_views: A list of test views of the child jobs.
+    @var _test_views: A list of all test views from _suite_views and
+                      _child_views.
+    @var _web_links: A list of web links pointing to the results of jobs.
+    @var _buildbot_links: A list of buildbot links for non-passing tests.
+    @var _display_names: A dictionary mapping test_idx to its formatted test
+                         name that is to be shown in the output.
+    @var return_code: The exit code that should be returned by run_suite.
+    @var return_message: Any message that should be displayed to explain
+                         the return code.
+    @var is_aborted: Whether the suite was aborted or not.
+                     True, False or None (aborting status is unknown yet)
+    @var timings: A Timing object that records the suite's timings.
+
+    """
+
+
+    SUITE_PREP = 'Suite prep'
+
+
+    def __init__(self, instance_server, afe, tko, build,
+                 suite_name, suite_job_id):
+        self._instance_server = instance_server
+        self._afe = afe
+        self._tko = tko
+        self._build = build
+        self._suite_name = suite_name
+        self._suite_job_id = suite_job_id
+        self._suite_views =[]
+        self._child_views =[]
+        self._test_views = []
+        self._web_links = []
+        self._buildbot_links = []
+        self._display_names = {}
+        self.return_code = None
+        self.return_message=''
+        self.is_aborted = None
+        self.timings = None
+
+
+    def is_test_experimental(self, view):
+        """Check whether a test view is for an experimental test.
+
+        @param view: A dictionary representing a tko test view.
+
+        @return: True if it is for an experimental test, False otherwise.
+
+        """
+        return (view['job_keyvals'].get('experimental') == 'True' or
+                tools.get_test_name(self._build, self._suite_name,
+                        view['test_name']).startswith('experimental'))
+
+
+    @staticmethod
+    def _is_view_for_test(view):
+        """Indicates whether the view of a given test is for an actual test.
+
+        @param view: A dictionary representing a tko test view.
+        @return True if the view is for an actual test.
+                False if the view is for SERVER_JOB or CLIENT_JOB.
+
+        """
+        return not (view['test_name'].startswith('SERVER_JOB') or
+                    view['test_name'].startswith('CLIENT_JOB'))
+
+
+    def _fetch_relevant_test_views_of_suite(self):
+        """Fetch relevant test views of the suite job.
+
+        For the suite job, there will be a test view for SERVER_JOB, and views
+        for results of its child jobs. For example, assume we've ceated
+        a suite job (afe_job_id: 40) that runs dummy_Pass, dummy_Fail,
+        dummy_Pass.bluetooth. Assume dummy_Pass was aborted before running while
+        dummy_Path.bluetooth got TEST_NA as no duts have bluetooth.
+        So the suite job's test views would look like
+        _____________________________________________________________________
+        test_idx| job_idx|test_name           |subdir      |afe_job_id|status
+        10      | 1000   |SERVER_JOB          |----        |40        |GOOD
+        11      | 1000   |dummy_Pass          |NULL        |40        |ABORT
+        12      | 1000   |dummy_Fail.Fail     |41-onwer/...|40        |FAIL
+        13      | 1000   |dummy_Fail.Error    |42-owner/...|40        |ERROR
+        14      | 1000   |dummy_Pass.bluetooth|NULL        |40        |TEST_NA
+
+        For a suite job, we only care about
+        a) The test view for the suite job's SERVER_JOB
+        b) The test views for real tests without a subdir. A NULL subdir
+           indicates that a test didn't get executed.
+        So, for the above example, we only keep test views whose test_idxs
+        are 10, 11, 14.
+
+        We also rename SERVER_JOB to 'Suite prep' in our local cache.
+
+        @returns: A list of relevant test views of the suite job.
+
+        """
+        views = self._tko.run('get_detailed_test_views',
+                             afe_job_id=self._suite_job_id)
+        relevant_views = []
+        for v in views:
+            if v['test_name'] == 'SERVER_JOB':
+                # Rename suite job's SERVER_JOB to 'Suite prep'.
+                v['test_name'] = ResultCollector.SUITE_PREP
+                relevant_views.append(v)
+            elif (not v['test_name'].startswith('CLIENT_JOB') and
+                  not v['subdir']):
+                relevant_views.append(v)
+        return relevant_views
+
+
+    def _fetch_test_views_of_child_jobs(self):
+        """Fetch test views of child jobs.
+
+        For non-test test views like 'SERVER_JOB', 'CLIENT_JOB.0', we only
+        keep it if it fails and the job has no other real test failures.
+        And we also append the job name to the begining of its test name,
+        so that it looks something like
+        'lumpy-release/R35-5712.0.0/dummy/dummy_Fail_SERVER_JOB'. This is
+        the naming convention that is used by dynamic suite for SERVER_JOB.
+        We need to use the same name as dynamic suite does so that we can
+        correctly retrieve any job keyval whose key includes test name as
+        part of it.
+
+        For test views of real test runs, we just keep them all.
+
+        """
+        child_job_ids = set(job.id for job in
+                            self._afe.get_jobs(
+                                parent_job_id=self._suite_job_id))
+        child_views = []
+        for job_id in child_job_ids:
+            views = self._tko.run('get_detailed_test_views', afe_job_id=job_id)
+            contains_test_failure = any(
+                    ResultCollector._is_view_for_test(v) and
+                    v['status'] != 'GOOD' for v in views)
+            for v in views:
+                if ResultCollector._is_view_for_test(v):
+                    child_views.append(v)
+                elif v['status'] != 'GOOD' and not contains_test_failure:
+                    # This is SERVER_JOB or CLIENT_JOB. Only keep it
+                    # if no other test failure. And append the job name
+                    # as a prefix.
+                    v['test_name'] = '%s_%s' % (v['job_name'], v['test_name'])
+                    child_views.append(v)
+        return child_views
+
+
+    def _generate_display_names(self):
+        """Generate display names.
+
+        Formalize the test_name we got from the test view. Remove
+        'build/suite' prefix if any. And append 'experimental' prefix
+        for experimental tests if their names do not start with 'experimental'.
+
+        If one runs a test in control file via the following code,
+           job.runtest('my_Test', tag='tag')
+        For most of the cases, test_name of the test view should
+        look like 'my_Test.tag'.
+
+        But there are three special cases.
+        1) A test view is of a child job and for a SERVER_JOB or CLIENT_JOB.
+           In this case, the test name has the job name as a prefix.
+           If it is an experimental test, 'experimental' is as part of the name.
+           For instance,
+           'lumpy-release/R35-5712.0.0/perf_v2/
+                   experimental_Telemetry Smoothness Measurement_SERVER_JOB'
+           'lumpy-release/R35-5712.0.0/dummy/
+                   experimental_dummy_Pass_SERVER_JOB'
+           'lumpy-release/R35-5712.0.0/dummy/dummy_Fail_SERVER_JOB'
+
+        2) A test view's status is of a suite job and its status is ABORT.
+           In this case, the test name is the job name.
+           If it is an experimental test, 'experimental' is part of the name.
+           For instance,
+           'lumpy-release/R35-5712.0.0/perf_v2/
+                   experimental_Telemetry Smoothness Measurement'
+           'lumpy-release/R35-5712.0.0/dummy/experimental_dummy_Pass'
+           'lumpy-release/R35-5712.0.0/dummy/dummy_Fail'
+
+        3) A test view's status is of a suite job and its status is TEST_NA.
+           In this case, the test name is NAME field of the control file.
+           If it is an experimental test, 'experimental' is part of the name.
+           For instance, 'experimental_Telemetry Smoothness Measurement'
+                         'experimental_dummy_Pass'
+                         'dummy_Fail'
+
+        """
+        max_width = 0
+        self._display_names = {}
+        for v in self._test_views:
+            experimental =  self.is_test_experimental(v)
+            test_name = tools.get_test_name(
+                    self._build, self._suite_name, v['test_name'])
+            # If an experimental test was aborted, test_name
+            # would include the 'experimental' prefix already.
+            prefix = constants.EXPERIMENTAL_PREFIX if (
+                    experimental and not
+                    test_name.startswith(constants.EXPERIMENTAL_PREFIX)) else ''
+            display_name = prefix + test_name
+            width = len(display_name)
+            if max_width < width:
+                max_width = width
+            self._display_names[v['test_idx']] = display_name
+        self._max_testname_width = max_width + 3
+
+
+    def _generate_web_and_buildbot_links(self):
+        """Generate web links and buildbot links."""
+        # TODO(fdeng): If a job was aborted before it reaches Running
+        # state, we read the test view from the suite job
+        # and thus this method generates a link pointing to the
+        # suite job's page for the aborted job. Need a fix.
+        self._web_links = []
+        self._buildbot_links = []
+        # Bug info are stored in the suite job's keyvals.
+        suite_job_keyvals = self._suite_views[0]['job_keyvals']
+        for v in self._test_views:
+            bug_info = tools.get_test_failure_bug_info(
+                    suite_job_keyvals, v['afe_job_id'], v['test_name'])
+            job_id_owner = '%s-%s' % (v['afe_job_id'], getpass.getuser())
+            link = LogLink(
+                    anchor=self._display_names[v['test_idx']].ljust(
+                            self._max_testname_width),
+                    server=self._instance_server,
+                    job_string=job_id_owner,
+                    bug_info=bug_info)
+            self._web_links.append(link)
+
+            # Don't show links on the buildbot waterfall for tests with
+            # GOOD status.
+            if v['status'] != 'GOOD' and v['status'] != 'TEST_NA':
+                link.reason = '%s: %s' % (v['status'], v['reason'])
+                self._buildbot_links.append(link)
+
+
+    def _record_timings(self):
+        """Record suite timings."""
+        self.timings = Timings(self._suite_job_id)
+        for v in self._test_views:
+            self.timings.RecordTiming(v)
+
+
+    def _compute_return_code(self):
+        """Compute the exit code based on test results."""
+        code = RETURN_CODES.OK
+        for v in self._test_views:
+            # Any non experimental test that has a status other than WARN
+            # or GOOD will result in the tree closing. Experimental tests
+            # will not close the tree, even if they have been aborted.
+            if not self.is_test_experimental(v):
+                if v['status'] == 'WARN':
+                    code = RETURN_CODES.WARNING
+                elif is_fail_status(v['status']):
+                    code = RETURN_CODES.ERROR
+                    # Failed already, no need to worry further.
+                    break
+        self.return_code = code
+
+
+    def output_results(self):
+        """Output test results, timings and web links."""
+        # Output test results
+        for v in self._test_views:
+            display_name = self._display_names[v['test_idx']].ljust(
+                    self._max_testname_width)
+            logging.info('%s%s', display_name,
+                         get_pretty_status(v['status']))
+            if v['status'] != 'GOOD':
+                logging.info("%s  %s: %s", display_name, v['status'],
+                             v['reason'])
+        # Output suite timings
+        logging.info(self.timings)
+        # Output links to test logs
+        logging.info('\nLinks to test logs:')
+        for link in self._web_links:
+            logging.info(link.GenerateTextLink())
+
+
+    def output_buildbot_links(self):
+        """Output buildbot links."""
+        for link in self._buildbot_links:
+            logging.info(link.GenerateBuildbotLink())
+
+
+    def run(self):
+        """Collect test results.
+
+        This method goes through the following steps:
+            Fetch relevent test views of the suite job.
+            Fetch test views of child jobs
+            Check whether the suite was aborted.
+            Generate the test names to display in the output.
+            Calculate suite timings.
+            Compute return code based on the test result.
+
+        """
+        self._suite_views = self._fetch_relevant_test_views_of_suite()
+        self._child_views = self._fetch_test_views_of_child_jobs()
+        self._test_views = self._suite_views + self._child_views
+        # For hostless job in Starting status, there is no test view associated.
+        # This can happen when a suite job in Starting status is aborted. When
+        # the scheduler hits some limit, e.g., max_hostless_jobs_per_drone,
+        # max_jobs_started_per_cycle, a suite job can stays in Starting status.
+        if not self._test_views:
+            self.return_code = RETURN_CODES.ERROR
+            self.return_message = 'No test view was found.'
+            return
+        self.is_aborted = any([view['job_keyvals'].get('aborted_by')
+                               for view in self._suite_views])
+        self._generate_display_names()
+        self._generate_web_and_buildbot_links()
+        self._record_timings()
+        self._compute_return_code()
+
+
 def main():
     """
     Entry point for run_suite script.
     """
     parser, options, args = parse_options()
+    if not verify_options_and_args(parser, options, args):
+        parser.print_help()
+        return
+
     log_name = 'run_suite-default.log'
     if not options.mock_job_id:
-        if args:
-            print 'Unknown arguments: ' + str(args)
-            parser.print_help()
-            return
-        if not options.build:
-            print 'Need to specify which build to use'
-            parser.print_help()
-            return
-        if not options.board:
-            print 'Need to specify board'
-            parser.print_help()
-            return
-        if not options.name:
-            print 'Need to specify suite name'
-            parser.print_help()
-            return
         # convert build name from containing / to containing only _
         log_name = 'run_suite-%s.log' % options.build.replace('/', '_')
         log_dir = os.path.join(common.autotest_dir, 'logs')
         if os.path.exists(log_dir):
             log_name = os.path.join(log_dir, log_name)
-    if options.num is not None and options.num < 1:
-        print 'Number of machines must be more than 0, if specified.'
-        parser.print_help()
-        return
-    if options.no_wait != 'True' and options.no_wait != 'False':
-        print 'Please specify "True" or "False" for --no_wait.'
-        parser.print_help()
-        return
-    if options.file_bugs != 'True' and options.file_bugs != 'False':
-        print 'Please specify "True" or "False" for --file_bugs.'
-        parser.print_help()
-        return
 
+    setup_logging(logfile=log_name)
     try:
         priority = int(options.priority)
     except ValueError:
@@ -603,8 +853,6 @@ def main():
         except AttributeError:
             print 'Unknown priority level %s.  Try one of %s.' % (
                   options.priority, ', '.join(priorities.Priority.names))
-
-    setup_logging(logfile=log_name)
 
     try:
         if not options.bypass_labstatus:
@@ -657,102 +905,30 @@ def main():
                              job_timer.timeout_hours - job_timer.elapsed_time())
             time.sleep(10)
 
-        views = TKO.run('get_detailed_test_views', afe_job_id=job_id)
-        # The intended behavior is to refrain from recording stats if the suite
-        # was aborted (either by a user or through the golo rpc). Since all the
-        # views associated with the afe_job_id of the suite contain the keyvals
-        # of the suite and not the individual tests themselves, we can achieve
-        # this without digging through the views.
-        is_aborted = any([view['job_keyvals'].get('aborted_by')
-                          for view in views])
-        # For hostless job in Starting status, there is no test view associated.
-        # This can happen when a suite job in Starting status is aborted. When
-        # the scheduler hits some limit, e.g., max_hostless_jobs_per_drone,
-        # max_jobs_started_per_cycle, a suite job can stays in Starting status.
-        if not views:
-            code = RETURN_CODES.ERROR
-            returnmessage = RETURN_CODES.get_string(code)
-            logging.info('\nNo test view was found.\n'
-                         'Will return from run_suite with status:  %s',
-                         returnmessage)
-            return code
-
-        width = max((len(_full_test_name(job_id, view, options.build,
-                                         options.name)) for view in views)) + 3
-
-        relevant_views = filter(job_status.view_is_relevant, views)
-        if not relevant_views:
-            # The main suite job most likely failed in SERVER_JOB.
-            relevant_views = views
-
-        timings = Timings()
-        web_links = []
-        buildbot_links = []
-        for view in relevant_views:
-            timings.RecordTiming(view)
-            if job_status.view_is_for_suite_prep(view):
-                view['test_name'] = 'Suite prep'
-
-            job_name, experimental = get_view_info(job_id, view, options.build,
-                options.name)[:2]
-            test_view = _full_test_name(job_id, view, options.build,
-                options.name).ljust(width)
-            logging.info("%s%s", test_view, get_pretty_status(view['status']))
-
-            # It's important that we use the test name in the view
-            # and not the name returned by full_test_name, as this
-            # was the name inserted after the test ran, e.g. for an
-            # aborted test full_test_name will return
-            # 'experimental_testname' but the view and the bug_id
-            # keyval will use '/build/suite/experimental_testname'.
-            bug_info = tools.get_test_failure_bug_info(
-                    view['job_keyvals'], view['test_name'])
-
-            link = LogLink(test_view, instance_server, job_name,
-                           bug_info)
-            web_links.append(link)
-
-            # Don't show links on the buildbot waterfall for tests with
-            # GOOD status.
-            if view['status'] != 'GOOD':
-                logging.info("%s  %s: %s", test_view, view['status'],
-                             view['reason'])
-                link.reason = '%s: %s' % (view['status'], view['reason'])
-                if view['status'] == 'TEST_NA':
-                    # Didn't run; nothing to do here!
-                    continue
-                buildbot_links.append(link)
-                if code == RETURN_CODES.ERROR:
-                    # Failed already, no need to worry further.
-                    continue
-
-                # Any non experimental test that has a status other than WARN
-                # or GOOD will result in the tree closing. Experimental tests
-                # will not close the tree, even if they have been aborted.
-                if not experimental:
-                    if view['status'] == 'WARN':
-                        code = RETURN_CODES.WARNING
-                    elif is_fail_status(view['status']):
-                        code = RETURN_CODES.ERROR
-
-        # Do not record stats for aborted suites.
-        if not is_aborted and not options.mock_job_id:
-            timings.SendResultsToStatsd(options.name, options.build,
-                                        options.board)
-        logging.info(timings)
-        logging.info('\n'
-                     'Links to test logs:')
-        for link in web_links:
-            logging.info(link.GenerateTextLink())
-
-        try:
-            returnmessage = RETURN_CODES.get_string(code)
-        except ValueError:
-            returnmessage = 'UNKNOWN'
-        logging.info('\n'
-                     'Will return from run_suite with status:  %s',
-                     returnmessage)
-
+        # Start collecting test results.
+        collector = ResultCollector(instance_server=instance_server,
+                                    afe=afe, tko=TKO, build=options.build,
+                                    suite_name=options.name,
+                                    suite_job_id=job_id)
+        collector.run()
+        # Output test results, timings, web links.
+        collector.output_results()
+        # Get exit code that should be returned by run_suite.
+        # And output return message.
+        code = collector.return_code
+        code_str = RETURN_CODES.get_string(collector.return_code)
+        return_message = '\nWill return from run_suite with status:  %s'
+        if collector.return_message:
+            return_message = '%s (%s)' % (
+                    return_message, collector.return_message)
+        logging.info(return_message, code_str)
+        # Send timings to statsd. Do not record stats if the suite was
+        # aborted (either by a user or through the golo rpc).
+        # Also do not record stats if is_aborted is None, indicating
+        # aborting status is unknown yet.
+        if collector.is_aborted == False and not options.mock_job_id:
+            collector.timings.SendResultsToStatsd(options.name, options.build,
+                                                  options.board)
         # There is a minor race condition here where we might have aborted for
         # some reason other than a timeout, and the job_timer thinks it's a
         # timeout because of the jitter in waiting for results. This shouldn't
@@ -769,10 +945,8 @@ def main():
             except proxy.JSONRPCException as e:
                 logging.warning('Unable to diagnose suite abort.')
 
-        logging.info('\n'
-                     'Output below this line is for buildbot consumption:')
-        for link in buildbot_links:
-            logging.info(link.GenerateBuildbotLink())
+        logging.info('\nOutput below this line is for buildbot consumption:')
+        collector.output_buildbot_links()
     else:
         logging.info('Created suite job: %r', job_id)
         link = LogLink(options.name, instance_server,
@@ -780,6 +954,7 @@ def main():
         logging.info(link.GenerateBuildbotLink())
         logging.info('--no_wait specified; Exiting.')
     return code
+
 
 if __name__ == "__main__":
     sys.exit(main())

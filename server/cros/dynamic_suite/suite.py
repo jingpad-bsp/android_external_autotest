@@ -797,7 +797,8 @@ class Suite(object):
                     # We use keyvals to communicate bugs filed with run_suite.
                     if bug_id is not None:
                         bug_keyvals = tools.create_bug_keyvals(
-                                result.test_name, (bug_id, bug_count))
+                                result.id, result.test_name,
+                                (bug_id, bug_count))
                         try:
                             utils.write_keyval(self._results_dir, bug_keyvals)
                         except ValueError:
