@@ -739,6 +739,8 @@ class TestView(dbmodels.Model, model_logic.ModelExtensions):
     kernel_base = dbmodels.CharField(blank=True, max_length=90)
     kernel = dbmodels.CharField(blank=True, max_length=300)
     status = dbmodels.CharField(blank=True, max_length=30)
+    invalid = dbmodels.BooleanField(blank=True)
+    invalidates_test_idx = dbmodels.IntegerField(null=True, blank=True)
 
     objects = TestViewManager()
 
