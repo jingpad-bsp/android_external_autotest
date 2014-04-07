@@ -71,6 +71,9 @@ class network_WiFi_VerifyRouter(wifi_cell_test_base.WiFiCellTestBase):
                              signal_level})
                 else:
                     self.failures.append(context_message)
+                # Don't automatically reconnect to this AP.
+                self.context.client.shill.disconnect(
+                        self.context.router.get_ssid(instance=instance))
 
 
     def cleanup(self):
@@ -92,7 +95,7 @@ class network_WiFi_VerifyRouter(wifi_cell_test_base.WiFiCellTestBase):
         self.failures = []
         # Run antenna test for 2GHz band and 5GHz band
         self._antenna_test(6)
-        self._antenna_test(136)
+        self._antenna_test(149)
         if self.failures:
             all_failures = ', '.join(
                     ['(' + message + ')' for message in self.failures])
