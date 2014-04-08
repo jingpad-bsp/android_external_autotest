@@ -509,7 +509,6 @@ def wait_for_cool_machine():
 # System paths for machine performance state.
 _CPUINFO = '/proc/cpuinfo'
 _KERNEL_MAX = '/sys/devices/system/cpu/kernel_max'
-_LSB_RELEASE = '/etc/lsb-release'
 _MEMINFO = '/proc/meminfo'
 _TEMP_SENSOR_RE = 'Reading temperature...([0-9]*)'
 

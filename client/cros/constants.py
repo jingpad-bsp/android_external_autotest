@@ -77,6 +77,8 @@ LOGIN_TRUST_ROOTS = '/etc/login_trust_root.pem'
 
 LOGIN_PROMPT_STATUS_COMMAND = 'bootstat_get_last login-prompt-visible'
 
+LSB_RELEASE = '/etc/lsb-release'
+
 MOCK_OWNER_CERT = 'mock_owner_cert.pem'
 MOCK_OWNER_KEY = 'mock_owner_private.key'
 MOCK_OWNER_POLICY = 'mock_owner.policy'
@@ -172,3 +174,6 @@ DISPLAY_TESTING_XMLRPC_SERVER_READY_METHOD = 'ready'
 
 # Bug filing
 CHROME_VERSION = 'CHROME_VERSION'
+
+# Moblab Environment Constants.
+MOBLAB_USER = 'moblab'
