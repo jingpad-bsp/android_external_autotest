@@ -6,6 +6,7 @@ import logging
 import time
 
 from autotest_lib.client.bin import test
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import iw_runner
 
@@ -17,16 +18,13 @@ class network_WlanRegulatory(test.test):
     regulatory domain.
     """
     version = 1
-    TEST_REGULATORY_DOMAINS = ( 'CA', 'US' )
+    REGULATORY_DATABASE = '/usr/lib/crda/regulatory.bin'
 
-    def find_test_domain(self, not_these):
-        """Select a test regulatory domain excluding |not_these|.
-
-        @param not_these iterable of regulatory domains to exclude.
-        @returns string Regulatory domain from |TEST_REGULATORY_DOMAINS|.
-
-        """
-        return list(set(self.TEST_REGULATORY_DOMAINS) - set(not_these))[0]
+    def get_regulatory_domains(self):
+        """Get the list or regulatory domains in the DUT's database."""
+        return utils.system_output('regdbdump %s | grep country | '
+                                   'sed -e s/^country.// -e s/:.*//' %
+                                   self.REGULATORY_DATABASE).split()
 
 
     def assert_set_regulatory_domain(self, regdomain):
@@ -42,7 +40,7 @@ class network_WlanRegulatory(test.test):
         # It takes time for the kernel to invoke udev, which will in turn
         # invoke CRDA.  Since this is asynchronous with the exit of the
         # "iw" utility, we must wait a while.
-        time.sleep(2)
+        time.sleep(1)
 
         current_regdomain = self._iw.get_regulatory_domain()
         if current_regdomain != regdomain:
@@ -56,6 +54,10 @@ class network_WlanRegulatory(test.test):
         initial_regdomain = self._iw.get_regulatory_domain()
         logging.info('Initial regulatory domain is %s', initial_regdomain)
 
-        alternate_regdomain = self.find_test_domain([initial_regdomain])
-        self.assert_set_regulatory_domain(alternate_regdomain)
+        domain_list = self.get_regulatory_domains()
+        if not domain_list:
+            raise error.TestFail('Did not get a domain list from the database')
+
+        for domain in domain_list:
+            self.assert_set_regulatory_domain(domain)
         self.assert_set_regulatory_domain(initial_regdomain)
