@@ -103,9 +103,7 @@ class display_Resolution(chameleon_test.ChameleonTest):
                      self.chameleon_port.get_connector_id(),
                      self.chameleon_port.get_connector_type())
         edid_filename = os.path.join(
-                self.bindir,
-                'display_Resolution_test_data',
-                'edids', '%s_%dx%d' % resolution)
+                self.bindir, 'test_data', 'edids', '%s_%dx%d' % resolution)
         if not os.path.exists(edid_filename):
             raise ValueError('EDID file %r does not exist' % edid_filename)
 
