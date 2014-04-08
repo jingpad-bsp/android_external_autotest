@@ -488,6 +488,12 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         @returns: True if the DUT was updated with stateful update.
 
         """
+        # TODO(jrbarnette):  Yes, I hate this re.match() test case.
+        # It's better than the alternative:  see crbug.com/360944.
+        image_name = autoupdater.url_to_image_name(update_url)
+        release_pattern = r'^.*-release/R[0-9]+-[0-9]+\.[0-9]+\.0$'
+        if not re.match(release_pattern, image_name):
+            return False
         if not updater.check_version():
             return False
         if not force_update:
