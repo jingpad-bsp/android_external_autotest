@@ -31,10 +31,19 @@ import common
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 
+_BUG_TEMPLATE = {
+    'labels': ['OS-Chrome', 'Type-Bug-Regression', 'Cr-OS-Systems-Network'],
+    'owner': '',
+    'status': 'Untriaged',
+    'summary': None,
+    'title': None,
+    'cc': ['quiche@chromium.org', 'krisr@chromium.org', 'bmahadev@chromium.org']
+}
+
 dynamic_suite.reimage_and_run(
     build=build, board=board, name=NAME, job=job, pool=pool,
     check_hosts=check_hosts, add_experimental=True, num=num,
     file_bugs=file_bugs, priority=priority, timeout_mins=timeout_mins,
     max_runtime_mins=20, devserver_url=devserver_url,
     version_prefix=provision.CROS_VERSION_PREFIX,
-    wait_for_results=wait_for_results)
+    wait_for_results=wait_for_results, bug_template=_BUG_TEMPLATE)
