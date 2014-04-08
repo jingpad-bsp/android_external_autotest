@@ -367,27 +367,14 @@ class APConfiguratorFactory(object):
         if not spec:
             return self.ap_list
 
-        def _get_unique_aps(existing_aps, new_aps):
-            """ Creates and returns a set of aps.
-
-            @param existing_aps: Existing set of aps.
-            @param new_aps: Set of aps to be added to the existing set.
-
-            @return a new set of aps.
-            """
-            if new_aps:
-                if existing_aps:
-                    existing_aps &= new_aps
-                else:
-                    existing_aps = new_aps
-            return existing_aps
-
-        aps = set()
-        aps = _get_unique_aps(aps, self._get_aps_by_band(spec.band,
-                                                 channel=spec.channel))
-        aps = _get_unique_aps(aps, self._get_aps_by_mode(spec.band, spec.mode))
-        aps = _get_unique_aps(aps, self._get_aps_by_security(spec.security))
-        aps = _get_unique_aps(aps, self._get_aps_by_visibility(spec.visible))
+        # APSpec matching is exact.  With the exception of lab location, even
+        # if a hostname is passed the capabilities of a given configurator
+        # much match everything in the APSpec.  This helps to prevent failures
+        # during the pre-scan phase.
+        aps = self._get_aps_by_band(spec.band, channel=spec.channel)
+        aps &= self._get_aps_by_mode(spec.band, spec.mode)
+        aps &= self._get_aps_by_security(spec.security)
+        aps &= self._get_aps_by_visibility(spec.visible)
         matching_aps = list(aps)
         # If APs hostnames are provided, assume the tester knows the location
         # of the AP and skip AFE calls.
