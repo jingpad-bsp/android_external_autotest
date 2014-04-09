@@ -2025,3 +2025,14 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             if label:
                 labels.append(label)
         return labels
+
+
+    def is_boot_from_usb(self):
+        """Check if DUT is boot from USB.
+
+        @return: True if DUT is boot from usb.
+        """
+        device = self.run('rootdev -s -d').stdout.strip()
+        removable = int(self.run('cat /sys/block/%s/removable' %
+                                 os.path.basename(device)).stdout.strip())
+        return removable == 1
