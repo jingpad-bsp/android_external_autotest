@@ -9,7 +9,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["file://*/*.png"],
+      "matches": ["http://*/*.png"],
       "js": ["move_and_set_fullscreen.js"]
     }
   ],
