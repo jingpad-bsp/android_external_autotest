@@ -602,17 +602,10 @@ class Modem(dbus_std_ifaces.DBusProperties,
             logging.info('Unknown bearer. Nothing to do.')
             return
         bearer_object = self.bearers[bearer]
-        if bearer_object.IsActive():
-            def _SuccessCallback():
-                logging.info('Modem: Bearer %s disconnected.', str(bearer))
-            def _ErrorCallback(error):
-                logging.info('Modem: Failed to disconnect bearer: %s',
-                             str(error))
-            self.Disconnect(bearer, _SuccessCallback, _ErrorCallback)
-
         bearer_object.remove_from_connection()
         self.bearers.pop(bearer)
         self._UpdateBearersProperty()
+        self.active_bearers.pop(bearer)
 
 
     def ClearBearers(self):

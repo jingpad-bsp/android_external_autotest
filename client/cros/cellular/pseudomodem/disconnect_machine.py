@@ -38,8 +38,6 @@ class DisconnectMachine(state_machine.StateMachine):
         assert not self._modem.IsPendingConnect()
         assert not self._modem.IsPendingEnable()
         assert not self._modem.IsPendingRegister()
-        assert self._modem.active_bearers
-        assert self._modem.bearers
 
         dc_reason = mm1_constants.MM_MODEM_STATE_CHANGE_REASON_USER_REQUESTED
         try:
@@ -93,9 +91,6 @@ class DisconnectMachine(state_machine.StateMachine):
                     pm_errors.MMCoreError(pm_errors.MMCoreError.WRONG_STATE,
                                           message))
                 return False
-
-            assert self._modem.bearers
-            assert self._modem.active_bearers
 
             if self.bearer_path == mm1_constants.ROOT_PATH:
                 logging.info('All bearers will be disconnected.')
