@@ -10,6 +10,9 @@ import urlparse
 
 import dynamic_ap_configurator
 import ap_spec
+from selenium.common.exceptions import TimeoutException as \
+    SeleniumTimeoutException
+
 
 class BuffaloAPConfigurator(
         dynamic_ap_configurator.DynamicAPConfigurator):
@@ -87,6 +90,11 @@ class BuffaloAPConfigurator(
 
         """
         apply_set = '//input[@name="apply_button"]'
+        try:
+            self.wait_for_object_by_xpath(apply_set, wait_time=30)
+        except SeleniumTimeoutException as e:
+            self.driver.refresh()
+            self.wait_for_object_by_xpath(apply_set, wait_time=30)
         self.click_button_by_xpath(apply_set)
         timeout = 0
         while self.object_by_xpath_exist("ddwrt_message") and timeout < 60:
@@ -277,7 +285,7 @@ class BuffaloAPConfigurator(
              wpa_item = 'WPA2 Personal'
         self._wait_for_item_in_popup(wpa_item, popup)
         self.select_item_from_popup_by_xpath(wpa_item, popup)
-        self.wait_for_object_by_xpath(key_field)
+        self.wait_for_object_by_xpath(key_field, wait_time=30)
         self.set_content_of_text_field_by_xpath(shared_key, key_field)
         self.wait_for_object_by_xpath(interval_field)
         self.set_content_of_text_field_by_xpath(str(update_interval),

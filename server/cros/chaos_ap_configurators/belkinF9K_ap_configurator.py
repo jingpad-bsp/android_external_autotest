@@ -126,18 +126,23 @@ class BelkinF9KAPConfigurator(
         self.click_button_by_xpath('//input[@type="submit" and '
                                    '@value="Apply Changes"]',
                                    alert_handler=self._security_alert)
-        self.set_wait_time(30)
         try:
+            self.wait_for_object_by_xpath_to_vanish('//input[@name= \
+                                                    "timeRemain]"',wait_time=30)
             self.wait.until(lambda _:'setup.htm' in self.driver.title)
         except SeleniumTimeoutException, e:
+            logging.info("Driver title page did not load or %s", str(e))
             self.driver.refresh()
             xpath= '//h1[contains(text(), "Duplicate Administrator")]'
             try:
+                self.wait.until(lambda _:'setup.htm' in self.driver.title)
                 if (self.driver.find_element_by_xpath(xpath)):
                     logging.info("We got a 'Duplicate Administrator' page "
                                  "when we saved the changes.")
             except:
-                raise SeleniumTimeoutException(str(e))
+                # If home page did not load even after a refresh just continue
+                # because we already clicked Apply and waited.
+                pass
         finally:
             self.restore_default_wait_time()
 

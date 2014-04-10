@@ -205,6 +205,39 @@ class WebDriverCoreHelpers(object):
         return self.wait_for_object_by_xpath(xpath, wait_time=wait_time)
 
 
+    def wait_for_object_by_xpath_to_vanish(self, xpath, wait_time=5):
+        """Wait for the item in xpath to disappear from page.
+
+        @param xpath: The xpath of the object to wait on.
+        @param wait_time: The time to wait before giving up.
+
+        @return void or raise exception if object does not vanish.
+
+        """
+        start_time = int(time.time())
+        while (int(time.time()) - start_time) < wait_time:
+            if self.object_by_xpath_exist(xpath):
+                time.sleep(0.5)
+            else:
+                return
+        raise SeleniumTimeoutException('The object with xpath %s failed to'
+                                       ' vanish.' % xpath)
+
+
+    def wait_for_object_by_id_to_vanish(self, element_id, wait_time=5):
+        """Wait for the item in xpath to disappear from page.
+
+        @param element_id: The id of the object to wait on.
+        @param wait_time: The time to wait before giving up.
+
+        @return void or raise exception if object does not vanish.
+
+        """
+        xpath = 'id("%s")' % element_id
+        return self.wait_for_object_by_xpath_to_vanish(xpath,
+                                                       wait_time=wait_time)
+
+
     def object_by_id_exist(self, element_id):
         """Finds if an object exist in this particular page.
 
