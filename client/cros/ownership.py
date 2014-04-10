@@ -102,6 +102,7 @@ def clear_ownership_files_no_restart():
         raise error.TestError("Tried to clear ownership with UI running.")
     __unlink(constants.OWNER_KEY_FILE)
     __unlink(constants.SIGNED_POLICY_FILE)
+    __unlink(os.path.join(constants.USER_DATA_DIR, 'Local State'))
 
 
 def fake_ownership():
