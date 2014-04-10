@@ -12,6 +12,8 @@ TIME='MEDIUM'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = "graphics"
 TEST_TYPE = 'client'
+# Reboot in the lab after the test ends.
+DEPENDENCIES='cleanup-reboot'
 
 DOC = """
 This test runs the San Angeles Observation GPU benchmark. This benchmark uses
