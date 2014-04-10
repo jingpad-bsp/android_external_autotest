@@ -31,10 +31,14 @@ class graphics_LibDRM(test.test):
         arch_tests = { 'arm'    : [],
                        'exynos5': tests_exynos5,
                        'i386'   : tests_intel,
+                       'tegra'  : [],
                        'x86_64' : tests_intel }
         arch = utils.get_cpu_soc_family()
         if not arch in arch_tests:
             raise error.TestFail('Architecture "%s" not supported.', arch)
+        elif arch == 'tegra':
+            logging.warning('Tegra does not support DRM.')
+            return
         tests = tests_common + arch_tests[arch]
 
         # If UI is running, we must stop it and restore later.
