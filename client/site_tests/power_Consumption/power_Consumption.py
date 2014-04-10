@@ -312,7 +312,7 @@ class power_Consumption(test.test):
                 ]
 
             bg_urls += [
-                ('bg_vid400p', 'big_buck_bunny_trailer_400p.webm'),
+                ('bg_vid400p', 'big_buck_bunny_trailer_400p.vp8.webm'),
                 ]
 
         # The video files are run from a file:// url. In order to work properly
