@@ -42,7 +42,7 @@ UNIT_PERCENT = 'percent'
 TIME_OUTPUT_FORMAT = '%e %S %U'
 
 RE_FRAME_DELIVERY_TIME = re.compile('frame \d+: (\d+) us')
-RE_DECODE_TIME_MEDIAN = re.compile('Decode time median: (\d+) ms')
+RE_DECODE_TIME_MEDIAN = re.compile('Decode time median: (\d+)')
 
 
 def _percentile(values, k):
@@ -213,7 +213,7 @@ class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
         m = RE_DECODE_TIME_MEDIAN.match(line)
         assert m, 'invalid format: %s' % line
         decode_time = int(m.group(1))
-        self._logperf(name, KEY_DECODE_TIME_50, decode_time, UNIT_MILLISECOND)
+        self._logperf(name, KEY_DECODE_TIME_50, decode_time, UNIT_MICROSECOND)
 
         _remove_if_exists(TEST_OUTPUT_LOG)
 
