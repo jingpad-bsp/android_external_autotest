@@ -99,8 +99,8 @@ class ChaosRunner(object):
         @param wifi_if: string of the wifi interface to use
         @param job: an Autotest job object.
 
-        @returns a list of the network available; otherwise None
-
+        @returns a list of the matching networks; if no networks are found at
+                 all, returns None.
         """
         logging.info('Searching for SSID %s in scan...', ap.ssid)
         # We have some APs that need a while to come on-line
@@ -118,7 +118,7 @@ class ChaosRunner(object):
             job.run_test('network_WiFi_ChaosConfigFailure', ap=ap,
                          error_string=chaos_constants.AP_SSID_NOTFOUND,
                          tag=ap.ssid)
-            return None
+            return list()
 
         # Sanitize MIXED security setting for both Static and Dynamic
         # configurators before doing the comparison.
@@ -268,8 +268,18 @@ class ChaosRunner(object):
                         capturer.remove_interface(wifi_if)
 
                         if not networks:
+                            # If scan returned no networks, iw scan failed.
+                            # Reboot the packet capturer device and re-configure
+                            # the capturer.
                             self._release_ap(ap, batch_locker)
+                            capturer.host.reboot()
+                            capturer = site_linux_system.LinuxSystem(
+                                           capture_host, {},'packet_capturer')
                             continue
+                        if networks == list():
+                           # Packet capturer did not find the SSID in scan.
+                           self._release_ap(ap, batch_locker)
+                           continue
 
                         assoc_params = ap.get_association_parameters()
                         if conn_worker:
