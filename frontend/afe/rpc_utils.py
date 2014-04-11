@@ -235,7 +235,7 @@ def check_job_dependencies(host_objects, job_dependencies):
     hosts_in_job = models.Host.objects.filter(id__in=host_ids)
     ok_hosts = hosts_in_job
     for index, dependency in enumerate(job_dependencies):
-        if not provision.can_provision(dependency):
+        if not provision.is_for_special_action(dependency):
             ok_hosts = ok_hosts.filter(labels__name=dependency)
     failing_hosts = (set(host.hostname for host in host_objects) -
                      set(host.hostname for host in ok_hosts))
@@ -258,7 +258,7 @@ def check_job_metahost_dependencies(metahost_objects, job_dependencies):
     for metahost in metahost_objects:
         hosts = models.Host.objects.filter(labels=metahost)
         for label_name in job_dependencies:
-            if not provision.can_provision(label_name):
+            if not provision.is_for_special_action(label_name):
                 hosts = hosts.filter(labels__name=label_name)
         if not any(hosts):
             raise error.NoEligibleHostException("No hosts within %s satisfy %s."
@@ -509,7 +509,7 @@ def create_new_job(owner, options, host_objects, metahost_objects,
     check_for_duplicate_hosts(host_objects)
 
     for label_name in dependencies:
-        if provision.can_provision(label_name):
+        if provision.is_for_special_action(label_name):
             # TODO: We could save a few queries
             # if we had a bulk ensure-label-exists function, which used
             # a bulk .get() call. The win is probably very small.

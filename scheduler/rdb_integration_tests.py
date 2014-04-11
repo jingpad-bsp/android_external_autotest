@@ -791,3 +791,20 @@ class BaseRDBTest(unittest.TestCase, frontend_test_utils.FrontendTestMixin):
                            local_response_handler)
         list(rdb_lib.acquire_hosts(self.host_scheduler, queue_entries))
 
+
+    def testConfigurations(self):
+        """Test that configurations don't matter.
+        @raises AssertionError: If the request doesn't find a host, 
+                 this will happen if configurations are not stripped out.
+        """
+        self.god.stub_with(provision.Cleanup,
+                           '_actions',
+                           {'action': 'fakeTest'})
+        job_labels = set(['action', 'a'])
+        host_deps = set(['a'])
+        db_host = self.db_helper.create_host('h1', deps=host_deps)
+        self.create_job(user='autotest_system', deps=job_labels)
+        queue_entries = self._dispatcher._refresh_pending_queue_entries()
+        matching_host = rdb_lib.acquire_hosts(
+                self.host_scheduler, queue_entries).next()
+        self.assert_(matching_host.id == db_host.id)

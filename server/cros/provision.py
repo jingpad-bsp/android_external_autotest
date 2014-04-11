@@ -78,6 +78,29 @@ class _SpecialTaskAction(object):
         return cls._actions[label]
 
 
+    @classmethod
+    def partition(cls, labels):
+        """
+        Filter a list of labels into two sets: those labels that we know how to
+        act on and those that we don't know how to act on.
+
+        @param labels: A list of strings of labels.
+        @returns: A tuple where the first element is a set of unactionable
+                  labels, and the second element is a set of the actionable
+                  labels.
+        """
+        capabilities = set()
+        configurations = set()
+
+        for label in labels:
+            if cls.acts_on(label):
+                configurations.add(label)
+            else:
+                capabilities.add(label)
+
+        return capabilities, configurations
+
+
 class Verify(_SpecialTaskAction):
     """
     Tests to verify that the DUT is in a sane, known good state that we can run
@@ -133,11 +156,25 @@ class Repair(_SpecialTaskAction):
     name = 'repair'
 
 
-# For backwards compatibility with old control files, we still need the
-# following:
 
-can_provision = Provision.acts_on
-provisioner_for = Provision.test_for
+# TODO(milleral): crbug.com/364273
+# Label doesn't really mean label in this context.  We're putting things into
+# DEPENDENCIES that really aren't DEPENDENCIES, and we should probably stop
+# doing that.
+def is_for_special_action(label):
+    """
+    If any special task handles the label specially, then we're using the label
+    to communicate that we want an action, and not as an actual dependency that
+    the test has.
+
+    @param label: A string label name.
+    @return True if any special task handles this label specially,
+            False if no special task handles this label.
+    """
+    return (Verify.acts_on(label) or
+            Provision.acts_on(label) or
+            Cleanup.acts_on(label) or
+            Repair.acts_on(label))
 
 
 def filter_labels(labels):
@@ -155,16 +192,7 @@ def filter_labels(labels):
     (set(['bluetooth']), set(['cros-version:lumpy-release/R28-3993.0.0']))
 
     """
-    capabilities = set()
-    configurations = set()
-
-    for label in labels:
-        if can_provision(label):
-            configurations.add(label)
-        else:
-            capabilities.add(label)
-
-    return capabilities, configurations
+    return Provision.partition(labels)
 
 
 def split_labels(labels):
@@ -188,7 +216,7 @@ def split_labels(labels):
     configurations = dict()
 
     for label in labels:
-        if can_provision(label):
+        if Provision.acts_on(label):
             name, value = label.split(':', 1)
             configurations[name] = value
         else:

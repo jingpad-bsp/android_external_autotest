@@ -36,7 +36,7 @@ class JobQueryManager(object):
         job_id = queue_entry.job_id
         job_deps = self._job_deps.get(job_id, [])
         job_deps = [dep for dep in job_deps
-                    if not provision.can_provision(self._labels[dep].name)]
+                if not provision.is_for_special_action(self._labels[dep].name)]
         job_acls = self._job_acls.get(job_id, [])
 
         return {'deps': job_deps, 'acls': job_acls,
