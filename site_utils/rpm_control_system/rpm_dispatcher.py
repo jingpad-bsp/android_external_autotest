@@ -284,7 +284,10 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
       print 'Usage: ./%s, no arguments available.' % sys.argv[0]
       sys.exit(1)
-    rpm_logging_config.set_up_logging(LOG_FILENAME_FORMAT)
+    rpm_logging_config.start_log_server(LOG_FILENAME_FORMAT)
+    rpm_logging_config.set_up_logging(log_filename_format=LOG_FILENAME_FORMAT,
+                                      use_log_server=True)
+
     # Get the local ip _address and set the server to utilize it.
     address = socket.gethostbyname(socket.gethostname())
     server, port = launch_server_on_unused_port()

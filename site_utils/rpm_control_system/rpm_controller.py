@@ -15,6 +15,7 @@ import time
 
 from config import rpm_config
 import dli_urllib
+import rpm_logging_config
 import utils
 
 import common
@@ -209,12 +210,30 @@ class RPMController(object):
         kwargs = {'dut_hostname':request['dut'],
                   'new_state':request['new_state']}
         is_timeout_value, result_value = retry.timeout(
-                self.set_power_state,
+                self.set_power_state_wrapper,
                 args=(),
                 kwargs=kwargs,
                 timeout_sec=SET_POWER_STATE_TIMEOUT_SECONDS)
         result.value = result_value
         is_timeout.value = is_timeout_value
+
+
+    def set_power_state_wrapper(self, dut_hostname, new_state):
+        """A wrapper function for set_power_state call.
+
+        The wrapper function is called to run set_power_state in a new process.
+        As the logs are written to a socket server, the logging handler needs
+        to be rebuilt.
+
+        @param dut_hostname: hostname of DUT whose outlet we want to change.
+        @param new_state: ON/OFF/CYCLE - state or action we want to perform on
+                          the outlet.
+        """
+        # Clear existing logging handler, create new one as this is running in
+        # a new process.
+        logging.getLogger().handlers = []
+        rpm_logging_config.set_up_logging(use_log_server=True)
+        self.set_power_state(dut_hostname, new_state)
 
 
     def queue_request(self, dut_hostname, new_state):

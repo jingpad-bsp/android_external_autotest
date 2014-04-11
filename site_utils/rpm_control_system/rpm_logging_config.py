@@ -9,6 +9,7 @@ import socket
 import time
 
 from config import rpm_config
+from autotest_lib.site_utils import log_socket_server
 
 LOGGING_FORMAT = rpm_config.get('GENERAL', 'logging_format')
 RECEIVERS = rpm_config.get('RPM_INFRASTRUCTURE',
@@ -54,26 +55,59 @@ class SuspendableSMTPHandler(logging.handlers.SMTPHandler):
         return super(SuspendableSMTPHandler, self).emit(record)
 
 
-def set_up_logging(log_filename_format):
+def get_log_filename(log_filename_format):
+    """Get file name of log based on given log_filename_format.
+
+    @param log_filename_format: Format to use to create the log file.
+
+    @raise Exception: If log_filename_format is None.
+    """
+    if not log_filename_format:
+            raise Exception('log_filename_format must be set.')
+
+    log_filename = os.path.abspath(time.strftime(log_filename_format))
+    log_dir = os.path.dirname(log_filename)
+    if not os.path.isdir(log_dir):
+        os.makedirs(log_dir)
+    return log_filename
+
+
+def set_up_logging(log_filename_format=None, use_log_server=False):
     """
     Correctly set up logging to have the correct format/level, log to a file,
     and send out email notifications in case of error level messages.
 
     @param log_filename_format: Format to use to create the log file.
+    @param use_log_server: True if log to a TCP server.
 
     @returns email_handler: Logging handler used to send out email alerts.
     """
-    log_filename = os.path.abspath(time.strftime(log_filename_format))
-    log_dir = os.path.dirname(log_filename)
-    if not os.path.isdir(log_dir):
-      os.makedirs(log_dir)
-    logging.basicConfig(filename=log_filename, level=logging.INFO,
-                        format=LOGGING_FORMAT)
+    if use_log_server:
+        socketHandler = logging.handlers.SocketHandler(
+                'localhost', logging.handlers.DEFAULT_TCP_LOGGING_PORT)
+        logging.getLogger().addHandler(socketHandler)
+    else:
+        log_filename = get_log_filename(log_filename_format)
+        logging.basicConfig(filename=log_filename, level=logging.INFO,
+                            format=LOGGING_FORMAT)
+
     if rpm_config.getboolean('GENERAL', 'debug'):
         logging.getLogger().setLevel(logging.DEBUG)
+
     email_handler = SuspendableSMTPHandler('localhost', 'rpm@google.com',
                                            RECEIVERS, SUBJECT_LINE, None)
     email_handler.setLevel(logging.ERROR)
     email_handler.setFormatter(logging.Formatter(LOGGING_FORMAT))
     logging.getLogger('').addHandler(email_handler)
     return email_handler
+
+
+def start_log_server(log_filename_format):
+    """Start log server to accept logging through a TCP server.
+
+    @param log_filename_format: Format to use to create the log file.
+    """
+    log_filename = get_log_filename(log_filename_format)
+    log_socket_server.LogSocketServer.start(filename=log_filename,
+                                            level=logging.INFO,
+                                            format=LOGGING_FORMAT)
