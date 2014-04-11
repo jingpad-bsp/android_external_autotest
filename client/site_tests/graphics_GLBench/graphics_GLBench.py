@@ -5,6 +5,7 @@
 import httplib
 import logging
 import os
+import pprint
 import urllib2
 
 from autotest_lib.client.bin import test, utils
@@ -152,8 +153,8 @@ class graphics_GLBench(test.test):
       return ('fps', True)
     raise error.TestFail('Unknown test unit in ' + testname)
 
-  def run_once(self, options='', hasty=False):
-    logging.info(utils.get_board_with_frequency_and_memory())
+  def run_once(self, options='', raise_error_on_checksum=True):
+    #logging.info(utils.get_board_with_frequency_and_memory())
     dep = 'glbench'
     dep_dir = os.path.join(self.autodir, 'deps', dep)
     self.job.install_pkg(dep, 'dep', dep_dir)
@@ -167,10 +168,7 @@ class graphics_GLBench(test.test):
     exefile = os.path.join(self.autodir, 'deps/glbench/glbench')
     outdir = self.outputdir
     options += ' -save -outdir=' + outdir
-    # Using the -hasty option we run only a subset of tests without waiting
-    # for thermals to normalize. Test should complete in 15-20 seconds.
-    if hasty:
-      options += ' -hasty'
+
     cmd = '%s %s' % (exefile, options)
 
     # If UI is running, we must stop it and restore later.
@@ -182,29 +180,23 @@ class graphics_GLBench(test.test):
     # process are really dead before returning; this is what stop ui uses.
     kill_cmd = '. /sbin/killers; term_process "^X$"'
     cmd = 'X :1 vt1 & sleep 1; chvt 1 && DISPLAY=:1 %s; %s' % (cmd, kill_cmd)
+
+    self.report_temperature_critical('temperature_critical')
+    self.report_temperature('temperature_1_start')
     summary = None
-    if hasty:
-      # On BVT the test will not monitor thermals so we will not verify its
-      # correct status using PerControl
+    # Wrap the test run inside of a PerfControl instance to make machine
+    # behavior more consistent.
+    with perf.PerfControl() as pc:
+      if not pc.verify_is_valid():
+        raise error.TestError(pc.get_error_reason())
+      self.report_temperature('temperature_2_before_test')
+
+      # Run the test. If it gets the CPU too hot pc should notice.
       summary = utils.run(cmd,
                           stdout_tee=utils.TEE_TO_LOGS,
                           stderr_tee=utils.TEE_TO_LOGS).stdout
-    else:
-      self.report_temperature_critical('temperature_critical')
-      self.report_temperature('temperature_1_start')
-      # Wrap the test run inside of a PerfControl instance to make machine
-      # behavior more consistent.
-      with perf.PerfControl() as pc:
-        if not pc.verify_is_valid():
-          raise error.TestError(pc.get_error_reason())
-        self.report_temperature('temperature_2_before_test')
-
-        # Run the test. If it gets the CPU too hot pc should notice.
-        summary = utils.run(cmd,
-                            stdout_tee=utils.TEE_TO_LOGS,
-                            stderr_tee=utils.TEE_TO_LOGS).stdout
-        if not pc.verify_is_valid():
-          raise error.TestError(pc.get_error_reason())
+      if not pc.verify_is_valid():
+        raise error.TestError(pc.get_error_reason())
 
     # Write a copy of stdout to help debug failures.
     results_path = os.path.join(self.outputdir, 'summary.txt')
@@ -250,9 +242,8 @@ class graphics_GLBench(test.test):
       testrating = float(val)
       imagefile = remainder.split(']')[0]
       unit, higher = self.get_unit_from_test(testname)
-      if not hasty:
-        self.output_perf_value(description=testname, value=testrating,
-                               units=unit, higher_is_better=higher)
+      self.output_perf_value(description=testname, value=testrating,
+                             units=unit, higher_is_better=higher)
 
       # classify result image
       if ReferenceImageExists(knownbad_imagenames,
@@ -277,13 +268,13 @@ class graphics_GLBench(test.test):
             keyvals[testname] = -2.0
             failed_tests[testname] = imagefile
             f.write('# unknown [' + imagefile + '] (setting perf as -2.0)\n')
-    f.close()
-    if not hasty:
-      self.report_temperature('temperature_3_after_test')
-      self.write_perf_keyval(keyvals)
 
-    # Raise exception if images don't match.
-    if failed_tests:
+    self.report_temperature('temperature_3_after_test')
+    f.close()
+    self.write_perf_keyval(keyvals)
+
+    # raise exception
+    if failed_tests and raise_error_on_checksum:
       logging.info('Some images are not matching their reference in %s or %s.',
                    self.reference_images_file,
                    self.reference_images_url)
