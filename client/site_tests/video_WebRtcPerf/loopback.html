@@ -20,7 +20,8 @@ function start() {
         }
       }
     },
-    gotLocalStream);
+    gotLocalStream,
+    gotError);
 }
 
 function gotLocalStream(stream) {
@@ -36,6 +37,10 @@ function gotLocalStream(stream) {
 
   localPeerConnection.addStream(localStream);
   localPeerConnection.createOffer(gotLocalDescription);
+}
+
+function gotError(error) {
+  console.log("navigator.getUserMedia error: ", error);
 }
 
 function gotRemoteStream(event) {
