@@ -124,6 +124,10 @@ DRAG_LATENCY = 'drag_latency'
 # This following gesture is for pressure calibration.
 PRESSURE_CALIBRATION = 'pressure_calibration'
 
+# The gaps in MM required between fingertips for these tests
+FINGER_CROSSING_GAP_MM = 1
+FAT_FINGER_AND_STATIONARY_FINGER_GAP_MM = 1
+
 # This denotes the list of the numbers of fingers for physical click tests.
 # It corresponds to ONE/TWO/THREE/FOUR/FIVE_FINGER_PHYSICAL_CLICK defined above.
 fingers_physical_click = [1, 2, 3, 4, 5]
@@ -218,6 +222,8 @@ SMALL_FINGER = 1
 NORMAL_FINGER = 2
 FAT_FINGER = 3
 ALL_FINGERTIP_SIZES = [TINY_FINGER, SMALL_FINGER, NORMAL_FINGER, FAT_FINGER]
+FINGERTIP_DIAMETER_MM = {TINY_FINGER: 8, SMALL_FINGER: 10,
+                         NORMAL_FINGER: 12, FAT_FINGER: 14}
 custom_tips_required = {
     DRAG_LATENCY: [NO_FINGER, NO_FINGER, NORMAL_FINGER, NO_FINGER],
     ONE_FINGER_PHYSICAL_CLICK: [NORMAL_FINGER, NO_FINGER, NO_FINGER, NO_FINGER],
@@ -226,8 +232,9 @@ custom_tips_required = {
     THREE_FINGER_PHYSICAL_CLICK: [NO_FINGER, NORMAL_FINGER, NORMAL_FINGER,
                                   NORMAL_FINGER],
     TWO_FAT_FINGERS_TRACKING: [FAT_FINGER, FAT_FINGER, FAT_FINGER, FAT_FINGER],
-    FAT_FINGER_MOVE_WITH_RESTING_FINGER: [NORMAL_FINGER, NORMAL_FINGER,
-                                          FAT_FINGER, FAT_FINGER]
+    FAT_FINGER_MOVE_WITH_RESTING_FINGER: [NORMAL_FINGER, NO_FINGER,
+                                          FAT_FINGER, NO_FINGER],
+    FINGER_CROSSING: [NORMAL_FINGER, NO_FINGER, NORMAL_FINGER, NO_FINGER],
 }
 default_tips_required = [NORMAL_FINGER, NORMAL_FINGER,
                          NORMAL_FINGER, NORMAL_FINGER]

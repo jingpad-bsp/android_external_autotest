@@ -187,26 +187,26 @@ class RobotWrapper:
 
         self._build_robot_script_paths()
 
-        self._get_device_spec(board)
+        self._get_device_spec()
 
-    def _get_device_spec(self, board):
+    def _get_device_spec(self):
         # First check if there is already a device spec in this directory
-        if (os.path.isfile('%s.p' % board) and
-            os.path.isfile('%s_min.p' % board)):
+        if (os.path.isfile('%s.p' % self._board) and
+            os.path.isfile('%s_min.p' % self._board)):
             return
 
         # Next, check if maybe there is a spec in the touchbotII directory
         spec_path = os.path.join(self._robot_script_dir,
-                                 'touchbotII/device_specs/%s.p' % board)
+                         'touchbotII/device_specs/%s.p' % self._board)
         spec_min_path = os.path.join(self._robot_script_dir,
-                                     'touchbotII/device_specs/%s_min.p' % board)
+                         'touchbotII/device_specs/%s_min.p' % self._board)
         if os.path.isfile(spec_path) and os.path.isfile(spec_min_path):
             shutil.copy(spec_path, '.')
             shutil.copy(spec_min_path, '.')
             return
 
         # If both of those fail, then generate a new device spec
-        self._calibrate_device(board)
+        self._calibrate_device(self._board)
 
     def _get_fingertips(self, tips_to_get):
         if self.fingertips != [None, None, None, None]:
@@ -272,7 +272,7 @@ class RobotWrapper:
 
     def _get_robot_script_dir(self):
         """Get the directory of the robot control scripts."""
-        for lib_path in [conf.robot_lib_path_local, conf.robot_lib_path]:
+        for lib_path in [conf.robot_lib_path, conf.robot_lib_path_local]:
             cmd = ('find %s -maxdepth 1 -type d -name %s' %
                         (lib_path, conf.python_package))
             path = common_util.simple_system_output(cmd)
@@ -321,9 +321,66 @@ class RobotWrapper:
         para = (robot_script, self._board, self._speed_dict[GV.FULL_SPEED])
         return 'python %s %s_min.p %d' % para
 
+
+    def _dimensions(self, device_spec):
+        device_script = os.path.join(self._robot_script_dir, 'device_size.py')
+        cmd = 'python %s %s' % (device_script, device_spec)
+        results = common_util.simple_system_output(cmd)
+        dimensions = results.split()
+        return float(dimensions[0]), float(dimensions[1])
+
+    def _adjust_for_target_distance(self, line, stationary_finger, distance):
+        """ Given a point and a line in relative coordinates move the point
+        so that is exactly 'distance' millimeters away from the line for the
+        current board.  Sometimes the robot needs to move two fingers very
+        close and this is problematic in relative coordinates as the board
+        dimensions change.  This function allows the test to compensate and
+        get a more accurate test.
+        """
+        # First convert all the values into absolute coordinates by using
+        # the calibrated device spec to see the dimensions of the pad
+        h, w = self._dimensions("%s_min.p" % self._board)
+        abs_line = (line[0] * w, line[1] * h, line[2] * w, line[3] * h)
+        x, y = (stationary_finger[0] * w, stationary_finger[1] * h)
+
+        # Find a point near the stationary finger that is distance
+        # away from the line at the closest point
+        dx = abs_line[2] - abs_line[0]
+        dy = abs_line[3] - abs_line[1]
+        if dx == 0: # vertical line
+            if x > abs_line[0]:
+                x = abs_line[0] + distance
+            else:
+                x = abs_line[0] - distance
+        elif dy == 0: # horizontal line
+            if y > abs_line[1]:
+                y = abs_line[1] + distance
+            else:
+                y = abs_line[1] - distance
+        else:
+            # First, find the closest point on the line to the point
+            m = dy / dx
+            b = abs_line[1] - m * abs_line[0]
+            m_perp = -1.0 / m
+            b_perp = y - m_perp * x
+            x_intersect = (b_perp - b) / (m - m_perp)
+            y_intersect = m * x_intersect + b
+
+            current_distance_sq = ((x_intersect - x) ** 2 +
+                                   (y_intersect - y) ** 2)
+            scale = distance / (current_distance_sq ** 0.5)
+            x = x_intersect - (x_intersect - x) * scale
+            y = y_intersect - (y_intersect - y) * scale
+
+        #Convert this absolute point back into relative coordinates
+        x_rel = x / w
+        y_rel = y / h
+
+        return (x_rel, y_rel)
+
     def _get_control_command_one_stationary_finger(self, robot_script, gesture,
                                                    variation):
-        line = speed = None
+        line = speed = finger_gap_mm = None
         num_taps = 0
         # The stationary finger should be in the bottom left corner for resting
         # finger tests, and various locations for finger crossing tests
@@ -334,6 +391,7 @@ class RobotWrapper:
                 line = self._line_dict[element]
                 if 'finger_crossing' in gesture:
                     stationary_finger = self._stationary_finger_dict[element]
+                    finger_gap_mm = conf.FINGER_CROSSING_GAP_MM
                 elif 'second_finger_taps' in gesture:
                     stationary_finger = self._location_dict[GV.BL]
                     speed = self._speed_dict[GV.SLOW]
@@ -341,12 +399,22 @@ class RobotWrapper:
                 elif 'fat_finger' in gesture:
                     stationary_finger = self._stationary_finger_dict[element]
                     speed = self._speed_dict[GV.SLOW]
+                    finger_gap_mm = conf.FAT_FINGER_AND_STATIONARY_FINGER_GAP_MM
             elif element in GV.GESTURE_SPEED:
                 speed = self._speed_dict[element]
 
         if line is None or speed is None:
             msg = 'Cannot derive the line/speed parameters from %s %s.'
             self._raise_error(msg % (gesture, variation))
+
+        # Adjust the positioning to get a precise gap between finger tips
+        # if this gesture requires it
+        if finger_gap_mm:
+            min_space_mm = (conf.FINGERTIP_DIAMETER_MM[self.fingertips[0]] +
+                            conf.FINGERTIP_DIAMETER_MM[self.fingertips[2]]) / 2
+            stationary_finger = self._adjust_for_target_distance(
+                                    line, stationary_finger,
+                                    min_space_mm + finger_gap_mm)
 
         line = self._reverse_coord_if_is_touchscreen(line)
         start_x, start_y, end_x, end_y = line
