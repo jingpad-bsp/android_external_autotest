@@ -25,10 +25,9 @@ def run_chaos_open(machine):
                 ap_spec.APSpec(mode=ap_spec.MODE_N,
                                security=ap_spec.SECURITY_TYPE_DISABLED,
                                band=ap_spec.BAND_5GHZ)]
-    lab_status = []
     for spec in ap_specs:
         runner = chaos_runner.ChaosRunner(
-                'network_WiFi_ChaosConnectDisconnect', host, spec, lab_status)
+                'network_WiFi_ChaosConnectDisconnect', host, spec)
         runner.run(job)
 
 
