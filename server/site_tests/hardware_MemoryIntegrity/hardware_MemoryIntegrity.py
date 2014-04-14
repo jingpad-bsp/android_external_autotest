@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, re, time
+import logging, os, time
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import autotest
@@ -14,6 +14,7 @@ class hardware_MemoryIntegrity(test.test):
     Integrity test for memory device
     """
     version = 1
+    suspend_fail = False
 
     # Define default value for the test case
 
@@ -62,7 +63,7 @@ class hardware_MemoryIntegrity(test.test):
                                      seconds=seconds)
             logging.info("Wait until client suspend")
             if not self._client.ping_wait_down(30):
-                raise error.TestFail("Test fail: Client won't suspend")
+                self.suspend_fail = True
         logging.info("Wait")
         time.sleep(seconds)
 
@@ -128,3 +129,6 @@ class hardware_MemoryIntegrity(test.test):
 
         self._check_alive()
         self._clean_up()
+
+        if self.suspend_fail:
+            raise error.TestWarn("Warn: Test passed but DUT won't suspend.")
