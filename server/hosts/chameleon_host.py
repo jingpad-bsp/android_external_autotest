@@ -82,3 +82,33 @@ class ChameleonHost(ssh_host.SSHHost):
         # TODO(waihong): Add verify and repair logic which are required while
         # deploying to Cros Lab.
         return chameleon.ChameleonBoard(self._chameleond_proxy)
+
+
+def create_chameleon_host(dut, chameleon_args):
+    """Create a ChameleonHost object.
+
+    There three possible cases:
+    1) If the DUT is in Cros Lab and has a chameleon board, then create
+       a ChameleonHost object pointing to the board. chameleon_args
+       is ignored.
+    2) If not case 1) and chameleon_args is neither None nor empty, then
+       create a ChameleonHost object using chameleon_args.
+    3) If neither case 1) or 2) applies, return None.
+
+    @param dut: host name of the host that chameleon connects. It can be used
+                to lookup the chameleon in test lab using naming convention.
+    @param chameleon_args: A dictionary that contains args for creating
+                           a ChameleonHost object,
+                           e.g. {'chameleon_host': '172.11.11.112',
+                                 'chameleon_port': 9992}.
+
+    @returns: A ChameleonHost object or None.
+
+    """
+    hostname = make_chameleon_hostname(dut)
+    if utils.host_is_in_lab_zone(hostname):
+        return ChameleonHost(chameleon_host=hostname)
+    elif chameleon_args:
+        return ChameleonHost(**chameleon_args)
+    else:
+        return None

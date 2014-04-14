@@ -273,42 +273,18 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         self._servo_host = servo_host.create_servo_host(dut=self.hostname,
                                                         servo_args=servo_args)
         # TODO(waihong): Do the simplication on Chameleon too.
-        self._chameleon_host = self._create_chameleon_host(chameleon_args)
+        self._chameleon_host = chameleon_host.create_chameleon_host(
+                dut=self.hostname, chameleon_args=chameleon_args)
+
         if self._servo_host is not None:
             self.servo = self._servo_host.get_servo()
         else:
             self.servo = None
 
-        if chameleon_args is not None:
+        if self._chameleon_host:
             self.chameleon = self._chameleon_host.create_chameleon_board()
-
-
-    def _create_chameleon_host(self, chameleon_args):
-        """Create a ChameleonHost object.
-
-        There three possible cases:
-        1) If the DUT is in Cros Lab and has a chameleon board, then create
-           a ChameleonHost object pointing to the board. chameleon_args
-           is ignored.
-        2) If not case 1) and chameleon_args is neither None nor empty, then
-           create a ChameleonHost object using chameleon_args.
-        3) If neither case 1) or 2) applies, return None.
-
-        @param chameleon_args: A dictionary that contains args for creating
-                           a ChameleonHost object,
-                           e.g. {'chameleon_host': '172.11.11.112',
-                                 'chameleon_port': 9992}.
-
-        @returns: A ChameleonHost object or None.
-
-        """
-        hostname = chameleon_host.make_chameleon_hostname(self.hostname)
-        if utils.host_is_in_lab_zone(hostname):
-            return chameleon_host.ChameleonHost(chameleon_host=hostname)
-        elif chameleon_args is not None:
-            return chameleon_host.ChameleonHost(**chameleon_args)
         else:
-            return None
+            self.chameleon = None
 
 
     def get_repair_image_name(self):
@@ -1929,6 +1905,19 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         logging.info("EC accelerometers found")
         return 'accel:cros-ec'
+
+
+    @label_decorator('chameleon')
+    def has_chameleon(self):
+        """Determine if a Chameleon connected to this host.
+
+        @returns the string 'chameleon' if this host has a Chameleon or
+                 None if it has not.
+        """
+        if self._chameleon_host:
+            return 'chameleon'
+        else:
+            return None
 
 
     def get_labels(self):

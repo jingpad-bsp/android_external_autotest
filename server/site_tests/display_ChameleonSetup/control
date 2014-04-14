@@ -12,6 +12,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "display"
 TEST_TYPE = "server"
+DEPENDENCIES = 'chameleon'
 
 DOC = """
 This test check the hardware/software setup between Chameleon and DUT.
