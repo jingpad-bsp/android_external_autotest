@@ -2,17 +2,19 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-NAME = 'hardware_Memtester.quick'
+NAME = 'hardware_Memtester'
 AUTHOR = 'puthik'
 PURPOSE = 'Verify memory integrity using memtester.'
 CRITERIA = 'Fails if memory corrupt'
 TIME='SHORT'
 TEST_CLASS = "hardware"
 TEST_TYPE = 'client'
+SUITE = 'bvt'
+EXPERIMENTAL = 'True'
 
 DOC = """
 This test uses memtester to find memory subsystem faults. The quick test
 uses 10 MB of memory.
 """
 
-job.run_test('hardware_Memtester', size=10 * 1024, loop=1)
+job.run_test('hardware_Memtester', tag='quick', size=10 * 1024, loop=1)

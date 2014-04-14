@@ -1,5 +1,5 @@
-NAME = "platform_MemCheck"
-PURPOSE = "Verify memory values look reasonable."
+NAME = 'platform_MemCheck'
+PURPOSE = 'Verify memory values look reasonable.'
 CRITERIA = """
 This test will fail if unexpected values are found for:
   - Total Memory
@@ -8,11 +8,13 @@ This test will fail if unexpected values are found for:
   - Swap Total
   - Virtual Memory
 """
-AUTHOR = "kdlucas, puthik"
-TIME = "SHORT"
-TEST_CATEGORY = "Functional"
-TEST_CLASS = "platform"
-TEST_TYPE = "client"
+AUTHOR = 'kdlucas, puthik'
+TIME = 'SHORT'
+TEST_CATEGORY = 'Functional'
+TEST_CLASS = 'platform'
+TEST_TYPE = 'client'
+SUITE = 'bvt'
+EXPERIMENTAL = 'True'
 DOC = """
 Verifies that memory levels look sane.
 
@@ -20,12 +22,13 @@ The resources being verified are:
 
 Total Memory
 Free Memory
-Swap Memory Cached
 Swap Total
 Virtual Memory Total
+Memory Speed
 
 We are assuming that we should have at least 1/2 of total memory free and
-that virtual memory should be at least 102400 KB.
+that virtual memory should be at least 102400 KB and memory speed is at
+least 1333 MHz.
 """
 
 job.run_test('platform_MemCheck')

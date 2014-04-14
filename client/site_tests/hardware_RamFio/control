@@ -8,6 +8,8 @@ PURPOSE = 'test ram speed'
 TIME = 'SHORT'
 TEST_CLASS = 'hardware'
 TEST_TYPE = 'client'
+SUITE = 'bvt'
+EXPERIMENTAL = 'True'
 
 DOC = """
 Create ram disk and use hardware_StorageFio to test for ram throughput

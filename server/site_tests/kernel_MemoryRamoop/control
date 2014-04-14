@@ -8,6 +8,8 @@ PURPOSE = 'Check that kernel log preserve correctly in RAM'
 TIME = 'SHORT'
 TEST_CLASS = 'kernel'
 TEST_TYPE = 'server'
+SUITE = 'bvt'
+EXPERIMENTAL = 'True'
 
 DOC = """
 This test verify that /dev/pstore/console-ramoops is preserved correctly
