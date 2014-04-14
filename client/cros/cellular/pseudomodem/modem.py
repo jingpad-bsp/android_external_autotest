@@ -605,7 +605,8 @@ class Modem(dbus_std_ifaces.DBusProperties,
         bearer_object.remove_from_connection()
         self.bearers.pop(bearer)
         self._UpdateBearersProperty()
-        self.active_bearers.pop(bearer)
+        if bearer in self.active_bearers:
+            self.active_bearers.pop(bearer)
 
 
     def ClearBearers(self):
