@@ -41,7 +41,7 @@ def setup(topdir):
                         os.path.join(dst_path, 'tests/cros-driver.tests'))
         os.chdir(dst_path)
         # we have to tell cmake where to find glut
-        cmd = 'cmake  -DCMAKE_FIND_ROOT_PATH=' + sysroot
+        cmd = 'cmake -DCMAKE_MAKE_PROGRAM=make -DCMAKE_FIND_ROOT_PATH=' + sysroot
         cmd += ' -DGLUT_INCLUDE_DIR=' + sysroot + '/usr/include'
         cmd += ' -DGLUT_glut_LIBRARY=' + glut_libpath
         # By default Piglit requires Waffle on Linux. Use GLUT instead.
