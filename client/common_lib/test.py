@@ -18,7 +18,7 @@
 
 #pylint: disable-msg=C0111
 
-import fcntl, json, os, re, sys, shutil, tempfile, time, traceback
+import fcntl, json, os, re, sys, shutil, stat, tempfile, time, traceback
 import logging
 
 from autotest_lib.client.common_lib import error
@@ -454,6 +454,13 @@ class base_test(object):
         pass
 
 
+    @staticmethod
+    def _make_writable_to_others(directory):
+        mode = os.stat(directory).st_mode
+        mode = mode | stat.S_IROTH | stat.S_IWOTH | stat.S_IXOTH
+        os.chmod(directory, mode)
+
+
     def _exec(self, args, dargs):
         self.job.logging.tee_redirect_debug_dir(self.debugdir,
                                                 log_name=self.tagged_testname)
@@ -476,6 +483,11 @@ class base_test(object):
                            self.execute, self.cleanup)
 
             try:
+                # Make resultsdir and tmpdir accessible to everyone. We may
+                # output data to these directories as others, e.g., chronos.
+                self._make_writable_to_others(self.tmpdir)
+                self._make_writable_to_others(self.resultsdir)
+
                 # Initialize:
                 _cherry_pick_call(self.initialize, *args, **dargs)
 
