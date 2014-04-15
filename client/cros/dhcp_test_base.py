@@ -132,7 +132,7 @@ class DhcpTestBase(test.test):
         """
         dhcp_properties = None
         for ipconfig in self.get_interface_ipconfig_objects(interface_name):
-          logging.error('Looking at ipconfig %r', ipconfig)
+          logging.info('Looking at ipconfig %r', ipconfig)
           ipconfig_properties = ipconfig.GetProperties(utf8_strings=True)
           if 'Method' not in ipconfig_properties:
               logging.info('Found ipconfig object with no method field')
@@ -261,8 +261,8 @@ class DhcpTestBase(test.test):
         logging.info('Server is negotiating new lease with options: %s',
                      dhcp_options)
         if not self.server.last_test_passed:
-            raise error.TestFail('Test server didn\'t get all the messages it '
-                                 'was told to expect during negotiation.')
+            raise error.TestFail(
+                'Test failed: active rule is %s' % self.server.next_rule)
 
         if disable_check:
             logging.info('Skipping check of negotiated DHCP lease parameters.')

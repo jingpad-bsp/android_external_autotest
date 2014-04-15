@@ -81,6 +81,7 @@ class DhcpTestServer(threading.Thread):
         self._test_timeout = 0
         self._handling_rules = []
         self._logger = logging.getLogger("dhcp.test_server")
+        self._exception = None
         self.daemon = False
 
     @property
@@ -102,6 +103,14 @@ class DhcpTestServer(threading.Thread):
     def last_test_passed(self):
         with self._mutex:
             return self._last_test_passed
+
+    @property
+    def current_rule(self):
+        """
+        Return the currently active DhcpHandlingRule.
+        """
+        with self._mutex:
+            return self._handling_rules[0]
 
     def start(self):
         """
@@ -159,6 +168,7 @@ class DhcpTestServer(threading.Thread):
             self._handling_rules = handling_rules
             self._test_in_progress = True
             self._last_test_passed = False
+            self._exception = None
 
     def wait_for_test_to_finish(self):
         """
@@ -167,6 +177,8 @@ class DhcpTestServer(threading.Thread):
         """
         while self.test_in_progress:
             time.sleep(0.1)
+        if self._exception:
+            raise self._exception
 
     def abort_test(self):
         """
@@ -274,11 +286,16 @@ class DhcpTestServer(threading.Thread):
 
         self._logger.info("DhcpTestServer entering handling loop.")
         while not self.stopped:
-            self._loop_body()
-            # Python does not have waiting queues on Lock objects.  Give other
-            # threads a change to hold the mutex by forcibly releasing the GIL
-            # while we sleep.
-            time.sleep(0.01)
+            try:
+                self._loop_body()
+                # Python does not have waiting queues on Lock objects.
+                # Give other threads a change to hold the mutex by
+                # forcibly releasing the GIL while we sleep.
+                time.sleep(0.01)
+            except Exception as e:
+                with self._mutex:
+                    self._end_test_unsafe(False)
+                    self._exception = e
         with self._mutex:
             self._end_test_unsafe(False)
         self._logger.info("DhcpTestServer closing sockets.")

@@ -64,6 +64,13 @@ class DhcpHandlingRule(object):
         self._allowable_time_delta_seconds = 0.5
         self._force_reply_options = []
         self._message_type = message_type
+        self._last_warning = None
+
+    def __str__(self):
+        if self._last_warning:
+            return '%s (%s)' % (self.__class__.__name__, self._last_warning)
+        else:
+            return self.__class__.__name__
 
     @property
     def logger(self):
@@ -164,6 +171,15 @@ class DhcpHandlingRule(object):
     def force_reply_options(self, value):
         self._force_reply_options = value
 
+    def emit_warning(self, warning):
+        """
+        Log a warning, and retain that warning as |_last_warning|.
+
+        @param warning: The warning message
+        """
+        self.logger.warning(warning)
+        self._last_warning = warning
+
     def handle(self, query_packet):
         """
         The DhcpTestServer will call this method to ask a handling rule whether
@@ -239,9 +255,9 @@ class DhcpHandlingRule(object):
         if packet.message_type == self._message_type:
             return True
         else:
-            self.logger.warning("Packet's message type was %s, not %s.",
-                                packet.message_type.name,
-                                self._message_type.name)
+            self.emit_warning("Packet's message type was %s, not %s." % (
+                              packet.message_type.name,
+                              self._message_type.name))
             return False
 
 
@@ -350,15 +366,15 @@ class DhcpHandlingRule_RespondToRequest(DhcpHandlingRule):
             return RESPONSE_NO_ACTION
 
         if server_ip != self._expected_server_ip:
-            self.logger.warning("REQUEST packet's server ip did not match our "
-                                "expectations; expected %s but got %s" %
-                                (self._expected_server_ip, server_ip))
+            self.emit_warning("REQUEST packet's server ip did not match our "
+                              "expectations; expected %s but got %s" %
+                              (self._expected_server_ip, server_ip))
             return RESPONSE_NO_ACTION
 
         if requested_ip != self._expected_requested_ip:
-            self.logger.warning("REQUEST packet's requested IP did not match "
-                                "our expectations; expected %s but got %s" %
-                                (self._expected_requested_ip, requested_ip))
+            self.emit_warning("REQUEST packet's requested IP did not match "
+                              "our expectations; expected %s but got %s" %
+                              (self._expected_requested_ip, requested_ip))
             return RESPONSE_NO_ACTION
 
         self.logger.info("Received valid REQUEST packet, processing")
@@ -433,9 +449,9 @@ class DhcpHandlingRule_RespondToPostT2Request(
             return RESPONSE_NO_ACTION
 
         if requested_ip != self._expected_requested_ip:
-            self.logger.warning("REQUEST packet's requested IP did not match "
-                                "our expectations; expected %s but got %s" %
-                                (self._expected_requested_ip, requested_ip))
+            self.emit_warning("REQUEST packet's requested IP did not match "
+                              "our expectations; expected %s but got %s" %
+                              (self._expected_requested_ip, requested_ip))
             return RESPONSE_NO_ACTION
 
         self.logger.info("Received valid post T2 REQUEST packet, processing")
@@ -479,7 +495,7 @@ class DhcpHandlingRule_AcceptRelease(DhcpHandlingRule):
             return RESPONSE_NO_ACTION
 
         if server_ip != self._expected_server_ip:
-            self.logger.warning("RELEASE packet's server ip did not match our "
+            self.emit_warning("RELEASE packet's server ip did not match our "
                                 "expectations; expected %s but got %s" %
                                 (self._expected_server_ip, server_ip))
             return RESPONSE_NO_ACTION
