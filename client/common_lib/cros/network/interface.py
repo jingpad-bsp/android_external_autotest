@@ -125,7 +125,7 @@ class Interface:
     def ipv4_prefix(self):
         """@return the IPv4 address prefix e.g., 24."""
         addr = self.netblock
-        return addr.prefix if addr else None
+        return addr.prefix_len if addr else None
 
 
     @property
