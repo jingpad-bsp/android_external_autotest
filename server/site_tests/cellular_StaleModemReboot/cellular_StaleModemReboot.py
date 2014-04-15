@@ -236,24 +236,11 @@ class cellular_StaleModemReboot(test.test):
         self._cold_reset_dut(boot_id)
         new_modem_state = self._get_modem_state()
 
-        if (original_modem_state in STABLE_MODEM_STATES and
-                new_modem_state in STABLE_MODEM_STATES):
-            # TestError is being raised here to distingush it from the case
-            # where the modem state is actually fixed after the reboot. This
-            # will show as 'orange' color code in the test results, instead of
-            # green, which is reserved for when the modem was in a bad state
-            # that was fixed by rebooting via this test.
-            logging.info('Modem state after default reboot: %s',
-                         self._modem_state_to_string(self._get_modem_state()))
-            raise error.TestError('Modem was in stable state at the start of '
-                                  'this test and is still in stable state '
-                                  'after one reboot.')
-
         num_tries = 0
 
         while True:
             if new_modem_state in STABLE_MODEM_STATES:
-                logging.info('Modem was fixed and is now in testable state: '
+                logging.info('Modem is in testable state: '
                              '%s', self._modem_state_to_string(new_modem_state))
                 break
             if new_modem_state == MM_MODEM_STATE_LOCKED:
