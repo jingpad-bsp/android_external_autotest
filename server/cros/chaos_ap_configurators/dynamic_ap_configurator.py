@@ -8,8 +8,6 @@ import datetime
 import logging
 import os
 import re
-import sys
-import time
 import xmlrpclib
 
 import ap_spec
@@ -22,16 +20,11 @@ from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
 from autotest_lib.server.cros.chaos_ap_configurators import ap_configurator
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'deps',
-                             'chrome_test', 'test_src', 'third_party',
-                             'webdriver', 'pylib'))
-
 try:
   from selenium import webdriver
-  from selenium.common.exceptions import WebDriverException
 except ImportError:
-  raise ImportError('Could not locate the webdriver package.  Did you build? '
-                    'Are you using a prebuilt autotest package?')
+  raise ImportError('Could not locate the webdriver package. '
+                    'Did you emerge it into your chroot?')
 
 
 class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,

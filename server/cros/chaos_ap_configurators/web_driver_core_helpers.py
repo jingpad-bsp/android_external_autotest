@@ -2,13 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os
-import sys
 import time
-
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..',
-                             'client', 'deps', 'pyauto_dep', 'test_src',
-                             'third_party', 'webdriver', 'pylib'))
 
 from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import TimeoutException as \
