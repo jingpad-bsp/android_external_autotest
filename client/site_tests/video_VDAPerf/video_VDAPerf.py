@@ -227,9 +227,6 @@ class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
         _remove_if_exists(time_log_file)
 
     def run_once(self, test_cases):
-        # We need to write to tmpdir as user "chronos"
-        os.chmod(self.tmpdir, 0777)
-
         self._perf_keyvals = {}
         last_error = None
         for (path, width, height, frame_num, frag_num, profile,
