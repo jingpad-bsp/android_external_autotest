@@ -12,9 +12,40 @@ from autotest_lib.client.common_lib import error
 class security_AccountsBaseline(test.test):
     version = 1
 
-    def load_path(self, fpath):
+
+    @staticmethod
+    def match_passwd(expected, actual):
+        """Match login shell (2nd field), uid (3rd field),
+           and gid (4th field)."""
+        if expected[1:4] != actual[1:4]:
+            logging.error(
+                "Expected shell/uid/gid %s for user '%s', got %s.",
+                tuple(expected[1:4]), expected[0], tuple(actual[1:4]))
+            return False
+        return True
+
+
+    @staticmethod
+    def match_group(expected, actual):
+        """Match login shell (2nd field), gid (3rd field),
+           and members (4th field, comma-separated)."""
+        matched = True
+        if expected[1:3] != actual[1:3]:
+            matched = False
+            logging.error(
+                "Expected shell/id %s for group '%s', got %s.",
+                tuple(expected[1:3]), expected[0], tuple(actual[1:3]))
+        if set(expected[3].split(',')) != set(actual[3].split(',')):
+            matched = False
+            logging.error(
+                "Expected members '%s' for group '%s', got '%s'.",
+                expected[3], expected[0], actual[3])
+        return matched
+
+
+    def load_path(self, path):
         """Load the given passwd/group file."""
-        return [x.strip().split(':') for x in open(fpath).readlines()]
+        return [x.strip().split(':') for x in open(path).readlines()]
 
 
     def capture_files(self):
@@ -23,72 +54,46 @@ class security_AccountsBaseline(test.test):
                             os.path.join(self.resultsdir, f))
 
 
+    def check_file(self, basename):
+        match_func = getattr(self, 'match_%s' % basename)
+        success = True
+
+        expected_entries = self.load_path(
+            os.path.join(self.bindir, 'baseline.%s' % basename))
+        actual_entries = self.load_path('/etc/%s' % basename)
+
+        if len(actual_entries) > len(expected_entries):
+            success = False
+            logging.error(
+                '%s baseline mismatch: expected %d entries, got %d.',
+                basename, len(expected_entries), len(actual_entries))
+
+        for actual in actual_entries:
+            expected = [x for x in expected_entries if x[0] == actual[0]]
+            if not expected:
+                success = False
+                logging.error("Unexpected %s entry for '%s'.",
+                              basename, actual[0])
+                continue
+            expected = expected[0]
+            match_res = match_func(expected, actual)
+            success = success and match_res
+
+        for expected in expected_entries:
+            actual = [x for x in actual_entries if x[0] == expected[0]]
+            if not actual:
+                logging.info("Ignoring missing %s entry for '%s'.",
+                             basename, expected[0])
+
+        return success
+
+
     def run_once(self):
-        failed = False
-
         self.capture_files()
-        # Match users
-        passwd_baseline = self.load_path(os.path.join(
-            self.bindir, 'baseline.passwd'))
-        passwd_actual = self.load_path('/etc/passwd')
 
-        if len(passwd_actual) != len(passwd_baseline):
-            failed = True
-            logging.error('User baseline mismatch. '
-                'Expected: %d users. Got: %d.',
-                len(passwd_baseline), len(passwd_actual))
-        for expected in passwd_baseline:
-            got = [x for x in passwd_actual if x[0] == expected[0]]
-            if not got:
-                failed = True
-                logging.error('No passwd entry for %s', expected[0])
-                continue
-            got = got[0]
-            # Match uid (3rd field) and gid (4th field).
-            if (expected[2], expected[3]) != (got[2], got[3]):
-                failed = True
-                logging.error(
-                    'Expected uid/gid (%s, %s) for user %s. Got (%s, %s)',
-                    expected[2], expected[3], got[0], got[2], got[3])
-        for actual in passwd_actual:
-            got = [x for x in passwd_baseline if x[0] == actual[0]]
-            if not got:
-                failed = True
-                logging.error('Unexpected passwd entry for %s', actual[0])
+        passwd_ok = self.check_file('passwd')
+        group_ok = self.check_file('group')
 
-        # Match groups
-        group_baseline = self.load_path(os.path.join(
-            self.bindir, 'baseline.group'))
-        group_actual = self.load_path('/etc/group')
-
-        if len(group_actual) != len(group_baseline):
-            failed = True
-            logging.error('Group baseline mismatch. '
-                'Expected: %d groups. Got: %d.',
-                len(group_baseline), len(group_actual))
-        for expected in group_baseline:
-            got = [x for x in group_actual if x[0] == expected[0]]
-            if not got:
-                failed = True
-                logging.error('No group entry for %s', expected[0])
-                continue
-            got = got[0]
-            # Match gid (3rd field) and members (4th field. comma separated).
-            if expected[2] != got[2]:
-                failed = True
-                logging.error('Expected id %s for group %s). Got %s',
-                    expected[2], expected[0], got[2])
-            if set(expected[3].split(',')) != set(got[3].split(',')):
-                failed = True
-                logging.error(
-                    'Expected members %s for group %s. Got %s',
-                    expected[3], expected[0], got[3])
-        for actual in group_actual:
-            got = [x for x in group_baseline if x[0] == actual[0]]
-            if not got:
-                failed = True
-                logging.error('Unexpected group entry for %s', actual[0])
-
-        # Fail the test after all mismatches have been reported.
-        if failed:
+        # Fail after all mismatches have been reported.
+        if not (passwd_ok and group_ok):
             raise error.TestFail('Baseline mismatch.')
