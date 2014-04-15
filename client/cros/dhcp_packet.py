@@ -596,6 +596,33 @@ class DhcpPacket(object):
                           MESSAGE_TYPE_ACK.option_value)
         return packet
 
+    @staticmethod
+    def create_nak_packet(transaction_id, hwmac_addr):
+        """
+        Create a negative acknowledge packet.
+
+        @param transaction_id: The DHCP transaction ID.
+        @param hwmac_addr: The client's MAC address.
+        """
+        packet = DhcpPacket()
+        packet.set_field(FIELD_OP, FIELD_VALUE_OP_SERVER_RESPONSE)
+        packet.set_field(FIELD_HWTYPE, FIELD_VALUE_HWTYPE_10MB_ETH)
+        packet.set_field(FIELD_HWADDR_LEN, FIELD_VALUE_HWADDR_LEN_10MB_ETH)
+        # This has something to do with relay agents
+        packet.set_field(FIELD_RELAY_HOPS, 0)
+        packet.set_field(FIELD_TRANSACTION_ID, transaction_id)
+        packet.set_field(FIELD_TIME_SINCE_START, 0)
+        packet.set_field(FIELD_FLAGS, 0)
+        packet.set_field(FIELD_CLIENT_IP, IPV4_NULL_ADDRESS)
+        packet.set_field(FIELD_YOUR_IP, IPV4_NULL_ADDRESS)
+        packet.set_field(FIELD_SERVER_IP, IPV4_NULL_ADDRESS)
+        packet.set_field(FIELD_GATEWAY_IP, IPV4_NULL_ADDRESS)
+        packet.set_field(FIELD_CLIENT_HWADDR, hwmac_addr)
+        packet.set_field(FIELD_MAGIC_COOKIE, FIELD_VALUE_MAGIC_COOKIE)
+        packet.set_option(OPTION_DHCP_MESSAGE_TYPE,
+                          MESSAGE_TYPE_NAK.option_value)
+        return packet
+
     def __init__(self, byte_str=None):
         """
         Create a DhcpPacket, filling in fields from a byte string if given.

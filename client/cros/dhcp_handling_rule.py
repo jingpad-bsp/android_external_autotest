@@ -317,6 +317,36 @@ class DhcpHandlingRule_RespondToDiscovery(DhcpHandlingRule):
         return response_packet
 
 
+class DhcpHandlingRule_RejectRequest(DhcpHandlingRule):
+    """
+    This handler receives a REQUEST packet, and responds with a NAK.
+    """
+    def __init__(self):
+        super(DhcpHandlingRule_RejectRequest, self).__init__(
+                dhcp_packet.MESSAGE_TYPE_REQUEST, {}, {})
+        self._should_respond = True
+
+    def handle_impl(self, query_packet):
+        if not self.is_our_message_type(query_packet):
+            return RESPONSE_NO_ACTION
+
+        ret = RESPONSE_POP_HANDLER
+        if self.is_final_handler:
+            ret |= RESPONSE_TEST_SUCCEEDED
+        if self._should_respond:
+            ret |= RESPONSE_HAVE_RESPONSE
+        return ret
+
+    def respond(self, query_packet):
+        if not self.is_our_message_type(query_packet):
+            return None
+
+        self.logger.info("NAKing the REQUEST packet.")
+        response_packet = dhcp_packet.DhcpPacket.create_nak_packet(
+            query_packet.transaction_id, query_packet.client_hw_address)
+        return response_packet
+
+
 class DhcpHandlingRule_RespondToRequest(DhcpHandlingRule):
     """
     This handler accepts any REQUEST packet that contains options for SERVER_ID
