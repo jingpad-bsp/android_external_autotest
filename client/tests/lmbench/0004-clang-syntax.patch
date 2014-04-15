@@ -1,0 +1,11 @@
+--- lmbench3/src/lib_sched.c.bak	2013-04-16 14:39:35.019975459 -0700
++++ lmbench3/src/lib_sched.c	2013-04-16 14:39:54.800224492 -0700
+@@ -91,7 +91,7 @@
+ 			     childno * (nbenchprocs + 1) + benchproc);
+ 	} else {
+ 		/* default action: do nothing */
+-		return;
++		return 0;
+ 	}
+ 
+ 	return sched_pin(cpu % sched_ncpus());
