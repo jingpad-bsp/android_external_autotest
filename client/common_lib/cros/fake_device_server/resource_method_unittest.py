@@ -6,7 +6,6 @@
 
 """Unit tests for resource_method.py."""
 
-import json
 import mox
 import unittest
 
@@ -39,7 +38,7 @@ class ResourceMethodTest(mox.MoxTestBase):
         common_util.parse_serialized_json().AndReturn(update_resource)
 
         self.mox.ReplayAll()
-        returned_json = json.loads(self.resource_method.PATCH(1234))
+        returned_json = self.resource_method.PATCH(1234)
         self.assertEquals(expected_resource, returned_json)
         self.mox.VerifyAll()
 
@@ -54,7 +53,7 @@ class ResourceMethodTest(mox.MoxTestBase):
         common_util.parse_serialized_json().AndReturn(update_resource)
 
         self.mox.ReplayAll()
-        returned_json = json.loads(self.resource_method.PUT(12345))
+        returned_json = self.resource_method.PUT(12345)
         self.assertEquals(update_resource, returned_json)
         self.mox.VerifyAll()
 

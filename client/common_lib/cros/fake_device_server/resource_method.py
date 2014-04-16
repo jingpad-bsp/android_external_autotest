@@ -4,7 +4,7 @@
 
 """Module contains a simple base class for patching or updating a resource."""
 
-import json
+from cherrypy import tools
 
 import common
 from cros_lib.fake_device_server import common_util
@@ -21,6 +21,7 @@ class ResourceMethod(object):
         self.resource = resource
 
 
+    @tools.json_out()
     def PATCH(self, *args, **kwargs):
         """Updates the given resource with the incoming json blob.
 
@@ -37,10 +38,10 @@ class ResourceMethod(object):
             server_errors.HTTPError(400, 'Missing id for operation')
 
         data = common_util.parse_serialized_json()
-        return json.dumps(self.resource.update_data_val(
-                id, api_key, data_in=data))
+        return self.resource.update_data_val(id, api_key, data_in=data)
 
 
+    @tools.json_out()
     def PUT(self, *args, **kwargs):
         """Replaces the given resource with the incoming json blob.
 
@@ -57,5 +58,5 @@ class ResourceMethod(object):
             server_errors.HTTPError(400, 'Missing id for operation')
 
         data = common_util.parse_serialized_json()
-        return json.dumps(self.resource.update_data_val(
-                id, api_key, data_in=data, update=False))
+        return self.resource.update_data_val(
+                id, api_key, data_in=data, update=False)

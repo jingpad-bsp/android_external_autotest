@@ -6,7 +6,6 @@
 
 """Unit tests for devices.py."""
 
-import json
 import mox
 import unittest
 
@@ -54,7 +53,7 @@ class DevicesTest(mox.MoxTestBase):
     def testGet(self):
         """Tests that we can retrieve a device correctly."""
         self.devices_resource[(1234, None)] = dict(id=1234)
-        returned_json = json.loads(self.devices.GET(1234))
+        returned_json = self.devices.GET(1234)
         self.assertEquals(returned_json, self.devices_resource[(1234, None)])
 
         # Non-existing device.
@@ -68,7 +67,7 @@ class DevicesTest(mox.MoxTestBase):
         self.devices_resource[(1234, None)] = dict(id=1234)
         self.devices_resource[(1235, None)] = dict(id=1235, boogity='taco')
 
-        returned_json = json.loads(self.devices.GET())
+        returned_json = self.devices.GET()
         self.assertEqual('clouddevices#devicesListResponse',
                          returned_json['kind'])
         self.assertTrue('devices' in returned_json)

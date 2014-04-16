@@ -6,7 +6,6 @@
 
 """Unit tests for registration_tickets.py."""
 
-import json
 import mox
 import unittest
 
@@ -49,7 +48,7 @@ class RegistrationTicketsTest(mox.MoxTestBase):
                                systemName='buffet_device', deviceKind='vendor',
                                channel=dict(supportedType='xmpp'))
         self.tickets[(1234, None)] = expected_ticket
-        returned_json = json.loads(self.registration.POST(1234, 'finalize'))
+        returned_json = self.registration.POST(1234, 'finalize')
         self.assertEquals(returned_json['id'], expected_ticket['id'])
         self.assertEquals(returned_json['userEmail'],
                           expected_ticket['userEmail'])
@@ -68,7 +67,7 @@ class RegistrationTicketsTest(mox.MoxTestBase):
                 'Bearer %s' % self.registration.TEST_ACCESS_TOKEN)
 
         self.mox.ReplayAll()
-        returned_json = json.loads(self.registration.PATCH(1234))
+        returned_json = self.registration.PATCH(1234)
         self.assertIn('userEmail', returned_json)
         # This should have changed to an actual user.
         self.assertNotEquals(returned_json['userEmail'], 'me')
@@ -81,7 +80,7 @@ class RegistrationTicketsTest(mox.MoxTestBase):
         common_util.parse_serialized_json().AndReturn(None)
 
         self.mox.ReplayAll()
-        returned_json = json.loads(self.registration.POST())
+        returned_json = self.registration.POST()
         self.assertIn('id', returned_json)
         self.mox.VerifyAll()
 
@@ -89,7 +88,7 @@ class RegistrationTicketsTest(mox.MoxTestBase):
     def testGet(self):
         """Tests that we can retrieve a ticket correctly."""
         self.tickets[(1234, None)] = dict(id=1234)
-        returned_json = json.loads(self.registration.GET(1234))
+        returned_json = self.registration.GET(1234)
         self.assertEquals(returned_json, self.tickets[(1234, None)])
 
         # Non-existing ticket.
@@ -108,7 +107,7 @@ class RegistrationTicketsTest(mox.MoxTestBase):
         common_util.parse_serialized_json().AndReturn(update_ticket)
 
         self.mox.ReplayAll()
-        returned_json = json.loads(self.registration.PATCH(1234))
+        returned_json = self.registration.PATCH(1234)
         self.assertEquals(expected_ticket, returned_json)
         self.mox.VerifyAll()
 
@@ -123,7 +122,7 @@ class RegistrationTicketsTest(mox.MoxTestBase):
         common_util.parse_serialized_json().AndReturn(update_ticket)
 
         self.mox.ReplayAll()
-        returned_json = json.loads(self.registration.PUT(12345))
+        returned_json = self.registration.PUT(12345)
         self.assertEquals(update_ticket, returned_json)
         self.mox.VerifyAll()
 

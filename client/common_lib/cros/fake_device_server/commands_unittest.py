@@ -6,7 +6,6 @@
 
 """Unit tests for commands.py."""
 
-import json
 import mox
 import unittest
 
@@ -78,7 +77,7 @@ class CommandsTest(mox.MoxTestBase):
         """Tests that we can retrieve a command correctly."""
         api_key = 'APISOCOOL'
         self.commands_resource[(1234, api_key)] = dict(id=1234)
-        returned_json = json.loads(self.commands.GET(1234, key=api_key))
+        returned_json = self.commands.GET(1234, key=api_key)
         self.assertEquals(returned_json,
                           self.commands_resource[(1234, api_key)])
 
@@ -103,8 +102,7 @@ class CommandsTest(mox.MoxTestBase):
             self.commands.device_commands[(device_id, api_key)][key[0]] = value
 
         # Without state should return all commands.
-        returned_json = json.loads(self.commands.GET(deviceId=device_id,
-                                                     key=api_key))
+        returned_json = self.commands.GET(deviceId=device_id, key=api_key)
         self.assertEqual('clouddevices#commandsListResponse',
                          returned_json['kind'])
         self.assertTrue('commands' in returned_json)
@@ -115,9 +113,9 @@ class CommandsTest(mox.MoxTestBase):
             self.assertIn(key[0], returned_command_ids)
 
         # Check we can filter by state.
-        returned_json = json.loads(self.commands.GET(deviceId=device_id,
-                                                     key=api_key,
-                                                     state='queued'))
+        returned_json = self.commands.GET(deviceId=device_id,
+                                          key=api_key,
+                                          state='queued')
         self.assertEqual('clouddevices#commandsListResponse',
                          returned_json['kind'])
         self.assertTrue('commands' in returned_json)

@@ -4,8 +4,8 @@
 
 """Module contains a simple implementation of the registrationTickets RPC."""
 
-import json
 import logging
+from cherrypy import tools
 import time
 import uuid
 
@@ -94,6 +94,7 @@ class RegistrationTickets(object):
             data['userEmail'] = 'test_account@chromium.org'
 
 
+    @tools.json_out()
     def GET(self, *args, **kwargs):
         """GET .../ticket_number returns info about the ticket.
 
@@ -101,9 +102,10 @@ class RegistrationTickets(object):
             server_errors.HTTPError if the ticket doesn't exist.
         """
         id, api_key, _ = common_util.parse_common_args(args, kwargs)
-        return json.dumps(self.resource.get_data_val(id, api_key))
+        return self.resource.get_data_val(id, api_key)
 
 
+    @tools.json_out()
     def POST(self, *args, **kwargs):
         """Either creates a ticket OR claim/finalizes a ticket.
 
@@ -122,7 +124,7 @@ class RegistrationTickets(object):
         if operation:
             ticket = self.resource.get_data_val(id, api_key)
             if operation == 'finalize':
-                return json.dumps(self._finalize(id, api_key, ticket))
+                return self._finalize(id, api_key, ticket)
             else:
                 raise server_errors.HTTPError(
                         400, 'Unsupported method call %s' % operation)
@@ -137,10 +139,10 @@ class RegistrationTickets(object):
             if not id:
                 data.update(self._default_registration_ticket())
 
-            return json.dumps(self.resource.update_data_val(
-                    id, api_key, data_in=data))
+            return self.resource.update_data_val(id, api_key, data_in=data)
 
 
+    @tools.json_out()
     def PATCH(self, *args, **kwargs):
         """Updates the given ticket with the incoming json blob.
 
@@ -162,10 +164,11 @@ class RegistrationTickets(object):
         if data and data.get('userEmail') == 'me':
             self._add_claim_data(data)
 
-        return json.dumps(self.resource.update_data_val(
-                id, api_key, data_in=data))
+        return self.resource.update_data_val(
+                id, api_key, data_in=data)
 
 
+    @tools.json_out()
     def PUT(self, *args, **kwargs):
         """Replaces the given ticket with the incoming json blob.
 
@@ -186,5 +189,5 @@ class RegistrationTickets(object):
         if data and data.get('userEmail') == 'me':
             self._add_claim_data(data)
 
-        return json.dumps(self.resource.update_data_val(
-                id, api_key, data_in=data, update=False))
+        return self.resource.update_data_val(
+                id, api_key, data_in=data, update=False)

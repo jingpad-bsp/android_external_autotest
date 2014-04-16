@@ -4,7 +4,7 @@
 
 """Module contains a simple implementation of the commands RPC."""
 
-import json
+from cherrypy import tools
 import logging
 
 import common
@@ -102,6 +102,7 @@ class Commands(resource_method.ResourceMethod):
         return new_command
 
 
+    @tools.json_out()
     def GET(self, *args, **kwargs):
         """GET .../(command_id) gets command info or lists all devices.
 
@@ -114,7 +115,7 @@ class Commands(resource_method.ResourceMethod):
         """
         id, api_key, _ = common_util.parse_common_args(args, kwargs)
         if id:
-            return json.dumps(self.resource.get_data_val(id, api_key))
+            return self.resource.get_data_val(id, api_key)
         else:
             # Returns listing (ignores optional parameters).
             listing = {'kind': 'clouddevices#commandsListResponse'}
@@ -130,9 +131,10 @@ class Commands(resource_method.ResourceMethod):
                 if not requested_state or requested_state == command['state']:
                     listing['commands'].append(command)
 
-            return json.dumps(listing)
+            return listing
 
 
+    @tools.json_out()
     def POST(self, *args, **kwargs):
         """Creates a new device using the incoming json data."""
         id, api_key, _ = common_util.parse_common_args(args, kwargs)
@@ -145,4 +147,4 @@ class Commands(resource_method.ResourceMethod):
             raise server_errors.HTTPError(400, 'Can only create a command if '
                                           'you provide a deviceId.')
 
-        return json.dumps(self.create_command(api_key, device_id, data))
+        return self.create_command(api_key, device_id, data)

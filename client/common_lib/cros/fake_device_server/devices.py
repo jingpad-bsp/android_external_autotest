@@ -4,7 +4,7 @@
 
 """Module contains a simple implementation of the devices RPC."""
 
-import json
+from cherrypy import tools
 
 import common
 from cros_lib.fake_device_server import common_util
@@ -71,6 +71,7 @@ class Devices(resource_method.ResourceMethod):
         return new_device
 
 
+    @tools.json_out()
     def GET(self, *args, **kwargs):
         """GET .../(device_id) gets device info or lists all devices.
 
@@ -83,14 +84,15 @@ class Devices(resource_method.ResourceMethod):
         """
         id, api_key, _ = common_util.parse_common_args(args, kwargs)
         if id:
-            return json.dumps(self.resource.get_data_val(id, api_key))
+            return self.resource.get_data_val(id, api_key)
         else:
             # Returns listing (ignores optional parameters).
             listing = {'kind': 'clouddevices#devicesListResponse'}
             listing['devices'] = self.resource.get_data_vals()
-            return json.dumps(listing)
+            return listing
 
 
+    @tools.json_out()
     def POST(self, *args, **kwargs):
         """Creates a new device using the incoming json data."""
         id, api_key, _ = common_util.parse_common_args(args, kwargs)
@@ -101,7 +103,7 @@ class Devices(resource_method.ResourceMethod):
         if not data:
             data = {}
 
-        return json.dumps(self.create_device(api_key, data))
+        return self.create_device(api_key, data)
 
 
     def DELETE(self, *args, **kwargs):
