@@ -29,3 +29,4 @@ permission_brok,devbroker,Yes,No,No,Yes,No
 netfilter-queue,nfqueue,Yes,Yes,No,Yes,Yes
 warn_collector,root,No,No,No,No,No
 tlsdated-setter,root,No,No,No,No,No
+attestationd,attestation,No,No,No,No,No
