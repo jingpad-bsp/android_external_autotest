@@ -10,13 +10,12 @@ This test will fail if any of the tests in video_encode_accelerator_unittest
 fails. Running video_encode_accelerator_unittest is skipped on machines that are
 known not to support video encode.
 """
-SUITE = "bvt, video"
+SUITE = "bvt"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
 DEPENDENCIES = 'hw_video_acc_enc_vp8'
-EXPERIMENTAL = 'True'
 
 DOC = """
 This is a wrapper test for Chrome video_encode_accelerator_unittest.
