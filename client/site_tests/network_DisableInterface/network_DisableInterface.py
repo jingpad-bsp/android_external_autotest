@@ -4,6 +4,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
 from autotest_lib.client.cros.networking import cellular_proxy
 
+PSEUDOMODEM_CONNECT_TIMEOUT_SECONDS = 10
 PSEUDOMODEM_INTERFACE = 'pseudomodem0'
 
 class network_DisableInterface(test.test):
@@ -49,12 +50,16 @@ class network_DisableInterface(test.test):
         """ Handle pseudomodem specially, wait for service to appear. """
         with pseudomodem_context.PseudoModemManagerContext(True,
                                                            {'family': '3GPP'}):
-            # We must wait for shill to finish initializing the cellular service
-            # for the newly created pseudomodem object. Otherwise, shill's
-            # initialization sequence interferes with the intent of the test
-            # below.
+            # We expect shill to autoconnect to the cellular service in order
+            # to bring up the pseudomodem network interface, so wait for that
+            # to happen before continuing.
             proxy = cellular_proxy.CellularProxy.get_proxy()
-            proxy.wait_for_cellular_service_object()
+            cellular_service = proxy.wait_for_cellular_service_object()
+            proxy.wait_for_property_in(
+                    cellular_service,
+                    cellular_proxy.CellularProxy.SERVICE_PROPERTY_STATE,
+                    ('ready', 'portal', 'online'),
+                    timeout_seconds=PSEUDOMODEM_CONNECT_TIMEOUT_SECONDS)
 
             self.test_one_nic(PSEUDOMODEM_INTERFACE)
 
