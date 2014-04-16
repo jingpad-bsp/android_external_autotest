@@ -565,8 +565,11 @@ def _get_hwmon_paths(file_pattern):
     Returns a list of paths to the temperature sensors.
     """
     # Some systems like daisy_spring only have the virtual hwmon.
-    cmd = ('ls /sys/class/hwmon/hwmon*/' + file_pattern +
-           ' /sys/devices/virtual/hwmon/hwmon*/' + file_pattern)
+    # And other systems like rambi only have coretemp.0. See crbug.com/360249.
+    #    /sys/class/hwmon/hwmon*/
+    #    /sys/devices/virtual/hwmon/hwmon*/
+    #    /sys/devices/platform/coretemp.0/
+    cmd = 'find /sys/ -name "' + file_pattern + '"'
     paths = utils.run(cmd, verbose=False).stdout.splitlines()
     return paths
 
@@ -579,10 +582,12 @@ def get_temperature_critical():
     paths = _get_hwmon_paths('temp*_crit')
     for path in paths:
         temperature = _get_float_from_file(path, 0, None, None) * 0.001
+        # Today typical for Intel is 98'C to 105'C while ARM is 85'C. Clamp to
+        # the lowest known value.
+        if ((min_temperature < 60.0) or min_temperature > 150.0):
+            min_temperature = 85.0
+
         min_temperature = min(temperature, min_temperature)
-    # Sanity check for real world values.
-    assert ((min_temperature > 60.0) and
-            (min_temperature < 150.0)), 'Unreasonable temperature.'
     return min_temperature
 
 
