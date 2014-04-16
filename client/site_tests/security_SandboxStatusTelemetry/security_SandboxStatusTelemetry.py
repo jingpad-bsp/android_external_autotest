@@ -82,7 +82,7 @@ class security_SandboxStatusTelemetry(test.test):
 
 
     def run_once(self):
-        with chrome.Chrome(logged_in=False) as cr:
+        with chrome.Chrome() as cr:
             self._tab = cr.browser.tabs[0]
             self._tab.Navigate('chrome://sandbox')
             self._CheckRowNames(SANDBOXES)
