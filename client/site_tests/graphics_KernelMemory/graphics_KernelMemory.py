@@ -1,14 +1,11 @@
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-import logging
+import logging, time
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
 
-"""
-Reads from sysfs to determine kernel gem objects and memory info.
-"""
 class graphics_KernelMemory(test.test):
     """
     Reads from sysfs to determine kernel gem objects and memory info.
@@ -23,12 +20,12 @@ class graphics_KernelMemory(test.test):
     # e.g. ".../memory" vs ".../gpu_memory" -- if the system has either one of
     # these, the test will read from that path.
 
-    arm_exynos_fields = {
+    exynos_fields = {
         'gem_objects' : ['/sys/kernel/debug/dri/0/exynos_gem_objects'],
         'memory'      : ['/sys/class/misc/mali0/device/memory',
                          '/sys/class/misc/mali0/device/gpu_memory'],
     }
-    arm_tegra_fields = {
+    tegra_fields = {
         'memory': ['/sys/kernel/debug/memblock/memory'],
     }
     x86_fields = {
@@ -36,10 +33,10 @@ class graphics_KernelMemory(test.test):
         'memory'      : ['/sys/kernel/debug/dri/0/i915_gem_gtt'],
     }
     arch_fields = {
-        'arm_exynos' : arm_exynos_fields,
-        'arm_tegra'  : arm_tegra_fields,
-        'i386'       : x86_fields,
-        'x86_64'     : x86_fields,
+        'exynos5' : exynos_fields,
+        'tegra'   : tegra_fields,
+        'i386'    : x86_fields,
+        'x86_64'  : x86_fields,
     }
 
 
@@ -48,18 +45,17 @@ class graphics_KernelMemory(test.test):
         keyvals = {}
 
         # Get architecture type and list of sysfs fields to read.
-        arch = utils.get_cpu_arch()
-        if arch == 'arm':
-            if utils.system_output('cat /proc/cpuinfo | grep -i EXYNOS',
-                                   ignore_status=True):
-                arch = 'arm_exynos'
-            elif utils.system_output('cat /proc/cpuinfo | grep -i Tegra',
-                                     ignore_status=True):
-                arch = 'arm_tegra'
+        arch = utils.get_cpu_soc_family()
 
         if not arch in self.arch_fields:
             raise error.TestFail('Architecture "%s" not yet supported.' % arch)
         test_fields = self.arch_fields[arch]
+
+        # TODO(ihf): We want to give this test something well-defined to
+        # measure. For now that will be the CrOS login-screen memory use.
+        # We could also log into the machine using telemetry, but that is
+        # still flaky. So for now we, lame as we are, just sleep a bit.
+        time.sleep(10.0)
 
         for field_name in test_fields:
             possible_field_paths = test_fields[field_name]
