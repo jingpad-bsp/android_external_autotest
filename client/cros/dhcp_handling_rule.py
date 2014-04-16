@@ -364,7 +364,8 @@ class DhcpHandlingRule_RespondToRequest(DhcpHandlingRule):
                  custom_fields,
                  should_respond=True,
                  response_server_ip=None,
-                 response_granted_ip=None):
+                 response_granted_ip=None,
+                 expect_server_ip_set=True):
         """
         All *_ip arguments are IPv4 address strings like "192.168.1.101".
 
@@ -378,6 +379,7 @@ class DhcpHandlingRule_RespondToRequest(DhcpHandlingRule):
         self._should_respond = should_respond
         self._granted_ip = response_granted_ip
         self._server_ip = response_server_ip
+        self._expect_server_ip_set = expect_server_ip_set
         if self._granted_ip is None:
             self._granted_ip = self._expected_requested_ip
         if self._server_ip is None:
@@ -390,12 +392,14 @@ class DhcpHandlingRule_RespondToRequest(DhcpHandlingRule):
         self.logger.info("Received REQUEST packet, checking fields...")
         server_ip = query_packet.get_option(dhcp_packet.OPTION_SERVER_ID)
         requested_ip = query_packet.get_option(dhcp_packet.OPTION_REQUESTED_IP)
-        if (server_ip is None) or (requested_ip is None):
+        server_ip_provided = server_ip is not None
+        if ((server_ip_provided != self._expect_server_ip_set) or
+            (requested_ip is None)):
             self.logger.info("REQUEST packet did not have the expected "
                              "options, discarding.")
             return RESPONSE_NO_ACTION
 
-        if server_ip != self._expected_server_ip:
+        if server_ip_provided and server_ip != self._expected_server_ip:
             self.emit_warning("REQUEST packet's server ip did not match our "
                               "expectations; expected %s but got %s" %
                               (self._expected_server_ip, server_ip))
