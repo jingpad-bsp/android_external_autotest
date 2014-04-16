@@ -9,7 +9,6 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"
 TEST_TYPE = "client"
-EXPERIMENTAL = "True"
 
 DOC = """
 This test will log a test user in through the login manager, and then simulate
