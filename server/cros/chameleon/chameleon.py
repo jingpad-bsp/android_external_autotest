@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import time
 import xmlrpclib
 
 
@@ -23,6 +24,24 @@ class ChameleonBoard(object):
     def reset(self):
         """Resets Chameleon board."""
         self._chameleond_proxy.Reset()
+
+
+    def is_healthy(self):
+        """Returns if the Chameleon is healthy or any repair is needed.
+
+        @return: True if the Chameleon is healthy;
+                 otherwise, False, need to repair.
+        """
+        return self._chameleond_proxy.IsHealthy()
+
+
+    def repair(self):
+        """Repairs the Chameleon.
+
+        It is a synchronous call. It returns after repairs.
+        """
+        repair_time = self._chameleond_proxy.Repair()
+        time.sleep(repair_time)
 
 
     def get_all_ports(self):

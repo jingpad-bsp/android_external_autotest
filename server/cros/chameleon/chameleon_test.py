@@ -90,11 +90,24 @@ class ChameleonTest(test.test):
 
     def cleanup(self):
         """Cleans up."""
+        if hasattr(self, 'display_client') and self.display_client:
+            self.display_client.cleanup()
+
+        if hasattr(self, 'chameleon') and self.chameleon:
+          retry_count = 2
+          while not self.chameleon.is_healthy() and retry_count >= 0:
+              logging.info('Chameleon is not healthy. Try to repair it... '
+                           '(%d retrys left)', retry_count)
+              self.chameleon.repair()
+              retry_count = retry_count - 1
+          if self.chameleon.is_healthy():
+              logging.info('Chameleon is healthy.')
+          else:
+              logging.warn('Chameleon is not recovered after repair.')
+
         # Unplug the Chameleon port, not to affect other test cases.
         if hasattr(self, 'chameleon_port') and self.chameleon_port:
             self.chameleon_port.unplug()
-        if hasattr(self, 'display_client') and self.display_client:
-            self.display_client.cleanup()
 
 
     def _get_connected_port(self):
