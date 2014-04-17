@@ -6,6 +6,7 @@ import logging
 import os
 import sys
 import tempfile
+import time
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
@@ -39,6 +40,8 @@ class p2p_ServeFiles(test.test):
 
 
     def cleanup(self):
+        # Work around problem described in the chromium:364583 bug.
+        time.sleep(1)
         self._join_simulator()
         self._p2p.cleanup()
 
