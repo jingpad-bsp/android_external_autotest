@@ -26,6 +26,11 @@ from autotest_lib.server.cros.dynamic_suite import suite
 from autotest_lib.site_utils import suite_preprocessor
 
 
+# A set of SUITES that we choose not to preprocess as they might have tests
+# added later.
+SUITE_BLACKLIST = set(['au'])
+
+
 def _get_control_files_to_process(autotest_dir):
     """Find all control files in autotest_dir that have 'SUITE='
 
@@ -56,6 +61,9 @@ def get_suite_control_files(autotest_dir):
 
     for test in _get_control_files_to_process(autotest_dir):
         for suite_name in suite.Suite.parse_tag(test.suite):
+            if suite_name in SUITE_BLACKLIST:
+                continue
+
             suite_control_files[suite_name].append(
                 test.path.replace('%s/' % autotest_dir, ''))
     return suite_control_files
