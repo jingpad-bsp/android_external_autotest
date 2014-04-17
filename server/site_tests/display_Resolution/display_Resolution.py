@@ -36,6 +36,16 @@ class display_Resolution(chameleon_test.ChameleonTest):
     CALIBRATION_IMAGE_SETUP_TIME = 10
 
 
+    def initialize(self, host):
+        super(display_Resolution, self).initialize(host)
+        self.backup_edid()
+
+
+    def cleanup(self):
+        self.restore_edid()
+        super(display_Resolution, self).cleanup()
+
+
     def run_once(self, host, test_mirrored=False, test_suspend_resume=False):
         errors = []
         for tag, width, height in self.RESOLUTION_TEST_LIST:

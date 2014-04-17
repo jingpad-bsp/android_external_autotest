@@ -46,7 +46,6 @@ class ChameleonTest(test.test):
         self.chameleon_port = self._get_connected_port()
         if self.chameleon_port is None:
             raise error.TestError('DUT and Chameleon board not connected')
-        self._backup_edid()
         self._arch = host.get_architecture()
         self._unlevel_func = _unlevel if self._arch == 'arm' else ord
 
@@ -69,7 +68,7 @@ class ChameleonTest(test.test):
         return True
 
 
-    def _backup_edid(self):
+    def backup_edid(self):
         """Backups the original EDID."""
         self._original_edid = self.chameleon_port.read_edid()
         self._original_edid_path = os.path.join(self.outputdir, 'original_edid')
@@ -77,15 +76,16 @@ class ChameleonTest(test.test):
             f.write(self._original_edid)
 
 
-    def _restore_edid(self):
+    def restore_edid(self):
         "Restores the original EDID."""
-        current_edid = self.chameleon_port.read_edid()
-        if (hasattr(self, '_original_edid') and self._original_edid and
-                self._original_edid != current_edid):
-            logging.info('Restore the original EDID...')
-            self.chameleon_port.apply_edid(self._original_edid)
-        # Remove the original EDID file after restore.
-        os.remove(self._original_edid_path)
+        if hasattr(self, 'chameleon_port') and self.chameleon_port:
+            current_edid = self.chameleon_port.read_edid()
+            if (hasattr(self, '_original_edid') and self._original_edid and
+                    self._original_edid != current_edid):
+                logging.info('Restore the original EDID...')
+                self.chameleon_port.apply_edid(self._original_edid)
+            # Remove the original EDID file after restore.
+            os.remove(self._original_edid_path)
 
 
     def cleanup(self):
@@ -93,7 +93,6 @@ class ChameleonTest(test.test):
         # Unplug the Chameleon port, not to affect other test cases.
         if hasattr(self, 'chameleon_port') and self.chameleon_port:
             self.chameleon_port.unplug()
-            self._restore_edid()
         if hasattr(self, 'display_client') and self.display_client:
             self.display_client.cleanup()
 
