@@ -26,7 +26,11 @@ def get_crashdumps(host, test_start_time):
 def get_crashinfo(host, test_start_time):
     logging.info("Collecting crash information...")
 
-    # include crashdumps as part of the general crashinfo
+    # get_crashdumps collects orphaned crashdumps and symbolicates all
+    # collected crashdumps. Symbolicating could happen
+    # during a postjob task as well, at which time some crashdumps could have
+    # already been pulled back from machine. So it doesn't necessarily need
+    # to wait for the machine to come up.
     get_crashdumps(host, test_start_time)
 
     if wait_for_machine_to_recover(host):
@@ -42,6 +46,18 @@ def get_crashinfo(host, test_start_time):
         log_path = os.path.join(crashinfo_dir, 'var')
         os.makedirs(log_path)
         collect_log_file(host, constants.LOG_DIR, log_path)
+
+        # Collect console-ramoops
+        log_path = os.path.join(
+                crashinfo_dir, os.path.basename(constants.LOG_CONSOLE_RAMOOPS))
+        collect_log_file(host, constants.LOG_CONSOLE_RAMOOPS, log_path)
+        # Collect i915_error_state, only available on intel systems.
+        # i915 contains the Intel graphics state. It might contain useful data
+        # when a DUT hangs, times out or crashes.
+        log_path = os.path.join(
+                crashinfo_dir, os.path.basename(constants.LOG_I915_ERROR_STATE))
+        collect_log_file(host, constants.LOG_I915_ERROR_STATE,
+                         log_path, use_tmp=True)
 
 
 # Load default for number of hours to wait before giving up on crash collection.
@@ -92,7 +108,7 @@ def get_crashinfo_dir(host):
     return infodir
 
 
-def collect_log_file(host, log_path, dest_path):
+def collect_log_file(host, log_path, dest_path, use_tmp=False):
     """Collects a log file from the remote machine.
 
     Log files are collected from the remote machine and written into the
@@ -102,13 +118,23 @@ def collect_log_file(host, log_path, dest_path):
     @param host: The RemoteHost to collect logs from
     @param log_path: The remote path to collect the log file from
     @param dest_path: A path (file or directory) to write the copies logs into
-    """
-    logging.info("Collecting %s...", log_path)
-    try:
-        host.get_file(log_path, dest_path, preserve_perm=False)
-    except Exception:
-        logging.warning("Collection of %s failed", log_path)
+    @param use_tmp: If True, will first copy the logs to a temporary directory
+                    on the host and download logs from there.
 
+    """
+    logging.info('Collecting %s...', log_path)
+    try:
+        source_path = log_path
+        if use_tmp:
+            devnull = open('/dev/null', 'w')
+            tmpdir = host.run('mktemp -d', stdout_tee=devnull).stdout.strip()
+            host.run('cp -rp %s %s' % (log_path, tmpdir))
+            source_path = os.path.join(tmpdir, os.path.basename(log_path))
+        host.get_file(source_path, dest_path, preserve_perm=False)
+        if use_tmp:
+            host.run('rm -rf %s' % tmpdir)
+    except Exception, e:
+        logging.warning('Collection of %s failed: %s', log_path, e)
 
 
 def collect_command(host, command, dest_path):

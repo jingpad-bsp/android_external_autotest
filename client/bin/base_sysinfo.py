@@ -1,6 +1,7 @@
 import os, shutil, re, glob, subprocess, logging
 
 from autotest_lib.client.common_lib import log
+from autotest_lib.client.cros import constants
 from autotest_lib.client.bin import utils, package
 
 
@@ -16,7 +17,7 @@ _DEFAULT_FILES_TO_LOG_PER_TEST = []
 _DEFAULT_FILES_TO_LOG_PER_BOOT = [
     "/proc/pci", "/proc/meminfo", "/proc/slabinfo", "/proc/version",
     "/proc/cpuinfo", "/proc/modules", "/proc/interrupts", "/proc/partitions",
-    "/dev/pstore/console-ramoops"
+    constants.LOG_CONSOLE_RAMOOPS
     ]
 _DEFAULT_FILES_TO_LOG_BEFORE_ITERATION = [
     "/proc/schedstat", "/proc/meminfo", "/proc/slabinfo", "/proc/interrupts"
