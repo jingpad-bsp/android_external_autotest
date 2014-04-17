@@ -1527,7 +1527,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         """
         return self._ping_wait_for_status(self._PING_STATUS_DOWN, timeout)
 
-    def test_wait_for_sleep(self):
+    def test_wait_for_sleep(self, sleep_timeout=None):
         """Wait for the client to enter low-power sleep mode.
 
         The test for "is asleep" can't distinguish a system that is
@@ -1546,16 +1546,20 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             host.test_wait_for_resume(boot_id)
         ~~~~~~~~
 
+        @param sleep_timeout time limit in seconds to allow the host sleep.
+
         @exception TestFail The host did not go to sleep within
                             the allowed time.
         """
-        if not self.ping_wait_down(timeout=self.SLEEP_TIMEOUT):
+        if sleep_timeout is None:
+            sleep_timeout = self.SLEEP_TIMEOUT
+
+        if not self.ping_wait_down(timeout=sleep_timeout):
             raise error.TestFail(
-                'client failed to sleep after %d seconds' %
-                    self.SLEEP_TIMEOUT)
+                'client failed to sleep after %d seconds' % sleep_timeout)
 
 
-    def test_wait_for_resume(self, old_boot_id):
+    def test_wait_for_resume(self, old_boot_id, resume_timeout=None):
         """Wait for the client to resume from low-power sleep mode.
 
         The `old_boot_id` parameter should be the value from
@@ -1567,6 +1571,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         @param old_boot_id A boot id value obtained before the
                                target host went to sleep.
+        @param resume_timeout time limit in seconds to allow the host up.
 
         @exception TestFail The host did not respond within the
                             allowed time.
@@ -1574,10 +1579,13 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                             indicated a reboot rather than a sleep
                             cycle.
         """
-        if not self.wait_up(timeout=self.RESUME_TIMEOUT):
+        if resume_timeout is None:
+            resume_timeout = self.RESUME_TIMEOUT
+
+        if not self.wait_up(timeout=resume_timeout):
             raise error.TestFail(
                 'client failed to resume from sleep after %d seconds' %
-                    self.RESUME_TIMEOUT)
+                    resume_timeout)
         else:
             new_boot_id = self.get_boot_id()
             if new_boot_id != old_boot_id:

@@ -29,8 +29,10 @@ class display_HotPlugAtSuspend(chameleon_test.ChameleonTest):
     ]
     # Duration of suspend, in second.
     SUSPEND_DURATION = 15
-    # Time for the transition of suspend.
-    SUSPEND_TRANSITION_TIME = 2
+    # Allowed timeout for the transition of suspend.
+    SUSPEND_TIMEOUT = 5
+    # Allowed timeout for the transition of resume.
+    RESUME_TIMEOUT = 20
     # Time margin to do plug/unplug before resume.
     TIME_MARGIN_BEFORE_RESUME = 5
     # Allow a range of pixel value difference.
@@ -73,8 +75,7 @@ class display_HotPlugAtSuspend(chameleon_test.ChameleonTest):
 
             # Confirm DUT suspended.
             logging.info('- Wait for sleep...')
-            time.sleep(self.SUSPEND_TRANSITION_TIME)
-            host.test_wait_for_sleep()
+            host.test_wait_for_sleep(self.SUSPEND_TIMEOUT)
             if plugged_after_suspend:
                 self.chameleon_port.plug()
             else:
@@ -93,7 +94,7 @@ class display_HotPlugAtSuspend(chameleon_test.ChameleonTest):
             time.sleep(self.TIME_MARGIN_BEFORE_RESUME)
 
             logging.info('- Wait for resume...')
-            host.test_wait_for_resume(boot_id)
+            host.test_wait_for_resume(boot_id, self.RESUME_TIMEOUT)
 
             logging.info('Resumed back')
             current_connector = self.display_client.get_connector_name()
