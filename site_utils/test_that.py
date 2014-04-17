@@ -495,7 +495,7 @@ def parse_arguments(argv):
                              'NAME-matching regular expression. Use '
                              'f:[FILE_PATTERN] to specify a filename matching '
                              'regular expression. Specified regular '
-                             'expressiosn will be implicitly wrapped in '
+                             'expressions will be implicitly wrapped in '
                              '^ and $.')
     default_board = cros_build_lib.GetDefaultBoard()
     parser.add_argument('-b', '--board', metavar='BOARD', default=default_board,
