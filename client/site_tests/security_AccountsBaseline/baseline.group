@@ -37,7 +37,6 @@ qdlservice:!:209:
 cromo:!:210:
 ipsec:!:212:
 cros-disks:!:213:
-tor:!:214:
 tcpdump:!:215:
 debugd:!:216:
 openvpn:!:217:

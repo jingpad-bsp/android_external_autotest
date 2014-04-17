@@ -21,7 +21,6 @@ qdlservice:!:209:209::/dev/null:/bin/false
 cromo:!:210:210::/dev/null:/bin/false
 ipsec:!:212:212::/dev/null:/bin/false
 cros-disks:!:213:213::/dev/null:/bin/false
-tor:!:214:214::/dev/null:/bin/false
 tcpdump:!:215:215::/dev/null:/bin/false
 debugd:!:216:216::/dev/null:/bin/false
 openvpn:!:217:217::/dev/null:/bin/false
