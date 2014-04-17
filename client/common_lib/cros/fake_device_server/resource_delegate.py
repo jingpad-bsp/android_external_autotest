@@ -8,7 +8,7 @@ import logging
 import uuid
 
 import common
-from cros_lib.fake_device_server import server_errors
+from fake_device_server import server_errors
 
 
 class ResourceDelegate(object):

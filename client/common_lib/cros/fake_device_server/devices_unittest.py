@@ -10,10 +10,10 @@ import mox
 import unittest
 
 import common
-from cros_lib.fake_device_server import commands
-from cros_lib.fake_device_server import devices
-from cros_lib.fake_device_server import resource_delegate
-from cros_lib.fake_device_server import server_errors
+from fake_device_server import commands
+from fake_device_server import devices
+from fake_device_server import resource_delegate
+from fake_device_server import server_errors
 
 
 class DevicesTest(mox.MoxTestBase):

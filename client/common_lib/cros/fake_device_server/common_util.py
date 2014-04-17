@@ -8,7 +8,7 @@ import cherrypy
 import json
 
 import common
-from cros_lib.fake_device_server import server_errors
+from fake_device_server import server_errors
 
 
 def parse_serialized_json():

@@ -12,8 +12,8 @@ import tempfile
 import unittest
 
 import common
-from cros_lib.fake_device_server import common_util
-from cros_lib.fake_device_server import server_errors
+from fake_device_server import common_util
+from fake_device_server import server_errors
 
 
 class FakeDeviceServerTests(unittest.TestCase):
