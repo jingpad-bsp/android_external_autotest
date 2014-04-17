@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-NAME = 'hardware_MemoryIntegrity'
+NAME = 'hardware_MemoryIntegrity.quick'
 AUTHOR = 'puthik'
 PURPOSE = 'Check memory integrity after long suspend'
 TIME = 'FAST'

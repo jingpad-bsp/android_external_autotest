@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-NAME = 'hardware_Memtester'
+NAME = 'hardware_Memtester.quick'
 AUTHOR = 'puthik'
 PURPOSE = 'Verify memory integrity using memtester.'
 CRITERIA = 'Fails if memory corrupt'
