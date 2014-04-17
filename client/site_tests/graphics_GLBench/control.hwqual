@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 NAME = 'graphics_GLBench with perf constraints'
-AUTHOR = 'The Chromium OS Authors'
+AUTHOR = 'chromeos-gfx'
 PURPOSE = 'Benchmark the graphics library performance.'
 CRITERIA = """
 On hwqual this test is run as a benchmark with a large confidence intervals.

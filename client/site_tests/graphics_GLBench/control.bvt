@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 NAME = 'graphics_GLBench'
-AUTHOR = 'The Chromium OS Authors'
+AUTHOR = 'chromeos-gfx'
 PURPOSE = 'Benchmark the graphics library performance.'
 CRITERIA = """
 On bvt this test is not run as a benchmark. (One can find approximate
