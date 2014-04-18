@@ -16,7 +16,7 @@ def cleanup(machine):
     try:
         job.record('START', None, 'cleanup')
         host = hosts.create_host(machine, initialize=False, auto_monitor=False)
-        timer = stats.Timer('cleanup_time.%s' % host._get_board_from_afe())
+        timer = stats.Timer('cleanup_time')
         timer.start()
 
         # Try to save /var/log files. If the dut is not sshable, try to restart
@@ -36,6 +36,7 @@ def cleanup(machine):
         provision.run_special_task_actions(job, host, labels_list,
                                            provision.Cleanup)
     except Exception as e:
+        logging.exception(e)
         job.record('END FAIL', None, 'cleanup')
         # See the provision control segment for the explanation of why we're
         # doing this.
