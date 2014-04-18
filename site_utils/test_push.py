@@ -41,7 +41,8 @@ RUN_SUITE_COMMAND = 'run_suite.py'
 PUSH_TO_PROD_SUITE = 'push_to_prod'
 AU_SUITE = 'paygen_au_canary'
 
-SUITE_JOB_START_INFO_REGEX = '^Started suite job: (\d+)$'
+SUITE_JOB_START_INFO_REGEX = ('^.*Created suite job:.*'
+                              'tab_id=view_job&object_id=(\d+)$')
 
 # Dictionary of test results keyed by test name regular expression.
 EXPECTED_TEST_RESULTS = {'^SERVER_JOB$':                 'GOOD',
