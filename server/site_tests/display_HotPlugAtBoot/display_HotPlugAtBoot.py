@@ -75,16 +75,22 @@ class display_HotPlugAtBoot(chameleon_test.ChameleonTest):
                             'See a different display: %s != %s' %
                             (current_connector, expected_connector))
 
-                logging.info('Waiting the calibration image stable.')
-                self.display_client.load_calibration_image((width, height))
-                self.display_client.hide_cursor()
-                time.sleep(self.CALIBRATION_IMAGE_SETUP_TIME)
+                new_width, new_height = self.chameleon_port.get_resolution()
+                if (new_width, new_height) == (width, height):
+                    logging.info('Waiting the calibration image stable.')
+                    self.display_client.load_calibration_image((width, height))
+                    self.display_client.hide_cursor()
+                    time.sleep(self.CALIBRATION_IMAGE_SETUP_TIME)
 
-                error_message = self.check_screen_with_chameleon(
-                        'SCREEN-%dx%d-%c-B-P' % (
-                             width, height,
-                             'P' if plugged_before_boot else 'U'),
-                        self.PIXEL_DIFF_VALUE_MARGIN, 0)
+                    error_message = self.check_screen_with_chameleon(
+                            'SCREEN-%dx%d-%c-B-P' % (
+                                 width, height,
+                                 'P' if plugged_before_boot else 'U'),
+                            self.PIXEL_DIFF_VALUE_MARGIN, 0)
+                else:
+                    error_message = ('Resolution changed to %dx%d after reboot'
+                                     % (new_width, new_height))
+
                 if error_message:
                     errors.append(error_message)
             else:
