@@ -262,7 +262,7 @@ class DhcpTestBase(test.test):
                      dhcp_options)
         if not self.server.last_test_passed:
             raise error.TestFail(
-                'Test failed: active rule is %s' % self.server.next_rule)
+                'Test failed: active rule is %s' % self.server.current_rule)
 
         if disable_check:
             logging.info('Skipping check of negotiated DHCP lease parameters.')
