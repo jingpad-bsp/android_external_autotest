@@ -79,7 +79,7 @@ UMfRd7zhQDCEKDqqsJFOOrgu/MJKo3qkJBoreE4lmlnrIyhYpkN1TwAz4jVUCklV
                                      constants.FAKE_ROOT_CA_DIR)
 
             # Certificate must be in the nssdb
-            cmd = ( 'nsscertutil', '-d', 'sql:' + constants.FAKE_NSSDB_DIR,
+            cmd = ( 'certutil', '-d', 'sql:' + constants.FAKE_NSSDB_DIR,
                     '-L', '-a', '-n', 'Chromium OS Test Server' )
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
             data, errdata = proc.communicate()

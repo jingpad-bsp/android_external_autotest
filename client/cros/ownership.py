@@ -10,8 +10,8 @@ from autotest_lib.client.common_lib import autotemp, error
 from autotest_lib.client.cros import cros_ui
 
 
-PK12UTIL = 'nsspk12util'
-CERTUTIL = 'nsscertutil'
+PK12UTIL = 'pk12util'
+CERTUTIL = 'certutil'
 OPENSSLP12 = 'openssl pkcs12'
 OPENSSLX509 = 'openssl x509'
 OPENSSLRSA = 'openssl rsa'

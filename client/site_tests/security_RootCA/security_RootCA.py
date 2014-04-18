@@ -14,8 +14,8 @@ DEFAULT_BASELINE = 'baseline'
 FINGERPRINT_RE = re.compile(r'Fingerprint \(SHA1\):\n\s+(\b[:\w]+)\b')
 NSS_ISSUER_RE = re.compile(r'Object Token:(.+?)\s+C,.?,.?')
 
-NSSCERTUTIL = '/usr/local/bin/nsscertutil'
-NSSMODUTIL = '/usr/local/bin/nssmodutil'
+NSSCERTUTIL = '/usr/local/bin/certutil'
+NSSMODUTIL = '/usr/local/bin/modutil'
 OPENSSL = '/usr/bin/openssl'
 
 # This glob pattern is coupled to the snprintf() format in

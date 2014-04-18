@@ -84,7 +84,7 @@ class RecallServer(object):
         logging.debug("Creating NSS database in %s", constants.FAKE_NSSDB_DIR)
         os.mkdir(constants.FAKE_NSSDB_DIR, 0755)
 
-        cmd = ( 'nsscertutil', '-d', 'sql:' + constants.FAKE_NSSDB_DIR,
+        cmd = ( 'certutil', '-d', 'sql:' + constants.FAKE_NSSDB_DIR,
                 '-N', '-f', '/dev/fd/0' )
         proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
         proc.communicate('\n')
@@ -92,7 +92,7 @@ class RecallServer(object):
             raise error.TestError("Failed to create nssdb")
 
         logging.debug("Adding certificate to database")
-        cmd = ( 'nsscertutil', '-d', 'sql:' + constants.FAKE_NSSDB_DIR,
+        cmd = ( 'certutil', '-d', 'sql:' + constants.FAKE_NSSDB_DIR,
                 '-A', '-n', "Chromium OS Test Server", '-t', 'C,,', '-a' )
         proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
         proc.communicate(certificate)
