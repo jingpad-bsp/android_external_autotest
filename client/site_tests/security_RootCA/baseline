@@ -177,8 +177,6 @@
             "StartCom Certification Authority",
           "A8:98:5D:3A:65:E5:E5:C4:B2:D7:D6:6D:40:C6:DD:2F:B1:9C:54:36":
             "DigiCert Global Root CA",
-          "A9:62:8F:4B:98:A9:1B:48:35:BA:D2:C1:46:32:86:BB:66:64:6A:8C":
-            "Firmaprofesional Root CA",
           "A9:E9:78:08:14:37:58:88:F2:05:19:B0:6D:2B:0D:2B:60:16:90:7D":
             "GeoTrust Global CA 2",
           "AA:DB:BC:22:23:8F:C4:01:A1:27:BB:38:DD:F4:1D:DB:08:9E:F0:12":
@@ -300,7 +298,15 @@
           "E7:A1:90:29:D3:D5:52:DC:0D:0F:C6:92:D3:EA:88:0D:15:2E:1A:6B":
             "Swisscom Root EV CA 2",
           "77:47:4F:C6:30:E4:0F:4C:47:64:3F:84:BA:B8:C6:95:4A:8A:41:EC":
-            "Swisscom Root CA 2"
+            "Swisscom Root CA 2",
+          "2B:B1:F5:3E:55:0C:1D:C5:F1:D4:E6:B7:6A:46:4B:55:06:02:AC:21":
+            "Atos TrustedRoot 2011",
+          "59:0D:2D:7D:88:4F:40:2E:61:7E:A5:62:32:17:65:CF:17:D8:94:E9":
+            "T-TeleSec GlobalRoot Class 2",
+          "43:13:BB:96:F1:D5:86:9B:C1:4E:6A:92:F6:CF:F6:34:69:87:82:37":
+            "TeliaSonera Root CA v1",
+          "51:C6:E7:08:49:06:6E:F3:92:D4:5C:A0:0D:6D:A3:62:8F:C3:52:39":
+            "E-Tugra Certification Authority"
         },
  "openssl": {
           "39:4F:F6:85:0B:06:BE:52:E5:18:56:CC:10:E1:80:E8:82:B3:85:CC":
@@ -314,6 +320,8 @@
           "96:56:CD:7B:57:96:98:95:D0:E1:41:46:68:06:FB:B8:C6:11:06:87":
             "TC TrustCenter Universal CA III",
           "AB:48:F3:33:DB:04:AB:B9:C0:72:DA:5B:0C:C1:D0:57:F0:36:9B:46":
-            "Digital Signature Trust Co. Global CA 3"
+            "Digital Signature Trust Co. Global CA 3",
+          "A9:62:8F:4B:98:A9:1B:48:35:BA:D2:C1:46:32:86:BB:66:64:6A:8C":
+            "Autoridad de Certificacion Firmaprofesional CIF A62634068"
         }
 }
