@@ -20,4 +20,5 @@ DOC = """
 This test verifies VP8 video decode acceleration works.
 """
 
-job.run_test('video_ChromeHWDecodeUsed', video_file='video.webm')
+video = 'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/video_VideoSeek/video.webm'
+job.run_test('video_ChromeHWDecodeUsed', video_file=video)
