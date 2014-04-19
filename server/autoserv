@@ -199,7 +199,8 @@ def run_autoserv(pid_file_manager, results, parser):
                 job.run(cleanup, install_before, install_after,
                         verify_job_repo_url=verify_job_repo_url,
                         only_collect_crashinfo=collect_crashinfo,
-                        skip_crash_collection=skip_crash_collection)
+                        skip_crash_collection=skip_crash_collection,
+                        job_labels=job_labels)
         finally:
             while job.hosts:
                 host = job.hosts.pop()

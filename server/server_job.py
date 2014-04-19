@@ -533,7 +533,8 @@ class base_server_job(base_job.base_job):
     def run(self, cleanup=False, install_before=False, install_after=False,
             collect_crashdumps=True, namespace={}, control=None,
             control_file_dir=None, verify_job_repo_url=False,
-            only_collect_crashinfo=False, skip_crash_collection=False):
+            only_collect_crashinfo=False, skip_crash_collection=False,
+            job_labels=''):
         # for a normal job, make sure the uncollected logs file exists
         # for a crashinfo-only run it should already exist, bail out otherwise
         created_uncollected_logs = False
@@ -564,7 +565,8 @@ class base_server_job(base_job.base_job):
 
         self.aborted = False
         namespace.update(self._make_namespace())
-        namespace.update({'args' : self.args})
+        namespace.update({'args' : self.args,
+                          'job_labels' : job_labels})
         test_start_time = int(time.time())
 
         if self.resultdir:
