@@ -138,6 +138,7 @@ class Cleanup(_SpecialTaskAction):
     """
 
     _actions = {
+        'cleanup-reboot': 'generic_RebootTest',
     }
 
     name = 'cleanup'
