@@ -348,6 +348,9 @@ class power_LoadTest(test.test):
         self.write_perf_keyval(keyvals)
         self._plog.save_results(self.resultsdir)
         self._tlog.save_results(self.resultsdir)
+        self.output_perf_value(description='minutes_battery_life',
+                               value=keyvals['minutes_battery_life'],
+                               units='minutes')
 
 
     def cleanup(self):
