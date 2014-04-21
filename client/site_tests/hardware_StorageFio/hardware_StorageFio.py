@@ -35,7 +35,7 @@ class hardware_StorageFio(test.test):
         self.__filename = spare_root
 
 
-    def __get_file_size(self):
+    def __get_disk_size(self):
         """Return the size in bytes of the device pointed to by __filename"""
 
         device = os.path.basename(self.__filename)
@@ -102,11 +102,15 @@ class hardware_StorageFio(test.test):
             self.__description = ''
             return
 
-        if dev in ['', utils.system_output('rootdev -s -d')]:
+        if not dev:
+            dev = utils.get_fixed_dst_drive()
+
+        if dev == utils.system_output('rootdev -s -d'):
             if filesize == 0:
                 raise error.TestError(
                     'Using the root device as a whole is not allowed')
-            self.__find_free_root_partition()
+            else:
+                self.__find_free_root_partition()
         elif filesize != 0:
             # Use the first partition of the external drive
             if dev[5:7] == 'sd':
@@ -115,7 +119,7 @@ class hardware_StorageFio(test.test):
                 self.__filename = dev + 'p1'
         else:
             self.__filename = dev
-        self.__get_file_size()
+        self.__get_disk_size()
         self.__get_device_description()
 
         # Restrict test to use a given file size, default 1GiB
@@ -123,6 +127,9 @@ class hardware_StorageFio(test.test):
             self.__filesize = min(self.__filesize, filesize)
 
         self.__verify_only = False
+
+        logging.info('filename: %s', self.__filename)
+        logging.info('filesize: %d', self.__filesize)
 
     def run_once(self, dev='', quicktest=False, requirements=None,
                  integrity=False, wait=60 * 60 * 72):
