@@ -194,12 +194,12 @@ def log_loopback_dongle_status():
     # Check Mic Jack
     mic_jack_status = get_mic_jack_status()
     logging.info('Mic jack status: %s', mic_jack_status)
-    dongle_status_ok &= mic_jack_status
+    dongle_status_ok &= bool(mic_jack_status)
 
     # Check Headphone Jack
     hp_jack_status = get_hp_jack_status()
     logging.info('Headphone jack status: %s', hp_jack_status)
-    dongle_status_ok &= hp_jack_status
+    dongle_status_ok &= bool(hp_jack_status)
 
     # Use latency check to test if audio can be captured through dongle.
     # We only want to know the basic function of dongle, so no need to
