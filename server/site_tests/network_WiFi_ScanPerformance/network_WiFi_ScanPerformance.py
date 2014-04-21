@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server.cros.network import hostap_config
 from autotest_lib.server.cros.network import wifi_cell_test_base
 
@@ -15,34 +16,27 @@ class network_WiFi_ScanPerformance(wifi_cell_test_base.WiFiCellTestBase):
 
         # Default router configuration
         router_conf = hostap_config.HostapConfig(channel=6);
-
-        # Scan with no AP
-        ssids=[]
-        self.context.client.timed_scan(frequencies=[], ssids=ssids,
-                                       scan_timeout_seconds=10)
-
-        # Scan with 1 AP
+        freq = hostap_config.HostapConfig.get_frequency_for_channel(6)
         self.context.configure(router_conf)
-        ssids.append(self.context.router.get_ssid())
-        self.context.client.timed_scan(frequencies=[], ssids=ssids,
-                                       scan_timeout_seconds=10)
+        ssids = [self.context.router.get_ssid()]
 
-        # Scan with 2 APs on same channel
-        self.context.configure(router_conf, multi_interface=True)
-        ssids.append(self.context.router.get_ssid(instance=1))
-        self.context.client.timed_scan(frequencies=[], ssids=ssids,
-                                       scan_timeout_seconds=10)
+        # Single channel scan
+        scan_time = self.context.client.timed_scan(frequencies=[freq],
+                ssids=ssids, scan_timeout_seconds=10)
+        self.write_perf_keyval({'scan_time_single_channel_scan': scan_time})
 
-        # Deconfigure router
-        self.context.router.deconfig()
+        # Foreground full scan
+        scan_time = self.context.client.timed_scan(frequencies=[], ssids=ssids,
+                                                   scan_timeout_seconds=10)
+        self.write_perf_keyval({'scan_time_foreground_full_scan': scan_time})
 
-        # Scan with 2 APs on different channel
-        self.context.configure(router_conf)
-        router_conf.channel = 1
-        self.context.configure(router_conf, multi_interface=True)
-        ssids = [self.context.router.get_ssid(instance=n) for n in range(2)]
-        self.context.client.timed_scan(frequencies=[], ssids=ssids,
-                                       scan_timeout_seconds=10)
+        # Background full scan
+        client_conf = xmlrpc_datatypes.AssociationParameters(
+                ssid=self.context.router.get_ssid())
+        self.context.assert_connect_wifi(client_conf)
+        scan_time = self.context.client.timed_scan(frequencies=[], ssids=ssids,
+                                                   scan_timeout_seconds=15)
+        self.write_perf_keyval({'scan_time_background_full_scan': scan_time})
 
         # Deconfigure router
         self.context.router.deconfig()

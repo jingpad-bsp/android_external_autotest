@@ -406,6 +406,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
         @param retry_timeout_seconds: float number of seconds to retry scanning
                 if the interface is busy.  This does not retry if certain
                 SSIDs are missing from the results.
+        @return time in seconds took to complete scan request.
 
         """
         start_time = time.time()
@@ -438,6 +439,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
                                      (ssid, scan_result.bss_list))
 
         logging.info('Wifi scan completed in %.2f seconds', scan_result.time)
+        return scan_result.time
 
 
     def scan(self, frequencies, ssids, timeout_seconds=10):
