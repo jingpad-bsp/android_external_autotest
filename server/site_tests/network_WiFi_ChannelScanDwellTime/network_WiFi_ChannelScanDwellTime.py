@@ -31,7 +31,7 @@ class network_WiFi_ChannelScanDwellTime(wifi_cell_test_base.WiFiCellTestBase):
         prefix = self.__class__.__name__[len(self.KNOWN_TEST_PREFIX):]
         prefix = prefix.lstrip('_')
         prefix += '_' + unique_salt + '_'
-        return prefix[-24:]
+        return prefix[-23:]
 
 
     def _get_dwell_time(self, bss_list):
