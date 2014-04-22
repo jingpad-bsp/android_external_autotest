@@ -13,6 +13,7 @@ NAME = 'p2p_ServeFiles'
 PURPOSE = 'Check that p2p-http-server daemon serves files over HTTP.'
 CRITERIA = "Fails if the DUT can't serve a HTTP request from the network."
 SUITE = 'bvt'
+# See chromium:337726 for ongoing work to remove the experimental tag.
 EXPERIMENTAL = 'True'
 TEST_CLASS = 'platform'
 TEST_CATEGORY = 'Functional'
