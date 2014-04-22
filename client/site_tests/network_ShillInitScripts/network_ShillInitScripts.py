@@ -129,8 +129,11 @@ class network_ShillInitScripts(test.test):
                                            self.user_cryptohome_dir)
         self.old_shill_user_profile = ('%s/shill.profile' %
                                        self.old_shill_user_profile_dir)
+        self.mock_flimflam = None
 
-        # Start a mock flimflam instance to accept and log DBus calls.
+
+    def start_mock_flimflam(self):
+        """ Start a mock flimflam instance to accept and log DBus calls. """
         self.mock_flimflam = mock_flimflam.MockFlimflam()
         self.mock_flimflam.start()
 
@@ -144,8 +147,9 @@ class network_ShillInitScripts(test.test):
 
     def end_test(self):
         """ Perform cleanup at the end of the test. """
-        self.mock_flimflam.quit()
-        self.mock_flimflam.join()
+        if self.mock_flimflam:
+            self.mock_flimflam.quit()
+            self.mock_flimflam.join()
         self.erase_state()
         utils.system('tar zxvf %s --directory /' % self.saved_config)
         utils.system('rm -f %s' % self.saved_config)
@@ -335,29 +339,41 @@ class network_ShillInitScripts(test.test):
         """ Main test loop. """
         self.start_test()
         try:
-            self.run_tests()
+            self.run_tests([
+                self.test_start_shill,
+                self.test_start_logged_in,
+                self.test_start_port_flimflam_profile])
+
+            # The tests above run a real instance of shill, whereas the tests
+            # below rely on a mock instance of shill.  We must take care not
+            # to run the mock at the same time as a real shill instance.
+            self.start_mock_flimflam()
+
+            self.run_tests([
+                self.test_login,
+                self.test_login_guest,
+                self.test_login_profile_exists,
+                self.test_login_old_shill_profile,
+                self.test_login_invalid_old_shill_profile,
+                self.test_login_ignore_old_shill_profile,
+                self.test_login_flimflam_profile,
+                self.test_login_ignore_flimflam_profile,
+                self.test_login_prefer_old_shill_profile,
+                self.test_login_multi_profile,
+                self.test_logout])
         finally:
             # Stop any shill instances started during testing.
             self.stop_shill()
             self.end_test()
 
 
-    def run_tests(self):
-        """ Executes each of the test subparts in sequence. """
-        for test in (self.test_start_shill,
-                     self.test_start_logged_in,
-                     self.test_start_port_flimflam_profile,
-                     self.test_login,
-                     self.test_login_guest,
-                     self.test_login_profile_exists,
-                     self.test_login_old_shill_profile,
-                     self.test_login_invalid_old_shill_profile,
-                     self.test_login_ignore_old_shill_profile,
-                     self.test_login_flimflam_profile,
-                     self.test_login_ignore_flimflam_profile,
-                     self.test_login_prefer_old_shill_profile,
-                     self.test_login_multi_profile,
-                     self.test_logout):
+    def run_tests(self, tests):
+        """ Executes each of the test subparts in sequence.
+
+        @param tests list of methods to run.
+
+        """
+        for test in tests:
           self.test_name = test.__name__
           test()
           self.stop_shill()
