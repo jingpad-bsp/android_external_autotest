@@ -49,18 +49,27 @@ class platform_MemCheck(test.test):
         phy_size = 0
         for line in phy_size_run.stdout.split():
             phy_size += int(line)
-        logging.info('Physical memory size is %d MB', phy_size)
         # memref is in KB but phy_size is in MB
         phy_size *= 1024
         keyval['PhysicalSize'] = phy_size
         memref = max(memref, phy_size - os_reserve)
+        freeref = memref / 2
+
+        # Special rule for free memory size for parrot and butterfly
+        board = utils.get_board()
+        if board == 'parrot':
+            freeref = 100 * 1024
+        elif board == 'butterfly':
+            freeref = freeref - 400 * 1024
 
         ref = {'MemTotal': memref,
-               'MemFree': memref / 2,
+               'MemFree': freeref,
                'SwapTotal': swapref,
                'VmallocTotal': vmemref,
               }
 
+        logging.info('board: %s, phy_size: %d memref: %d freeref: %d',
+                      board, phy_size, memref, freeref)
 
         for k in ref:
             value = utils.read_from_meminfo(k)
