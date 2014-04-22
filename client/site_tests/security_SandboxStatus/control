@@ -4,7 +4,7 @@
 
 AUTHOR = "jorgelo"
 NAME = "security_SandboxStatus"
-SUITE = "security"
+SUITE = "bvt"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "security"
