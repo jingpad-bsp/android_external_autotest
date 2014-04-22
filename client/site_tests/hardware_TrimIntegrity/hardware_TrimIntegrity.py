@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os, fcntl, struct, random
+import os, fcntl, logging, struct, random
 
 from autotest_lib.client.bin import site_utils, test, utils
 from autotest_lib.client.common_lib import error
@@ -46,13 +46,44 @@ class hardware_TrimIntegrity(test.test):
         """
         fcntl.ioctl(fd, self.IOCTL_TRIM_CMD, struct.pack('QQ', offset, size))
 
-    def run_once(self, file_size=FILE_SIZE, chunk_size=CHUNK_SIZE,
-                 trim_ratio=TRIM_RATIO):
+    def run_once(self, filename=None, file_size=FILE_SIZE,
+                 chunk_size=CHUNK_SIZE, trim_ratio=TRIM_RATIO):
         """
         Executes the test and logs the output.
+        @param file_name:  file/disk name to test
+                           default: spare partition of internal disk
+        @param file_size:  size of data to test. default: 1GB
+        @param chunk_size: size of chunk to calculate hash/trim. default: 64KB
+        @param trim_ratio: list of ratio of file size to trim data
+                           default: [0, 0.25, 0.5, 0.75, 1]
         """
+        if not filename:
+            self._filename = site_utils.get_fixed_dst_drive()
+            if self._filename == site_utils.get_root_device():
+                self._filename = site_utils.get_free_root_partition()
+            logging.debug("target device: %s", self._filename)
+        else:
+            self._filename = filename
 
-        self._filename = site_utils.get_free_root_partition()
+        if file_size == 0:
+            fulldisk = True
+            file_size = site_utils.get_disk_size(self._filename)
+            if file_size == 0:
+                cmd = ('%s seem to have 0 storage block. Is the media present?'
+                        % filename)
+                raise error.TestError(cmd)
+        else:
+            fulldisk = False
+
+        # Make file size multiple of 4 * chunk size
+        file_size -= file_size % (4 * chunk_size)
+
+        if fulldisk:
+            fio_file_size = 0
+        else:
+            fio_file_size = file_size
+
+        logging.info('filename: %s, filesize: %d', self._filename, file_size)
 
         # Check for trim support in ioctl. Raise TestNAError if not support.
         try:
@@ -87,14 +118,14 @@ class hardware_TrimIntegrity(test.test):
 
         # Check read speed/latency when reading real data.
         self.job.run_test('hardware_StorageFio',
-                          filesize=file_size,
+                          filesize=fio_file_size,
                           requirements=[('4k_read_qd32', [])],
                           tag='before_trim')
 
         # Generate random order of chunk to trim
         trim_order = list(range(0, chunk_count))
         random.shuffle(trim_order)
-        trim_status = [False] * chunk_size
+        trim_status = [False] * chunk_count
 
         # Init stat variable
         data_verify_count = 0
@@ -153,13 +184,13 @@ class hardware_TrimIntegrity(test.test):
 
         # Check read speed/latency when reading from trimmed data.
         self.job.run_test('hardware_StorageFio',
-                          filesize=file_size,
+                          filesize=fio_file_size,
                           requirements=[('4k_read_qd32', [])],
                           tag='after_trim')
 
         # Raise error when untrimmed data changed only.
         # Don't care about trimmed data.
         if data_verify_match < data_verify_count:
-            error.testFail("Fail to verify untrimmed data.")
+            raise error.TestFail("Fail to verify untrimmed data.")
         if trim_verify_non_delete > 0 :
-            error.testFail("Trimmed data are not deleted.")
+            raise error.TestFail("Trimmed data are not deleted.")
