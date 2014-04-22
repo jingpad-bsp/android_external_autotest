@@ -14,7 +14,7 @@ Profiles are supported: H264_BASELINE, H264_MAIN, and H264_HIGH
 For each of the profiles, we expect it has the VLD entrypoint and supports
 YUV420 for the RT format.
 """
-SUITE = 'bvt'
+SUITE = 'video'
 TIME='FAST'
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = 'hardware'
