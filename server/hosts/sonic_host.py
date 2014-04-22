@@ -191,11 +191,10 @@ class SonicHost(abstract_ssh.AbstractSSHHost):
         try:
             self.client.reboot()
         except sonic_client_utils.SonicProxyException as e:
-            logging.error('Unable to reboot through the sonic proxy: %s', e)
-            return False
+            raise error.AutoservRebootError(
+                    'Unable to reboot through the sonic proxy: %s' % e)
 
         self.wait_for_restart(timeout=timeout, old_boot_id=current_boot_id)
-        return True
 
 
     def cleanup(self):

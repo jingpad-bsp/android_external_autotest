@@ -11,5 +11,4 @@ class generic_RebootTest(test.test):
     version = 1
 
     def run_once(self, host):
-        if not host.reboot():
-            raise error.TestFail('Host failed to reboot.')
+        host.reboot()

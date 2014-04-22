@@ -301,23 +301,21 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
         Reboots the device over ADB.
 
-        @returns True if the device comes back before wait_timeout is up.
-                 False otherwise.
+        @raises AutoservRebootError if reboot failed.
 
         """
         # Not calling super.reboot() as we want to reboot the ADB device not
         # the host we are running ADB on.
         self._adb_run('reboot', timeout=10, ignore_timeout=True)
         if not self.wait_down(timeout=10):
-            logging.error('ADB Device is still up after reboot')
-            return False
+            raise error.AutoservRebootError(
+                    'ADB Device is still up after reboot')
         if not self.wait_up(timeout=30):
-            logging.error('ADB Device failed to return from reboot.')
-            return False
+            raise error.AutoservRebootError(
+                    'ADB Device failed to return from reboot.')
         if self._use_tcpip:
             # Reconnect via TCP/IP.
             self._connect_over_tcpip()
-        return True
 
 
     def wait_down(self, timeout=None, warning_timer=None, old_boot_id=None):

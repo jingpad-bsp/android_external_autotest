@@ -120,7 +120,7 @@ class ServoHost(ssh_host.SSHHost):
         self._servo = None
         try:
             self.verify()
-        except:
+        except Exception:
             if required_by_test:
                 if not self.is_in_lab():
                     raise
