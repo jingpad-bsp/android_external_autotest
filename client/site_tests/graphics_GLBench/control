@@ -19,7 +19,7 @@ the unknown image and older versions in ../../deps/glbench-images/.
 Note: it should nearly never be required to remove old versions of good/bad
 images from these directories.
 """
-SUITE = 'graphics, graphics_per-build, qav'
+SUITE = 'graphics, graphics_per-build'
 TIME='MEDIUM'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = "gl"
