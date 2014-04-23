@@ -149,8 +149,8 @@ class ChameleonTest(test.test):
         @return: None if the check passes; otherwise, a string of error message.
         """
         logging.info('Checking screen with Chameleon (tag: %s)...', tag)
-        chameleon_path = os.path.join(self.outputdir, '%s-chameleon.bgra' % tag)
-        dut_path = os.path.join(self.outputdir, '%s-dut.bgra' % tag)
+        chameleon_path = os.path.join(self.outputdir, '%s-chameleon.rgba' % tag)
+        dut_path = os.path.join(self.outputdir, '%s-dut.rgba' % tag)
 
         logging.info('Capturing framebuffer on Chameleon.')
         chameleon_pixels = self.chameleon_port.capture_screen(chameleon_path)
