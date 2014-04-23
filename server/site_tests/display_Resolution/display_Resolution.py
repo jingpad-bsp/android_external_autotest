@@ -43,8 +43,8 @@ class display_Resolution(chameleon_test.ChameleonTest):
 
 
     def cleanup(self):
-        self.restore_edid()
         super(display_Resolution, self).cleanup()
+        self.restore_edid()
 
 
     def run_once(self, host, test_mirrored=False, test_suspend_resume=False,
