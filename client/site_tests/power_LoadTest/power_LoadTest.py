@@ -56,7 +56,8 @@ class power_LoadTest(test.test):
                  scroll_by_pixels='600', test_low_batt_p=3,
                  verbose=True, force_wifi=False, wifi_ap='', wifi_sec='none',
                  wifi_pw='', wifi_timeout=60, tasks="", kblight_percent=10,
-                 volume_level=10, mic_gain=10, low_batt_margin_p=2):
+                 volume_level=10, mic_gain=10, low_batt_margin_p=2,
+                 ac_ok=False):
         """
         creds: the login credentials to be used for the test
         percent_initial_charge_min: min battery charge at start of test
@@ -80,6 +81,7 @@ class power_LoadTest(test.test):
         mic_gain: percent audio microphone gain level
         low_batt_margin_p: percent low battery margin to be added to
             sys_low_batt_p to guarantee test completes prior to powerd shutdown
+        ac_ok: boolean to allow running on AC
         """
         self._backlight = None
         self._services = None
@@ -98,6 +100,7 @@ class power_LoadTest(test.test):
         self._scroll_by_pixels = scroll_by_pixels
         self._tmp_keyvals = {}
         self._power_status = power_status.get_status()
+        self._tmp_keyvals['b_on_ac'] = self._power_status.on_ac()
         self._force_wifi = force_wifi
         self._testServer = None
         self._tasks = '\'' + tasks.replace(' ','') + '\''
@@ -107,10 +110,12 @@ class power_LoadTest(test.test):
         self._kblight_percent = kblight_percent
         self._volume_level = volume_level
         self._mic_gain = mic_gain
+        self._ac_ok = ac_ok
         self._wait_time = 60
         self._stats = collections.defaultdict(list)
 
-        self._power_status.assert_battery_state(percent_initial_charge_min)
+        if not ac_ok:
+            self._power_status.assert_battery_state(percent_initial_charge_min)
         # If force wifi enabled, convert eth0 to backchannel and connect to the
         # specified WiFi AP.
         if self._force_wifi:
@@ -133,7 +138,7 @@ class power_LoadTest(test.test):
 
             self._shill_proxy = wifi_proxy.WifiProxy()
             self._shill_proxy.remove_all_wifi_entries()
-            for attempt in range(3):
+            for _ in range(3):
                 raw_output = self._shill_proxy.connect_to_wifi_network(
                         wifi_config.ssid,
                         wifi_config.security,
@@ -330,21 +335,24 @@ class power_LoadTest(test.test):
         voltage_np = numpy.array(self._stats['v_voltage_now'])
         voltage_mean = voltage_np.mean()
         keyvals['v_voltage_mean'] = voltage_mean
-        bat_life_scale = (keyvals['ah_charge_full_design'] /
-                          keyvals['ah_charge_used']) * \
-                          ((100 - keyvals['percent_sys_low_battery']) / 100)
 
-        keyvals['minutes_battery_life'] = bat_life_scale * \
-            keyvals['minutes_battery_life_tested']
-        # In the case where sys_low_batt_s is non-zero subtract those minutes
-        # from the final extrapolation.
-        if self._sys_low_batt_s:
-            keyvals['minutes_battery_life'] -= self._sys_low_batt_s / 60
+        if keyvals['ah_charge_used'] > 0:
+            bat_life_scale = (keyvals['ah_charge_full_design'] /
+                              keyvals['ah_charge_used']) * \
+                              ((100 - keyvals['percent_sys_low_battery']) / 100)
 
-        keyvals['a_current_rate'] = keyvals['ah_charge_used'] * 60 / \
-                                    keyvals['minutes_battery_life_tested']
-        keyvals['w_energy_rate'] = keyvals['wh_energy_used'] * 60 / \
-                                   keyvals['minutes_battery_life_tested']
+            keyvals['minutes_battery_life'] = bat_life_scale * \
+                keyvals['minutes_battery_life_tested']
+            # In the case where sys_low_batt_s is non-zero subtract those
+            # minutes from the final extrapolation.
+            if self._sys_low_batt_s:
+                keyvals['minutes_battery_life'] -= self._sys_low_batt_s / 60
+
+            keyvals['a_current_rate'] = keyvals['ah_charge_used'] * 60 / \
+                                        keyvals['minutes_battery_life_tested']
+            keyvals['w_energy_rate'] = keyvals['wh_energy_used'] * 60 / \
+                                       keyvals['minutes_battery_life_tested']
+
         self.write_perf_keyval(keyvals)
         self._plog.save_results(self.resultsdir)
         self._tlog.save_results(self.resultsdir)
