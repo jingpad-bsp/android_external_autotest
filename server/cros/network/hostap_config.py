@@ -317,7 +317,7 @@ class HostapConfig(object):
     @property
     def ssid_suffix(self):
         """@return meaningful suffix for SSID."""
-        return '_ch%d' % self.channel
+        return 'ch%d' % self.channel
 
 
     @property

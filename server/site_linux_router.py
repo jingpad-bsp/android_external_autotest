@@ -31,7 +31,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
     """
 
-    KNOWN_TEST_PREFIX = 'network_WiFi'
+    KNOWN_TEST_PREFIX = 'network_WiFi_'
     STARTUP_POLLING_INTERVAL_SECONDS = 0.5
     STARTUP_TIMEOUT_SECONDS = 10
     SUFFIX_LETTERS = string.ascii_lowercase + string.digits
@@ -105,13 +105,12 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
         # hostapd configuration persists throughout the test, subsequent
         # 'config' commands only modify it.
-        self.ssid_prefix = test_name
-        if self.ssid_prefix.startswith(self.KNOWN_TEST_PREFIX):
+        self._ssid_prefix = test_name
+        if self._ssid_prefix.startswith(self.KNOWN_TEST_PREFIX):
             # Many of our tests start with an uninteresting prefix.
             # Remove it so we can have more unique bytes.
-            self.ssid_prefix = self.ssid_prefix[len(self.KNOWN_TEST_PREFIX):]
-        self.ssid_prefix = self.ssid_prefix.lstrip('_')
-        self.ssid_prefix += '_'
+            self._ssid_prefix = self._ssid_prefix[len(self.KNOWN_TEST_PREFIX):]
+        self._number_unique_ssids = 0
 
         self._total_hostapd_instances = 0
         self.local_servers = []
@@ -157,7 +156,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         control_interface = self.HOSTAPD_CONTROL_INTERFACE_PATTERN % interface
         hostapd_conf_dict = configuration.generate_dict(
                 interface, control_interface,
-                self._build_ssid(configuration.ssid_suffix))
+                self._build_unique_ssid(configuration.ssid_suffix))
         logging.info('Starting hostapd with parameters: %r', hostapd_conf_dict)
 
         # Generate hostapd.conf.
@@ -255,10 +254,21 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.kill_hostapd_instance(None)
 
 
-    def _build_ssid(self, suffix):
-        unique_salt = ''.join([random.choice(self.SUFFIX_LETTERS)
-                               for x in range(5)])
-        return (self.ssid_prefix + unique_salt + suffix)[-32:]
+    def _build_unique_ssid(self, suffix):
+        # Build our unique token by base-<len(self.SUFFIX_LETTERS)> encoding
+        # the number of APs we've constructed already.
+        base = len(self.SUFFIX_LETTERS)
+        number = self._number_unique_ssids
+        self._number_unique_ssids += 1
+        unique = ''
+        while number or not unique:
+            unique = self.SUFFIX_LETTERS[number % base] + unique
+            number = number / base
+        # And salt the SSID so that tests running in adjacent cells are unlikely
+        # to pick the same SSID and we're resistent to beacons leaking out of
+        # cells.
+        salt = ''.join([random.choice(self.SUFFIX_LETTERS) for x in range(5)])
+        return '_'.join([self._ssid_prefix, unique, salt, suffix])[-32:]
 
 
     def hostap_configure(self, configuration, multi_interface=None):
@@ -292,7 +302,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         if self.station_instances or self.hostapd_instances:
             self.deconfig()
         interface = self.get_wlanif(config.frequency, 'ibss')
-        ssid = (config.ssid or self._build_ssid(config.ssid_suffix))
+        ssid = (config.ssid or self._build_unique_ssid(config.ssid_suffix))
         # Connect the station
         self.router.run('%s link set %s up' % (self.cmd_ip, interface))
         self.iw_runner.ibss_join(interface, ssid, config.frequency)
