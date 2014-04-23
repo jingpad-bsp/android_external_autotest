@@ -71,7 +71,7 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                           name__endswith='control.'+self._SUITE).AndReturn([])
         # Expect an attempt to schedule; allow it to succeed.
         self.afe.run('create_suite_job',
-                     suite_name=self._SUITE,
+                     name=self._SUITE,
                      board=self._BOARD,
                      build=self._BUILD,
                      check_hosts=False,
@@ -127,7 +127,7 @@ class DedupingSchedulerTest(mox.MoxTestBase):
         """Test a successful de-dup, but force scheduling the suite."""
         # Expect an attempt to schedule; allow it to succeed.
         self.afe.run('create_suite_job',
-                     suite_name=self._SUITE,
+                     name=self._SUITE,
                      board=self._BOARD,
                      build=self._BUILD,
                      check_hosts=False,
@@ -177,7 +177,7 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                           name__endswith='control.'+self._SUITE).AndReturn([])
         # Expect an attempt to create a job for the suite; fail it.
         self.afe.run('create_suite_job',
-                     suite_name=self._SUITE,
+                     name=self._SUITE,
                      board=self._BOARD,
                      build=self._BUILD,
                      check_hosts=False,
@@ -208,7 +208,7 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                           name__endswith='control.'+self._SUITE).AndReturn([])
         # Expect an attempt to create a job for the suite; barf on it.
         self.afe.run('create_suite_job',
-                     suite_name=self._SUITE,
+                     name=self._SUITE,
                      board=self._BOARD,
                      build=self._BUILD,
                      check_hosts=False,
@@ -245,7 +245,7 @@ class DedupingSchedulerTest(mox.MoxTestBase):
         message = 'Control file not found.'
         exception = error.ControlFileNotFound(message)
         self.afe.run('create_suite_job',
-                     suite_name=self._SUITE,
+                     name=self._SUITE,
                      board=self._BOARD,
                      build=self._BUILD,
                      check_hosts=False,

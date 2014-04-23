@@ -117,7 +117,7 @@ class DedupingScheduler(object):
             logging.info('Scheduling %s on %s against %s (pool: %s)',
                          suite, build, board, pool)
             if self._afe.run(
-                        'create_suite_job', suite_name=suite, board=board,
+                        'create_suite_job', name=suite, board=board,
                         build=build, check_hosts=False, num=num, pool=pool,
                         priority=priority, timeout=timeout, file_bugs=file_bugs,
                         wait_for_results=file_bugs) is not None:

@@ -879,7 +879,7 @@ def main():
     if options.mock_job_id:
         job_id = int(options.mock_job_id)
     else:
-        job_id = afe.run('create_suite_job', suite_name=options.name,
+        job_id = afe.run('create_suite_job', name=options.name,
                          board=options.board, build=options.build,
                          check_hosts=wait, pool=options.pool, num=options.num,
                          file_bugs=file_bugs, priority=priority,

@@ -75,6 +75,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         public RadioChooser.Display getRebootAfter();
         public HasValue<Boolean> getParseFailedRepair();
         public ICheckBox getHostless();
+        public HasText getPool();
         public HostSelector.Display getHostSelectorDisplay();
         public SimplifiedList getDroneSet();
         public ITextBox getSynchCountInput();
@@ -613,6 +614,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         display.getEditControlButton().setText(EDIT_CONTROL_STRING);
         hostSelector.reset();
         dependencies = new JSONArray();
+        display.getPool().setText("");
     }
 
     private void submitJob(final boolean isTemplate) {
@@ -667,6 +669,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
                 args.put("parse_failed_repair",
                          JSONBoolean.getInstance(display.getParseFailedRepair().getValue()));
                 args.put("hostless", JSONBoolean.getInstance(display.getHostless().getValue()));
+                args.put("pool", new JSONString(display.getPool().getText()));
 
                 if (staticData.getData("drone_sets_enabled").isBoolean().booleanValue()) {
                     args.put("drone_set", new JSONString(display.getDroneSet().getSelectedName()));
@@ -683,7 +686,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
                     args.put("image", new JSONString(imageUrlString));
                 }
 
-                rpcProxy.rpcCall("create_job", args, new JsonRpcCallback() {
+                rpcProxy.rpcCall("create_job_page_handler", args, new JsonRpcCallback() {
                     @Override
                     public void onSuccess(JSONValue result) {
                         int id = (int) result.isNumber().doubleValue();

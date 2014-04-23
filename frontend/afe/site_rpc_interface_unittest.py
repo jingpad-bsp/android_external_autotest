@@ -29,8 +29,8 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
     @var _PRIORITY: fake priority with which to reimage.
     """
     _NAME = 'name'
-    _BOARD = 'board'
-    _BUILD = 'build'
+    _BOARD = 'link'
+    _BUILD = 'link-release/R36-5812.0.0'
     _PRIORITY = priorities.Priority.DEFAULT
     _TIMEOUT = 24
 
@@ -58,12 +58,15 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
         dev_server.ImageServer.resolve(self._BUILD).AndReturn(self.dev_server)
 
 
-    def _mockDevServerGetter(self):
+    def _mockDevServerGetter(self, get_control_file=True):
         self._setupDevserver()
-        self.getter = self.mox.CreateMock(control_file_getter.DevServerGetter)
-        self.mox.StubOutWithMock(control_file_getter.DevServerGetter, 'create')
-        control_file_getter.DevServerGetter.create(
-            mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(self.getter)
+        if get_control_file:
+          self.getter = self.mox.CreateMock(
+              control_file_getter.DevServerGetter)
+          self.mox.StubOutWithMock(control_file_getter.DevServerGetter,
+                                   'create')
+          control_file_getter.DevServerGetter.create(
+              mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(self.getter)
 
 
     def _mockRpcUtils(self, to_return, control_file_substring=''):
@@ -180,11 +183,11 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
             self._SUITE_NAME).AndReturn('f')
         self._mockRpcUtils(-1)
         self.mox.ReplayAll()
-        self.assertEquals(site_rpc_interface.create_suite_job(self._NAME,
-                                                              self._BOARD,
-                                                              self._BUILD,
-                                                              None),
-                          - 1)
+        self.assertEquals(
+            site_rpc_interface.create_suite_job(name=self._NAME,
+                                                board=self._BOARD,
+                                                build=self._BUILD, pool=None),
+            -1)
 
 
     def testCreateSuiteJobSuccess(self):
@@ -198,11 +201,12 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
         job_id = 5
         self._mockRpcUtils(job_id)
         self.mox.ReplayAll()
-        self.assertEquals(site_rpc_interface.create_suite_job(self._NAME,
-                                                              self._BOARD,
-                                                              self._BUILD,
-                                                              None),
-                          job_id)
+        self.assertEquals(
+            site_rpc_interface.create_suite_job(name=self._NAME,
+                                                board=self._BOARD,
+                                                build=self._BUILD,
+                                                pool=None),
+            job_id)
 
 
     def testCreateSuiteJobNoHostCheckSuccess(self):
@@ -216,11 +220,12 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
         job_id = 5
         self._mockRpcUtils(job_id)
         self.mox.ReplayAll()
-        self.assertEquals(site_rpc_interface.create_suite_job(self._NAME,
-                                                              self._BOARD,
-                                                              self._BUILD,
-                                                              None, False),
-                job_id)
+        self.assertEquals(
+          site_rpc_interface.create_suite_job(name=self._NAME,
+                                              board=self._BOARD,
+                                              build=self._BUILD,
+                                              pool=None, check_hosts=False),
+          job_id)
 
     def testCreateSuiteIntegerNum(self):
         """Ensures that success results in a successful RPC."""
@@ -233,12 +238,34 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
         job_id = 5
         self._mockRpcUtils(job_id, control_file_substring='num=17')
         self.mox.ReplayAll()
-        self.assertEquals(site_rpc_interface.create_suite_job(self._NAME,
-                                                              self._BOARD,
-                                                              self._BUILD,
-                                                              None, False,
-                                                              num=17),
-                job_id)
+        self.assertEquals(
+            site_rpc_interface.create_suite_job(name=self._NAME,
+                                                board=self._BOARD,
+                                                build=self._BUILD,
+                                                pool=None,
+                                                check_hosts=False,
+                                                num=17),
+            job_id)
+
+
+    def testCreateSuiteJobControlFileSupplied(self):
+        """Ensure we can supply the control file to create_suite_job."""
+        self._mockDevServerGetter(get_control_file=False)
+        self.dev_server.stage_artifacts(self._BUILD,
+                                        ['test_suites']).AndReturn(True)
+        self.dev_server.url().AndReturn('mox_url')
+        job_id = 5
+        self._mockRpcUtils(job_id)
+        self.mox.ReplayAll()
+        self.assertEquals(
+            site_rpc_interface.create_suite_job(name='%s/%s' % (self._NAME,
+                                                                self._BUILD),
+                                                board=None,
+                                                build=self._BUILD,
+                                                pool=None,
+                                                control_file='CONTROL FILE'),
+            job_id)
+
 
 
 if __name__ == '__main__':

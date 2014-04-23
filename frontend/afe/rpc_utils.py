@@ -811,3 +811,18 @@ def create_job_common(name, priority, control_type, control_file=None,
                           host_objects=host_objects,
                           metahost_objects=metahost_objects,
                           atomic_group=atomic_group)
+
+
+def encode_ascii(control_file):
+    """Force a control file to only contain ascii characters.
+
+    @param control_file: Control file to encode.
+
+    @returns the control file in an ascii encoding.
+
+    @raises error.ControlFileMalformed: if encoding fails.
+    """
+    try:
+        return control_file.encode('ascii')
+    except UnicodeDecodeError as e:
+        raise error.ControlFileMalformed(str(e))
