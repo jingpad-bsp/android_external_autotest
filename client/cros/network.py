@@ -249,17 +249,25 @@ def FetchUrl(url_pattern, bytes_to_fetch=10, fetch_timeout=10):
               number.
 
     """
+    # Limit the amount of bytes to read at a time.
+    _MAX_FETCH_READ_BYTES = 1024 * 1024
+
     url = url_pattern % bytes_to_fetch
     logging.info('FetchUrl %s', url)
     start_time = time.time()
     result = urllib2.urlopen(url, timeout=fetch_timeout)
-    bytes_fetched = len(result.read())
-    fetch_time = time.time() - start_time
-    if not fetch_time:
-        raise error.TestError('FetchUrl took no time to complete.')
-
-    if bytes_fetched != bytes_to_fetch:
-        raise error.TestError('FetchUrl expected %d bytes, got %d bytes.' %
-                              (bytes_to_fetch, bytes_fetched))
+    bytes_fetched = 0
+    while bytes_fetched < bytes_to_fetch:
+        bytes_left = bytes_to_fetch - bytes_fetched
+        bytes_to_read = min(bytes_left, _MAX_FETCH_READ_BYTES)
+        bytes_read = len(result.read(bytes_to_read))
+        bytes_fetched += bytes_read
+        if bytes_read != bytes_to_read:
+            raise error.TestError('FetchUrl tried to read %d bytes, but got '
+                                  '%d bytes instead.' %
+                                  (bytes_to_read, bytes_read))
+        fetch_time = time.time() - start_time
+        if fetch_time > fetch_timeout:
+            raise error.TestError('FetchUrl exceeded timeout.')
 
     return fetch_time
