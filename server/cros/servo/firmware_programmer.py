@@ -103,11 +103,14 @@ class FlashromProgrammer(_BaseProgrammer):
         try:
             vpd_sections = [('RW_VPD', self._rw_vpd), ('RO_VPD', self._ro_vpd)]
             gbb_section = [('GBB', self._gbb)]
+            ft2232_programmer = 'ft2232_spi:type=servo-v2'
+            if self._servo.servo_serial:
+                ft2232_programmer += ',serial=%s' % self._servo.servo_serial
 
             # Save needed sections from current firmware
             for section in vpd_sections + gbb_section:
                 self._servo.system(' '.join([
-                    'flashrom', '-V', '-p', 'ft2232_spi:type=servo-v2',
+                    'flashrom', '-V', '-p', ft2232_programmer,
                     '-r', self._fw_main, '-i', '%s:%s' % section]))
 
             # Pack the saved VPD into new firmware
@@ -134,7 +137,7 @@ class FlashromProgrammer(_BaseProgrammer):
 
             # Flash the new firmware
             self._servo.system(' '.join([
-                'flashrom', '-V', '-p', 'ft2232_spi:type=servo-v2',
+                'flashrom', '-V', '-p', ft2232_programmer,
                 '-w', self._fw_main]))
         finally:
             self._restore_servo_state()

@@ -62,16 +62,18 @@ class Servo(object):
     INIT_TIMEOUT_SECS = 10
 
 
-    def __init__(self, servo_host):
+    def __init__(self, servo_host, servo_serial=None):
         """Sets up the servo communication infrastructure.
 
         @param servo_host: A ServoHost object representing
                            the host running servod.
+        @param servo_serial: Serial number of the servo board.
         """
         # TODO(fdeng): crbug.com/298379
         # We should move servo_host object out of servo object
         # to minimize the dependencies on the rest of Autotest.
         self._servo_host = servo_host
+        self._servo_serial = servo_serial
         self._server = servo_host.get_servod_server_proxy()
         board = self._server.get_board()
         self._power_state = (
@@ -90,6 +92,12 @@ class Servo(object):
         else:
             logging.warn("No firmware programmer for servo version: %s",
                          self.get_version())
+
+
+    @property
+    def servo_serial(self):
+        """Returns the serial number of the servo board."""
+        return self._servo_serial
 
 
     def get_power_state_controller(self):
