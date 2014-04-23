@@ -2,10 +2,15 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import httplib
+import logging
 import os
+import socket
 import sys
+import xmlrpclib
 
 from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.cros import constants
 from autotest_lib.server import autotest
 
@@ -19,6 +24,8 @@ class DisplayClient(object):
 
     X_ENV_VARIABLES = 'DISPLAY=:0.0 XAUTHORITY=/home/chronos/.Xauthority'
     XMLRPC_CONNECT_TIMEOUT = 30
+    XMLRPC_RETRY_TIMEOUT = 180
+    XMLRPC_RETRY_DELAY = 10
     HTTP_PORT = 8000
 
 
@@ -46,20 +53,31 @@ class DisplayClient(object):
 
     def connect(self):
         """Connects the XML-RPC proxy on the client."""
-        self._display_xmlrpc_client = self._client.xmlrpc_connect(
-                constants.DISPLAY_TESTING_XMLRPC_SERVER_COMMAND,
-                constants.DISPLAY_TESTING_XMLRPC_SERVER_PORT,
-                command_name=(
-                    constants.DISPLAY_TESTING_XMLRPC_SERVER_CLEANUP_PATTERN
-                ),
-                ready_test_name=(
-                    constants.DISPLAY_TESTING_XMLRPC_SERVER_READY_METHOD),
-                timeout_seconds=self.XMLRPC_CONNECT_TIMEOUT)
+        @retry.retry((socket.error,
+                      xmlrpclib.ProtocolError,
+                      httplib.BadStatusLine),
+                     timeout_min=self.XMLRPC_RETRY_TIMEOUT / 60.0,
+                     delay_sec=self.XMLRPC_RETRY_DELAY)
+        def connect_with_retries():
+            """Connects the XML-RPC proxy with retries."""
+            self._display_xmlrpc_client = self._client.xmlrpc_connect(
+                    constants.DISPLAY_TESTING_XMLRPC_SERVER_COMMAND,
+                    constants.DISPLAY_TESTING_XMLRPC_SERVER_PORT,
+                    command_name=(
+                        constants.DISPLAY_TESTING_XMLRPC_SERVER_CLEANUP_PATTERN
+                    ),
+                    ready_test_name=(
+                        constants.DISPLAY_TESTING_XMLRPC_SERVER_READY_METHOD),
+                    timeout_seconds=self.XMLRPC_CONNECT_TIMEOUT)
+
+        logging.info('Setup the display_client RPC server, with retries...')
+        connect_with_retries()
 
 
     def cleanup(self):
         """Cleans up."""
-        self._client.rpc_disconnect_all()
+        self._client.rpc_disconnect(
+                constants.DISPLAY_TESTING_XMLRPC_SERVER_PORT)
 
 
     def __del__(self):
