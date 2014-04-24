@@ -1940,7 +1940,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                                 '. /usr/share/misc/chromeos-common.sh;',
                                 'load_base_vars;',
                                 'get_fixed_dst_drive'])
-        rootdev = self.run(command=rootdev_cmd)
+        rootdev = self.run(command=rootdev_cmd, ignore_status=True)
+        if rootdev.exit_status:
+            logging.info("Fail to run %s", rootdev_cmd)
+            return None
         rootdev_str = rootdev.stdout.strip()
 
         if not rootdev_str:
@@ -1953,7 +1956,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             # Use type to determine if the internal device is eMMC or somthing
             # else. We can assume that MMC is always an internal device.
             type_cmd = 'cat /sys/block/%s/device/type' % rootdev_base
-            type = self.run(command=type_cmd)
+            type = self.run(command=type_cmd, ignore_status=True)
+            if type.exit_status:
+                logging.info("Fail to run %s", type_cmd)
+                return None
             type_str = type.stdout.strip()
 
             if type_str == 'MMC':
@@ -1964,7 +1970,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             # Read symlink for /sys/block/sd* to determine if the internal
             # device is connected via ata or usb.
             link_cmd = 'readlink /sys/block/%s' % rootdev_base
-            link = self.run(command=link_cmd)
+            link = self.run(command=link_cmd, ignore_status=True)
+            if link.exit_status:
+                logging.info("Fail to run %s", link_cmd)
+                return None
             link_str = link.stdout.strip()
             if 'usb' in link_str:
                 return None
@@ -1972,7 +1981,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             # Read rotation to determine if the internal device is ssd or hdd.
             rotate_cmd = str('cat /sys/block/%s/queue/rotational'
                               % rootdev_base)
-            rotate = self.run(command=rotate_cmd)
+            rotate = self.run(command=rotate_cmd, ignore_status=True)
+            if rotate.exit_status:
+                logging.info("Fail to run %s", rotate_cmd)
+                return None
             rotate_str = rotate.stdout.strip()
 
             rotate_dict = {'0':'storage:ssd', '1':'storage:hdd'}
