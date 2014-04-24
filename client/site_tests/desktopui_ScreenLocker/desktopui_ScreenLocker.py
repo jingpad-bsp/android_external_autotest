@@ -46,8 +46,8 @@ class desktopui_ScreenLocker(test.test):
 
         """
         self._chrome.browser.oobe.ExecuteJavaScript(
-                "Oobe.authenticateForTesting('test@test.test', '%s');"
-                % password)
+                "Oobe.authenticateForTesting('%s', '%s');"
+                % (self._chrome.username, password))
 
 
     def lock_screen(self):
@@ -69,8 +69,9 @@ class desktopui_ScreenLocker(test.test):
         if self.error_bubble_visible:
             raise error.TestFail('Error bubble prematurely visible')
         self.attempt_unlock('bad')
+        # TODO(alemate): Replace TestWarn with TestFail. crbug.com/339348.
         utils.poll_for_condition(lambda: self.error_bubble_visible,
-                exception=error.TestFail('Bad password bubble did not show'))
+                exception=error.TestWarn('Bad password bubble did not show'))
         if not self.screen_locked:
             raise error.TestFail('Screen unlocked with bad password')
 
