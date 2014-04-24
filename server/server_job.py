@@ -424,9 +424,8 @@ class base_server_job(base_job.base_job):
                        host to.
 
         """
-        namespace = {'job_labels': labels}
         control = self._load_control_file(PROVISION_CONTROL_FILE)
-        self.run(control=control, namespace=namespace)
+        self.run(control=control, job_labels=labels)
 
 
     def precheck(self):
