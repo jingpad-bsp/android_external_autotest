@@ -319,22 +319,18 @@ class ChromiumOSUpdater():
         @raise RootFSUpdateError if anything went wrong.
 
         """
-        can_rollback_cmd = '%s --can_rollback' % (UPDATER_BIN)
-        logging.info('Checking for rollback.')
-        try:
-            self._run(can_rollback_cmd)
-        except error.AutoservRunError as e:
-            raise RootFSUpdateError("Rollback isn't possible on %s: %s" %
-                                    (self.host.hostname, str(e)))
-
-        rollback_cmd = '%s --rollback --follow' % (UPDATER_BIN)
+        #TODO(sosa): crbug.com/309051 - Make this one update_engine_client call.
+        rollback_cmd = '%s --rollback' % (UPDATER_BIN)
+        wait_for_update_to_complete_cmd = '%s --update' % (UPDATER_BIN)
         if not powerwash:
           rollback_cmd += ' --nopowerwash'
 
-        logging.info('Performing rollback.')
+        logging.info('Triggering rollback.')
         try:
             self._run(rollback_cmd)
+            self._run(wait_for_update_to_complete_cmd)
         except error.AutoservRunError as e:
+            list_image_dir_contents(self.update_url)
             raise RootFSUpdateError('Rollback failed on %s: %s' %
                                     (self.host.hostname, str(e)))
 
