@@ -10,6 +10,7 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.chameleon import chameleon_test
+from autotest_lib.server.cros.chameleon import edid
 
 
 class display_Resolution(chameleon_test.ChameleonTest):
@@ -112,10 +113,7 @@ class display_Resolution(chameleon_test.ChameleonTest):
                      resolution,
                      self.chameleon_port.get_connector_id(),
                      self.chameleon_port.get_connector_type())
-        edid_filename = os.path.join(
+        filename = os.path.join(
                 self.bindir, 'test_data', 'edids', '%s_%dx%d' % resolution)
-        if not os.path.exists(edid_filename):
-            raise ValueError('EDID file %r does not exist' % edid_filename)
-
-        logging.info('Apply edid: %s', edid_filename)
-        self.chameleon_port.apply_edid(open(edid_filename).read())
+        logging.info('Apply edid: %s', filename)
+        self.chameleon_port.apply_edid(edid.Edid.from_file(filename))

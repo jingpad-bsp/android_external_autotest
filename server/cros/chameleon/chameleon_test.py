@@ -72,20 +72,19 @@ class ChameleonTest(test.test):
         """Backups the original EDID."""
         self._original_edid = self.chameleon_port.read_edid()
         self._original_edid_path = os.path.join(self.outputdir, 'original_edid')
-        with open(self._original_edid_path, 'w+') as f:
-            f.write(self._original_edid)
+        self._original_edid.to_file(self._original_edid_path)
 
 
     def restore_edid(self):
         "Restores the original EDID."""
-        if hasattr(self, 'chameleon_port') and self.chameleon_port:
+        if (hasattr(self, 'chameleon_port') and self.chameleon_port and
+                hasattr(self, '_original_edid') and self._original_edid):
             current_edid = self.chameleon_port.read_edid()
-            if (hasattr(self, '_original_edid') and self._original_edid and
-                    self._original_edid != current_edid):
+            if self._original_edid.data != current_edid.data:
                 logging.info('Restore the original EDID...')
                 self.chameleon_port.apply_edid(self._original_edid)
-            # Remove the original EDID file after restore.
-            os.remove(self._original_edid_path)
+                # Remove the original EDID file after restore.
+                os.remove(self._original_edid_path)
 
 
     def cleanup(self):

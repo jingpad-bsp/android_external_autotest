@@ -5,6 +5,8 @@
 import time
 import xmlrpclib
 
+from autotest_lib.server.cros.chameleon import edid
+
 
 class ChameleonBoard(object):
     """ChameleonBoard is an abstraction of a Chameleon board.
@@ -89,17 +91,17 @@ class ChameleonPort(object):
     def read_edid(self):
         """Reads the EDID.
 
-        @return: A byte-array of EDID.
+        @return: An Edid object.
         """
-        return self._chameleond_proxy.ReadEdid(self._input_id).data
+        return edid.Edid(self._chameleond_proxy.ReadEdid(self._input_id).data)
 
 
-    def apply_edid(self, edid_data):
+    def apply_edid(self, edid):
         """Applies the given EDID.
 
-        @param edid_data: A byte-array of EDID.
+        @param edid: An Edid object.
         """
-        edid_id = self._chameleond_proxy.CreateEdid(xmlrpclib.Binary(edid_data))
+        edid_id = self._chameleond_proxy.CreateEdid(xmlrpclib.Binary(edid.data))
         self._chameleond_proxy.ApplyEdid(self._input_id, edid_id)
         self._chameleond_proxy.DestroyEdid(edid_id)
 
