@@ -211,7 +211,7 @@ class ProgrammerV2(object):
                       'snow', 'daisy', 'monroe', 'panther', 'beltino',
                       'bolt', 'slippy', 'falco', 'link', 'stumpy',
                       'lumpy', 'parrot', 'stout', 'butterfly', 'alex',
-                      'zgb', 'mario'):
+                      'zgb', 'mario', 'squawks'):
             _bios_prog = FlashromProgrammer(servo)
         else:
             logging.warn('No BIOS programmer found for board: %s', _board)
@@ -233,7 +233,8 @@ class ProgrammerV2(object):
         logging.debug('Setting up EC programmer for board: %s', _board)
         if _board in ('daisy', 'kirby', 'pit', 'puppy', 'snow',
                       'spring', 'discovery', 'nyan', 'bolt', 'samus',
-                      'falco', 'peppy', 'rambi', 'slippy', 'link'):
+                      'falco', 'peppy', 'rambi', 'slippy', 'link',
+                      'squawks'):
             _ec_prog = FlashECProgrammer(servo)
         else:
             logging.warn('No EC programmer found for board: %s', _board)
