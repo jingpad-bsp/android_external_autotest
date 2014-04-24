@@ -4,9 +4,7 @@
 
 
 import logging
-import os
 from autotest_lib.client.bin import test, utils
-from autotest_lib.client.common_lib import error
 
 
 class kernel_Lmbench(test.test):
@@ -57,35 +55,6 @@ class kernel_Lmbench(test.test):
 
     version = 1
 
-
-    def setup(self, tarball='lmbench3.tar.bz2'):
-        """
-        Build lmbench. This only happens when building the test.
-
-        Uncompresses the original lmbench tarball, applies patches to fix
-        some build issues, configures lmbench and then modifies the config
-        files to use appropriate directory and file locations.
-
-        @param tarball: Lmbench tarball.
-        @see: http://www.bitmover.com/lm/lmbench/lmbench3.tar.gz
-                (original tarball, shipped as is in autotest).
-        """
-        tarball = utils.unmap_url(self.bindir, tarball, self.tmpdir)
-        utils.extract_tarball_to_dir(tarball, self.srcdir)
-        pwd = os.getcwd()
-        os.chdir(self.srcdir)
-        patches = ['0001-Fix-build-issues-with-lmbench.patch',
-                   '0002-Changing-shebangs-on-lmbench-scripts.patch',
-                   '0003-makefile.patch',
-                   '0004-clang-syntax.patch',
-                   '0005-lfs.patch']
-        for patch in patches:
-            utils.system('patch -p1 < ../%s' % patch)
-        # Set OS='' to avoid create a host-specific bin directory
-        utils.make('OS=')
-        os.chdir(pwd)
-
-
     def _run_benchmarks(self):
         """Run the benchmarks.
 
@@ -98,26 +67,26 @@ class kernel_Lmbench(test.test):
 
         benchmarks = [
             ('lat_pagefault',
-             '%(lmpath)s/lat_pagefault -N %(N)d -W %(W)d %(fname)s 2>&1'),
+             'lat_pagefault -N %(N)d -W %(W)d %(fname)s 2>&1'),
             ('lat_syscall_null',
-             '%(lmpath)s/lat_syscall -N %(N)d -W %(W)d null 2>&1'),
+             'lat_syscall -N %(N)d -W %(W)d null 2>&1'),
             ('lat_syscall_read',
-             '%(lmpath)s/lat_syscall -N %(N)d -W %(W)d read %(fname)s 2>&1'),
+             'lat_syscall -N %(N)d -W %(W)d read %(fname)s 2>&1'),
             ('lat_syscall_write',
-             '%(lmpath)s/lat_syscall -N %(N)d -W %(W)d write %(fname)s 2>&1'),
+             'lat_syscall -N %(N)d -W %(W)d write %(fname)s 2>&1'),
             ('lat_proc_fork',
-             '%(lmpath)s/lat_proc -N %(N)d -W %(W)d fork 2>&1'),
+             'lat_proc -N %(N)d -W %(W)d fork 2>&1'),
             ('lat_proc_exec',
-             '%(lmpath)s/lat_proc -N %(N)d -W %(W)d exec 2>&1'),
+             'lat_proc -N %(N)d -W %(W)d exec 2>&1'),
             ('lat_mmap',
-             ('%(lmpath)s/lat_mmap -N %(N)d -W %(W)d '
+             ('lat_mmap -N %(N)d -W %(W)d '
               '%(fsize)dM %(fname)s 2>&1')),
             ('lat_mmap_P2',
-             '%(lmpath)s/lat_mmap -P 2 -W %(W)d %(fsize)dM %(fname)s 2>&1'),
+             'lat_mmap -P 2 -W %(W)d %(fsize)dM %(fname)s 2>&1'),
             ('lat_pipe',
-             '%(lmpath)s/lat_pipe -N %(N)d -W %(W)d 2>&1'),
+             'lat_pipe -N %(N)d -W %(W)d 2>&1'),
             ('lat_ctx_s0',
-             ('taskset 0x1 nice -20 %(lmpath)s/'
+             ('taskset 0x1 nice -20 '
               'lat_ctx -s 0 -W %(W)d  %(procs)d 2>&1'))
         ]
 
@@ -149,9 +118,6 @@ class kernel_Lmbench(test.test):
         self.job.require_gcc()
         self.lmkeyvals = {}
 
-        # Where the lmbench binaries are
-        self.lmpath = os.path.join(self.srcdir, 'bin')
-
         # Common parameters for the benchmarks. More details here:
         # http://lmbench.sourceforge.net/man/lmbench.8.html
         # N - number of repetitions
@@ -166,8 +132,7 @@ class kernel_Lmbench(test.test):
             'fname':'/usr/local/zeros',
             'fsize':128,
             'W':10000,
-            'procs':8,
-            'lmpath': self.lmpath}
+            'procs':8}
 
         # Write out the params as kevals now to keep them even if test fails
         param_kvals = [('param_%s' % p,v) for (p,v) in self.lmparams.items()]
