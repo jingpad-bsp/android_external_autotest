@@ -63,7 +63,13 @@ class Edid(object):
         if not os.path.exists(filename):
             raise ValueError('EDID file %r does not exist' % filename)
 
-        data = open(filename).read()
+        if filename.upper().endswith('.TXT'):
+            # Convert the EDID text format, returning from xrandr.
+            data = reduce(operator.add,
+                          map(lambda s: s.strip().decode('hex'),
+                              open(filename).readlines()))
+        else:
+            data = open(filename).read()
         return cls(data)
 
 

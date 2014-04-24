@@ -174,3 +174,13 @@ class DisplayClient(object):
         self._client.run(command)
         self._client.get_file(remote_path, file_path)
         return open(file_path).read()
+
+
+    def get_resolution(self):
+        """Gets the external resolution on framebuffer.
+
+        @return The resolution tuple (width, height)
+        """
+        output = self.get_connector_name()
+        width, height, _, _ = self._display_xmlrpc_client.get_resolution(output)
+        return (width, height)
