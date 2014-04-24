@@ -13,7 +13,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
-SUITE = "network3g"
+SUITE = "network3g_att, network3g_tmobile"
 DEPENDENCIES = "modem:wooly"
 DOC = """
   Tests that a cellular modem provides correct identification information

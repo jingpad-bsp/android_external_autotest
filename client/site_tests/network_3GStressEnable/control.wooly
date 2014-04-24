@@ -8,7 +8,7 @@ PURPOSE = "Stress-test Connman enable/disable"
 CRITERIA = """
 This test fails if flimflam ever fails to respond to a DBus message or crashes.
 """
-SUITE = "network3g"
+SUITE = "network3g_att, network3g_tmobile"
 TIME = "SHORT"
 TEST_CATEGORY = "Stress"
 TEST_CLASS = "network"
