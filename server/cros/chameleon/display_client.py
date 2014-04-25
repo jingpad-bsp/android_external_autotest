@@ -6,13 +6,15 @@ import httplib
 import logging
 import os
 import socket
-import sys
+import tempfile
 import xmlrpclib
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.cros import constants
 from autotest_lib.server import autotest
+from autotest_lib.server.cros.chameleon import image_generator
+
 
 class DisplayClient(object):
     """DisplayClient is a layer to control display logic over a remote DUT.
@@ -27,6 +29,8 @@ class DisplayClient(object):
     XMLRPC_RETRY_TIMEOUT = 180
     XMLRPC_RETRY_DELAY = 10
     HTTP_PORT = 8000
+    DEST_TMP_DIR = '/tmp'
+    DEST_IMAGE_FILENAME = 'calibration.svg'
 
 
     def __init__(self, host):
@@ -36,9 +40,7 @@ class DisplayClient(object):
         """
         self._client = host
         self._display_xmlrpc_client = None
-        module_dir = os.path.dirname(sys.modules[__name__].__file__)
-        self._source_images_dir = os.path.join(module_dir, 'calibration_images')
-        self._dest_tmp_dir = '/tmp'
+        self._image_generator = image_generator.ImageGenerator()
 
 
     def initialize(self):
@@ -98,10 +100,16 @@ class DisplayClient(object):
 
         @param resolution: A tuple (width, height) of resolution.
         """
-        filename = '%dx%d.png' % resolution
-        image_path = os.path.join(self._source_images_dir, filename)
-        self._client.send_file(image_path, self._dest_tmp_dir)
-        page_url = 'file://%s/%s' % (self._dest_tmp_dir, filename)
+        with tempfile.NamedTemporaryFile() as f:
+            self._image_generator.generate_image(
+                    resolution[0], resolution[1], f.name)
+            os.chmod(f.name, 0644)
+            self._client.send_file(
+                    f.name,
+                    os.path.join(self.DEST_TMP_DIR, self.DEST_IMAGE_FILENAME))
+
+        page_url = 'file://%s/%s' % (self.DEST_TMP_DIR,
+                                     self.DEST_IMAGE_FILENAME)
         self._display_xmlrpc_client.load_url(page_url)
 
 
