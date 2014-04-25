@@ -29,13 +29,13 @@ def repair(machine):
     try:
         job.record('START', None, 'repair')
         host = hosts.create_host(machine, initialize=False, auto_monitor=False)
+        # Collect logs before the repair, as it might destroy all useful logs.
+        local_log_dir = os.path.join(job.resultdir, machine, 'before_repair')
+        host.collect_logs('/var/log', local_log_dir, ignore_errors=True)
         _call_repair(host)
-
         logging.debug('Repair with labels list %s', labels_list)
         provision.run_special_task_actions(job, host, labels_list,
                                            provision.Repair)
-        local_log_dir = os.path.join(job.resultdir, machine)
-        host.collect_logs('/var/log', local_log_dir, ignore_errors=True)
     except Exception as e:
         repair_utils.flag_problem_test(machine)
         job.record('END FAIL', None, 'repair')
