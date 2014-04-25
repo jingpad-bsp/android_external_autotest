@@ -8,11 +8,12 @@ import grp, logging, os, pwd, re, stat, sys, shutil, pwd, grp
 
 from autotest_lib.client.bin import utils
 
-USER_TOKEN_NAME = 'User-Specific TPM Token'
-USER_CHAPS_DIR = '.chaps'
+USER_TOKEN_PREFIX = 'User TPM Token '
 TMP_CHAPS_DIR = '/tmp/chaps'
 CHAPS_DIR_PERM = 0750
-CHAPS_SALT_PERM = 0600
+SYSTEM_TOKEN_NAME = 'System TPM Token'
+SYSTEM_TOKEN_DIR = '/var/lib/chaps'
+INVALID_SLOT_ID = '100'
 
 
 def __run_cmd(cmd, ignore_status=False):
@@ -20,12 +21,14 @@ def __run_cmd(cmd, ignore_status=False):
     return utils.system_output(cmd + ' 2>&1', retain_output=True,
                                ignore_status=ignore_status).strip()
 
-def __get_token_paths():
-    """Return a dict with a path for each PKCS #11 token currently loaded."""
+def __get_token_paths(exclude_system_token):
+    """Return a list with a path for each PKCS #11 token currently loaded."""
     token_paths = []
     for line in __run_cmd('chaps_client --list').split('\n'):
-        match = re.search(r'Slot \d+: (/.*)\s*$', line);
+        match = re.search(r'Slot \d+: (/.*)$', line)
         if match:
+            if exclude_system_token and match.group(1) == SYSTEM_TOKEN_DIR:
+                continue
             token_paths.append(match.group(1))
     return token_paths
 
@@ -35,42 +38,50 @@ def __get_pkcs11_file_list(token_path):
     file_list_output = __run_cmd('find %s ' % token_path + find_args)
     return file_list_output
 
+def __get_user_pkcs11_token_slot():
+    token_list = __run_cmd('p11_replay --list_tokens')
+    for line in token_list.split('\n'):
+        match = re.search(r'^Slot (\d+): ' + USER_TOKEN_PREFIX, line)
+        if not match:
+            continue
+        return match.group(1)
+    return INVALID_SLOT_ID
+
 def __verify_tokenname(token_path):
     """Verify that the TPM token name is correct."""
-    token_list = __run_cmd('p11_replay --list_tokens')
-    logging.error('token_list: ' + token_list)
-    match = re.search(r'^Slot \d+: (.*)\s*$', token_list, flags=re.MULTILINE)
+    # The token path is expected to be of the form:
+    # /home/root/<obfuscated_user_id>/chaps
+    match = re.search(r'/home/root/(.*)/chaps', token_path)
     if not match:
-        logging.error('Could not read PKCS#11 token label!')
         return False
-    token_label = match.group(1)
-    # Accept the legacy token label.
-    if token_label == USER_TOKEN_NAME:
-        return True
-    # The token label should be a canonicalized username which means we should
-    # be able to map it to the token path. This will fail if the UTF-8 username
-    # is more than 32 bytes in length and was truncated to form the PKCS #11
-    # token label.
-    if len(token_label) == 32:
-        return True
-    obfuscate_cmd = 'cryptohome --action=obfuscate_user --user=%s' % token_label
-    expected_token_path = __run_cmd(obfuscate_cmd)
-    if token_path != expected_token_path:
-        logging.error('Wrong or empty label on the PKCS#11 Token (Got = %s',
-                      token_label)
-        return False
-    return True
+    obfuscated_user = match.group(1)
+    # We expect the token label to contain first 16 characters of the obfuscated
+    # user id. This is the same value we extracted from |token_path|.
+    expected_user_token_label = USER_TOKEN_PREFIX + obfuscated_user[:16]
+    # The p11_replay tool will list tokens in the following form:
+    # Slot 1: <token label>
+    token_list = __run_cmd('p11_replay --list_tokens')
+    for line in token_list.split('\n'):
+        match = re.search(r'^Slot \d+: (.*)$', line)
+        if not match:
+            continue
+        token_label = match.group(1).rstrip()
+        if (token_label == expected_user_token_label):
+            return True
+        # Ignore the system token label.
+        if token_label == SYSTEM_TOKEN_NAME:
+            continue
+        logging.error('Unexpected token label: |%s|', token_label)
+    logging.error('Invalid or missing PKCS#11 token label!')
+    return False
 
 def __verify_permissions(token_path):
     """Verify that the permissions on the initialized token dir are correct."""
-    # List of 3-tuples consisting of (path, user:group, octal permissions)
+    # List of 3-tuples consisting of (path, user:group, octal permissions).
     # Can be generated (for example), by:
-    # find /home/chronos/user/.chaps -printf "'%p', '%u:%g', 0%m\n"
-    # for i in $paths; do echo \(\'$i\', $(stat --format="'%U:%G', 0%a" $i)\),;
-    # done
+    # find <token_path>/chaps -printf "'%p', '%u:%g', 0%m\n"
     expected_permissions = [
         (token_path, 'chaps:chronos-access', CHAPS_DIR_PERM),
-        ('%s/auth_data_salt' % token_path, 'root:root', CHAPS_SALT_PERM),
         ('%s/database' % token_path, 'chaps:chronos-access', CHAPS_DIR_PERM)]
     for item in expected_permissions:
         path = item[0]
@@ -101,7 +112,7 @@ def __verify_permissions(token_path):
 
 def verify_pkcs11_initialized():
     """Checks if the PKCS#11 token is initialized properly."""
-    token_path_list = __get_token_paths()
+    token_path_list = __get_token_paths(exclude_system_token=True)
     if len(token_path_list) != 1:
         logging.error('Expecting a single signed-in user with a token.')
         return False
@@ -160,7 +171,7 @@ def setup_p11_test_token(unload_user_tokens, auth_data='1234'):
     """
     cleanup_p11_test_token()
     if unload_user_tokens:
-        for path in __get_token_paths():
+        for path in __get_token_paths(exclude_system_token=False):
             utils.system('sudo chaps_client --unload --path=%s' % path)
     os.makedirs(TMP_CHAPS_DIR)
     uid = pwd.getpwnam('chaps')[2]
@@ -202,12 +213,6 @@ def cleanup_p11_test_token():
     shutil.rmtree(TMP_CHAPS_DIR, ignore_errors=True)
     shutil.rmtree('%s_bak' % TMP_CHAPS_DIR, ignore_errors=True)
 
-def verify_p11_token():
-    """Verifies that a PKCS #11 token is able to generate key pairs and sign."""
-    output = __run_cmd('p11_replay --generate --replay_wifi --cleanup',
-                       ignore_status=True)
-    return re.search('Sign: CKR_OK', output)
-
 def wait_for_pkcs11_token():
     """Waits for the PKCS #11 token to be available.
 
@@ -226,3 +231,26 @@ def wait_for_pkcs11_token():
     except utils.TimeoutError:
         return False
     return True
+
+def __p11_replay_on_user_token(extra_args=''):
+    """Executes a typical command replay on the current user token.
+
+    Args:
+        extra_args: Additional arguments to pass to p11_replay.
+
+    Returns:
+        The command output.
+    """
+    return __run_cmd('p11_replay --slot=%s --replay_wifi %s'
+                         % (__get_user_pkcs11_token_slot(), extra_args),
+                     ignore_status=True)
+
+def inject_and_test_key():
+    """Injects a key into a PKCS #11 token and tests that it can sign."""
+    output = __p11_replay_on_user_token('--inject')
+    return re.search('Sign: CKR_OK', output)
+
+def test_and_cleanup_key():
+    """Tests a PKCS #11 key before deleting it."""
+    output = __p11_replay_on_user_token('--cleanup')
+    return re.search('Sign: CKR_OK', output)

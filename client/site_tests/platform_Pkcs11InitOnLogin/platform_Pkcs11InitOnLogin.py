@@ -2,41 +2,34 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, time
+import time
 
-from autotest_lib.client.bin import utils
+from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import constants, cros_ui_test, pkcs11
+from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.cros import pkcs11
 
-class TimeoutError(error.TestError):
-    pass
-
-
-class platform_Pkcs11InitOnLogin(cros_ui_test.UITest):
+class platform_Pkcs11InitOnLogin(test.test):
+    """This test logs in and verifies that the TPM token is working."""
     version = 1
 
-    def initialize(self, creds='$default'):
-        self.auto_login = False
-        super(platform_Pkcs11InitOnLogin, self).initialize(
-            creds, is_creating_owner=True)
-        self.login(self.username, self.password)
-
-
     def run_once(self):
-        init_file = constants.CHAPS_USER_DATABASE_PATH
         start_time = time.time()
-        # Wait for PKCS#11 initialization to complete.
-        try:
-            utils.poll_for_condition(
-                lambda: os.access(init_file, os.F_OK),
-                TimeoutError('Timed out waiting for PKCS#11 initialization!'),
-                timeout=60)
+        with chrome.Chrome() as cr:
+            if not pkcs11.wait_for_pkcs11_token():
+                raise error.TestFail('The PKCS #11 token is not available.')
             end_time = time.time()
             self.write_perf_keyval(
                 { 'seconds_pkcs11_onlogin_init': end_time - start_time } )
             if not pkcs11.verify_pkcs11_initialized():
                 raise error.TestFail('Initialized token failed checks!')
-            if not pkcs11.verify_p11_token():
-                raise error.TestFail('Token verification failed!')
-        except TimeoutError, e:
-            logging.error(e)
+            if not pkcs11.inject_and_test_key():
+                raise error.TestFail('Failed to inject a key.')
+        # Login again with the same account.
+        with chrome.Chrome(dont_override_profile=True) as cr:
+            if not pkcs11.wait_for_pkcs11_token():
+                raise error.TestFail(
+                    'The PKCS #11 token is no longer available.')
+            if not pkcs11.test_and_cleanup_key():
+                raise error.TestFail('The PKCS #11 key is no longer valid.')
+
