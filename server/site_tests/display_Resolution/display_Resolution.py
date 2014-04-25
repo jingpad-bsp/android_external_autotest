@@ -76,25 +76,33 @@ class display_Resolution(chameleon_test.ChameleonTest):
                 time.sleep(self.CALIBRATION_IMAGE_SETUP_TIME)
 
                 logging.info('Checking the resolution.')
-                actual_resolution = self.chameleon_port.get_resolution()
-                # Verify the actual resolution detected by chameleon is the same
-                # as what is expected.
+                chameleon_resolution = self.chameleon_port.get_resolution()
+                dut_resolution = self.chameleon_port.get_resolution()
+                # Verify the actual resolution detected by chameleon and dut
+                # are the same as what is expected.
                 # Note: In mirrored mode, the device may be in hardware mirror
                 # (as opposed to software mirror). If so, the actual resolution
                 # could be different from the expected one. So we skip the check
                 # in mirrored mode.
-                if not test_mirrored and (width, height) != actual_resolution:
-                    error_message = ('Chameleon detected a wrong resolution: '
-                                     '%r; expected %r' %
-                                     (actual_resolution, (width, height)))
-                    logging.error(error_message)
-                else:
-                    error_message = self.check_screen_with_chameleon(
-                            '%s-%dx%d' % (tag, width, height),
-                            self.PIXEL_DIFF_VALUE_MARGIN, 0)
+                if ((width, height) != chameleon_resolution or
+                        (width, height) != dut_resolution):
+                    error_message = (
+                            'Detected a different resolution: '
+                            'chameleon: %r; dut: %r; expected %r' %
+                            (chameleon_resolution, dut_resolution,
+                             (width, height)))
+                    if test_mirrored:
+                        logging.warn(error_message)
+                    else:
+                        logging.error(error_message)
+                        errors.append(error_message)
 
-                if error_message:
-                    errors.append(error_message)
+                if chameleon_resolution == dut_resolution:
+                    error_message = self.check_screen_with_chameleon(
+                            '%s-%dx%d' % ((tag,) + dut_resolution),
+                            self.PIXEL_DIFF_VALUE_MARGIN, 0)
+                    if error_message:
+                        errors.append(error_message)
 
             finally:
                 self.display_client.close_tab()

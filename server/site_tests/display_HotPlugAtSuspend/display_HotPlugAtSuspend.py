@@ -121,8 +121,10 @@ class display_HotPlugAtSuspend(chameleon_test.ChameleonTest):
                                  'P' if plugged_after_suspend else 'U'),
                             self.PIXEL_DIFF_VALUE_MARGIN, 0)
                 else:
-                    error_message = ('Resolution changed to %dx%d after resume'
-                                     % (new_width, new_height))
+                    error_message = ('Resolution changed from %dx%d to '
+                                     '%dx%d after resume' %
+                                     (width, height, new_width, new_height))
+                    logging.error(error_message)
 
                 if error_message:
                     errors.append(error_message)
@@ -133,4 +135,4 @@ class display_HotPlugAtSuspend(chameleon_test.ChameleonTest):
                              current_connector)
 
         if errors:
-            raise error.TestFail('; '.join(errors))
+            raise error.TestFail('; '.join(set(errors)))
