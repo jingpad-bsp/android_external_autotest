@@ -136,12 +136,13 @@ class ChaosRunner(object):
 
         if self._ap_spec.security not in security:
             # Check if AP is configured with the expected security.
-            logging.error('%s was the expected security but got %s',
-                          self._ap_spec.security, str(security).strip('[]'))
+            logging.error('%s was the expected security but got %s: %s',
+                          self._ap_spec.security, str(security).strip('[]'),
+                          networks)
             job.run_test('network_WiFi_ChaosConfigFailure', ap=ap,
                          error_string=chaos_constants.AP_SECURITY_MISMATCH,
                          tag=ap.ssid)
-            return None
+            return list()
         return networks
 
 
@@ -272,6 +273,7 @@ class ChaosRunner(object):
                             # Reboot the packet capturer device and re-configure
                             # the capturer.
                             self._release_ap(ap, batch_locker)
+                            logging.debug('Scan result returned None. Reboot')
                             capturer.host.reboot()
                             capturer = site_linux_system.LinuxSystem(
                                            capture_host, {},'packet_capturer')
