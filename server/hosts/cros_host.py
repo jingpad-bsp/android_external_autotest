@@ -1128,6 +1128,11 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 'SERVER', 'gb_encrypted_diskspace_required', type=float,
                 default=0.1))
 
+        services_status = self.run('status system-services').stdout
+        if services_status != 'system-services start/running\n':
+            raise error.AutoservError('Chrome failed to reach login. '
+                                      'System services not running.')
+
         # Factory images don't run update engine,
         # goofy controls dbus on these DUTs.
         if not self._is_factory_image():
