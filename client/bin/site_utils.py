@@ -7,6 +7,7 @@
 import logging, os, platform, re, signal, tempfile, time, uuid
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
+from autotest_lib.client.bin import base_utils
 
 class TimeoutError(error.TestError):
     """Error raised when we time out when waiting on a condition."""
@@ -800,3 +801,30 @@ def restore_scaling_governor_states(path_value_list):
     for (path, value) in path_value_list:
         cmd = 'sudo echo %s > %s' % (value, path)
         utils.system(cmd)
+
+
+def get_gpu_family():
+    """Return the GPU family name"""
+    cpuarch = base_utils.get_cpu_soc_family()
+    if cpuarch == 'exynos5':
+        return 'mali'
+    if cpuarch == 'tegra':
+        return 'tegra'
+
+    pci_path = '/sys/bus/pci/devices/0000:00:02.0/device'
+
+    if not os.path.exists(pci_path):
+        raise error.TestError('PCI device 0000:00:02.0 not found')
+
+    device_id = int(utils.read_one_line(pci_path), 16)
+    intel_architecture = {
+        0xa011: 'pinetrail',
+        0x0106: 'sandybridge',
+        0x0126: 'sandybridge',
+        0x0156: 'ivybridge',
+        0x0166: 'ivybridge',
+        0x0a06: 'haswell',
+        0x0f31: 'baytrail',
+    }
+
+    return intel_architecture[device_id]
