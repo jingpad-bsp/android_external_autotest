@@ -252,6 +252,14 @@ class RemoteHost(base_classes.Host):
         return result.stdout.strip().split()[0]
 
 
+    def check_for_lkdtm(self):
+        """
+        Check for kernel dump test module. return True if exist.
+        """
+        cmd = 'ls /sys/kernel/debug/provoke-crash/DIRECT'
+        return self.run(cmd, ignore_status=True).exit_status == 0
+
+
     def are_wait_up_processes_up(self):
         """
         Checks if any HOSTS waitup processes are running yet on the

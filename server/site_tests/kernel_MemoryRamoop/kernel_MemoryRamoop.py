@@ -30,7 +30,6 @@ class kernel_MemoryRamoop(test.test):
     _MSG_LINE_LENGTH = 80
     _MSG_MAGIC = 'ramoop_test'
 
-
     def run_once(self, client_ip):
         """
         Run the test.
@@ -42,8 +41,13 @@ class kernel_MemoryRamoop(test.test):
         self._client_at = autotest.Autotest(self._client)
 
         self._run_test(self._do_reboot, '.*Restarting system.*$')
-        self._run_test(self._do_kernel_panic, '.*lkdtm:.*PANIC$')
-        self._run_test(self._do_kernel_bug, '.*lkdtm:.*BUG$')
+
+        if self._client.check_for_lkdtm():
+            self._run_test(self._do_kernel_panic, '.*lkdtm:.*PANIC$')
+            self._run_test(self._do_kernel_bug, '.*lkdtm:.*BUG$')
+        else:
+            logging.warn('DUT did not have kernel dump test module')
+
         self._run_test(self._do_reboot_with_suspend, '.*Restarting system.*$')
 
     def _run_test(self, test_function, sig_pattern):
@@ -115,7 +119,6 @@ class kernel_MemoryRamoop(test.test):
         self._client.run(cmd, ignore_status=True)
         self._client.wait_for_restart(old_boot_id=boot_id)
 
-
     def _generate_random_msg(self):
         """
         Generate random message to put in kernel log
@@ -145,7 +148,7 @@ class kernel_MemoryRamoop(test.test):
         @param sig_patterm: regex of kernel log to verify
         """
         #                   time stamp     magic   id      random
-        pattern = str("\\[ *(\\d+\\.\\d+)\\] (%s: (\\d{3}) \\w{%d})$" %
+        pattern = str("\\[ *(\\d+\\.\\d+)\\].*(%s: (\\d{3}) \\w{%d})" %
             (self._MSG_MAGIC, self._MSG_LINE_LENGTH))
         matcher = re.compile(pattern)
 
