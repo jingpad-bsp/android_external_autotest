@@ -32,7 +32,7 @@ class login_OwnershipNotRetaken(test.test):
         listener = session_manager.OwnershipSignalListener(gobject.MainLoop())
         listener.listen_for_new_key_and_policy()
         # Sign in. Sign out happens automatically when cr goes out of scope.
-        with chrome.Chrome() as cr:
+        with chrome.Chrome(clear_enterprise_policy=False) as cr:
             listener.wait_for_signals(desc='Owner settings written to disk.')
 
         key = open(constants.OWNER_KEY_FILE, 'rb')
@@ -41,7 +41,8 @@ class login_OwnershipNotRetaken(test.test):
         mtime = os.stat(constants.OWNER_KEY_FILE).st_mtime
 
         # Sign in/sign out as a second user.
-        with chrome.Chrome(username=self._TEST_USER,
+        with chrome.Chrome(clear_enterprise_policy=False,
+                           username=self._TEST_USER,
                            password=self._TEST_PASS) as cr:
             pass
 

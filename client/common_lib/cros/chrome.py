@@ -18,8 +18,8 @@ class Chrome(object):
 
     def __init__(self, logged_in=True, extension_paths=[], autotest_ext=False,
                  is_component=True, num_tries=3, extra_browser_args=None,
-                 auto_login=True, gaia_login=False,
-                 username=None, password=None):
+                 clear_enterprise_policy=True, auto_login=True,
+                 gaia_login=False, username=None, password=None):
         """
         Constructor of telemetry wrapper.
 
@@ -32,6 +32,8 @@ class Chrome(object):
         @param num_tries: Number of attempts to log in.
         @param extra_browser_args: Additional argument(s) to pass to the
                                    browser. It can be a string or a list.
+        @param clear_enterprise_policy: Clear enterprise policy before
+                                        logging in.
         @param auto_login: Does not login automatically if this is False.
                            Useful if you need to examine oobe.
         @param gaia_login: Logs in to real gaia.
@@ -67,6 +69,7 @@ class Chrome(object):
         b_options = finder_options.browser_options
         b_options.disable_component_extensions_with_background_pages = False
         b_options.create_browser_with_oobe = True
+        b_options.clear_enterprise_policy = clear_enterprise_policy
 
         b_options.auto_login = auto_login
         b_options.gaia_login = gaia_login
