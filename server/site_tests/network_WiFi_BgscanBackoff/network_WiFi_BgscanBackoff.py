@@ -66,6 +66,7 @@ class network_WiFi_BgscanBackoff(wifi_cell_test_base.WiFiCellTestBase):
             raise error.TestFail('Background scans should detect new BSSes '
                                  'within an associated ESS.')
 
+        self.context.router.deconfig_aps(instance=1)
         self.context.client.shill.disconnect(
                 self.context.router.get_ssid(instance=0))
         # Reconfigure AP, so the new bgscan setting can be correctly applied.
