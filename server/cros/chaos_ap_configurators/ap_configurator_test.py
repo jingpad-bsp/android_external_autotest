@@ -101,6 +101,8 @@ class ConfiguratorTest(unittest.TestCase):
             for mode_type in mode['modes']:
                 if (mode_type & ap_spec.MODE_N) != ap_spec.MODE_N:
                     return_dict['mode'] = mode_type
+                else:
+                    raise RuntimeError('No modes without MODE_N')
         return return_dict
 
 
@@ -231,10 +233,14 @@ class ConfiguratorTest(unittest.TestCase):
     def test_security_and_general_settings(self):
         """Test updating settings that are general and security related."""
         self.disabled_security_on_all_bands()
-        good_pair = self.return_non_n_mode_pair()
-        self.ap.set_radio(enabled=False)
-        self.ap.set_band(good_pair['band'])
-        self.ap.set_mode(good_pair['mode'])
+        try:
+            good_pair = self.return_non_n_mode_pair()
+            self.ap.set_radio(enabled=False)
+            self.ap.set_band(good_pair['band'])
+            self.ap.set_mode(good_pair['mode'])
+        except RuntimeError:
+            # AP does not support modes without MODE_N
+            return
         if self.ap.is_visibility_supported():
             self.ap.set_visibility(True)
         if self.ap.is_security_mode_supported(ap_spec.SECURITY_TYPE_WEP):
@@ -293,10 +299,14 @@ class ConfiguratorTest(unittest.TestCase):
     def test_cycle_security(self):
         """Test switching between different security settings."""
         self.disabled_security_on_all_bands()
-        good_pair = self.return_non_n_mode_pair()
-        self.ap.set_radio(enabled=True)
-        self.ap.set_band(good_pair['band'])
-        self.ap.set_mode(good_pair['mode'])
+        try:
+            good_pair = self.return_non_n_mode_pair()
+            self.ap.set_radio(enabled=True)
+            self.ap.set_band(good_pair['band'])
+            self.ap.set_mode(good_pair['mode'])
+        except RuntimeError:
+            # AP does not support modes without MODE_N
+            return
         if self.ap.is_security_mode_supported(ap_spec.SECURITY_TYPE_WEP):
             self.ap.set_security_wep('77777', ap_spec.WEP_AUTHENTICATION_OPEN)
         self.ap.apply_settings()
@@ -312,10 +322,14 @@ class ConfiguratorTest(unittest.TestCase):
     def test_actions_when_radio_disabled(self):
         """Test making changes when the radio is disabled."""
         self.disabled_security_on_all_bands()
-        good_pair = self.return_non_n_mode_pair()
-        self.ap.set_radio(enabled=False)
-        self.ap.set_band(good_pair['band'])
-        self.ap.set_mode(good_pair['mode'])
+        try:
+            good_pair = self.return_non_n_mode_pair()
+            self.ap.set_radio(enabled=False)
+            self.ap.set_band(good_pair['band'])
+            self.ap.set_mode(good_pair['mode'])
+        except RuntimeError:
+            # AP does not support modes without MODE_N
+            return
         self.ap.apply_settings()
         if self.ap.is_security_mode_supported(ap_spec.SECURITY_TYPE_WEP):
             self.ap.set_security_wep('77777', ap_spec.WEP_AUTHENTICATION_OPEN)

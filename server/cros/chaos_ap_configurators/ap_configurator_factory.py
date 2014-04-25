@@ -71,6 +71,9 @@ class APConfiguratorFactory(object):
         'DLinkDIR300APConfigurator':
             [PREFIX + 'dlink_dir300_ap_configurator',
                 'DLinkDIR300APConfigurator'],
+        'DLinkDIR505lAPConfigurator':
+            [PREFIX + 'dlink_dir505l_ap_configurator',
+                'DLinkDIR505lAPConfigurator'],
         'BuffaloAPConfigurator':
             [PREFIX + 'buffalo_ap_configurator',
                 'BuffaloAPConfigurator'],
