@@ -17,8 +17,6 @@ TIME='MEDIUM'
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = 'graphics'
 TEST_TYPE = 'client'
-# Reboot in the lab after the test ends.
-DEPENDENCIES='cleanup-reboot'
 
 DOC = """
 Piglit is a collection of automated tests for OpenGL implementations.
