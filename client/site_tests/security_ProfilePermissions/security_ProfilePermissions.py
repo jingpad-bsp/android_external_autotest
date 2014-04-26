@@ -13,7 +13,7 @@ from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import constants, cryptohome
 
 
-class security_ProfilePermissionsTelemetry(test.test):
+class security_ProfilePermissions(test.test):
     """Check permissions of files of logged in and guest user."""
     version = 1
     _HOMEDIR_MODE = 0710

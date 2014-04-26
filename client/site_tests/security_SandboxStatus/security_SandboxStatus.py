@@ -14,7 +14,7 @@ SANDBOXES = [u'SUID Sandbox',
              u'\xa0\xa0Network namespaces',
              u'Seccomp-BPF sandbox']
 
-class security_SandboxStatusTelemetry(test.test):
+class security_SandboxStatus(test.test):
     """Verify sandbox status."""
     version = 1
 

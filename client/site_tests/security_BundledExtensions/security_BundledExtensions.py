@@ -10,7 +10,7 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 
-class security_BundledExtensionsTelemetry(test.test):
+class security_BundledExtensions(test.test):
     """Verify security properties of bundled (on-disk) extensions."""
     version = 1
 

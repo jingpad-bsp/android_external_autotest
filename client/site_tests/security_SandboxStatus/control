@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "The Chromium OS Authors"
-NAME = "security_SandboxStatusTelemetry"
+AUTHOR = "jorgelo"
+NAME = "security_SandboxStatus"
 SUITE = "security"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
@@ -15,4 +15,4 @@ Checks the status of the sandbox by looking at chrome://sandbox and
 chrome://gpu.
 """
 
-job.run_test('security_SandboxStatusTelemetry')
+job.run_test('security_SandboxStatus')

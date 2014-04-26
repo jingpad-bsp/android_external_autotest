@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "jorgelo@chromium.org, achuith@chromium.org"
-NAME = "security_BundledExtensionsTelemetry"
+AUTHOR = "jorgelo@chromium.org"
+NAME = "security_BundledExtensions"
 PURPOSE = "Verify bundled extensions/their permissions have all been approved"
 CRITERIA = """
 This test will fail if the set of expected extensions -- and every
@@ -23,4 +23,4 @@ what their effective permissions are, etc. Then it compares those to a
 list and fails (with various helpful details) if there is not an exact match.
 """
 
-job.run_test('security_BundledExtensionsTelemetry')
+job.run_test('security_BundledExtensions')
