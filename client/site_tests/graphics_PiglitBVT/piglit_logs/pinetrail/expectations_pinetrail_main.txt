@@ -1,0 +1,8 @@
+{
+  "tests": {
+    "glx/GLX_OML_sync_control/waitformsc": {
+      "pass rate": "0.50", 
+      "result": "flaky"
+    }
+  }
+}
