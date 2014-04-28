@@ -210,6 +210,10 @@ class Test(dbmodels.Model, model_logic.ModelExtensions,
     machine = dbmodels.ForeignKey(Machine, db_column='machine_idx')
     finished_time = dbmodels.DateTimeField(null=True, blank=True)
     started_time = dbmodels.DateTimeField(null=True, blank=True)
+    invalid = dbmodels.BooleanField(default=False)
+    invalidates_test = dbmodels.ForeignKey(
+            'self', null=True, db_column='invalidates_test_idx',
+            related_name='invalidates_test_set')
 
     objects = model_logic.ExtendedManager()
 
