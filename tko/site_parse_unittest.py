@@ -11,8 +11,6 @@ import os, shutil, tempfile, unittest
 
 import common
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.frontend import setup_django_environment
-from autotest_lib.frontend import setup_test_environment
 from autotest_lib.tko.site_parse import StackTrace
 
 
@@ -20,7 +18,6 @@ class stack_trace_test(unittest.TestCase):
 
 
     def setUp(self):
-        setup_test_environment.set_up()
         self._fake_results = tempfile.mkdtemp()
         self._cros_src_dir = global_config.global_config.get_config_value(
             'CROS', 'source_tree', default=None)
@@ -42,7 +39,6 @@ class stack_trace_test(unittest.TestCase):
 
 
     def tearDown(self):
-        setup_test_environment.tear_down()
         shutil.rmtree(self._fake_results)
         if os.path.exists(self._cache_dir):
             shutil.rmtree(self._cache_dir)
