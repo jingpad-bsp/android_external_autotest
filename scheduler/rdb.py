@@ -14,13 +14,14 @@ from django.core import exceptions as django_exceptions
 from django.db.models import fields
 from django.db.models import Q
 from autotest_lib.frontend.afe import models
+from autotest_lib.scheduler import rdb_cache_manager
 from autotest_lib.scheduler import rdb_hosts
 from autotest_lib.scheduler import rdb_requests
 from autotest_lib.scheduler import rdb_utils
 from autotest_lib.site_utils.graphite import stats
 
 
-_timer = stats.Timer('rdb')
+_timer = stats.Timer(rdb_utils.RDB_STATS_KEY)
 
 
 # Qeury managers: Provide a layer of abstraction over the database by
@@ -118,6 +119,25 @@ class BaseHostRequestHandler(object):
         self.response_map[request] = response
 
 
+    def _check_response_map(self):
+        """Verify that we never give the same host to different requests.
+
+        @raises RDBException: If the same host is assigned to multiple requests.
+        """
+        unique_hosts = set([])
+        for request, response in self.response_map.iteritems():
+            # Each value in the response map can only either be a list of
+            # RDBHosts or a list of RDBExceptions, not a mix of both.
+            if isinstance(response[0], rdb_hosts.RDBHost):
+                if any([host in unique_hosts for host in response]):
+                    raise rdb_utils.RDBException(
+                            'Assigning the same host to multiple requests. New '
+                            'hosts %s, request %s, response_map: %s' %
+                            (response, request, self.response_map))
+                else:
+                    unique_hosts = unique_hosts.union(response)
+
+
     def _record_exceptions(self, request, exceptions):
         """Record a list of exceptions for a request.
 
@@ -132,7 +152,10 @@ class BaseHostRequestHandler(object):
         """Convert all RDBServerHostWrapper objects to host info dictionaries.
 
         @return: A dictionary mapping requests to a list of matching host_infos.
+
+        @raises RDBException: If the same host is assigned to multiple requests.
         """
+        self._check_response_map()
         for request, response in self.response_map.iteritems():
             self.response_map[request] = [reply.wire_format()
                                           for reply in response]
@@ -207,9 +230,13 @@ class AvailableHostRequestHandler(BaseHostRequestHandler):
 
     def __init__(self):
         self.host_query_manager = AvailableHostQueryManager()
+        self.cache = rdb_cache_manager.RDBHostCacheManager()
         self.response_map = {}
+        self.unsatisfied_requests = 0
+        self.leased_hosts_count = 0
 
 
+    @_timer.decorate
     def lease_hosts(self, hosts):
         """Leases a list of hosts.
 
@@ -276,30 +303,82 @@ class AvailableHostRequestHandler(BaseHostRequestHandler):
                       reverse=True)
 
 
+    @rdb_cache_manager.memoize_hosts
+    def _acquire_hosts(self, request, hosts_required, **kwargs):
+        """Acquire hosts for a group of similar requests.
+
+        Find and acquire hosts that can satisfy a group of requests.
+        1. If the caching decorator doesn't pass in a list of matching hosts
+           via the MEMOIZE_KEY this method will directly check the database for
+           matching hosts.
+        2. If all matching hosts are not leased for this request, the remaining
+           hosts are returned to the caching decorator, to place in the cache.
+
+        @param hosts_required: Number of hosts required to satisfy request.
+        @param request: The request for hosts.
+
+        @return: The list of excess matching hosts.
+        """
+        hosts = kwargs.get(rdb_cache_manager.MEMOIZE_KEY, [])
+        if not hosts:
+            hosts = self.host_query_manager.find_hosts(
+                            request.deps, request.acls)
+
+        # <-----[:attempt_lease_hosts](evicted)--------> <-(returned, cached)->
+        # |   -leased_hosts-  |   -stale cached hosts-  | -unleased matching- |
+        # --used this request---used by earlier request----------unused--------
+        attempt_lease_hosts = min(len(hosts), hosts_required)
+        leased_host_count = 0
+        if attempt_lease_hosts:
+            leased_hosts = self.lease_hosts(hosts[:attempt_lease_hosts])
+            if leased_hosts:
+                self.update_response_map(request, leased_hosts)
+
+            # [:attempt_leased_hosts] - leased_hosts will include hosts that
+            # failed leasing, most likely because they're already leased, so
+            # don't cache them again.
+            leased_host_count = len(leased_hosts)
+            failed_leasing = attempt_lease_hosts - leased_host_count
+            if failed_leasing > 0:
+                # For the sake of simplicity this calculation assumes that
+                # leasing only fails if there's a stale cached host already
+                # leased by a previous request, ergo, we can only get here
+                # through a cache hit.
+                line_length = len(hosts)
+                self.cache.stale_entries.append(
+                        float(failed_leasing/line_length) * 100)
+            self.leased_hosts_count += leased_host_count
+        self.unsatisfied_requests += max(hosts_required - leased_host_count, 0)
+        # Cache the unleased matching hosts against the request.
+        return hosts[attempt_lease_hosts:]
+
+
     @_timer.decorate
     def batch_acquire_hosts(self, host_requests):
         """Acquire hosts for a list of requests.
 
-        The act of acquisition involves finding and leasing a set of
-        hosts that match the parameters of a request. Each acquired
-        host is added to the response_map dictionary, as an
-        RDBServerHostWrapper.
+        The act of acquisition involves finding and leasing a set of hosts
+        that match the parameters of a request. Each acquired host is added
+        to the response_map dictionary as an RDBServerHostWrapper.
 
         @param host_requests: A list of requests to acquire hosts.
         """
+        distinct_requests = 0
+
+        logging.debug('Processing %s host acquisition requests',
+                      len(host_requests))
         for request, count in self.batch_requests(host_requests):
-            hosts = self.host_query_manager.find_hosts(
-                            request.deps, request.acls)
-            num_hosts = min(len(hosts), count)
-            if num_hosts:
-                # Try leasing num hosts, but only update the response map with
-                # those that we could successfully lease.
-                leased_hosts = self.lease_hosts(hosts[:num_hosts])
-                self.update_response_map(request, leased_hosts)
-                num_hosts = len(leased_hosts)
-            if num_hosts < count:
-                logging.warning('%s Unsatisfied rdb acquisition request:%s ',
-                                count-num_hosts, request)
+            self._acquire_hosts(request, count)
+            distinct_requests += 1
+
+        self.cache.record_stats()
+        logging.debug('Host acquisition stats: distinct requests: %s, leased '
+                      'hosts: %s, unsatisfied requests: %s', distinct_requests,
+                      self.leased_hosts_count, self.unsatisfied_requests)
+        stats.Gauge(rdb_utils.RDB_STATS_KEY).send('leased_hosts',
+                                                  self.leased_hosts_count)
+        stats.Gauge(rdb_utils.RDB_STATS_KEY).send('unsatisfied_requests',
+                                                  self.unsatisfied_requests)
 
 
     @_timer.decorate

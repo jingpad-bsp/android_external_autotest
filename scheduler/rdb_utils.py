@@ -7,6 +7,7 @@
 Do not import rdb or autotest modules here to avoid cyclic dependencies.
 """
 
+RDB_STATS_KEY = 'rdb'
 
 class RDBException(Exception):
     """Generic RDB exception."""
@@ -15,6 +16,11 @@ class RDBException(Exception):
         """Convert the exception to a format better suited to an rpc response.
         """
         return str(self)
+
+
+class CacheMiss(RDBException):
+    """Generic exception raised for a cache miss in the rdb."""
+    pass
 
 
 class LabelIterator(object):

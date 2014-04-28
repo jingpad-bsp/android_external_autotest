@@ -10,7 +10,7 @@ from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import frontend_test_utils
 from autotest_lib.frontend.afe import rdb_model_extensions as rdb_models
 from autotest_lib.scheduler import rdb_hosts
-from autotest_lib.scheduler import rdb_integration_tests
+from autotest_lib.scheduler import rdb_testing_utils
 from autotest_lib.scheduler import rdb_utils
 
 
@@ -18,7 +18,7 @@ class RDBHostTests(unittest.TestCase, frontend_test_utils.FrontendTestMixin):
     """Unittests for RDBHost objects."""
 
     def setUp(self):
-        self.db_helper = rdb_integration_tests.DBHelper()
+        self.db_helper = rdb_testing_utils.DBHelper()
         self._database = self.db_helper.database
         # Runs syncdb setting up initial database conditions
         self._frontend_common_setup()
@@ -162,7 +162,4 @@ class RDBHostTests(unittest.TestCase, frontend_test_utils.FrontendTestMixin):
         self.assertTrue(
                 self.db_helper.get_host(hostname=hostname)[0].status ==
                 new_status and client_host.status == new_status)
-
-
-
 

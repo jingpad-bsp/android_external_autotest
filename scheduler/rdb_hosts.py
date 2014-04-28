@@ -17,9 +17,11 @@ back to the rdb.
 """
 
 import logging
+from django.core import exceptions as django_exceptions
 
 import common
-from autotest_lib.frontend.afe import rdb_model_extensions as models
+from autotest_lib.frontend.afe import rdb_model_extensions as rdb_models
+from autotest_lib.frontend.afe import models as afe_models
 from autotest_lib.scheduler import rdb_requests
 from autotest_lib.scheduler import rdb_utils
 
@@ -28,7 +30,7 @@ class RDBHost(object):
     """A python host object representing a django model for the host."""
 
     required_fields = set(
-            models.AbstractHostModel.get_basic_field_names() + ['id'])
+            rdb_models.AbstractHostModel.get_basic_field_names() + ['id'])
 
 
     def _update_attributes(self, new_attributes):
@@ -81,7 +83,11 @@ class RDBServerHostWrapper(RDBHost):
     """A host wrapper for the base host object.
 
     This object contains all the attributes of the raw database columns,
-    and a few more that make the task of host assignment easier.
+    and a few more that make the task of host assignment easier. It handles
+    the following duties:
+        1. Serialization of the host object and foreign keys
+        2. Conversion of label ids to label names, and retrieval of platform
+        3. Checking the leased bit/status of a host before leasing it out.
     """
 
     def __init__(self, host):
@@ -98,23 +104,44 @@ class RDBServerHostWrapper(RDBHost):
         # Platform needs to be a method, not an attribute, for
         # backwards compatibility with the rest of the host model.
         self.platform_name = platform.name if platform else None
-        self._host = host
+
+
+    def refresh(self, fields=None):
+        """Refresh the attributes on this instance.
+
+        @param fields: A list of fieldnames to refresh. If None
+            all the required fields of the host are refreshed.
+
+        @raises RDBException: If refreshing a field fails.
+        """
+        # TODO: This is mainly required for cache correctness. If it turns
+        # into a bottleneck, cache host_ids instead of rdbhosts and rebuild
+        # the hosts once before leasing them out. The important part is to not
+        # trust the leased bit on a cached host.
+        fields = self.required_fields if not fields else fields
+        try:
+            refreshed_fields = afe_models.Host.objects.filter(
+                    id=self.id).values(*fields)[0]
+        except django_exceptions.FieldError as e:
+            raise rdb_utils.RDBException('Couldn\'t refresh fields %s: %s' %
+                    fields, e)
+        self._update_attributes(refreshed_fields)
 
 
     def lease(self):
         """Set the leased bit on the host object, and in the database.
 
-        @raises RDBException: If the host is already leased, or the
-            RDBServerHostWrapper leased bit is set.
+        @raises RDBException: If the host is already leased.
         """
-        if self._host.leased or self.leased:
-            raise rdb_utils.RDBException(
-                    'Error leasing host %s, RDBServerHostWrapper leased: %s, '
-                    'Host db object leased: %s' %
-                    (self.hostname, self.leased, self._host.leased))
-        self._host.leased = 1
-        self._host.save()
-        self.leased = 1
+        self.refresh(fields=['leased'])
+        if self.leased:
+            raise rdb_utils.RDBException('Host %s is already leased' %
+                                         self.hostname)
+        self.leased = True
+        # TODO: Avoid leaking django out of rdb.QueryManagers. This is still
+        # preferable to calling save() on the host object because we're only
+        # updating/refreshing a single indexed attribute, the leased bit.
+        afe_models.Host.objects.filter(id=self.id).update(leased=self.leased)
 
 
     def wire_format(self, unwrap_foreign_keys=True):

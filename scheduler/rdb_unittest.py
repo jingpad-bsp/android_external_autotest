@@ -8,26 +8,15 @@ import unittest
 import common
 from autotest_lib.frontend import setup_django_lite_environment
 from autotest_lib.frontend.afe import frontend_test_utils
-from autotest_lib.frontend.afe import rdb_model_extensions as rdb_models
-from autotest_lib.scheduler import rdb_integration_tests
 from autotest_lib.scheduler import rdb
 from autotest_lib.scheduler import rdb_hosts
 from autotest_lib.scheduler import rdb_requests
+from autotest_lib.scheduler import rdb_testing_utils
 from autotest_lib.scheduler import rdb_utils
 
 
 from django.core import exceptions as django_exceptions
 from django.db.models import fields
-
-
-class FakeHost(rdb_hosts.RDBHost):
-    """Fake host to use in unittests."""
-
-    def __init__(self, hostname, host_id, **kwargs):
-        kwargs.update({'hostname': hostname, 'id': host_id})
-        kwargs = rdb_models.AbstractHostModel.provide_default_values(
-                kwargs)
-        super(FakeHost, self).__init__(**kwargs)
 
 
 class RDBBaseRequestHandlerTests(unittest.TestCase):
@@ -58,11 +47,41 @@ class RDBBaseRequestHandlerTests(unittest.TestCase):
         self.assertRaises(
                 rdb_utils.RDBException, self.handler.update_response_map,
                 *(request, response))
-        response.append(FakeHost(hostname='host', host_id=1))
+        response.append(rdb_testing_utils.FakeHost(hostname='host', host_id=1))
         self.handler.update_response_map(request, response)
         self.assertRaises(
                 rdb_utils.RDBException, self.handler.update_response_map,
                 *(request, response))
+
+
+    def testResponseMapChecking(self):
+        """Test response map sanity check.
+
+        Test that adding the same RDBHostServerWrapper for 2 requests will
+        raise an exception.
+        """
+        # Assign the same host to 2 requests and check for exceptions.
+        self.get_hosts_manager.add_request(host_id=1)
+        self.get_hosts_manager.add_request(host_id=2)
+        request_1 = self.get_hosts_manager.request_queue[0]
+        request_2 = self.get_hosts_manager.request_queue[1]
+        response = [rdb_testing_utils.FakeHost(hostname='host', host_id=1)]
+
+        self.handler.update_response_map(request_1, response)
+        self.handler.update_response_map(request_2, response)
+        self.assertRaises(
+                rdb_utils.RDBException, self.handler.get_response)
+
+        # Assign the same exception to 2 requests and make sure there isn't a
+        # an exception, then check that the response returned is the
+        # exception_string and not the exception itself.
+        self.handler.response_map = {}
+        exception_string = 'This is an exception'
+        response = [rdb_utils.RDBException(exception_string)]
+        self.handler.update_response_map(request_1, response)
+        self.handler.update_response_map(request_2, response)
+        for response in self.handler.get_response().values():
+            self.assertTrue(response[0] == exception_string)
 
 
     def testBatchGetHosts(self):
@@ -80,7 +99,8 @@ class RDBBaseRequestHandlerTests(unittest.TestCase):
         fake_hosts = []
         for host_id in range(1, 4):
             self.get_hosts_manager.add_request(host_id=host_id)
-            fake_hosts.append(FakeHost('host%s'%host_id, host_id))
+            fake_hosts.append(
+                    rdb_testing_utils.FakeHost('host%s'%host_id, host_id))
         self.handler.host_query_manager.get_hosts = mock.MagicMock(
                 return_value=fake_hosts)
         self.handler.batch_get_hosts(self.get_hosts_manager.request_queue)
@@ -167,7 +187,7 @@ class QueryManagerTests(unittest.TestCase,
     """Query Manager Tests."""
 
     def setUp(self):
-        self.db_helper = rdb_integration_tests.DBHelper()
+        self.db_helper = rdb_testing_utils.DBHelper()
         self._database = self.db_helper.database
 
         # Runs syncdb setting up initial database conditions
