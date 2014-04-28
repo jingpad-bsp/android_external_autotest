@@ -10,6 +10,7 @@ from autotest_lib.client.common_lib import utils
 from autotest_lib.client.cros import dhcp_packet
 from autotest_lib.client.cros import dhcp_test_base
 from autotest_lib.client.cros import radvd_server
+from autotest_lib.client.cros.networking import shill_proxy
 
 # Length of time the lease from the DHCP server is valid.
 LEASE_TIME_SECONDS = 60
@@ -25,7 +26,8 @@ class network_Ipv6SimpleNegotiation(dhcp_test_base.DhcpTestBase):
     """
 
     def _get_ip6_addresses(self):
-        """
+        """Gets the list of client IPv6 addresses.
+
         Retrieve IPv6 addresses associated with the "client side" of the
         pseudo-interface pair.  Returns a dict keyed by the IPv6 address,
         with the values being the array of attribute strings that follow
@@ -36,6 +38,7 @@ class network_Ipv6SimpleNegotiation(dhcp_test_base.DhcpTestBase):
         will turn into a dict key:
 
             'fe80::ae16:2dff:fe01:0203/64': [ 'scope', 'link' ]
+
         """
         addr_output = utils.system_output(
             "ip -6 addr show dev %s" % self.ethernet_pair.peer_interface_name)
@@ -47,14 +50,17 @@ class network_Ipv6SimpleNegotiation(dhcp_test_base.DhcpTestBase):
             addresses[parts[1]] = parts[2:]
         return addresses
 
+
     def _get_link_address(self):
-        """
+        """Get the client MAC address.
+
         Retrieve the MAC address associated with the "client side" of the
         pseudo-interface pair.  For example, the "ip link show" output:
 
             link/ether 01:02:03:04:05:05 brd ff:ff:ff:ff:ff:ff
 
         will cause a return of "01:02:03:04:05:05"
+
         """
         addr_output = utils.system_output(
             'ip link show %s' % self.ethernet_pair.peer_interface_name)
@@ -63,12 +69,14 @@ class network_Ipv6SimpleNegotiation(dhcp_test_base.DhcpTestBase):
             if parts[0] == 'link/ether':
                 return parts[1]
 
+
     def negotiate_dhcp_lease(self):
-        """
-        Perform a DHCP negotiation.  Although this test isn't really meant
-        to validate DHCP negotiation, we should go through this process so
-        the connection manager keeps the interface up long enough for the
-        IPv6 negotiation to complete reliably.
+        """Perform a DHCP negotiation.
+
+        Although this test isn't really meant to validate DHCP negotiation,
+        we should go through this process so the connection manager keeps the
+        interface up long enough for the IPv6 negotiation to complete reliably.
+
         """
         subnet_mask = self.ethernet_pair.interface_subnet_mask
         intended_ip = dhcp_test_base.DhcpTestBase.rewrite_ip_suffix(
@@ -96,10 +104,13 @@ class network_Ipv6SimpleNegotiation(dhcp_test_base.DhcpTestBase):
                 }
         self.negotiate_and_check_lease(dhcp_options)
 
+
     def verify_ipv6_addresses(self):
-        """
+        """Verify IPv6 configuration.
+
         Perform various tests to validate the IPv6 addresses acquired by
         the client.
+
         """
         addresses = self._get_ip6_addresses()
         logging.info('Got addresses %r', addresses)
@@ -131,16 +142,55 @@ class network_Ipv6SimpleNegotiation(dhcp_test_base.DhcpTestBase):
         if len(mac_related_addresses) != 1:
             raise error.TestError('Expected 1 mac-related global address but '
                                   'got %d' % len(mac_related_addresses))
+        mac_related_address = mac_related_addresses[0]
 
         local_address_count = len(addresses) - len(global_addresses)
         if local_address_count <= 0:
             raise error.TestError('Expected at least 1 non-global address but '
                                   'got %d' % local_address_count)
 
+        temporary_address = [addr for addr in global_addresses
+                                 if addr != mac_related_address][0]
+        self.verify_ipconfig_contains(temporary_address)
+
+
+    def verify_ipconfig_contains(self, address_and_prefix):
+        """Verify that shill has an IPConfig entry with the specified address.
+
+        @param address_and_prefix string with address/prefix to search for.
+
+        """
+        address, prefix_str = address_and_prefix.split('/')
+        prefix = int(prefix_str)
+        for ipconfig in self.get_interface_ipconfig_objects(
+                self.ethernet_pair.peer_interface_name):
+            ipconfig_properties = shill_proxy.ShillProxy.dbus2primitive(
+                    ipconfig.GetProperties(utf8_strings=True))
+            if 'Method' not in ipconfig_properties:
+                continue
+
+            if ipconfig_properties['Method'] != 'ipv6':
+                continue
+
+            break
+
+        else:
+            raise error.TestError('Found no IPv6 IPConfig entries')
+
+        for property, value in (('Address', address), ('Prefixlen', prefix)):
+            if property not in ipconfig_properties:
+               raise error.TestError('IPv6 IPConfig entry does not '
+                                     'contain property %s' % property)
+            if ipconfig_properties[property] != value:
+               raise error.TestError('IPv6 IPConfig property %s does not '
+                                     'contain the expected value %s; '
+                                     'instead it is %s' %
+                                     (property, value,
+                                      ipconfig_properties[property]))
+
+
     def test_body(self):
-        """
-        The main body for this test.
-        """
+        """The main body for this test."""
         server = radvd_server.RadvdServer(self.ethernet_pair.interface_name)
         server.start_server()
 

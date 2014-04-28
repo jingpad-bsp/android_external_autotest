@@ -110,9 +110,7 @@ class DhcpTestBase(test.test):
         device_properties = device.GetProperties(utf8_strings=True)
         proxy = self.shill_proxy
 
-        # TODO(pstew): This should move to using a shill_proxy constant when we
-        # can reasonably expect all devices we test have this constant there.
-        ipconfig_object = 'org.chromium.flimflam.IPConfig'
+        ipconfig_object = proxy.DBUS_TYPE_IPCONFIG
         return filter(bool,
                       [ proxy.get_dbus_object(ipconfig_object, property_path)
                         for property_path in device_properties['IPConfigs'] ])
