@@ -10,34 +10,18 @@ from autotest_lib.client.cros import power_utils, rtc
 from autotest_lib.client.cros.audio import audio_helper
 
 class power_AudioDetector(test.test):
+    """Verifies that audio playback prevents powerd from suspending."""
     version = 1
 
     def run_once(self, run_time_sec=60):
         if run_time_sec < 10:
             raise error.TestFail('Must run for at least 10 seconds')
 
-        # Start powerd if not started.  Set timeouts for quick idle events.
-        run_time_ms = run_time_sec * 1000
-        react_ms = min(10000, run_time_ms / 10)
-        gap_ms = run_time_ms / 4
-        dim_ms = min(10000, gap_ms)
-        off_ms = min(20000, gap_ms * 2)
-        suspend_ms = min(30000, gap_ms * 3)
-        prefs = { 'disable_idle_suspend'   : 0,
-                  'ignore_external_policy' : 1,
-                  'plugged_dim_ms'         : dim_ms,
-                  'plugged_off_ms'         : off_ms,
-                  'plugged_suspend_ms'     : suspend_ms,
-                  'unplugged_dim_ms'       : dim_ms,
-                  'unplugged_off_ms'       : off_ms,
-                  'unplugged_suspend_ms'   : suspend_ms }
-        self._pref_change = power_utils.PowerPrefChanger(prefs)
-
-        # Audio loop time should be significantly shorter than |run_time_sec|
-        # time, so that the total playback time doesn't exceed it by much.
-        audio_loop_time_sec = (react_ms + 500) / 1000
-
         with chrome.Chrome():
+            # Audio loop time should be significantly shorter than
+            # |run_time_sec| time, so that the total playback time doesn't
+            # exceed it by much.
+            audio_loop_time_sec = min(10, run_time_sec / 10 + 0.5)
 
             # Set a low audio volume to avoid annoying people during tests.
             audio_helper.set_volume_levels(10, 100)
@@ -47,6 +31,21 @@ class power_AudioDetector(test.test):
             thread = threading.Thread(target=self._play_audio,
                                       args=(audio_loop_time_sec,))
             thread.start()
+
+            # Restart powerd with timeouts for quick idle events.
+            gap_ms = run_time_sec * 1000 / 4
+            dim_ms = min(10000, gap_ms)
+            off_ms = min(20000, gap_ms * 2)
+            suspend_ms = min(30000, gap_ms * 3)
+            prefs = { 'disable_idle_suspend'   : 0,
+                      'ignore_external_policy' : 1,
+                      'plugged_dim_ms'         : dim_ms,
+                      'plugged_off_ms'         : off_ms,
+                      'plugged_suspend_ms'     : suspend_ms,
+                      'unplugged_dim_ms'       : dim_ms,
+                      'unplugged_off_ms'       : off_ms,
+                      'unplugged_suspend_ms'   : suspend_ms }
+            self._pref_change = power_utils.PowerPrefChanger(prefs)
 
             # Set an alarm to wake up the system in case the audio detector
             # fails and the system suspends.
