@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import os
 from time import sleep
 
 from autotest_lib.client.bin import test, utils
@@ -18,6 +19,7 @@ class kernel_Delay(test.test):
     """
     version = 1
 
+    MIN_KERNEL_VER = '3.8'
     MODULE_NAME = 'udelay_test'
     UDELAY_PATH = '/sys/kernel/debug/udelay_test'
     CPUFREQ_CUR_PATH = '/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_cur_freq'
@@ -143,6 +145,13 @@ class kernel_Delay(test.test):
 
 
     def run_once(self):
+        kernel_ver = os.uname()[2]
+        if utils.compare_versions(kernel_ver, self.MIN_KERNEL_VER) < 0:
+            logging.info(
+                    'skipping test: old kernel %s (min %s) missing module %s',
+                    kernel_ver, self.MIN_KERNEL_VER, self.MODULE_NAME)
+            return
+
         utils.load_module(self.MODULE_NAME)
 
         with open(self.CPUFREQ_AVAIL_PATH, 'r') as f:
