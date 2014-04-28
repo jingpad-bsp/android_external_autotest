@@ -2,6 +2,7 @@ import logging
 import os
 
 from autotest_lib.client.common_lib import host_protections
+from autotest_lib.server import crashcollect
 from autotest_lib.server.cros import repair_utils
 from autotest_lib.server.cros import provision
 
@@ -32,6 +33,9 @@ def repair(machine):
         # Collect logs before the repair, as it might destroy all useful logs.
         local_log_dir = os.path.join(job.resultdir, machine, 'before_repair')
         host.collect_logs('/var/log', local_log_dir, ignore_errors=True)
+        # Collect crash info.
+        crashcollect.get_crashinfo(host, None)
+
         _call_repair(host)
         logging.debug('Repair with labels list %s', labels_list)
         provision.run_special_task_actions(job, host, labels_list,
