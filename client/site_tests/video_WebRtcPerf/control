@@ -8,7 +8,7 @@ PURPOSE = "Monitor the performance of video decode time for WebRtc."
 CRITERIA = """
 The test output video decode time for WebRtc to performance dashboard.
 """
-SUITE = "video"
+SUITE = "video, qav"
 TIME = "SHORT"
 TEST_CATEGORY = "Performance"
 TEST_CLASS = "video"
