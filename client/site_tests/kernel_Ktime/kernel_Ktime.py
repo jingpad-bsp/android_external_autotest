@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import os
 import re
 from time import sleep
 
@@ -16,6 +17,7 @@ class kernel_Ktime(test.test):
     """
     version = 1
 
+    MIN_KERNEL_VER = '3.8'
     MODULE_NAME = 'udelay_test'
     UDELAY_PATH = '/sys/kernel/debug/udelay_test'
     RTC_PATH = '/sys/class/rtc/rtc0/since_epoch'
@@ -144,6 +146,13 @@ class kernel_Ktime(test.test):
 
 
     def run_once(self):
+        kernel_ver = os.uname()[2]
+        if utils.compare_versions(kernel_ver, self.MIN_KERNEL_VER) < 0:
+            logging.info(
+                    'skipping test: old kernel %s (min %s) missing module %s',
+                    kernel_ver, self.MIN_KERNEL_VER, self.MODULE_NAME)
+            return
+
         utils.load_module(self.MODULE_NAME)
 
         start_rtc, start_ktime, start_error = self._get_times()
