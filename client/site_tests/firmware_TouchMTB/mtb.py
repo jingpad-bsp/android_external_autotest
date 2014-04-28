@@ -178,6 +178,12 @@ class MtbEvent:
                 event[MTB.EV_CODE] == ABS_MT_PRESSURE)
 
     @classmethod
+    def is_finger_data(cls, event):
+        return (cls.is_ABS_MT_POSITION_X(event) or
+                cls.is_ABS_MT_POSITION_X(event) or
+                cls.is_ABS_MT_PRESSURE(event))
+
+    @classmethod
     def is_EV_KEY(cls, event):
         """Is this an EV_KEY event?"""
         return (not event.get(MTB.SYN_REPORT) and event[MTB.EV_TYPE] == EV_KEY)
@@ -298,6 +304,13 @@ class MtbStateMachine:
             self.number_fingers -= 1
         self.leaving_slots = []
 
+    def _add_new_tracking_id(self, tid):
+        self.tid = tid
+        self.slot_to_tid[self.slot] = self.tid
+        self.new_tid = True
+        self.point[self.tid] = Point()
+        self.number_fingers += 1
+
     def add_event(self, event):
         """Update the internal states with the event.
 
@@ -311,32 +324,35 @@ class MtbStateMachine:
 
         # Get a new tracking ID.
         elif MtbEvent.is_new_contact(event):
-            self.tid = event[MTB.EV_VALUE]
-            self.slot_to_tid[self.slot] = self.tid
-            self.new_tid = True
-            self.point[self.tid] = Point()
-            self.number_fingers += 1
+            self._add_new_tracking_id(event[MTB.EV_VALUE])
 
         # A slot is leaving.
         # Do not delete this slot until this last packet is reported.
         elif MtbEvent.is_finger_leaving(event):
             self.leaving_slots.append(self.slot)
 
-        # Update x value.
-        elif MtbEvent.is_ABS_MT_POSITION_X(event):
-            self.point[self.slot_to_tid[self.slot]].x = event[MTB.EV_VALUE]
+        else:
+            # Gracefully handle the case where we weren't given a tracking id
+            # by using a default value for these mystery fingers
+            if (not self.slot in self.slot_to_tid and
+                MtbEvent.is_finger_data(event)):
+                self._add_new_tracking_id(999999)
 
-        # Update y value.
-        elif MtbEvent.is_ABS_MT_POSITION_Y(event):
-            self.point[self.slot_to_tid[self.slot]].y = event[MTB.EV_VALUE]
+            # Update x value.
+            if MtbEvent.is_ABS_MT_POSITION_X(event):
+                self.point[self.slot_to_tid[self.slot]].x = event[MTB.EV_VALUE]
 
-        # Update z value (pressure)
-        elif MtbEvent.is_ABS_MT_PRESSURE(event):
-            self.pressure[self.slot_to_tid[self.slot]] = event[MTB.EV_VALUE]
+            # Update y value.
+            elif MtbEvent.is_ABS_MT_POSITION_Y(event):
+                self.point[self.slot_to_tid[self.slot]].y = event[MTB.EV_VALUE]
 
-        # Use the SYN_REPORT time as the packet time
-        elif MtbEvent.is_SYN_REPORT(event):
-            self.syn_time = event[MTB.EV_TIME]
+            # Update z value (pressure)
+            elif MtbEvent.is_ABS_MT_PRESSURE(event):
+                self.pressure[self.slot_to_tid[self.slot]] = event[MTB.EV_VALUE]
+
+            # Use the SYN_REPORT time as the packet time
+            elif MtbEvent.is_SYN_REPORT(event):
+                self.syn_time = event[MTB.EV_TIME]
 
     def get_current_tid_data_for_all_tids(self, request_data_ready=True):
         """Get current packet's tid data including the point, the pressure, and
