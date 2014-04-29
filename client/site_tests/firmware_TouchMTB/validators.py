@@ -69,7 +69,7 @@ from inspect import isfunction
 from common_util import print_and_exit, simple_system_output
 from firmware_constants import AXIS, GV, MTB, UNIT, VAL
 from geometry.elements import Point
-from quickstep import latency_measurement
+
 
 # Define the ratio of points taken at both ends of a line for edge tests.
 END_PERCENTAGE = 0.1
@@ -274,6 +274,7 @@ class DragLatencyValidator(BaseValidator):
                                                    name=name)
 
     def check(self, packets, variation=None):
+        from quickstep import latency_measurement
         self.init_check(packets)
 
         # Reformat the touch events for latency measurement
