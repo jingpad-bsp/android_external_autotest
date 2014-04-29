@@ -71,6 +71,8 @@ class platform_MemCheck(test.test):
         logging.info('board: %s, phy_size: %d memref: %d freeref: %d',
                       board, phy_size, memref, freeref)
 
+        error_list = []
+
         for k in ref:
             value = utils.read_from_meminfo(k)
             keyval[k] = value
@@ -79,11 +81,13 @@ class platform_MemCheck(test.test):
                     logging.warn('%s is %d', k, value)
                     logging.warn('%s should be at least %d', k, ref[k])
                     errors += 1
+                    error_list += [k]
             elif k in approx_refs:
                 if value < ref[k] * 0.9 or ref[k] * 1.1 < value:
                     logging.warn('%s is %d', k, value)
                     logging.warn('%s should be within 10%% of %d', k, ref[k])
                     errors += 1
+                    error_list += [k]
 
         # read spd timings
         cmd = 'mosys memory spd print timings -s speeds'
@@ -110,10 +114,12 @@ class platform_MemCheck(test.test):
             if max_speed < speedref:
                 logging.warn('ram speed is %s', max_timing)
                 logging.warn('ram speed should be at least %d', speedref)
+                error_list += ['speed_dimm_%d' % dimm]
                 errors += 1
 
         # If self.error is not zero, there were errors.
         if errors > 0:
-            raise error.TestFail('Found %d incorrect values' % errors)
+            error_list_str = ', '.join(error_list)
+            raise error.TestFail('Found incorrect values: %s' % error_list_str)
 
         self.write_perf_keyval(keyval)
