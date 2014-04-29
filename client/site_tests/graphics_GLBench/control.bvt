@@ -20,12 +20,11 @@ the unknown image and older versions in ../../deps/glbench-images/.
 Note: it should nearly never be required to remove old versions of good/bad
 images from these directories.
 """
-SUITE = 'bvt'
+SUITE = 'experimental'
 TIME='FAST'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = "gl"
 TEST_TYPE = 'client'
-EXPERIMENTAL = 'True'
 
 DOC = """
 On bvt we do not upload performance numbers to the chrome dashboard. We run

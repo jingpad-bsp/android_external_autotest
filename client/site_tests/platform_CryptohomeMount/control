@@ -6,12 +6,11 @@ AUTHOR = "Chrome OS Team"
 NAME = "platform_CryptohomeMount"
 PURPOSE = "Verify that cryptohome can create and mount an ecrypted vault."
 CRITERIA = "This test will fail if cryptohome is not mounted after a call to mount."
-SUITE = "bvt"
+SUITE = "experimental"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "client"
-EXPERIMENTAL = "True"
 
 DOC = """
 This test checks that cryptohome can create and mount an encrypted vault.

@@ -6,12 +6,11 @@ AUTHOR = "Chrome OS Team"
 NAME = "power_Resume"
 PURPOSE = "Measure the amount of time it takes to resume from suspend."
 CRITERIA = "This test is a benchmark."
-SUITE = "bvt, power_build"
+SUITE = "power_build"
 TIME = "SHORT"
 TEST_CATEGORY = "Logging"
 TEST_CLASS = "power"
 TEST_TYPE = "client"
-EXPERIMENTAL = "True"
 
 DOC = """
 This test will search /var/log/messages for pertinent strings to determine if

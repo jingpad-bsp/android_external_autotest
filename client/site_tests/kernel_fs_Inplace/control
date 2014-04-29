@@ -7,8 +7,7 @@ NAME = 'kernel_fs_Inplace'
 DOC = '''
 Does inplace preads and pwrites.
 '''
-SUITE = "bvt"
-EXPERIMENTAL = "True"
+SUITE = "experimental"
 TIME = 'SHORT'
 TEST_CLASS = 'kernel'
 TEST_CATEGORY = 'Performance'

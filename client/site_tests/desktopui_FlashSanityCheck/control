@@ -6,12 +6,11 @@ AUTHOR = "Chrome OS Team"
 NAME = "desktopui_FlashSanityCheck"
 PURPOSE = "Basic sanity check of Flash suppport in Chrome."
 CRITERIA = "This test will fail if flash causes a segfault."
-SUITE = "bvt"
+SUITE = "experimental"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "desktopui"
 TEST_TYPE = "client"
-EXPERIMENTAL = "True"
 
 DOC = """
 This test logs in, opens a new window, and navigates to a .swf file on a

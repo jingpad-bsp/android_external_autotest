@@ -3,9 +3,8 @@
 # found in the LICENSE file.
 
 AUTHOR = 'quiche'
-EXPERIMENTAL = 'True'
 NAME = 'platform_LogDupSuppression'
-SUITE = 'bvt'
+SUITE = 'experimental'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
 

@@ -8,12 +8,11 @@ PURPOSE = "Verify that Chrome media and video works"
 CRITERIA = """
 This test will fail if Chrome media is not enable or video doesn't play.
 """
-SUITE = "bvt"
+SUITE = "experimental"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
-EXPERIMENTAL = "True"
 
 DOC = """
 This test verify the media elements and video sanity.
