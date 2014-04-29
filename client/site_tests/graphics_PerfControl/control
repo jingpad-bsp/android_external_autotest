@@ -15,7 +15,6 @@ TIME='fast'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = "Performance"
 TEST_TYPE = 'client'
-EXPERIMENTAL = 'False'
 
 DOC = """
 Performance tests should be wrapped in a PerfControl object to ensure

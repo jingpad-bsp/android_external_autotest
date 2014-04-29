@@ -4,7 +4,6 @@ TIME = 'SHORT'
 TEST_CLASS = 'Software'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'server'
-EXPERIMENTAL = 'False'
 
 DOC = """
 runs sleep for one second on the list of machines.

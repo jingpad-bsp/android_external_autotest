@@ -24,7 +24,6 @@ TIME='MEDIUM'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = "gl"
 TEST_TYPE = 'client'
-EXPERIMENTAL = 'False'
 
 DOC = """
 This benchmark executes glbench, a graphics benchmark designed to time how long

@@ -9,7 +9,6 @@ CRITERIA = """
 This test fails if application screen shots cannot capture the screen output.
 """
 SUITE='bvt, graphics'
-EXPERIMENTAL='False'
 TIME='SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = "graphics"

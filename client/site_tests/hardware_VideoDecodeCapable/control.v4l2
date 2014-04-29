@@ -17,7 +17,6 @@ TEST_CATEGORY = 'Functional'
 TEST_CLASS = 'hardware'
 TEST_TYPE = 'client'
 DEPENDENCIES = 'video_decode_v4l2'
-EXPERIMENTAL = 'False'
 RETRIES = 1
 
 DOC = """

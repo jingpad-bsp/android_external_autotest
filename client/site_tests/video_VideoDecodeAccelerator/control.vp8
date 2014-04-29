@@ -16,7 +16,6 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
 DEPENDENCIES = "hw_video_acc_vp8"
-EXPERIMENTAL = "False"
 RETRIES = 1
 
 DOC = """

@@ -15,7 +15,6 @@ This test will fail if:
   - If X extensions don't include DAMAGE and Composite
 """
 SUITE = 'bvt, graphics, hwqual'
-EXPERIMENTAL = 'False'
 TIME='SHORT'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = "graphics"
