@@ -29,3 +29,6 @@ curl -X POST -d '{"base": { "Reboot": {}}' http://localhost:8080/buffet/devices\
 # Update the status of your command
 curl -X PATCH -d '{"state": "done"}' http://localhost:8080/buffet/devices/\
     <command_id>
+
+# You can also use the client library avaiable @ client_lib.
+# Check out client_lib_test to see how you can use the API.

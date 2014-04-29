@@ -15,6 +15,8 @@ from fake_device_server import server_errors
 # TODO(sosa): All access to this object should technically require auth. Create
 # setters/getters for the auth token for testing.
 
+DEVICES_PATH = '/buffet/devices'
+
 
 class Devices(resource_method.ResourceMethod):
     """A simple implementation of the device interface.
@@ -53,6 +55,9 @@ class Devices(resource_method.ResourceMethod):
         @raises server_errors.HTTPError: if the config is missing a required key
         """
         # Verify required keys exist in the device draft.
+        if not device_config:
+            raise server_errors.HTTPError(400, 'Empty device draft.')
+
         for key in self.required_keys:
             if key not in device_config:
                 raise server_errors.HTTPError(400, 'Must specify %s' % key)

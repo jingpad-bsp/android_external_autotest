@@ -13,6 +13,8 @@ import common
 from fake_device_server import common_util
 from fake_device_server import server_errors
 
+REGISTRATION_PATH = '/buffet/registrationTickets'
+
 
 class RegistrationTickets(object):
     """A simple implementation of the registrationTickets interface.
@@ -63,7 +65,9 @@ class RegistrationTickets(object):
         new_data = {'robotAccountEmail': robot_account_email,
                     'robotAccountAuthorizationCode':robot_auth}
         updated_data_val = self.resource.update_data_val(id, api_key, new_data)
-        return self.devices_instance.create_device(api_key, updated_data_val)
+        updated_data_val['deviceDraft'] = self.devices_instance.create_device(
+            api_key, updated_data_val.get('deviceDraft'))
+        return updated_data_val
 
 
     def _add_claim_data(self, data):

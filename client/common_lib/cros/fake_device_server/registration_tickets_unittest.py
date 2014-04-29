@@ -44,9 +44,11 @@ class RegistrationTicketsTest(mox.MoxTestBase):
                           self.registration.POST, 1234, 'finalize')
 
         # Claimed ticket
-        expected_ticket = dict(id=1234, userEmail='buffet@tasty.org',
-                               systemName='buffet_device', deviceKind='vendor',
-                               channel=dict(supportedType='xmpp'))
+        expected_ticket = dict(
+                id=1234, userEmail='buffet@tasty.org',
+                deviceDraft=dict(systemName='buffet_device',
+                                 deviceKind='vendor',
+                                 channel=dict(supportedType='xmpp')))
         self.tickets[(1234, None)] = expected_ticket
         returned_json = self.registration.POST(1234, 'finalize')
         self.assertEquals(returned_json['id'], expected_ticket['id'])

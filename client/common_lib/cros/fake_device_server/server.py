@@ -29,7 +29,7 @@ def start_server():
     commands_resource = resource_delegate.ResourceDelegate({})
     commands_handler = commands.Commands(commands_resource)
     cherrypy.tree.mount(
-        commands_handler, '/buffet/commands',
+        commands_handler, commands.COMMANDS_PATH,
         {'/':
             {'request.dispatch': cherrypy.dispatch.MethodDispatcher()}
         }
@@ -37,7 +37,7 @@ def start_server():
     devices_resource = resource_delegate.ResourceDelegate({})
     devices_handler = devices.Devices(devices_resource, commands_handler)
     cherrypy.tree.mount(
-        devices_handler, '/buffet/devices',
+        devices_handler, devices.DEVICES_PATH,
         {'/':
             {'request.dispatch': cherrypy.dispatch.MethodDispatcher()}
         }
@@ -46,7 +46,7 @@ def start_server():
     registration_tickets_handler = registration_tickets.RegistrationTickets(
             tickets, devices_handler)
     cherrypy.tree.mount(
-        registration_tickets_handler, '/buffet/registrationTickets',
+        registration_tickets_handler, registration_tickets.REGISTRATION_PATH,
         {'/':
             {'request.dispatch': cherrypy.dispatch.MethodDispatcher()}
         }
