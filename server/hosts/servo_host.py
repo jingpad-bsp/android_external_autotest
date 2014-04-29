@@ -390,12 +390,24 @@ class ServoHost(ssh_host.SSHHost):
                                '</dev/null >/dev/null 2>&1 &)'),
                 'fastsync': True,
                 'label': None,
-                'wait': True,
+                'wait': False,
             }
+            # Do not wait for reboot to complete. Otherwise, self.reboot call
+            # will log reboot failure if servo does not come back. The logged
+            # reboot failure will lead to test job failure. If the test does not
+            # require servo, we don't want servo failure to fail the test with
+            # error: `Host did not return from reboot` in status.log
+            # If servo does not come back after reboot, exception needs to be
+            # raised, so test requires servo should fail.
             self.reboot(**kwargs)
-            current_build_number = updater.get_build_id()
-            logging.info('servo host %s back from reboot, with build %s',
-                         self.hostname, current_build_number)
+            if self.wait_up(timeout=120):
+                current_build_number = updater.get_build_id()
+                logging.info('servo host %s back from reboot, with build %s',
+                             self.hostname, current_build_number)
+            else:
+                raise error.AutoservHostError(
+                            'servo host %s failed to come back from reboot.' %
+                             self.hostname)
 
         if status in autoupdater.UPDATER_PROCESSING_UPDATE:
             logging.info('servo host %s already processing an update, update '
