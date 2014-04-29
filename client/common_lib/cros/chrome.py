@@ -64,7 +64,9 @@ class Chrome(object):
 
         # finder options must be set before parse_args(), browser options must
         # be set before Create().
-        finder_options.verbosity = 1 # info logging for telemetry.
+        # TODO(crbug.com/360890) Below MUST be '2' so that it doesn't inhibit
+        # autotest debug logs
+        finder_options.verbosity = 2
         finder_options.CreateParser().parse_args(args=[])
         b_options = finder_options.browser_options
         b_options.disable_component_extensions_with_background_pages = False
