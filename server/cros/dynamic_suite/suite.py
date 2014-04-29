@@ -705,7 +705,8 @@ class Suite(object):
             tests = self.stable_tests()
             if add_experimental:
                 for test in self.unstable_tests():
-                    test.name = constants.EXPERIMENTAL_PREFIX + test.name
+                    if not test.name.startswith(constants.EXPERIMENTAL_PREFIX):
+                        test.name = constants.EXPERIMENTAL_PREFIX + test.name
                     tests.append(test)
 
             for test in tests:
