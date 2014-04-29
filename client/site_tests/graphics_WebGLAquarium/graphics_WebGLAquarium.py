@@ -171,7 +171,7 @@ class graphics_WebGLAquarium(test.test):
         self.test_duration_secs = test_duration_secs
         self.test_setting_num_fishes = test_setting_num_fishes
 
-        with chrome.Chrome() as cr:
+        with chrome.Chrome(logged_in=False) as cr:
             cr.browser.SetHTTPServerDirectories(self.srcdir)
             test_url = cr.browser.http_server.UrlOf(
                 os.path.join(self.srcdir, 'aquarium.html'))
