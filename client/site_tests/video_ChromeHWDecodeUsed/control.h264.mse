@@ -19,5 +19,6 @@ DOC = """
 This test verifies H.264 decode acceleration works for MSE videos.
 """
 
-video = 'http://yt-dash-mse-test.commondatastorage.googleapis.com/switchtest/foo.html?switch_1080p_720p.mp4'
+video = str('http://commondatastorage.googleapis.com/'
+            'chromiumos-test-assets-public/MSE/foo.html?switch_1080p_720p.mp4')
 job.run_test('video_ChromeHWDecodeUsed', video_file=video)
