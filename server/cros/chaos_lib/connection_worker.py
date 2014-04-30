@@ -50,6 +50,8 @@ class ConnectionWorker(object):
                                   'work client interface %s.' %
                                    work_client_host.hostname)
         self.work_client = wifi_client.WiFiClient(work_client_host, './debug')
+        # Make the host object easily accessible
+        self.host = self.work_client.host
 
 
     def connect_work_client(self, assoc_params):

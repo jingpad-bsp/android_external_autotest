@@ -5,6 +5,7 @@
 import contextlib
 import datetime
 import logging
+import os
 import pprint
 import time
 
@@ -293,6 +294,13 @@ class ChaosRunner(object):
                                              error_string=
                                         chaos_constants.WORK_CLI_CONNECT_FAIL,
                                              tag=ap.ssid)
+                                # Obtain the logs from the worker
+                                log_dir_name = str('worker_client_logs_%s' %
+                                                   ap.ssid)
+                                log_dir = os.path.join(job.resultdir,
+                                                       log_dir_name)
+                                conn_worker.host.collect_logs('/var/log',
+                                    log_dir, ignore_errors=True)
                                 self._release_ap(ap, batch_locker)
                                 continue
 
