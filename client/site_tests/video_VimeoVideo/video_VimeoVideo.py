@@ -91,7 +91,12 @@ class video_VimeoVideo(test.test):
         prev_playback = 0
         while (playback < self._PLAYBACK_TEST_TIME_S):
             if self._video_current_time() <= prev_playback:
-                raise error.TestError('Video is not playing.')
+                utils.poll_for_condition(
+                        lambda: self._video_current_time() > prev_playback,
+                        exception=error.TestError(
+                                'Long Wait: Video is not playing.'),
+                        timeout=self._WAIT_TIMEOUT_S,
+                        sleep_interval=1)
             prev_playback = self._video_current_time()
             time.sleep(1)
             playback = playback + 1
