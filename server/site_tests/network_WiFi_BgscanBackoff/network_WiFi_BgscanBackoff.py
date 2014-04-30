@@ -68,6 +68,8 @@ class network_WiFi_BgscanBackoff(wifi_cell_test_base.WiFiCellTestBase):
 
         self.context.client.shill.disconnect(
                 self.context.router.get_ssid(instance=0))
+        # Reconfigure AP, so the new bgscan setting can be correctly applied.
+        self.context.configure(hostap_config.HostapConfig(channel=1))
         # Gather some statistics about ping latencies without scanning going on.
         self.context.assert_connect_wifi(get_assoc_params(None))
         logging.info('Pinging router without background scans for %d seconds.',
