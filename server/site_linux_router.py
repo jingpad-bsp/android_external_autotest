@@ -39,7 +39,6 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
     HOSTAPD_CONF_FILE_PATTERN = '/tmp/hostapd-test-%s.conf'
     HOSTAPD_LOG_FILE_PATTERN = '/tmp/hostapd-test-%s.log'
-    HOSTAPD_PID_FILE_PATTERN = '/tmp/hostapd-test-%s.pid'
     HOSTAPD_CONTROL_INTERFACE_PATTERN = '/tmp/hostapd-test-%s.ctrl'
     HOSTAPD_DRIVER_NAME = 'nl80211'
 
@@ -152,7 +151,6 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
         conf_file = self.HOSTAPD_CONF_FILE_PATTERN % interface
         log_file = self.HOSTAPD_LOG_FILE_PATTERN % interface
-        pid_file = self.HOSTAPD_PID_FILE_PATTERN % interface
         control_interface = self.HOSTAPD_CONTROL_INTERFACE_PATTERN % interface
         hostapd_conf_dict = configuration.generate_dict(
                 interface, control_interface,
@@ -167,22 +165,19 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         # Run hostapd.
         logging.info("Starting hostapd...")
         self.router.run('rm %s' % log_file, ignore_status=True)
-        self.router.run('rm %s' % pid_file, ignore_status=True)
         self.router.run('stop wpasupplicant', ignore_status=True)
-        start_command = '%s -dd -B -t -f %s -P %s %s' % (
-                self.cmd_hostapd, log_file, pid_file, conf_file)
-        self.router.run(start_command)
+        start_command = '%s -dd -t %s &> %s & echo $!' % (
+                self.cmd_hostapd, conf_file, log_file)
+        pid = int(self.router.run(start_command).stdout.strip())
         self.hostapd_instances.append({
             'ssid': hostapd_conf_dict['ssid'],
             'conf_file': conf_file,
             'log_file': log_file,
             'interface': interface,
-            'pid_file': pid_file,
             'config_dict': hostapd_conf_dict.copy()
         })
 
         # Wait for confirmation that the router came up.
-        pid = int(self.router.run('cat %s' % pid_file).stdout)
         logging.info('Waiting for hostapd to startup.')
         start_time = time.time()
         while time.time() - start_time < self.STARTUP_TIMEOUT_SECONDS:
