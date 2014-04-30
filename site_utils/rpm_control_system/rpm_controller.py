@@ -28,6 +28,31 @@ RPM_CALL_TIMEOUT_MINS = rpm_config.getint('RPM_INFRASTRUCTURE',
                                           'call_timeout_mins')
 SET_POWER_STATE_TIMEOUT_SECONDS = rpm_config.getint(
         'RPM_INFRASTRUCTURE', 'set_power_state_timeout_seconds')
+HYDRA_HOST_REGX = 'chromeos2-row\d+-rack(\d+)-rpm1$'
+
+
+def get_hydra_name(hostname):
+    """Return hydra name given rpm hostname.
+
+    @param hostname: the hostname of rpm,
+            e.g. chromeos2-row2-rack1-rpm1, chromeos-rack1-rpm1
+
+    @returns: The corresponding hydra name or None if rpm is not
+              behind a known hydra.
+
+    """
+    # TODO(fdeng): Replace the harded coded mapping with something
+    # dynamic. crbug.com/376538
+    m = re.match(HYDRA_HOST_REGX, hostname)
+    if m:
+        rack = int(m.group(1))
+        # chromeos2-row{..}-rack{1..7} --> Hydra1
+        if rack >= 1 and rack <= 7:
+            return 'hydra1'
+        # chromeos2-row{..}-rack{8..11} --> Hydra2
+        elif rack >= 8 and rack <= 11:
+            return 'hydra2'
+    return None
 
 
 class RPMController(object):
@@ -588,8 +613,7 @@ class SentryRPMController(RPMController):
 
 
     def __init__(self, hostname, hydra_name=None):
-        if hostname.startswith('chromeos2'):
-            hydra_name = 'hydra1'
+        hydra_name = hydra_name or get_hydra_name(hostname)
         super(SentryRPMController, self).__init__(hostname, hydra_name)
         self._username = rpm_config.get('SENTRY', 'username')
         self._password = rpm_config.get('SENTRY', 'password')
