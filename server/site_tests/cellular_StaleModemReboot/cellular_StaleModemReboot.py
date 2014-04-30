@@ -221,6 +221,10 @@ class cellular_StaleModemReboot(test.test):
         self._client = host
         self._servo = host.servo
 
+        if not self._servo:
+            logging.info('Host %s does not have a servo.', host.hostname)
+            return
+
         if not expect_auto_registration:
             STABLE_MODEM_STATES.extend(ENABLED_MODEM_STATES)
             WAIT_DELAY_MODEM_STATES.remove(MM_MODEM_STATE_ENABLED)
