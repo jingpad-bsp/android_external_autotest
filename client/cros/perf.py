@@ -38,7 +38,7 @@ class PerfControl(object):
     """
     def __init__(self):
         # Keep a copy of the current state for cleanup.
-        self._temperature_init = self._get_current_temperature_max()
+        self._temperature_init = utils.get_current_temperature_max()
         self._temperature_critical = utils.get_temperature_critical()
         self._original_governors = utils.set_high_performance_mode()
         self._error_reason = None
@@ -48,7 +48,7 @@ class PerfControl(object):
         if not utils.wait_for_cool_machine():
             self._error_reason = 'Could not get cold machine.'
             return
-        self._temperature_cold = self._get_current_temperature_max()
+        self._temperature_cold = utils.get_current_temperature_max()
         self._temperature_max = self._temperature_cold
         threading.Thread(target=self._monitor_performance_state).start()
         # Should be last just in case we had a runaway process.
@@ -85,8 +85,7 @@ class PerfControl(object):
         """
         if self._error_reason:
             return False
-        temperature_bad = (1.0/3.0 * self._temperature_cold +
-                           2.0/3.0 * self._temperature_critical)
+        temperature_bad = self._temperature_critical - 10.0
         logging.info("Max observed temperature = %.1f'C (bad limit = %.1f'C)",
                      self._temperature_max, temperature_bad)
         if (self._temperature_max > temperature_bad):
@@ -103,22 +102,12 @@ class PerfControl(object):
         """
         while True:
             time.sleep(1)
-            current_temperature = self._get_current_temperature_max()
+            current_temperature = utils.get_current_temperature_max()
             self._temperature_max = max(self._temperature_max,
                                         current_temperature)
             # TODO(ihf): Remove this spew once PerfControl is stable.
             logging.info('PerfControl CPU temperature = %.1f',
                           current_temperature)
-
-    def _get_current_temperature_max(self):
-        """
-        Returns the highest reported board temperature (all sensors) in Celsius.
-        """
-        temperature = utils.get_temperature_input_max()
-        ec_temperatures = utils.get_ec_temperatures()
-        if ec_temperatures:
-            temperature = max(max(ec_temperatures), temperature)
-        return temperature
 
 
     def _stop_thermal_throttling(self):

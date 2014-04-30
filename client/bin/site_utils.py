@@ -500,11 +500,35 @@ def log_process_activity():
 
 
 def wait_for_cool_machine():
-    # TODO(ihf): Implement this. The concept of a cool machine is very
-    # architecture specific. We either need a good heuristic or a table of
-    # board specific temperatures.
-    time.sleep(1.0)
-    return True
+    """
+    A simple heuristic to wait for a machine to cool.
+    The code looks a bit 'magic', but we don't know ambient temperature
+    nor machine characteristics and still would like to return the caller
+    a machine that cooled down as much as reasonably possible.
+    """
+    temperature = get_current_temperature_max()
+    # We got here with a cold machine, return immediately. This should be the
+    # most common case.
+    if temperature < 50:
+        return True
+    logging.info('Got a hot machine of %dC. Sleeping 1 minute.', temperature)
+    # A modest wait should cool the machine.
+    time.sleep(60.0)
+    temperature = get_current_temperature_max()
+    # Atoms idle below 60 and everyone else should be even lower.
+    if temperature < 62:
+        return True
+    # This should be rare.
+    logging.info('Did not cool down (%dC). Sleeping 2 minutes.', temperature)
+    time.sleep(120.0)
+    temperature = get_current_temperature_max()
+    # A temperature over 65'C doesn't give us much headroom to the critical
+    # temperatures that start at 85'C (and PerfControl as of today will fail at
+    # critical - 10'C).
+    if temperature < 65:
+        return True
+    logging.warning('Did not cool down (%dC), giving up.', temperature)
+    return False
 
 
 # System paths for machine performance state.
@@ -561,6 +585,9 @@ def _get_hex_from_file(path, line, prefix, postfix):
     return int(match, 16)
 
 
+# The paths don't change. Avoid running find all the time.
+_hwmon_paths = None
+
 def _get_hwmon_paths(file_pattern):
     """
     Returns a list of paths to the temperature sensors.
@@ -570,9 +597,10 @@ def _get_hwmon_paths(file_pattern):
     #    /sys/class/hwmon/hwmon*/
     #    /sys/devices/virtual/hwmon/hwmon*/
     #    /sys/devices/platform/coretemp.0/
-    cmd = 'find /sys/ -name "' + file_pattern + '"'
-    paths = utils.run(cmd, verbose=False).stdout.splitlines()
-    return paths
+    if not _hwmon_paths:
+       cmd = 'find /sys/ -name "' + file_pattern + '"'
+       _hwon_paths = utils.run(cmd, verbose=False).stdout.splitlines()
+    return _hwon_paths
 
 
 def get_temperature_critical():
@@ -629,6 +657,17 @@ def get_ec_temperatures():
         assert ((temperature > 10.0) and
                 (temperature < 150.0)), 'Unreasonable temperature.'
     return temperatures
+
+
+def get_current_temperature_max():
+    """
+    Returns the highest reported board temperature (all sensors) in Celsius.
+    """
+    temperature = get_temperature_input_max()
+    ec_temperatures = get_ec_temperatures()
+    if ec_temperatures:
+        temperature = max(max(ec_temperatures), temperature)
+    return temperature
 
 
 def get_cpu_cache_size():

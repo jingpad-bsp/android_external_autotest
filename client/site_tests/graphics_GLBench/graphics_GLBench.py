@@ -238,7 +238,13 @@ class graphics_GLBench(test.test):
     knownbad_imagenames = g.read()
     g.close()
 
-    # analyze individual test results in summary
+    # Check if we saw GLBench end as expected (without crashing).
+    test_ended_normal = False
+    for line in results:
+      if line.strip().startswith('@TEST_END'):
+        test_ended_normal = True
+
+    # Analyze individual test results in summary.
     keyvals = {}
     failed_tests = {}
     for line in results:
@@ -293,3 +299,6 @@ class graphics_GLBench(test.test):
                            'references. Check /tmp/'
                            'run_remote_tests.../graphics_GLBench/summary.txt'
                            ' for details.')
+
+    if not test_ended_normal:
+      raise error.TestFail('No end marker. Presumed crash/missing images.')
