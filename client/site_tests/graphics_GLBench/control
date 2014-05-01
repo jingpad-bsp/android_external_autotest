@@ -19,17 +19,12 @@ the unknown image and older versions in ../../deps/glbench-images/.
 Note: it should nearly never be required to remove old versions of good/bad
 images from these directories.
 """
-# TODO(ihf): before making GLBench part of bvt make sure it runs strictly less
-# than 20 minutes. Also decide if reference image changes should block bvt or
-# maybe for BVT failures should just consider crashes.
 SUITE = 'graphics, graphics_per-build, qav'
 TIME='MEDIUM'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = "gl"
 TEST_TYPE = 'client'
 EXPERIMENTAL = 'False'
-# Reboot in the lab after the test ends.
-DEPENDENCIES='cleanup-reboot'
 
 DOC = """
 This benchmark executes glbench, a graphics benchmark designed to time how long
