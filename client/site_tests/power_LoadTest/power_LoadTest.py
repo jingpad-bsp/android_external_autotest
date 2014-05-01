@@ -352,13 +352,13 @@ class power_LoadTest(test.test):
                                         keyvals['minutes_battery_life_tested']
             keyvals['w_energy_rate'] = keyvals['wh_energy_used'] * 60 / \
                                        keyvals['minutes_battery_life_tested']
+            self.output_perf_value(description='minutes_battery_life',
+                                   value=keyvals['minutes_battery_life'],
+                                   units='minutes')
 
         self.write_perf_keyval(keyvals)
         self._plog.save_results(self.resultsdir)
         self._tlog.save_results(self.resultsdir)
-        self.output_perf_value(description='minutes_battery_life',
-                               value=keyvals['minutes_battery_life'],
-                               units='minutes')
 
 
     def cleanup(self):
