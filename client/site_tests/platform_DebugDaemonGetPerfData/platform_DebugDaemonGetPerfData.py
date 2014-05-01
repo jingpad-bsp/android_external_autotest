@@ -71,7 +71,15 @@ class platform_DebugDaemonGetPerfData(test.test):
         if len(result) < 10:
             raise error.TestFail('Perf output too small')
 
+        # Convert |result| from an array of dbus.Bytes to a string.
         result = ''.join(chr(b) for b in result)
+
+        # If there was an error in collecting a profile with quipper, debugd
+        # will output an error message. Make sure to check for this message. It
+        # is found in PerfTool::GetPerfDataHelper() in debugd/src/perf_tool.cc.
+        if result.startswith('<process exited with status: '):
+            raise error.TestFail('Quipper failed: %s' % result)
+
         key = '%s_size_%s_%d' % (get_perf_method, profile_type, duration)
         keyvals = {}
         keyvals[key] = len(result)
