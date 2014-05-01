@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import dbus
+import dbus.service
 import dbus.types
 import gobject
 import logging
