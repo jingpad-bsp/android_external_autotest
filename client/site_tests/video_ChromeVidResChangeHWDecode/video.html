@@ -1,0 +1,16 @@
+<!-- This is a test html file for video test. -->
+<html>
+<body>
+    <video id='testvideo' controls autoplay muted name='media'>
+    </video>
+</body>
+
+<script type="text/javascript">
+var testvideo = document.getElementById('testvideo');
+
+function loadVideo(video) {
+  testvideo.src = video;
+  testvideo.play();
+}
+</script>
+</html>
