@@ -158,12 +158,12 @@ CELLS['mtv'] = {
              "rf_switch_port": 1,
              },
         {
-            "address": "172.22.50.133",
+            "address": "172.22.50.187",
             "ethernet_mac": "00:00:00:00:08:4b",
             "name": "alex-gobi-2000",
             "technologies": GOBI_2000_TECHNOLOGIES,
             "location": "rack2-host0",
-            "rf_switch_port": 2,
+            "rf_switch_port": 0,
             },
         {
             "address": "172.22.50.85",
@@ -171,7 +171,7 @@ CELLS['mtv'] = {
             "name": "alex-gobi-3000",
             "technologies": GOBI_3000_TECHNOLOGIES,
             "location": "rack2-host4",
-            "rf_switch_port": 4,
+            "rf_switch_port": 1,
             },
         {
             "address": "172.22.50.191",
@@ -179,7 +179,7 @@ CELLS['mtv'] = {
             "name": "alex-y3300",
             "technologies": ICERA_TECHNOLOGIES,
             "location": "rack2-host1",
-            "rf_switch_port": 1,
+            "rf_switch_port": 3,
             },
         {
             "address": "172.22.50.89",
@@ -187,30 +187,14 @@ CELLS['mtv'] = {
             "name": "alex-y3400",
             "technologies": ICERA_TECHNOLOGIES,
             "location": "rack2-host5",
-            "rf_switch_port": 5,
-            },
-        {
-            "address": "172.22.50.8",
-            "ethernet_mac": "e8:03:9a:a5:90:d0",
-            "name": "option-gtm681w",
-            "technologies": GENERIC_GSM_TECHNOLOGIES,
-            "location": "rack2-host8",
-            "rf_switch_port": 8,
-            },
-        {
-            "address": "172.22.50.9",
-            "ethernet_mac": "e8:03:9a:a5:a3:a8",
-            "name": "option-gtm689w",
-            "technologies": GOBI_3000_TECHNOLOGIES,
-            "location": "rack2-host9",
-            "rf_switch_port": 9,
+            "rf_switch_port": 2,
             },
         ],
 
     "perfserver": MakeDefaultPerfServer({
         "name": "perfserver-mtv",
-        "address": "172.22.50.124",
-        "ethernet_mac": "e8:03:9a:11:70:31",
+        "address": "172.22.50.246",
+        "ethernet_mac": "c4:54:44:2a:1a:8b",
         }),
 
     # Used for tests that check web connectivity
