@@ -3,10 +3,8 @@
 # found in the LICENSE file.
 
 import logging, os, re, time
-from fio_parser import fio_job_output
-
 from autotest_lib.client.bin import test, utils
-from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import error, fio_util
 
 
 class hardware_StorageFio(test.test):
@@ -85,77 +83,6 @@ class hardware_StorageFio(test.test):
         else:
             self.__description = ''
 
-
-    def __parse_fio(self, lines):
-        """Parse the terse fio output
-
-        This collects all metrics given by fio and labels them according to unit
-        of measurement and test case name.
-
-        """
-        # fio version 2.0.8+ outputs all needed information with --minimal
-        # Using that instead of the human-readable version, since it's easier
-        # to parse.
-        # Following is a partial example of the semicolon-delimited output.
-        # 3;fio-2.1;quick_write;0;0;0;0;0;0;0;0;0.000000;0.000000;0;0;0.000000;
-        # 0.000000;1.000000%=0;5.000000%=0;10.000000%=0;20.000000%=0;
-        # ...
-        # Refer to the HOWTO file of the fio package for more information.
-
-        results = {}
-
-        # Extract the values from the test.
-        for line in lines.splitlines():
-            # Put the values from the output into an array.
-            values = line.split(';')
-            # This check makes sure that we are parsing the actual values
-            # instead of the job description or possible blank lines.
-            if len(values) <= 128:
-                continue
-            results.update(fio_job_output(values))
-
-        return results
-
-
-    def __RunFio(self, job):
-        """
-        Runs fio.
-
-        @param job: fio config file to use
-
-        @return fio results.
-
-        """
-        env_vars = ' '.join(
-            ['FILENAME=' + self.__filename,
-             'FILESIZE=' + str(self.__filesize),
-             'VERIFY_ONLY=' + str(int(self.__verify_only))
-             ])
-
-        # running fio with ionice -c 3 so it doesn't lock out other
-        # processes from the disk while it is running.
-        # If you want to run the fio test for performance purposes,
-        # take out the ionice and disable hung process detection:
-        # "echo 0 > /proc/sys/kernel/hung_task_timeout_secs"
-        # -c 3 = Idle
-        # Tried lowest priority for "best effort" but still failed
-        ionice = 'ionice -c 3'
-
-        # Using the --minimal flag for easier results parsing
-        # Newest fio doesn't omit any information in --minimal
-        # Need to set terse-version to 4 for trim related output
-        options = ['--minimal', '--terse-version=4']
-        fio_cmd_line = ' '.join([env_vars, ionice, 'fio',
-                                 ' '.join(options),
-                                 '"' + os.path.join(self.bindir, job + '"')])
-        fio = utils.run(fio_cmd_line)
-
-        logging.debug(fio.stdout)
-        output = self.__parse_fio(fio.stdout)
-        for k, v in output.iteritems():
-            if k.endswith('_error'):
-                self._fail_count += int(v)
-        return output
 
     def initialize(self, dev='', filesize=DEFAULT_FILE_SIZE):
         """
@@ -252,7 +179,13 @@ class hardware_StorageFio(test.test):
                 self.__verify_only = True
             else:
                 self.__verify_only = False
-            results.update(self.__RunFio(job))
+            env_vars = ' '.join(
+                ['FILENAME=' + self.__filename,
+                 'FILESIZE=' + str(self.__filesize),
+                 'VERIFY_ONLY=' + str(int(self.__verify_only))
+                ])
+            job_file = os.path.join(self.bindir, job)
+            results.update(fio_util.fio_runner(job_file, env_vars))
 
         # Output keys relevant to the performance, larger filesize will run
         # slower, and sda5 should be slightly slower than sda3 on a rotational
@@ -262,6 +195,9 @@ class hardware_StorageFio(test.test):
                                 'device': self.__description})
         logging.info('Device Description: %s', self.__description)
         self.write_perf_keyval(results)
+        for k, v in results.iteritems():
+            if k.endswith('_error'):
+                self._fail_count += int(v)
         if self._fail_count > 0:
             raise error.TestFail('%s failed verifications' %
                                  str(self._fail_count))

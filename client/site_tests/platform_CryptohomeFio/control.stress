@@ -10,13 +10,12 @@ DOC = """This test uses fio and a basic configuration to test and
 validate writes to the ecryptfs vault. It does not create a login
 session, but mounts a special user dir for the test.
 """
-NAME = 'platform_CryptohomeFio.new'
-TIME = 'MEDIUM'
+NAME = 'platform_CryptohomeFio.stress'
 TEST_CLASS = 'platform'
 TEST_CATEGORY = 'Stress'
 TEST_TYPE = 'client'
 
-RUNTIME=60
+RUNTIME=60  # seconds.
 
 disk_configs = {#'tmpfs' : (False, True),
 	        'ext3+ssd' : (False, False),

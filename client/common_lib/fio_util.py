@@ -2,6 +2,19 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""Library to run fio scripts.
+
+fio_runner launch fio and collect results.
+The output dictionary can be add to autotest keyval:
+        results = {}
+        results.update(fio_util.fio_runner(job_file, env_vars))
+        self.write_perf_keyval(results)
+
+Decoding class can be invoked independently.
+
+"""
+
+import logging, utils
 from UserDict import UserDict
 
 class fio_parser_exception(Exception):
@@ -246,3 +259,71 @@ class fio_job_output(UserDict):
             if len(data) <= idx:
                 break
             parser(self._job_name, field, data[idx])
+
+
+def fio_parser(lines):
+    """Parse the terse fio output
+
+    This collects all metrics given by fio and labels them according to unit
+    of measurement and test case name.
+
+    @param lines: text output of terse fio output.
+
+    """
+    # fio version 2.0.8+ outputs all needed information with --minimal
+    # Using that instead of the human-readable version, since it's easier
+    # to parse.
+    # Following is a partial example of the semicolon-delimited output.
+    # 3;fio-2.1;quick_write;0;0;0;0;0;0;0;0;0.000000;0.000000;0;0;0.000000;
+    # 0.000000;1.000000%=0;5.000000%=0;10.000000%=0;20.000000%=0;
+    # ...
+    # Refer to the HOWTO file of the fio package for more information.
+
+    results = {}
+
+    # Extract the values from the test.
+    for line in lines.splitlines():
+        # Put the values from the output into an array.
+        values = line.split(';')
+        # This check makes sure that we are parsing the actual values
+        # instead of the job description or possible blank lines.
+        if len(values) <= 128:
+            continue
+        results.update(fio_job_output(values))
+
+    return results
+
+
+def fio_runner(job, env_vars):
+    """
+    Runs fio.
+
+    @param job: fio config file to use
+    @param env_vars: environment variable fio will substituete in the fio
+        config file.
+
+    @return fio results.
+
+    """
+
+    # running fio with ionice -c 3 so it doesn't lock out other
+    # processes from the disk while it is running.
+    # If you want to run the fio test for performance purposes,
+    # take out the ionice and disable hung process detection:
+    # "echo 0 > /proc/sys/kernel/hung_task_timeout_secs"
+    # -c 3 = Idle
+    # Tried lowest priority for "best effort" but still failed
+    ionice = 'ionice -c 3'
+
+    # Using the --minimal flag for easier results parsing
+    # Newest fio doesn't omit any information in --minimal
+    # Need to set terse-version to 4 for trim related output
+    options = ['--minimal', '--terse-version=4']
+    fio_cmd_line = ' '.join([env_vars, ionice, 'fio',
+                             ' '.join(options),
+                             '"' + job + '"'])
+    fio = utils.run(fio_cmd_line)
+
+    logging.debug(fio.stdout)
+    return fio_parser(fio.stdout)
+
