@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 import logging, os, shutil, tempfile
-from autotest_lib.client.bin import test
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import fio_util
 from autotest_lib.client.cros import cryptohome
 
@@ -16,7 +16,11 @@ class platform_CryptohomeFio(test.test):
     version = 2
 
     def run_once(self, runtime, mount_cryptohome=True, tmpfs=False,
-                 script=None):
+                 script=None,sysctls=None):
+        if sysctls:
+            for sysctl in sysctls:
+                for key,val in sysctl.iteritems():
+                    utils.sysctl(key, val)
         # Mount a test cryptohome vault.
         self.__mount_cryptohome = mount_cryptohome
         if mount_cryptohome:
@@ -31,7 +35,7 @@ class platform_CryptohomeFio(test.test):
 
         results = {}
         # TODO make these parameters to run_once & check target disk for space.
-        self.__filesize = '150m'
+        self.__filesize = '300m'
         self.__runtime = str(runtime)
         env_vars = ' '.join(
             ['FILENAME=' + os.path.join(self.__work_dir, script),
