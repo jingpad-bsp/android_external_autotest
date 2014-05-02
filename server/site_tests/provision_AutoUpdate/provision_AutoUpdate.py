@@ -37,7 +37,13 @@ class provision_AutoUpdate(test.test):
         # but I'd like the semantics that a provision test 'returns' TestNA
         # if the machine is already properly provisioned.
         if host.get_build() == value:
-            raise error.TestNAError('Host already running %s' % value)
+            # We can't raise a TestNA, as would make sense, as that makes
+            # job.run_test return False as if the job failed.  However, it'd
+            # still be nice to get this into the status.log, so we manually
+            # emit an INFO line instead.
+            self.job.record('INFO', None, None,
+                            'Host already running %s' % value)
+            return
 
         # We're about to reimage a machine, so we need full_payload and
         # stateful.  If something happened where the devserver doesn't have one
