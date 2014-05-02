@@ -48,7 +48,7 @@ SUITE_JOB_START_INFO_REGEX = ('^.*Created suite job:.*'
 EXPECTED_TEST_RESULTS = {'^SERVER_JOB$':                 'GOOD',
                          # This is related to dummy_Fail/control.dependency.
                          'dummy_Fail.dependency$':       'TEST_NA',
-                         'telemetry_CrosTests$':         'GOOD',
+                         'telemetry_CrosTests.*':        'GOOD',
                          'platform_InstallTestImage_SERVER_JOB$': 'GOOD',
                          'dummy_Pass.*':                 'GOOD',
                          'dummy_Fail.Fail$':             'FAIL',
@@ -192,8 +192,8 @@ def test_suite(suite_name, expected_results, arguments):
                 if key == 'platform_InstallTestImage_SERVER_JOB$':
                     continue
                 # TODO(dshi): result for this test is ignored until the bug is
-                # fixed in Telemetry (crbug.com/269775).
-                if key == 'telemetry_CrosTests$':
+                # fixed in Telemetry (crbug.com/369671).
+                if key == 'telemetry_CrosTests.*':
                     continue
                 if val != test_status:
                     error = ('%s Expected: [%s], Actual: [%s]' %
