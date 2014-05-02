@@ -14,17 +14,6 @@ class Linksyse2500APConfigurator(linksyse_dual_band_configurator.
     """Derived class to control Linksys E2500 router."""
 
 
-    def _sec_alert(self, alert):
-        text = alert.text
-        if 'Your wireless security mode is not compatible with' in text:
-            alert.accept()
-        elif 'WARNING: Your Wireless-N devices will only operate' in text:
-            alert.accept()
-        else:
-            alert.accept()
-            raise RuntimeError('We have an unhandled alert: %s' % text)
-
-
     def get_number_of_pages(self):
         return 2
 

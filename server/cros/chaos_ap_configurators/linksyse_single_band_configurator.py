@@ -97,7 +97,8 @@ class LinksyseSingleBandAPConfigurator(
                         ap_spec.MODE_B | ap_spec.MODE_G:'Wireless-B/G Only',
                         ap_spec.MODE_G:'Wireless-G Only',
                         ap_spec.MODE_B:'Wireless-B Only',
-                        ap_spec.MODE_N:'Wireless-N Only'}
+                        ap_spec.MODE_N:'Wireless-N Only',
+                        'Disabled':'Disabled'}
         mode_name = mode_mapping.get(mode)
         if not mode_name:
             raise RuntimeError('The mode %d not supported by router %s. ',
@@ -161,8 +162,15 @@ class LinksyseSingleBandAPConfigurator(
 
 
     def set_radio(self, enabled=True):
-        logging.debug('set_radio is not supported in Linksys single band AP.')
-        return None
+        weight = 1 if enabled else 1000
+        self.add_item_to_command_list(self._set_radio, (enabled,), 1, weight)
+
+
+    def _set_radio(self, enabled=True):
+        if not enabled:
+            self._set_mode('Disabled')
+        else:
+            self._set_mode(ap_spec.MODE_G)
 
 
     def set_band(self, enabled=True):

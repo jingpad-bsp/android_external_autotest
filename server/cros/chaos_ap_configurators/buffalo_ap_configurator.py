@@ -130,6 +130,7 @@ class BuffaloAPConfigurator(
         # Create the mode to popup item mapping.
         mode_mapping = {ap_spec.MODE_B:'B-Only', ap_spec.MODE_G: 'G-Only',
                         ap_spec.MODE_N:'N-Only (2.4 GHz)',
+                        ap_spec.MODE_M:'Mixed',
                         ap_spec.MODE_B | ap_spec.MODE_G:'BG-Mixed',
                         ap_spec.MODE_N | ap_spec.MODE_G:'NG-Mixed'}
         mode_name = ''
@@ -139,7 +140,11 @@ class BuffaloAPConfigurator(
             raise RuntimeError('The mode %d not supported by router %s. ',
                                hex(mode), self.name)
         xpath = '//select[@name="ath0_net_mode"]'
-        self.select_item_from_popup_by_xpath(mode_name, xpath)
+        try:
+            self.select_item_from_popup_by_xpath(mode_name, xpath)
+        except SeleniumTimeoutException, e:
+            self.driver.refresh()
+            self.select_item_from_popup_by_xpath(mode_name, xpath)
 
 
     def set_radio(self, enabled):

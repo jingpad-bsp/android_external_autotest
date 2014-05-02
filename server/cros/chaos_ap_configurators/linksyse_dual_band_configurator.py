@@ -29,6 +29,10 @@ class LinksyseDualBandAPConfigurator(
         #  changed to WEP, WPA Personal or WPA Enterprise.
         if 'Security Mode is disabled.' in text:
             alert.accept()
+        elif 'Your wireless security mode is not compatible with' in text:
+            alert.accept()
+        elif 'WARNING: Your Wireless-N devices will only operate ' in text:
+            alert.accept()
         elif 'Setting the Security Mode to WEP, WPA Personal' in text:
             alert.accept()
         elif 'Turning off SSID Broadcast' in text:

@@ -80,6 +80,9 @@ class APConfiguratorFactory(object):
         'BuffalowzrAPConfigurator':
             [PREFIX + 'buffalo_wzr_d1800h_ap_configurator',
                 'BuffalowzrAPConfigurator'],
+        'Buffaloag300hAPConfigurator':
+            [PREFIX + 'buffaloag300h_ap_configurator',
+                'Buffaloag300hAPConfigurator'],
         'AsusAPConfigurator':
             [PREFIX + 'asus_ap_configurator',
                 'AsusAPConfigurator'],
@@ -131,6 +134,15 @@ class APConfiguratorFactory(object):
         'LinksysWRT54GLAPConfigurator':
             [PREFIX + 'linksyswrt54gl_ap_configurator',
                 'LinksysWRT54GLAPConfigurator'],
+        'LinksysWRT610NAPConfigurator':
+            [PREFIX + 'linksyswrt610n_ap_configurator',
+                'LinksysWRT610NAPConfigurator'],
+        'LinksysWRT120NAPConfigurator':
+            [PREFIX + 'linksyswrt120n_ap_configurator',
+                'LinksysWRT120NAPConfigurator'],
+        'LevelOneAPConfigurator':
+            [PREFIX + 'levelone_ap_configurator',
+                'LevelOneAPConfigurator'],
         'NetgearDualBandAPConfigurator':
             [PREFIX + 'netgear_WNDR_dual_band_configurator',
                 'NetgearDualBandAPConfigurator'],

@@ -130,7 +130,7 @@ class BuffalowzrAPConfigurator(
 
     def _switch_frame(self):
         frame1 = self.driver.find_element_by_xpath('//frame[@name="lower"]')
-        frame2 = self.driver.switch_to_frame(frame1)
+        self.driver.switch_to_frame(frame1)
 
 
     def set_mode(self, mode, band=None):
