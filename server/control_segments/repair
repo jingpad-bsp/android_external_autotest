@@ -41,6 +41,7 @@ def repair(machine):
         provision.run_special_task_actions(job, host, labels_list,
                                            provision.Repair)
     except Exception as e:
+        logging.exception(e)
         repair_utils.flag_problem_test(machine)
         job.record('END FAIL', None, 'repair')
         # See the provision control segment for the explanation of why we're
