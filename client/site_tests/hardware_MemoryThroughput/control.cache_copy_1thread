@@ -2,11 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-NAME = 'hardware_MemoryThroughput'
+NAME = 'hardware_MemoryThroughput.cache_copy_1thread'
 AUTHOR = 'sonnyrao@chromium.org'
 PURPOSE = 'Benchmark sequential throughput for read, write, and copy'
 CRITERIA = 'This test is a benchmark.'
-SUITE = "kernel_daily_benchmarks, hwqual"
+SUITE = ''
 TIME='SHORT'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = 'hardware'
@@ -19,5 +19,6 @@ memset, which are generally optimized for the target.
 """
 
 job.run_test('hardware_MemoryThroughput', test='bcopy', warmup=100,
-                                          num_iterations=20, parallel=2,
-                                          sizes=[ 16 * 1024 * 1024])
+					  num_iterations=100, parallel=1,
+					  sizes=[ 4096, 192 * 1024, 512 * 1024])
+
