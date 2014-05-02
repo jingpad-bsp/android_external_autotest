@@ -52,24 +52,6 @@ def xsystem_as(cmd, user='chronos', timeout=None, ignore_status=False):
                         ignore_status=ignore_status)
 
 
-def get_autox():
-    """Return a new autox instance."""
-    # we're running as root, but need to connect to chronos' X session
-    xauth_filename = '/home/chronos/.Xauthority'
-    os.environ.setdefault('XAUTHORITY', xauth_filename)
-    os.environ.setdefault('DISPLAY', ':0.0')
-
-    # autox (python-xlib, actually) will throw an XauthError exception if it
-    # tries to connect to the X server before the .Xauthority file has been
-    # created; see http://crosbug.com/12389.
-    utils.poll_for_condition(
-        lambda: os.path.exists(xauth_filename),
-        utils.TimeoutError('Timed out waiting for %s.' % xauth_filename))
-
-    import autox
-    return autox.AutoX()
-
-
 def get_login_prompt_state(host=None):
     """Return the "state" of the most recent login.
 
