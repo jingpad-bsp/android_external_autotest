@@ -5,11 +5,11 @@
 """Handle google gdata spreadsheet service."""
 
 
+from optparse import OptionParser
 import glob
 import os
 import shutil
 import subprocess
-import sys
 import tempfile
 
 import gdata.gauth
@@ -57,6 +57,9 @@ HEADERS = ['', 'size0', 'size1', 'size2', 'size3', 'size4', 'size5', 'size6',
 MEASURED = ['H4', 'G4', 'F4', 'E4', 'D4', 'C4', 'B4']
 COMPUTED = ['H2', 'G2', 'F2', 'E2', 'D2', 'C2', 'B2']
 
+SLOPE_CELL = (5, 9)
+INTERCEPT_CELL = (5, 10)
+
 CELLS = [
   RESULTS,
   ACTUALS,
@@ -69,7 +72,7 @@ SUMMARY_WORKSHEET_TITLE = 'Summary'
 TABLE_COMPUTED = 'Computed Pressures'
 TABLE_MEASURED = 'Measured Pressures'
 
-flag_verbose = False
+options = None
 ACTUAL_SURFACE_AREA = [ '11.945895975', '25.517564775', '46.566217775',
                         '76.976808975', '107.513063775', '151.746650975',
                         '248.8453439' ]
@@ -82,11 +85,11 @@ diameter_title = [ 'diameter (mm)', '17.8', '13.9', '11.7', '9.9', '7.7',
                    '5.7', '3.9']
 
 def print_verbose(msg):
-    """Print the message if flag_verbose is True.
+    """Print the message if options.verbose is True.
 
     @param msg: the message to print
     """
-    if flag_verbose:
+    if options.verbose:
         print msg
 
 
@@ -126,19 +129,25 @@ class GestureEventFiles:
 
     def _get_machine_ip(self):
         """Get the ip address of the chromebook machine."""
+        if options.device:
+            self.machine_ip = options.device
+            return
         msg = '\nEnter the ip address (xx.xx.xx.xx) of the chromebook machine: '
         self.machine_ip = raw_input(msg)
 
     def _get_result_dir(self):
         """Get the test result directory located in the chromebook machine."""
-        print '\nEnter the test result directory located in the machine.'
-        print 'It is a directory under %s' % conf.log_root_dir
-        print ('If you have just performed the pressure calibration test '
-               'on the machine,\n' 'you could just press ENTER to use '
-               'the default "latest" directory.')
-        result_dir = raw_input('Enter test result directory: ')
-        if result_dir == '':
-            result_dir = self.DEFAULT_RESULT_DIR
+        if not options.result_dir:
+            print '\nEnter the test result directory located in the machine.'
+            print 'It is a directory under %s' % conf.log_root_dir
+            print ('If you have just performed the pressure calibration test '
+                   'on the machine,\n' 'you could just press ENTER to use '
+                   'the default "latest" directory.')
+            result_dir = raw_input('Enter test result directory: ')
+            if result_dir == '':
+                result_dir = self.DEFAULT_RESULT_DIR
+        else:
+            result_dir = options.result_dir
         self.result_dir = os.path.join(conf.log_root_dir, result_dir)
 
     def _get_gesture_event_files(self):
@@ -410,6 +419,8 @@ class PressureSpreadsheet(object):
 def get_worksheet_title():
     """Get the worksheet title."""
     worksheet_title = ''
+    if options.name:
+        return options.name
     while not worksheet_title:
         print '\nInput the name of the new worksheet to insert the events.'
         print ('This is usually the board name with the firmware version, '
@@ -417,23 +428,74 @@ def get_worksheet_title():
         worksheet_title = raw_input('Input the new worksheet name: ')
     return worksheet_title
 
+def print_slope_intercept(worksheet_title):
+    """read calibration data from worksheet and print it on command line
+
+    @param worksheet_title title of the worksheet to pull info from
+    """
+    # init client
+    ss_client = gdata.spreadsheets.client.SpreadsheetsClient()
+    authorizer = SpreadsheetAuthorizer()
+    if not authorizer.authorize(ss_client):
+        raise "Please check the access permission of the spreadsheet"
+
+    # look up the worksheet id
+    worksheet_id = None
+    worksheet_feed = ss_client.get_worksheets(TARGET_SPREADSHEET_KEY)
+    for entry in worksheet_feed.entry:
+        if entry.title.text == worksheet_title:
+            worksheet_id = entry.get_worksheet_id()
+    if not worksheet_id:
+        raise "cannot find worksheet" + worksheet_title
+
+    # print calibration info
+    slope_cell = ss_client.get_cell(TARGET_SPREADSHEET_KEY,
+                                    worksheet_id,
+                                    SLOPE_CELL[0], SLOPE_CELL[1])
+    print "slope=" + slope_cell.cell.numeric_value
+
+    intercept_cell = ss_client.get_cell(TARGET_SPREADSHEET_KEY,
+                                        worksheet_id,
+                                        INTERCEPT_CELL[0], INTERCEPT_CELL[1])
+    print "intercept=" + intercept_cell.cell.numeric_value
 
 def main():
     """Parse the gesture events and insert them to the spreadsheet."""
+    if options.print_info:
+        worksheet_title = get_worksheet_title()
+        print_slope_intercept(worksheet_title)
+        return
+
     # Get the gesture event files and parse the events.
     list_of_pressure_dicts = GestureEventFiles().list_of_pressure_dicts
 
     # Access the spreadsheet, and create a new worksheet to insert the events.
-    worksheet_title = get_worksheet_title()
     ss = PressureSpreadsheet(worksheet_title)
     ss.insert_pressures_to_worksheet(list_of_pressure_dicts)
 
-
 if __name__ == '__main__':
-    argc = len(sys.argv)
-    if argc == 2 and sys.argv[1] == '-v':
-        flag_verbose = True
-    elif argc > 2 or argc == 2:
-        print_and_exit('Usage: %s [-v]' % sys.argv[0])
+    parser = OptionParser()
+    parser.add_option('-d', '--device',
+                    dest='device', default=None,
+                    help='device ip address to connect to')
+    parser.add_option('--result-dir',
+                    dest='result_dir', default=None,
+                    help='test results directory on the device')
+    parser.add_option('-v', '--verbose',
+                    dest='verbose', default=False, action='store_true',
+                    help='verbose debug output')
+    parser.add_option('-n', '--name',
+                    dest='name', default=None,
+                    help='worksheet name')
+    parser.add_option('--print-info',
+                    dest='print_info', default=False, action="store_true",
+                    help='print pressure calibration info only')
+    (options, args) = parser.parse_args()
+    if len(args) > 0:
+        parser.print_help()
+        exit(-1)
 
+    options.verbose = options.verbose
+    device_ip = options.device
+    result_dir = options.result_dir
     main()
