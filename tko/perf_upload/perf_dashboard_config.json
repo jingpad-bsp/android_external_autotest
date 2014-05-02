@@ -143,6 +143,10 @@
     "master_name": "ChromeOSTouchpad"
   },
   {
+    "autotest_name": "power_Resume",
+    "master_name": "ChromeOSPower"
+  },
+  {
     "autotest_name": "telemetry_Benchmarks.dromaeo.domcoreattr",
     "master_name": "ChromiumPerf",
     "dashboard_test_name": "dromaeo.domcoreattr"

@@ -27,6 +27,10 @@ class power_Resume(test.test):
         for dev in slowest_devs:
             results[dev] = device_times[dev]
 
-        results['seconds_3G_disconnect'] = self._suspender.disconnect_3G_time
-
+        self.output_perf_value(description='system_suspend',
+                               value=results['seconds_system_suspend'],
+                               units='sec', higher_is_better=False)
+        self.output_perf_value(description='system_resume',
+                               value=results['seconds_system_resume'],
+                               units='sec', higher_is_better=False)
         self.write_perf_keyval(results)
