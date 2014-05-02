@@ -26,6 +26,7 @@ from autotest_lib.database import database_connection
 from autotest_lib.scheduler import drone_manager, email_manager
 from autotest_lib.scheduler import rdb_lib
 from autotest_lib.scheduler import scheduler_config
+from autotest_lib.server.cros import provision
 from autotest_lib.site_utils.graphite import stats
 from autotest_lib.client.common_lib import control_data
 
@@ -1259,14 +1260,15 @@ class Job(DBObject):
         # find all labels on the job that aren't on the host to get the list
         # of what we need to provision.  (See the scheduling logic in
         # host_scheduler.py:is_host_eligable_for_job() where we discard all
-        # provisionable labels when assigning jobs to hosts.)
+        # actionable labels when assigning jobs to hosts.)
         job_labels = {x.name for x in queue_entry.get_labels()}
         _, host_labels = queue_entry.host.platform_and_labels()
-        # If there are any labels on the job that are not on the host, then
-        # that means there is provisioning work to do.  If there's no
-        # provisioning work to do, then obviously we have no reason to schedule
-        # a provision task!
-        if job_labels - set(host_labels):
+        # If there are any labels on the job that are not on the host and they
+        # are labels that provisioning knows how to change, then that means
+        # there is provisioning work to do.  If there's no provisioning work to
+        # do, then obviously we have no reason to schedule a provision task!
+        diff = job_labels - set(host_labels)
+        if any([provision.Provision.acts_on(x) for x in diff]):
             return True
         return False
 
