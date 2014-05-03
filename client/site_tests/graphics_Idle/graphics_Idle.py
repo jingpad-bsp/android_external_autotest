@@ -17,16 +17,20 @@ class graphics_Idle(test.test):
 
 
     def run_once(self):
+        # Try to protect against runaway previous tests.
+        if not utils.wait_for_idle_cpu(60.0, 0.1):
+            raise error.TestFail('Could not get idle CPU.')
         # We use kiosk mode to make sure Chrome is idle.
         with chrome.Chrome(logged_in=False, extra_browser_args=['--kiosk']):
             self._gpu_type = utils.get_gpu_family()
             errors = ''
-            errors += self.verify_lvds_downclock()
-            errors += self.verify_short_blanking()
-            errors += self.verify_graphics_rc6()
             errors += self.verify_graphics_dvfs()
             errors += self.verify_graphics_fbc()
             errors += self.verify_graphics_gem_idle()
+            errors += self.verify_graphics_i915_min_clock()
+            errors += self.verify_graphics_rc6()
+            errors += self.verify_lvds_downclock()
+            errors += self.verify_short_blanking()
             if errors:
                 raise error.TestFail(errors)
 
@@ -84,19 +88,58 @@ class graphics_Idle(test.test):
                 if not os.path.exists(param_path):
                     logging.error('Error: %s not found.', param_path)
                     break
-                drpc_info_file = open (param_path, "r")
-                for line in drpc_info_file:
-                    match = re.search(r'Current RC state: (.*)', line)
-                    if match:
-                        found = match.group(1) != 'on'
-                        break
+                with open (param_path, 'r') as drpc_info_file:
+                    for line in drpc_info_file:
+                        match = re.search(r'Current RC state: (.*)', line)
+                        if match and match.group(1) != 'on':
+                            found = True
+                            break
 
                 tries += 1
-                drpc_info_file.close()
 
             if not found:
                 logging.error('Error: did not see the GPU in RC6.')
                 return 'Did not see the GPU in RC6. '
+
+        return ''
+
+
+    def verify_graphics_i915_min_clock(self):
+        """ On i915 systems, check that we get into the lowest clock frequency;
+        idle before doing so, and retry every second for 20 seconds."""
+        logging.info('Running verify_graphics_i915_min_clock')
+        if (self._gpu_type == 'baytrail' or self._gpu_type == 'haswell' or
+            self._gpu_type == 'ivybridge' or self._gpu_type == 'sandybridge'):
+            tries = 0
+            found = False
+            while not found and tries < 20:
+                time.sleep(1)
+                param_path = '/sys/kernel/debug/dri/0/i915_cur_delayinfo'
+                if not os.path.exists(param_path):
+                    logging.error('Error: %s not found.', param_path)
+                    break
+
+                with open (param_path, 'r') as delayinfo_file:
+                    for line in delayinfo_file:
+                        # This file has a different format depending on the board,
+                        # so we parse both. Also, it would be tedious to add the
+                        # minimum clock for each board, so instead we use 450MHz
+                        # which is the max of the minimum clocks.
+                        match = re.search(r'CAGF: (.*)MHz', line)
+                        if match and int(match.group(1)) <= 450:
+                            found = True
+                            break
+
+                        match = re.search(r'current GPU freq: (.*) MHz', line)
+                        if match and int(match.group(1)) <= 450:
+                            found = True
+                            break
+
+                tries += 1
+
+            if not found:
+                logging.error('Error: did not see the min i915 clock')
+                return 'Did not see the min i915 clock. '
 
         return ''
 
@@ -109,7 +152,7 @@ class graphics_Idle(test.test):
         if self._gpu_type == 'mali':
             tries = 0
             found = False
-            while found == False and tries < 20:
+            while not found and tries < 20:
                 time.sleep(1)
                 param_path = '/sys/devices/11800000.mali/clock'
                 if not os.path.exists(param_path):
@@ -117,7 +160,7 @@ class graphics_Idle(test.test):
                     break
                 clock = utils.read_file(param_path)
                 if int(clock) <= 266000000:
-                    found = 1
+                    found = True
                     break
 
                 tries += 1
@@ -148,7 +191,7 @@ class graphics_Idle(test.test):
             self._gpu_type == 'sandybridge'):
             tries = 0
             found = False
-            while found == False and tries < 20:
+            while not found and tries < 20:
                 time.sleep(1)
                 # Kernel 3.4 has i915_fbc, kernel 3.8+ has i915_fbc_status,
                 # so we check for both.
@@ -158,15 +201,13 @@ class graphics_Idle(test.test):
                 if not os.path.exists(param_path):
                     logging.error('Error: %s not found.', param_path)
                     break
-                fbc_info_file = open (param_path, "r")
-                for line in fbc_info_file:
-                    match = re.search('FBC enabled', line)
-                    if match:
-                        found = 1
-                        break
+                with open (param_path, 'r') as fbc_info_file:
+                    for line in fbc_info_file:
+                        if re.search('FBC enabled', line):
+                            found = True
+                            break
 
                 tries += 1
-                fbc_info_file.close()
 
             if not found:
                 logging.error('Error: did not see FBC enabled.')
@@ -186,20 +227,19 @@ class graphics_Idle(test.test):
             self._gpu_type == 'sandybridge'):
             tries = 0
             found = False
-            while found == False and tries < 20:
-                time.sleep(1)
+            while not found and tries < 240:
+                time.sleep(0.25)
                 gem_path = '/sys/kernel/debug/dri/0/i915_gem_active'
                 if not os.path.exists(gem_path):
                     logging.error('Error: %s not found.', gem_path)
                     break
-                gem_file = open(gem_path, "r")
-                for line in gem_file:
-                    found = re.search('Total 0 objects', line)
-                    if found:
-                        break
+                with open (gem_path, 'r') as gem_file:
+                    for line in gem_file:
+                        if re.search('Total 0 objects', line):
+                            found = True
+                            break
 
                 tries += 1
-                gem_file.close()
 
             if not found:
                 logging.error('Error: did not reach 0 gem actives.')
