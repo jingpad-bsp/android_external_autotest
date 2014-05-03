@@ -820,10 +820,12 @@ def get_gpu_family():
     intel_architecture = {
         0xa011: 'pinetrail',
         0x0106: 'sandybridge',
+        0x0116: 'sandybridge',
         0x0126: 'sandybridge',
         0x0156: 'ivybridge',
         0x0166: 'ivybridge',
         0x0a06: 'haswell',
+        0x0a16: 'haswell',
         0x0f31: 'baytrail',
     }
 
