@@ -539,7 +539,7 @@ True
 ...         'name': 'my_job',
 ...         'owner': 'debug_user',
 ...         'priority': 10,
-...         'synch_count': 1,
+...         'synch_count': 0,
 ...         'timeout': 24,
 ...         'timeout_mins': 1440,
 ...         'max_runtime_mins': 1440,

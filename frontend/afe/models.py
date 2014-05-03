@@ -1034,7 +1034,7 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
         blank=True, # to allow 0
         default=control_data.CONTROL_TYPE.CLIENT)
     created_on = dbmodels.DateTimeField()
-    synch_count = dbmodels.IntegerField(null=True, default=1)
+    synch_count = dbmodels.IntegerField(blank=True, default=0)
     timeout = dbmodels.IntegerField(default=DEFAULT_TIMEOUT)
     run_verify = dbmodels.BooleanField(default=False)
     email_list = dbmodels.CharField(max_length=250, blank=True)
