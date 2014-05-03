@@ -37,8 +37,7 @@ class graphics_Idle(test.test):
         logging.info('Running verify_lvds_downclock')
         board = utils.get_board()
         if not (board == 'alex' or board == 'lumpy' or
-                board == 'parrot' or board == 'parrot_ivb' or
-                board == 'stout'):
+                board == 'parrot' or board == 'stout'):
             return ''
 
         # Get the downclock message from the logs.
