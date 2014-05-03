@@ -828,3 +828,13 @@ def get_gpu_family():
     }
 
     return intel_architecture[device_id]
+
+
+def has_no_monitor():
+    """Return whether a machine doesn't have a built-in monitor"""
+    board_name = get_board()
+    if (board_name == 'stumpy' or board_name == 'panther' or
+        board_name == 'zako'):
+        return True
+
+    return False

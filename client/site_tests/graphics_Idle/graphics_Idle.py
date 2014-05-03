@@ -141,6 +141,10 @@ class graphics_Idle(test.test):
         if board == 'link':
             return ''
 
+        # Machines which don't have a monitor can't get FBC.
+        if utils.has_no_monitor():
+            return ''
+
         if (self._gpu_type == 'haswell' or self._gpu_type == 'ivybridge' or
             self._gpu_type == 'sandybridge'):
             tries = 0
