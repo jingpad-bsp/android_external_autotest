@@ -45,6 +45,10 @@ class network_WiFi_MissingBeacons(wifi_cell_test_base.WiFiCellTestBase):
         else:
             logging.info('Client detected the AP absence in %.2f seconds',
                          duration_seconds)
+        # It seems redundant to disconnect a service that is already
+        # disconnected, but it prevents shill from attempting to re-connect
+        # and foiling future connection attempts.
+        self.context.client.shill.disconnect(ssid)
 
 
     def run_once(self):
