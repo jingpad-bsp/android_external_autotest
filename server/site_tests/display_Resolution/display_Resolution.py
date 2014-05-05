@@ -47,7 +47,8 @@ class display_Resolution(chameleon_test.ChameleonTest):
         super(display_Resolution, self).cleanup()
 
 
-    def run_once(self, host, test_mirrored=False, test_suspend_resume=False):
+    def run_once(self, host, test_mirrored=False, test_suspend_resume=False,
+                 test_reboot=False):
         errors = []
         for tag, width, height in self.RESOLUTION_TEST_LIST:
             if not self.is_edid_supported(tag, width, height):
@@ -57,8 +58,14 @@ class display_Resolution(chameleon_test.ChameleonTest):
 
             self.set_up_chameleon((tag, width, height))
             try:
-                logging.info('Reconnect output...')
-                self.display_client.reconnect_output_and_wait()
+                if test_reboot:
+                    logging.info('Reboot...')
+                    host.reboot(wait=True)
+                    self.display_client.connect()
+                else:
+                    logging.info('Reconnect output...')
+                    self.display_client.reconnect_output_and_wait()
+
                 logging.info('Set mirrored: %s', test_mirrored)
                 self.display_client.set_mirrored(test_mirrored)
 
