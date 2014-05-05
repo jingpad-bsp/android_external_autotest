@@ -55,10 +55,11 @@ class Edid(object):
 
 
     @classmethod
-    def from_file(cls, filename):
+    def from_file(cls, filename, skip_verify=False):
         """Construct an Edid from a file.
 
         @param filename: A string of filename.
+        @param skip_verify: True to skip the correctness check.
         """
         if not os.path.exists(filename):
             raise ValueError('EDID file %r does not exist' % filename)
@@ -70,7 +71,7 @@ class Edid(object):
                               open(filename).readlines()))
         else:
             data = open(filename).read()
-        return cls(data)
+        return cls(data, skip_verify)
 
 
     def to_file(self, filename):

@@ -93,7 +93,10 @@ class ChameleonPort(object):
 
         @return: An Edid object.
         """
-        return edid.Edid(self._chameleond_proxy.ReadEdid(self._input_id).data)
+        # Read EDID without verify. It may be made corrupted as intended
+        # for the test purpose.
+        return edid.Edid(self._chameleond_proxy.ReadEdid(self._input_id).data,
+                         skip_verify=True)
 
 
     def apply_edid(self, edid):
