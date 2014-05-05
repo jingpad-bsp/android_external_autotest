@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-TIME='LARGE'
+TIME='LONG'
 AUTHOR = 'The Chromium OS Authors'
 PURPOSE = 'Stress test the ecryptfs home directory across power state changes.'
 CRITERIA = 'This test is a stress test. Expected success, no crashes.'
