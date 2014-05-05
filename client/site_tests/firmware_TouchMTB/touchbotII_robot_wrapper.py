@@ -229,6 +229,10 @@ class RobotWrapper:
                 raise RobotWrapperError('Error getting the fingertips!')
         self.fingertips = tips_to_get
 
+        reset_script = os.path.join(self._robot_script_dir, SCRIPT_RESET)
+        para = (reset_script, self._board, self._speed_dict[GV.FAST])
+        self._execute_control_command('python %s %s.p %d' % para)
+
     def _return_fingertips(self):
         """ Return all the fingertips to the nest, one size at a time.
         This function uses the self.fingertips member variable to know which
