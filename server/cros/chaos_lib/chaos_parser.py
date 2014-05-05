@@ -113,10 +113,9 @@ class ChaosParser(object):
 
 
     def parse_status_log(self):
-        """Parse the entire status.log file from chaos test for test failures.
-
-        @return Returns a tuple with two lists of APs and their details, one
-                for each of connect and configuration failure.
+        """Parse the entire status.log file from chaos test for test failures
+           and creates two CSV files for connect fail and configuration fail
+           respectively.
 
         """
         for test_type, status_log in zip(self.tests, self.status_log):
@@ -176,8 +175,8 @@ class ChaosParser(object):
 
         @param path: Path for a specific test result directory.
 
-        @return Returns a list of absolute pathnames for the 'status.log' and
-                'keyfile' as
+        @return Returns a dict with absolute pathnames for the 'status.log' and
+                'keyval' files.
 
         """
         status = None
