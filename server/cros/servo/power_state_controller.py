@@ -200,6 +200,7 @@ _CONTROLLER_BOARD_MAP = {
     'panther': _PantherController,
     'monroe': _PantherController,
     'zako': _PantherController,
+    'tricky': _PantherController,
 }
 
 
