@@ -13,6 +13,7 @@ from autotest_lib.scheduler import agent_task
 from autotest_lib.scheduler import monitor_db, drone_manager, email_manager
 from autotest_lib.scheduler import pidfile_monitor
 from autotest_lib.scheduler import scheduler_config, gc_stats, host_scheduler
+from autotest_lib.scheduler import monitor_db_cleanup
 from autotest_lib.scheduler import monitor_db_functional_test
 from autotest_lib.scheduler import scheduler_models
 
@@ -427,6 +428,17 @@ class DispatcherSchedulingTest(BaseSchedulerTest):
         # the second time.  If it does, we'll get an unexpected call.
         self._dispatcher._garbage_collection()
 
+
+    def test_overlapping_jobs(self):
+        """Test that we can detect overlapping jobs."""
+        self._create_job_simple([1], True)
+        self._run_scheduler()
+        self._do_query('UPDATE afe_hosts SET leased=0 where id=1')
+        self._create_job_simple([1], True)
+        self._run_scheduler()
+        jobs = monitor_db_cleanup.UserCleanup.get_overlapping_jobs()
+        self.assertTrue(jobs[0]['job_id'] == 1 and jobs[0]['host_id'] == 1 and
+                        jobs[1]['job_id'] == 2 and jobs[1]['host_id'] == 1)
 
 
 class DispatcherThrottlingTest(BaseSchedulerTest):
