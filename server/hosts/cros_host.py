@@ -753,7 +753,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         """
         if not self.is_up():
             raise error.AutoservRepairMethodNA('DUT unreachable for install.')
-
         logging.info('Attempting to reimage machine to repair image.')
         try:
             self.machine_install(repair=True)
@@ -925,6 +924,21 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                          failed_cycles)
 
 
+    def check_device(self):
+        """Check if a device is ssh-able, and if so, clean and verify it.
+
+        @raise AutoservSSHTimeout: If the ssh ping times out.
+        @raise AutoservSshPermissionDeniedError: If ssh ping fails due to
+                                                 permissions.
+        @raise AutoservSshPingHostError: For other AutoservRunErrors during
+                                         ssh_ping.
+        @raises AutoservError: As appropriate, during cleanup and verify.
+        """
+        self.ssh_ping()
+        self.cleanup()
+        self.verify()
+
+
     def repair_full(self):
         """Repair a host for repair level NO_PROTECTION.
 
@@ -936,7 +950,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         It first verifies and repairs servo if it is a DUT in CrOS
         lab and a servo is attached.
 
-        If `self.verify()` fails, the following procedures are
+        If `self.check_device()` fails, the following procedures are
         attempted:
           1. Try to re-install to a known stable image using
              auto-update.
@@ -948,8 +962,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
              by power-cycling.
 
         As with the parent method, the last operation performed on
-        the DUT must be to call `self.verify()`; if that call fails,
-        the exception it raises is passed back to the caller.
+        the DUT must be to call `self.check_device()`; If that call fails the
+        exception it raises is passed back to the caller.
 
         @raises AutoservRepairTotalFailure if the repair process fails to
                 fix the DUT.
@@ -979,7 +993,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         for repair_func in repair_funcs:
             try:
                 repair_func()
-                self.verify()
+                self.check_device()
                 stats.Counter(
                         '%s.SUCCEEDED' % repair_func.__name__).increment()
                 if board:
