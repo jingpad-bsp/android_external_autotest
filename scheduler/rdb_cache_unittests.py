@@ -111,8 +111,7 @@ class RDBCacheTest(test_utils.AbstractBaseRDBTester, unittest.TestCase):
 
         self.god.stub_with(rdb.AvailableHostRequestHandler,
                            'get_response', local_get_response)
-        self.check_hosts(rdb_lib.acquire_hosts(
-            self.host_scheduler, queue_entries))
+        self.check_hosts(rdb_lib.acquire_hosts(queue_entries))
 
 
     def testCachingPriority(self):
@@ -162,8 +161,7 @@ class RDBCacheTest(test_utils.AbstractBaseRDBTester, unittest.TestCase):
 
         self.god.stub_with(rdb.AvailableHostRequestHandler,
                            'get_response', local_get_response)
-        self.check_hosts(rdb_lib.acquire_hosts(
-                self.host_scheduler, queue_entries))
+        self.check_hosts(rdb_lib.acquire_hosts(queue_entries))
 
 
     def testCachingEmptyList(self):
@@ -193,8 +191,7 @@ class RDBCacheTest(test_utils.AbstractBaseRDBTester, unittest.TestCase):
         queue_entries = self._dispatcher._refresh_pending_queue_entries()
         self.god.stub_with(rdb.AvailableHostRequestHandler,
                            'get_response', local_get_response)
-        self.check_hosts(rdb_lib.acquire_hosts(
-                self.host_scheduler, queue_entries))
+        self.check_hosts(rdb_lib.acquire_hosts(queue_entries))
 
 
     def testStaleCacheLine(self):
@@ -238,8 +235,7 @@ class RDBCacheTest(test_utils.AbstractBaseRDBTester, unittest.TestCase):
 
         self.god.stub_with(rdb.AvailableHostRequestHandler,
                            'get_response', local_get_response)
-        acquired_hosts = list(
-            rdb_lib.acquire_hosts(self.host_scheduler, queue_entries))
+        acquired_hosts = list(rdb_lib.acquire_hosts(queue_entries))
         self.assertTrue(acquired_hosts[0].id == host_1.id and
                         acquired_hosts[1].id == host_2.id and
                         acquired_hosts[2] is None)
@@ -341,6 +337,5 @@ class RDBCacheTest(test_utils.AbstractBaseRDBTester, unittest.TestCase):
 
         self.god.stub_with(rdb.AvailableHostRequestHandler,
                            'get_response', local_get_response)
-        self.check_hosts(rdb_lib.acquire_hosts(
-            self.host_scheduler, queue_entries))
+        self.check_hosts(rdb_lib.acquire_hosts(queue_entries))
 

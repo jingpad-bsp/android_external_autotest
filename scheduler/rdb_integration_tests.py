@@ -132,8 +132,7 @@ class BaseRDBTest(rdb_testing_utils.AbstractBaseRDBTester, unittest.TestCase):
         host.leased = 1
         host.save()
         queue_entries = self._dispatcher._refresh_pending_queue_entries()
-        hosts = list(rdb_lib.acquire_hosts(
-            self.host_scheduler, queue_entries))
+        hosts = list(rdb_lib.acquire_hosts(queue_entries))
         self.assertTrue(len(hosts) == 1 and hosts[0] is None)
 
 
@@ -153,7 +152,7 @@ class BaseRDBTest(rdb_testing_utils.AbstractBaseRDBTester, unittest.TestCase):
                  self.db_helper.create_host('h2', deps=set(['a']))]
 
         @rdb_hosts.return_rdb_host
-        def local_find_hosts(host_query_maanger, deps, acls):
+        def local_find_hosts(host_query_manger, deps, acls):
             """Return a predetermined list of hosts, one of which is leased."""
             h1 = models.Host.objects.get(hostname='h1')
             h1.leased = 1
@@ -164,8 +163,7 @@ class BaseRDBTest(rdb_testing_utils.AbstractBaseRDBTester, unittest.TestCase):
         self.god.stub_with(rdb.AvailableHostQueryManager, 'find_hosts',
                            local_find_hosts)
         queue_entries = self._dispatcher._refresh_pending_queue_entries()
-        hosts = list(rdb_lib.acquire_hosts(
-            self.host_scheduler, queue_entries))
+        hosts = list(rdb_lib.acquire_hosts(queue_entries))
         self.assertTrue(len(hosts) == 2 and None in hosts)
         self.check_hosts(iter(hosts))
 
@@ -226,8 +224,7 @@ class BaseRDBTest(rdb_testing_utils.AbstractBaseRDBTester, unittest.TestCase):
         self.db_helper.create_host('h1', deps=deps, acls=acls)
         job = self.create_job(user='autotest_system', deps=deps, acls=acls)
         queue_entries = self._dispatcher._refresh_pending_queue_entries()
-        matching_host  = rdb_lib.acquire_hosts(
-                self.host_scheduler, queue_entries).next()
+        matching_host  = rdb_lib.acquire_hosts(queue_entries).next()
         self.check_host_assignment(job.id, matching_host.id)
         self.assertTrue(matching_host.leased == 1)
 
@@ -244,8 +241,7 @@ class BaseRDBTest(rdb_testing_utils.AbstractBaseRDBTester, unittest.TestCase):
         self.db_helper.create_host('h1', deps=host_labels, acls=acls)
         job = self.create_job(user='autotest_system', deps=job_deps, acls=acls)
         queue_entries = self._dispatcher._refresh_pending_queue_entries()
-        matching_host  = rdb_lib.acquire_hosts(
-                self.host_scheduler, queue_entries).next()
+        matching_host  = rdb_lib.acquire_hosts(queue_entries).next()
         self.assert_(not matching_host)
 
 
@@ -265,8 +261,7 @@ class BaseRDBTest(rdb_testing_utils.AbstractBaseRDBTester, unittest.TestCase):
         # 1 host that has the 'a' dep isn't.
         job = self.create_job(user='new_user', deps=deps, acls=job_acls)
         queue_entries = self._dispatcher._refresh_pending_queue_entries()
-        matching_host  = rdb_lib.acquire_hosts(
-                self.host_scheduler, queue_entries).next()
+        matching_host  = rdb_lib.acquire_hosts(queue_entries).next()
         self.assert_(not matching_host)
 
 
@@ -291,8 +286,7 @@ class BaseRDBTest(rdb_testing_utils.AbstractBaseRDBTester, unittest.TestCase):
 
         self.god.stub_with(rdb_requests.BaseHostRequestManager, 'response',
                 AssignmentValidator.priority_checking_response_handler)
-        self.check_hosts(rdb_lib.acquire_hosts(
-            self.host_scheduler, queue_entries))
+        self.check_hosts(rdb_lib.acquire_hosts(queue_entries))
 
 
     def testPriorityLevels(self):
@@ -321,24 +315,21 @@ class BaseRDBTest(rdb_testing_utils.AbstractBaseRDBTester, unittest.TestCase):
 
         self.god.stub_with(rdb_requests.BaseHostRequestManager, 'response',
                 AssignmentValidator.priority_checking_response_handler)
-        self.check_hosts(rdb_lib.acquire_hosts(
-            self.host_scheduler, queue_entries))
+        self.check_hosts(rdb_lib.acquire_hosts(queue_entries))
 
         # Elevate the priority of the unimportant job, so we now have
         # 2 jobs at the same priority.
         self.db_helper.increment_priority(job_id=unimportant_job.id)
         queue_entries = self._dispatcher._refresh_pending_queue_entries()
         self._release_unused_hosts()
-        self.check_hosts(rdb_lib.acquire_hosts(
-            self.host_scheduler, queue_entries))
+        self.check_hosts(rdb_lib.acquire_hosts(queue_entries))
 
         # Prioritize the first job, and confirm that it gets the host over the
         # jobs that got it the last time.
         self.db_helper.increment_priority(job_id=unimportant_job.id)
         queue_entries = self._dispatcher._refresh_pending_queue_entries()
         self._release_unused_hosts()
-        self.check_hosts(rdb_lib.acquire_hosts(
-            self.host_scheduler, queue_entries))
+        self.check_hosts(rdb_lib.acquire_hosts(queue_entries))
 
 
     def testFrontendJobScheduling(self):
@@ -362,7 +353,7 @@ class BaseRDBTest(rdb_testing_utils.AbstractBaseRDBTester, unittest.TestCase):
         # Check that only the matching host is returned, and that we get 'None'
         # for the second request.
         queue_entries = self._dispatcher._refresh_pending_queue_entries()
-        hosts = list(rdb_lib.acquire_hosts(self.host_scheduler, queue_entries))
+        hosts = list(rdb_lib.acquire_hosts(queue_entries))
         self.assertTrue(len(hosts) == 2 and None in hosts)
         returned_host = [host for host in hosts if host].pop()
         self.assertTrue(matching_host.id == returned_host.id)
@@ -402,8 +393,7 @@ class BaseRDBTest(rdb_testing_utils.AbstractBaseRDBTester, unittest.TestCase):
 
         self.god.stub_with(rdb_requests.BaseHostRequestManager, 'response',
                            local_response_handler)
-        self.check_hosts(rdb_lib.acquire_hosts(
-            self.host_scheduler, queue_entries))
+        self.check_hosts(rdb_lib.acquire_hosts(queue_entries))
 
 
     def testSuiteOrderedHostAcquisition(self):
@@ -481,7 +471,7 @@ class BaseRDBTest(rdb_testing_utils.AbstractBaseRDBTester, unittest.TestCase):
 
         self.god.stub_with(rdb_requests.BaseHostRequestManager, 'response',
                            local_response_handler)
-        list(rdb_lib.acquire_hosts(self.host_scheduler, queue_entries))
+        list(rdb_lib.acquire_hosts(queue_entries))
 
 
     def testConfigurations(self):
@@ -497,6 +487,5 @@ class BaseRDBTest(rdb_testing_utils.AbstractBaseRDBTester, unittest.TestCase):
         db_host = self.db_helper.create_host('h1', deps=host_deps)
         self.create_job(user='autotest_system', deps=job_labels)
         queue_entries = self._dispatcher._refresh_pending_queue_entries()
-        matching_host = rdb_lib.acquire_hosts(
-                self.host_scheduler, queue_entries).next()
+        matching_host = rdb_lib.acquire_hosts(queue_entries).next()
         self.assert_(matching_host.id == db_host.id)

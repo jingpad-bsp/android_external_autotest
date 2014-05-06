@@ -105,6 +105,10 @@ class BaseSchedulerTest(unittest.TestCase,
         connection_manager = scheduler_lib.ConnectionManager(autocommit=False)
         self.god.stub_with(connection_manager, 'db_connection', self._database)
         self.god.stub_with(monitor_db, '_db_manager', connection_manager)
+
+        # These tests only make sense if hosts are acquired inline with the
+        # rest of the tick.
+        self.god.stub_with(monitor_db, '_inline_host_acquisition', True)
         self.god.stub_with(monitor_db.BaseDispatcher,
                            '_get_pending_queue_entries',
                            self._get_pending_hqes)

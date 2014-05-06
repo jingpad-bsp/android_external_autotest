@@ -16,6 +16,7 @@ from autotest_lib.frontend.afe import models
 from autotest_lib.frontend.afe import rdb_model_extensions as rdb_models
 from autotest_lib.scheduler import monitor_db
 from autotest_lib.scheduler import monitor_db_functional_test
+from autotest_lib.scheduler import query_managers
 from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.scheduler import scheduler_models
 from autotest_lib.scheduler import rdb_hosts
@@ -28,6 +29,7 @@ _DEBUG = False
 DEFAULT_ACLS = ['Everyone', 'my_acl']
 DEFAULT_DEPS = ['a', 'b']
 DEFAULT_USER = 'system'
+
 
 def get_default_job_params():
     return {'deps': DEFAULT_DEPS, 'user': DEFAULT_USER, 'acls': DEFAULT_ACLS,
@@ -87,6 +89,11 @@ class DBHelper(object):
 
 
     @classmethod
+    def get_hqes(cls, **kwargs):
+        return models.HostQueueEntry.objects.filter(**kwargs)
+
+
+    @classmethod
     def create_label(cls, name, **kwargs):
         label = cls.get_labels(name=name, **kwargs)
         return (models.Label.add_object(name=name, **kwargs)
@@ -97,6 +104,24 @@ class DBHelper(object):
     def create_user(cls, name):
         user = models.User.objects.filter(login=name)
         return models.User.add_object(login=name) if not user else user[0]
+
+
+    @classmethod
+    def create_special_task(cls, job_id=None, host_id=None,
+                            task=models.SpecialTask.Task.VERIFY,
+                            user='autotest-system'):
+        if job_id:
+            queue_entry = cls.get_hqes(job_id=job_id)[0]
+            host_id = queue_entry.host.id
+        else:
+            queue_entry = None
+        host = models.Host.objects.get(id=host_id)
+        owner = cls.create_user(user)
+        if not host:
+            raise ValueError('Require a host to create special tasks.')
+        return models.SpecialTask.objects.create(
+                host=host, queue_entry=queue_entry, task=task,
+                requested_by_id=owner.id)
 
 
     @classmethod
@@ -189,23 +214,6 @@ class DBHelper(object):
 
 
     @classmethod
-    def add_host_to_job(cls, host, job_id):
-        """Add a host to the hqe of a job.
-
-        @param host: An instance of the host model.
-        @param job_id: The job to which we need to add the host.
-
-        @raises ValueError: If the hqe for the job already has a host,
-            or if the host argument isn't a Host instance.
-        """
-        hqe = models.HostQueueEntry.objects.get(job_id=job_id)
-        if hqe.host:
-            raise ValueError('HQE for job %s already has a host' % job_id)
-        hqe.host = host
-        hqe.save()
-
-
-    @classmethod
     def increment_priority(cls, job_id):
         job = models.Job.objects.get(id=job_id)
         job.priority = job.priority + 1
@@ -232,7 +240,12 @@ class AbstractBaseRDBTester(frontend_test_utils.FrontendTestMixin):
         self.host_scheduler.tick()
 
 
-    def setUp(self):
+    def setUp(self, inline_host_acquisition=True):
+        """Common setup module for tests that need a jobs/host database.
+
+        @param inline_host_acquisition: If True, the dispatcher tries to acquire
+            hosts inline with the rest of the tick.
+        """
         self.db_helper = DBHelper()
         self._database = self.db_helper.database
         # Runs syncdb setting up initial database conditions
@@ -241,8 +254,12 @@ class AbstractBaseRDBTester(frontend_test_utils.FrontendTestMixin):
         self.god.stub_with(connection_manager, 'db_connection', self._database)
         self.god.stub_with(monitor_db, '_db_manager', connection_manager)
         self.god.stub_with(scheduler_models, '_db', self._database)
+        self.god.stub_with(monitor_db, '_inline_host_acquisition',
+                           inline_host_acquisition)
         self._dispatcher = monitor_db.Dispatcher()
         self.host_scheduler = self._dispatcher._host_scheduler
+        self.host_query_manager = query_managers.AFEHostQueryManager()
+        self.job_query_manager = self._dispatcher._job_query_manager
         self._release_unused_hosts()
 
 

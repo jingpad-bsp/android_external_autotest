@@ -36,8 +36,6 @@ REQUIRES_DJANGO = set((
         'rpc_interface_unittest.py',
         'models_test.py',
         'scheduler_models_unittest.py',
-        'metahost_scheduler_unittest.py',
-        'site_metahost_scheduler_unittest.py',
         'rpc_utils_unittest.py',
         'site_rpc_utils_unittest.py',
         'execution_engine_unittest.py',
@@ -47,6 +45,7 @@ REQUIRES_DJANGO = set((
         'rdb_hosts_unittest.py',
         'rdb_cache_unittests.py',
         'scheduler_lib_unittest.py',
+        'host_scheduler_unittests.py',
         ))
 
 REQUIRES_MYSQLDB = set((
@@ -100,6 +99,7 @@ SKIP = set((
     'dev_server_test.py',
     'full_release_test.py',
     'scheduler_lib_unittest.py',
+    'host_scheduler_unittests.py',
     ))
 
 LONG_TESTS = (REQUIRES_MYSQLDB |

@@ -15,15 +15,16 @@ from autotest_lib.server.cros import provision
 # format more ameanable to the rdb/rdb request managers.
 class JobQueryManager(object):
     """A caching query manager for all job related information."""
-    def __init__(self, host_scheduler, queue_entries):
+    def __init__(self, queue_entries):
 
-        # TODO(beeps): Break the dependency on the host_scheduler,
+        # TODO(beeps): Break this dependency on the host_query_manager,
         # crbug.com/336934.
-        self.host_scheduler = host_scheduler
+        from autotest_lib.scheduler import query_managers
+        self.query_manager = query_managers.AFEHostQueryManager()
         jobs = [queue_entry.job_id for queue_entry in queue_entries]
-        self._job_acls = self.host_scheduler._get_job_acl_groups(jobs)
-        self._job_deps = self.host_scheduler._get_job_dependencies(jobs)
-        self._labels = self.host_scheduler._get_labels(self._job_deps)
+        self._job_acls = self.query_manager._get_job_acl_groups(jobs)
+        self._job_deps = self.query_manager._get_job_dependencies(jobs)
+        self._labels = self.query_manager._get_labels(self._job_deps)
 
 
     def get_job_info(self, queue_entry):
@@ -45,21 +46,19 @@ class JobQueryManager(object):
                 'priority': queue_entry.job.priority}
 
 
-def acquire_hosts(host_scheduler, queue_entries):
+def acquire_hosts(queue_entries):
     """Acquire hosts for the list of queue_entries.
 
     The act of acquisition involves leasing a host from the rdb.
 
     @param queue_entries: A list of queue_entries that need hosts.
-    @param host_scheduler: The host_scheduler object, needed to get job
-        information.
 
     @yield: An rdb_hosts.RDBClientHostWrapper for each host acquired on behalf
         of a queue_entry, or None if a host wasn't found.
 
     @raises RDBException: If something goes wrong making the request.
     """
-    job_query_manager = JobQueryManager(host_scheduler, queue_entries)
+    job_query_manager = JobQueryManager(queue_entries)
     request_manager = rdb_requests.BaseHostRequestManager(
             rdb_requests.AcquireHostRequest, rdb.rdb_host_request_dispatcher)
     for entry in queue_entries:
