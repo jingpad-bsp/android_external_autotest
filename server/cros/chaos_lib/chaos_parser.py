@@ -63,7 +63,7 @@ class ChaosParser(object):
         return router_info.group(1)
 
 
-    def get_ap_frequency(self, ssid):
+    def get_ap_mode_chan_freq(self, ssid):
         """Gets the AP frequency from ssid using channel.
 
         @param ssid: A valid chaos test SSID
@@ -73,12 +73,14 @@ class ChaosParser(object):
         """
         channel_security_info = ssid.split('_')
         channel_info = channel_security_info[-2]
+        mode = channel_security_info[-3]
         channel = int(re.split('(\d+)', channel_info)[1])
         if channel in range(1, 15):
             frequency = '2.4GHz'
         else:
             frequency = '5GHz'
-        return frequency
+        return {'mode': mode.upper(), 'channel': channel,
+                'frequency': frequency}
 
 
     def get_ap_security(self, ssid):
@@ -112,8 +114,45 @@ class ChaosParser(object):
         return lsb_dict
 
 
+    def insert_into_tuple(self, item, value):
+        """Insert the value(pass percentage) information to the AP fail tuple.
+
+        @param item: The old tuple consisting of (board, version, mode, channel,
+                     security, AP)
+        @param value: The value to be inserted into the tuple
+
+        @return Returns a new tuple with percentage (board, version, mode,
+                channel, security, percentage, AP).
+
+        """
+        item = list(item)
+        item.insert(-1, value)
+        return tuple(item)
+
+
+    def get_pass_percentage(self, total_tests, config_fail, connect_fail):
+        """Calculate the actual pass percentages.
+
+        @total_tests: Total number of tests run
+        @config_fail: Total number of configuration failures
+        @connect_fail: Total number of connection failures
+
+        @return: Returns a dict with pass percentages for configuration and
+                 connection failures.
+
+        """
+        config_pass = total_tests - config_fail
+        connect_pass = config_pass - connect_fail
+        config_pass_percent = float(config_pass)/float(total_tests) * 100
+        config_pass_percent = str(int(round(config_pass_percent))) + '%'
+        connect_pass_percent = float(connect_pass)/float(config_pass) * 100
+        connect_pass_percent = str(int(round(connect_pass_percent))) + '%'
+        return {'config_pass_percent': config_pass_percent,
+                'connect_pass_percent':connect_pass_percent}
+
+
     def parse_status_log(self):
-        """Parse the entire status.log file from chaos test for test failures
+        """Parses the entire status.log file from chaos test for test failures.
            and creates two CSV files for connect fail and configuration fail
            respectively.
 
@@ -122,16 +161,24 @@ class ChaosParser(object):
             connect_fail_list = list()
             config_fail_list = list()
             f = open(status_log, 'r')
+            total = 0
             for line in f:
                 line = line.strip()
-                if 'END ERROR' in line or 'END FAIL' in line:
+                if line.startswith('START\tnetwork_WiFi'):
+                   # TODO: @bmahadev, Add exception for PDU failure and do not
+                   # include that in the total tests.
+                   total += 1
+                elif 'END ERROR' in line or 'END FAIL' in line:
                     if failure_type == CONNECT_FAIL:
                         lsb_dict = self.parse_keyval()
                         connect_fail_list.append((lsb_dict['board'],
-                                                  lsb_dict['version'], name,
-                                                  security, frequency))
+                                               lsb_dict['version'],
+                                               mode_chan_freq_dict['mode'],
+                                               mode_chan_freq_dict['channel'],
+                                               mode_chan_freq_dict['frequency'],
+                                               security, name))
                     else:
-                        config_fail_list.append((hostname, security))
+                        config_fail_list.append((security, hostname))
                     failure_type = None
                 elif line.startswith('ERROR') or line.startswith('FAIL'):
                     if 'Router name' in line:
@@ -151,7 +198,7 @@ class ChaosParser(object):
                         if 'ch' not in ssid:
                             ssid = ssid_info[2]
                         security = self.get_ap_security(ssid)
-                        frequency = self.get_ap_frequency(ssid)
+                        mode_chan_freq_dict = self.get_ap_mode_chan_freq(ssid)
                         # Security mismatches and Ping failures are not connect
                         # failures.
                         if 'Ping command' in line or 'correct security' in line:
@@ -163,10 +210,33 @@ class ChaosParser(object):
                     name = self.get_ap_name(line)
                 else:
                     continue
+            percent_dict = self.get_pass_percentage(total,
+                                                    len(config_fail_list),
+                                                    len(connect_fail_list))
+            if not config_fail_list:
+                config_fail_list.append((security, 'NONE'))
+            if not connect_fail_list:
+                connect_fail_list.append((lsb_dict['board'],
+                                          lsb_dict['version'],
+                                          mode_chan_freq_dict['mode'],
+                                          mode_chan_freq_dict['channel'],
+                                          mode_chan_freq_dict['frequency'],
+                                          security, 'NONE'))
+            connect_fail_csv_data = list()
+            config_fail_csv_data = list()
+
+            for item1 in connect_fail_list:
+                item1 = self.insert_into_tuple(item1,
+                                           percent_dict['connect_pass_percent'])
+                connect_fail_csv_data.append(item1)
+            for item2 in config_fail_list:
+                item2 = self.insert_into_tuple(item2,
+                                           percent_dict['config_pass_percent'])
+                config_fail_csv_data.append(item2)
             self.create_csv('chaos_WiFi_connect_fail' + '.' + test_type, sorted(
-                             connect_fail_list))
+                             connect_fail_csv_data))
             self.create_csv('chaos_WiFi_config_fail' + '.' + test_type, sorted(
-                             config_fail_list))
+                             config_fail_csv_data))
 
 
     def traverse_results_dir(self, path):
@@ -176,7 +246,7 @@ class ChaosParser(object):
         @param path: Path for a specific test result directory.
 
         @return Returns a dict with absolute pathnames for the 'status.log' and
-                'keyval' files.
+                'keyfile' files.
 
         """
         status = None
@@ -221,10 +291,14 @@ class ChaosParser(object):
 
 def main():
     """Main function to call the parser."""
+    logging.basicConfig(level=logging.INFO)
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument('-d', '--directory', dest='dir_name',
                             help='Pathname to results generated by test_that')
     arguments = arg_parser.parse_args()
+    if not arguments.dir_name:
+        raise RuntimeError('chaos_parser: No directory name supplied. Use -h'
+                           ' for help')
     if not os.path.exists(arguments.dir_name):
         raise RuntimeError('chaos_parser: Invalid directory name supplied.')
     parser = ChaosParser(arguments.dir_name)
