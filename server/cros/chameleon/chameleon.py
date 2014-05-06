@@ -88,6 +88,18 @@ class ChameleonPort(object):
         return self._chameleond_proxy.GetConnectorType(self._input_id)
 
 
+    def wait_video_input_stable(self, timeout=None):
+        """Waits the video input stable or timeout.
+
+        @param timeout: The time period to wait for.
+
+        @return: True if the video input becomes stable within the timeout
+                 period; otherwise, False.
+        """
+        return self._chameleond_proxy.WaitVideoInputStable(self._input_id,
+                                                           timeout)
+
+
     def read_edid(self):
         """Reads the EDID.
 

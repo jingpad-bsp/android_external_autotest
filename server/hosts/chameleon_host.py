@@ -52,7 +52,7 @@ class ChameleonHost(ssh_host.SSHHost):
                                                *args, **dargs)
         self._is_in_lab = utils.host_is_in_lab_zone(self.hostname)
         remote = 'http://%s:%s' % (self.hostname, chameleon_port)
-        self._chameleond_proxy = xmlrpclib.ServerProxy(remote)
+        self._chameleond_proxy = xmlrpclib.ServerProxy(remote, allow_none=True)
 
 
     def is_in_lab(self):

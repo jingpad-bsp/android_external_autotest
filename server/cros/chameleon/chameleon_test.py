@@ -35,6 +35,9 @@ class ChameleonTest(test.test):
     on cleanup.
     """
 
+    _TIMEOUT_VIDEO_STABLE_PROBE = 10
+
+
     def initialize(self, host):
         """Initializes.
 
@@ -121,9 +124,13 @@ class ChameleonTest(test.test):
         self.chameleon.reset()
         # TODO(waihong): Support multiple connectors.
         for chameleon_port in self.chameleon.get_all_ports():
+            connector_type = chameleon_port.get_connector_type()
             # Plug to ensure the connector is plugged.
             chameleon_port.plug()
-            connector_type = chameleon_port.get_connector_type()
+            # Don't care about video input stable in the end or timeout.
+            # It will be checked on the matching of the connect names.
+            chameleon_port.wait_video_input_stable(
+                    self._TIMEOUT_VIDEO_STABLE_PROBE)
             output = self.display_client.get_connector_name()
 
             # TODO(waihong): Make sure eDP work in this way.
