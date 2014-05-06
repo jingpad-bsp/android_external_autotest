@@ -204,6 +204,7 @@ class hardware_Trackpad(test.test):
             if os.path.exists(self.gesture_files_path_latest):
                 trackpad_util.write_symlink(self.gesture_files_path_latest,
                                             self.gesture_files_path_autotest)
+                subset = 'long'
             else:
                 subset = self._get_regression_gesture_set(subset)
 
