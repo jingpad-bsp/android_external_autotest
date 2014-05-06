@@ -201,13 +201,16 @@ class XButton:
         if self.trackpad_dev_id is not None:
             xinput_dev_cmd = self.xinput_dev_cmd % self.trackpad_dev_id
             features = simple_system_output(xinput_dev_cmd)
+            # The Button labels line looks like
+            #     Button labels: "Button Left" "Button Middle" "Button Right"
+            #                    "Button Back" "Button Forward"
             if features is not None:
-                button_labels_list = [line.lstrip().lstrip('Button labels:')
-                    for line in features.splitlines()
-                    if line.lstrip().startswith('Button labels:')]
-                button_labels = button_labels_list[0]
-                self.button_labels = tuple(['Button ' + b.strip() for b in
-                                            button_labels.split('Button') if b])
+                for line in features.splitlines():
+                    if line.lstrip().startswith('Button labels:'):
+                        button_labels_str = line.lstrip('Button labels:')
+                        self.button_labels = [
+                                b for b in button_labels_str.split('"')
+                                if b.startswith('Button')]
 
         if self.button_labels is None:
             logging.warn('Cannot find trackpad device in xinput. '
