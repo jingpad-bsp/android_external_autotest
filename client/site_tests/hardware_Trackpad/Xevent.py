@@ -176,7 +176,7 @@ class XButton:
         if os.system('which xinput') == 0:
             input_dev_str = simple_system_output(self.xinput_list_cmd)
             for dev_str in input_dev_str.splitlines():
-                res = re.search(r'(t(ouch|rack)pad\s+id=)(\d+)', dev_str, re.I)
+                res = re.search(r'(t(ouch|rack)pad.+id=)(\d+)', dev_str, re.I)
                 if res is not None:
                     trackpad_dev_id = res.group(3)
                     break
