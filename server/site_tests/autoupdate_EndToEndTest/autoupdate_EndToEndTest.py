@@ -345,9 +345,9 @@ class OmahaDevserver(object):
     # How long to sleep (seconds) between checks to see if a devserver is up.
     _WAIT_SLEEP_INTERVAL = 1
 
-    # Max devserver execution time (seconds); used with timelimit(1) to ensure
-    # we don't have defunct instances hogging the system.
-    _DEVSERVER_TIMELIMIT = 12 * 60 * 60
+    # Max devserver execution time (seconds); used with timeout(1) to ensure we
+    # don't have defunct instances hogging the system.
+    _DEVSERVER_TIMELIMIT_SECONDS = 12 * 60 * 60
 
 
     def __init__(self, omaha_host, devserver_dir, update_payload_staged_url):
@@ -466,9 +466,12 @@ class OmahaDevserver(object):
         """
         update_payload_url_base, update_payload_path = self._split_url(
                 self._update_payload_staged_url)
-        # Invoke the Omaha/devserver on the remote server.
+        # Invoke the Omaha/devserver on the remote server. Will attempt to kill
+        # it with a SIGTERM after a predetermined timeout has elapsed, followed
+        # by SIGKILL if not dead within 30 seconds from the former signal.
         cmdlist = [
-                'timelimit', '-T', str(self._DEVSERVER_TIMELIMIT),
+                'timeout', '-s', 'TERM', '-k', '30',
+                str(self._DEVSERVER_TIMELIMIT_SECONDS),
                 '%s/devserver.py' % self._devserver_dir,
                 '--payload=%s' % update_payload_path,
                 '--port=0',
