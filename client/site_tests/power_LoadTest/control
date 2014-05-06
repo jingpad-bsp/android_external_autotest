@@ -28,7 +28,7 @@ You are now ready to run the test.
 # TODO (bleung): Find a way to do automatic Facebook login for test account.
 
 loop_time = 3600
-loop_count = 11
+loop_count = 14
 
 # To specify a list of custom tasks, pass in the task parameter:
 #    tasks='<task00>&<task01>+<task10>&<task11>+<task20>&<task21>+...'
