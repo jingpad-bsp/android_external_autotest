@@ -14,6 +14,7 @@ Servo state is preserved across the programming process.
 import logging
 import os
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faft.config.config import Config as FAFTConfig
 
 
@@ -47,10 +48,17 @@ class _BaseProgrammer(object):
         self._servo_prog_state = ()
         self._servo_saved_state = []
         self._program_cmd = ''
-        # These will fail if the utilities are not available, we want the
-        # failure happen before run_once() is invoked.
-        self._servo.system('which %s' % ' '.join(req_list))
-
+        try:
+            self._servo.system('which %s' % ' '.join(req_list))
+        except error.AutoservRunError:
+            # TODO: We turn this exception into a warn since the fw programmer
+            # is not working right now, and some systems do not package the
+            # required utilities its checking for.
+            # We should reinstate this exception once the programmer is working
+            # to indicate the missing utilities earlier in the test cycle.
+            # Bug chromium:371011 filed to track this.
+            logging.warn("Ignoring exception when verify required bins : %s",
+                         ' '.join(req_list))
 
     def _set_servo_state(self):
         """Set servo for programming, while saving the current state."""
