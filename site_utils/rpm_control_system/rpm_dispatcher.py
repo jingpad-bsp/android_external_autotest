@@ -15,10 +15,13 @@ import xmlrpclib
 
 import rpm_controller
 import rpm_logging_config
-import utils
+
 from config import rpm_config
 from MultiThreadedXMLRPCServer import MultiThreadedXMLRPCServer
 from rpm_infrastructure_exception import RPMInfrastructureException
+
+import common
+from autotest_lib.site_utils.rpm_control_system import utils
 
 LOG_FILENAME_FORMAT = rpm_config.get('GENERAL','dispatcher_logname_format')
 

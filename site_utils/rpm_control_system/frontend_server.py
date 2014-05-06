@@ -14,10 +14,12 @@ import threading
 import xmlrpclib
 
 import rpm_logging_config
-import utils
 from config import rpm_config
 from MultiThreadedXMLRPCServer import MultiThreadedXMLRPCServer
 from rpm_infrastructure_exception import RPMInfrastructureException
+
+import common
+from autotest_lib.site_utils.rpm_control_system import utils
 
 DEFAULT_RPM_COUNT = 0
 TERMINATED = -1

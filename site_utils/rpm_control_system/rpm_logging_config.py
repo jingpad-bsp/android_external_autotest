@@ -9,6 +9,8 @@ import socket
 import time
 
 from config import rpm_config
+
+import common
 from autotest_lib.site_utils import log_socket_server
 
 LOGGING_FORMAT = rpm_config.get('GENERAL', 'logging_format')

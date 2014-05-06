@@ -16,11 +16,11 @@ import time
 from config import rpm_config
 import dli_urllib
 import rpm_logging_config
-import utils
 
 import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import retry
+from autotest_lib.site_utils.rpm_control_system import utils
 
 # Format Appears as: [Date] [Time] - [Msg Level] - [Message]
 LOGGING_FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
