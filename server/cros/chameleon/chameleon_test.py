@@ -46,8 +46,11 @@ class ChameleonTest(test.test):
         self.chameleon_port = self._get_connected_port()
         if self.chameleon_port is None:
             raise error.TestError('DUT and Chameleon board not connected')
-        self._arch = host.get_architecture()
-        self._unlevel_func = _unlevel if self._arch == 'arm' else ord
+        self._platform = host.get_platform().lower()
+        if self._platform in ('snow', 'spring', 'pit', 'pi', 'skate'):
+            self._unlevel_func =  _unlevel
+        else:
+            self._unlevel_func = ord
 
 
     def is_edid_supported(self, tag, width, height):
@@ -59,12 +62,13 @@ class ChameleonTest(test.test):
 
         @return: True if the check passes; False otherwise.
         """
-        # TODO: This is a quick workaround; all our arm devices so far only
+        # TODO: This is a quick workaround; some of our arm devices so far only
         # support the HDMI EDIDs and the DP one at 1680x1050. A more proper
         # solution is to build a database of supported resolutions and pixel
         # clocks for each model and check if the EDID is in the supported list.
-        if self._arch == 'arm' and tag == 'DP':
-            return width == 1680 and height == 1050
+        if self._platform in ('snow', 'spring', 'pit', 'pi', 'skate'):
+            if tag == 'DP':
+                return width == 1680 and height == 1050
         return True
 
 
