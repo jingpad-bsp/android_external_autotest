@@ -125,7 +125,7 @@ class ApBatchLocker(object):
             return True
 
         if self.manager.lock([ap_locker.configurator.host_name]):
-            self._locked_aps.append(ap_locker.configurator.host_name)
+            self._locked_aps.append(ap_locker)
             logging.info('locked %s', ap_locker.configurator.host_name)
             ap_locker.to_be_locked = False
             return True
@@ -186,20 +186,36 @@ class ApBatchLocker(object):
         return []
 
 
-    def unlock_one_ap(self, host):
+    def unlock_one_ap(self, host_name):
         """Unlock one AP after we're done.
 
-        @param host: a string, host name.
+        @param host_name: a string, host name.
         """
-        if not host in self._locked_aps:
-            logging.error('Tried to unlock a host we have not locked?')
-            return
+        for ap_locker in self._locked_aps:
+            if host_name == ap_locker.configurator.host_name:
+                self.manager.unlock(hosts=[host_name])
+                self._locked_aps.remove(ap_locker)
+                return
 
-        self.manager.unlock(hosts=[host])
-        self._locked_aps.remove(host)
+        logging.error('Tried to unlock a host we have not locked (%s)?',
+                      host_name)
 
 
     def unlock_aps(self):
         """Unlock APs after we're done."""
-        for host in self._locked_aps:
-            self.unlock_one_ap(host)
+        for ap_locker in self._locked_aps:
+            self.unlock_one_ap(ap_locker.configurator.host_name)
+
+
+    def unlock_and_reclaim_aps(self):
+        """Unlock APs but return them to the batch of all APs to unlock.
+
+        unlock_aps() will remove the remaining APs from the list of all APs
+        to process.  This method will add the remaining APs back to the pool
+        of unprocessed APs.
+
+        """
+        # Add the APs back into the pool
+        logging.info('Reclaiming %d APs to the pool.', len(self._locked_aps))
+        self.aps_to_lock.extend(self._locked_aps)
+        self.unlock_aps()
