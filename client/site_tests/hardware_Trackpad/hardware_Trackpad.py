@@ -285,11 +285,8 @@ class hardware_Trackpad(test.test):
         # Start Trackpad Input Device
         self.tp_device = TrackpadDevice()
 
-        # Get an instance of AutoX to handle X related issues
-        autox = cros_ui.get_autox()
-
         # Start X events capture
-        self.xcapture = Xcapture(error, local_path, autox)
+        self.xcapture = Xcapture(error, local_path)
 
         # Initialize X events Check
         self.xcheck = Xcheck(self.tp_device, local_path)

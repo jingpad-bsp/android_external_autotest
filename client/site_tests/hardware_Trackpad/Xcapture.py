@@ -19,43 +19,6 @@ from trackpad_util import Display, read_trackpad_test_conf
 from Xevent import reset_x_input_prop, set_x_input_prop
 
 
-def create_popup_window(display, ax):
-    ''' Create a popup window with override-redirect so that we can
-        manipulate its geometry.
-    '''
-    # win_x, win_y: the coordinates of the popup window
-    # win_width, win_height: the width and height of the popup window
-    win_x = 0
-    win_y = 0
-    win_width = display.screen.width_in_pixels
-    win_height = display.screen.height_in_pixels
-    win_geometry = (win_x, win_y, win_width, win_height)
-    logging.info('Geometry of the popup window: %dx%d+%d+%d' %
-                 (win_width, win_height, win_x, win_y))
-
-    # Create the popup window
-    popup_win = ax.create_and_map_window(x=win_x,
-                                         y=win_y,
-                                         width=win_width,
-                                         height=win_height,
-                                         title='Xcapture_Popup',
-                                         override_redirect=True)
-    popup_info = ax.get_window_info(popup_win.id)
-
-    # Check that the popup window appears in the required position.
-    # The default timeout of await_condition is 10 seconds, which looks
-    # reasonable here too.
-    try:
-        ax.await_condition(
-                lambda: popup_info.get_geometry() == win_geometry,
-                desc='Check window 0x%x\'s geometry' % popup_win.id)
-    except ax.ConditionTimeoutError as exception:
-        raise error.TestFail('Timed out on condition: %s' %
-                             exception.__str__())
-
-    return popup_win
-
-
 class Mtplot:
     ''' Create a mtplot window for Xcapture to listen to '''
 
@@ -69,7 +32,7 @@ class Mtplot:
 
     def _create_mtplot_window(self):
         trackpad_device_file, msg = trackpad_util.get_trackpad_device_file()
-        mtplot_cmd = 'mtplot %s' % trackpad_device_file
+        mtplot_cmd = 'mtplot -c 0 %s' % trackpad_device_file
         self.null_file = open('/dev/null')
 
         try:
@@ -106,11 +69,10 @@ class Mtplot:
 class Xcapture:
     ''' A class to capture X events '''
 
-    def __init__(self, error, conf_path, autox):
+    def __init__(self, error, conf_path):
         # Set X display server and xauthority.
         self.display = Display()
         self.display.set_environ()
-        self.ax = autox
 
         self.xcapture_dir = '/tmp/xevent'
         self.fd = None
@@ -134,15 +96,11 @@ class Xcapture:
         self.scroll_butons = set_x_input_prop(Xevent.X_PROP_SCROLL_BUTTONS)
         self.tap_enable = set_x_input_prop(Xevent.X_PROP_TAP_ENABLE)
 
-        # Create a window to listen to the X events
-        mtplot_gui = read_trackpad_test_conf('mtplot_gui', conf_path)
-        if mtplot_gui:
-            self.win = Mtplot(self.display, error)
-        else:
-            self.win = create_popup_window(self.display, self.ax)
+        # Launch a mtplot window to listen to X events.
+        self.win = Mtplot(self.display, error)
 
         # Launch the capture process
-        self.xcapture_cmd = 'xev -id 0x%x' % int(self.win.id)
+        self.xcapture_cmd = 'xev -id %s' % self.win.id
         self._launch(self.fd_all)
 
         logging.info('X events will be saved in %s' % self.xcapture_dir)
@@ -239,9 +197,8 @@ class Xcapture:
         self.proc.kill()
         self.proc.wait()
 
-        # Destroy the popup window
+        # Destroy the window
         self.win.destroy()
-        self.ax.sync()
 
         # Reset X Scroll Buttons and Tap Enable if they were disabled originally
         reset_x_input_prop(self.scroll_butons)
