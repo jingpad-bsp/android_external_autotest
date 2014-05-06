@@ -59,8 +59,9 @@ def create_popup_window(display, ax):
 class Mtplot:
     ''' Create a mtplot window for Xcapture to listen to '''
 
-    def __init__(self, display):
+    def __init__(self, display, error):
         display.set_environ()
+        self.error = error
         self._create_mtplot_window()
         self.id = self._get_mtplot_win_id()
         if self.id is None:
@@ -80,77 +81,19 @@ class Mtplot:
 
         time.sleep(0.1)
         if self.proc.poll() is not None:
-            raise error.TestError('Failure on "%s" [%d]' %
-                                  (mtplot_cmd, self.proc.returncode))
+            raise self.error.TestError('Failure on "%s" [%d]' %
+                                       (mtplot_cmd, self.proc.returncode))
 
         logging.info('"%s" has been launched.' % mtplot_cmd)
 
     def _get_mtplot_win_id(self):
-        ''' Use xwininfo to make sure that the focus window is not Chrome '''
-        count = 0
-        max_count = 50
-        while count <= max_count:
-            focus_win_id = self._get_focus_window_id()
-            if (self._is_full_screen(focus_win_id) and
-                not self._is_chrome(focus_win_id)):
-                return int(focus_win_id, 16)
-            logging.info('    Waiting mtplot window to get in focus (%d)...' %
-                         count)
-            time.sleep(0.1)
-            count += 1
-        raise error.TestError('Fail to get mtplot window in focus')
-
-    def _is_chrome(self, win_id):
-        ''' Use xwininfo to get window name '''
-        cmd = 'xwininfo -root -tree | grep %s' % win_id
+        '''Use xwininfo to derive the window id of mtplot.'''
+        # A typical mtplot window info in xwininfo is
+        #      0x800001 "mtplot": ()  2560x1700+0+0  +0+0
+        cmd = 'xwininfo -root -tree | grep mtplot'
         win_info = common_util.simple_system_output(cmd)
-        # The win_info for a chrome browser looks like
-        #     0x600016 "chrome": ("chrome" "Chrome")  1366x768+-1366+0 +-1366+0
-        if win_info is not None:
-            res = re.search('chrome', win_info, re.I)
-            if res is not None:
-                return True
-        return False
-
-    def _is_full_screen(self, win_id):
-        ''' Does the window occupy the whole screen? '''
-        cmd = 'xwininfo -root -tree | grep %s' % win_id
-        win_info = common_util.simple_system_output(cmd)
-        full_screen_dim = self._get_screen_dimensions()
-        if full_screen_dim is None:
-            raise error.TestError('Failure on deriving screen dimensions.')
-
-        # The win_info for a chrome browser looks like
-        #     0x600016 "chrome": ("chrome" "Chrome")  1366x768+-1366+0 +-1366+0
-        if win_info is not None:
-            res = re.search(full_screen_dim, win_info, re.I)
-            if res is not None:
-                return True
-        return False
-
-    def _get_screen_dimensions(self):
-        ''' Use xdpyinfo to derive the screen dimensions such as 1366x768 '''
-        cmd = 'xdpyinfo | grep dimensions'
-        dim = common_util.simple_system_output(cmd)
-        if dim is not None:
-            # An example output:
-            #   "  dimensions:    1366x768 pixels (361x203 millimeters)"
-            res = re.search('\s*dimensions:\s*(\d+)x(\d+)\s*pixels', dim, re.I)
-            if res is not None:
-                return '%sx%s' % (res.group(1), res.group(2))
-        return None
-
-
-    def _get_focus_window_id(self):
-        ''' Use xdpyinfo to derive the window id currently in focus '''
-        cmd = 'xdpyinfo | grep focus'
-        win_id = common_util.simple_system_output(cmd)
-        if win_id is not None:
-            # An example output: "focus:  window 0x600017, revert to Parent"
-            res = re.search('focus:\s+window\s+0x(\w+),', win_id, re.I)
-            if res is not None:
-                return res.group(1)
-        return None
+        win_id = win_info.strip().split()[0] if win_info else None
+        return win_id
 
     def destroy(self):
         ''' Destroy the mtplot process. '''
@@ -194,7 +137,7 @@ class Xcapture:
         # Create a window to listen to the X events
         mtplot_gui = read_trackpad_test_conf('mtplot_gui', conf_path)
         if mtplot_gui:
-            self.win = Mtplot(self.display)
+            self.win = Mtplot(self.display, error)
         else:
             self.win = create_popup_window(self.display, self.ax)
 
