@@ -9,7 +9,6 @@ TIME = "FAST"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"
 TEST_TYPE = "client"
-EXPERIMENTAL = "True"
 
 DOC = """
 This test checks that a browser crash during a user session does not cause the

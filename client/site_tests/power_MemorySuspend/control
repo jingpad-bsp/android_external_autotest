@@ -9,7 +9,6 @@ TIME = "FAST"
 TEST_CATEGORY = "Regression"
 TEST_CLASS = "power"
 TEST_TYPE = "client"
-EXPERIMENTAL = "True"
 
 DOC = """
 Memory suspend test: uses the memory_suspend_test binary to fill all

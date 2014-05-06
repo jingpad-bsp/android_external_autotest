@@ -4,7 +4,6 @@ TEST_CATEGORY = "Benchmark"
 TEST_CLASS = "General"
 TEST_TYPE = "client"
 TIME = 'MEDIUM'
-EXPERIMENTAL = "True"
 DOC='''
 Information of 'interbench' can be found at :
 http://members.optusnet.com.au/ckolivas/interbench/

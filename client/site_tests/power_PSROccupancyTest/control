@@ -7,7 +7,6 @@ NAME = "power_PSROccupancyTest"
 PURPOSE = "Test panel self refresh (PSR) occupancy when the display is static."
 TIME = "SHORT"
 TEST_TYPE = "client"
-EXPERIMENTAL = "True"
 
 DOC = """
 Tests that PSR is entered on a static content.

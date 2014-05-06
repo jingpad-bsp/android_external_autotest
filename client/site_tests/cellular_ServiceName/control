@@ -14,7 +14,6 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
-EXPERIMENTAL = "true"
 
 DOC = """
   Tests that shill reports the correct service name depending on the SIM

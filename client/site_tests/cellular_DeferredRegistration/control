@@ -15,7 +15,6 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
-EXPERIMENTAL = "True"
 DOC = """
   Tests that shill can handle temporary registration loss without destroying
   the service because some modems periodically go searching for a better signal

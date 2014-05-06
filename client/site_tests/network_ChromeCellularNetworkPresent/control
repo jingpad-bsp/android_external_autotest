@@ -10,7 +10,6 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
-EXPERIMENTAL = "True"
 
 DOC = """
 

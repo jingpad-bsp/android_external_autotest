@@ -8,7 +8,6 @@ TIME = "MEDIUM"
 TEST_CATEGORY = "Benchmark"
 TEST_CLASS = "bluetooth"
 TEST_TYPE = "client"
-EXPERIMENTAL = "True"
 
 
 DOC = """

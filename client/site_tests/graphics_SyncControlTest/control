@@ -27,7 +27,6 @@ Currently this test only executes on EGL devices, daisy, since this is the
 situation where we have written new prototype code. The GLX side currently is a
 no-op that will always succeed.
 """
-EXPERIMENTAL='True'
 SYNC_COUNT='1'
 TIME='FAST'
 TEST_CATEGORY = 'Functional'

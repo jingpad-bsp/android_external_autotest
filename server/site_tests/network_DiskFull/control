@@ -11,7 +11,6 @@ TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "server"
-EXPERIMENTAL = "True"
 
 DOC = """
 This test fills the /var partition, and sets up a process to keep

@@ -14,7 +14,6 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "power"
 TEST_TYPE = "server"
 DEPENDENCIES = "servo"
-EXPERIMENTAL = "True"
 
 DOC = """
 This test simulates a system that is unable to suspend, and verifies

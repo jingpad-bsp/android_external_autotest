@@ -10,7 +10,6 @@ TIME = 'LONG'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = 'video'
 TEST_TYPE = 'client'
-EXPERIMENTAL = 'True'
 
 DOC = """
 Measure the memory usage in different cases:

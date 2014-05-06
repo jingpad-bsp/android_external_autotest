@@ -19,7 +19,6 @@ TEST_CLASS = "graphics"
 TEST_TYPE = "client"
 
 SUITE = "graphics"
-EXPERIMENTAL = "True"
 
 DOC = """
 Switches between VT1 and VT2 repeatedly and logs in/out of Chrome to make sure

@@ -1,6 +1,4 @@
 AUTHOR = "Martin Bligh <mbligh@google.com>"
-EXPERIMENTAL = 'True'  # Not really, but this is only for testing autotest...
-                       # not testing _with_ autotest.
 NAME = "Abort test"
 TEST_TYPE = "client"
 TEST_CLASS = "General"

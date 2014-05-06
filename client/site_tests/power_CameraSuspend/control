@@ -10,7 +10,6 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "power"
 TEST_TYPE = "client"
 DEPENDENCIES = "webcam"
-EXPERIMENTAL = "True"
 
 DOC = """
 Suspend the system with the camera device open.

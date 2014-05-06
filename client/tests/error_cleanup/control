@@ -1,6 +1,4 @@
 AUTHOR = "Gregory Smith <gps@google.com>"
-EXPERIMENTAL = 'True'  # Not really, but this is only for testing autotest...
-                       # not testing _with_ autotest.
 NAME = "error test for cleanup phase exception"
 TEST_TYPE = "client"
 TEST_CLASS = "General"

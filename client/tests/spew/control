@@ -1,6 +1,5 @@
 NAME='Spew'
 AUTHOR='Martin Bligh <mbligh@google.com>'
-EXPERIMENTAL='True'
 TEST_TYPE='client'
 TEST_CATEGORY='Benchmark'
 TEST_CLASS='Hardware'

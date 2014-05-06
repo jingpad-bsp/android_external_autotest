@@ -6,7 +6,6 @@ There are over 1,000 tests and each one has it's own pass/failure criteria. Each
 individual test case is written from the system call's manpage.
 """
 SUITE = "kernel_per-build_regression"
-EXPERIMENTAL = "True"
 TIME = "MEDIUM"
 TEST_CATEGORY = "FUNCTIONAL"
 TEST_CLASS = "KERNEL"

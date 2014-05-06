@@ -11,7 +11,6 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
-EXPERIMENTAL = "true"
 
 DOC = """
 This test depends on the ifconfig utility to both disable and reenable a

@@ -5,7 +5,6 @@
 NAME = "platform_CrashStateful"
 AUTHOR = "chromeos-kernel,taysom"
 SUITE = "" # none for now "kernel_per-build_benchmarks"
-EXPERIMENTAL = "True"
 TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"

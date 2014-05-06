@@ -1,6 +1,5 @@
 NAME='Stress'
 AUTHOR='Yi Yang <yang.y.yi@gmail.com>'
-EXPERIMENTAL='True'
 TEST_TYPE='client'
 TIME='MEDIUM'
 TEST_CATEGORY='Functional'

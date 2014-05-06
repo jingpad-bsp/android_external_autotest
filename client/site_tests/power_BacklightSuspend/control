@@ -12,7 +12,6 @@ TEST_CLASS = "power"
 TEST_TYPE = "client"
 
 SUITE = "kernel_per-build_regression"
-EXPERIMENTAL = "True"
 
 DOC = """
 This test requests a brightness level to be set after resume.  It then triggers

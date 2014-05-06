@@ -1,5 +1,4 @@
 AUTHOR = "Andy Whitcroft <apw@shadowen.org>"
-EXPERIMENTAL = "True"
 TIME = "MEDIUM"
 NAME = "Self Test"
 TEST_TYPE = "client"

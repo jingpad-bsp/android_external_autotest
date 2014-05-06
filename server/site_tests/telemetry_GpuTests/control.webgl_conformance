@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 AUTHOR = 'chromeos-gfx'
-EXPERIMENTAL = 'True'
 NAME = 'GPU WebGL Conformance Test'
 SUITE = 'graphics, perf_v2'
 TIME = 'LONG'

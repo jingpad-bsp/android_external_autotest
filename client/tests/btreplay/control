@@ -1,5 +1,4 @@
 AUTHOR = "Joshua Root <jmr@gelato.unsw.edu.au>"
-EXPERIMENTAL = 'True'  # Change if you use this and it works.  :-)
 NAME = "btreplay"
 TIME = "short"
 TEST_CLASS = "Kernel"

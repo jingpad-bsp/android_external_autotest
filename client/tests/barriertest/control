@@ -1,6 +1,4 @@
 AUTHOR = "Colby Ranger <cranger@google.com>"
-EXPERIMENTAL = 'True'  # This isn't actually experimental, but it only tests
-                       # autotest itself.
 TIME = "MEDIUM"
 NAME = "Barrier Test"
 TEST_TYPE = "client"

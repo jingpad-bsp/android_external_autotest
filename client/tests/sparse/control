@@ -1,5 +1,4 @@
 NAME='Sparse Kernel Test'
-EXPERIMENTAL='True'
 TIME='MEDIUM'
 TEST_TYPE='client'
 TEST_CATEGORY='Functional'

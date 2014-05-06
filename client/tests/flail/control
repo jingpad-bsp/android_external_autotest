@@ -4,7 +4,6 @@ TEST_CATEGORY = "Stress"
 TEST_CLASS = "General"
 TEST_TYPE = "client"
 TIME = 'MEDIUM'
-EXPERIMENTAL = "True"
 
 DOC='''
 flail is a  systemcall fuzzer tool. This test simply runs flail.

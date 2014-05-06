@@ -4,7 +4,6 @@ NAME = "barrier_2client"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = 'Network'
 TEST_TYPE = "Server"
-EXPERIMENTAL = True  # This is functional a test of autotest itself.
 SYNC_COUNT = 2
 DOC = """
 A functional test of autotest's Barrier mechanisms for synchronizing

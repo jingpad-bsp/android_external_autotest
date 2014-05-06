@@ -15,7 +15,6 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
-EXPERIMENTAL = "True"
 DOC = """
 Test that the |Scanning| Property of the shill cellular device object is
 updated correctly in the following two scenarios:

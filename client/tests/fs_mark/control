@@ -4,7 +4,6 @@ TEST_CATEGORY = "Stress"
 TEST_CLASS = "General"
 TEST_TYPE = "client"
 TIME = 'MEDIUM'
-EXPERIMENTAL = "True"
 DOC='''
 Detect barrier issues in file systems.
 

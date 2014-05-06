@@ -9,7 +9,6 @@ TIME = "LONG"
 TEST_CATEGORY = "Benchmark"
 TEST_CLASS = "performance"
 TEST_TYPE = "server"
-EXPERIMENTAL = "True"
 
 DOC = """
 This server side test suite executes the Telemetry Smoothness Measurement.

@@ -13,7 +13,6 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "power"
 TEST_TYPE = "server"
 DEPENDENCIES = "servo"
-EXPERIMENTAL = "True"
 
 DOC = """
 This tests both hotplug insertion and removal of a USB device while the DUT

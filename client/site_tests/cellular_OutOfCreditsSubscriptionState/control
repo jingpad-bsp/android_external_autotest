@@ -17,7 +17,6 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
-EXPERIMENTAL = "True"
 DOC = """
   Tests that shill marks a cellular service as out-of-credits according to the
   modem subscription state by using a pseudomodem.

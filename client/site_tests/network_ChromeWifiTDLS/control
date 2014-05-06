@@ -13,7 +13,6 @@ TIME = "FAST"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
-EXPERIMENTAL = "True"
 DOC = """
   Tests that Shill responds to a Device.PerformTDLSOperation call via the
   networikingPrivate API. It does not assume that configuration will actually

@@ -15,7 +15,6 @@ TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "server"
-EXPERIMENTAL = "True"
 
 DOC = """
 End-to-end test of the peer-to-peer (p2p) file sharing system.

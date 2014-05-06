@@ -10,7 +10,6 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "client"
-EXPERIMENTAL = "True"
 
 DOC = """
 This test contains a list of expected kernel versions per board (e.g. '3.4')

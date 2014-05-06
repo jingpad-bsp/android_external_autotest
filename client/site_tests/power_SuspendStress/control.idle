@@ -10,7 +10,6 @@ TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "power"
 TEST_TYPE = "client"
-EXPERIMENTAL = "True"
 
 DOC = """
 Runs eight minutes of suspend/resume tests where suspend is triggered by idling.
