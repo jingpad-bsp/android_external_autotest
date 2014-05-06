@@ -17,6 +17,7 @@ from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.server.cros.dynamic_suite import reporting
+from autotest_lib.server.cros.dynamic_suite import reporting_utils
 from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.server.cros.dynamic_suite.job_status import Status
 
@@ -764,6 +765,7 @@ class Suite(object):
                 results_generator = job_status.wait_for_results(self._afe,
                                                                 self._tko,
                                                                 self._jobs)
+            template = reporting_utils.BugTemplate(bug_template)
             for result in results_generator:
                 result.record_all(record)
                 if (self._results_dir and
@@ -791,8 +793,22 @@ class Suite(object):
                             self._tag,
                             result)
 
+                    # Try to merge with bug template in test control file.
+                    try:
+                        test_data = self._jobs_to_tests[result.id]
+                        merged_template = template.finalize_bug_template(
+                                test_data.bug_template)
+                    except AttributeError:
+                        # Test control file does not have bug template defined.
+                        merged_template = bug_template
+                    except reporting_utils.InvalidBugTemplateException as e:
+                        merged_template = {}
+                        logging.error('Merging bug templates failed with '
+                                      'error: %s An empty bug template will '
+                                      'be used.', e)
+
                     bug_id, bug_count = bug_reporter.report(failure,
-                                                            bug_template)
+                                                            merged_template)
 
                     # We use keyvals to communicate bugs filed with run_suite.
                     if bug_id is not None:

@@ -618,7 +618,6 @@ class SuiteTest(mox.MoxTestBase):
         Confirm that all the necessary predicates are passed on to the
         bug reporter when a test fails.
         """
-
         test_results = self._createSuiteMockResults()
         self.schedule_and_expect_these_results(
             self.suite,
@@ -629,6 +628,7 @@ class SuiteTest(mox.MoxTestBase):
         self.mox.ReplayAll()
 
         self.suite.schedule(self.recorder.record_entry, True)
+        self.suite._jobs_to_tests[self._FAKE_JOB_ID] = self.files['seven']
         self.suite.wait(self.recorder.record_entry)
 
 
@@ -650,6 +650,7 @@ class SuiteTest(mox.MoxTestBase):
         self.mox.ReplayAll()
 
         self.suite.schedule(self.recorder.record_entry, True)
+        self.suite._jobs_to_tests[self._FAKE_JOB_ID] = self.files['seven']
         self.suite.wait(self.recorder.record_entry)
 
 

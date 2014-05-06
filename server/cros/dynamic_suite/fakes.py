@@ -24,6 +24,7 @@ class FakeControlData(object):
         self.retries = 0
         self.sync_count = 1
         self.job_retries = job_retries
+        self.bug_template = {}
 
 
 class FakeJob(object):
