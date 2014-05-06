@@ -232,7 +232,6 @@ class power_LoadTest(test.test):
         self._tlog.start()
 
         ext_path = os.path.join(os.path.dirname(__file__), 'extension')
-        # the extension starts when it is loaded
         browser = chrome.Chrome(extension_paths=[ext_path], gaia_login=True,
                                 username=self._creds[0],
                                 password=self._creds[1])
@@ -240,6 +239,7 @@ class power_LoadTest(test.test):
 
         for i in range(self._loop_count):
             start_time = time.time()
+            extension.ExecuteJavaScript('startTest();')
             # the power test extension will report its status here
             latch = self._testServer.add_wait_url('/status')
 
@@ -263,10 +263,6 @@ class power_LoadTest(test.test):
             if low_battery:
                 logging.info('Exiting due to low battery')
                 break
-
-            # this restarts the extension for the next loop if there is one
-            if i != self._loop_count - 1:
-                extension.ExecuteJavaScript('initialize();')
 
         t1 = time.time()
         self._tmp_keyvals['minutes_battery_life_tested'] = (t1 - t0) / 60

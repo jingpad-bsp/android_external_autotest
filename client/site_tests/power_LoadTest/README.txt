@@ -11,9 +11,5 @@ all chrome windows before running this command.
 Alternatively, extension developer mode will provide a 
 GUI way of doing the same task.
 
-The extension will not automatically begin the test if run manually. Instead,
-it will attempt to load localhost:8001/testparams.html, which will not exist
-if the test isn't run with autotest.
-
 If running manually, click on the power_LoadTest extension icon to begin the
 test with default settings (3600 second test).

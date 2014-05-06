@@ -182,11 +182,6 @@ function send_status() {
 }
 
 function startTest() {
-  chrome.windows.create({'url': 'http://localhost:8001/testparams.html'});
-
-}
-
-function initialize() {
   chrome.extension.onRequest.addListener(
     function paramsSetupListener(request, sender) {
       if (undefined != request._test_time_ms &&
@@ -216,12 +211,10 @@ function initialize() {
     }
   );
 
-  chrome.windows.getAll(null, function(windows) {
-    // delay starting test by short amount of time to allow chromeos
-    // login process to settle down
-    setTimeout(startTest, test_startup_delay);
-  });
+  chrome.windows.create({'url': 'http://localhost:8001/testparams.html'});
+}
 
+function initialize() {
   // Called when the user clicks on the browser action.
   chrome.browserAction.onClicked.addListener(function(tab) {
     // Start the test with default settings.
