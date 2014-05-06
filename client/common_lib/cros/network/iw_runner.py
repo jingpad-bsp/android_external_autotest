@@ -560,6 +560,8 @@ class IwRunner(object):
                 matching_bsses.append(iwbss)
             if len(matching_bsses) > 0:
                 return matching_bsses
+        # The SSID wasn't found, but the device is fine.
+        return []
 
 
     def wait_for_link(self, interface, timeout_seconds=10):
