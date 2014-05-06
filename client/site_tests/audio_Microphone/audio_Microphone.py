@@ -5,12 +5,13 @@
 import os
 import tempfile
 
-from autotest_lib.client.bin import test
+from autotest_lib.client.bin import site_utils, test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.audio import alsa_utils
 
 DURATION = 3
 TOLERANT_RATIO = 0.1
+NO_MIC_DEV_LIST = ['monroe', 'panther']
 
 class audio_Microphone(test.test):
     version = 1
@@ -34,6 +35,8 @@ class audio_Microphone(test.test):
 
 
     def run_once(self):
+        if site_utils.get_board() in NO_MIC_DEV_LIST:
+            raise error.TestNAError("This test can't run on this host.")
         # Mono and stereo capturing should work fine @ 44.1KHz and 48KHz.
         self.verify_capture(1, 44100)
         self.verify_capture(1, 48000)
