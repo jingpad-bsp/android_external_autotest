@@ -302,13 +302,15 @@ def parse_chrome_version(version_string):
 
 
 def take_screenshot(dest_dir, fname_prefix, format='png'):
-    """Take screenshot and save to a new file in the dest_dir.
+    """
+    Take screenshot and save to a new file in the dest_dir.
 
-    @param dest_dir: The destination directory to save the screenshot.
-    @param fname_prefix: Prefix for the output fname
-    @param format: String indicating file format ('png', 'jpg', etc)
+    @param dest_dir: path, destination directory to save the screenshot.
+    @param fname_prefix: string, prefix for output filename.
+    @param format: string, file format ('png', 'jpg', etc) to use.
 
-    @return: The path of the saved screenshot file
+    @returns complete path to saved screenshot file.
+
     """
     next_index = len(glob.glob(
         os.path.join(dest_dir, '%s-*.%s' % (fname_prefix, format))))
@@ -316,15 +318,60 @@ def take_screenshot(dest_dir, fname_prefix, format='png'):
         dest_dir, '%s-%d.%s' % (fname_prefix, next_index, format))
     logging.info('Saving screenshot to %s.', screenshot_file)
 
+    import_cmd = ('/usr/local/bin/import -window root -depth 8 %s' %
+                  screenshot_file)
+
+    _execute_screenshot_capture_command(import_cmd)
+
+    return screenshot_file
+
+
+def take_screen_shot_crop_by_height(fullpath, final_height, x_offset_pixels,
+                                    y_offset_pixels):
+    """
+    Take a screenshot, crop to final height starting at given (x, y) coordinate.
+
+    Image width will be adjusted to maintain original aspect ratio).
+
+    @param fullpath: path, fullpath of the file that will become the image file.
+    @param final_height: integer, height in pixels of resulting image.
+    @param x_offset_pixels: integer, number of pixels from left margin
+                            to begin cropping.
+    @param y_offset_pixels: integer, number of pixels from top margin
+                            to begin cropping.
+
+    """
+
+    params = {'height': final_height, 'x_offset': x_offset_pixels,
+              'y_offset': y_offset_pixels, 'path': fullpath}
+
+    import_cmd = ('/usr/local/bin/import -window root -depth 8 -crop '
+                  'x%(height)d+%(x_offset)d+%(y_offset)d %(path)s' % params)
+
+    _execute_screenshot_capture_command(import_cmd)
+
+    return fullpath
+
+
+def _execute_screenshot_capture_command(import_cmd_string):
+    """
+    Executes command to capture a screenshot.
+
+    Provides safe execution of command to capture screenshot by wrapping
+    the command around a try-catch construct.
+
+    @param import_cmd_string: string, screenshot capture command.
+
+    """
+
     old_exc_type = sys.exc_info()[0]
+    full_cmd = ('DISPLAY=:0.0 XAUTHORITY=/home/chronos/.Xauthority %s' %
+                import_cmd_string)
     try:
-        base_utils.system('DISPLAY=:0.0 XAUTHORITY=/home/chronos/.Xauthority '
-                          '/usr/local/bin/import -window root -depth 8 %s' %
-                          screenshot_file)
+        base_utils.system(full_cmd)
     except Exception as err:
         # Do not raise an exception if the screenshot fails while processing
         # another exception.
         if old_exc_type is None:
             raise
         logging.error(err)
-    return screenshot_file
