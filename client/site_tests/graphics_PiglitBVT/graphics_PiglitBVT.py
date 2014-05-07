@@ -21,7 +21,7 @@ class graphics_PiglitBVT(test.test):
         logging.info('Detected gpu family %s.', gpu_family)
 
         # TODO(ihf): Delete this once we have a piglit that runs on ARM.
-        if gpu_family in ['arm', 'exynos', 'tegra']:
+        if gpu_family in ['mali', 'tegra']:
             logging.info('Not running any tests, passing by default.')
             return
 

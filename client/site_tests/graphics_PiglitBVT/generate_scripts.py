@@ -59,7 +59,6 @@ AUTHOR = 'chromeos-gfx'\n\
 PURPOSE = 'Collection of automated tests for OpenGL implementations.'\n\
 CRITERIA = 'All tests in a slice have to pass, otherwise it will fail.'\n\
 SUITE = 'bvt'\n\
-EXPERIMENTAL = 'True'\n\
 TIME='SHORT'\n\
 TEST_CATEGORY = 'Functional'\n\
 TEST_CLASS = 'graphics'\n\
