@@ -35,7 +35,7 @@ class desktopui_ScreenLocker(test.test):
     def error_bubble_visible(self):
         """True if the error bubble for bad password is visible."""
         return not self._chrome.browser.oobe.EvaluateJavaScript(
-                "document.getElementById('bubble').hidden;")
+                "cr.ui.login.DisplayManager.errorMessageWasShownForTesting_;")
 
 
     def attempt_unlock(self, password=''):
