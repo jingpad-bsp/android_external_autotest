@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import glob
 import logging
 import os
-from time import sleep
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -22,9 +22,10 @@ class kernel_Delay(test.test):
     MIN_KERNEL_VER = '3.8'
     MODULE_NAME = 'udelay_test'
     UDELAY_PATH = '/sys/kernel/debug/udelay_test'
-    CPUFREQ_CUR_PATH = '/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_cur_freq'
-    CPUFREQ_MIN_PATH = '/sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq'
-    CPUFREQ_MAX_PATH = '/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq'
+    QUIET_GOVERNOR_PATH = '/sys/devices/system/cpu/cpuquiet/current_governor'
+    GOVERNOR_GLOB = '/sys/devices/system/cpu/cpu*/cpufreq/scaling_governor'
+    SETSPEED_GLOB = '/sys/devices/system/cpu/cpu*/cpufreq/scaling_setspeed'
+    CUR_FREQ_GLOB = '/sys/devices/system/cpu/cpu*/cpufreq/cpuinfo_cur_freq'
     CPUFREQ_AVAIL_PATH = (
             '/sys/devices/system/cpu/cpu0/cpufreq/'
             'scaling_available_frequencies')
@@ -33,6 +34,10 @@ class kernel_Delay(test.test):
     # 1..200, 200..500 (by 10), 500..2000 (by 100)
     DELAYS = range(1, 200) + range(200, 500, 10) + range(500, 2001, 100)
     ITERATIONS = 100
+
+    _governor_paths = []
+    _setspeed_paths = []
+    _cur_freq_paths = []
 
     def _set_file(self, contents, filename):
         """
@@ -58,74 +63,108 @@ class kernel_Delay(test.test):
             return f.read()
 
 
-    def _get_freq(self):
+    def _get_freqs(self):
         """
-        Get the current CPU frequency.
+        Get the current CPU frequencies.
 
-        @returns: the CPU frequency (int)
-
-        """
-        return int(self._get_file(self.CPUFREQ_CUR_PATH))
-
-
-    def _get_min_freq(self):
-        """
-        Get the minimum CPU frequency.
-
-        @returns: the CPU frequency (int)
+        @returns: the CPU frequencies of each CPU (list of int)
 
         """
-        return int(self._get_file(self.CPUFREQ_MIN_PATH))
+        return [int(self._get_file(p)) for p in self._cur_freq_paths]
 
 
-    def _get_max_freq(self):
+    def _get_freqs_string(self):
         """
-        Get the maxium CPU frequency.
+        Get the current CPU frequencies.
 
-        @returns: the CPU frequency (int)
+        @returns: the CPU frequencies of each CPU (string)
 
         """
-        return int(self._get_file(self.CPUFREQ_MAX_PATH))
+        return ' '.join(str(x) for x in self._get_freqs())
 
 
-    def _unlimit_freq(self, min_freq, max_freq):
+    def _get_governors(self):
+        """
+        Get the current CPU governors.
+
+        @returns: the CPU governors of each CPU (list of string)
+
+        """
+        return [self._get_file(p).rstrip() for p in self._governor_paths]
+
+
+    def _get_quiet_governor(self):
+        """
+        Get the current CPU quiet governor.
+
+        @returns: the CPU quiet governor or None if it does not exist (string)
+
+        """
+        if os.path.isfile(self.QUIET_GOVERNOR_PATH):
+            return self._get_file(self.QUIET_GOVERNOR_PATH).rstrip()
+        else:
+            return None
+
+
+    def _reset_freq(self, initial_governors, initial_quiet_governor):
         """
         Unlimit the CPU frequency.
 
-        @param min_freq: minimum CPU frequency available
-        @param max_freq: maximum CPU frequency available
+        @param initial_governors: list of initial governors to reset state to
+        @param initial_quiet_governor: initial quiet governor to reset state to
 
         """
-        # To ensure minimum < maximum at all times, unlimit first.
-        self._set_file(str(max_freq), self.CPUFREQ_MAX_PATH)
-        self._set_file(str(min_freq), self.CPUFREQ_MIN_PATH)
+        for p, g in zip(self._governor_paths, initial_governors):
+            self._set_file(g, p)
+        if initial_quiet_governor and os.path.isfile(self.QUIET_GOVERNOR_PATH):
+            self._set_file(initial_quiet_governor, self.QUIET_GOVERNOR_PATH)
 
 
-    def _set_freq(self, freq, min_freq, max_freq):
+    def _set_freq(self, freq):
         """
         Set the CPU frequency.
 
         @param freq: desired CPU frequency
-        @param min_freq: minimum CPU frequency available
-        @param max_freq: maximum CPU frequency available
 
         """
-        # To ensure minimum < maximum at all times, unlimit first.
-        self._unlimit_freq(min_freq, max_freq)
-        # Wait a moment for new scaling to take effect before setting.
-        sleep(0.2)
-        self._set_file(str(freq), self.CPUFREQ_MAX_PATH)
-        self._set_file(str(freq), self.CPUFREQ_MIN_PATH)
+        # Prevent CPUs from going up and down during the test if the option
+        # is available.
+        if os.path.isfile(self.QUIET_GOVERNOR_PATH):
+            logging.info('changing to userspace cpuquiet governor');
+            self._set_file('userspace', self.QUIET_GOVERNOR_PATH)
 
-        # Sometimes the frequency doesn't set right away, give it some time.
-        for x in range(0, 10):
-            cur_freq = self._get_freq()
-            logging.info('cpu freq set to %d', cur_freq)
-            if cur_freq == freq:
-                return
-            sleep(0.1)
+        for p in self._governor_paths:
+            self._set_file('userspace', p)
+        for p in self._setspeed_paths:
+            self._set_file(str(freq), p)
+        logging.info(
+                'cpu frequencies set to %s with userspace governor',
+                self._get_freqs_string())
+        self._check_freq(freq)
 
-        raise error.TestFail('unable to set freq to %d' % freq)
+
+    def _check_freq(self, freq):
+        """
+        Check the CPU frequencies are set as requested.
+
+        @param freq: desired CPU frequency
+
+        """
+        for p in self._governor_paths:
+            governor = self._get_file(p).rstrip()
+            if governor != 'userspace':
+                raise error.TestFail('governor changed from userspace to %s' % (
+                        governor))
+        for p in self._setspeed_paths:
+            speed = int(self._get_file(p))
+            if speed != freq:
+                raise error.TestFail('setspeed changed from %s to %s' % (
+                        freq, speed))
+        freqs = self._get_freqs()
+        for f in freqs:
+            if f != freq:
+                raise error.TestFail('frequency set to %s instead of %s' % (
+                        f, freq))
 
 
     def _test_udelay(self, usecs):
@@ -154,6 +193,12 @@ class kernel_Delay(test.test):
 
         utils.load_module(self.MODULE_NAME)
 
+        self._governor_paths = glob.glob(self.GOVERNOR_GLOB)
+        self._setspeed_paths = glob.glob(self.SETSPEED_GLOB)
+        self._cur_freq_paths = glob.glob(self.CUR_FREQ_GLOB)
+        initial_governors = self._get_governors()
+        initial_quiet_governor = self._get_quiet_governor()
+
         with open(self.CPUFREQ_AVAIL_PATH, 'r') as f:
             available_freqs = [int(x) for x in f.readline().split()]
 
@@ -162,14 +207,12 @@ class kernel_Delay(test.test):
         logging.info('cpu frequency max %d min %d', max_freq, min_freq)
 
         freqs = [ min_freq, max_freq ]
-        for freq in freqs:
-            self._set_freq(freq, min_freq, max_freq)
-            for usecs in self.DELAYS:
-                self._test_udelay(usecs)
-            if freq != self._get_min_freq() or freq != self._get_max_freq():
-                raise error.TestFail(
-                        'cpu frequency changed from %d to %d-%d' % (
-                        freq, self._get_min_freq(), self._get_max_freq()))
-
-        self._unlimit_freq(min_freq, max_freq)
-        utils.unload_module(self.MODULE_NAME)
+        try:
+            for freq in freqs:
+                self._set_freq(freq)
+                for usecs in self.DELAYS:
+                    self._test_udelay(usecs)
+                self._check_freq(freq)
+        finally:
+            self._reset_freq(initial_governors, initial_quiet_governor)
+            utils.unload_module(self.MODULE_NAME)
