@@ -51,11 +51,13 @@ class firmware_ECSharedMem(FAFTSequence):
         self.register_faft_sequence((
             {   # Step 1, check shared memory in normal operation and crash EC
                 'state_checker': self.shared_mem_checker,
-                'reboot_action': (self.ec.send_command, "crash unaligned")
+                'reboot_action': (self.ec.send_command, "crash unaligned"),
+                'install_deps_after_boot': True,
             },
             {   # Step 2, Check shared memory after crash and system jump
                 'state_checker': [self.shared_mem_checker, self.jump_checker],
                 'reboot_action': self.sync_and_ec_reboot,
+                'install_deps_after_boot': True,
             },
             {   # Step 3, dummy step to make step 2 reboot so as to clean EC
                 #         state.
