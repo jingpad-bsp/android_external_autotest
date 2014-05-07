@@ -21,8 +21,12 @@ from autotest_lib.tko import utils as tko_utils
 _ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 _PRESENTATION_CONFIG_FILE = os.path.join(
         _ROOT_DIR, 'perf_dashboard_config.json')
-_DEFAULT_MASTER_NAME = 'ChromeOSPerf'
 _DASHBOARD_UPLOAD_URL = 'https://chromeperf.appspot.com/add_point'
+
+
+class PerfUploadingError(Exception):
+    """Exception raised in perf_uploader"""
+    pass
 
 
 def _aggregate_iterations(perf_values):
@@ -105,8 +109,11 @@ def _parse_config_file():
     on the perf dashboard.  This is required if the default presentation
     settings aren't desired for certain tests.
 
-    @return A dictionary mapping each unique autotest name to a dictionary
+    @returns A dictionary mapping each unique autotest name to a dictionary
         of presentation config information.
+
+    @raises PerfUploadingError if config data or master name for the test
+        is missing from the config file.
 
     """
     json_obj = []
@@ -130,18 +137,20 @@ def _gather_presentation_info(config_data, test_name):
     @return A dictionary containing presentation information extracted from
         |config_data| for the given autotest name.
     """
-    master_name = _DEFAULT_MASTER_NAME
-    if test_name in config_data:
-        presentation_dict = config_data[test_name]
-        if 'master_name' in presentation_dict:
-            master_name = presentation_dict['master_name']
-        if 'dashboard_test_name' in presentation_dict:
-            test_name = presentation_dict['dashboard_test_name']
-    else:
-        tko_utils.dprint('WARNING: Config data not found in %s, '
-                         'use default master_name "%s", test_name "%s"' %
-                         (_PRESENTATION_CONFIG_FILE,
-                          master_name, test_name))
+    if not test_name in config_data:
+        raise PerfUploadingError(
+                'No config data is specified for test %s in %s.' %
+                (test_name, _PRESENTATION_CONFIG_FILE))
+
+    presentation_dict = config_data[test_name]
+    try:
+        master_name = presentation_dict['master_name']
+    except KeyError:
+        raise PerfUploadingError(
+                'No master name is specified for test %s in %s.' %
+                (test_name, _PRESENTATION_CONFIG_FILE))
+    if 'dashboard_test_name' in presentation_dict:
+        test_name = presentation_dict['dashboard_test_name']
     return {'master_name': master_name, 'test_name': test_name}
 
 
@@ -210,21 +219,23 @@ def _send_to_dashboard(data_obj):
     @param data_obj: A formatted data object as returned by
         _format_for_upload().
 
-    @return None, if the data was uploaded without an exception, or a string
-        error message if an exception was raised when uploading.
+    @raises PerfUploadingError if an exception was raised when uploading.
 
     """
     encoded = urllib.urlencode(data_obj)
     req = urllib2.Request(_DASHBOARD_UPLOAD_URL, encoded)
     try:
         urllib2.urlopen(req)
-    except urllib2.HTTPError, e:
-        return 'HTTPError: %d %s for JSON %s\n' % (
-                e.code, e.msg, data_obj['data'])
-    except urllib2.URLError, e:
-        return 'URLError: %s for JSON %s\n' % (str(e.reason), data_obj['data'])
+    except urllib2.HTTPError as e:
+        raise PerfUploadingError('HTTPError: %d %s for JSON %s\n' % (
+                e.code, e.msg, data_obj['data']))
+    except urllib2.URLError as e:
+        raise PerfUploadingError(
+                'URLError: %s for JSON %s\n' %
+                (str(e.reason), data_obj['data']))
     except httplib.HTTPException:
-        return 'HTTPException for JSON %s\n' % data_obj['data']
+        raise PerfUploadingError(
+                'HTTPException for JSON %s\n' % data_obj['data'])
 
 
 def upload_test(job, test):
@@ -258,15 +269,15 @@ def upload_test(job, test):
     # number *without* the milestone attached.
     cros_version = chrome_version[:chrome_version.find('.') + 1] + cros_version
     config_data = _parse_config_file()
-    presentation_info = _gather_presentation_info(config_data, test_name)
-    formatted_data = _format_for_upload(
-            platform_name, cros_version, chrome_version, perf_data,
-            presentation_info)
-    error = _send_to_dashboard(formatted_data)
-
-    if error:
+    try:
+        presentation_info = _gather_presentation_info(config_data, test_name)
+        formatted_data = _format_for_upload(
+                platform_name, cros_version, chrome_version, perf_data,
+                presentation_info)
+        _send_to_dashboard(formatted_data)
+    except PerfUploadingError as e:
         tko_utils.dprint('Error when uploading perf data to the perf '
-                         'dashboard for test %s: %s' % (test_name, error))
+                         'dashboard for test %s: %s' % (test_name, e))
     else:
         tko_utils.dprint('Successfully uploaded perf data to the perf '
                          'dashboard for test %s.' % test_name)

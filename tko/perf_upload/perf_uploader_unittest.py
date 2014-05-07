@@ -164,12 +164,33 @@ class test_json_config_file_sanity(unittest.TestCase):
                          msg='Autotest names not unique in the JSON file.')
 
 
+    def test_required_master_name(self):
+        """Verifies that master name must be specified."""
+        json_obj = []
+        try:
+            with open(perf_uploader._PRESENTATION_CONFIG_FILE, 'r') as fp:
+                json_obj = json.load(fp)
+        except:
+            self.fail('Presentation config file could not be parsed as JSON.')
+
+        for entry in json_obj:
+            if not 'master_name' in entry:
+                self.fail('Missing master field for test %s.' %
+                          entry['autotest_name'])
+
+
 class test_gather_presentation_info(unittest.TestCase):
     """Tests for the gather_presentation_info function."""
 
     _PRESENT_INFO = {
         'test_name': {
             'master_name': 'new_master_name',
+            'dashboard_test_name': 'new_test_name',
+        }
+    }
+
+    _PRESENT_INFO_MISSING_MASTER = {
+        'test_name': {
             'dashboard_test_name': 'new_test_name',
         }
     }
@@ -192,20 +213,19 @@ class test_gather_presentation_info(unittest.TestCase):
 
 
     def test_test_name_not_specified(self):
-        """Verifies gathers default presentation info if test is not there."""
-        result = perf_uploader._gather_presentation_info(
-                self._PRESENT_INFO, 'other_test_name')
-        self.assertTrue(
-                all([key in result for key in
-                     ['test_name', 'master_name']]),
-                msg='Unexpected keys in resulting dictionary: %s' % result)
-        self.assertEqual(result['master_name'],
-                         perf_uploader._DEFAULT_MASTER_NAME,
-                         msg='Unexpected "master_name" value: %s' %
-                             result['master_name'])
-        self.assertEqual(result['test_name'], 'other_test_name',
-                         msg='Unexpected "test_name" value: %s' %
-                             result['test_name'])
+        """Verifies exception raised if test is not there."""
+        self.assertRaises(
+                perf_uploader.PerfUploadingError,
+                perf_uploader._gather_presentation_info,
+                        self._PRESENT_INFO, 'other_test_name')
+
+
+    def test_master_not_specified(self):
+        """Verifies exception raised if master is not there."""
+        self.assertRaises(
+                perf_uploader.PerfUploadingError,
+                perf_uploader._gather_presentation_info,
+                    self._PRESENT_INFO_MISSING_MASTER, 'test_name')
 
 
 class test_format_for_upload(unittest.TestCase):
@@ -226,10 +246,6 @@ class test_format_for_upload(unittest.TestCase):
         },
     }
 
-    _PRESENT_INFO_DEFAULT = {
-        'master_name': perf_uploader._DEFAULT_MASTER_NAME,
-        'test_name': 'test_name',
-    }
 
     _PRESENT_INFO = {
         'master_name': 'new_master_name',
@@ -291,25 +307,8 @@ class test_format_for_upload(unittest.TestCase):
                     actual[idx]['test'], expected[idx]['test'], msg=fail_msg)
 
 
-    def test_default_presentation(self):
-        """Verifies default presentation settings with empty config info."""
-        result = perf_uploader._format_for_upload(
-                'platform', '1200.0.0', '25.10.0.0', self._perf_data,
-                self._PRESENT_INFO_DEFAULT)
-        expected_result_string = (
-                '[{"supplemental_columns": {"r_cros_version": "1200.0.0", '
-                '"r_chrome_version": "25.10.0.0"}, "bot": "cros-platform", '
-                '"value": 101.35, "units": "frames_per_sec", "master": '
-                '"ChromeOSPerf", "error": 5.78, "test": "test_name/metric2"}, '
-                '{"supplemental_columns": {"r_cros_version": "1200.0.0", '
-                '"r_chrome_version": "25.10.0.0"}, "bot": "cros-platform", '
-                '"value": 2.7, "units": "msec", "master": "ChromeOSPerf", '
-                '"error": 0.2, "test": "test_name/graph_name/metric1"}]')
-        self._verify_result_string(result['data'], expected_result_string)
-
-
-    def test_overridden_presentation(self):
-        """Verifies presentation settings can override defaults properly."""
+    def test_format_for_upload(self):
+        """Verifies format_for_upload generates correct json data."""
         result = perf_uploader._format_for_upload(
                 'platform', '1200.0.0', '25.10.0.0',
                 self._perf_data, self._PRESENT_INFO)
