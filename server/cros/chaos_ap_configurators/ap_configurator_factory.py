@@ -134,9 +134,6 @@ class APConfiguratorFactory(object):
         'LinksysWRT54GLAPConfigurator':
             [PREFIX + 'linksyswrt54gl_ap_configurator',
                 'LinksysWRT54GLAPConfigurator'],
-        'LinksysWRT610NAPConfigurator':
-            [PREFIX + 'linksyswrt610n_ap_configurator',
-                'LinksysWRT610NAPConfigurator'],
         'LinksysWRT120NAPConfigurator':
             [PREFIX + 'linksyswrt120n_ap_configurator',
                 'LinksysWRT120NAPConfigurator'],
