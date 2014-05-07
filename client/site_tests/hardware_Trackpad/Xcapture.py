@@ -96,15 +96,29 @@ class Xcapture:
         self.scroll_butons = set_x_input_prop(Xevent.X_PROP_SCROLL_BUTTONS)
         self.tap_enable = set_x_input_prop(Xevent.X_PROP_TAP_ENABLE)
 
-        # Launch a mtplot window to listen to X events.
-        self.win = Mtplot(self.display, error)
-
         # Launch the capture process
-        self.xcapture_cmd = 'xev -id %s' % self.win.id
+        mtplot_gui = read_trackpad_test_conf('mtplot_gui', conf_path)
+        if mtplot_gui:
+            self.mtplot = Mtplot(self.display, error)
+            self.xcapture_cmd = 'xev -id %s' % self.mtplot.id
+        else:
+            self.mtplot = None
+            self.xcapture_cmd = 'xev -geometry %s' % self._root_geometry()
         self._launch(self.fd_all)
 
         logging.info('X events will be saved in %s' % self.xcapture_dir)
-        logging.info('X events capture program: %s' % self.xcapture_cmd)
+        logging.info('X events capture command: %s' % self.xcapture_cmd)
+
+    def _root_geometry(self):
+        """Get the geometry of the root window.
+
+        The geometry string looks like:
+            -geometry 2560x1700+0+0
+        """
+        cmd = 'xwininfo -root | grep geometry'
+        geometry_str = common_util.simple_system_output(cmd)
+        _, geometry = geometry_str.split()
+        return geometry
 
     def _open_file(self, filename):
         try:
@@ -197,8 +211,9 @@ class Xcapture:
         self.proc.kill()
         self.proc.wait()
 
-        # Destroy the window
-        self.win.destroy()
+        # Destroy the mtplot window if exists.
+        if self.mtplot:
+            self.mtplot.destroy()
 
         # Reset X Scroll Buttons and Tap Enable if they were disabled originally
         reset_x_input_prop(self.scroll_butons)
