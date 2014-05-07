@@ -170,7 +170,8 @@ class HttpFetcher(RepositoryFetcher):
         package_url = os.path.join(self.url, filename)
         try:
             cmd = self.wget_cmd_pattern % (package_url, dest_path)
-            result = self.run_command(cmd)
+            result = self.run_command(cmd,
+                                      _run_command_dargs={'timeout': 1200})
 
             file_exists = self.run_command(
                 'ls %s' % dest_path,
