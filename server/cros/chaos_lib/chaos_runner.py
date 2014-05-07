@@ -92,6 +92,27 @@ class ChaosRunner(object):
         cartridge.run_configurators(self._broken_pdus)
 
 
+    def _is_dut_healthy(self, client):
+        """Returns if iw scan is working properly.
+
+        Sometimes iw scan will die, especially on the Atheros chips.
+        This works around that bug.  See crbug.com/358716.
+
+        @param client: a wifi_client for the DUT
+
+        @returns True if the DUT is healthy (iw scan works); False otherwise.
+
+        """
+        # The SSID doesn't matter, all that needs to be verified is that iw
+        # works.
+        networks = client.iw_runner.wait_for_scan_result(client.wifi_if,
+                                                         ssid='test',
+                                                         timeout_seconds=10)
+        if networks == None:
+            return False
+        return True
+
+
     def _return_available_networks(self, ap, capturer, wifi_if, job):
         """Returns a list of networks configured as described by an APSpec.
 
@@ -102,6 +123,7 @@ class ChaosRunner(object):
 
         @returns a list of the matching networks; if no networks are found at
                  all, returns None.
+
         """
         logging.info('Searching for SSID %s in scan...', ap.ssid)
         # We have some APs that need a while to come on-line
@@ -210,6 +232,13 @@ class ChaosRunner(object):
                     if not aps:
                         logging.info('No more APs to test.')
                         break
+
+                    if not self._is_dut_healthy(client):
+                        # This will force a reboot of the DUT and AP testing
+                        # will be performed against all remaining APs and the
+                        # APs not tested in this batch.
+                        batch_locker.unlock_and_reclaim_aps()
+                        continue
 
                     # Filter the ap list before creating the cartridge by
                     # removing all those APs that use the known broken pdus.
