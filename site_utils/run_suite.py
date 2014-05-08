@@ -4,15 +4,35 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+
 """Tool for running suites of tests and waiting for completion.
 
-The desired test suite will be scheduled with autotest, and then
+The desired test suite will be scheduled with autotest. By default,
 this tool will block until the job is complete, printing a summary
 at the end.  Error conditions result in exceptions.
 
 This is intended for use only with Chrome OS test suits that leverage the
 dynamic suite infrastructure in server/cros/dynamic_suite.py.
+
+This script exits with one of the following codes:
+0 - OK: Suite finished successfully
+1 - ERROR: Test(s) failed, or hits its own timeout
+2 - WARNING: Test(s) raised a warning, none failed/timed out.
+3 - INFRA_FAILURE: Infrastructure related issues, e.g.
+    * Lab is down
+    * Too many duts (defined as a constant) in repair failed status
+    * Suite job issues, like bug in dynamic suite,
+      user aborted the suite, lose a drone/all devservers/rpc server,
+      0 tests ran, etc.
+4 - SUITE_TIMEOUT: Suite timed out, some tests ran,
+    none failed by the time the suite job was aborted. This will cover,
+    but not limited to, the following cases:
+    * A devserver failure that manifests as a timeout
+    * No DUTs available midway through a suite
+    * Provision/Reset/Cleanup took longer time than expected for new image
+    * A regression in scheduler tick time.
 """
+
 
 import datetime as datetime_base
 import getpass, logging, optparse, os, re, sys, time
@@ -20,6 +40,7 @@ from datetime import datetime
 
 import common
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config, enum
 from autotest_lib.client.common_lib import priorities
 from autotest_lib.frontend.afe.json_rpc import proxy
@@ -35,7 +56,29 @@ from autotest_lib.site_utils import diagnosis_utils
 CONFIG = global_config.global_config
 
 # Return code that will be sent back to autotest_rpc_server.py
-RETURN_CODES = enum.Enum('OK', 'ERROR', 'WARNING')
+RETURN_CODES = enum.Enum(
+        'OK', 'ERROR', 'WARNING', 'INFRA_FAILURE', 'SUITE_TIMEOUT')
+# The severity of return code. If multiple codes
+# apply, the script should always return the severest one.
+# E.g. if we have a test failure and the suite also timed out,
+# we should return 'ERROR'.
+SEVERITY = {RETURN_CODES.OK: 0,
+            RETURN_CODES.WARNING: 1,
+            RETURN_CODES.INFRA_FAILURE: 2,
+            RETURN_CODES.SUITE_TIMEOUT: 3,
+            RETURN_CODES.ERROR: 4}
+
+
+def get_worse_code(code1, code2):
+    """Compare the severity of two codes and return the worse one.
+
+    @param code1: An enum value of RETURN_CODES
+    @param code2: An enum value of RETURN_CODES
+
+    @returns: The code with higher severity.
+
+    """
+    return code1 if SEVERITY[code1] > SEVERITY[code2] else code2
 
 
 def setup_logging(logfile=None):
@@ -762,18 +805,42 @@ class ResultCollector(object):
     def _compute_return_code(self):
         """Compute the exit code based on test results."""
         code = RETURN_CODES.OK
+        message = ''
         for v in self._test_views:
-            # Any non experimental test that has a status other than WARN
-            # or GOOD will result in the tree closing. Experimental tests
-            # will not close the tree, even if they have been aborted.
-            if not self.is_test_experimental(v):
-                if v['status'] == 'WARN':
-                    code = RETURN_CODES.WARNING
-                elif is_fail_status(v['status']):
-                    code = RETURN_CODES.ERROR
-                    # Failed already, no need to worry further.
-                    break
+            if self.is_test_experimental(v):
+                continue
+            if (v['test_name'] == self.SUITE_PREP
+                    and is_fail_status(v['status'])):
+                # Suite job failed (with status FAIL/ERROR/ABORT).
+                # If the suite job was aborted, it may or may not be
+                # caused by timing out. Here we only categorize it as
+                # INFRA_FAILURE which is less severer than SUITE_TIMEOUT.
+                # Suite timing out will be diagnosed later using
+                # other methods which will upgrade the severity accordingly.
+                old_code = code
+                code = get_worse_code(code, RETURN_CODES.INFRA_FAILURE)
+                if code != old_code:
+                    message = 'Suite job failed (status: %s)' % v['status']
+            elif (v['afe_job_id'] == self._suite_job_id and
+                    v['status'] == 'ABORT'):
+                # A child job that was aborted before it got a chance to
+                # run will have a view assoicated to suite job.
+                # This mostly happens when a job timed out due to
+                # starving for hosts (unless aborted manually by user,
+                # which we don't consider here).
+                old_code = code
+                code = get_worse_code(code, RETURN_CODES.SUITE_TIMEOUT)
+                if code != old_code:
+                    message = ('Some test(s) was aborted before running,'
+                               ' suite must have timed out.')
+            elif v['status'] == 'WARN':
+                code = get_worse_code(code, RETURN_CODES.WARNING)
+            elif is_fail_status(v['status']):
+                code = get_worse_code(code, RETURN_CODES.ERROR)
+            else:
+                code = get_worse_code(code, RETURN_CODES.OK)
         self.return_code = code
+        self.return_message = message
 
 
     def output_results(self):
@@ -793,6 +860,7 @@ class ResultCollector(object):
         logging.info('\nLinks to test logs:')
         for link in self._web_links:
             logging.info(link.GenerateTextLink())
+        logging.info('\n')
 
 
     def output_buildbot_links(self):
@@ -821,7 +889,7 @@ class ResultCollector(object):
         # the scheduler hits some limit, e.g., max_hostless_jobs_per_drone,
         # max_jobs_started_per_cycle, a suite job can stays in Starting status.
         if not self._test_views:
-            self.return_code = RETURN_CODES.ERROR
+            self.return_code = RETURN_CODES.INFRA_FAILURE
             self.return_message = 'No test view was found.'
             return
         self.is_aborted = any([view['job_keyvals'].get('aborted_by')
@@ -864,7 +932,7 @@ def main():
             utils.check_lab_status(options.build)
     except utils.TestLabException as e:
         logging.warning('Error Message: %s', e)
-        return RETURN_CODES.WARNING
+        return RETURN_CODES.INFRA_FAILURE
 
     instance_server = instance_for_pool(options.pool)
     afe = frontend_wrappers.RetryingAFE(server=instance_server,
@@ -879,13 +947,20 @@ def main():
     if options.mock_job_id:
         job_id = int(options.mock_job_id)
     else:
-        job_id = afe.run('create_suite_job', name=options.name,
-                         board=options.board, build=options.build,
-                         check_hosts=wait, pool=options.pool, num=options.num,
-                         file_bugs=file_bugs, priority=priority,
-                         suite_args=options.suite_args,
-                         wait_for_results=wait,
-                         timeout_mins=options.timeout_mins)
+        try:
+            job_id = afe.run('create_suite_job', name=options.name,
+                             board=options.board, build=options.build,
+                             check_hosts=wait, pool=options.pool,
+                             num=options.num,
+                             file_bugs=file_bugs, priority=priority,
+                             suite_args=options.suite_args,
+                             wait_for_results=wait,
+                             timeout_mins=options.timeout_mins)
+        except (error.CrosDynamicSuiteException,
+                error.RPCException, proxy.JSONRPCException) as e:
+            logging.warning('Error Message: %s', e)
+            return RETURN_CODES.INFRA_FAILURE
+
     job_timer = diagnosis_utils.JobTimer(
             time.time(), float(options.timeout_mins))
     logging.info('%s Created suite job: %s',
@@ -918,38 +993,56 @@ def main():
         collector.run()
         # Output test results, timings, web links.
         collector.output_results()
-        # Get exit code that should be returned by run_suite.
-        # And output return message.
         code = collector.return_code
-        code_str = RETURN_CODES.get_string(collector.return_code)
-        return_message = '\nWill return from run_suite with status:  %s'
-        if collector.return_message:
-            return_message = '%s (%s)' % (
-                    return_message, collector.return_message)
-        logging.info(return_message, code_str)
-        # Send timings to statsd. Do not record stats if the suite was
-        # aborted (either by a user or through the golo rpc).
-        # Also do not record stats if is_aborted is None, indicating
-        # aborting status is unknown yet.
-        if collector.is_aborted == False and not options.mock_job_id:
-            collector.timings.SendResultsToStatsd(options.name, options.build,
-                                                  options.board)
-        # There is a minor race condition here where we might have aborted for
-        # some reason other than a timeout, and the job_timer thinks it's a
-        # timeout because of the jitter in waiting for results. This shouldn't
-        # harm us since all diagnose_pool does is log information about a pool.
-        if job_timer.is_suite_timeout():
-            logging.info('\nAttempting to diagnose pool: %s', options.pool)
-            stats.Counter('run_suite_timeouts').increment()
-            try:
-                # Add some jitter to make up for any latency in
-                # aborting the suite or checking for results.
-                cutoff = (job_timer.timeout_hours +
-                          datetime_base.timedelta(hours=0.3))
-                rpc_helper.diagnose_pool(
-                        options.board, options.pool, cutoff)
-            except proxy.JSONRPCException as e:
-                logging.warning('Unable to diagnose suite abort.')
+        return_message = collector.return_message
+        if not options.mock_job_id:
+            # Send timings to statsd. Do not record stats if the suite was
+            # aborted (either by a user or through the golo rpc).
+            # Also do not record stats if is_aborted is None, indicating
+            # aborting status is unknown yet.
+            if collector.is_aborted == False:
+                collector.timings.SendResultsToStatsd(
+                        options.name, options.build, options.board)
+            # There is a minor race condition here where we might have aborted
+            # for some reason other than a timeout, and the job_timer thinks
+            # it's a timeout because of the jitter in waiting for results.
+            # The consequence would be that run_suite exits with code
+            # SUITE_TIMEOUT while it should  have returned INFRA_FAILURE
+            # instead, which should happen very rarely.
+            is_suite_timeout = job_timer.is_suite_timeout()
+            if collector.is_aborted == True and is_suite_timeout:
+                # There are two possible cases when a suite times out.
+                # 1. the suite job was aborted due to timing out
+                # 2. the suite job succeeded, but some child jobs
+                #    were already aborted before the suite job exited.
+                # The case 2 was handled by ResultCollector,
+                # here we handle case 1.
+                old_code = code
+                code = get_worse_code(code, RETURN_CODES.SUITE_TIMEOUT)
+                if old_code != code:
+                    logging.info('Upgrade return code from %s to %s '
+                                 'because suite job has timed out.',
+                                 RETURN_CODES.get_string(old_code),
+                                 RETURN_CODES.get_string(code))
+                    return_message = 'Suite job timed out.'
+            if is_suite_timeout:
+                logging.info('\nAttempting to diagnose pool: %s', options.pool)
+                stats.Counter('run_suite_timeouts').increment()
+                try:
+                    # Add some jitter to make up for any latency in
+                    # aborting the suite or checking for results.
+                    cutoff = (job_timer.timeout_hours +
+                              datetime_base.timedelta(hours=0.3))
+                    rpc_helper.diagnose_pool(
+                            options.board, options.pool, cutoff)
+                except proxy.JSONRPCException as e:
+                    logging.warning('Unable to diagnose suite abort.')
+
+        # And output return message.
+        code_str = RETURN_CODES.get_string(code)
+        logging.info('Will return from run_suite with status: %s', code_str)
+        if return_message:
+            logging.info('Reason: %s', return_message)
 
         logging.info('\nOutput below this line is for buildbot consumption:')
         collector.output_buildbot_links()

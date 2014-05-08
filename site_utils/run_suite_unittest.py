@@ -205,9 +205,10 @@ class ResultCollectorUnittest(unittest.TestCase):
             self.assertEqual(collector._buildbot_links[i].url, expect[1])
 
 
-    def _end_to_end_test_helper(self, include_bad_test=False,
-                                include_warn_test=False,
-                                include_experimental_bad_test=False):
+    def _end_to_end_test_helper(
+            self, include_bad_test=False, include_warn_test=False,
+            include_experimental_bad_test=False, include_timeout_test=False,
+            include_self_aborted_test=False, suite_job_status='GOOD'):
         """A helper method for testing ResultCollector end-to-end.
 
         This method mocks the retrieving of required test views,
@@ -225,15 +226,17 @@ class ResultCollectorUnittest(unittest.TestCase):
         suite_job_id = 100
         good_job_id = 101
         bad_job_id = 102
-        warn_job_id = 103
-        experimental_bad_job_id = 104
+        warn_job_id = 102
+        experimental_bad_job_id = 102
+        timeout_job_id = 100
+        self_aborted_job_id = 104
         suite_job_keyvals = {
                 constants.DOWNLOAD_STARTED_TIME: '2014-04-29 13:14:20',
                 constants.PAYLOAD_FINISHED_TIME: '2014-04-29 13:14:25',
                 constants.ARTIFACT_FINISHED_TIME: '2014-04-29 13:14:30'}
 
         server_job_view = self._build_view(
-                10, 'SERVER_JOB', '----', 'GOOD', suite_job_id,
+                10, 'SERVER_JOB', '----', suite_job_status, suite_job_id,
                 'lumpy-release/R27-3888.0.0-test_suites/control.dummy',
                 '', suite_job_keyvals, '2014-04-29 13:14:37',
                 '2014-04-29 13:25:27')
@@ -247,29 +250,44 @@ class ResultCollectorUnittest(unittest.TestCase):
                 'always fail', {}, '2014-04-29 13:16:00',
                 '2014-04-29 13:16:02')
         warn_test = self._build_view(
-                12, 'dummy_Fail.Warn', '102-user/host/dummy_Fail.Warn', 'WARN',
+                13, 'dummy_Fail.Warn', '102-user/host/dummy_Fail.Warn', 'WARN',
                 warn_job_id, 'lumpy-release/R27-3888.0.0/dummy_Fail.Warn',
                 'always warn', {}, '2014-04-29 13:16:00',
                 '2014-04-29 13:16:02')
         experimental_bad_test = self._build_view(
-                13, 'experimental_dummy_Fail.Fail',
+                14, 'experimental_dummy_Fail.Fail',
                 '102-user/host/dummy_Fail.Fail', 'FAIL',
                 experimental_bad_job_id,
                 'lumpy-release/R27-3888.0.0/experimental_dummy_Fail.Fail',
                 'always fail', {'experimental': 'True'}, '2014-04-29 13:16:06',
                 '2014-04-29 13:16:07')
-
+        timeout_test = self._build_view(
+                15, 'dummy_Timeout', '', 'ABORT',
+                timeout_job_id, 'lumpy-release/R27-3888.0.0/dummy_Timeout',
+                'child job did not run', {}, '2014-04-29 13:15:37',
+                '2014-04-29 13:15:38')
+        self_aborted_test = self._build_view(
+                16, 'dummy_Abort', '104-user/host/dummy_Abort', 'ABORT',
+                self_aborted_job_id, 'lumpy-release/R27-3888.0.0/dummy_Abort',
+                'child job aborted', {}, '2014-04-29 13:15:39',
+                '2014-04-29 13:15:40')
         test_views = [server_job_view, good_test]
-        child_jobs = [good_job_id]
+        child_jobs = set([good_job_id])
         if include_bad_test:
             test_views.append(bad_test)
-            child_jobs.append(bad_job_id)
+            child_jobs.add(bad_job_id)
         if include_warn_test:
             test_views.append(warn_test)
-            child_jobs.append(warn_job_id)
+            child_jobs.add(warn_job_id)
         if include_experimental_bad_test:
             test_views.append(experimental_bad_test)
-            child_jobs.append(experimental_bad_job_id)
+            child_jobs.add(experimental_bad_job_id)
+        if include_timeout_test:
+            test_views.append(timeout_test)
+            child_jobs.add(timeout_job_id)
+        if include_self_aborted_test:
+            test_views.append(self_aborted_test)
+            child_jobs.add(self_aborted_job_id)
         self._mock_tko_get_detailed_test_views(test_views)
         self._mock_afe_get_jobs(suite_job_id, child_jobs)
         collector = run_suite.ResultCollector(
@@ -310,6 +328,42 @@ class ResultCollectorUnittest(unittest.TestCase):
                 include_bad_test=True, include_warn_test=True,
                 include_experimental_bad_test=True)
         self.assertEqual(collector.return_code, run_suite.RETURN_CODES.ERROR)
+
+
+    def testEndToEndSuiteJobFail(self):
+        """Test it returns code SUITE_FAILURE when only the suite job failed."""
+        collector = self._end_to_end_test_helper(suite_job_status='ABORT')
+        self.assertEqual(
+                collector.return_code, run_suite.RETURN_CODES.INFRA_FAILURE)
+
+        collector = self._end_to_end_test_helper(suite_job_status='ERROR')
+        self.assertEqual(
+                collector.return_code, run_suite.RETURN_CODES.INFRA_FAILURE)
+
+
+    def testEndToEndSuiteTimeout(self):
+        """Test it returns correct code when a child job timed out."""
+        # a child job timed out, none failed.
+        collector = self._end_to_end_test_helper(include_timeout_test=True)
+        self.assertEqual(
+                collector.return_code, run_suite.RETURN_CODES.SUITE_TIMEOUT)
+
+        # a child job timed out, suite job aborted.
+        collector = self._end_to_end_test_helper(
+                include_timeout_test=True, suite_job_status='ABORT')
+        self.assertEqual(
+                collector.return_code, run_suite.RETURN_CODES.SUITE_TIMEOUT)
+
+        # a child job timed out, and one test failed.
+        collector = self._end_to_end_test_helper(
+                include_bad_test=True, include_timeout_test=True)
+        self.assertEqual(collector.return_code, run_suite.RETURN_CODES.ERROR)
+
+        # a child job timed out, and one test warned.
+        collector = self._end_to_end_test_helper(
+                include_warn_test=True, include_timeout_test=True)
+        self.assertEqual(
+                collector.return_code, run_suite.RETURN_CODES.SUITE_TIMEOUT)
 
 
 if __name__ == '__main__':
