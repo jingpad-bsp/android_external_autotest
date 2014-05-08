@@ -8,7 +8,7 @@ PURPOSE = 'Detect wear out status of storage device'
 TIME = 'FAST'
 TEST_CLASS = 'hardware'
 TEST_TYPE = 'client'
-SUITE = 'mmc_qual, ssd_qual'
+SUITE = 'experimental, mmc_qual, ssd_qual'
 
 DOC = """
 This test check wear out status for storage device available in SMART for SSD
