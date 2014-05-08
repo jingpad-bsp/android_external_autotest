@@ -48,16 +48,17 @@ class GraphicsStateChecker(object):
     """Analyzes the state of the GPU and log history. Should be instantiated
     at the beginning of each graphics_* test.
     """
-    hangs = {}
+    existing_hangs = {}
     crash_blacklist = []
 
     _BROWSER_VERSION_COMMAND = '/opt/google/chrome/chrome --version'
     _HANGCHECK = ['drm:i915_hangcheck_elapsed', 'drm:i915_hangcheck_hung']
     _MESSAGES_FILE = '/var/log/messages'
 
-    def __init__(self):
+    def __init__(self, raise_error_on_hang=True):
         """Analyzes the initial state of the GPU and log history.
         """
+        self._raise_error_on_hang = raise_error_on_hang
         if utils.get_cpu_arch() != 'arm':
           cmd = 'glxinfo | grep "OpenGL renderer string"'
           cmd = cros_ui.xcommand(cmd)
@@ -73,7 +74,7 @@ class GraphicsStateChecker(object):
             for hang in self._HANGCHECK:
               if hang in line:
                 logging.info(line)
-                self.hangs[line] = line
+                self.existing_hangs[line] = line
           f.close()
 
     def finalize(self):
@@ -81,15 +82,17 @@ class GraphicsStateChecker(object):
         errors if the state changed since initialize. Also makes a note of the
         Chrome version for later usage in the perf-dashboard.
         """
+        new_gpu_hang = False
         if utils.get_cpu_arch() != 'arm':
           logging.info('Cleanup: Checking for new GPU hangs...')
           f = open(self._MESSAGES_FILE, 'r')
           for line in f:
             for hang in self._HANGCHECK:
               if hang in line:
-                if not line in self.hangs.keys():
+                if not line in self.existing_hangs.keys():
                   logging.info(line)
                   logging.warning('Saw GPU hang during test.')
+                  new_gpu_hang = True
           f.close()
 
           cmd = 'glxinfo | grep "OpenGL renderer string"'
@@ -101,6 +104,9 @@ class GraphicsStateChecker(object):
           if 'llvmpipe' in result.lower() or 'soft' in result.lower():
             logging.warning('Finished test on SW rasterizer.')
             raise error.TestFail('Finished test on SW rasterizer: ' + result)
+
+        if self._raise_error_on_hang and new_gpu_hang:
+          raise error.TestFail('Detected GPU hang during test.')
 
         # TODO(ihf): Perform crash processing (primarily for Piglit) as is done
         # right now by ./client/cros/cros_ui_test.py and cros_logging.py.

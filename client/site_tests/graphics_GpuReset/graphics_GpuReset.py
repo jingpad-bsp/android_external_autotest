@@ -32,7 +32,9 @@ class graphics_GpuReset(test.test):
     utils.make('all')
 
   def initialize(self):
-    self.GSC = graphics_utils.GraphicsStateChecker()
+    # GpuReset should pretty much be the only test where we don't want to raise
+    # a test error when we detect a GPU hang.
+    self.GSC = graphics_utils.GraphicsStateChecker(raise_error_on_hang=False)
 
   def cleanup(self):
     if self.GSC:
