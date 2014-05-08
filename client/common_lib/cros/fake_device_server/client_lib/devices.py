@@ -26,13 +26,17 @@ class DevicesClient(common_client.CommonClient):
 
         @param device_id: valid device_id.
         """
-        url_h = urllib2.urlopen(self.get_url([device_id]))
+        request = urllib2.Request(self.get_url([device_id]),
+                                  headers=self.add_auth_headers())
+        url_h = urllib2.urlopen(request)
         return json.loads(url_h.read())
 
 
     def list_devices(self):
         """Returns the list of the devices the server currently knows about."""
-        url_h = urllib2.urlopen(self.get_url())
+        request = urllib2.Request(self.get_url(),
+                                  headers=self.add_auth_headers())
+        url_h = urllib2.urlopen(request)
         return json.loads(url_h.read())
 
 
@@ -48,7 +52,8 @@ class DevicesClient(common_client.CommonClient):
                     deviceKind=device_kind,
                     channel=channel,
                     **kwargs)
+        headers = self.add_auth_headers({'Content-Type': 'application/json'})
         request = urllib2.Request(self.get_url(), json.dumps(data),
-                                  {'Content-Type': 'application/json'})
+                                  headers=headers)
         url_h = urllib2.urlopen(request)
         return json.loads(url_h.read())

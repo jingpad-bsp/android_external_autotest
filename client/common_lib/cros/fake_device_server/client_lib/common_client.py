@@ -11,19 +11,37 @@ import urllib2
 class CommonClient(object):
     """Common client class."""
 
-    _DEFAULT_SERVER_URL = 'http://localhost'
-    _URL = '%(server_url)s:%(port)d/%(method)s'
+    _DEFAULT_SERVER_URL = 'http://localhost:8080'
+    _URL = '%(server_url)s/%(method)s'
 
 
-    def __init__(self, method, server_url=_DEFAULT_SERVER_URL, port=8080):
+    def __init__(self, method, server_url=_DEFAULT_SERVER_URL, api_key=None,
+                 access_token=None,):
         """
         @param method: REST method to call e.g. my_method/call
-        @param server_url: Base url for the server e.g. http://localhost
-        @param port: Port to use e.g. 8080.
+        @param server_url: Base url for the server e.g. http://localhost:8080
+        @param api_key: API key to use with remote server.
+        @param access_token: Access token to use to interact with server.
         """
         self._method = method
         self.server_url = server_url
-        self.port = port
+        self.api_key = api_key
+        self.access_token = access_token
+
+
+    def add_auth_headers(self, additional_headers=None):
+        """Returns combined auth headers with any additional headers.
+
+        @param additional_headers: Additional headers to use.
+        """
+        if not self.access_token:
+            return additional_headers if additional_headers else {}
+        else:
+            headers = {'Authorization': self.access_token}
+            if additional_headers:
+                headers.update(additional_headers)
+
+            return headers
 
 
     def get_url(self, paths=[], params={}):
@@ -42,17 +60,22 @@ class CommonClient(object):
 
         # Create the query string.
         params_str = ''
-        if params:
-            params_list = []
-            for kw, arg in params.iteritems():
-                params_list.append('='.join([urllib2.quote(kw),
-                                             urllib2.quote(arg)]))
+        if not params:
+            params = {}
 
+        if self.api_key:
+            params.setdefault('key', self.api_key)
+
+        params_list = []
+        for kw, arg in params.iteritems():
+            params_list.append('='.join([urllib2.quote(kw),
+                                         urllib2.quote(arg)]))
+
+        if params_list:
             params_str = '?' + '&'.join(params_list)
 
         url = self._URL % dict(
                 server_url=self.server_url,
-                port=self.port,
                 method=self._method) + paths_str + params_str
 
         logging.info("Returning url: %s to use.", url)

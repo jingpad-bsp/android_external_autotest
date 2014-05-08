@@ -15,7 +15,7 @@ from fake_device_server import server_errors
 # TODO(sosa): All access to this object should technically require auth. Create
 # setters/getters for the auth token for testing.
 
-DEVICES_PATH = '/buffet/devices'
+DEVICES_PATH = 'devices'
 
 
 class Devices(resource_method.ResourceMethod):

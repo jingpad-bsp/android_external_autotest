@@ -26,7 +26,9 @@ class CommandsClient(common_client.CommonClient):
 
         @param command_id: valid id for a command.
         """
-        url_h = urllib2.urlopen(self.get_url([command_id]))
+        request = urllib2.Request(self.get_url([command_id]),
+                                  headers=self.add_auth_headers())
+        url_h = urllib2.urlopen(request)
         return json.loads(url_h.read())
 
 
@@ -35,7 +37,9 @@ class CommandsClient(common_client.CommonClient):
 
         @param command_id: valid id for a command.
         """
-        url_h = urllib2.urlopen(self.get_url(params={'deviceId':device_id}))
+        request = urllib2.Request(self.get_url(params={'deviceId':device_id}),
+                                  headers=self.add_auth_headers())
+        url_h = urllib2.urlopen(request)
         return json.loads(url_h.read())
 
 
@@ -50,7 +54,7 @@ class CommandsClient(common_client.CommonClient):
         if not data:
             return
 
-        headers = {'Content-Type': 'application/json'}
+        headers = self.add_auth_headers({'Content-Type': 'application/json'})
         request = urllib2.Request(self.get_url([command_id]), json.dumps(data),
                                   headers=headers)
         if replace:
@@ -68,7 +72,7 @@ class CommandsClient(common_client.CommonClient):
         @device_id: ID of device to send command to.
         @param data: command.
         """
-        headers = {'Content-Type': 'application/json'}
+        headers = self.add_auth_headers({'Content-Type': 'application/json'})
         request = urllib2.Request(self.get_url(params={'deviceId':device_id}),
                                   json.dumps(data),
                                   headers=headers)

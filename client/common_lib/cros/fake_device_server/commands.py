@@ -13,7 +13,7 @@ from fake_device_server import constants
 from fake_device_server import resource_method
 from fake_device_server import server_errors
 
-COMMANDS_PATH = '/buffet/commands'
+COMMANDS_PATH = 'commands'
 
 
 # TODO(sosa) Support upload method (and mediaPath parameter).

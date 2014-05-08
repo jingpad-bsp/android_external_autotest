@@ -13,7 +13,7 @@ import common
 from fake_device_server import common_util
 from fake_device_server import server_errors
 
-REGISTRATION_PATH = '/buffet/registrationTickets'
+REGISTRATION_PATH = 'registrationTickets'
 
 
 class RegistrationTickets(object):
