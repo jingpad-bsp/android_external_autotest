@@ -233,7 +233,7 @@ class RPMController(object):
         # a new process.
         logging.getLogger().handlers = []
         rpm_logging_config.set_up_logging(use_log_server=True)
-        self.set_power_state(dut_hostname, new_state)
+        return self.set_power_state(dut_hostname, new_state)
 
 
     def queue_request(self, dut_hostname, new_state):
