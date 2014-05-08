@@ -207,8 +207,18 @@ class ApBatchLocker(object):
             self.unlock_one_ap(ap_locker.configurator.host_name)
 
 
+    def unlock_and_reclaim_ap(self, host_name):
+        """Unlock an AP but return it to the remaining batch of APs.
+
+        @param host_name: a string, host name.
+        """
+        for ap_locker in self._locked_aps:
+            if host_name == ap_locker.configurator.host_name:
+                self.manager.unlock(hosts=[host_name])
+
+
     def unlock_and_reclaim_aps(self):
-        """Unlock APs but return them to the batch of all APs to unlock.
+        """Unlock APs but return them to the batch of remining APs.
 
         unlock_aps() will remove the remaining APs from the list of all APs
         to process.  This method will add the remaining APs back to the pool
