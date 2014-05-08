@@ -13,6 +13,8 @@ BatteryDataReportType = enum.Enum('CHARGE', 'ENERGY')
 
 # battery data reported at 1e6 scale
 BATTERY_DATA_SCALE = 1e6
+# number of times to retry reading the battery in the case of bad data
+BATTERY_RETRY_COUNT = 3
 
 class DevStat(object):
     """
@@ -253,6 +255,17 @@ class BatteryStat(DevStat):
 
 
     def update(self):
+        for _ in xrange(BATTERY_RETRY_COUNT):
+            try:
+                self._read_battery()
+                return
+            except error.TestError as e:
+                logging.warn(e)
+                continue
+        raise error.TestError('Failed to read battery state')
+
+
+    def _read_battery(self):
         self.read_all_vals()
 
         if self.charge_full == 0 and self.energy_full != 0:
