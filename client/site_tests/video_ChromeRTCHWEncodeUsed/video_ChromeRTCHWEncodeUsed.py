@@ -84,7 +84,7 @@ class video_ChromeRTCHWEncodeUsed(test.test):
                     lambda: histograms_loaded(histogram),
                     timeout=5,
                     exception=error.TestError(
-                            'Cannot find %s histogram.', histogram),
+                            'Cannot find %s histogram.' % histogram),
                     sleep_interval=1)
             histogram_sucess(histogram, bucket)
 

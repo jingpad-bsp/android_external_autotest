@@ -71,7 +71,7 @@ class video_ChromeRTCHWDecodeUsed(test.test):
         utils.poll_for_condition(
                 lambda: histograms_loaded(RTC_VIDEO_DECODE),
                 timeout=5,
-                exception=error.TestError('Cannot find %s histogram.',
+                exception=error.TestError('Cannot find %s histogram.' %
                                           RTC_VIDEO_DECODE),
                 sleep_interval=1)
         histogram_sucess(RTC_VIDEO_DECODE, RTC_VIDEO_DECODE_BUCKET)
