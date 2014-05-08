@@ -180,7 +180,7 @@ class MtbEvent:
     @classmethod
     def is_finger_data(cls, event):
         return (cls.is_ABS_MT_POSITION_X(event) or
-                cls.is_ABS_MT_POSITION_X(event) or
+                cls.is_ABS_MT_POSITION_Y(event) or
                 cls.is_ABS_MT_PRESSURE(event))
 
     @classmethod
