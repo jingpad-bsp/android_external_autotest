@@ -80,12 +80,12 @@ class PerfControl(object):
         - we did not have an error before.
         - the monitoring thread never saw temperatures too close to critical.
 
-        TODO(ihf): search log files for thermal throttling messages like in
+        TODO(ihf): Search log files for thermal throttling messages like in
                    src/build/android/pylib/perf/thermal_throttle.py
         """
         if self._error_reason:
             return False
-        temperature_bad = self._temperature_critical - 10.0
+        temperature_bad = self._temperature_critical - 1.0
         logging.info("Max observed temperature = %.1f'C (bad limit = %.1f'C)",
                      self._temperature_max, temperature_bad)
         if (self._temperature_max > temperature_bad):

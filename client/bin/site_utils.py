@@ -614,6 +614,7 @@ def get_temperature_critical():
         # Today typical for Intel is 98'C to 105'C while ARM is 85'C. Clamp to
         # the lowest known value.
         if ((min_temperature < 60.0) or min_temperature > 150.0):
+            logging.warning('Critical temperature of %.1fC was reset to 85.0C.')
             min_temperature = 85.0
 
         min_temperature = min(temperature, min_temperature)
@@ -631,7 +632,8 @@ def get_temperature_input_max():
         max_temperature = max(temperature, max_temperature)
     # Sanity check for real world values.
     assert ((max_temperature > 10.0) and
-            (max_temperature < 150.0)), 'Unreasonable temperature.'
+            (max_temperature < 150.0)), ('Unreasonable temperature %.1fC.' %
+                                         max_temperature)
     return max_temperature
 
 
@@ -655,7 +657,9 @@ def get_ec_temperatures():
     for temperature in temperatures:
         # Sanity check for real world values.
         assert ((temperature > 10.0) and
-                (temperature < 150.0)), 'Unreasonable temperature.'
+                (temperature < 150.0)), ('Unreasonable temperature %.1fC.' %
+                                         temperature)
+
     return temperatures
 
 
