@@ -87,6 +87,7 @@ class video_VimeoVideo(test.test):
 
         # Verifying video playback.
         self._tab.ExecuteJavaScript('play.click()')
+        self._wait_for_player_status(self._PLAYER_PLAY_STATE)
         playback = 0 # seconds
         prev_playback = 0
         while (playback < self._PLAYBACK_TEST_TIME_S):
