@@ -25,7 +25,7 @@ class ResultCollectorUnittest(unittest.TestCase):
     def _build_view(self, test_idx, test_name, subdir, status, afe_job_id,
                     job_name='fake_job_name', reason='fake reason',
                     job_keyvals=None, test_started_time=None,
-                    test_finished_time=None):
+                    test_finished_time=None, invalidates_test_idx=None):
         """Build a test view using the given fields.
 
         @param test_idx: An integer representing test_idx.
@@ -40,6 +40,8 @@ class ResultCollectorUnittest(unittest.TestCase):
         @param job_keyvals: A dictionary stroing the job keyvals.
         @param test_started_time: A string, e.g. '2014-04-12 12:35:33'
         @param test_finished_time: A string, e.g. '2014-04-12 12:35:33'
+        @param invalidates_test_idx: An integer, representing the idx of the
+                                     test that has been retried.
 
         @reutrn: A dictionary representing a test view.
 
@@ -51,7 +53,8 @@ class ResultCollectorUnittest(unittest.TestCase):
                 'job_name': job_name, 'reason': reason,
                 'job_keyvals': job_keyvals,
                 'test_started_time': test_started_time,
-                'test_finished_time': test_finished_time}
+                'test_finished_time': test_finished_time,
+                'invalidates_test_idx': invalidates_test_idx}
 
 
     def _mock_tko_get_detailed_test_views(self, test_views):
@@ -97,6 +100,8 @@ class ResultCollectorUnittest(unittest.TestCase):
     def testFetchSuiteTestView(self):
         """Test that it fetches the correct suite test views."""
         suite_job_id = 100
+        suite_name = 'dummy'
+        build = 'R23-1.1.1.1'
         server_job_view = self._build_view(
                 10, 'SERVER_JOB', '----', 'GOOD', suite_job_id)
         test_to_ignore = self._build_view(
@@ -113,10 +118,11 @@ class ResultCollectorUnittest(unittest.TestCase):
         suite_views = collector._fetch_relevant_test_views_of_suite()
         suite_views = sorted(suite_views, key=lambda view: view['test_idx'])
         # Verify that SERVER_JOB is renamed to 'Suite Prep'
-        server_job_view['test_name'] = run_suite.ResultCollector.SUITE_PREP
+        self.assertEqual(suite_views[0].get_testname(),
+                         run_suite.TestView.SUITE_PREP)
         # Verify that the test with a subidr is not included.
-        expected = [server_job_view, test_to_include]
-        self.assertEqual(suite_views, expected)
+        self.assertEqual(suite_views[0]['test_idx'], 10)
+        self.assertEqual(suite_views[1]['test_idx'], 12)
 
 
     def testFetchTestViewOfChildJobs(self):
@@ -124,16 +130,22 @@ class ResultCollectorUnittest(unittest.TestCase):
         build = 'lumpy-release/R36-5788.0.0'
         suite_name = 'my_suite'
         suite_job_id = 100
-        good_job_id = 101
+        invalid_job_id = 101
+        invalid_job_name = '%s/%s/test_Pass' % (build, suite_name)
+        good_job_id = 102
         good_job_name = '%s/%s/test_Pass' % (build, suite_name)
-        bad_job_id = 102
+        bad_job_id = 103
         bad_job_name = '%s/%s/test_ServerJobFail' % (build, suite_name)
 
+        invalid_test = self._build_view(
+                19, 'test_Pass_Old', 'fake/subdir',
+                'FAIL', invalid_job_id, invalid_job_name)
         good_job_server_job = self._build_view(
                 20, 'SERVER_JOB', '----', 'GOOD', good_job_id, good_job_name)
         good_job_test = self._build_view(
-                21, 'test_Pass', 'fake/subdir', 'GOOD', good_job_id,
-                good_job_name)
+                21, 'test_Pass', 'fake/subdir', 'GOOD',
+                good_job_id, good_job_name,
+                job_keyvals={'retry_original_job_id': invalid_job_id})
         bad_job_server_job = self._build_view(
                 22, 'SERVER_JOB', '----', 'FAIL', bad_job_id, bad_job_name)
         bad_job_test = self._build_view(
@@ -141,48 +153,60 @@ class ResultCollectorUnittest(unittest.TestCase):
                 bad_job_id, bad_job_name)
         self._mock_tko_get_detailed_test_views(
                 [good_job_server_job, good_job_test,
-                 bad_job_server_job, bad_job_test])
+                 bad_job_server_job, bad_job_test, invalid_test])
         self._mock_afe_get_jobs(suite_job_id, [good_job_id, bad_job_id])
         collector = run_suite.ResultCollector(
                 'fake_server', self.afe, self.tko,
                 build, suite_name, suite_job_id)
-        child_views = collector._fetch_test_views_of_child_jobs()
+        child_views, retry_counts = collector._fetch_test_views_of_child_jobs()
+        # child_views should contain tests 21, 22, 23
         child_views = sorted(child_views, key=lambda view: view['test_idx'])
         # Verify that the SERVER_JOB has been renamed properly
-        bad_job_server_job['test_name'] = '%s_%s' % (
-                good_job_name, 'SERVER_JOB')
-        # Verify that failed SERVER_JOB and actual tests are included,
-        expected = [good_job_test, bad_job_server_job, bad_job_test]
-        self.assertEqual(child_views, expected)
-        self.afe.get_jobs.assert_called_once_with(parent_job_id=suite_job_id)
+        self.assertEqual(child_views[1].get_testname(),
+                         'test_ServerJobFail_SERVER_JOB')
+        # Verify that failed SERVER_JOB and actual invalid tests are included,
+        expected = [good_job_test['test_idx'], bad_job_server_job['test_idx'],
+                    bad_job_test['test_idx']]
+        child_view_ids = [v['test_idx'] for v in child_views]
+        self.assertEqual(child_view_ids, expected)
+        self.afe.get_jobs.assert_called_once_with(
+                parent_job_id=suite_job_id)
+        # Verify the retry_counts is calculated correctly
+        self.assertEqual(len(retry_counts), 1)
+        self.assertEqual(retry_counts[21], 1)
 
 
     def testGenerateLinks(self):
         """Test that it generates correct web and buildbot links."""
         suite_job_id = 100
-        suite_job_view = self._build_view(
-                20, 'Suite prep', '----', 'GOOD', suite_job_id)
-        good_test = self._build_view(
-                21, 'test_Pass', 'fake/subdir', 'GOOD', 101)
-        bad_test = self._build_view(
-                23, 'test_Fail', 'fake/subdir', 'FAIL', 102)
+        suite_name = 'my_suite'
+        build = 'lumpy-release/R36-5788.0.0'
+        suite_job_view = run_suite.TestView(
+                self._build_view(
+                    20, 'Suite prep', '----', 'GOOD', suite_job_id),
+                suite_job_id, suite_name, build)
+        good_test = run_suite.TestView(
+                self._build_view(
+                    21, 'test_Pass', 'fake/subdir', 'GOOD', 101),
+                suite_job_id, suite_name, build)
+        bad_test = run_suite.TestView(
+                self._build_view(
+                    23, 'test_Fail', 'fake/subdir', 'FAIL', 102),
+                suite_job_id, suite_name, build)
 
         collector = run_suite.ResultCollector(
                 'fake_server', self.afe, self.tko,
-                'lumpy-release/R36-5788.0.0', 'my_suite', suite_job_id)
-        collector._display_names = {20: 'Suite prep', 21: 'test_Pass',
-                                    23: 'test_Fail'}
+                build, suite_name, suite_job_id)
         collector._suite_views = [suite_job_view]
         collector._test_views = [suite_job_view, good_test, bad_test]
         collector._max_testname_width = max(
-                [len(v['test_name']) for v in collector._test_views]) + 3
+                [len(v.get_testname()) for v in collector._test_views]) + 3
         collector._generate_web_and_buildbot_links()
         URL_PATTERN = run_suite.LogLink._URL_PATTERN
         # expected_web_links is list of (anchor, url) tuples we
         # are expecting.
         expected_web_links = [
-                 (collector._display_names[v['test_idx']].ljust(
-                         collector._max_testname_width),
+                 (v.get_testname().ljust(collector._max_testname_width),
                   URL_PATTERN % ('fake_server',
                                 '%s-%s' % (v['afe_job_id'], getpass.getuser())))
                  for v in collector._test_views]
@@ -193,8 +217,7 @@ class ResultCollectorUnittest(unittest.TestCase):
             self.assertEqual(collector._web_links[i].url, expect[1])
 
         expected_buildbot_links = [
-                 (collector._display_names[v['test_idx']].ljust(
-                         collector._max_testname_width),
+                 (v.get_testname().ljust(collector._max_testname_width),
                   URL_PATTERN % ('fake_server',
                                 '%s-%s' % (v['afe_job_id'], getpass.getuser())))
                  for v in collector._test_views if v['status'] != 'GOOD']
@@ -203,25 +226,39 @@ class ResultCollectorUnittest(unittest.TestCase):
             expect = expected_buildbot_links[i]
             self.assertEqual(collector._buildbot_links[i].anchor, expect[0])
             self.assertEqual(collector._buildbot_links[i].url, expect[1])
+            self.assertEqual(collector._buildbot_links[i].retry_count, 0)
 
 
     def _end_to_end_test_helper(
             self, include_bad_test=False, include_warn_test=False,
             include_experimental_bad_test=False, include_timeout_test=False,
-            include_self_aborted_test=False, suite_job_status='GOOD'):
+            include_self_aborted_test=False,
+            include_good_retry=False, include_bad_retry=False,
+            suite_job_status='GOOD'):
         """A helper method for testing ResultCollector end-to-end.
 
         This method mocks the retrieving of required test views,
         and call ResultCollector.run() to collect the results.
 
-        @param include_bad_test: If True, include a view of a test
-                                 which has status 'FAIL'.
-        @param include_warn_test: If True, include a view of a test
-                                  which has status 'WARN'
+        @param include_bad_test:
+                If True, include a view of a test which has status 'FAIL'.
+        @param include_warn_test:
+                If True, include a view of a test which has status 'WARN'
         @param include_experimental_bad_test:
                 If True, include a view of an experimental test
                 which has status 'FAIL'.
+        @param include_timeout_test:
+                If True, include a view of a test which was aborted before
+                started.
+        @param include_self_aborted_test:
+                If True, include a view of test which was aborted after
+                started.
+        @param include_good_retry:
+                If True, include a test that passed after retry.
+        @param include_bad_retry:
+                If True, include a test that failed after retry.
 
+        @returns: A ResultCollector instance.
         """
         suite_job_id = 100
         good_job_id = 101
@@ -230,6 +267,12 @@ class ResultCollectorUnittest(unittest.TestCase):
         experimental_bad_job_id = 102
         timeout_job_id = 100
         self_aborted_job_id = 104
+        good_retry_job_id = 105
+        bad_retry_job_id = 106
+        invalid_job_id_1 = 90
+        invalid_job_id_2 = 91
+        suite_name = 'dummy'
+        build = 'lumpy-release/R27-3888.0.0'
         suite_job_keyvals = {
                 constants.DOWNLOAD_STARTED_TIME: '2014-04-29 13:14:20',
                 constants.PAYLOAD_FINISHED_TIME: '2014-04-29 13:14:25',
@@ -242,35 +285,64 @@ class ResultCollectorUnittest(unittest.TestCase):
                 '2014-04-29 13:25:27')
         good_test = self._build_view(
                 11, 'dummy_Pass', '101-user/host/dummy_Pass', 'GOOD',
-                good_job_id, 'lumpy-release/R27-3888.0.0/dummy_Pass',
+                good_job_id, 'lumpy-release/R27-3888.0.0/dummy/dummy_Pass',
                 '', {}, '2014-04-29 13:15:35', '2014-04-29 13:15:36')
         bad_test = self._build_view(
                 12, 'dummy_Fail.Fail', '102-user/host/dummy_Fail.Fail', 'FAIL',
-                bad_job_id, 'lumpy-release/R27-3888.0.0/dummy_Fail.Fail',
+                bad_job_id, 'lumpy-release/R27-3888.0.0/dummy/dummy_Fail.Fail',
                 'always fail', {}, '2014-04-29 13:16:00',
                 '2014-04-29 13:16:02')
         warn_test = self._build_view(
                 13, 'dummy_Fail.Warn', '102-user/host/dummy_Fail.Warn', 'WARN',
-                warn_job_id, 'lumpy-release/R27-3888.0.0/dummy_Fail.Warn',
+                warn_job_id, 'lumpy-release/R27-3888.0.0/dummy/dummy_Fail.Warn',
                 'always warn', {}, '2014-04-29 13:16:00',
                 '2014-04-29 13:16:02')
         experimental_bad_test = self._build_view(
                 14, 'experimental_dummy_Fail.Fail',
                 '102-user/host/dummy_Fail.Fail', 'FAIL',
                 experimental_bad_job_id,
-                'lumpy-release/R27-3888.0.0/experimental_dummy_Fail.Fail',
+                'lumpy-release/R27-3888.0.0/dummy/experimental_dummy_Fail.Fail',
                 'always fail', {'experimental': 'True'}, '2014-04-29 13:16:06',
                 '2014-04-29 13:16:07')
         timeout_test = self._build_view(
                 15, 'dummy_Timeout', '', 'ABORT',
-                timeout_job_id, 'lumpy-release/R27-3888.0.0/dummy_Timeout',
+                timeout_job_id,
+                'lumpy-release/R27-3888.0.0/dummy/dummy_Timeout',
                 'child job did not run', {}, '2014-04-29 13:15:37',
                 '2014-04-29 13:15:38')
         self_aborted_test = self._build_view(
                 16, 'dummy_Abort', '104-user/host/dummy_Abort', 'ABORT',
-                self_aborted_job_id, 'lumpy-release/R27-3888.0.0/dummy_Abort',
+                self_aborted_job_id,
+                'lumpy-release/R27-3888.0.0/dummy/dummy_Abort',
                 'child job aborted', {}, '2014-04-29 13:15:39',
                 '2014-04-29 13:15:40')
+        good_retry = self._build_view(
+                17, 'dummy_RetryPass', '105-user/host/dummy_RetryPass', 'GOOD',
+                good_retry_job_id,
+                'lumpy-release/R27-3888.0.0/dummy/dummy_RetryPass',
+                '', {'retry_original_job_id': invalid_job_id_1},
+                '2014-04-29 13:15:37',
+                '2014-04-29 13:15:38', invalidates_test_idx=1)
+        bad_retry = self._build_view(
+                18, 'dummy_RetryFail', '106-user/host/dummy_RetryFail', 'FAIL',
+                bad_retry_job_id,
+                'lumpy-release/R27-3888.0.0/dummy/dummy_RetryFail',
+                'retry failed', {'retry_original_job_id': invalid_job_id_2},
+                '2014-04-29 13:15:39', '2014-04-29 13:15:40',
+                invalidates_test_idx=2)
+        invalid_test_1 = self._build_view(
+                1, 'dummy_RetryPass', '90-user/host/dummy_RetryPass', 'GOOD',
+                invalid_job_id_1,
+                'lumpy-release/R27-3888.0.0/dummy/dummy_RetryPass',
+                'original test failed', {}, '2014-04-29 13:10:00',
+                '2014-04-29 13:10:01')
+        invalid_test_2 = self._build_view(
+                2, 'dummy_RetryFail', '91-user/host/dummy_RetryFail', 'FAIL',
+                invalid_job_id_2,
+                'lumpy-release/R27-3888.0.0/dummy/dummy_RetryFail',
+                'original test failed', {},
+                '2014-04-29 13:10:03', '2014-04-29 13:10:04')
+
         test_views = [server_job_view, good_test]
         child_jobs = set([good_job_id])
         if include_bad_test:
@@ -288,6 +360,12 @@ class ResultCollectorUnittest(unittest.TestCase):
         if include_self_aborted_test:
             test_views.append(self_aborted_test)
             child_jobs.add(self_aborted_job_id)
+        if include_good_retry:
+            test_views.extend([good_retry, invalid_test_1])
+            child_jobs.add(good_retry_job_id)
+        if include_bad_retry:
+            test_views.extend([bad_retry, invalid_test_2])
+            child_jobs.add(bad_retry_job_id)
         self._mock_tko_get_detailed_test_views(test_views)
         self._mock_afe_get_jobs(suite_job_id, child_jobs)
         collector = run_suite.ResultCollector(
@@ -329,6 +407,9 @@ class ResultCollectorUnittest(unittest.TestCase):
                 include_experimental_bad_test=True)
         self.assertEqual(collector.return_code, run_suite.RETURN_CODES.ERROR)
 
+        collector = self._end_to_end_test_helper(include_self_aborted_test=True)
+        self.assertEqual(collector.return_code, run_suite.RETURN_CODES.ERROR)
+
 
     def testEndToEndSuiteJobFail(self):
         """Test it returns code SUITE_FAILURE when only the suite job failed."""
@@ -339,6 +420,27 @@ class ResultCollectorUnittest(unittest.TestCase):
         collector = self._end_to_end_test_helper(suite_job_status='ERROR')
         self.assertEqual(
                 collector.return_code, run_suite.RETURN_CODES.INFRA_FAILURE)
+
+
+    def testEndToEndRetry(self):
+        """Test it returns correct code when a test was retried."""
+        collector = self._end_to_end_test_helper(include_good_retry=True)
+        self.assertEqual(
+                collector.return_code, run_suite.RETURN_CODES.WARNING)
+
+        collector = self._end_to_end_test_helper(include_good_retry=True,
+                include_self_aborted_test=True)
+        self.assertEqual(
+                collector.return_code, run_suite.RETURN_CODES.ERROR)
+
+        collector = self._end_to_end_test_helper(include_good_retry=True,
+                include_bad_test=True)
+        self.assertEqual(
+                collector.return_code, run_suite.RETURN_CODES.ERROR)
+
+        collector = self._end_to_end_test_helper(include_bad_retry=True)
+        self.assertEqual(
+                collector.return_code, run_suite.RETURN_CODES.ERROR)
 
 
     def testEndToEndSuiteTimeout(self):
@@ -362,6 +464,12 @@ class ResultCollectorUnittest(unittest.TestCase):
         # a child job timed out, and one test warned.
         collector = self._end_to_end_test_helper(
                 include_warn_test=True, include_timeout_test=True)
+        self.assertEqual(collector.return_code,
+                         run_suite.RETURN_CODES.SUITE_TIMEOUT)
+
+        # a child job timed out, and one test was retried.
+        collector = self._end_to_end_test_helper(include_good_retry=True,
+                include_timeout_test=True)
         self.assertEqual(
                 collector.return_code, run_suite.RETURN_CODES.SUITE_TIMEOUT)
 

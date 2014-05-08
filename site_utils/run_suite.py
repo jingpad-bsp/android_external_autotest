@@ -17,7 +17,7 @@ dynamic suite infrastructure in server/cros/dynamic_suite.py.
 This script exits with one of the following codes:
 0 - OK: Suite finished successfully
 1 - ERROR: Test(s) failed, or hits its own timeout
-2 - WARNING: Test(s) raised a warning, none failed/timed out.
+2 - WARNING: Test(s) raised a warning or passed on retry, none failed/timed out.
 3 - INFRA_FAILURE: Infrastructure related issues, e.g.
     * Lab is down
     * Too many duts (defined as a constant) in repair failed status
@@ -70,15 +70,15 @@ SEVERITY = {RETURN_CODES.OK: 0,
 
 
 def get_worse_code(code1, code2):
-    """Compare the severity of two codes and return the worse one.
+    """Compare the severity of two codes and return the worse code.
 
     @param code1: An enum value of RETURN_CODES
     @param code2: An enum value of RETURN_CODES
 
-    @returns: The code with higher severity.
+    @returns: the more severe one between code1 and code2.
 
     """
-    return code1 if SEVERITY[code1] > SEVERITY[code2] else code2
+    return code1 if SEVERITY[code1] >= SEVERITY[code2] else code2
 
 
 def setup_logging(logfile=None):
@@ -211,19 +211,6 @@ def get_pretty_status(status):
     return '[ FAILED ]'
 
 
-def is_fail_status(status):
-    """
-    Check if the given status corresponds to a failure.
-
-    @param status: The status to check. (string)
-
-    @return: True if status is FAIL or ERROR. False otherwise.
-    """
-    # All the statuses tests can have when they fail.
-    if status in ['FAIL', 'ERROR', 'ABORT']:
-        return True
-    return False
-
 
 class LogLink(object):
     """Information needed to record a link in the logs.
@@ -243,7 +230,8 @@ class LogLink(object):
                                            'log_url_pattern', type=str)
 
 
-    def __init__(self, anchor, server, job_string, bug_info=None, reason=None):
+    def __init__(self, anchor, server, job_string, bug_info=None, reason=None,
+                 retry_count=0):
         """Initialize the LogLink by generating the log URL.
 
         @param anchor      The link text.
@@ -251,10 +239,12 @@ class LogLink(object):
         @param job_string  The job whose logs we'd like to link to.
         @param bug_info    Info about the bug, if one was filed.
         @param reason      A string representing the reason of failure if any.
+        @param retry_count How many times the test has been retried.
         """
         self.anchor = anchor
         self.url = self._URL_PATTERN % (server, job_string)
         self.reason = reason
+        self.retry_count = retry_count
         if bug_info:
             self.bug_id, self.bug_count = bug_info
         else:
@@ -270,22 +260,31 @@ class LogLink(object):
 
         @return A link formatted for the buildbot log annotator.
         """
+        info_strings = []
+        if self.retry_count > 0:
+            info_strings.append('retry_count: %d' % self.retry_count)
+
         if self.bug_id:
             url = '%s%s' % (self._BUG_URL_PREFIX, self.bug_id)
             if self.bug_count is None:
-                anchor_text = '%s (Unknown number of reports)' % (
-                        self.anchor.strip())
+                bug_info = 'unknown number of reports'
             elif self.bug_count == 1:
-                anchor_text = '%s (new)' % self.anchor.strip()
+                bug_info = 'new report'
             else:
-                anchor_text = '%s (%s reports)' % (
-                        self.anchor.strip(), self.bug_count)
+                bug_info = '%s reports' % self.bug_count
+            info_strings.append(bug_info)
         else:
             url = self.url
-            anchor_text = self.anchor.strip()
 
         if self.reason:
-            anchor_text = '%s - %s' % (anchor_text, self.reason)
+            info_strings.append(self.reason.strip())
+
+        if info_strings:
+            info = ', '.join(info_strings)
+            anchor_text = '%(anchor)s: %(info)s' % {
+                    'anchor': self.anchor.strip(), 'info': info}
+        else:
+            anchor_text = self.anchor.strip()
 
         return '@@@STEP_LINK@%s@%s@@@'% (anchor_text, url)
 
@@ -359,7 +358,7 @@ class Timings(object):
 
         If timestamps are unavailable, datetime.datetime.min/max will be used.
 
-        @param view: a view dict, as returned by get_detailed_test_views().
+        @param view: A TestView object.
         """
         start_candidate = datetime.min
         end_candidate = datetime.max
@@ -370,7 +369,7 @@ class Timings(object):
             end_candidate = datetime.strptime(view['test_finished_time'],
                                               job_status.TIME_FMT)
 
-        if view['test_name'] == ResultCollector.SUITE_PREP:
+        if view.get_testname() == TestView.SUITE_PREP:
             self.suite_start_time = start_candidate
         else:
             self._UpdateFirstTestStartTime(start_candidate)
@@ -529,6 +528,275 @@ def instance_for_pool(pool_name):
             default=_DEFAULT_AUTOTEST_INSTANCE)
 
 
+class TestView(object):
+    """Represents a test view and provides a set of helper functions."""
+
+
+    SUITE_PREP = 'Suite prep'
+
+
+    def __init__(self, view, suite_job_id, suite_name, build):
+        """Init a TestView object representing a tko test view.
+
+        @param view: A dictionary representing a tko test view.
+        @param suite_job_id: The id of the suite job
+                             that kicks off the test.
+        @param suite_name: The name of the suite
+                           that the test belongs to.
+        @param build: The build for which the test is run.
+        """
+        self.view = view
+        self.suite_job_id = suite_job_id
+        self.suite_name = suite_name
+        self.build = build
+        self.is_suite_view = suite_job_id == view['afe_job_id']
+        # This is the test name that will be shown in the output.
+        self.testname = None
+
+
+    def __getitem__(self, key):
+        """Overload __getitem__ so that we can still use []
+
+        @param key: A key of the tko test view.
+
+        @returns: The value of an attribute in the view.
+
+        """
+        return self.view[key]
+
+
+    def __setitem__(self, key, item):
+        """Overload __setitem so that we can still use []
+
+        @param key: A key of the tko test view.
+        @param item: A value to set
+
+        """
+        self.view[key] = item
+
+
+    def __iter__(self):
+        """Overload __iter__ so that it supports 'in' operator."""
+        return iter(self.view)
+
+
+    def get_testname(self):
+        """Get test name that should be shown in the output.
+
+        Formalize the test_name we got from the test view.
+
+        Remove 'build/suite' prefix if any. And append 'experimental' prefix
+        for experimental tests if their names do not start with 'experimental'.
+
+        If one runs a test in control file via the following code,
+           job.runtest('my_Test', tag='tag')
+        for most of the cases, view['test_name'] would look like 'my_Test.tag'.
+        If this is the case, this method will just return the original
+        test name, i.e. 'my_Test.tag'.
+
+        There are four special cases.
+        1) A test view is for the suite job's SERVER_JOB.
+           In this case, this method will return 'Suite prep'.
+
+        2) A test view is of a child job and for a SERVER_JOB or CLIENT_JOB.
+           In this case, we will take the job name, remove the build/suite
+           prefix from the job name, and append the rest to 'SERVER_JOB'
+           or 'CLIENT_JOB' as a prefix. So the names returned by this
+           method will look like:
+             'experimental_Telemetry Smoothness Measurement_SERVER_JOB'
+             'experimental_dummy_Pass_SERVER_JOB'
+             'dummy_Fail_SERVER_JOB'
+
+        2) A test view is of a suite job and its status is ABORT.
+           In this case, the view['test_name'] is the child job's name.
+           If it is an experimental test, 'experimental' will be part
+           of the name. For instance,
+             'lumpy-release/R35-5712.0.0/perf_v2/
+                   experimental_Telemetry Smoothness Measurement'
+             'lumpy-release/R35-5712.0.0/dummy/experimental_dummy_Pass'
+             'lumpy-release/R35-5712.0.0/dummy/dummy_Fail'
+           The above names will be converted to the following:
+             'experimental_Telemetry Smoothness Measurement'
+             'experimental_dummy_Pass'
+             'dummy_Fail'
+
+        3) A test view's status is of a suite job and its status is TEST_NA.
+           In this case, the view['test_name'] is the NAME field of the control
+           file. If it is an experimental test, 'experimental' will part of
+           the name. For instance,
+             'experimental_Telemetry Smoothness Measurement'
+             'experimental_dummy_Pass'
+             'dummy_Fail'
+           This method will not modify these names.
+
+        @returns: Test name after normalization.
+
+        """
+        if self.testname is not None:
+            return self.testname
+
+        if (self.is_suite_view and
+                self.view['test_name'].startswith('SERVER_JOB')):
+            # Rename suite job's SERVER_JOB to 'Suite prep'.
+            self.testname = self.SUITE_PREP
+            return self.testname
+
+        if (self.view['test_name'].startswith('SERVER_JOB') or
+                self.view['test_name'].startswith('CLIENT_JOB')):
+            # Append job name as a prefix for SERVER_JOB and CLIENT_JOB
+            testname= '%s_%s' % (self.view['job_name'], self.view['test_name'])
+        else:
+            testname = self.view['test_name']
+        experimental =  self.is_experimental()
+        # Remove the build and suite name from testname if any.
+        testname = tools.get_test_name(
+                self.build, self.suite_name, testname)
+        # If an experimental test was aborted, testname
+        # would include the 'experimental' prefix already.
+        prefix = constants.EXPERIMENTAL_PREFIX if (
+                experimental and not
+                testname.startswith(constants.EXPERIMENTAL_PREFIX)) else ''
+        self.testname = prefix + testname
+        return self.testname
+
+
+    def is_relevant_suite_view(self):
+        """Checks whether this is a suite view we should care about.
+
+        @returns: True if it is relevant. False otherwise.
+        """
+        return (self.get_testname() == self.SUITE_PREP or
+                (self.is_suite_view and
+                    not self.view['test_name'].startswith('CLIENT_JOB') and
+                    not self.view['subdir']))
+
+
+    def is_test(self):
+        """Return whether the view is for an actual test.
+
+        @returns True if the view is for an actual test.
+                 False if the view is for SERVER_JOB or CLIENT_JOB.
+
+        """
+        return not (self.view['test_name'].startswith('SERVER_JOB') or
+                self.view['test_name'].startswith('CLIENT_JOB'))
+
+
+    def is_retry(self):
+        """Check whether the view is for a retry.
+
+        @returns: True, if the view is for a retry; False otherwise.
+
+        """
+        return self.view['job_keyvals'].get('retry_original_job_id') is not None
+
+
+    def is_experimental(self):
+        """Check whether a test view is for an experimental test.
+
+        @returns: True if it is for an experimental test, False otherwise.
+
+        """
+        return (self.view['job_keyvals'].get('experimental') == 'True' or
+                tools.get_test_name(self.build, self.suite_name,
+                        self.view['test_name']).startswith('experimental'))
+
+
+    def is_timeout_and_not_run(self):
+        """Check whether the view is for a test that timed out and did not run.
+
+        A child job that was aborted before it got a chance to
+        run will have a view assoicated to suite job.
+        This mostly happens when a job timed out due to
+        starving for hosts (unless aborted manually by user,
+        which we don't consider here).
+
+        @returns: True if the test represented by the view
+                  timed out and did not run; False otherwise.
+
+        """
+        return (self.is_suite_view and self.view['status'] == 'ABORT')
+
+
+    def is_in_fail_status(self):
+        """
+        Check if the given test's status corresponds to a failure.
+
+        @returns: True if the test's status is FAIL or ERROR. False otherwise.
+
+        """
+        # All the statuses tests can have when they fail.
+        return self.view['status'] in ['FAIL', 'ERROR', 'ABORT']
+
+
+    def get_buildbot_link_reason(self):
+        """Generate the buildbot link reason for the test.
+
+        @returns: A string representing the reason.
+
+        """
+        return ('%s: %s' % (self.view['status'], self.view['reason'])
+                if self.view['reason'] else self.view['status'])
+
+
+    def get_job_id_owner_str(self):
+        """Generate the job_id_owner string for a test.
+
+        @returns: A string which looks like 135036-username
+
+        """
+        return '%s-%s' % (self.view['afe_job_id'], getpass.getuser())
+
+
+    def get_bug_info(self, suite_job_keyvals):
+        """Get the bug info from suite_job_keyvals.
+
+        If a bug has been filed for the test, its bug info (bug id and counts)
+        will be stored in the suite job's keyvals. This method attempts to
+        retrieve bug info of the test from |suite_job_keyvals|. It will return
+        None if no bug info is found. No need to check bug info if the view is
+        SUITE_PREP.
+
+        @param suite_job_keyvals: The job keyval dictionary of the suite job.
+                All the bug info about child jobs are stored in
+                suite job's keyvals.
+
+        @returns: None if there is no bug info, or a pair with the
+                  id of the bug, and the count of the number of
+                  times the bug has been seen.
+
+        """
+        if self.get_testname() == self.SUITE_PREP:
+            return None
+        if (self.view['test_name'].startswith('SERVER_JOB') or
+                self.view['test_name'].startswith('CLIENT_JOB')):
+            # Append job name as a prefix for SERVER_JOB and CLIENT_JOB
+            testname= '%s_%s' % (self.view['job_name'], self.view['test_name'])
+        else:
+            testname = self.view['test_name']
+
+        return tools.get_test_failure_bug_info(
+                suite_job_keyvals, self.view['afe_job_id'],
+                testname)
+
+
+    def should_display_buildbot_link(self):
+        """Check whether a buildbot link should show for this view.
+
+        Show links on the buildbot waterfall if
+        1) it is a normal test that are not in GOOD/TEST_NA status
+           and did not time out before running; or
+        2) this is a retry.
+
+        @returns: True if we should show the buildbot link.
+                  False otherwise.
+        """
+        is_bad_status = (self.view['status'] != 'GOOD' and
+                         self.view['status'] != 'TEST_NA')
+        is_timeout = self.is_timeout_and_not_run()
+        return (is_bad_status and not is_timeout) or self.is_retry()
+
+
 class ResultCollector(object):
     """Collect test results of a suite.
 
@@ -551,10 +819,7 @@ class ResultCollector(object):
     For child jobs, we pull all the test views associated with them.
     (Note 'SERVER_JOB'/'CLIENT_JOB' are handled speically)
 
-    3) Generate display names.
-    Remove 'build/suite' prefix if any. And append 'exprimental' prefix
-    for experimental tests.
-
+    3) Generate web and buildbot links.
     4) Compute timings of the suite run.
     5) Compute the return code based on test results.
 
@@ -567,14 +832,15 @@ class ResultCollector(object):
     @var _suite_name: The suite name, e.g. 'bvt', 'dummy'.
     @var _suite_job_id: The job id of the suite for which we are going to
                         collect results.
-    @var _suite_views: A list of relevant test views of the suite job.
-    @var _child_views: A list of test views of the child jobs.
-    @var _test_views: A list of all test views from _suite_views and
-                      _child_views.
+    @var _suite_views: A list of TestView objects, representing relevant
+                       test views of the suite job.
+    @var _child_views: A list of TestView objects, representing test views
+                       of the child jobs.
+    @var _test_views: A list of TestView objects, representing all test views
+                      from _suite_views and _child_views.
     @var _web_links: A list of web links pointing to the results of jobs.
     @var _buildbot_links: A list of buildbot links for non-passing tests.
-    @var _display_names: A dictionary mapping test_idx to its formatted test
-                         name that is to be shown in the output.
+    @var _max_testname_width: Max width of all test names.
     @var return_code: The exit code that should be returned by run_suite.
     @var return_message: Any message that should be displayed to explain
                          the return code.
@@ -583,9 +849,6 @@ class ResultCollector(object):
     @var timings: A Timing object that records the suite's timings.
 
     """
-
-
-    SUITE_PREP = 'Suite prep'
 
 
     def __init__(self, instance_server, afe, tko, build,
@@ -599,40 +862,14 @@ class ResultCollector(object):
         self._suite_views = []
         self._child_views = []
         self._test_views = []
+        self._retry_counts = {}
         self._web_links = []
         self._buildbot_links = []
-        self._display_names = {}
         self._max_testname_width = 0
         self.return_code = None
         self.return_message = ''
         self.is_aborted = None
         self.timings = None
-
-
-    def is_test_experimental(self, view):
-        """Check whether a test view is for an experimental test.
-
-        @param view: A dictionary representing a tko test view.
-
-        @return: True if it is for an experimental test, False otherwise.
-
-        """
-        return (view['job_keyvals'].get('experimental') == 'True' or
-                tools.get_test_name(self._build, self._suite_name,
-                        view['test_name']).startswith('experimental'))
-
-
-    @staticmethod
-    def _is_view_for_test(view):
-        """Indicates whether the view of a given test is for an actual test.
-
-        @param view: A dictionary representing a tko test view.
-        @return True if the view is for an actual test.
-                False if the view is for SERVER_JOB or CLIENT_JOB.
-
-        """
-        return not (view['test_name'].startswith('SERVER_JOB') or
-                    view['test_name'].startswith('CLIENT_JOB'))
 
 
     def _fetch_relevant_test_views_of_suite(self):
@@ -659,124 +896,74 @@ class ResultCollector(object):
         So, for the above example, we only keep test views whose test_idxs
         are 10, 11, 14.
 
-        We also rename SERVER_JOB to 'Suite prep' in our local cache.
-
-        @returns: A list of relevant test views of the suite job.
+        @returns: A list of TestView objects, representing relevant
+                  test views of the suite job.
 
         """
         views = self._tko.run(call='get_detailed_test_views',
                               afe_job_id=self._suite_job_id)
         relevant_views = []
         for v in views:
-            if v['test_name'] == 'SERVER_JOB':
-                # Rename suite job's SERVER_JOB to 'Suite prep'.
-                v['test_name'] = ResultCollector.SUITE_PREP
+            v = TestView(v, self._suite_job_id, self._suite_name, self._build)
+            if v.is_relevant_suite_view():
                 relevant_views.append(v)
-            elif (not v['test_name'].startswith('CLIENT_JOB') and
-                  not v['subdir']):
-                relevant_views.append(v)
+            if v.is_timeout_and_not_run():
+                v['reason'] = 'Timed out, did not run.'
         return relevant_views
+
+
+    def _compute_retry_count(self, view):
+        """Return how many times the test has been retried.
+
+        @param view: A TestView instance.
+        @returns: An int value indicating the retry count.
+
+        """
+        old_job = view['job_keyvals'].get('retry_original_job_id')
+        count = 0
+        while old_job:
+            count += 1
+            views = self._tko.run(
+                call='get_detailed_test_views', afe_job_id=old_job)
+            old_job = (views[0]['job_keyvals'].get('retry_original_job_id')
+                       if views else None)
+        return count
 
 
     def _fetch_test_views_of_child_jobs(self):
         """Fetch test views of child jobs.
 
-        For non-test test views like 'SERVER_JOB', 'CLIENT_JOB.0', we only
-        keep it if it fails and the job has no other real test failures.
-        And we also append the job name to the begining of its test name,
-        so that it looks something like
-        'lumpy-release/R35-5712.0.0/dummy/dummy_Fail_SERVER_JOB'. This is
-        the naming convention that is used by dynamic suite for SERVER_JOB.
-        We need to use the same name as dynamic suite does so that we can
-        correctly retrieve any job keyval whose key includes test name as
-        part of it.
-
-        For test views of real test runs, we just keep them all.
-
-        If a test has been retried, it will be marked as invalid by tko parser.
-        We will ignore such tests so that only the retry will be shown in the
-        output of run_suite.
+        @returns: A tuple (child_views, retry_counts)
+                  child_views is list of TestView objects, representing
+                  all valid views. retry_counts is a dictionary that maps
+                  test_idx to retry counts. It only stores retry
+                  counts that are greater than 0.
 
         """
         child_job_ids = set(job.id for job in
                             self._afe.get_jobs(
                                 parent_job_id=self._suite_job_id))
         child_views = []
+        retry_counts = {}
         for job_id in child_job_ids:
-            views = self._tko.run(call='get_detailed_test_views',
-                                  afe_job_id=job_id, invalid=0)
+            views = [TestView(v, self._suite_job_id,
+                              self._suite_name, self._build)
+                     for v in self._tko.run(
+                         call='get_detailed_test_views', afe_job_id=job_id,
+                         invalid=0)]
             contains_test_failure = any(
-                    ResultCollector._is_view_for_test(v) and
-                    v['status'] != 'GOOD' for v in views)
+                    v.is_test() and v['status'] != 'GOOD' for v in views)
             for v in views:
-                if ResultCollector._is_view_for_test(v):
+                if (v.is_test() or
+                        v['status'] != 'GOOD' and not contains_test_failure):
+                    # For normal test view, just keep it.
+                    # For SERVER_JOB or CLIENT_JOB, only keep it
+                    # if it fails and no other test failure.
                     child_views.append(v)
-                elif v['status'] != 'GOOD' and not contains_test_failure:
-                    # This is SERVER_JOB or CLIENT_JOB. Only keep it
-                    # if no other test failure. And append the job name
-                    # as a prefix.
-                    v['test_name'] = '%s_%s' % (v['job_name'], v['test_name'])
-                    child_views.append(v)
-        return child_views
-
-
-    def _generate_display_names(self):
-        """Generate display names.
-
-        Formalize the test_name we got from the test view. Remove
-        'build/suite' prefix if any. And append 'experimental' prefix
-        for experimental tests if their names do not start with 'experimental'.
-
-        If one runs a test in control file via the following code,
-           job.runtest('my_Test', tag='tag')
-        For most of the cases, test_name of the test view should
-        look like 'my_Test.tag'.
-
-        But there are three special cases.
-        1) A test view is of a child job and for a SERVER_JOB or CLIENT_JOB.
-           In this case, the test name has the job name as a prefix.
-           If it is an experimental test, 'experimental' is as part of the name.
-           For instance,
-           'lumpy-release/R35-5712.0.0/perf_v2/
-                   experimental_Telemetry Smoothness Measurement_SERVER_JOB'
-           'lumpy-release/R35-5712.0.0/dummy/
-                   experimental_dummy_Pass_SERVER_JOB'
-           'lumpy-release/R35-5712.0.0/dummy/dummy_Fail_SERVER_JOB'
-
-        2) A test view's status is of a suite job and its status is ABORT.
-           In this case, the test name is the job name.
-           If it is an experimental test, 'experimental' is part of the name.
-           For instance,
-           'lumpy-release/R35-5712.0.0/perf_v2/
-                   experimental_Telemetry Smoothness Measurement'
-           'lumpy-release/R35-5712.0.0/dummy/experimental_dummy_Pass'
-           'lumpy-release/R35-5712.0.0/dummy/dummy_Fail'
-
-        3) A test view's status is of a suite job and its status is TEST_NA.
-           In this case, the test name is NAME field of the control file.
-           If it is an experimental test, 'experimental' is part of the name.
-           For instance, 'experimental_Telemetry Smoothness Measurement'
-                         'experimental_dummy_Pass'
-                         'dummy_Fail'
-
-        """
-        max_width = 0
-        self._display_names = {}
-        for v in self._test_views:
-            experimental =  self.is_test_experimental(v)
-            test_name = tools.get_test_name(
-                    self._build, self._suite_name, v['test_name'])
-            # If an experimental test was aborted, test_name
-            # would include the 'experimental' prefix already.
-            prefix = constants.EXPERIMENTAL_PREFIX if (
-                    experimental and not
-                    test_name.startswith(constants.EXPERIMENTAL_PREFIX)) else ''
-            display_name = prefix + test_name
-            width = len(display_name)
-            if max_width < width:
-                max_width = width
-            self._display_names[v['test_idx']] = display_name
-        self._max_testname_width = max_width + 3
+                    retry_count = self._compute_retry_count(v)
+                    if retry_count > 0:
+                        retry_counts[v['test_idx']] = retry_count
+        return child_views, retry_counts
 
 
     def _generate_web_and_buildbot_links(self):
@@ -790,21 +977,19 @@ class ResultCollector(object):
         # Bug info are stored in the suite job's keyvals.
         suite_job_keyvals = self._suite_views[0]['job_keyvals']
         for v in self._test_views:
-            bug_info = tools.get_test_failure_bug_info(
-                    suite_job_keyvals, v['afe_job_id'], v['test_name'])
-            job_id_owner = '%s-%s' % (v['afe_job_id'], getpass.getuser())
+            retry_count = self._retry_counts.get(v['test_idx'], 0)
+            bug_info = v.get_bug_info(suite_job_keyvals)
+            job_id_owner = v.get_job_id_owner_str()
             link = LogLink(
-                    anchor=self._display_names[v['test_idx']].ljust(
+                    anchor=v.get_testname().ljust(
                             self._max_testname_width),
                     server=self._instance_server,
                     job_string=job_id_owner,
-                    bug_info=bug_info)
+                    bug_info=bug_info, retry_count=retry_count)
             self._web_links.append(link)
 
-            # Don't show links on the buildbot waterfall for tests with
-            # GOOD status.
-            if v['status'] != 'GOOD' and v['status'] != 'TEST_NA':
-                link.reason = '%s: %s' % (v['status'], v['reason'])
+            if v.should_display_buildbot_link():
+                link.reason = v.get_buildbot_link_reason()
                 self._buildbot_links.append(link)
 
 
@@ -815,58 +1000,80 @@ class ResultCollector(object):
             self.timings.RecordTiming(v)
 
 
+    def _get_return_msg(self, code, tests_passed_after_retry):
+        """Return the proper message for a given return code.
+
+        @param code: An enum value of RETURN_CODES
+        @param test_passed_after_retry: True/False, indicating
+            whether there are test(s) that have passed after retry.
+
+        @returns: A string, representing the message.
+
+        """
+        if code == RETURN_CODES.INFRA_FAILURE:
+            return 'Suite job failed'
+        elif code == RETURN_CODES.SUITE_TIMEOUT:
+            return ('Some test(s) was aborted before running,'
+                    ' suite must have timed out.')
+        elif code == RETURN_CODES.WARNING:
+            if tests_passed_after_retry:
+                return 'Some test(s) passed after retry.'
+            else:
+                return 'Some test(s) raised a warning.'
+        elif code == RETURN_CODES.ERROR:
+            return 'Some test(s) failed.'
+        else:
+            return ''
+
+
     def _compute_return_code(self):
         """Compute the exit code based on test results."""
         code = RETURN_CODES.OK
         message = ''
+        tests_passed_after_retry = False
+
         for v in self._test_views:
-            if self.is_test_experimental(v):
+            if v.is_experimental():
                 continue
-            if (v['test_name'] == self.SUITE_PREP
-                    and is_fail_status(v['status'])):
+            if (v.get_testname() == TestView.SUITE_PREP
+                    and v.is_in_fail_status()):
                 # Suite job failed (with status FAIL/ERROR/ABORT).
                 # If the suite job was aborted, it may or may not be
                 # caused by timing out. Here we only categorize it as
-                # INFRA_FAILURE which is less severer than SUITE_TIMEOUT.
+                # INFRA_FAILURE which is less severe than SUITE_TIMEOUT.
                 # Suite timing out will be diagnosed later using
                 # other methods which will upgrade the severity accordingly.
-                old_code = code
                 code = get_worse_code(code, RETURN_CODES.INFRA_FAILURE)
-                if code != old_code:
-                    message = 'Suite job failed (status: %s)' % v['status']
-            elif (v['afe_job_id'] == self._suite_job_id and
-                    v['status'] == 'ABORT'):
-                # A child job that was aborted before it got a chance to
-                # run will have a view assoicated to suite job.
-                # This mostly happens when a job timed out due to
-                # starving for hosts (unless aborted manually by user,
-                # which we don't consider here).
-                old_code = code
+            elif v.is_timeout_and_not_run():
                 code = get_worse_code(code, RETURN_CODES.SUITE_TIMEOUT)
-                if code != old_code:
-                    message = ('Some test(s) was aborted before running,'
-                               ' suite must have timed out.')
             elif v['status'] == 'WARN':
                 code = get_worse_code(code, RETURN_CODES.WARNING)
-            elif is_fail_status(v['status']):
+            elif v.is_in_fail_status():
                 code = get_worse_code(code, RETURN_CODES.ERROR)
+            elif v.is_retry():
+                code = get_worse_code(code, RETURN_CODES.WARNING)
+                tests_passed_after_retry = True
             else:
                 code = get_worse_code(code, RETURN_CODES.OK)
         self.return_code = code
-        self.return_message = message
+        self.return_message = self._get_return_msg(
+                code, tests_passed_after_retry)
 
 
     def output_results(self):
         """Output test results, timings and web links."""
         # Output test results
         for v in self._test_views:
-            display_name = self._display_names[v['test_idx']].ljust(
-                    self._max_testname_width)
+            display_name = v.get_testname().ljust(self._max_testname_width)
             logging.info('%s%s', display_name,
                          get_pretty_status(v['status']))
             if v['status'] != 'GOOD':
-                logging.info("%s  %s: %s", display_name, v['status'],
+                logging.info('%s  %s: %s', display_name, v['status'],
                              v['reason'])
+            if v.is_retry():
+                retry_count = self._retry_counts.get(v['test_idx'], 0)
+                logging.info('%s  retry_count: %s',
+                             display_name, retry_count)
         # Output suite timings
         logging.info(self.timings)
         # Output links to test logs
@@ -889,13 +1096,14 @@ class ResultCollector(object):
             Fetch relevent test views of the suite job.
             Fetch test views of child jobs
             Check whether the suite was aborted.
-            Generate the test names to display in the output.
+            Generate links.
             Calculate suite timings.
             Compute return code based on the test result.
 
         """
         self._suite_views = self._fetch_relevant_test_views_of_suite()
-        self._child_views = self._fetch_test_views_of_child_jobs()
+        self._child_views, self._retry_counts = (
+                self._fetch_test_views_of_child_jobs())
         self._test_views = self._suite_views + self._child_views
         # For hostless job in Starting status, there is no test view associated.
         # This can happen when a suite job in Starting status is aborted. When
@@ -907,7 +1115,8 @@ class ResultCollector(object):
             return
         self.is_aborted = any([view['job_keyvals'].get('aborted_by')
                                for view in self._suite_views])
-        self._generate_display_names()
+        self._max_testname_width = max(
+                [len(v.get_testname()) for v in self._test_views]) + 3
         self._generate_web_and_buildbot_links()
         self._record_timings()
         self._compute_return_code()
@@ -1042,13 +1251,14 @@ def main():
                 # The case 2 was handled by ResultCollector,
                 # here we handle case 1.
                 old_code = code
-                code = get_worse_code(code, RETURN_CODES.SUITE_TIMEOUT)
+                code = get_worse_code(
+                        code, RETURN_CODES.SUITE_TIMEOUT)
                 if old_code != code:
+                    return_message = 'Suite job timed out.'
                     logging.info('Upgrade return code from %s to %s '
                                  'because suite job has timed out.',
                                  RETURN_CODES.get_string(old_code),
                                  RETURN_CODES.get_string(code))
-                    return_message = 'Suite job timed out.'
             if is_suite_timeout:
                 logging.info('\nAttempting to diagnose pool: %s', options.pool)
                 stats.Counter('run_suite_timeouts').increment()
