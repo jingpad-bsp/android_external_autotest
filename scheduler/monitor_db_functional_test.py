@@ -303,8 +303,8 @@ class MockEmailManager(NullMethodObject):
     _NULL_METHODS = ('send_queued_emails', 'send_email')
 
     def enqueue_notify_email(self, subject, message):
-        logging.warn('enqueue_notify_email: %s', subject)
-        logging.warn(message)
+        logging.warning('enqueue_notify_email: %s', subject)
+        logging.warning(message)
 
 
 class SchedulerFunctionalTest(unittest.TestCase,

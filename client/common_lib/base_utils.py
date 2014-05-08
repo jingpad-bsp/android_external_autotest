@@ -183,7 +183,7 @@ class BgJob(object):
             raise error.InvalidBgJobCall('Cannot call output_prepare on a '
                                          'job with no_pipes=True.')
         if self._output_prepare_called:
-            logging.warn('BgJob [%s] received a duplicate call to '
+            logging.warning('BgJob [%s] received a duplicate call to '
                          'output prepare. Allowing, but this may result '
                          'in data missing from BgJob.result.')
         self.stdout_file = stdout_file
@@ -213,7 +213,7 @@ class BgJob(object):
             raise error.InvalidBgJobCall('Cannot call process_output on '
                                          'a job with no_pipes=True')
         if not self._output_prepare_called and not self._process_output_warned:
-            logging.warn('BgJob with command [%s] handled a process_output '
+            logging.warning('BgJob with command [%s] handled a process_output '
                          'call before output_prepare was called. Some output '
                          'data discarded. Future warnings suppressed.',
                          self.command)
@@ -250,7 +250,7 @@ class BgJob(object):
             raise error.InvalidBgJobCall('Cannot call cleanup on '
                                          'a job with no_pipes=True')
         if self._cleanup_called:
-            logging.warn('BgJob [%s] received a duplicate call to '
+            logging.warning('BgJob [%s] received a duplicate call to '
                          'cleanup. Ignoring.', self.command)
             return
         try:
@@ -1039,11 +1039,11 @@ def _wait_for_commands(bg_jobs, start_time, timeout):
         if bg_job.result.exit_status is not None:
             continue
 
-        logging.warn('run process timeout (%s) fired on: %s', timeout,
+        logging.warning('run process timeout (%s) fired on: %s', timeout,
                      bg_job.command)
         if nuke_subprocess(bg_job.sp) is None:
             # If process could not be SIGKILL'd, log kernel stack.
-            logging.warn(read_file('/proc/' + bg_job.sp.pid + '/stack'))
+            logging.warning(read_file('/proc/' + bg_job.sp.pid + '/stack'))
         bg_job.result.exit_status = bg_job.sp.poll()
         bg_job.result.duration = time.time() - start_time
 

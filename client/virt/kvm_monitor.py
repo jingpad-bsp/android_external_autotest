@@ -187,7 +187,7 @@ class HumanMonitor(Monitor):
         except MonitorError, e:
             self._close_sock()
             if suppress_exceptions:
-                logging.warn(e)
+                logging.warning(e)
             else:
                 raise
 
@@ -456,7 +456,7 @@ class QMPMonitor(Monitor):
         except MonitorError, e:
             self._close_sock()
             if suppress_exceptions:
-                logging.warn(e)
+                logging.warning(e)
             else:
                 raise
 

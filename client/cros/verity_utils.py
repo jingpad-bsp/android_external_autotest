@@ -64,7 +64,7 @@ class verity_image(object):
     def _device_release(self, cmd, device):
         if utils.system(cmd, ignore_status=True) == 0:
             return
-        logging.warn("Could not release %s. Retrying..." % (device))
+        logging.warning("Could not release %s. Retrying..." % (device))
         # Other things (like cros-disks) may have the device open briefly,
         # so if we initially fail, try again and attempt to gather details
         # on who else is using the device.
@@ -211,7 +211,7 @@ class verity_image(object):
             self._create_fs(copy_files)
         else:
             if type(copy_files) is list and len(copy_files) != 0:
-                logging.warn("verity_image.initialize called with " \
+                logging.warning("verity_image.initialize called with " \
                              "files to copy but no fs")
 
         return self.file

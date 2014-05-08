@@ -76,7 +76,7 @@ def gather_job_hostnames(afe, job):
             HqeIntStatus.get_value(HqeIntStatus.RUNNING)):
             hosts.append(None)
         elif not e['host']:
-            logging.warn('Job %s (%s) has an entry with no host!',
+            logging.warning('Job %s (%s) has an entry with no host!',
                          job.name, job.id)
             hosts.append(None)
         else:
@@ -503,7 +503,7 @@ def check_and_record_reimage_results(per_host_statuses, group, record_entry):
     success = group.enough_hosts_succeeded()
     if success:
         for failure in failures:
-            logging.warn("%s failed to reimage.", failure.test_name)
+            logging.warning("%s failed to reimage.", failure.test_name)
             failure.override_status('WARN')
             failure.record_all(record_entry)
     else:

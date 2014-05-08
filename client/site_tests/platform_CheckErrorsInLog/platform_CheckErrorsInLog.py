@@ -49,7 +49,7 @@ class platform_CheckErrorsInLog(test.test):
             if os.path.isfile(logfile):
                 errors += self.search_log(logfile)
             else:
-                logging.warn('%s does not exist' % logfile)
+                logging.warning('%s does not exist' % logfile)
 
         if errors:
             raise error.TestFail('%d failures found in logs' % errors)

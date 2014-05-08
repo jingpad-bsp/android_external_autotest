@@ -550,7 +550,7 @@ class AutotestDashView(object):
           category in self._build_tree[netbook][board]):
         for b in self._build_tree[netbook][board][category].iterkeys():
           if not b in self._builds[board]:
-            logging.warn(
+            logging.warning(
                 "***DATA WARNING: %s not in build list for %s, %s, %s!",
                 b, netbook, board, category)
           else:

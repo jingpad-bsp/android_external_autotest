@@ -759,7 +759,7 @@ class Suite(object):
                 results_generator = job_status.wait_for_child_results(
                         self._afe, self._tko, self._suite_job_id)
             else:
-                logging.warn('Unknown suite_job_id, falling back to less '
+                logging.warning('Unknown suite_job_id, falling back to less '
                              'efficient results_generator.')
                 results_generator = job_status.wait_for_results(self._afe,
                                                                 self._tko,
@@ -909,7 +909,7 @@ class Suite(object):
                 if not forgiving_parser:
                     msg = "Failed parsing %s\n%s" % (file, e)
                     raise control_data.ControlVariableException(msg)
-                logging.warn("Skipping %s\n%s", file, e)
+                logging.warning("Skipping %s\n%s", file, e)
             except Exception, e:
                 logging.error("Bad %s\n%s", file, e)
         logging.debug('Parsed %s control files.', parsed_count)

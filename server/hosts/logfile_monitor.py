@@ -210,7 +210,7 @@ class LogfileMonitorMixin(abstract_ssh.AbstractSSHHost):
         missing = follow_paths_set.difference(existing)
         if missing:
             # Log warning that we are missing expected remote paths.
-            logging.warn('Target %s is missing expected remote paths: %s',
+            logging.warning('Target %s is missing expected remote paths: %s',
                          self.hostname, ', '.join(missing))
 
         # If none of them exist just return (for now).
@@ -242,7 +242,7 @@ class LogfileMonitorMixin(abstract_ssh.AbstractSSHHost):
             try:
                 patterns_path = resolve_patterns_path(patterns_path)
             except InvalidPatternsPathError, e:
-                logging.warn('Specified patterns_path is invalid: %s, %s',
+                logging.warning('Specified patterns_path is invalid: %s, %s',
                              patterns_path, str(e))
             else:
                 sane_pattern_paths.append(patterns_path)

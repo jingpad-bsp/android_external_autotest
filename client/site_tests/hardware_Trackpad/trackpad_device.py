@@ -306,5 +306,5 @@ class TrackpadDevice:
             try:
                 os.remove(TrackpadDevice.DEVICE_TIME_FILE)
             except:
-                logging.warn('Cannot remove the device time file: %s.' %
+                logging.warning('Cannot remove the device time file: %s.' %
                              TrackpadDevice.DEVICE_TIME_FILE)

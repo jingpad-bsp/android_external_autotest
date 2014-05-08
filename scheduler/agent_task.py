@@ -383,11 +383,11 @@ class BaseAgentTask(object):
         """
         default_hostnames = models.DroneSet.get_default().get_drone_hostnames()
         if not user:
-            logging.warn('%s had no owner; using default drone set',
+            logging.warning('%s had no owner; using default drone set',
                          obj_with_owner)
             return default_hostnames
         if not user.drone_set:
-            logging.warn('User %s has no default drone set, using global '
+            logging.warning('User %s has no default drone set, using global '
                          'default', user.login)
             return default_hostnames
         return user.drone_set.get_drone_hostnames()

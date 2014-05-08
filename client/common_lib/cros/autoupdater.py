@@ -155,7 +155,7 @@ class ChromiumOSUpdater():
         try:
             self._run('initctl stop update-engine')
         except error.AutoservRunError:
-            logging.warn('Stopping update-engine service failed. Already dead?')
+            logging.warning('Stopping update-engine service failed. Already dead?')
         self._run('initctl start update-engine')
 
         if self.check_update_status() != UPDATER_IDLE:
@@ -235,13 +235,13 @@ class ChromiumOSUpdater():
                 LOCAL_STATEFUL_UPDATE_PATH)
 
         if not os.path.exists(stateful_update_path):
-            logging.warn('Could not find Chrome OS source location for '
+            logging.warning('Could not find Chrome OS source location for '
                          'stateful_update script at %s, falling back to chroot '
                          'copy.', stateful_update_path)
             stateful_update_path = LOCAL_CHROOT_STATEFUL_UPDATE_PATH
 
         if not os.path.exists(stateful_update_path):
-            logging.warn('Could not chroot stateful_update script, falling '
+            logging.warning('Could not chroot stateful_update script, falling '
                          'back on client copy.')
             statefuldev_script = REMOTE_STATEUL_UPDATE_PATH
         else:
@@ -262,7 +262,7 @@ class ChromiumOSUpdater():
     def revert_boot_partition(self):
         """Revert the boot partition."""
         part = self.rootdev('-s')
-        logging.warn('Reverting update; Boot partition will be %s', part)
+        logging.warning('Reverting update; Boot partition will be %s', part)
         return self._run('/postinst %s 2>&1' % part)
 
 

@@ -143,7 +143,7 @@ class Suspender(object):
         """Enable/disable extra suspend timing output from powerd to syslog."""
         if utils.system('echo %s > /sys/power/pm_print_times' % int(bool(on)),
                 ignore_status=True):
-            logging.warn('Failed to set pm_print_times to %s', bool(on))
+            logging.warning('Failed to set pm_print_times to %s', bool(on))
             del self.device_times
             self._reset_pm_print_times = False
         else:
@@ -226,7 +226,7 @@ class Suspender(object):
             for b, e, s in sys_power.SpuriousWakeupError.S3_WHITELIST:
                 if (re.search(b, utils.get_board()) and
                         re.search(e, wake_elog) and re.search(s, wake_syslog)):
-                    logging.warn('Whitelisted spurious wake in S3: %s | %s'
+                    logging.warning('Whitelisted spurious wake in S3: %s | %s'
                             % (wake_elog, wake_syslog))
                     return None
             raise sys_power.SpuriousWakeupError('Spurious wake in S3: %s | %s'
@@ -280,7 +280,7 @@ class Suspender(object):
                 else:
                     key += '_suspend'
                 if key in self.device_times[-1]:
-                    logging.warn('Duplicate entry for %s: +%f', key, secs)
+                    logging.warning('Duplicate entry for %s: +%f', key, secs)
                     self.device_times[-1][key] += secs
                 else:
                     logging.debug('%s: %f', key, secs)
@@ -369,7 +369,7 @@ class Suspender(object):
                         for b, w in sys_power.SpuriousWakeupError.S0_WHITELIST:
                             if (re.search(b, utils.get_board()) and
                                     re.search(w, wake_source)):
-                                logging.warn('Whitelisted spurious wake before '
+                                logging.warning('Whitelisted spurious wake before '
                                         'S3: %s | %s' % (wake_source, driver))
                                 alarm = self._ALARM_FORCE_RETRY
                         if alarm == self._ALARM_FORCE_RETRY:

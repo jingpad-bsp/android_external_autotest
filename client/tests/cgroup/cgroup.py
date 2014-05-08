@@ -87,7 +87,7 @@ class cgroup(test.test):
 
             if err:
                 if supress:
-                    logging.warn("Some parts of cleanup failed%s" % err)
+                    logging.warning("Some parts of cleanup failed%s" % err)
                 else:
                     raise error.TestFail("Some parts of cleanup failed%s" % err)
 
@@ -334,7 +334,7 @@ class cgroup(test.test):
                 err += "\nCan't remove cgroup direcotry"
             if err:
                 if supress:
-                    logging.warn("Some parts of cleanup failed%s" % err)
+                    logging.warning("Some parts of cleanup failed%s" % err)
                 else:
                     raise error.TestFail("Some parts of cleanup failed%s" % err)
 

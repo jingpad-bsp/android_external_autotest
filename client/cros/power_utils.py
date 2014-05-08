@@ -123,7 +123,7 @@ class Backlight(object):
                              self.default_brightness_percent)
             except error.CmdError:
                 self.default_brightness_percent = 40.0
-                logging.warn("Unable to determine default backlight "
+                logging.warning("Unable to determine default backlight "
                              "brightness percent.  Setting to %f",
                              self.default_brightness_percent)
 

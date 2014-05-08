@@ -127,7 +127,7 @@ class ftrace(profiler.profiler):
         # if the compressed trace file is large (10MB), just delete it.
         compressed_output_size = os.path.getsize(compressed_output)
         if compressed_output_size > 10*1024*1024:
-            logging.warn('Deleting large trace file %s (%d bytes)',
+            logging.warning('Deleting large trace file %s (%d bytes)',
                          compressed_output, compressed_output_size)
             os.remove(compressed_output)
         # remove per-cpu files in case trace-cmd died.

@@ -199,7 +199,7 @@ class power_LoadTest(test.test):
             self._get_sys_low_batt_values()
         min_low_batt_p = min(self._sys_low_batt_p + low_batt_margin_p, 100)
         if self._sys_low_batt_p and (min_low_batt_p > self._test_low_batt_p):
-            logging.warn("test low battery threshold is below system " +
+            logging.warning("test low battery threshold is below system " +
                          "low battery requirement.  Setting to %f",
                          min_low_batt_p)
             self._test_low_batt_p = min_low_batt_p

@@ -26,7 +26,7 @@ def run_multicast(test, params, env):
         try:
             session.cmd(cmd)
         except aexpect.ShellError, e:
-            logging.warn(e)
+            logging.warning(e)
 
     def run_host_guest(cmd):
         run_guest(cmd)

@@ -84,7 +84,7 @@ class platform_BootPerfServer(test.test):
             server_results.close()
             client_results.close()
         else:
-            logging.warn('Unable to locate %s', src)
+            logging.warning('Unable to locate %s', src)
 
         # Upload perf keyvals in the client keyval file to perf dashboard.
         if upload_perf:

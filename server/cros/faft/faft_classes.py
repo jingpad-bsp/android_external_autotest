@@ -76,7 +76,7 @@ class FAFTBase(ServoTest):
         # commands at the fw screens.
         if not self._client.ping_wait_down(timeout):
             if orig_boot_id and self._client.get_boot_id() != orig_boot_id:
-                logging.warn('Reboot done very quickly.')
+                logging.warning('Reboot done very quickly.')
                 return
             raise ConnectionError()
 
@@ -333,7 +333,7 @@ class FAFTSequence(FAFTBase):
             self.wait_for_client()
             return
         except ConnectionError:
-            logging.warn('Cold reboot doesn\'t help, still connection error.')
+            logging.warning('Cold reboot doesn\'t help, still connection error.')
 
         # DUT may be broken by a corrupted firmware. Restore firmware.
         # We assume the recovery boot still works fine. Since the recovery
@@ -347,7 +347,7 @@ class FAFTSequence(FAFTBase):
                     self.restore_firmware()
                     return
                 except ConnectionError:
-                    logging.warn('Restoring firmware doesn\'t help, still '
+                    logging.warning('Restoring firmware doesn\'t help, still '
                                  'connection error.')
 
         # Perhaps it's kernel that's broken. Let's try restoring it.
@@ -359,7 +359,7 @@ class FAFTSequence(FAFTBase):
                     self.restore_kernel()
                     return
                 except ConnectionError:
-                    logging.warn('Restoring kernel doesn\'t help, still '
+                    logging.warning('Restoring kernel doesn\'t help, still '
                                  'connection error.')
 
         # DUT may be broken by a corrupted OS image. Restore OS image.
@@ -374,7 +374,7 @@ class FAFTSequence(FAFTBase):
             logging.info('Successfully restore OS image.')
             return
         except ConnectionError:
-            logging.warn('Restoring OS image doesn\'t help, still connection '
+            logging.warning('Restoring OS image doesn\'t help, still connection '
                          'error.')
 
     def _ensure_client_in_recovery(self):
@@ -725,7 +725,7 @@ class FAFTSequence(FAFTBase):
         """
         if not self.faft_config.chrome_ec:
             if not suppress_warning:
-                logging.warn('Requires Chrome EC to run this test.')
+                logging.warning('Requires Chrome EC to run this test.')
             return False
 
         if not required_cap:
@@ -734,7 +734,7 @@ class FAFTSequence(FAFTBase):
         for cap in required_cap:
             if cap not in self.faft_config.ec_capability:
                 if not suppress_warning:
-                    logging.warn('Requires EC capability "%s" to run this '
+                    logging.warning('Requires EC capability "%s" to run this '
                                  'test.', cap)
                 return False
 
@@ -1002,7 +1002,7 @@ class FAFTSequence(FAFTBase):
                 self.ec_uart_file = os.path.join(self.resultsdir, 'ec_uart.txt')
             except error.TestFail as e:
                 if 'No control named' in str(e):
-                    logging.warn('The servod is too old that ec_uart_capture '
+                    logging.warning('The servod is too old that ec_uart_capture '
                                  'not supported.')
         else:
             logging.info('Not a Google EC, cannot capture ec console output.')
@@ -1041,7 +1041,7 @@ class FAFTSequence(FAFTBase):
         if servo_log:
             self.servo_log_original_len = len(servo_log)
         else:
-            logging.warn('Servo log file not found.')
+            logging.warning('Servo log file not found.')
 
     def record_servo_log(self):
         """Record the servo log to the results directory."""

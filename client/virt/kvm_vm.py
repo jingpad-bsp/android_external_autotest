@@ -815,7 +815,7 @@ class VM(virt_vm.BaseVM):
                         monitor.verify_responsive()
                         break
                     except kvm_monitor.MonitorError, e:
-                        logging.warn(e)
+                        logging.warning(e)
                         time.sleep(1)
                 else:
                     self.destroy()
@@ -898,7 +898,7 @@ class VM(virt_vm.BaseVM):
                 try:
                     self.monitor.quit()
                 except kvm_monitor.MonitorError, e:
-                    logging.warn(e)
+                    logging.warning(e)
                 else:
                     # Wait for the VM to be really dead
                     if virt_utils.wait_for(self.is_dead, 5, 0.5, 0.5):
@@ -1355,7 +1355,7 @@ class VM(virt_vm.BaseVM):
             if self.monitor:
                 self.monitor.screendump(filename=filename)
         except kvm_monitor.MonitorError, e:
-            logging.warn(e)
+            logging.warning(e)
 
 
     def save_to_file(self, path):

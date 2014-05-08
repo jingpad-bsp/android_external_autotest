@@ -99,7 +99,7 @@ class hardware_EC(test.test):
         if not has_ectool():
             ec_info = utils.system_output("mosys ec info",
                                           ignore_status=True)
-            logging.warn("Ectool absent on this platform ( %s )",
+            logging.warning("Ectool absent on this platform ( %s )",
                          ec_info)
             raise error.TestNAError("Platform doesn't support ectool")
 

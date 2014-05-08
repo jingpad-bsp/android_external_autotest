@@ -186,7 +186,7 @@ def update_profilers_in_db(profilers, description='NA',
             if add_noncompliant:
                 doc = description
             else:
-                logging.warn("Skipping %s, missing docstring", profiler)
+                logging.warning("Skipping %s, missing docstring", profiler)
                 continue
         else:
             doc = profilers[profiler]
@@ -358,7 +358,7 @@ def get_tests_from_fs(parent_dir, control_pattern, add_noncompliant=False):
                                                             raise_warnings=True)
                         tests[file] = found_test
                     except control_data.ControlVariableException, e:
-                        logging.warn("Skipping %s\n%s", file, e)
+                        logging.warning("Skipping %s\n%s", file, e)
                     except Exception, e:
                         logging.error("Bad %s\n%s", file, e)
                 else:
@@ -449,7 +449,7 @@ def update_from_whitelist(whitelist_set, add_experimental, add_noncompliant,
                                                         raise_warnings=True)
                 tests[file_path] = found_test
             except control_data.ControlVariableException, e:
-                logging.warn("Skipping %s\n%s", file, e)
+                logging.warning("Skipping %s\n%s", file, e)
         else:
             profilers[file_path] = compiler.parseFile(file_path).doc
 

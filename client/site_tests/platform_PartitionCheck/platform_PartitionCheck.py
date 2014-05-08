@@ -83,7 +83,7 @@ class platform_PartitionCheck(test.test):
             if psize != ROOTFS_SIZE:
                 errmsg = ('%s is %d bytes, expected %d' %
                           (p, psize, ROOTFS_SIZE))
-                logging.warn(errmsg)
+                logging.warning(errmsg)
                 errors.append(errmsg)
 
         # If self.error is not zero, there were errors.

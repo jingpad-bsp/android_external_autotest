@@ -415,7 +415,7 @@ class platform_BootPerf(test.test):
             with open(didrun_path, "w") as didrun:
                 didrun.write(boot_id)
         elif open(didrun_path, "r").read() != boot_id:
-            logging.warn("Ignoring reboot based on stale shutdown %s",
+            logging.warning("Ignoring reboot based on stale shutdown %s",
                          os.path.basename(bootstat_dir))
             return
         timestamp_path = os.path.join(bootstat_dir, 'timestamp')

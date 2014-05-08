@@ -651,7 +651,7 @@ def get_ec_temperatures():
             temperature = int(line.split(': ')[1]) - 273
             temperatures.append(temperature)
     except Exception:
-        logging.warn('Unable to read temperature sensors using ectool.')
+        logging.warning('Unable to read temperature sensors using ectool.')
     for temperature in temperatures:
         # Sanity check for real world values.
         assert ((temperature > 10.0) and

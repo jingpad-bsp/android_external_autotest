@@ -90,7 +90,7 @@ class Servo(object):
         if self.get_version() == "servo_v2":
             self._programmer = firmware_programmer.ProgrammerV2(self)
         else:
-            logging.warn("No firmware programmer for servo version: %s",
+            logging.warning("No firmware programmer for servo version: %s",
                          self.get_version())
 
 
@@ -353,7 +353,7 @@ class Servo(object):
         self.set_nocheck(gpio_name, gpio_value)
         retry_count = Servo.GET_RETRY_MAX
         while gpio_value != self.get(gpio_name) and retry_count:
-            logging.warn("%s != %s, retry %d", gpio_name, gpio_value,
+            logging.warning("%s != %s, retry %d", gpio_name, gpio_value,
                          retry_count)
             retry_count -= 1
             time.sleep(Servo.SHORT_DELAY)

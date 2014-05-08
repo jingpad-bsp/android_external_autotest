@@ -213,7 +213,7 @@ class XButton:
                                 if b.startswith('Button')]
 
         if self.button_labels is None:
-            logging.warn('Cannot find trackpad device in xinput. '
+            logging.warning('Cannot find trackpad device in xinput. '
                          'Using default Button Labels instead.')
             self.button_labels = self.DEFAULT_BUTTON_LABELS
 
@@ -293,14 +293,14 @@ class XEvent:
     def _extract_prop(self, event_name, line, prop_key):
         ''' Extract property from X events '''
         if line is None:
-            logging.warn('      X event format may not be correct.')
+            logging.warning('      X event format may not be correct.')
             return None
 
         event_format_str = self.raw_format_dict[event_name]
         try:
             prop_val = event_format_str.format(*line.strip().split()).strip(',')
         except IndexError, err:
-            logging.warn('      %s in X event data.' % str(err))
+            logging.warning('      %s in X event data.' % str(err))
             return None
         return (prop_key, prop_val)
 
@@ -338,7 +338,7 @@ class XEvent:
         '''
 
         if not xevent_str:
-            logging.warn('    No X events were captured.')
+            logging.warning('    No X events were captured.')
             return False
 
         xevent_iter = iter(xevent_str)

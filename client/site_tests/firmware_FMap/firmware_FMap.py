@@ -197,4 +197,4 @@ class firmware_FMap(test.test):
             if not f.check_areas(f.get_areas(), EXPECTED_FMAP_TREE_EC):
                 raise error.TestFail("EC FMap is not qualified.")
         else:
-            logging.warn("EC is not available on this device.")
+            logging.warning("EC is not available on this device.")

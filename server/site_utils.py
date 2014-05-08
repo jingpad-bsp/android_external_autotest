@@ -233,7 +233,7 @@ def check_lab_status(build):
     json_status = _get_lab_status(status_url)
     if json_status is None:
         # We go ahead and say the lab is open if we can't get the status.
-        logging.warn('Could not get a status from %s', status_url)
+        logging.warning('Could not get a status from %s', status_url)
         return
     _decode_lab_status(json_status, build)
 

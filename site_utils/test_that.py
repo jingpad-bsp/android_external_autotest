@@ -116,7 +116,7 @@ def fetch_local_suite(autotest_path, suite_predicate, afe, remote,
                 continue
             unsatisfiable_deps = set(test.dependencies).difference(labels)
             if unsatisfiable_deps:
-                logging.warn('%s will be skipped, unsatisfiable '
+                logging.warning('%s will be skipped, unsatisfiable '
                              'test dependencies: %s', test.name,
                              unsatisfiable_deps)
     return my_suite

@@ -392,7 +392,7 @@ class SysStat(object):
                 self.linepower_path = path
 
         if not self.battery_path or not self.linepower_path:
-            logging.warn("System does not provide power sysfs interface")
+            logging.warning("System does not provide power sysfs interface")
 
         self.thermal = ThermalStat()
 
@@ -623,7 +623,7 @@ class CPUIdleStats(AbstractStats):
                     # Kernel race condition that can happen while a new C-state
                     # gets added (e.g. AC->battery). Don't know the 'name' of
                     # the state yet, but its 'time' would be 0 anyway.
-                    logging.warn('Read name: <null>, time: %d from %s'
+                    logging.warning('Read name: <null>, time: %d from %s'
                         % (usecs, state) + '... skipping.')
                     continue
 
@@ -834,7 +834,7 @@ class GPUFreqStats(AbstractStats):
 
         # Not all platforms or kernel versions support tracing.
         if not self._trace or not self._trace.is_tracing():
-            logging.warn("GPU frequency tracing not enabled.")
+            logging.warning("GPU frequency tracing not enabled.")
         else:
             self._prev_sample = (cur_mhz, self._trace.uptime_secs())
             logging.debug("Current GPU freq: %s", cur_mhz)
@@ -1006,7 +1006,7 @@ class StatoMatic(object):
                 stats_secs = sum(stat_obj._stats.itervalues())
                 if stats_secs < (tot_secs * 0.9) or \
                         stats_secs > (tot_secs * 1.1):
-                    logging.warn('%s stats dont look right.  Not publishing.',
+                    logging.warning('%s stats dont look right.  Not publishing.',
                                  stat_obj.name)
                     continue
             new_res = {}

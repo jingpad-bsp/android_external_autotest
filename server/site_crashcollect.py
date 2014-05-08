@@ -81,7 +81,7 @@ def find_and_generate_minidump_stacktraces(host_resultdir):
                 minidumps.append(minidump)
                 continue
             except client_utils.error.CmdError as err:
-                logging.warn('Failed to generate stack trace locally for '
+                logging.warning('Failed to generate stack trace locally for '
                              'dump %s (rc=%d):\n%r',
                              minidump, err.result_obj.exit_status, err)
 
@@ -92,7 +92,7 @@ def find_and_generate_minidump_stacktraces(host_resultdir):
                 logging.info('Generated stack trace for dump %s', minidump)
                 continue
             except dev_server.DevServerException as e:
-                logging.warn('Failed to generate stack trace on devserver for '
+                logging.warning('Failed to generate stack trace on devserver for '
                              'dump %s:\n%r', minidump, e)
     return minidumps
 

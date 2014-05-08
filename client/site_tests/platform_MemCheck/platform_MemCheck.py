@@ -78,14 +78,14 @@ class platform_MemCheck(test.test):
             keyval[k] = value
             if k in less_refs:
                 if value < ref[k]:
-                    logging.warn('%s is %d', k, value)
-                    logging.warn('%s should be at least %d', k, ref[k])
+                    logging.warning('%s is %d', k, value)
+                    logging.warning('%s should be at least %d', k, ref[k])
                     errors += 1
                     error_list += [k]
             elif k in approx_refs:
                 if value < ref[k] * 0.9 or ref[k] * 1.1 < value:
-                    logging.warn('%s is %d', k, value)
-                    logging.warn('%s should be within 10%% of %d', k, ref[k])
+                    logging.warning('%s is %d', k, value)
+                    logging.warning('%s should be within 10%% of %d', k, ref[k])
                     errors += 1
                     error_list += [k]
 
@@ -104,7 +104,7 @@ class platform_MemCheck(test.test):
             keyval['timing_dimm_%d' % dimm] = max_timing
             m = re.match(pattern, max_timing)
             if not m:
-                logging.warn('Error parsing timings for dimm #%d (%s)',
+                logging.warning('Error parsing timings for dimm #%d (%s)',
                              dimm, max_timing)
                 errors += 1
                 continue
@@ -112,8 +112,8 @@ class platform_MemCheck(test.test):
             max_speed = int(m.group('speed'))
             keyval['speed_dimm_%d' % dimm] = max_speed
             if max_speed < speedref:
-                logging.warn('ram speed is %s', max_timing)
-                logging.warn('ram speed should be at least %d', speedref)
+                logging.warning('ram speed is %s', max_timing)
+                logging.warning('ram speed should be at least %d', speedref)
                 error_list += ['speed_dimm_%d' % dimm]
                 errors += 1
 

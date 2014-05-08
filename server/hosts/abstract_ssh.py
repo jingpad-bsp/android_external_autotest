@@ -61,7 +61,7 @@ class AbstractSSHHost(remote.RemoteHost):
         # don't try to use it for any future file transfers.
         self._use_rsync = self._check_rsync()
         if not self._use_rsync:
-            logging.warn("rsync not available on remote host %s -- disabled",
+            logging.warning("rsync not available on remote host %s -- disabled",
                          self.hostname)
         return self._use_rsync
 
@@ -280,7 +280,7 @@ class AbstractSSHHost(remote.RemoteHost):
                 utils.run(rsync)
                 try_scp = False
             except error.CmdError, e:
-                logging.warn("trying scp, rsync failed: %s", e)
+                logging.warning("trying scp, rsync failed: %s", e)
 
         if try_scp:
             logging.debug('Trying scp.')
@@ -360,7 +360,7 @@ class AbstractSSHHost(remote.RemoteHost):
                 utils.run(rsync)
                 try_scp = False
             except error.CmdError, e:
-                logging.warn("trying scp, rsync failed: %s", e)
+                logging.warning("trying scp, rsync failed: %s", e)
 
         if try_scp:
             logging.debug('Trying scp.')
@@ -683,7 +683,7 @@ class AbstractSSHHost(remote.RemoteHost):
                     break
                 time.sleep(.2)
             else:
-                logging.warn('Timed out waiting for master-ssh connection '
+                logging.warning('Timed out waiting for master-ssh connection '
                              'to be established.')
 
 

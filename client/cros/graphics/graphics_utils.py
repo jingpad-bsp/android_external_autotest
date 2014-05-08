@@ -89,7 +89,7 @@ class GraphicsStateChecker(object):
               if hang in line:
                 if not line in self.hangs.keys():
                   logging.info(line)
-                  logging.warn('Saw GPU hang during test.')
+                  logging.warning('Saw GPU hang during test.')
           f.close()
 
           cmd = 'glxinfo | grep "OpenGL renderer string"'
@@ -99,7 +99,7 @@ class GraphicsStateChecker(object):
           logging.info('glxinfo: %s', result)
           # TODO(ihf): Find exhaustive error conditions (especially ARM).
           if 'llvmpipe' in result.lower() or 'soft' in result.lower():
-            logging.warn('Finished test on SW rasterizer.')
+            logging.warning('Finished test on SW rasterizer.')
             raise error.TestFail('Finished test on SW rasterizer: ' + result)
 
         # TODO(ihf): Perform crash processing (primarily for Piglit) as is done

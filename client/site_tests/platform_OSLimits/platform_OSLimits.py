@@ -134,8 +134,8 @@ class platform_OSLimits(test.test):
         for key in ref_min:
             osvalue[key] = self.get_limit(key, refpath[key])
             if osvalue[key] < ref_min[key]:
-                logging.warn('%s is %d', refpath[key], osvalue[key])
-                logging.warn('%s should be at least %d', refpath[key],
+                logging.warning('%s is %d', refpath[key], osvalue[key])
+                logging.warning('%s should be at least %d', refpath[key],
                              ref_min[key])
                 errors.add(key)
             else:
@@ -145,8 +145,8 @@ class platform_OSLimits(test.test):
         for key in ref_equal:
             osvalue[key] = self.get_limit(key, refpath[key])
             if osvalue[key] != ref_equal[key]:
-                logging.warn('%s is set to %d', refpath[key], osvalue[key])
-                logging.warn('Expected %d', ref_equal[key])
+                logging.warning('%s is set to %d', refpath[key], osvalue[key])
+                logging.warning('Expected %d', ref_equal[key])
                 errors.add(key)
             else:
                 logging.info('%s is %d', refpath[key], osvalue[key])
@@ -154,7 +154,7 @@ class platform_OSLimits(test.test):
         # Look for anything from refpath that wasn't checked yet:
         for key in osvalue:
             if osvalue[key] == None:
-                logging.warn('%s was never checked', key)
+                logging.warning('%s was never checked', key)
                 errors.add(key)
 
         # If self.error is not zero, there were errors.

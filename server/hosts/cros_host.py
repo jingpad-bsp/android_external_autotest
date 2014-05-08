@@ -668,7 +668,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 logging.info('DUT is updated with stateful update.')
         except Exception as e:
             logging.exception(e)
-            logging.warn('Failed to stateful update DUT, force to update.')
+            logging.warning('Failed to stateful update DUT, force to update.')
 
         inactive_kernel = None
         # Do a full update if stateful update is not applicable or failed.
@@ -1008,7 +1008,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                     stats.Counter(
                         '%s.%s.RepairNA' % (repair_func.__name__,
                                             board)).increment()
-                logging.warn('Repair function NA: %s', e)
+                logging.warning('Repair function NA: %s', e)
                 errors.append(str(e))
             except Exception as e:
                 stats.Counter(
@@ -1017,7 +1017,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                     stats.Counter(
                         '%s.%s.FAILED' % (repair_func.__name__,
                                           board)).increment()
-                logging.warn('Failed to repair device: %s', e)
+                logging.warning('Failed to repair device: %s', e)
                 errors.append(str(e))
 
         stats.Counter('Full_Repair_Failed').increment()
@@ -1091,7 +1091,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             self._restart_ui()
         except (error.AutotestRunError, error.AutoservRunError,
                 FactoryImageCheckerException):
-            logging.warn('Unable to restart ui, rebooting device.')
+            logging.warning('Unable to restart ui, rebooting device.')
             # Since restarting the UI fails fall back to normal Autotest
             # cleanup routines, i.e. reboot the machine.
             super(CrosHost, self).cleanup()

@@ -157,7 +157,7 @@ class Env(UserDict.IterableUserDict):
                     if env.get("version", 0) >= version:
                         self.data = env
                     else:
-                        logging.warn("Incompatible env file found. Not using it.")
+                        logging.warning("Incompatible env file found. Not using it.")
                         self.data = empty
                 else:
                     # No previous env file found, proceed...
@@ -165,7 +165,7 @@ class Env(UserDict.IterableUserDict):
             # Almost any exception can be raised during unpickling, so let's
             # catch them all
             except Exception, e:
-                logging.warn(e)
+                logging.warning(e)
                 self.data = empty
         else:
             self.data = empty
@@ -1859,7 +1859,7 @@ class KojiClient(object):
             koji_command_ok = False
 
         if not os.access(self.command, os.X_OK):
-            logging.warn('Koji command "%s" is not executable: this is '
+            logging.warning('Koji command "%s" is not executable: this is '
                          'not fatal but indicates an unexpected situation',
                          self.command)
 

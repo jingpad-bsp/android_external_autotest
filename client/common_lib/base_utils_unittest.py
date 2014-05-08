@@ -676,7 +676,7 @@ class test_run(unittest.TestCase):
 
 
     def test_timeout(self):
-        # we expect a logging.warn() message, don't care about the contents
+        # we expect a logging.warning() message, don't care about the contents
         base_utils.logging.warn.expect_any_call()
         try:
             base_utils.run('echo -n output && sleep 10', timeout=1, verbose=False)

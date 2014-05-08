@@ -49,6 +49,6 @@ class BasePoster(object):
       
     except IOError, ioex:
       if ioex.errno == 'socket error':
-        logging.warn('Remote server is not available')
+        logging.warning('Remote server is not available')
         return -1
     return 0

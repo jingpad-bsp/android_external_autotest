@@ -130,7 +130,7 @@ class ParamikoHost(abstract_ssh.AbstractSSHHost):
                         transport.close()
                         raise paramiko.AuthenticationException()
                     return transport
-            logging.warn("SSH negotiation (%s:%d) timed out, retrying",
+            logging.warning("SSH negotiation (%s:%d) timed out, retrying",
                          self.hostname, self.port)
             # HACK: we can't count on transport.join not hanging now, either
             transport.join = lambda: None
@@ -175,7 +175,7 @@ class ParamikoHost(abstract_ssh.AbstractSSHHost):
         try:
             channel = self.transport.open_session()
         except (socket.error, paramiko.SSHException, EOFError), e:
-            logging.warn("Exception occured while opening session: %s", e)
+            logging.warning("Exception occured while opening session: %s", e)
             if time.time() - start_time >= timeout:
                 raise error.AutoservSSHTimeout("ssh failed: %s" % e)
 
@@ -221,7 +221,7 @@ class ParamikoHost(abstract_ssh.AbstractSSHHost):
 
         sent = channel.send(stdin[:cls.BUFFSIZE])
         if not sent:
-            logging.warn('Could not send a single stdin byte.')
+            logging.warning('Could not send a single stdin byte.')
         else:
             stdin = stdin[sent:]
             if not stdin:
@@ -306,7 +306,7 @@ class ParamikoHost(abstract_ssh.AbstractSSHHost):
             msg = "ssh connection unexpectedly terminated"
             raise error.AutoservRunError(msg, result)
         if timed_out:
-            logging.warn('Paramiko command timed out after %s sec: %s', timeout,
+            logging.warning('Paramiko command timed out after %s sec: %s', timeout,
                          command)
             if not ignore_timeout:
                 raise error.AutoservRunError("command timed out", result)

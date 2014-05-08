@@ -214,7 +214,7 @@ class ProgrammerV2(object):
                       'zgb', 'mario', 'squawks'):
             _bios_prog = FlashromProgrammer(servo)
         else:
-            logging.warn('No BIOS programmer found for board: %s', _board)
+            logging.warning('No BIOS programmer found for board: %s', _board)
 
         return _bios_prog
 
@@ -237,7 +237,7 @@ class ProgrammerV2(object):
                       'squawks'):
             _ec_prog = FlashECProgrammer(servo)
         else:
-            logging.warn('No EC programmer found for board: %s', _board)
+            logging.warning('No EC programmer found for board: %s', _board)
 
         return _ec_prog
 

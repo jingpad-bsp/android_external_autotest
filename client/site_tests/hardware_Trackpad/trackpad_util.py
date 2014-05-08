@@ -142,7 +142,7 @@ class IterationLog:
             common_util.simple_system(append_cmd)
             logging.info('Append detailed log: "%s"' % append_cmd)
         except:
-            logging.warn('Warning: fail to execute "%s"' % append_cmd)
+            logging.warning('Warning: fail to execute "%s"' % append_cmd)
 
 
 class VerificationLog:
@@ -452,9 +452,9 @@ class TpcontrolLog:
                                                self.log_prefix))
         num_log_files = len(log_file_list)
         if num_log_files == 0:
-            logging.warn('  tpcontrol log file is not generated.')
+            logging.warning('  tpcontrol log file is not generated.')
         elif num_log_files > 1:
-            logging.warn('  Multiple (%d) tpcontrol log files were generated.' %
+            logging.warning('  Multiple (%d) tpcontrol log files were generated.' %
                          num_log_files)
         else:
             # Convert the file name from xxx.dat to xxx.tpcontrol_log.gz

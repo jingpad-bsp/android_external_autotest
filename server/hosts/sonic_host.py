@@ -207,7 +207,7 @@ class SonicHost(abstract_ssh.AbstractSSHHost):
             self.run('rm -r /data/*')
             self.run('rm -f /cache/*')
         except (error.AutotestRunError, error.AutoservRunError) as e:
-            logging.warn('Unable to remove /data and /cache %s', e)
+            logging.warning('Unable to remove /data and /cache %s', e)
             super(SonicHost, self).cleanup()
 
 

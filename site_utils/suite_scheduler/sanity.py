@@ -28,6 +28,6 @@ def CheckControlFileExistance(tasks):
                                   'test_suites', 'control.'+task.suite)
         if not os.path.exists(suite_path):
             corrections = True
-            logging.warn("No suite control file for %s", task.suite)
+            logging.warning("No suite control file for %s", task.suite)
 
     return 1 if corrections else 0

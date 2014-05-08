@@ -47,7 +47,7 @@ class power_Standby(test.test):
 
             power_stats.refresh()
             if power_stats.percent_current_charge() < self._percent_min_charge:
-                logging.warn("Battery percent = %.2f%%.  Too low to continue")
+                logging.warning("Battery percent = %.2f%%.  Too low to continue")
                 break
 
             # check that the RTC slept the correct amount of time as there could

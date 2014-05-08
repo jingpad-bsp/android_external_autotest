@@ -62,7 +62,7 @@ class _BaseAbstractDrone(object):
         return_message = self._execute_calls_impl(calls)
         for warning in return_message['warnings']:
             subject = 'Warning from drone %s' % self.hostname
-            logging.warn(subject + '\n' + warning)
+            logging.warning(subject + '\n' + warning)
             email_manager.manager.enqueue_notify_email(subject, warning)
         return return_message['results']
 

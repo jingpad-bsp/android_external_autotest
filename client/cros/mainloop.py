@@ -41,8 +41,8 @@ class ExceptionForwardingMainLoop(object):
     self._forwarded_exception = None
     self.main_loop = main_loop
     if timeout_s == -1:
-      logging.warn('ExceptionForwardingMainLoop: No timeout specified.')
-      logging.warn('(Specify timeout_s=0 explicitly for no timeout.)')
+      logging.warning('ExceptionForwardingMainLoop: No timeout specified.')
+      logging.warning('(Specify timeout_s=0 explicitly for no timeout.)')
     self.timeout_s = timeout_s
 
   def idle(self):

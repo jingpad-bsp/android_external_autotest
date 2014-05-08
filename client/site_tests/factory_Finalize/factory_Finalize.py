@@ -103,7 +103,7 @@ class PreflightTask(task.FactoryTask):
         flags = int(ret, 0)
         VBSD_HONOR_VIRT_DEV_SWITCH = 0x400
         if (flags & VBSD_HONOR_VIRT_DEV_SWITCH) != 0:
-            logging.warn('No physical switch.')
+            logging.warning('No physical switch.')
             return False
         else:
             logging.info('Using physical switch.')

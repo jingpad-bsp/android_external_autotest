@@ -31,14 +31,14 @@ def memory_channel_args_sandybridge(channel_modules):
     if mad_chnl & 3 == 0 and (mad_chnl >> 2) & 3 == 1:
         channel_order = [0, 1]
     elif mad_chnl & 3 == 1 and (mad_chnl >> 2) & 3 == 0:
-        logging.warn('Non-default memory channel configuration... please '
+        logging.warning('Non-default memory channel configuration... please '
                      'double-check that this is correct and intended.')
         channel_order = [1, 0]
     else:
         raise error.TestError('Invalid channel configuration: %x' % mad_chnl)
 
     if not channel_hash & (1 << 23):
-        logging.warn('Memory channel_hash deactivated... going with cache-line '
+        logging.warning('Memory channel_hash deactivated... going with cache-line '
                      'sized ping-pong as a wild guess.')
         channel_hash = 1
     channel_hash = (channel_hash & 0x3FFF) << 6

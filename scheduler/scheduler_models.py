@@ -183,7 +183,7 @@ class DBObject(object):
         if self._initialized:
             differences = self._compare_fields_in_row(row)
             if differences:
-                logging.warn(
+                logging.warning(
                     'initialized %s %s instance requery is updating: %s',
                     type(self), self.id, differences)
         self._update_fields_from_row(row)

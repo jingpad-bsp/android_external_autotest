@@ -125,7 +125,7 @@ class KernelTrace(object):
         fname = os.path.join(self._TRACE_ROOT, 'events', event_path, 'enable')
 
         if not os.path.exists(fname):
-            logging.warn("Unable to locate tracing event %s", fname)
+            logging.warning("Unable to locate tracing event %s", fname)
             return False
         utils.write_one_line(fname, val)
 
@@ -139,11 +139,11 @@ class KernelTrace(object):
                     break
 
         if val == 1 and not found:
-            logging.warn("Event %s not enabled", event)
+            logging.warning("Event %s not enabled", event)
             return False
 
         if val == 0 and found:
-            logging.warn("Event %s not disabled", event)
+            logging.warning("Event %s not disabled", event)
             return False
 
         return True

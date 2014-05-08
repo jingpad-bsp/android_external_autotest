@@ -61,7 +61,7 @@ class ECControl(object):
             response = self.ec_command('pwmgetfanrpm')
             return int(re.findall(self.GET_FANSPEED_RE, response)[0])
         except Exception:
-            logging.warn('Unable to read fan speed.')
+            logging.warning('Unable to read fan speed.')
             return -1
 
     def get_temperature(self, idx):
@@ -69,7 +69,7 @@ class ECControl(object):
             response = self.ec_command('temps %d' % idx)
             return int(re.findall(self.TEMP_SENSOR_RE, response)[0])
         except Exception:
-            logging.warn('Unable to read temperature sensor %d.', idx)
+            logging.warning('Unable to read temperature sensor %d.', idx)
             return -1
 
 
@@ -81,7 +81,7 @@ class BatteryInfo(object):
             with open(os.path.join(self.BATTERY_INFO_PATH, key), 'r') as f:
                 return f.read().strip()
         except Exception:
-            logging.warn('Unable to read battery value for %s.', key)
+            logging.warning('Unable to read battery value for %s.', key)
             return -1
 
     def get_status(self):

@@ -54,7 +54,7 @@ class unit_test_server(test.test):
         if os.path.exists(src):
             shutil.copy(src, dst)
         else:
-            logging.warn('Unable to locate %s' % src)
+            logging.warning('Unable to locate %s' % src)
         
         # Append the coverage report
         self.write_perf_keyval(filtered)

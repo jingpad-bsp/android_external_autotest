@@ -635,7 +635,7 @@ class base_server_job(base_job.base_job):
                 try:
                     shutil.rmtree(temp_control_file_dir)
                 except Exception, e:
-                    logging.warn('Could not remove temp directory %s: %s',
+                    logging.warning('Could not remove temp directory %s: %s',
                                  temp_control_file_dir, e)
 
             if machines and (collect_crashdumps or collect_crashinfo):

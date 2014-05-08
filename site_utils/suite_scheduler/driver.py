@@ -75,7 +75,7 @@ class Driver(object):
             if keyword in events:
                 events[keyword].tasks = task_list
             else:
-                logging.warn('%s, is an unknown keyword.', keyword)
+                logging.warning('%s, is an unknown keyword.', keyword)
         return events
 
 
@@ -98,7 +98,7 @@ class Driver(object):
                     keyword, new_task = task.Task.CreateFromConfigSection(
                         config, section)
                 except task.MalformedConfigEntry as e:
-                    logging.warn('%s is malformed: %s', section, e)
+                    logging.warning('%s is malformed: %s', section, e)
                     continue
                 tasks.setdefault(keyword, []).append(new_task)
         return tasks
@@ -116,7 +116,7 @@ class Driver(object):
             try:
                 self.HandleEventsOnce(mv)
             except board_enumerator.EnumeratorException as e:
-                logging.warn('Failed to enumerate boards: %r', e)
+                logging.warning('Failed to enumerate boards: %r', e)
             mv.Update()
             time.sleep(self._LOOP_INTERVAL_SECONDS)
             self.RereadAndReprocessConfig(config, mv)

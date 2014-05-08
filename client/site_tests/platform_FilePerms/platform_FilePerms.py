@@ -249,7 +249,7 @@ class platform_FilePerms(test.test):
 
                 fs_type = mtab[fs]['type']
                 if fs_type in ignored_types:
-                    logging.warn('Ignoring filesystem "%s" with type "%s"',
+                    logging.warning('Ignoring filesystem "%s" with type "%s"',
                                  fs, fs_type)
                     continue
                 if not fs in self.expected_mount_options:

@@ -213,7 +213,7 @@ class TestConfigGenerator(object):
         """
         match = _build_version_re.match(build_version)
         if not match:
-            logging.warn('version %s did not match version format',
+            logging.warning('version %s did not match version format',
                          build_version)
             return None
 
@@ -232,7 +232,7 @@ class TestConfigGenerator(object):
         """
         match = _delta_re.match(filename)
         if not match:
-            logging.warn('filename %s did not match delta format', filename)
+            logging.warning('filename %s did not match delta format', filename)
             return None
 
         return match.group('s_version'), match.group('t_version')

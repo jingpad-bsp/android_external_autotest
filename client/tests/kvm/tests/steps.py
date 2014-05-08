@@ -89,7 +89,7 @@ def barrier_2(vm, words, params, debug_dir, data_scrdump_filename,
         try:
             vm.monitor.screendump(scrdump_filename, debug=False)
         except kvm_monitor.MonitorError, e:
-            logging.warn(e)
+            logging.warning(e)
             continue
 
         # Read image file
@@ -97,7 +97,7 @@ def barrier_2(vm, words, params, debug_dir, data_scrdump_filename,
 
         # Make sure image is valid
         if not ppm_utils.image_verify_ppm_file(scrdump_filename):
-            logging.warn("Got invalid screendump: dimensions: %dx%d, "
+            logging.warning("Got invalid screendump: dimensions: %dx%d, "
                          "data size: %d", w, h, len(data))
             continue
 

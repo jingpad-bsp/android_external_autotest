@@ -50,8 +50,8 @@ class hardware_Keyboard(test.test):
             cmd += ' -n'
             (status, output) = commands.getstatusoutput(cmd)
             if status:  ## bad event, log the command's output as a warning
-                logging.warn("Bad event. cmd : %s" % cmd)
-                logging.warn(output)
+                logging.warning("Bad event. cmd : %s" % cmd)
+                logging.warning(output)
                 continue
             num_keys = int(output)
             if (num_keys > high_key_count):

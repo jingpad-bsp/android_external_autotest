@@ -207,7 +207,7 @@ class barrier(object):
 
             intro_parts = intro.split(' ', 2)
             if len(intro_parts) != 2:
-                logging.warn("Ignoring invalid data from %s: %r",
+                logging.warning("Ignoring invalid data from %s: %r",
                              client.getpeername(), intro)
                 client.close()
                 return
@@ -221,14 +221,14 @@ class barrier(object):
             # If we see a duplicate, something _bad_ has happened
             # so drop them now.
             if self._tag != tag:
-                logging.warn("client arriving for the wrong barrier: %s != %s",
+                logging.warning("client arriving for the wrong barrier: %s != %s",
                              self._tag, tag)
                 client.settimeout(5)
                 client.send("!tag")
                 client.close()
                 return
             elif name in self._waiting:
-                logging.warn("duplicate client")
+                logging.warning("duplicate client")
                 client.settimeout(5)
                 client.send("!dup")
                 client.close()
@@ -242,7 +242,7 @@ class barrier(object):
             # who that was we cannot do anything sane other
             # than report it and let the normal timeout kill
             # us when thats appropriate.
-            logging.warn("client handshake timeout: (%s:%d)",
+            logging.warning("client handshake timeout: (%s:%d)",
                          addr[0], addr[1])
             client.close()
             return
@@ -269,7 +269,7 @@ class barrier(object):
 
             # Confirm the master accepted the connection.
             if reply != "wait":
-                logging.warn("Bad connection request to master")
+                logging.warning("Bad connection request to master")
                 client.close()
                 return
 
@@ -306,11 +306,11 @@ class barrier(object):
                 client.send("ping")
                 reply = client.recv(1024)
             except socket.timeout:
-                logging.warn("ping/pong timeout: %s", name)
+                logging.warning("ping/pong timeout: %s", name)
                 pass
 
             if reply == 'abrt':
-                logging.warn("Client %s requested abort", name)
+                logging.warning("Client %s requested abort", name)
                 abort = True
             elif reply != "pong":
                 allpresent = False
@@ -333,7 +333,7 @@ class barrier(object):
             try:
                 client.send(msg)
             except socket.timeout:
-                logging.warn("release timeout: %s", name)
+                logging.warning("release timeout: %s", name)
                 pass
 
         if abort:
@@ -368,7 +368,7 @@ class barrier(object):
                     else:
                         self._slave_hello(connection)
                 except socket.timeout:
-                    logging.warn("timeout waiting for remaining clients")
+                    logging.warning("timeout waiting for remaining clients")
                     pass
 
                 if is_master:
@@ -413,7 +413,7 @@ class barrier(object):
                     remote.connect(connection[1])
                     self._slave_hello(connection)
             except socket.timeout:
-                logging.warn("timeout calling host, retry")
+                logging.warning("timeout calling host, retry")
                 sleep(10)
                 pass
             except socket.error, err:

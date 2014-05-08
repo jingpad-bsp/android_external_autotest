@@ -140,7 +140,7 @@ class Xcheck:
             dev_event_time = self.dev.get_finger_time(fake_xevent_value)
 
         if not dev_event_time:
-            logging.warn('Fail to get time for "%s" in device file.' %
+            logging.warning('Fail to get time for "%s" in device file.' %
                          fake_xevent_value)
             return
 

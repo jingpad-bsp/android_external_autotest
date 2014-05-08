@@ -84,7 +84,7 @@ class logging_LogVolume(cros_ui_test.UITest):
 
         unmatched_patterns.sort()
         for pattern in unmatched_patterns:
-            logging.warn('No files matched: %s' % pattern)
+            logging.warning('No files matched: %s' % pattern)
 
 
         if top_patterns:

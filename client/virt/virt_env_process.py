@@ -89,7 +89,7 @@ def preprocess_vm(test, params, env, name):
         if vm.monitor and params.get("take_regular_screendumps") == "yes":
             vm.monitor.screendump(scrdump_filename, debug=False)
     except kvm_monitor.MonitorError, e:
-        logging.warn(e)
+        logging.warning(e)
 
 
 def postprocess_image(test, params):
@@ -125,7 +125,7 @@ def postprocess_vm(test, params, env, name):
         if vm.monitor and params.get("take_regular_screenshots") == "yes":
             vm.monitor.screendump(scrdump_filename, debug=False)
     except kvm_monitor.MonitorError, e:
-        logging.warn(e)
+        logging.warning(e)
 
     if params.get("kill_vm") == "yes":
         kill_vm_timeout = float(params.get("kill_vm_timeout", 0))
@@ -158,7 +158,7 @@ def process_command(test, params, env, command, command_timeout,
         utils.system("cd %s; %s" % (test.bindir, command))
     except error.CmdError, e:
         if command_noncritical:
-            logging.warn(e)
+            logging.warning(e)
         else:
             raise
 
@@ -220,9 +220,9 @@ def preprocess(test, params, env):
             output_params=(env["address_cache"],))
         if virt_utils.wait_for(lambda: not env["tcpdump"].is_alive(),
                               0.1, 0.1, 1.0):
-            logging.warn("Could not start tcpdump")
-            logging.warn("Status: %s" % env["tcpdump"].get_status())
-            logging.warn("Output:" + virt_utils.format_str_for_message(
+            logging.warning("Could not start tcpdump")
+            logging.warning("Status: %s" % env["tcpdump"].get_status())
+            logging.warning("Output:" + virt_utils.format_str_for_message(
                 env["tcpdump"].get_output()))
 
     # Destroy and remove VMs that are no longer needed in the environment
@@ -309,7 +309,7 @@ def postprocess(test, params, env):
     # Warn about corrupt PPM files
     for f in glob.glob(os.path.join(test.debugdir, "*.ppm")):
         if not ppm_utils.image_verify_ppm_file(f):
-            logging.warn("Found corrupt PPM file: %s", f)
+            logging.warning("Found corrupt PPM file: %s", f)
 
     # Should we convert PPM files to PNG format?
     if params.get("convert_ppm_files_to_png") == "yes":
@@ -349,7 +349,7 @@ def postprocess(test, params, env):
                     session = vm.login()
                     session.close()
                 except (virt_utils.LoginError, virt_vm.VMError), e:
-                    logging.warn(e)
+                    logging.warning(e)
                     vm.destroy(gracefully=False)
 
     # Kill all aexpect tail threads
@@ -424,15 +424,15 @@ def _take_screendumps(test, params, env):
             try:
                 vm.monitor.screendump(filename=temp_filename, debug=False)
             except kvm_monitor.MonitorError, e:
-                logging.warn(e)
+                logging.warning(e)
                 continue
             except AttributeError, e:
                 continue
             if not os.path.exists(temp_filename):
-                logging.warn("VM '%s' failed to produce a screendump", vm.name)
+                logging.warning("VM '%s' failed to produce a screendump", vm.name)
                 continue
             if not ppm_utils.image_verify_ppm_file(temp_filename):
-                logging.warn("VM '%s' produced an invalid screendump", vm.name)
+                logging.warning("VM '%s' produced an invalid screendump", vm.name)
                 os.unlink(temp_filename)
                 continue
             screendump_dir = os.path.join(test.debugdir,

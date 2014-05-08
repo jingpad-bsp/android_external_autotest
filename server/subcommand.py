@@ -77,7 +77,7 @@ def parallel_simple(function, arglist, log=True, timeout=None,
     @returns None or a list of results/exceptions.
     """
     if not arglist:
-        logging.warn('parallel_simple was called with an empty arglist, '
+        logging.warning('parallel_simple was called with an empty arglist, '
                      'did you forget to pass in a list of machines?')
     # Bypass the multithreading if only one machine.
     if len(arglist) == 1:

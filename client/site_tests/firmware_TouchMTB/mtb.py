@@ -1352,7 +1352,7 @@ class MtbParser:
                     finger_off = False
 
             elif start_flag:
-                logging.warn('  Warn: format problem in event:\n  %s' % line)
+                logging.warning('  Warn: format problem in event:\n  %s' % line)
         return packets
 
     def parse_file(self, file_name):

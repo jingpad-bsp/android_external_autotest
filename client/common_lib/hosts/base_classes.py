@@ -356,7 +356,7 @@ class Host(object):
             if old_call == (func, args, dargs):
                 # re-raising the original exception because surrounding
                 # error handling may want to try other ways to fix it
-                logging.warn('Already done this (%s) repair procedure, '
+                logging.warning('Already done this (%s) repair procedure, '
                              're-raising the original exception.', func)
                 raise err
 

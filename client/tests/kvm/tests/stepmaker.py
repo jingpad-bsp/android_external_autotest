@@ -141,7 +141,7 @@ class StepMaker(virt_step_editor.StepMakerWindow):
         try:
             self.vm.monitor.screendump(self.screendump_filename, debug=False)
         except kvm_monitor.MonitorError, e:
-            logging.warn(e)
+            logging.warning(e)
         else:
             self.set_image_from_file(self.screendump_filename)
 
@@ -295,7 +295,7 @@ class StepMaker(virt_step_editor.StepMakerWindow):
         try:
             self.vm.monitor.screendump(self.screendump_filename, debug=False)
         except kvm_monitor.MonitorError, e:
-            logging.warn(e)
+            logging.warning(e)
         else:
             self.set_image_from_file(self.screendump_filename)
 

@@ -129,7 +129,7 @@ class hardware_Trackpad(test.test):
                 self.gesture_files_subpath_regression, regression_tarball)
 
         if not os.path.isfile(regression_tarball_path):
-            logging.warn('  The regression tarball does not exist: "%s"' %
+            logging.warning('  The regression tarball does not exist: "%s"' %
                          regression_tarball_path)
             return None
 
@@ -141,7 +141,7 @@ class hardware_Trackpad(test.test):
                       gesture_files_path_work))
         rc = utils.system(untar_cmd)
         if rc != 0:
-            logging.warn('  Failed in executing "%s".' % untar_cmd)
+            logging.warning('  Failed in executing "%s".' % untar_cmd)
             return None
         logging.info('  Succeeded in executing "%s".' % untar_cmd)
         return gesture_files_path_work

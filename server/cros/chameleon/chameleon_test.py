@@ -102,7 +102,7 @@ class ChameleonTest(test.test):
           if self.chameleon.is_healthy():
               logging.info('Chameleon is healthy.')
           else:
-              logging.warn('Chameleon is not recovered after repair.')
+              logging.warning('Chameleon is not recovered after repair.')
 
         # Unplug the Chameleon port, not to affect other test cases.
         if hasattr(self, 'chameleon_port') and self.chameleon_port:
@@ -191,7 +191,7 @@ class ChameleonTest(test.test):
             else:
                 message += (', within the acceptable range %d' %
                             total_wrong_pixels_margin)
-                logging.warn(message)
+                logging.warning(message)
         else:
             logging.info('Result of %s: all pixels match', tag)
             for file_path in (chameleon_path, dut_path):

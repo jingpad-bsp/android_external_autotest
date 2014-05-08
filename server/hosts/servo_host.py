@@ -532,7 +532,7 @@ class ServoHost(ssh_host.SSHHost):
 
         """
         if not self.is_in_lab():
-            logging.warn('Skip repairing servo host %s: Not a lab device.',
+            logging.warning('Skip repairing servo host %s: Not a lab device.',
                          self.hostname)
             return
         logging.info('Attempting to repair servo host %s.', self.hostname)
@@ -550,11 +550,11 @@ class ServoHost(ssh_host.SSHHost):
                 stats.Counter(counter_prefix + 'SUCCEEDED').increment()
                 return
             except ServoHostRepairMethodNA as e:
-                logging.warn('Repair method NA: %s', e)
+                logging.warning('Repair method NA: %s', e)
                 stats.Counter(counter_prefix + 'RepairNA').increment()
                 errors.append(str(e))
             except Exception as e:
-                logging.warn('Failed to repair servo: %s', e)
+                logging.warning('Failed to repair servo: %s', e)
                 stats.Counter(counter_prefix + 'FAILED').increment()
                 errors.append(str(e))
         stats.Counter('servo_host_repair.Full_Repair_Failed').increment()

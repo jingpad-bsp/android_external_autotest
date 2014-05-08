@@ -138,14 +138,14 @@ class network_EthCaps(test.test):
         bios_info = utils.system_output(cmd).replace(' ', '').split('|')
         logging.debug("bios_info = %s", bios_info)
         if 'coreboot' not in bios_info:
-            logging.warn("Unable to verify wake in s/w due to firmware type")
+            logging.warning("Unable to verify wake in s/w due to firmware type")
             if 'INSYDE' not in bios_info:
                 raise error.TestError("Unrecognized firmware found")
             return True
 
         fw_log = "/sys/firmware/log"
         if not os.path.isfile(fw_log):
-            logging.warn("Unable to verify wake in s/w due to missing log %s",
+            logging.warning("Unable to verify wake in s/w due to missing log %s",
                          fw_log)
             return True
 

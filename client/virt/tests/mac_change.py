@@ -48,7 +48,7 @@ def run_mac_change(test, params, env):
     if virt_utils.wait_for(session.is_responsive, 120, 20, 3):
         # Just warning when failed to see the session become dead,
         # because there is a little chance the ip does not change.
-        logging.warn("The session is still responsive, settings may fail.")
+        logging.warning("The session is still responsive, settings may fail.")
     session.close()
 
     # Re-log into guest and check if session is responsive
