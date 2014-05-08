@@ -8,6 +8,8 @@ PURPOSE = 'Verify diskfirmware upgrade is not broken'
 TIME = 'SHORT'
 TEST_CLASS = 'hardware'
 TEST_TYPE = 'server'
+DEPENDENCIES = 'storage:ssd'
+SUITE = 'experimental'
 
 DOC = """
 The test uses a list of firmware packages and applies them to the DUT.
