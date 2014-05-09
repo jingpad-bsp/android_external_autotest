@@ -351,6 +351,11 @@ class TestFlow:
         """Control the robot to perform the action."""
         if self._is_robot_mode():
             self.robot.control(self.gesture, self.variation)
+            # Once the script terminates start a timeout to clean up if one
+            # hasn't already been set to keep the test suite from hanging.
+            if not self.gesture_begins_flag:
+                self.win.register_timeout_add(self.gesture_timeout_callback,
+                                              self.gesture.timeout)
 
     def _handle_user_choice_save_after_parsing(self, next_gesture=True):
         """Handle user choice for saving the parsed gesture file."""
