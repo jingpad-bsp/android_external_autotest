@@ -106,6 +106,7 @@ MIDDLEWARE_CLASSES = (
     'frontend.apache_auth.ApacheAuthMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.middleware.doc.XViewMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
     'frontend.shared.json_html_formatter.JsonToHtmlMiddleware',
 )
 
