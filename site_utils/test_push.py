@@ -35,8 +35,9 @@ from autotest_lib.server.cros.dynamic_suite import reporting
 CONFIG = global_config.global_config
 
 MAIL_FROM = 'chromeos-test@google.com'
-DEVSERVER = CONFIG.get_config_value('CROS', 'dev_server', type=list,
-                                    default=[])[0]
+DEVSERVERS = CONFIG.get_config_value('CROS', 'dev_server', type=list,
+                                     default=[])
+BUILD_REGEX = '^R[\d]+-[\d]+\.[\d]+\.[\d]+$'
 RUN_SUITE_COMMAND = 'run_suite.py'
 PUSH_TO_PROD_SUITE = 'push_to_prod'
 AU_SUITE = 'paygen_au_canary'
@@ -78,6 +79,30 @@ class TestPushException(Exception):
     """Exception to be raised when the test to push to prod failed."""
     pass
 
+
+def get_default_build(devserver=None, board='stumpy'):
+    """Get the default build to be used for test.
+
+    @param devserver: devserver used to look for latest staged build. If value
+                      is None, all devservers in config will be tried.
+    @param board: Name of board to be tested, default is stumpy.
+    @return: Build to be tested, e.g., stumpy-release/R36-5881.0.0
+    """
+    LATEST_BUILD_URL_PATTERN = '%s/latestbuild?target=%s-release'
+    build = None
+    if not devserver:
+        for server in DEVSERVERS:
+             url = LATEST_BUILD_URL_PATTERN % (server, board)
+             build = urllib2.urlopen(url).read()
+             if build and re.match(BUILD_REGEX, build):
+                 return '%s-release/%s' % (board, build)
+
+    # If no devserver has any build staged for the given board, use the stable
+    # build in config.
+    build = CONFIG.get_config_value('CROS', 'stable_cros_version')
+    return '%s-release/%s' % (board, build)
+
+
 def parse_arguments():
     """Parse arguments for test_push tool.
 
@@ -101,18 +126,15 @@ def parse_arguments():
                         help='Email address for the notification to be sent to '
                              'after the script finished running.')
     parser.add_argument('-d', '--devserver', dest='devserver',
-                        default=DEVSERVER,
+                        default=None,
                         help='devserver to find what\'s the latest build.')
 
     arguments = parser.parse_args(sys.argv[1:])
 
     # Get latest canary build as default build.
     if not arguments.build:
-        url = '%s/latestbuild?target=%s-release' % (arguments.devserver,
-                                                    arguments.board)
-        latest_build = urllib2.urlopen(url).read()
-        default_build = '%s-release/%s' % (arguments.board, latest_build)
-        arguments.build = default_build
+        arguments.build = get_default_build(arguments.devserver,
+                                            arguments.board)
 
     return arguments
 

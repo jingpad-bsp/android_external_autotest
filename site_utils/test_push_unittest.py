@@ -44,9 +44,12 @@ class TestPushUnittests(mox.MoxTestBase):
         response = StringIO.StringIO('some_value')
         self.mox.StubOutWithMock(urllib2, 'urlopen')
         urllib2.urlopen(mox.IgnoreArg()).AndReturn(response)
-        urllib2.urlopen(mox.IgnoreArg()).AndReturn(response)
         if not fail_first_run_suite:
             urllib2.urlopen(mox.IgnoreArg()).AndReturn(response)
+
+        self.mox.StubOutWithMock(test_push, 'get_default_build')
+        test_push.get_default_build(mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
+                'stumpy-release/R36-5881-0.0')
 
         self.mox.StubOutWithMock(test_push, 'do_run_suite')
         test_push.do_run_suite(test_push.PUSH_TO_PROD_SUITE, mox.IgnoreArg()
