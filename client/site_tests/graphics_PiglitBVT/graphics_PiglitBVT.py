@@ -14,6 +14,17 @@ class graphics_PiglitBVT(test.test):
     version = 1
 
     test_scripts = 'test_scripts/'
+    GSC = None
+
+    def setup(self):
+        self.job.setup_dep(['piglit'])
+
+    def initialize(self):
+        self.GSC = graphics_utils.GraphicsStateChecker()
+
+    def cleanup(self):
+        if self.GSC:
+            self.GSC.finalize()
 
     def run_once(self, test_slice):
         gpu_family = utils.get_gpu_family()
@@ -25,25 +36,26 @@ class graphics_PiglitBVT(test.test):
             logging.info('Not running any tests, passing by default.')
             return
 
+        scripts_dir = os.path.join(self.bindir, self.test_scripts)
+        family_dir = os.path.join(scripts_dir, family)
         # We don't want to introduce too many combinations, so fall back.
-        if not os.path.isdir(os.path.join(self.test_scripts, family)):
+        if not os.path.isdir(family_dir):
             family = 'other'
+            family_dir = os.path.join(scripts_dir, family)
         logging.info('Using scripts for gpu family %s.', family)
-
+        scripts_dir = os.path.join(self.bindir, self.test_scripts)
         # Mark scripts executable if they are not.
-        utils.system('chmod +x /usr/local/autotest/tests/graphics_PiglitBVT/' +
-                     self.test_scripts + '*/graphics_PiglitBVT_*.sh')
+        utils.system('chmod +x ' + scripts_dir + '*/graphics_PiglitBVT_*.sh')
 
         # Kick off test script.
-        cmd = ('source /usr/local/autotest/tests/graphics_PiglitBVT/' +
-               self.test_scripts +
-               '%s/graphics_PiglitBVT_%d.sh' % (family, test_slice))
+        cmd = ('source ' + os.path.join(family_dir, 'graphics_PiglitBVT_%d.sh' %
+                                                    test_slice))
         logging.info('Executing cmd = %s', cmd)
-        # TODO(ihf): See if we can get the test output in real time to the logs.
-        # utils.run(cmd,
-        #           stdout_tee=utils.TEE_TO_LOGS,
-        #           stderr_tee=utils.TEE_TO_LOGS).stdout
-        tests_failed = utils.system(cmd, ignore_status=True)
+        result = utils.run(cmd,
+                           stdout_tee=utils.TEE_TO_LOGS,
+                           stderr_tee=utils.TEE_TO_LOGS,
+                           ignore_status = True)
+        tests_failed = result.exit_status
         if tests_failed:
             reason = '%d tests failed on "%s" in slice %d' % (tests_failed,
                                                               gpu_family,

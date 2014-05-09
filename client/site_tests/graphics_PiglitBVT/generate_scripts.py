@@ -22,13 +22,15 @@ function run_test()\n\
   local time="$2"\n\
   local command="$3"\n\
   echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"\n\
-  echo "Running test \"$name\" of expected runtime $time sec: $command"\n\
+  echo "+ Running test \"$name\" of expected runtime $time sec: $command"\n\
   sync\n\
   $command\n\
   if [ $? == 0 ] ; then\n\
     let "need_pass--"\n\
+    echo "+ Return code 0 -> Test passed. ($name)"\n\
   else\n\
     let "failures++"\n\
+    echo "+ Return code not 0 -> Test failed. ($name)"\n\
   fi\n\
 }\n\
 '
@@ -58,7 +60,7 @@ NAME = '" + AUTOTEST_NAME + "'\n\
 AUTHOR = 'chromeos-gfx'\n\
 PURPOSE = 'Collection of automated tests for OpenGL implementations.'\n\
 CRITERIA = 'All tests in a slice have to pass, otherwise it will fail.'\n\
-SUITE = 'bvt'\n\
+SUITE = 'graphics, graphics_per-build'\n\
 TIME='SHORT'\n\
 TEST_CATEGORY = 'Functional'\n\
 TEST_CLASS = 'graphics'\n\
@@ -99,6 +101,7 @@ def append_script_header(f, need_pass):
   print('PIGLIT_PATH=%s' % PIGLIT_PATH, file=f)
   print('export PIGLIT_SOURCE_DIR=%s' % PIGLIT_PATH, file=f)
   print('export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PIGLIT_PATH/lib', file=f)
+  print('export DISPLAY=:0', file=f)
   print('', file=f)
   print(FILE_RUN_TEST, file=f)
   print('', file=f)
@@ -225,6 +228,15 @@ def get_intermittent_tests(statistics):
   return sorted(tests)
 
 
+def cleanup_command(cmd):
+  """
+  Make script less location dependent by stripping path from commands.
+  """
+  cmd = cmd.replace(PIGLIT_PATH, '')
+  cmd = cmd.replace('framework/../', '')
+  cmd = cmd.replace('tests/../', '')
+  return cmd
+
 def process_gpu_family(family, family_root):
   """
   This takes a directory with log files from the same gpu family and processes
@@ -255,8 +267,7 @@ def process_gpu_family(family, family_root):
     with open(filename, 'w+') as f:
       append_script_header(f, num_pass_total)
       for test in passing_tests:
-        # Make script less location dependent by stripping path from commands.
-        cmd = statistics[test].command.replace(PIGLIT_PATH, '')
+        cmd = cleanup_command(statistics[test].command)
         time_test = statistics[test].time
         print('run_test "%s" %.1f "%s"' % (test, 0.0, cmd), file=f)
       append_script_summary(f, num_pass_total)
@@ -281,7 +292,7 @@ def process_gpu_family(family, family_root):
         append_script_header(f, need_pass)
         for test in slice_tests:
           # Make script less location dependent by stripping path from commands.
-          cmd = statistics[test].command.replace(PIGLIT_PATH, '')
+          cmd = cleanup_command(statistics[test].command)
           time_test = statistics[test].time
           # TODO(ihf): Pass proper time_test instead of 0.0 once we can use it.
           print('run_test "%s" %.1f "%s"'
