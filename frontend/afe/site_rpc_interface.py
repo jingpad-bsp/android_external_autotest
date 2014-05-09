@@ -83,21 +83,22 @@ def _stage_build_artifacts(build):
 
     @param build image we want to stage.
 
-    @raises StageBuildFailure: if the dev server throws 500 while staging
-        build.
+    @raises StageControlFileFailure: if the dev server throws 500 while staging
+        suite control files.
 
     @return: dev_server.ImageServer instance to use with this build.
     @return: timings dictionary containing staging start/end times.
     """
     timings = {}
-    # Set synchronous to False to allow other components to be downloaded in
-    # the background.
+    # Ensure components of |build| necessary for installing images are staged
+    # on the dev server. However set synchronous to False to allow other
+    # components to be downloaded in the background.
     ds = dev_server.ImageServer.resolve(build)
     timings[constants.DOWNLOAD_STARTED_TIME] = formatted_now()
     try:
         ds.stage_artifacts(build, ['test_suites'])
     except dev_server.DevServerException as e:
-        raise error.StageBuildFailure(
+        raise error.StageControlFileFailure(
                 "Failed to stage %s: %s" % (build, e))
     timings[constants.PAYLOAD_FINISHED_TIME] = formatted_now()
     return (ds, timings)
@@ -140,7 +141,8 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
 
     @raises ControlFileNotFound: if a unique suite control file doesn't exist.
     @raises NoControlFileList: if we can't list the control files at all.
-    @raises StageBuildFailure: if the dev server throws 500 while staging build.
+    @raises StageControlFileFailure: If the dev server throws 500 while
+                                     staging test_suites.
     @raises ControlFileEmpty: if the control file exists on the server, but
                               can't be read.
 
@@ -152,7 +154,6 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
     if num == 0:
         logging.warning("Can't run on 0 hosts; using default.")
         num = None
-
     (ds, timings) = _stage_build_artifacts(build)
 
     if not control_file:

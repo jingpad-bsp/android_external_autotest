@@ -50,6 +50,7 @@ from autotest_lib.client.common_lib import global_config, enum
 from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.server import utils
 from autotest_lib.server.cros.dynamic_suite import constants
@@ -1194,6 +1195,40 @@ class ResultCollector(object):
         self._compute_return_code()
 
 
+@retry.retry(error.StageControlFileFailure, timeout_min=10)
+def create_suite(afe, options):
+    """Create a suite with retries.
+
+    @param afe: The afe object to insert the new suite job into.
+    @param options: The options to use in creating the suite.
+
+    @return: The afe_job_id of the new suite job.
+    """
+    wait = options.no_wait == 'False'
+    file_bugs = options.file_bugs == 'True'
+    retry = options.retry == 'True'
+    try:
+        priority = int(options.priority)
+    except ValueError:
+        try:
+            priority = priorities.Priority.get_value(options.priority)
+        except AttributeError:
+            print 'Unknown priority level %s.  Try one of %s.' % (
+                  options.priority, ', '.join(priorities.Priority.names))
+            raise
+    logging.info('%s Submitted create_suite_job rpc',
+                 diagnosis_utils.JobTimer.format_time(datetime.now()))
+    return afe.run('create_suite_job', name=options.name,
+                   board=options.board, build=options.build,
+                   check_hosts=wait, pool=options.pool,
+                   num=options.num,
+                   file_bugs=file_bugs, priority=priority,
+                   suite_args=options.suite_args,
+                   wait_for_results=wait,
+                   timeout_mins=options.timeout_mins,
+                   job_retry=retry)
+
+
 def main_without_exception_handling():
     """
     Entry point for run_suite script without exception handling.
@@ -1212,15 +1247,6 @@ def main_without_exception_handling():
             log_name = os.path.join(log_dir, log_name)
 
     setup_logging(logfile=log_name)
-    try:
-        priority = int(options.priority)
-    except ValueError:
-        try:
-            priority = priorities.Priority.get_value(options.priority)
-        except AttributeError:
-            print 'Unknown priority level %s.  Try one of %s.' % (
-                  options.priority, ', '.join(priorities.Priority.names))
-            return RETURN_CODES.INVALID_OPTIONS
 
     if not options.bypass_labstatus:
         utils.check_lab_status(options.build)
@@ -1234,29 +1260,17 @@ def main_without_exception_handling():
     rpc_helper = diagnosis_utils.RPCHelper(afe)
     rpc_helper.check_dut_availability(options.board, options.pool,
                                       options.minimum_duts)
-
-    wait = options.no_wait == 'False'
-    file_bugs = options.file_bugs == 'True'
-    retry = options.retry == 'True'
-    logging.info('%s Submitted create_suite_job rpc',
-                 diagnosis_utils.JobTimer.format_time(datetime.now()))
     if options.mock_job_id:
         job_id = int(options.mock_job_id)
     else:
         try:
-            job_id = afe.run('create_suite_job', name=options.name,
-                             board=options.board, build=options.build,
-                             check_hosts=wait, pool=options.pool,
-                             num=options.num,
-                             file_bugs=file_bugs, priority=priority,
-                             suite_args=options.suite_args,
-                             wait_for_results=wait,
-                             timeout_mins=options.timeout_mins,
-                             job_retry=retry)
+            job_id = create_suite(afe, options)
         except (error.CrosDynamicSuiteException,
                 error.RPCException, proxy.JSONRPCException) as e:
             logging.warning('Error Message: %s', e)
             return RETURN_CODES.INFRA_FAILURE
+        except AttributeError:
+            return RETURN_CODES.INVALID_OPTIONS
 
     job_timer = diagnosis_utils.JobTimer(
             time.time(), float(options.timeout_mins))
@@ -1270,7 +1284,7 @@ def main_without_exception_handling():
                                         timeout_min=options.afe_timeout_mins,
                                         delay_sec=options.delay_sec)
     code = RETURN_CODES.OK
-
+    wait = options.no_wait == 'False'
     if wait:
         while not afe.get_jobs(id=job_id, finished=True):
             # Note that this call logs output, preventing buildbot's
@@ -1334,7 +1348,6 @@ def main_without_exception_handling():
                                  RETURN_CODES.get_string(code))
             if is_suite_timeout:
                 logging.info('\nAttempting to diagnose pool: %s', options.pool)
-                stats.Counter('run_suite_timeouts').increment()
                 try:
                     # Add some jitter to make up for any latency in
                     # aborting the suite or checking for results.
@@ -1346,8 +1359,6 @@ def main_without_exception_handling():
                     logging.warning('Unable to diagnose suite abort.')
 
         # And output return message.
-        code_str = RETURN_CODES.get_string(code)
-        logging.info('Will return from run_suite with status: %s', code_str)
         if return_message:
             logging.info('Reason: %s', return_message)
 
@@ -1366,7 +1377,7 @@ def main():
     """Entry point."""
     code = RETURN_CODES.OK
     try:
-        return main_without_exception_handling()
+        code = main_without_exception_handling()
     except diagnosis_utils.BoardNotAvailableError as e:
         logging.warning('Can not run suite: %s', e)
         code = RETURN_CODES.BOARD_NOT_AVAILABLE
@@ -1379,6 +1390,7 @@ def main():
 
     logging.info('Will return from run_suite with status: %s',
                   RETURN_CODES.get_string(code))
+    stats.Counter('run_suite.%s' % RETURN_CODES.get_string(code)).increment()
     return code
 
 

@@ -115,7 +115,7 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
             self._BUILD, ['test_suites']).AndRaise(
                 dev_server.DevServerException())
         self.mox.ReplayAll()
-        self.assertRaises(error.StageBuildFailure,
+        self.assertRaises(error.StageControlFileFailure,
                           site_rpc_interface.create_suite_job,
                           self._NAME,
                           self._BOARD,

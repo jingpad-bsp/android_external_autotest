@@ -540,6 +540,11 @@ class RepoError(PackagingError):
     "Raised when a repo isn't working in some way"
 
 
+class StageControlFileFailure(Exception):
+    """Exceptions encountered staging control files."""
+    pass
+
+
 class CrosDynamicSuiteException(Exception):
     """
     Base class for exceptions coming from dynamic suite code in

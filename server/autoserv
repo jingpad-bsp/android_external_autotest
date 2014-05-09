@@ -17,7 +17,7 @@ require_atfork = global_config.global_config.get_config_value(
 
 
 # Number of seconds to wait before returning if testing mode is enabled
-TESTING_MODE_SLEEP_SECS = 10
+TESTING_MODE_SLEEP_SECS = 1
 
 
 try:
@@ -314,14 +314,26 @@ def main():
     except control_data.ControlVariableException as e:
         logging.error(str(e))
     exit_code = 0
+    # TODO(beeps): Extend this to cover different failure modes.
+    # Testing exceptions are matched against labels sent to autoserv. Eg,
+    # to allow only the hostless job to run, specify
+    # testing_exceptions: test_suite in the shadow_config. To allow both
+    # the hostless job and dummy_Pass to run, specify
+    # testing_exceptions: test_suite,dummy_Pass. You can figure out
+    # what label autoserv is invoked with by looking through the logs of a test
+    # for the autoserv command's -l option.
+    testing_exceptions = global_config.global_config.get_config_value(
+            'AUTOSERV', 'testing_exceptions', type=list, default=[])
+    test_mode = global_config.global_config.get_config_value(
+            'AUTOSERV', 'testing_mode', type=bool, default=False)
+    test_mode = test_mode and not any([ex in parser.options.label
+                                       for ex in testing_exceptions])
     try:
         try:
-            if not global_config.global_config.get_config_value(
-                        'AUTOSERV', 'testing_mode', type=bool, default=False):
-                run_autoserv(pid_file_manager, results, parser)
-            else:
-                # TODO(beeps): Extend this to cover different failure modes.
+            if test_mode:
                 time.sleep(TESTING_MODE_SLEEP_SECS)
+            else:
+                run_autoserv(pid_file_manager, results, parser)
         except SystemExit as e:
             exit_code = e.code
             if exit_code:
