@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import ast, logging, re
+import ast, logging, re, time
 
 from autotest_lib.client.common_lib import error
 
@@ -236,3 +236,7 @@ class ChromeEC(object):
           codes: Hostevent codes, HOSTEVENT_*
         """
         self.send_command("hostevent set %#x" % codes)
+        # Allow enough time for EC to process input and set flag.
+        # See chromium:371631 for details.
+        # FIXME: Stop importing time module if this hack becomes obsolete.
+        time.sleep(1)
