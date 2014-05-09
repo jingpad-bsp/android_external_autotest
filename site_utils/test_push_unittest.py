@@ -51,6 +51,10 @@ class TestPushUnittests(mox.MoxTestBase):
         test_push.get_default_build(mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
                 'stumpy-release/R36-5881-0.0')
 
+        self.mox.StubOutWithMock(test_push, 'check_dut_image')
+        test_push.check_dut_image(mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
+                None)
+
         self.mox.StubOutWithMock(test_push, 'do_run_suite')
         test_push.do_run_suite(test_push.PUSH_TO_PROD_SUITE, mox.IgnoreArg()
                                ).AndReturn((1))

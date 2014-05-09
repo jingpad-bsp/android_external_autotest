@@ -27,10 +27,17 @@ import sys
 import urllib2
 
 import common
+try:
+    from autotest_lib.frontend import setup_django_environment
+    from autotest_lib.frontend.afe import models
+except ImportError:
+    # Unittest may not have Django database configured and will fail to import.
+    pass
 from autotest_lib.client.common_lib import global_config, mail
 from autotest_lib.server import site_utils
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import reporting
+from autotest_lib.server.hosts import cros_host
 
 CONFIG = global_config.global_config
 
@@ -180,7 +187,31 @@ def do_run_suite(suite_name, arguments):
 
     if not suite_job_id:
         raise TestPushException('Failed to retrieve suite job ID.')
+
+    print 'Suite job %s is completed.' % suite_job_id
     return suite_job_id
+
+
+def check_dut_image(build, suite_job_id):
+    """Confirm all DUTs used for the suite are imaged to expected build.
+
+    @param build: Expected build to be imaged.
+    @param suite_job_id: job ID of the suite job.
+    @raise TestPushException: If a DUT does not have expected build imaged.
+    """
+    print 'Checking image installed in DUTs...'
+    job_ids = [job.id for job in
+               models.Job.objects.filter(parent_job_id=suite_job_id)]
+    hqes = [models.HostQueueEntry.objects.filter(job_id=job_id)[0]
+            for job_id in job_ids]
+    hostnames = set([hqe.host.hostname for hqe in hqes])
+    for hostname in hostnames:
+        host = cros_host.CrosHost(hostname)
+        found_build = host.get_build()
+        if found_build != build:
+            raise TestPushException('DUT is not imaged properly. Host %s has '
+                                    'build %s, while build %s is expected.' %
+                                    (hostname, found_build, build))
 
 
 def test_suite(suite_name, expected_results, arguments):
@@ -193,8 +224,12 @@ def test_suite(suite_name, expected_results, arguments):
     """
     suite_job_id = do_run_suite(suite_name, arguments)
 
+    # Confirm all DUTs used for the suite are imaged to expected build.
+    if suite_name != AU_SUITE:
+        check_dut_image(arguments.build, suite_job_id)
+
     # Find all tests and their status
-    print 'Suite job %s is completed, comparing test results...' % suite_job_id
+    print 'Comparing test results...'
     TKO = frontend_wrappers.RetryingTKO(timeout_min=0.1, delay_sec=10)
     test_views = site_utils.get_test_views_from_tko(suite_job_id, TKO)
 
