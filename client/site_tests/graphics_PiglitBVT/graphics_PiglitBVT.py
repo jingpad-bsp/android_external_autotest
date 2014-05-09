@@ -6,6 +6,7 @@ import logging, os
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.graphics import graphics_utils
 
 class graphics_PiglitBVT(test.test):
     """
