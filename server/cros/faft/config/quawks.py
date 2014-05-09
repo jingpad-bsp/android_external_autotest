@@ -9,4 +9,5 @@ from autotest_lib.server.cros.faft.config import rambi
 
 class Values(rambi.Values):
     """Inherit overrides from rambi."""
-    pass
+    """Configure servo-controlled WP pin as open drain"""
+    wp_voltage = 'off'
