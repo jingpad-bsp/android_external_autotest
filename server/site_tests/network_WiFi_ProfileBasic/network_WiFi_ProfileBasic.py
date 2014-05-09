@@ -96,8 +96,19 @@ class network_WiFi_ProfileBasic(wifi_cell_test_base.WiFiCellTestBase):
 
             self._assert_state_transition(client_config0.ssid,
                                           ['ready', 'portal', 'online'])
+
+            # Explicitly disconnect from the AP.
+            self.context.client.shill.disconnect(client_config0.ssid)
+            self._assert_state_transition(client_config0.ssid, ['idle'])
+
             with ProfileRemovingContext(self.context.client,
                                         profile_name='top') as top:
+                # Changes to the profile stack should clear the "explicitly
+                # disconnected" flag on all services.  This should cause shill
+                # to re-connect to the AP.
+                self._assert_state_transition(client_config0.ssid,
+                                              ['ready', 'portal', 'online'])
+
                 self.context.configure(ap_config1, multi_interface=True)
                 client_config1 = xmlrpc_datatypes.AssociationParameters(
                         security_config=ap_config1.security_config,
@@ -122,5 +133,27 @@ class network_WiFi_ProfileBasic(wifi_cell_test_base.WiFiCellTestBase):
                     raise error.TestFail('Failed to pop profile %s.' %
                                           top.profile_name)
                 self._assert_state_transition(client_config1.ssid, ['idle'])
+                self._assert_state_transition(client_config0.ssid,
+                                              ['ready', 'portal', 'online'])
+
+                # Re-push the top profile.
+                if not self.context.client.shill.push_profile(top.profile_name):
+                    raise error.TestFail('Failed to push profile %s.' %
+                                          top.profile_name)
+
+                # Explicitly disconnect from the AP.
+                self.context.client.shill.disconnect(client_config0.ssid)
+                self._assert_state_transition(client_config0.ssid, ['idle'])
+
+                # Verify that popping a profile -- even one which does not
+                # affect the service profile -- returns explicitly disconnected
+                # services back into the pool of connectable services.
+                if not self.context.client.shill.pop_profile(top.profile_name):
+                    raise error.TestFail('Failed to pop profile %s.' %
+                                          top.profile_name)
+
+                # A change to the profile stack should have caused us to
+                # reconnect to the service, since the "explicitly disconnected"
+                # flag will be removed.
                 self._assert_state_transition(client_config0.ssid,
                                               ['ready', 'portal', 'online'])
