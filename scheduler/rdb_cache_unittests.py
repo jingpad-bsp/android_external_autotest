@@ -233,6 +233,7 @@ class RDBCacheTest(test_utils.AbstractBaseRDBTester, unittest.TestCase):
                         default_job_params['deps'],
                         self.cache._cache_backend._cache.values())
             assert(len(lines) == 0)
+            assert(int(self.cache.mean_staleness()) == 100)
             return test_utils.wire_format_response_map(self.response_map)
 
         self.god.stub_with(rdb.AvailableHostRequestHandler,

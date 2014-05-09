@@ -346,7 +346,7 @@ class AvailableHostRequestHandler(BaseHostRequestHandler):
                 # through a cache hit.
                 line_length = len(hosts)
                 self.cache.stale_entries.append(
-                        float(failed_leasing/line_length) * 100)
+                        (float(failed_leasing)/line_length) * 100)
             self.leased_hosts_count += leased_host_count
         self.unsatisfied_requests += max(hosts_required - leased_host_count, 0)
         # Cache the unleased matching hosts against the request.

@@ -45,6 +45,7 @@ REQUIRES_DJANGO = set((
         'rdb_integration_tests.py',
         'rdb_unittest.py',
         'rdb_hosts_unittest.py',
+        'rdb_cache_unittests.py',
         ))
 
 REQUIRES_MYSQLDB = set((
