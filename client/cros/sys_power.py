@@ -48,13 +48,13 @@ class SpuriousWakeupError(SuspendFailure):
             # crbug.com/345327: unknown, probably same as crbug.com/290923
             ('^x86-alex', '', ''),   # alex can report neither, blanket ignore
             # crbug.com/355106: unknown, possibly related to crbug.com/290923
-            ('^lumpy', '', 'PM1_STS: WAK PWRBTN'),
+            ('^lumpy|^parrot', '', 'PM1_STS: WAK PWRBTN'),
         ]
     S0_WHITELIST = [  # (<board>, <kernel wake source>)
             # crbug.com/290923: spurious keyboard IRQ, believed to be from Servo
             ('^x86-alex', 'serio0'),
             # unknown, probably the same as crbug.com/355106 & crbug.com/290923
-            ('^lumpy', 'serio0'),
+            ('^lumpy|^parrot', 'serio0'),
         ]
 
 class MemoryError(SuspendFailure):
