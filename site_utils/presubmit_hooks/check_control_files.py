@@ -115,7 +115,6 @@ def main():
 
     for file_path in file_list.split('\n'):
         control_file = re.search(r'.*/control(?:\.\w+)?$', file_path)
-        client_side = re.search(r'/client/', file_path)
         if control_file:
             ctrl_data = control_data.parse_control(control_file.group(0),
                                                    raise_warnings=True)
@@ -127,8 +126,7 @@ def main():
                 # The control file may not have bug template defined.
                 pass
 
-            if client_side:
-                CheckSuites(ctrl_data, test_name)
+            CheckSuites(ctrl_data, test_name)
 
 
 if __name__ == '__main__':
