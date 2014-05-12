@@ -97,7 +97,7 @@ class BugTemplate(object):
 
 
     @classmethod
-    def _validate_bug_template(cls, bug_template):
+    def validate_bug_template(cls, bug_template):
         """Verify if a bug template has value for all essential attributes.
 
         @param bug_template: bug template to be verified.
@@ -136,8 +136,8 @@ class BugTemplate(object):
                 invalid, e.g., has missing essential attribute, or any given
                 template is not a dictionary.
         """
-        self._validate_bug_template(self.bug_template)
-        self._validate_bug_template(test_template)
+        self.validate_bug_template(self.bug_template)
+        self.validate_bug_template(test_template)
 
         merged_template = copy.deepcopy(test_template)
         merged_template.update((k, v) for k, v in self.bug_template.iteritems()
@@ -153,7 +153,7 @@ class BugTemplate(object):
                                         self.bug_template[key])
             elif not merged_template[key]:
                 merged_template[key] = self.bug_template[key]
-        self._validate_bug_template(merged_template)
+        self.validate_bug_template(merged_template)
         return merged_template
 
 

@@ -444,7 +444,7 @@ class TestMergeBugTemplate(mox.MoxTestBase):
         """Test a valid bug can be verified successfully."""
         bug_template= {}
         bug_template['owner'] = 'someone@company.com'
-        reporting_utils.BugTemplate._validate_bug_template(bug_template)
+        reporting_utils.BugTemplate.validate_bug_template(bug_template)
 
 
     def test_validate_success(self):
@@ -452,40 +452,40 @@ class TestMergeBugTemplate(mox.MoxTestBase):
         # Bug template must be a dictionary.
         bug_template = ['test']
         self.assertRaises(reporting_utils.InvalidBugTemplateException,
-                          reporting_utils.BugTemplate._validate_bug_template,
+                          reporting_utils.BugTemplate.validate_bug_template,
                           bug_template)
 
         # Bug template must contain value for essential attribute, e.g., owner.
         bug_template= {'no-owner': 'user1'}
         self.assertRaises(reporting_utils.InvalidBugTemplateException,
-                          reporting_utils.BugTemplate._validate_bug_template,
+                          reporting_utils.BugTemplate.validate_bug_template,
                           bug_template)
 
         # Bug template must contain value for essential attribute, e.g., owner.
         bug_template= {'owner': 'invalid_email_address'}
         self.assertRaises(reporting_utils.InvalidBugTemplateException,
-                          reporting_utils.BugTemplate._validate_bug_template,
+                          reporting_utils.BugTemplate.validate_bug_template,
                           bug_template)
 
         # Check unexpected attributes.
         bug_template= {}
         bug_template['random tag'] = 'test'
         self.assertRaises(reporting_utils.InvalidBugTemplateException,
-                          reporting_utils.BugTemplate._validate_bug_template,
+                          reporting_utils.BugTemplate.validate_bug_template,
                           bug_template)
 
         # Value for cc must be a list
         bug_template= {}
         bug_template['cc'] = 'test'
         self.assertRaises(reporting_utils.InvalidBugTemplateException,
-                          reporting_utils.BugTemplate._validate_bug_template,
+                          reporting_utils.BugTemplate.validate_bug_template,
                           bug_template)
 
         # Value for labels must be a list
         bug_template= {}
         bug_template['labels'] = 'test'
         self.assertRaises(reporting_utils.InvalidBugTemplateException,
-                          reporting_utils.BugTemplate._validate_bug_template,
+                          reporting_utils.BugTemplate.validate_bug_template,
                           bug_template)
 
 

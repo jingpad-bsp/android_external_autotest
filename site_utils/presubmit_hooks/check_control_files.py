@@ -14,6 +14,7 @@ that edits a control file.
 import glob, os, re, subprocess
 import common
 from autotest_lib.client.common_lib import control_data
+from autotest_lib.server.cros.dynamic_suite import reporting_utils
 
 
 class ControlFileCheckerError(Exception):
@@ -119,6 +120,13 @@ def main():
             ctrl_data = control_data.parse_control(control_file.group(0),
                                                    raise_warnings=True)
             test_name = os.path.basename(os.path.split(file_path)[0])
+            try:
+                reporting_utils.BugTemplate.validate_bug_template(
+                        ctrl_data.bug_template)
+            except AttributeError:
+                # The control file may not have bug template defined.
+                pass
+
             if client_side:
                 CheckSuites(ctrl_data, test_name)
 
