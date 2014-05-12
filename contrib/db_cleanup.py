@@ -1,8 +1,13 @@
+#!/usr/bin/python
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import datetime, re, sys, logging
+import argparse
+import datetime
+import re
+import sys
+import logging
 
 import common
 from autotest_lib.tko import db
@@ -13,22 +18,109 @@ LOGGING_FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
 # This regex makes sure the input is in the format of YYYY-MM-DD (2012-02-01)
 DATE_FORMAT_REGEX = ('^(19|20)\d\d[- /.](0[1-9]|1[012])[- /.](0[1-9]|[12][0-9]'
                      '|3[01])$')
-DELETE_CMD_FORMAT = ('DELETE FROM %s USING %s INNER JOIN %s WHERE %s.%s=%s.%s '
-                     'AND %s.%s <= "%s"')
-DELETE_WITH_INDIRECTION_FORMAT = ('DELETE FROM %s USING %s INNER JOIN %s INNER'
-                                  ' JOIN %s WHERE %s.%s=%s.%s AND %s.%s=%s.%s '
-                                  'AND %s.%s <= "%s"')
+SELECT_CMD_FORMAT = """
+SELECT %(table)s.%(primary_key)s FROM %(table)s
+WHERE %(table)s.%(time_column)s <= "%(date)s"
+"""
+SELECT_JOIN_CMD_FORMAT = """
+SELECT %(table)s.%(primary_key)s FROM %(table)s
+INNER JOIN %(related_table)s
+  ON %(table)s.%(foreign_key)s=%(related_table)s.%(related_primary_key)s
+WHERE %(related_table)s.%(time_column)s <= "%(date)s"
+"""
+SELECT_WITH_INDIRECTION_FORMAT = """
+SELECT %(table)s.%(primary_key)s FROM %(table)s
+INNER JOIN %(indirection_table)s
+  ON %(table)s.%(foreign_key)s =
+     %(indirection_table)s.%(indirection_primary_key)s
+INNER JOIN %(related_table)s
+  ON %(indirection_table)s.%(indirection_foreign_key)s =
+  %(related_table)s.%(related_primary_key)s
+WHERE %(related_table)s.%(time_column)s <= "%(date)s"
+"""
+DELETE_ROWS_FORMAT = """
+DELETE FROM %(table)s
+WHERE %(table)s.%(primary_key)s IN (%(rows)s)
+"""
+
 
 AFE_JOB_ID = 'afe_job_id'
 JOB_ID = 'job_id'
 JOB_IDX = 'job_idx'
 TEST_IDX = 'test_idx'
-WHERE_BEFORE_CLAUSE_FORMAT = '%s <= "%s"'
-db = db.db(autocommit=False)
+db = db.db(autocommit=True)
+
+STEP_SIZE = None  # Threading this through properly is disgusting.
+
+class ProgressBar(object):
+    TEXT = "{:<40s} [{:<20s}] ({:>9d}/{:>9d})"
+
+    def __init__(self, name, amount):
+        self._name = name
+        self._amount = amount
+        self._cur = 0
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, a, b, c):
+        sys.stdout.write('\n')
+        sys.stdout.flush()
+
+    def update(self, x):
+        """
+        Advance the counter by `x`.
+
+        @param x: An integer of how many more elements were processed.
+        """
+        self._cur += x
+
+    def show(self):
+        """
+        Display the progress bar on the current line.  Repeated invocations
+        "update" the display.
+        """
+        if self._amount == 0:
+            barlen = 20
+        else:
+            barlen = int(20 * self._cur / float(self._amount))
+        if barlen:
+            bartext = '=' * (barlen-1) + '>'
+        else:
+            bartext = ''
+        text = self.TEXT.format(self._name, bartext, self._cur, self._amount)
+        sys.stdout.write('\r')
+        sys.stdout.write(text)
+        sys.stdout.flush()
 
 
-def _delete_table_data_before_date(table_to_delete_from, related_table,
-                                   primary_key, date, foreign_key=None,
+def grouper(iterable, n):
+    """
+    Group the elements of `iterable` into groups of maximum size `n`.
+
+    @param iterable: An iterable.
+    @param n: Max size of returned groups.
+    @returns: Yields iterables of size <= n.
+
+    >>> grouper('ABCDEFG', 3)
+    [['A', 'B', C'], ['D', 'E', 'F'], ['G']]
+    """
+    args = [iter(iterable)] * n
+    while True:
+        lst = []
+        try:
+            for itr in args:
+                lst.append(next(itr))
+            yield lst
+        except StopIteration:
+            if lst:
+                yield lst
+            break
+
+
+def _delete_table_data_before_date(table_to_delete_from, primary_key,
+                                   related_table, related_primary_key,
+                                   date, foreign_key=None,
                                    time_column="started_time",
                                    indirection_table=None,
                                    indirection_primary_key=None,
@@ -63,29 +155,52 @@ def _delete_table_data_before_date(table_to_delete_from, related_table,
     """
     if not foreign_key:
         foreign_key = primary_key
+
     if not related_table:
         # Deleting from a table directly.
-        where = WHERE_BEFORE_CLAUSE_FORMAT % (time_column, date)
-        logging.debug('DELETE FROM %s WHERE %s', table_to_delete_from, where)
-        db.delete(table_to_delete_from, where)
-        return
-    if not indirection_table:
+        variables = dict(table=table_to_delete_from, primary_key=primary_key,
+                         time_column=time_column, date=date)
+        sql = SELECT_CMD_FORMAT % variables
+    elif not indirection_table:
         # Deleting using a single JOIN to get the date information.
-        sql = DELETE_CMD_FORMAT % (table_to_delete_from, table_to_delete_from,
-                                   related_table, table_to_delete_from,
-                                   foreign_key, related_table, primary_key,
-                                   related_table, time_column, date)
+        variables = dict(primary_key=primary_key, table=table_to_delete_from,
+                         foreign_key=foreign_key, related_table=related_table,
+                         related_primary_key=related_primary_key,
+                         time_column=time_column, date=date)
+        sql = SELECT_JOIN_CMD_FORMAT % variables
     else:
         # There are cases where we need to JOIN 3 TABLES to determine the rows
         # we want to delete.
-        sql = DELETE_WITH_INDIRECTION_FORMAT % (table_to_delete_from,
-                table_to_delete_from, indirection_table, related_table,
-                table_to_delete_from, foreign_key, indirection_table,
-                indirection_primary_key, indirection_table,
-                indirection_foreign_key, related_table, primary_key,
-                related_table, time_column, date)
+        variables = dict(primary_key=primary_key, table=table_to_delete_from,
+                         indirection_table=indirection_table,
+                         foreign_key=foreign_key,
+                         indirection_primary_key=indirection_primary_key,
+                         related_table=related_table,
+                         related_primary_key=related_primary_key,
+                         indirection_foreign_key=indirection_foreign_key,
+                         time_column=time_column, date=date)
+        sql = SELECT_WITH_INDIRECTION_FORMAT % variables
+
     logging.debug('SQL: %s', sql)
-    db._exec_sql_with_commit(sql, [], None)
+    db.cur.execute(sql, [])
+    rows = [x[0] for x in db.cur.fetchall()]
+    logging.debug(rows)
+
+    if not rows or rows == [None]:
+        with ProgressBar(table_to_delete_from, 0) as pb:
+            pb.show()
+        logging.debug('Noting to delete for %s', table_to_delete_from)
+        return
+
+    with ProgressBar(table_to_delete_from, len(rows)) as pb:
+        for row_keys in grouper(rows, STEP_SIZE):
+            variables['rows'] = ','.join([str(x) for x in row_keys])
+            sql = DELETE_ROWS_FORMAT % variables
+            logging.debug('SQL: %s', sql)
+            db.cur.execute(sql, [])
+            db.commit()
+            pb.update(len(row_keys))
+            pb.show()
 
 
 def _subtract_days(date, days_to_subtract):
@@ -115,94 +230,129 @@ def _delete_all_data_before_date(date):
     dependencies correctly.
 
     @param date: End date of the information we are trying to delete.
+    @param step: Rows to delete per SQL query.
     """
     # First cleanup all afe_job related data (prior to 2 days before date).
     # The reason for this is not all afe_jobs may be in tko_jobs.
     afe_date = _subtract_days(date, 2)
     logging.debug('Cleaning up all afe_job data prior to %s.', afe_date)
     _delete_table_data_before_date('afe_aborted_host_queue_entries',
+                                   'queue_entry_id',
                                    'afe_jobs', 'id', afe_date,
                                    time_column= 'created_on',
                                    foreign_key='queue_entry_id',
                                    indirection_table='afe_host_queue_entries',
                                    indirection_primary_key='id',
                                    indirection_foreign_key='job_id')
-    _delete_table_data_before_date('afe_special_tasks', 'afe_jobs', 'id',
+    _delete_table_data_before_date('afe_special_tasks', 'id',
+                                   'afe_jobs', 'id',
                                    afe_date, time_column='created_on',
                                    foreign_key='queue_entry_id',
                                    indirection_table='afe_host_queue_entries',
                                    indirection_primary_key='id',
                                    indirection_foreign_key='job_id')
-    _delete_table_data_before_date('afe_host_queue_entries', 'afe_jobs',
-                                   'id', afe_date, time_column='created_on',
-                                   foreign_key=JOB_ID)
-    _delete_table_data_before_date('afe_job_keyvals', 'afe_jobs', 'id',
+    _delete_table_data_before_date('afe_host_queue_entries', 'id',
+                                   'afe_jobs', 'id',
                                    afe_date, time_column='created_on',
                                    foreign_key=JOB_ID)
-    _delete_table_data_before_date('afe_jobs_dependency_labels', 'afe_jobs',
-                                   'id', afe_date, time_column='created_on',
+    _delete_table_data_before_date('afe_job_keyvals', 'id',
+                                   'afe_jobs', 'id',
+                                   afe_date, time_column='created_on',
                                    foreign_key=JOB_ID)
-    _delete_table_data_before_date('afe_jobs', None, None, afe_date,
-                                   time_column='created_on')
+    _delete_table_data_before_date('afe_jobs_dependency_labels', 'id',
+                                   'afe_jobs', 'id',
+                                   afe_date, time_column='created_on',
+                                   foreign_key=JOB_ID)
+    _delete_table_data_before_date('afe_jobs', 'id',
+                                   None, None,
+                                   afe_date, time_column='created_on')
+    # Special tasks that aren't associated with an HQE
+    # Since we don't do the queue_entry_id=NULL check, we might wipe out a bit
+    # more than we should, but I doubt anyone will notice or care.
+    _delete_table_data_before_date('afe_special_tasks', 'id',
+                                   None, None,
+                                   afe_date, time_column='time_requested')
 
     # Now go through and clean up all the rows related to tko_jobs prior to
     # date.
     logging.debug('Cleaning up all data related to tko_jobs prior to %s.',
                   date)
-    _delete_table_data_before_date('tko_test_attributes', 'tko_tests',
-                                   TEST_IDX, date)
-    _delete_table_data_before_date('tko_test_labels_tests', 'tko_tests',
-                                   TEST_IDX, date, foreign_key= 'test_id')
-    _delete_table_data_before_date('tko_iteration_result', 'tko_tests',
-                                   TEST_IDX, date)
-    _delete_table_data_before_date('tko_iteration_perf_value', 'tko_tests',
-                                   TEST_IDX, date)
-    _delete_table_data_before_date('tko_iteration_attributes', 'tko_tests',
-                                   TEST_IDX, date)
-    _delete_table_data_before_date('tko_test_attributes', 'tko_tests',
-                                   TEST_IDX, date)
-    _delete_table_data_before_date('tko_job_keyvals', 'tko_jobs', JOB_IDX,
+    _delete_table_data_before_date('tko_test_attributes', 'id',
+                                   'tko_tests', TEST_IDX,
+                                   date, foreign_key=TEST_IDX)
+    _delete_table_data_before_date('tko_test_labels_tests', 'id',
+                                   'tko_tests', TEST_IDX,
+                                   date, foreign_key= 'test_id')
+    _delete_table_data_before_date('tko_iteration_result', TEST_IDX,
+                                   'tko_tests', TEST_IDX,
+                                   date)
+    _delete_table_data_before_date('tko_iteration_perf_value', TEST_IDX,
+                                   'tko_tests', TEST_IDX,
+                                   date)
+    _delete_table_data_before_date('tko_iteration_attributes', TEST_IDX,
+                                   'tko_tests', TEST_IDX,
+                                   date)
+    _delete_table_data_before_date('tko_job_keyvals', 'id',
+                                   'tko_jobs', JOB_IDX,
                                    date, foreign_key='job_id')
     _delete_table_data_before_date('afe_aborted_host_queue_entries',
+                                   'queue_entry_id',
                                    'tko_jobs', AFE_JOB_ID, date,
                                    foreign_key='queue_entry_id',
                                    indirection_table='afe_host_queue_entries',
                                    indirection_primary_key='id',
                                    indirection_foreign_key='job_id')
-    _delete_table_data_before_date('afe_special_tasks', 'tko_jobs', AFE_JOB_ID,
+    _delete_table_data_before_date('afe_special_tasks', 'id',
+                                   'tko_jobs', AFE_JOB_ID,
                                    date, foreign_key='queue_entry_id',
                                    indirection_table='afe_host_queue_entries',
                                    indirection_primary_key='id',
                                    indirection_foreign_key='job_id')
-    _delete_table_data_before_date('afe_host_queue_entries', 'tko_jobs',
-                                   AFE_JOB_ID, date, foreign_key='job_id')
-    _delete_table_data_before_date('afe_job_keyvals', 'tko_jobs', AFE_JOB_ID,
+    _delete_table_data_before_date('afe_host_queue_entries', 'id',
+                                   'tko_jobs', AFE_JOB_ID,
                                    date, foreign_key='job_id')
-    _delete_table_data_before_date('afe_jobs_dependency_labels', 'tko_jobs',
-                                   AFE_JOB_ID, date, foreign_key='job_id')
-    _delete_table_data_before_date('afe_jobs', 'tko_jobs', AFE_JOB_ID,
+    _delete_table_data_before_date('afe_job_keyvals', 'id',
+                                   'tko_jobs', AFE_JOB_ID,
+                                   date, foreign_key='job_id')
+    _delete_table_data_before_date('afe_jobs_dependency_labels', 'id',
+                                   'tko_jobs', AFE_JOB_ID,
+                                   date, foreign_key='job_id')
+    _delete_table_data_before_date('afe_jobs', 'id',
+                                   'tko_jobs', AFE_JOB_ID,
                                    date, foreign_key='id')
-    _delete_table_data_before_date('tko_tests', 'tko_jobs', JOB_IDX, date)
-    _delete_table_data_before_date('tko_jobs', None, None, date)
+    _delete_table_data_before_date('tko_tests', TEST_IDX,
+                                   'tko_jobs', JOB_IDX,
+                                   date, foreign_key=JOB_IDX)
+    _delete_table_data_before_date('tko_jobs', JOB_IDX,
+                                   None, None, date)
+
+
+def parse_args():
+    """Parse command line arguments"""
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help='Print SQL commands and results')
+    parser.add_argument('--step', type=int, action='store',
+                        default=1000,
+                        help='Number of rows to delete at once')
+    parser.add_argument('date', help='Keep results newer than')
+    return parser.parse_args()
 
 
 def main():
-    logging.basicConfig(level=logging.DEBUG, format=LOGGING_FORMAT)
-    if len (sys.argv) != 2:
-        print 'USAGE: python db_cleanup_by_date.py [DATE]'
-        return
-    date = sys.argv[1]
-    if not re.match(DATE_FORMAT_REGEX, date):
+    """main"""
+    args = parse_args()
+
+    level = logging.DEBUG if args.verbose else logging.WARNING
+    logging.basicConfig(level=level, format=LOGGING_FORMAT)
+
+    if not re.match(DATE_FORMAT_REGEX, args.date):
         print 'DATE must be in yyyy-mm-dd format!'
         return
-    try:
-        _delete_all_data_before_date(date)
-    except:
-        logging.debug('Deleting the data failed, rolling back changes')
-        db.rollback()
-        raise
-    logging.debug('Committing')
-    db.commit()
+
+    global STEP_SIZE
+    STEP_SIZE = args.step
+    _delete_all_data_before_date(args.date)
 
 
 if __name__ == '__main__':
