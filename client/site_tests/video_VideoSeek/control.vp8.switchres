@@ -19,5 +19,6 @@ DOC = """
 This test verifies VP8 resolution-changing video can seek on machines with VDA.
 """
 
-video = 'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/video_VideoSeek/frame_size_change.webm'
+video = ('http://commondatastorage.googleapis.com/chromiumos-test'
+            '-assets-public/MSE/frame_size_change.webm')
 job.run_test('video_VideoSeek', video=video)
