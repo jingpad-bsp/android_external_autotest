@@ -12,7 +12,6 @@ import logging, textwrap
 from autotest_lib.client.common_lib import enum
 
 REQUIRED_VARS = set(['author', 'doc', 'name', 'time', 'test_type'])
-OBSOLETE_VARS = set(['experimental'])
 
 CONTROL_TYPE = enum.Enum('Server', 'Client', start_value=1)
 CONTROL_TYPE_NAMES =  enum.Enum(*CONTROL_TYPE.names, string_values=True)
@@ -46,8 +45,6 @@ class ControlData(object):
         # Defaults
         self.path = path
         self.dependencies = set()
-        # TODO(jrbarnette): This should be removed once outside
-        # code that uses can be changed.
         self.experimental = False
         self.run_verify = True
         self.sync_count = 1
@@ -58,19 +55,10 @@ class ControlData(object):
         self.job_retries = 0
 
         diff = REQUIRED_VARS - set(vars)
-        if diff:
+        if len(diff) > 0:
             warning = ("WARNING: Not all required control "
                        "variables were specified in %s.  Please define "
                        "%s.") % (self.path, ', '.join(diff))
-            if raise_warnings:
-                raise ControlVariableException(warning)
-            print textwrap.wrap(warning, 80)
-
-        obsolete = OBSOLETE_VARS & set(vars)
-        if obsolete:
-            warning = ("WARNING: Obsolete variables were "
-                       "specified in %s.  Please don't define "
-                       "%s.") % (self.path, ', '.join(obsolete))
             if raise_warnings:
                 raise ControlVariableException(warning)
             print textwrap.wrap(warning, 80)
@@ -147,6 +135,10 @@ class ControlData(object):
 
     def set_doc(self, val):
         self._set_string('doc', val)
+
+
+    def set_experimental(self, val):
+        self._set_bool('experimental', val)
 
 
     def set_name(self, val):
