@@ -9,7 +9,7 @@ CRITERIA = """
 TODO(ihf) For now Piglit shall never fail except for crashes outside of
 Piglit binaries as it is normal to have 1000 subtests pass and 300 fail
 as long as this is stable. For this reason it should be treated as a
-performance test plotting conts over time. If there is a problem with this
+performance test plotting counts over time. If there is a problem with this
 approach we will investigate black/whitelisting.
 """
 SUITE = 'graphics'

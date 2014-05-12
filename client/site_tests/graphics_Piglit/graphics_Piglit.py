@@ -77,15 +77,14 @@ class graphics_Piglit(test.test):
         else:
             return error.TestError('test runs only on x86 (needs OpenGL)')
 
+        if not summary:
+            raise error.TestError('Test summary was empty')
+
         # get passed
         report = re.findall(r'"result": "pass",', summary)
-        if not report:
-            return error.TestFail('Output missing: pass number unknown!')
         passed = len(report)
         # get failed
         report = re.findall(r'"result": "fail",', summary)
-        if not report:
-            return error.TestFail('Output missing: fail number unknown!')
         failed = len(report)
         warned = 0
         skipped = 0
