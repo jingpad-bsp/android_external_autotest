@@ -173,6 +173,9 @@ class FirmwareTest(FAFTBase):
         self._setup_gbb_flags()
         self._stop_service('update-engine')
         self._setup_ec_write_protect(ec_wp)
+        # See chromium:239034 regarding needing this sync.
+        self.faft_client.system.run_shell_command('sync')
+        time.sleep(self.faft_config.sync)
         logging.info('FirmwareTest initialize done (id=%s)', self.run_id)
 
     def cleanup(self):
