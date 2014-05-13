@@ -6,7 +6,7 @@ import common
 import inspect, new, socket, sys
 
 from autotest_lib.client.bin import utils
-from autotest_lib.cli import topic_common, host
+from autotest_lib.cli import host
 from autotest_lib.server import hosts
 from autotest_lib.client.common_lib import error
 
@@ -31,25 +31,24 @@ class site_host_create(site_host, host.host_create):
 
     def _execute_add_one_host(self, host):
         # Always add the hosts as locked to avoid the host
-        # being picked up by the scheduler before it's ACL'ed
+        # being picked up by the scheduler before it's ACL'ed.
         self.data['locked'] = True
         self.execute_rpc('add_host', hostname=host,
                          status="Ready", **self.data)
         # If there are labels avaliable for host, use them.
         host_info = self.host_info_map[host]
+        labels = set(self.labels)
         if host_info.labels:
-            labels = list(set(self.labels[:] + host_info.labels))
-        else:
-            labels = self.labels[:]
-        # Now add the platform label
-        if self.platform:
-            labels.append(self.platform)
-        elif host_info.platform:
-            # If a platform was not provided and we were able to retrieve it
-            # from the host, use the retrieved platform.
-            labels.append(host_info.platform)
+            labels.update(host_info.labels)
+        # Now add the platform label.
+        # If a platform was not provided and we were able to retrieve it
+        # from the host, use the retrieved platform.
+        platform = self.platform if self.platform else host_info.platform
+        if platform:
+            labels.add(platform)
+
         if len(labels):
-            self.execute_rpc('host_add_labels', id=host, labels=labels)
+            self.execute_rpc('host_add_labels', id=host, labels=list(labels))
 
 
     def execute(self):
