@@ -37,6 +37,7 @@ class PerfControl(object):
             raise error.TestError(pc.get_error_reason())
     """
     def __init__(self):
+        self._service_stopper = None
         # Keep a copy of the current state for cleanup.
         self._temperature_init = utils.get_current_temperature_max()
         self._temperature_critical = utils.get_temperature_critical()
@@ -52,7 +53,6 @@ class PerfControl(object):
         self._temperature_max = self._temperature_cold
         threading.Thread(target=self._monitor_performance_state).start()
         # Should be last just in case we had a runaway process.
-        self._service_stopper = None
         self._stop_thermal_throttling()
 
 
@@ -124,4 +124,5 @@ class PerfControl(object):
         """
         Restores the original thermal throttling state.
         """
-        self._service_stopper.restore_services()
+        if self._service_stopper:
+            self._service_stopper.restore_services()
