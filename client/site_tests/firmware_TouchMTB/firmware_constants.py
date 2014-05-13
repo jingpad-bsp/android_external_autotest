@@ -131,6 +131,7 @@ MODE = _Mode()
 MODE.CALIBRATION = 'calibration'
 MODE.COMPLETE = 'complete'
 MODE.MANUAL = 'manual'
+MODE.QUICKSTEP = 'quickstep'
 MODE.REPLAY = 'replay'
 MODE.ROBOT = 'robot'
 MODE.ROBOT_SIM = 'robot_sim'

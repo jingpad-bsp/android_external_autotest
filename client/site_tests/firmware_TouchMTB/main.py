@@ -387,6 +387,8 @@ def _usage_and_exit():
     print '  $ DISPLAY=:0 OPTIONS="-m complete" python main.py\n'
     print '  # Perform pressure calibration.'
     print '  $ DISPLAY=:0 OPTIONS="-m calibration" python main.py\n'
+    print '  # Use the robot to perform a latency test with Quickstep'
+    print '  $ DISPLAY=:0 OPTIONS="-m quickstep" python main.py\n'
     print '  # Replay the gesture files in the latest log directory.'
     print '  $ DISPLAY=:0 OPTIONS="--replay latest" python main.py\n'
     example_log_dir = '20130226_040802-fw_1.2-manual'

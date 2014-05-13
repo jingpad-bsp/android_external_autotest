@@ -207,7 +207,6 @@ robot_capability_list = [
     FINGER_CROSSING,
     PINCH_TO_ZOOM,
     DRUMROLL,
-    DRAG_LATENCY,
     TWO_FAT_FINGERS_TRACKING,
     FAT_FINGER_MOVE_WITH_RESTING_FINGER,
     ONE_FINGER_PHYSICAL_CLICK,
@@ -225,7 +224,7 @@ ALL_FINGERTIP_SIZES = [TINY_FINGER, SMALL_FINGER, NORMAL_FINGER, FAT_FINGER]
 FINGERTIP_DIAMETER_MM = {TINY_FINGER: 8, SMALL_FINGER: 10,
                          NORMAL_FINGER: 12, FAT_FINGER: 14}
 custom_tips_required = {
-    DRAG_LATENCY: [NO_FINGER, NO_FINGER, NORMAL_FINGER, NO_FINGER],
+    DRAG_LATENCY: [NO_FINGER, NO_FINGER, FAT_FINGER, NO_FINGER],
     ONE_FINGER_PHYSICAL_CLICK: [NORMAL_FINGER, NO_FINGER, NO_FINGER, NO_FINGER],
     TWO_FINGER_PHYSICAL_CLICK: [NO_FINGER, NORMAL_FINGER, NO_FINGER,
                                 NORMAL_FINGER],
@@ -252,6 +251,8 @@ gesture_names_robot = {
     DEV.TOUCHPAD: get_gesture_names_for_robot(DEV.TOUCHPAD),
     DEV.TOUCHSCREEN: get_gesture_names_for_robot(DEV.TOUCHSCREEN),
 }
+
+gesture_names_quickstep = [DRAG_LATENCY]
 
 
 # Define the manual list which is gesture_names_complete - gesture_names_robot

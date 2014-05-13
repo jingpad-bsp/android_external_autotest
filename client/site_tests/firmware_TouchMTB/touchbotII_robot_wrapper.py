@@ -293,7 +293,7 @@ class RobotWrapper:
 
         In the robot action mode, it actually invokes the robot control script.
         """
-        return self._mode in [MODE.ROBOT]
+        return self._mode in [MODE.ROBOT, MODE.QUICKSTEP]
 
     def _raise_error(self, msg):
         """Only raise an error if it is in the robot action mode."""

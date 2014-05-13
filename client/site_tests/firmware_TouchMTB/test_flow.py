@@ -91,11 +91,13 @@ class TestFlow:
 
     def _is_robot_mode(self):
         """Is it in robot mode?"""
-        return self.mode in [MODE.ROBOT, MODE.ROBOT_SIM]
+        return self.mode in [MODE.ROBOT, MODE.ROBOT_SIM, MODE.QUICKSTEP]
 
     def _get_gesture_names(self):
         """Determine the gesture names based on the mode."""
-        if self._is_robot_mode():
+        if self.mode == MODE.QUICKSTEP:
+          return conf.gesture_names_quickstep
+        elif self._is_robot_mode():
             # The mode could be MODE.ROBOT or MODE.ROBOT_SIM.
             # The same gesture names list is used in both modes.
             return conf.gesture_names_robot[self.device_type]
