@@ -349,6 +349,21 @@ def random_username():
     return str(uuid.uuid4()) + '@example.com'
 
 
+def get_signin_credentials(filepath):
+    """Returns user_id, password tuple from credentials file at filepath.
+
+    File must have one line of the format user_id:password
+
+    @param filepath: path of credentials file.
+    @return user_id, password tuple.
+    """
+    user_id, password = None, None
+    if os.path.isfile(filepath):
+        with open(filepath) as f:
+            user_id, password = f.read().rstrip().split(':')
+    return user_id, password
+
+
 def parse_cmd_output(command, run_method=utils.run):
     """Runs a command on a host object to retrieve host attributes.
 
