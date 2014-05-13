@@ -7,6 +7,7 @@ PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PIGLIT_PATH/lib
 export DISPLAY=:0
+export XAUTHORITY=/home/chronos/.Xauthority
 
 
 function run_test()

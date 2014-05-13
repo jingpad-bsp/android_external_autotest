@@ -102,6 +102,7 @@ def append_script_header(f, need_pass):
   print('export PIGLIT_SOURCE_DIR=%s' % PIGLIT_PATH, file=f)
   print('export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PIGLIT_PATH/lib', file=f)
   print('export DISPLAY=:0', file=f)
+  print('export XAUTHORITY=/home/chronos/.Xauthority', file=f)
   print('', file=f)
   print(FILE_RUN_TEST, file=f)
   print('', file=f)
