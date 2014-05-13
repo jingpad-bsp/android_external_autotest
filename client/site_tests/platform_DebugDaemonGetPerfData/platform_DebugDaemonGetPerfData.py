@@ -21,8 +21,15 @@ class platform_DebugDaemonGetPerfData(test.test):
 
     version = 1
 
-    # A list of durations over which to gather perf data using quipper.
-    _profile_duration_seconds = [ 0, 2, 5, 10 ]
+    # A list of durations over which to gather perf data using quipper (given in
+    # seconds), plus the number of times to run perf with each duration.
+    # e.g. the entry "0: 100" means to run perf for 0 seconds 100 times.
+    _profile_duration_and_repetitions = {
+        0 : 100,
+        2 : 3,
+        5 : 1,
+        10  : 1,
+    }
 
     # Commands to repeatedly run in the background when collecting perf data
     _system_profile_commands = {
@@ -49,7 +56,8 @@ class platform_DebugDaemonGetPerfData(test.test):
         return string_file.getvalue()
 
 
-    def validate_get_perf_method(self, get_perf_method, duration, profile_type):
+    def validate_get_perf_method(self, get_perf_method, duration, num_reps,
+                                 profile_type):
         """
         Validate a debugd method that returns perf data.
 
@@ -57,33 +65,43 @@ class platform_DebugDaemonGetPerfData(test.test):
 
         @param duration: The duration to use for perf data collection.
 
+        @param num_reps: Number of times to run.
+
         @param profile_type: A label to use for storing into perf keyvals.
         """
         bus = dbus.SystemBus()
         proxy = bus.get_object(self._dbus_debugd_name, self._dbus_debugd_object)
         iface = dbus.Interface(proxy, dbus_interface=self._dbus_debugd_name)
         iface_function = getattr(iface, get_perf_method)
-        result = iface_function(duration)
-        if not result:
-            raise error.TestFail('No perf output found: %s' % result)
-        logging.info('%s() for %s seconds returned %d items', get_perf_method,
-                     duration, len(result))
-        if len(result) < 10:
-            raise error.TestFail('Perf output too small')
+        result_total_size = 0
+        result_zipped_total_size = 0
+        for _ in range(num_reps):
+            result = iface_function(duration)
+            if not result:
+                raise error.TestFail('No perf output found: %s' % result)
+            logging.info('%s() for %s seconds returned %d items',
+                         get_perf_method, duration, len(result))
+            if len(result) < 10:
+                raise error.TestFail('Perf output too small')
 
-        # Convert |result| from an array of dbus.Bytes to a string.
-        result = ''.join(chr(b) for b in result)
+            # Convert |result| from an array of dbus.Bytes to a string.
+            result = ''.join(chr(b) for b in result)
 
-        # If there was an error in collecting a profile with quipper, debugd
-        # will output an error message. Make sure to check for this message. It
-        # is found in PerfTool::GetPerfDataHelper() in debugd/src/perf_tool.cc.
-        if result.startswith('<process exited with status: '):
-            raise error.TestFail('Quipper failed: %s' % result)
+            # If there was an error in collecting a profile with quipper, debugd
+            # will output an error message. Make sure to check for this message.
+            # It is found in PerfTool::GetPerfDataHelper() in
+            # debugd/src/perf_tool.cc.
+            if result.startswith('<process exited with status: '):
+                raise error.TestFail('Quipper failed: %s' % result)
 
-        key = '%s_size_%s_%d' % (get_perf_method, profile_type, duration)
+            result_total_size += len(result)
+            result_zipped_total_size += len(self.gzip_string(result))
+
+        key = 'mean_%s_size_%s_%d' % (get_perf_method, profile_type, duration)
         keyvals = {}
-        keyvals[key] = len(result)
-        keyvals[key + '_zipped'] = len(self.gzip_string(result))
+        if num_reps > 0:
+            keyvals[key] = result_total_size / num_reps
+            keyvals[key + '_zipped'] = len(self.gzip_string(result)) / num_reps
         self.write_perf_keyval(keyvals)
 
 
@@ -103,11 +121,12 @@ class platform_DebugDaemonGetPerfData(test.test):
                 self._system_profile_commands[profile_type]
             process = subprocess.Popen(cmd, stdout=devnull, shell=True)
 
-            for duration in self._profile_duration_seconds:
+            for duration in self._profile_duration_and_repetitions:
+                num_reps = self._profile_duration_and_repetitions[duration]
                 # Collect perf data from debugd.
                 for get_perf_method in get_perf_methods:
                     self.validate_get_perf_method(get_perf_method, duration,
-                                                  profile_type)
+                                                  num_reps, profile_type)
 
             # Terminate the process and actually wait for it to terminate.
             process.terminate()
