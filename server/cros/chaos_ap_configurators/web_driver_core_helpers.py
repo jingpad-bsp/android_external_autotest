@@ -26,8 +26,8 @@ class WebDriverCoreHelpers(object):
         @param alert_handler: The handler method to call.
 
         """
-        if (message.find('An open modal dialog blocked') == 1 and
-            message.find('unexpected alert open') == 1):
+        if (message.find('An open modal dialog blocked') != -1 and
+            message.find('unexpected alert open') != -1):
             alert = self.driver.switch_to_alert()
             alert_handler(alert)
         else:
