@@ -61,8 +61,8 @@ class FMap(object):
     """
 
     _TARGET_PROGRAMMERS = {
-        TARGET_BIOS: '-p internal:bus=spi',
-        TARGET_EC: '-p internal:bus=lpc',
+        TARGET_BIOS: '-p host',
+        TARGET_EC: '-p ec',
     }
 
     def __init__(self, target=None):
@@ -72,7 +72,8 @@ class FMap(object):
 
     def is_flash_available(self):
         """Is the flash chip available?"""
-        return utils.system("flashrom --flash-name %s" % self._target,
+        return utils.system("flashrom %s" %
+                            self._TARGET_PROGRAMMERS[self._target],
                             ignore_status=True) == 0
 
 
