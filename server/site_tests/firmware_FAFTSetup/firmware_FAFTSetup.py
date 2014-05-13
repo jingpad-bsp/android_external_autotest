@@ -8,9 +8,9 @@ from threading import Timer
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
-class firmware_FAFTSetup(FAFTSequence):
+class firmware_FAFTSetup(FirmwareTest):
     """This test checks the following FAFT hardware requirement:
       - Warm reset
       - Cold reset
@@ -61,7 +61,7 @@ class firmware_FAFTSetup(FAFTSequence):
             logging.error("Cannot talk to EC console.")
             logging.error(
                     "Please check there is no terminal opened on EC console.")
-            return False
+            raise error.TestFail("Failed EC console check.")
 
     def compare_key_sequence(self, actual_seq, expected_seq):
         """Comparator for key sequence captured by 'showkey'
@@ -151,10 +151,17 @@ class firmware_FAFTSetup(FAFTSequence):
             logging.error("Expected keycodes:\n%s",
                           self.key_sequence_string(expected_output))
             return False
+        logging.debug("Keyboard simulation is working correctly")
+        logging.debug("Captured keycodes:\n%s", "\n".join(dup_removed))
+        logging.debug("Expected keycodes:\n%s",
+                        self.key_sequence_string(expected_output))
         return True
 
     def keyboard_checker(self):
         """Press 'd', Ctrl, ENTER by servo and check from DUT."""
+
+        logging.debug("keyboard_checker")
+
         def keypress():
             self.press_ctrl_d()
             self.press_enter()
@@ -177,6 +184,8 @@ class firmware_FAFTSetup(FAFTSequence):
         This method directly controls keyboard by servo and thus cannot be used
         to test devices without internal keyboard.
         """
+        logging.debug("strict_keyboard_checker")
+
         def keypress():
             self.servo.ctrl_key()
             self.servo.d_key()
@@ -198,27 +207,22 @@ class firmware_FAFTSetup(FAFTSequence):
             self.enable_rec_mode_and_reboot()
 
     def run_once(self):
-        self.register_faft_sequence((
-            {   # Step 1, Check EC console is available and test warm reboot
-                "state_checker": self.console_checker,
-                "reboot_action": self.sync_and_warm_reboot,
-            },
-            {   # Step 2, Check test image in USB stick and recovery boot
-                "userspace_action": self.assert_test_image_in_usb_disk,
-                "reboot_action": self.reboot_to_rec_mode,
-                "firmware_action": self.wait_fw_screen_and_plug_usb,
-                "install_deps_after_boot": True,
-            },
-            {   # Step 3, Test cold reboot
-                "state_checker": (self.checkers.crossystem_checker,
-                                  {'mainfw_type': 'recovery'}),
-                "reboot_action": self.sync_and_cold_reboot,
-            },
-            {   # Step 4, Check keyboard simulation
-                "state_checker": (self.strict_keyboard_checker if
-                                  self._spec_check and
-                                  self.faft_config.has_keyboard else
-                                  self.keyboard_checker),
-            },
-        ))
-        self.run_faft_sequence()
+        logging.info("Check EC console is available and test warm reboot")
+        self.console_checker()
+        self.reboot_warm()
+
+        logging.info("Check test image is on USB stick and run recovery boot")
+        self.assert_test_image_in_usb_disk()
+        self.do_reboot_action(self.reboot_to_rec_mode)
+        self.wait_fw_screen_and_plug_usb()
+        self.check_state((self.checkers.crossystem_checker,
+                          {'mainfw_type': 'recovery'}))
+
+        logging.info("Check cold boot")
+        self.reboot_cold()
+
+        logging.info("Check keyboard simulation")
+        self.check_state((self.strict_keyboard_checker if
+                          self._spec_check and
+                          self.faft_config.has_keyboard else
+                          self.keyboard_checker))
