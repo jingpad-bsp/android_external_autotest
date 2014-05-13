@@ -102,13 +102,6 @@ class FirmwareTest(FAFTBase):
 
     _ROOTFS_PARTITION_NUMBER = 3
 
-    _HTTP_PREFIX = 'http://'
-    _DEVSERVER_PORT = '8090'
-
-
-    _install_image_path = None
-    _firmware_update = False
-
     _backup_firmware_sha = ()
     _backup_kernel_sha = dict()
     _backup_cgpt_attr = dict()
@@ -166,18 +159,6 @@ class FirmwareTest(FAFTBase):
                                       'as "%s".'
                                        % (host.POWER_CONTROL_VALID_ARGS,
                                        self.power_control))
-        if 'image' in args:
-            self._install_image_path = args['image']
-            logging.info('Install Chrome OS test image path: %s',
-                    self._install_image_path)
-        if 'firmware_update' in args and args['firmware_update'].lower() \
-                not in ('0', 'false', 'no'):
-            if self._install_image_path:
-                self._firmware_update = True
-                logging.info('Also update firmware after installing.')
-            else:
-                logging.warning('Firmware update will not not performed '
-                                'since no image is specified.')
 
         self.faft_config = FAFTConfig(
                 self.faft_client.system.get_platform_name())
@@ -186,13 +167,12 @@ class FirmwareTest(FAFTBase):
         if self.faft_config.chrome_ec:
             self.ec = chrome_ec.ChromeEC(self.servo)
 
-        self.setup_uart_capture()
-        self.setup_servo_log()
-        self.install_test_image(self._install_image_path, self._firmware_update)
-        self.record_system_info()
-        self.setup_gbb_flags()
-        self.stop_service('update-engine')
-        self.setup_ec_write_protect(ec_wp)
+        self._setup_uart_capture()
+        self._setup_servo_log()
+        self._record_system_info()
+        self._setup_gbb_flags()
+        self._stop_service('update-engine')
+        self._setup_ec_write_protect(ec_wp)
         logging.info('FirmwareTest initialize done (id=%s)', self.run_id)
 
     def cleanup(self):
@@ -205,17 +185,17 @@ class FirmwareTest(FAFTBase):
             # Remote is not responding. Revive DUT so that subsequent tests
             # don't fail.
             self._restore_routine_from_timeout()
-        self.restore_dev_mode()
-        self.restore_ec_write_protect()
-        self.restore_gbb_flags()
-        self.start_service('update-engine')
-        self.record_servo_log()
-        self.record_faft_client_log()
-        self.cleanup_uart_capture()
+        self._restore_dev_mode()
+        self._restore_ec_write_protect()
+        self._restore_gbb_flags()
+        self._start_service('update-engine')
+        self._record_servo_log()
+        self._record_faft_client_log()
+        self._cleanup_uart_capture()
         super(FirmwareTest, self).cleanup()
         logging.info('FirmwareTest cleanup done (id=%s)', self.run_id)
 
-    def record_system_info(self):
+    def _record_system_info(self):
         """Record some critical system info to the attr keyval.
 
         This info is used by generate_test_report and local_dash later.
@@ -345,7 +325,7 @@ class FirmwareTest(FAFTBase):
                          why it failed.
         """
         # DUT is disconnected. Capture the UART output for debug.
-        self.record_uart_capture()
+        self._record_uart_capture()
 
         next_checker_matched = False
 
@@ -472,142 +452,7 @@ class FirmwareTest(FAFTBase):
         else:
             return None
 
-    def get_server_address(self):
-        """Get the server address seen from the client.
-
-        @return: A string of the server address.
-        """
-        r = self.faft_client.system.run_shell_command_get_output(
-                "echo $SSH_CLIENT")
-        return r[0].split()[0]
-
-    def install_test_image(self, image_path=None, firmware_update=False):
-        """Install the test image specied by the path onto the USB and DUT disk.
-
-        The method first copies the image to USB disk and reboots into it via
-        recovery mode. Then runs 'chromeos-install' (and possible
-        chromeos-firmwareupdate') to install it to DUT disk.
-
-        Sample command line:
-
-        run_remote_tests.sh --servo --board=daisy --remote=w.x.y.z \
-            --args="image=/tmp/chromiumos_test_image.bin firmware_update=True" \
-            server/site_tests/firmware_XXXX/control
-
-        This test requires an automated recovery to occur while simulating
-        inserting and removing the usb key from the servo. To allow this the
-        following hardware setup is required:
-        1. servo2 board connected via servoflex.
-        2. USB key inserted in the servo2.
-        3. servo2 connected to the dut via dut_hub_in in the usb 2.0 slot.
-        4. network connected via usb dongle in the dut in usb 3.0 slot.
-
-        @param image_path: An URL or a path on the host to the test image.
-        @param firmware_update: Also update the firmware after installing.
-        @raise TestError: If devserver failed to start.
-        """
-        if not image_path:
-            return
-
-        if self.check_setup_done('reimage'):
-            return
-
-        if image_path.startswith(self._HTTP_PREFIX):
-            # TODO(waihong@chromium.org): Add the check of the URL to ensure
-            # it is a test image.
-            devserver = None
-            image_url = image_path
-        elif self.servo.is_localhost():
-            # If servod is localhost, i.e. both servod and FAFT see the same
-            # file system, do nothing.
-            devserver = None
-            image_url = image_path
-        else:
-            image_dir, image_base = os.path.split(image_path)
-            logging.info('Starting devserver to serve the image...')
-            # The following stdout and stderr arguments should not be None,
-            # even we don't use them. Otherwise, the socket of devserve is
-            # created as fd 1 (as no stdout) but it still thinks stdout is fd
-            # 1 and dump the log to the socket. Wrong HTTP protocol happens.
-            devserver = subprocess.Popen(['/usr/lib/devserver/devserver.py',
-                        '--archive_dir=%s' % image_dir,
-                        '--port=%s' % self._DEVSERVER_PORT],
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE)
-            image_url = '%s%s:%s/static/%s' % (
-                        self._HTTP_PREFIX,
-                        self.get_server_address(),
-                        self._DEVSERVER_PORT,
-                        image_base)
-
-            # Wait devserver startup completely
-            time.sleep(self.faft_config.devserver)
-            # devserver is a service running forever. If it is terminated,
-            # some error does happen.
-            if devserver.poll():
-                raise error.TestError('Starting devserver failed, '
-                                      'returning %d.' % devserver.returncode)
-
-        logging.info('Ask Servo to install the image from %s', image_url)
-        self.servo.image_to_servo_usb(image_url)
-
-        self.assert_test_image_in_usb_disk()
-
-        if devserver and devserver.poll() is None:
-            logging.info('Shutting down devserver...')
-            devserver.terminate()
-
-        # DUT is powered off while imaging servo USB.
-        # Now turn it on.
-        self.servo.power_short_press()
-        self.wait_for_client()
-        self.servo.switch_usbkey('dut')
-
-        install_cmd = 'chromeos-install --yes'
-        if firmware_update:
-            install_cmd += ' && chromeos-firmwareupdate --mode recovery'
-            self.backup_firmware()
-        self.backup_kernel()
-
-        self.register_faft_sequence((
-            {   # Step 1, request recovery boot
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_type': ('developer', 'normal'),
-                }),
-                'userspace_action': (
-                    self.faft_client.system.request_recovery_boot),
-                'firmware_action': self.wait_fw_screen_and_plug_usb,
-                'install_deps_after_boot': True,
-            },
-            {   # Step 2, expected recovery boot
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_type': 'recovery',
-                    'recovery_reason' : vboot.RECOVERY_REASON['US_TEST'],
-                }),
-                'userspace_action': (self.faft_client.system.run_shell_command,
-                                     install_cmd),
-                'reboot_action': self.reboot_cold_trigger,
-                'install_deps_after_boot': True,
-            },
-            {   # Step 3, expected normal or developer boot (not recovery)
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_type': ('developer', 'normal')
-                }),
-            },
-        ))
-        self.run_faft_sequence()
-
-        if firmware_update:
-            self.clear_saved_firmware()
-        self.clear_saved_kernel()
-
-        # 'Unplug' any USB keys in the servo from the dut.
-        self.servo.switch_usbkey('host')
-        # Mark usb_check done so it won't check a test image in USB anymore.
-        self.mark_setup_done('usb_check')
-        self.mark_setup_done('reimage')
-
-    def stop_service(self, service):
+    def _stop_service(self, service):
         """Stops a upstart service on the client.
 
         @param service: The name of the upstart service.
@@ -616,7 +461,7 @@ class FirmwareTest(FAFTBase):
         command = 'status %s | grep stop || stop %s' % (service, service)
         self.faft_client.system.run_shell_command(command)
 
-    def start_service(self, service):
+    def _start_service(self, service):
         """Starts a upstart service on the client.
 
         @param service: The name of the upstart service.
@@ -625,7 +470,7 @@ class FirmwareTest(FAFTBase):
         command = 'status %s | grep start || start %s' % (service, service)
         self.faft_client.system.run_shell_command(command)
 
-    def write_gbb_flags(self, new_flags):
+    def _write_gbb_flags(self, new_flags):
         """Write the GBB flags to the current firmware.
 
         @param new_flags: The flags to write.
@@ -651,7 +496,7 @@ class FirmwareTest(FAFTBase):
         """
         gbb_flags = self.faft_client.bios.get_gbb_flags()
         new_flags = gbb_flags & ctypes.c_uint32(~clear_mask).value | set_mask
-        self.write_gbb_flags(new_flags)
+        self._write_gbb_flags(new_flags)
 
     def check_ec_capability(self, required_cap=None, suppress_warning=False):
         """Check if current platform has required EC capabilities.
@@ -792,7 +637,7 @@ class FirmwareTest(FAFTBase):
             self.sync_and_ec_reboot()
             self.ec.set_flash_write_protect(enable)
 
-    def setup_ec_write_protect(self, ec_wp):
+    def _setup_ec_write_protect(self, ec_wp):
         """Setup for EC write-protection.
 
         It makes sure the EC in the requested write-protection state. If not, it
@@ -811,7 +656,7 @@ class FirmwareTest(FAFTBase):
             self.do_reboot_action(self.set_ec_write_protect_and_reboot, ec_wp)
             self.wait_dev_screen_and_ctrl_d()
 
-    def restore_ec_write_protect(self):
+    def _restore_ec_write_protect(self):
         """Restore the original EC write-protection."""
         if (not hasattr(self, '_old_ec_wp')) or (self._old_ec_wp is None):
             return
@@ -923,7 +768,7 @@ class FirmwareTest(FAFTBase):
         time.sleep(self.faft_config.firmware_screen)
         self.wait_fw_screen_and_close_lid()
 
-    def setup_uart_capture(self):
+    def _setup_uart_capture(self):
         """Setup the CPU/EC UART capture."""
         self.cpu_uart_file = os.path.join(self.resultsdir, 'cpu_uart.txt')
         self.servo.set('cpu_uart_capture', 'on')
@@ -939,7 +784,7 @@ class FirmwareTest(FAFTBase):
         else:
             logging.info('Not a Google EC, cannot capture ec console output.')
 
-    def record_uart_capture(self):
+    def _record_uart_capture(self):
         """Record the CPU/EC UART output stream to files."""
         if self.cpu_uart_file:
             with open(self.cpu_uart_file, 'a') as f:
@@ -948,49 +793,49 @@ class FirmwareTest(FAFTBase):
             with open(self.ec_uart_file, 'a') as f:
                 f.write(ast.literal_eval(self.servo.get('ec_uart_stream')))
 
-    def cleanup_uart_capture(self):
+    def _cleanup_uart_capture(self):
         """Cleanup the CPU/EC UART capture."""
         # Flush the remaining UART output.
-        self.record_uart_capture()
+        self._record_uart_capture()
         self.servo.set('cpu_uart_capture', 'off')
         if self.ec_uart_file and self.faft_config.chrome_ec:
             self.servo.set('ec_uart_capture', 'off')
 
-    def fetch_servo_log(self):
+    def _fetch_servo_log(self):
         """Fetch the servo log."""
         cmd = '[ -e %s ] && cat %s || echo NOTFOUND' % ((self._SERVOD_LOG,) * 2)
         servo_log = self.servo.system_output(cmd)
         return None if servo_log == 'NOTFOUND' else servo_log
 
-    def setup_servo_log(self):
+    def _setup_servo_log(self):
         """Setup the servo log capturing."""
         self.servo_log_original_len = -1
         if self.servo.is_localhost():
             # No servo log recorded when servod runs locally.
             return
 
-        servo_log = self.fetch_servo_log()
+        servo_log = self._fetch_servo_log()
         if servo_log:
             self.servo_log_original_len = len(servo_log)
         else:
             logging.warn('Servo log file not found.')
 
-    def record_servo_log(self):
+    def _record_servo_log(self):
         """Record the servo log to the results directory."""
         if self.servo_log_original_len != -1:
-            servo_log = self.fetch_servo_log()
+            servo_log = self._fetch_servo_log()
             servo_log_file = os.path.join(self.resultsdir, 'servod.log')
             with open(servo_log_file, 'a') as f:
                 f.write(servo_log[self.servo_log_original_len:])
 
-    def record_faft_client_log(self):
+    def _record_faft_client_log(self):
         """Record the faft client log to the results directory."""
         client_log = self.faft_client.system.dump_log(True)
         client_log_file = os.path.join(self.resultsdir, 'faft_client.log')
         with open(client_log_file, 'w') as f:
             f.write(client_log)
 
-    def setup_gbb_flags(self):
+    def _setup_gbb_flags(self):
         """Setup the GBB flags for FAFT test."""
         if self.faft_config.gbb_version < 1.1:
             logging.info('Skip modifying GBB on versions older than 1.1.')
@@ -1017,11 +862,11 @@ class FirmwareTest(FAFTBase):
         """
         self._backup_gbb_flags = None
 
-    def restore_gbb_flags(self):
+    def _restore_gbb_flags(self):
         """Restore GBB flags to their original state."""
         if not self._backup_gbb_flags:
             return
-        self.write_gbb_flags(self._backup_gbb_flags)
+        self._write_gbb_flags(self._backup_gbb_flags)
         self.unmark_setup_done('gbb_flags')
 
     def setup_tried_fwb(self, tried_fwb):
@@ -1191,7 +1036,7 @@ class FirmwareTest(FAFTBase):
                         'chromeos-firmwareupdate --mode tonormal && reboot')
                     self.do_reboot_action(self.disable_keyboard_dev_mode)
 
-    def restore_dev_mode(self):
+    def _restore_dev_mode(self):
         """Restores original dev mode status if it has changed."""
         if self._backup_dev_mode is not None:
             self.setup_dev_mode(self._backup_dev_mode)
@@ -1309,7 +1154,7 @@ class FirmwareTest(FAFTBase):
             logging.info("Installing deps after boot : %s" % install_deps)
             self.wait_for_client(install_deps=install_deps)
             # Stop update-engine as it may change firmware/kernel.
-            self.stop_service('update-engine')
+            self._stop_service('update-engine')
         except ConnectionError:
             logging.error('wait_for_client() timed out.')
             self._restore_routine_from_timeout(next_step)
