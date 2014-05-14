@@ -11,12 +11,12 @@ TEST_CLASS = 'gl'
 TEST_TYPE = 'server'
 
 DOC = """
-This server control file executes the GPU telemetry test: webgl_conformance.
+This server control file executes the GPU telemetry test: memory.
 """
 
 def run_test(machine):
     host = hosts.create_host(machine)
-    job.run_test('telemetry_GpuTests', host=host, test='webgl_conformance')
+    job.run_test('telemetry_GpuTests', host=host, test='memory')
 
 
 parallel_simple(run_test, machines)
