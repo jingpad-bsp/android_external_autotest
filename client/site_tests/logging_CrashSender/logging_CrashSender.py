@@ -43,7 +43,8 @@ class logging_CrashSender(crash_test.CrashTest):
             result['sleep_time'] < 0 or
             result['sleep_time'] >= _SECONDS_SEND_SPREAD or
             result['report_kind'] != 'minidump' or
-            result['report_payload'] != '/var/spool/crash/fake.dmp' or
+            result['report_payload'] != self.get_crash_dir_name(
+                '%s.dmp' % self._FAKE_TEST_BASENAME) or
             result['exec_name'] != 'fake' or
             not 'Version: my_ver' in result['output']):
             raise error.TestFail('Simple minidump send failed')
@@ -70,10 +71,13 @@ class logging_CrashSender(crash_test.CrashTest):
 
     def _test_sender_simple_minidump_with_log(self):
         """Test that a minidump report with an auxiliary log is sent."""
-        dmp_path = self.write_crash_dir_entry('fake.dmp', '')
-        log_path = self.write_crash_dir_entry('fake.log', '')
-        meta_path = self.write_fake_meta('fake.meta', 'fake', dmp_path,
-                                         log=log_path)
+        dmp_path = self.write_crash_dir_entry(
+            '%s.dmp' % self._FAKE_TEST_BASENAME, '')
+        log_path = self.write_crash_dir_entry(
+            '%s.log' % self._FAKE_TEST_BASENAME, '')
+        meta_path = self.write_fake_meta(
+            '%s.meta' % self._FAKE_TEST_BASENAME, 'fake', dmp_path,
+            log=log_path)
         self._check_simple_minidump_send(meta_path, log_path)
 
 
@@ -85,8 +89,10 @@ class logging_CrashSender(crash_test.CrashTest):
 
     def _test_sender_simple_old_minidump(self):
         """Test that old minidumps and metadata are sent."""
-        dmp_path = self.write_crash_dir_entry('fake.dmp', '')
-        meta_path = self.write_fake_meta('fake.meta', 'fake', dmp_path)
+        dmp_path = self.write_crash_dir_entry(
+            '%s.dmp' % self._FAKE_TEST_BASENAME, '')
+        meta_path = self.write_fake_meta(
+            '%s.meta' % self._FAKE_TEST_BASENAME, 'fake', dmp_path)
         self._shift_file_mtime(dmp_path, _25_HOURS_AGO)
         self._shift_file_mtime(meta_path, _25_HOURS_AGO)
         self._check_simple_minidump_send(meta_path)
@@ -108,7 +114,7 @@ class logging_CrashSender(crash_test.CrashTest):
             result['sleep_time'] >= _SECONDS_SEND_SPREAD or
             result['report_kind'] != 'kcrash' or
             (result['report_payload'] !=
-             '/var/spool/crash/kernel.today.kcrash') or
+             self.get_crash_dir_name('kernel.today.kcrash')) or
             result['exec_name'] != 'kernel'):
             raise error.TestFail('Simple kcrash send failed')
         self._check_hardware_info(result)
@@ -234,8 +240,8 @@ class logging_CrashSender(crash_test.CrashTest):
 
     def _test_sender_incomplete_metadata(self):
         """Test that incomplete metadata file is removed once old."""
-        dmp_file = self.write_crash_dir_entry('incomplete.dmp', '')
-        meta_file = self.write_fake_meta('incomplete.meta',
+        dmp_file = self.write_crash_dir_entry('incomplete.1.2.3.dmp', '')
+        meta_file = self.write_fake_meta('incomplete.1.2.3.meta',
                                          'unknown',
                                          dmp_file,
                                          complete=False)

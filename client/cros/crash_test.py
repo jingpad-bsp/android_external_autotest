@@ -81,6 +81,10 @@ class CrashTest(test.test):
     _FALLBACK_USER_CRASH_DIR = '/home/chronos/crash'
     _USER_CRASH_DIRS = '/home/chronos/u-*/crash'
 
+    # Use the same file format as crash does normally:
+    # <basename>.#.#.#.meta
+    _FAKE_TEST_BASENAME = 'fake.1.2.3'
+
     def _set_system_sending(self, is_enabled):
         """Sets whether or not the system crash_sender is allowed to run.
 
@@ -323,6 +327,11 @@ class CrashTest(test.test):
         self.enable_crash_filtering('none')
 
 
+    def get_crash_dir_name(self, name):
+        """Return the full path for |name| inside the system crash directory."""
+        return os.path.join(self._SYSTEM_CRASH_DIR, name)
+
+
     def write_crash_dir_entry(self, name, contents):
         """Writes an empty file to the system crash directory.
 
@@ -333,7 +342,7 @@ class CrashTest(test.test):
             name: Name of file to write.
             contents: String to write to the file.
         """
-        entry = os.path.join(self._SYSTEM_CRASH_DIR, name)
+        entry = self.get_crash_dir_name(name)
         if not os.path.exists(self._SYSTEM_CRASH_DIR):
             os.makedirs(self._SYSTEM_CRASH_DIR)
         utils.open_write_close(entry, contents)
@@ -384,8 +393,12 @@ class CrashTest(test.test):
         self._set_sending_mock(mock_enabled=True, send_success=send_success)
         self._set_consent(reports_enabled)
         if report is None:
-            payload = self.write_crash_dir_entry('fake.dmp', '')
-            report = self.write_fake_meta('fake.meta', 'fake', payload)
+            # Use the same file format as crash does normally:
+            # <basename>.#.#.#.meta
+            payload = self.write_crash_dir_entry(
+                '%s.dmp' % self._FAKE_TEST_BASENAME, '')
+            report = self.write_fake_meta(
+                '%s.meta' % self._FAKE_TEST_BASENAME, 'fake', payload)
         return report
 
 
