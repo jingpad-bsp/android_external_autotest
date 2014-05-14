@@ -8,7 +8,6 @@ import pprint
 import re
 import StringIO
 
-import common
 from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.common_lib.cros import dev_server
 
@@ -212,7 +211,8 @@ class TelemetryRunner(object):
                       locally.
         """
         self._host = host
-
+        self._devserver = None
+        self._telemetry_path = None
         # TODO (llozano crbug.com/324964). Remove conditional code.
         # Use a class hierarchy instead.
         if local:
@@ -354,8 +354,7 @@ class TelemetryRunner(object):
         telemetry_script = os.path.join(self._telemetry_path, script)
         result = self._run_telemetry(telemetry_script, test)
         if result.status is FAILED_STATUS:
-            raise error.TestFail('Telemetry test: %s failed.',
-                                 test)
+            raise error.TestFail('Telemetry test %s failed.' % test)
         return result
 
 
