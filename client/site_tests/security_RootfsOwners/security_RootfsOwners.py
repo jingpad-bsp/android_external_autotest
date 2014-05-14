@@ -13,10 +13,10 @@ class security_RootfsOwners(test.test):
     def run_once(self):
         """
         This is a regression test for 7989.
-        Do a find on the system for rootfs files own by chronos.
-        Test fails if there is any.
+        Do a find on the system for rootfs files owned by chronos
+        or chronos-access. Test fails if there is any.
         """
-        cmd = 'find / -xdev -user chronos -print'
+        cmd = 'find / -xdev -user chronos -o -user chronos-access -print'
         cmd_output = utils.system_output(cmd, ignore_status=True)
 
         if (cmd_output != '') :
