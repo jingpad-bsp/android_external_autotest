@@ -16,6 +16,7 @@ from autotest_lib.frontend.afe import models
 from autotest_lib.frontend.afe import rdb_model_extensions as rdb_models
 from autotest_lib.scheduler import monitor_db
 from autotest_lib.scheduler import monitor_db_functional_test
+from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.scheduler import scheduler_models
 from autotest_lib.scheduler import rdb_hosts
 from autotest_lib.scheduler import rdb_requests
@@ -236,7 +237,9 @@ class AbstractBaseRDBTester(frontend_test_utils.FrontendTestMixin):
         self._database = self.db_helper.database
         # Runs syncdb setting up initial database conditions
         self._frontend_common_setup()
-        self.god.stub_with(monitor_db, '_db', self._database)
+        connection_manager = scheduler_lib.ConnectionManager(autocommit=False)
+        self.god.stub_with(connection_manager, 'db_connection', self._database)
+        self.god.stub_with(monitor_db, '_db_manager', connection_manager)
         self.god.stub_with(scheduler_models, '_db', self._database)
         self._dispatcher = monitor_db.Dispatcher()
         self.host_scheduler = self._dispatcher._host_scheduler

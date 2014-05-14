@@ -22,10 +22,10 @@ import datetime, itertools, logging, os, re, sys, time, weakref
 from autotest_lib.client.common_lib import global_config, host_protections
 from autotest_lib.client.common_lib import global_config, utils
 from autotest_lib.frontend.afe import models, model_attributes
-from autotest_lib.database import database_connection
 from autotest_lib.scheduler import drone_manager, email_manager
 from autotest_lib.scheduler import rdb_lib
 from autotest_lib.scheduler import scheduler_config
+from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.server.cros import provision
 from autotest_lib.site_utils.graphite import stats
 from autotest_lib.client.common_lib import control_data
@@ -38,8 +38,7 @@ _drone_manager = None
 
 def initialize():
     global _db
-    _db = database_connection.DatabaseConnection('AUTOTEST_WEB')
-    _db.connect(db_type='django')
+    _db = scheduler_lib.ConnectionManager().get_connection()
 
     notify_statuses_list = global_config.global_config.get_config_value(
             scheduler_config.CONFIG_SECTION, "notify_email_statuses",

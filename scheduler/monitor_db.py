@@ -14,16 +14,16 @@ from autotest_lib.frontend import setup_django_environment
 
 import django.db
 
-from autotest_lib.client.common_lib import global_config, logging_manager
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
-from autotest_lib.database import database_connection
-from autotest_lib.frontend.afe import models, rpc_utils, readonly_connection
+from autotest_lib.frontend.afe import models, rpc_utils
 from autotest_lib.scheduler import agent_task, drone_manager, drones
 from autotest_lib.scheduler import email_manager, gc_stats, host_scheduler
 from autotest_lib.scheduler import monitor_db_cleanup, prejob_task
-from autotest_lib.scheduler import postjob_task, scheduler_logging_config
+from autotest_lib.scheduler import postjob_task
 from autotest_lib.scheduler import rdb_lib
 from autotest_lib.scheduler import rdb_utils
+from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.scheduler import scheduler_models
 from autotest_lib.scheduler import status_server, scheduler_config
 from autotest_lib.server import autoserv_utils
@@ -51,7 +51,7 @@ Autoserv failed abnormally during execution for this job, probably due to a
 system error on the Autotest server.  Full results may not be available.  Sorry.
 """
 
-_db = None
+_db_manager = None
 _shutdown = False
 
 # These 2 globals are replaced for testing
@@ -75,7 +75,7 @@ def _site_init_monitor_db_dummy():
 def _verify_default_drone_set_exists():
     if (models.DroneSet.drone_sets_enabled() and
             not models.DroneSet.default_drone_set_name()):
-        raise host_scheduler.SchedulerError(
+        raise scheduler_lib.SchedulerError(
                 'Drone sets are enabled, but no default is set')
 
 
@@ -98,8 +98,9 @@ def main():
 
 
 def main_without_exception_handling():
-    setup_logging()
-
+    scheduler_lib.setup_logging(
+            os.environ.get('AUTOTEST_SCHEDULER_LOG_DIR', None),
+            os.environ.get('AUTOTEST_SCHEDULER_LOG_NAME', None))
     usage = 'usage: %prog [options] results_dir'
     parser = optparse.OptionParser(usage)
     parser.add_option('--recover-hosts', help='Try to recover dead hosts',
@@ -162,15 +163,7 @@ def main_without_exception_handling():
     email_manager.manager.send_queued_emails()
     server.shutdown()
     _drone_manager.shutdown()
-    _db.disconnect()
-
-
-def setup_logging():
-    log_dir = os.environ.get('AUTOTEST_SCHEDULER_LOG_DIR', None)
-    log_name = os.environ.get('AUTOTEST_SCHEDULER_LOG_NAME', None)
-    logging_manager.configure_logging(
-            scheduler_logging_config.SchedulerLoggingConfig(), log_dir=log_dir,
-            logfile_name=log_name)
+    _db_manager.disconnect()
 
 
 def handle_sigint(signum, frame):
@@ -193,14 +186,8 @@ def initialize():
             DB_CONFIG_SECTION, 'database', 'stresstest_autotest_web')
 
     os.environ['PATH'] = AUTOTEST_SERVER_DIR + ':' + os.environ['PATH']
-    global _db
-    _db = database_connection.DatabaseConnection(DB_CONFIG_SECTION)
-    _db.connect(db_type='django')
-
-    # ensure Django connection is in autocommit
-    setup_django_environment.enable_autocommit()
-    # bypass the readonly connection
-    readonly_connection.ReadOnlyConnection.set_globally_disabled(True)
+    global _db_manager
+    _db_manager = scheduler_lib.ConnectionManager()
 
     logging.info("Setting signal handler")
     signal.signal(signal.SIGINT, handle_sigint)
@@ -248,11 +235,13 @@ class BaseDispatcher(object):
     def __init__(self):
         self._agents = []
         self._last_clean_time = time.time()
-        self._host_scheduler = host_scheduler.HostScheduler(_db)
+        self._host_scheduler = host_scheduler.HostScheduler(
+                _db_manager.get_connection())
         user_cleanup_time = scheduler_config.config.clean_interval
         self._periodic_cleanup = monitor_db_cleanup.UserCleanup(
-            _db, user_cleanup_time)
-        self._24hr_upkeep = monitor_db_cleanup.TwentyFourHourUpkeep(_db)
+                _db_manager.get_connection(), user_cleanup_time)
+        self._24hr_upkeep = monitor_db_cleanup.TwentyFourHourUpkeep(
+                _db_manager.get_connection())
         self._host_agents = {}
         self._queue_entry_agents = {}
         self._tick_count = 0
@@ -509,7 +498,7 @@ class BaseDispatcher(object):
         if queue_entry.status == models.HostQueueEntry.Status.ARCHIVING:
             return postjob_task.ArchiveResultsTask(queue_entries=task_entries)
 
-        raise host_scheduler.SchedulerError(
+        raise scheduler_lib.SchedulerError(
                 '_get_agent_task_for_queue_entry got entry with '
                 'invalid status %s: %s' % (queue_entry.status, queue_entry))
 
@@ -530,7 +519,7 @@ class BaseDispatcher(object):
         """
         if self.host_has_agent(entry.host):
             agent = tuple(self._host_agents.get(entry.host.id))[0]
-            raise host_scheduler.SchedulerError(
+            raise scheduler_lib.SchedulerError(
                     'While scheduling %s, host %s already has a host agent %s'
                     % (entry, entry.host, agent.task))
 
@@ -563,7 +552,7 @@ class BaseDispatcher(object):
             if agent_task_class.TASK_TYPE == special_task.task:
                 return agent_task_class(task=special_task)
 
-        raise host_scheduler.SchedulerError(
+        raise scheduler_lib.SchedulerError(
                 'No AgentTask class for task', str(special_task))
 
 
@@ -629,7 +618,7 @@ class BaseDispatcher(object):
 
         if unrecovered_hqes:
             message = '\n'.join(str(hqe) for hqe in unrecovered_hqes)
-            raise host_scheduler.SchedulerError(
+            raise scheduler_lib.SchedulerError(
                     '%d unrecovered verifying host queue entries:\n%s' %
                     (len(unrecovered_hqes), message))
 

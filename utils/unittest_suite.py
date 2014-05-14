@@ -46,11 +46,13 @@ REQUIRES_DJANGO = set((
         'rdb_unittest.py',
         'rdb_hosts_unittest.py',
         'rdb_cache_unittests.py',
+        'scheduler_lib_unittest.py',
         ))
 
 REQUIRES_MYSQLDB = set((
         'migrate_unittest.py',
         'db_utils_unittest.py',
+        'scheduler_lib_unittest.py',
         ))
 
 REQUIRES_GWT = set((
@@ -97,6 +99,7 @@ SKIP = set((
     # crbug.com/251395
     'dev_server_test.py',
     'full_release_test.py',
+    'scheduler_lib_unittest.py',
     ))
 
 LONG_TESTS = (REQUIRES_MYSQLDB |

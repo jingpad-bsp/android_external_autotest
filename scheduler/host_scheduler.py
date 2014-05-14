@@ -17,10 +17,6 @@ get_site_metahost_schedulers = utils.import_site_function(
         'get_metahost_schedulers', lambda : ())
 
 
-class SchedulerError(Exception):
-    """Raised by HostScheduler when an inconsistent state occurs."""
-
-
 class BaseHostScheduler(metahost_scheduler.HostSchedulingUtility):
     """Handles the logic for choosing when to run jobs and on which hosts.
 

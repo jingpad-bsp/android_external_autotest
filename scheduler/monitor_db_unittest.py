@@ -12,9 +12,10 @@ from autotest_lib.frontend.afe import models
 from autotest_lib.scheduler import agent_task
 from autotest_lib.scheduler import monitor_db, drone_manager, email_manager
 from autotest_lib.scheduler import pidfile_monitor
-from autotest_lib.scheduler import scheduler_config, gc_stats, host_scheduler
+from autotest_lib.scheduler import scheduler_config, gc_stats
 from autotest_lib.scheduler import monitor_db_cleanup
 from autotest_lib.scheduler import monitor_db_functional_test
+from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.scheduler import scheduler_models
 
 _DEBUG = False
@@ -101,7 +102,9 @@ class BaseSchedulerTest(unittest.TestCase,
         self._database.connect(db_type='django')
         self._database.debug = _DEBUG
 
-        self.god.stub_with(monitor_db, '_db', self._database)
+        connection_manager = scheduler_lib.ConnectionManager(autocommit=False)
+        self.god.stub_with(connection_manager, 'db_connection', self._database)
+        self.god.stub_with(monitor_db, '_db_manager', connection_manager)
         self.god.stub_with(monitor_db.BaseDispatcher,
                            '_get_pending_queue_entries',
                            self._get_pending_hqes)
@@ -1021,7 +1024,7 @@ class JobSchedulingTest(BaseSchedulerTest):
                 dummy_test_agent)
 
         # Attempted to schedule on a host that already has an agent.
-        self.assertRaises(host_scheduler.SchedulerError,
+        self.assertRaises(scheduler_lib.SchedulerError,
                           self._dispatcher._schedule_running_host_queue_entries)
 
 
