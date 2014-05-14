@@ -30,7 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-ivec4-ivec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-ivec4-ivec4.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-mat2-mat2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-mat2-mat2.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-mat3-mat3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-mat3-mat3.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-mat4-mat4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-mat4-mat4.shader_test -auto"
@@ -451,6 +450,7 @@ run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-ne-bvec3-bvec3-using
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-ne-bvec4-bvec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-ne-bvec4-bvec4.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-ne-bvec4-bvec4-using-if" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-ne-bvec4-bvec4-using-if.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-ne-float-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-ne-float-float.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-ne-float-float-using-if" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-ne-float-float-using-if.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then

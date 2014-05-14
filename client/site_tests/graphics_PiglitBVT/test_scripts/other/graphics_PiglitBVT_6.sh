@@ -30,6 +30,7 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/ARB_texture_rg/fbo-rg-GL_R16" 0.0 "bin/fbo-rg -auto GL_R16"
 run_test "spec/ARB_texture_rg/fbo-rg-GL_R8" 0.0 "bin/fbo-rg -auto GL_R8"
 run_test "spec/ARB_texture_rg/fbo-rg-GL_RED" 0.0 "bin/fbo-rg -auto GL_RED"
 run_test "spec/ARB_texture_rg/fbo-rg-GL_RG" 0.0 "bin/fbo-rg -auto GL_RG"
@@ -61,7 +62,6 @@ run_test "spec/ARB_texture_rgb10_a2ui/texwrap formats" 0.0 "bin/texwrap -fbo -au
 run_test "spec/ARB_texture_storage/texture-storage" 0.0 "bin/arb_texture_storage-texture-storage -auto"
 run_test "spec/ARB_timer_query/query GL_TIMESTAMP" 0.0 "bin/ext_timer_query-time-elapsed timestamp -auto -fbo"
 run_test "spec/ARB_timer_query/query-lifetime" 0.0 "bin/ext_timer_query-lifetime -auto -fbo"
-run_test "spec/ARB_timer_query/timestamp-get" 0.0 "bin/arb_timer_query-timestamp-get -auto -fbo"
 run_test "spec/ARB_uniform_buffer_object/bindbuffer-general-point" 0.0 "bin/arb_uniform_buffer_object-bindbuffer-general-point -auto -fbo"
 run_test "spec/ARB_uniform_buffer_object/buffer-targets" 0.0 "bin/arb_uniform_buffer_object-buffer-targets -auto -fbo"
 run_test "spec/ARB_uniform_buffer_object/compiler/block-name-clashes-with-function.vert" 0.0 "bin/glslparsertest tests/spec/arb_uniform_buffer_object/compiler/block-name-clashes-with-function.vert fail 1.20 GL_ARB_uniform_buffer_object"

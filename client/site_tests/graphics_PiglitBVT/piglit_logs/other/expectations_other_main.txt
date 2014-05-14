@@ -1,5 +1,9 @@
 {
   "tests": {
+    "glx/GLX_OML_sync_control/swapbuffersmsc-return swap_interval 1": {
+      "pass rate": "0.5", 
+      "result": "flaky"
+    }, 
     "glx/GLX_OML_sync_control/waitformsc": {
       "pass rate": "0.33", 
       "result": "flaky"
@@ -140,6 +144,10 @@
       "pass rate": "0.93", 
       "result": "flaky"
     }, 
+    "spec/ARB_timer_query/timestamp-get": {
+      "pass rate": "0.50",
+      "result": "flaky"
+    },
     "spec/ARB_transform_feedback2/draw-auto": {
       "pass rate": "0.40", 
       "result": "flaky"
@@ -238,6 +246,10 @@
     }, 
     "spec/EXT_texture_snorm/multisample-formats 8 GL_EXT_texture_snorm": {
       "pass rate": "0.93", 
+      "result": "flaky"
+    },
+    "spec/EXT_transform_feedback/generatemipmap prims_generated": {
+      "pass rate": "0.5", 
       "result": "flaky"
     }
   }

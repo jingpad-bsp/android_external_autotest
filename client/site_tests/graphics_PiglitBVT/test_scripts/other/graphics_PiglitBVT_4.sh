@@ -30,6 +30,7 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/!OpenGL 1.1/dlist-color-material" 0.0 "bin/dlist-color-material -auto"
 run_test "spec/!OpenGL 1.1/dlist-fdo3129-01" 0.0 "bin/dlist-fdo3129-01 -auto"
 run_test "spec/!OpenGL 1.1/dlist-fdo3129-02" 0.0 "bin/dlist-fdo3129-02 -auto"
 run_test "spec/!OpenGL 1.1/dlist-fdo31590" 0.0 "bin/dlist-fdo31590 -auto"
@@ -412,7 +413,6 @@ run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-05.vert" 0.0 "b
 run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-06.frag" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.20/compiler/layout-06.frag pass 1.20 GL_ARB_explicit_attrib_location"
 run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-06.vert" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.20/compiler/layout-06.vert pass 1.20 GL_ARB_explicit_attrib_location"
 run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-07.frag" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.20/compiler/layout-07.frag pass 1.20 GL_ARB_explicit_attrib_location"
-run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-07.vert" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.20/compiler/layout-07.vert pass 1.20 GL_ARB_explicit_attrib_location"
 popd
 
 if [ $need_pass == 0 ] ; then

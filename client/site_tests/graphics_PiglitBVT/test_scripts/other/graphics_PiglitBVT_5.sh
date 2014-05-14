@@ -30,6 +30,7 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-07.vert" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.20/compiler/layout-07.vert pass 1.20 GL_ARB_explicit_attrib_location"
 run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-08.frag" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.20/compiler/layout-08.frag pass 1.20 GL_ARB_explicit_attrib_location"
 run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-08.vert" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.20/compiler/layout-08.vert pass 1.20 GL_ARB_explicit_attrib_location"
 run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-09.frag" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.20/compiler/layout-09.frag pass 1.20 GL_ARB_explicit_attrib_location"
@@ -385,7 +386,6 @@ run_test "spec/ARB_texture_rg/fbo-colormask-formats" 0.0 "bin/fbo-colormask-form
 run_test "spec/ARB_texture_rg/fbo-colormask-formats-float" 0.0 "bin/fbo-colormask-formats -auto GL_ARB_texture_rg-float"
 run_test "spec/ARB_texture_rg/fbo-generatemipmap-formats" 0.0 "bin/fbo-generatemipmap-formats -auto GL_ARB_texture_rg"
 run_test "spec/ARB_texture_rg/fbo-generatemipmap-formats-float" 0.0 "bin/fbo-generatemipmap-formats -auto GL_ARB_texture_rg-float"
-run_test "spec/ARB_texture_rg/fbo-rg-GL_R16" 0.0 "bin/fbo-rg -auto GL_R16"
 popd
 
 if [ $need_pass == 0 ] ; then

@@ -99,7 +99,6 @@ run_test "spec/EXT_transform_feedback/discard-drawarrays" 0.0 "bin/ext_transform
 run_test "spec/EXT_transform_feedback/discard-drawpixels" 0.0 "bin/ext_transform_feedback-discard-drawpixels -auto -fbo"
 run_test "spec/EXT_transform_feedback/generatemipmap buffer" 0.0 "bin/ext_transform_feedback-generatemipmap buffer -auto -fbo"
 run_test "spec/EXT_transform_feedback/generatemipmap discard" 0.0 "bin/ext_transform_feedback-generatemipmap discard -auto -fbo"
-run_test "spec/EXT_transform_feedback/generatemipmap prims_generated" 0.0 "bin/ext_transform_feedback-generatemipmap prims_generated -auto -fbo"
 run_test "spec/EXT_transform_feedback/generatemipmap prims_written" 0.0 "bin/ext_transform_feedback-generatemipmap prims_written -auto -fbo"
 run_test "spec/EXT_transform_feedback/get-buffer-state buffer_size" 0.0 "bin/ext_transform_feedback-get-buffer-state buffer_size -auto -fbo"
 run_test "spec/EXT_transform_feedback/get-buffer-state buffer_start" 0.0 "bin/ext_transform_feedback-get-buffer-state buffer_start -auto -fbo"
@@ -464,6 +463,7 @@ run_test "spec/glsl-1.10/compiler/qualifiers/out-01.vert" 0.0 "bin/glslparsertes
 run_test "spec/glsl-1.10/compiler/qualifiers/out-02.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/out-02.vert fail 1.10"
 run_test "spec/glsl-1.10/compiler/qualifiers/varying-bool-prohibited.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-bool-prohibited.frag fail 1.10"
 run_test "spec/glsl-1.10/compiler/qualifiers/varying-bool-prohibited.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-bool-prohibited.vert fail 1.10"
+run_test "spec/glsl-1.10/compiler/qualifiers/varying-bvec2-prohibited.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-bvec2-prohibited.frag fail 1.10"
 popd
 
 if [ $need_pass == 0 ] ; then

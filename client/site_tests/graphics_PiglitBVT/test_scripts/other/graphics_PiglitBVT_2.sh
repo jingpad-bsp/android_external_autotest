@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=307
+need_pass=306
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -30,6 +30,7 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "glean/vp1-EXP test" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
 run_test "glean/vp1-FLR test" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
 run_test "glean/vp1-FRC test" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
 run_test "glean/vp1-Infinity and nan test" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
@@ -69,7 +70,6 @@ run_test "glx/GLX_EXT_import_context/import context, single process" 0.0 "bin/gl
 run_test "glx/GLX_EXT_import_context/imported context has same context ID" 0.0 "bin/glx-import-context-has-same-context-id"
 run_test "glx/GLX_EXT_import_context/make current, single process" 0.0 "bin/glx-make-current-single-process"
 run_test "glx/GLX_EXT_import_context/query context info" 0.0 "bin/glx-query-context-info-ext"
-run_test "glx/GLX_OML_sync_control/swapbuffersmsc-return swap_interval 1" 0.0 "bin/glx-oml-sync-control-swapbuffersmsc-return 1 -auto -fbo"
 run_test "glx/extension string sanity" 0.0 "bin/glx-string-sanity"
 run_test "glx/glx-close-display" 0.0 "bin/glx-close-display -auto"
 run_test "glx/glx-copy-sub-buffer" 0.0 "bin/glx-copy-sub-buffer -auto"
@@ -336,12 +336,11 @@ run_test "shaders/glsl-fs-if-less-equal" 0.0 "bin/shader_runner tests/shaders/gl
 run_test "shaders/glsl-fs-if-nested-loop" 0.0 "bin/shader_runner tests/shaders/glsl-fs-if-nested-loop.shader_test -auto"
 run_test "shaders/glsl-fs-if-texture2d-discard" 0.0 "bin/shader_runner tests/shaders/glsl-fs-if-texture2d-discard.shader_test -auto"
 run_test "shaders/glsl-fs-implicit-array-size-01" 0.0 "bin/shader_runner tests/shaders/glsl-fs-implicit-array-size-01.shader_test -auto"
-run_test "shaders/glsl-fs-implicit-array-size-02" 0.0 "bin/shader_runner tests/shaders/glsl-fs-implicit-array-size-02.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 307 tests have passed. |"
+  echo "| Overall pass, as all 306 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

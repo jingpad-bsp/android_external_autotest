@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=8083
+need_pass=8080
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -417,7 +417,6 @@ run_test "glx/GLX_EXT_import_context/import context, single process" 0.0 "bin/gl
 run_test "glx/GLX_EXT_import_context/imported context has same context ID" 0.0 "bin/glx-import-context-has-same-context-id"
 run_test "glx/GLX_EXT_import_context/make current, single process" 0.0 "bin/glx-make-current-single-process"
 run_test "glx/GLX_EXT_import_context/query context info" 0.0 "bin/glx-query-context-info-ext"
-run_test "glx/GLX_OML_sync_control/swapbuffersmsc-return swap_interval 1" 0.0 "bin/glx-oml-sync-control-swapbuffersmsc-return 1 -auto -fbo"
 run_test "glx/extension string sanity" 0.0 "bin/glx-string-sanity"
 run_test "glx/glx-close-display" 0.0 "bin/glx-close-display -auto"
 run_test "glx/glx-copy-sub-buffer" 0.0 "bin/glx-copy-sub-buffer -auto"
@@ -1769,7 +1768,6 @@ run_test "spec/ARB_texture_rgb10_a2ui/texwrap formats" 0.0 "bin/texwrap -fbo -au
 run_test "spec/ARB_texture_storage/texture-storage" 0.0 "bin/arb_texture_storage-texture-storage -auto"
 run_test "spec/ARB_timer_query/query GL_TIMESTAMP" 0.0 "bin/ext_timer_query-time-elapsed timestamp -auto -fbo"
 run_test "spec/ARB_timer_query/query-lifetime" 0.0 "bin/ext_timer_query-lifetime -auto -fbo"
-run_test "spec/ARB_timer_query/timestamp-get" 0.0 "bin/arb_timer_query-timestamp-get -auto -fbo"
 run_test "spec/ARB_uniform_buffer_object/bindbuffer-general-point" 0.0 "bin/arb_uniform_buffer_object-bindbuffer-general-point -auto -fbo"
 run_test "spec/ARB_uniform_buffer_object/buffer-targets" 0.0 "bin/arb_uniform_buffer_object-buffer-targets -auto -fbo"
 run_test "spec/ARB_uniform_buffer_object/compiler/block-name-clashes-with-function.vert" 0.0 "bin/glslparsertest tests/spec/arb_uniform_buffer_object/compiler/block-name-clashes-with-function.vert fail 1.20 GL_ARB_uniform_buffer_object"
@@ -2141,7 +2139,6 @@ run_test "spec/EXT_transform_feedback/discard-drawarrays" 0.0 "bin/ext_transform
 run_test "spec/EXT_transform_feedback/discard-drawpixels" 0.0 "bin/ext_transform_feedback-discard-drawpixels -auto -fbo"
 run_test "spec/EXT_transform_feedback/generatemipmap buffer" 0.0 "bin/ext_transform_feedback-generatemipmap buffer -auto -fbo"
 run_test "spec/EXT_transform_feedback/generatemipmap discard" 0.0 "bin/ext_transform_feedback-generatemipmap discard -auto -fbo"
-run_test "spec/EXT_transform_feedback/generatemipmap prims_generated" 0.0 "bin/ext_transform_feedback-generatemipmap prims_generated -auto -fbo"
 run_test "spec/EXT_transform_feedback/generatemipmap prims_written" 0.0 "bin/ext_transform_feedback-generatemipmap prims_written -auto -fbo"
 run_test "spec/EXT_transform_feedback/get-buffer-state buffer_size" 0.0 "bin/ext_transform_feedback-get-buffer-state buffer_size -auto -fbo"
 run_test "spec/EXT_transform_feedback/get-buffer-state buffer_start" 0.0 "bin/ext_transform_feedback-get-buffer-state buffer_start -auto -fbo"
@@ -8117,7 +8114,7 @@ popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 8083 tests have passed. |"
+  echo "| Overall pass, as all 8080 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"
