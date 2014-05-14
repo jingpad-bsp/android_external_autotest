@@ -2,11 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
+
 from autotest_lib.server.cros import vboot_constants as vboot
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
 
-class firmware_RollbackFirmware(FAFTSequence):
+class firmware_RollbackFirmware(FirmwareTest):
     """
     Servo based firmware rollback test.
 
@@ -17,18 +19,15 @@ class firmware_RollbackFirmware(FAFTSequence):
     """
     version = 1
 
-
     def initialize(self, host, cmdline_args, dev_mode=False):
         super(firmware_RollbackFirmware, self).initialize(host, cmdline_args)
         self.backup_firmware()
         self.setup_dev_mode(dev_mode)
         self.setup_usbkey(usbkey=True, host=False)
 
-
     def cleanup(self):
         self.restore_firmware()
         super(firmware_RollbackFirmware, self).cleanup()
-
 
     def run_once(self, dev_mode=False):
         # Recovery reason RW_FW_ROLLBACK available after Alex/ZGB.
@@ -38,43 +37,38 @@ class firmware_RollbackFirmware(FAFTSequence):
         else:
             recovery_reason = vboot.RECOVERY_REASON['RW_FW_ROLLBACK']
 
-        self.register_faft_sequence((
-            {   # Step 1, rollbacks firmware A.
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_act': 'A',
-                    'mainfw_type': 'developer' if dev_mode else 'normal',
-                    'tried_fwb': '0',
-                }),
-                'userspace_action':
-                    (self.faft_client.bios.move_version_backward, 'a'),
-            },
-            {   # Step 2, expected firmware B boot and rollbacks firmware B.
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_act': 'B',
-                    'mainfw_type': ('normal', 'developer'),
-                    'tried_fwb': '0',
-                }),
-                'userspace_action':
-                    (self.faft_client.bios.move_version_backward, 'b'),
-                'firmware_action': None if dev_mode else
-                                   self.wait_fw_screen_and_plug_usb,
-                'install_deps_after_boot': True,
-            },
-            {   # Step 3, expected recovery boot and restores firmware A and B.
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_type': 'recovery',
-                    'recovery_reason' : recovery_reason,
-                }),
-                'userspace_action': (
-                    self.faft_client.bios.move_version_forward,
-                    (('a', 'b'),)),
-            },
-            {   # Step 4, expected firmware A boot and done.
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_act': 'A',
-                    'mainfw_type': 'developer' if dev_mode else 'normal',
-                    'tried_fwb': '0',
-                }),
-            },
-        ))
-        self.run_faft_sequence()
+        logging.info("Rollback firmware A.")
+        self.check_state((self.checkers.crossystem_checker, {
+                           'mainfw_act': 'A',
+                           'mainfw_type': 'developer' if dev_mode else 'normal',
+                           'tried_fwb': '0',
+                           }))
+        self.faft_client.bios.move_version_backward('a')
+        self.reboot_warm()
+
+        logging.info("Expected firmware B boot and rollback firmware B.")
+        self.check_state((self.checkers.crossystem_checker, {
+                           'mainfw_act': 'B',
+                           'mainfw_type': ('normal', 'developer'),
+                           'tried_fwb': '0',
+                           }))
+        self.faft_client.bios.move_version_backward('b')
+        self.reboot_warm(wait_for_dut_up=False)
+        if not dev_mode:
+            self.wait_fw_screen_and_plug_usb()
+        self.wait_for_client(install_deps=True)
+
+        logging.info("Expected recovery boot and restores firmware A and B.")
+        self.check_state((self.checkers.crossystem_checker, {
+                           'mainfw_type': 'recovery',
+                           'recovery_reason': recovery_reason,
+                           }))
+        self.faft_client.bios.move_version_forward(('a', 'b'))
+        self.reboot_warm()
+
+        logging.info("Expected firmware A boot and done.")
+        self.check_state((self.checkers.crossystem_checker, {
+                           'mainfw_act': 'A',
+                           'mainfw_type': 'developer' if dev_mode else 'normal',
+                           'tried_fwb': '0',
+                           }))
