@@ -2,11 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
+
 from autotest_lib.server.cros import vboot_constants as vboot
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
 
-class firmware_CorruptBothFwSigAB(FAFTSequence):
+class firmware_CorruptBothFwSigAB(FirmwareTest):
     """
     Servo based both firmware signature A and B corruption test.
 
@@ -18,54 +20,51 @@ class firmware_CorruptBothFwSigAB(FAFTSequence):
     """
     version = 1
 
-
     def initialize(self, host, cmdline_args, dev_mode=False):
         super(firmware_CorruptBothFwSigAB, self).initialize(host, cmdline_args)
         self.backup_firmware()
         self.setup_dev_mode(dev_mode)
         self.setup_usbkey(usbkey=True, host=False)
 
-
     def cleanup(self):
         self.restore_firmware()
         super(firmware_CorruptBothFwSigAB, self).cleanup()
 
-
     def run_once(self, dev_mode=False):
-        self.register_faft_sequence((
-            {   # Step 1, corrupt both firmware signature A and B
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_type': 'developer' if dev_mode else 'normal',
-                }),
-                'userspace_action': (self.faft_client.bios.corrupt_sig,
-                                     (('a', 'b'),)),
-                'firmware_action': None if dev_mode else
-                                   self.wait_fw_screen_and_plug_usb,
-                'install_deps_after_boot': True,
-            },
-            {   # Step 2, expected recovery boot and set fwb_tries flag
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_type': 'recovery',
-                    'recovery_reason': (vboot.RECOVERY_REASON['RO_INVALID_RW'],
-                            vboot.RECOVERY_REASON['RW_VERIFY_KEYBLOCK']),
-                }),
-                'userspace_action': self.faft_client.system.set_try_fw_b,
-                'firmware_action': None if dev_mode else
-                                   self.wait_fw_screen_and_plug_usb,
-            },
-            {   # Step 3, still expected recovery boot and restore firmware
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_type': 'recovery',
-                    'recovery_reason': (vboot.RECOVERY_REASON['RO_INVALID_RW'],
-                            vboot.RECOVERY_REASON['RW_VERIFY_KEYBLOCK']),
-                }),
-                'userspace_action': (self.faft_client.bios.restore_sig,
-                                     (('a', 'b'),)),
-            },
-            {   # Step 4, expected normal boot, done
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_type': 'developer' if dev_mode else 'normal',
-                }),
-            },
-        ))
-        self.run_faft_sequence()
+        logging.info("Corrupt both firmware signature A and B.")
+        self.check_state((self.checkers.crossystem_checker, {
+                          'mainfw_type': 'developer' if dev_mode else 'normal',
+                          }))
+        self.faft_client.bios.corrupt_sig(('a', 'b'),)
+        self.reboot_warm(wait_for_dut_up=False)
+        if not dev_mode:
+            self.wait_fw_screen_and_plug_usb()
+        self.wait_for_client(install_deps=True)
+
+        logging.info("Expected recovery boot and set fwb_tries flag.")
+        self.check_state((self.checkers.crossystem_checker, {
+                          'mainfw_type': 'recovery',
+                          'recovery_reason': (
+                              vboot.RECOVERY_REASON['RO_INVALID_RW'],
+                              vboot.RECOVERY_REASON['RW_VERIFY_KEYBLOCK']),
+                          }))
+        self.faft_client.system.set_try_fw_b()
+        self.reboot_warm(wait_for_dut_up=False)
+        if not dev_mode:
+            self.wait_fw_screen_and_plug_usb()
+        self.wait_for_client(install_deps=False)
+
+        logging.info("Still expected recovery boot and restore firmware.")
+        self.check_state((self.checkers.crossystem_checker, {
+                          'mainfw_type': 'recovery',
+                          'recovery_reason': (
+                              vboot.RECOVERY_REASON['RO_INVALID_RW'],
+                              vboot.RECOVERY_REASON['RW_VERIFY_KEYBLOCK']),
+                          }))
+        self.faft_client.bios.restore_sig(('a', 'b'),)
+        self.reboot_warm()
+
+        logging.info("Expected normal boot, done.")
+        self.check_state((self.checkers.crossystem_checker, {
+                          'mainfw_type': 'developer' if dev_mode else 'normal',
+                          }))
