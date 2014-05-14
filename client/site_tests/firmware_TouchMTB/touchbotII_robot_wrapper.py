@@ -226,7 +226,18 @@ class RobotWrapper:
             cmd = 'python %s %d %d %d %d %d %s' % para
 
             if self._execute_control_command(cmd):
-                raise RobotWrapperError('Error getting the fingertips!')
+                print 'Error getting the figertips!'
+                print 'Please make sure all the fingertips are in the correct'
+                print 'positions before continuing.'
+                print 'WARNING: failure to do this correctly could cause'
+                print '         permanent damage to the robot!'
+                print
+                print 'The fingers it was attempting to get were as follows:'
+                print tips_to_get
+                print '(Starting with the front right finger and going counter'
+                print 'clockwise from there. Finger sizes are 0-3)'
+                self._wait_for_user_input('GO', 'ABORT')
+
         self.fingertips = tips_to_get
 
         reset_script = os.path.join(self._robot_script_dir, SCRIPT_RESET)
@@ -251,9 +262,24 @@ class RobotWrapper:
             cmd = 'python %s %d %d %d %d %d %s' % para
 
             if self._execute_control_command(cmd):
-                raise RobotWrapperError('Error returning the fingertips!')
+                print 'Error returning the figertips!'
+                print 'Please make sure all the fingertips are in their correct'
+                print 'spots in the nest before continuing.'
+                print 'WARNING: failure to do this correctly could cause'
+                print '         permanent damage to the robot!'
+                self._wait_for_user_input('GO', 'ABORT')
 
         self.fingertips = [None, None, None, None]
+
+    def _wait_for_user_input(self, continue_cmd, stop_cmd):
+        user_input = None
+        while user_input not in [continue_cmd, stop_cmd]:
+            if user_input:
+                print 'Sorry, but "%s" was incorrect' % user_input
+            user_input = raw_input('Type "%s" to continue or "%s" to stop: ' %
+                                   (continue_cmd, stop_cmd))
+        if user_input == stop_cmd:
+            raise RobotWrapperError('Operator aborted after error')
 
     def _calibrate_device(self, board):
         """ Have the operator show the robot where the device is."""
