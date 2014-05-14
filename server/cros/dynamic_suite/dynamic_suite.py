@@ -461,7 +461,7 @@ def _perform_reimage_and_run(spec, afe, tko, predicate, suite_job_id=None):
     # We can't do anything else until the devserver has finished downloading
     # autotest.tar so that we can get the control files we should schedule.
     try:
-        spec.devserver.stage_artifacts(spec.build, ['autotest'])
+        spec.devserver.stage_artifacts(spec.build, ['autotest', 'test_suites'])
     except dev_server.DevServerException as e:
         # If we can't get the control files, there's nothing to run.
         raise error.AsynchronousBuildFailure(e)
