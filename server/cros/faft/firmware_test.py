@@ -7,7 +7,6 @@ import ctypes
 import logging
 import os
 import re
-import subprocess
 import time
 import uuid
 
@@ -656,7 +655,7 @@ class FirmwareTest(FAFTBase):
         if ec_wp != self._old_ec_wp:
             logging.info('The test required EC is %swrite-protected. Reboot '
                          'and flip the state.', '' if ec_wp else 'not ')
-            self.do_reboot_action(self.set_ec_write_protect_and_reboot, ec_wp)
+            self.do_reboot_action((self.set_ec_write_protect_and_reboot, ec_wp))
             self.wait_dev_screen_and_ctrl_d()
 
     def _restore_ec_write_protect(self):
@@ -666,8 +665,8 @@ class FirmwareTest(FAFTBase):
         if not self.checkers.crossystem_checker(
                 {'wpsw_boot': '1' if self._old_ec_wp else '0'}):
             logging.info('Restore original EC write protection and reboot.')
-            self.do_reboot_action(self.set_ec_write_protect_and_reboot,
-                                  self._old_ec_wp)
+            self.do_reboot_action((self.set_ec_write_protect_and_reboot,
+                                   self._old_ec_wp))
             self.wait_dev_screen_and_ctrl_d()
 
     def press_ctrl_d(self, press_secs=''):
