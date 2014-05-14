@@ -13,8 +13,12 @@ _WAIT_SECS_AFTER_SWITCH = 1
 class platform_PowerStatusStress(test.test):
     version = 1
 
-    def suspend_resume(self):
-        pass
+    def do_suspend_resume(self, suspend_time):
+        logging.info('Suspending for %s sec' % suspend_time)
+        self.host.run('echo 0 > /sys/class/rtc/rtc0/wakealarm')
+        self.host.run('echo +%d > /sys/class/rtc/rtc0/wakealarm' %
+                      suspend_time)
+        self.host.run('powerd_dbus_suspend --delay=0 &')
 
 
     def cleanup(self):
@@ -48,7 +52,7 @@ class platform_PowerStatusStress(test.test):
                  psi_output))
 
 
-    def run_once(self, host, loop_count):
+    def run_once(self, host, loop_count, suspend_time):
         self.host = host
 
         # Start as powered on
@@ -61,6 +65,11 @@ class platform_PowerStatusStress(test.test):
         for i in xrange(loop_count):
             logging.info('Iteration %d' % (i + 1))
 
+            # Suspend/resume
+            if suspend_time != -1:
+                self.do_suspend_resume(suspend_time)
+                time.sleep(1)
+
             # Charging state
             expected = ('yes', 'AC', '(Charging|Fully charged)')
             self.switch_power_and_verify(True, expected)
@@ -68,6 +77,3 @@ class platform_PowerStatusStress(test.test):
             # Discharging state
             expected = ('no', 'Disconnected', 'Discharging')
             self.switch_power_and_verify(False, expected)
-
-            # TODO(kalin@): Add suspend/resume
-            self.suspend_resume()

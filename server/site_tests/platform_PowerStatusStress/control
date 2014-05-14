@@ -22,6 +22,10 @@ Power stress test would be:
 -Repeat
 The test should fail if the powerd status does not correspond to the RPM/PDU
 status.
+Arguments the test accepts:
+-loop_count - number of iterations to go through power on/off and checks
+-suspend_time - timeout for suspend wakealarm; default is 0 - no suspending
+(for each iteration)
 """
 
 args_dict = utils.args_to_dict(args)
@@ -29,8 +33,9 @@ args_dict = utils.args_to_dict(args)
 def run(machine):
     host = hosts.create_host(machine)
     loop_count = int(args_dict.get('loop_count', 20))
+    suspend_time = int(args_dict.get('suspend_time', 10))
     job.run_test("platform_PowerStatusStress", host=host,
-                 disable_sysinfo=True,
-                 loop_count=loop_count)
+                 disable_sysinfo=True, loop_count=loop_count,
+                 suspend_time=suspend_time)
 
 parallel_simple(run, machines)
