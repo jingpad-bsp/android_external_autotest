@@ -19,6 +19,21 @@ from autotest_lib.frontend.afe import readonly_connection
 
 DB_CONFIG_SECTION = 'AUTOTEST_WEB'
 
+# Translations necessary for scheduler queries to work with SQLite.
+# Though this is only used for testing it is included in this module to avoid
+# circular imports.
+_re_translator = database_connection.TranslatingDatabase.make_regexp_translator
+_DB_TRANSLATORS = (
+        _re_translator(r'NOW\(\)', 'time("now")'),
+        _re_translator(r'LAST_INSERT_ID\(\)', 'LAST_INSERT_ROWID()'),
+        # older SQLite doesn't support group_concat, so just don't bother until
+        # it arises in an important query
+        _re_translator(r'GROUP_CONCAT\((.*?)\)', r'\1'),
+        _re_translator(r'TRUNCATE TABLE', 'DELETE FROM'),
+        _re_translator(r'ISNULL\(([a-z,_]+)\)',
+                       r'ifnull(nullif(\1, NULL), \1) DESC'),
+)
+
 
 class SchedulerError(Exception):
     """Raised by the scheduler when an inconsistent state occurs."""

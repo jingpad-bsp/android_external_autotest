@@ -81,10 +81,13 @@ class AFEJobQueryManager(object):
             where=query, order_by=sort_order))
 
 
-    def get_prioritized_special_tasks(self):
+    def get_prioritized_special_tasks(self, only_tasks_with_leased_hosts=False):
         """
         Returns all queued SpecialTasks prioritized for repair first, then
         cleanup, then verify.
+
+        @param only_tasks_with_leased_hosts: If true, this method only returns
+            tasks with leased hosts.
 
         @return: list of afe.models.SpecialTasks sorted according to priority.
         """
@@ -101,6 +104,8 @@ class AFEJobQueryManager(object):
                 where=['(afe_host_queue_entries.id IS NULL OR '
                        'afe_host_queue_entries.id = '
                                'afe_special_tasks.queue_entry_id)'])
+        if only_tasks_with_leased_hosts:
+            queued_tasks = queued_tasks.filter(host__leased=True)
 
         # reorder tasks by priority
         task_priority_order = [models.SpecialTask.Task.REPAIR,
@@ -128,8 +133,8 @@ class AFEJobQueryManager(object):
                 active=1, complete=0, host_id__isnull=False).values_list(
                 'host_id', flat=True))
         special_task_hosts = list(models.SpecialTask.objects.filter(
-            is_active=1, is_complete=0, host_id__isnull=False,
-            queue_entry_id__isnull=True).values_list('host_id', flat=True))
+                is_active=1, is_complete=0, host_id__isnull=False,
+                queue_entry_id__isnull=True).values_list('host_id', flat=True))
         host_counts = collections.Counter(
                 hqe_hosts + special_task_hosts).most_common()
         multiple_hosts = [count[0] for count in host_counts if count[1] > 1]

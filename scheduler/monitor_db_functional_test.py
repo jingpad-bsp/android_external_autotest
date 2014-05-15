@@ -10,19 +10,7 @@ from autotest_lib.frontend.afe import model_attributes
 from autotest_lib.scheduler import drone_manager, email_manager, host_scheduler
 from autotest_lib.scheduler import monitor_db, scheduler_models
 from autotest_lib.scheduler import scheduler_config
-
-# translations necessary for scheduler queries to work with SQLite
-_re_translator = database_connection.TranslatingDatabase.make_regexp_translator
-_DB_TRANSLATORS = (
-        _re_translator(r'NOW\(\)', 'time("now")'),
-        _re_translator(r'LAST_INSERT_ID\(\)', 'LAST_INSERT_ROWID()'),
-        # older SQLite doesn't support group_concat, so just don't bother until
-        # it arises in an important query
-        _re_translator(r'GROUP_CONCAT\((.*?)\)', r'\1'),
-        _re_translator(r'TRUNCATE TABLE', 'DELETE FROM'),
-        _re_translator(r'ISNULL\(([a-z,_]+)\)',
-                       r'ifnull(nullif(\1, NULL), \1) DESC'),
-)
+from autotest_lib.scheduler import scheduler_lib
 
 HqeStatus = models.HostQueueEntry.Status
 HostStatus = models.Host.Status
@@ -343,7 +331,7 @@ class SchedulerFunctionalTest(unittest.TestCase,
 
         self._database = (
             database_connection.TranslatingDatabase.get_test_database(
-                translators=_DB_TRANSLATORS))
+                translators=scheduler_lib._DB_TRANSLATORS))
         self._database.connect(db_type='django')
         self.god.stub_with(monitor_db, '_db', self._database)
         self.god.stub_with(scheduler_models, '_db', self._database)

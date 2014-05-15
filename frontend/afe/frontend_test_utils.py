@@ -63,15 +63,15 @@ class FrontendTestMixin(object):
             self.hosts[hostnum].labels.add(self.label7)
 
 
-    def _frontend_common_setup(self, fill_data=True):
+    def _frontend_common_setup(self, fill_data=True, setup_tables=True):
         self.god = mock.mock_god(ut=self)
-        setup_test_environment.set_up()
+        if setup_tables:
+            setup_test_environment.set_up()
         global_config.global_config.override_config_value(
                 'AUTOTEST_WEB', 'parameterized_jobs', 'False')
         global_config.global_config.override_config_value(
                 'SERVER', 'rpc_logging', 'False')
-
-        if fill_data:
+        if fill_data and setup_tables:
             self._fill_in_test_data()
 
 

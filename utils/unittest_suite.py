@@ -51,7 +51,6 @@ REQUIRES_DJANGO = set((
 REQUIRES_MYSQLDB = set((
         'migrate_unittest.py',
         'db_utils_unittest.py',
-        'scheduler_lib_unittest.py',
         ))
 
 REQUIRES_GWT = set((
@@ -99,7 +98,6 @@ SKIP = set((
     'dev_server_test.py',
     'full_release_test.py',
     'scheduler_lib_unittest.py',
-    'host_scheduler_unittests.py',
     ))
 
 LONG_TESTS = (REQUIRES_MYSQLDB |

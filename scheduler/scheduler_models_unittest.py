@@ -10,7 +10,7 @@ from autotest_lib.client.common_lib.test_utils import unittest
 from autotest_lib.database import database_connection
 from autotest_lib.frontend.afe import models, model_attributes
 from autotest_lib.scheduler import monitor_db
-from autotest_lib.scheduler import monitor_db_functional_test
+from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.scheduler import scheduler_models
 
 _DEBUG = False
@@ -30,7 +30,7 @@ class BaseSchedulerModelsTest(unittest.TestCase,
 
         self._database = (
             database_connection.TranslatingDatabase.get_test_database(
-                translators=monitor_db_functional_test._DB_TRANSLATORS))
+                translators=scheduler_lib._DB_TRANSLATORS))
         self._database.connect(db_type='django')
         self._database.debug = _DEBUG
 

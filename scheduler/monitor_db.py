@@ -1,4 +1,4 @@
-#!/usr/bin/python -u
+#!/usr/bin/python
 #pylint: disable-msg=C0111
 
 """
@@ -159,7 +159,7 @@ def main_without_exception_handling():
         while not _shutdown and not server._shutdown_scheduler:
             dispatcher.tick()
             time.sleep(scheduler_config.config.tick_pause_sec)
-    except:
+    except Exception:
         email_manager.manager.log_stacktrace(
             "Uncaught exception; terminating monitor_db")
 
@@ -169,7 +169,7 @@ def main_without_exception_handling():
     _db_manager.disconnect()
 
 
-def handle_sigint(signum, frame):
+def handle_signal(signum, frame):
     global _shutdown
     _shutdown = True
     logging.info("Shutdown request received.")
@@ -193,7 +193,8 @@ def initialize():
     global _db_manager
     _db_manager = scheduler_lib.ConnectionManager()
     logging.info("Setting signal handler")
-    signal.signal(signal.SIGINT, handle_sigint)
+    signal.signal(signal.SIGINT, handle_signal)
+    signal.signal(signal.SIGTERM, handle_signal)
 
     initialize_globals()
     scheduler_models.initialize()
@@ -641,7 +642,13 @@ class BaseDispatcher(object):
         adds them to the dispatchers agents list, so _handle_agents can execute
         them.
         """
-        for task in self._job_query_manager.get_prioritized_special_tasks():
+        # When the host scheduler is responsible for acquisition we only want
+        # to run tasks with leased hosts. All hqe tasks will already have
+        # leased hosts, and we don't want to run frontend tasks till the host
+        # scheduler has vetted the assignment. Note that this doesn't include
+        # frontend tasks with hosts leased by other active hqes.
+        for task in self._job_query_manager.get_prioritized_special_tasks(
+                only_tasks_with_leased_hosts=not _inline_host_acquisition):
             if self.host_has_agent(task.host):
                 continue
             self.add_agent_task(self._get_agent_task_for_special_task(task))

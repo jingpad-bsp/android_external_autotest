@@ -6,6 +6,7 @@
 # found in the LICENSE file.
 
 import abc
+import os
 
 import common
 
@@ -15,7 +16,6 @@ from autotest_lib.frontend.afe import frontend_test_utils
 from autotest_lib.frontend.afe import models
 from autotest_lib.frontend.afe import rdb_model_extensions as rdb_models
 from autotest_lib.scheduler import monitor_db
-from autotest_lib.scheduler import monitor_db_functional_test
 from autotest_lib.scheduler import query_managers
 from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.scheduler import scheduler_models
@@ -62,10 +62,10 @@ class DBHelper(object):
     """Utility class for updating the database."""
 
     def __init__(self):
-        """Initialized django so it uses an in memory sqllite database."""
+        """Initialized django so it uses an in memory SQLite database."""
         self.database = (
             database_connection.TranslatingDatabase.get_test_database(
-                translators=monitor_db_functional_test._DB_TRANSLATORS))
+                translators=scheduler_lib._DB_TRANSLATORS))
         self.database.connect(db_type='django')
         self.database.debug = _DEBUG
 
@@ -91,6 +91,11 @@ class DBHelper(object):
     @classmethod
     def get_hqes(cls, **kwargs):
         return models.HostQueueEntry.objects.filter(**kwargs)
+
+
+    @classmethod
+    def get_tasks(cls, **kwargs):
+        return models.SpecialTask.objects.filter(**kwargs)
 
 
     @classmethod
@@ -197,11 +202,30 @@ class DBHelper(object):
 
 
     @classmethod
-    def add_host_to_job(cls, host, job_id):
+    def update_hqe(cls, hqe_id, **kwargs):
+        """Update the hqe with the given kwargs.
+
+        @param hqe_id: The id of the hqe to update.
+        """
+        models.HostQueueEntry.objects.filter(id=hqe_id).update(**kwargs)
+
+
+    @classmethod
+    def update_special_task(cls, task_id, **kwargs):
+        """Update special tasks with the given kwargs.
+
+        @param task_id: The if of the task to update.
+        """
+        models.SpecialTask.objects.filter(id=task_id).update(**kwargs)
+
+
+    @classmethod
+    def add_host_to_job(cls, host, job_id, activate=0):
         """Add a host to the hqe of a job.
 
         @param host: An instance of the host model.
         @param job_id: The job to which we need to add the host.
+        @param activate: If true, flip the active bit on the hqe.
 
         @raises ValueError: If the hqe for the job already has a host,
             or if the host argument isn't a Host instance.
@@ -211,6 +235,8 @@ class DBHelper(object):
             raise ValueError('HQE for job %s already has a host' % job_id)
         hqe.host = host
         hqe.save()
+        if activate:
+            cls.update_hqe(hqe.id, active=True)
 
 
     @classmethod
@@ -218,6 +244,54 @@ class DBHelper(object):
         job = models.Job.objects.get(id=job_id)
         job.priority = job.priority + 1
         job.save()
+
+
+class FileDatabaseHelper(object):
+    """A helper class to setup a SQLite database backed by a file.
+
+    Note that initializing a file database takes significantly longer than an
+    in-memory database and should only be used for functional tests.
+    """
+
+    DB_FILE = os.path.join(common.autotest_dir, 'host_scheduler_db')
+
+    def initialize_database_for_testing(self, db_file_path=None):
+        """Initialize a SQLite database for testing.
+
+        To force monitor_db and the host_scheduler to use the same SQLite file
+        database, call this method before initializing the database through
+        frontend_test_utils. The host_scheduler is setup to look for the
+        host_scheduler_db when invoked with --testing.
+
+        @param db_file_path: The name of the file to use to create
+            a SQLite database. Since this database is shared across different
+            processes using a file is closer to the real world.
+        """
+        if not db_file_path:
+            db_file_path = self.DB_FILE
+        # TODO: Move the translating database elsewhere. Monitor_db circular
+        # imports host_scheduler.
+        from autotest_lib.frontend import setup_test_environment
+        from django.conf import settings
+        self.old_django_db_name = settings.DATABASES['default']['NAME']
+        settings.DATABASES['default']['NAME'] = db_file_path
+        self.db_file_path = db_file_path
+        _db_manager = scheduler_lib.ConnectionManager(autocommit=False)
+        _db_manager.db_connection = (
+                database_connection.TranslatingDatabase.get_test_database(
+                translators=scheduler_lib._DB_TRANSLATORS))
+
+
+    def teardown_file_database(self):
+        """Teardown django database settings."""
+        # TODO: Move the translating database elsewhere. Monitor_db circular
+        # imports host_scheduler.
+        from django.conf import settings
+        settings.DATABASES['default']['NAME'] = self.old_django_db_name
+        try:
+            os.remove(self.db_file_path)
+        except (OSError, AttributeError):
+            pass
 
 
 class AbstractBaseRDBTester(frontend_test_utils.FrontendTestMixin):
@@ -240,7 +314,7 @@ class AbstractBaseRDBTester(frontend_test_utils.FrontendTestMixin):
         self.host_scheduler.tick()
 
 
-    def setUp(self, inline_host_acquisition=True):
+    def setUp(self, inline_host_acquisition=True, setup_tables=True):
         """Common setup module for tests that need a jobs/host database.
 
         @param inline_host_acquisition: If True, the dispatcher tries to acquire
@@ -249,7 +323,7 @@ class AbstractBaseRDBTester(frontend_test_utils.FrontendTestMixin):
         self.db_helper = DBHelper()
         self._database = self.db_helper.database
         # Runs syncdb setting up initial database conditions
-        self._frontend_common_setup()
+        self._frontend_common_setup(setup_tables=setup_tables)
         connection_manager = scheduler_lib.ConnectionManager(autocommit=False)
         self.god.stub_with(connection_manager, 'db_connection', self._database)
         self.god.stub_with(monitor_db, '_db_manager', connection_manager)
