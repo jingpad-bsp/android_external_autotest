@@ -6,14 +6,14 @@ import logging
 import time
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
-class firmware_ECSharedMem(FAFTSequence):
+
+class firmware_ECSharedMem(FirmwareTest):
     """
     Servo based EC shared memory test.
     """
     version = 1
-
 
     def initialize(self, host, cmdline_args):
         super(firmware_ECSharedMem, self).initialize(host, cmdline_args)
@@ -21,11 +21,9 @@ class firmware_ECSharedMem(FAFTSequence):
         self.setup_dev_mode(False)
         self.ec.send_command("chan 0")
 
-
     def cleanup(self):
         self.ec.send_command("chan 0xffffffff")
         super(firmware_ECSharedMem, self).cleanup()
-
 
     def shared_mem_checker(self):
         match = self.ec.send_command_get_output("shmem",
@@ -38,29 +36,21 @@ class firmware_ECSharedMem(FAFTSequence):
             logging.warning("EC shared memory is less than 256 bytes")
         return True
 
-
     def jump_checker(self):
         self.ec.send_command("sysjump RW")
         time.sleep(self.faft_config.ec_boot_to_console)
         return self.shared_mem_checker()
 
-
     def run_once(self):
         if not self.check_ec_capability():
             raise error.TestNAError("Nothing needs to be tested on this device")
-        self.register_faft_sequence((
-            {   # Step 1, check shared memory in normal operation and crash EC
-                'state_checker': self.shared_mem_checker,
-                'reboot_action': (self.ec.send_command, "crash unaligned"),
-                'install_deps_after_boot': True,
-            },
-            {   # Step 2, Check shared memory after crash and system jump
-                'state_checker': [self.shared_mem_checker, self.jump_checker],
-                'reboot_action': self.sync_and_ec_reboot,
-                'install_deps_after_boot': True,
-            },
-            {   # Step 3, dummy step to make step 2 reboot so as to clean EC
-                #         state.
-            }
-        ))
-        self.run_faft_sequence()
+
+        logging.info("Check shared memory in normal operation and crash EC.")
+        self.check_state(self.shared_mem_checker)
+        self.do_reboot_action((self.ec.send_command, "crash unaligned"))
+        self.wait_for_client(install_deps=True)
+
+        logging.info("Check shared memory after crash and system jump.")
+        self.check_state([self.shared_mem_checker, self.jump_checker])
+        self.do_reboot_action(self.sync_and_ec_reboot)
+        self.wait_for_client(install_deps=True)
