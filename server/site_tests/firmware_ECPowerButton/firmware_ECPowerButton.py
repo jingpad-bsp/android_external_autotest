@@ -7,14 +7,14 @@ import re
 from threading import Timer
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
-class firmware_ECPowerButton(FAFTSequence):
+
+class firmware_ECPowerButton(FirmwareTest):
     """
     Servo based EC power button test.
     """
     version = 1
-
 
     # Delay between shutdown and wake by power button
     LONG_WAKE_DELAY = 13
@@ -32,17 +32,14 @@ class firmware_ECPowerButton(FAFTSequence):
     # Duration of holding down power button to shut down without powerd
     POWER_BUTTON_NO_POWERD_DURATION = 10
 
-
     def initialize(self, host, cmdline_args):
         super(firmware_ECPowerButton, self).initialize(host, cmdline_args)
         # Only run in normal mode
         self.setup_dev_mode(False)
 
-
     def kill_powerd(self):
         """Stop powerd on client."""
         self.faft_client.system.run_shell_command("stop powerd")
-
 
     def debounce_power_button(self):
         """Check if power button debouncing works.
@@ -59,7 +56,6 @@ class firmware_ECPowerButton(FAFTSequence):
                 return False
         return True
 
-
     def shutdown_and_wake(self,
                           shutdown_powerkey_duration,
                           wake_delay,
@@ -73,46 +69,43 @@ class firmware_ECPowerButton(FAFTSequence):
               self.servo.power_key,
               [wake_powerkey_duration]).start()
 
-
-
     def run_once(self):
         if not self.check_ec_capability():
             raise error.TestNAError("Nothing needs to be tested on this device")
-        self.register_faft_sequence((
-            {   # Step 1, Shutdown when powerd is still running and wake from S5
-                #         with short power button press.
-                'state_checker': (self.debounce_power_button
-                                  if self.servo.is_localhost()
-                                  else None),
-                'reboot_action': (self.shutdown_and_wake,
-                                  (self.POWER_BUTTON_POWERD_DURATION,
-                                   self.SHORT_WAKE_DELAY,
-                                   self.POWER_BUTTON_SHORT_POWER_ON_DURATION)),
-            },
-            {   # Step 2, Shutdown when powerd is stopped and wake from G3
-                #         with short power button press.
-                'userspace_action': self.kill_powerd,
-                'reboot_action': (self.shutdown_and_wake,
-                                  (self.POWER_BUTTON_NO_POWERD_DURATION,
-                                   self.LONG_WAKE_DELAY,
-                                   self.POWER_BUTTON_SHORT_POWER_ON_DURATION)),
-            },
-            {   # Step 3, Shutdown when powerd is still running and wake from G3
-                #         with long power button press.
-                'reboot_action': (self.shutdown_and_wake,
-                                  (self.POWER_BUTTON_POWERD_DURATION,
-                                   self.LONG_WAKE_DELAY,
-                                   self.POWER_BUTTON_LONG_POWER_ON_DURATION)),
-            },
-            {   # Step 4, Shutdown when powerd is stopped and wake from S5
-                #         with long power button press.
-                'userspace_action': self.kill_powerd,
-                'reboot_action': (self.shutdown_and_wake,
-                                  (self.POWER_BUTTON_NO_POWERD_DURATION,
-                                   self.SHORT_WAKE_DELAY,
-                                   self.POWER_BUTTON_LONG_POWER_ON_DURATION)),
-            },
-            {   # Step 5, dummy step to ensure reboot in step 4
-            }
-        ))
-        self.run_faft_sequence()
+
+        logging.info("Shutdown when powerd is still running and wake from S5 "
+                     "with short power button press.")
+
+        if self.servo.is_localhost():
+            self.check_state(self.debounce_power_button)
+        self.do_reboot_action((self.shutdown_and_wake,
+                               (self.POWER_BUTTON_POWERD_DURATION,
+                                self.SHORT_WAKE_DELAY,
+                                self.POWER_BUTTON_SHORT_POWER_ON_DURATION)))
+        self.wait_for_client()
+
+        logging.info("Shutdown when powerd is stopped and wake from G3 "
+                          "with short power button press.")
+        self.kill_powerd()
+        self.do_reboot_action((self.shutdown_and_wake,
+                               (self.POWER_BUTTON_NO_POWERD_DURATION,
+                                self.LONG_WAKE_DELAY,
+                                self.POWER_BUTTON_SHORT_POWER_ON_DURATION)))
+        self.wait_for_client()
+
+        logging.info("Shutdown when powerd is still running and wake from G3 "
+                     "with long power button press.")
+        self.do_reboot_action((self.shutdown_and_wake,
+                               (self.POWER_BUTTON_POWERD_DURATION,
+                                self.LONG_WAKE_DELAY,
+                                self.POWER_BUTTON_LONG_POWER_ON_DURATION)))
+        self.wait_for_client()
+
+        logging.info("Shutdown when powerd is stopped and wake from S5 "
+                     "with long power button press.")
+        self.kill_powerd()
+        self.do_reboot_action((self.shutdown_and_wake,
+                               (self.POWER_BUTTON_NO_POWERD_DURATION,
+                                self.SHORT_WAKE_DELAY,
+                                self.POWER_BUTTON_LONG_POWER_ON_DURATION)))
+        self.wait_for_client()
