@@ -2,11 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
+
 from autotest_lib.server.cros import vboot_constants as vboot
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
 
-class firmware_CorruptFwBodyB(FAFTSequence):
+class firmware_CorruptFwBodyB(FirmwareTest):
     """
     Servo based firmware body B corruption test.
 
@@ -18,52 +20,46 @@ class firmware_CorruptFwBodyB(FAFTSequence):
     """
     version = 1
 
-
     def initialize(self, host, cmdline_args, dev_mode=False):
         super(firmware_CorruptFwBodyB, self).initialize(host, cmdline_args)
         self.backup_firmware()
         self.setup_dev_mode(dev_mode)
         self.setup_usbkey(usbkey=False)
 
-
     def cleanup(self):
         self.restore_firmware()
         super(firmware_CorruptFwBodyB, self).cleanup()
 
-
     def run_once(self):
         RO_enabled = (self.faft_client.bios.get_preamble_flags('b') &
                       vboot.PREAMBLE_USE_RO_NORMAL)
-        self.register_faft_sequence((
-            {   # Step 1, corrupt firmware body B
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_act': 'A',
-                    'tried_fwb': '0',
-                }),
-                'userspace_action': (self.faft_client.bios.corrupt_body,
-                                     'b'),
-            },
-            {   # Step 2, expected firmware A boot and set try_fwb flag
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_act': 'A',
-                    'tried_fwb': '0',
-                }),
-                'userspace_action': self.faft_client.system.set_try_fw_b,
-            },
-            {   # Step 3, if RO enabled, expected firmware B boot; otherwise,
-                # still A boot since B is corrupted. Restore B later.
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_act': 'B' if RO_enabled else 'A',
-                    'tried_fwb': '1',
-                }),
-                'userspace_action': (self.faft_client.bios.restore_body,
-                                     'b'),
-            },
-            {   # Step 4, final check and done
-                'state_checker': (self.checkers.crossystem_checker, {
-                   'mainfw_act': 'A',
-                   'tried_fwb': '0',
-                }),
-            },
-        ))
-        self.run_faft_sequence()
+        logging.info("Corrupt firmware body B.")
+        self.check_state((self.checkers.crossystem_checker, {
+                              'mainfw_act': 'A',
+                              'tried_fwb': '0',
+                              }))
+        self.faft_client.bios.corrupt_body('b')
+        self.reboot_warm()
+
+        logging.info("Expected firmware A boot and set try_fwb flag.")
+        self.check_state((self.checkers.crossystem_checker, {
+                              'mainfw_act': 'A',
+                              'tried_fwb': '0',
+                              }))
+        self.faft_client.system.set_try_fw_b()
+        self.reboot_warm()
+
+        logging.info("If RO enabled, expected firmware B boot; otherwise, "
+                     "still A boot since B is corrupted. Restore B later.")
+        self.check_state((self.checkers.crossystem_checker, {
+                              'mainfw_act': 'B' if RO_enabled else 'A',
+                              'tried_fwb': '1',
+                              }))
+        self.faft_client.bios.restore_body('b')
+        self.reboot_warm()
+
+        logging.info("Final check and done.")
+        self.check_state((self.checkers.crossystem_checker, {
+                              'mainfw_act': 'A',
+                              'tried_fwb': '0',
+                              }))
