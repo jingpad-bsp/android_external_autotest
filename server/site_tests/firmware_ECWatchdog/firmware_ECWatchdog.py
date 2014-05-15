@@ -6,9 +6,9 @@ import logging
 import time
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
-class firmware_ECWatchdog(FAFTSequence):
+class firmware_ECWatchdog(FirmwareTest):
     """
     Servo based EC watchdog test.
     """
@@ -41,11 +41,7 @@ class firmware_ECWatchdog(FAFTSequence):
     def run_once(self):
         if not self.check_ec_capability():
             raise error.TestNAError("Nothing needs to be tested on this device")
-        self.register_faft_sequence((
-            {   # Step 1, trigger a watchdog reset and power on system again.
-                'reboot_action': self.reboot_by_watchdog,
-            },
-            {   # Step 2, dummy step to make sure step 1 reboots
-            }
-        ))
-        self.run_faft_sequence()
+
+        logging.info("Trigger a watchdog reset and power on system again.")
+        self.do_reboot_action(self.reboot_by_watchdog)
+        self.wait_for_client()
