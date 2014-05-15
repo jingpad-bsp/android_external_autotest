@@ -5,9 +5,9 @@
 import logging
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
-class firmware_ECCharging(FAFTSequence):
+class firmware_ECCharging(FirmwareTest):
     """
     Servo based EC charging control test.
     """
