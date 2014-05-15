@@ -6,15 +6,14 @@ import logging
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros import vboot_constants as vboot
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
 
-class firmware_ECWriteProtect(FAFTSequence):
+class firmware_ECWriteProtect(FirmwareTest):
     """
     Servo based EC write protect test.
     """
     version = 1
-
 
     def write_protect_checker(self):
         """Checker that ensure the following write protect flags are set:
@@ -31,7 +30,6 @@ class firmware_ECWriteProtect(FAFTSequence):
             # Didn't get expected flags
             return False
 
-
     def initialize(self, host, cmdline_args, dev_mode=False):
         super(firmware_ECWriteProtect, self).initialize(host, cmdline_args,
                                                         ec_wp=False)
@@ -39,12 +37,10 @@ class firmware_ECWriteProtect(FAFTSequence):
         self.setup_dev_mode(dev_mode)
         self.ec.send_command("chan 0")
 
-
     def cleanup(self):
         self.ec.send_command("chan 0xffffffff")
         self.restore_firmware()
         super(firmware_ECWriteProtect, self).cleanup()
-
 
     def run_once(self):
         flags = self.faft_client.bios.get_preamble_flags('a')
@@ -52,37 +48,33 @@ class firmware_ECWriteProtect(FAFTSequence):
             logging.info('The firmware USE_RO_NORMAL flag is disabled.')
             return
 
-        self.register_faft_sequence((
-            {   # Step 1, expected EC RO boot, enable WP and reboot EC.
-                'state_checker': (self.checkers.ro_normal_checker, 'A'),
-                'reboot_action': (self.set_ec_write_protect_and_reboot, True),
-            },
-            {   # Step 2, expected EC RO boot, write protected. Disable RO flag
-                #         and reboot EC.
-                'state_checker': [(self.checkers.ro_normal_checker, 'A'),
-                                  self.write_protect_checker],
-                'userspace_action': (self.faft_client.bios.set_preamble_flags,
-                                     ('a', 0)),
-                'reboot_action': self.sync_and_cold_reboot,
-            },
-            {   # Step 3, expected EC RW boot, write protected. Reboot EC by
-                #         ectool.
-                'state_checker': [(self.checkers.ro_normal_checker,
-                                   ('A', True)),
-                                  self.write_protect_checker],
-                'reboot_action': (self.sync_and_ec_reboot, 'hard'),
-            },
-            {   # Step 4, expected EC RW boot, write protected. Restore RO
-                #         normal flag and deactivate write protect.
-                'state_checker': [(self.checkers.ro_normal_checker,
-                                   ('A', True)),
-                                  self.write_protect_checker],
-                'userspace_action': (self.faft_client.bios.set_preamble_flags,
-                                     ('a', vboot.PREAMBLE_USE_RO_NORMAL)),
-                'reboot_action': (self.set_ec_write_protect_and_reboot, False),
-            },
-            {   # Step 5, expected EC RO boot.
-                'state_checker': (self.checkers.ro_normal_checker, 'A'),
-            },
-        ))
-        self.run_faft_sequence()
+        logging.info("Expected EC RO boot, enable WP and reboot EC.")
+        self.check_state((self.checkers.ro_normal_checker, 'A'))
+        self.do_reboot_action((self.set_ec_write_protect_and_reboot, True))
+        self.wait_for_client()
+
+        logging.info("Expected EC RO boot, write protected. Disable RO flag "
+                     "and reboot EC.")
+        self.check_state([(self.checkers.ro_normal_checker, 'A'),
+                          self.write_protect_checker])
+        self.faft_client.bios.set_preamble_flags('a', 0)
+        self.reboot_cold()
+
+        logging.info("Expected EC RW boot, write protected. Reboot EC by "
+                     "ectool.")
+        self.check_state((self.checkers.ro_normal_checker, ('A', True)))
+        self.check_state(self.write_protect_checker)
+        self.do_reboot_action((self.sync_and_ec_reboot, 'hard'))
+        self.wait_for_client()
+
+        logging.info("Expected EC RW boot, write protected. Restore RO "
+                     "normal flag and deactivate write protect.")
+        self.check_state((self.checkers.ro_normal_checker, ('A', True)))
+        self.check_state(self.write_protect_checker)
+        self.faft_client.bios.set_preamble_flags(('a',
+                                                  vboot.PREAMBLE_USE_RO_NORMAL))
+        self.do_reboot_action((self.set_ec_write_protect_and_reboot, False))
+        self.wait_for_client()
+
+        logging.info("Expected EC RO boot.")
+        self.check_state((self.checkers.ro_normal_checker, 'A'))
