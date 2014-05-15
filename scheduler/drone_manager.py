@@ -3,6 +3,7 @@ import common, logging
 from autotest_lib.client.common_lib import error, global_config, utils
 from autotest_lib.scheduler import email_manager, drone_utility, drones
 from autotest_lib.scheduler import scheduler_config
+from autotest_lib.site_utils.graphite import stats
 
 
 # results on drones will be placed under the drone_installation_directory in a
@@ -142,6 +143,7 @@ class BaseDroneManager(object):
     # Minimum time to wait before next email
     # about a drone hitting process limit is sent.
     NOTIFY_INTERVAL = 60 * 60 * 24 # one day
+    _timer = stats.Timer('drone_manager')
 
 
     def __init__(self):
@@ -394,22 +396,28 @@ class BaseDroneManager(object):
         self._drop_old_pidfiles()
         pidfile_paths = [pidfile_id.path
                          for pidfile_id in self._registered_pidfile_info]
-        all_results = self._call_all_drones('refresh', pidfile_paths)
+        with self._timer.get_client('refresh'):
+            all_results = self._call_all_drones('refresh', pidfile_paths)
 
         for drone, results_list in all_results.iteritems():
             results = results_list[0]
 
-            for process_info in results['all_processes']:
-                if process_info['comm'] == 'autoserv':
-                    self._add_autoserv_process(drone, process_info)
-                drone_pid = drone.hostname, int(process_info['pid'])
-                self._all_processes[drone_pid] = process_info
-            for process_info in results['parse_processes']:
-                self._add_process(drone, process_info)
+            with self._timer.get_client('%s.results' % drone):
+                for process_info in results['all_processes']:
+                    if process_info['comm'] == 'autoserv':
+                        self._add_autoserv_process(drone, process_info)
+                    drone_pid = drone.hostname, int(process_info['pid'])
+                    self._all_processes[drone_pid] = process_info
 
-            self._process_pidfiles(drone, results['pidfiles'], self._pidfiles)
-            self._process_pidfiles(drone, results['pidfiles_second_read'],
-                                   self._pidfiles_second_read)
+                for process_info in results['parse_processes']:
+                    self._add_process(drone, process_info)
+
+            with self._timer.get_client('%s.pidfiles' % drone):
+                self._process_pidfiles(drone, results['pidfiles'],
+                                       self._pidfiles)
+            with self._timer.get_client('%s.pidfiles_second' % drone):
+                self._process_pidfiles(drone, results['pidfiles_second_read'],
+                                       self._pidfiles_second_read)
 
             self._compute_active_processes(drone)
             if drone.enabled:
