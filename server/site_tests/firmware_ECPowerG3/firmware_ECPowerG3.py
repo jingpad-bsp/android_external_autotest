@@ -5,9 +5,10 @@
 import logging
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
-class firmware_ECPowerG3(FAFTSequence):
+
+class firmware_ECPowerG3(FirmwareTest):
     """
     Servo based EC X86 power G3 drop test.
     """
@@ -19,18 +20,15 @@ class firmware_ECPowerG3(FAFTSequence):
     # Record failure event
     _failed = False
 
-
     def initialize(self, host, cmdline_args):
         super(firmware_ECPowerG3, self).initialize(host, cmdline_args)
         # Only run in normal mode
         self.setup_dev_mode(False)
         self.ec.send_command("chan 0")
 
-
     def cleanup(self):
         self.ec.send_command("chan 0xffffffff")
         super(firmware_ECPowerG3, self).cleanup()
-
 
     def wait_power(self, reg_ex, retries):
         """
@@ -49,7 +47,6 @@ class firmware_ECPowerG3(FAFTSequence):
                 pass
         return False
 
-
     def check_G3(self):
         """Shutdown the system and check if X86 drop into G3 correctly."""
         self.faft_client.system.run_shell_command("shutdown -P now")
@@ -58,21 +55,17 @@ class firmware_ECPowerG3(FAFTSequence):
             self._failed = True
         self.servo.power_short_press()
 
-
     def check_failure(self):
         """Check whether any failure has occurred."""
         return not self._failed
 
-
     def run_once(self):
         if not self.check_ec_capability(['x86']):
             raise error.TestNAError("Nothing needs to be tested on this device")
-        self.register_faft_sequence((
-            {   # Step 1, power off and check if system drop into G3 correctly
-                'reboot_action': self.check_G3,
-            },
-            {   # Step 2, check if failure occurred
-                'state_checker': self.check_failure,
-            }
-        ))
-        self.run_faft_sequence()
+
+        logging.info("Power off and check if system drop into G3 correctly.")
+        self.do_reboot_action(self.check_G3)
+        self.wait_for_client()
+
+        logging.info("Check if failure occurred.")
+        self.check_state(self.check_failure)
