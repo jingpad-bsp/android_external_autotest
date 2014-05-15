@@ -6,24 +6,22 @@ import logging
 import time
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
-class firmware_ECKeyboard(FAFTSequence):
+
+class firmware_ECKeyboard(FirmwareTest):
     """
     Servo based EC keyboard test.
     """
     version = 1
 
-
     # Delay between commands
     CMD_DELAY = 1
-
 
     def initialize(self, host, cmdline_args):
         super(firmware_ECKeyboard, self).initialize(host, cmdline_args)
         # Only run in normal mode
         self.setup_dev_mode(False)
-
 
     def switch_tty2(self):
         """Switch to tty2 console."""
@@ -34,7 +32,6 @@ class firmware_ECKeyboard(FAFTSequence):
         self.ec.key_up('<alt_l>')
         self.ec.key_up('<ctrl_l>')
         time.sleep(self.CMD_DELAY)
-
 
     def reboot_by_keyboard(self):
         """
@@ -48,15 +45,10 @@ class firmware_ECKeyboard(FAFTSequence):
         time.sleep(self.CMD_DELAY)
         self.ec.send_key_string('reboot<enter>')
 
-
     def run_once(self):
         if not self.check_ec_capability(['keyboard']):
             raise error.TestNAError("Nothing needs to be tested on this device")
-        self.register_faft_sequence((
-            {   # Step 1, use key press simulation to issue reboot command
-                'reboot_action': self.reboot_by_keyboard,
-            },
-            {   # Step 2, dummy step to ensure reboot
-            }
-        ))
-        self.run_faft_sequence()
+
+        logging.info("Use key press simulation to issue reboot command.")
+        self.do_reboot_action(self.reboot_by_keyboard)
+        self.wait_for_client()
