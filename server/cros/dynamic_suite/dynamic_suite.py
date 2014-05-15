@@ -237,7 +237,7 @@ class SuiteSpec(object):
                  suite_dependencies=[], version_prefix=None,
                  bug_template={}, devserver_url=None,
                  priority=priorities.Priority.DEFAULT, predicate=None,
-                 wait_for_results=True, job_retry=True, **dargs):
+                 wait_for_results=True, job_retry=False, **dargs):
         """
         Vets arguments for reimage_and_run() and populates self with supplied
         values.
@@ -293,6 +293,8 @@ class SuiteSpec(object):
         @param wait_for_results: Set to False to run the suite job without
                                  waiting for test jobs to finish. Default is
                                  True.
+        @param job_retry: Set to True to enable job-level retry. Default is
+                          False.
 
         @param **dargs: these arguments will be ignored.  This allows us to
                         deprecate and remove arguments in ToT while not

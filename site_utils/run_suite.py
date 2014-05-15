@@ -138,6 +138,9 @@ def parse_options():
     parser.add_option("-r", "--priority", dest="priority",
                       default=priorities.Priority.DEFAULT,
                       action="store", help="Priority of suite")
+    parser.add_option('--retry', dest='retry', default='False',
+                      action='store', help='Enable test retry. '
+                      'Must pass "True" or "False" if used.')
     parser.add_option("--suite_args", dest="suite_args",
                       default=None, action="store",
                       help="Argument string for suite control file.")
@@ -177,6 +180,11 @@ def verify_options_and_args(options, args):
     if options.file_bugs != 'True' and options.file_bugs != 'False':
         print 'Please specify "True" or "False" for --file_bugs.'
         return False
+    if options.retry != 'True' and options.retry != 'False':
+        print 'Please specify "True" or "False" for --retry'
+        return False
+    if options.no_wait == 'True' and options.retry == 'True':
+        print 'Test retry is not available when using --no_wait=True'
     return True
 
 
@@ -942,6 +950,7 @@ def main():
 
     wait = options.no_wait == 'False'
     file_bugs = options.file_bugs == 'True'
+    retry = options.retry == 'True'
     logging.info('%s Submitted create_suite_job rpc',
                  diagnosis_utils.JobTimer.format_time(datetime.now()))
     if options.mock_job_id:
@@ -955,7 +964,8 @@ def main():
                              file_bugs=file_bugs, priority=priority,
                              suite_args=options.suite_args,
                              wait_for_results=wait,
-                             timeout_mins=options.timeout_mins)
+                             timeout_mins=options.timeout_mins,
+                             job_retry=retry)
         except (error.CrosDynamicSuiteException,
                 error.RPCException, proxy.JSONRPCException) as e:
             logging.warning('Error Message: %s', e)
