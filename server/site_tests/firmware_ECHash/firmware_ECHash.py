@@ -6,9 +6,10 @@ import logging
 import re
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
-class firmware_ECHash(FAFTSequence):
+
+class firmware_ECHash(FirmwareTest):
     """
     Servo based EC hash recompute test.
 
@@ -20,7 +21,6 @@ class firmware_ECHash(FAFTSequence):
     """
     version = 1
 
-
     def initialize(self, host, cmdline_args):
         super(firmware_ECHash, self).initialize(host, cmdline_args)
         self.backup_firmware()
@@ -28,11 +28,9 @@ class firmware_ECHash(FAFTSequence):
         self.setup_usbkey(usbkey=False)
         self.setup_rw_boot()
 
-
     def cleanup(self):
         self.restore_firmware()
         super(firmware_ECHash, self).cleanup()
-
 
     def get_echash(self):
         """Get the current EC hash via ectool."""
@@ -46,12 +44,10 @@ class firmware_ECHash(FAFTSequence):
         raise error.TestError("Wrong output of 'ectool echash': \n%s" %
                               '\n'.join(lines))
 
-
     def invalidate_echash(self):
         """Invalidate the EC hash by requesting hashing some other part."""
         command = 'ectool echash recalc 0 4'
         self.faft_client.system.run_shell_command(command)
-
 
     def save_echash_and_invalidate(self):
         """Save the current EC hash and invalidate it."""
@@ -63,23 +59,18 @@ class firmware_ECHash(FAFTSequence):
         if invalid_echash == self.original_echash:
             raise error.TestFail("Failed to invalidate EC hash")
 
-
     def compare_echashes(self):
         """Compare the current EC with the original one."""
         recomputed_echash = self.get_echash()
         logging.info("Recomputed EC hash: %s", recomputed_echash)
         return recomputed_echash == self.original_echash
 
-
     def run_once(self):
         if not self.check_ec_capability():
             raise error.TestNAError("Nothing needs to be tested on this device")
-        self.register_faft_sequence((
-            {   # Step 1, save the EC hash, invalidate it, and warm reboot.
-                'userspace_action': self.save_echash_and_invalidate,
-            },
-            {   # Step 2, compare the recomputed EC hash with the original one.
-                'state_checker': self.compare_echashes,
-            }
-        ))
-        self.run_faft_sequence()
+        logging.info("Save the EC hash, invalidate it, and warm reboot.")
+        self.save_echash_and_invalidate()
+        self.reboot_warm()
+
+        logging.info("Compare the recomputed EC hash with the original one.")
+        self.check_state(self.compare_echashes)
