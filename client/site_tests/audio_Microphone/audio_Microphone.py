@@ -11,7 +11,7 @@ from autotest_lib.client.cros.audio import alsa_utils
 
 DURATION = 3
 TOLERANT_RATIO = 0.1
-NO_MIC_DEV_LIST = ['monroe', 'panther']
+NO_MIC_DEV_LIST = ['monroe', 'panther', 'zako']
 
 class audio_Microphone(test.test):
     version = 1
