@@ -5,10 +5,10 @@
 import logging
 
 from autotest_lib.server.cros import vboot_constants as vboot
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
 
-class firmware_RONormalBoot(FAFTSequence):
+class firmware_RONormalBoot(FirmwareTest):
     """
     Servo based firmware RO normal boot test.
 
@@ -22,7 +22,6 @@ class firmware_RONormalBoot(FAFTSequence):
     """
     version = 1
 
-
     def initialize(self, host, cmdline_args, dev_mode=False, ec_wp=None):
         super(firmware_RONormalBoot, self).initialize(host, cmdline_args,
                                                       ec_wp=ec_wp)
@@ -30,11 +29,9 @@ class firmware_RONormalBoot(FAFTSequence):
         self.setup_dev_mode(dev_mode)
         self.setup_usbkey(usbkey=False)
 
-
     def cleanup(self):
         self.restore_firmware()
         super(firmware_RONormalBoot, self).cleanup()
-
 
     def run_once(self):
         flags = self.faft_client.bios.get_preamble_flags('a')
@@ -42,21 +39,15 @@ class firmware_RONormalBoot(FAFTSequence):
             logging.info('The firmware USE_RO_NORMAL flag is disabled.')
             return
 
-        self.register_faft_sequence((
-            {   # Step 1, disable the RO normal boot flag
-                'state_checker': (self.checkers.ro_normal_checker, 'A'),
-                'userspace_action': (self.faft_client.bios.set_preamble_flags,
-                                     ('a',
-                                      flags ^ vboot.PREAMBLE_USE_RO_NORMAL)),
-            },
-            {   # Step 2, expected TwoStop boot, restore the original flags
-                'state_checker': (lambda: self.checkers.ro_normal_checker('A',
-                                              twostop=True)),
-                'userspace_action': (self.faft_client.bios.set_preamble_flags,
-                                     ('a', flags)),
-            },
-            {   # Step 3, done
-                'state_checker': (self.checkers.ro_normal_checker, 'A'),
-            },
-        ))
-        self.run_faft_sequence()
+        logging.info("Disable the RO normal boot flag.")
+        self.check_state((self.checkers.ro_normal_checker, 'A'))
+        self.faft_client.bios.set_preamble_flags(('a',
+                                      flags ^ vboot.PREAMBLE_USE_RO_NORMAL))
+        self.reboot_warm()
+
+        logging.info("Expected TwoStop boot, restore the original flags.")
+        self.check_state((lambda: self.checkers.ro_normal_checker('A',
+                                                                  twostop=True)))
+        self.faft_client.bios.set_preamble_flags('a', flags)
+        self.reboot_warm()
+        self.check_state((self.checkers.ro_normal_checker, 'A'))
