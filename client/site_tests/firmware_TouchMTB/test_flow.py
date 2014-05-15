@@ -421,11 +421,14 @@ class TestFlow:
             return msg % (criteria, number_tracking_ids)
         return None
 
+    def _empty_packets_is_legal_result(self):
+        return ('tap' in self.gesture.name and self._is_robot_mode())
+
     def _handle_user_choice_validate_before_parsing(self):
         """Handle user choice for validating before gesture file is parsed."""
         # Parse the device events. Make sure there are events.
         self.packets = self.parser.parse_file(self.gesture_file_name)
-        if self.packets:
+        if self.packets or self._empty_packets_is_legal_result():
             # Validate this gesture and get the results.
             (self.new_scores, msg_list, vlogs) = validators.validate(
                     self.packets, self.gesture, self.variation)
