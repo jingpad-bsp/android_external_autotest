@@ -5,10 +5,10 @@
 import logging
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
 
-class firmware_ECUsbPorts(FAFTSequence):
+class firmware_ECUsbPorts(FirmwareTest):
     """
     Servo based EC USB port control test.
     """
@@ -134,18 +134,18 @@ class firmware_ECUsbPorts(FAFTSequence):
     def run_once(self):
         if not self.check_ec_capability(['usb']):
             raise error.TestNAError("Nothing needs to be tested on this device")
+
         self._smart_usb_charge = (
             'smart_usb_charge' in self.faft_config.ec_capability)
         self._port_count = self.get_port_count()
-        self.register_faft_sequence((
-            {   # Step 1, turn off all USB ports and then turn them on again
-                'reboot_action': self.fake_reboot_by_usb_mode_change,
-            },
-            {   # Step 2, check USB ports are disabled when powered off
-                'reboot_action': self.check_power_off_mode,
-            },
-            {   # Step 3, check if failure occurred
-                'state_checker': self.check_failure,
-            }
-        ))
-        self.run_faft_sequence()
+
+        logging.info("Turn off all USB ports and then turn them on again.")
+        self.do_reboot_action(self.fake_reboot_by_usb_mode_change)
+        self.wait_for_client()
+
+        logging.info("Check USB ports are disabled when powered off.")
+        self.do_reboot_action(self.check_power_off_mode)
+        self.wait_for_client()
+
+        logging.info("Check if failure occurred.")
+        self.check_state(self.check_failure)
