@@ -948,6 +948,14 @@ def main():
                                         delay_sec=options.delay_sec)
     logging.info('Autotest instance: %s', instance_server)
 
+    rpc_helper = diagnosis_utils.RPCHelper(afe)
+
+    try:
+        rpc_helper.check_dut_availability(options.board, options.pool)
+    except utils.TestLabException as e:
+        logging.warning('Not enough DUTs to run this suite: %s', e)
+        return RETURN_CODES.INFRA_FAILURE
+
     wait = options.no_wait == 'False'
     file_bugs = options.file_bugs == 'True'
     retry = options.retry == 'True'
@@ -982,7 +990,7 @@ def main():
                                         timeout_min=options.afe_timeout_mins,
                                         delay_sec=options.delay_sec)
     code = RETURN_CODES.OK
-    rpc_helper = diagnosis_utils.RPCHelper(afe)
+
     if wait:
         while not afe.get_jobs(id=job_id, finished=True):
             # Note that this call logs output, preventing buildbot's
