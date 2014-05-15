@@ -11,8 +11,10 @@ firmware using FTDI, USB and/or serial interfaces provided by servo.
 Servo state is preserved across the programming process.
 """
 
+import glob
 import logging
 import os
+import re
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faft.config.config import Config as FAFTConfig
@@ -192,8 +194,34 @@ class ProgrammerV2(object):
 
     def __init__(self, servo):
         self._servo = servo
+        self._valid_boards = self._get_valid_v2_boards()
         self._bios_programmer = self._factory_bios(self._servo)
         self._ec_programmer = self._factory_ec(self._servo)
+
+
+    @staticmethod
+    def _get_valid_v2_boards():
+        """Greps servod config files to look for valid v2 boards.
+
+        @return A list of valid board names.
+        """
+        SERVOD_CONFIG_DATA_DIR = os.path.join(
+                os.path.dirname(__file__), os.pardir, os.pardir, os.pardir,
+                'site-packages', 'servo', 'data')
+        SERVOFLEX_V2_R0_P50_CONFIG = 'servoflex_v2_r0_p50.xml'
+        SERVO_CONFIG_REGEXP = 'servo_(?P<board>.+)_overlay.xml'
+
+        result = []
+        config_glob = glob.glob(os.path.join(SERVOD_CONFIG_DATA_DIR,
+                                             SERVO_CONFIG_REGEXP.replace(
+                                                     '(?P<board>.+)', '*')))
+        for config in config_glob:
+            with open(config) as f:
+                if SERVOFLEX_V2_R0_P50_CONFIG in f.read():
+                    result.append(
+                            re.search(SERVO_CONFIG_REGEXP,
+                                      config).group('board'))
+        return result
 
 
     def _factory_bios(self, servo):
@@ -215,11 +243,7 @@ class ProgrammerV2(object):
             ]
 
         logging.debug('Setting up BIOS programmer for board: %s', _board)
-        if _board in ('daisy_spring', 'rambi', 'pit', 'spring',
-                      'snow', 'daisy', 'monroe', 'panther', 'beltino',
-                      'bolt', 'slippy', 'falco', 'link', 'stumpy',
-                      'lumpy', 'parrot', 'stout', 'butterfly', 'alex',
-                      'zgb', 'mario', 'squawks'):
+        if _board in self._valid_boards:
             _bios_prog = FlashromProgrammer(servo)
         else:
             logging.warning('No BIOS programmer found for board: %s', _board)
@@ -239,10 +263,7 @@ class ProgrammerV2(object):
         _board = servo.get_board()
 
         logging.debug('Setting up EC programmer for board: %s', _board)
-        if _board in ('daisy', 'kirby', 'pit', 'puppy', 'snow',
-                      'spring', 'discovery', 'nyan', 'bolt', 'samus',
-                      'falco', 'peppy', 'rambi', 'slippy', 'link',
-                      'squawks'):
+        if _board in self._valid_boards:
             _ec_prog = FlashECProgrammer(servo)
         else:
             logging.warning('No EC programmer found for board: %s', _board)
