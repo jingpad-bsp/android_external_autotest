@@ -192,7 +192,7 @@ class hardware_StorageFio(test.test):
                  'VERIFY_ONLY=' + str(int(self.__verify_only))
                 ])
             job_file = os.path.join(self.bindir, job)
-            results.update(fio_util.fio_runner(job_file, env_vars))
+            results.update(fio_util.fio_runner(self, job_file, env_vars))
 
         # Output keys relevant to the performance, larger filesize will run
         # slower, and sda5 should be slightly slower than sda3 on a rotational

@@ -16,10 +16,10 @@ class platform_CryptohomeFio(test.test):
     version = 2
 
     def run_once(self, runtime, mount_cryptohome=True, tmpfs=False,
-                 script=None,sysctls=None):
+                 script=None, sysctls=None):
         if sysctls:
             for sysctl in sysctls:
-                for key,val in sysctl.iteritems():
+                for key, val in sysctl.iteritems():
                     utils.sysctl(key, val)
         # Mount a test cryptohome vault.
         self.__mount_cryptohome = mount_cryptohome
@@ -43,7 +43,7 @@ class platform_CryptohomeFio(test.test):
              'RUN_TIME=' + self.__runtime
              ])
         job_file = os.path.join(self.bindir, script)
-        results.update(fio_util.fio_runner(job_file, env_vars))
+        results.update(fio_util.fio_runner(self, job_file, env_vars))
         self.write_perf_keyval(results)
 
 

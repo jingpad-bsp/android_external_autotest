@@ -573,10 +573,11 @@ def fio_generate_graph():
         utils.run('mv *.html results', ignore_status=True)
 
 
-def fio_runner(job, env_vars):
+def fio_runner(test, job, env_vars):
     """
     Runs fio.
 
+    @param test: test to upload perf value
     @param job: fio config file to use
     @param env_vars: environment variable fio will substituete in the fio
         config file.
@@ -607,5 +608,17 @@ def fio_runner(job, env_vars):
 
     fio_generate_graph()
 
-    return fio_parser(fio.stdout)
+    result = fio_parser(fio.stdout)
 
+    # Upload bw / 99% lat to dashboard
+    bw_matcher = re.compile('.*(rd|wr)_bw_KB_sec')
+    lat_matcher = re.compile('.*(rd|wr)_lat_99.00_percent_usec')
+    for k, v in result.iteritems():
+        if bw_matcher.match(k):
+            test.output_perf_value(description=k, value=v, units='KB_per_sec',
+                                   higher_is_better=True)
+        elif lat_matcher.match(k):
+            test.output_perf_value(description=k, value=v, units='us',
+                                   higher_is_better=False)
+
+    return result
