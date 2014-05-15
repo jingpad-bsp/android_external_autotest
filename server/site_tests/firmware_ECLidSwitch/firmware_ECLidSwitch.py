@@ -8,7 +8,8 @@ import re
 import time
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
+
 
 def delayed(seconds):
     def decorator(f):
@@ -19,12 +20,11 @@ def delayed(seconds):
     return decorator
 
 
-class firmware_ECLidSwitch(FAFTSequence):
+class firmware_ECLidSwitch(FirmwareTest):
     """
     Servo based EC lid switch test.
     """
     version = 1
-
 
     # Delay between closing and opening the lid
     LID_DELAY = 1
@@ -37,34 +37,28 @@ class firmware_ECLidSwitch(FAFTSequence):
     LONG_WAKE_DELAY = 25
     SHORT_WAKE_DELAY = 15
 
-
     def initialize(self, host, cmdline_args):
         super(firmware_ECLidSwitch, self).initialize(host, cmdline_args)
         # Only run in normal mode
         self.setup_dev_mode(False)
 
-
     def _open_lid(self):
         """Open lid by servo."""
         self.servo.set('lid_open', 'yes')
 
-
     def _close_lid(self):
         """Close lid by servo."""
         self.servo.set('lid_open', 'no')
-
 
     @delayed(RPC_DELAY)
     def delayed_open_lid(self):
         """Delay by RPC_DELAY and then open lid by servo."""
         self._open_lid()
 
-
     @delayed(RPC_DELAY)
     def delayed_close_lid(self):
         """Delay by RPC_DELAY and then close lid by servo."""
         self._close_lid()
-
 
     def _wake_by_lid_switch(self):
         """Wake DUT with lid switch."""
@@ -72,18 +66,15 @@ class firmware_ECLidSwitch(FAFTSequence):
         time.sleep(self.LID_DELAY)
         self._open_lid()
 
-
     @delayed(LONG_WAKE_DELAY)
     def long_delayed_wake(self):
         """Delay for LONG_WAKE_DELAY and then wake DUT with lid switch."""
         self._wake_by_lid_switch()
 
-
     @delayed(SHORT_WAKE_DELAY)
     def short_delayed_wake(self):
         """Delay for SHORT_WAKE_DELAY and then wake DUT with lid switch."""
         self._wake_by_lid_switch()
-
 
     def shutdown_and_wake(self, wake_func):
         """Software shutdown and delay. Then wake by lid switch.
@@ -93,7 +84,6 @@ class firmware_ECLidSwitch(FAFTSequence):
         """
         self.faft_client.system.run_shell_command('shutdown -P now')
         wake_func()
-
 
     def _get_keyboard_backlight(self):
         """Get keyboard backlight brightness.
@@ -116,7 +106,6 @@ class firmware_ECLidSwitch(FAFTSequence):
                 return 0
         raise error.TestError('Cannot get keyboard backlight status.')
 
-
     def _set_keyboard_backlight(self, value):
         """Set keyboard backlight brightness.
 
@@ -125,7 +114,6 @@ class firmware_ECLidSwitch(FAFTSequence):
         """
         cmd = 'ectool pwmsetkblight %d' % value
         self.faft_client.system.run_shell_command(cmd)
-
 
     def check_keycode(self):
         """Check if lid open/close send power button keycode.
@@ -148,7 +136,6 @@ class firmware_ECLidSwitch(FAFTSequence):
             logging.error("Captured power button keycode on lid close.")
             return False
         return True
-
 
     def check_backlight(self):
         """Check if lid open/close controls keyboard backlight as expected.
@@ -175,7 +162,6 @@ class firmware_ECLidSwitch(FAFTSequence):
         self._set_keyboard_backlight(original_value)
         return ok
 
-
     def check_keycode_and_backlight(self):
         """
         Disable powerd to prevent DUT shutting down dutring test. Then check
@@ -194,21 +180,17 @@ class firmware_ECLidSwitch(FAFTSequence):
         self.faft_client.system.run_shell_command('start powerd')
         return ok
 
-
     def run_once(self):
         if not self.check_ec_capability(['lid']):
             raise error.TestNAError("Nothing needs to be tested on this device")
-        self.register_faft_sequence((
-            {   # Step 1, shutdown and long delayed wake
-                'reboot_action': (self.shutdown_and_wake,
-                                  self.long_delayed_wake),
-            },
-            {   # Step 2, shutdown and short delayed wake
-                'reboot_action': (self.shutdown_and_wake,
-                                  self.short_delayed_wake),
-            },
-            {   # Step 3, check keycode and backlight
-                'state_checker': self.check_keycode_and_backlight
-            }
-        ))
-        self.run_faft_sequence()
+
+        logging.info("Shutdown and long delayed wake.")
+        self.do_reboot_action((self.shutdown_and_wake,
+                               self.long_delayed_wake))
+
+        logging.info("Shutdown and short delayed wake.")
+        self.do_reboot_action((self.shutdown_and_wake,
+                               self.short_delayed_wake))
+
+        logging.info("Check keycode and backlight.")
+        self.check_state(self.check_keycode_and_backlight)
