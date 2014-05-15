@@ -6,9 +6,10 @@ import logging
 import pexpect
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
-class firmware_ECAdc(FAFTSequence):
+
+class firmware_ECAdc(FirmwareTest):
     """
     Servo based EC ADC test.
     """
@@ -30,7 +31,6 @@ class firmware_ECAdc(FAFTSequence):
                 raise error.TestFail("Abnormal EC temperature %d K" % t)
         except pexpect.TIMEOUT:
             raise error.TestFail("Error reading EC internal temperature")
-
 
     def run_once(self):
         if not self.check_ec_capability(['adc_ectemp']):
