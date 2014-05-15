@@ -6,9 +6,10 @@ import logging
 import pexpect
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
-class firmware_ECPeci(FAFTSequence):
+
+class firmware_ECPeci(FirmwareTest):
     """
     Servo based EC PECI test.
     """
@@ -21,11 +22,9 @@ class firmware_ECPeci(FAFTSequence):
         super(firmware_ECPeci, self).initialize(host, cmdline_args)
         self.ec.send_command("chan 0")
 
-
     def cleanup(self):
         self.ec.send_command("chan 0xffffffff")
         super(firmware_ECPeci, self).cleanup()
-
 
     def _check_read(self):
         """Read CPU temperature through PECI.
@@ -40,7 +39,6 @@ class firmware_ECPeci(FAFTSequence):
                 raise error.TestFail("Abnormal CPU temperature %d K" % t)
         except pexpect.TIMEOUT:
             raise error.TestFail("Error reading PECI CPU temperature")
-
 
     def run_once(self):
         if not self.check_ec_capability(['peci']):
