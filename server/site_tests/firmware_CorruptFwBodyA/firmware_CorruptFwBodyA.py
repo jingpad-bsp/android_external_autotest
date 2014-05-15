@@ -5,10 +5,10 @@
 import logging
 
 from autotest_lib.server.cros import vboot_constants as vboot
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
 
-class firmware_CorruptFwBodyA(FAFTSequence):
+class firmware_CorruptFwBodyA(FirmwareTest):
     """
     Servo based firmware body A corruption test.
 
@@ -20,18 +20,15 @@ class firmware_CorruptFwBodyA(FAFTSequence):
     """
     version = 1
 
-
     def initialize(self, host, cmdline_args, dev_mode=False):
         super(firmware_CorruptFwBodyA, self).initialize(host, cmdline_args)
         self.backup_firmware()
         self.setup_dev_mode(dev_mode)
         self.setup_usbkey(usbkey=False)
 
-
     def cleanup(self):
         self.restore_firmware()
         super(firmware_CorruptFwBodyA, self).cleanup()
-
 
     def run_once(self):
         if (self.faft_client.bios.get_preamble_flags('a') &
@@ -39,48 +36,40 @@ class firmware_CorruptFwBodyA(FAFTSequence):
             # USE_RO_NORMAL flag is ON. Firmware body corruption doesn't
             # hurt the booting results.
             logging.info('The firmware USE_RO_NORMAL flag is enabled.')
-            self.register_faft_sequence((
-                {   # Step 1, corrupt firmware body A
-                    'state_checker': (self.checkers.crossystem_checker, {
-                        'mainfw_act': 'A',
-                        'tried_fwb': '0',
-                    }),
-                    'userspace_action': (self.faft_client.bios.corrupt_body,
-                                         'a'),
-                },
-                {   # Step 2, still expected firmware A boot and restore
-                    'state_checker': (self.checkers.crossystem_checker, {
-                        'mainfw_act': 'A',
-                        'tried_fwb': '0',
-                    }),
-                    'userspace_action': (self.faft_client.bios.restore_body,
-                                         'a'),
-                },
-            ))
+            logging.info("Corrupt firmware body A.")
+            self.check_state((self.checkers.crossystem_checker, {
+                                  'mainfw_act': 'A',
+                                  'tried_fwb': '0',
+                                  }))
+            self.faft_client.bios.corrupt_body('a')
+            self.reboot_warm()
+
+            logging.info("Still expected firmware A boot and restore.")
+            self.check_state((self.checkers.crossystem_checker, {
+                                  'mainfw_act': 'A',
+                                  'tried_fwb': '0',
+                                  }))
+            self.faft_client.bios.restore_body('a')
         else:
             logging.info('The firmware USE_RO_NORMAL flag is disabled.')
-            self.register_faft_sequence((
-                {   # Step 1, corrupt firmware body A
-                    'state_checker': (self.checkers.crossystem_checker, {
-                        'mainfw_act': 'A',
-                        'tried_fwb': '0',
-                    }),
-                    'userspace_action': (self.faft_client.bios.corrupt_body,
-                                         'a'),
-                },
-                {   # Step 2, expected firmware B boot and restore firmware A
-                    'state_checker': (self.checkers.crossystem_checker, {
-                        'mainfw_act': 'B',
-                        'tried_fwb': '0',
-                    }),
-                    'userspace_action': (self.faft_client.bios.restore_body,
-                                         'a'),
-                },
-                {   # Step 3, expected firmware A boot, done
-                    'state_checker': (self.checkers.crossystem_checker, {
-                        'mainfw_act': 'A',
-                        'tried_fwb': '0',
-                    }),
-                },
-            ))
-        self.run_faft_sequence()
+            logging.info("Corrupt firmware body A.")
+            self.check_state((self.checkers.crossystem_checker, {
+                                  'mainfw_act': 'A',
+                                  'tried_fwb': '0',
+                                  }))
+            self.faft_client.bios.corrupt_body('a')
+            self.reboot_warm()
+
+            logging.info("Expected firmware B boot and restore firmware A.")
+            self.check_state((self.checkers.crossystem_checker, {
+                                  'mainfw_act': 'B',
+                                  'tried_fwb': '0',
+                                  }))
+            self.faft_client.bios.restore_body('a')
+            self.reboot_warm()
+
+            logging.info("Expected firmware A boot, done.")
+            self.check_state((self.checkers.crossystem_checker, {
+                                  'mainfw_act': 'A',
+                                  'tried_fwb': '0',
+                                  }))
