@@ -10,8 +10,15 @@ from datetime import datetime
 
 import common
 
+from autotest_lib.client.common_lib import global_config
+from autotest_lib.frontend import setup_django_environment
+from autotest_lib.frontend.afe import models
+from autotest_lib.server import utils
 from autotest_lib.server.cros.dynamic_suite import reporting_utils
 
+# Minimum number of duts to allow a suite job being queued.
+MIN_AVAILABLE_DUTS = global_config.global_config.get_config_value(
+        'SERVER', 'minimum_available_duts', type=int, default=4)
 
 class JobTimer(object):
     """Utility class capable of measuring job timeouts.
@@ -125,6 +132,36 @@ class RPCHelper(object):
                           limit, time_delta_hours, job_info)
 
 
+    def check_dut_availability(self, board, pool):
+        """Check if DUT availability for a given board and pool is less than
+        minimum.
+
+        @param board: The board to check DUT availability.
+        @param pool: The pool to check DUT availability.
+        @raise: TestLabException if DUT availability is lower than minimum,
+                or failed to get host information from rpc interface.
+        """
+        hosts = self.rpc_interface.get_hosts(
+                invalid=False,
+                multiple_labels=('pool:%s' % pool, 'board:%s' % board))
+        if not hosts:
+            raise utils.TestLabException(
+                    'Unable to retrieve hosts in given board %s pool %s with '
+                    'the rpc_interface %s' % (board, pool, self.rpc_interface))
+
+        bad_statuses = (models.Host.Status.REPAIRING,
+                        models.Host.Status.REPAIR_FAILED)
+        available_hosts = [host for host in hosts
+                           if not host.status in bad_statuses]
+        logging.debug('%d of %d DUTs are available for board %s pool %s.',
+                      len(available_hosts), len(hosts), board, pool)
+        if len(available_hosts) < MIN_AVAILABLE_DUTS:
+            raise utils.TestLabException(
+                    'Number of available DUTs for board %s pool %s is %d, which'
+                    ' is less than the minimum value %d.' %
+                    (board, pool, len(available_hosts), MIN_AVAILABLE_DUTS))
+
+
     def diagnose_job(self, job_id):
         """Diagnose a suite job.
 
@@ -145,5 +182,3 @@ class RPCHelper(object):
                              reporting_utils.link_job(job.id))
         else:
             logging.info('All jobs in suite have already completed.')
-
-
