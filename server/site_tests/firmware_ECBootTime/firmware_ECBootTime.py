@@ -5,9 +5,10 @@
 import logging
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
-class firmware_ECBootTime(FAFTSequence):
+
+class firmware_ECBootTime(FirmwareTest):
     """
     Servo based EC boot time test.
     """
@@ -17,7 +18,6 @@ class firmware_ECBootTime(FAFTSequence):
         super(firmware_ECBootTime, self).initialize(host, cmdline_args)
         # Only run in normal mode
         self.setup_dev_mode(False)
-
 
     def check_boot_time(self):
         """Check EC and AP boot times"""
@@ -52,19 +52,13 @@ class firmware_ECBootTime(FAFTSequence):
         if boot_time > 1.0:
             raise error.TestFail("Boot time longer than 1 second.")
 
-
     def run_once(self):
         if not self.check_ec_capability():
             raise error.TestNAError("Nothing needs to be tested on this device")
         self._x86 = ('x86' in self.faft_config.ec_capability)
         dev_mode = self.checkers.crossystem_checker({'devsw_boot': '1'})
-        self.register_faft_sequence((
-            {   # Step 1, Reboot and check EC cold boot time and host boot time
-                'reboot_action': self.check_boot_time,
-                'firmware_action': (self.wait_fw_screen_and_ctrl_d
-                                    if dev_mode else None)
-            },
-            {   # Step 2, dummy step to make step 1 reboot
-            }
-        ))
-        self.run_faft_sequence()
+        logging.info("Reboot and check EC cold boot time and host boot time.")
+        self.do_reboot_action(self.check_boot_time)
+        if dev_mode:
+            self.wait_fw_screen_and_ctrl_d()
+        self.reboot_warm()
