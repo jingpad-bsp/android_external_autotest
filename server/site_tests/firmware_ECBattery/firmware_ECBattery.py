@@ -6,9 +6,9 @@ import logging
 import re
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
-class firmware_ECBattery(FAFTSequence):
+class firmware_ECBattery(FirmwareTest):
     """
     Servo based EC thermal battery status report test.
     """
