@@ -2,11 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
 from threading import Timer
 import time
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
 
 def delayed(seconds):
@@ -18,7 +19,7 @@ def delayed(seconds):
     return decorator
 
 
-class firmware_ECWakeSource(FAFTSequence):
+class firmware_ECWakeSource(FirmwareTest):
     """
     Servo based EC wake source test.
     """
@@ -36,18 +37,15 @@ class firmware_ECWakeSource(FAFTSequence):
     # Delay for waiting client to shut down
     SHUTDOWN_DELAY = 10
 
-
     def initialize(self, host, cmdline_args):
         super(firmware_ECWakeSource, self).initialize(host, cmdline_args)
         # Only run in normal mode
         self.setup_dev_mode(False)
 
-
     @delayed(WAKE_DELAY)
     def wake_by_power_button(self):
         """Delay by WAKE_DELAY seconds and then wake DUT with power button."""
         self.servo.power_normal_press()
-
 
     @delayed(WAKE_DELAY)
     def wake_by_lid_switch(self):
@@ -55,7 +53,6 @@ class firmware_ECWakeSource(FAFTSequence):
         self.servo.set('lid_open', 'no')
         time.sleep(self.LID_DELAY)
         self.servo.set('lid_open', 'yes')
-
 
     def suspend_as_reboot(self, wake_func):
         """
@@ -72,7 +69,6 @@ class firmware_ECWakeSource(FAFTSequence):
         time.sleep(self.EC_SUSPEND_DELAY)
         wake_func()
 
-
     def hibernate_and_wake_by_power_button(self):
         """Shutdown and hibernate EC. Then wake by power button."""
         self.faft_client.system.run_shell_command("shutdown -P now")
@@ -81,24 +77,21 @@ class firmware_ECWakeSource(FAFTSequence):
         time.sleep(self.WAKE_DELAY)
         self.servo.power_short_press()
 
-
     def run_once(self):
         # TODO(victoryang): make this test run on both x86 and arm
         if not self.check_ec_capability(['x86', 'lid']):
             raise error.TestNAError("Nothing needs to be tested on this device")
-        self.register_faft_sequence((
-            {   # Step 1, suspend and wake by power button
-                'reboot_action': (self.suspend_as_reboot,
-                                  self.wake_by_power_button),
-            },
-            {   # Step 2, suspend and wake by lid switch
-                'reboot_action': (self.suspend_as_reboot,
-                                  self.wake_by_lid_switch),
-            },
-            {   # Step 3, EC hibernate and wake by power button
-                'reboot_action': self.hibernate_and_wake_by_power_button,
-            },
-            {   # Step 4, dummy step to make sure step 3 reboots
-            }
-        ))
-        self.run_faft_sequence()
+
+        logging.info("Suspend and wake by power button.")
+        self.do_reboot_action((self.suspend_as_reboot,
+                               self.wake_by_power_button))
+        self.wait_for_client()
+
+        logging.info("Suspend and wake by lid switch.")
+        self.do_reboot_action((self.suspend_as_reboot,
+                               self.wake_by_lid_switch))
+        self.wait_for_client()
+
+        logging.info("EC hibernate and wake by power button.")
+        self.do_reboot_action(self.hibernate_and_wake_by_power_button)
+        self.wait_for_client()
