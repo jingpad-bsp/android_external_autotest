@@ -3,10 +3,10 @@
 # found in the LICENSE file.
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
 
-class firmware_TPMVersionCheck(FAFTSequence):
+class firmware_TPMVersionCheck(FirmwareTest):
     """
     crossystem check of reported TPM version.
 
@@ -14,13 +14,11 @@ class firmware_TPMVersionCheck(FAFTSequence):
     """
     version = 1
 
-
     def initialize(self, host, cmdline_args, dev_mode=False, ec_wp=None):
         super(firmware_TPMVersionCheck, self).initialize(host, cmdline_args,
                                                          ec_wp=ec_wp)
         self.setup_dev_mode(dev_mode)
         self.setup_usbkey(usbkey=False)
-
 
     def run_once(self):
         if not self.checkers.crossystem_checker({
