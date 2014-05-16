@@ -5,10 +5,10 @@
 import logging
 
 from autotest_lib.server.cros import vboot_constants as vboot
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
 
-class firmware_CorruptBothKernelAB(FAFTSequence):
+class firmware_CorruptBothKernelAB(FirmwareTest):
     """
     Servo based both kernel A and B corruption test.
 
@@ -19,7 +19,6 @@ class firmware_CorruptBothKernelAB(FAFTSequence):
     recovery boot.
     """
     version = 1
-
 
     def ensure_kernel_on_non_recovery(self, part):
         """Ensure the requested kernel part on normal/dev boot path.
@@ -32,11 +31,8 @@ class firmware_CorruptBothKernelAB(FAFTSequence):
         """
         if not self.check_root_part_on_non_recovery(part):
             logging.info('Recover the disk OS by running chromeos-install...')
-            self.run_faft_step({
-                'userspace_action': (self.faft_client.system.run_shell_command,
-                    'chromeos-install --yes')
-            })
-
+            self.faft_client.system.run_shell_command('chromeos-install --yes')
+            self.reboot_warm()
 
     def initialize(self, host, cmdline_args, dev_mode=False):
         super(firmware_CorruptBothKernelAB, self).initialize(host, cmdline_args)
@@ -46,13 +42,11 @@ class firmware_CorruptBothKernelAB(FAFTSequence):
         self.setup_usbkey(usbkey=True, host=False)
         self.setup_kernel('a')
 
-
     def cleanup(self):
         self.ensure_kernel_on_non_recovery('a')
         self.restore_cgpt_attributes()
         self.restore_kernel()
         super(firmware_CorruptBothKernelAB, self).cleanup()
-
 
     def run_once(self, dev_mode=False):
         platform = self.faft_client.system.get_platform_name()
@@ -64,27 +58,25 @@ class firmware_CorruptBothKernelAB(FAFTSequence):
             recovery_reason = (vboot.RECOVERY_REASON['DEP_RW_NO_DISK'],
                                vboot.RECOVERY_REASON['RW_NO_KERNEL'])
 
-        self.register_faft_sequence((
-            {   # Step 1, corrupt kernel A and B
-                'state_checker': (self.check_root_part_on_non_recovery, 'a'),
-                'userspace_action': (self.faft_client.kernel.corrupt_sig,
-                                     (('a', 'b'),)),
-                # Kernel is verified after firmware screen.
-                # Should press Ctrl-D to skip the screen on dev_mode.
-                'firmware_action': self.wait_fw_screen_and_ctrl_d if dev_mode
-                                   else self.wait_fw_screen_and_plug_usb,
-                'install_deps_after_boot': True,
-            },
-            {   # Step 2, expected recovery boot and restore the OS image.
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_type': 'recovery',
-                    'recovery_reason': recovery_reason,
-                }),
-                'userspace_action': (self.faft_client.kernel.restore_sig,
-                                     (('a', 'b'),)),
-            },
-            {   # Step 3, expected kernel A normal/dev boot
-                'state_checker': (self.check_root_part_on_non_recovery, 'a'),
-            },
-        ))
-        self.run_faft_sequence()
+        logging.info("Corrupt kernel A and B.")
+        self.check_state((self.check_root_part_on_non_recovery, 'a'))
+        self.faft_client.kernel.corrupt_sig(('a', 'b'))
+        self.reboot_warm(wait_for_dut_up=False)
+        # Kernel is verified after firmware screen.
+        # Should press Ctrl-D to skip the screen on dev_mode.
+        if dev_mode:
+            self.wait_fw_screen_and_ctrl_d()
+        else:
+            self.wait_fw_screen_and_plug_usb()
+        self.wait_for_client(install_deps=True)
+
+        logging.info("Expected recovery boot and restore the OS image.")
+        self.check_state((self.checkers.crossystem_checker, {
+                              'mainfw_type': 'recovery',
+                              'recovery_reason': recovery_reason,
+                              }))
+        self.faft_client.kernel.restore_sig(('a', 'b'))
+        self.reboot_warm()
+
+        logging.info("Expected kernel A normal/dev boot.")
+        self.check_state((self.check_root_part_on_non_recovery, 'a'))
