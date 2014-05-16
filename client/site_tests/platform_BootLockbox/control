@@ -11,6 +11,8 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "client"
 DEPENDENCIES = "cleanup-reboot"
+BUG_TEMPLATE = {"owner": "dkrahn@chromium.org"}
+SUITE = "experimental"
 
 DOC = """
 This test verifies that boot lockbox mechanism is functional.  It tests that
