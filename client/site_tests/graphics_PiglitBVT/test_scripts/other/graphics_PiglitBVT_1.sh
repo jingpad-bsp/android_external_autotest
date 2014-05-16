@@ -159,7 +159,6 @@ run_test "glean/glsl1-Swizzle (stpq)" 0.0 "bin/glean -o -v -v -v -t +glsl1 --qui
 run_test "glean/glsl1-Swizzle in-place" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-Swizzled expression" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-Swizzled swizzle" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
-run_test "glean/glsl1-Swizzled swizzled swizzle" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-Swizzled writemask" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-Swizzled writemask (2)" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-Swizzled writemask (rgba)" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
@@ -377,6 +376,7 @@ run_test "glean/vp1-DPH test" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
 run_test "glean/vp1-DST test" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
 run_test "glean/vp1-Divide by zero test" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
 run_test "glean/vp1-EX2 test" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
+run_test "glean/vp1-EXP test" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
 popd
 
 if [ $need_pass == 0 ] ; then

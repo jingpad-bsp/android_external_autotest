@@ -157,7 +157,6 @@ run_test "glean/glsl1-Swizzle (stpq)" 0.0 "bin/glean -o -v -v -v -t +glsl1 --qui
 run_test "glean/glsl1-Swizzle in-place" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-Swizzled expression" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-Swizzled swizzle" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
-run_test "glean/glsl1-Swizzled swizzled swizzle" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-Swizzled writemask" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-Swizzled writemask (2)" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-Swizzled writemask (rgba)" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
@@ -241,6 +240,7 @@ run_test "glean/glsl1-mat2x4 construct" 0.0 "bin/glean -o -v -v -v -t +glsl1 --q
 run_test "glean/glsl1-mat3x2 construct" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-mat3x4 construct" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-mat4x2 * mat2x4" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
+run_test "glean/glsl1-mat4x2 * vec4" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 popd
 
 if [ $need_pass == 0 ] ; then

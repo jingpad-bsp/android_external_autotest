@@ -30,7 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "glean/glsl1-mat4x2 * vec4" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-mat4x2 construct" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-mat4x3 construct" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-matrix column check (1)" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
@@ -179,6 +178,7 @@ run_test "glean/vp1-State reference test 2 (light products)" 0.0 "bin/glean -o -
 run_test "glean/vp1-State reference test 3 (fog params)" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
 run_test "glean/vp1-XPD test 1" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
 run_test "glean/vp1-XPD test 2 (same src and dst arg)" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
+run_test "glean/vp1-Z-write test" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
 popd
 
 if [ $need_pass == 0 ] ; then

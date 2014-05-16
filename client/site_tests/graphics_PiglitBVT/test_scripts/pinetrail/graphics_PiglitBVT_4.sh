@@ -30,7 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "shaders/glsl-const-builtin-mod" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-mod.shader_test -auto"
 run_test "shaders/glsl-const-builtin-normalize" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-normalize.shader_test -auto"
 run_test "shaders/glsl-const-builtin-not" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-not.shader_test -auto"
 run_test "shaders/glsl-const-builtin-notEqual" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-notEqual.shader_test -auto"
@@ -253,6 +252,7 @@ run_test "shaders/glsl-max-vertex-attrib" 0.0 "bin/glsl-max-vertex-attrib -auto"
 run_test "shaders/glsl-novertexdata" 0.0 "bin/glsl-novertexdata -auto"
 run_test "shaders/glsl-octal" 0.0 "bin/shader_runner tests/shaders/glsl-octal.shader_test -auto"
 run_test "shaders/glsl-orangebook-ch06-bump" 0.0 "bin/glsl-orangebook-ch06-bump -auto"
+run_test "shaders/glsl-override-builtin" 0.0 "bin/shader_runner tests/shaders/glsl-override-builtin.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then

@@ -30,7 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "shaders/glsl-override-builtin" 0.0 "bin/shader_runner tests/shaders/glsl-override-builtin.shader_test -auto"
 run_test "shaders/glsl-override-builtin-2" 0.0 "bin/shader_runner tests/shaders/glsl-override-builtin-2.shader_test -auto"
 run_test "shaders/glsl-pp-elif-no-expression-1" 0.0 "bin/shader_runner tests/shaders/glsl-pp-elif-no-expression-1.shader_test -auto"
 run_test "shaders/glsl-precision-110" 0.0 "bin/shader_runner tests/shaders/glsl-precision-110.shader_test -auto"
@@ -186,6 +185,7 @@ run_test "spec/!OpenGL 1.1/fdo10370" 0.0 "bin/fdo10370 -auto"
 run_test "spec/!OpenGL 1.1/fdo23489" 0.0 "bin/fdo23489 -auto"
 run_test "spec/!OpenGL 1.1/fdo23670-depth_test" 0.0 "bin/fdo23670-depth_test -auto"
 run_test "spec/!OpenGL 1.1/fdo23670-drawpix_stencil" 0.0 "bin/fdo23670-drawpix_stencil -auto"
+run_test "spec/!OpenGL 1.1/fog-modes" 0.0 "bin/fog-modes -auto"
 popd
 
 if [ $need_pass == 0 ] ; then

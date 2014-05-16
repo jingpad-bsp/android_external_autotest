@@ -30,9 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.10/compiler/qualifiers/varying-bvec2-prohibited.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-bvec2-prohibited.vert fail 1.10"
-run_test "spec/glsl-1.10/compiler/qualifiers/varying-bvec3-prohibited.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-bvec3-prohibited.frag fail 1.10"
-run_test "spec/glsl-1.10/compiler/qualifiers/varying-bvec3-prohibited.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-bvec3-prohibited.vert fail 1.10"
 run_test "spec/glsl-1.10/compiler/qualifiers/varying-bvec4-prohibited.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-bvec4-prohibited.frag fail 1.10"
 run_test "spec/glsl-1.10/compiler/qualifiers/varying-bvec4-prohibited.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-bvec4-prohibited.vert fail 1.10"
 run_test "spec/glsl-1.10/compiler/qualifiers/varying-struct-prohibited.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-struct-prohibited.frag fail 1.10"
@@ -451,6 +448,9 @@ run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-int-i
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-ivec2-ivec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-ivec2-ivec2.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-ivec3-ivec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-ivec3-ivec3.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-ivec4-ivec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-ivec4-ivec4.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-mat2-mat2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-mat2-mat2.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-mat3-mat3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-mat3-mat3.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-mat4-mat4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-mat4-mat4.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then

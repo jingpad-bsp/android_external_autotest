@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=8080
+need_pass=8078
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -159,7 +159,6 @@ run_test "glean/glsl1-Swizzle (stpq)" 0.0 "bin/glean -o -v -v -v -t +glsl1 --qui
 run_test "glean/glsl1-Swizzle in-place" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-Swizzled expression" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-Swizzled swizzle" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
-run_test "glean/glsl1-Swizzled swizzled swizzle" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-Swizzled writemask" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-Swizzled writemask (2)" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-Swizzled writemask (rgba)" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
@@ -1702,7 +1701,6 @@ run_test "spec/ARB_texture_float/fbo-clear-formats" 0.0 "bin/fbo-clear-formats -
 run_test "spec/ARB_texture_float/fbo-colormask-formats" 0.0 "bin/fbo-colormask-formats -auto GL_ARB_texture_float"
 run_test "spec/ARB_texture_float/fbo-generatemipmap-formats" 0.0 "bin/fbo-generatemipmap-formats -auto GL_ARB_texture_float"
 run_test "spec/ARB_texture_float/get-renderbuffer-internalformat" 0.0 "bin/get-renderbuffer-internalformat GL_ARB_texture_float -auto -fbo"
-run_test "spec/ARB_texture_float/multisample-formats 2 GL_ARB_texture_float" 0.0 "bin/ext_framebuffer_multisample-formats -auto 2 GL_ARB_texture_float"
 run_test "spec/ARB_texture_float/multisample-formats 4 GL_ARB_texture_float" 0.0 "bin/ext_framebuffer_multisample-formats -auto 4 GL_ARB_texture_float"
 run_test "spec/ARB_texture_float/texwrap formats" 0.0 "bin/texwrap -fbo -auto GL_ARB_texture_float"
 run_test "spec/ARB_texture_float/texwrap formats bordercolor" 0.0 "bin/texwrap -fbo -auto GL_ARB_texture_float bordercolor"
@@ -8114,7 +8112,7 @@ popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 8080 tests have passed. |"
+  echo "| Overall pass, as all 8078 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

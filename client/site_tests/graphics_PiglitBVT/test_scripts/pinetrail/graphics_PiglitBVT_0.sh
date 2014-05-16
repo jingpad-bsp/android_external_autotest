@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=4547
+need_pass=4546
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -157,7 +157,6 @@ run_test "glean/glsl1-Swizzle (stpq)" 0.0 "bin/glean -o -v -v -v -t +glsl1 --qui
 run_test "glean/glsl1-Swizzle in-place" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-Swizzled expression" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-Swizzled swizzle" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
-run_test "glean/glsl1-Swizzled swizzled swizzle" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-Swizzled writemask" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-Swizzled writemask (2)" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-Swizzled writemask (rgba)" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
@@ -4581,7 +4580,7 @@ popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 4547 tests have passed. |"
+  echo "| Overall pass, as all 4546 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

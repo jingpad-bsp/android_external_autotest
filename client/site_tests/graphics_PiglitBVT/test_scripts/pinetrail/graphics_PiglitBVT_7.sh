@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=239
+need_pass=238
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -30,7 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/ARB_depth_texture/fbo-depth-GL_DEPTH_COMPONENT24-readpixels" 0.0 "bin/fbo-depth -auto readpixels GL_DEPTH_COMPONENT24"
 run_test "spec/ARB_depth_texture/fbo-depth-GL_DEPTH_COMPONENT24-tex1d" 0.0 "bin/fbo-depth-tex1d -auto GL_DEPTH_COMPONENT24"
 run_test "spec/ARB_depth_texture/fbo-depth-GL_DEPTH_COMPONENT32-clear" 0.0 "bin/fbo-depth -auto clear GL_DEPTH_COMPONENT32"
 run_test "spec/ARB_depth_texture/fbo-depth-GL_DEPTH_COMPONENT32-readpixels" 0.0 "bin/fbo-depth -auto readpixels GL_DEPTH_COMPONENT32"
@@ -273,7 +272,7 @@ popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 239 tests have passed. |"
+  echo "| Overall pass, as all 238 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

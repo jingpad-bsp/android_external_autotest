@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=208
+need_pass=207
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -237,12 +237,11 @@ run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-sub-float-vec4" 0.0 
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-sub-int-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-sub-int-int.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-sub-int-ivec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-sub-int-ivec2.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-sub-int-ivec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-sub-int-ivec3.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-sub-int-ivec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-sub-int-ivec4.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 208 tests have passed. |"
+  echo "| Overall pass, as all 207 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

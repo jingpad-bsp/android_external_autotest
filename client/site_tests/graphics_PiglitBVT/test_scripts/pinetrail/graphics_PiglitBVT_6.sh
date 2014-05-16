@@ -30,7 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/!OpenGL 1.1/fog-modes" 0.0 "bin/fog-modes -auto"
 run_test "spec/!OpenGL 1.1/fragment-center" 0.0 "bin/fragment-center -auto"
 run_test "spec/!OpenGL 1.1/geterror-inside-begin" 0.0 "bin/geterror-inside-begin -auto"
 run_test "spec/!OpenGL 1.1/geterror-invalid-enum" 0.0 "bin/geterror-invalid-enum -auto"
@@ -160,6 +159,7 @@ run_test "spec/ARB_depth_texture/fbo-depth-GL_DEPTH_COMPONENT16-clear" 0.0 "bin/
 run_test "spec/ARB_depth_texture/fbo-depth-GL_DEPTH_COMPONENT16-readpixels" 0.0 "bin/fbo-depth -auto readpixels GL_DEPTH_COMPONENT16"
 run_test "spec/ARB_depth_texture/fbo-depth-GL_DEPTH_COMPONENT16-tex1d" 0.0 "bin/fbo-depth-tex1d -auto GL_DEPTH_COMPONENT16"
 run_test "spec/ARB_depth_texture/fbo-depth-GL_DEPTH_COMPONENT24-clear" 0.0 "bin/fbo-depth -auto clear GL_DEPTH_COMPONENT24"
+run_test "spec/ARB_depth_texture/fbo-depth-GL_DEPTH_COMPONENT24-readpixels" 0.0 "bin/fbo-depth -auto readpixels GL_DEPTH_COMPONENT24"
 popd
 
 if [ $need_pass == 0 ] ; then

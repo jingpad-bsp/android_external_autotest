@@ -30,9 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/EXT_transform_feedback/api-errors begin_active" 0.0 "bin/ext_transform_feedback-api-errors begin_active -auto -fbo"
-run_test "spec/EXT_transform_feedback/api-errors bind_base_active" 0.0 "bin/ext_transform_feedback-api-errors bind_base_active -auto -fbo"
-run_test "spec/EXT_transform_feedback/api-errors bind_base_max" 0.0 "bin/ext_transform_feedback-api-errors bind_base_max -auto -fbo"
 run_test "spec/EXT_transform_feedback/api-errors bind_offset_active" 0.0 "bin/ext_transform_feedback-api-errors bind_offset_active -auto -fbo"
 run_test "spec/EXT_transform_feedback/api-errors bind_offset_max" 0.0 "bin/ext_transform_feedback-api-errors bind_offset_max -auto -fbo"
 run_test "spec/EXT_transform_feedback/api-errors bind_offset_offset_1" 0.0 "bin/ext_transform_feedback-api-errors bind_offset_offset_1 -auto -fbo"
@@ -464,6 +461,9 @@ run_test "spec/glsl-1.10/compiler/qualifiers/out-02.vert" 0.0 "bin/glslparsertes
 run_test "spec/glsl-1.10/compiler/qualifiers/varying-bool-prohibited.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-bool-prohibited.frag fail 1.10"
 run_test "spec/glsl-1.10/compiler/qualifiers/varying-bool-prohibited.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-bool-prohibited.vert fail 1.10"
 run_test "spec/glsl-1.10/compiler/qualifiers/varying-bvec2-prohibited.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-bvec2-prohibited.frag fail 1.10"
+run_test "spec/glsl-1.10/compiler/qualifiers/varying-bvec2-prohibited.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-bvec2-prohibited.vert fail 1.10"
+run_test "spec/glsl-1.10/compiler/qualifiers/varying-bvec3-prohibited.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-bvec3-prohibited.frag fail 1.10"
+run_test "spec/glsl-1.10/compiler/qualifiers/varying-bvec3-prohibited.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-bvec3-prohibited.vert fail 1.10"
 popd
 
 if [ $need_pass == 0 ] ; then

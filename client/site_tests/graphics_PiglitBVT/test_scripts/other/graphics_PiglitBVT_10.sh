@@ -30,9 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-ne-int-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-ne-int-int.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-ne-int-int-using-if" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-ne-int-int-using-if.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-ne-ivec2-ivec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-ne-ivec2-ivec2.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-ne-ivec2-ivec2-using-if" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-ne-ivec2-ivec2-using-if.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-ne-ivec3-ivec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-ne-ivec3-ivec3.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-ne-ivec3-ivec3-using-if" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-ne-ivec3-ivec3-using-if.shader_test -auto"
@@ -456,6 +453,9 @@ run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-mat3-col-wr" 0.0 "b
 run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-mat3-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-mat3-rd.shader_test -auto"
 run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-mat3-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-mat3-row-rd.shader_test -auto"
 run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-mat3-row-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-mat3-row-wr.shader_test -auto"
+run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-mat3-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-mat3-wr.shader_test -auto"
+run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-mat4-col-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-mat4-col-rd.shader_test -auto"
+run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-mat4-col-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-mat4-col-row-rd.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then

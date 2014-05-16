@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=334
+need_pass=335
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -30,8 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/ARB_texture_rg/fbo-rg-GL_R16" 0.0 "bin/fbo-rg -auto GL_R16"
-run_test "spec/ARB_texture_rg/fbo-rg-GL_R8" 0.0 "bin/fbo-rg -auto GL_R8"
 run_test "spec/ARB_texture_rg/fbo-rg-GL_RED" 0.0 "bin/fbo-rg -auto GL_RED"
 run_test "spec/ARB_texture_rg/fbo-rg-GL_RG" 0.0 "bin/fbo-rg -auto GL_RG"
 run_test "spec/ARB_texture_rg/fbo-rg-GL_RG16" 0.0 "bin/fbo-rg -auto GL_RG16"
@@ -364,11 +362,14 @@ run_test "spec/EXT_transform_feedback/alignment 0" 0.0 "bin/ext_transform_feedba
 run_test "spec/EXT_transform_feedback/alignment 12" 0.0 "bin/ext_transform_feedback-alignment 12 -auto -fbo"
 run_test "spec/EXT_transform_feedback/alignment 4" 0.0 "bin/ext_transform_feedback-alignment 4 -auto -fbo"
 run_test "spec/EXT_transform_feedback/alignment 8" 0.0 "bin/ext_transform_feedback-alignment 8 -auto -fbo"
+run_test "spec/EXT_transform_feedback/api-errors begin_active" 0.0 "bin/ext_transform_feedback-api-errors begin_active -auto -fbo"
+run_test "spec/EXT_transform_feedback/api-errors bind_base_active" 0.0 "bin/ext_transform_feedback-api-errors bind_base_active -auto -fbo"
+run_test "spec/EXT_transform_feedback/api-errors bind_base_max" 0.0 "bin/ext_transform_feedback-api-errors bind_base_max -auto -fbo"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 334 tests have passed. |"
+  echo "| Overall pass, as all 335 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

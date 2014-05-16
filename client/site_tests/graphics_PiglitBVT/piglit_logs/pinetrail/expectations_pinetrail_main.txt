@@ -1,5 +1,9 @@
 {
   "tests": {
+    "glean/glsl1-Swizzled swizzled swizzle": {
+      "pass rate": "0.5",
+      "result": "flaky"
+    },
     "glx/GLX_OML_sync_control/waitformsc": {
       "pass rate": "0.50", 
       "result": "flaky"

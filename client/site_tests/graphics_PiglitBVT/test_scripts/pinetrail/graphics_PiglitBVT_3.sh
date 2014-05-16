@@ -30,7 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "glean/vp1-Z-write test" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
 run_test "glx/GLX_EXT_import_context/free context" 0.0 "bin/glx-free-context"
 run_test "glx/GLX_EXT_import_context/get context ID" 0.0 "bin/glx-get-context-id"
 run_test "glx/GLX_EXT_import_context/get current display" 0.0 "bin/glx-get-current-display-ext"
@@ -200,6 +199,7 @@ run_test "shaders/glsl-const-builtin-matrixCompMult" 0.0 "bin/shader_runner test
 run_test "shaders/glsl-const-builtin-max" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-max.shader_test -auto"
 run_test "shaders/glsl-const-builtin-min" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-min.shader_test -auto"
 run_test "shaders/glsl-const-builtin-mix" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-mix.shader_test -auto"
+run_test "shaders/glsl-const-builtin-mod" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-mod.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then

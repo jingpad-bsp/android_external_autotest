@@ -30,7 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-07.vert" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.20/compiler/layout-07.vert pass 1.20 GL_ARB_explicit_attrib_location"
 run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-08.frag" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.20/compiler/layout-08.frag pass 1.20 GL_ARB_explicit_attrib_location"
 run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-08.vert" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.20/compiler/layout-08.vert pass 1.20 GL_ARB_explicit_attrib_location"
 run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-09.frag" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.20/compiler/layout-09.frag pass 1.20 GL_ARB_explicit_attrib_location"
@@ -352,7 +351,6 @@ run_test "spec/ARB_texture_float/fbo-clear-formats" 0.0 "bin/fbo-clear-formats -
 run_test "spec/ARB_texture_float/fbo-colormask-formats" 0.0 "bin/fbo-colormask-formats -auto GL_ARB_texture_float"
 run_test "spec/ARB_texture_float/fbo-generatemipmap-formats" 0.0 "bin/fbo-generatemipmap-formats -auto GL_ARB_texture_float"
 run_test "spec/ARB_texture_float/get-renderbuffer-internalformat" 0.0 "bin/get-renderbuffer-internalformat GL_ARB_texture_float -auto -fbo"
-run_test "spec/ARB_texture_float/multisample-formats 2 GL_ARB_texture_float" 0.0 "bin/ext_framebuffer_multisample-formats -auto 2 GL_ARB_texture_float"
 run_test "spec/ARB_texture_float/multisample-formats 4 GL_ARB_texture_float" 0.0 "bin/ext_framebuffer_multisample-formats -auto 4 GL_ARB_texture_float"
 run_test "spec/ARB_texture_float/texwrap formats" 0.0 "bin/texwrap -fbo -auto GL_ARB_texture_float"
 run_test "spec/ARB_texture_float/texwrap formats bordercolor" 0.0 "bin/texwrap -fbo -auto GL_ARB_texture_float bordercolor"
@@ -386,6 +384,8 @@ run_test "spec/ARB_texture_rg/fbo-colormask-formats" 0.0 "bin/fbo-colormask-form
 run_test "spec/ARB_texture_rg/fbo-colormask-formats-float" 0.0 "bin/fbo-colormask-formats -auto GL_ARB_texture_rg-float"
 run_test "spec/ARB_texture_rg/fbo-generatemipmap-formats" 0.0 "bin/fbo-generatemipmap-formats -auto GL_ARB_texture_rg"
 run_test "spec/ARB_texture_rg/fbo-generatemipmap-formats-float" 0.0 "bin/fbo-generatemipmap-formats -auto GL_ARB_texture_rg-float"
+run_test "spec/ARB_texture_rg/fbo-rg-GL_R16" 0.0 "bin/fbo-rg -auto GL_R16"
+run_test "spec/ARB_texture_rg/fbo-rg-GL_R8" 0.0 "bin/fbo-rg -auto GL_R8"
 popd
 
 if [ $need_pass == 0 ] ; then

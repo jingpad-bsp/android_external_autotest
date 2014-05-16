@@ -1,5 +1,9 @@
 {
   "tests": {
+    "glean/glsl1-Swizzled swizzled swizzle": {
+      "pass rate": "0.5",
+      "result": "flaky"
+    },
     "glx/GLX_OML_sync_control/swapbuffersmsc-return swap_interval 1": {
       "pass rate": "0.5", 
       "result": "flaky"
@@ -220,6 +224,10 @@
       "pass rate": "0.93", 
       "result": "flaky"
     }, 
+    "spec/ARB_texture_float/multisample-formats 2 GL_ARB_texture_float": {
+      "pass rate": "0.5",
+      "result": "flaky"
+    },
     "spec/EXT_texture_integer/multisample-formats 6 GL_EXT_texture_integer": {
       "pass rate": "0.93", 
       "result": "flaky"
