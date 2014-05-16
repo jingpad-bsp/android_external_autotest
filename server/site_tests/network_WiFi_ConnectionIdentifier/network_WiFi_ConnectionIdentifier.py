@@ -52,12 +52,20 @@ class network_WiFi_ConnectionIdentifier(wifi_cell_test_base.WiFiCellTestBase):
                                  'different networks')
         self.context.router.deconfig()
 
-        # Reconfigure the router by switching the SSIDs between the two APs,
-        # and verify the connection ID sticks with AP instance regardless of
-        # the SSID.
-        router_conf.ssid = ssid1
+        # Reconfigure the router with different SSIDs, and verify the
+        # connection ID sticks with AP instance regardless of the SSID.
         self.context.configure(router_conf)
-        router_conf.ssid = ssid0
         self.context.configure(router_conf, multi_interface=True)
-        self._connect(ssid0, expected_connection_id=connection_id1)
-        self._connect(ssid1, expected_connection_id=connection_id0)
+
+        # Verify SSID is different
+        if (self.context.router.get_ssid(instance=0) == ssid0 or
+            self.context.router.get_ssid(instance=1) == ssid1):
+            raise error.TestError('SSID should different from previous '
+                                  'configuration')
+
+        # Connect and verify connection ID stays the same for the same
+        # AP instance.
+        self._connect(self.context.router.get_ssid(instance=0),
+                      expected_connection_id=connection_id0)
+        self._connect(self.context.router.get_ssid(instance=1),
+                      expected_connection_id=connection_id1)
