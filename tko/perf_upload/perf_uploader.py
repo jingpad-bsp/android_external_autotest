@@ -201,6 +201,7 @@ def _format_for_upload(platform_name, cros_version, chrome_version, perf_data,
             'value': data['value'],
             'error': data['stddev'],
             'units': data['units'],
+            'higher_is_better': data['higher_is_better'],
             'supplemental_columns': {
                 'r_cros_version': cros_version,
                 'r_chrome_version': chrome_version,

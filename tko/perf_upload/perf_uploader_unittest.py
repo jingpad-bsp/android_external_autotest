@@ -237,12 +237,14 @@ class test_format_for_upload(unittest.TestCase):
             'stddev': 0.2,
             'units': 'msec',
             'graph': 'graph_name',
+            'higher_is_better': False,
         },
         'metric2': {
             'value': 101.35,
             'stddev': 5.78,
             'units': 'frames_per_sec',
             'graph': None,
+            'higher_is_better': True,
         },
     }
 
@@ -305,6 +307,9 @@ class test_format_for_upload(unittest.TestCase):
                     msg=fail_msg)
             self.assertEqual(
                     actual[idx]['test'], expected[idx]['test'], msg=fail_msg)
+            self.assertEqual(
+                    actual[idx]['higher_is_better'],
+                    expected[idx]['higher_is_better'], msg=fail_msg)
 
 
     def test_format_for_upload(self):
@@ -315,12 +320,13 @@ class test_format_for_upload(unittest.TestCase):
         expected_result_string = (
                 '[{"supplemental_columns": {"r_cros_version": "1200.0.0", '
                 '"r_chrome_version": "25.10.0.0"}, "bot": "cros-platform", '
-                '"value": 101.35, "units": "frames_per_sec", "master": '
-                '"new_master_name", "error": 5.78, "test": '
-                '"new_test_name/metric2"}, '
+                '"higher_is_better": true, "value": 101.35, '
+                '"units": "frames_per_sec", "master": "new_master_name", '
+                '"error": 5.78, "test": "new_test_name/metric2"}, '
                 '{"supplemental_columns": {"r_cros_version": "1200.0.0", '
                 '"r_chrome_version": "25.10.0.0"}, "bot": "cros-platform", '
-                '"value": 2.7, "units": "msec", "master": "new_master_name", '
+                '"higher_is_better": false, "value": 2.7, '
+                '"units": "msec", "master": "new_master_name", '
                 '"error": 0.2, "test": "new_test_name/graph_name/metric1"}]')
         self._verify_result_string(result['data'], expected_result_string)
 
