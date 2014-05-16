@@ -19,6 +19,7 @@ DARK_MARK_ENVIRONMENT_VAR = 'AUTOTEST_SCHEDULER_DARK_MARK'
 _TEMPORARY_DIRECTORY = 'drone_tmp'
 _TRANSFER_FAILED_FILE = '.transfer_failed'
 
+timer = stats.Timer('drone_utility')
 
 class _MethodCall(object):
     def __init__(self, method, args, kwargs):
@@ -51,7 +52,6 @@ class BaseDroneUtility(object):
     All paths going into and out of this class are absolute.
     """
     _WARNING_DURATION = 400
-    timer = stats.Timer('drone_utility')
 
     def __init__(self):
         # Tattoo ourselves so that all of our spawn bears our mark.
@@ -464,10 +464,12 @@ def return_data(data):
 def main():
     logging_manager.configure_logging(
             drone_logging_config.DroneLoggingConfig())
-    calls = parse_input()
+    with timer.get_client('decode'):
+        calls = parse_input()
     drone_utility = DroneUtility()
     return_value = drone_utility.execute_calls(calls)
-    return_data(return_value)
+    with timer.get_client('encode'):
+        return_data(return_value)
 
 
 if __name__ == '__main__':
