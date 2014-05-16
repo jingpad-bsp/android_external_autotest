@@ -147,6 +147,10 @@
     "master_name": "ChromeOSTouchpad"
   },
   {
+    "autotest_name": "platform_MemoryMonitor",
+    "master_name": "ChromeOSPerf"
+  },
+  {
     "autotest_name": "power_Resume",
     "master_name": "ChromeOSPower"
   },
