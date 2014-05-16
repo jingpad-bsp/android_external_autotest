@@ -31,7 +31,10 @@ from autotest_lib.site_utils.autoupdate.lib import test_params
 
 chromite = import_common.download_and_import('chromite',
                                              external_packages.ChromiteRepo())
-from chromite.buildbot import cbuildbot_config
+try:
+   from chromite.cbuildbot import cbuildbot_config
+except ImportError:
+   from chromite.buildbot import cbuildbot_config
 
 # Autotest pylint is more restrictive than it should with args.
 #pylint: disable=C0111

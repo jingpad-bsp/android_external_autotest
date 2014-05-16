@@ -13,9 +13,9 @@ version = 1
 
 
 def setup(setup_dir):
-    """Stores a copy of the chromite buildbot source code for use on a DUT."""
+    """Stores a copy of the chromite cbuildbot source code for use on a DUT."""
     my_dep_dir = os.path.join(os.environ['CHROMEOS_ROOT'], 'chromite',
-                              'buildbot')
+                              'cbuildbot')
     shutil.copytree(my_dep_dir, setup_dir)
 
 

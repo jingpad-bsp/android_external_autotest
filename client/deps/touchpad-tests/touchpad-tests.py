@@ -14,7 +14,7 @@ version = 1
 
 
 def setup(setup_dir):
-    """Stores a copy of the chromite buildbot source code for use on a DUT.
+    """Stores a copy of the chromite cbuildbot source code for use on a DUT.
 
     @param setup_dir: the target directory
 
