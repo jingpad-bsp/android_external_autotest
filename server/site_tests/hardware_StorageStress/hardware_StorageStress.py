@@ -131,7 +131,7 @@ class hardware_StorageStress(test.test):
         Suspend host machine
         """
         logging.info('Server: suspend client')
-        self._client_at.run_test('power_Resume')
+        self._client_at.run_test('dummy_Suspend')
         passed = self._check_client_test_result(self._client)
         if not passed:
             raise error.TestFail('Test failed with error: Suspend Error')

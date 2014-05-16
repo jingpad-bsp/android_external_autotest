@@ -84,7 +84,7 @@ class kernel_MemoryRamoop(test.test):
         """
         Reboot host machine after suspend once
         """
-        self._client_at.run_test('power_Resume')
+        self._client_at.run_test('dummy_Suspend')
 
         logging.info('Server: reboot client')
         try:

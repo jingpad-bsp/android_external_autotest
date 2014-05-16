@@ -57,10 +57,10 @@ class hardware_MemoryIntegrity(test.test):
         """
         if suspend:
             logging.info("Invoke suspend")
-            self._client_at.run_test('power_Resume',
+            self._client_at.run_test('dummy_Suspend',
                                      tag='_wait',
                                      background=True,
-                                     seconds=seconds)
+                                     suspend_seconds=seconds)
             logging.info("Wait until client suspend")
             if not self._client.ping_wait_down(30):
                 self.suspend_fail = True
