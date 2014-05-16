@@ -28,7 +28,7 @@ class logging_CrashSender(crash_test.CrashTest):
         # Get hwid
         with os.popen("crossystem hwid 2>/dev/null", "r") as hwid_proc:
             hwclass = hwid_proc.read()
-	if not hwclass:
+        if not hwclass:
             hwclass = 'undefined'
         if not ('HWClass: %s' % hwclass) in result['output']:
             raise error.TestFail('Expected hwclass %s in output' % hwclass)
