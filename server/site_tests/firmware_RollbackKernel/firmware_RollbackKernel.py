@@ -5,10 +5,10 @@
 import logging
 
 from autotest_lib.server.cros import vboot_constants as vboot
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
 
-class firmware_RollbackKernel(FAFTSequence):
+class firmware_RollbackKernel(FirmwareTest):
     """
     Servo based kernel rollback test.
 
@@ -19,7 +19,6 @@ class firmware_RollbackKernel(FAFTSequence):
     rollback check so it remains unchanged.
     """
     version = 1
-
 
     def ensure_kernel_on_non_recovery(self, part):
         """Ensure the requested kernel part on normal/dev boot path.
@@ -32,11 +31,8 @@ class firmware_RollbackKernel(FAFTSequence):
         """
         if not self.check_root_part_on_non_recovery(part):
             logging.info('Recover the disk OS by running chromeos-install...')
-            self.run_faft_step({
-                'userspace_action': (self.faft_client.system.run_shell_command,
-                    'chromeos-install --yes')
-            })
-
+            self.faft_client.system.run_shell_command('chromeos-install --yes')
+            self.reboot_warm()
 
     def initialize(self, host, cmdline_args, dev_mode=False):
         super(firmware_RollbackKernel, self).initialize(host, cmdline_args)
@@ -46,13 +42,11 @@ class firmware_RollbackKernel(FAFTSequence):
         self.setup_usbkey(usbkey=True, host=False)
         self.setup_kernel('a')
 
-
     def cleanup(self):
         self.ensure_kernel_on_non_recovery('a')
         self.restore_cgpt_attributes()
         self.restore_kernel()
         super(firmware_RollbackKernel, self).cleanup()
-
 
     def run_once(self, dev_mode=False):
         # Historical reason that the old models use a different value.
@@ -64,55 +58,35 @@ class firmware_RollbackKernel(FAFTSequence):
                                vboot.RECOVERY_REASON['RW_NO_KERNEL'])
 
         if dev_mode:
-            faft_sequence = (
-                {   # Step 1, rollbacks kernel A.
-                    'state_checker':
-                            (self.check_root_part_on_non_recovery, 'a'),
-                    'userspace_action':
-                            (self.faft_client.kernel.move_version_backward,
-                             'a'),
-                },
-                {   # Step 2, still kernel A boot since dev_mode ignores
-                    # kernel rollback check.
-                    'state_checker':
-                            (self.check_root_part_on_non_recovery, 'a'),
-                    'userspace_action':
-                            (self.faft_client.kernel.move_version_forward,
-                             'a'),
-                },
-            )
-        else:
-            faft_sequence = (
-                {   # Step 1, rollbacks kernel A.
-                    'state_checker':
-                            (self.check_root_part_on_non_recovery, 'a'),
-                    'userspace_action':
-                            (self.faft_client.kernel.move_version_backward,
-                             'a'),
-                },
-                {   # Step 2, expected kernel B boot and rollbacks kernel B.
-                    'state_checker':
-                            (self.check_root_part_on_non_recovery, 'b'),
-                    'userspace_action':
-                            (self.faft_client.kernel.move_version_backward,
-                             'b'),
-                    'firmware_action': self.wait_fw_screen_and_plug_usb,
-                    'install_deps_after_boot': True,
-                },
-                {   # Step 3, expected recovery boot and restores the OS image.
-                    'state_checker': (self.checkers.crossystem_checker, {
-                        'mainfw_type': 'recovery',
-                        'recovery_reason' : recovery_reason,
-                    }),
-                    'userspace_action': (
-                        self.faft_client.kernel.move_version_forward,
-                        (('a', 'b'),)),
-                },
-                {   # Step 4, expected kernel A boot and done.
-                    'state_checker':
-                            (self.check_root_part_on_non_recovery, 'a'),
-                },
-            )
+            logging.info("Rollbacks kernel A.")
+            self.check_state((self.check_root_part_on_non_recovery, 'a'))
+            self.faft_client.kernel.move_version_backward('a')
+            self.reboot_warm()
 
-        self.register_faft_sequence(faft_sequence)
-        self.run_faft_sequence()
+            logging.info("Still kernel A boot since dev_mode ignores "
+                         "kernel rollback check.")
+            self.check_state((self.check_root_part_on_non_recovery, 'a'))
+            self.faft_client.kernel.move_version_forward('a')
+        else:
+            logging.info("Rollbacks kernel A.")
+            self.check_state((self.check_root_part_on_non_recovery, 'a'))
+            self.faft_client.kernel.move_version_backward('a')
+            self.reboot_warm()
+
+            logging.info("Expected kernel B boot and rollbacks kernel B.")
+            self.check_state((self.check_root_part_on_non_recovery, 'b'))
+            self.faft_client.kernel.move_version_backward('b')
+            self.reboot_warm(wait_for_dut_up=False)
+            self.wait_fw_screen_and_plug_usb()
+            self.wait_for_client(install_deps=True)
+
+            logging.info("Expected recovery boot and restores the OS image.")
+            self.check_state((self.checkers.crossystem_checker, {
+                                  'mainfw_type': 'recovery',
+                                  'recovery_reason': recovery_reason,
+                                  }))
+            self.faft_client.kernel.move_version_forward(('a', 'b'))
+            self.reboot_warm()
+
+            logging.info("Expected kernel A boot and done.")
+            self.check_state((self.check_root_part_on_non_recovery, 'a'))
