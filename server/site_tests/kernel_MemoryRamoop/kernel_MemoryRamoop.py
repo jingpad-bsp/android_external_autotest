@@ -41,10 +41,10 @@ class kernel_MemoryRamoop(test.test):
         self._client = hosts.create_host(client_ip)
         self._client_at = autotest.Autotest(self._client)
 
-        self._run_test(self._do_reboot, '.*Restarting system.$')
+        self._run_test(self._do_reboot, '.*Restarting system.*$')
         self._run_test(self._do_kernel_panic, '.*lkdtm:.*PANIC$')
         self._run_test(self._do_kernel_bug, '.*lkdtm:.*BUG$')
-        self._run_test(self._do_reboot_with_suspend, '.*Restarting system.$')
+        self._run_test(self._do_reboot_with_suspend, '.*Restarting system.*$')
 
     def _run_test(self, test_function, sig_pattern):
         """
