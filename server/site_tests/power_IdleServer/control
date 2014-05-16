@@ -8,6 +8,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Benchmark"
 TEST_CLASS = "power"
 TEST_TYPE = "server"
+DEPENDENCIES = "rpm"
 
 DOC = """
 This test first cuts off power to a machine and then measures the battery power

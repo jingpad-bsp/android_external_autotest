@@ -8,6 +8,7 @@ TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "suite"
 TEST_TYPE = "server"
+DEPENDENCIES = "rpm"
 
 DOC = """
 This test suite runs automated power tests that should all pass and that

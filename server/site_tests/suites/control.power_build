@@ -9,6 +9,7 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "suite"
 SUITE = "power_build"
 TEST_TYPE = "server"
+DEPENDENCIES = "rpm"
 
 DOC = """
 This test suite runs automated power tests that should all pass. These

@@ -13,7 +13,7 @@ TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "power"
 TEST_TYPE = "server"
-DEPENDENCIES = "servo"
+DEPENDENCIES = "servo, rpm"
 
 DOC = """
 Test that dark resume will result in a shutdown when it resumes without the
