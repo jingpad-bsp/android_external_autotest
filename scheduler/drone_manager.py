@@ -401,8 +401,9 @@ class BaseDroneManager(object):
 
         for drone, results_list in all_results.iteritems():
             results = results_list[0]
+            drone_hostname = drone.hostname.replace('.', '_')
 
-            with self._timer.get_client('%s.results' % drone):
+            with self._timer.get_client('%s.results' % drone_hostname):
                 for process_info in results['all_processes']:
                     if process_info['comm'] == 'autoserv':
                         self._add_autoserv_process(drone, process_info)
@@ -412,10 +413,10 @@ class BaseDroneManager(object):
                 for process_info in results['parse_processes']:
                     self._add_process(drone, process_info)
 
-            with self._timer.get_client('%s.pidfiles' % drone):
+            with self._timer.get_client('%s.pidfiles' % drone_hostname):
                 self._process_pidfiles(drone, results['pidfiles'],
                                        self._pidfiles)
-            with self._timer.get_client('%s.pidfiles_second' % drone):
+            with self._timer.get_client('%s.pidfiles_second' % drone_hostname):
                 self._process_pidfiles(drone, results['pidfiles_second_read'],
                                        self._pidfiles_second_read)
 
