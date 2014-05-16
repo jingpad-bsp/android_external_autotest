@@ -151,9 +151,6 @@ class _MockJobDirectory(job_directories._JobDirectory):
         super(_MockJobDirectory, self).__init__(resultsdir)
         self._destname = 'fubar'
         self._timestamp = None
-        if (os.path.isdir(os.path.dirname(self._dirname)) and
-                not os.path.isdir(self._dirname)):
-            os.mkdir(self._dirname)
 
     def get_timestamp_if_finished(self):
         return self._timestamp
@@ -268,11 +265,21 @@ class EmailTemplateTests(mox.MoxTestBase):
 class _TempResultsDirTestBase(mox.MoxTestBase):
     """Base class for tests using a temporary results directory."""
 
+    REGULAR_JOBLIST = [
+        '111-fubar', '112-fubar', '113-fubar', '114-snafu']
+    HOST_LIST = ['host1', 'host2', 'host3']
+    SPECIAL_JOBLIST = [
+        'hosts/host1/333-reset', 'hosts/host1/334-reset',
+        'hosts/host2/444-reset', 'hosts/host3/555-reset']
+
     def setUp(self):
         super(_TempResultsDirTestBase, self).setUp()
-        self._resultsroot = tempfile.mkdtemp(dir='.')
+        self._resultsroot = tempfile.mkdtemp()
+        self._cwd = os.getcwd()
+        os.chdir(self._resultsroot)
 
     def tearDown(self):
+        os.chdir(self._cwd)
         shutil.rmtree(self._resultsroot)
         super(_TempResultsDirTestBase, self).tearDown()
 
@@ -283,8 +290,25 @@ class _TempResultsDirTestBase(mox.MoxTestBase):
                       `self._resultsroot`.
 
         """
-        d = os.path.join(self._resultsroot, jobdir)
-        return _MockJobDirectory(d)
+        os.mkdir(jobdir)
+        return _MockJobDirectory(jobdir)
+
+    def make_job_hierarchy(self):
+        """Create a sample hierarchy of job directories.
+
+        `self.REGULAR_JOBLIST` is a list of directories for regular
+        jobs to be created; `self.SPECIAL_JOBLIST` is a list of
+        directories for special jobs to be created.
+
+        """
+        for d in self.REGULAR_JOBLIST:
+            os.mkdir(d)
+        hostsdir = 'hosts'
+        os.mkdir(hostsdir)
+        for host in self.HOST_LIST:
+            os.mkdir(os.path.join(hostsdir, host))
+        for d in self.SPECIAL_JOBLIST:
+            os.mkdir(d)
 
 
 class JobDirectoryOffloadTests(_TempResultsDirTestBase):
@@ -321,7 +345,7 @@ class JobDirectoryOffloadTests(_TempResultsDirTestBase):
 
     def setUp(self):
         super(JobDirectoryOffloadTests, self).setUp()
-        self._job = self.make_job('1-aaa')
+        self._job = self.make_job(self.REGULAR_JOBLIST[0])
         self._queue = Queue.Queue()
         self.mox.StubOutWithMock(logging, 'debug')
 
@@ -456,28 +480,11 @@ class JobDirectoryOffloadTests(_TempResultsDirTestBase):
 class GetJobDirectoriesTests(_TempResultsDirTestBase):
     """Tests for `_JobDirectory.get_job_directories()`."""
 
-    _REGULAR_JOBLIST = [
-        '111-fubar', '112-fubar', '113-fubar', '114-snafu']
-    _HOSTS = ['host1', 'host2', 'host3']
-    _SPECIAL_JOBLIST = [
-        'hosts/host1/333-reset', 'hosts/host1/334-reset',
-        'hosts/host2/444-reset', 'hosts/host3/555-reset']
-
     def setUp(self):
         super(GetJobDirectoriesTests, self).setUp()
-        self._make_job_directories(self._REGULAR_JOBLIST)
-        os.mkdir(os.path.join(self._resultsroot, 'not-a-job'))
-        just_a_file_path = os.path.join(self._resultsroot, 'not-a-dir')
-        open(just_a_file_path, 'w').close()
-        hostsdir = os.path.join(self._resultsroot, 'hosts')
-        os.mkdir(hostsdir)
-        for host in self._HOSTS:
-            os.mkdir(os.path.join(hostsdir, host))
-        self._make_job_directories(self._SPECIAL_JOBLIST)
-
-    def _make_job_directories(self, dirlist):
-        for d in dirlist:
-            os.mkdir(os.path.join(self._resultsroot, d))
+        self.make_job_hierarchy()
+        os.mkdir('not-a-job')
+        open('not-a-dir', 'w').close()
 
     def _run_get_directories(self, cls, expected_list):
         """Test `get_job_directories()` for the given class.
@@ -487,47 +494,29 @@ class GetJobDirectoriesTests(_TempResultsDirTestBase):
 
         @param expected_list Expected return value from the call.
         """
-        cwd = os.getcwd()
-        os.chdir(self._resultsroot)
         dirlist = cls.get_job_directories()
         self.assertEqual(set(dirlist), set(expected_list))
-        os.chdir(cwd)
 
     def test_get_regular_jobs(self):
         """Test `RegularJobDirectory.get_job_directories()`."""
         self._run_get_directories(job_directories.RegularJobDirectory,
-                                  self._REGULAR_JOBLIST)
+                                  self.REGULAR_JOBLIST)
 
     def test_get_special_jobs(self):
         """Test `SpecialJobDirectory.get_job_directories()`."""
         self._run_get_directories(job_directories.SpecialJobDirectory,
-                                  self._SPECIAL_JOBLIST)
+                                  self.SPECIAL_JOBLIST)
 
 
 class AddJobsTests(_TempResultsDirTestBase):
     """Tests for `Offloader._add_new_jobs()`."""
 
-    _JOBLIST = ['111-fubar', '112-fubar', '113-fubar', '114-snafu']
-    _MOREJOBS = ['115-fubar', '116-fubar', '117-fubar', '118-snafu']
+    MOREJOBS = ['115-fubar', '116-fubar', '117-fubar', '118-snafu']
 
     def setUp(self):
         super(AddJobsTests, self).setUp()
-        self._cwd = os.getcwd()
-        self._offloader = gs_offloader.Offloader(_get_options([]))
-        self._offloader._jobdir_classes = [_MockJobDirectory]
-        self._make_job_directories(self._JOBLIST)
-        os.mkdir(os.path.join(self._resultsroot, 'not-a-job'))
-        just_a_file_path = os.path.join(self._resultsroot, 'not-a-dir')
-        open(just_a_file_path, 'w').close()
-
-    def _make_job_directories(self, dirlist):
-        for d in dirlist:
-            os.mkdir(os.path.join(self._resultsroot, d))
-
-    def _run_add_new_jobs(self):
-        os.chdir(self._resultsroot)
-        self._offloader._add_new_jobs()
-        os.chdir(self._cwd)
+        self.make_job_hierarchy()
+        self._offloader = gs_offloader.Offloader(_get_options(['-a']))
 
     def _check_open_jobs(self, expected_key_set):
         """Basic test assertions for `_add_new_jobs()`.
@@ -551,8 +540,9 @@ class AddJobsTests(_TempResultsDirTestBase):
         the assertions of `self._check_open_jobs()`.
 
         """
-        self._run_add_new_jobs()
-        self._check_open_jobs(set(self._JOBLIST))
+        self._offloader._add_new_jobs()
+        self._check_open_jobs(set(self.REGULAR_JOBLIST) |
+                              set(self.SPECIAL_JOBLIST))
 
     def test_add_jobs_non_empty(self):
         """Test adding jobs to a non-empty dictionary.
@@ -565,11 +555,14 @@ class AddJobsTests(_TempResultsDirTestBase):
         job object after the second call.
 
         """
-        self._run_add_new_jobs()
+        self._offloader._add_new_jobs()
         jobs_copy = self._offloader._open_jobs.copy()
-        self._make_job_directories(self._MOREJOBS)
-        self._run_add_new_jobs()
-        self._check_open_jobs(set(self._JOBLIST) | set(self._MOREJOBS))
+        for d in self.MOREJOBS:
+            os.mkdir(d)
+        self._offloader._add_new_jobs()
+        self._check_open_jobs(set(self.REGULAR_JOBLIST) |
+                              set(self.SPECIAL_JOBLIST) |
+                              set(self.MOREJOBS))
         for key in jobs_copy.keys():
             self.assertIs(jobs_copy[key],
                           self._offloader._open_jobs[key])
@@ -592,7 +585,7 @@ class JobStateTests(_TempResultsDirTestBase):
         "reportable".
 
         """
-        job = self.make_job('1-fubar')
+        job = self.make_job(self.REGULAR_JOBLIST[0])
         self.assertFalse(job.is_offloaded())
         self.assertFalse(job.is_reportable())
 
@@ -604,7 +597,7 @@ class JobStateTests(_TempResultsDirTestBase):
         A job in this state is neither "complete" nor "reportable".
 
         """
-        job = self.make_job('1-fubar')
+        job = self.make_job(self.REGULAR_JOBLIST[0])
         job.set_incomplete()
         self.assertFalse(job.is_offloaded())
         self.assertFalse(job.is_reportable())
@@ -617,7 +610,7 @@ class JobStateTests(_TempResultsDirTestBase):
         A job in this state is "reportable", but not "complete".
 
         """
-        job = self.make_job('1-fubar')
+        job = self.make_job(self.REGULAR_JOBLIST[0])
         job.set_reportable()
         self.assertFalse(job.is_offloaded())
         self.assertTrue(job.is_reportable())
@@ -630,7 +623,7 @@ class JobStateTests(_TempResultsDirTestBase):
         A job in this state is "complete", and not "reportable".
 
         """
-        job = self.make_job('1-fubar')
+        job = self.make_job(self.REGULAR_JOBLIST[0])
         job.set_complete()
         self.assertTrue(job.is_offloaded())
         self.assertFalse(job.is_reportable())
@@ -638,8 +631,6 @@ class JobStateTests(_TempResultsDirTestBase):
 
 class ReportingTests(_TempResultsDirTestBase):
     """Tests for `Offloader._update_offload_results()`."""
-
-    JOBDIRS = [ '1-fubar', '2-fubar']
 
     def setUp(self):
         super(ReportingTests, self).setUp()
@@ -725,7 +716,7 @@ class ReportingTests(_TempResultsDirTestBase):
         `_open_jobs` list.
 
         """
-        for d in self.JOBDIRS:
+        for d in self.REGULAR_JOBLIST:
             self._add_job(d).set_complete()
         self._run_update_no_report({})
 
@@ -738,7 +729,7 @@ class ReportingTests(_TempResultsDirTestBase):
         `_open_jobs` list.
 
         """
-        for d in self.JOBDIRS:
+        for d in self.REGULAR_JOBLIST:
             self._add_job(d)
         self._run_update_no_report(self._offloader._open_jobs.copy())
 
@@ -751,7 +742,7 @@ class ReportingTests(_TempResultsDirTestBase):
         `_open_jobs` list.
 
         """
-        for d in self.JOBDIRS:
+        for d in self.REGULAR_JOBLIST:
             self._add_job(d).set_incomplete()
         self._run_update_no_report(self._offloader._open_jobs.copy())
 
@@ -766,7 +757,7 @@ class ReportingTests(_TempResultsDirTestBase):
         """
         # N.B.  This test may fail if its run time exceeds more than
         # about _MARGIN_SECS seconds.
-        for d in self.JOBDIRS:
+        for d in self.REGULAR_JOBLIST:
             self._add_job(d).set_reportable()
         self._offloader._next_report_time += _MARGIN_SECS
         self._run_update_no_report(self._offloader._open_jobs.copy())
@@ -780,7 +771,7 @@ class ReportingTests(_TempResultsDirTestBase):
         change to the `_open_jobs` list.
 
         """
-        for d in self.JOBDIRS:
+        for d in self.REGULAR_JOBLIST:
             self._add_job(d).set_reportable()
         self._run_update_with_report(self._offloader._open_jobs.copy())
 
