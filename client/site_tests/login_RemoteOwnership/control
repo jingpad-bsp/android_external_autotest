@@ -4,7 +4,7 @@
 
 AUTHOR = "cmasone, mnissler"
 NAME = "login_RemoteOwnership"
-SUITE = "bvt, smoke"
+SUITE = "bvt, bvt_cq, smoke"
 TIME="SHORT"
 TEST_CLASS = "login"
 TEST_CATEGORY = "Functional"

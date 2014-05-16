@@ -9,7 +9,7 @@ CRITERIA = """
 This test will fail if guest cryptohome is not mounted when logged in as guest,
 or if it is mounted when not logged in as guest.
 """
-SUITE = "bvt, smoke"
+SUITE = "bvt, bvt_cq, smoke"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"

@@ -4,7 +4,7 @@
 
 AUTHOR = "cmasone, achuith"
 NAME = "login_LogoutProcessCleanup"
-SUITE = "smoke, bvt"
+SUITE = "smoke, bvt, bvt_cq"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"

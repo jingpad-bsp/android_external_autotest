@@ -14,7 +14,7 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "client"
 
-SUITE = "bvt"
+SUITE = "bvt, bvt_cq"
 
 DOC = """
 Exercises the debugd GetPerfData API.

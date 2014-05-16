@@ -16,6 +16,6 @@ are blocked incorrectly.
 TEST_CLASS = "security"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"
-SUITE = "bvt, smoke"
+SUITE = "bvt, bvt_cq, smoke"
 
 job.run_test("security_Minijail_seccomp")

@@ -13,7 +13,7 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "graphics"
 TEST_TYPE = "client"
 
-SUITE = "bvt, graphics"
+SUITE = "bvt, bvt_cq, graphics"
 
 DOC = """
 Runs libdrm test apps.

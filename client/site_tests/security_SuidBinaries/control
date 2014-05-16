@@ -12,7 +12,7 @@ PURPOSE = "To maintain a minimal set of setuid/gid binaries on the system"
 CRITERIA = """
 Fail if the list of setuid/gid binaries doesn't match the baseline
 """
-SUITE = "smoke, bvt"
+SUITE = "smoke, bvt, bvt_cq"
 TEST_CLASS = "security"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"

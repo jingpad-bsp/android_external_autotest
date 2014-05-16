@@ -16,7 +16,7 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "graphics"
 TEST_TYPE = "client"
 
-SUITE = "bvt"
+SUITE = "bvt, bvt_cq"
 
 DOC = """
 Verifies kernel gem objects and memory info values can be read from sysfs.
