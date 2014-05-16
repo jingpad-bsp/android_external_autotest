@@ -398,6 +398,7 @@ class BaseDroneManager(object):
                          for pidfile_id in self._registered_pidfile_info]
         with self._timer.get_client('refresh'):
             all_results = self._call_all_drones('refresh', pidfile_paths)
+        logging.info("Drones refreshed")
 
         for drone, results_list in all_results.iteritems():
             results = results_list[0]
