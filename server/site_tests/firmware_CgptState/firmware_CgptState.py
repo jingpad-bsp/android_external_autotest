@@ -5,10 +5,10 @@
 import logging
 import subprocess
 
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
 
-class firmware_CgptState(FAFTSequence):
+class firmware_CgptState(FirmwareTest):
     """
     Servo based executing the CgptState test on client side.
 
@@ -25,7 +25,6 @@ class firmware_CgptState(FAFTSequence):
     host = None
     not_finished = True
 
-
     def run_test_step(self):
         """Run the actual test steps."""
         # Show the client log messages in another thread.
@@ -41,7 +40,6 @@ class firmware_CgptState(FAFTSequence):
         if show_client_log and show_client_log.poll() is None:
             show_client_log.terminate()
 
-
     def initialize(self, host, cmdline_args):
         super(firmware_CgptState, self).initialize(host, cmdline_args)
         self.host = host
@@ -50,18 +48,14 @@ class firmware_CgptState(FAFTSequence):
         self.setup_usbkey(usbkey=False)
         self.setup_kernel('a')
 
-
     def cleanup(self):
         self.restore_cgpt_attributes()
         super(firmware_CgptState, self).cleanup()
-
 
     def run_once(self):
         self.faft_client.cgpt.set_test_step(0)
         while self.not_finished:
             logging.info('======== Running CgptState test step %d ========',
                          self.faft_client.cgpt.get_test_step() + 1)
-            self.run_faft_step({
-                'userspace_action': self.run_test_step,
-                'reboot_action': self.warm_reboot,
-            })
+            self.run_test_step()
+            self.reboot_warm()
