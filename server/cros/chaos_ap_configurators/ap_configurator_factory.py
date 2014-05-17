@@ -182,6 +182,9 @@ class APConfiguratorFactory(object):
         'BelkinF9K1105APConfigurator':
             [PREFIX + 'belkinF9K1105_ap_configurator',
                 'BelkinF9K1105APConfigurator'],
+        'BelkinF7D5301APConfigurator':
+            [PREFIX + 'belkinF7D5301_ap_configurator',
+                'BelkinF7D5301APConfigurator'],
         'BelkinWRTRAPConfigurator':
             [PREFIX + 'belkinWRTR_ap_configurator',
                 'BelkinWRTRAPConfigurator'],
