@@ -2,11 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
+
 from autotest_lib.server.cros import vboot_constants as vboot
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
 
-class firmware_UserRequestRecovery(FAFTSequence):
+class firmware_UserRequestRecovery(FirmwareTest):
     """
     Servo based user request recovery boot test.
 
@@ -18,7 +20,6 @@ class firmware_UserRequestRecovery(FAFTSequence):
     """
     version = 1
 
-
     def ensure_normal_boot(self):
         """Ensure normal mode boot this time.
 
@@ -27,8 +28,7 @@ class firmware_UserRequestRecovery(FAFTSequence):
         """
         if not self.checkers.crossystem_checker(
                 {'mainfw_type': ('normal', 'developer')}):
-            self.run_faft_step({})
-
+            self.reboot_warm()
 
     def initialize(self, host, cmdline_args, dev_mode=False, ec_wp=None):
         super(firmware_UserRequestRecovery, self).initialize(host, cmdline_args,
@@ -36,11 +36,9 @@ class firmware_UserRequestRecovery(FAFTSequence):
         self.setup_dev_mode(dev_mode)
         self.setup_usbkey(usbkey=True, host=True)
 
-
     def cleanup(self):
         self.ensure_normal_boot()
         super(firmware_UserRequestRecovery, self).cleanup()
-
 
     def try_dev_switching_and_plug_usb(self, dev_mode):
         """Try pressing Ctrl-D and enter to check its firmware behavior."""
@@ -53,39 +51,35 @@ class firmware_UserRequestRecovery(FAFTSequence):
 
         self.wait_fw_screen_and_plug_usb()
 
-
     def run_once(self, dev_mode=False):
-        self.register_faft_sequence((
-            {   # Step 1, request recovery boot
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_type': 'developer' if dev_mode else 'normal',
-                }),
-                'userspace_action':
-                    (self.faft_client.system.request_recovery_boot),
-                'firmware_action': (self.try_dev_switching_and_plug_usb,
-                                    dev_mode),
-                'install_deps_after_boot': True,
-            },
-            {   # Step 2, expected recovery boot, request recovery again
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_type': 'recovery',
-                    'recovery_reason' : vboot.RECOVERY_REASON['US_TEST'],
-                }),
-                'userspace_action':
-                    (self.faft_client.system.request_recovery_boot),
-                'firmware_action': None if dev_mode else
-                                   self.wait_fw_screen_and_plug_usb,
-            },
-            {   # Step 3, expected recovery boot
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_type': 'recovery',
-                    'recovery_reason' : vboot.RECOVERY_REASON['US_TEST'],
-                }),
-            },
-            {   # Step 4, expected normal boot
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_type': 'developer' if dev_mode else 'normal',
-                }),
-            },
-        ))
-        self.run_faft_sequence()
+        logging.info("Request recovery boot.")
+        self.check_state((self.checkers.crossystem_checker, {
+                           'mainfw_type': 'developer' if dev_mode else 'normal',
+                           }))
+        self.faft_client.system.request_recovery_boot()
+        self.reboot_warm(wait_for_dut_up=False)
+        self.try_dev_switching_and_plug_usb(dev_mode)
+        self.wait_for_client(install_deps=True)
+
+        logging.info("Expected recovery boot, request recovery again.")
+        self.check_state((self.checkers.crossystem_checker, {
+                           'mainfw_type': 'recovery',
+                           'recovery_reason' : vboot.RECOVERY_REASON['US_TEST'],
+                           }))
+        self.faft_client.system.request_recovery_boot()
+        self.reboot_warm(wait_for_dut_up=False)
+        if not dev_mode:
+            self.wait_fw_screen_and_plug_usb()
+        self.wait_for_client(install_deps=True)
+
+        logging.info("Expected recovery boot.")
+        self.check_state((self.checkers.crossystem_checker, {
+                           'mainfw_type': 'recovery',
+                           'recovery_reason' : vboot.RECOVERY_REASON['US_TEST'],
+                           }))
+        self.reboot_warm()
+
+        logging.info("Expected normal boot.")
+        self.check_state((self.checkers.crossystem_checker, {
+                           'mainfw_type': 'developer' if dev_mode else 'normal',
+                           }))
