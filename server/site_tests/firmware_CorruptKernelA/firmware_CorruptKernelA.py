@@ -2,10 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+import logging
+
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
 
-class firmware_CorruptKernelA(FAFTSequence):
+class firmware_CorruptKernelA(FirmwareTest):
     """
     Servo based kernel A corruption test.
 
@@ -13,7 +15,6 @@ class firmware_CorruptKernelA(FAFTSequence):
     It will fail if kernel verification mis-behaved.
     """
     version = 1
-
 
     def initialize(self, host, cmdline_args, dev_mode=False):
         super(firmware_CorruptKernelA, self).initialize(host, cmdline_args)
@@ -23,25 +24,21 @@ class firmware_CorruptKernelA(FAFTSequence):
         self.setup_usbkey(usbkey=False)
         self.setup_kernel('a')
 
-
     def cleanup(self):
         self.restore_cgpt_attributes()
         self.restore_kernel()
         super(firmware_CorruptKernelA, self).cleanup()
 
-
     def run_once(self):
-        self.register_faft_sequence((
-            {   # Step 1, corrupt kernel A
-                'state_checker': (self.checkers.root_part_checker, 'a'),
-                'userspace_action': (self.faft_client.kernel.corrupt_sig, 'a'),
-            },
-            {   # Step 2, expected kernel B boot and restore kernel A
-                'state_checker': (self.checkers.root_part_checker, 'b'),
-                'userspace_action': (self.faft_client.kernel.restore_sig, 'a'),
-            },
-            {   # Step 3, expected kernel A boot
-                'state_checker': (self.checkers.root_part_checker, 'a'),
-            },
-        ))
-        self.run_faft_sequence()
+        logging.info("Corrupt kernel A.")
+        self.check_state((self.checkers.root_part_checker, 'a'))
+        self.faft_client.kernel.corrupt_sig('a')
+        self.reboot_warm()
+
+        logging.info("Expected kernel B boot and restore kernel A.")
+        self.check_state((self.checkers.root_part_checker, 'b'))
+        self.faft_client.kernel.restore_sig('a')
+        self.reboot_warm()
+
+        logging.info("Expected kernel A boot.")
+        self.check_state((self.checkers.root_part_checker, 'a'))
