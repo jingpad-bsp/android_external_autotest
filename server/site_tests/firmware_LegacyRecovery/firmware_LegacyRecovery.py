@@ -6,11 +6,11 @@ import logging
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros import vboot_constants as vboot
-from autotest_lib.server.cros.faft.faft_classes import ConnectionError
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import ConnectionError
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
 
-class firmware_LegacyRecovery(FAFTSequence):
+class firmware_LegacyRecovery(FirmwareTest):
     """
     Servo based test to Verify recovery request at Remove Screen.
 
@@ -20,76 +20,56 @@ class firmware_LegacyRecovery(FAFTSequence):
     """
     version = 1
 
-
     def initialize(self, host, cmdline_args):
         super(firmware_LegacyRecovery, self).initialize(host, cmdline_args)
         self.setup_usbkey(usbkey=True, host=False)
         self.setup_dev_mode(dev_mode=False)
 
-
     def cleanup(self):
         super(firmware_LegacyRecovery, self).cleanup()
 
-
-    def plug_usb_enable_recovery_request(self):
-        """Wait and plug USB at recovery screen.
-           Set crossystem recovery_request to 1.
-        """
+    def run_once(self):
+        logging.info("Turn on the recovery boot. Enable recovery request "
+                     "and perform a reboot.")
+        self.check_state((self.checkers.crossystem_checker, {
+                           'devsw_boot': '0',
+                           'mainfw_type': 'normal',
+                           }))
+        self.faft_client.system.request_recovery_boot()
+        self.reboot_warm(wait_for_dut_up=False)
         self.wait_fw_screen_and_plug_usb()
         try:
             self.wait_for_client(install_deps=True)
         except ConnectionError:
             raise error.TestError('Failed to boot the USB image.')
         self.faft_client.system.run_shell_command(
-            'crossystem recovery_request=1')
+                                   'crossystem recovery_request=1')
 
-
-    def ensure_no_recovery_and_replug_usb(self):
-        """Wait to ensure DUT doesnt boot at recovery remove screen.
-           Unplug and plug USB.
-        """
+        logging.info("Wait to ensure no recovery boot at remove screen "
+                     "and a boot failure is expected. "
+                     "Unplug and plug USB, try to boot it again.")
+        self.check_state((self.checkers.crossystem_checker, {
+                           'mainfw_type': 'recovery',
+                           }))
+        self.reboot_warm(wait_for_dut_up=False)
         logging.info('Wait to ensure DUT doesnt Boot on USB at Remove screen.')
         try:
             self.wait_for_client()
             raise error.TestFail('Unexpected USB boot at Remove Screen.')
         except ConnectionError:
             logging.info('Done, Waited till timeout and no USB boot occured.')
-
         self.wait_fw_screen_and_plug_usb()
+        self.wait_for_client()
 
+        logging.info("Expected to boot the restored USB image and reboot.")
+        self.check_state((self.checkers.crossystem_checker, {
+                           'mainfw_type': 'recovery',
+                           'recovery_reason': vboot.RECOVERY_REASON['LEGACY'],
+                           }))
+        self.reboot_warm()
 
-    def run_once(self):
-        self.register_faft_sequence((
-            {   # Step 1, turn on the recovery boot. Enable recovery request
-                # and perform a reboot.
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'devsw_boot': '0',
-                    'mainfw_type': 'normal',
-                }),
-                'userspace_action':
-                    (self.faft_client.system.request_recovery_boot),
-                'firmware_action': self.plug_usb_enable_recovery_request,
-                'install_deps_after_boot': True,
-            },
-            {   # Step 2, wait to ensure no recovery boot at remove screen
-                # and a boot failure is expected.
-                # Unplug and plug USB, try to boot it again.
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_type': 'recovery',
-                }),
-                'firmware_action': self.ensure_no_recovery_and_replug_usb,
-            },
-            {   # Step 3, expected to boot the restored USB image and reboot.
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_type': 'recovery',
-                    'recovery_reason' : vboot.RECOVERY_REASON['LEGACY'],
-                }),
-            },
-            {   # Step 4, expected to normal boot and done.
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'devsw_boot': '0',
-                    'mainfw_type': 'normal',
-                }),
-            },
-        ))
-        self.run_faft_sequence()
+        logging.info("Expected to normal boot and done.")
+        self.check_state((self.checkers.crossystem_checker, {
+                           'devsw_boot': '0',
+                           'mainfw_type': 'normal',
+                           }))
