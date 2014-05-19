@@ -151,7 +151,7 @@ class RegularJobDirectory(_JobDirectory):
   GLOB_PATTERN = '[0-9]*-*'
 
   def get_timestamp_if_finished(self):
-    entry = _AFE.run('get_jobs', id=self.id, finished=True)
+    entry = _AFE.run('get_jobs', id=self._id, finished=True)
     return entry[0]['created_on'] if entry else None
 
 
@@ -165,5 +165,5 @@ class SpecialJobDirectory(_JobDirectory):
     self._destname = os.path.dirname(resultsdir)
 
   def get_timestamp_if_finished(self):
-    entry = _AFE.run('get_special_tasks', id=self.id, is_complete=True)
+    entry = _AFE.run('get_special_tasks', id=self._id, is_complete=True)
     return entry[0]['time_started'] if entry else None

@@ -262,6 +262,81 @@ class EmailTemplateTests(mox.MoxTestBase):
         gs_offloader.report_offload_failures(self._joblist)
 
 
+class GetTimestampTests(mox.MoxTestBase):
+    """Test `get_timestamp_if_finished()` for all cases.
+
+    This provides coverage for the implementation in both
+    RegularJobDirectory and SpecialJobDirectory.
+
+    """
+
+    def setUp(self):
+        super(GetTimestampTests, self).setUp()
+        self.mox.StubOutWithMock(job_directories._AFE, 'run')
+
+    def test_finished_regular_job(self):
+        """Test getting the timestamp for a finished regular job.
+
+        Tests the return value for
+        `RegularJobDirectory.get_timestamp_if_finished()` when
+        the AFE indicates the job is finished.
+
+        """
+        job = job_directories.RegularJobDirectory('118-fubar')
+        timestamp = _make_timestamp(0, True)
+        job_directories._AFE.run(
+            'get_jobs', id='118', finished=True).AndReturn(
+                [{'created_on': timestamp}])
+        self.mox.ReplayAll()
+        self.assertEqual(timestamp,
+                         job.get_timestamp_if_finished())
+
+    def test_unfinished_regular_job(self):
+        """Test getting the timestamp for an unfinished regular job.
+
+        Tests the return value for
+        `RegularJobDirectory.get_timestamp_if_finished()` when
+        the AFE indicates the job is not finished.
+
+        """
+        job = job_directories.RegularJobDirectory('118-fubar')
+        job_directories._AFE.run(
+            'get_jobs', id='118', finished=True).AndReturn(None)
+        self.mox.ReplayAll()
+        self.assertIsNone(job.get_timestamp_if_finished())
+
+    def test_finished_special_job(self):
+        """Test getting the timestamp for a finished special job.
+
+        Tests the return value for
+        `SpecialJobDirectory.get_timestamp_if_finished()` when
+        the AFE indicates the job is finished.
+
+        """
+        job = job_directories.SpecialJobDirectory('hosts/host1/118-reset')
+        timestamp = _make_timestamp(0, True)
+        job_directories._AFE.run(
+            'get_special_tasks', id='118', is_complete=True).AndReturn(
+                [{'time_started': timestamp}])
+        self.mox.ReplayAll()
+        self.assertEqual(timestamp,
+                         job.get_timestamp_if_finished())
+
+    def test_unfinished_special_job(self):
+        """Test getting the timestamp for an unfinished special job.
+
+        Tests the return value for
+        `SpecialJobDirectory.get_timestamp_if_finished()` when
+        the AFE indicates the job is not finished.
+
+        """
+        job = job_directories.SpecialJobDirectory('hosts/host1/118-reset')
+        job_directories._AFE.run(
+            'get_special_tasks', id='118', is_complete=True).AndReturn(None)
+        self.mox.ReplayAll()
+        self.assertIsNone(job.get_timestamp_if_finished())
+
+
 class _TempResultsDirTestBase(mox.MoxTestBase):
     """Base class for tests using a temporary results directory."""
 
