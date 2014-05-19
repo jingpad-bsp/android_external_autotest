@@ -92,7 +92,7 @@ class platform_DebugDaemonGetPerfData(test.test):
         Primary autotest function.
         """
 
-        get_perf_methods = ['GetPerfData', 'GetRichPerfData']
+        get_perf_methods = ['GetRichPerfData']
 
         # Open /dev/null to redirect unnecessary output.
         devnull = open('/dev/null', 'w')
