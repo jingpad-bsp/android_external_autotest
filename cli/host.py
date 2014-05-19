@@ -21,8 +21,7 @@ See topic_common.py for a High Level Design and Algorithm.
 
 """
 
-import os, sys, socket
-from autotest_lib.cli import topic_common, action_common
+from autotest_lib.cli import action_common, topic_common
 from autotest_lib.client.common_lib import host_protections
 
 
@@ -364,7 +363,6 @@ class host_mod(host):
             self.print_wrapped(msg, hosts)
 
 
-
 class host_create(host):
     """atest host create [--lock|--unlock --platform <arch>
     --labels <labels>|--blist <label_file>
@@ -440,6 +438,21 @@ class host_create(host):
             self.execute_rpc('host_add_labels', id=host, labels=labels)
 
 
+    def _execute_add_hosts(self):
+        successful_hosts = self.site_create_hosts_hook()
+
+        if successful_hosts:
+            for acl in self.acls:
+                self.execute_rpc('acl_group_add_hosts',
+                                 id=acl,
+                                 hosts=successful_hosts)
+
+            if not self.locked:
+                for host in successful_hosts:
+                    self.execute_rpc('modify_host', id=host, locked=False)
+        return successful_hosts
+
+
     def execute(self):
         # We need to check if these labels & ACLs exist,
         # and create them if not.
@@ -458,28 +471,19 @@ class host_create(host):
                                         'add_acl_group',
                                         self.acls)
 
-        success = self.site_create_hosts_hook()
-
-        if len(success):
-            for acl in self.acls:
-                self.execute_rpc('acl_group_add_hosts', id=acl, hosts=success)
-
-            if not self.locked:
-                for host in success:
-                    self.execute_rpc('modify_host', id=host, locked=False)
-        return success
+        return self._execute_add_hosts()
 
 
     def site_create_hosts_hook(self):
-        success = []
+        successful_hosts = []
         for host in self.hosts:
             try:
                 self._execute_add_one_host(host)
-                success.append(host)
+                successful_hosts.append(host)
             except topic_common.CliError:
                 pass
 
-        return success
+        return successful_hosts
 
 
     def output(self, hosts):

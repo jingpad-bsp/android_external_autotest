@@ -1,9 +1,13 @@
 """Django 1.0 admin interface declarations."""
 
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.db import models as dbmodels
+from django.forms.util import flatatt
+from django.utils.encoding import smart_str
+from django.utils.safestring import mark_safe
 
+from autotest_lib.cli import rpc, site_host
 from autotest_lib.frontend import settings
 from autotest_lib.frontend.afe import model_logic, models
 
@@ -78,7 +82,59 @@ class UserAdmin(SiteAdmin):
 admin.site.register(models.User, UserAdmin)
 
 
+class LabelsCommaSpacedWidget(forms.Widget):
+    """A widget that renders the labels in a comman separated text field."""
+
+    def render(self, name, value, attrs=None):
+        """Convert label ids to names and render them in HTML.
+
+        @param name: Name attribute of the HTML tag.
+        @param value: A list of label ids to be rendered.
+        @param attrs: A dict of extra attributes rendered in the HTML tag.
+        @return: A Unicode string in HTML format.
+        """
+        final_attrs = self.build_attrs(attrs, type='text', name=name)
+
+        if value:
+            label_names =(models.Label.objects.filter(id__in=value)
+                          .values_list('name', flat=True))
+            value = ', '.join(label_names)
+        else:
+            value = ''
+        final_attrs['value'] = smart_str(value)
+        return mark_safe(u'<input%s />' % flatatt(final_attrs))
+
+    def value_from_datadict(self, data, files, name):
+        """Convert input string to a list of label ids.
+
+        @param data: A dict of input data from HTML form. The keys are name
+            attrs of HTML tags.
+        @param files: A dict of input file names from HTML form. The keys are
+            name attrs of HTML tags.
+        @param name: The name attr of the HTML tag of labels.
+        @return: A list of label ids in string. Return None if no label is
+            specified.
+        """
+        label_names = data.get(name)
+        if label_names:
+            label_names = label_names.split(',')
+            label_names = filter(None,
+                                 [name.strip(', ') for name in label_names])
+            label_ids = (models.Label.objects.filter(name__in=label_names)
+                         .values_list('id', flat=True))
+            return [str(label_id) for label_id in label_ids]
+
+
 class HostForm(ModelWithInvalidForm):
+    # A checkbox triggers label autodetection.
+    labels_autodetection = forms.BooleanField(initial=True, required=False)
+
+    def __init__(self, *args, **kwargs):
+        super(HostForm, self).__init__(*args, **kwargs)
+        self.fields['labels'].widget = LabelsCommaSpacedWidget()
+        self.fields['labels'].help_text = ('Please enter a comma seperated '
+                                           'list of labels.')
+
     class Meta:
         model = models.Host
 
@@ -88,14 +144,78 @@ class HostAdmin(SiteAdmin):
     # each row (since labels are many-to-many) - should we remove
     # it?
     list_display = ('hostname', 'platform', 'locked', 'status')
-    list_filter = ('labels', 'locked', 'protection')
-    search_fields = ('hostname', 'status')
-    filter_horizontal = ('labels',)
+    list_filter = ('locked', 'protection', 'status')
+    search_fields = ('hostname',)
 
     form = HostForm
 
+    def __init__(self, model, admin_site):
+        self.successful_hosts = []
+        super(HostAdmin, self).__init__(model, admin_site)
+
+    def change_view(self, request, obj_id, form_url='', extra_context=None):
+        # Hide labels_autodetection when editing a host.
+        self.fields = ('hostname', 'locked', 'leased', 'protection', 'labels')
+        return super(HostAdmin, self).change_view(request,
+                                                  obj_id,
+                                                  form_url,
+                                                  extra_context)
+
     def queryset(self, request):
         return models.Host.valid_objects
+
+    def response_add(self, request, obj, post_url_continue=None):
+        # Disable the 'save and continue editing option' when adding a host.
+        if "_continue" in request.POST:
+            request.POST = request.POST.copy()
+            del request.POST['_continue']
+        return super(HostAdmin, self).response_add(request,
+                                                   obj,
+                                                   post_url_continue)
+
+    def save_model(self, request, obj, form, change):
+        if not form.cleaned_data.get('labels_autodetection'):
+            return super(HostAdmin, self).save_model(request, obj,
+                                                     form, change)
+
+        # Get submitted info from form.
+        web_server = rpc.get_autotest_server()
+        hostname = form.cleaned_data['hostname']
+        hosts = [str(hostname)]
+        platform = None
+        locked = form.cleaned_data['locked']
+        labels = [label.name for label in form.cleaned_data['labels']]
+        protection = form.cleaned_data['protection']
+        acls = []
+
+        # Pipe to cli to perform autodetection and create host.
+        host_create_obj = site_host.site_host_create.construct_without_parse(
+                web_server, hosts, platform,
+                locked, labels, acls,
+                protection)
+        try:
+            self.successful_hosts = host_create_obj.execute()
+        except SystemExit:
+            # Invalid server name.
+            messages.error(request, 'Invalid server name %s.' % web_server)
+
+        # Successful_hosts is an empty list if there's time out,
+        # server error, or JSON error.
+        if not self.successful_hosts:
+            messages.error(request,
+                           'Label autodetection failed. '
+                           'Host created with selected labels.')
+            super(HostAdmin, self).save_model(request, obj, form, change)
+
+    def save_related(self, request, form, formsets, change):
+        """Save many-to-many relations between host and labels."""
+        # Skip save_related if autodetection succeeded, subce cli has already
+        # handled many-to-many relations.
+        if not self.successful_hosts:
+            super(HostAdmin, self).save_related(request,
+                                                form,
+                                                formsets,
+                                                change)
 
 admin.site.register(models.Host, HostAdmin)
 

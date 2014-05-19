@@ -6,9 +6,9 @@ import common
 import inspect, new, socket, sys
 
 from autotest_lib.client.bin import utils
-from autotest_lib.cli import host
+from autotest_lib.cli import host, rpc
 from autotest_lib.server import hosts
-from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import error, host_protections
 
 
 # In order for hosts to work correctly, some of its variables must be setup.
@@ -27,6 +27,42 @@ class site_host_create(site_host, host.host_create):
     """
     site_host_create subclasses host_create in host.py.
     """
+
+    @classmethod
+    def construct_without_parse(
+            cls, web_server, hosts, platform=None,
+            locked=False, labels=[], acls=[],
+            protection=host_protections.Protection.NO_PROTECTION):
+        """Construct an site_host_create object and fill in data from args.
+
+        Do not need to call parse after the construction.
+
+        Return an object of site_host_create ready to execute.
+
+        @param web_server: A string specifies the autotest webserver url.
+            It is needed to setup comm to make rpc.
+        @param hosts: A list of hostnames as strings.
+        @param platform: A string or None.
+        @param locked: A boolean.
+        @param labels: A list of labels as strings.
+        @param acls: A list of acls as strings.
+        @param protection: An enum defined in host_protections.
+        """
+        obj = cls()
+        obj.web_server = web_server
+        try:
+            # Setup stuff needed for afe comm.
+            obj.afe = rpc.afe_comm(web_server)
+        except rpc.AuthError, s:
+            obj.failure(str(s), fatal=True)
+        obj.hosts = hosts
+        obj.platform = platform
+        obj.locked = locked
+        obj.labels = labels
+        obj.acls = acls
+        if protection:
+            obj.data['protection'] = protection
+        return obj
 
 
     def _execute_add_one_host(self, host):
@@ -84,7 +120,7 @@ class site_host_create(site_host, host.host_create):
             for host_info in self.host_info_map.values():
                 if host_info.platform and host_info.platform not in platforms:
                     platforms.append(host_info.platform)
-            if len(platforms):
+            if platforms:
                 self.check_and_create_items('get_labels', 'add_label',
                                             platforms,
                                             platform=True)
@@ -102,16 +138,7 @@ class site_host_create(site_host, host.host_create):
                                         'add_acl_group',
                                         self.acls)
 
-        success = self.site_create_hosts_hook()
-
-        if len(success):
-            for acl in self.acls:
-                self.execute_rpc('acl_group_add_hosts', id=acl, hosts=success)
-
-            if not self.locked:
-                for host in success:
-                    self.execute_rpc('modify_host', id=host, locked=False)
-        return success
+        return self._execute_add_hosts()
 
 
 class host_information(object):
