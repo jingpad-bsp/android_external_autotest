@@ -168,7 +168,7 @@ class ChaosRunner(object):
                 # Cannot use _release_ap, since power_down will fail
                 batch_locker.unlock_one_ap(ap.host_name)
                 aps_to_remove.append(ap)
-            elif (ap.configuration_success == chaos_constants.AP_CONFIG_FAIL):
+            elif (ap.configuration_success == chaos_constants.CONFIG_FAIL):
                 failed_ap = True
                 error_string = chaos_constants.AP_CONFIG_FAIL
                 tag = ap.host_name
