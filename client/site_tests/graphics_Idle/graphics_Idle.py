@@ -98,6 +98,7 @@ class graphics_Idle(test.test):
                 tries += 1
 
             if not found:
+                utils.log_process_activity()
                 logging.error('Error: did not see the GPU in RC6.')
                 return 'Did not see the GPU in RC6. '
 
@@ -112,8 +113,8 @@ class graphics_Idle(test.test):
             self._gpu_type == 'ivybridge' or self._gpu_type == 'sandybridge'):
             tries = 0
             found = False
-            while not found and tries < 20:
-                time.sleep(1)
+            while not found and tries < 80:
+                time.sleep(0.25)
                 param_path = '/sys/kernel/debug/dri/0/i915_cur_delayinfo'
                 if not os.path.exists(param_path):
                     logging.error('Error: %s not found.', param_path)
@@ -123,21 +124,22 @@ class graphics_Idle(test.test):
                     for line in delayinfo_file:
                         # This file has a different format depending on the board,
                         # so we parse both. Also, it would be tedious to add the
-                        # minimum clock for each board, so instead we use 450MHz
+                        # minimum clock for each board, so instead we use 650MHz
                         # which is the max of the minimum clocks.
                         match = re.search(r'CAGF: (.*)MHz', line)
-                        if match and int(match.group(1)) <= 450:
+                        if match and int(match.group(1)) <= 650:
                             found = True
                             break
 
                         match = re.search(r'current GPU freq: (.*) MHz', line)
-                        if match and int(match.group(1)) <= 450:
+                        if match and int(match.group(1)) <= 650:
                             found = True
                             break
 
                 tries += 1
 
             if not found:
+                utils.log_process_activity()
                 logging.error('Error: did not see the min i915 clock')
                 return 'Did not see the min i915 clock. '
 
@@ -152,8 +154,8 @@ class graphics_Idle(test.test):
         if self._gpu_type == 'mali':
             tries = 0
             found = False
-            while not found and tries < 20:
-                time.sleep(1)
+            while not found and tries < 80:
+                time.sleep(0.25)
                 param_path = '/sys/devices/11800000.mali/clock'
                 if not os.path.exists(param_path):
                     logging.error('Error: %s not found.', param_path)
@@ -166,6 +168,7 @@ class graphics_Idle(test.test):
                 tries += 1
 
             if not found:
+                utils.log_process_activity()
                 logging.error('Error: did not see the min DVFS clock')
                 return 'Did not see the min DVFS clock. '
 
@@ -242,6 +245,7 @@ class graphics_Idle(test.test):
                 tries += 1
 
             if not found:
+                utils.log_process_activity()
                 logging.error('Error: did not reach 0 gem actives.')
                 return 'Did not reach 0 gem actives. '
 
