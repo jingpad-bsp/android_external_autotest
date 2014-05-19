@@ -6,10 +6,10 @@ import logging
 import time
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
 
-class firmware_DevScreenTimeout(FAFTSequence):
+class firmware_DevScreenTimeout(FirmwareTest):
     """
     Servo based developer firmware screen timeout test.
 
@@ -35,13 +35,11 @@ class firmware_DevScreenTimeout(FAFTSequence):
 
     fw_time_record = {}
 
-
     def ctrl_d_repeatedly(self):
         """Press Ctrl-D repeatedly."""
         for _ in range(self.CTRL_D_REPEAT_COUNT):
             self.press_ctrl_d()
             time.sleep(self.CTRL_D_REPEAT_DELAY)
-
 
     def record_fw_boot_time(self, tag):
         """Record the current firmware boot time with the tag.
@@ -60,7 +58,6 @@ class firmware_DevScreenTimeout(FAFTSequence):
         else:
             raise error.TestError('Failed to get the firmware boot time.')
 
-
     def check_timeout_period(self):
         """Check the firmware screen timeout period matches our spec.
 
@@ -76,11 +73,10 @@ class firmware_DevScreenTimeout(FAFTSequence):
         if (abs(got_timeout - self.faft_config.dev_screen_timeout) >
                 self.TIMEOUT_MARGIN):
             raise error.TestFail(
-                    'The developer firmware timeout does not match our spec: ' \
+                    'The developer firmware timeout does not match our spec: '
                     'expected %.2f +/- %.2f but got %.2f.' %
                     (self.faft_config.dev_screen_timeout, self.TIMEOUT_MARGIN,
                      got_timeout))
-
 
     def initialize(self, host, cmdline_args):
         super(firmware_DevScreenTimeout, self).initialize(host, cmdline_args)
@@ -88,28 +84,24 @@ class firmware_DevScreenTimeout(FAFTSequence):
         self.setup_dev_mode(dev_mode=True)
         self.setup_usbkey(usbkey=False)
 
-
     def run_once(self):
-        # Always expected developer mode firmware A boot.
-        self.register_faft_template({
-             'state_checker': (self.checkers.crossystem_checker, {
-                'devsw_boot': '1',
-                'mainfw_act': 'A',
-                'mainfw_type': 'developer',
-             }),
-        })
-        self.register_faft_sequence((
-            {   # Step 1, reboot and press Ctrl-D repeatedly
-                'firmware_action': self.ctrl_d_repeatedly,
-            },
-            {   # Step 2, record the firmware boot time without waiting
-                # firmware screen; on next reboot, do nothing and wait the
-                # screen timeout.
-                'userspace_action': (self.record_fw_boot_time, 'ctrl_d_boot'),
-                'firmware_action': None,
-            },
-            {   # Step 3, check the firmware screen timeout matches our spec.
-                'userspace_action': self.check_timeout_period,
-            },
-        ))
-        self.run_faft_sequence()
+        logging.info("Always expected developer mode firmware A boot.")
+        self.check_state((self.checkers.crossystem_checker, {
+                              'devsw_boot': '1',
+                              'mainfw_act': 'A',
+                              'mainfw_type': 'developer',
+                              }))
+
+        logging.info("Reboot and press Ctrl-D repeatedly.")
+        self.reboot_warm(wait_for_dut_up=False)
+        self.ctrl_d_repeatedly()
+        self.wait_for_client()
+
+        logging.info("Record the firmware boot time without waiting "
+                     "firmware screen; on next reboot, do nothing and wait the "
+                     "screen timeout.")
+        self.record_fw_boot_time('ctrl_d_boot')
+        self.reboot_warm()
+
+        logging.info("Check the firmware screen timeout matches our spec.")
+        self.check_timeout_period()
