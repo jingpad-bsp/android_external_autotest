@@ -6,6 +6,7 @@
 
 
 class Values(object):
+    """FAFT config values for Nyan."""
     software_sync_update = 6
     chrome_ec = True
     ec_capability = (['battery', 'keyboard', 'arm', 'lid'])
