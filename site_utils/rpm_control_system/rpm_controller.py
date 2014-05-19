@@ -6,6 +6,7 @@ import ctypes
 import datetime
 import logging
 import multiprocessing
+import os
 import pexpect
 import Queue
 import re
@@ -29,6 +30,7 @@ RPM_CALL_TIMEOUT_MINS = rpm_config.getint('RPM_INFRASTRUCTURE',
 SET_POWER_STATE_TIMEOUT_SECONDS = rpm_config.getint(
         'RPM_INFRASTRUCTURE', 'set_power_state_timeout_seconds')
 HYDRA_HOST_REGX = 'chromeos2-row\d+-rack(\d+)-rpm1$'
+PROCESS_TIMEOUT_BUFFER = 30
 
 
 def get_hydra_name(hostname):
@@ -198,7 +200,13 @@ class RPMController(object):
                                                   args=(request, result,
                                                         is_timeout))
                 process.start()
-                process.join()
+                process.join(SET_POWER_STATE_TIMEOUT_SECONDS +
+                             PROCESS_TIMEOUT_BUFFER)
+                if process.is_alive():
+                    logging.debug('%s: process (%s) still running, will be '
+                                  'terminated!', request['dut'], process.pid)
+                    process.terminate()
+                    is_timeout.value = True
 
                 if is_timeout.value:
                     raise error.TimeoutException(
@@ -232,33 +240,36 @@ class RPMController(object):
                            caller thread to retrieve the information about if
                            the set_power_state call timed out.
         """
+        try:
+            logging.getLogger().handlers = []
+            kwargs = {'use_log_server': True}
+            is_timeout_value, result_value = retry.timeout(
+                     rpm_logging_config.set_up_logging,
+                     args=(),
+                     kwargs=kwargs,
+                     timeout_sec=10)
+            if is_timeout_value:
+                raise Exception('Setup local log server handler timed out.')
+        except Exception as e:
+            # Fail over to log to a new file.
+            LOG_FILENAME_FORMAT = rpm_config.get('GENERAL',
+                                                 'dispatcher_logname_format')
+            log_filename_format = LOG_FILENAME_FORMAT.replace(
+                    'dispatcher', 'controller_%d' % os.getpid())
+            logging.getLogger().handlers = []
+            rpm_logging_config.set_up_logging(
+                    log_filename_format=log_filename_format,
+                    use_log_server=False)
+            logging.info('Failed to set up logging through log server: %s', e)
         kwargs = {'dut_hostname':request['dut'],
                   'new_state':request['new_state']}
         is_timeout_value, result_value = retry.timeout(
-                self.set_power_state_wrapper,
+                self.set_power_state,
                 args=(),
                 kwargs=kwargs,
                 timeout_sec=SET_POWER_STATE_TIMEOUT_SECONDS)
         result.value = result_value
         is_timeout.value = is_timeout_value
-
-
-    def set_power_state_wrapper(self, dut_hostname, new_state):
-        """A wrapper function for set_power_state call.
-
-        The wrapper function is called to run set_power_state in a new process.
-        As the logs are written to a socket server, the logging handler needs
-        to be rebuilt.
-
-        @param dut_hostname: hostname of DUT whose outlet we want to change.
-        @param new_state: ON/OFF/CYCLE - state or action we want to perform on
-                          the outlet.
-        """
-        # Clear existing logging handler, create new one as this is running in
-        # a new process.
-        logging.getLogger().handlers = []
-        rpm_logging_config.set_up_logging(use_log_server=True)
-        return self.set_power_state(dut_hostname, new_state)
 
 
     def queue_request(self, dut_hostname, new_state):
