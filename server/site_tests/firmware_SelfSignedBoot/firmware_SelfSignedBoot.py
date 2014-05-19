@@ -2,14 +2,15 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, time
+import logging
+import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros import vboot_constants as vboot
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
 
-class firmware_SelfSignedBoot(FAFTSequence):
+class firmware_SelfSignedBoot(FirmwareTest):
     """
     Servo based developer mode boot only test to Self signed Kernels.
 
@@ -21,7 +22,6 @@ class firmware_SelfSignedBoot(FAFTSequence):
     should boot to the USB disk.
     """
     version = 1
-
 
     def initialize(self, host, cmdline_args, ec_wp=None):
         super(firmware_SelfSignedBoot, self).initialize(host, cmdline_args,
@@ -37,14 +37,12 @@ class firmware_SelfSignedBoot(FAFTSequence):
         if not self.usb_dev:
             raise error.TestError("Unable to find USB disk")
 
-
     def cleanup(self):
         self.faft_client.system.set_dev_boot_usb(self.original_dev_boot_usb)
         self.disable_crossystem_selfsigned()
         self.ensure_internal_device_boot()
         self.resignimage_recoverykeys()
         super(firmware_SelfSignedBoot, self).cleanup()
-
 
     def ensure_internal_device_boot(self):
         """Ensure internal device boot; if not, reboot into it.
@@ -54,10 +52,9 @@ class firmware_SelfSignedBoot(FAFTSequence):
         """
         if self.faft_client.system.is_removable_device_boot():
             logging.info('Reboot into internal disk...')
-            self.run_faft_step({
-                'firmware_action': self.wait_fw_screen_and_ctrl_d,
-            })
-
+            self.reboot_warm(wait_for_dut_up=False)
+            self.wait_fw_screen_and_ctrl_d()
+            self.wait_for_client()
 
     def try_ctrl_u_and_ctrl_d(self):
         """Try to press Ctrl-U first and then press Ctrl-D"""
@@ -67,12 +64,10 @@ class firmware_SelfSignedBoot(FAFTSequence):
         time.sleep(self.faft_config.beep)
         self.press_ctrl_d()
 
-
     def resignimage_ssdkeys(self):
         """Re-signing the USB image using the SSD keys."""
         self.faft_client.system.run_shell_command(
             '/usr/share/vboot/bin/make_dev_ssd.sh -i %s' % self.usb_dev)
-
 
     def resignimage_recoverykeys(self):
         """Re-signing the USB image using the Recovery keys."""
@@ -80,13 +75,11 @@ class firmware_SelfSignedBoot(FAFTSequence):
             '/usr/share/vboot/bin/make_dev_ssd.sh -i %s --recovery_key'
             % self.usb_dev)
 
-
     def enable_crossystem_selfsigned(self):
         """Enable dev_boot_signed_only + dev_boot_usb."""
         self.faft_client.system.run_shell_command(
             'crossystem dev_boot_signed_only=1')
         self.faft_client.system.run_shell_command('crossystem dev_boot_usb=1')
-
 
     def disable_crossystem_selfsigned(self):
         """Disable dev_boot_signed_only + dev_boot_usb."""
@@ -94,52 +87,49 @@ class firmware_SelfSignedBoot(FAFTSequence):
             'crossystem dev_boot_signed_only=0')
         self.faft_client.system.run_shell_command('crossystem dev_boot_usb=0')
 
-
     def run_once(self):
         if (self.faft_config.has_keyboard and
                 not self.check_ec_capability(['keyboard'])):
             raise error.TestNAError("TEST IT MANUALLY! This test can't be "
-                                  "automated on non-Chrome-EC devices.")
-        # The old models need users to remove and insert USB stick during boot.
-        remove_usb = (self.faft_client.system.get_platform_name() in
-                     ('Mario', 'Alex', 'ZGB', 'Aebl', 'Kaen'))
-        self.register_faft_sequence((
-            {   # Step 1, expected developer mode, set dev_boot_usb and
-                # dev_boot_signed_only to 1.
-                'state_checker': (self.checkers.dev_boot_usb_checker, False),
-                'userspace_action': self.enable_crossystem_selfsigned,
-                'firmware_action': self.try_ctrl_u_and_ctrl_d,
-                'install_deps_after_boot': True,
-            },
-            {   # Step 2, expected internal disk boot, switch to recovery mode.
-                'state_checker': (self.checkers.dev_boot_usb_checker, False,
-                    'Not internal disk boot, dev_boot_usb misbehaved'),
-                'userspace_action': self.enable_rec_mode_and_reboot,
-                'reboot_action': None,
-                'firmware_action': None,
-                'install_deps_after_boot': True,
-            },
-            {   # Step 3, expected recovery boot and reboot.
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_type': 'recovery',
-                    'recovery_reason' : vboot.RECOVERY_REASON['RO_MANUAL'],
-                }),
-                 'firmware_action': self.wait_fw_screen_and_ctrl_d,
-            },
-            {   # Step 4, expected internal disk boot, resign with SSD keys.
-                'state_checker': (self.checkers.dev_boot_usb_checker, False,
-                    'Not internal disk boot, dev_boot_usb misbehaved'),
-                'userspace_action': self.resignimage_ssdkeys,
-                'firmware_action': self.wait_fw_screen_and_ctrl_u,
-                'install_deps_after_boot': True,
-            },
-            {   # Step 5, expected USB boot.
-                'state_checker': (self.checkers.dev_boot_usb_checker, True,
-                    'Not USB boot, Ctrl-U not work'),
-                'firmware_action': self.wait_fw_screen_and_ctrl_d,
-            },
-            {   # Step 6, done.
-                'state_checker': (self.checkers.dev_boot_usb_checker, False),
-            }
-        ))
-        self.run_faft_sequence()
+                                    "automated on non-Chrome-EC devices.")
+
+        logging.info("Expected developer mode, set dev_boot_usb and "
+                     "dev_boot_signed_only to 1.")
+        self.check_state((self.checkers.dev_boot_usb_checker, False))
+        self.enable_crossystem_selfsigned()
+        self.reboot_warm(wait_for_dut_up=False)
+        self.try_ctrl_u_and_ctrl_d()
+        self.wait_for_client(install_deps=True)
+
+        logging.info("Expected internal disk boot, switch to recovery mode.")
+        self.check_state((self.checkers.dev_boot_usb_checker, False,
+                          'Not internal disk boot, dev_boot_usb misbehaved'))
+        self.enable_rec_mode_and_reboot()
+        self.wait_for_client()
+
+        logging.info("Expected recovery boot and reboot.")
+        self.check_state((self.checkers.crossystem_checker, {
+                   'mainfw_type': 'recovery',
+                   'recovery_reason': vboot.RECOVERY_REASON['RO_MANUAL'],
+                   }))
+        self.reboot_warm(wait_for_dut_up=False)
+        self.wait_fw_screen_and_ctrl_d()
+        self.wait_for_client()
+
+        logging.info("Expected internal disk boot, resign with SSD keys.")
+        self.check_state((self.checkers.dev_boot_usb_checker, False,
+                          'Not internal disk boot, dev_boot_usb misbehaved'))
+        self.resignimage_ssdkeys()
+        self.reboot_warm(wait_for_dut_up=False)
+        self.wait_fw_screen_and_ctrl_u()
+        self.wait_for_client(install_deps=True)
+
+        logging.info("Expected USB boot.")
+        self.check_state((self.checkers.dev_boot_usb_checker, True,
+                          'Not USB boot, Ctrl-U not work'))
+        self.reboot_warm(wait_for_dut_up=False)
+        self.wait_fw_screen_and_ctrl_d()
+        self.wait_for_client()
+
+        logging.info("Check and done.")
+        self.check_state((self.checkers.dev_boot_usb_checker, False))
