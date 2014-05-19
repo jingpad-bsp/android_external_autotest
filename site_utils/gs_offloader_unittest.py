@@ -39,62 +39,80 @@ def _get_options(argv):
     return gs_offloader.parse_options()
 
 
-class ParseOptionsTests(unittest.TestCase):
-    """Tests for `gs_offloader.parse_options()`."""
+class OffloaderOptionsTests(unittest.TestCase):
+    """Tests for the `Offloader` constructor.
+
+    Tests that offloader instance fields are set as expected
+    for given command line options.
+
+    """
+
+    _REGULAR_ONLY = set([job_directories.RegularJobDirectory])
+    _SPECIAL_ONLY = set([job_directories.SpecialJobDirectory])
+    _BOTH = _REGULAR_ONLY | _SPECIAL_ONLY
 
     def test_process_no_options(self):
-        """Test option parsing when there are no arguments."""
-        options = _get_options([])
-        self.assertFalse(options.process_all)
-        self.assertFalse(options.process_hosts_only)
-        self.assertEqual(options.parallelism, 1)
-        self.assertFalse(options.delete_only)
-        self.assertEqual(options.days_old, 0)
+        """Test default offloader options."""
+        offloader = gs_offloader.Offloader(_get_options([]))
+        self.assertEqual(set(offloader._jobdir_classes),
+                         self._REGULAR_ONLY)
+        self.assertEqual(offloader._processes, 1)
+        self.assertEqual(offloader._offload_func,
+                         gs_offloader.offload_dir)
+        self.assertEqual(offloader._age_limit, 0)
 
     def test_process_all_option(self):
-        """Test option parsing for the --all option."""
-        options = _get_options(['--all'])
-        self.assertTrue(options.process_all)
-        self.assertFalse(options.process_hosts_only)
-        self.assertEqual(options.parallelism, 1)
-        self.assertFalse(options.delete_only)
-        self.assertEqual(options.days_old, 0)
+        """Test offloader handling for the --all option."""
+        offloader = gs_offloader.Offloader(_get_options(['--all']))
+        self.assertEqual(set(offloader._jobdir_classes), self._BOTH)
+        self.assertEqual(offloader._processes, 1)
+        self.assertEqual(offloader._offload_func,
+                         gs_offloader.offload_dir)
+        self.assertEqual(offloader._age_limit, 0)
 
     def test_process_hosts_option(self):
-        """Test option parsing for the --hosts option."""
-        options = _get_options(['--hosts'])
-        self.assertFalse(options.process_all)
-        self.assertTrue(options.process_hosts_only)
-        self.assertEqual(options.parallelism, 1)
-        self.assertFalse(options.delete_only)
-        self.assertEqual(options.days_old, 0)
+        """Test offloader handling for the --hosts option."""
+        offloader = gs_offloader.Offloader(
+                _get_options(['--hosts']))
+        self.assertEqual(set(offloader._jobdir_classes),
+                         self._SPECIAL_ONLY)
+        self.assertEqual(offloader._processes, 1)
+        self.assertEqual(offloader._offload_func,
+                         gs_offloader.offload_dir)
+        self.assertEqual(offloader._age_limit, 0)
 
     def test_parallelism_option(self):
-        """Test option parsing for the --parallelism option."""
-        options = _get_options(['--parallelism', '2'])
-        self.assertFalse(options.process_all)
-        self.assertFalse(options.process_hosts_only)
-        self.assertEqual(options.parallelism, 2)
-        self.assertFalse(options.delete_only)
-        self.assertEqual(options.days_old, 0)
+        """Test offloader handling for the --parallelism option."""
+        offloader = gs_offloader.Offloader(
+                _get_options(['--parallelism', '2']))
+        self.assertEqual(set(offloader._jobdir_classes),
+                         self._REGULAR_ONLY)
+        self.assertEqual(offloader._processes, 2)
+        self.assertEqual(offloader._offload_func,
+                         gs_offloader.offload_dir)
+        self.assertEqual(offloader._age_limit, 0)
 
     def test_delete_only_option(self):
-        """Test option parsing for the --delete_only option."""
-        options = _get_options(['--delete_only', '2'])
-        self.assertFalse(options.process_all)
-        self.assertFalse(options.process_hosts_only)
-        self.assertEqual(options.parallelism, 1)
-        self.assertTrue(options.delete_only)
-        self.assertEqual(options.days_old, 0)
+        """Test offloader handling for the --delete_only option."""
+        offloader = gs_offloader.Offloader(
+                _get_options(['--delete_only']))
+        self.assertEqual(set(offloader._jobdir_classes),
+                         self._REGULAR_ONLY)
+        self.assertEqual(offloader._processes, 1)
+        self.assertEqual(offloader._offload_func,
+                         gs_offloader.delete_files)
+        self.assertEqual(offloader._age_limit, 0)
 
     def test_delete_only_option(self):
-        """Test option parsing for the --days_old option."""
-        options = _get_options(['--days_old', '7'])
-        self.assertFalse(options.process_all)
-        self.assertFalse(options.process_hosts_only)
-        self.assertEqual(options.parallelism, 1)
-        self.assertFalse(options.delete_only)
-        self.assertEqual(options.days_old, 7)
+        """Test offloader handling for the --days_old option."""
+        offloader = gs_offloader.Offloader(
+                _get_options(['--days_old', '7']))
+        self.assertEqual(set(offloader._jobdir_classes),
+                         self._REGULAR_ONLY)
+        self.assertEqual(offloader._processes, 1)
+        self.assertEqual(offloader._offload_func,
+                         gs_offloader.offload_dir)
+        self.assertEqual(offloader._age_limit, 7)
 
 
 def _make_timestamp(age_limit, is_expired):
