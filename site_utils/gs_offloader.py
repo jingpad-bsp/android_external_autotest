@@ -120,9 +120,10 @@ def offload_dir(dir_entry, dest_path):
   """
   try:
     error = False
-    signal.alarm(OFFLOAD_TIMEOUT_SECS)
     stdout_file = tempfile.TemporaryFile('w+')
     stderr_file = tempfile.TemporaryFile('w+')
+    process = None
+    signal.alarm(OFFLOAD_TIMEOUT_SECS)
     process = subprocess.Popen(get_cmd_list(dir_entry, dest_path),
                                stdout=stdout_file, stderr=stderr_file)
     process.wait()
@@ -132,7 +133,17 @@ def offload_dir(dir_entry, dest_path):
     else:
       error = True
   except TimeoutException:
-    process.terminate()
+    # If we finished the call to Popen(), we may need to terminate
+    # the child process.  We don't bother calling process.poll();
+    # that inherently races because the child can die any time it
+    # wants.
+    if process:
+        try:
+            process.terminate()
+        except OSError:
+            # We don't expect any error other than "No such
+            # process".
+            pass
     logging.error('Offloading %s timed out after waiting %d seconds.',
                   dir_entry, OFFLOAD_TIMEOUT_SECS)
     error = True

@@ -7,6 +7,7 @@ import datetime
 import logging
 import os
 import shutil
+import signal
 import sys
 import tempfile
 import time
@@ -470,6 +471,96 @@ class _TempResultsDirTestBase(mox.MoxTestBase):
             os.mkdir(os.path.join(hostsdir, host))
         for d in self.SPECIAL_JOBLIST:
             os.mkdir(d)
+
+
+class OffloadDirectoryTests(_TempResultsDirTestBase):
+    """Tests for `offload_dir()`."""
+
+    def setUp(self):
+        super(OffloadDirectoryTests, self).setUp()
+        # offload_dir() logs messages; silence them.
+        self._saved_loglevel = logging.getLogger().getEffectiveLevel()
+        logging.getLogger().setLevel(logging.CRITICAL+1)
+        self._job = self.make_job(self.REGULAR_JOBLIST[0])
+        self.mox.StubOutWithMock(gs_offloader, 'get_cmd_list')
+        self.mox.StubOutWithMock(signal, 'alarm')
+
+    def tearDown(self):
+        logging.getLogger().setLevel(self._saved_loglevel)
+        super(OffloadDirectoryTests, self).tearDown()
+
+    def _mock_offload_dir_calls(self, command):
+        """Mock out the calls needed by `offload_dir()`.
+
+        This covers only the calls made when there is no timeout.
+
+        @param command Command list to be returned by the mocked
+                       call to `get_cmd_list()`.
+
+        """
+        signal.alarm(gs_offloader.OFFLOAD_TIMEOUT_SECS)
+        gs_offloader.get_cmd_list(
+                mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
+                        command)
+        signal.alarm(0)
+        signal.alarm(0)
+
+    def _run_offload_dir(self, should_succeed):
+        """Make one call to `offload_dir()`.
+
+        The caller ensures all mocks are set up already.
+
+        @param should_succeed True iff the call to `offload_dir()`
+                              is expected to succeed and remove the
+                              offloaded job directory.
+
+        """
+        self.mox.ReplayAll()
+        gs_offloader.offload_dir(self._job.queue_args[0],
+                                 self._job.queue_args[1])
+        self.mox.VerifyAll()
+        self.assertEqual(not should_succeed,
+                         os.path.isdir(self._job.queue_args[0]))
+
+    def test_offload_success(self):
+        """Test that `offload_dir()` can succeed correctly."""
+        self._mock_offload_dir_calls(['test', '-d',
+                                      self._job.queue_args[0]])
+        self._run_offload_dir(True)
+
+    def test_offload_failure(self):
+        """Test that `offload_dir()` can fail correctly."""
+        self._mock_offload_dir_calls(['test', '!', '-d',
+                                      self._job.queue_args[0]])
+        self._run_offload_dir(False)
+
+    def test_offload_timeout_early(self):
+        """Test that `offload_dir()` times out correctly.
+
+        This test triggers timeout at the earliest possible moment,
+        at the first call to set the timeout alarm.
+
+        """
+        signal.alarm(gs_offloader.OFFLOAD_TIMEOUT_SECS).AndRaise(
+                        gs_offloader.TimeoutException('fubar'))
+        signal.alarm(0)
+        self._run_offload_dir(False)
+
+    def test_offload_timeout_late(self):
+        """Test that `offload_dir()` times out correctly.
+
+        This test triggers timeout at the latest possible moment, at
+        the call to clear the timeout alarm.
+
+        """
+        signal.alarm(gs_offloader.OFFLOAD_TIMEOUT_SECS)
+        gs_offloader.get_cmd_list(
+                mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
+                        ['test', '-d', self._job.queue_args[0]])
+        signal.alarm(0).AndRaise(
+                gs_offloader.TimeoutException('fubar'))
+        signal.alarm(0)
+        self._run_offload_dir(False)
 
 
 class JobDirectoryOffloadTests(_TempResultsDirTestBase):
