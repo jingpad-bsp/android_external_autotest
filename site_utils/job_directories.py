@@ -68,7 +68,6 @@ class _JobDirectory(object):
 
   def __init__(self, resultsdir):
     self._dirname = resultsdir
-    self._destname = ''
     self._id = os.path.basename(resultsdir).split('-')[0]
     self._offload_count = 0
     self._first_offload_start = 0
@@ -102,7 +101,7 @@ class _JobDirectory(object):
 
     If the job is eligible, offload processing is requested by
     passing the `queue` parameter's `put()` method a sequence with
-    the job's `_dirname` and `_destname` attributes.
+    the job's `_dirname` attribute and its directory name.
 
     @param queue     If the job should be offloaded, put the offload
                      parameters into this queue for processing.
@@ -122,7 +121,7 @@ class _JobDirectory(object):
       self._first_offload_start = time.time()
     logging.debug('Processing %s', self._dirname)
     self._offload_count += 1
-    queue.put([self._dirname, self._destname])
+    queue.put([self._dirname, os.path.dirname(self._dirname)])
 
   def is_offloaded(self):
     """Return whether this job has been successfully offloaded."""
@@ -162,7 +161,6 @@ class SpecialJobDirectory(_JobDirectory):
 
   def __init__(self, resultsdir):
     super(SpecialJobDirectory, self).__init__(resultsdir)
-    self._destname = os.path.dirname(resultsdir)
 
   def get_timestamp_if_finished(self):
     entry = _AFE.run('get_special_tasks', id=self._id, is_complete=True)
