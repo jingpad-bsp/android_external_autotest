@@ -1,0 +1,11 @@
+# A list of paths to the logs that will be collected in Crash Collect.
+
+# Only available on intel systems. i915 contains the Intel graphics state. It
+# might contain useful data when a DUT hangs, times out or crashes.
+/sys/kernel/debug/dri/0/i915_error_state
+
+/var/log
+/var/spool/crash
+/dev/pstore/console-ramoops
+/usr/local/autotest/results
+
