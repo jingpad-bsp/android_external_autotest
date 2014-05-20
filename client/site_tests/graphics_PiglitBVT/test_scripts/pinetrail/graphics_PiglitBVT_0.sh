@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=4546
+need_pass=4545
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -931,7 +931,6 @@ run_test "spec/!OpenGL 1.1/dlist-clear" 0.0 "bin/dlist-clear -auto"
 run_test "spec/!OpenGL 1.1/dlist-color-material" 0.0 "bin/dlist-color-material -auto"
 run_test "spec/!OpenGL 1.1/dlist-fdo3129-01" 0.0 "bin/dlist-fdo3129-01 -auto"
 run_test "spec/!OpenGL 1.1/dlist-fdo3129-02" 0.0 "bin/dlist-fdo3129-02 -auto"
-run_test "spec/!OpenGL 1.1/dlist-fdo31590" 0.0 "bin/dlist-fdo31590 -auto"
 run_test "spec/!OpenGL 1.1/draw-arrays-colormaterial" 0.0 "bin/draw-arrays-colormaterial -auto"
 run_test "spec/!OpenGL 1.1/draw-copypixels-sync" 0.0 "bin/draw-copypixels-sync -auto"
 run_test "spec/!OpenGL 1.1/fdo10370" 0.0 "bin/fdo10370 -auto"
@@ -4580,7 +4579,7 @@ popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 4546 tests have passed. |"
+  echo "| Overall pass, as all 4545 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

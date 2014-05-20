@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=314
+need_pass=313
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -343,12 +343,11 @@ run_test "spec/!OpenGL 1.1/depthstencil-default_fb-readpixels-24_8" 0.0 "bin/fbo
 run_test "spec/!OpenGL 1.1/depthstencil-default_fb-readpixels-32F_24_8_REV" 0.0 "bin/fbo-depthstencil -auto readpixels default_fb 32F_24_8_REV"
 run_test "spec/!OpenGL 1.1/depthstencil-default_fb-readpixels-FLOAT-and-USHORT" 0.0 "bin/fbo-depthstencil -auto readpixels default_fb FLOAT-and-USHORT"
 run_test "spec/!OpenGL 1.1/dlist-clear" 0.0 "bin/dlist-clear -auto"
-run_test "spec/!OpenGL 1.1/dlist-color-material" 0.0 "bin/dlist-color-material -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 314 tests have passed. |"
+  echo "| Overall pass, as all 313 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

@@ -32,6 +32,10 @@
       "pass rate": "0.93", 
       "result": "flaky"
     }, 
+    "spec/!OpenGL 1.1/dlist-fdo31590": {
+      "pass rate": "0.5",
+      "result": "flaky"
+    },
     "spec/!OpenGL 3.0/gl-3.0-texture-integer": {
       "pass rate": "0.98", 
       "result": "flaky"
@@ -212,6 +216,10 @@
       "pass rate": "0.47", 
       "result": "flaky"
     }, 
+    "spec/EXT_packed_float/multisample-formats 2 GL_EXT_packed_float": {
+      "pass rate": "0.5",
+      "result": "flaky"
+    },
     "spec/EXT_packed_float/multisample-formats 6 GL_EXT_packed_float": {
       "pass rate": "0.93", 
       "result": "flaky"
@@ -258,6 +266,10 @@
     },
     "spec/EXT_transform_feedback/generatemipmap prims_generated": {
       "pass rate": "0.5", 
+      "result": "flaky"
+    },
+    "spec/EXT_transform_feedback/intervening-read prims_generated": {
+      "pass rate": "0.5",
       "result": "flaky"
     }
   }

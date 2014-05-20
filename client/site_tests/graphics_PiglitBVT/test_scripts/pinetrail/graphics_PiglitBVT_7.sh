@@ -30,7 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/ARB_depth_texture/fbo-depth-GL_DEPTH_COMPONENT24-tex1d" 0.0 "bin/fbo-depth-tex1d -auto GL_DEPTH_COMPONENT24"
 run_test "spec/ARB_depth_texture/fbo-depth-GL_DEPTH_COMPONENT32-clear" 0.0 "bin/fbo-depth -auto clear GL_DEPTH_COMPONENT32"
 run_test "spec/ARB_depth_texture/fbo-depth-GL_DEPTH_COMPONENT32-readpixels" 0.0 "bin/fbo-depth -auto readpixels GL_DEPTH_COMPONENT32"
 run_test "spec/ARB_depth_texture/fbo-depth-GL_DEPTH_COMPONENT32-tex1d" 0.0 "bin/fbo-depth-tex1d -auto GL_DEPTH_COMPONENT32"
@@ -268,6 +267,7 @@ run_test "spec/ARB_vertex_program/getenv4d-with-error" 0.0 "bin/arb_vertex_progr
 run_test "spec/ARB_vertex_program/getlocal4d-with-error" 0.0 "bin/arb_vertex_program-getlocal4d-with-error -auto"
 run_test "spec/ARB_vertex_program/minmax" 0.0 "bin/arb_vertex_program-minmax -auto -fbo"
 run_test "spec/ARB_vertex_program/vp-address-01" 0.0 "bin/vp-address-01 -auto"
+run_test "spec/ARB_vertex_program/vp-arl-constant-array" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-arl-constant-array.vpfp"
 popd
 
 if [ $need_pass == 0 ] ; then

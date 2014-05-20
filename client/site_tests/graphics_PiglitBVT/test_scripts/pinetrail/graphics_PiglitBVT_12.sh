@@ -30,7 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-add-float-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-add-float-vec3.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-add-float-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-add-float-vec4.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-add-int-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-add-int-int.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-add-int-ivec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-add-int-ivec2.shader_test -auto"
@@ -237,6 +236,7 @@ run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-sub-float-vec4" 0.0 
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-sub-int-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-sub-int-int.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-sub-int-ivec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-sub-int-ivec2.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-sub-int-ivec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-sub-int-ivec3.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-sub-int-ivec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-sub-int-ivec4.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then

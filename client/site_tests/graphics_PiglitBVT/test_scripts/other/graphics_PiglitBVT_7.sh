@@ -30,7 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/EXT_transform_feedback/api-errors bind_offset_active" 0.0 "bin/ext_transform_feedback-api-errors bind_offset_active -auto -fbo"
 run_test "spec/EXT_transform_feedback/api-errors bind_offset_max" 0.0 "bin/ext_transform_feedback-api-errors bind_offset_max -auto -fbo"
 run_test "spec/EXT_transform_feedback/api-errors bind_offset_offset_1" 0.0 "bin/ext_transform_feedback-api-errors bind_offset_offset_1 -auto -fbo"
 run_test "spec/EXT_transform_feedback/api-errors bind_offset_offset_2" 0.0 "bin/ext_transform_feedback-api-errors bind_offset_offset_2 -auto -fbo"
@@ -104,7 +103,6 @@ run_test "spec/EXT_transform_feedback/get-buffer-state main_binding" 0.0 "bin/ex
 run_test "spec/EXT_transform_feedback/immediate-reuse" 0.0 "bin/ext_transform_feedback-immediate-reuse -auto -fbo"
 run_test "spec/EXT_transform_feedback/interleaved-attribs" 0.0 "bin/ext_transform_feedback-interleaved -auto -fbo"
 run_test "spec/EXT_transform_feedback/intervening-read output" 0.0 "bin/ext_transform_feedback-intervening-read output -auto -fbo"
-run_test "spec/EXT_transform_feedback/intervening-read prims_generated" 0.0 "bin/ext_transform_feedback-intervening-read prims_generated -auto -fbo"
 run_test "spec/EXT_transform_feedback/intervening-read prims_written" 0.0 "bin/ext_transform_feedback-intervening-read prims_written -auto -fbo"
 run_test "spec/EXT_transform_feedback/negative-prims" 0.0 "bin/ext_transform_feedback-negative-prims -auto -fbo"
 run_test "spec/EXT_transform_feedback/order arrays lines" 0.0 "bin/ext_transform_feedback-order arrays lines -auto -fbo"
@@ -464,6 +462,8 @@ run_test "spec/glsl-1.10/compiler/qualifiers/varying-bvec2-prohibited.frag" 0.0 
 run_test "spec/glsl-1.10/compiler/qualifiers/varying-bvec2-prohibited.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-bvec2-prohibited.vert fail 1.10"
 run_test "spec/glsl-1.10/compiler/qualifiers/varying-bvec3-prohibited.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-bvec3-prohibited.frag fail 1.10"
 run_test "spec/glsl-1.10/compiler/qualifiers/varying-bvec3-prohibited.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-bvec3-prohibited.vert fail 1.10"
+run_test "spec/glsl-1.10/compiler/qualifiers/varying-bvec4-prohibited.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-bvec4-prohibited.frag fail 1.10"
+run_test "spec/glsl-1.10/compiler/qualifiers/varying-bvec4-prohibited.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-bvec4-prohibited.vert fail 1.10"
 popd
 
 if [ $need_pass == 0 ] ; then

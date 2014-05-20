@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=166
+need_pass=167
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -30,6 +30,7 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat2-index-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat2-index-rd.shader_test -auto"
 run_test "spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat2-index-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat2-index-row-rd.shader_test -auto"
 run_test "spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat2-index-row-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat2-index-row-wr.shader_test -auto"
 run_test "spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat2-index-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat2-index-wr.shader_test -auto"
@@ -200,7 +201,7 @@ popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 166 tests have passed. |"
+  echo "| Overall pass, as all 167 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

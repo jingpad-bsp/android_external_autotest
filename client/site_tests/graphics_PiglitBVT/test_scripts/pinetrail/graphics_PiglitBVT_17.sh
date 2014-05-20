@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=403
+need_pass=402
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -432,12 +432,11 @@ run_test "spec/glsl-1.20/compiler/structure-and-array-operations/array-size-zero
 run_test "spec/glsl-1.20/compiler/structure-and-array-operations/array-subtract.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.20/compiler/structure-and-array-operations/array-subtract.vert fail 1.20"
 run_test "spec/glsl-1.20/compiler/structure-and-array-operations/array-variable-index-implicit-size-global.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.20/compiler/structure-and-array-operations/array-variable-index-implicit-size-global.vert fail 1.20"
 run_test "spec/glsl-1.20/compiler/structure-and-array-operations/array-variable-index-implicit-size-local.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.20/compiler/structure-and-array-operations/array-variable-index-implicit-size-local.vert fail 1.20"
-run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-add-float-mat2x3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-add-float-mat2x3.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 403 tests have passed. |"
+  echo "| Overall pass, as all 402 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

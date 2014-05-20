@@ -30,6 +30,7 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/glsl-1.30/compiler/keywords/ivec3.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/compiler/keywords/ivec3.frag fail 1.30"
 run_test "spec/glsl-1.30/compiler/keywords/ivec4.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/compiler/keywords/ivec4.frag fail 1.30"
 run_test "spec/glsl-1.30/compiler/keywords/lowp.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/compiler/keywords/lowp.frag fail 1.30"
 run_test "spec/glsl-1.30/compiler/keywords/mat2.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/compiler/keywords/mat2.frag fail 1.30"
@@ -469,7 +470,6 @@ run_test "spec/glsl-1.30/execution/built-in-functions/fs-op-lt-uint-uint" 0.0 "b
 run_test "spec/glsl-1.30/execution/built-in-functions/fs-op-lt-uint-uint-using-if" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/fs-op-lt-uint-uint-using-if.shader_test -auto"
 run_test "spec/glsl-1.30/execution/built-in-functions/fs-op-mod-int-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/fs-op-mod-int-int.shader_test -auto"
 run_test "spec/glsl-1.30/execution/built-in-functions/fs-op-mod-int-ivec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/fs-op-mod-int-ivec2.shader_test -auto"
-run_test "spec/glsl-1.30/execution/built-in-functions/fs-op-mod-int-ivec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/fs-op-mod-int-ivec3.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then

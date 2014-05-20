@@ -30,7 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/ARB_vertex_program/vp-arl-constant-array" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-arl-constant-array.vpfp"
 run_test "spec/ARB_vertex_program/vp-arl-constant-array-huge" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-arl-constant-array-huge.vpfp"
 run_test "spec/ARB_vertex_program/vp-arl-constant-array-huge-offset" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-arl-constant-array-huge-offset.vpfp"
 run_test "spec/ARB_vertex_program/vp-arl-constant-array-huge-offset-neg" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-arl-constant-array-huge-offset-neg.vpfp"
@@ -114,6 +113,7 @@ run_test "spec/EXT_packed_depth_stencil/fbo-depthstencil-GL_DEPTH24_STENCIL8-bli
 run_test "spec/EXT_packed_depth_stencil/fbo-depthstencil-GL_DEPTH24_STENCIL8-clear" 0.0 "bin/fbo-depthstencil -auto clear GL_DEPTH24_STENCIL8"
 run_test "spec/EXT_packed_depth_stencil/fbo-depthstencil-GL_DEPTH24_STENCIL8-drawpixels-24_8" 0.0 "bin/fbo-depthstencil -auto drawpixels GL_DEPTH24_STENCIL8 24_8"
 run_test "spec/EXT_packed_depth_stencil/fbo-depthstencil-GL_DEPTH24_STENCIL8-readpixels-24_8" 0.0 "bin/fbo-depthstencil -auto readpixels GL_DEPTH24_STENCIL8 24_8"
+run_test "spec/EXT_packed_depth_stencil/fbo-depthstencil-GL_DEPTH24_STENCIL8-readpixels-FLOAT-and-USHORT" 0.0 "bin/fbo-depthstencil -auto readpixels GL_DEPTH24_STENCIL8 FLOAT-and-USHORT"
 popd
 
 if [ $need_pass == 0 ] ; then

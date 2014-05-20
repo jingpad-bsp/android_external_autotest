@@ -30,9 +30,9 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/!OpenGL 1.1/dlist-color-material" 0.0 "bin/dlist-color-material -auto"
 run_test "spec/!OpenGL 1.1/dlist-fdo3129-01" 0.0 "bin/dlist-fdo3129-01 -auto"
 run_test "spec/!OpenGL 1.1/dlist-fdo3129-02" 0.0 "bin/dlist-fdo3129-02 -auto"
-run_test "spec/!OpenGL 1.1/dlist-fdo31590" 0.0 "bin/dlist-fdo31590 -auto"
 run_test "spec/!OpenGL 1.1/draw-arrays-colormaterial" 0.0 "bin/draw-arrays-colormaterial -auto"
 run_test "spec/!OpenGL 1.1/draw-copypixels-sync" 0.0 "bin/draw-copypixels-sync -auto"
 run_test "spec/!OpenGL 1.1/draw-pixels" 0.0 "bin/draw-pixels -auto"

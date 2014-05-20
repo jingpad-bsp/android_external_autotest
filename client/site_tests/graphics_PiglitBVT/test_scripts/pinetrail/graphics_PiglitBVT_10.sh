@@ -30,7 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.10/execution/built-in-functions/fs-exp2-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-exp2-vec4.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-faceforward-float-float-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-faceforward-float-float-float.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-faceforward-vec2-vec2-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-faceforward-vec2-vec2-vec2.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-faceforward-vec3-vec3-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-faceforward-vec3-vec3-vec3.shader_test -auto"
@@ -256,6 +255,7 @@ run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat4-float" 0.0 
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat4-mat4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat4-mat4.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-vec2-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-vec2-float.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-vec2-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-vec2-vec2.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-vec3-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-vec3-vec3.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then

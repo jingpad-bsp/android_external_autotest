@@ -30,7 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/EXT_packed_depth_stencil/fbo-depthstencil-GL_DEPTH24_STENCIL8-readpixels-FLOAT-and-USHORT" 0.0 "bin/fbo-depthstencil -auto readpixels GL_DEPTH24_STENCIL8 FLOAT-and-USHORT"
 run_test "spec/EXT_packed_depth_stencil/fbo-generatemipmap-formats" 0.0 "bin/fbo-generatemipmap-formats -auto GL_EXT_packed_depth_stencil"
 run_test "spec/EXT_packed_depth_stencil/fbo-stencil-GL_DEPTH24_STENCIL8-clear" 0.0 "bin/fbo-stencil -auto clear GL_DEPTH24_STENCIL8"
 run_test "spec/EXT_packed_depth_stencil/fbo-stencil-GL_DEPTH24_STENCIL8-copypixels" 0.0 "bin/fbo-stencil -auto copypixels GL_DEPTH24_STENCIL8"
@@ -350,6 +349,7 @@ run_test "spec/glsl-1.10/execution/built-in-functions/fs-exp-vec4" 0.0 "bin/shad
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-exp2-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-exp2-float.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-exp2-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-exp2-vec2.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-exp2-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-exp2-vec3.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-exp2-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-exp2-vec4.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then

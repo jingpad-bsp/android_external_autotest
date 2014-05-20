@@ -262,7 +262,6 @@ run_test "spec/EXT_packed_float/fbo-colormask-formats" 0.0 "bin/fbo-colormask-fo
 run_test "spec/EXT_packed_float/fbo-generatemipmap-formats" 0.0 "bin/fbo-generatemipmap-formats -auto GL_EXT_packed_float"
 run_test "spec/EXT_packed_float/get-renderbuffer-internalformat" 0.0 "bin/get-renderbuffer-internalformat GL_EXT_packed_float -auto -fbo"
 run_test "spec/EXT_packed_float/getteximage-invalid-format-for-packed-type" 0.0 "bin/getteximage-invalid-format-for-packed-type -auto -fbo"
-run_test "spec/EXT_packed_float/multisample-formats 2 GL_EXT_packed_float" 0.0 "bin/ext_framebuffer_multisample-formats -auto 2 GL_EXT_packed_float"
 run_test "spec/EXT_packed_float/multisample-formats 4 GL_EXT_packed_float" 0.0 "bin/ext_framebuffer_multisample-formats -auto 4 GL_EXT_packed_float"
 run_test "spec/EXT_packed_float/pack" 0.0 "bin/ext_packed_float-pack -auto -fbo"
 run_test "spec/EXT_packed_float/texwrap formats" 0.0 "bin/texwrap -fbo -auto GL_EXT_packed_float"
@@ -365,6 +364,7 @@ run_test "spec/EXT_transform_feedback/alignment 8" 0.0 "bin/ext_transform_feedba
 run_test "spec/EXT_transform_feedback/api-errors begin_active" 0.0 "bin/ext_transform_feedback-api-errors begin_active -auto -fbo"
 run_test "spec/EXT_transform_feedback/api-errors bind_base_active" 0.0 "bin/ext_transform_feedback-api-errors bind_base_active -auto -fbo"
 run_test "spec/EXT_transform_feedback/api-errors bind_base_max" 0.0 "bin/ext_transform_feedback-api-errors bind_base_max -auto -fbo"
+run_test "spec/EXT_transform_feedback/api-errors bind_offset_active" 0.0 "bin/ext_transform_feedback-api-errors bind_offset_active -auto -fbo"
 popd
 
 if [ $need_pass == 0 ] ; then

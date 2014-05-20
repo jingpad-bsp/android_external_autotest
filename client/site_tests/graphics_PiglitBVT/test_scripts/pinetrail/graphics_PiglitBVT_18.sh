@@ -30,6 +30,7 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-add-float-mat2x3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-add-float-mat2x3.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-add-float-mat2x4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-add-float-mat2x4.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-add-float-mat3x4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-add-float-mat3x4.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-add-float-mat4x2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-add-float-mat4x2.shader_test -auto"
@@ -241,7 +242,6 @@ run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-sub-float-mat4x3" 0.
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-sub-mat2x3-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-op-sub-mat2x3-float.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-sub-mat2x3-mat2x3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-op-sub-mat2x3-mat2x3.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-sub-mat2x4-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-op-sub-mat2x4-float.shader_test -auto"
-run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-sub-mat2x4-mat2x4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-op-sub-mat2x4-mat2x4.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then

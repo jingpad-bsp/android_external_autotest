@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=8078
+need_pass=8075
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -999,7 +999,6 @@ run_test "spec/!OpenGL 1.1/dlist-clear" 0.0 "bin/dlist-clear -auto"
 run_test "spec/!OpenGL 1.1/dlist-color-material" 0.0 "bin/dlist-color-material -auto"
 run_test "spec/!OpenGL 1.1/dlist-fdo3129-01" 0.0 "bin/dlist-fdo3129-01 -auto"
 run_test "spec/!OpenGL 1.1/dlist-fdo3129-02" 0.0 "bin/dlist-fdo3129-02 -auto"
-run_test "spec/!OpenGL 1.1/dlist-fdo31590" 0.0 "bin/dlist-fdo31590 -auto"
 run_test "spec/!OpenGL 1.1/draw-arrays-colormaterial" 0.0 "bin/draw-arrays-colormaterial -auto"
 run_test "spec/!OpenGL 1.1/draw-copypixels-sync" 0.0 "bin/draw-copypixels-sync -auto"
 run_test "spec/!OpenGL 1.1/draw-pixels" 0.0 "bin/draw-pixels -auto"
@@ -1968,7 +1967,6 @@ run_test "spec/EXT_packed_float/fbo-colormask-formats" 0.0 "bin/fbo-colormask-fo
 run_test "spec/EXT_packed_float/fbo-generatemipmap-formats" 0.0 "bin/fbo-generatemipmap-formats -auto GL_EXT_packed_float"
 run_test "spec/EXT_packed_float/get-renderbuffer-internalformat" 0.0 "bin/get-renderbuffer-internalformat GL_EXT_packed_float -auto -fbo"
 run_test "spec/EXT_packed_float/getteximage-invalid-format-for-packed-type" 0.0 "bin/getteximage-invalid-format-for-packed-type -auto -fbo"
-run_test "spec/EXT_packed_float/multisample-formats 2 GL_EXT_packed_float" 0.0 "bin/ext_framebuffer_multisample-formats -auto 2 GL_EXT_packed_float"
 run_test "spec/EXT_packed_float/multisample-formats 4 GL_EXT_packed_float" 0.0 "bin/ext_framebuffer_multisample-formats -auto 4 GL_EXT_packed_float"
 run_test "spec/EXT_packed_float/pack" 0.0 "bin/ext_packed_float-pack -auto -fbo"
 run_test "spec/EXT_packed_float/texwrap formats" 0.0 "bin/texwrap -fbo -auto GL_EXT_packed_float"
@@ -2145,7 +2143,6 @@ run_test "spec/EXT_transform_feedback/get-buffer-state main_binding" 0.0 "bin/ex
 run_test "spec/EXT_transform_feedback/immediate-reuse" 0.0 "bin/ext_transform_feedback-immediate-reuse -auto -fbo"
 run_test "spec/EXT_transform_feedback/interleaved-attribs" 0.0 "bin/ext_transform_feedback-interleaved -auto -fbo"
 run_test "spec/EXT_transform_feedback/intervening-read output" 0.0 "bin/ext_transform_feedback-intervening-read output -auto -fbo"
-run_test "spec/EXT_transform_feedback/intervening-read prims_generated" 0.0 "bin/ext_transform_feedback-intervening-read prims_generated -auto -fbo"
 run_test "spec/EXT_transform_feedback/intervening-read prims_written" 0.0 "bin/ext_transform_feedback-intervening-read prims_written -auto -fbo"
 run_test "spec/EXT_transform_feedback/negative-prims" 0.0 "bin/ext_transform_feedback-negative-prims -auto -fbo"
 run_test "spec/EXT_transform_feedback/order arrays lines" 0.0 "bin/ext_transform_feedback-order arrays lines -auto -fbo"
@@ -8112,7 +8109,7 @@ popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 8078 tests have passed. |"
+  echo "| Overall pass, as all 8075 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

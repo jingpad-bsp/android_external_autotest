@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=435
+need_pass=434
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -464,12 +464,11 @@ run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitor-uint-uvec2.vert" 0
 run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitor-uint-uvec3.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitor-uint-uvec3.frag pass 1.30"
 run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitor-uint-uvec3.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitor-uint-uvec3.vert pass 1.30"
 run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitor-uint-uvec4.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitor-uint-uvec4.frag pass 1.30"
-run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitor-uint-uvec4.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitor-uint-uvec4.vert pass 1.30"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 435 tests have passed. |"
+  echo "| Overall pass, as all 434 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

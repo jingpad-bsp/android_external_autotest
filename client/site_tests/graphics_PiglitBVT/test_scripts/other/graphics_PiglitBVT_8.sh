@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=421
+need_pass=420
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -30,8 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.10/compiler/qualifiers/varying-bvec4-prohibited.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-bvec4-prohibited.frag fail 1.10"
-run_test "spec/glsl-1.10/compiler/qualifiers/varying-bvec4-prohibited.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-bvec4-prohibited.vert fail 1.10"
 run_test "spec/glsl-1.10/compiler/qualifiers/varying-struct-prohibited.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-struct-prohibited.frag fail 1.10"
 run_test "spec/glsl-1.10/compiler/qualifiers/varying-struct-prohibited.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-struct-prohibited.vert fail 1.10"
 run_test "spec/glsl-1.10/compiler/reserved/double-underscore-01.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/reserved/double-underscore-01.frag fail 1.10"
@@ -451,11 +449,12 @@ run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-ivec4
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-mat2-mat2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-mat2-mat2.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-mat3-mat3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-mat3-mat3.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-mat4-mat4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-mat4-mat4.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-vec2-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-vec2-vec2.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 421 tests have passed. |"
+  echo "| Overall pass, as all 420 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"
