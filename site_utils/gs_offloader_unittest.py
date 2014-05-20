@@ -220,6 +220,45 @@ class _MockJobDirectory(job_directories._JobDirectory):
             os.rmdir(self._dirname)
 
 
+class CommandListTests(unittest.TestCase):
+    """Tests for `get_cmd_list()`."""
+
+    def _command_list_assertions(self, job):
+        """Call `get_cmd_list()` and check the return value.
+
+        Check the following assertions:
+          * The command name (argv[0]) is 'gsutil'.
+          * The arguments contain the 'cp' subcommand.
+          * The next-to-last argument (the source directory) is the
+            job's `queue_args[0]`.
+          * The last argument (the destination URL) ends with the
+            job's `queue_args[1]`.
+          * The last argument (the destination URL) starts with
+            `GS_URI`.
+
+        @param job A job with properly calculated arguments to
+                   `get_cmd_list()`
+
+        """
+        command = gs_offloader.get_cmd_list(job.queue_args[0],
+                                            job.queue_args[1])
+        self.assertEqual(command[0], 'gsutil')
+        self.assertTrue('cp' in command)
+        self.assertEqual(command[-2], job.queue_args[0])
+        self.assertTrue(command[-1].endswith(job.queue_args[1]))
+        self.assertTrue(command[-1].startswith(gs_offloader.GS_URI))
+
+    def test_get_cmd_list_regular(self):
+        """Test `get_cmd_list()` as for a regular job."""
+        job = _MockJobDirectory('118-debug')
+        self._command_list_assertions(job)
+
+    def test_get_cmd_list_special(self):
+        """Test `get_cmd_list()` as for a special job."""
+        job = _MockJobDirectory('hosts/host1/118-reset')
+        self._command_list_assertions(job)
+
+
 # Below is partial sample of e-mail notification text.  This text is
 # deliberately hard-coded and then parsed to create the test data;
 # the idea is to make sure the actual text format will be reviewed
