@@ -29,6 +29,7 @@ class security_StatefulPermissions(test.test):
                                  "/encrypted/var/cache/device_local_account_external_policy_data",
                                  "/encrypted/var/cache/echo",
                                  "/encrypted/var/cache/external_cache",
+                                 "/encrypted/var/cache/shared_extensions",
                                  "/encrypted/var/cache/touch_trial/selection",
                                  "/encrypted/var/lib/cromo",
                                  "/encrypted/var/lib/timezone",
