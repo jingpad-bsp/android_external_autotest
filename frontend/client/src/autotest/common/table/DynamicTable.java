@@ -266,6 +266,8 @@ public class DynamicTable extends DataTable implements DataCallback {
     @Override
     public void handleTotalResultCount(int totalCount) {
         updatePaginatorTotalResults(totalCount);
+        refreshPaginators();
+        notifyListenersRefreshed();
     }
 
     public void handlePage(List<JSONObject> data) {
