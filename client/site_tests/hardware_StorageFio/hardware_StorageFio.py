@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 import logging, os, re, time
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import site_utils, test, utils
 from autotest_lib.client.common_lib import error, fio_util
 
 
@@ -23,40 +23,15 @@ class hardware_StorageFio(test.test):
     # Initialize fail counter used to determine test pass/fail.
     _fail_count = 0
 
-    def __find_free_root_partition(self):
-        """Locate the spare root partition that we didn't boot off"""
-
-        spare_root_map = {
-            '3': '5',
-            '5': '3',
-        }
-        rootdev = utils.system_output('rootdev -s')
-        spare_root = rootdev[:-1] + spare_root_map[rootdev[-1]]
-        self.__filename = spare_root
-
-
     def __get_disk_size(self):
         """Return the size in bytes of the device pointed to by __filename"""
+        self.__filesize = site_utils.get_disk_size(self.__filename)
 
-        device = os.path.basename(self.__filename)
-        for line in file('/proc/partitions'):
-            try:
-                major, minor, blocks, name = re.split(r' +', line.strip())
-            except ValueError:
-                continue
-            if name == device:
-                blocks = int(blocks)
-                self.__filesize = 1024 * blocks
-                break
-        else:
-            if device.startswith(utils.system_output('rootdev -s -d')):
-                raise error.TestError(
-                    'Unable to determine free partitions size')
-            else:
-                raise error.TestNAError(
-                    'Unable to find the partition %s, please plug in a USB '
-                    'flash drive and a SD card for testing external storage' %
-                    self.__filename)
+        if not self.__filesize:
+            raise error.TestNAError(
+                'Unable to find the partition %s, please plug in a USB '
+                'flash drive and a SD card for testing external storage' %
+                self.__filename)
 
 
     def __get_device_description(self):
@@ -103,14 +78,14 @@ class hardware_StorageFio(test.test):
             return
 
         if not dev:
-            dev = utils.get_fixed_dst_drive()
+            dev = site_utils.get_fixed_dst_drive()
 
-        if dev == utils.system_output('rootdev -s -d'):
+        if dev == site_utils.get_root_device():
             if filesize == 0:
                 raise error.TestError(
                     'Using the root device as a whole is not allowed')
             else:
-                self.__find_free_root_partition()
+                self.__filename = site_utils.get_free_root_partition()
         elif filesize != 0:
             # Use the first partition of the external drive
             if dev[5:7] == 'sd':
@@ -156,7 +131,7 @@ class hardware_StorageFio(test.test):
                 ('8k_async_randwrite', []),
                 ('8k_async_randwrite', [self.VERIFY_OPTION])
             ]
-        elif dev in ['', utils.system_output('rootdev -s -d')]:
+        elif dev in ['', site_utils.get_root_device()]:
             requirements = [
                 ('surfing', []),
                 ('boot', []),

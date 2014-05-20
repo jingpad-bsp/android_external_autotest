@@ -4,7 +4,7 @@
 
 import logging, re, subprocess, threading
 import common
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import site_utils, test, utils
 from autotest_lib.client.common_lib import error
 
 
@@ -27,56 +27,6 @@ class hardware_Badblocks(test.test):
     _pass_count = 0
     _fail_count = 0
     _longest_runtime = 0
-
-
-    def _get_partition(self):
-        """
-        Gets the spare root partition from which the system did not boot.
-
-        On startup, the bootloader selects one of two paritions that contain
-        the most up-to-date copy of the ChromeOS kernel. This method determines
-        which partition is not currently used.
-
-        This is modified code from platform_CorruptRootfs.
-
-        @return (dev, part) where dev is device and part is the partition.
-
-        """
-
-        rootdev = utils.system_output('rootdev -s')
-        logging.info('Root partition being used: %s', rootdev)
-        rootdev = rootdev.strip()
-
-        if rootdev == '/dev/sda3':
-            dev = '/dev/sda'
-            part = '5'
-        elif rootdev == '/dev/sda5':
-            dev = '/dev/sda'
-            part = '3'
-        elif rootdev == '/dev/mmcblk0p3':
-            dev = '/dev/mmcblk0'
-            part = 'p5'
-        elif rootdev == '/dev/mmcblk0p5':
-            dev = '/dev/mmcblk0'
-            part = 'p3'
-        else:
-            raise TestError('Unexpected root device %s', rootdev)
-
-        return dev, part
-
-
-    def _get_partition_size(self, dev, part):
-        """"
-        Gets partition size in bytes.
-
-        @return the partition size.
-
-        """
-
-        cmd = ('lsblk -b ' + dev + part +
-               ' | head -n2 | tail -n1 | awk \'{print $4}\'')
-
-        return utils.system_output(cmd)
 
 
     def _get_sector_size(self, dev):
@@ -118,7 +68,7 @@ class hardware_Badblocks(test.test):
                 raise error.TestError('Error: badblocks timed out.')
 
 
-    def _run_badblocks(self, dev, part, sector_size, tmout):
+    def _run_badblocks(self, dev, sector_size, tmout):
         """
         Runs badblocks.
 
@@ -129,7 +79,7 @@ class hardware_Badblocks(test.test):
         # -v = verbose (print error count)
         # -w = destructive write+read test
         # -b = block size (set equal to sector size)
-        argv = [self._BADBLOCKS, '-svw', '-d', str(sector_size), dev + part]
+        argv = [self._BADBLOCKS, '-svw', '-d', str(sector_size), dev]
         msg = 'Running: ' + ' '.join(map(str, argv))
         logging.info(msg)
         badblocks_proc = subprocess.Popen(
@@ -205,23 +155,23 @@ class hardware_Badblocks(test.test):
 
         # Determine which device and partition to use.
         logging.info('Determine unused root partition to test on:')
-        dev, part = self._get_partition()
-        logging.info('Testing on ' + dev + part)
+        dev = site_utils.get_free_root_partition()
+        logging.info('Testing on ' + dev)
 
         # Get block device's sector size.
         logging.info('Determine block device sector size:')
-        sector_size = self._get_sector_size(dev)
+        sector_size = self._get_sector_size(site_utils.get_root_device())
         logging.info('Sector size (bytes): ' + sector_size)
 
         # Get partition size.
         logging.info('Determine partition size:')
-        part_size = self._get_partition_size(dev, part)
+        part_size = site_utils.get_disk_size(dev)
         logging.info('Partition size (bytes): %s', part_size)
 
         # Run badblocks.
         for i in range(iters):
             logging.info('Starting iteration %d', i)
-            self._run_badblocks(dev, part, sector_size, tmout)
+            self._run_badblocks(dev, sector_size, tmout)
 
         # Report statistics.
         logging.info('Total pass: %d', self._pass_count)

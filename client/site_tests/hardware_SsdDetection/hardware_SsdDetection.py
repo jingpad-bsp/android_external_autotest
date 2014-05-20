@@ -5,7 +5,7 @@
 import os
 import re
 
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import site_utils, test, utils
 from autotest_lib.client.common_lib import error
 
 class hardware_SsdDetection(test.test):
@@ -22,8 +22,7 @@ class hardware_SsdDetection(test.test):
     def run_once(self, check_link_speed=()):
         # Use rootdev to find the underlying block device even if the
         # system booted to /dev/dm-0.
-
-        device = utils.system_output('rootdev -s -d')
+        device = site_utils.get_root_device()
 
         # Check the device is fixed
 

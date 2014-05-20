@@ -4,7 +4,7 @@
 
 import os, fcntl, struct, random
 
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import site_utils, test, utils
 from autotest_lib.client.common_lib import error
 
 
@@ -31,19 +31,6 @@ class hardware_TrimIntegrity(test.test):
     IOCTL_TRIM_CMD = 0x1277
     IOCTL_NOT_SUPPORT_ERRNO = 95
 
-    def _find_free_root_partition(self):
-        """
-        Locate the spare root partition that we didn't boot off.
-        """
-
-        spare_root_map = {
-            '3': '5',
-            '5': '3',
-        }
-        rootdev = utils.system_output('rootdev -s')
-        spare_root = rootdev[:-1] + spare_root_map[rootdev[-1]]
-        self._filename = spare_root
-
     def _get_hash(self, chunk_count, chunk_size):
         """
         Get hash for every chunk of data.
@@ -65,7 +52,7 @@ class hardware_TrimIntegrity(test.test):
         Executes the test and logs the output.
         """
 
-        self._find_free_root_partition()
+        self._filename = site_utils.get_free_root_partition()
 
         # Check for trim support in ioctl. Raise TestNAError if not support.
         try:

@@ -5,7 +5,7 @@
 import logging
 import os
 
-from autotest_lib.client.bin import test
+from autotest_lib.client.bin import site_utils, test
 from autotest_lib.client.common_lib import error, utils
 
 class platform_RootPartitionsNotMounted(test.test):
@@ -87,17 +87,6 @@ class platform_RootPartitionsNotMounted(test.test):
                 processes.append(path)
         return processes
 
-    def get_root_device(self):
-        """Gets the root device path.
-
-        Gets the root device path using 'rootdev'. 'rootdev' is expected to
-        be installed at /usr/bin on the test image.
-
-        Returns:
-           The root device path.
-        """
-        return utils.run('%s -s -d' % self._ROOTDEV_PATH).stdout.strip('\n')
-
     def run_once(self):
         if os.geteuid() != 0:
             raise error.TestNAError('This test needs to be run under root')
@@ -106,7 +95,7 @@ class platform_RootPartitionsNotMounted(test.test):
             if not os.path.isfile(path):
                 raise error.TestNAError('%s not found' % path)
 
-        root_device = self.get_root_device()
+        root_device = site_utils.get_root_device()
         if not root_device:
             raise error.TestNAError('Could not find the root device')
         logging.debug('Root device: %s' % root_device)

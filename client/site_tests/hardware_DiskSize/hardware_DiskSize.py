@@ -4,9 +4,8 @@
 
 import logging
 import os
-import re
 
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import site_utils, test, utils
 from autotest_lib.client.common_lib import error
 
 DEFAULT_MIN_GB = 16
@@ -39,7 +38,7 @@ class hardware_DiskSize(test.test):
 
     @classmethod
     def _gib_to_gb(cls, gib):
-        return float(gib) * (1 << 30) / (10**9)
+        return float(gib) * (1 << 30) / (10 ** 9)
 
     def _compute_min_gb(self):
         """Computes minimum size allowed primary storage device.
@@ -73,23 +72,15 @@ class hardware_DiskSize(test.test):
 
 
     def run_once(self):
-        devnode = utils.system_output('rootdev -s -d -i')
-        self._device = os.path.basename(devnode)
-
-        for line in file('/proc/partitions'):
-            try:
-                _, _, blocks, name = re.split(r' +', line.strip())
-            except ValueError:
-                continue
-            if name == self._device:
-                blocks = int(blocks)
-                break
-        else:
+        root_dev = site_utils.get_root_device()
+        self._device = os.path.basename(root_dev)
+        disk_size = site_utils.get_disk_size(root_dev)
+        if not disk_size:
             raise error.TestError('Unable to determine main disk size')
 
         # Capacity of a hard disk is quoted with SI prefixes, incrementing by
         # powers of 1000, instead of powers of 1024.
-        gb = float(blocks) * 1024 / (10**9)
+        gb = float(disk_size) / (10 ** 9)
 
         self.write_perf_keyval({"gb_main_disk_size": gb})
         min_gb = self._compute_min_gb()

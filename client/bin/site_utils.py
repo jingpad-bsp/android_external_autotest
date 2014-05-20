@@ -759,7 +759,7 @@ def get_board_with_frequency_and_memory():
     """
     board_name = get_board()
     # Rounded to nearest GB and GHz.
-    memory = int(round(get_mem_total()/1024.0))
+    memory = int(round(get_mem_total() / 1024.0))
     # Convert frequency to GHz with 1 digit accuracy after the decimal point.
     frequency = int(round(get_cpu_max_frequency() * 1e-8)) * 0.1
     board = "%s_%1.1fGHz_%dGB" % (board_name, frequency, memory)
@@ -772,7 +772,7 @@ def get_mem_total():
     """
     mem_total = _get_float_from_file(_MEMINFO, 'MemTotal:', 'MemTotal:', ' kB')
     # Sanity check, all Chromebooks have at least 1GB of memory.
-    assert mem_total > 1024*1024, 'Unreasonable amount of memory.'
+    assert mem_total > 1024 * 1024, 'Unreasonable amount of memory.'
     return mem_total / 1024
 
 
@@ -883,3 +883,67 @@ def has_no_monitor():
         return True
 
     return False
+
+
+def get_fixed_dst_drive():
+    """
+    Return device name for internal disk.
+    Example: return /dev/sda for falco booted from usb
+    """
+    cmd = ' '.join(['. /usr/sbin/write_gpt.sh;',
+                    '. /usr/share/misc/chromeos-common.sh;',
+                    'load_base_vars;',
+                    'get_fixed_dst_drive'])
+    return utils.system_output(cmd)
+
+
+def get_root_device():
+    """
+    Return root device.
+    Will return correct disk device even system boot from /dev/dm-0
+    Example: return /dev/sdb for falco booted from usb
+    """
+    return utils.system_output('rootdev -s -d')
+
+
+def get_root_partition():
+    """
+    Return current root partition
+    Example: return /dev/sdb3 for falco booted from usb
+    """
+    return utils.system_output('rootdev -s')
+
+
+def get_free_root_partition(root_part=None):
+    """
+    Return currently unused root partion
+    Example: return /dev/sdb5 for falco booted from usb
+
+    @param root_part: cuurent root partition
+    """
+    spare_root_map = {'3': '5', '5': '3'}
+    if not root_part:
+        root_part = get_root_partition()
+    return root_part[:-1] + spare_root_map[root_part[-1]]
+
+
+def is_booted_from_internal_disk():
+    """Return True if boot from internal disk. False, otherwise."""
+    return get_root_device() == get_fixed_dst_drive()
+
+
+def get_disk_size(disk_name):
+    """
+    Return size of disk in byte. Return 0 in Error Case
+
+    @param disk_name: disk name to find size
+    """
+    device = os.path.basename(disk_name)
+    for line in file('/proc/partitions'):
+        try:
+            major, minor, blocks, name = re.split(r' +', line.strip())
+        except ValueError:
+            continue
+        if name == device:
+            return 1024 * int(blocks)
+    return 0

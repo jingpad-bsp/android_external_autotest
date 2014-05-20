@@ -674,14 +674,6 @@ def get_disks():
     return disk_re.findall(df_output)
 
 
-def get_fixed_dst_drive():
-    cmd = ' '.join(['. /usr/sbin/write_gpt.sh;',
-                    '. /usr/share/misc/chromeos-common.sh;',
-                    'load_base_vars;',
-                    'get_fixed_dst_drive'])
-    return utils.system_output(cmd)
-
-
 def load_module(module_name):
     # Checks if a module has already been loaded
     if module_is_loaded(module_name):
