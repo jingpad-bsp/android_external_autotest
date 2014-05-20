@@ -5,10 +5,10 @@
 import logging
 
 from autotest_lib.client.common_lib import utils
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
 
-class firmware_ConsecutiveBoot(FAFTSequence):
+class firmware_ConsecutiveBoot(FirmwareTest):
     """
     Servo based consecutive boot test.
 
@@ -31,20 +31,17 @@ class firmware_ConsecutiveBoot(FAFTSequence):
 
 
     def run_once(self, dev_mode=False):
-        self.register_faft_sequence((
-            {   # Step 1, expected boot fine, full power off DUT and on
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_type': 'developer' if dev_mode else 'normal',
-                }),
-                'reboot_action': self.full_power_off_and_on,
-            },
-            {   # Step 2, expected boot fine
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_type': 'developer' if dev_mode else 'normal',
-                }),
-            },
-        ))
         for i in xrange(self.faft_iterations):
             logging.info('======== Running FAFT ITERATION %d/%s ========',
                          i+1, self.faft_iterations)
-            self.run_faft_sequence()
+            logging.info("Expected boot fine, full power off DUT and on.")
+            self.check_state((self.checkers.crossystem_checker, {
+                        'mainfw_type': 'developer' if dev_mode else 'normal',
+                        }))
+            self.full_power_off_and_on()
+            self.wait_for_client()
+
+            logging.info("Expected boot fine.")
+            self.check_state((self.checkers.crossystem_checker, {
+                        'mainfw_type': 'developer' if dev_mode else 'normal',
+                        }))
