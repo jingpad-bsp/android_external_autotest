@@ -5,15 +5,14 @@
 import logging
 import time
 
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
 
-class firmware_SoftwareSync(FAFTSequence):
+class firmware_SoftwareSync(FirmwareTest):
     """
     Servo based EC software sync test.
     """
     version = 1
-
 
     def initialize(self, host, cmdline_args, dev_mode=False):
         # This test tries to corrupt EC firmware. Should disable EC WP.
@@ -25,18 +24,15 @@ class firmware_SoftwareSync(FAFTSequence):
         self.setup_rw_boot()
         self.dev_mode = dev_mode
 
-
     def cleanup(self):
         self.restore_firmware()
         super(firmware_SoftwareSync, self).cleanup()
-
 
     def record_hash_and_corrupt(self):
         """Record current EC hash and corrupt EC firmware."""
         self._ec_hash = self.faft_client.ec.get_firmware_sha()
         logging.info("Stored EC hash: %s", self._ec_hash)
         self.faft_client.ec.corrupt_body('rw')
-
 
     def software_sync_checker(self):
         """Check EC firmware is restored by software sync."""
@@ -45,7 +41,6 @@ class firmware_SoftwareSync(FAFTSequence):
         if self._ec_hash != ec_hash:
             return False
         return self.checkers.ec_act_copy_checker('RW')
-
 
     def wait_software_sync_and_boot(self):
         """Wait for software sync to update EC."""
@@ -56,18 +51,13 @@ class firmware_SoftwareSync(FAFTSequence):
         else:
             time.sleep(self.faft_config.software_sync_update)
 
-
     def run_once(self):
-        self.register_faft_sequence((
-            {   # Step 1, Corrupt EC firmware RW body
-                'state_checker': (self.checkers.ec_act_copy_checker, 'RW'),
-                'userspace_action': self.record_hash_and_corrupt,
-                'firmware_action': self.wait_software_sync_and_boot,
-                'reboot_action': self.sync_and_ec_reboot,
-            },
-            {   # Step 2, expect EC in RW and RW is restored
-                'state_checker': self.software_sync_checker,
-                'firmware_action': self.wait_software_sync_and_boot,
-            },
-        ))
-        self.run_faft_sequence()
+        logging.info("Corrupt EC firmware RW body.")
+        self.check_state((self.checkers.ec_act_copy_checker, 'RW'))
+        self.record_hash_and_corrupt()
+        self.sync_and_ec_reboot()
+        self.wait_software_sync_and_boot()
+        self.wait_for_client()
+
+        logging.info("Expect EC in RW and RW is restored.")
+        self.check_state(self.software_sync_checker)
