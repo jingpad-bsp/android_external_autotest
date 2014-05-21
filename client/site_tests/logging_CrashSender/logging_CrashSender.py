@@ -141,7 +141,7 @@ class logging_CrashSender(crash_test.CrashTest):
         """Test that when reporting is disabled, we don't send."""
         result = self._call_sender_one_crash(reports_enabled=False)
         if (result['report_exists'] or
-            not 'Uploading is disabled' in result['output'] or
+            not 'Crash reporting is disabled' in result['output'] or
             result['send_attempt']):
             raise error.TestFail('Sender did not handle reports disabled')
 
