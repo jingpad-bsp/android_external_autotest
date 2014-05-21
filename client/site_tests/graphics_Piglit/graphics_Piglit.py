@@ -32,6 +32,13 @@ class graphics_Piglit(test.test):
     # hard wiring the cros-driver.test config file until we
     # need to parameterize this test for short/extended testing
     def run_once(self):
+        gpu_family = utils.get_gpu_family()
+        logging.info('Detected gpu family %s.', gpu_family)
+        # TODO(djkurtz): Delete this once piglit runs on mali/tegra.
+        if gpu_family in ['mali', 'tegra']:
+            logging.info('Not running any tests, passing by default.')
+            return
+
         # TODO(ihf): Hook up crash reporting, right now it is doing nothing.
         self.GSC.crash_blacklist.append('glslparsertest')
         self.GSC.crash_blacklist.append('shader_runner')
