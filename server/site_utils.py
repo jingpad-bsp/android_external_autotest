@@ -42,17 +42,22 @@ class ParseBuildNameException(Exception):
 def ParseBuildName(name):
     """Format a build name, given board, type, milestone, and manifest num.
 
-    @param name: a build name, e.g. 'x86-alex-release/R20-2015.0.0'
+    @param name: a build name, e.g. 'x86-alex-release/R20-2015.0.0' or a
+                 relative build name, e.g. 'x86-alex-release/LATEST'
 
     @return board: board the manifest is for, e.g. x86-alex.
     @return type: one of 'release', 'factory', or 'firmware'
     @return milestone: (numeric) milestone the manifest was associated with.
-    @return manifest: manifest number, e.g. '2015.0.0'
+                        Will be None for relative build names.
+    @return manifest: manifest number, e.g. '2015.0.0'.
+                      Will be None for relative build names.
 
     """
-    match = re.match(r'([\w-]+)-(\w+)/R(\d+)-([\d.ab-]+)', name)
-    if match and len(match.groups()) == 4:
-        return match.groups()
+    match = re.match(r'(?P<board>[\w-]+)-(?P<type>\w+)/(R(?P<milestone>\d+)-'
+                     r'(?P<manifest>[\d.ab-]+)|LATEST)', name)
+    if match and len(match.groups()) == 5:
+        return (match.group('board'), match.group('type'),
+                match.group('milestone'), match.group('manifest'))
     raise ParseBuildNameException('%s is a malformed build name.' % name)
 
 

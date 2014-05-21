@@ -3,19 +3,20 @@
 # found in the LICENSE file.
 
 from distutils import version
+import cStringIO
+import HTMLParser
 import httplib
 import json
 import logging
-import urllib2
-import HTMLParser
-import cStringIO
+import os
 import re
 import sys
+import urllib2
 
+from autotest_lib.client.bin import utils as site_utils
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros import retry
-from autotest_lib.client.bin import utils as site_utils
 from autotest_lib.site_utils.graphite import stats
 # TODO(cmasone): redo this class using requests module; http://crosbug.com/30107
 
@@ -478,6 +479,7 @@ class ImageServer(DevServer):
         @raise DevServerException upon any return code that's not HTTP OK.
         """
         assert artifacts or files, 'Must specify something to stage.'
+        image = self.translate(image)
         if not archive_url:
             archive_url = (_get_storage_server_for_artifacts(artifacts) +
                            image)
@@ -503,6 +505,7 @@ class ImageServer(DevServer):
 
         @raise DevServerException upon any return code that's not HTTP OK.
         """
+        image = self.translate(image)
         logging.info('Requesting contents from devserver %s for image %s',
                      self.url(), image)
         archive_url = _get_storage_server_for_artifacts() + image
@@ -532,6 +535,7 @@ class ImageServer(DevServer):
         @raise DevServerException upon any return code that's not HTTP OK.
 
         """
+        image = self.translate(image)
         archive_url = _get_image_storage_server() + image
         artifacts = _ARTIFACTS_TO_BE_STAGED_FOR_IMAGE
         error_message = ("trigger_download for %s failed;"
@@ -557,6 +561,7 @@ class ImageServer(DevServer):
 
         @returns path on the devserver that telemetry is installed to.
         """
+        build = self.translate(build)
         archive_url = _get_image_storage_server() + build
         call = self.build_call('setup_telemetry', archive_url=archive_url)
         try:
@@ -581,6 +586,7 @@ class ImageServer(DevServer):
         @param image: the image to fetch and stage.
         @raise DevServerException upon any return code that's not HTTP OK.
         """
+        image = self.translate(image)
         archive_url = _get_image_storage_server() + image
         artifacts = _ARTIFACTS_TO_BE_STAGED_FOR_IMAGE_WITH_AUTOTEST
         error_message = ("finish_download for %s failed;"
@@ -597,6 +603,7 @@ class ImageServer(DevServer):
 
         @param image: the image that was fetched.
         """
+        image = self.translate(image)
         url_pattern = CONFIG.get_config_value('CROS', 'image_url_pattern',
                                               type=str)
         return (url_pattern % (self.url(), image))
@@ -607,6 +614,7 @@ class ImageServer(DevServer):
 
         @param image: the image that was fetched.
         """
+        image = self.translate(image)
         url_pattern = CONFIG.get_config_value('CROS', 'image_url_pattern',
                                               type=str)
         return (url_pattern % (self.url(), image)).replace(
@@ -654,6 +662,7 @@ class ImageServer(DevServer):
                 (e.g. server/site_tests/autoupdate/control)
         @raise DevServerException upon any return code that's not HTTP OK.
         """
+        build = self.translate(build)
         call = self.build_call('controlfiles', build=build,
                                suite_name=suite_name)
         response = urllib2.urlopen(call)
@@ -671,6 +680,7 @@ class ImageServer(DevServer):
         @return The contents of the desired file.
         @raise DevServerException upon any return code that's not HTTP OK.
         """
+        build = self.translate(build)
         call = self.build_call('controlfiles', build=build,
                                control_path=control_path)
         return urllib2.urlopen(call).read()
@@ -690,6 +700,7 @@ class ImageServer(DevServer):
                 a dict of dicts, as per site_utils/suite_preprocessor.py.
         @raise DevServerException upon any return code that's not HTTP OK.
         """
+        build = self.translate(build)
         call = self.build_call('controlfiles',
                                build=build, control_path=DEPENDENCIES_FILE)
         return urllib2.urlopen(call).read()
@@ -717,6 +728,40 @@ class ImageServer(DevServer):
             return urllib2.urlopen(call).read()
         except urllib2.HTTPError:
             return None
+
+
+    @remote_devserver_call()
+    def get_latest_build_in_gs(self, board):
+        """Ask the devservers for the latest offical build in Google Storage.
+
+        @param board: The board for who we want the latest official build.
+        @return A string of the returned build rambi-release/R37-5868.0.0
+        @raise DevServerException upon any return code that's not HTTP OK.
+        """
+        call = self.build_call(
+                'xbuddy_translate/remote/%s/latest-official' % board,
+                image_dir=_get_image_storage_server())
+        image_name = urllib2.urlopen(call).read()
+        return os.path.dirname(image_name)
+
+
+    def translate(self, build_name):
+        """Translate the build name if it's in LATEST format.
+
+        If the build name is in the format [builder]/LATEST, return the latest
+        build in Google Storage otherwise return the build name as is.
+
+        @param build_name: build_name to check.
+
+        @return The actual build name to use.
+        """
+        match = re.match(r'([\w-]+)-(\w+)/LATEST', build_name)
+        if not match:
+            return build_name
+        translated_build = self.get_latest_build_in_gs(match.groups()[0])
+        logging.debug('Translated relative build %s to %s', build_name,
+                      translated_build)
+        return translated_build
 
 
     @classmethod

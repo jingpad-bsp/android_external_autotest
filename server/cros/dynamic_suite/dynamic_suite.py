@@ -310,9 +310,9 @@ class SuiteSpec(object):
             if not value or not isinstance(value, expected):
                 raise error.SuiteArgumentException(
                     "reimage_and_run() needs %s=<%r>" % (key, expected))
-        self.build = build
         self.board = 'board:%s' % board
         self.devserver = dev_server.ImageServer(devserver_url)
+        self.build = self.devserver.translate(build)
         self.name = name
         self.job = job
         if pool:
