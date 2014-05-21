@@ -425,11 +425,6 @@ class FirmwareWindow(object):
         self.stop()
         return False
 
-    def set_input_focus(self):
-        """Set input focus to this window."""
-        x = firmware_utils.SimpleX(TITLE)
-        x.set_input_focus()
-
     def set_gesture_name(self, string, color='blue'):
         """A helper method to set gesture name."""
         self.prompt_frame.set_gesture_name(string, color)

@@ -73,9 +73,6 @@ class firmware_TouchMTB:
         # Get the MTB parser.
         self.parser = mtb.MtbParser()
 
-        # Get a simple x object to manipulate X properties.
-        self.simple_x = firmware_utils.SimpleX('aura')
-
         # Create a simple gtk window.
         self._get_screen_size()
         self._get_touch_device_window_geometry()
@@ -251,7 +248,7 @@ class firmware_TouchMTB:
 
     def _get_screen_size(self):
         """Get the screen size."""
-        self.screen_size = self.simple_x.get_screen_size()
+        self.screen_size = firmware_utils.get_screen_size()
 
     def _get_touch_device_window_geometry(self):
         """Get the preferred window geometry to display mtplot."""
@@ -264,7 +261,7 @@ class firmware_TouchMTB:
     def _get_prompt_frame_geometry(self):
         """Get the display geometry of the prompt frame."""
         (_, wint_height, _, _) = self.touch_device_window_geometry
-        screen_width, screen_height = self.simple_x.get_screen_size()
+        screen_width, screen_height = self.screen_size
         win_x = 0
         win_y = 0
         win_width = screen_width
@@ -275,7 +272,7 @@ class firmware_TouchMTB:
     def _get_result_frame_geometry(self):
         """Get the display geometry of the test result frame."""
         (wint_width, wint_height, _, _) = self.touch_device_window_geometry
-        screen_width, _ = self.simple_x.get_screen_size()
+        screen_width, _ = self.screen_size
         win_width = screen_width - wint_width
         win_height = wint_height
         self.result_frame_size = (win_width, win_height)
@@ -288,9 +285,6 @@ class firmware_TouchMTB:
         # Resume the power management.
         firmware_utils.start_power_management()
 
-        # Release simple x before launching the Chrome browser to display the
-        # html test result.
-        del self.simple_x
         flag_skip_html = self.options[OPTIONS.SKIP_HTML]
         try:
             _display_test_result(self.report_html_name, flag_skip_html)

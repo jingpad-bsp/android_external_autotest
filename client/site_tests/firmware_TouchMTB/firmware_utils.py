@@ -19,6 +19,22 @@ def get_display_name():
     return ':0'
 
 
+def get_screen_size():
+    """Get the screen size using xwininfo."""
+    cmd = 'DISPLAY=:0 xwininfo -root'
+    wininfo = common_util.simple_system_output(cmd)
+    # the geometry string looks like:
+    #     "  -geometry 3840x1200+0+0"
+    geometry_pattern = re.compile('\s*-geometry\s*(\d+)x(\d+)+.*', re.I)
+    for line in wininfo.splitlines():
+        result = geometry_pattern.search(line)
+        if result:
+            width = int(result.group(1))
+            height = int(result.group(2))
+            return (width, height)
+    return None
+
+
 def get_current_time_str():
     """Get the string of current time."""
     time_format = '%Y%m%d_%H%M%S'
@@ -231,75 +247,6 @@ class Output:
         """Print the message to both report and to the window."""
         self.print_window(msg)
         self.buffer_report(msg)
-
-
-class SimpleX:
-    """A simple class provides some simple X methods and properties."""
-
-    def __init__(self, win_name='aura'):
-        import Xlib
-        import Xlib.display
-        self.Xlib = Xlib
-        self.Xlib.display = Xlib.display
-
-        self.disp = self._get_display()
-        self._get_screen()
-        self._get_window(win_name)
-
-    def _get_display(self):
-        """Get the display object."""
-        return self.Xlib.display.Display(get_display_name())
-
-    def _get_screen(self):
-        """Get the screen instance."""
-        self.screen = self.disp.screen()
-
-    def _get_window(self, win_name):
-        """Get the window with the specified name."""
-        wins = self.screen.root.query_tree().children
-        for win in wins:
-            name = win.get_wm_name()
-            if name and win_name in name:
-                self.win = win
-                break
-        else:
-            self.win = None
-            print 'Error: No window is named as "%s".' % win_name
-
-    def _get_focus_info(self):
-        """Get the input focus information."""
-        return self.disp.get_input_focus()
-
-    def set_input_focus(self):
-        """Set the input focus to the window id."""
-        if self.win:
-            self.disp.set_input_focus(self.win.id,
-                                      self.Xlib.X.RevertToParent,
-                                      self.Xlib.X.CurrentTime)
-            self._get_focus_info()
-
-    def get_screen_size(self):
-        """Get the screen size in pixels."""
-        return (self.screen.width_in_pixels, self.screen.height_in_pixels)
-
-    def get_screen_size_in_mms(self):
-        """Get the screen size in milli-meters."""
-        return (self.screen.width_in_mms, self.screen.height_in_mss)
-
-    def get_DPMM(self):
-        """Get Dots per Milli-meter."""
-        return (1.0 * self.screen.width_in_pixels / self.screen.width_in_mms,
-                1.0 * self.screen.height_in_pixels / self.screen.height_in_mms)
-
-    def _recover_input_focus(self):
-        """Set the input focus back to the original settings."""
-        self.disp.set_input_focus(self.Xlib.X.PointerRoot,
-                                  self.Xlib.X.RevertToParent,
-                                  self.Xlib.X.CurrentTime)
-        self._get_focus_info()
-
-    def __del__(self):
-        self._recover_input_focus()
 
 
 class ScreenShot:
