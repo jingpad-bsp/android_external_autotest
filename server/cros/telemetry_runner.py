@@ -291,6 +291,7 @@ class TelemetryRunner(object):
         telemetry_cmd.extend(
                 ['python',
                  script,
+                 '--verbose',
                  '--browser=cros-chrome',
                  '--remote=%s' % self._host.hostname,
                  test_or_benchmark])
