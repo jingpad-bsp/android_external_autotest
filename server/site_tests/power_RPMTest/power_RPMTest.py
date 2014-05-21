@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 import time
-from autotest_lib.server import test
+from autotest_lib.server import autotest, test
 
 LINE_STATUS_WAIT_TIME = 5
 
@@ -26,9 +26,9 @@ class power_RPMTest(test.test):
 
     def _set_power(self, power_on):
         if power_on:
-            host.power_on()
+            self._host.power_on()
         else:
-            host.power_off()
+            self._host.power_off()
 
         if self._verify:
             time.sleep(LINE_STATUS_WAIT_TIME)
