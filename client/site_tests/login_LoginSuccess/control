@@ -9,6 +9,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "login"
 TEST_TYPE = "client"
+JOB_RETRIES = 1
 
 DOC = """
 This test verifies that signing in via the UI (using Telemetry) works correctly.

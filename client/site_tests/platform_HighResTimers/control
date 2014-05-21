@@ -11,6 +11,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "client"
+JOB_RETRIES = 1
 
 DOC = """
 Reads from /proc/timer_list to see if any reported timers have nanosecond

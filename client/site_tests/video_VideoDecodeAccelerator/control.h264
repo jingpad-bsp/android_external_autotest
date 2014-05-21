@@ -15,6 +15,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
+JOB_RETRIES = 1
 DEPENDENCIES = "hw_video_acc_h264"
 # Reboot in the lab after the test ends.
 DEPENDENCIES = "cleanup-reboot, hw_video_acc_h264"

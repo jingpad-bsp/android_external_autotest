@@ -13,6 +13,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
+JOB_RETRIES = 1
 DEPENDENCIES = "hw_video_acc_vp8"
 RETRIES = 2
 

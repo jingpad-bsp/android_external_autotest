@@ -11,6 +11,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "client"
+JOB_RETRIES = 1
 
 DOC = """
 Checks a hard-coded list of partitions to check that their sizes are the same

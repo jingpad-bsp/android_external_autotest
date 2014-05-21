@@ -7,6 +7,7 @@ NAME = 'network_DestinationVerification'
 SUITE = 'bvt, bvt_cq, network_nightly'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
+JOB_RETRIES = 1
 
 DOC = """
   Tests that we can validate a ChromeCast device by its certificate.  This test

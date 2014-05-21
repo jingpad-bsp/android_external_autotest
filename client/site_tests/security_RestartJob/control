@@ -17,5 +17,6 @@ SUITE = "bvt, bvt_cq, smoke"
 TEST_CLASS = "security"
 TEST_CATEGORY = "Security"
 TEST_TYPE = "client"
+JOB_RETRIES = 1
 
 job.run_test("security_RestartJob")

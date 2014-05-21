@@ -14,5 +14,6 @@ SUITE = "smoke, bvt, bvt_cq"
 TEST_CLASS = "security"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"
+JOB_RETRIES = 1
 
 job.run_test('security_RuntimeExecStack')

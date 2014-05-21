@@ -17,6 +17,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "client"
+JOB_RETRIES = 1
 
 DOC = """
 This test checks that the root partitions are not mounted by processes other

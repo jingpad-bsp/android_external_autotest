@@ -11,6 +11,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "desktopui"
 TEST_TYPE = "client"
+JOB_RETRIES = 1
 
 DOC = """
 This test kills some important processes and checks if they get restarted."

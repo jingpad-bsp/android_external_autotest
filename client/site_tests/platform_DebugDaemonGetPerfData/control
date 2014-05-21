@@ -13,6 +13,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "client"
+JOB_RETRIES = 1
 
 SUITE = "bvt, bvt_cq"
 

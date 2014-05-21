@@ -10,6 +10,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "logging"
 TEST_TYPE = "client"
+JOB_RETRIES = 1
 
 DOC = """
 Fake trackpad failure to trigger crash report with udev type, and

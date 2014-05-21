@@ -8,6 +8,7 @@ SUITE = "bvt, bvt_cq, smoke"
 TIME = "FAST"
 TEST_CLASS = "login"
 TEST_TYPE = "client"
+JOB_RETRIES = 1
 
 DOC = """
 This test is intended to ensure that the session manager can

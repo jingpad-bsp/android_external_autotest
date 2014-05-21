@@ -25,6 +25,7 @@ TIME='FAST'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = "gl"
 TEST_TYPE = 'client'
+JOB_RETRIES = 1
 
 DOC = """
 On bvt, bvt_cq we do not upload performance numbers to the chrome dashboard. We run

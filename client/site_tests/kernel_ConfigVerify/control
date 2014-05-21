@@ -11,6 +11,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "kernel"
 TEST_TYPE = "client"
+JOB_RETRIES = 1
 
 DOC = """
     Checks that the reported CONFIG_* variables in /boot/config-$(uname -r)

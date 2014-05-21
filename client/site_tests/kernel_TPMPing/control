@@ -11,6 +11,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "kernel"
 TEST_TYPE = "client"
+JOB_RETRIES = 1
 
 DOC = """
     Checks that there is a TPM, that the driver can talk to it, and that the
