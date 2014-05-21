@@ -3,10 +3,11 @@
 # found in the LICENSE file.
 
 from threading import Timer
-import logging, time
+import logging
+import time
 
 from autotest_lib.client.common_lib import utils
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
 
 def delayed(seconds):
@@ -18,7 +19,7 @@ def delayed(seconds):
     return decorator
 
 
-class firmware_DevModeStress(FAFTSequence):
+class firmware_DevModeStress(FirmwareTest):
     """
     Servo based, iterative developer firmware boot test. One iteration
     of this test performs 2 reboots and 3 checks.
@@ -56,34 +57,33 @@ class firmware_DevModeStress(FAFTSequence):
         dict_args = utils.args_to_dict(cmdline_args)
         self.faft_iterations = int(dict_args.get('faft_iterations', 1))
         super(firmware_DevModeStress, self).initialize(host, cmdline_args)
+        self.setup_dev_mode(dev_mode=True)
         self.setup_usbkey(usbkey=False)
 
     def run_once(self):
-        self.register_faft_sequence((
-            {   # Step 1, verify dev mode
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'devsw_boot': '1',
-                    'mainfw_type': 'developer',
-                }),
-                'firmware_action': self.wait_dev_screen_and_ctrl_d,
-            },
-            {   # Step 2, verify dev mode after soft reboot
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'devsw_boot': '1',
-                    'mainfw_type': 'developer',
-                }),
-                'reboot_action': (self.suspend_as_reboot,
-                                  self.wake_by_power_button),
-                'firmware_action': None,
-            },
-            {   # Step 3, verify dev mode after suspend/wake
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'devsw_boot': '1',
-                    'mainfw_type': 'developer',
-                }),
-            },
-        ))
         for i in xrange(self.faft_iterations):
             logging.info('======== Running FAFT ITERATION %d/%s ========',
-                         i+1, self.faft_iterations)
-            self.run_faft_sequence()
+                         i + 1, self.faft_iterations)
+            logging.info("Verify dev mode.")
+            self.check_state((self.checkers.crossystem_checker, {
+                                'devsw_boot': '1',
+                                'mainfw_type': 'developer',
+                                }))
+            self.reboot_warm(wait_for_dut_up=False)
+            self.wait_dev_screen_and_ctrl_d()
+            self.wait_for_client()
+
+            logging.info("Verify dev mode after soft reboot.")
+            self.check_state((self.checkers.crossystem_checker, {
+                                'devsw_boot': '1',
+                                'mainfw_type': 'developer',
+                                }))
+            self.do_reboot_action((self.suspend_as_reboot,
+                                   self.wake_by_power_button))
+            self.wait_for_client()
+
+        logging.info("Complete, final check for dev mode.")
+        self.check_state((self.checkers.crossystem_checker, {
+                            'devsw_boot': '1',
+                            'mainfw_type': 'developer',
+                            }))
