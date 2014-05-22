@@ -9,7 +9,6 @@ import unittest
 
 import common
 
-from autotest_lib.frontend import setup_django_lite_environment
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.site_utils import run_suite
 
