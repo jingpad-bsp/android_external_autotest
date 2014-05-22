@@ -395,7 +395,7 @@ class FirmwareTest(FAFTBase):
         if not check_passed:
             raise error.TestError(
                 'No Chrome OS %s found on the USB flash plugged into servo' %
-                'install shim' if install_shim else 'test')
+                ('install shim' if install_shim else 'test'))
 
         self.mark_setup_done('usb_check')
 
