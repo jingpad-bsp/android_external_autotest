@@ -28,7 +28,6 @@ chronos:!:1000:
 chronos-access:!:1001:root,ipsec,chronos,ntfs-3g,avfs,fuse-exfat,chaps
 messagebus:!:201:
 syslog:!:202:
-ntp:!:203:
 sshd:!:204:
 polkituser:!:206:
 tss:!:207:root,chaps,attestation
@@ -46,7 +45,6 @@ cras:!:220:chronos,power
 input:!:222:cras,xorg,power
 chaps:!:223:
 dhcp:!:224:
-tpmd:!:225:
 mtp:!:226:
 proxystate:!:227:
 power:!:228:

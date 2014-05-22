@@ -12,7 +12,6 @@ chronos:x:1000:1000:system_user:/home/chronos/user:/bin/bash
 chronos-access:!:1001:1001::/dev/null:/bin/false
 messagebus:!:201:201::/dev/null:/bin/false
 syslog:!:202:202::/dev/null:/bin/false
-ntp:!:203:203::/dev/null:/bin/false
 sshd:!:204:204::/dev/null:/bin/false
 polkituser:!:206:206::/dev/null:/bin/false
 tss:!:207:207::/dev/null:/bin/false
@@ -30,7 +29,6 @@ cras:!:220:220::/dev/null:/bin/false
 input:!:222:222::/dev/null:/bin/false
 chaps:!:223:223::/dev/null:/bin/false
 dhcp:!:224:224::/dev/null:/bin/false
-tpmd:!:225:225::/dev/null:/bin/false
 mtp:!:226:226::/dev/null:/bin/false
 proxystate:!:227:227::/dev/null:/bin/false
 power:!:228:228::/dev/null:/bin/false
@@ -49,7 +47,7 @@ brltty:!:240:240::/dev/null:/bin/false
 modem:!:241:241::/dev/null:/bin/false
 gpsd:!:242:242:GPS daemon:/dev/null:/bin/false
 radvd:!:243:243:router advertisement daemon:/dev/null:/bin/false
-attestation:!:247:247:Chromium OS attestation daemon runs as this user:/dev/null:/bin/false
+attestation:!:247:247::/dev/null:/bin/false
 ntfs-3g:!:300:300::/dev/null:/bin/false
 avfs:!:301:301::/dev/null:/bin/false
 fuse-exfat:!:302:302::/dev/null:/bin/false
