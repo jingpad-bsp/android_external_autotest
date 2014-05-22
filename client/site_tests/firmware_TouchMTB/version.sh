@@ -28,7 +28,7 @@ VERSION_FILE="/tmp/.version"
 
 # Print an error message and exit.
 die() {
-  echo "$@"
+  echo "$@" > /dev/stderr
   exit 1
 }
 
