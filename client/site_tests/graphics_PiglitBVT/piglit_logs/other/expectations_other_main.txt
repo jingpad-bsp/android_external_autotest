@@ -5,267 +5,319 @@
       "result": "flaky"
     },
     "glx/GLX_OML_sync_control/swapbuffersmsc-return swap_interval 1": {
-      "pass rate": "0.5", 
+      "pass rate": "0.5",
       "result": "flaky"
-    }, 
+    },
     "glx/GLX_OML_sync_control/waitformsc": {
-      "pass rate": "0.33", 
+      "pass rate": "0.33",
       "result": "flaky"
-    }, 
+    },
     "glx/glx-swap-event_interval": {
-      "pass rate": "0.73", 
+      "pass rate": "0.73",
       "result": "flaky"
-    }, 
+    },
     "shaders/glsl-fs-user-varying-ff": {
-      "pass rate": "0.89", 
+      "pass rate": "0.89",
       "result": "flaky"
-    }, 
+    },
     "shaders/sso-user-varying-01": {
-      "pass rate": "0.87", 
+      "pass rate": "0.87",
       "result": "flaky"
-    }, 
+    },
     "shaders/sso-user-varying-02": {
-      "pass rate": "0.89", 
+      "pass rate": "0.89",
       "result": "flaky"
-    }, 
+    },
     "spec/!OpenGL 1.0/gl-1.0-edgeflag-quads": {
-      "pass rate": "0.93", 
+      "pass rate": "0.93",
       "result": "flaky"
-    }, 
+    },
     "spec/!OpenGL 1.1/dlist-fdo31590": {
       "pass rate": "0.5",
       "result": "flaky"
     },
     "spec/!OpenGL 3.0/gl-3.0-texture-integer": {
-      "pass rate": "0.98", 
+      "pass rate": "0.98",
       "result": "flaky"
-    }, 
+    },
     "spec/AMD_conservative_depth/glsl-1.30/compiler/depth-any-01.frag": {
-      "pass rate": "0.93", 
+      "pass rate": "0.93",
       "result": "flaky"
-    }, 
+    },
     "spec/AMD_conservative_depth/glsl-1.30/compiler/depth-greater-01.frag": {
-      "pass rate": "0.93", 
+      "pass rate": "0.93",
       "result": "flaky"
-    }, 
+    },
     "spec/AMD_conservative_depth/glsl-1.30/compiler/depth-less-01.frag": {
-      "pass rate": "0.93", 
+      "pass rate": "0.93",
       "result": "flaky"
-    }, 
+    },
     "spec/AMD_conservative_depth/glsl-1.30/compiler/depth-unchanged-01.frag": {
-      "pass rate": "0.93", 
+      "pass rate": "0.93",
       "result": "flaky"
-    }, 
+    },
     "spec/AMD_conservative_depth/glsl-1.30/compiler/invalid-layout-01.frag": {
-      "pass rate": "0.93", 
+      "pass rate": "0.93",
       "result": "flaky"
-    }, 
+    },
     "spec/AMD_conservative_depth/glsl-1.30/compiler/late-redeclaration-01.frag": {
-      "pass rate": "0.93", 
+      "pass rate": "0.93",
       "result": "flaky"
-    }, 
+    },
     "spec/AMD_conservative_depth/glsl-1.30/compiler/no-layout-01.frag": {
-      "pass rate": "0.93", 
+      "pass rate": "0.93",
       "result": "flaky"
-    }, 
+    },
     "spec/AMD_conservative_depth/glsl-1.30/compiler/no-redeclaration-01.frag": {
-      "pass rate": "0.93", 
+      "pass rate": "0.93",
       "result": "flaky"
-    }, 
+    },
     "spec/AMD_conservative_depth/glsl-1.30/compiler/no-redeclaration-01.vert": {
-      "pass rate": "0.93", 
+      "pass rate": "0.93",
       "result": "flaky"
-    }, 
+    },
     "spec/AMD_conservative_depth/glsl-1.30/compiler/vs-redeclaration-01.vert": {
-      "pass rate": "0.93", 
+      "pass rate": "0.93",
       "result": "flaky"
-    }, 
+    },
     "spec/AMD_conservative_depth/glsl-1.30/preprocessor/feature-macro.frag": {
-      "pass rate": "0.93", 
+      "pass rate": "0.93",
       "result": "flaky"
-    }, 
+    },
     "spec/AMD_conservative_depth/glsl-1.30/preprocessor/feature-macro.vert": {
-      "pass rate": "0.93", 
+      "pass rate": "0.93",
       "result": "flaky"
-    }, 
+    },
     "spec/ARB_depth_texture/depthstencil-render-miplevels 146 d=z16": {
-      "pass rate": "0.07", 
+      "pass rate": "0.07",
       "result": "flaky"
-    }, 
+    },
     "spec/ARB_depth_texture/depthstencil-render-miplevels 292 d=z16": {
-      "pass rate": "0.07", 
+      "pass rate": "0.07",
       "result": "flaky"
-    }, 
+    },
     "spec/ARB_depth_texture/depthstencil-render-miplevels 585 d=z16": {
-      "pass rate": "0.07", 
+      "pass rate": "0.07",
       "result": "flaky"
-    }, 
+    },
     "spec/ARB_depth_texture/fbo-depth-GL_DEPTH_COMPONENT16-clear": {
-      "pass rate": "0.07", 
+      "pass rate": "0.07",
       "result": "flaky"
-    }, 
+    },
     "spec/ARB_framebuffer_object/fbo-blit-stretch": {
-      "pass rate": "0.93", 
+      "pass rate": "0.93",
       "result": "flaky"
-    }, 
+    },
     "spec/ARB_occlusion_query/occlusion_query_meta_fragments": {
-      "pass rate": "0.98", 
+      "pass rate": "0.98",
       "result": "flaky"
-    }, 
+    },
     "spec/ARB_sync/repeat-wait": {
-      "pass rate": "0.98", 
+      "pass rate": "0.98",
       "result": "flaky"
-    }, 
+    },
+    "spec/ARB_texture_float/multisample-formats 2 GL_ARB_texture_float": {
+      "pass rate": "0.5",
+      "result": "flaky"
+    },
+    "spec/ARB_texture_float/multisample-formats 4 GL_ARB_texture_float": {
+      "pass rate": "0.5",
+      "result": "flaky"
+    },
     "spec/ARB_texture_float/multisample-formats 6 GL_ARB_texture_float": {
-      "pass rate": "0.93", 
+      "pass rate": "0.93",
       "result": "flaky"
-    }, 
+    },
     "spec/ARB_texture_float/multisample-formats 8 GL_ARB_texture_float": {
-      "pass rate": "0.93", 
+      "pass rate": "0.93",
       "result": "flaky"
-    }, 
+    },
+    "spec/ARB_texture_rg/multisample-formats 2 GL_ARB_texture_rg": {
+      "pass rate": "0.5",
+      "result": "flaky"
+    },
+    "spec/ARB_texture_rg/multisample-formats 2 GL_ARB_texture_rg-float": {
+      "pass rate": "0.5",
+      "result": "flaky"
+    },
+    "spec/ARB_texture_rg/multisample-formats 2 GL_ARB_texture_rg-int": {
+      "pass rate": "0.5",
+      "result": "flaky"
+    },
     "spec/ARB_texture_rg/multisample-formats 4 GL_ARB_texture_rg": {
-      "pass rate": "0.98", 
+      "pass rate": "0.98",
       "result": "flaky"
-    }, 
+    },
+    "spec/ARB_texture_rg/multisample-formats 4 GL_ARB_texture_rg-float": {
+      "pass rate": "0.5",
+      "result": "flaky"
+    },
+    "spec/ARB_texture_rg/multisample-formats 4 GL_ARB_texture_rg-int": {
+      "pass rate": "0.5",
+      "result": "flaky"
+    },
     "spec/ARB_texture_rg/multisample-formats 6 GL_ARB_texture_rg": {
-      "pass rate": "0.93", 
+      "pass rate": "0.93",
       "result": "flaky"
-    }, 
+    },
     "spec/ARB_texture_rg/multisample-formats 6 GL_ARB_texture_rg-float": {
-      "pass rate": "0.93", 
+      "pass rate": "0.93",
       "result": "flaky"
-    }, 
+    },
     "spec/ARB_texture_rg/multisample-formats 6 GL_ARB_texture_rg-int": {
-      "pass rate": "0.93", 
+      "pass rate": "0.93",
       "result": "flaky"
-    }, 
+    },
     "spec/ARB_texture_rg/multisample-formats 8 GL_ARB_texture_rg": {
-      "pass rate": "0.93", 
+      "pass rate": "0.93",
       "result": "flaky"
-    }, 
+    },
     "spec/ARB_texture_rg/multisample-formats 8 GL_ARB_texture_rg-float": {
-      "pass rate": "0.93", 
+      "pass rate": "0.93",
       "result": "flaky"
-    }, 
+    },
     "spec/ARB_texture_rg/multisample-formats 8 GL_ARB_texture_rg-int": {
-      "pass rate": "0.93", 
+      "pass rate": "0.93",
       "result": "flaky"
-    }, 
+    },
     "spec/ARB_timer_query/timestamp-get": {
       "pass rate": "0.50",
       "result": "flaky"
     },
     "spec/ARB_transform_feedback2/draw-auto": {
-      "pass rate": "0.40", 
+      "pass rate": "0.40",
       "result": "flaky"
-    }, 
+    },
     "spec/ARB_transform_feedback2/istranformfeedback": {
-      "pass rate": "0.40", 
+      "pass rate": "0.40",
       "result": "flaky"
-    }, 
+    },
     "spec/ARB_transform_feedback3/gl_NextBuffer-1": {
-      "pass rate": "0.40", 
+      "pass rate": "0.40",
       "result": "flaky"
-    }, 
+    },
     "spec/ARB_transform_feedback3/gl_NextBuffer-2": {
-      "pass rate": "0.40", 
+      "pass rate": "0.40",
       "result": "flaky"
-    }, 
+    },
     "spec/ARB_transform_feedback3/gl_NextBuffer-gl_NextBuffer": {
-      "pass rate": "0.40", 
+      "pass rate": "0.40",
       "result": "flaky"
-    }, 
+    },
     "spec/ARB_transform_feedback3/gl_NextBuffer-gl_SkipComponents1-gl_NextBuffer": {
-      "pass rate": "0.40", 
+      "pass rate": "0.40",
       "result": "flaky"
-    }, 
+    },
     "spec/ARB_transform_feedback3/gl_SkipComponents1-1": {
-      "pass rate": "0.40", 
+      "pass rate": "0.40",
       "result": "flaky"
-    }, 
+    },
     "spec/ARB_transform_feedback3/gl_SkipComponents1-2": {
-      "pass rate": "0.40", 
+      "pass rate": "0.40",
       "result": "flaky"
-    }, 
+    },
     "spec/ARB_transform_feedback3/gl_SkipComponents1-3": {
-      "pass rate": "0.40", 
+      "pass rate": "0.40",
       "result": "flaky"
-    }, 
+    },
     "spec/ARB_transform_feedback3/gl_SkipComponents1234": {
-      "pass rate": "0.40", 
+      "pass rate": "0.40",
       "result": "flaky"
-    }, 
+    },
     "spec/ARB_transform_feedback3/gl_SkipComponents2": {
-      "pass rate": "0.40", 
+      "pass rate": "0.40",
       "result": "flaky"
-    }, 
+    },
     "spec/ARB_transform_feedback3/gl_SkipComponents3": {
-      "pass rate": "0.40", 
+      "pass rate": "0.40",
       "result": "flaky"
-    }, 
+    },
     "spec/ARB_transform_feedback3/gl_SkipComponents4": {
-      "pass rate": "0.40", 
+      "pass rate": "0.40",
       "result": "flaky"
-    }, 
+    },
     "spec/ARB_transform_feedback_instanced/draw-auto instanced": {
-      "pass rate": "0.40", 
+      "pass rate": "0.40",
       "result": "flaky"
-    }, 
+    },
     "spec/ARB_vertex_type_2_10_10_10_rev/draw-vertices-2101010": {
-      "pass rate": "0.47", 
+      "pass rate": "0.47",
       "result": "flaky"
-    }, 
+    },
     "spec/EXT_packed_float/multisample-formats 2 GL_EXT_packed_float": {
       "pass rate": "0.5",
       "result": "flaky"
     },
+    "spec/EXT_packed_float/multisample-formats 4 GL_EXT_packed_float": {
+      "pass rate": "0.5",
+      "result": "flaky"
+    },
     "spec/EXT_packed_float/multisample-formats 6 GL_EXT_packed_float": {
-      "pass rate": "0.93", 
+      "pass rate": "0.93",
       "result": "flaky"
-    }, 
+    },
     "spec/EXT_packed_float/multisample-formats 8 GL_EXT_packed_float": {
-      "pass rate": "0.93", 
+      "pass rate": "0.93",
       "result": "flaky"
-    }, 
+    },
     "spec/EXT_texture_array/fbo-depth-array": {
-      "pass rate": "0.93", 
+      "pass rate": "0.93",
       "result": "flaky"
-    }, 
-    "spec/ARB_texture_float/multisample-formats 2 GL_ARB_texture_float": {
+    },
+    "spec/EXT_texture_integer/multisample-formats 2 GL_EXT_texture_integer": {
+      "pass rate": "0.5",
+      "result": "flaky"
+    },
+    "spec/EXT_texture_integer/multisample-formats 4 GL_EXT_texture_integer": {
       "pass rate": "0.5",
       "result": "flaky"
     },
     "spec/EXT_texture_integer/multisample-formats 6 GL_EXT_texture_integer": {
-      "pass rate": "0.93", 
+      "pass rate": "0.93",
       "result": "flaky"
-    }, 
+    },
     "spec/EXT_texture_integer/multisample-formats 8 GL_EXT_texture_integer": {
-      "pass rate": "0.93", 
+      "pass rate": "0.93",
       "result": "flaky"
-    }, 
+    },
     "spec/EXT_texture_integer/texture_integer_glsl130": {
-      "pass rate": "0.84", 
+      "pass rate": "0.84",
       "result": "flaky"
-    }, 
+    },
+    "spec/EXT_texture_sRGB/multisample-formats 2 GL_EXT_texture_sRGB": {
+      "pass rate": "0.5",
+      "result": "flaky"
+    },
+    "spec/EXT_texture_sRGB/multisample-formats 4 GL_EXT_texture_sRGB": {
+      "pass rate": "0.5",
+      "result": "flaky"
+    },
     "spec/EXT_texture_sRGB/multisample-formats 6 GL_EXT_texture_sRGB": {
-      "pass rate": "0.93", 
+      "pass rate": "0.93",
       "result": "flaky"
-    }, 
+    },
     "spec/EXT_texture_sRGB/multisample-formats 8 GL_EXT_texture_sRGB": {
-      "pass rate": "0.93", 
+      "pass rate": "0.93",
       "result": "flaky"
-    }, 
+    },
+    "spec/EXT_texture_snorm/multisample-formats 2 GL_EXT_texture_snorm": {
+      "pass rate": "0.93",
+      "result": "flaky"
+    },
+    "spec/EXT_texture_snorm/multisample-formats 4 GL_EXT_texture_snorm": {
+      "pass rate": "0.93",
+      "result": "flaky"
+    },
     "spec/EXT_texture_snorm/multisample-formats 6 GL_EXT_texture_snorm": {
-      "pass rate": "0.93", 
+      "pass rate": "0.93",
       "result": "flaky"
-    }, 
+    },
     "spec/EXT_texture_snorm/multisample-formats 8 GL_EXT_texture_snorm": {
-      "pass rate": "0.93", 
+      "pass rate": "0.93",
       "result": "flaky"
     },
     "spec/EXT_transform_feedback/generatemipmap prims_generated": {
-      "pass rate": "0.5", 
+      "pass rate": "0.5",
       "result": "flaky"
     },
     "spec/EXT_transform_feedback/intervening-read prims_generated": {

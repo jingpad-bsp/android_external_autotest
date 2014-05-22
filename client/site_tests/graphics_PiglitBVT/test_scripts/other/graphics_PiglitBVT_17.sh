@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=449
+need_pass=448
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -30,11 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitor-uint-uvec4.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitor-uint-uvec4.vert pass 1.30"
-run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec2-uint.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec2-uint.frag pass 1.30"
-run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec2-uint.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec2-uint.vert pass 1.30"
-run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec2-uvec2.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec2-uvec2.frag pass 1.30"
-run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec2-uvec2.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec2-uvec2.vert pass 1.30"
 run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec3-uint.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec3-uint.frag pass 1.30"
 run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec3-uint.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec3-uint.vert pass 1.30"
 run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec3-uvec3.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec3-uvec3.frag pass 1.30"
@@ -479,11 +474,15 @@ run_test "spec/glsl-1.30/compiler/keywords/isampler2DArray.frag" 0.0 "bin/glslpa
 run_test "spec/glsl-1.30/compiler/keywords/isampler3D.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/compiler/keywords/isampler3D.frag fail 1.30"
 run_test "spec/glsl-1.30/compiler/keywords/isamplerCube.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/compiler/keywords/isamplerCube.frag fail 1.30"
 run_test "spec/glsl-1.30/compiler/keywords/ivec2.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/compiler/keywords/ivec2.frag fail 1.30"
+run_test "spec/glsl-1.30/compiler/keywords/ivec3.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/compiler/keywords/ivec3.frag fail 1.30"
+run_test "spec/glsl-1.30/compiler/keywords/ivec4.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/compiler/keywords/ivec4.frag fail 1.30"
+run_test "spec/glsl-1.30/compiler/keywords/lowp.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/compiler/keywords/lowp.frag fail 1.30"
+run_test "spec/glsl-1.30/compiler/keywords/mat2.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/compiler/keywords/mat2.frag fail 1.30"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 449 tests have passed. |"
+  echo "| Overall pass, as all 448 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

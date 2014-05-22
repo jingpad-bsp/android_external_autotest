@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=420
+need_pass=419
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -30,23 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.10/compiler/qualifiers/varying-struct-prohibited.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-struct-prohibited.frag fail 1.10"
-run_test "spec/glsl-1.10/compiler/qualifiers/varying-struct-prohibited.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-struct-prohibited.vert fail 1.10"
-run_test "spec/glsl-1.10/compiler/reserved/double-underscore-01.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/reserved/double-underscore-01.frag fail 1.10"
-run_test "spec/glsl-1.10/compiler/reserved/double-underscore-02.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/reserved/double-underscore-02.frag fail 1.10"
-run_test "spec/glsl-1.10/compiler/reserved/double-underscore-03.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/reserved/double-underscore-03.frag fail 1.10"
-run_test "spec/glsl-1.10/compiler/samplers/inout-struct.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/samplers/inout-struct.frag fail 1.10"
-run_test "spec/glsl-1.10/compiler/samplers/inout.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/samplers/inout.frag fail 1.10"
-run_test "spec/glsl-1.10/compiler/samplers/nonuniform-struct.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/samplers/nonuniform-struct.frag fail 1.10"
-run_test "spec/glsl-1.10/compiler/samplers/nonuniform.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/samplers/nonuniform.frag fail 1.10"
-run_test "spec/glsl-1.10/compiler/samplers/out-struct.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/samplers/out-struct.frag fail 1.10"
-run_test "spec/glsl-1.10/compiler/samplers/out.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/samplers/out.frag fail 1.10"
-run_test "spec/glsl-1.10/compiler/samplers/return-struct.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/samplers/return-struct.frag fail 1.10"
-run_test "spec/glsl-1.10/compiler/samplers/return.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/samplers/return.frag fail 1.10"
-run_test "spec/glsl-1.10/compiler/special-characters/digraph-close-bracket.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/special-characters/digraph-close-bracket.frag fail 1.10"
-run_test "spec/glsl-1.10/compiler/special-characters/digraph-close-bracket.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/special-characters/digraph-close-bracket.vert fail 1.10"
-run_test "spec/glsl-1.10/compiler/special-characters/digraph-open-bracket.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/special-characters/digraph-open-bracket.frag fail 1.10"
-run_test "spec/glsl-1.10/compiler/special-characters/digraph-open-bracket.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/special-characters/digraph-open-bracket.vert fail 1.10"
 run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-attribute-01.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-attribute-01.vert fail 1.10"
 run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-attribute-02.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-attribute-02.vert fail 1.10"
 run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-color.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-color.frag fail 1.10"
@@ -450,11 +433,27 @@ run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-mat2-
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-mat3-mat3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-mat3-mat3.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-mat4-mat4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-mat4-mat4.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-vec2-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-vec2-vec2.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-vec3-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-vec3-vec3.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-vec4-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-selection-bool-vec4-vec4.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-float-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-float-float.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-float-mat2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-float-mat2.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-float-mat3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-float-mat3.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-float-mat4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-float-mat4.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-float-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-float-vec2.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-float-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-float-vec3.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-float-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-float-vec4.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-int-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-int-int.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-int-ivec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-int-ivec2.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-int-ivec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-int-ivec3.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-int-ivec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-int-ivec4.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-ivec2-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-ivec2-int.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-ivec2-ivec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-ivec2-ivec2.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-ivec3-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-ivec3-int.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 420 tests have passed. |"
+  echo "| Overall pass, as all 419 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

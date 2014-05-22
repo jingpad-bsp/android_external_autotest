@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=434
+need_pass=432
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -30,25 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/EXT_transform_feedback/api-errors bind_offset_max" 0.0 "bin/ext_transform_feedback-api-errors bind_offset_max -auto -fbo"
-run_test "spec/EXT_transform_feedback/api-errors bind_offset_offset_1" 0.0 "bin/ext_transform_feedback-api-errors bind_offset_offset_1 -auto -fbo"
-run_test "spec/EXT_transform_feedback/api-errors bind_offset_offset_2" 0.0 "bin/ext_transform_feedback-api-errors bind_offset_offset_2 -auto -fbo"
-run_test "spec/EXT_transform_feedback/api-errors bind_offset_offset_3" 0.0 "bin/ext_transform_feedback-api-errors bind_offset_offset_3 -auto -fbo"
-run_test "spec/EXT_transform_feedback/api-errors bind_offset_offset_5" 0.0 "bin/ext_transform_feedback-api-errors bind_offset_offset_5 -auto -fbo"
-run_test "spec/EXT_transform_feedback/api-errors bind_range_active" 0.0 "bin/ext_transform_feedback-api-errors bind_range_active -auto -fbo"
-run_test "spec/EXT_transform_feedback/api-errors bind_range_max" 0.0 "bin/ext_transform_feedback-api-errors bind_range_max -auto -fbo"
-run_test "spec/EXT_transform_feedback/api-errors bind_range_offset_1" 0.0 "bin/ext_transform_feedback-api-errors bind_range_offset_1 -auto -fbo"
-run_test "spec/EXT_transform_feedback/api-errors bind_range_offset_2" 0.0 "bin/ext_transform_feedback-api-errors bind_range_offset_2 -auto -fbo"
-run_test "spec/EXT_transform_feedback/api-errors bind_range_offset_3" 0.0 "bin/ext_transform_feedback-api-errors bind_range_offset_3 -auto -fbo"
-run_test "spec/EXT_transform_feedback/api-errors bind_range_offset_5" 0.0 "bin/ext_transform_feedback-api-errors bind_range_offset_5 -auto -fbo"
-run_test "spec/EXT_transform_feedback/api-errors bind_range_size_0" 0.0 "bin/ext_transform_feedback-api-errors bind_range_size_0 -auto -fbo"
-run_test "spec/EXT_transform_feedback/api-errors bind_range_size_1" 0.0 "bin/ext_transform_feedback-api-errors bind_range_size_1 -auto -fbo"
-run_test "spec/EXT_transform_feedback/api-errors bind_range_size_2" 0.0 "bin/ext_transform_feedback-api-errors bind_range_size_2 -auto -fbo"
-run_test "spec/EXT_transform_feedback/api-errors bind_range_size_3" 0.0 "bin/ext_transform_feedback-api-errors bind_range_size_3 -auto -fbo"
-run_test "spec/EXT_transform_feedback/api-errors bind_range_size_5" 0.0 "bin/ext_transform_feedback-api-errors bind_range_size_5 -auto -fbo"
-run_test "spec/EXT_transform_feedback/api-errors bind_range_size_m4" 0.0 "bin/ext_transform_feedback-api-errors bind_range_size_m4 -auto -fbo"
-run_test "spec/EXT_transform_feedback/api-errors end_inactive" 0.0 "bin/ext_transform_feedback-api-errors end_inactive -auto -fbo"
-run_test "spec/EXT_transform_feedback/api-errors interleaved_no_varyings" 0.0 "bin/ext_transform_feedback-api-errors interleaved_no_varyings -auto -fbo"
 run_test "spec/EXT_transform_feedback/api-errors interleaved_ok_base" 0.0 "bin/ext_transform_feedback-api-errors interleaved_ok_base -auto -fbo"
 run_test "spec/EXT_transform_feedback/api-errors interleaved_ok_offset" 0.0 "bin/ext_transform_feedback-api-errors interleaved_ok_offset -auto -fbo"
 run_test "spec/EXT_transform_feedback/api-errors interleaved_ok_range" 0.0 "bin/ext_transform_feedback-api-errors interleaved_ok_range -auto -fbo"
@@ -464,11 +445,28 @@ run_test "spec/glsl-1.10/compiler/qualifiers/varying-bvec3-prohibited.frag" 0.0 
 run_test "spec/glsl-1.10/compiler/qualifiers/varying-bvec3-prohibited.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-bvec3-prohibited.vert fail 1.10"
 run_test "spec/glsl-1.10/compiler/qualifiers/varying-bvec4-prohibited.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-bvec4-prohibited.frag fail 1.10"
 run_test "spec/glsl-1.10/compiler/qualifiers/varying-bvec4-prohibited.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-bvec4-prohibited.vert fail 1.10"
+run_test "spec/glsl-1.10/compiler/qualifiers/varying-struct-prohibited.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-struct-prohibited.frag fail 1.10"
+run_test "spec/glsl-1.10/compiler/qualifiers/varying-struct-prohibited.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-struct-prohibited.vert fail 1.10"
+run_test "spec/glsl-1.10/compiler/reserved/double-underscore-01.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/reserved/double-underscore-01.frag fail 1.10"
+run_test "spec/glsl-1.10/compiler/reserved/double-underscore-02.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/reserved/double-underscore-02.frag fail 1.10"
+run_test "spec/glsl-1.10/compiler/reserved/double-underscore-03.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/reserved/double-underscore-03.frag fail 1.10"
+run_test "spec/glsl-1.10/compiler/samplers/inout-struct.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/samplers/inout-struct.frag fail 1.10"
+run_test "spec/glsl-1.10/compiler/samplers/inout.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/samplers/inout.frag fail 1.10"
+run_test "spec/glsl-1.10/compiler/samplers/nonuniform-struct.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/samplers/nonuniform-struct.frag fail 1.10"
+run_test "spec/glsl-1.10/compiler/samplers/nonuniform.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/samplers/nonuniform.frag fail 1.10"
+run_test "spec/glsl-1.10/compiler/samplers/out-struct.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/samplers/out-struct.frag fail 1.10"
+run_test "spec/glsl-1.10/compiler/samplers/out.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/samplers/out.frag fail 1.10"
+run_test "spec/glsl-1.10/compiler/samplers/return-struct.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/samplers/return-struct.frag fail 1.10"
+run_test "spec/glsl-1.10/compiler/samplers/return.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/samplers/return.frag fail 1.10"
+run_test "spec/glsl-1.10/compiler/special-characters/digraph-close-bracket.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/special-characters/digraph-close-bracket.frag fail 1.10"
+run_test "spec/glsl-1.10/compiler/special-characters/digraph-close-bracket.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/special-characters/digraph-close-bracket.vert fail 1.10"
+run_test "spec/glsl-1.10/compiler/special-characters/digraph-open-bracket.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/special-characters/digraph-open-bracket.frag fail 1.10"
+run_test "spec/glsl-1.10/compiler/special-characters/digraph-open-bracket.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/special-characters/digraph-open-bracket.vert fail 1.10"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 434 tests have passed. |"
+  echo "| Overall pass, as all 432 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=8075
+need_pass=8062
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -1700,7 +1700,6 @@ run_test "spec/ARB_texture_float/fbo-clear-formats" 0.0 "bin/fbo-clear-formats -
 run_test "spec/ARB_texture_float/fbo-colormask-formats" 0.0 "bin/fbo-colormask-formats -auto GL_ARB_texture_float"
 run_test "spec/ARB_texture_float/fbo-generatemipmap-formats" 0.0 "bin/fbo-generatemipmap-formats -auto GL_ARB_texture_float"
 run_test "spec/ARB_texture_float/get-renderbuffer-internalformat" 0.0 "bin/get-renderbuffer-internalformat GL_ARB_texture_float -auto -fbo"
-run_test "spec/ARB_texture_float/multisample-formats 4 GL_ARB_texture_float" 0.0 "bin/ext_framebuffer_multisample-formats -auto 4 GL_ARB_texture_float"
 run_test "spec/ARB_texture_float/texwrap formats" 0.0 "bin/texwrap -fbo -auto GL_ARB_texture_float"
 run_test "spec/ARB_texture_float/texwrap formats bordercolor" 0.0 "bin/texwrap -fbo -auto GL_ARB_texture_float bordercolor"
 run_test "spec/ARB_texture_float/texwrap formats bordercolor-swizzled" 0.0 "bin/texwrap -fbo -auto GL_ARB_texture_float bordercolor swizzled"
@@ -1744,11 +1743,6 @@ run_test "spec/ARB_texture_rg/fs-shadow2d-red-02" 0.0 "bin/shader_runner tests/s
 run_test "spec/ARB_texture_rg/fs-shadow2d-red-03" 0.0 "bin/shader_runner tests/spec/arb_texture_rg/execution/fs-shadow2d-red-03.shader_test -auto"
 run_test "spec/ARB_texture_rg/get-renderbuffer-internalformat" 0.0 "bin/get-renderbuffer-internalformat GL_ARB_texture_rg -auto -fbo"
 run_test "spec/ARB_texture_rg/get-renderbuffer-internalformat-float" 0.0 "bin/get-renderbuffer-internalformat GL_ARB_texture_rg-float -auto -fbo"
-run_test "spec/ARB_texture_rg/multisample-formats 2 GL_ARB_texture_rg" 0.0 "bin/ext_framebuffer_multisample-formats -auto 2 GL_ARB_texture_rg"
-run_test "spec/ARB_texture_rg/multisample-formats 2 GL_ARB_texture_rg-float" 0.0 "bin/ext_framebuffer_multisample-formats -auto 2 GL_ARB_texture_rg-float"
-run_test "spec/ARB_texture_rg/multisample-formats 2 GL_ARB_texture_rg-int" 0.0 "bin/ext_framebuffer_multisample-formats -auto 2 GL_ARB_texture_rg-int"
-run_test "spec/ARB_texture_rg/multisample-formats 4 GL_ARB_texture_rg-float" 0.0 "bin/ext_framebuffer_multisample-formats -auto 4 GL_ARB_texture_rg-float"
-run_test "spec/ARB_texture_rg/multisample-formats 4 GL_ARB_texture_rg-int" 0.0 "bin/ext_framebuffer_multisample-formats -auto 4 GL_ARB_texture_rg-int"
 run_test "spec/ARB_texture_rg/rg-draw-pixels" 0.0 "bin/rg-draw-pixels -auto"
 run_test "spec/ARB_texture_rg/rg-teximage-01" 0.0 "bin/rg-teximage-01 -auto"
 run_test "spec/ARB_texture_rg/rg-teximage-02" 0.0 "bin/rg-teximage-02 -auto"
@@ -1967,7 +1961,6 @@ run_test "spec/EXT_packed_float/fbo-colormask-formats" 0.0 "bin/fbo-colormask-fo
 run_test "spec/EXT_packed_float/fbo-generatemipmap-formats" 0.0 "bin/fbo-generatemipmap-formats -auto GL_EXT_packed_float"
 run_test "spec/EXT_packed_float/get-renderbuffer-internalformat" 0.0 "bin/get-renderbuffer-internalformat GL_EXT_packed_float -auto -fbo"
 run_test "spec/EXT_packed_float/getteximage-invalid-format-for-packed-type" 0.0 "bin/getteximage-invalid-format-for-packed-type -auto -fbo"
-run_test "spec/EXT_packed_float/multisample-formats 4 GL_EXT_packed_float" 0.0 "bin/ext_framebuffer_multisample-formats -auto 4 GL_EXT_packed_float"
 run_test "spec/EXT_packed_float/pack" 0.0 "bin/ext_packed_float-pack -auto -fbo"
 run_test "spec/EXT_packed_float/texwrap formats" 0.0 "bin/texwrap -fbo -auto GL_EXT_packed_float"
 run_test "spec/EXT_packed_float/texwrap formats bordercolor" 0.0 "bin/texwrap -fbo -auto GL_EXT_packed_float bordercolor"
@@ -2031,16 +2024,12 @@ run_test "spec/EXT_texture_integer/fbo_integer_precision_clear" 0.0 "bin/ext_tex
 run_test "spec/EXT_texture_integer/fbo_integer_readpixels_sint_uint" 0.0 "bin/ext_texture_integer-fbo_integer_readpixels_sint_uint -auto"
 run_test "spec/EXT_texture_integer/getteximage-clamping" 0.0 "bin/ext_texture_integer-getteximage-clamping -auto -fbo"
 run_test "spec/EXT_texture_integer/getteximage-clamping GL_ARB_texture_rg" 0.0 "bin/ext_texture_integer-getteximage-clamping GL_ARB_texture_rg -auto -fbo"
-run_test "spec/EXT_texture_integer/multisample-formats 2 GL_EXT_texture_integer" 0.0 "bin/ext_framebuffer_multisample-formats -auto 2 GL_EXT_texture_integer"
-run_test "spec/EXT_texture_integer/multisample-formats 4 GL_EXT_texture_integer" 0.0 "bin/ext_framebuffer_multisample-formats -auto 4 GL_EXT_texture_integer"
 run_test "spec/EXT_texture_integer/texwrap formats" 0.0 "bin/texwrap -fbo -auto GL_EXT_texture_integer"
 run_test "spec/EXT_texture_lod_bias/lodbias" 0.0 "bin/lodbias -auto"
 run_test "spec/EXT_texture_sRGB/fbo-alphatest-formats" 0.0 "bin/fbo-alphatest-formats -auto GL_EXT_texture_sRGB"
 run_test "spec/EXT_texture_sRGB/fbo-generatemipmap-formats" 0.0 "bin/fbo-generatemipmap-formats -auto GL_EXT_texture_sRGB"
 run_test "spec/EXT_texture_sRGB/fbo-srgb" 0.0 "bin/fbo-srgb -auto"
 run_test "spec/EXT_texture_sRGB/invalid formats" 0.0 "bin/arb_texture_compression-invalid-formats srgb"
-run_test "spec/EXT_texture_sRGB/multisample-formats 2 GL_EXT_texture_sRGB" 0.0 "bin/ext_framebuffer_multisample-formats -auto 2 GL_EXT_texture_sRGB"
-run_test "spec/EXT_texture_sRGB/multisample-formats 4 GL_EXT_texture_sRGB" 0.0 "bin/ext_framebuffer_multisample-formats -auto 4 GL_EXT_texture_sRGB"
 run_test "spec/EXT_texture_sRGB/tex-srgb" 0.0 "bin/tex-srgb -auto"
 run_test "spec/EXT_texture_sRGB/texwrap formats" 0.0 "bin/texwrap -fbo -auto GL_EXT_texture_sRGB"
 run_test "spec/EXT_texture_sRGB/texwrap formats bordercolor" 0.0 "bin/texwrap -fbo -auto GL_EXT_texture_sRGB bordercolor"
@@ -2053,8 +2042,6 @@ run_test "spec/EXT_texture_shared_exponent/texwrap formats bordercolor-swizzled"
 run_test "spec/EXT_texture_snorm/fbo-alphatest-formats" 0.0 "bin/fbo-alphatest-formats -auto GL_EXT_texture_snorm"
 run_test "spec/EXT_texture_snorm/fbo-colormask-formats" 0.0 "bin/fbo-colormask-formats -auto GL_EXT_texture_snorm"
 run_test "spec/EXT_texture_snorm/fbo-generatemipmap-formats" 0.0 "bin/fbo-generatemipmap-formats -auto GL_EXT_texture_snorm"
-run_test "spec/EXT_texture_snorm/multisample-formats 2 GL_EXT_texture_snorm" 0.0 "bin/ext_framebuffer_multisample-formats -auto 2 GL_EXT_texture_snorm"
-run_test "spec/EXT_texture_snorm/multisample-formats 4 GL_EXT_texture_snorm" 0.0 "bin/ext_framebuffer_multisample-formats -auto 4 GL_EXT_texture_snorm"
 run_test "spec/EXT_texture_snorm/texwrap formats" 0.0 "bin/texwrap -fbo -auto GL_EXT_texture_snorm"
 run_test "spec/EXT_texture_snorm/texwrap formats bordercolor" 0.0 "bin/texwrap -fbo -auto GL_EXT_texture_snorm bordercolor"
 run_test "spec/EXT_texture_snorm/texwrap formats bordercolor-swizzled" 0.0 "bin/texwrap -fbo -auto GL_EXT_texture_snorm bordercolor swizzled"
@@ -8109,7 +8096,7 @@ popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 8075 tests have passed. |"
+  echo "| Overall pass, as all 8062 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

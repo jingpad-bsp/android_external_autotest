@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=431
+need_pass=425
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -30,18 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-mat4-col-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-mat4-col-wr.shader_test -auto"
-run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-mat4-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-mat4-rd.shader_test -auto"
-run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-mat4-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-mat4-row-rd.shader_test -auto"
-run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-mat4-row-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-mat4-row-wr.shader_test -auto"
-run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-mat4-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-mat4-wr.shader_test -auto"
-run_test "spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat2-col-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat2-col-rd.shader_test -auto"
-run_test "spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat2-col-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat2-col-row-rd.shader_test -auto"
-run_test "spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat2-index-col-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat2-index-col-rd.shader_test -auto"
-run_test "spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat2-index-col-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat2-index-col-row-rd.shader_test -auto"
-run_test "spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat2-index-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat2-index-rd.shader_test -auto"
-run_test "spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat2-index-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat2-index-row-rd.shader_test -auto"
-run_test "spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat2-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat2-rd.shader_test -auto"
 run_test "spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat2-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat2-row-rd.shader_test -auto"
 run_test "spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat3-col-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat3-col-rd.shader_test -auto"
 run_test "spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat3-col-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat3-col-row-rd.shader_test -auto"
@@ -461,11 +449,17 @@ run_test "spec/glsl-1.20/compiler/built-in-functions/max-vec4-vec4.frag" 0.0 "bi
 run_test "spec/glsl-1.20/compiler/built-in-functions/max-vec4-vec4.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/max-vec4-vec4.vert pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/min-float-float.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/min-float-float.frag pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/min-float-float.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/min-float-float.vert pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/min-vec2-float.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/min-vec2-float.frag pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/min-vec2-float.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/min-vec2-float.vert pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/min-vec2-vec2.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/min-vec2-vec2.frag pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/min-vec2-vec2.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/min-vec2-vec2.vert pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/min-vec3-float.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/min-vec3-float.frag pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/min-vec3-float.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/min-vec3-float.vert pass 1.20"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 431 tests have passed. |"
+  echo "| Overall pass, as all 425 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

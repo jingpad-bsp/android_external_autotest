@@ -5,7 +5,7 @@
       "result": "flaky"
     },
     "glx/GLX_OML_sync_control/waitformsc": {
-      "pass rate": "0.50", 
+      "pass rate": "0.50",
       "result": "flaky"
     },
     "spec/!OpenGL 1.1/dlist-fdo31590": {
