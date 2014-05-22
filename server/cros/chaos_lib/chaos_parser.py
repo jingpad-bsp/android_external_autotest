@@ -194,6 +194,13 @@ class ChaosParser(object):
                         failure_type = CONNECT_FAIL
             elif line.startswith('Debug info'):
                 ap_names.append(self.get_ap_name(line))
+            elif ('END GOOD' in line and ('ChaosConnectDisconnect' in line or
+                                          'ChaosLongConnect' in line)):
+                    test_name = line.split()[2]
+                    ssid = test_name.split('.')[1]
+                    network_dict = self.get_ap_mode_chan_freq(ssid)
+                    modes.append(network_dict['mode'])
+                    channels.append(network_dict['channel'])
             else:
                 continue
 
