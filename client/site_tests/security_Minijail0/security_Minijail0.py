@@ -15,6 +15,9 @@ from autotest_lib.client.common_lib import error
 class security_Minijail0(test.test):
     version = 1
 
+    def is_64bit(self):
+        return os.path.isdir('/lib64')
+
     def get_test_option(self, handle, name):
         setup = ''
         for l in handle.readlines():
@@ -35,6 +38,8 @@ class security_Minijail0(test.test):
         # them.
         args = self.get_test_option(file(path), 'args')
         setup = self.get_test_option(file(path), 'setup')
+        args64 = self.get_test_option(file(path), 'args64')
+        args32 = self.get_test_option(file(path), 'args32')
         td = None
         if setup:
             if '%T' in setup:
@@ -44,6 +49,19 @@ class security_Minijail0(test.test):
         if '%T' in args:
             td = td or tempfile.mkdtemp()
             args = args.replace('%T', td)
+
+        if self.is_64bit() and args64:
+            if '%T' in args64:
+                td = td or tempfile.mkdtemp()
+                args64 = args64.replace('%T', td)
+            args = args + ' ' + args64
+
+        if (not self.is_64bit()) and args32:
+            if '%T' in args32:
+                td = td or tempfile.mkdtemp()
+                args32 = args32.replace('%T', td)
+            args = args + ' ' + args32
+
         ret = utils.system('/sbin/minijail0 %s /bin/bash %s' % (args, path),
                            ignore_status=True)
         if td:
