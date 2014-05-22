@@ -198,9 +198,10 @@ class ChaosParser(object):
                 continue
 
         config_pass = total - len(hostnames)
-        config_pass_string = self.generate_percentage_string(len(hostnames),
+        config_pass_string = self.generate_percentage_string(config_pass,
                                                              total)
-        connect_pass_string = self.generate_percentage_string(len(ap_names),
+        connect_pass = config_pass - len(ap_names)
+        connect_pass_string = self.generate_percentage_string(connect_pass,
                                                               config_pass)
 
         # Two blank entries for firmware and kernel versions
@@ -209,18 +210,18 @@ class ChaosParser(object):
                          self.convert_set_to_string(set(channels)),
                          security]
 
-        connect_csv_list = copy.deepcopy(base_csv_list)
-        connect_csv_list.append(connect_pass_string)
-        connect_csv_list.extend(ap_names)
-
         config_csv_list = copy.deepcopy(base_csv_list)
         config_csv_list.append(config_pass_string)
         config_csv_list.extend(hostnames)
 
-        self.create_csv('chaos_WiFi_connect_fail.' + security,
-                        connect_csv_list)
+        connect_csv_list = copy.deepcopy(base_csv_list)
+        connect_csv_list.append(connect_pass_string)
+        connect_csv_list.extend(ap_names)
+
         self.create_csv('chaos_WiFi_config_fail.' + security,
                         config_csv_list)
+        self.create_csv('chaos_WiFi_connect_fail.' + security,
+                        connect_csv_list)
 
 
     def traverse_results_dir(self, path):
