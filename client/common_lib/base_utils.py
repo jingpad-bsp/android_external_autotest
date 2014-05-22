@@ -1451,8 +1451,22 @@ class SystemLoad(object):
 def get_arch(run_function=run):
     """
     Get the hardware architecture of the machine.
+    If specified, run_function should return a CmdResult object and throw a
+    CmdError exception.
+    If run_function is anything other than utils.run(), it is used to
+    execute the commands. By default (when set to utils.run()) this will
+    just examine os.uname()[4].
     """
-    return re.sub(r'i\d86$', 'i386', os.uname()[4])
+
+    # Short circuit from the common case.
+    if run_function == run:
+        return re.sub(r'i\d86$', 'i386', os.uname()[4])
+
+    # Otherwise, use the run_function in case it hits a remote machine.
+    arch = run_function('/bin/uname -m').stdout.rstrip()
+    if re.match(r'i\d86$', arch):
+        arch = 'i386'
+    return arch
 
 def get_arch_userspace(run_function=run):
     """
