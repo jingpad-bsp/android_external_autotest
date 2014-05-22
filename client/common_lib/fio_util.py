@@ -613,7 +613,11 @@ def fio_runner(test, job, env_vars):
     # Upload bw / 99% lat to dashboard
     bw_matcher = re.compile('.*(rd|wr)_bw_KB_sec')
     lat_matcher = re.compile('.*(rd|wr)_lat_99.00_percent_usec')
+    # don't log useless stat like 16k_randwrite_rd_bw_KB_sec
+    skip_matcher = re.compile('.*(trim.*|write.*_rd|read.*_wr)_.*')
     for k, v in result.iteritems():
+        if skip_matcher.match(k):
+            continue
         if bw_matcher.match(k):
             test.output_perf_value(description=k, value=v, units='KB_per_sec',
                                    higher_is_better=True)
