@@ -15,6 +15,7 @@ import glob
 import logging
 import os
 import re
+import site
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faft.config.config import Config as FAFTConfig
@@ -205,9 +206,16 @@ class ProgrammerV2(object):
 
         @return A list of valid board names.
         """
-        SERVOD_CONFIG_DATA_DIR = os.path.join(
-                os.path.dirname(__file__), os.pardir, os.pardir, os.pardir,
-                'site-packages', 'servo', 'data')
+        site_packages_paths = site.getsitepackages()
+        SERVOD_CONFIG_DATA_DIR = None
+        for p in site_packages_paths:
+            servo_data_path = os.path.join(p, 'servo', 'data')
+            if os.path.exists(servo_data_path):
+                SERVOD_CONFIG_DATA_DIR = servo_data_path
+                break
+        if not SERVOD_CONFIG_DATA_DIR:
+            raise ProgrammerError(
+                    'Unable to locate data directory of Python servo module')
         SERVOFLEX_V2_R0_P50_CONFIG = 'servoflex_v2_r0_p50.xml'
         SERVO_CONFIG_REGEXP = 'servo_(?P<board>.+)_overlay.xml'
 
