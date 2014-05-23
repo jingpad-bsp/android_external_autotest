@@ -93,13 +93,17 @@ class ServiceHandler(object):
             raise BadServiceRequest(request)
 
         stats.Counter('rpc').increment(methName)
+        timer = stats.Timer('rpc')
 
         try:
             meth = self.findServiceEndpoint(methName)
+            timer.start()
             results['result'] = self.invokeServiceEndpoint(meth, args)
         except Exception, err:
             results['err_traceback'] = traceback.format_exc()
             results['err'] = err
+        finally:
+            timer.stop(methName)
 
         return results
 
