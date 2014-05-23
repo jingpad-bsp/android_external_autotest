@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, time
+import logging, os
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import autotest
@@ -56,16 +56,7 @@ class hardware_MemoryIntegrity(test.test):
         Wait for specifed time. Also suspend if specified.
         """
         if suspend:
-            logging.info("Invoke suspend")
-            self._client_at.run_test('dummy_Suspend',
-                                     tag='_wait',
-                                     background=True,
-                                     suspend_seconds=seconds)
-            logging.info("Wait until client suspend")
-            if not self._client.ping_wait_down(30):
-                self.suspend_fail = True
-        logging.info("Wait")
-        time.sleep(seconds)
+            self._client.suspend(suspend_time=seconds)
 
 
     def _verify_test_data(self, size):
@@ -129,6 +120,3 @@ class hardware_MemoryIntegrity(test.test):
 
         self._check_alive()
         self._clean_up()
-
-        if self.suspend_fail:
-            raise error.TestWarn("Warn: Test passed but DUT won't suspend.")

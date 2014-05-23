@@ -1,9 +1,9 @@
 """This class defines the Remote host class."""
 
-import os, logging, urllib
+import os, logging, urllib, time
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import utils
-from autotest_lib.server.hosts import base_classes, bootloader
+from autotest_lib.server.hosts import base_classes
 
 
 class RemoteHost(base_classes.Host):
@@ -130,8 +130,6 @@ class RemoteHost(base_classes.Host):
             if kernel_args:
                 self.bootloader.add_args(label, kernel_args)
 
-        # define a function for the reboot and run it in a group
-        print "Reboot: initiating reboot"
         def reboot():
             self.record("GOOD", None, "reboot.start")
             try:
@@ -163,10 +161,55 @@ class RemoteHost(base_classes.Host):
 
         # if this is a full reboot-and-wait, run the reboot inside a group
         if wait:
-            self.log_reboot(reboot)
+            self.log_op(self.OP_REBOOT, reboot)
         else:
             reboot()
 
+    def suspend(self, timeout, suspend_cmd, **dargs):
+        """
+        Suspend the remote host.
+
+        Args:
+                timeout - How long to wait for the suspend.
+                susped_cmd - suspend command to execute.
+        """
+        # define a function for the supend and run it in a group
+        def suspend():
+            self.record("GOOD", None, "suspend.start for %d seconds" % (timeout))
+            try:
+                self.run(suspend_cmd)
+            except error.AutoservRunError:
+                self.record("ABORT", None, "suspend.start",
+                            "suspend command failed")
+                raise error.AutoservSuspendError("suspend command failed")
+
+            # Wait for some time, to ensure the machine is going to sleep.
+            # Not too long to check if the machine really suspended.
+            time_slice = min(timeout / 2, 300)
+            time.sleep(time_slice)
+            time_counter = time_slice
+            while time_counter < timeout + 60:
+                # Check if the machine is back. We check regularely to
+                # ensure the machine was suspended long enough.
+                if utils.ping(self.hostname, tries=1, deadline=1) == 0:
+                    return
+                else:
+                    if time_counter > timeout - 10:
+                        time_slice = 5
+                    time.sleep(time_slice)
+                    time_counter += time_slice
+
+            if utils.ping(self.hostname, tries=1, deadline=1) != 0:
+                raise error.AutoservSuspendError(
+                    "DUT is not responding after %d seconds" % (time_counter))
+
+        start_time = time.time()
+        self.log_op(self.OP_SUSPEND, suspend)
+        lasted = time.time() - start_time
+        if (lasted < timeout):
+            raise error.AutoservSuspendError(
+                "Suspend did not last long enough: %d instead of %d" % (
+                    lasted, timeout))
 
     def reboot_followup(self, *args, **dargs):
         super(RemoteHost, self).reboot_followup(*args, **dargs)
@@ -179,9 +222,9 @@ class RemoteHost(base_classes.Host):
         Wait for the host to come back from a reboot. This wraps the
         generic wait_for_restart implementation in a reboot group.
         """
-        def reboot_func():
+        def op_func():
             super(RemoteHost, self).wait_for_restart(timeout=timeout, **dargs)
-        self.log_reboot(reboot_func)
+        self.log_op(self.OP_REBOOT, op_func)
 
 
     def cleanup(self):

@@ -11,13 +11,14 @@ TEST_TYPE = 'server'
 
 DOC = """
 This test call hardware_StorageFio to write data once and repeatedly verify
-data in the storage for 12 hours with machine suspended between each verify.
+data in the storage for 1 hour with machine suspended 5 minutes between
+each verify.
 """
 
 def run_hardware_storage_stress(machine):
     job.add_sysinfo_logfile('/var/log/storage_info.txt', on_every_test=True)
-    job.run_test('hardware_StorageStress', client_ip=machine, 
-        power_command='suspend')
+    job.run_test('hardware_StorageStress', client_ip=machine,
+        power_command='suspend', suspend_duration=300, duration=3600)
 
 job.parallel_simple(run_hardware_storage_stress, machines)
 

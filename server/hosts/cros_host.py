@@ -1124,6 +1124,21 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         super(CrosHost, self).reboot(**dargs)
 
 
+    def suspend(self, **dargs):
+        """
+        This function suspends the site host.
+        """
+        suspend_time = dargs.get('suspend_time', 60)
+        dargs['timeout'] = suspend_time
+        if 'suspend_cmd' not in dargs:
+            cmd = ' && '.join(['echo 0 > /sys/class/rtc/rtc0/wakealarm',
+                'echo +%d > /sys/class/rtc/rtc0/wakealarm' % suspend_time,
+                'powerd_dbus_suspend --delay=0 &'])
+            dargs['suspend_cmd'] = ('(( %s )'
+                '< /dev/null >/dev/null 2>&1 &)' % cmd)
+        super(CrosHost, self).suspend(**dargs)
+
+
     def verify_software(self):
         """Verify working software on a Chrome OS system.
 

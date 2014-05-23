@@ -62,6 +62,9 @@ class Host(object):
     # the number of hardware repair requests that need to happen before we
     # actually send machines to hardware repair
     HARDWARE_REPAIR_REQUEST_THRESHOLD = 4
+    OP_REBOOT = 'reboot'
+    OP_SUSPEND = 'suspend'
+    PWR_OPERATION = [OP_REBOOT, OP_SUSPEND]
 
 
     def __init__(self, *args, **dargs):
@@ -113,6 +116,10 @@ class Host(object):
 
     def reboot(self):
         raise NotImplementedError('Reboot not implemented!')
+
+
+    def suspend(self):
+        raise NotImplementedError('Suspend not implemented!')
 
 
     def sysrq_reboot(self):
@@ -590,19 +597,22 @@ class Host(object):
                             optional_fields={"kernel": kernel})
 
 
-    def log_reboot(self, reboot_func):
-        """ Decorator for wrapping a reboot in a group for status
-        logging purposes. The reboot_func parameter should be an actual
-        function that carries out the reboot.
+    def log_op(self, op, op_func):
+        """ Decorator for wrapping a management operaiton in a group for status
+        logging purposes.
+
+        @param op: name of the operation.
+        @param op_func: a function that carries out the operation
+                        (reboot, suspend)
         """
-        if self.job and not hasattr(self, "RUNNING_LOG_REBOOT"):
-            self.RUNNING_LOG_REBOOT = True
+        if self.job and not hasattr(self, "RUNNING_LOG_OP"):
+            self.RUNNING_LOG_OP = True
             try:
-                self.job.run_reboot(reboot_func, self.get_kernel_ver)
+                self.job.run_op(op, op_func, self.get_kernel_ver)
             finally:
-                del self.RUNNING_LOG_REBOOT
+                del self.RUNNING_LOG_OP
         else:
-            reboot_func()
+            op_func()
 
 
     def request_hardware_repair(self):

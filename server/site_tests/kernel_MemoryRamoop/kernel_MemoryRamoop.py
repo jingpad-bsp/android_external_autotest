@@ -80,22 +80,22 @@ class kernel_MemoryRamoop(test.test):
         logging.info('Server: reboot client')
         try:
             self._client.reboot()
-        except error.AutoservRebootError as e:
+        except error.AutoservRebootError as err:
             raise error.TestFail('%s.\nTest failed with error %s' % (
-                    traceback.format_exc(), str(e)))
+                    traceback.format_exc(), str(err)))
 
     def _do_reboot_with_suspend(self):
         """
         Reboot host machine after suspend once
         """
-        self._client_at.run_test('dummy_Suspend')
+        self._client.suspend(suspend_time=15)
 
         logging.info('Server: reboot client')
         try:
             self._client.reboot()
-        except error.AutoservRebootError as e:
+        except error.AutoservRebootError as err:
             raise error.TestFail('%s.\nTest failed with error %s' % (
-                    traceback.format_exc(), str(e)))
+                    traceback.format_exc(), str(err)))
 
     def _do_kernel_panic(self):
         """

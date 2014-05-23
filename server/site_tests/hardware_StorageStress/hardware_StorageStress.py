@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, time, traceback
+import logging, time
 from functools import partial
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import autotest
@@ -18,13 +18,14 @@ class hardware_StorageStress(test.test):
     # Define default value for the test case
     _TEST_GAP = 60 # 1 min
     _TEST_DURATION = 12 * 60 * 60 # 12 hours
+    _SUSPEND_DURATION = 60 * 60 # 1 hour.
     _FIO_REQUIREMENT_FILE = '8k_async_randwrite'
     _FIO_WRITE_FLAGS = []
     _FIO_VERIFY_FLAGS = ['--verifyonly']
 
     def run_once(self, client_ip, gap=_TEST_GAP, duration=_TEST_DURATION,
                  power_command='reboot', storage_test_command='integrity',
-                 storage_test_argument=''):
+                 suspend_duration=_SUSPEND_DURATION, storage_test_argument=''):
         """
         Run the Storage stress test
         Use hardwareStorageFio to run some test_command repeatedly for a long
@@ -41,6 +42,8 @@ class hardware_StorageStress(test.test):
                               - full_write: Check performance consistency
                                             for full disk write. Use argument
                                             to determine which disk to write
+        @param suspend_duration: if power_command is suspend, how long the DUT
+                              is suspended.
         """
 
         # init test
@@ -50,8 +53,7 @@ class hardware_StorageStress(test.test):
         self._client = hosts.create_host(client_ip)
         self._client_at = autotest.Autotest(self._client)
         self._results = {}
-
-        start_time = time.time()
+        self._suspend_duration = suspend_duration
 
         # parse power command
         if power_command == 'nothing':
@@ -83,6 +85,8 @@ class hardware_StorageStress(test.test):
         all_loop_time = 0
         avr_time_per_loop = 0
         self._loop_count = 0
+
+        start_time = time.time()
 
         while time.time() - start_time < duration:
             # sleep
@@ -119,23 +123,13 @@ class hardware_StorageStress(test.test):
         """
         Reboot host machine
         """
-        logging.info('Server: reboot client')
-        try:
-            self._client.reboot()
-        except error.AutoservRebootError as e:
-            raise error.TestFail('%s.\nTest failed with error %s' % (
-                    traceback.format_exc(), str(e)))
+        self._client.reboot()
 
     def _do_suspend(self):
         """
         Suspend host machine
         """
-        logging.info('Server: suspend client')
-        self._client_at.run_test('dummy_Suspend')
-        passed = self._check_client_test_result(self._client)
-        if not passed:
-            raise error.TestFail('Test failed with error: Suspend Error')
-
+        self._client.suspend(suspend_time=self._suspend_duration)
 
     def _check_client_test_result(self, client):
         """

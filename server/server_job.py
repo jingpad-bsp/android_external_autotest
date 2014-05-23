@@ -735,27 +735,28 @@ class base_server_job(base_job.base_job):
         return self._run_group(name, None, function, *args, **dargs)[0]
 
 
-    def run_reboot(self, reboot_func, get_kernel_func):
+    def run_op(self, op, op_func, get_kernel_func):
         """\
         A specialization of run_group meant specifically for handling
-        a reboot. Includes support for capturing the kernel version
-        after the reboot.
+        management operation. Includes support for capturing the kernel version
+        after the operation.
 
-        reboot_func: a function that carries out the reboot
-
-        get_kernel_func: a function that returns a string
-        representing the kernel version.
+        Args:
+           op: name of the operation.
+           op_func: a function that carries out the operation (reboot, suspend)
+           get_kernel_func: a function that returns a string
+                            representing the kernel version.
         """
         try:
-            self.record('START', None, 'reboot')
-            reboot_func()
+            self.record('START', None, op)
+            op_func()
         except Exception, e:
             err_msg = str(e) + '\n' + traceback.format_exc()
-            self.record('END FAIL', None, 'reboot', err_msg)
+            self.record('END FAIL', None, op, err_msg)
             raise
         else:
             kernel = get_kernel_func()
-            self.record('END GOOD', None, 'reboot',
+            self.record('END GOOD', None, op,
                         optional_fields={"kernel": kernel})
 
 

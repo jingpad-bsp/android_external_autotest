@@ -438,6 +438,11 @@ class AutoservShutdownError(AutoservRebootError):
     pass
 
 
+class AutoservSuspendError(AutoservRebootError):
+    """Error occured while suspending a machine"""
+    pass
+
+
 class AutoservSubcommandError(AutoservError):
     """Indicates an error while executing a (forked) subcommand"""
     def __init__(self, func, exit_code):
