@@ -3,20 +3,20 @@
 # found in the LICENSE file.
 
 AUTHOR = 'chromeos-gfx'
-NAME = 'telemetry_GpuTests.pixel'
+NAME = 'telemetry_GpuTests.context_lost'
 SUITE = 'graphics, perf_v2'
-TIME = 'LONG'
+TIME = 'SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = 'gl'
 TEST_TYPE = 'server'
 
 DOC = """
-This server control file executes the GPU telemetry test: pixel.
+This server control file executes the GPU telemetry test: context_lost.
 """
 
 def run_test(machine):
     host = hosts.create_host(machine)
-    job.run_test('telemetry_GpuTests', host=host, test='pixel')
+    job.run_test('telemetry_GpuTests', host=host, test='context_lost')
 
 
 parallel_simple(run_test, machines)
