@@ -432,7 +432,7 @@ class Suite(object):
                  file_experimental_bugs=False, suite_job_id=None,
                  ignore_deps=False, extra_deps=[],
                  priority=priorities.Priority.DEFAULT, forgiving_parser=True,
-                 wait_for_results=True, job_retry=True):
+                 wait_for_results=True, job_retry=False):
         """
         Constructor
 
@@ -718,8 +718,9 @@ class Suite(object):
             Status('FAIL', self._tag,
                    'Exception while scheduling suite').record_result(record)
 
-        self._retry_handler = RetryHandler(
-                initial_jobs_to_tests=self._jobs_to_tests)
+        if self._job_retry:
+            self._retry_handler = RetryHandler(
+                    initial_jobs_to_tests=self._jobs_to_tests)
         return n_scheduled
 
 
@@ -730,7 +731,7 @@ class Suite(object):
         @param result: A result, encapsulating the status of the failed job.
         @return: True if we should file bugs for this failure.
         """
-        if self._retry_handler.has_following_retry(result):
+        if self._job_retry and self._retry_handler.has_following_retry(result):
             return False
 
         is_not_experimental = (

@@ -347,7 +347,8 @@ class SuiteTest(mox.MoxTestBase):
         self.mox.ReplayAll()
         suite = Suite.create_from_name(self._TAG, self._BUILD, self._BOARD,
                                        self.devserver,
-                                       afe=self.afe, tko=self.tko)
+                                       afe=self.afe, tko=self.tko,
+                                       job_retry=True)
         suite.schedule(recorder.record_entry, add_experimental=True)
         all_files = self.files.items()
         # Sort tests in self.files so that they are in the same
@@ -389,7 +390,7 @@ class SuiteTest(mox.MoxTestBase):
                                        self.devserver,
                                        self.getter,
                                        afe=self.afe, tko=self.tko,
-                                       file_bugs=file_bugs)
+                                       file_bugs=file_bugs, job_retry=True)
         self.mox.ResetAll()
         return suite
 
