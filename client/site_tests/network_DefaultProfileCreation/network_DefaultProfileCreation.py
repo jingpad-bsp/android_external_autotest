@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import errno
 import logging
 import os
 import time
@@ -37,8 +38,16 @@ class network_DefaultProfileCreation(test.test):
     def run_once(self):
         """Test main loop."""
         utils.run('stop shill')
-        os.remove(self.DEFAULT_PROFILE_PATH)
-        utils.run('start shill')
+        try:
+            os.remove(self.DEFAULT_PROFILE_PATH)
+        except OSError as e:
+            if e.errno != errno.ENOENT:
+                raise e
+        finally:
+            # start shill before the exception (if any) propagates.
+            # Otherwise, the DUT will be offline, and autotest will
+            # time out.
+            utils.run('start shill')
         shill = shill_proxy.ShillProxy.get_proxy()
         start_time = time.time()
         profile = None
@@ -51,7 +60,7 @@ class network_DefaultProfileCreation(test.test):
 
             time.sleep(1)
         else:
-            if  profile is None:
+            if profile is None:
                 raise error.TestFail('shill should load a profile within '
                                      '%d seconds.' %
                                      self.PROFILE_LOAD_TIMEOUT_SECONDS)
