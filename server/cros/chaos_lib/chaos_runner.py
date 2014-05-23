@@ -1,4 +1,4 @@
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -8,6 +8,7 @@ import logging
 import os
 import pprint
 import time
+import re
 
 from autotest_lib.client.common_lib.cros.network import chaos_constants
 from autotest_lib.client.common_lib.cros.network import iw_runner
@@ -267,6 +268,45 @@ class ChaosRunner(object):
         self._host.reboot()
 
 
+    def _get_firmware_ver(self):
+        """Get firmware version of DUT from /var/log/messages.
+
+        WiFi firmware version is matched against list of known firmware versions
+        from ToT.
+
+        @returns the WiFi firmware version as a string, None if the version
+                 cannot be found.
+
+        """
+
+        # Firmware versions manually aggregated by installing ToT on each device
+        known_firmware_ver = ['Atheros', 'mwifiex', 'loaded firmware version']
+
+        # Find and return firmware version in logs
+        for firmware_ver in known_firmware_ver:
+            result_str = self._host.run('awk "/%s/ {print}" /var/log/messages'
+                                        % firmware_ver).stdout
+
+            if not result_str:
+                continue
+            else:
+                if 'Atheros' in result_str:
+                    pattern = '%s \w+ Rev:\d' % firmware_ver
+                elif 'mwifiex' in result_str:
+                    pattern = '%s [\d.]+ \([\w.]+\)' % firmware_ver
+                elif 'loaded firmware version' in result_str:
+                    pattern = '(\d+\.\d+\.\d+.\d)'
+                else:
+                    logging.info('%s does not match known firmware versions.',
+                                 result_str)
+                    return None
+
+                result = re.search(pattern, result_str)
+                return result.group(0)
+
+        return None
+
+
     def run(self, job, batch_size=15, tries=10, capturer_hostname=None,
             conn_worker=None, work_client_hostname=None,
             disabled_sysinfo=False):
@@ -360,6 +400,17 @@ class ChaosRunner(object):
                             self._release_ap(ap, batch_locker)
                             continue
 
+                        name = ap.name
+                        kernel_ver = self._host.get_kernel_ver()
+                        firmware_ver = self._get_firmware_ver()
+                        if not firmware_ver:
+                            firmware_ver = "Unknown"
+
+                        debug_dict = {'ap_name': name,
+                                      'kernel_version': kernel_ver,
+                                      'wifi_firmware_version': firmware_ver}
+                        debug_string = pprint.pformat(debug_dict)
+
                         result = job.run_test(self._test,
                                      capturer=capturer,
                                      capturer_frequency=networks[0].frequency,
@@ -368,7 +419,7 @@ class ChaosRunner(object):
                                      assoc_params=assoc_params,
                                      client=client,
                                      tries=tries,
-                                     debug_info=ap.name,
+                                     debug_info=debug_string,
                                      # Copy all logs from the system
                                      disabled_sysinfo=disabled_sysinfo,
                                      conn_worker=conn_worker,
