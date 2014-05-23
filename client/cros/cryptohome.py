@@ -332,7 +332,6 @@ class CryptohomeProxy(DBusClient):
       """Wait for the |signal| with matching |data|
          Returns the resulting dict on success or {} on error.
       """
-      self.clear_signal_content(signal)
       # Do not bubble up the timeout here, just return {}.
       result = {}
       try:
@@ -348,6 +347,8 @@ class CryptohomeProxy(DBusClient):
     # Perform a data-less async call.
     # TODO(wad) Add __async_data_call.
     def __async_call(self, method, *args):
+        # Clear out any superfluous async call signals.
+        self.clear_signal_content(self.ASYNC_CALL_STATUS_SIGNAL)
         out = self.__call(method, *args)
         logging.debug('Issued call ' + str(method) +
                       ' with async_id ' + str(out))
