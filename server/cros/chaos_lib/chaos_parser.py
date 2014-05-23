@@ -147,7 +147,6 @@ class ChaosParser(object):
         channels = list()
         ap_names = list()
         hostnames = list()
-        config_failure = connect_failure = False
         f = open(status_log_path, 'r')
         total = 0
         for line in f:
@@ -156,29 +155,27 @@ class ChaosParser(object):
                # TODO: @bmahadev, Add exception for PDU failure and do not
                # include that in the total tests.
                total += 1
-            elif 'END ERROR' in line or 'END FAIL' in line:
-                if failure_type == CONNECT_FAIL:
-                    connect_failure = True
-                else:
-                    config_failure = True
-                failure_type = None
             elif line.startswith('ERROR') or line.startswith('FAIL'):
                 if 'Router name' in line:
                     # TODO: Should not appearing in the scan be a connect
                     # failure?
                     ap_names.append(self.get_ap_name(line))
                 title_info = line.split()
+                if 'reboot' in title_info:
+                    continue
                 # Get the hostname for the AP that failed configuration.
                 if 'chromeos' in title_info[1]:
-                    failure_type = CONFIG_FAIL
                     hostname = title_info[1].split('.')[1].split('_')[0]
+                    hostnames.append(hostname)
                 else:
                     # Get the router name, band for the AP that failed
                     # connect.
+                    if 'Config' in title_info[1]:
+                        failure_type = CONFIG_FAIL
+                    else:
+                        failure_type = CONNECT_FAIL
                     ssid_info = title_info[1].split('.')
                     ssid = ssid_info[1]
-                    if 'ch' not in ssid:
-                        ssid = ssid_info[2]
 
                     network_dict = self.get_ap_mode_chan_freq(ssid)
                     modes.append(network_dict['mode'])
@@ -188,10 +185,11 @@ class ChaosParser(object):
                     # failures.
                     if ('Ping command' in line or
                         'correct security' in line):
-                        failure_type = CONFIG_FAIL
+                        hostnames.append(ssid)
+                    elif failure_type == CONFIG_FAIL:
                         hostnames.append(ssid)
                     else:
-                        failure_type = CONNECT_FAIL
+                        ap_names.append(ssid)
             elif line.startswith('Debug info'):
                 ap_names.append(self.get_ap_name(line))
             elif ('END GOOD' in line and ('ChaosConnectDisconnect' in line or
