@@ -89,7 +89,7 @@ class PerfControl(object):
         logging.info("Max observed temperature = %.1f'C (bad limit = %.1f'C)",
                      self._temperature_max, temperature_bad)
         if (self._temperature_max > temperature_bad):
-            _error_reason = 'Machine got hot during testing.'
+            self._error_reason = 'Machine got hot during testing.'
             return False
         return True
 
