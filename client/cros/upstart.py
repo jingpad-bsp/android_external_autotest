@@ -2,9 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# NB: this code is downloaded for use by site_system_suspend.py;
-# beware of adding dependencies on client libraries such as utils
-
 """Provides utility methods for interacting with upstart"""
 
 import os
