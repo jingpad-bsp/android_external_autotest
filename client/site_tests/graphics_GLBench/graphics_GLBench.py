@@ -2,10 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import httplib
 import logging
 import os
-import urllib2
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -20,34 +18,6 @@ from autotest_lib.client.cros import service_stopper
 # start ui
 
 
-# Keep track of hosts that result in any errors other than HTTPError 404 (url
-# not found).  A 404 error is expected (and timely).  Any other error means
-# that the access timed out.  Avoid any subsequent attempt to access that "bad"
-# host, to avoid accumulation of many timeouts.
-bad_host_cache = set()
-
-def ReferenceImageExists(images_file, images_url, imagename):
-  found = False
-  # check imagename in index file first
-  if imagename in images_file:
-    return True
-  # check if image can be found on web server
-  url = images_url + imagename
-  host = urllib2.urlparse.urlparse(url).netloc
-  if host in bad_host_cache:
-    logging.warning('skipping cached unreachable host %s' % host)
-    return False
-  try:
-    urllib2.urlopen(urllib2.Request(url))
-    found = True
-  except (urllib2.HTTPError, urllib2.URLError, httplib.HTTPException) as e:
-    found = False
-    if not (isinstance(e, urllib2.HTTPError) and e.getcode() == 404):
-      bad_host_cache.add(host)
-      logging.warning('cached unreachable host %s' % host)
-  return found
-
-
 class graphics_GLBench(test.test):
   version = 1
   preserve_srcdir = True
@@ -57,13 +27,6 @@ class graphics_GLBench(test.test):
 
   reference_images_file = 'deps/glbench/glbench_reference_images.txt'
   knownbad_images_file = 'deps/glbench/glbench_knownbad_images.txt'
-
-  reference_images_url = ('http://commondatastorage.googleapis.com/'
-                          'chromeos-localmirror/distfiles/'
-                          'glbench_reference_images/')
-  knownbad_images_url = ('http://commondatastorage.googleapis.com/'
-                         'chromeos-localmirror/distfiles/'
-                         'glbench_knownbad_images/')
 
   # TODO(ihf) not sure these are still needed
   # These tests do not draw anything, they can only be used to check
@@ -261,17 +224,13 @@ class graphics_GLBench(test.test):
                                units=unit, higher_is_better=higher)
 
       # classify result image
-      if ReferenceImageExists(knownbad_imagenames,
-                              self.knownbad_images_url,
-                              imagefile):
+      if imagefile in knownbad_imagenames:
         # we already know the image looks bad and have filed a bug
         # so don't throw an exception and remind there is a problem
         keyvals[testname] = -1.0
         f.write('# knownbad [' + imagefile + '] (setting perf as -1.0)\n')
       else:
-        if ReferenceImageExists(reference_imagenames,
-                                self.reference_images_url,
-                                imagefile):
+        if imagefile in reference_imagenames:
           # known good reference images
           keyvals[testname] = testrating
         else:
