@@ -209,6 +209,16 @@ def _decode_lab_status(lab_status, build):
     return
 
 
+def is_in_lab():
+    """Check if current Autotest instance is in lab
+
+    @return: True if the Autotest instance is in lab.
+    """
+    test_server_name = global_config.global_config.get_config_value(
+              'SERVER', 'hostname')
+    return test_server_name.startswith('cautotest')
+
+
 def check_lab_status(build):
     """Check if the lab status allows us to schedule for a build.
 
@@ -222,9 +232,7 @@ def check_lab_status(build):
 
     """
     # Ensure we are trying to schedule on the actual lab.
-    test_server_name = global_config.global_config.get_config_value(
-              'SERVER', 'hostname')
-    if not test_server_name.startswith('cautotest'):
+    if not is_in_lab():
         return
 
     # Download the lab status from its home on the web.

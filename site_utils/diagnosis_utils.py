@@ -17,6 +17,9 @@ from autotest_lib.server.cros.dynamic_suite import reporting_utils
 # Minimum number of duts to allow a suite job being queued.
 MIN_AVAILABLE_DUTS = global_config.global_config.get_config_value(
         'SERVER', 'minimum_available_duts', type=int, default=4)
+# Suites that require minimum available duts check.
+SUITES_REQUIRE_MIN_DUTS =  global_config.global_config.get_config_value(
+        'SERVER', 'suites_require_min_available_duts', type=list, default=[])
 
 class JobTimer(object):
     """Utility class capable of measuring job timeouts.
@@ -130,15 +133,27 @@ class RPCHelper(object):
                           limit, time_delta_hours, job_info)
 
 
-    def check_dut_availability(self, board, pool):
+    def check_dut_availability(self, board, pool, suite):
         """Check if DUT availability for a given board and pool is less than
         minimum.
 
         @param board: The board to check DUT availability.
         @param pool: The pool to check DUT availability.
+        @param suite: Name of the suite.
         @raise: TestLabException if DUT availability is lower than minimum,
                 or failed to get host information from rpc interface.
         """
+        if not suite in SUITES_REQUIRE_MIN_DUTS:
+            logging.debug('Suite %s is not required to check minimum available '
+                          'DUTs.', suite)
+            return
+
+        # Do not enforce the minimum available duts rule if it's not in lab.
+        if not utils.is_in_lab():
+            logging.debug('This is not in lab zone. Minimum available DUT rule '
+                          'is not enforced.')
+            return
+
         hosts = self.rpc_interface.get_hosts(
                 invalid=False,
                 multiple_labels=('pool:%s' % pool, 'board:%s' % board))
@@ -146,6 +161,14 @@ class RPCHelper(object):
             raise utils.TestLabException(
                     'Unable to retrieve hosts in given board %s pool %s with '
                     'the rpc_interface %s' % (board, pool, self.rpc_interface))
+
+        if len(hosts) <= MIN_AVAILABLE_DUTS:
+            logging.debug('The total number of DUTs for %s in pool:%s is %d, '
+                          'which is no more than the required minimum number of'
+                          ' available DUTS of %d. Minimum available DUT rule is'
+                          ' not enforced.', board, pool, len(hosts),
+                          MIN_AVAILABLE_DUTS)
+            return
 
         # TODO(dshi): Replace the hard coded string with enum value,
         # models.Host.Status.REPAIRING and REPAIR_FAILED

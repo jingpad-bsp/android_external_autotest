@@ -951,7 +951,8 @@ def main():
     rpc_helper = diagnosis_utils.RPCHelper(afe)
 
     try:
-        rpc_helper.check_dut_availability(options.board, options.pool)
+        rpc_helper.check_dut_availability(options.board, options.pool,
+                                          options.name)
     except utils.TestLabException as e:
         logging.warning('Not enough DUTs to run this suite: %s', e)
         return RETURN_CODES.INFRA_FAILURE
