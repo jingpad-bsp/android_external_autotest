@@ -185,28 +185,16 @@ class ChaosRunner(object):
         return list(set(aps) - set(aps_to_remove))
 
 
-    def _return_available_networks(self, ap, capturer, job):
-        """Returns a list of networks configured as described by an APSpec.
+    def _get_security_from_scan(self, ap, networks):
+        """Returns a list of securities determined from the scan result.
 
         @param ap: the APConfigurator being testing against.
-        @param capturer: a packet capture device
-        @param job: an Autotest job object.
+        @param networks: List of matching networks returned from scan.
 
-        @returns a list of the matching networks; if no networks are found at
-                 all, returns None.
+        @returns a list of possible securities for the given network.
 
         """
-        # Setup a managed interface to perform scanning on the
-        # packet capture device.
-        freq = ap_spec.FREQUENCY_TABLE[self._ap_spec.channel]
-        wifi_if = capturer.get_wlanif(freq, 'managed')
-        capturer.host.run('%s link set %s up' % (capturer.cmd_ip, wifi_if))
-
-        logging.info('Searching for SSID %s in scan...', ap.ssid)
-        # We have some APs that need a while to come on-line
-        networks = capturer.iw_runner.wait_for_scan_result(wifi_if,
-                                                           ssid=ap.ssid,
-                                                           timeout_seconds=300)
+        security = list()
         if networks == None:
             # For crbug.com/331915, the next step will be to reboot the DUT
             logging.error('Scan failed to run, see crbug.com/309148.')
@@ -231,7 +219,52 @@ class ChaosRunner(object):
                 security = [iw_runner.SECURITY_WPA2]
             else:
                 security = [security]
+        return security
 
+
+    def _scan_for_networks(self, ssid, capturer):
+         """Returns a list of matching networks after running iw scan.
+
+        @param ssid: the SSID string to look for in scan.
+        @param capturer: a packet capture device.
+
+        @returns a list of the matching networks; if no networks are found at
+                 all, returns None.
+
+        """
+        # Setup a managed interface to perform scanning on the
+        # packet capture device.
+        freq = ap_spec.FREQUENCY_TABLE[self._ap_spec.channel]
+        wifi_if = capturer.get_wlanif(freq, 'managed')
+        capturer.host.run('%s link set %s up' % (capturer.cmd_ip, wifi_if))
+
+        logging.info('Searching for SSID %s in scan...', ssid)
+        # We have some APs that need a while to come on-line
+        networks = capturer.iw_runner.wait_for_scan_result(wifi_if,
+                                                           ssid=ssid,
+                                                           timeout_seconds=300)
+        capturer.remove_interface(wifi_if)
+        return networks
+
+
+    def _return_available_networks(self, ap, capturer, job):
+        """Returns a list of networks configured as described by an APSpec.
+
+        @param ap: the APConfigurator being testing against.
+        @param capturer: a packet capture device
+        @param job: an Autotest job object.
+
+        @returns a list of networks returned from _scan_for_networks().
+
+        """
+        networks = self._scan_for_networks(ap.ssid, capturer)
+        security = self._get_security_from_scan(ap, networks)
+        if security and self._ap_spec.security not in security:
+            logging.info('SSID %s was not found in the first scan. Scan one '
+                         'more time', ap.ssid)
+            time.sleep(60)
+            networks = self._scan_for_networks(ap.ssid, capturer)
+            security = self._get_security_from_scan(ap, networks)
             if self._ap_spec.security not in security:
                 logging.error('%s was the expected security but got %s: %s',
                               self._ap_spec.security,
@@ -242,7 +275,6 @@ class ChaosRunner(object):
                              error_string=chaos_constants.AP_SECURITY_MISMATCH,
                              tag=ap.ssid)
                 networks = list()
-        capturer.remove_interface(wifi_if)
         return networks
 
 
@@ -376,7 +408,7 @@ class ChaosRunner(object):
                                                                    capturer,
                                                                    job)
 
-                        if not networks:
+                        if networks is None:
                             # If scan returned no networks, iw scan failed.
                             # Reboot the packet capturer device and
                             # reconfigure the capturer.
@@ -387,7 +419,8 @@ class ChaosRunner(object):
                                            capture_host, {},'packet_capturer')
                             continue
                         if networks == list():
-                           # Packet capturer did not find the SSID in scan.
+                           # Packet capturer did not find the SSID in scan or
+                           # there was a security mismatch.
                            self._release_ap(ap, batch_locker)
                            continue
 
