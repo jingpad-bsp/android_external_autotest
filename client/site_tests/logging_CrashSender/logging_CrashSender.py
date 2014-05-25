@@ -183,17 +183,12 @@ class logging_CrashSender(crash_test.CrashTest):
 
 
     def _test_sender_single_instance(self):
-        """Test the sender fails to start when another instance is running.
-
-        Here we rely on the sender not checking the other running pid
-        is of the same instance.
-        """
-        utils.open_write_close(self._CRASH_SENDER_RUN_PATH, str(os.getpid()))
-        result = self._call_sender_one_crash()
-        if (not 'Already running.' in result['output'] or
-            result['send_attempt'] or not result['report_exists']):
-            raise error.TestFail('Allowed multiple instances to run')
-        os.remove(self._CRASH_SENDER_RUN_PATH)
+        """Test the sender fails to start when another instance is running."""
+        with self.hold_crash_lock():
+            result = self._call_sender_one_crash()
+            if (not 'Already running; quitting.' in result['output'] or
+                result['send_attempt'] or not result['report_exists']):
+                raise error.TestFail('Allowed multiple instances to run')
 
 
     def _test_sender_send_fails(self):

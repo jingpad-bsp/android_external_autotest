@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, re, shutil
+import contextlib, fcntl, logging, os, re, shutil
 
 import common, cros_logging
 from autotest_lib.client.bin import test, utils
@@ -74,6 +74,7 @@ class CrashTest(test.test):
     _CRASH_SENDER_PATH = '/sbin/crash_sender'
     _CRASH_SENDER_RATE_DIR = '/var/lib/crash_sender'
     _CRASH_SENDER_RUN_PATH = '/var/run/crash_sender.pid'
+    _CRASH_SENDER_LOCK_PATH = '/var/lock/crash_sender'
     _CRASH_TEST_IN_PROGRESS = '/tmp/crash-test-in-progress'
     _MOCK_CRASH_SENDING = '/tmp/mock-crash-sending'
     _PAUSE_FILE = '/var/lib/crash_sender_paused'
@@ -610,6 +611,17 @@ class CrashTest(test.test):
         Next time the crash reporter is invoked (due to a crash) it will not
         receive a --filter_in paramter."""
         self._replace_crash_reporter_filter_in('')
+
+
+    @contextlib.contextmanager
+    def hold_crash_lock(self):
+        """A context manager to hold the crash sender lock."""
+        with open(self._CRASH_SENDER_LOCK_PATH, 'w+') as f:
+            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
 
 
     def initialize(self):
