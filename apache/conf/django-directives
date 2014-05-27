@@ -22,6 +22,16 @@
 RewriteEngine On
 
 #
+# Configuration on Moblab
+#
+RewriteCond /usr/lib64/python2.7/site-packages/django/contrib/admin/static/admin -d
+RewriteRule /media/(css|img|js)(.*) /usr/lib64/python2.7/site-packages/django/contrib/admin/static/admin/$1/$2
+RewriteCond /usr/lib64/python2.7/site-packages/django/contrib/admin/static/admin -d
+RewriteRule /afe/server/admin/admin/(css|img|js)(.*) /usr/lib64/python2.7/site-packages/django/contrib/admin/static/admin/$1/$2
+RewriteCond /usr/lib64/python2.7/site-packages/django/contrib/admin/static/admin -d
+RewriteRule /afe/server/admin/afe/(aclgroup|atomicgroup|host|label|profiler|test)/admin/(css|img|js)(.*) /usr/lib64/python2.7/site-packages/django/contrib/admin/static/admin/$2/$3
+
+#
 # Django < 1.4 installed by utils/build_externals.py
 #
 RewriteCond /usr/local/autotest/site-packages/django/contrib/admin/media -d
