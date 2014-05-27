@@ -6,12 +6,15 @@ import ConfigParser
 import datetime
 import os
 
+from autotest_lib.client.bin import utils
+
+from autotest_lib.client.common_lib import error
+
 from autotest_lib.client.cros.video import bp_image_comparer, \
     golden_image_downloader, import_screenshot_capturer, sequence_generator, \
     media_player, method_logger, screenshot_file_namer, \
     video_screenshot_collector
 
-from autotest_lib.client.bin import utils
 
 
 class MediaTestFactory(object):
@@ -104,12 +107,14 @@ class MediaTestFactory(object):
         # Verification specs
         self.biopic_project_name = None
         self.biopic_contact_email = None
+        self.biopic_wait_time = None
 
         self.parser = None
 
         self._load_configuration()
 
 
+    @method_logger.log
     def _load_configuration(self):
         """
         Loads all configuration parameters from specified configuration files.
@@ -118,12 +123,33 @@ class MediaTestFactory(object):
 
         self.parser = ConfigParser.SafeConfigParser()
 
-        self.device_under_test = utils.get_current_board()
+        self._verify_device_is_eligible_for_test()
 
+        self.device_under_test = utils.get_current_board()
         self._load_test_constants()
         self._load_device_info()
         self._load_video_info()
         self._load_channel_specs()
+
+
+    @method_logger.log
+    def _verify_device_is_eligible_for_test(self):
+        """
+        Verifies device under test is supported.
+
+        @raises TestNAError if the test shouldn't be run on the current device.
+
+        """
+        self.parser.read(os.path.join(self.autotest_dir,
+                                      self.device_spec_filename))
+
+        eligible_devices = self.parser.sections()
+
+        device_under_test = utils.get_current_board()
+
+        if device_under_test not in eligible_devices:
+            raise error.TestNAError('Test is not available on %s board' %
+                                     device_under_test.upper())
 
 
     @method_logger.log
@@ -146,7 +172,7 @@ class MediaTestFactory(object):
         self.screenshot_image_format = self.parser.get(section, 'image_format')
 
         self.remote_golden_image_root_dir = self.parser.get(
-                section, 'remote_golden_image_root_dir')
+                section, 'remote_golden_image_root_dir').replace('\n', '')
 
         self.video_name = self.parser.get(section, 'video_name')
 
@@ -161,8 +187,13 @@ class MediaTestFactory(object):
         self.capture_sequence_style = self.parser.get(section,
                                                       'capture_sequence_style')
 
-        self.biopic_project_name = self.parser.get('biopic', 'project_name')
+        self.biopic_project_name = (self.parser.get('biopic',
+                                                    'project_name') + '.' +
+                                    self.device_under_test)
+
         self.biopic_contact_email = self.parser.get('biopic', 'contact_email')
+        self.biopic_wait_time = self.parser.getint('biopic',
+                                                   'wait_time_btwn_comparisons')
 
 
     @method_logger.log
@@ -190,8 +221,8 @@ class MediaTestFactory(object):
         Reads video info configuration file and stores parameters.
 
         """
-        self.parser.read( os.path.join(self.autotest_dir,
-                                       self.video_info_filename))
+        self.parser.read(os.path.join(self.autotest_dir,
+                                      self.video_info_filename))
 
         length_str = self.parser.get(self.video_name, 'length')
 
@@ -249,7 +280,8 @@ class MediaTestFactory(object):
                 self.video_format,
                 self.video_def,
                 self.device_under_test,
-                self.make_screenshot_file_namer())
+                screenshot_file_namer.ScreenShotFileNamer(
+                        self.screenshot_image_format))
 
 
     def make_capture_sequence_generator(self):
@@ -306,7 +338,6 @@ class MediaTestFactory(object):
                 self.top_pixels_to_crop,
                 self.bottom_pixels_to_crop)
 
-
         return video_screenshot_collector.VideoScreenShotCollector(player,
                                                                    namer,
                                                                    capturer)
@@ -319,4 +350,5 @@ class MediaTestFactory(object):
         @returns an object that can compare two images.
         """
         return bp_image_comparer.BpImageComparer(self.biopic_project_name,
-                                                 self.biopic_contact_email)
+                                                 self.biopic_contact_email,
+                                                 self.biopic_wait_time)

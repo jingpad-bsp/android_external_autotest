@@ -5,7 +5,8 @@
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib.cros import chrome
-from autotest_lib.client.cros.video import media_test_factory
+from autotest_lib.client.cros.video import sequence_generator,\
+    media_test_factory
 
 
 class video_GlitchDetection(test.test):
@@ -49,33 +50,36 @@ class video_GlitchDetection(test.test):
                                                       video_def)
 
         golden_image_downloader = factory.make_golden_image_downloader()
-        player = factory.make_media_player()
-        sequence_generator = factory.make_capture_sequence_generator()
         screenshot_collector = factory.make_video_screenshot_collector()
-        verifier = factory.make_verifier()
 
         test_dir = factory.local_golden_images_dir
 
+        file_utils.rm_dir_if_exists(test_dir)
+
         file_utils.make_leaf_dir(test_dir)
 
-        file_utils.ensure_all_dirs_exist(test_dir)
+        file_utils.ensure_dir_exists(test_dir)
 
-        timestamps = sequence_generator.generate()
+        timestamps = sequence_generator.generate_random_sequence(
+                factory.start_capture,
+                factory.stop_capture,
+                factory.samples_per_min)
 
         golden_images = golden_image_downloader.download_images(timestamps)
 
         file_utils.ensure_all_files_exist(golden_images)
 
-        player.load_video()
+        screenshot_collector.ensure_player_is_ready()
 
-        results = screenshot_collector.collect_multiple_screenshots(
-            timestamps)
+        test_images = screenshot_collector.collect_multiple_screenshots(
+                timestamps)
 
-        file_utils.ensure_all_files_exist(results)
+        file_utils.ensure_all_files_exist(test_images)
 
-        verifier.verify(golden_images, results)
+        with factory.make_image_comparer() as comparer:
+            comparer.compare(golden_images, test_images)
 
-        file_utils.rm_dirs_if_exist(test_dir)
+        file_utils.rm_dir_if_exists(test_dir)
 
 
     def run_once(self, channel, video_format, video_def):

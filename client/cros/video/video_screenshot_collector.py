@@ -34,10 +34,21 @@ class VideoScreenShotCollector(object):
         """
         filename = self.screnshot_namer.get_filename(timestamp)
 
-        self.player.set_current_time(timestamp)
+        self.player.seek_video_to_timestamp(timestamp)
         self.player.wait_for_video_to_seek()
 
         return self.screnshot_capturer.capture(filename)
+
+
+    @method_logger.log
+    def ensure_player_is_ready(self):
+        """
+         Loads video and waits for player to be ready.
+
+         @raises whatever load_video() raises.
+
+        """
+        self.player.load_video()
 
 
     @method_logger.log

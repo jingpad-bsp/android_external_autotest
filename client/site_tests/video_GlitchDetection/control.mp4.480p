@@ -22,4 +22,7 @@ test itself.
 All test results regardless of result are stored and viewable.
 """
 
-job.run_test('video_GlitchDetection', channel='dev', format='mp4', resolution='480p')
+job.run_test('video_GlitchDetection',
+              channel='dev',
+              video_format='mp4',
+              video_def='480p')

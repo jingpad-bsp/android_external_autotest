@@ -17,7 +17,7 @@ def rm_dir_if_exists(dir_to_remove):
     try:
         shutil.rmtree(dir_to_remove)
     except OSError as e:
-        if e.errno != errno.ENONET:
+        if e.errno != errno.ENOENT:
             raise
 
 

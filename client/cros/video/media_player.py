@@ -37,8 +37,6 @@ class VideoPlayer(object):
         self.time_out_for_events_s = time_out_for_events_s
         self.time_btwn_polling_s = time_btwn_polling_s
 
-        self._current_time = None
-
 
     @method_logger.log
     def load_video(self):
@@ -57,18 +55,16 @@ class VideoPlayer(object):
 
 
     @method_logger.log
-    @current_time.setter
-    def current_time(self, value):
+    def seek_video_to_timestamp(self, timestamp):
         """
         Uses javascript to set currentTime property of video to desired time.
 
-        @param value: timedelta, instance of time to navigate video to.
+        @param timestamp: timedelta, instance of time to navigate video to.
 
         """
-        _current_time = value.total_seconds()
 
         cmd = "%s.currentTime=%.3f" % (
-            self.video_id, _current_time)
+            self.video_id, timestamp.total_seconds())
         self.tab.ExecuteJavaScript(cmd)
 
 
