@@ -302,5 +302,5 @@ class OpenVPNServer(VPNServer):
     def stop_server(self):
         """Start VPN server instance"""
         chroot = self._chroot
-        chroot.kill_pid_file(self.OPENVPN_PID_FILE)
+        chroot.kill_pid_file(self.OPENVPN_PID_FILE, missing_ok=True)
         chroot.shutdown()
