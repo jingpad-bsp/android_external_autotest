@@ -21,7 +21,7 @@ tcsd,tss,No,No,No,No,No
 cromo,cromo,No,No,No,No,No
 wimax-manager,root,No,No,No,No,No
 mtpd,mtp,Yes,Yes,No,No,Yes
-tlsdated,proxystate,No,No,No,No,No
+tlsdated,tlsdate,No,No,No,No,No
 lid_touchpad_he,root,No,No,No,No,No
 thermal.sh,root,No,No,No,No,No
 daisydog,watchdog,Yes,Yes,No,No,No
