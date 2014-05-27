@@ -23,9 +23,9 @@ This is a wrapper test for Chrome video_encode_accelerator_unittest.
 
 # Format of each stream: (filename, width, height, request_bit_rate)
 streams = [
-    ('tulip2/tulip2-1280x720-1b95123232922fe0067869c74e19cd09.yuv', 1280, 720, 3200000),
-    ('tulip2/tulip2-640x352-4caddd1e6d04d8f693809e68164af792.yuv', 640, 352, 800000),
-    ('tulip2/tulip2-320x176-6741fd6c732408643dea0eab2c931e1e.yuv', 320, 176, 200000)]
+    ('tulip2/tulip2-1280x720-1b95123232922fe0067869c74e19cd09.yuv', 1280, 720, 1200000),
+    ('tulip2/tulip2-640x352-4caddd1e6d04d8f693809e68164af792.yuv', 640, 352, 500000),
+    ('tulip2/tulip2-320x176-6741fd6c732408643dea0eab2c931e1e.yuv', 320, 176, 100000)]
 
 job.run_test('video_VideoEncodeAccelerator', in_cloud=True, streams=streams,
         profile=11)
