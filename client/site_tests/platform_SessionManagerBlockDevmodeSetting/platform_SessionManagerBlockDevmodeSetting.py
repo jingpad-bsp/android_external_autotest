@@ -44,11 +44,16 @@ class platform_SessionManagerBlockDevmodeSetting(test.test):
         except error.CmdError, e:
             raise error.TestError('Failed to run crossystem: %s' % e)
 
-        # Test whether the flag gets reset when taking ownership.
+        # Make sure that the flag sticks when there is no owner.
         set_block_devmode(True)
+        cros_ui.restart()
+        cros_ui.stop()
+        if not get_block_devmode():
+            raise error.TestFail("Flag got reset for non-owned device.")
+
+        # Test whether the flag gets reset when taking ownership.
         listener = session_manager.OwnershipSignalListener(gobject.MainLoop())
         listener.listen_for_new_key_and_policy()
-
         with chrome.Chrome() as cr:
             listener.wait_for_signals(desc='Ownership files written to disk.')
             if get_block_devmode():
@@ -72,7 +77,7 @@ class platform_SessionManagerBlockDevmodeSetting(test.test):
         listener.listen_for_new_policy()
         listener.reset_signal_state()
         with open(os.path.join(self.bindir,
-                  'policy_block_devmode_disabled') as f:
+                  'policy_block_devmode_disabled')) as f:
             session_manager_proxy = session_manager.connect(self._bus_loop)
             session_manager_proxy.StorePolicy(f.read())
         listener.wait_for_signals(desc='Policy updated.')
