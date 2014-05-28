@@ -47,7 +47,7 @@ _shutdown = False
 _tick_pause_sec = global_config.global_config.get_config_value(
         'SCHEDULER', 'tick_pause_sec', type=int, default=5)
 _monitor_db_host_acquisition = global_config.global_config.get_config_value(
-        'SCHEDULER', 'inline_host_acquisition', type=bool, default=False)
+        'SCHEDULER', 'inline_host_acquisition', type=bool, default=True)
 
 
 class BaseHostScheduler(object):
