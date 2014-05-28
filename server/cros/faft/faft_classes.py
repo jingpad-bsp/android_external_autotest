@@ -1146,10 +1146,11 @@ class FAFTSequence(FAFTBase):
                 self.servo.set('cold_reset', 'on')
                 time.sleep(self.faft_config.hold_cold_reset)
                 self.servo.set('cold_reset', 'off')
-            time.sleep(self.faft_config.ec_boot_to_console)
-            self.ec.reboot("ap-off")
+            # Make sure AP stays off while entering EC console commands.
+            self.servo.set('warm_reset', 'on')
             time.sleep(self.faft_config.ec_boot_to_console)
             self.ec.set_hostevent(chrome_ec.HOSTEVENT_KEYBOARD_RECOVERY)
+            self.servo.set_nocheck('warm_reset', 'off')
             self.servo.power_short_press()
         elif self.faft_config.broken_rec_mode:
             self.power_cycle()
