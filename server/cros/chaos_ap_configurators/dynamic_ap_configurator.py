@@ -8,6 +8,7 @@ import datetime
 import logging
 import os
 import re
+import time
 import xmlrpclib
 
 import ap_spec
@@ -424,10 +425,16 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
         self.check_pdu_status()
         self.rpm_client.queue_request(self.host_name, 'ON')
         self.establish_driver_connection()
-        # Give the router 40 seconds to come up and load page
-        # else reboot and try one more time.
-        for i in range(1,16):
+        # Depending on the response of the webserver for the AP, or lack
+        # there of, the amount of time navigate_to_page and refresh take
+        # is indeterminate.  Give the APs 5 minutes of real time and then
+        # give up.
+        timeout = time.time() + (5 * 60)
+        half_way = time.time() + (2.5 * 60)
+        performed_power_cycle = False
+        while time.time() < timeout:
             try:
+                logging.info('Attempting to load page')
                 self.navigate_to_page(1)
                 logging.debug('Page navigation complete')
                 self.router_on = True
@@ -436,13 +443,16 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
             # RuntimeError depending on the implementation.  Either way we are
             # bringing a router back from power off, we need to be patient.
             except:
+                logging.info('Forcing a page refresh')
                 self.driver.refresh()
                 logging.info('Waiting for router %s to come back up.',
                              self.name)
                 # Sometime the APs just don't come up right.
-                if i == 8:
+                if not performed_power_cycle and time.time() > half_way:
                     logging.info('Cannot connect to AP, forcing cycle')
                     self.rpm_client.queue_request(self.host_name, 'CYCLE')
+                    performed_power_cycle = True
+                    logging.info('Power cycle complete')
         raise RuntimeError('Unable to load admin page after powering on the '
                            'router: %s' % self.name)
 

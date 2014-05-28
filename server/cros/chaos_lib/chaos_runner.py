@@ -185,20 +185,18 @@ class ChaosRunner(object):
         return list(set(aps) - set(aps_to_remove))
 
 
-    def _get_security_from_scan(self, ap, networks):
+    def _get_security_from_scan(self, ap, networks, job):
         """Returns a list of securities determined from the scan result.
 
         @param ap: the APConfigurator being testing against.
         @param networks: List of matching networks returned from scan.
+        @param job: an Autotest job object
 
         @returns a list of possible securities for the given network.
 
         """
-        security = list()
-        if networks == None:
-            # For crbug.com/331915, the next step will be to reboot the DUT
-            logging.error('Scan failed to run, see crbug.com/309148.')
-        elif len(networks) == 0:
+        securities = list()
+        if len(networks) == 0:
             # The SSID of the AP was not found
             logging.error('The ssid %s was not found in the scan', ap.ssid)
             job.run_test('network_WiFi_ChaosConfigFailure', ap=ap,
@@ -210,20 +208,20 @@ class ChaosRunner(object):
             security = networks[0].security
             if (security == iw_runner.SECURITY_MIXED and
                 ap.configurator_type == ap_spec.CONFIGURATOR_STATIC):
-                security = [iw_runner.SECURITY_WPA, iw_runner.SECURITY_WPA2]
+                securities = [iw_runner.SECURITY_WPA, iw_runner.SECURITY_WPA2]
                 # We have only seen WPA2 be backwards compatible, and we want
                 # to verify the configurator did the right thing. So we
                 # promote this to WPA2 only.
             elif (security == iw_runner.SECURITY_MIXED and
                   ap.configurator_type == ap_spec.CONFIGURATOR_DYNAMIC):
-                security = [iw_runner.SECURITY_WPA2]
+                securities = [iw_runner.SECURITY_WPA2]
             else:
-                security = [security]
-        return security
+                securities = [security]
+        return securities
 
 
     def _scan_for_networks(self, ssid, capturer):
-         """Returns a list of matching networks after running iw scan.
+        """Returns a list of matching networks after running iw scan.
 
         @param ssid: the SSID string to look for in scan.
         @param capturer: a packet capture device.
@@ -238,7 +236,6 @@ class ChaosRunner(object):
         wifi_if = capturer.get_wlanif(freq, 'managed')
         capturer.host.run('%s link set %s up' % (capturer.cmd_ip, wifi_if))
 
-        logging.info('Searching for SSID %s in scan...', ssid)
         # We have some APs that need a while to come on-line
         networks = capturer.iw_runner.wait_for_scan_result(wifi_if,
                                                            ssid=ssid,
@@ -258,13 +255,13 @@ class ChaosRunner(object):
 
         """
         networks = self._scan_for_networks(ap.ssid, capturer)
-        security = self._get_security_from_scan(ap, networks)
-        if security and self._ap_spec.security not in security:
+        security = self._get_security_from_scan(ap, networks, job)
+        if self._ap_spec.security not in security:
             logging.info('SSID %s was not found in the first scan. Scan one '
                          'more time', ap.ssid)
             time.sleep(60)
             networks = self._scan_for_networks(ap.ssid, capturer)
-            security = self._get_security_from_scan(ap, networks)
+            security = self._get_security_from_scan(ap, networks, job)
             if self._ap_spec.security not in security:
                 logging.error('%s was the expected security but got %s: %s',
                               self._ap_spec.security,
@@ -362,7 +359,6 @@ class ChaosRunner(object):
             capturer = site_linux_system.LinuxSystem(capture_host, {},
                                                      'packet_capturer')
             if conn_worker is not None:
-                logging.info('Allocate work client for ConnectionWorker')
                 work_client_machine = self._allocate_packet_capturer(
                         lock_manager, hostname=work_client_hostname)
                 conn_worker.prepare_work_client(work_client_machine)
@@ -401,6 +397,7 @@ class ChaosRunner(object):
                         healthy_dut = self._is_dut_healthy(client, ap)
 
                         if not healthy_dut:
+                            logging.error('DUT is not healthy, rebooting.')
                             batch_locker.unlock_and_reclaim_aps()
                             break
 
@@ -413,7 +410,8 @@ class ChaosRunner(object):
                             # Reboot the packet capturer device and
                             # reconfigure the capturer.
                             batch_locker.unlock_and_reclaim_ap(ap.host_name)
-                            logging.debug('Scan result returned None. Reboot')
+                            logging.error('Packet capture is not healthy, '
+                                          'rebooting.')
                             capturer.host.reboot()
                             capturer = site_linux_system.LinuxSystem(
                                            capture_host, {},'packet_capturer')
