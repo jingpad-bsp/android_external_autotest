@@ -197,9 +197,9 @@ class RobotWrapper:
 
         # Next, check if maybe there is a spec in the touchbotII directory
         spec_path = os.path.join(self._robot_script_dir,
-                         'touchbotII/device_specs/%s.p' % self._board)
+                         'device_specs/%s.p' % self._board)
         spec_min_path = os.path.join(self._robot_script_dir,
-                         'touchbotII/device_specs/%s_min.p' % self._board)
+                         'device_specs/%s_min.p' % self._board)
         if os.path.isfile(spec_path) and os.path.isfile(spec_min_path):
             shutil.copy(spec_path, '.')
             shutil.copy(spec_min_path, '.')
