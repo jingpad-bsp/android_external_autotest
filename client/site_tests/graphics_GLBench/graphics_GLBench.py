@@ -249,9 +249,8 @@ class graphics_GLBench(test.test):
 
     # Raise exception if images don't match.
     if failed_tests:
-      logging.info('Some images are not matching their reference in %s or %s.',
-                   self.reference_images_file,
-                   self.reference_images_url)
+      logging.info('Some images are not matching their reference in %s.',
+                   self.reference_images_file)
       logging.info('Please verify that the output images are correct '
                    'and if so copy them to the reference directory.')
       raise error.TestFail('Some images are not matching their '
