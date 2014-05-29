@@ -29,8 +29,11 @@ Args:
 UI_TESTS = ['backlight', 'download', 'webpages', 'video', 'v8']
 NONUI_TESTS = ['backchannel', 'sound', 'lowlevel']
 DEFAULT_TESTS = UI_TESTS + NONUI_TESTS
+INTERVAL_SECS = 5
 
+job.profilers.add('vmstat', INTERVAL_SECS)
 job.run_test('power_Consumption',
                 short=False,
                 test_groups=DEFAULT_TESTS,
                 reps=1)
+job.profilers.delete('vmstat')
