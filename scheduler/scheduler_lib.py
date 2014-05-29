@@ -58,7 +58,7 @@ class ConnectionManager(object):
     """
     __metaclass__ = Singleton
 
-    def __init__(self, readonly=False, autocommit=True):
+    def __init__(self, readonly=True, autocommit=True):
         """Set global django database options for correct connection handling.
 
         @param readonly: Globally disable readonly connections.
