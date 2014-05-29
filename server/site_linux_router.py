@@ -155,7 +155,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         hostapd_conf_dict = configuration.generate_dict(
                 interface, control_interface,
                 self._build_unique_ssid(configuration.ssid_suffix))
-        logging.info('Starting hostapd with parameters: %r', hostapd_conf_dict)
+        logging.debug('hostapd parameters: %r', hostapd_conf_dict)
 
         # Generate hostapd.conf.
         self.router.run("cat <<EOF >%s\n%s\nEOF\n" %
@@ -163,7 +163,9 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             "%s=%s" % kv for kv in hostapd_conf_dict.iteritems())))
 
         # Run hostapd.
-        logging.info("Starting hostapd...")
+        logging.info('Starting hostapd on %s(%s) channel=%s...',
+                     interface, self.iw_runner.get_interface(interface).phy,
+                     configuration.channel)
         self.router.run('rm %s' % log_file, ignore_status=True)
         self.router.run('stop wpasupplicant', ignore_status=True)
         start_command = '%s -dd -t %s &> %s & echo $!' % (

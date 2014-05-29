@@ -349,12 +349,16 @@ class LinuxSystem(object):
 
         """
         for phy in self.phy_list:
+            if not phy.supports_setting_antenna_mask:
+                continue
             self.iw_runner.set_antenna_bitmap(phy.name, tx_bitmap, rx_bitmap)
 
 
     def set_default_antenna_bitmap(self):
         """Setup default antenna bitmaps for all the phys."""
         for phy in self.phy_list:
+            if not phy.supports_setting_antenna_mask:
+                continue
             self.iw_runner.set_antenna_bitmap(phy.name, phy.avail_tx_antennas,
                                               phy.avail_rx_antennas)
 

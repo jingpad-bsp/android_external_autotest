@@ -45,7 +45,8 @@ IwTimedScan = collections.namedtuple('IwTimedScan', ['time', 'bss_list'])
 #   max_scan_ssids: Maximum number of SSIDs which can be scanned at once.
 IwPhy = collections.namedtuple(
     'Phy', ['name', 'bands', 'modes', 'commands', 'max_scan_ssids',
-            'avail_tx_antennas', 'avail_rx_antennas'])
+            'avail_tx_antennas', 'avail_rx_antennas',
+            'supports_setting_antenna_mask'])
 
 DEFAULT_COMMAND_IW = 'iw'
 
@@ -290,7 +291,8 @@ class IwRunner(object):
                             tuple(pending_phy_commands),
                             pending_phy_max_scan_ssids,
                             pending_phy_tx_antennas,
-                            pending_phy_rx_antennas)
+                            pending_phy_rx_antennas,
+                            pending_phy_tx_antennas and pending_phy_rx_antennas)
             all_phys.append(new_phy)
 
         for line in output.splitlines():
