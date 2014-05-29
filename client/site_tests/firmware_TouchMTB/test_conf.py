@@ -597,10 +597,10 @@ def get_gesture_dict():
             variations=(GV.AROUND,),
             prompt='Place your one stationary finger in the middle of the '
                    'touch surface, and use a second finger to tap '
-                   'all around it',
+                   'all around it many times (50)',
             subprompt=None,
             validators=(
-                CountTrackingIDNormalFingerValidator('>= 2'),
+                CountTrackingIDNormalFingerValidator('>= 25'),
                 StationaryFingerValidator(stationary_finger_criteria, slot=0),
             ),
         ),
