@@ -198,6 +198,7 @@ class _PantherController(_PowerStateController):
 
 _CONTROLLER_BOARD_MAP = {
     'panther': _PantherController,
+    'mccloud': _PantherController,
     'monroe': _PantherController,
     'zako': _PantherController,
     'tricky': _PantherController,
