@@ -45,10 +45,11 @@ def main():
                         choices=['480p', '720p', '1080p'],
                         help="Video definition to use.")
 
-    parser.add_argument("start",
+    parser.add_argument("--start",
+                        default="00:01",
                         help="Time to start taking screenshots. (mm:ss)")
 
-    parser.add_argument("stop",
+    parser.add_argument("--stop",
                         help="Time to stop taking screenshots. (mm:ss).")
 
     parser.add_argument("interval",
@@ -60,11 +61,11 @@ def main():
     time_format = '%M:%S'
 
     # Parse time arguments from user
+    # Start time has a default argument of 01:00, parse right away
+    # Parse stop time later as we don't know the length of the video,
+    # the factory does
     tmp = datetime.datetime.strptime(args.start, time_format)
     start = datetime.timedelta(minutes=tmp.minute, seconds=tmp.second)
-
-    tmp = datetime.datetime.strptime(args.stop, time_format)
-    stop = datetime.timedelta(minutes=tmp.minute, seconds=tmp.second)
 
     with chrome.Chrome() as cr:
         bindir = '/usr/local/autotest/cros/video'
@@ -77,6 +78,13 @@ def main():
                                                       'dev',
                                                       args.format,
                                                       args.definition)
+
+        # if stop time is not specified, use the length of the video
+        if args.stop is None:
+            stop = factory.media_length
+        else:
+            tmp = datetime.datetime.strptime(args.stop, time_format)
+            stop = datetime.timedelta(minutes=tmp.minute, seconds=tmp.second)
 
         file_utils.rm_dir_if_exists(factory.test_working_dir)
 
