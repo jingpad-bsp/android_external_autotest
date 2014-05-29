@@ -65,6 +65,7 @@ TIME='SHORT'\n\
 TEST_CATEGORY = 'Functional'\n\
 TEST_CLASS = 'graphics'\n\
 TEST_TYPE = 'client'\n\
+JOB_RETRIES = 1\n\
 \n\
 DOC = \"\"\"\n\
 Piglit is a collection of automated tests for OpenGL implementations.\n\
