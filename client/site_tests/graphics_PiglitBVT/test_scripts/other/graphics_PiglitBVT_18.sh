@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=439
+need_pass=438
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -30,8 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.30/compiler/keywords/mat2x2.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/compiler/keywords/mat2x2.frag fail 1.30"
-run_test "spec/glsl-1.30/compiler/keywords/mat2x3.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/compiler/keywords/mat2x3.frag fail 1.30"
 run_test "spec/glsl-1.30/compiler/keywords/mat2x4.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/compiler/keywords/mat2x4.frag fail 1.30"
 run_test "spec/glsl-1.30/compiler/keywords/mat3.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/compiler/keywords/mat3.frag fail 1.30"
 run_test "spec/glsl-1.30/compiler/keywords/mat3x2.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/compiler/keywords/mat3x2.frag fail 1.30"
@@ -469,11 +467,12 @@ run_test "spec/glsl-1.30/execution/built-in-functions/fs-op-mod-int-ivec2" 0.0 "
 run_test "spec/glsl-1.30/execution/built-in-functions/fs-op-mod-int-ivec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/fs-op-mod-int-ivec3.shader_test -auto"
 run_test "spec/glsl-1.30/execution/built-in-functions/fs-op-mod-int-ivec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/fs-op-mod-int-ivec4.shader_test -auto"
 run_test "spec/glsl-1.30/execution/built-in-functions/fs-op-mod-ivec2-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/fs-op-mod-ivec2-int.shader_test -auto"
+run_test "spec/glsl-1.30/execution/built-in-functions/fs-op-mod-ivec2-ivec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/fs-op-mod-ivec2-ivec2.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 439 tests have passed. |"
+  echo "| Overall pass, as all 438 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

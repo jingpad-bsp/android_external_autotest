@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=345
+need_pass=352
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -30,6 +30,7 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/ARB_texture_rg/fbo-generatemipmap-formats" 0.0 "bin/fbo-generatemipmap-formats -auto GL_ARB_texture_rg"
 run_test "spec/ARB_texture_rg/fbo-generatemipmap-formats-float" 0.0 "bin/fbo-generatemipmap-formats -auto GL_ARB_texture_rg-float"
 run_test "spec/ARB_texture_rg/fbo-rg-GL_R16" 0.0 "bin/fbo-rg -auto GL_R16"
 run_test "spec/ARB_texture_rg/fbo-rg-GL_R8" 0.0 "bin/fbo-rg -auto GL_R8"
@@ -56,7 +57,6 @@ run_test "spec/ARB_texture_rg/texwrap formats-int" 0.0 "bin/texwrap -fbo -auto G
 run_test "spec/ARB_texture_rgb10_a2ui/fbo-blending" 0.0 "bin/ext_texture_integer-fbo-blending GL_ARB_texture_rgb10_a2ui -auto -fbo"
 run_test "spec/ARB_texture_rgb10_a2ui/texwrap formats" 0.0 "bin/texwrap -fbo -auto GL_ARB_texture_rgb10_a2ui"
 run_test "spec/ARB_texture_storage/texture-storage" 0.0 "bin/arb_texture_storage-texture-storage -auto"
-run_test "spec/ARB_timer_query/query GL_TIMESTAMP" 0.0 "bin/ext_timer_query-time-elapsed timestamp -auto -fbo"
 run_test "spec/ARB_timer_query/query-lifetime" 0.0 "bin/ext_timer_query-lifetime -auto -fbo"
 run_test "spec/ARB_uniform_buffer_object/bindbuffer-general-point" 0.0 "bin/arb_uniform_buffer_object-bindbuffer-general-point -auto -fbo"
 run_test "spec/ARB_uniform_buffer_object/buffer-targets" 0.0 "bin/arb_uniform_buffer_object-buffer-targets -auto -fbo"
@@ -375,11 +375,18 @@ run_test "spec/EXT_transform_feedback/api-errors bind_range_size_5" 0.0 "bin/ext
 run_test "spec/EXT_transform_feedback/api-errors bind_range_size_m4" 0.0 "bin/ext_transform_feedback-api-errors bind_range_size_m4 -auto -fbo"
 run_test "spec/EXT_transform_feedback/api-errors end_inactive" 0.0 "bin/ext_transform_feedback-api-errors end_inactive -auto -fbo"
 run_test "spec/EXT_transform_feedback/api-errors interleaved_no_varyings" 0.0 "bin/ext_transform_feedback-api-errors interleaved_no_varyings -auto -fbo"
+run_test "spec/EXT_transform_feedback/api-errors interleaved_ok_base" 0.0 "bin/ext_transform_feedback-api-errors interleaved_ok_base -auto -fbo"
+run_test "spec/EXT_transform_feedback/api-errors interleaved_ok_offset" 0.0 "bin/ext_transform_feedback-api-errors interleaved_ok_offset -auto -fbo"
+run_test "spec/EXT_transform_feedback/api-errors interleaved_ok_range" 0.0 "bin/ext_transform_feedback-api-errors interleaved_ok_range -auto -fbo"
+run_test "spec/EXT_transform_feedback/api-errors interleaved_unbound" 0.0 "bin/ext_transform_feedback-api-errors interleaved_unbound -auto -fbo"
+run_test "spec/EXT_transform_feedback/api-errors link_current_active" 0.0 "bin/ext_transform_feedback-api-errors link_current_active -auto -fbo"
+run_test "spec/EXT_transform_feedback/api-errors link_other_active" 0.0 "bin/ext_transform_feedback-api-errors link_other_active -auto -fbo"
+run_test "spec/EXT_transform_feedback/api-errors no_prog_active" 0.0 "bin/ext_transform_feedback-api-errors no_prog_active -auto -fbo"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 345 tests have passed. |"
+  echo "| Overall pass, as all 352 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

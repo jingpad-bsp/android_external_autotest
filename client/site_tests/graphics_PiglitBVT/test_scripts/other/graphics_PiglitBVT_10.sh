@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=424
+need_pass=423
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -30,12 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-ne-vec4-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-ne-vec4-vec4.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-ne-vec4-vec4-using-if" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-ne-vec4-vec4-using-if.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-neg-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-neg-float.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-neg-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-neg-int.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-neg-ivec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-neg-ivec2.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-neg-ivec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-neg-ivec3.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-neg-ivec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-neg-ivec4.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-neg-mat2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-neg-mat2.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-neg-mat3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-neg-mat3.shader_test -auto"
@@ -454,11 +448,16 @@ run_test "spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat2-index
 run_test "spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat2-index-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat2-index-rd.shader_test -auto"
 run_test "spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat2-index-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat2-index-row-rd.shader_test -auto"
 run_test "spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat2-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat2-rd.shader_test -auto"
+run_test "spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat2-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat2-row-rd.shader_test -auto"
+run_test "spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat3-col-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat3-col-rd.shader_test -auto"
+run_test "spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat3-col-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat3-col-row-rd.shader_test -auto"
+run_test "spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat3-index-col-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat3-index-col-rd.shader_test -auto"
+run_test "spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat3-index-col-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat3-index-col-row-rd.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 424 tests have passed. |"
+  echo "| Overall pass, as all 423 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

@@ -180,6 +180,10 @@
       "pass rate": "0.93",
       "result": "flaky"
     },
+    "spec/ARB_timer_query/query GL_TIMESTAMP": {
+      "pass rate": "0.50",
+      "result": "flaky"
+    },
     "spec/ARB_timer_query/timestamp-get": {
       "pass rate": "0.50",
       "result": "flaky"

@@ -30,13 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/EXT_transform_feedback/api-errors interleaved_ok_base" 0.0 "bin/ext_transform_feedback-api-errors interleaved_ok_base -auto -fbo"
-run_test "spec/EXT_transform_feedback/api-errors interleaved_ok_offset" 0.0 "bin/ext_transform_feedback-api-errors interleaved_ok_offset -auto -fbo"
-run_test "spec/EXT_transform_feedback/api-errors interleaved_ok_range" 0.0 "bin/ext_transform_feedback-api-errors interleaved_ok_range -auto -fbo"
-run_test "spec/EXT_transform_feedback/api-errors interleaved_unbound" 0.0 "bin/ext_transform_feedback-api-errors interleaved_unbound -auto -fbo"
-run_test "spec/EXT_transform_feedback/api-errors link_current_active" 0.0 "bin/ext_transform_feedback-api-errors link_current_active -auto -fbo"
-run_test "spec/EXT_transform_feedback/api-errors link_other_active" 0.0 "bin/ext_transform_feedback-api-errors link_other_active -auto -fbo"
-run_test "spec/EXT_transform_feedback/api-errors no_prog_active" 0.0 "bin/ext_transform_feedback-api-errors no_prog_active -auto -fbo"
 run_test "spec/EXT_transform_feedback/api-errors not_a_program" 0.0 "bin/ext_transform_feedback-api-errors not_a_program -auto -fbo"
 run_test "spec/EXT_transform_feedback/api-errors separate_no_varyings" 0.0 "bin/ext_transform_feedback-api-errors separate_no_varyings -auto -fbo"
 run_test "spec/EXT_transform_feedback/api-errors separate_ok_1" 0.0 "bin/ext_transform_feedback-api-errors separate_ok_1 -auto -fbo"
@@ -462,6 +455,13 @@ run_test "spec/glsl-1.10/compiler/special-characters/digraph-close-bracket.frag"
 run_test "spec/glsl-1.10/compiler/special-characters/digraph-close-bracket.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/special-characters/digraph-close-bracket.vert fail 1.10"
 run_test "spec/glsl-1.10/compiler/special-characters/digraph-open-bracket.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/special-characters/digraph-open-bracket.frag fail 1.10"
 run_test "spec/glsl-1.10/compiler/special-characters/digraph-open-bracket.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/special-characters/digraph-open-bracket.vert fail 1.10"
+run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-attribute-01.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-attribute-01.vert fail 1.10"
+run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-attribute-02.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-attribute-02.vert fail 1.10"
+run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-color.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-color.frag fail 1.10"
+run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-color.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-color.vert fail 1.10"
+run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-fog-coord.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-fog-coord.vert fail 1.10"
+run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-fog-frag-coord.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-fog-frag-coord.frag fail 1.10"
+run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-frag-coord.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-frag-coord.frag fail 1.10"
 popd
 
 if [ $need_pass == 0 ] ; then

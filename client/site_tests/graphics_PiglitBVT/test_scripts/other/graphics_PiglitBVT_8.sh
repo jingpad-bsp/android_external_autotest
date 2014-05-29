@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=419
+need_pass=418
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -30,13 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-attribute-01.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-attribute-01.vert fail 1.10"
-run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-attribute-02.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-attribute-02.vert fail 1.10"
-run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-color.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-color.frag fail 1.10"
-run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-color.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-color.vert fail 1.10"
-run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-fog-coord.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-fog-coord.vert fail 1.10"
-run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-fog-frag-coord.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-fog-frag-coord.frag fail 1.10"
-run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-frag-coord.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-frag-coord.frag fail 1.10"
 run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-front-facing.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-front-facing.frag fail 1.10"
 run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord0.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord0.vert fail 1.10"
 run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord1.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord1.vert fail 1.10"
@@ -449,11 +442,17 @@ run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-int-ivec4" 0.0 "
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-ivec2-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-ivec2-int.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-ivec2-ivec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-ivec2-ivec2.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-ivec3-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-ivec3-int.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-ivec3-ivec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-ivec3-ivec3.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-ivec4-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-ivec4-int.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-ivec4-ivec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-ivec4-ivec4.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat2-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat2-float.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat2-mat2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat2-mat2.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat3-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat3-float.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 419 tests have passed. |"
+  echo "| Overall pass, as all 418 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

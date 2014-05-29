@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=346
+need_pass=345
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -375,12 +375,11 @@ run_test "glean/vp1-DP4 test" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
 run_test "glean/vp1-DPH test" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
 run_test "glean/vp1-DST test" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
 run_test "glean/vp1-Divide by zero test" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
-run_test "glean/vp1-EX2 test" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 346 tests have passed. |"
+  echo "| Overall pass, as all 345 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

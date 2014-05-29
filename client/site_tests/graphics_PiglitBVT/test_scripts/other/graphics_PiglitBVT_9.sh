@@ -30,12 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-ivec3-ivec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-ivec3-ivec3.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-ivec4-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-ivec4-int.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-ivec4-ivec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-ivec4-ivec4.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat2-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat2-float.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat2-mat2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat2-mat2.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat3-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat3-float.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat3-mat3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat3-mat3.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat4-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat4-float.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat4-mat4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat4-mat4.shader_test -auto"
@@ -449,6 +443,12 @@ run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-ne-vec2-vec2" 0.0 "b
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-ne-vec2-vec2-using-if" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-ne-vec2-vec2-using-if.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-ne-vec3-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-ne-vec3-vec3.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-ne-vec3-vec3-using-if" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-ne-vec3-vec3-using-if.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-ne-vec4-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-ne-vec4-vec4.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-ne-vec4-vec4-using-if" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-ne-vec4-vec4-using-if.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-neg-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-neg-float.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-neg-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-neg-int.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-neg-ivec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-neg-ivec2.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-neg-ivec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-neg-ivec3.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then

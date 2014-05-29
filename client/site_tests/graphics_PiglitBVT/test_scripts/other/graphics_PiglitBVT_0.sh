@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=8062
+need_pass=8061
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -1757,7 +1757,6 @@ run_test "spec/ARB_texture_rg/texwrap formats-int" 0.0 "bin/texwrap -fbo -auto G
 run_test "spec/ARB_texture_rgb10_a2ui/fbo-blending" 0.0 "bin/ext_texture_integer-fbo-blending GL_ARB_texture_rgb10_a2ui -auto -fbo"
 run_test "spec/ARB_texture_rgb10_a2ui/texwrap formats" 0.0 "bin/texwrap -fbo -auto GL_ARB_texture_rgb10_a2ui"
 run_test "spec/ARB_texture_storage/texture-storage" 0.0 "bin/arb_texture_storage-texture-storage -auto"
-run_test "spec/ARB_timer_query/query GL_TIMESTAMP" 0.0 "bin/ext_timer_query-time-elapsed timestamp -auto -fbo"
 run_test "spec/ARB_timer_query/query-lifetime" 0.0 "bin/ext_timer_query-lifetime -auto -fbo"
 run_test "spec/ARB_uniform_buffer_object/bindbuffer-general-point" 0.0 "bin/arb_uniform_buffer_object-bindbuffer-general-point -auto -fbo"
 run_test "spec/ARB_uniform_buffer_object/buffer-targets" 0.0 "bin/arb_uniform_buffer_object-buffer-targets -auto -fbo"
@@ -8096,7 +8095,7 @@ popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 8062 tests have passed. |"
+  echo "| Overall pass, as all 8061 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"
