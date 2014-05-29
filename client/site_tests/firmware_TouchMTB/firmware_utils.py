@@ -161,7 +161,7 @@ class GestureList:
         self.gesture_names = (gesture_names if gesture_names
                                             else conf.gesture_names_complete)
 
-    def get_gesture_list(self):
+    def get_gesture_list(self, key=None):
         """Get the list of Gesture objects based on the gesture names."""
         gesture_dict = conf.get_gesture_dict()
         gesture_list = []
@@ -172,7 +172,7 @@ class GestureList:
                 print msg % name
                 return []
             gesture_list.append(gesture)
-        return gesture_list
+        return sorted(gesture_list, key=key) if key else gesture_list
 
 
 class Output:

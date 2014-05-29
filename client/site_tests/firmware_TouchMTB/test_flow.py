@@ -61,7 +61,12 @@ class TestFlow:
                                             else DEV.TOUCHPAD)
         self.gv_count = float('infinity')
         gesture_names = self._get_gesture_names()
-        self.gesture_list = GestureList(gesture_names).get_gesture_list()
+
+        order = None
+        if self._is_robot_mode():
+            order = lambda x: conf.finger_tips_required[x.name]
+        self.gesture_list = GestureList(gesture_names).get_gesture_list(order)
+
         self._get_all_gesture_variations(options[OPTIONS.SIMPLIFIED])
         self.init_flag = False
         self.system_device = self._non_blocking_open(self.device_node)
