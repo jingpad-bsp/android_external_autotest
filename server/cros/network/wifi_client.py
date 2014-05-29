@@ -10,6 +10,7 @@ import time
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import interface
 from autotest_lib.client.cros import constants
+from autotest_lib.server import autotest
 from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros import remote_command
 from autotest_lib.server.cros import wifi_test_utils
@@ -208,6 +209,10 @@ class WiFiClient(site_linux_system.LinuxSystem):
             self._shill_proxy = wpa_cli_proxy.WpaCliProxy(
                     self.host, self._wifi_if)
         else:
+            # Make sure the client library is on the device so that the proxy
+            # code is there when we try to call it.
+            client_at = autotest.Autotest(self.host)
+            client_at.install()
             # Start up the XMLRPC proxy on the client
             self._shill_proxy = self.host.xmlrpc_connect(
                     constants.SHILL_XMLRPC_SERVER_COMMAND,
