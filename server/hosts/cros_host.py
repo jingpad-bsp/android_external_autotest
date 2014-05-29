@@ -1118,6 +1118,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         if 'fastsync' not in dargs:
             dargs['fastsync'] = True
 
+        # For purposes of logging reboot times:
+        # Get the board name i.e. 'daisy_spring'
+        dargs['board'] = self._get_board_from_afe()
         super(CrosHost, self).reboot(**dargs)
 
 

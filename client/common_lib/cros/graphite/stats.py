@@ -7,6 +7,7 @@
 import logging
 
 import common
+from autotest_lib.client.common_lib import global_config
 
 try:
     import statsd
@@ -14,7 +15,6 @@ except ImportError:
     logging.debug('import statsd failed, no stats will be reported.')
     import statsd_mock as statsd
 
-from autotest_lib.client.common_lib import global_config
 
 # Pylint locally complains about "No value passed for parameter 'key'" here
 # pylint: disable=E1120
@@ -25,9 +25,9 @@ from autotest_lib.client.common_lib import global_config
 AUTOTEST_SERVER = global_config.global_config.get_config_value(
         'SERVER', 'hostname', default='localhost').replace('.', '_')
 STATSD_SERVER = global_config.global_config.get_config_value('CROS',
-        'STATSD_SERVER')
+        'STATSD_SERVER', default='')
 STATSD_PORT = global_config.global_config.get_config_value('CROS',
-        'STATSD_PORT', type=int)
+        'STATSD_PORT', type=int, default=0)
 
 
 def _prepend_server(name, bare=False):

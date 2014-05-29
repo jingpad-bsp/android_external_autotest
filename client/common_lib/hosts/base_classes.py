@@ -19,6 +19,7 @@ import cPickle, cStringIO, logging, os, re
 
 from autotest_lib.client.common_lib import global_config, error, utils
 from autotest_lib.client.common_lib import host_protections
+from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.client.bin import partition
 
 
@@ -197,15 +198,27 @@ class Host(object):
                          log_failure=True, old_boot_id=None, **dargs):
         """ Wait for the host to come back from a reboot. This is a generic
         implementation based entirely on wait_up and wait_down. """
+        key_string = 'Reboot.%s' % dargs.get('board')
+
+        total_reboot_timer = stats.Timer('%s.total' % key_string)
+        wait_down_timer = stats.Timer('%s.wait_down' % key_string)
+
+        total_reboot_timer.start()
+        wait_down_timer.start()
         if not self.wait_down(timeout=down_timeout,
                               warning_timer=down_warning,
                               old_boot_id=old_boot_id):
             if log_failure:
                 self.record("ABORT", None, "reboot.verify", "shut down failed")
             raise error.AutoservShutdownError("Host did not shut down")
+        wait_down_timer.stop()
+        wait_up_timer = stats.Timer('%s.wait_up' % key_string)
+        wait_up_timer.start()
         if self.wait_up(timeout):
             self.record("GOOD", None, "reboot.verify")
             self.reboot_followup(**dargs)
+            wait_up_timer.stop()
+            total_reboot_timer.stop()
         else:
             self.record("ABORT", None, "reboot.verify",
                         "Host did not return from reboot")
