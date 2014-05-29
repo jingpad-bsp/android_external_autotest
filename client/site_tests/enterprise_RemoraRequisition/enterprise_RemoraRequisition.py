@@ -5,12 +5,45 @@
 import logging, os
 
 from autotest_lib.client.bin import test, utils
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome, enrollment
 
 
 class enterprise_RemoraRequisition(test.test):
     """Enroll as a Remora device."""
     version = 1
+
+    _HANGOUTS_EXT_ID = 'acdafoiapclbpdkhnighhilgampkglpc'
+
+    def _WaitForHangouts(self, browser):
+        def _HangoutExtContexts():
+            try:
+                ext_contexts = browser.extensions.GetByExtensionId(
+                        self._HANGOUTS_EXT_ID)
+                if len(ext_contexts) > 1:
+                    return ext_contexts
+            except KeyError:
+                pass
+            return []
+        return utils.poll_for_condition(
+                _HangoutExtContexts,
+                exception=error.TestFail('Hangouts app failed to launch'),
+                timeout=30,
+                sleep_interval=1)
+
+    def _CheckHangoutsExtensionContexts(self, browser):
+        ext_contexts = self._WaitForHangouts(browser)
+        ext_urls = set([context.EvaluateJavaScript('location.href;')
+                       for context in ext_contexts])
+        expected_urls = set(
+                ['chrome-extension://' + self._HANGOUTS_EXT_ID + '/' + path
+                for path in ['hangoutswindow.html?windowid=0',
+                             '_generated_background_page.html']])
+        if expected_urls != ext_urls:
+            raise error.TestFail(
+                    'Unexpected extension context urls, expected %s, got %s'
+                    % (expected_urls, ext_urls))
+
 
     def run_once(self):
         if enrollment.ClearTPM():
@@ -21,6 +54,7 @@ class enterprise_RemoraRequisition(test.test):
         if user_id and password:
             with chrome.Chrome(auto_login=False) as cr:
                 enrollment.RemoraEnrollment(cr.browser, user_id, password)
+                self._CheckHangoutsExtensionContexts(cr.browser)
                 # TODO(achuith): Additional logic to ensure the hangouts app is
                 # functioning correctly.
 
