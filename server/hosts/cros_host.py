@@ -2030,6 +2030,24 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         return 'servo' if self._servo_host else None
 
 
+    @label_decorator('video_labels')
+    def get_video_labels(self):
+        """Run /usr/local/bin/avtest_label_detect to get a list of video labels.
+
+        Sample output of avtest_label_detect:
+        Detected label: hw_video_acc_vp8
+        Detected label: webcam
+
+        @return: A list of labels detected by tool avtest_label_detect.
+        """
+        try:
+            result = self.run('/usr/local/bin/avtest_label_detect').stdout
+            return re.findall('^Detected label: (\w+)$', result, re.M)
+        except error.AutoservRunError:
+            # The tool is not installed.
+            return []
+
+
     def get_labels(self):
         """Return a list of labels for this given host.
 
@@ -2040,7 +2058,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         for label_function in self._LABEL_FUNCTIONS:
             label = label_function(self)
             if label:
-                labels.append(label)
+                if type(label) is str:
+                    labels.append(label)
+                elif type(label) is list:
+                    labels.extend(label)
         return labels
 
 
