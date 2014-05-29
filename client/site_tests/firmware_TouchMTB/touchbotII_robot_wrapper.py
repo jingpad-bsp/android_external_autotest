@@ -240,9 +240,6 @@ class RobotWrapper:
 
         self.fingertips = tips_to_get
 
-        reset_script = os.path.join(self._robot_script_dir, SCRIPT_RESET)
-        para = (reset_script, self._board, self._speed_dict[GV.FAST])
-        self._execute_control_command('python %s %s.p %d' % para)
 
     def _return_fingertips(self):
         """ Return all the fingertips to the nest, one size at a time.
@@ -634,12 +631,20 @@ class RobotWrapper:
             return common_util.simple_system(control_cmd)
         return 0
 
+    def _reset_with_safety_clearance(self, destination):
+        reset_script = os.path.join(self._robot_script_dir, SCRIPT_RESET)
+        para = (reset_script, self._board, destination,
+                self._speed_dict[GV.FAST])
+        self._execute_control_command('python %s %s.p %s %d' % para)
+
     def control(self, gesture, variation):
         """Have the robot perform the gesture variation."""
         tips_needed = conf.finger_tips_required[gesture.name]
         if self.fingertips != tips_needed:
+            self._reset_with_safety_clearance('nest')
             self._return_fingertips()
             self._get_fingertips(tips_needed)
+            self._reset_with_safety_clearance('pad')
 
         if not isinstance(variation, tuple):
             variation = (variation,)
