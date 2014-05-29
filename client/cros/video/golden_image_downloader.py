@@ -71,12 +71,13 @@ class GoldenImageDownloader(object):
                                   self.screenshot_namer.get_filename(timestamp))
 
         remote_path = os.path.join(self.remote_root_dir,
-                                  self.video_name,
-                                  self.video_format,
-                                  self.video_def,
-                                  'golden_images',
-                                  self.device_under_test,
-                                  self.screenshot_namer.get_filename(timestamp))
+                                   self.video_name,
+                                   self.video_format,
+                                   self.video_def,
+                                   'golden_images',
+                                   self.device_under_test,
+                                   self.screenshot_namer.get_filename(
+                                       timestamp))
 
         # Unlike urllib.urlopen urllib2.urlopen will immediately throw on error
         # If we could not find the file pointed by remote_path we will get an
@@ -90,15 +91,17 @@ class GoldenImageDownloader(object):
         # test_that output immediately
 
         except urllib2.HTTPError as e:
-            message = (("HTTPError raised while retrieving file %s\n."
-                       "Http Code = %s.\n. Reason = %s\n. Headers = %s.\n")
-                       % (remote_path, e.code, e.reason, e.headers))
-            raise urllib2.HTTPError(message)
+            e.msg = (("""HTTPError raised while retrieving file %s\n.
+                       Http Code = %s.\n. Reason = %s\n. Headers = %s.\n
+                       Original Message = %s.\n""")
+                     % (remote_path, e.code, e.reason, e.headers, e.msg))
+            raise
 
         except urllib2.URLError as e:
-            message = (("URLError raised while retrieving file %s\n."
-                        "Reason = %s\n.") % (remote_path, e.reason))
-            raise urllib2.URLError(message)
+            e.msg = (("""URLError raised while retrieving file %s\n.
+                        Reason = %s\n. Original Message = %s\n.""")
+                     % (remote_path, e.reason, e.msg))
+            raise
 
         with open(local_path, 'wb') as local_file:
             local_file.write(remote_file.read())
