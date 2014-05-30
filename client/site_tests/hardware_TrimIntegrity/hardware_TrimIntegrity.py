@@ -24,6 +24,7 @@ class hardware_TrimIntegrity(test.test):
     FILE_SIZE = 1024 * 1024 * 1024
     CHUNK_SIZE = 64 * 1024
     TRIM_RATIO = [0, 0.25, 0.5, 0.75, 1]
+    boards_trim_not_supported = ['butterfly', 'kiev', 'parrot', 'stout']
 
     # Use hash value to check integrity of the random data.
     HASH_CMD = 'sha256sum | cut -d" " -f 1'
@@ -91,7 +92,12 @@ class hardware_TrimIntegrity(test.test):
             self._do_trim(fd, 0, chunk_size)
         except IOError, err:
             if err.errno == self.IOCTL_NOT_SUPPORT_ERRNO:
-                raise error.TestNAError("IOCTL Does not support trim.")
+                board = utils.get_board()
+                if board in self.boards_trim_not_supported:
+                    msg = 'Trim does not supported on %s.' % board
+                    raise error.TestNAError(msg)
+                else:
+                    raise error.TestFail("IOCTL Does not support trim.")
             else:
                 raise
         finally:
