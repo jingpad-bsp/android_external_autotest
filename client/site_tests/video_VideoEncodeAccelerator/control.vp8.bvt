@@ -22,7 +22,7 @@ This is a wrapper test for Chrome video_encode_accelerator_unittest.
 """
 
 # Format of each stream: (filename, width, height, request_bit_rate)
-streams = [('media/test/data/sync_192p_20frames.yuv', 320, 192, 200000)]
+streams = [('media/test/data/bear_320x192_40frames.yuv', 320, 192, 200000)]
 
 job.run_test('video_VideoEncodeAccelerator', in_cloud=False, streams=streams,
         profile=11)
