@@ -45,20 +45,28 @@ def take_screenshot(resultsdir, fname_prefix, format='png'):
 
 
 class GraphicsStateChecker(object):
-    """Analyzes the state of the GPU and log history. Should be instantiated
-    at the beginning of each graphics_* test.
     """
-    existing_hangs = {}
+    Analyzes the state of the GPU and log history. Should be instantiated at the
+    beginning of each graphics_* test.
+    """
     crash_blacklist = []
+    dirty_writeback_centisecs = 0
+    existing_hangs = {}
 
     _BROWSER_VERSION_COMMAND = '/opt/google/chrome/chrome --version'
     _HANGCHECK = ['drm:i915_hangcheck_elapsed', 'drm:i915_hangcheck_hung']
     _MESSAGES_FILE = '/var/log/messages'
 
     def __init__(self, raise_error_on_hang=True):
-        """Analyzes the initial state of the GPU and log history.
         """
+        Analyzes the initial state of the GPU and log history.
+        """
+        # Attempt flushing system logs every second instead of every 10 minutes.
+        self.dirty_writeback_centisecs = utils.get_dirty_writeback_centisecs()
+        utils.set_dirty_writeback_centisecs(100)
         self._raise_error_on_hang = raise_error_on_hang
+        logging.info(utils.get_board_with_frequency_and_memory())
+
         if utils.get_cpu_arch() != 'arm':
           cmd = 'glxinfo | grep "OpenGL renderer string"'
           cmd = cros_ui.xcommand(cmd)
@@ -78,10 +86,12 @@ class GraphicsStateChecker(object):
           f.close()
 
     def finalize(self):
-        """Analyzes the state of the GPU, log history and emits warnings or
-        errors if the state changed since initialize. Also makes a note of the
-        Chrome version for later usage in the perf-dashboard.
         """
+        Analyzes the state of the GPU, log history and emits warnings or errors
+        if the state changed since initialize. Also makes a note of the Chrome
+        version for later usage in the perf-dashboard.
+        """
+        utils.set_dirty_writeback_centisecs(self.dirty_writeback_centisecs)
         new_gpu_hang = False
         if utils.get_cpu_arch() != 'arm':
           logging.info('Cleanup: Checking for new GPU hangs...')

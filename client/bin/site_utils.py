@@ -548,6 +548,7 @@ def wait_for_cool_machine():
 
 # System paths for machine performance state.
 _CPUINFO = '/proc/cpuinfo'
+_DIRTY_WRITEBACK_CENTISECS = '/proc/sys/vm/dirty_writeback_centisecs'
 _KERNEL_MAX = '/sys/devices/system/cpu/kernel_max'
 _MEMINFO = '/proc/meminfo'
 _TEMP_SENSOR_RE = 'Reading temperature...([0-9]*)'
@@ -826,7 +827,7 @@ def set_scaling_governors(value):
     """
     paths = _get_cpufreq_paths('scaling_governor')
     for path in paths:
-        cmd = 'sudo echo %s > %s' % (value, path)
+        cmd = 'echo %s > %s' % (value, path)
         logging.info('Writing scaling governor mode \'%s\' -> %s', value, path)
         utils.system(cmd)
 
@@ -857,7 +858,31 @@ def restore_scaling_governor_states(path_value_list):
     Restores governor states. Inverse operation to get_scaling_governor_states.
     """
     for (path, value) in path_value_list:
-        cmd = 'sudo echo %s > %s' % (value, path)
+        cmd = 'echo %s > %s' % (value, path)
+        utils.system(cmd)
+
+
+def get_dirty_writeback_centisecs():
+    """
+    Reads /proc/sys/vm/dirty_writeback_centisecs.
+    """
+    time = _get_int_from_file(_DIRTY_WRITEBACK_CENTISECS, 0, None, None)
+    return time
+
+
+def set_dirty_writeback_centisecs(time=60000):
+    """
+    In hundredths of a second, this is how often pdflush wakes up to write data
+    to disk. The default wakes up the two (or more) active threads every five
+    seconds. The ChromeOS default is 10 minutes.
+
+    We use this to set as low as 1 second to flush error messages in system
+    logs earlier to disk.
+    """
+    # Flush buffers first to make this function synchronous.
+    utils.system('sync')
+    if time >= 0:
+        cmd = 'echo %d > %s' % (time, _DIRTY_WRITEBACK_CENTISECS)
         utils.system(cmd)
 
 
