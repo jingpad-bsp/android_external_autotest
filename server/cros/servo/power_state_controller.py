@@ -137,6 +137,18 @@ class _PowerStateController(object):
         raise NotImplementedError()
 
 
+    def reset(self):
+        """Force the DUT to reset.
+
+        The DUT is guaranteed to be on at the end of this call,
+        regardless of its previous state, provided that there is
+        working OS software. This also guarantees that the EC has
+        been restarted.
+
+        """
+        raise NotImplementedError()
+
+
 class _ServodController(_PowerStateController):
 
     """Controller based on the servod `power_state` control.
@@ -169,6 +181,10 @@ class _ServodController(_PowerStateController):
         else:
             state = 'rec'
         self._servo.set_nocheck('power_state', state)
+
+    @_inherit_docstring(_PowerStateController)
+    def reset(self):
+        self._servo.set_nocheck('power_state', 'reset')
 
 
 class _PantherController(_PowerStateController):

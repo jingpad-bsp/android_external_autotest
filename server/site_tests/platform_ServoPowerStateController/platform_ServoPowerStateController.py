@@ -79,7 +79,7 @@ class platform_ServoPowerStateController(test.test):
         logging.info('Power off DUT which is up in non-recovery mode.')
         self.controller.power_off()
         self.confirm_dut_off('power_state:off failed after boot from internal '
-                            'storage.')
+                             'storage.')
 
         logging.info('Power DUT on in recovery mode, DUT shall boot from USB.')
         self.host.servo.switch_usbkey('off')
@@ -91,7 +91,7 @@ class platform_ServoPowerStateController(test.test):
         logging.info('Power off DUT which is up in recovery mode.')
         self.controller.power_off()
         self.confirm_dut_off('power_state:off failed after boot from external '
-                            'USB stick.')
+                             'USB stick.')
 
         logging.info('Power on in non-recovery mode.')
         self.controller.power_on(power_state_controller.REC_OFF)
@@ -135,6 +135,27 @@ class platform_ServoPowerStateController(test.test):
         logging.info('Power off DUT which is already off.')
         self.controller.power_off()
         self.confirm_dut_off('power_state:off turned DUT on.')
+
+        logging.info('Power DUT off and on without delay. DUT should be on '
+                     'after power_on is completed.')
+        self.controller.power_off()
+        self.controller.power_on(power_state_controller.REC_OFF)
+        self.confirm_dut_on(rec_on=False)
+
+        logging.info('Power DUT off and reset. DUT should be on after reset '
+                     'is completed.')
+        self.controller.power_off()
+        self.controller.reset()
+        self.confirm_dut_on(rec_on=False)
+
+        logging.info('Reset DUT when it\'s on. DUT should be on after reset '
+                     'is completed.')
+        boot_id = self.host.get_boot_id()
+        self.controller.reset()
+        self.confirm_dut_on(rec_on=False)
+        new_boot_id = self.host.get_boot_id()
+        if not new_boot_id or boot_id == new_boot_id:
+            raise error.TestFail('power_state:reset failed to reboot DUT.')
 
         self.test_with_usb_unplugged()
         if usb_available:
