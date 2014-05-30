@@ -17,6 +17,7 @@ class video_VideoDecodeAccelerator(chrome_binary_test.ChromeBinaryTest):
     binary = 'video_decode_accelerator_unittest'
 
 
+    @chrome_binary_test.nuke_chrome
     def run_once(self, videos, use_cr_source_dir=True, gtest_filter=''):
         """
         Runs video_decode_accelerator_unittest on the videos.

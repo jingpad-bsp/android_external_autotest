@@ -4,9 +4,9 @@
 
 import os, shutil, tempfile
 
-import cros_ui
-from autotest_lib.client.bin import test
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import constants, cros_ui
 
 
 class ChromeBinaryTest(test.test):
@@ -63,3 +63,21 @@ class ChromeBinaryTest(test.test):
                 cros_ui.xsystem(cmd)
         except error.CmdError as e:
             raise error.TestFail('%s failed! %s' % (binary_to_run, e))
+
+
+def nuke_chrome(func):
+    """Decorator to nuke the Chrome browser processes."""
+
+    def wrapper(*args, **kargs):
+        open(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE, 'w').close()
+        try:
+            try:
+                utils.nuke_process_by_name(
+                    name=constants.BROWSER, with_prejudice=True)
+            except error.AutoservPidAlreadyDeadError:
+                pass
+            return func(*args, **kargs)
+        finally:
+            # Allow chrome to be restarted again later.
+            os.unlink(constants.DISABLE_BROWSER_RESTART_MAGIC_FILE)
+    return wrapper

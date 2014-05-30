@@ -226,6 +226,7 @@ class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
         _remove_if_exists(test_log_file)
         _remove_if_exists(time_log_file)
 
+    @chrome_binary_test.nuke_chrome
     def run_once(self, test_cases):
         self._perf_keyvals = {}
         last_error = None
