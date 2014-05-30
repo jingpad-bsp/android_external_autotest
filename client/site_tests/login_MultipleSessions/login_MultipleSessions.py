@@ -41,7 +41,6 @@ class login_MultipleSessions(test.test):
         other_user = 'second_user@nowhere.com'
         self.__start_session_for(expected_owner)
         self.__start_session_for(other_user)
-
         self._listener.wait_for_signals(desc='Initial policy push complete.')
 
         # Ensure that the first user got to be the owner.
@@ -49,7 +48,6 @@ class login_MultipleSessions(test.test):
         if retrieved_policy is None: raise error.TestFail('Policy not found')
         policy.compare_policy_response(self.srcdir, retrieved_policy,
                                        owner=expected_owner)
-
         # bounce the session manager and wait for it to come back up before
         # reconnecting.
         cros_ui.restart()
@@ -85,4 +83,5 @@ class login_MultipleSessions(test.test):
 
 
     def cleanup(self):
+        self._session_manager.StopSession('')
         cros_ui.start(allow_fail=True, wait_for_login_prompt=False)
