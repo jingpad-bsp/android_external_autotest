@@ -489,6 +489,7 @@ class FirmwareTest(FAFTBase):
         if ((gbb_flags ^ new_flags) & vboot.GBB_FLAG_FORCE_DEV_SWITCH_ON):
             self.reboot_warm_trigger()
             self.wait_dev_screen_and_ctrl_d()
+            self.wait_for_kernel_up()
 
     def clear_set_gbb_flags(self, clear_mask, set_mask):
         """Clear and set the GBB flags in the current flashrom.
