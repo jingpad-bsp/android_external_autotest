@@ -59,6 +59,7 @@ class UserCleanup(PeriodicCleanup):
         self._clear_inactive_blocks()
         self._check_for_db_inconsistencies()
         self._reverify_dead_hosts()
+        self._django_session_cleanup()
 
 
     @timer.decorate
@@ -204,6 +205,16 @@ class UserCleanup(PeriodicCleanup):
                     host=host, task=models.SpecialTask.Task.VERIFY)
 
 
+    @timer.decorate
+    def _django_session_cleanup(self):
+        """Clean up django_session since django doesn't for us.
+           http://www.djangoproject.com/documentation/0.96/sessions/
+        """
+        logging.info('Deleting old sessions from django_session')
+        sql = 'TRUNCATE TABLE django_session'
+        self._db.execute(sql)
+
+
 class TwentyFourHourUpkeep(PeriodicCleanup):
     """Cleanup that runs at the startup of monitor_db and every subsequent
        twenty four hours.
@@ -220,18 +231,7 @@ class TwentyFourHourUpkeep(PeriodicCleanup):
     @timer.decorate
     def _cleanup(self):
         logging.info('Running 24 hour clean up')
-        self._django_session_cleanup()
         self._check_for_uncleanable_db_inconsistencies()
-
-
-    @timer.decorate
-    def _django_session_cleanup(self):
-        """Clean up django_session since django doesn't for us.
-           http://www.djangoproject.com/documentation/0.96/sessions/
-        """
-        logging.info('Deleting old sessions from django_session')
-        sql = 'TRUNCATE TABLE django_session'
-        self._db.execute(sql)
 
 
     @timer.decorate
