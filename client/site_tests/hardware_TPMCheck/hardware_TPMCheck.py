@@ -75,9 +75,9 @@ class hardware_TPMCheck(test.test):
 
         # Must stop the TCSD process to be able to collect TPM status,
         # then restart TCSD process to leave system in a known good state.
-        # Due to crbug.com/219129 even though TCSD is restarted when this
-        # completes, cryptohomed never reconnects with TCSD so logins are hosed.
-        services = service_stopper.ServiceStopper(['tcsd'])
+        # Must also stop services which depend on tcsd.
+        services = service_stopper.ServiceStopper(['cryptohomed',
+                                                   'chapsd', 'tcsd'])
         services.stop_services()
         try:
             # Check volatile and permanent flags
