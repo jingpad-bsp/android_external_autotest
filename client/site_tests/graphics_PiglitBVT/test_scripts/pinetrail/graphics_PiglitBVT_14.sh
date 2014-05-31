@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=265
+need_pass=290
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -30,17 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-col-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-col-rd.shader_test -auto"
-run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-col-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-col-row-rd.shader_test -auto"
-run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-col-row-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-col-row-wr.shader_test -auto"
-run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-col-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-col-wr.shader_test -auto"
-run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-rd.shader_test -auto"
-run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-row-rd.shader_test -auto"
-run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-row-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-row-wr.shader_test -auto"
-run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-wr.shader_test -auto"
-run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-rd.shader_test -auto"
-run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-row-rd.shader_test -auto"
-run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-row-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-row-wr.shader_test -auto"
 run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-wr.shader_test -auto"
 run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-mat2-col-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-mat2-col-rd.shader_test -auto"
 run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-mat2-col-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-mat2-col-row-rd.shader_test -auto"
@@ -295,11 +284,47 @@ run_test "spec/glsl-1.20/compiler/built-in-functions/exp2-vec4.vert" 0.0 "bin/gl
 run_test "spec/glsl-1.20/compiler/built-in-functions/faceforward-float-float-float.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/faceforward-float-float-float.frag pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/faceforward-float-float-float.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/faceforward-float-float-float.vert pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/faceforward-vec2-vec2-vec2.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/faceforward-vec2-vec2-vec2.frag pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/faceforward-vec2-vec2-vec2.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/faceforward-vec2-vec2-vec2.vert pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/faceforward-vec3-vec3-vec3.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/faceforward-vec3-vec3-vec3.frag pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/faceforward-vec3-vec3-vec3.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/faceforward-vec3-vec3-vec3.vert pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/faceforward-vec4-vec4-vec4.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/faceforward-vec4-vec4-vec4.frag pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/faceforward-vec4-vec4-vec4.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/faceforward-vec4-vec4-vec4.vert pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/floor-float.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/floor-float.frag pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/floor-float.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/floor-float.vert pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/floor-vec2.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/floor-vec2.frag pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/floor-vec2.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/floor-vec2.vert pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/floor-vec3.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/floor-vec3.frag pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/floor-vec3.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/floor-vec3.vert pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/floor-vec4.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/floor-vec4.frag pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/floor-vec4.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/floor-vec4.vert pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/fract-float.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/fract-float.frag pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/fract-float.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/fract-float.vert pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/fract-vec2.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/fract-vec2.frag pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/fract-vec2.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/fract-vec2.vert pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/fract-vec3.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/fract-vec3.frag pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/fract-vec3.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/fract-vec3.vert pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/fract-vec4.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/fract-vec4.frag pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/fract-vec4.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/fract-vec4.vert pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/greaterThan-ivec2-ivec2.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/greaterThan-ivec2-ivec2.frag pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/greaterThan-ivec2-ivec2.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/greaterThan-ivec2-ivec2.vert pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/greaterThan-ivec3-ivec3.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/greaterThan-ivec3-ivec3.frag pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/greaterThan-ivec3-ivec3.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/greaterThan-ivec3-ivec3.vert pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/greaterThan-ivec4-ivec4.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/greaterThan-ivec4-ivec4.frag pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/greaterThan-ivec4-ivec4.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/greaterThan-ivec4-ivec4.vert pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/greaterThan-vec2-vec2.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/greaterThan-vec2-vec2.frag pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/greaterThan-vec2-vec2.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/greaterThan-vec2-vec2.vert pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/greaterThan-vec3-vec3.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/greaterThan-vec3-vec3.frag pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/greaterThan-vec3-vec3.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/greaterThan-vec3-vec3.vert pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/greaterThan-vec4-vec4.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/greaterThan-vec4-vec4.frag pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/greaterThan-vec4-vec4.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/greaterThan-vec4-vec4.vert pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/greaterThanEqual-ivec2-ivec2.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/greaterThanEqual-ivec2-ivec2.frag pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/greaterThanEqual-ivec2-ivec2.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/greaterThanEqual-ivec2-ivec2.vert pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/greaterThanEqual-ivec3-ivec3.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/greaterThanEqual-ivec3-ivec3.frag pass 1.20"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 265 tests have passed. |"
+  echo "| Overall pass, as all 290 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

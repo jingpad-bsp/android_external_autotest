@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=223
+need_pass=214
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -30,21 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "shaders/glsl-const-builtin-normalize" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-normalize.shader_test -auto"
-run_test "shaders/glsl-const-builtin-not" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-not.shader_test -auto"
-run_test "shaders/glsl-const-builtin-notEqual" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-notEqual.shader_test -auto"
-run_test "shaders/glsl-const-builtin-notEqual-02" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-notEqual-02.shader_test -auto"
-run_test "shaders/glsl-const-builtin-notEqual-03" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-notEqual-03.shader_test -auto"
-run_test "shaders/glsl-const-builtin-notEqual-04" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-notEqual-04.shader_test -auto"
-run_test "shaders/glsl-const-builtin-notEqual-05" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-notEqual-05.shader_test -auto"
-run_test "shaders/glsl-const-builtin-notEqual-06" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-notEqual-06.shader_test -auto"
-run_test "shaders/glsl-const-builtin-notEqual-07" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-notEqual-07.shader_test -auto"
-run_test "shaders/glsl-const-builtin-notEqual-08" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-notEqual-08.shader_test -auto"
-run_test "shaders/glsl-const-builtin-notEqual-09" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-notEqual-09.shader_test -auto"
-run_test "shaders/glsl-const-builtin-notEqual-10" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-notEqual-10.shader_test -auto"
-run_test "shaders/glsl-const-builtin-notEqual-bool" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-notEqual-bool.shader_test -auto"
-run_test "shaders/glsl-const-builtin-outerProduct" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-outerProduct.shader_test -auto"
-run_test "shaders/glsl-const-builtin-pow" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-pow.shader_test -auto"
 run_test "shaders/glsl-const-builtin-radians" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-radians.shader_test -auto"
 run_test "shaders/glsl-const-builtin-reflect" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-reflect.shader_test -auto"
 run_test "shaders/glsl-const-builtin-refract" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-refract.shader_test -auto"
@@ -253,11 +238,17 @@ run_test "shaders/glsl-novertexdata" 0.0 "bin/glsl-novertexdata -auto"
 run_test "shaders/glsl-octal" 0.0 "bin/shader_runner tests/shaders/glsl-octal.shader_test -auto"
 run_test "shaders/glsl-orangebook-ch06-bump" 0.0 "bin/glsl-orangebook-ch06-bump -auto"
 run_test "shaders/glsl-override-builtin" 0.0 "bin/shader_runner tests/shaders/glsl-override-builtin.shader_test -auto"
+run_test "shaders/glsl-override-builtin-2" 0.0 "bin/shader_runner tests/shaders/glsl-override-builtin-2.shader_test -auto"
+run_test "shaders/glsl-pp-elif-no-expression-1" 0.0 "bin/shader_runner tests/shaders/glsl-pp-elif-no-expression-1.shader_test -auto"
+run_test "shaders/glsl-precision-110" 0.0 "bin/shader_runner tests/shaders/glsl-precision-110.shader_test -auto"
+run_test "shaders/glsl-preprocessor-comments" 0.0 "bin/glsl-preprocessor-comments -auto"
+run_test "shaders/glsl-reload-source" 0.0 "bin/glsl-reload-source -auto"
+run_test "shaders/glsl-routing" 0.0 "bin/glsl-routing -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 223 tests have passed. |"
+  echo "| Overall pass, as all 214 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=211
+need_pass=210
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -240,12 +240,11 @@ run_test "glean/glsl1-mat2x4 construct" 0.0 "bin/glean -o -v -v -v -t +glsl1 --q
 run_test "glean/glsl1-mat3x2 construct" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-mat3x4 construct" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-mat4x2 * mat2x4" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
-run_test "glean/glsl1-mat4x2 * vec4" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 211 tests have passed. |"
+  echo "| Overall pass, as all 210 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=402
+need_pass=390
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -30,37 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-int-ivec3.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-int-ivec3.vert pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-int-ivec4.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-int-ivec4.frag pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-int-ivec4.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-int-ivec4.vert pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-ivec2-int.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-ivec2-int.frag pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-ivec2-int.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-ivec2-int.vert pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-ivec2-ivec2.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-ivec2-ivec2.frag pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-ivec2-ivec2.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-ivec2-ivec2.vert pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-ivec3-int.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-ivec3-int.frag pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-ivec3-int.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-ivec3-int.vert pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-ivec3-ivec3.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-ivec3-ivec3.frag pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-ivec3-ivec3.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-ivec3-ivec3.vert pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-ivec4-int.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-ivec4-int.frag pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-ivec4-int.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-ivec4-int.vert pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-ivec4-ivec4.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-ivec4-ivec4.frag pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-ivec4-ivec4.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-ivec4-ivec4.vert pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat2-float.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat2-float.frag pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat2-float.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat2-float.vert pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat2-mat2.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat2-mat2.frag pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat2-mat2.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat2-mat2.vert pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat2x3-float.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat2x3-float.frag pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat2x3-float.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat2x3-float.vert pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat2x3-mat2x3.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat2x3-mat2x3.frag pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat2x3-mat2x3.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat2x3-mat2x3.vert pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat2x4-float.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat2x4-float.frag pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat2x4-float.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat2x4-float.vert pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat2x4-mat2x4.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat2x4-mat2x4.frag pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat2x4-mat2x4.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat2x4-mat2x4.vert pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3-float.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3-float.frag pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3-float.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3-float.vert pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3-mat3.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3-mat3.frag pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3-mat3.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3-mat3.vert pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3x2-float.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3x2-float.frag pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3x2-float.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3x2-float.vert pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3x2-mat3x2.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3x2-mat3x2.frag pass 1.20"
@@ -432,11 +401,30 @@ run_test "spec/glsl-1.20/compiler/structure-and-array-operations/array-size-zero
 run_test "spec/glsl-1.20/compiler/structure-and-array-operations/array-subtract.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.20/compiler/structure-and-array-operations/array-subtract.vert fail 1.20"
 run_test "spec/glsl-1.20/compiler/structure-and-array-operations/array-variable-index-implicit-size-global.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.20/compiler/structure-and-array-operations/array-variable-index-implicit-size-global.vert fail 1.20"
 run_test "spec/glsl-1.20/compiler/structure-and-array-operations/array-variable-index-implicit-size-local.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.20/compiler/structure-and-array-operations/array-variable-index-implicit-size-local.vert fail 1.20"
+run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-add-float-mat2x3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-add-float-mat2x3.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-add-float-mat2x4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-add-float-mat2x4.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-add-float-mat3x4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-add-float-mat3x4.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-add-float-mat4x2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-add-float-mat4x2.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-add-mat2x3-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-add-mat2x3-float.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-add-mat2x3-mat2x3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-add-mat2x3-mat2x3.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-add-mat2x4-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-add-mat2x4-float.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-add-mat2x4-mat2x4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-add-mat2x4-mat2x4.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-add-mat3x2-mat3x2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-add-mat3x2-mat3x2.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-add-mat3x4-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-add-mat3x4-float.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-add-mat3x4-mat3x4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-add-mat3x4-mat3x4.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-add-mat4x2-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-add-mat4x2-float.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-add-mat4x2-mat4x2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-add-mat4x2-mat4x2.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-add-mat4x3-mat4x3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-add-mat4x3-mat4x3.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-eq-mat2x3-mat2x3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-eq-mat2x3-mat2x3.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-eq-mat2x3-mat2x3-using-if" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-eq-mat2x3-mat2x3-using-if.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-eq-mat2x4-mat2x4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-eq-mat2x4-mat2x4.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-eq-mat2x4-mat2x4-using-if" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-eq-mat2x4-mat2x4-using-if.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-eq-mat3x2-mat3x2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-eq-mat3x2-mat3x2.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 402 tests have passed. |"
+  echo "| Overall pass, as all 390 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

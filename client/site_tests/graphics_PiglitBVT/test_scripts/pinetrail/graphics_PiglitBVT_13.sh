@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=198
+need_pass=188
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -30,27 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-sub-ivec2-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-sub-ivec2-int.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-sub-ivec2-ivec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-sub-ivec2-ivec2.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-sub-ivec3-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-sub-ivec3-int.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-sub-ivec3-ivec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-sub-ivec3-ivec3.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-sub-ivec4-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-sub-ivec4-int.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-sub-ivec4-ivec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-sub-ivec4-ivec4.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-sub-mat2-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-sub-mat2-float.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-sub-mat2-mat2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-sub-mat2-mat2.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-sub-mat3-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-sub-mat3-float.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-sub-mat3-mat3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-sub-mat3-mat3.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-sub-mat4-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-sub-mat4-float.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-sub-mat4-mat4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-sub-mat4-mat4.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-sub-vec2-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-sub-vec2-float.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-sub-vec2-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-sub-vec2-vec2.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-sub-vec3-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-sub-vec3-float.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-sub-vec3-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-sub-vec3-vec3.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-sub-vec4-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-sub-vec4-float.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-sub-vec4-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-sub-vec4-vec4.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-uplus-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-uplus-float.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-uplus-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-uplus-int.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-uplus-ivec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-uplus-ivec2.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-uplus-ivec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-uplus-ivec3.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-uplus-ivec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-uplus-ivec4.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-uplus-mat2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-uplus-mat2.shader_test -auto"
@@ -228,11 +207,22 @@ run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-col-rd" 
 run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-col-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-col-row-rd.shader_test -auto"
 run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-col-row-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-col-row-wr.shader_test -auto"
 run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-col-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-col-wr.shader_test -auto"
+run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-col-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-col-rd.shader_test -auto"
+run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-col-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-col-row-rd.shader_test -auto"
+run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-col-row-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-col-row-wr.shader_test -auto"
+run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-col-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-col-wr.shader_test -auto"
+run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-rd.shader_test -auto"
+run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-row-rd.shader_test -auto"
+run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-row-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-row-wr.shader_test -auto"
+run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-index-wr.shader_test -auto"
+run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-rd.shader_test -auto"
+run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-row-rd.shader_test -auto"
+run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-row-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-row-wr.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 198 tests have passed. |"
+  echo "| Overall pass, as all 188 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

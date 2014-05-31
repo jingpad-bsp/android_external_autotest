@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=170
+need_pass=186
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -30,6 +30,8 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "glean/vp1-XPD test 2 (same src and dst arg)" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
+run_test "glean/vp1-Z-write test" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
 run_test "glx/GLX_EXT_import_context/free context" 0.0 "bin/glx-free-context"
 run_test "glx/GLX_EXT_import_context/get context ID" 0.0 "bin/glx-get-context-id"
 run_test "glx/GLX_EXT_import_context/get current display" 0.0 "bin/glx-get-current-display-ext"
@@ -61,7 +63,6 @@ run_test "glx/glx-query-drawable-GLXBadDrawable" 0.0 "bin/glx-query-drawable -au
 run_test "glx/glx-shader-sharing" 0.0 "bin/glx-shader-sharing -auto"
 run_test "glx/glx-swap-event_async" 0.0 "bin/glx-swap-event -auto --async"
 run_test "glx/glx-swap-event_event" 0.0 "bin/glx-swap-event -auto --event"
-run_test "glx/glx-swap-event_interval" 0.0 "bin/glx-swap-event -auto --interval"
 run_test "glx/glx-swap-singlebuffer" 0.0 "bin/glx-swap-singlebuffer -auto"
 run_test "glx/glx-visuals-depth" 0.0 "bin/glx-visuals-depth -auto"
 run_test "glx/glx-visuals-depth -pixmap" 0.0 "bin/glx-visuals-depth -pixmap -auto -fbo"
@@ -200,11 +201,26 @@ run_test "shaders/glsl-const-builtin-max" 0.0 "bin/shader_runner tests/shaders/g
 run_test "shaders/glsl-const-builtin-min" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-min.shader_test -auto"
 run_test "shaders/glsl-const-builtin-mix" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-mix.shader_test -auto"
 run_test "shaders/glsl-const-builtin-mod" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-mod.shader_test -auto"
+run_test "shaders/glsl-const-builtin-normalize" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-normalize.shader_test -auto"
+run_test "shaders/glsl-const-builtin-not" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-not.shader_test -auto"
+run_test "shaders/glsl-const-builtin-notEqual" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-notEqual.shader_test -auto"
+run_test "shaders/glsl-const-builtin-notEqual-02" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-notEqual-02.shader_test -auto"
+run_test "shaders/glsl-const-builtin-notEqual-03" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-notEqual-03.shader_test -auto"
+run_test "shaders/glsl-const-builtin-notEqual-04" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-notEqual-04.shader_test -auto"
+run_test "shaders/glsl-const-builtin-notEqual-05" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-notEqual-05.shader_test -auto"
+run_test "shaders/glsl-const-builtin-notEqual-06" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-notEqual-06.shader_test -auto"
+run_test "shaders/glsl-const-builtin-notEqual-07" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-notEqual-07.shader_test -auto"
+run_test "shaders/glsl-const-builtin-notEqual-08" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-notEqual-08.shader_test -auto"
+run_test "shaders/glsl-const-builtin-notEqual-09" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-notEqual-09.shader_test -auto"
+run_test "shaders/glsl-const-builtin-notEqual-10" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-notEqual-10.shader_test -auto"
+run_test "shaders/glsl-const-builtin-notEqual-bool" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-notEqual-bool.shader_test -auto"
+run_test "shaders/glsl-const-builtin-outerProduct" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-outerProduct.shader_test -auto"
+run_test "shaders/glsl-const-builtin-pow" 0.0 "bin/shader_runner tests/shaders/glsl-const-builtin-pow.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 170 tests have passed. |"
+  echo "| Overall pass, as all 186 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

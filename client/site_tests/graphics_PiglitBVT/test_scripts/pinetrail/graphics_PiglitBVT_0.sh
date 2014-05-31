@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=4545
+need_pass=4544
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -421,7 +421,6 @@ run_test "glx/glx-query-drawable-GLXBadDrawable" 0.0 "bin/glx-query-drawable -au
 run_test "glx/glx-shader-sharing" 0.0 "bin/glx-shader-sharing -auto"
 run_test "glx/glx-swap-event_async" 0.0 "bin/glx-swap-event -auto --async"
 run_test "glx/glx-swap-event_event" 0.0 "bin/glx-swap-event -auto --event"
-run_test "glx/glx-swap-event_interval" 0.0 "bin/glx-swap-event -auto --interval"
 run_test "glx/glx-swap-singlebuffer" 0.0 "bin/glx-swap-singlebuffer -auto"
 run_test "glx/glx-visuals-depth" 0.0 "bin/glx-visuals-depth -auto"
 run_test "glx/glx-visuals-depth -pixmap" 0.0 "bin/glx-visuals-depth -pixmap -auto -fbo"
@@ -4579,7 +4578,7 @@ popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 4545 tests have passed. |"
+  echo "| Overall pass, as all 4544 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

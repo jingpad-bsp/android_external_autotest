@@ -4,6 +4,10 @@
       "pass rate": "0.5",
       "result": "flaky"
     },
+    "glx/glx-swap-event_interval": {
+      "pass rate": "0.50",
+      "result": "flaky"
+    },
     "glx/GLX_OML_sync_control/waitformsc": {
       "pass rate": "0.50",
       "result": "flaky"

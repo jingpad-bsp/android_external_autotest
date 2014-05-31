@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=320
+need_pass=333
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -30,18 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/EXT_packed_depth_stencil/fbo-generatemipmap-formats" 0.0 "bin/fbo-generatemipmap-formats -auto GL_EXT_packed_depth_stencil"
-run_test "spec/EXT_packed_depth_stencil/fbo-stencil-GL_DEPTH24_STENCIL8-clear" 0.0 "bin/fbo-stencil -auto clear GL_DEPTH24_STENCIL8"
-run_test "spec/EXT_packed_depth_stencil/fbo-stencil-GL_DEPTH24_STENCIL8-copypixels" 0.0 "bin/fbo-stencil -auto copypixels GL_DEPTH24_STENCIL8"
-run_test "spec/EXT_packed_depth_stencil/fbo-stencil-GL_DEPTH24_STENCIL8-drawpixels" 0.0 "bin/fbo-stencil -auto drawpixels GL_DEPTH24_STENCIL8"
-run_test "spec/EXT_packed_depth_stencil/fbo-stencil-GL_DEPTH24_STENCIL8-readpixels" 0.0 "bin/fbo-stencil -auto readpixels GL_DEPTH24_STENCIL8"
-run_test "spec/EXT_packed_depth_stencil/get-renderbuffer-internalformat" 0.0 "bin/get-renderbuffer-internalformat GL_EXT_packed_depth_stencil -auto -fbo"
-run_test "spec/EXT_packed_depth_stencil/readpixels-24_8" 0.0 "bin/ext_packed_depth_stencil-readpixels-24_8 -auto"
-run_test "spec/EXT_packed_depth_stencil/texwrap formats" 0.0 "bin/texwrap -fbo -auto GL_EXT_packed_depth_stencil"
-run_test "spec/EXT_texture_compression_latc/invalid formats" 0.0 "bin/arb_texture_compression-invalid-formats latc"
-run_test "spec/EXT_texture_compression_rgtc/invalid formats" 0.0 "bin/arb_texture_compression-invalid-formats rgtc"
-run_test "spec/EXT_texture_compression_s3tc/invalid formats" 0.0 "bin/arb_texture_compression-invalid-formats s3tc"
-run_test "spec/EXT_texture_lod_bias/lodbias" 0.0 "bin/lodbias -auto"
 run_test "spec/EXT_texture_sRGB/fbo-alphatest-formats" 0.0 "bin/fbo-alphatest-formats -auto GL_EXT_texture_sRGB"
 run_test "spec/EXT_texture_sRGB/fbo-srgb" 0.0 "bin/fbo-srgb -auto"
 run_test "spec/EXT_texture_sRGB/invalid formats" 0.0 "bin/arb_texture_compression-invalid-formats srgb"
@@ -350,11 +338,36 @@ run_test "spec/glsl-1.10/execution/built-in-functions/fs-exp2-float" 0.0 "bin/sh
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-exp2-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-exp2-vec2.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-exp2-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-exp2-vec3.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-exp2-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-exp2-vec4.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-faceforward-float-float-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-faceforward-float-float-float.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-faceforward-vec2-vec2-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-faceforward-vec2-vec2-vec2.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-faceforward-vec3-vec3-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-faceforward-vec3-vec3-vec3.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-faceforward-vec4-vec4-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-faceforward-vec4-vec4-vec4.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-floor-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-floor-float.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-floor-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-floor-vec2.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-floor-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-floor-vec3.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-floor-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-floor-vec4.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-greaterThan-ivec2-ivec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-greaterThan-ivec2-ivec2.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-greaterThan-ivec3-ivec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-greaterThan-ivec3-ivec3.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-greaterThan-ivec4-ivec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-greaterThan-ivec4-ivec4.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-greaterThan-vec2-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-greaterThan-vec2-vec2.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-greaterThan-vec3-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-greaterThan-vec3-vec3.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-greaterThan-vec4-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-greaterThan-vec4-vec4.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-greaterThanEqual-ivec2-ivec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-greaterThanEqual-ivec2-ivec2.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-greaterThanEqual-ivec3-ivec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-greaterThanEqual-ivec3-ivec3.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-greaterThanEqual-ivec4-ivec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-greaterThanEqual-ivec4-ivec4.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-greaterThanEqual-vec2-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-greaterThanEqual-vec2-vec2.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-greaterThanEqual-vec3-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-greaterThanEqual-vec3-vec3.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-greaterThanEqual-vec4-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-greaterThanEqual-vec4-vec4.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-inversesqrt-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-inversesqrt-vec2.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-inversesqrt-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-inversesqrt-vec3.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-inversesqrt-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-inversesqrt-vec4.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-lessThan-ivec2-ivec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-lessThan-ivec2-ivec2.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-lessThan-ivec3-ivec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-lessThan-ivec3-ivec3.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 320 tests have passed. |"
+  echo "| Overall pass, as all 333 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

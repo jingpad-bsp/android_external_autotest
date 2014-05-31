@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=84
+need_pass=80
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -30,22 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/ARB_vertex_program/vp-arl-constant-array-huge" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-arl-constant-array-huge.vpfp"
-run_test "spec/ARB_vertex_program/vp-arl-constant-array-huge-offset" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-arl-constant-array-huge-offset.vpfp"
-run_test "spec/ARB_vertex_program/vp-arl-constant-array-huge-offset-neg" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-arl-constant-array-huge-offset-neg.vpfp"
-run_test "spec/ARB_vertex_program/vp-arl-constant-array-huge-overwritten" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-arl-constant-array-huge-overwritten.vpfp"
-run_test "spec/ARB_vertex_program/vp-arl-constant-array-huge-relative-offset" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-arl-constant-array-huge-relative-offset.vpfp"
-run_test "spec/ARB_vertex_program/vp-arl-constant-array-huge-varying" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-arl-constant-array-huge-varying.vpfp"
-run_test "spec/ARB_vertex_program/vp-arl-constant-array-varying" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-arl-constant-array-varying.vpfp"
-run_test "spec/ARB_vertex_program/vp-arl-env-array" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-arl-env-array.vpfp"
-run_test "spec/ARB_vertex_program/vp-arl-local-array" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-arl-local-array.vpfp"
-run_test "spec/ARB_vertex_program/vp-arl-neg-array" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-arl-neg-array.vpfp"
-run_test "spec/ARB_vertex_program/vp-arl-neg-array-2" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-arl-neg-array-2.vpfp"
-run_test "spec/ARB_vertex_program/vp-bad-program" 0.0 "bin/vp-bad-program -auto"
-run_test "spec/ARB_vertex_program/vp-constant-array" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-constant-array.vpfp"
-run_test "spec/ARB_vertex_program/vp-constant-array-huge" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-constant-array-huge.vpfp"
-run_test "spec/ARB_vertex_program/vp-constant-negate" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-constant-negate.vpfp"
-run_test "spec/ARB_vertex_program/vp-exp-alias" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-exp-alias.vpfp"
 run_test "spec/ARB_vertex_program/vp-max" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-max.vpfp"
 run_test "spec/ARB_vertex_program/vp-max-array" 0.0 "bin/vp-max-array -auto"
 run_test "spec/ARB_vertex_program/vp-min" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-min.vpfp"
@@ -114,11 +98,23 @@ run_test "spec/EXT_packed_depth_stencil/fbo-depthstencil-GL_DEPTH24_STENCIL8-cle
 run_test "spec/EXT_packed_depth_stencil/fbo-depthstencil-GL_DEPTH24_STENCIL8-drawpixels-24_8" 0.0 "bin/fbo-depthstencil -auto drawpixels GL_DEPTH24_STENCIL8 24_8"
 run_test "spec/EXT_packed_depth_stencil/fbo-depthstencil-GL_DEPTH24_STENCIL8-readpixels-24_8" 0.0 "bin/fbo-depthstencil -auto readpixels GL_DEPTH24_STENCIL8 24_8"
 run_test "spec/EXT_packed_depth_stencil/fbo-depthstencil-GL_DEPTH24_STENCIL8-readpixels-FLOAT-and-USHORT" 0.0 "bin/fbo-depthstencil -auto readpixels GL_DEPTH24_STENCIL8 FLOAT-and-USHORT"
+run_test "spec/EXT_packed_depth_stencil/fbo-generatemipmap-formats" 0.0 "bin/fbo-generatemipmap-formats -auto GL_EXT_packed_depth_stencil"
+run_test "spec/EXT_packed_depth_stencil/fbo-stencil-GL_DEPTH24_STENCIL8-clear" 0.0 "bin/fbo-stencil -auto clear GL_DEPTH24_STENCIL8"
+run_test "spec/EXT_packed_depth_stencil/fbo-stencil-GL_DEPTH24_STENCIL8-copypixels" 0.0 "bin/fbo-stencil -auto copypixels GL_DEPTH24_STENCIL8"
+run_test "spec/EXT_packed_depth_stencil/fbo-stencil-GL_DEPTH24_STENCIL8-drawpixels" 0.0 "bin/fbo-stencil -auto drawpixels GL_DEPTH24_STENCIL8"
+run_test "spec/EXT_packed_depth_stencil/fbo-stencil-GL_DEPTH24_STENCIL8-readpixels" 0.0 "bin/fbo-stencil -auto readpixels GL_DEPTH24_STENCIL8"
+run_test "spec/EXT_packed_depth_stencil/get-renderbuffer-internalformat" 0.0 "bin/get-renderbuffer-internalformat GL_EXT_packed_depth_stencil -auto -fbo"
+run_test "spec/EXT_packed_depth_stencil/readpixels-24_8" 0.0 "bin/ext_packed_depth_stencil-readpixels-24_8 -auto"
+run_test "spec/EXT_packed_depth_stencil/texwrap formats" 0.0 "bin/texwrap -fbo -auto GL_EXT_packed_depth_stencil"
+run_test "spec/EXT_texture_compression_latc/invalid formats" 0.0 "bin/arb_texture_compression-invalid-formats latc"
+run_test "spec/EXT_texture_compression_rgtc/invalid formats" 0.0 "bin/arb_texture_compression-invalid-formats rgtc"
+run_test "spec/EXT_texture_compression_s3tc/invalid formats" 0.0 "bin/arb_texture_compression-invalid-formats s3tc"
+run_test "spec/EXT_texture_lod_bias/lodbias" 0.0 "bin/lodbias -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 84 tests have passed. |"
+  echo "| Overall pass, as all 80 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

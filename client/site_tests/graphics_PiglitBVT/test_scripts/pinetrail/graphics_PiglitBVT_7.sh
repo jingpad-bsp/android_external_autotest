@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=238
+need_pass=236
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -30,24 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/ARB_depth_texture/fbo-depth-GL_DEPTH_COMPONENT32-clear" 0.0 "bin/fbo-depth -auto clear GL_DEPTH_COMPONENT32"
-run_test "spec/ARB_depth_texture/fbo-depth-GL_DEPTH_COMPONENT32-readpixels" 0.0 "bin/fbo-depth -auto readpixels GL_DEPTH_COMPONENT32"
-run_test "spec/ARB_depth_texture/fbo-depth-GL_DEPTH_COMPONENT32-tex1d" 0.0 "bin/fbo-depth-tex1d -auto GL_DEPTH_COMPONENT32"
-run_test "spec/ARB_depth_texture/get-renderbuffer-internalformat" 0.0 "bin/get-renderbuffer-internalformat GL_ARB_depth_texture -auto -fbo"
-run_test "spec/ARB_depth_texture/texwrap formats" 0.0 "bin/texwrap -fbo -auto GL_ARB_depth_texture"
-run_test "spec/ARB_draw_elements_base_vertex/dlist-arb_draw_instanced" 0.0 "bin/arb_draw_elements_base_vertex-dlist-arb_draw_instanced -auto -fbo"
-run_test "spec/ARB_draw_elements_base_vertex/draw-elements-base-vertex" 0.0 "bin/draw-elements-base-vertex -auto"
-run_test "spec/ARB_draw_elements_base_vertex/draw-elements-base-vertex-bounds" 0.0 "bin/draw-elements-base-vertex-bounds -auto"
-run_test "spec/ARB_draw_elements_base_vertex/draw-elements-base-vertex-neg" 0.0 "bin/draw-elements-base-vertex-neg -auto"
-run_test "spec/ARB_draw_elements_base_vertex/draw-elements-base-vertex-user_varrays" 0.0 "bin/draw-elements-base-vertex -auto user_varrays"
-run_test "spec/ARB_draw_elements_base_vertex/draw-elements-instanced-base-vertex" 0.0 "bin/draw-elements-instanced-base-vertex -auto"
-run_test "spec/ARB_draw_elements_base_vertex/draw-elements-instanced-base-vertex-user_varrays" 0.0 "bin/draw-elements-instanced-base-vertex -auto user_varrays"
-run_test "spec/ARB_draw_instanced/compiler/instanceidarb-disabled.frag" 0.0 "bin/glslparsertest tests/spec/arb_draw_instanced/compiler/instanceidarb-disabled.frag fail 1.10 GL_ARB_draw_instanced"
-run_test "spec/ARB_draw_instanced/compiler/instanceidarb-disabled.vert" 0.0 "bin/glslparsertest tests/spec/arb_draw_instanced/compiler/instanceidarb-disabled.vert fail 1.10 GL_ARB_draw_instanced"
-run_test "spec/ARB_draw_instanced/compiler/instanceidarb-enabled.frag" 0.0 "bin/glslparsertest tests/spec/arb_draw_instanced/compiler/instanceidarb-enabled.frag fail 1.10 GL_ARB_draw_instanced"
-run_test "spec/ARB_draw_instanced/compiler/instanceidarb-enabled.vert" 0.0 "bin/glslparsertest tests/spec/arb_draw_instanced/compiler/instanceidarb-enabled.vert pass 1.10 GL_ARB_draw_instanced"
-run_test "spec/ARB_draw_instanced/compiler/negative-instanceidarb-write.vert" 0.0 "bin/glslparsertest tests/spec/arb_draw_instanced/compiler/negative-instanceidarb-write.vert fail 1.10 GL_ARB_draw_instanced"
-run_test "spec/ARB_draw_instanced/dlist" 0.0 "bin/arb_draw_instanced-dlist -auto -fbo"
 run_test "spec/ARB_draw_instanced/draw-instanced" 0.0 "bin/draw-instanced -auto"
 run_test "spec/ARB_draw_instanced/draw-instanced-divisor" 0.0 "bin/draw-instanced-divisor -auto"
 run_test "spec/ARB_draw_instanced/draw-non-instanced" 0.0 "bin/shader_runner tests/spec/arb_draw_instanced/execution/draw-non-instanced.shader_test -auto"
@@ -268,11 +250,27 @@ run_test "spec/ARB_vertex_program/getlocal4d-with-error" 0.0 "bin/arb_vertex_pro
 run_test "spec/ARB_vertex_program/minmax" 0.0 "bin/arb_vertex_program-minmax -auto -fbo"
 run_test "spec/ARB_vertex_program/vp-address-01" 0.0 "bin/vp-address-01 -auto"
 run_test "spec/ARB_vertex_program/vp-arl-constant-array" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-arl-constant-array.vpfp"
+run_test "spec/ARB_vertex_program/vp-arl-constant-array-huge" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-arl-constant-array-huge.vpfp"
+run_test "spec/ARB_vertex_program/vp-arl-constant-array-huge-offset" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-arl-constant-array-huge-offset.vpfp"
+run_test "spec/ARB_vertex_program/vp-arl-constant-array-huge-offset-neg" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-arl-constant-array-huge-offset-neg.vpfp"
+run_test "spec/ARB_vertex_program/vp-arl-constant-array-huge-overwritten" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-arl-constant-array-huge-overwritten.vpfp"
+run_test "spec/ARB_vertex_program/vp-arl-constant-array-huge-relative-offset" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-arl-constant-array-huge-relative-offset.vpfp"
+run_test "spec/ARB_vertex_program/vp-arl-constant-array-huge-varying" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-arl-constant-array-huge-varying.vpfp"
+run_test "spec/ARB_vertex_program/vp-arl-constant-array-varying" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-arl-constant-array-varying.vpfp"
+run_test "spec/ARB_vertex_program/vp-arl-env-array" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-arl-env-array.vpfp"
+run_test "spec/ARB_vertex_program/vp-arl-local-array" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-arl-local-array.vpfp"
+run_test "spec/ARB_vertex_program/vp-arl-neg-array" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-arl-neg-array.vpfp"
+run_test "spec/ARB_vertex_program/vp-arl-neg-array-2" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-arl-neg-array-2.vpfp"
+run_test "spec/ARB_vertex_program/vp-bad-program" 0.0 "bin/vp-bad-program -auto"
+run_test "spec/ARB_vertex_program/vp-constant-array" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-constant-array.vpfp"
+run_test "spec/ARB_vertex_program/vp-constant-array-huge" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-constant-array-huge.vpfp"
+run_test "spec/ARB_vertex_program/vp-constant-negate" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-constant-negate.vpfp"
+run_test "spec/ARB_vertex_program/vp-exp-alias" 0.0 "bin/vpfp-generic -auto tests/shaders/generic/vp-exp-alias.vpfp"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 238 tests have passed. |"
+  echo "| Overall pass, as all 236 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

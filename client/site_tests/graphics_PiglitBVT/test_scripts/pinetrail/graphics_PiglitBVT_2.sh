@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=149
+need_pass=148
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -30,6 +30,7 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "glean/glsl1-mat4x2 * vec4" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-mat4x2 construct" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-mat4x3 construct" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-matrix column check (1)" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
@@ -177,13 +178,11 @@ run_test "glean/vp1-State reference test 1 (material ambient)" 0.0 "bin/glean -o
 run_test "glean/vp1-State reference test 2 (light products)" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
 run_test "glean/vp1-State reference test 3 (fog params)" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
 run_test "glean/vp1-XPD test 1" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
-run_test "glean/vp1-XPD test 2 (same src and dst arg)" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
-run_test "glean/vp1-Z-write test" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 149 tests have passed. |"
+  echo "| Overall pass, as all 148 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

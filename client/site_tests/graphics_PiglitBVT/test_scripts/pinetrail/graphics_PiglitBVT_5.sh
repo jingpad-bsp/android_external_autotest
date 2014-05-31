@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=156
+need_pass=167
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -30,12 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "shaders/glsl-override-builtin-2" 0.0 "bin/shader_runner tests/shaders/glsl-override-builtin-2.shader_test -auto"
-run_test "shaders/glsl-pp-elif-no-expression-1" 0.0 "bin/shader_runner tests/shaders/glsl-pp-elif-no-expression-1.shader_test -auto"
-run_test "shaders/glsl-precision-110" 0.0 "bin/shader_runner tests/shaders/glsl-precision-110.shader_test -auto"
-run_test "shaders/glsl-preprocessor-comments" 0.0 "bin/glsl-preprocessor-comments -auto"
-run_test "shaders/glsl-reload-source" 0.0 "bin/glsl-reload-source -auto"
-run_test "shaders/glsl-routing" 0.0 "bin/glsl-routing -auto"
 run_test "shaders/glsl-struct-constructor-01" 0.0 "bin/shader_runner tests/shaders/glsl-struct-constructor-01.shader_test -auto"
 run_test "shaders/glsl-texcoord-array-2" 0.0 "bin/shader_runner tests/shaders/glsl-texcoord-array-2.shader_test -auto"
 run_test "shaders/glsl-uniform-initializer-1" 0.0 "bin/shader_runner tests/shaders/glsl-uniform-initializer-1.shader_test -auto"
@@ -186,11 +180,28 @@ run_test "spec/!OpenGL 1.1/fdo23670-depth_test" 0.0 "bin/fdo23670-depth_test -au
 run_test "spec/!OpenGL 1.1/fdo23670-drawpix_stencil" 0.0 "bin/fdo23670-drawpix_stencil -auto"
 run_test "spec/!OpenGL 1.1/fog-modes" 0.0 "bin/fog-modes -auto"
 run_test "spec/!OpenGL 1.1/fragment-center" 0.0 "bin/fragment-center -auto"
+run_test "spec/!OpenGL 1.1/geterror-inside-begin" 0.0 "bin/geterror-inside-begin -auto"
+run_test "spec/!OpenGL 1.1/geterror-invalid-enum" 0.0 "bin/geterror-invalid-enum -auto"
+run_test "spec/!OpenGL 1.1/getteximage-formats" 0.0 "bin/getteximage-formats -auto"
+run_test "spec/!OpenGL 1.1/getteximage-luminance" 0.0 "bin/getteximage-luminance -auto"
+run_test "spec/!OpenGL 1.1/getteximage-simple" 0.0 "bin/getteximage-simple -auto"
+run_test "spec/!OpenGL 1.1/getteximage-targets 1D" 0.0 "bin/getteximage-targets 1D -auto -fbo"
+run_test "spec/!OpenGL 1.1/getteximage-targets 2D" 0.0 "bin/getteximage-targets 2D -auto -fbo"
+run_test "spec/!OpenGL 1.1/hiz" 0.0 "bin/hiz -auto"
+run_test "spec/!OpenGL 1.1/incomplete-texture-fixed" 0.0 "bin/incomplete-texture -auto fixed -auto -fbo"
+run_test "spec/!OpenGL 1.1/infinite-spot-light" 0.0 "bin/infinite-spot-light -auto"
+run_test "spec/!OpenGL 1.1/masked-clear" 0.0 "bin/masked-clear -auto -fbo"
+run_test "spec/!OpenGL 1.1/max-texture-size-level" 0.0 "bin/max-texture-size-level -auto -fbo"
+run_test "spec/!OpenGL 1.1/polygon-mode" 0.0 "bin/polygon-mode -auto"
+run_test "spec/!OpenGL 1.1/proxy-texture" 0.0 "bin/proxy-texture -auto -fbo"
+run_test "spec/!OpenGL 1.1/push-pop-texture-state" 0.0 "bin/push-pop-texture-state -auto -fbo"
+run_test "spec/!OpenGL 1.1/quad-invariance" 0.0 "bin/quad-invariance -auto -fbo"
+run_test "spec/!OpenGL 1.1/r300-readcache" 0.0 "bin/r300-readcache -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 156 tests have passed. |"
+  echo "| Overall pass, as all 167 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"
