@@ -13,3 +13,4 @@ class Values(object):
     ec_boot_to_console = 0.2
     dev_screen = 4
     firmware_screen = 4
+    wp_voltage = 'off'
