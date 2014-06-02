@@ -116,8 +116,8 @@ class RPCHelper(object):
         hosts = self.rpc_interface.get_hosts(
                 multiple_labels=('pool:%s' % pool, 'board:%s' % board))
         if not hosts:
-            logging.warning('Unable to retrieve hosts in given pool %s with '
-                    'the rpc_interface %s', pool, self.rpc_interface)
+            logging.warning('No hosts found for board:%s in pool:%s',
+                            board, pool)
             return
         cutoff = datetime.now() - time_delta_hours
         for host in hosts:
@@ -159,8 +159,8 @@ class RPCHelper(object):
                 multiple_labels=('pool:%s' % pool, 'board:%s' % board))
         if not hosts:
             raise utils.TestLabException(
-                    'Unable to retrieve hosts in given board %s pool %s with '
-                    'the rpc_interface %s' % (board, pool, self.rpc_interface))
+                    'No hosts found for board:%s in pool:%s' %
+                    (board, pool))
 
         if len(hosts) <= MIN_AVAILABLE_DUTS:
             logging.debug('The total number of DUTs for %s in pool:%s is %d, '
