@@ -17,9 +17,7 @@ import xmlrpclib
 import common   # pylint: disable=W0611
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib.cros import chrome, xmlrpc_server
-from autotest_lib.client.cros import constants, httpd, sys_power
-
-from Xlib import display, ext, X
+from autotest_lib.client.cros import constants, cros_ui, httpd, sys_power
 
 EXT_PATH = os.path.join(os.path.dirname(__file__), 'display_test_extension')
 
@@ -31,6 +29,7 @@ class DisplayTestingXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         self._chrome = chrome
         self._browser = chrome.browser
         self._http_server = None
+
 
     def get_display_info(self):
         """Gets the display info from Chrome.system.display API.
@@ -49,6 +48,7 @@ class DisplayTestingXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
                 expected_value=True)
         return extension.EvaluateJavaScript("window.__display_info")
 
+
     def get_resolution(self, output):
         """Gets the resolution of the specified output.
 
@@ -65,6 +65,7 @@ class DisplayTestingXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             if m[0] == output:
                 return (int(m[1]), int(m[2]), int(m[3]), int(m[4]))
         return (0, 0, 0, 0)
+
 
     def take_tab_screenshot(self, url_pattern, output_suffix):
         """Takes a screenshot of the tab specified by the given url pattern.
@@ -93,21 +94,25 @@ class DisplayTestingXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             screenshot.WriteFile(output_file % image_filename)
         return True
 
+
     def toggle_mirrored(self):
         """Toggles mirrored.
 
         Emulates L_Ctrl + Maximize in X server to toggle mirrored.
         """
-        L_CTRL_KEYCODE = 37
-        MAXIMIZE_KEYCODE = 70
-        xdisplay = display.Display()
-        root_window = xdisplay.screen().root
-        ext.xtest.fake_input(root_window, X.KeyPress, L_CTRL_KEYCODE)
-        ext.xtest.fake_input(root_window, X.KeyPress, MAXIMIZE_KEYCODE)
-        ext.xtest.fake_input(root_window, X.KeyRelease, MAXIMIZE_KEYCODE)
-        ext.xtest.fake_input(root_window, X.KeyRelease, L_CTRL_KEYCODE)
-        xdisplay.sync()
+        self.press_key('ctrl+F4')
         return True
+
+
+    def press_key(self, key_str):
+        """Presses the given key(s).
+
+        @param key_str: A string of the key(s), like 'ctrl+F4', 'Up'.
+        """
+        command = 'xdotool key %s' % key_str
+        cros_ui.xsystem(command)
+        return True
+
 
     def set_mirrored(self, is_mirrored):
         """Sets mirrored mode.
@@ -124,6 +129,7 @@ class DisplayTestingXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             retries -= 1
         return _is_mirrored_enabled() == is_mirrored
 
+
     def suspend_resume(self, suspend_time=10):
         """Suspends the DUT for a given time in second.
 
@@ -131,6 +137,7 @@ class DisplayTestingXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         """
         sys_power.do_suspend(suspend_time)
         return True
+
 
     def suspend_resume_bg(self, suspend_time=10):
         """Suspends the DUT for a given time in second in the background.
@@ -141,6 +148,7 @@ class DisplayTestingXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
                                           args=(suspend_time,))
         process.start()
         return True
+
 
     def get_ext_connector_name(self):
         """Gets the name of the external output connector.
@@ -154,6 +162,7 @@ class DisplayTestingXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
                 output.startswith('DVI')):
                 return output
         return False
+
 
     def wait_output_connected(self, output):
         """Wait for output to connect.
@@ -170,6 +179,7 @@ class DisplayTestingXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         return utils.wait_for_value(lambda: _is_connected(output),
                                     expected_value=True)
 
+
     def start_httpd(self, port, root_path):
         """Starts the local HTTP server to serve the calibration images.
 
@@ -180,12 +190,14 @@ class DisplayTestingXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         self._http_server.run()
         return True
 
+
     def stop_httpd(self):
         """Stops the local HTTP server."""
         if self._http_server:
             self._http_server.stop()
             self._http_server = None
         return True
+
 
     def load_url(self, url):
         """Loads the given url in a new tab.
@@ -197,6 +209,7 @@ class DisplayTestingXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         tab.Activate()
         return True
 
+
     def close_tab(self, index=-1):
         """Closes the tab of the given index.
 
@@ -204,6 +217,7 @@ class DisplayTestingXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         """
         self._browser.tabs[index].Close()
         return True
+
 
     def reconnect_output(self, output):
         """Reconnects output.

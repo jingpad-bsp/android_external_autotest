@@ -154,7 +154,7 @@ class DisplayClient(object):
 
     def hide_cursor(self):
         """Hides mouse cursor by sending a keystroke."""
-        self._client.run('%s xdotool key Up' % self.X_ENV_VARIABLES)
+        self._display_xmlrpc_client.press_key('Up')
 
 
     def capture_external_screen(self, file_path):
