@@ -21,15 +21,14 @@ class power_Backlight(test.test):
         """
         super(power_Backlight, self).initialize()
         self._backlight = None
-        self._services = None
+        self._services = service_stopper.ServiceStopper(
+            service_stopper.ServiceStopper.POWER_DRAW_SERVICES)
+        self._services.stop_services()
 
 
     def run_once(self, delay=60, seconds=10, tries=20):
         self._backlight = power_utils.Backlight()
 
-        self._services = service_stopper.ServiceStopper(
-            service_stopper.ServiceStopper.POWER_DRAW_SERVICES)
-        self._services.stop_services()
 
         # disable screen blanking. Stopping screen-locker isn't
         # synchronous :(. Add a sleep for now, till powerd comes around
@@ -76,8 +75,7 @@ class power_Backlight(test.test):
     def cleanup(self):
         if self._backlight:
             self._backlight.restore()
-        if self._services:
-            self._services.restore_services()
+        self._services.restore_services()
         super(power_Backlight, self).cleanup()
 
 

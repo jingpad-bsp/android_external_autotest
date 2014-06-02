@@ -36,8 +36,12 @@ class power_Consumption(test.test):
         # cleanup() masking a real error that caused the test to fail during
         # initialize() before those variables were assigned.
         self._backlight = None
-        self._services = None
         self._chrome = None
+
+        self._services = service_stopper.ServiceStopper(
+            service_stopper.ServiceStopper.POWER_DRAW_SERVICES)
+        self._services.stop_services()
+
 
         # Time to exclude from calculation after firing a task [seconds]
         self._stabilization_seconds = 5
@@ -465,10 +469,6 @@ class power_Consumption(test.test):
             else:
                 test_groups = DEFAULT_TESTS
         logging.info('Test groups to run: %s', ', '.join(test_groups))
-
-        self._services = service_stopper.ServiceStopper(
-            service_stopper.ServiceStopper.POWER_DRAW_SERVICES)
-        self._services.stop_services()
 
         self._backlight = power_utils.Backlight()
         self._backlight.set_default()

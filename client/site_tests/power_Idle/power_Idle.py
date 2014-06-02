@@ -22,7 +22,9 @@ class power_Idle(test.test):
         """
         super(power_Idle, self).initialize()
         self._backlight = None
-        self._services = None
+        self._services = service_stopper.ServiceStopper(
+            service_stopper.ServiceStopper.POWER_DRAW_SERVICES)
+        self._services.stop_services()
 
 
     def warmup(self, warmup_time=60):
@@ -30,12 +32,7 @@ class power_Idle(test.test):
 
 
     def run_once(self, idle_time=120, sleep=10):
-
         with chrome.Chrome():
-            self._services = service_stopper.ServiceStopper(
-                service_stopper.ServiceStopper.POWER_DRAW_SERVICES)
-            self._services.stop_services()
-
             self._backlight = power_utils.Backlight()
             self._backlight.set_default()
 
@@ -98,6 +95,5 @@ class power_Idle(test.test):
     def cleanup(self):
         if self._backlight:
             self._backlight.restore()
-        if self._services:
-            self._services.restore_services()
+        self._services.restore_services()
         super(power_Idle, self).cleanup()

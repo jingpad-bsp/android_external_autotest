@@ -178,6 +178,10 @@ class power_LoadTest(test.test):
         self._tmp_keyvals['level_backlight_max'] = \
             self._backlight.get_max_level()
 
+        self._services = service_stopper.ServiceStopper(
+            service_stopper.ServiceStopper.POWER_DRAW_SERVICES)
+        self._services.stop_services()
+
         # fix up file perms for the power test extension so that chrome
         # can access it
         os.system('chmod -R 755 %s' % self.bindir)
@@ -217,10 +221,6 @@ class power_LoadTest(test.test):
         except power_utils.KbdBacklightException as e:
             logging.info("Assuming no keyboard backlight due to :: %s", str(e))
             kblight = None
-
-        self._services = service_stopper.ServiceStopper(
-            service_stopper.ServiceStopper.POWER_DRAW_SERVICES)
-        self._services.stop_services()
 
         measurements = \
             [power_status.SystemPower(self._power_status.battery_path)]
