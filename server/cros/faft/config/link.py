@@ -6,6 +6,7 @@
 
 
 class Values(object):
+    """FAFT config values for Link."""
     firmware_screen = 7
     dev_screen = 4
     chrome_ec = True
@@ -15,3 +16,4 @@ class Values(object):
                      'keyboard', 'lid', 'x86', 'thermal',
                      'usb', 'peci', 'kblight', 'smart_usb_charge']
     wp_voltage = 'pp3300'
+    spi_voltage = 'pp3300'

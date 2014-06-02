@@ -6,6 +6,7 @@
 
 
 class Values(object):
+    """FAFT config values for Slippy."""
     # Measured boot-to-console as ~110ms, so this is safe
     ec_boot_to_console = 0.6
     chrome_ec = True
@@ -14,3 +15,4 @@ class Values(object):
                             'keyboard', 'lid', 'x86', 'thermal',
                             'usb', 'peci']
     wp_voltage = 'pp3300'
+    spi_voltage = 'pp3300'

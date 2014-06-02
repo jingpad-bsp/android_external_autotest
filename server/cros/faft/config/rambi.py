@@ -15,3 +15,4 @@ class Values(object):
     firmware_screen = 7
     long_rec_combo = True
     wp_voltage = 'pp1800'
+    spi_voltage = 'pp1800'

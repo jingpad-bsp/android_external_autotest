@@ -163,7 +163,7 @@ class FlashromProgrammer(_BaseProgrammer):
         faft_config = FAFTConfig(self._servo.get_board())
         self._fw_path = path
         self._servo_prog_state = (
-            'spi2_vref:%s' % faft_config.wp_voltage,
+            'spi2_vref:%s' % faft_config.spi_voltage,
             'spi2_buf_en:on',
             'spi2_buf_on_flex_en:on',
             'spi_hold:off',
