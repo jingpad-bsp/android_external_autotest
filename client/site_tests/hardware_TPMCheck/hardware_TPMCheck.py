@@ -67,29 +67,32 @@ class hardware_TPMCheck(test.test):
     version = 1
 
 
+    def initialize(self):
+        # Must stop the TCSD process to be able to collect TPM status,
+        # then restart TCSD process to leave system in a known good state.
+        # Must also stop services which depend on tcsd.
+        self._services = service_stopper.ServiceStopper(['cryptohomed',
+                                                         'chapsd', 'tcsd'])
+        self._services.stop_services()
+
+
     def run_once(self):
         """Run a few TPM state checks."""
         if missing_firmware_version():
             logging.warning('no firmware version, skipping test')
             return
 
-        # Must stop the TCSD process to be able to collect TPM status,
-        # then restart TCSD process to leave system in a known good state.
-        # Must also stop services which depend on tcsd.
-        services = service_stopper.ServiceStopper(['cryptohomed',
-                                                   'chapsd', 'tcsd'])
-        services.stop_services()
-        try:
-            # Check volatile and permanent flags
-            for subcommand in ['getvf', 'getpf']:
-                check_tpmc(subcommand, TPMC_EXPECTED[subcommand])
+        # Check volatile and permanent flags
+        for subcommand in ['getvf', 'getpf']:
+            check_tpmc(subcommand, TPMC_EXPECTED[subcommand])
 
-            # Check space permissions
-            check_tpmc('getp 0x1007', '.*0x8001')
-            check_tpmc('getp 0x1008', '.*0x1')
+        # Check space permissions
+        check_tpmc('getp 0x1007', '.*0x8001')
+        check_tpmc('getp 0x1008', '.*0x1')
 
-            # Check kernel space UID
-            check_tpmc('read 0x1008 0x5', '.* 4c 57 52 47$')
+        # Check kernel space UID
+        check_tpmc('read 0x1008 0x5', '.* 4c 57 52 47$')
 
-        finally:
-            services.restore_services()
+
+    def cleanup(self):
+        self._services.restore_services()

@@ -2,21 +2,29 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import datetime, logging, subprocess, time
+import logging
+import time
+
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, smogcheck_tpm, \
     smogcheck_ttci, smogcheck_util
+from autotest_lib.client.cros import service_stopper
 
 
 class hardware_TPMTakeOwnership(test.test):
     version = 1
 
-    def setup(self):
+
+    def initialize(self):
         smogcheck_util.enableI2C()
         self.ttci_obj = None
         self.tpm_obj = None
         self.attr_dict = dict()  # Attributes to output
         self.perf_dict = dict()  # Performance measures to output
+        self._services = service_stopper.ServiceStopper(['cryptohomed',
+                                                         'chapsd', 'tcsd'])
+        self._services.stop_services()
+
 
     def _prepareTpmController(self):
         """Prepare a TpmController instance for use.
@@ -29,8 +37,9 @@ class hardware_TPMTakeOwnership(test.test):
         """
         try:
             self.tpm_obj = smogcheck_tpm.TpmController()
-        except smogcheck_tpm.SmogcheckError, e:
+        except smogcheck_tpm.SmogcheckError as e:
             raise error.TestFail('Error creating a TpmController: %s', e)
+
 
     def _prepareTtciController(self):
         """Prepare TtciController instances for use.
@@ -43,8 +52,9 @@ class hardware_TPMTakeOwnership(test.test):
         """
         try:
             self.ttci_obj = smogcheck_ttci.TtciController()
-        except smogcheck_ttci.TtciError, e:
+        except smogcheck_ttci.TtciError as e:
             raise error.TestFail('Error creating a TtciController: %s' % e)
+
 
     def _sleep(self, amount):
         """Sleeps for 'amount' of time and logs a message.
@@ -59,6 +69,7 @@ class hardware_TPMTakeOwnership(test.test):
             logging.debug('Slept for %0.2f millisecond', (amount * 1000))
         else:
             logging.debug('Slept for %0.2f microsecond', (amount * 1000000))
+
 
     def run_once(self, loop=-1, max_acceptable_delay=-1):
         self._prepareTtciController()
@@ -84,11 +95,6 @@ class hardware_TPMTakeOwnership(test.test):
                 raise error.TestFail('TTCI_Set_Reset_Control() error: %s' %
                                      self.ttci_obj.err)
             logging.info('TPM hardware Reset signal DEactivated')
-
-            # Stop tcsd here b/c tspi API above requires tcsd to be running
-            smogcheck_util.runInSubprocess(['stop', 'tcsd'])
-            # Wait for 1 sec for tcsd to stop
-            self._sleep(1)
 
             # Run TPM_Starup
             smogcheck_util.runInSubprocess(['tpmc', 'startup'])
@@ -143,15 +149,16 @@ class hardware_TPMTakeOwnership(test.test):
             # test suite control file, output report would still be complete
             self.perf_dict['max_delay_in_sec_actual'] = time_list[0]
 
-        except smogcheck_tpm.SmogcheckError, e:
+        except smogcheck_tpm.SmogcheckError as e:
             raise error.TestFail('Error: %r' % e)
         finally:
-            smogcheck_util.runInSubprocess(['start', 'tcsd'], [1])
-            # Wait for 1 sec for tcsd to start
-            self._sleep(1)
             # Output attibutes and performance keyval pairs
             self.write_iteration_keyval(self.attr_dict, self.perf_dict)
 
             # Close TPM context
             if self.tpm_obj.closeContext():
                 raise error.TestFail('Error closing tspi context')
+
+
+    def cleanup(self):
+        self._services.restore_services()
