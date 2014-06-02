@@ -37,6 +37,9 @@ class security_ASLR(test.test):
     _INITCTL_POLL_INTERVAL = 1
     _TEST_ITERATION_COUNT = 5
 
+    _ASAN_SYMBOL = "__asan_init"
+
+
     def get_processes_to_test(self):
         """Gets processes to test for main function
 
@@ -50,6 +53,20 @@ class security_ASLR(test.test):
         return [
             self.process('chrome', 'ui', 'session_manager'),
             self.process('debugd', 'debugd')]
+
+
+    def running_on_asan(self):
+        # -q, --quiet         * Only output 'bad' things
+        # -F, --format <arg>  * Use specified format for output
+        # -g, --gmatch        * Use regex rather than string compare (with -s)
+        # -s, --symbol <arg>  * Find a specified symbol
+        scanelf_command = "scanelf -qF'%s#F'"
+        scanelf_command += " -gs %s `which debugd`" % self._ASAN_SYMBOL
+        symbol = utils.system_output(scanelf_command)
+        logging.debug("running_on_asan(): symbol: '%s', _ASAN_SYMBOL: '%s'",
+                      symbol, self._ASAN_SYMBOL)
+        return symbol != ""
+
 
     class process:
         """Holds information about a process.
@@ -76,6 +93,7 @@ class security_ASLR(test.test):
         def get_parent(self):
             return self.__parent
 
+
     class mapping:
         """Holds information about a process's address mapping.
 
@@ -97,6 +115,7 @@ class security_ASLR(test.test):
 
         def __repr__(self):
             return "<mapping %s %s>" % (self.__name, self.__start)
+
 
     def get_pid_of(self, process):
         """Gets pid of process
@@ -135,6 +154,7 @@ class security_ASLR(test.test):
 
         # We never saw the process, so abort with details on who was missing.
         raise error.TestFail('Never saw a pid for "%s"' % (name))
+
 
     def test_randomization(self, process):
         """Tests ASLR of a single process.
@@ -191,6 +211,7 @@ class security_ASLR(test.test):
             test_result['pass'] = test_result['pass'] and result['pass']
         return test_result
 
+
     def restart(self, process):
         """Restarts a process given information about it.
 
@@ -217,6 +238,7 @@ class security_ASLR(test.test):
                 'initctl failed to restart process for %s' % name),
             timeout = self._INITCTL_RESTART_TIMEOUT,
             sleep_interval = self._INITCTL_POLL_INTERVAL)
+
 
     def has_restarted(self, process, status_command, initial_status):
         """Tells if initctl service is starting and has changed pid.
@@ -253,6 +275,7 @@ class security_ASLR(test.test):
         logging.debug('Restart done: %r', (is_running and is_new_pid))
         return (is_running and is_new_pid)
 
+
     def map(self, pid):
         """Creates data structure from table in /proc/<pid>/maps.
 
@@ -284,6 +307,7 @@ class security_ASLR(test.test):
             elif memory_map[name].get_start() < start:
                 memory_map[name].set_start(start)
         return memory_map
+
 
     def parse_result(self, result):
         """Builds dictionary from columns of a line of /proc/<pid>/maps
@@ -317,7 +341,8 @@ class security_ASLR(test.test):
         parsed_result = found_match.groupdict()
         return parsed_result
 
-    def run_once(self, seconds = 1):
+
+    def run_once(self, seconds=1):
         """Main function.
 
         Called when test is run.  Gets processes to test and calls test on
@@ -327,6 +352,10 @@ class security_ASLR(test.test):
             error.TestFail if any processes' memory mapping addresses are the
             same after restarting.
         """
+
+        if self.running_on_asan() and utils.get_arch() == "i386":
+            raise error.TestNAError(
+                    "security_ASLR is not available on 32-bit ASan.")
 
         processes = self.get_processes_to_test()
         aslr_enabled = True
