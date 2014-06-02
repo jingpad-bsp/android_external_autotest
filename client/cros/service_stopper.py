@@ -2,12 +2,29 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Provides utility class for stopping and restarting services"""
+"""
+Provides utility class for stopping and restarting services
+
+When using this class, one likely wishes to do the following:
+
+    def initialize(self):
+        self._services = service_stopper.ServiceStopper(['service'])
+        self._services.stop_services()
+
+
+    def cleanup(self):
+        self._services.start_services()
+
+As this ensures that the services will be off before the test code runs, and
+the test framework will ensure that the services are restarted through any
+code path out of the test.
+"""
 
 import logging
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+
 
 class ServiceStopper(object):
     """Class to manage CrOS services.
@@ -59,3 +76,12 @@ class ServiceStopper(object):
         for service in reversed(self._services_stopped):
             utils.system('start %s' % service, ignore_status=True)
         self._services_stopped = []
+
+
+    def __enter__(self):
+        self.stop_services()
+        return self
+
+
+    def __exit__(self, exnval, exntype, exnstack):
+        self.restore_services()
