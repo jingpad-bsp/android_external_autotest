@@ -72,24 +72,20 @@ class hardware_MemoryLatency(test.test):
         """
         super(hardware_MemoryLatency, self).initialize()
         self._results = {}
-        self._services = None
-
-
-    def run_once(self, warmup=100, num_iterations=20, max_size_mb='32',
-                 sample_size_kb=[ int(2), int(192) ], random=False, stride=512):
-
         stop = [ 'ui' ]
         stop.extend(service_stopper.ServiceStopper.POWER_DRAW_SERVICES)
         self._services = service_stopper.ServiceStopper(stop)
         self._services.stop_services()
 
+
+    def run_once(self, warmup=100, num_iterations=20, max_size_mb='32',
+                 sample_size_kb=[ int(2), int(192) ], random=False, stride=512):
         self._run_benchmarks(warmup, num_iterations, max_size_mb,
                              sample_size_kb, random, stride)
         self.write_perf_keyval(self._results)
 
 
     def cleanup(self):
-        if self._services:
-            self._services.restore_services()
+        self._services.restore_services()
         super(hardware_MemoryLatency, self).cleanup()
 

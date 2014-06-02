@@ -20,14 +20,12 @@ class hardware_Backlight(test.test):
         """
         super(hardware_Backlight, self).initialize()
         self._backlight = None
-        self._services = None
-
-
-    def run_once(self):
         # Stop powerd to avoid it adjusting backlight levels
         self._services = service_stopper.ServiceStopper(['powerd'])
         self._services.stop_services()
 
+
+    def run_once(self):
         # optionally test keyboard backlight
         kblight = None
         kblight_errs = 0
@@ -70,6 +68,5 @@ class hardware_Backlight(test.test):
     def cleanup(self):
         if self._backlight:
             self._backlight.restore()
-        if self._services:
-            self._services.restore_services()
+        self._services.restore_services()
         super(hardware_Backlight, self).cleanup()

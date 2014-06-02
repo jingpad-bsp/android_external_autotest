@@ -62,22 +62,19 @@ class hardware_MemoryThroughput(test.test):
     def initialize(self):
         super(hardware_MemoryThroughput, self).initialize()
         self._results = {}
-        self._services = None
-
-
-    def run_once(self, test='bcopy', warmup=100, num_iterations=20,
-                 parallel=1, sizes= [ 4096, 192 * 1024, 32 * 1024 * 1024 ]):
         stop = [ 'ui' ]
         stop.extend(service_stopper.ServiceStopper.POWER_DRAW_SERVICES)
         self._services = service_stopper.ServiceStopper(stop)
         self._services.stop_services()
 
+
+    def run_once(self, test='bcopy', warmup=100, num_iterations=20,
+                 parallel=1, sizes= [ 4096, 192 * 1024, 32 * 1024 * 1024 ]):
         self._run_benchmarks(test, warmup, num_iterations, parallel,
                              sizes)
         self.write_perf_keyval(self._results)
 
 
     def cleanup(self):
-        if self._services:
-            self._services.restore_services()
+        self._services.restore_services()
         super(hardware_MemoryThroughput, self).cleanup()
