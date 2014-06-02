@@ -165,7 +165,7 @@ class hardware_Badblocks(test.test):
 
         # Get partition size.
         logging.info('Determine partition size:')
-        part_size = site_utils.get_disk_size(dev)
+        part_size = utils.get_disk_size(dev)
         logging.info('Partition size (bytes): %s', part_size)
 
         # Run badblocks.

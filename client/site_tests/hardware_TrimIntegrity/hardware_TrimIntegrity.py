@@ -67,7 +67,7 @@ class hardware_TrimIntegrity(test.test):
 
         if file_size == 0:
             fulldisk = True
-            file_size = site_utils.get_disk_size(self._filename)
+            file_size = utils.get_disk_size(self._filename)
             if file_size == 0:
                 cmd = ('%s seem to have 0 storage block. Is the media present?'
                         % filename)

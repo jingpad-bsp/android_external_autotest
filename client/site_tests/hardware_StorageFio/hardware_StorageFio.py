@@ -3,8 +3,8 @@
 # found in the LICENSE file.
 
 import logging, os, re, time
-from autotest_lib.client.bin import site_utils, test, utils
-from autotest_lib.client.common_lib import error, fio_util
+from autotest_lib.client.bin import fio_util, site_utils, test, utils
+from autotest_lib.client.common_lib import error
 
 
 class hardware_StorageFio(test.test):
@@ -25,7 +25,7 @@ class hardware_StorageFio(test.test):
 
     def __get_disk_size(self):
         """Return the size in bytes of the device pointed to by __filename"""
-        self.__filesize = site_utils.get_disk_size(self.__filename)
+        self.__filesize = utils.get_disk_size(self.__filename)
 
         if not self.__filesize:
             raise error.TestNAError(

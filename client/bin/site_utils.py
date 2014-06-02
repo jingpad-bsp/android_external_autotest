@@ -971,19 +971,3 @@ def is_booted_from_internal_disk():
     """Return True if boot from internal disk. False, otherwise."""
     return get_root_device() == get_fixed_dst_drive()
 
-
-def get_disk_size(disk_name):
-    """
-    Return size of disk in byte. Return 0 in Error Case
-
-    @param disk_name: disk name to find size
-    """
-    device = os.path.basename(disk_name)
-    for line in file('/proc/partitions'):
-        try:
-            major, minor, blocks, name = re.split(r' +', line.strip())
-        except ValueError:
-            continue
-        if name == device:
-            return 1024 * int(blocks)
-    return 0

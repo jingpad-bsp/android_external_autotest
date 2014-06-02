@@ -674,6 +674,45 @@ def get_disks():
     return disk_re.findall(df_output)
 
 
+def get_disk_size(disk_name):
+    """
+    Return size of disk in byte. Return 0 in Error Case
+
+    @param disk_name: disk name to find size
+    """
+    device = os.path.basename(disk_name)
+    for line in file('/proc/partitions'):
+        try:
+            major, minor, blocks, name = re.split(r' +', line.strip())
+        except ValueError:
+            continue
+        if name == device:
+            return 1024 * int(blocks)
+    return 0
+
+
+def get_disk_size_gb(disk_name):
+    """
+    Return size of disk in GB (10^9). Return 0 in Error Case
+
+    @param disk_name: disk name to find size
+    """
+    return int(get_disk_size(disk_name) / (10.0 ** 9) + 0.5)
+
+
+def get_disk_model(disk_name):
+    """
+    Return model name for internal storage device
+
+    @param disk_name: disk name to find model
+    """
+    cmd1 = 'udevadm info --query=property --name=%s' % disk_name
+    cmd2 = 'grep -E "ID_(NAME|MODEL)="'
+    cmd3 = 'cut -f 2 -d"="'
+    cmd = ' | '.join([cmd1, cmd2, cmd3])
+    return utils.system_output(cmd)
+
+
 def load_module(module_name):
     # Checks if a module has already been loaded
     if module_is_loaded(module_name):

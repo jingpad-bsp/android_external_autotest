@@ -74,7 +74,7 @@ class hardware_DiskSize(test.test):
     def run_once(self):
         root_dev = site_utils.get_root_device()
         self._device = os.path.basename(root_dev)
-        disk_size = site_utils.get_disk_size(root_dev)
+        disk_size = utils.get_disk_size(root_dev)
         if not disk_size:
             raise error.TestError('Unable to determine main disk size')
 

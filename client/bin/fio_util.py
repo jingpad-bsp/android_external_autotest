@@ -573,7 +573,7 @@ def fio_generate_graph():
         utils.run('mv *.html results', ignore_status=True)
 
 
-def fio_runner(test, job, env_vars):
+def fio_runner(test, job, env_vars, perfdb_name_prefix=None):
     """
     Runs fio.
 
@@ -581,7 +581,7 @@ def fio_runner(test, job, env_vars):
     @param job: fio config file to use
     @param env_vars: environment variable fio will substituete in the fio
         config file.
-
+    @param perfdb_name_prefix: prefix of name to use in chrome perf dashboard
     @return fio results.
 
     """
@@ -610,6 +610,25 @@ def fio_runner(test, job, env_vars):
 
     result = fio_parser(fio.stdout)
 
+    filename = re.match('.*FILENAME=(?P<f>[^ ]*)', env_vars).group('f')
+    m = re.match('/dev/sd[a-z]|/dev/mmcblk[0-9]*', filename)
+    if not m:
+        cmd = 'df %s | tail -1 | cut -f 1 -d" "' % filename
+        filesystem = utils.system_output(cmd)
+        m = re.match('/dev/sd[a-z]|/dev/mmcblk[0-9]*', filesystem)
+        logging.info('filename:%s filesystem:%s', filename, filesystem)
+
+    if m:
+        diskname = m.group(0)
+        model = utils.get_disk_model(diskname)
+        size = utils.get_disk_size_gb(diskname)
+        perfdb_name = '%s_%dG' % (model, size)
+    else:
+        perfdb_name = filesystem.replace('/', '_')
+
+    if perfdb_name_prefix:
+        perfdb_name = perfdb_name_prefix + '_' + perfdb_name
+
     # Upload bw / 99% lat to dashboard
     bw_matcher = re.compile('.*(rd|wr)_bw_KB_sec')
     lat_matcher = re.compile('.*(rd|wr)_lat_99.00_percent_usec')
@@ -619,10 +638,9 @@ def fio_runner(test, job, env_vars):
         if skip_matcher.match(k):
             continue
         if bw_matcher.match(k):
-            test.output_perf_value(description=k, value=v, units='KB_per_sec',
-                                   higher_is_better=True)
+            test.output_perf_value(description=perfdb_name, graph=k, value=v,
+                                   units='KB_per_sec', higher_is_better=True)
         elif lat_matcher.match(k):
-            test.output_perf_value(description=k, value=v, units='us',
-                                   higher_is_better=False)
-
+            test.output_perf_value(description=perfdb_name, graph=k, value=v,
+                                   units='us', higher_is_better=False)
     return result

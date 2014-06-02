@@ -3,8 +3,7 @@
 # found in the LICENSE file.
 
 import logging, os, shutil, tempfile
-from autotest_lib.client.bin import test, utils
-from autotest_lib.client.common_lib import fio_util
+from autotest_lib.client.bin import fio_util, test, utils
 from autotest_lib.client.cros import cryptohome
 
 TEST_USER = 'test@chromium.org'
