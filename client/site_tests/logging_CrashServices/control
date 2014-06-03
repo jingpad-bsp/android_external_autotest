@@ -9,7 +9,6 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "logging"
 TEST_TYPE = "client"
-SUITE = "qav"
 
 DOC = """
 Crash all valid Chrome OS processes from a whitelist, and confirm
