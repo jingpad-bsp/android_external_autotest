@@ -1026,7 +1026,7 @@ class FirmwareTest(FAFTBase):
                     self.faft_client.system.run_shell_command(
                              'chromeos-firmwareupdate --mode todev && reboot')
                     self.do_reboot_action(self.enable_keyboard_dev_mode)
-                    # TOOD : Add a ctrl_d to speed through the dev screen.
+                    self.wait_dev_screen_and_ctrl_d()
         else:
             if (not self.faft_config.keyboard_dev and
                 not self.checkers.crossystem_checker({'devsw_cur': '0'})):
@@ -1100,7 +1100,8 @@ class FirmwareTest(FAFTBase):
     ################################################
     # Reboot APIs
 
-    def reboot_warm(self, sync_before_boot=True, wait_for_dut_up=True):
+    def reboot_warm(self, sync_before_boot=True,
+                    wait_for_dut_up=True, ctrl_d=False):
         """
         Perform a warm reboot.
 
@@ -1109,16 +1110,20 @@ class FirmwareTest(FAFTBase):
 
         @param sync_before_boot: bool, sync to disk before booting.
         @param wait_for_dut_up: bool, wait for dut to boot before returning.
+        @param ctrl_d: bool, press ctrl-D at dev screen.
         """
         if sync_before_boot:
             self.faft_client.system.run_shell_command('sync')
             time.sleep(self.faft_config.sync)
         self.reboot_warm_trigger()
+        if ctrl_d:
+            self.wait_dev_screen_and_ctrl_d()
         if wait_for_dut_up:
             self.wait_for_client_offline()
             self.wait_for_kernel_up()
 
-    def reboot_cold(self, sync_before_boot=True, wait_for_dut_up=True):
+    def reboot_cold(self, sync_before_boot=True,
+                    wait_for_dut_up=True, ctrl_d=False):
         """
         Perform a cold reboot.
 
@@ -1127,11 +1132,14 @@ class FirmwareTest(FAFTBase):
 
         @param sync_before_boot: bool, sync to disk before booting.
         @param wait_for_dut_up: bool, wait for dut to boot before returning.
+        @param ctrl_d: bool, press ctrl-D at dev screen.
         """
         if sync_before_boot:
             self.faft_client.system.run_shell_command('sync')
             time.sleep(self.faft_config.sync)
         self.reboot_cold_trigger()
+        if ctrl_d:
+            self.wait_dev_screen_and_ctrl_d()
         if wait_for_dut_up:
             self.wait_for_client_offline()
             self.wait_for_kernel_up()
