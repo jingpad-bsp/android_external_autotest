@@ -152,8 +152,10 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
             except Exception as e:
                 # The messages differ based on the webdriver version
                 logging.error('Getting the screenshot failed. %s', e)
+                # TODO (krisr) this too can fail with an exception.
                 self._check_for_alert_in_message(str(e),
                                                  self._handler(None))
+                logging.error('Alert was handled.')
                 screenshot = None
             if screenshot:
                 self._screenshot_list.append(screenshot)

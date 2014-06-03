@@ -196,27 +196,20 @@ class ChaosRunner(object):
 
         """
         securities = list()
-        if len(networks) == 0:
-            # The SSID of the AP was not found
-            logging.error('The ssid %s was not found in the scan', ap.ssid)
-            job.run_test('network_WiFi_ChaosConfigFailure', ap=ap,
-                         error_string=chaos_constants.AP_SSID_NOTFOUND,
-                         tag=ap.ssid)
+        # Sanitize MIXED security setting for both Static and Dynamic
+        # configurators before doing the comparison.
+        security = networks[0].security
+        if (security == iw_runner.SECURITY_MIXED and
+            ap.configurator_type == ap_spec.CONFIGURATOR_STATIC):
+            securities = [iw_runner.SECURITY_WPA, iw_runner.SECURITY_WPA2]
+            # We have only seen WPA2 be backwards compatible, and we want
+            # to verify the configurator did the right thing. So we
+            # promote this to WPA2 only.
+        elif (security == iw_runner.SECURITY_MIXED and
+              ap.configurator_type == ap_spec.CONFIGURATOR_DYNAMIC):
+            securities = [iw_runner.SECURITY_WPA2]
         else:
-            # Sanitize MIXED security setting for both Static and Dynamic
-            # configurators before doing the comparison.
-            security = networks[0].security
-            if (security == iw_runner.SECURITY_MIXED and
-                ap.configurator_type == ap_spec.CONFIGURATOR_STATIC):
-                securities = [iw_runner.SECURITY_WPA, iw_runner.SECURITY_WPA2]
-                # We have only seen WPA2 be backwards compatible, and we want
-                # to verify the configurator did the right thing. So we
-                # promote this to WPA2 only.
-            elif (security == iw_runner.SECURITY_MIXED and
-                  ap.configurator_type == ap_spec.CONFIGURATOR_DYNAMIC):
-                securities = [iw_runner.SECURITY_WPA2]
-            else:
-                securities = [security]
+            securities = [security]
         return securities
 
 
@@ -254,24 +247,33 @@ class ChaosRunner(object):
         @returns a list of networks returned from _scan_for_networks().
 
         """
-        networks = self._scan_for_networks(ap.ssid, capturer)
-        security = self._get_security_from_scan(ap, networks, job)
-        if self._ap_spec.security not in security:
-            logging.info('SSID %s was not found in the first scan. Scan one '
-                         'more time', ap.ssid)
-            time.sleep(60)
+        for i in range(2):
             networks = self._scan_for_networks(ap.ssid, capturer)
-            security = self._get_security_from_scan(ap, networks, job)
-            if self._ap_spec.security not in security:
-                logging.error('%s was the expected security but got %s: %s',
-                              self._ap_spec.security,
-                              str(security).strip('[]'),
-                              networks)
-                job.run_test('network_WiFi_ChaosConfigFailure',
-                             ap=ap,
-                             error_string=chaos_constants.AP_SECURITY_MISMATCH,
+            if len(networks) == 0:
+                # The SSID wasn't even found, abort
+                logging.error('The ssid %s was not found in the scan', ap.ssid)
+                job.run_test('network_WiFi_ChaosConfigFailure', ap=ap,
+                             error_string=chaos_constants.AP_SSID_NOTFOUND,
                              tag=ap.ssid)
-                networks = list()
+                return list()
+            security = self._get_security_from_scan(ap, networks, job)
+            if self._ap_spec.security in security:
+                return networks
+            if i == 0:
+                # The SSID exists but the security is wrong, give the AP time
+                # to possible update it.
+                time.sleep(60)
+
+        if self._ap_spec.security not in security:
+            logging.error('%s was the expected security but got %s: %s',
+                          self._ap_spec.security,
+                          str(security).strip('[]'),
+                          networks)
+            job.run_test('network_WiFi_ChaosConfigFailure',
+                         ap=ap,
+                         error_string=chaos_constants.AP_SECURITY_MISMATCH,
+                         tag=ap.ssid)
+            networks = list()
         return networks
 
 
