@@ -20,15 +20,16 @@ _drone_manager: reference to global DroneManager instance.
 
 import datetime, itertools, logging, os, re, sys, time, weakref
 from autotest_lib.client.common_lib import global_config, host_protections
-from autotest_lib.client.common_lib import global_config, utils
+from autotest_lib.client.common_lib import utils
+from autotest_lib.client.common_lib import control_data
+from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.frontend.afe import models, model_attributes
 from autotest_lib.scheduler import drone_manager, email_manager
 from autotest_lib.scheduler import rdb_lib
 from autotest_lib.scheduler import scheduler_config
 from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.server.cros import provision
-from autotest_lib.site_utils.graphite import stats
-from autotest_lib.client.common_lib import control_data
+
 
 _notify_email_statuses = []
 _base_url = None

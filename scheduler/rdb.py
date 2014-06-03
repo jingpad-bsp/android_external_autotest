@@ -13,12 +13,12 @@ import common
 from django.core import exceptions as django_exceptions
 from django.db.models import fields
 from django.db.models import Q
+from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.frontend.afe import models
 from autotest_lib.scheduler import rdb_cache_manager
 from autotest_lib.scheduler import rdb_hosts
 from autotest_lib.scheduler import rdb_requests
 from autotest_lib.scheduler import rdb_utils
-from autotest_lib.site_utils.graphite import stats
 
 
 _timer = stats.Timer(rdb_utils.RDB_STATS_KEY)

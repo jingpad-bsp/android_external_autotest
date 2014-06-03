@@ -1,9 +1,9 @@
 import os, time, logging, shutil
 
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.client.cros import constants
 from autotest_lib.server import utils
-from autotest_lib.site_utils.graphite import stats
 
 
 # import any site hooks for the crashdump and crashinfo collection

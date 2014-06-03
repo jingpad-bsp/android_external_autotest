@@ -16,6 +16,7 @@ import django.db
 
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
+from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.frontend.afe import models, rpc_utils
 from autotest_lib.scheduler import agent_task, drone_manager, drones
 from autotest_lib.scheduler import email_manager, gc_stats, host_scheduler
@@ -27,7 +28,6 @@ from autotest_lib.scheduler import scheduler_models
 from autotest_lib.scheduler import status_server, scheduler_config
 from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.server import autoserv_utils
-from autotest_lib.site_utils.graphite import stats
 
 BABYSITTER_PID_FILE_PREFIX = 'monitor_db_babysitter'
 PID_FILE_PREFIX = 'monitor_db'

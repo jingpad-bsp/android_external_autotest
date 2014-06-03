@@ -10,12 +10,12 @@ if necessary.
 
 import os
 
+from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.frontend.afe import models, model_attributes
 from autotest_lib.scheduler import agent_task, drones, drone_manager
 from autotest_lib.scheduler import email_manager, pidfile_monitor
 from autotest_lib.scheduler import scheduler_config
 from autotest_lib.server import autoserv_utils
-from autotest_lib.site_utils.graphite import stats
 
 
 _drone_manager = drone_manager.instance()

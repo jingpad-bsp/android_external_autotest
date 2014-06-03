@@ -18,6 +18,7 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
+from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.client.cros import constants
 from autotest_lib.client.cros import cros_ui
 from autotest_lib.server import autoserv_parser
@@ -27,7 +28,6 @@ from autotest_lib.server.cros.dynamic_suite import tools, frontend_wrappers
 from autotest_lib.server.hosts import abstract_ssh
 from autotest_lib.server.hosts import chameleon_host
 from autotest_lib.server.hosts import servo_host
-from autotest_lib.site_utils.graphite import stats
 from autotest_lib.site_utils.rpm_control_system import rpm_client
 
 
@@ -1116,6 +1116,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         # Enable fastsync to avoid running extra sync commands before reboot.
         if 'fastsync' not in dargs:
             dargs['fastsync'] = True
+
         super(CrosHost, self).reboot(**dargs)
 
 

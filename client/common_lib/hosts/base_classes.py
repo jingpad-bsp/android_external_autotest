@@ -15,7 +15,7 @@ poirier@google.com (Benjamin Poirier),
 stutsman@google.com (Ryan Stutsman)
 """
 
-import cPickle, cStringIO, logging, os, re, time
+import cPickle, cStringIO, logging, os, re
 
 from autotest_lib.client.common_lib import global_config, error, utils
 from autotest_lib.client.common_lib import host_protections
@@ -203,7 +203,6 @@ class Host(object):
             if log_failure:
                 self.record("ABORT", None, "reboot.verify", "shut down failed")
             raise error.AutoservShutdownError("Host did not shut down")
-
         if self.wait_up(timeout):
             self.record("GOOD", None, "reboot.verify")
             self.reboot_followup(**dargs)

@@ -3,13 +3,12 @@ Autotest AFE Cleanup used by the scheduler
 """
 
 
-import collections, datetime, time, logging, random
-from autotest_lib.database import database_connection
+import time, logging, random
+
 from autotest_lib.frontend.afe import models
 from autotest_lib.scheduler import email_manager, scheduler_config
 from autotest_lib.client.common_lib import host_protections
-from autotest_lib.site_utils.graphite import stats
-
+from autotest_lib.client.common_lib.cros.graphite import stats
 
 class PeriodicCleanup(object):
 

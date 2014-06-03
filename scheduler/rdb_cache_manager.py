@@ -81,9 +81,9 @@ import collections
 import logging
 
 import common
+from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.client.common_lib.global_config import global_config
 from autotest_lib.scheduler import rdb_utils
-from autotest_lib.site_utils.graphite import stats
 
 MEMOIZE_KEY = 'memoized_hosts'
 

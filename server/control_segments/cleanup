@@ -2,7 +2,7 @@ import logging
 import os
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.site_utils.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.server.cros import provision
 
 

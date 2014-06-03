@@ -21,10 +21,10 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
+from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.server import site_utils as server_site_utils
 from autotest_lib.server.cros.servo import servo
 from autotest_lib.server.hosts import ssh_host
-from autotest_lib.site_utils.graphite import stats
 from autotest_lib.site_utils.rpm_control_system import rpm_client
 
 

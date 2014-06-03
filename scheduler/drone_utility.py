@@ -1,15 +1,15 @@
 #!/usr/bin/python
 
-import pickle, subprocess, os, shutil, socket, sys, time, signal, getpass
+import pickle, subprocess, os, shutil, sys, time, signal, getpass
 import datetime, traceback, tempfile, itertools, logging
 import common
 from autotest_lib.client.common_lib import utils, global_config, error
 from autotest_lib.client.common_lib import logging_manager
 from autotest_lib.client.common_lib.cros import retry
+from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.scheduler import drone_logging_config
 from autotest_lib.scheduler import email_manager, scheduler_config
 from autotest_lib.server import hosts, subcommand
-from autotest_lib.site_utils.graphite import stats
 
 # An environment variable we add to the environment to enable us to
 # distinguish processes we started from those that were started by

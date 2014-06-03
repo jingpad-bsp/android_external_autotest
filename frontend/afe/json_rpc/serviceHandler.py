@@ -22,7 +22,7 @@
 import traceback
 
 from json import decoder, encoder
-from autotest_lib.site_utils.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import stats
 
 def customConvertJson(value):
     """\

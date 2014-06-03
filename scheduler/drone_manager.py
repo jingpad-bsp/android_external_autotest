@@ -1,9 +1,10 @@
-import os, re, shutil, signal, subprocess, errno, time, heapq, traceback
-import common, logging
+import os, time, heapq, traceback, logging
+
+import common
 from autotest_lib.client.common_lib import error, global_config, utils
+from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.scheduler import email_manager, drone_utility, drones
 from autotest_lib.scheduler import scheduler_config
-from autotest_lib.site_utils.graphite import stats
 
 
 # results on drones will be placed under the drone_installation_directory in a

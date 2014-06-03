@@ -17,7 +17,7 @@ from autotest_lib.client.bin import utils as site_utils
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros import retry
-from autotest_lib.site_utils.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import stats
 # TODO(cmasone): redo this class using requests module; http://crosbug.com/30107
 
 

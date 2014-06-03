@@ -4,8 +4,8 @@
 import logging
 
 from autotest_lib.client.common_lib import global_config, error
+from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.scheduler import drones, scheduler_config
-from autotest_lib.site_utils.graphite import stats
 
 HOSTS_JOB_SUBDIR = 'hosts/'
 PARSE_LOG = '.parse.log'

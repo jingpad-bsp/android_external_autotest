@@ -34,13 +34,13 @@ import common
 from autotest_lib.frontend import setup_django_environment
 
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.scheduler import email_manager
 from autotest_lib.scheduler import query_managers
 from autotest_lib.scheduler import rdb_lib
 from autotest_lib.scheduler import rdb_utils
 from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.scheduler import scheduler_models
-from autotest_lib.site_utils.graphite import stats
 
 _db_manager = None
 _shutdown = False

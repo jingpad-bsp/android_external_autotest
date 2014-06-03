@@ -37,9 +37,8 @@ from autotest_lib.server import frontend
 from autotest_lib.server import server_logging_config
 from autotest_lib.server import server_job, utils, autoserv_parser, autotest
 from autotest_lib.server import utils as server_utils
-
 from autotest_lib.client.common_lib import pidfile, logging_manager
-from autotest_lib.site_utils.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import stats
 
 def log_alarm(signum, frame):
     logging.error("Received SIGALARM. Ignoring and continuing on.")

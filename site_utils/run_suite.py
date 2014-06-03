@@ -43,6 +43,7 @@ import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config, enum
 from autotest_lib.client.common_lib import priorities
+from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.server import utils
 from autotest_lib.server.cros.dynamic_suite import constants
@@ -50,7 +51,6 @@ from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.server.cros.dynamic_suite import reporting_utils
 from autotest_lib.server.cros.dynamic_suite import tools
-from autotest_lib.site_utils.graphite import stats
 from autotest_lib.site_utils import diagnosis_utils
 
 CONFIG = global_config.global_config

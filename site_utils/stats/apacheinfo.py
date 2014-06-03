@@ -8,8 +8,8 @@ import logging
 
 import common
 import requests
+from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.site_utils.stats import registry
-from autotest_lib.site_utils.graphite import stats
 
 
 # requests will log at INFO and DEBUG, which gets automatically enabled by
