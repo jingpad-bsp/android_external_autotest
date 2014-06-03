@@ -28,6 +28,17 @@ def cros_version_to_label(image):
     return CROS_VERSION_PREFIX + ':' + image
 
 
+def fw_version_to_label(image):
+    """
+    Returns the proper label name for a firmware build of |image|.
+
+    @param image: A string of the form 'lumpy-release/R28-3993.0.0'
+    @returns: A string that is the appropriate label name.
+
+    """
+    return FW_VERSION_PREFIX + ':' + image
+
+
 class _SpecialTaskAction(object):
     """
     Base class to give a template for mapping labels to tests.

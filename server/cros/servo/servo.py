@@ -623,7 +623,7 @@ class Servo(object):
             return
         # Initialize firmware programmer
         servo_version = self._server.get_version()
-        if servo_version == 'servo_v2':
+        if servo_version.startswith('servo_v2'):
             self._programmer = firmware_programmer.ProgrammerV2(self)
         else:
             raise error.TestError(

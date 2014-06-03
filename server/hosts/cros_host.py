@@ -15,6 +15,7 @@ import xmlrpclib
 
 import common
 from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import autotemp
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import autoupdater
@@ -25,8 +26,10 @@ from autotest_lib.client.cros import constants
 from autotest_lib.client.cros import cros_ui
 from autotest_lib.server import autoserv_parser, autotest
 from autotest_lib.server import utils as server_utils
+from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants as ds_constants
 from autotest_lib.server.cros.dynamic_suite import tools, frontend_wrappers
+from autotest_lib.server.cros.faft.config.config import Config as FAFTConfig
 from autotest_lib.server.hosts import abstract_ssh
 from autotest_lib.server.hosts import chameleon_host
 from autotest_lib.server.hosts import servo_host
@@ -163,6 +166,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
     _RPM_OUTLET_CHANGED = 'outlet_changed'
 
+    # URL pattern to download firmware image.
+    _FW_IMAGE_URL_PATTERN = global_config.global_config.get_config_value(
+            'CROS', 'firmware_url_pattern', type=str)
 
     @staticmethod
     def check_host(host, timeout=10):
@@ -717,6 +723,95 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             self.run('rm -rf ' + installed_autodir)
         except autotest.AutodirNotFoundError:
             logging.debug('No autotest installed directory found.')
+
+
+    def _clear_fw_version_labels(self):
+        """Clear firmware version labels from the machine."""
+        labels = self._AFE.get_labels(
+                name__startswith=provision.FW_VERSION_PREFIX,
+                host__hostname=self.hostname)
+        for label in labels:
+            label.remove_hosts(hosts=[self.hostname])
+
+
+    def _add_fw_version_label(self, build):
+        """Add firmware version label to the machine.
+
+        @param build: Build of firmware.
+
+        """
+        fw_label = provision.fw_version_to_label(build)
+        provision.ensure_label_exists(fw_label)
+        label = self._AFE.get_labels(name__startswith=fw_label)[0]
+        label.add_hosts([self.hostname])
+
+
+    def firmware_install(self, build=None):
+        """Install firmware to the DUT.
+
+        Use stateful update if the DUT is already running the same build.
+        Stateful update does not update kernel and tends to run much faster
+        than a full reimage. If the DUT is running a different build, or it
+        failed to do a stateful update, full update, including kernel update,
+        will be applied to the DUT.
+
+        Once a host enters firmware_install its fw_version label will be
+        removed. After the firmware is updated successfully, a new fw_version
+        label will be added to the host.
+
+        @param build: The build version to which we want to provision the
+                      firmware of the machine,
+                      e.g. 'link-firmware/R22-2695.1.144'.
+
+        TODO(dshi): After bug 381718 is fixed, update here with corresponding
+                    exceptions that could be raised.
+
+        """
+        if not self.servo:
+            raise error.TestError('Host %s does not have servo.' %
+                                  self.hostname)
+
+        # TODO(fdeng): use host.get_board() after
+        # crbug.com/271834 is fixed.
+        board = self._get_board_from_afe()
+
+        # If build is not set, assume it's repair mode and try to install
+        # firmware from stable CrOS.
+        if not build:
+            build = self.get_repair_image_name()
+
+        config = FAFTConfig(board)
+        if config.use_u_boot:
+            ap_image = 'image-%s.bin' % board
+        else: # Depthcharge platform
+            ap_image = 'image.bin'
+        ec_image = 'ec.bin'
+        ds = dev_server.ImageServer.resolve(build)
+        ds.stage_artifacts(build, ['firmware'])
+
+        tmpd = autotemp.tempdir(unique_id='fwimage')
+        try:
+            fwurl = self._FW_IMAGE_URL_PATTERN % (ds.url(), build)
+            local_tarball = os.path.join(tmpd.name, os.path.basename(fwurl))
+            server_utils.system('wget -O %s %s' % (local_tarball, fwurl),
+                                timeout=60)
+            server_utils.system('tar xf %s -C %s %s %s' %
+                                (local_tarball, tmpd.name, ap_image, ec_image),
+                                timeout=60)
+            server_utils.system('tar xf %s  --wildcards -C %s "dts/*"' %
+                                (local_tarball, tmpd.name),
+                                timeout=60, ignore_status=True)
+
+            self._clear_fw_version_labels()
+            logging.info('Will re-program EC now')
+            self.servo.program_ec(os.path.join(tmpd.name, ec_image))
+            logging.info('Will re-program BIOS now')
+            self.servo.program_bios(os.path.join(tmpd.name, ap_image))
+            self.servo.get_power_state_controller().reset()
+            time.sleep(self.servo.BOOT_DELAY)
+            self._add_fw_version_label()
+        finally:
+            tmpd.clean()
 
 
     def show_update_engine_log(self):
