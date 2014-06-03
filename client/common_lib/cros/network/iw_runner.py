@@ -529,7 +529,8 @@ class IwRunner(object):
         @param ssid: ssid as a string
         @param timeout_seconds: the amount of time to wait in seconds
 
-        @returns a list of IwBss collections that contain the given bss or ssid
+        @returns a list of IwBss collections that contain the given bss or ssid;
+            if the scan is empty or returns an error code None is returned.
 
         """
         start_time = time.time()
@@ -538,7 +539,7 @@ class IwRunner(object):
                      timeout_seconds)
         while time.time() - start_time < timeout_seconds:
             scan_results = self.scan(interface)
-            if scan_results is None:
+            if scan_results is None or len(scan_results) == 0:
                 scan_failure_attempts += 1
                 # Allow in-progress scan to complete
                 time.sleep(5)
@@ -551,7 +552,7 @@ class IwRunner(object):
                     return None
                 continue
             scan_failure_attempts = 0
-            matching_bsses = []
+            matching_bsses = list()
             for iwbss in scan_results:
                 if bss is not None and iwbss.bss != bss:
                     continue
@@ -560,8 +561,11 @@ class IwRunner(object):
                 matching_bsses.append(iwbss)
             if len(matching_bsses) > 0:
                 return matching_bsses
+
+        if scan_failure_attempts > 0:
+            return None
         # The SSID wasn't found, but the device is fine.
-        return []
+        return list()
 
 
     def wait_for_link(self, interface, timeout_seconds=10):
