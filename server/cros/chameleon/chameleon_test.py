@@ -160,8 +160,11 @@ class ChameleonTest(test.test):
         @return: None if the check passes; otherwise, a string of error message.
         """
         logging.info('Checking screen with Chameleon (tag: %s)...', tag)
-        chameleon_path = os.path.join(self.outputdir, '%s-chameleon.rgba' % tag)
-        dut_path = os.path.join(self.outputdir, '%s-dut.rgba' % tag)
+        suffix = self.chameleon.get_pixel_format()
+        chameleon_path = os.path.join(self.outputdir,
+                                      '%s-chameleon.%s' % (tag, suffix))
+        dut_path = os.path.join(self.outputdir,
+                                '%s-dut.%s' % (tag, suffix))
 
         logging.info('Capturing framebuffer on Chameleon.')
         chameleon_pixels = self.chameleon_port.capture_screen(chameleon_path)
@@ -179,9 +182,9 @@ class ChameleonTest(test.test):
 
         logging.info('Comparing the pixels...')
         total_wrong_pixels = 0
-        # The dut_pixels array are formatted in BGRA.
-        for i in xrange(0, len(dut_pixels), 4):
-            # Skip the fourth byte, i.e. the alpha value.
+        pixel_length = self.chameleon.get_pixel_length()
+        for i in xrange(0, len(dut_pixels), pixel_length):
+            # Always compare the first 3 bytes, i.e. RGB.
             chameleon_pixel = map(self._unlevel_func, chameleon_pixels[i:i+3])
             dut_pixel = tuple(ord(p) for p in dut_pixels[i:i+3])
             # Compute the maximal difference for a pixel.
