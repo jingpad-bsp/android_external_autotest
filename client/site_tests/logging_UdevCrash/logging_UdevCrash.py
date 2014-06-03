@@ -9,6 +9,7 @@ from autotest_lib.client.cros import crash_test
 
 
 class logging_UdevCrash(crash_test.CrashTest):
+    """Verify udev triggered crash works as expected."""
     version = 1
 
 
@@ -33,12 +34,21 @@ class logging_UdevCrash(crash_test.CrashTest):
                 raise error.TestFail('Crash report %s has wrong extension' %
                                      filename)
 
-            for line in f:
-                if 'END-OF-LOG' in line:
-                    return True
-                if not 'atmel_mxt_ts' in line:
-                    raise error.TestFail('Crash report contains invalid '
-                                         'content %s' % line)
+            data = f.read()
+            # Check that we have seen the end of the file. Otherwise we could
+            # end up racing bwtween writing to the log file and reading/checking
+            # the log file.
+            if 'END-OF-LOG' not in data:
+                continue
+
+            lines = data.splitlines()
+            bad_lines = [x for x in lines if 'atmel_mxt_ts' not in x
+                                             and 'END-OF-LOG' not in x]
+            if bad_lines:
+                raise error.TestFail('Crash report contains invalid '
+                                     'content %s' % bad_lines)
+            return True
+
         return False
 
     def _test_udev_report_atmel(self):
