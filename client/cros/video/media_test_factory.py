@@ -5,6 +5,7 @@
 import ConfigParser
 import datetime
 import os
+import shutil
 
 from autotest_lib.client.bin import utils
 
@@ -232,6 +233,12 @@ class MediaTestFactory(object):
                                                minutes=duration.minute,
                                                seconds=duration.second)
 
+        path = os.path.join(self.autotest_dir, self.html_filename)
+
+        # Copy video.html file into what this bin_dir is
+        shutil.copy(path, self.bin_dir)
+
+        # We must have succeeded copying, save new file path
         http_fullpath = os.path.join(self.bin_dir, self.html_filename)
 
         self.media_url = self.http_server.UrlOf(http_fullpath)
