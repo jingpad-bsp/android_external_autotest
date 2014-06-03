@@ -423,7 +423,7 @@ class power_LoadTest(test.test):
             for e in form_data:
                 key = 'ext_' + e
                 if key in self._tmp_keyvals:
-                    self._tmp_keyvals[key] += form_data[e]
+                    self._tmp_keyvals[key] += "_%s" % form_data[e]
                 else:
                     self._tmp_keyvals[key] = form_data[e]
         else:
