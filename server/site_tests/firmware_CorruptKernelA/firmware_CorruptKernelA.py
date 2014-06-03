@@ -29,16 +29,16 @@ class firmware_CorruptKernelA(FirmwareTest):
         self.restore_kernel()
         super(firmware_CorruptKernelA, self).cleanup()
 
-    def run_once(self):
+    def run_once(self, dev_mode=False):
         logging.info("Corrupt kernel A.")
         self.check_state((self.checkers.root_part_checker, 'a'))
         self.faft_client.kernel.corrupt_sig('a')
-        self.reboot_warm()
+        self.reboot_warm(ctrl_d=dev_mode)
 
         logging.info("Expected kernel B boot and restore kernel A.")
         self.check_state((self.checkers.root_part_checker, 'b'))
         self.faft_client.kernel.restore_sig('a')
-        self.reboot_warm()
+        self.reboot_warm(ctrl_d=dev_mode)
 
         logging.info("Expected kernel A boot.")
         self.check_state((self.checkers.root_part_checker, 'a'))
