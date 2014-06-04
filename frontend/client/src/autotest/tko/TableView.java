@@ -1,5 +1,6 @@
 package autotest.tko;
 
+import autotest.common.StatusSummary;
 import autotest.common.Utils;
 import autotest.common.CustomHistory.HistoryToken;
 import autotest.common.table.DataTable;
@@ -537,7 +538,12 @@ public class TableView extends ConditionTabView
 
     public Widget createWidget(int row, int cell, JSONObject rowObject) {
         assert getActiveGrouping() == GroupingType.STATUS_COUNTS;
-        StatusSummary statusSummary = StatusSummary.getStatusSummary(rowObject);
+        StatusSummary statusSummary = StatusSummary.getStatusSummary(
+            rowObject,
+            TestGroupDataSource.PASS_COUNT_FIELD,
+            TestGroupDataSource.COMPLETE_COUNT_FIELD,
+            TestGroupDataSource.INCOMPLETE_COUNT_FIELD,
+            TestGroupDataSource.GROUP_COUNT_FIELD);
         SimplePanel panel = new SimplePanel();
         panel.add(new HTML(statusSummary.formatContents()));
         panel.getElement().addClassName(statusSummary.getCssClass());

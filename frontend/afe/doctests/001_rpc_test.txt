@@ -34,6 +34,12 @@
 >>> if drone_set:
 ...     _ = models.DroneSet.objects.create(name=drone_set)
 
+# mock up tko rpc_interface
+>>> from autotest_lib.client.common_lib.test_utils import mock
+>>> mock.mock_god().stub_function_to_return(rpc_interface.tko_rpc_interface,
+...                                         'get_status_counts',
+...                                         None)
+
 # basic interface test
 ######################
 

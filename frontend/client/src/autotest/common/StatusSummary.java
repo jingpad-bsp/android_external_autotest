@@ -1,15 +1,12 @@
 // Copyright 2008 Google Inc. All Rights Reserved.
 
-package autotest.tko;
-
-import autotest.common.AbstractStatusSummary;
-import autotest.common.Utils;
+package autotest.common;
 
 import com.google.gwt.json.client.JSONObject;
 
 import java.util.Arrays;
 
-class StatusSummary extends AbstractStatusSummary {
+public class StatusSummary extends AbstractStatusSummary {
     public int passed = 0;
     public int complete = 0;
     public int incomplete = 0;
@@ -17,12 +14,14 @@ class StatusSummary extends AbstractStatusSummary {
 
     private String[] contents = null;
 
-    public static StatusSummary getStatusSummary(JSONObject group) {
+    public static StatusSummary getStatusSummary(JSONObject group, String passCountField,
+                                                String completeCountField, String incompleteCountField,
+                                                String groupCountField) {
         StatusSummary summary = new StatusSummary();
-        summary.passed = getField(group, TestGroupDataSource.PASS_COUNT_FIELD);
-        summary.complete = getField(group, TestGroupDataSource.COMPLETE_COUNT_FIELD);
-        summary.incomplete = getField(group, TestGroupDataSource.INCOMPLETE_COUNT_FIELD);
-        summary.total = getField(group, TestGroupDataSource.GROUP_COUNT_FIELD);
+        summary.passed = getField(group, passCountField);
+        summary.complete = getField(group, completeCountField);
+        summary.incomplete = getField(group, incompleteCountField);
+        summary.total = getField(group, groupCountField);
 
         if (group.containsKey("extra_info")) {
             summary.contents = Utils.JSONtoStrings(group.get("extra_info").isArray());

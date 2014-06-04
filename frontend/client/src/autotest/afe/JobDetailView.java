@@ -7,6 +7,7 @@ import autotest.common.Utils;
 import autotest.common.table.DataTable;
 import autotest.common.table.DynamicTable;
 import autotest.common.table.ListFilter;
+import autotest.common.table.RpcDataSource;
 import autotest.common.table.SearchFilter;
 import autotest.common.table.SelectionManager;
 import autotest.common.table.SimpleFilter;
@@ -37,7 +38,7 @@ import com.google.gwt.user.client.ui.Widget;
 
 import java.util.Set;
 
-public class JobDetailView extends DetailView implements TableWidgetFactory, TableActionsListener {
+public class JobDetailView extends DetailView implements TableWidgetFactory {
     private static final String[][] JOB_HOSTS_COLUMNS = {
         {DataTable.CLICKABLE_WIDGET_COLUMN, ""}, // selection checkbox
         {"hostname", "Host"}, {"full_status", "Status"},
@@ -45,9 +46,15 @@ public class JobDetailView extends DetailView implements TableWidgetFactory, Tab
         // columns for status log and debug log links
         {DataTable.CLICKABLE_WIDGET_COLUMN, ""}, {DataTable.CLICKABLE_WIDGET_COLUMN, ""}
     };
+    private static final String[][] CHILD_JOBS_COLUMNS = {
+        { "id", "ID" }, { "name", "Name" }, { "priority", "Priority" },
+        { "control_type", "Client/Server" }, { JobTable.HOSTS_SUMMARY, "Status" },
+        { JobTable.RESULTS_SUMMARY, "Passed Tests" }
+    };
     public static final String NO_URL = "about:blank";
     public static final int NO_JOB_ID = -1;
     public static final int HOSTS_PER_PAGE = 30;
+    public static final int CHILD_JOBS_PER_PAGE = 30;
     public static final String RESULTS_MAX_WIDTH = "700px";
     public static final String RESULTS_MAX_HEIGHT = "500px";
 
@@ -57,11 +64,20 @@ public class JobDetailView extends DetailView implements TableWidgetFactory, Tab
         public void onCreateRecurringJob(int id);
     }
 
+    protected class ChildJobsListener {
+        public void onJobSelected(int id) {
+            fetchById(Integer.toString(id));
+        }
+    }
+
     protected int jobId = NO_JOB_ID;
 
     private JobStatusDataSource jobStatusDataSource = new JobStatusDataSource();
+    protected JobTable childJobsTable = new JobTable(CHILD_JOBS_COLUMNS);
+    protected TableDecorator childJobsTableDecorator = new TableDecorator(childJobsTable);
+    protected SimpleFilter parentJobIdFliter = new SimpleFilter();
     protected DynamicTable hostsTable = new DynamicTable(JOB_HOSTS_COLUMNS, jobStatusDataSource);
-    protected TableDecorator tableDecorator = new TableDecorator(hostsTable);
+    protected TableDecorator hostsTableDecorator = new TableDecorator(hostsTable);
     protected SimpleFilter jobFilter = new SimpleFilter();
     protected Button abortButton = new Button("Abort job");
     protected Button cloneButton = new Button("Clone job");
@@ -69,7 +85,9 @@ public class JobDetailView extends DetailView implements TableWidgetFactory, Tab
     protected Frame tkoResultsFrame = new Frame();
 
     protected JobDetailListener listener;
-    private SelectionManager selectionManager;
+    protected ChildJobsListener childJobsListener = new ChildJobsListener();
+    private SelectionManager hostsSelectionManager;
+    private SelectionManager childJobsSelectionManager;
 
     private Label controlFile = new Label();
     private DisclosurePanel controlFilePanel = new DisclosurePanel("");
@@ -172,6 +190,9 @@ public class JobDetailView extends DetailView implements TableWidgetFactory, Tab
 
                 jobFilter.setParameter("job", new JSONNumber(jobId));
                 hostsTable.refresh();
+
+                parentJobIdFliter.setParameter("parent_job", new JSONNumber(jobId));
+                childJobsTable.refresh();
             }
 
 
@@ -202,6 +223,22 @@ public class JobDetailView extends DetailView implements TableWidgetFactory, Tab
 
         idInput.setVisibleLength(5);
 
+        childJobsTable.setRowsPerPage(CHILD_JOBS_PER_PAGE);
+        childJobsTable.setClickable(true);
+        childJobsTable.addListener(new DynamicTableListener() {
+            public void onRowClicked(int rowIndex, JSONObject row, boolean isRightClick) {
+                int jobId = (int) row.get("id").isNumber().doubleValue();
+                childJobsListener.onJobSelected(jobId);
+            }
+
+            public void onTableRefreshed() {}
+        });
+
+        childJobsTableDecorator.addPaginators();
+        childJobsSelectionManager = childJobsTableDecorator.addSelectionManager(false);
+        childJobsTable.setWidgetFactory(childJobsSelectionManager);
+        addWidget(childJobsTableDecorator, "child_jobs_table");
+
         hostsTable.setRowsPerPage(HOSTS_PER_PAGE);
         hostsTable.setClickable(true);
         hostsTable.addListener(new DynamicTableListener() {
@@ -215,11 +252,29 @@ public class JobDetailView extends DetailView implements TableWidgetFactory, Tab
         });
         hostsTable.setWidgetFactory(this);
 
-        tableDecorator.addPaginators();
+        hostsTableDecorator.addPaginators();
         addTableFilters();
-        selectionManager = tableDecorator.addSelectionManager(false);
-        tableDecorator.addTableActionsPanel(this, true);
-        addWidget(tableDecorator, "job_hosts_table");
+        hostsSelectionManager = hostsTableDecorator.addSelectionManager(false);
+        hostsTableDecorator.addTableActionsPanel(new TableActionsListener() {
+            public ContextMenu getActionMenu() {
+                ContextMenu menu = new ContextMenu();
+
+                menu.addItem("Abort hosts", new Command() {
+                    public void execute() {
+                        abortSelectedHosts();
+                    }
+                });
+
+                menu.addItem("Clone job on selected hosts", new Command() {
+                    public void execute() {
+                        cloneJobOnSelectedHosts();
+                    }
+                });
+
+                return menu;
+            }
+        }, true);
+        addWidget(hostsTableDecorator, "job_hosts_table");
 
         abortButton.addClickHandler(new ClickHandler() {
             public void onClick(ClickEvent event) {
@@ -256,6 +311,7 @@ public class JobDetailView extends DetailView implements TableWidgetFactory, Tab
 
     protected void addTableFilters() {
         hostsTable.addFilter(jobFilter);
+        childJobsTable.addFilter(parentJobIdFliter);
 
         SearchFilter hostnameFilter = new SearchFilter("host__hostname", true);
         ListFilter statusFilter = new ListFilter("status");
@@ -263,8 +319,8 @@ public class JobDetailView extends DetailView implements TableWidgetFactory, Tab
         JSONArray statuses = staticData.getData("job_statuses").isArray();
         statusFilter.setChoices(Utils.JSONtoStrings(statuses));
 
-        tableDecorator.addFilter("Hostname", hostnameFilter);
-        tableDecorator.addFilter("Status", statusFilter);
+        hostsTableDecorator.addFilter("Hostname", hostnameFilter);
+        hostsTableDecorator.addFilter("Status", statusFilter);
     }
 
     private void abortJob() {
@@ -278,7 +334,8 @@ public class JobDetailView extends DetailView implements TableWidgetFactory, Tab
     }
 
     private void abortSelectedHosts() {
-        AfeUtils.abortHostQueueEntries(selectionManager.getSelectedObjects(), new SimpleCallback() {
+        AfeUtils.abortHostQueueEntries(hostsSelectionManager.getSelectedObjects(),
+                                       new SimpleCallback() {
             public void doCallback(Object source) {
                 refresh();
             }
@@ -313,7 +370,7 @@ public class JobDetailView extends DetailView implements TableWidgetFactory, Tab
     }
 
     private void cloneJobOnSelectedHosts() {
-        Set<JSONObject> hostsQueueEntries = selectionManager.getSelectedObjects();
+        Set<JSONObject> hostsQueueEntries = hostsSelectionManager.getSelectedObjects();
         JSONArray queueEntryIds = new JSONArray();
         for (JSONObject queueEntry : hostsQueueEntries) {
           queueEntryIds.set(queueEntryIds.size(), queueEntry.get("id"));
@@ -453,7 +510,7 @@ public class JobDetailView extends DetailView implements TableWidgetFactory, Tab
 
     public Widget createWidget(int row, int cell, JSONObject hostQueueEntry) {
         if (cell == 0) {
-            return selectionManager.createWidget(row, cell, hostQueueEntry);
+            return hostsSelectionManager.createWidget(row, cell, hostQueueEntry);
         }
 
         String executionSubdir = Utils.jsonToString(hostQueueEntry.get("execution_subdir"));
@@ -476,23 +533,5 @@ public class JobDetailView extends DetailView implements TableWidgetFactory, Tab
     private String getLogsLinkHtml(String url, String text) {
         url = Utils.getRetrieveLogsUrl(url);
         return "<a target=\"_blank\" href=\"" + url + "\">" + text + "</a>";
-    }
-
-    public ContextMenu getActionMenu() {
-        ContextMenu menu = new ContextMenu();
-
-        menu.addItem("Abort hosts", new Command() {
-            public void execute() {
-                abortSelectedHosts();
-            }
-        });
-
-        menu.addItem("Clone job on selected hosts", new Command() {
-            public void execute() {
-                cloneJobOnSelectedHosts();
-            }
-        });
-
-        return menu;
     }
 }

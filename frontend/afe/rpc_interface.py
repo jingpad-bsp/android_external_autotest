@@ -37,6 +37,7 @@ from autotest_lib.client.common_lib import priorities
 from autotest_lib.frontend.afe import models, model_logic, model_attributes
 from autotest_lib.frontend.afe import control_file, rpc_utils
 from autotest_lib.frontend.afe import site_rpc_interface
+from autotest_lib.frontend.tko import rpc_interface as tko_rpc_interface
 from autotest_lib.server.cros.dynamic_suite import tools
 
 def get_parameterized_autoupdate_image_url(job):
@@ -711,15 +712,23 @@ def get_num_jobs(not_yet_run=False, running=False, finished=False,
 
 def get_jobs_summary(**filter_data):
     """\
-    Like get_jobs(), but adds a 'status_counts' field, which is a dictionary
-    mapping status strings to the number of hosts currently with that
-    status, i.e. {'Queued' : 4, 'Running' : 2}.
+    Like get_jobs(), but adds 'status_counts' and 'result_counts' field.
+
+    'status_counts' filed is a dictionary mapping status strings to the number
+    of hosts currently with that status, i.e. {'Queued' : 4, 'Running' : 2}.
+
+    'result_counts' field is piped to tko's rpc_interface and has the return
+    format specified under get_group_counts.
     """
     jobs = get_jobs(**filter_data)
     ids = [job['id'] for job in jobs]
     all_status_counts = models.Job.objects.get_status_counts(ids)
     for job in jobs:
         job['status_counts'] = all_status_counts[job['id']]
+        job['result_counts'] = tko_rpc_interface.get_status_counts(
+                ['afe_job_id', 'afe_job_id'],
+                header_groups=[['afe_job_id'], ['afe_job_id']],
+                **{'afe_job_id': job['id']})
     return rpc_utils.prepare_for_serialization(jobs)
 
 

@@ -1,5 +1,6 @@
 package autotest.tko;
 
+import autotest.common.StatusSummary;
 import autotest.common.spreadsheet.Spreadsheet;
 import autotest.common.spreadsheet.Spreadsheet.CellInfo;
 import autotest.common.spreadsheet.Spreadsheet.Header;
@@ -131,7 +132,12 @@ public class SpreadsheetDataProcessor implements DataCallback {
         int row = (int) headerIndices.get(0).isNumber().doubleValue();
         int column = (int) headerIndices.get(1).isNumber().doubleValue();
         CellInfo cellInfo = spreadsheet.getCellInfo(row, column);
-        StatusSummary statusSummary = StatusSummary.getStatusSummary(group);
+        StatusSummary statusSummary = StatusSummary.getStatusSummary(
+            group,
+            TestGroupDataSource.PASS_COUNT_FIELD,
+            TestGroupDataSource.COMPLETE_COUNT_FIELD,
+            TestGroupDataSource.INCOMPLETE_COUNT_FIELD,
+            TestGroupDataSource.GROUP_COUNT_FIELD);
         numTotalTests += statusSummary.getTotal();
         cellInfo.contents = statusSummary.formatContents();
         cellInfo.cssClass = statusSummary.getCssClass();

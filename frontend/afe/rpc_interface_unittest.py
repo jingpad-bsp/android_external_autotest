@@ -1,7 +1,7 @@
 #pylint: disable-msg=C0111
 #!/usr/bin/python
 
-import datetime, unittest
+import datetime
 import common
 
 from autotest_lib.frontend import setup_django_environment
@@ -12,6 +12,8 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import priorities
+from autotest_lib.client.common_lib.test_utils import mock
+from autotest_lib.client.common_lib.test_utils import unittest
 
 CLIENT = control_data.CONTROL_TYPE_NAMES.CLIENT
 SERVER = control_data.CONTROL_TYPE_NAMES.SERVER
@@ -23,9 +25,11 @@ class RpcInterfaceTest(unittest.TestCase,
                        frontend_test_utils.FrontendTestMixin):
     def setUp(self):
         self._frontend_common_setup()
+        self.god = mock.mock_god()
 
 
     def tearDown(self):
+        self.god.unstub_all()
         self._frontend_common_teardown()
 
 
@@ -137,6 +141,11 @@ class RpcInterfaceTest(unittest.TestCase,
         entries[2].status = _hqe_status.FAILED
         entries[2].aborted = True
         entries[2].save()
+
+        # Mock up tko_rpc_interface.get_status_counts.
+        self.god.stub_function_to_return(rpc_interface.tko_rpc_interface,
+                                         'get_status_counts',
+                                         None)
 
         job_summaries = rpc_interface.get_jobs_summary(id=job.id)
         self.assertEquals(len(job_summaries), 1)
