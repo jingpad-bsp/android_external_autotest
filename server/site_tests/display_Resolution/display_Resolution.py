@@ -84,7 +84,7 @@ class display_Resolution(chameleon_test.ChameleonTest):
 
                 logging.info('Checking the resolution.')
                 chameleon_resolution = self.chameleon_port.get_resolution()
-                dut_resolution = self.chameleon_port.get_resolution()
+                dut_resolution = self.display_client.get_resolution()
                 # Verify the actual resolution detected by chameleon and dut
                 # are the same as what is expected.
                 # Note: In mirrored mode, the device may be in hardware mirror
