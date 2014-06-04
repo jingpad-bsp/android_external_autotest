@@ -133,16 +133,27 @@ class RPCHelper(object):
                           limit, time_delta_hours, job_info)
 
 
-    def check_dut_availability(self, board, pool, suite):
+    def check_dut_availability(self, board, pool, suite, minimum_duts=0):
         """Check if DUT availability for a given board and pool is less than
         minimum.
 
         @param board: The board to check DUT availability.
         @param pool: The pool to check DUT availability.
         @param suite: Name of the suite.
+        @param minimum_duts: Minimum Number of available machines required to
+                             run the suite. Default is set to 0, which means do
+                             not force the check of available machines before
+                             running the suite.
         @raise: TestLabException if DUT availability is lower than minimum,
                 or failed to get host information from rpc interface.
         """
+        # TODO(dshi): crbug.com/377063 After cbuildbot config is updated to use
+        # run_suite arg minimum_duts for desired suite runs, check if
+        # minimum_duts is 0 here, exit the function if it's 0.
+
+        # TODO(dshi): crbug.com/377063 Remove following two checks after
+        # cbuildbot config is updated to use run_suite arg minimum_duts for
+        # desired bvt runs.
         if not suite in SUITES_REQUIRE_MIN_DUTS:
             logging.debug('Suite %s is not required to check minimum available '
                           'DUTs.', suite)
@@ -162,6 +173,9 @@ class RPCHelper(object):
                     'No hosts found for board:%s in pool:%s' %
                     (board, pool))
 
+        # TODO(dshi): crbug.com/377063 replace MIN_AVAILABLE_DUTS with
+        # minimum_duts after cbuildbot config is updated to use the new
+        # argument.
         if len(hosts) <= MIN_AVAILABLE_DUTS:
             logging.debug('The total number of DUTs for %s in pool:%s is %d, '
                           'which is no more than the required minimum number of'
