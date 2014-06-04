@@ -43,4 +43,6 @@ class login_SameSessionTwice(test.test):
 
 
     def cleanup(self):
+        # Bounce UI, without waiting for the browser to come back. Best effort.
+        cros_ui.stop(allow_fail=True)
         cros_ui.start(allow_fail=True, wait_for_login_prompt=False)

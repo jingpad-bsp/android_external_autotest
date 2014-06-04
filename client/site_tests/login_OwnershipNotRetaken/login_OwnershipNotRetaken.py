@@ -59,5 +59,5 @@ class login_OwnershipNotRetaken(test.test):
 
 
     def cleanup(self):
-        super(login_OwnershipNotRetaken, self).cleanup()
         self._cryptohome_proxy.remove(self._TEST_USER)
+        super(login_OwnershipNotRetaken, self).cleanup()

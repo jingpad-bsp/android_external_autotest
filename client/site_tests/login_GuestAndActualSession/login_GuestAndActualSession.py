@@ -59,4 +59,5 @@ class login_GuestAndActualSession(test.test):
 
 
     def cleanup(self):
+        self._session_manager.StopSession('')
         cros_ui.start(allow_fail=True, wait_for_login_prompt=False)

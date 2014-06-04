@@ -91,5 +91,6 @@ class login_OwnershipRetaken(test.test):
     def cleanup(self):
         self._cryptohome_proxy.unmount(ownership.TESTUSER)
         if self._tempdir: self._tempdir.clean()
+        self._sm.StopSession('')
         cros_ui.start(allow_fail=True)
         super(login_OwnershipRetaken, self).cleanup()
