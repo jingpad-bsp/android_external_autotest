@@ -31,50 +31,51 @@ class graphics_GLBench(test.test):
   # TODO(ihf) not sure these are still needed
   # These tests do not draw anything, they can only be used to check
   # performance.
-  no_checksum_tests = set(['1280x768_fps_no_fill_compositing',
-                           'mpixels_sec_pixel_read',
-                           'mpixels_sec_pixel_read_2',
-                           'mpixels_sec_pixel_read_3',
-                           'mtexel_sec_texture_reuse_teximage2d_1024',
-                           'mtexel_sec_texture_reuse_teximage2d_128',
-                           'mtexel_sec_texture_reuse_teximage2d_1536',
-                           'mtexel_sec_texture_reuse_teximage2d_2048',
-                           'mtexel_sec_texture_reuse_teximage2d_256',
-                           'mtexel_sec_texture_reuse_teximage2d_32',
-                           'mtexel_sec_texture_reuse_teximage2d_512',
-                           'mtexel_sec_texture_reuse_teximage2d_768',
-                           'mtexel_sec_texture_reuse_texsubimage2d_1024',
-                           'mtexel_sec_texture_reuse_texsubimage2d_128',
-                           'mtexel_sec_texture_reuse_texsubimage2d_1536',
-                           'mtexel_sec_texture_reuse_texsubimage2d_2048',
-                           'mtexel_sec_texture_reuse_texsubimage2d_256',
-                           'mtexel_sec_texture_reuse_texsubimage2d_32',
-                           'mtexel_sec_texture_reuse_texsubimage2d_512',
-                           'mtexel_sec_texture_reuse_texsubimage2d_768',
-                           'mtexel_sec_texture_upload_teximage2d_1024',
-                           'mtexel_sec_texture_upload_teximage2d_128',
-                           'mtexel_sec_texture_upload_teximage2d_1536',
-                           'mtexel_sec_texture_upload_teximage2d_2048',
-                           'mtexel_sec_texture_upload_teximage2d_256',
-                           'mtexel_sec_texture_upload_teximage2d_32',
-                           'mtexel_sec_texture_upload_teximage2d_512',
-                           'mtexel_sec_texture_upload_teximage2d_768',
-                           'mtexel_sec_texture_upload_texsubimage2d_1024',
-                           'mtexel_sec_texture_upload_texsubimage2d_128',
-                           'mtexel_sec_texture_upload_texsubimage2d_1536',
-                           'mtexel_sec_texture_upload_texsubimage2d_2048',
-                           'mtexel_sec_texture_upload_texsubimage2d_256',
-                           'mtexel_sec_texture_upload_texsubimage2d_32',
-                           'mtexel_sec_texture_upload_texsubimage2d_512',
-                           'mtexel_sec_texture_upload_texsubimage2d_768',
-                           'mvtx_sec_attribute_fetch_shader',
-                           'mvtx_sec_attribute_fetch_shader_2_attr',
-                           'mvtx_sec_attribute_fetch_shader_4_attr',
-                           'mvtx_sec_attribute_fetch_shader_8_attr',
-                           'us_context_glsimple',
-                           'us_context_nogl',
-                           'us_swap_glsimple',
-                           'us_swap_nogl', ])
+  no_checksum_tests = set([
+      '1280x768_fps_no_fill_compositing',
+      'mpixels_sec_pixel_read',
+      'mpixels_sec_pixel_read_2',
+      'mpixels_sec_pixel_read_3',
+      'mtexel_sec_texture_reuse_teximage2d_1024',
+      'mtexel_sec_texture_reuse_teximage2d_128',
+      'mtexel_sec_texture_reuse_teximage2d_1536',
+      'mtexel_sec_texture_reuse_teximage2d_2048',
+      'mtexel_sec_texture_reuse_teximage2d_256',
+      'mtexel_sec_texture_reuse_teximage2d_32',
+      'mtexel_sec_texture_reuse_teximage2d_512',
+      'mtexel_sec_texture_reuse_teximage2d_768',
+      'mtexel_sec_texture_reuse_texsubimage2d_1024',
+      'mtexel_sec_texture_reuse_texsubimage2d_128',
+      'mtexel_sec_texture_reuse_texsubimage2d_1536',
+      'mtexel_sec_texture_reuse_texsubimage2d_2048',
+      'mtexel_sec_texture_reuse_texsubimage2d_256',
+      'mtexel_sec_texture_reuse_texsubimage2d_32',
+      'mtexel_sec_texture_reuse_texsubimage2d_512',
+      'mtexel_sec_texture_reuse_texsubimage2d_768',
+      'mtexel_sec_texture_upload_teximage2d_1024',
+      'mtexel_sec_texture_upload_teximage2d_128',
+      'mtexel_sec_texture_upload_teximage2d_1536',
+      'mtexel_sec_texture_upload_teximage2d_2048',
+      'mtexel_sec_texture_upload_teximage2d_256',
+      'mtexel_sec_texture_upload_teximage2d_32',
+      'mtexel_sec_texture_upload_teximage2d_512',
+      'mtexel_sec_texture_upload_teximage2d_768',
+      'mtexel_sec_texture_upload_texsubimage2d_1024',
+      'mtexel_sec_texture_upload_texsubimage2d_128',
+      'mtexel_sec_texture_upload_texsubimage2d_1536',
+      'mtexel_sec_texture_upload_texsubimage2d_2048',
+      'mtexel_sec_texture_upload_texsubimage2d_256',
+      'mtexel_sec_texture_upload_texsubimage2d_32',
+      'mtexel_sec_texture_upload_texsubimage2d_512',
+      'mtexel_sec_texture_upload_texsubimage2d_768',
+      'mvtx_sec_attribute_fetch_shader',
+      'mvtx_sec_attribute_fetch_shader_2_attr',
+      'mvtx_sec_attribute_fetch_shader_4_attr',
+      'mvtx_sec_attribute_fetch_shader_8_attr',
+      'us_context_glsimple',
+      'us_context_nogl',
+      'us_swap_glsimple',
+      'us_swap_nogl', ])
 
   blacklist = ''
 
@@ -228,19 +229,17 @@ class graphics_GLBench(test.test):
         # so don't throw an exception and remind there is a problem
         keyvals[testname] = -1.0
         f.write('# knownbad [' + imagefile + '] (setting perf as -1.0)\n')
+      elif imagefile in reference_imagenames:
+        # known good reference images
+        keyvals[testname] = testrating
+      elif testname in self.no_checksum_tests:
+        # TODO(ihf) these really should not write any images
+        keyvals[testname] = testrating
       else:
-        if imagefile in reference_imagenames:
-          # known good reference images
-          keyvals[testname] = testrating
-        else:
-          if testname in self.no_checksum_tests:
-            # TODO(ihf) these really should not write any images
-            keyvals[testname] = testrating
-          else:
-            # completely unknown images
-            keyvals[testname] = -2.0
-            failed_tests[testname] = imagefile
-            f.write('# unknown [' + imagefile + '] (setting perf as -2.0)\n')
+        # completely unknown images
+        keyvals[testname] = -2.0
+        failed_tests[testname] = imagefile
+        f.write('# unknown [' + imagefile + '] (setting perf as -2.0)\n')
     f.close()
     if not hasty:
       self.report_temperature('temperature_3_after_test')
