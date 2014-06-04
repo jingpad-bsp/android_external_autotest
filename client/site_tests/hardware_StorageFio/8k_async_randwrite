@@ -25,3 +25,7 @@ iodepth=1
 ioengine=libaio
 random_generator=tausworthe
 norandommap
+
+write_bw_log=randwrite
+write_iops_log=randwrite
+write_lat_log=randwrite

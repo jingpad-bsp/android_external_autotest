@@ -2,23 +2,28 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-NAME = 'hardware_StorageStress.suspend'
-AUTHOR = 'puthik, grundler'
-PURPOSE = 'Check storage data integrity after multiple reboot/suspend'
-TIME = 'LENGTHY'
+NAME = 'hardware_StorageStress.test'
+AUTHOR = 'grundler, gwendal, puthik'
+PURPOSE = 'Test StorageStress code'
+TIME = 'MEDIUM'
 TEST_CLASS = 'hardware'
 TEST_TYPE = 'server'
 
 DOC = """
 This test calls hardware_StorageFio to write data once and repeatedly verifies
-data in the storage for 1 hour with machine suspended 5 minutes between
-each verify.
+data in the storage for 5 minutes.
+
+While the test is running, we can corrupt the SSD and check the test is
+finding it with:
+
+ dd if=/dev/zero of=<tested partition> bs=512k
+
 """
 
 def run_hardware_storage_stress(machine):
     job.add_sysinfo_logfile('/var/log/storage_info.txt', on_every_test=True)
-    job.run_test('hardware_StorageStress', client_ip=machine,
-        power_command='suspend', suspend_duration=300, duration=3600)
+    job.run_test('hardware_StorageStress', client_ip=machine, power_command='nothing',
+                 gap=5, duration=300)
 
 job.parallel_simple(run_hardware_storage_stress, machines)
 

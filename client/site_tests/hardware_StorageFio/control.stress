@@ -10,13 +10,8 @@ TEST_TYPE = 'client'
 SUITE = 'storagequal'
 
 DOC = """
-This test uses FIO to spawn a number of threads to perform a particular type of
-I/O. This test will do data integrity checks by first running a workload that
-writes data to the spare root partition and then verifying, after 72 hours,
-that the data on storage is still valid.
-
-NOTE: If autoupdate or another program accesses the spare root partition
-while this test is running, corruption may occur.
+Send stress pattern to the disk for 30 minutes: 64K random write with 15% of
+read.
 """
 
 job.add_sysinfo_logfile('/var/log/storage_info.txt', on_every_test=True)

@@ -2,8 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, time
-from functools import partial
+import logging, sys, time
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import autotest
 from autotest_lib.server import hosts
@@ -15,10 +14,11 @@ class hardware_StorageStress(test.test):
     """
     version = 1
 
+    _HOURS_IN_SEC = 3600
     # Define default value for the test case
     _TEST_GAP = 60 # 1 min
-    _TEST_DURATION = 12 * 60 * 60 # 12 hours
-    _SUSPEND_DURATION = 60 * 60 # 1 hour.
+    _TEST_DURATION = 12 * _HOURS_IN_SEC
+    _SUSPEND_DURATION = _HOURS_IN_SEC
     _FIO_REQUIREMENT_FILE = '8k_async_randwrite'
     _FIO_WRITE_FLAGS = []
     _FIO_VERIFY_FLAGS = ['--verifyonly']
@@ -72,15 +72,17 @@ class hardware_StorageStress(test.test):
             loop_func = self._verify_data
         elif storage_test_command == 'full_write':
             setup_func = self._do_nothing
-            loop_func = partial(self._full_disk_write,
-                                dev=storage_test_argument)
+            loop_func = self._full_disk_write
+            # Do at least 2 soak runs. Given the absolute minimum of a loop is
+            # around 1h, duration should be at least 1h.
+            self._soak_time = min(self._TEST_DURATION, duration / 4)
         else:
             raise error.TestFail('Test failed with error: Invalid test command')
 
         setup_func()
 
         # init statistic variable
-        min_time_per_loop = self._TEST_DURATION
+        min_time_per_loop = sys.maxsize
         max_time_per_loop = 0
         all_loop_time = 0
         avr_time_per_loop = 0
@@ -131,99 +133,70 @@ class hardware_StorageStress(test.test):
         """
         self._client.suspend(suspend_time=self._suspend_duration)
 
-    def _check_client_test_result(self, client):
+    @classmethod
+    def _check_client_test_result(cls, client):
         """
         Check result of the client test.
         Auto test will store results in the file named status.
         We check that the second to last line in that file begin with 'END GOOD'
 
-        @ return True if last test passed, False otherwise.
+        @ raise an error if test fails.
         """
         client_result_dir = '%s/results/default' % client.autodir
         command = 'tail -2 %s/status | head -1' % client_result_dir
         status = client.run(command).stdout.strip()
         logging.info(status)
-        return status[:8] == 'END GOOD'
+        if status[:8] != 'END GOOD':
+            raise error.TestFail('client in StorageStress failed.')
+
 
     def _write_data(self):
         """
         Write test data to host using hardware_StorageFio
         """
         logging.info('_write_data')
-        result_dir = 'hardware_StorageFio_write'
         self._client_at.run_test('hardware_StorageFio', wait=0,
-                                 results_dir=result_dir,
-                                 requirements=[(self._FIO_REQUIREMENT_FILE,
-                                                self._FIO_WRITE_FLAGS)])
-        passed = self._check_client_test_result(self._client)
-        if not passed:
-            raise error.TestFail('Test failed with error: Data Write Error')
+            tag='%s_%d' % ('write_data', self._loop_count),
+            requirements=[(self._FIO_REQUIREMENT_FILE, self._FIO_WRITE_FLAGS)])
+        self._check_client_test_result(self._client)
 
     def _verify_data(self):
         """
-        Vertify test data using hardware_StorageFio
+        Verify test data using hardware_StorageFio
         """
         logging.info(str('_verify_data #%d' % self._loop_count))
-        result_dir = str('hardware_StorageFio_verify_%d'
-                                       % self._loop_count)
         self._client_at.run_test('hardware_StorageFio', wait=0,
-                                 results_dir=result_dir,
-                                 requirements=[(self._FIO_REQUIREMENT_FILE,
-                                                self._FIO_VERIFY_FLAGS)])
-        passed = self._check_client_test_result(self._client)
-        if not passed:
-            raise error.TestFail('Test failed with error: Data Verify #%d Error'
-                % self._loop_count)
+            tag='%s_%d' % ('verify_data', self._loop_count),
+            requirements=[(self._FIO_REQUIREMENT_FILE, self._FIO_VERIFY_FLAGS)])
+        self._check_client_test_result(self._client)
 
-    def _full_disk_write(self, dev):
+    def _full_disk_write(self):
         """
         Do the root device full area write and report performance
+        Write random pattern for few hours, then do a write and a verify,
+        noting the latency.
         """
         logging.info(str('_full_disk_write #%d' % self._loop_count))
-        logging.info(str('target device "%s"' % dev))
 
-        # check sanity of target device: begin with /dev/ and can find with ls
-        if dev[0:5] != '/dev/':
-            raise error.TestFail(
-                'Test failed with error: device should begin with /dev/')
+        # use the default requirement that write different pattern arround.
+        self._client_at.run_test('hardware_StorageFio',
+                                 tag='%s_%d' % ('soak', self._loop_count),
+                                 requirements=[('64k_stress', [])],
+                                 time_length=self._soak_time)
+        self._check_client_test_result(self._client)
 
-        # This command return 0 when device exist, return 2 otherwise
-        cmd = 'ls %s >/dev/null 2>&1' % dev
-        if self._client.run(cmd, ignore_status=True).exit_status:
-            raise error.TestFail(
-                'Test failed with error: device does not exist')
+        self._client_at.run_test('hardware_StorageFio',
+                                 tag='%s_%d' % ('surf', self._loop_count),
+                                 requirements=[('surfing', [])],
+                                 time_length=self._soak_time)
+        self._check_client_test_result(self._client)
 
-        # log some hardware status in the first run
-        if self._loop_count == 1:
-            cmd = 'cat /sys/class/block/%s/device/type' % dev[5:]
-            type = self._client.run(cmd).stdout.strip()
-            if type == '0': #scsi disk
-                cmd = 'smartctl -x %s' % dev
-                logging.info(self._client.run(cmd, ignore_status=True).stdout)
-            elif type == 'MMC':
-                for field in ['cid', 'csd', 'name', 'serial']:
-                    cmd = 'cat /sys/block/%s/device/%s' % (dev[5:], field)
-                    result = self._client.run(cmd).stdout.strip()
-                    logging.info(str('%s: %s' % (field, result)))
-            else:
-                raise error.TestFail('Unknown device type')
+        self._client_at.run_test('hardware_StorageFio',
+                                 tag='%s_%d' % ('integrity', self._loop_count),
+                                 wait=0, integrity=True)
+        self._check_client_test_result(self._client)
 
-        # determine current boot device
-        cur_dev = self._client.run('rootdev -s -d').stdout.strip()
-        logging.info(str('current boot device "%s"' % cur_dev))
-
-        if dev == cur_dev:
-            raise error.TestFail(
-                'Test failed with error: can not test boot device')
-
-        result_dir = str('hardware_StorageFio_full_disk_write_%d'
-                                       % self._loop_count)
-        self._client_at.run_test('hardware_StorageFio', dev=dev, filesize=0,
-                                 results_dir=result_dir,
-                                 requirements=[('64k_stress', [])])
-
-        passed = self._check_client_test_result(self._client)
-        if not passed:
-            raise error.TestFail(
-                "Test failed with error: Full disk Write #%d Error"
-                % self._loop_count)
+        self._client_at.run_test('hardware_StorageWearoutDetect',
+                                 tag='%s_%d' % ('wearout', self._loop_count),
+                                 wait=0, use_cached_result=False)
+        # No checkout for wearout, to test device pass their limits.

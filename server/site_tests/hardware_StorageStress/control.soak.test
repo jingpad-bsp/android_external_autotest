@@ -2,21 +2,21 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-NAME = 'hardware_StorageStress'
-AUTHOR = 'puthik, grundler'
-PURPOSE = 'Check storage data integrity after multiple reboot/suspend'
+NAME = 'hardware_StorageStress.soak_test'
+AUTHOR = 'gwendal'
+PURPOSE = 'Test hardware_StorageStress.soak code'
 TIME = 'LENGTHY'
 TEST_CLASS = 'hardware'
 TEST_TYPE = 'server'
 
 DOC = """
-This test calls hardware_StorageFio to write data once and repeatedly verifies
-data in the storage for 12 hours with machine rebooted between each verify.
+Shorter version of control.soak, last only 1 hour:
 """
 
 def run_hardware_storage_stress(machine):
     job.add_sysinfo_logfile('/var/log/storage_info.txt', on_every_test=True)
-    job.run_test('hardware_StorageStress', client_ip=machine)
+    job.run_test('hardware_StorageStress', client_ip=machine, duration=3600,
+                  power_command='nothing', storage_test_command='full_write')
 
 job.parallel_simple(run_hardware_storage_stress, machines)
 
