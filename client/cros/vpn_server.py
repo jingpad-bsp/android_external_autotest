@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 import logging
-import os
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.cros import network_chroot
@@ -280,12 +279,12 @@ class OpenVPNServer(VPNServer):
                     'auth-user-pass-verify /%s via-file\nscript-security 2' %
                     self.AUTHENTICATION_SCRIPT)
         chroot.add_config_values(config_values)
+        chroot.add_startup_command('chmod 755 %s' % self.AUTHENTICATION_SCRIPT)
         chroot.add_startup_command('%s --config /%s &' %
                                    (self.OPENVPN_COMMAND,
                                     self.OPENVPN_CONFIG_FILE))
         self.preload_modules()
         chroot.startup()
-        os.chmod(chroot.chroot_path(self.AUTHENTICATION_SCRIPT), 0755)
 
 
     def preload_modules(self):
