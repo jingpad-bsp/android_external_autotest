@@ -107,7 +107,15 @@ class BelkinF9K1102APConfigurator(
             if 'Login' in self.driver.title:
                 self._login(page_url)
         finally:
-            self.wait_for_object_by_id('itsbutton1')
+            try:
+                self.wait_for_object_by_id('itsbutton1')
+            except SeleniumTimeoutException, e:
+                if 'Unable to find the object by xpath' in str(e):
+                    xpath = "//h2[contains(.,'Duplicate Administrator')]"
+                    if self.wait_for_object_by_xpath(xpath):
+                        raise RuntimeError('We got a Duplicate Admin error.')
+                else:
+                    raise RuntimeError(str(e))
 
 
     def _login(self, page_url):
