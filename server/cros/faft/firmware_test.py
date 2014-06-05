@@ -1191,14 +1191,7 @@ class FirmwareTest(FAFTBase):
 
         A wrapper for underlying servo cold reset.
         """
-        if self.faft_config.broken_warm_reset:
-            self.servo.set('pwr_button', 'press')
-            self.servo.set('cold_reset', 'on')
-            self.servo.set('cold_reset', 'off')
-            time.sleep(self.faft_config.ec_boot_to_pwr_button)
-            self.servo.set('pwr_button', 'release')
-        else:
-            self.servo.get_power_state_controller().cold_reset()
+        self.servo.get_power_state_controller().reset()
 
     def sync_and_warm_reboot(self):
         """Request the client sync and do a warm reboot.

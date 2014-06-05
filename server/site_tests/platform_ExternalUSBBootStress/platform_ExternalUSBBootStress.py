@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import json, logging, re, time
+import logging, re, time
 
-from autotest_lib.server import autotest, test
+from autotest_lib.server import test
 from autotest_lib.server.cros import stress
 from autotest_lib.server.cros.servo import servo
 from autotest_lib.client.common_lib import error
@@ -96,7 +96,7 @@ class platform_ExternalUSBBootStress(test.test):
             if skip_gbb:
                 # For devices that do not support gbb we have servo
                 # accelerate booting through dev mode.
-                host.servo.get_power_state_controller().cold_reset()
+                host.servo.get_power_state_controller().reset()
                 host.servo.power_short_press()
                 time.sleep(servo.Servo.BOOT_DELAY)
                 host.servo.ctrl_d()

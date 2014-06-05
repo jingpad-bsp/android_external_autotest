@@ -10,7 +10,6 @@ import os
 import logging, re, time, xmlrpclib
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server import utils
 from autotest_lib.server.cros.servo import power_state_controller
 from autotest_lib.server.cros.servo import firmware_programmer
 
@@ -75,9 +74,8 @@ class Servo(object):
         self._servo_host = servo_host
         self._servo_serial = servo_serial
         self._server = servo_host.get_servod_server_proxy()
-        board = self._server.get_board()
         self._power_state = (
-            power_state_controller.create_controller(self, board))
+            power_state_controller.create_controller(self))
 
         # a string, showing what interface (host or dut) the USB device is
         # connected to.
@@ -124,16 +122,15 @@ class Servo(object):
         that's off, depending on the board type and previous state
         of the device.
 
-        If `cold_reset` is a true value, cold reset will be applied
-        to the DUT.  Cold reset will force the DUT to power off;
-        however, the final state of the DUT depends on the board type.
+        If `cold_reset` is a true value, the DUT and its EC will be
+        reset, and the DUT rebooted in normal mode.
 
         @param cold_reset If True, cold reset the device after
                           initialization.
         """
         self._server.hwinit()
         if cold_reset:
-            self._power_state.cold_reset()
+            self._power_state.reset()
 
 
     def is_localhost(self):
@@ -513,7 +510,7 @@ class Servo(object):
                                        automatically after installation.
         """
         self.image_to_servo_usb(image_path, make_image_noninteractive)
-        self._power_state.power_on(rec_mode=power_state_controller.REC_ON)
+        self._power_state.power_on(rec_mode=self._power_state.REC_ON)
         self.switch_usbkey('dut')
 
 

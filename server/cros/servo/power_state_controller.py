@@ -2,39 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import time
-
-
-def _inherit_docstring(cls):
-    """Decorator to propagate a docstring to a subclass's method.
-
-    @param cls Class with the method whose docstring is to be
-               inherited.  The class must contain a method with
-               the same name as the name of the function to be
-               decorated.
-
-    """
-    def _copy_docstring(methfunc):
-        """Actually copy the parent docstring to the child.
-
-        @param methfunc Function that will inherit the docstring.
-
-        """
-        methfunc.__doc__ = getattr(cls, methfunc.__name__).__doc__
-        return methfunc
-    return _copy_docstring
-
-
-# Constants acceptable to be passed for the `rec_mode` parameter
-# to power_on().
-#
-# REC_ON:  Boot the DUT in recovery mode, i.e. boot from USB or
-#   SD card.
-# REC_OFF:  Boot in normal mode, i.e. boot from internal storage.
-
-REC_ON = 'on'
-REC_OFF = 'off'
-
 
 class _PowerStateController(object):
 
@@ -48,16 +15,19 @@ class _PowerStateController(object):
 
     """
 
-    # Delay in seconds needed between asserting and de-asserting cold
-    # or warm reset.  Subclasses will normally override this constant
-    # with a board-specific value.
-    _RESET_HOLD_TIME = 0.5
+    # Constants acceptable to be passed for the `rec_mode` parameter
+    # to power_on().
+    #
+    # REC_ON:  Boot the DUT in recovery mode, i.e. boot from USB or
+    #   SD card.
+    # REC_OFF:  Boot in normal mode, i.e. boot from internal storage.
 
-    # _EC_RESET_DELAY:  Time required before the EC will be working
-    #   after cold reset.  Five seconds is at least twice as long as
-    #   necessary for Alex, and is presumably good enough for all other
-    #   systems.
-    _EC_RESET_DELAY = 5.0
+    REC_ON = 'rec'
+    REC_OFF = 'on'
+
+    # Delay in seconds needed between asserting and de-asserting
+    # warm reset.
+    _RESET_HOLD_TIME = 0.5
 
     def __init__(self, servo):
         """Initialize the power state control.
@@ -68,20 +38,16 @@ class _PowerStateController(object):
         """
         self._servo = servo
 
-    def cold_reset(self):
-        """Apply cold reset to the DUT.
+    def reset(self):
+        """Force the DUT to reset.
 
-        This asserts, then de-asserts the 'cold_reset' signal.
-        The exact affect on the hardware varies depending on
-        the board type.
+        The DUT is guaranteed to be on at the end of this call,
+        regardless of its previous state, provided that there is
+        working OS software. This also guarantees that the EC has
+        been restarted.
 
         """
-        self._servo.set_get_all(['cold_reset:on',
-                                 'sleep:%.4f' % self._RESET_HOLD_TIME,
-                                 'cold_reset:off'])
-        # After the reset, give the EC the time it needs to
-        # re-initialize.
-        time.sleep(self._EC_RESET_DELAY)
+        self._servo.set_nocheck('power_state', 'reset')
 
     def warm_reset(self):
         """Apply warm reset to the DUT.
@@ -101,7 +67,7 @@ class _PowerStateController(object):
                 not raise a NotImplementedError.  False means they will.
 
         """
-        return False
+        return True
 
     def power_off(self):
         """Force the DUT to power off.
@@ -112,7 +78,7 @@ class _PowerStateController(object):
         working OS software.
 
         """
-        raise NotImplementedError()
+        self._servo.set_nocheck('power_state', 'off')
 
     def power_on(self, rec_mode=REC_OFF):
         """Force the DUT to power on.
@@ -134,107 +100,17 @@ class _PowerStateController(object):
                         power on. default: REC_OFF aka 'off'
 
         """
-        raise NotImplementedError()
+        self._servo.set_nocheck('power_state', rec_mode)
 
 
-    def reset(self):
-        """Force the DUT to reset.
-
-        The DUT is guaranteed to be on at the end of this call,
-        regardless of its previous state, provided that there is
-        working OS software. This also guarantees that the EC has
-        been restarted.
-
-        """
-        raise NotImplementedError()
-
-
-class _ServodController(_PowerStateController):
-
-    """Controller based on the servod `power_state` control.
-
-    TODO(jrbarnette):  This is a transitional class.  Servod is
-    adding support for operations like `set('power_state', 'off')`,
-    which will supersede `_PowerStateController`.  However, not all
-    boards are both implemented and tested in servod.  To manage
-    the transition, boards that support the new feature are mapped
-    to this class.
-
-    Once support in hdctools is complete for all boards, this class
-    should be removed, and the functionality should be refactored to
-    be board-independent.
-
-    """
-
-    @_inherit_docstring(_PowerStateController)
-    def recovery_supported(self):
-        return True
-
-    @_inherit_docstring(_PowerStateController)
-    def power_off(self):
-        self._servo.set_nocheck('power_state', 'off')
-
-    @_inherit_docstring(_PowerStateController)
-    def power_on(self, rec_mode=REC_OFF):
-        if rec_mode == REC_OFF:
-            state = 'on'
-        else:
-            state = 'rec'
-        self._servo.set_nocheck('power_state', state)
-
-    @_inherit_docstring(_PowerStateController)
-    def reset(self):
-        self._servo.set_nocheck('power_state', 'reset')
-
-
-class _PantherController(_PowerStateController):
-
-    """Power-state controller for Panther and compatible boards.
-
-    For Panther, the 'cold_reset' signal is now connected (from DVT)
-    However releasing the 'cold_reset' line does not power on the
-    device. Hence the need to press the power button.
-    """
-
-    _RESET_HOLD_TIME = 0.5
-    _RESET_DELAY = 5.0
-    _TIME_TO_HOLD_POWER_BUTTON = 1.2
-
-    @_inherit_docstring(_PowerStateController)
-    def cold_reset(self):
-        self._servo.set_get_all(['cold_reset:on',
-                                 'sleep:%.4f' % self._RESET_HOLD_TIME,
-                                 'cold_reset:off'])
-        time.sleep(self._RESET_DELAY)
-
-        self._servo.set('pwr_button', 'press')
-        time.sleep(self._TIME_TO_HOLD_POWER_BUTTON)
-        self._servo.set('pwr_button', 'release')
-
-
-_CONTROLLER_BOARD_MAP = {
-    'panther': _PantherController,
-    'mccloud': _PantherController,
-    'monroe': _PantherController,
-    'zako': _PantherController,
-    'tricky': _PantherController,
-}
-
-
-def create_controller(servo, board):
+def create_controller(servo):
     """Create a power state controller instance.
-
-    The controller class will be selected based on the provided board type, and
-    instantiated with the provided servo instance. Default controller is
-    _ServodController.
 
     @param servo Servo object that will be used to manipulate DUT
                  power states.
-    @param board Board name of the DUT to be controlled.
 
-    @returns An instance of a power state controller appropriate to
-             the given board type, default controller is _ServodController if no
-             controller is specified for the board.
+    @returns An instance of _PowerStateController for the servo
+             object.
 
     """
-    return _CONTROLLER_BOARD_MAP.get(board, _ServodController)(servo)
+    return _PowerStateController(servo)

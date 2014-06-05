@@ -108,6 +108,6 @@ class provision_FirmwareUpdate(test.test):
         self._servo.program_ec(os.path.join(self.tmpd.name, self._ec_image))
         logging.info('Will re-program BIOS now')
         self._servo.program_bios(os.path.join(self.tmpd.name, self._ap_image))
-        self._servo.get_power_state_controller().cold_reset()
+        self._servo.get_power_state_controller().reset()
         time.sleep(self._servo.BOOT_DELAY)
         self._add_version_label()

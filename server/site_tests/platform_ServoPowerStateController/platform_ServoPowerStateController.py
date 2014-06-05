@@ -6,7 +6,6 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import test
-from autotest_lib.server.cros.servo import power_state_controller
 
 
 class platform_ServoPowerStateController(test.test):
@@ -25,7 +24,7 @@ class platform_ServoPowerStateController(test.test):
             # Power off, then power on DUT from internal storage.
             self.controller.power_off()
             self.host.servo.switch_usbkey('off')
-            self.controller.power_on(power_state_controller.REC_OFF)
+            self.controller.power_on(self.controller.REC_OFF)
 
 
     def confirm_dut_on(self, rec_on=False):
@@ -73,7 +72,7 @@ class platform_ServoPowerStateController(test.test):
         # Power DUT on in non-recovery mode with USB stick plugged in.
         # DUT shall boot from internal storage.
         logging.info('Power on DUT in non-recovery mode.')
-        self.controller.power_on(power_state_controller.REC_OFF)
+        self.controller.power_on(self.controller.REC_OFF)
         self.confirm_dut_on()
 
         logging.info('Power off DUT which is up in non-recovery mode.')
@@ -83,7 +82,7 @@ class platform_ServoPowerStateController(test.test):
 
         logging.info('Power DUT on in recovery mode, DUT shall boot from USB.')
         self.host.servo.switch_usbkey('off')
-        self.controller.power_on(power_state_controller.REC_ON)
+        self.controller.power_on(self.controller.REC_ON)
         self.host.servo.switch_usbkey('dut')
         time.sleep(30)
         self.confirm_dut_on(rec_on=True)
@@ -94,7 +93,7 @@ class platform_ServoPowerStateController(test.test):
                              'USB stick.')
 
         logging.info('Power on in non-recovery mode.')
-        self.controller.power_on(power_state_controller.REC_OFF)
+        self.controller.power_on(self.controller.REC_OFF)
         self.confirm_dut_on(rec_on=False)
 
 
@@ -116,7 +115,7 @@ class platform_ServoPowerStateController(test.test):
 
         # DUT should be off before calling power_on(REC_ON)
         logging.info('Power on DUT in recovery mode with USB unplugged.')
-        self.controller.power_on(power_state_controller.REC_ON)
+        self.controller.power_on(self.controller.REC_ON)
         self.confirm_dut_off("power_state:rec didn't stay at recovery screen.")
 
         logging.info('Power off DUT in recovery mode with USB unplugged.')
@@ -124,13 +123,13 @@ class platform_ServoPowerStateController(test.test):
         self.confirm_dut_off('power_state:off failed at recovery screen.')
 
         logging.info('Power on in non-recovery mode.')
-        self.controller.power_on(power_state_controller.REC_OFF)
+        self.controller.power_on(self.controller.REC_OFF)
         self.confirm_dut_on(rec_on=False)
 
         logging.info('Power DUT off and on without delay. DUT should be on '
                      'after power_on is completed.')
         self.controller.power_off()
-        self.controller.power_on(power_state_controller.REC_OFF)
+        self.controller.power_on(self.controller.REC_OFF)
         self.confirm_dut_on(rec_on=False)
 
         logging.info('Power DUT off and reset. DUT should be on after reset '
