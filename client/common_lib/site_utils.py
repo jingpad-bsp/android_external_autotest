@@ -129,6 +129,13 @@ def get_current_board():
     return _lsbrelease_search(r'^CHROMEOS_RELEASE_BOARD=(.+)$', group_id=1)
 
 
+def get_chromeos_release_version():
+    """
+    @return chromeos version in device under test as string. None on fail.
+    """
+    return _lsbrelease_search(r'^CHROMEOS_RELEASE_VERSION=(.+)$', group_id=1)
+
+
 def is_moblab():
     """Return if we are running on a Moblab system or not.
 
