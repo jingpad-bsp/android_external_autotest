@@ -18,36 +18,30 @@ class login_Cryptohome(test.test):
 
 
     def run_once(self):
-        try:
-            username = ''
-            with chrome.Chrome() as cr:
-                username = cr.username
-                if not cryptohome.is_vault_mounted(user=username,
-                                                   allow_fail=False):
-                    raise error.TestFail('Expected to find a mounted vault.')
+        username = ''
+        with chrome.Chrome() as cr:
+            username = cr.username
+            if not cryptohome.is_vault_mounted(user=username,
+                                               allow_fail=False):
+                raise error.TestFail('Expected to find a mounted vault.')
 
-            if cryptohome.is_vault_mounted(user=username,
-                                           allow_fail=True):
-                raise error.TestFail('Expected to not find a mounted vault.')
+        if cryptohome.is_vault_mounted(user=username,
+                                       allow_fail=True):
+            raise error.TestFail('Expected to not find a mounted vault.')
 
-            # Remove our vault, mount another vault, create a test file
-            # in the other vault, and ensure that the file no longer exists
-            # after we log back in.
-            cryptohome.remove_vault(username)
+        # Remove our vault, mount another vault, create a test file
+        # in the other vault, and ensure that the file no longer exists
+        # after we log back in.
+        cryptohome.remove_vault(username)
 
-            cryptohome.mount_vault(TEST_USER, TEST_PASS, create=True)
-            test_file = os.path.join(cryptohome.user_path(TEST_USER), 'hello')
-            open(test_file, 'w').close()
-            cryptohome.unmount_vault(TEST_USER)
+        cryptohome.mount_vault(TEST_USER, TEST_PASS, create=True)
+        test_file = os.path.join(cryptohome.user_path(TEST_USER), 'hello')
+        open(test_file, 'w').close()
+        cryptohome.unmount_vault(TEST_USER)
 
-            with chrome.Chrome():
-                if not cryptohome.is_vault_mounted(user=username,
-                                                   allow_fail=False):
-                    raise error.TestFail(
-                            'Expected to find a recreated mounted vault.')
-                if os.path.exists(test_file):
-                    raise error.TestFail('Expected to not find the test file.')
-        # TODO(dennisjeffrey): Make this more fine-grained.
-        # See crbug.com/225542.
-        except Exception as err:
-            raise error.TestFailRetry(repr(err))
+        with chrome.Chrome():
+            if not cryptohome.is_vault_mounted(user=username,
+                                               allow_fail=False):
+                raise error.TestFail('Expected to find user\'s mounted vault.')
+            if os.path.exists(test_file):
+                raise error.TestFail('Expected to not find the test file.')

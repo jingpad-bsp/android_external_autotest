@@ -7,15 +7,11 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cryptohome
 
 class platform_CryptohomeMount(test.test):
+    """Validates basic cryptohome creation and mounting."""
     version = 1
 
-    def run_once(self):
-        try:
-            self.run_once_no_retry()
-        except Exception as err:
-            raise error.TestFailRetry(repr(err))
 
-    def run_once_no_retry(self):
+    def run_once(self):
         test_user = 'this_is_a_local_test_account@chromium.org';
         test_password = 'this_is_a_test_password';
         # Get the hash for the test user account

@@ -4,11 +4,6 @@
 
 AUTHOR = "cmasone, achuith"
 NAME = "login_CryptohomeIncognito"
-PURPOSE = "Verify guest cryptohome is mounted only after login as guest."
-CRITERIA = """
-This test will fail if guest cryptohome is not mounted when logged in as guest,
-or if it is mounted when not logged in as guest.
-"""
 SUITE = "bvt, bvt_cq, smoke"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
@@ -17,7 +12,8 @@ TEST_TYPE = "client"
 JOB_RETRIES = 1
 
 DOC = """
-This test checks that guest cryptohome is mounted when logged in as guest.
+This test will fail if guest cryptohome is not mounted when logged in as guest,
+or if it is mounted when not logged in as guest.
 """
 
 job.run_test('login_CryptohomeIncognito')

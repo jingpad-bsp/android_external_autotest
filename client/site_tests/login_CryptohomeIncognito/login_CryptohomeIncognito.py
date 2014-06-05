@@ -14,14 +14,10 @@ class login_CryptohomeIncognito(test.test):
 
 
     def run_once(self):
-        try:
-            with chrome.Chrome(logged_in=False):
-                if not cryptohome.is_guest_vault_mounted():
-                    raise error.TestFail('Expected to find a guest vault '
-                                         'mounted via tmpfs.')
-            # Allow the command to fail, so we can handle the error here.
-            if cryptohome.is_guest_vault_mounted(allow_fail=True):
-                raise error.TestFail('Expected to NOT find a guest vault '
-                                     'mounted.')
-        except Exception as err:
-            raise error.TestFailRetry(err)
+        with chrome.Chrome(logged_in=False):
+            if not cryptohome.is_guest_vault_mounted():
+                raise error.TestFail('Expected to find a guest vault '
+                                     'mounted via tmpfs.')
+        # Allow the command to fail, so we can handle the error here.
+        if cryptohome.is_guest_vault_mounted(allow_fail=True):
+            raise error.TestFail('Expected to NOT find a guest vault mounted.')

@@ -2,15 +2,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "Chrome OS Team"
+AUTHOR = "wad, dkrahn"
 NAME = "platform_CryptohomeMount"
-PURPOSE = "Verify that cryptohome can create and mount an ecrypted vault."
-CRITERIA = "This test will fail if cryptohome is not mounted after a call to mount."
 SUITE = "experimental"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "client"
+JOB_RETRIES = 1
 
 DOC = """
 This test checks that cryptohome can create and mount an encrypted vault.
