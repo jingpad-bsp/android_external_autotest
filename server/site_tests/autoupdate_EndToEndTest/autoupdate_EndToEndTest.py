@@ -664,6 +664,7 @@ class autoupdate_EndToEndTest(test.test):
     _DEVSERVER_HOSTLOG_REQUEST_TIMEOUT_SECONDS = 30
 
     _STATEFUL_UPDATE_FILENAME = 'stateful.tgz'
+    _LOGINABLE_MINIMUM_RELEASE = 5110
 
     # Named tuple containing urls for staged urls needed for test.
     # source_url: url to find the update payload for the source image.
@@ -1095,6 +1096,22 @@ class autoupdate_EndToEndTest(test.test):
             raise error.TestError('Cannot install mp image without servo.')
 
 
+    def _run_login_test(self, release_string):
+        """Runs login_LoginSuccess test if it is supported by the release."""
+        # Only do login tests with recent builds, since they depend on
+        # some binary compatibility with the build itself.
+        # '5116.0.0' -> ('5116', '0', '0') -> 5116
+        if int(release_string.split('.')[0]) > self._LOGINABLE_MINIMUM_RELEASE:
+            # Login, to prove we can before/after the update.
+            logging.info('Attempting to login (release %s).', release_string)
+
+            client_at = autotest.Autotest(self._host)
+            client_at.run_test('login_LoginSuccess')
+        else:
+            logging.info('Not attempting login test because %s is older than '
+                         '%d.', release_string, self._LOGINABLE_MINIMUM_RELEASE)
+
+
     def _dump_update_engine_log(self):
         """Dumps relevant AU error log."""
         if not self._use_servo:
@@ -1117,6 +1134,7 @@ class autoupdate_EndToEndTest(test.test):
         @raises ExpectedUpdateEventChainFailed if we failed to verify an update
                 event.
         """
+
         # On test images, record the active root partition.
         source_rootfs_partition = None
         if self._use_test_image:
@@ -1289,20 +1307,15 @@ class autoupdate_EndToEndTest(test.test):
         self._omaha_devserver = OmahaDevserver(
                 devserver_hostname, self._devserver_dir, staged_urls.target_url)
         self._omaha_devserver.start_devserver()
+
+        # Make sure we can login before the update.
+        self._run_login_test(test_conf['source_release'])
+
         try:
             self.run_update_test(staged_urls, test_conf)
         except ExpectedUpdateEventChainFailed:
             self._dump_update_engine_log()
             raise
 
-        # Only do login tests with recent builds, since they depend on
-        # some binary compatibility with the build itself.
-        # '5116.0.0' -> ('5116', '0', '0') -> 5116
-        if int(test_conf['target_release'].split('.')[0]) > 5110:
-            # Login, to prove we can after the update.
-            logging.info('Attempting to login to verify image.')
-
-            client_at = autotest.Autotest(self._host)
-            client_at.run_test('login_LoginSuccess')
-        else:
-            logging.info('Not attempting login test.')
+        # And make sure we can login after update.
+        self._run_login_test(test_conf['target_release'])
