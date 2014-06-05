@@ -194,7 +194,6 @@ class ApBatchLocker(object):
         for ap_locker in self._locked_aps:
             if host_name == ap_locker.configurator.host_name:
                 self.manager.unlock(hosts=[host_name])
-                self._locked_aps.remove(ap_locker)
                 return
 
         logging.error('Tried to unlock a host we have not locked (%s)?',
@@ -205,6 +204,8 @@ class ApBatchLocker(object):
         """Unlock APs after we're done."""
         for ap_locker in self._locked_aps:
             self.unlock_one_ap(ap_locker.configurator.host_name)
+        # Clear out the list
+        del self._locked_aps[:]
 
 
     def unlock_and_reclaim_ap(self, host_name):
@@ -226,6 +227,5 @@ class ApBatchLocker(object):
 
         """
         # Add the APs back into the pool
-        logging.info('Reclaiming %d APs to the pool.', len(self._locked_aps))
         self.aps_to_lock.extend(self._locked_aps)
         self.unlock_aps()

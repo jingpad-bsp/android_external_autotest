@@ -108,8 +108,7 @@ class ChaosRunner(object):
         # The SSID doesn't matter, all that needs to be verified is that iw
         # works.
         networks = client.iw_runner.wait_for_scan_result(client.wifi_if,
-                                                         ssid=ap.ssid,
-                                                         timeout_seconds=5)
+                                                         ssid=ap.ssid)
         if networks == None:
             return False
         return True
@@ -166,15 +165,10 @@ class ChaosRunner(object):
                 failed_ap = True
                 error_string = chaos_constants.AP_PDU_DOWN
                 tag = ap.host_name + '_PDU'
-                # Cannot use _release_ap, since power_down will fail
-                batch_locker.unlock_one_ap(ap.host_name)
-                aps_to_remove.append(ap)
             elif (ap.configuration_success == chaos_constants.CONFIG_FAIL):
                 failed_ap = True
                 error_string = chaos_constants.AP_CONFIG_FAIL
                 tag = ap.host_name
-                self._release_ap(ap, batch_locker)
-                aps_to_remove.append(ap)
 
             if failed_ap:
                 tag += '_' + str(int(round(time.time())))
@@ -182,6 +176,12 @@ class ChaosRunner(object):
                              ap=ap,
                              error_string=error_string,
                              tag=tag)
+                aps_to_remove.append(ap)
+                if error_string == chaos_constants.AP_CONFIG_FAIL:
+                    self._release_ap(ap, batch_locker)
+                else:
+                    # Cannot use _release_ap, since power_down will fail
+                    batch_locker.unlock_one_ap(ap.host_name)
         return list(set(aps) - set(aps_to_remove))
 
 
@@ -249,6 +249,8 @@ class ChaosRunner(object):
         """
         for i in range(2):
             networks = self._scan_for_networks(ap.ssid, capturer)
+            if networks is None
+                return None
             if len(networks) == 0:
                 # The SSID wasn't even found, abort
                 logging.error('The ssid %s was not found in the scan', ap.ssid)
