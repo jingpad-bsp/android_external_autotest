@@ -9,7 +9,11 @@ import com.google.gwt.event.logical.shared.BeforeSelectionEvent;
 import com.google.gwt.event.logical.shared.BeforeSelectionHandler;
 import com.google.gwt.event.logical.shared.SelectionEvent;
 import com.google.gwt.event.logical.shared.SelectionHandler;
+import com.google.gwt.event.logical.shared.ValueChangeEvent;
+import com.google.gwt.event.logical.shared.ValueChangeHandler;
+import com.google.gwt.user.client.Timer;
 import com.google.gwt.user.client.ui.Button;
+import com.google.gwt.user.client.ui.CheckBox;
 import com.google.gwt.user.client.ui.Composite;
 import com.google.gwt.user.client.ui.DeckPanel;
 import com.google.gwt.user.client.ui.HorizontalPanel;
@@ -25,13 +29,17 @@ import java.util.Map;
 public class CustomTabPanel extends Composite implements CustomHistoryListener,
                                                          BeforeSelectionHandler<Integer>,
                                                          SelectionHandler<Integer> {
+    private static final int AUTOREFRESH_INTERVAL = 5000; // millisecond
+
     protected TabPanel tabPanel = new TabPanel();
     protected Panel otherWidgetsPanel = new HorizontalPanel();
     private Panel commonAreaPanel = new VerticalPanel();
     protected Button refreshButton = new Button("Refresh");
+    protected CheckBox autorefreshCheckbox = new CheckBox("Auto Refresh");
     protected int topBarHeight = 0;
     protected List<TabView> tabViews = new ArrayList<TabView>();
     private boolean doUpdateHistory = true;
+    private Timer autorefreshTimer;
     
     public CustomTabPanel() {
         VerticalPanel container = new VerticalPanel();
@@ -72,6 +80,21 @@ public class CustomTabPanel extends Composite implements CustomHistoryListener,
             } 
         });
         otherWidgetsPanel.add(refreshButton);
+
+        autorefreshCheckbox.addValueChangeHandler(new ValueChangeHandler() {
+            public void onValueChange(ValueChangeEvent event) {
+                // Ensure Initialization.
+                if (autorefreshTimer == null)
+                    initialize();
+
+                if (autorefreshCheckbox.getValue()) {
+                    autorefreshTimer.scheduleRepeating(AUTOREFRESH_INTERVAL);
+                } else {
+                    autorefreshTimer.cancel();
+                }
+            }
+        });
+        otherWidgetsPanel.add(autorefreshCheckbox);
         
         CustomHistory.addHistoryListener(this);
         
@@ -87,6 +110,12 @@ public class CustomTabPanel extends Composite implements CustomHistoryListener,
         // first tab
         if (getSelectedTabView() == null)
             tabPanel.selectTab(0);
+        autorefreshTimer = new Timer() {
+            @Override
+            public void run() {
+                getSelectedTabView().refresh();
+            }
+        };
     }
     
     public void addTabView(TabView tabView) {
@@ -173,5 +202,6 @@ public class CustomTabPanel extends Composite implements CustomHistoryListener,
     public void onSelection(SelectionEvent<Integer> event) {
         if (doUpdateHistory)
             tabViews.get(event.getSelectedItem()).updateHistory();
+        autorefreshCheckbox.setValue(false);
     }
 }
