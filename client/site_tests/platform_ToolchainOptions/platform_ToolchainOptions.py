@@ -68,7 +68,7 @@ class ToolchainOptionSet:
 
     def get_fail_summary_message(self):
         m = "Test %s " % self.description
-        m += "%d failures\n" % len(self.filtered_set)
+        m += "%d failures" % len(self.filtered_set)
         return m
 
 
@@ -76,7 +76,7 @@ class ToolchainOptionSet:
         m = self.get_fail_summary_message()
         sorted_list = list(self.filtered_set)
         sorted_list.sort()
-        m += "FAILED:\n%s\n\n" % "\n".join(sorted_list)
+        m += "\nFAILED:\n%s\n\n" % "\n".join(sorted_list)
         return m
 
 
@@ -260,21 +260,17 @@ class platform_ToolchainOptions(test.test):
         # There is currently no way to clear binary prebuilts for all devs.
         # Thus, when a new check is added to this test, the test might fail
         # for users who have old prebuilts which have not been compiled
-        # in the correct manner. Warn the user that if a test fails,
-        # they might have to clear their prebuilts to make it pass.
-        fail_summary_msg = "The following tests failed. If you expected " \
-                           "the test to pass you may have stale binary " \
-                           "prebuilts which are causing the failure. Try " \
-                           "clearing binary prebuilts and rebuilding by " \
-                           " running: ./setup_board --board=... --force\n\n"
+        # in the correct manner.
+        fail_summaries = []
         full_msg = "Test results:"
         num_fails = 0
         for cos in option_sets:
             if len(cos.filtered_set):
                 num_fails += 1
                 fail_msg += cos.get_fail_message() + "\n"
-                fail_summary_msg += cos.get_fail_summary_message() + "\n"
+                fail_summaries.append(cos.get_fail_summary_message())
             full_msg += str(cos) + "\n\n"
+        fail_summary_msg = ", ".join(fail_summaries)
 
         logging.error(fail_msg)
         logging.debug(full_msg)
