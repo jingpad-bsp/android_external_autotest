@@ -62,7 +62,7 @@ class hardware_StorageWearoutDetect(test.test):
                 if m:
                     model = m.group('model')
                     ssd_detect = True
-                    logging.info("Found SSD model %s", model)
+                    logging.info('Found SSD model %s', model)
 
                 m = re.match(self.MMC_DETECT, line)
                 if m:
@@ -70,7 +70,7 @@ class hardware_StorageWearoutDetect(test.test):
                     if float(version) < 5.0:
                         legacy_mmc = True
                     mmc_detect = True
-                    logging.info("Found eMMC version %s", version)
+                    logging.info('Found eMMC version %s', version)
 
                 m = re.match(self.SSD_FAIL, line, re.X)
                 if m:
@@ -83,12 +83,13 @@ class hardware_StorageWearoutDetect(test.test):
                     fail_msg += ' ' + param
 
         if not ssd_detect and not mmc_detect:
-            raise error.TestFail("Can not detect storage device")
+            raise error.TestFail('Can not detect storage device.')
 
         if fail_msg:
-            msg = "Detected wear out parameter:%s" % fail_msg
+            msg = 'Detected wearout parameter:%s' % fail_msg
             raise error.TestFail(msg)
 
         if legacy_mmc:
-            msg = 'eMMC device does not support wear out attribute'
+            msg = 'eMMC version %s detected. ' % version
+            msg += 'Wearout attributes are supported in eMMC 5.0 and later.'
             raise error.TestNAError(msg)
