@@ -46,18 +46,12 @@ class enterprise_RemoraRequisition(test.test):
 
 
     def run_once(self):
-        if enrollment.ClearTPM():
-            return
-
         user_id, password = utils.get_signin_credentials(os.path.join(
                 os.path.dirname(os.path.realpath(__file__)), 'credentials.txt'))
-        if user_id and password:
-            with chrome.Chrome(auto_login=False) as cr:
-                enrollment.RemoraEnrollment(cr.browser, user_id, password)
-                self._CheckHangoutsExtensionContexts(cr.browser)
-                # TODO(achuith): Additional logic to ensure the hangouts app is
-                # functioning correctly.
-
-            enrollment.ClearTPM()
-        else:
+        if not (user_id and password):
             logging.warn('No credentials found - exiting test.')
+            return
+
+        with chrome.Chrome(auto_login=False) as cr:
+            enrollment.RemoraEnrollment(cr.browser, user_id, password)
+            self._CheckHangoutsExtensionContexts(cr.browser)
