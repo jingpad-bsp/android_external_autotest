@@ -1,0 +1,33 @@
+# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "gwendal"
+NAME = "StorageQualTrim"
+SUITE = "storage_qual"
+TIME = "LONG"
+TEST_CATEGORY = "Stress"
+TEST_CLASS = "suite"
+TEST_TYPE = "server"
+
+DOC = """
+Suite for testing the Storage Qual running from the fixed devices.
+This tests check trim support under stress.
+"""
+HOUR_IN_SECS=60*60
+DAY_IN_SECS=24*HOUR_IN_SECS
+
+SERVER_TESTS= [
+    ('hardware_StorageQualBase', { 'tag': 'before', 'client_tag': 'before'}),
+    ('hardware_StorageStress', {'duration': 7 * DAY_IN_SECS, 'tag': 'soak',
+        'power_command': 'nothing', 'storage_test_command': 'full_write'}),
+    ('hardware_StorageQualTrimStress', { 'duration': 7 * DAY_IN_SECS }),
+    ('hardware_StorageQualBase', { 'tag': 'after', 'client_tag': 'after'}),
+]
+
+def run_server_tests(machine):
+    job.add_sysinfo_logfile('/var/log/storage_info.txt', on_every_test=True)
+    for test, argv in SERVER_TESTS:
+        job.run_test(test, client_ip=machine, **argv)
+
+parallel_simple(run_server_tests, machines)
