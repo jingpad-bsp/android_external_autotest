@@ -101,9 +101,20 @@ class platform_ServoPowerStateController(test.test):
     def test_with_usb_unplugged(self):
         """Run test when USB stick is not plugged in servo.
         """
+        # Power off DUT regardless its current status.
+        logging.info('Power off DUT.')
+        self.controller.power_off()
+        self.confirm_dut_off('power_state:off did not turn DUT off.')
+
+        # Try to power off the DUT again, make sure the DUT stays off.
+        logging.info('Power off DUT which is already off.')
+        self.controller.power_off()
+        self.confirm_dut_off('power_state:off turned DUT on.')
+
         # USB stick should be unplugged before the test.
         self.host.servo.switch_usbkey('off')
 
+        # DUT should be off before calling power_on(REC_ON)
         logging.info('Power on DUT in recovery mode with USB unplugged.')
         self.controller.power_on(power_state_controller.REC_ON)
         self.confirm_dut_off("power_state:rec didn't stay at recovery screen.")
@@ -115,26 +126,6 @@ class platform_ServoPowerStateController(test.test):
         logging.info('Power on in non-recovery mode.')
         self.controller.power_on(power_state_controller.REC_OFF)
         self.confirm_dut_on(rec_on=False)
-
-
-    def run_once(self, host, usb_available=True):
-        """Run the test.
-
-        @param host: host object of tested DUT.
-        @param usb_plugged_in: True if USB stick is plugged in servo.
-        """
-        self.host = host
-        self.controller = host.servo.get_power_state_controller()
-
-        # Power off DUT regardless its current status.
-        logging.info('Power off DUT.')
-        self.controller.power_off()
-        self.confirm_dut_off('power_state:off did not turn DUT off.')
-
-        # Try to power off the DUT again, make sure the DUT stays off.
-        logging.info('Power off DUT which is already off.')
-        self.controller.power_off()
-        self.confirm_dut_off('power_state:off turned DUT on.')
 
         logging.info('Power DUT off and on without delay. DUT should be on '
                      'after power_on is completed.')
@@ -157,9 +148,18 @@ class platform_ServoPowerStateController(test.test):
         if not new_boot_id or boot_id == new_boot_id:
             raise error.TestFail('power_state:reset failed to reboot DUT.')
 
+
+    def run_once(self, host, usb_available=True):
+        """Run the test.
+
+        @param host: host object of tested DUT.
+        @param usb_plugged_in: True if USB stick is plugged in servo.
+        """
+        self.host = host
+        self.controller = host.servo.get_power_state_controller()
+
         self.test_with_usb_unplugged()
         if usb_available:
             self.host.servo.switch_usbkey('dut')
             self.test_with_usb_plugged_in()
             self.host.servo.switch_usbkey('off')
-
