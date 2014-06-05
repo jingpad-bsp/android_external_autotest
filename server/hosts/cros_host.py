@@ -113,7 +113,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
     _RPC_PROXY_URL = 'http://localhost:%d'
     _RPC_SHUTDOWN_POLLING_PERIOD_SECONDS = 2
-    _RPC_SHUTDOWN_TIMEOUT_SECONDS = 20
+    # Set shutdown timeout to account for the time for restarting the UI.
+    _RPC_SHUTDOWN_TIMEOUT_SECONDS = cros_ui.RESTART_UI_TIMEOUT
 
     _RPM_RECOVERY_BOARDS = global_config.global_config.get_config_value('CROS',
             'rpm_recovery_boards', type=str).split(',')
