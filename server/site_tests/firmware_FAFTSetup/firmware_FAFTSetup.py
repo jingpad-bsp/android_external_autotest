@@ -7,8 +7,8 @@ import logging
 from threading import Timer
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import utils
 from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
+
 
 class firmware_FAFTSetup(FirmwareTest):
     """This test checks the following FAFT hardware requirement:
@@ -18,29 +18,12 @@ class firmware_FAFTSetup(FirmwareTest):
       - USB stick is plugged into Servo board, not DUT
       - Keyboard simulation
       - No terminal opened on EC console
-
-    If this test is run with parameter -a "spec_check=True", then hardware
-    testability is checked according to spec and without any current
-    workaround. This includes:
-      - Strict keyboard simulation
-      - Recovery mode with dedicated recovery signal
     """
     version = 1
 
     # Delay between starting 'showkey' and pressing the keys
     KEY_PRESS_DELAY = 2
 
-
-    def initialize(self, host, cmdline_args):
-        dict_args = utils.args_to_dict(cmdline_args)
-        spec_check = dict_args.get("spec_check", "False")
-        if spec_check.lower() == "true":
-            self._spec_check = True
-        elif spec_check.lower() == "false":
-            self._spec_check = False
-        else:
-            raise error.TestFail("Invalid argument spec_check=%s." % spec_check)
-        super(firmware_FAFTSetup, self).initialize(host, cmdline_args)
 
     def console_checker(self):
         """Verify EC console is available if using Chrome EC."""
@@ -178,34 +161,6 @@ class firmware_FAFTSetup(FirmwareTest):
 
         return self.base_keyboard_checker(keypress, expected_output)
 
-    def strict_keyboard_checker(self):
-        """Press 'd', Ctrl, ENTER, Refresh by servo and check from DUT.
-
-        This method directly controls keyboard by servo and thus cannot be used
-        to test devices without internal keyboard.
-        """
-        logging.debug("strict_keyboard_checker")
-
-        def keypress():
-            self.servo.ctrl_key()
-            self.servo.d_key()
-            self.servo.enter_key()
-            self.servo.refresh_key()
-
-        keys = self.faft_config.key_checker_strict
-
-        expected_output = list("keycode  %x %s" % (k, p) for k, p in keys)
-
-        return self.base_keyboard_checker(keypress, expected_output)
-
-    def reboot_to_rec_mode(self):
-        if self._spec_check:
-            self.servo.enable_recovery_mode()
-            self.servo.get_power_state_controller().cold_reset()
-            self.servo.disable_recovery_mode()
-        else:
-            self.enable_rec_mode_and_reboot()
-
     def run_once(self):
         logging.info("Check EC console is available and test warm reboot")
         self.console_checker()
@@ -213,7 +168,7 @@ class firmware_FAFTSetup(FirmwareTest):
 
         logging.info("Check test image is on USB stick and run recovery boot")
         self.assert_test_image_in_usb_disk()
-        self.do_reboot_action(self.reboot_to_rec_mode)
+        self.do_reboot_action(self.enable_rec_mode_and_reboot)
         self.wait_fw_screen_and_plug_usb()
         self.check_state((self.checkers.crossystem_checker,
                           {'mainfw_type': 'recovery'}))
@@ -222,7 +177,4 @@ class firmware_FAFTSetup(FirmwareTest):
         self.reboot_cold()
 
         logging.info("Check keyboard simulation")
-        self.check_state((self.strict_keyboard_checker if
-                          self._spec_check and
-                          self.faft_config.has_keyboard else
-                          self.keyboard_checker))
+        self.check_state(self.keyboard_checker)
