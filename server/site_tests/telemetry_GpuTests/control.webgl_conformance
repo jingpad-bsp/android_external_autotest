@@ -4,7 +4,7 @@
 
 AUTHOR = 'chromeos-gfx'
 NAME = 'telemetry_GpuTests.webgl_conformance'
-SUITE = 'graphics, perf_v2'
+SUITE = 'bvt, graphics, perf_v2'
 TIME = 'LONG'
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = 'gl'
