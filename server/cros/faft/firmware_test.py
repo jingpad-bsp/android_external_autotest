@@ -15,8 +15,8 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.server import autotest
 from autotest_lib.server.cros import vboot_constants as vboot
 from autotest_lib.server.cros.faft.config.config import Config as FAFTConfig
-from autotest_lib.server.cros.faft.utils.faft_checkers import FAFTCheckers
 from autotest_lib.server.cros.faft.rpc_proxy import RPCProxy
+from autotest_lib.server.cros.faft.utils.faft_checkers import FAFTCheckers
 from autotest_lib.server.cros.servo import chrome_ec
 from autotest_lib.server.cros.servo_test import ServoTest
 
@@ -898,33 +898,9 @@ class FirmwareTest(FAFTBase):
         i.e. switch ON + reboot + switch OFF, and the new keyboard controlled
         recovery mode, i.e. just press Power + Esc + Refresh.
         """
-        if self.faft_config.chrome_ec:
-            # Reset twice to emulate a long recovery-key-combo hold.
-            cold_reset_num = 2 if self.faft_config.long_rec_combo else 1
-            for i in range(cold_reset_num):
-                if i:
-                    time.sleep(self.faft_config.ec_boot_to_console)
-                # Cold reset to clear EC_IN_RW signal
-                self.servo.set('cold_reset', 'on')
-                time.sleep(self.faft_config.hold_cold_reset)
-                self.servo.set('cold_reset', 'off')
-            # Make sure AP stays off while entering EC console commands.
-            self.servo.set('warm_reset', 'on')
-            time.sleep(self.faft_config.ec_boot_to_console)
-            self.ec.set_hostevent(chrome_ec.HOSTEVENT_KEYBOARD_RECOVERY)
-            # Allow some time for EC to receive and process command
-            time.sleep(0.2)
-            self.servo.set_nocheck('warm_reset', 'off')
-            self.servo.power_short_press()
-        elif self.faft_config.broken_rec_mode:
-            self.power_cycle()
-            logging.info('Booting to recovery mode.')
-            self.servo.custom_recovery_mode()
-        else:
-            self.servo.enable_recovery_mode()
-            self.reboot_cold_trigger()
-            time.sleep(self.faft_config.ec_boot_to_console)
-            self.servo.disable_recovery_mode()
+        psc = self.servo.get_power_state_controller()
+        psc.power_off()
+        psc.power_on(psc.REC_ON)
 
     def enable_dev_mode_and_reboot(self):
         """Switch to developer mode and reboot."""
