@@ -12,6 +12,7 @@ class Values(object):
     chrome_ec = True
     long_rec_combo = True
     use_u_boot = True
+    dark_resume_capable = True
     ec_capability = ['adc_ectemp', 'battery', 'charging',
                      'keyboard', 'lid', 'x86', 'thermal',
                      'usb', 'peci', 'kblight', 'smart_usb_charge']
