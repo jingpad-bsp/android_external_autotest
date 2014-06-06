@@ -4,7 +4,6 @@
 
 import logging
 
-from autotest_lib.client.cros.graphics import graphics_utils
 from autotest_lib.server import test
 from autotest_lib.server.cros import telemetry_runner
 
@@ -13,14 +12,6 @@ class telemetry_GpuTests(test.test):
     """Run a Chrome OS GPU telemetry test."""
     version = 1
 
-    GSC = None
-
-    def initialize(self):
-        self.GSC = graphics_utils.GraphicsStateChecker()
-
-    def cleanup(self):
-        if self.GSC:
-            self.GSC.finalize()
 
     def run_once(self, host=None, test=None):
         """Run a GPU telemetry test.
