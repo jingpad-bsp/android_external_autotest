@@ -43,6 +43,7 @@ class MBIMComplianceAssertionError(MBIMComplianceError):
             # Raise |MBIMComplianceGenericAssertionError| instead.
             'no_code': '',
 
+            # Assertion group: 3.x.x#x
             'mbim1.0:3.2.1#1': 'Functions that implement both NCM 1.0 and MBIM '
                                'shall provide two alternate settings for the '
                                'Communication Interface.',
@@ -59,7 +60,7 @@ class MBIMComplianceAssertionError(MBIMComplianceError):
             'mbim1.0:3.2.1#4': 'When alternate setting 0 of the Communiation'
                                'Interface of an NCM/MBIM function is selected, '
                                'the function shall operator according to the '
-                               'NCM rules givein in [USBNCM10].',
+                               'NCM rules given in [USBNCM10].',
             'mbim1.0:3.2.1#5': 'When alternate setting 1 of the Communiation'
                                'Interface of an NCM/MBIM function is selected, '
                                'the function shall operator according to the '
@@ -69,7 +70,23 @@ class MBIMComplianceAssertionError(MBIMComplianceError):
                                  'interface class, subclass, and protocol '
                                  'codes shall match those given in alternate '
                                  'setting 0 of the Communication Interface. ',
-            # TODO(mcchou): Add other assertions as needed.
+
+            # Assertion group: 6.x#x
+            'mbim1.0:6.3#2': 'MBIM Communication Interface description shall '
+                             'include the following functional descriptors: '
+                             'CDC Header Functional Descriptor, CDC Union '
+                             'Functional Descriptor, and MBIM Functional '
+                             'Descriptor. Refer to Table 6.2 of [USBMBIM10].',
+            'mbim1.0:6.3#3': 'CDC Header Functional Descriptor shall appear '
+                             'before CDC Union Functional Descriptor and '
+                             'before MBIM Functional Descriptor.',
+            'mbim1.0:6.3#4': 'CDC Union Functional Descriptor for an MBIM '
+                             'function shall group together the MBIM '
+                             'Communication Interface and the MBIM Data '
+                             'Interface.',
+            'mbim1.0:6.5#1': 'If MBIM Extended Functional Descriptor is '
+                             'provided, it must appear after MBIM Functional '
+                             'Descriptor.'
     }
 
     def __init__(self, assertion_id, error_string=None):

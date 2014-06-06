@@ -7,7 +7,8 @@ import logging
 
 import common
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_errors
-from autotest_lib.client.cros.cellular.mbim_compliance.tests import dummy_test
+from autotest_lib.client.cros.cellular.mbim_compliance import test_context
+from autotest_lib.client.cros.cellular.mbim_compliance.tests import des_02_test
 
 
 class MBIMComplianceSuite(object):
@@ -56,7 +57,7 @@ class MBIMComplianceSuite(object):
 
         """
         return [
-                dummy_test.DummyTest()
+            des_02_test.DES_02_Test(test_context.TestContext())
         ]
 
 
