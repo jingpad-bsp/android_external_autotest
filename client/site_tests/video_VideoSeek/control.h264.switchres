@@ -14,6 +14,9 @@ TEST_CATEGORY = "General"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
 DEPENDENCIES = "hw_video_acc_h264"
+BUG_TEMPLATE = {
+    'labels': ['OS-Chrome', 'Cr-OS-Kernel-Video'],
+}
 
 DOC = """
 This test verifies H264 resolution-changing video can seek on machines with VDA.
