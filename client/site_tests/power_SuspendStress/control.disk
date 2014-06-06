@@ -15,8 +15,11 @@ DOC = """
 Runs eight minutes of suspend/resume cycles in the background of a file I/O bench.
 """
 
+DURATION=480
+INIT_DELAY=10
+
 job.parallel([lambda: job.run_test('power_SuspendStress', tag='disk',
-                                   duration=480, init_delay=10, min_suspend=7)],
+                                   duration=DURATION, init_delay=INIT_DELAY, min_suspend=7)],
              [lambda: job.run_test('hardware_StorageFio',
-                                   quicktest=True, iterations=8,
+                                   quicktest=True, test_length=INIT_DELAY+DURATION+30,
                                    tag='power_SuspendStress')])
