@@ -152,8 +152,9 @@ class ChaosParser(object):
         for line in f:
             line = line.strip()
             if line.startswith('START\tnetwork_WiFi'):
-               # TODO: @bmahadev, Add exception for PDU failure and do not
-               # include that in the total tests.
+               # Do not count PDU failures in total tests run.
+               if 'PDU' in line:
+                   continue
                total += 1
             elif line.startswith('ERROR') or line.startswith('FAIL'):
                 if 'Router name' in line:
@@ -164,6 +165,8 @@ class ChaosParser(object):
                 if 'reboot' in title_info:
                     continue
                 # Get the hostname for the AP that failed configuration.
+                if 'PDU' in title_info[1]:
+                    continue
                 if 'chromeos' in title_info[1]:
                     hostname = title_info[1].split('.')[1].split('_')[0]
                     hostnames.append(hostname)
