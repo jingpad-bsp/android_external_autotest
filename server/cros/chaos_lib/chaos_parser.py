@@ -147,6 +147,8 @@ class ChaosParser(object):
         channels = list()
         ap_names = list()
         hostnames = list()
+        kernel_version = ""
+        fw_version = ""
         f = open(status_log_path, 'r')
         total = 0
         for line in f:
@@ -156,6 +158,11 @@ class ChaosParser(object):
                if 'PDU' in line:
                    continue
                total += 1
+            elif 'kernel_version' in line:
+                kernel_version = re.search('[\d.]+', line).group(0)
+            elif 'firmware_version' in line:
+               fw_version = re.search('firmware_version\': \'([\w\s:().]+)',
+                                      line).group(1)
             elif line.startswith('ERROR') or line.startswith('FAIL'):
                 if 'Router name' in line:
                     # TODO: Should not appearing in the scan be a connect
@@ -212,8 +219,7 @@ class ChaosParser(object):
         connect_pass_string = self.generate_percentage_string(connect_pass,
                                                               config_pass)
 
-        # Two blank entries for firmware and kernel versions
-        base_csv_list = [board, os_version, "", "",
+        base_csv_list = [board, os_version, kernel_version, fw_version,
                          self.convert_set_to_string(set(modes)),
                          self.convert_set_to_string(set(channels)),
                          security]
