@@ -249,7 +249,7 @@ class ChaosRunner(object):
         """
         for i in range(2):
             networks = self._scan_for_networks(ap.ssid, capturer)
-            if networks is None
+            if networks is None:
                 return None
             if len(networks) == 0:
                 # The SSID wasn't even found, abort
