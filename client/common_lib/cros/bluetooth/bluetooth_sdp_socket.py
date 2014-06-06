@@ -297,9 +297,9 @@ class BluetoothSDPSocket(btsocket.socket):
                restrictions or if the response has an incorrect code
 
         """
-        if max_rec_cnt < 1 or max_rec_cnt > 0xFFFF:
+        if max_rec_cnt < 1 or max_rec_cnt > 65535:
             raise BluetoothSDPSocketError('MaximumServiceRecordCount must be '
-                                          'between 1 and 0xFFFF, inclusive')
+                                          'between 1 and 65535, inclusive')
 
         if len(uuids) > SDP_MAX_SSR_UUIDS_CNT:
             raise BluetoothSDPSocketError('Too many UUIDs')
@@ -446,22 +446,6 @@ class BluetoothSDPSocket(btsocket.socket):
             raise BluetoothSDPSocketError('Invalid size descriptor')
 
 
-    def _unpack_attr_ids(self, response):
-        """Unpack Service Attribute Response
-
-        @param response: body of raw Service Attribute Response.
-
-        @return dictionary of {attribute id : value}
-
-        """
-        byte_cnt, = struct.unpack_from('>H', response)
-        response = response[2:]
-        id_values_list, scanned = self._unpack_sdp_data_element(response)
-        if scanned != byte_cnt:
-            raise BluetoothSDPSocketError('Incorrect size of SDP data element')
-        return id_values_list, byte_cnt
-
-
     def service_attribute_request(self, handle, max_attr_byte_count, attr_ids):
         """Send a Service Attribute Request
 
@@ -477,15 +461,15 @@ class BluetoothSDPSocket(btsocket.socket):
                restrictions or if the response has an incorrect code
 
         """
-        if max_attr_byte_count < 7 or max_attr_byte_count > 0xFFFF:
+        if max_attr_byte_count < 7 or max_attr_byte_count > 65535:
             raise BluetoothSDPSocketError('MaximumAttributeByteCount must be '
-                                          'between 7 and 0xFFFF, inclusive')
+                                          'between 7 and 65535, inclusive')
 
         pattern = (struct.pack('>I', handle) +
                    struct.pack('>H', max_attr_byte_count) +
                    self._pack_attr_ids(attr_ids))
         cont_state = '\0'
-        id_values_list = []
+        complete_response = ''
 
         while True:
             request = pattern + cont_state
@@ -499,18 +483,19 @@ class BluetoothSDPSocket(btsocket.socket):
             if code != SDP_SVC_ATTR_RSP:
                 raise BluetoothSDPSocketError('Incorrect response code')
 
-            cur_values, response_byte_count = self._unpack_attr_ids(response)
-
+            response_byte_count, = struct.unpack_from('>H', response)
             if response_byte_count > max_attr_byte_count:
                 raise BluetoothSDPSocketError('AttributeListByteCount exceeds'
                                               'MaximumAttributeByteCount')
 
-            id_values_list.extend(cur_values)
+            response = response[2:]
+            complete_response += response[:response_byte_count]
+            cont_state = response[response_byte_count:]
 
-            cont_state = response[2 + response_byte_count:]
             if cont_state == '\0':
                 break
 
+        id_values_list = self._unpack_sdp_data_element(complete_response)[0]
         if len(id_values_list) % 2 == 1:
             raise BluetoothSDPSocketError('Length of returned list is odd')
 

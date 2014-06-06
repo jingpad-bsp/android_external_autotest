@@ -17,15 +17,22 @@ services.
 The tester sends Service Search Request and Service Attribute Request to the DUT
 to ensure that it is able to response with different attributes:
 ServiceRecordHandle, BrowseGroupList, DocumentationURL, ClientExecutableURL,
-IconURL, ProtocolDescriptorList.
+IconURL, ProtocolDescriptorList, VersionNumberList, ServiceDatabaseState,
+BluetoothProfileDescriptorList, AdditionalProtocolDescriptorLists.
+It also checks that responses with continuation state work properly.
 
 This test covers the Bluetooth SIG test cases:
 TP/SERVER/SA/BV-01-C
+TP/SERVER/SA/BV-03-C
+TP/SERVER/SA/BV-05-C
 TP/SERVER/SA/BV-08-C
 TP/SERVER/SA/BV-11-C
+TP/SERVER/SA/BV-15-C
+TP/SERVER/SA/BV-16-C
+TP/SERVER/SA/BV-17-C
 TP/SERVER/SA/BV-18-C
 TP/SERVER/SA/BV-19-C
-TP/SERVER/SA/BV-05-C
+TP/SERVER/SA/BV-21-C
 """
 
 from autotest_lib.server.cros.bluetooth import bluetooth_tester
