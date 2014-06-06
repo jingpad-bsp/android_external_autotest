@@ -32,7 +32,7 @@ class graphics_GLBench(test.test):
   # These tests do not draw anything, they can only be used to check
   # performance.
   no_checksum_tests = set([
-      '1280x768_fps_no_fill_compositing',
+      '1280x768_fps_compositing_no_fill',
       'mpixels_sec_pixel_read',
       'mpixels_sec_pixel_read_2',
       'mpixels_sec_pixel_read_3',
