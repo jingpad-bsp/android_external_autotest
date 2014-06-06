@@ -8,6 +8,7 @@ import collections
 import glob
 import os
 import re
+import tempfile
 
 import common_util
 
@@ -34,24 +35,37 @@ class TouchDevice:
         self.axes = {AXIS.X: self.axis_x, AXIS.Y: self.axis_y}
 
     @staticmethod
+    def xinput_helper(cmd):
+        """A helper of xinput.sh to execute a command.
+
+        This is a method copied from factory/py/test/utils.py
+        """
+        dummy_script = '. /opt/google/input/xinput.sh\n%s'
+        with tempfile.NamedTemporaryFile(prefix='cros_touch_xinput.') as f:
+            f.write(dummy_script % cmd)
+            f.flush()
+            return common_util.simple_system_output('sh %s' % f.name)
+
+    @staticmethod
     def get_device_node(is_touchscreen=False):
-        """Get the touch device node through xinput
+        """Get the touch device node through xinput.
+
            Touchscreens have a different device name, so this
            chooses between them.  Otherwise they are the same.
 
-           The resulting string looks like /dev/input/event8
-        """
-        cmd = '/opt/google/'
-        if is_touchscreen:
-            cmd = os.path.join(cmd, 'touchscreen/tscontrol')
-        else:
-            cmd = os.path.join(cmd, 'touchpad/tpcontrol')
-        cmd += ' status | grep "Device Node"'
-        device_node_str = common_util.simple_system_output(cmd)
+           A device id is a simple integer say 12 extracted from a string like
+               Atmel maXTouch Touchscreen   id=12   [floating slave]
 
-        # Extract and return the device node if device_node_str is not None
-        return (device_node_str.split(':')[-1].strip().strip('"')
-                if device_node_str else None)
+           A device node is extracted from "xinput list-props device_id" and
+           looks like
+               Device Node (250):      "/dev/input/event8"
+           In this example, the device node is /dev/input/event8
+        """
+        device_id = TouchDevice.xinput_helper(
+                'list_touchscreens' if is_touchscreen else 'list_touchpads')
+        device_node = TouchDevice.xinput_helper(
+                'device_get_prop %s "Device Node"' % device_id).strip('"')
+        return device_node
 
     def exists(self):
         """Indicate whether this device exists or not.
