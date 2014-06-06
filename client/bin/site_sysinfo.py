@@ -8,7 +8,7 @@ import os
 from autotest_lib.client.common_lib import log
 from autotest_lib.client.common_lib import error, utils, global_config
 from autotest_lib.client.bin import base_sysinfo
-from autotest_lib.client.cros import constants
+from autotest_lib.client.cros import constants, tpm_dam
 
 get_value = global_config.global_config.get_config_value
 collect_corefiles = get_value('CLIENT', 'collect_corefiles',
@@ -372,6 +372,10 @@ class site_sysinfo(base_sysinfo.base_sysinfo):
         # Get the chrome version and milestone numbers.
         keyval["CHROME_VERSION"], keyval["MILESTONE"] = (
                 self._get_chrome_version())
+
+        # Get the dictionary attack counter.
+        keyval["TPM_DICTIONARY_ATTACK_COUNTER"] = (
+                tpm_dam.get_dictionary_attack_counter())
 
         # Return the updated keyvals.
         return keyval
