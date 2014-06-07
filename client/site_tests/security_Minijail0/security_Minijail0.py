@@ -7,6 +7,7 @@ import logging
 import os
 import re
 import shutil
+import socket
 import tempfile
 
 from autotest_lib.client.bin import test, utils
@@ -26,7 +27,7 @@ class security_Minijail0(test.test):
                 setup = m.group(1)
         return setup
 
-    def run_test(self, path):
+    def run_test(self, path, static):
         # Tests are shell scripts with a magic comment line of the form '# args:
         # <stuff>' in them. The <stuff> is substituted in here as minijail0
         # arguments. They can also optionally contain a magic comment of the
@@ -36,6 +37,8 @@ class security_Minijail0(test.test):
         # If '%T' is present in either of the above magic comments, a temporary
         # directory is created, and its name is substituted for '%T' in both of
         # them.
+        # If '%S' is present in either of the above magic comments, it is
+        # replaced with src folder of these tests.
         args = self.get_test_option(file(path), 'args')
         setup = self.get_test_option(file(path), 'setup')
         args64 = self.get_test_option(file(path), 'args64')
@@ -45,29 +48,40 @@ class security_Minijail0(test.test):
             if '%T' in setup:
                 td = tempfile.mkdtemp()
                 setup = setup.replace('%T', td)
+            if '%S' in setup:
+                setup = setup.replace('%S', self.srcdir)
             utils.system(setup)
-        if '%T' in args:
-            td = td or tempfile.mkdtemp()
-            args = args.replace('%T', td)
 
         if self.is_64bit() and args64:
-            if '%T' in args64:
-                td = td or tempfile.mkdtemp()
-                args64 = args64.replace('%T', td)
             args = args + ' ' + args64
 
         if (not self.is_64bit()) and args32:
-            if '%T' in args32:
-                td = td or tempfile.mkdtemp()
-                args32 = args32.replace('%T', td)
             args = args + ' ' + args32
 
-        ret = utils.system('/sbin/minijail0 %s /bin/bash %s' % (args, path),
-                           ignore_status=True)
+        if '%T' in args:
+            td = td or tempfile.mkdtemp()
+            args = args.replace('%T', td)
+        if '%S' in args:
+            args = args.replace('%S', self.srcdir)
+
+        if static:
+            ret = utils.system('/sbin/minijail0 %s %s/staticbashexec %s'
+                                % (args, self.srcdir, path),
+                                ignore_status=True)
+        else:
+            ret = utils.system('/sbin/minijail0 %s /bin/bash %s'
+                                % (args, path),
+                                ignore_status=True)
         if td:
             # The test better not have polluted our mount namespace :).
             shutil.rmtree(td)
         return ret
+
+
+    def setup(self):
+        os.chdir(self.srcdir)
+        utils.make()
+
 
     def run_once(self):
         failed = []
@@ -75,9 +89,13 @@ class security_Minijail0(test.test):
         for p in glob.glob('%s/test-*' % self.srcdir):
             name = os.path.basename(p)
             logging.info('Running: %s' % name)
-            if self.run_test(p):
+            if self.run_test(p, static=False):
                 failed.append(name)
             ran += 1
+            if name != 'test-caps':
+                if self.run_test(p, static=True):
+                    failed.append(name + ' static')
+                ran += 1
         if ran == 0:
             failed.append("No tests found to run from %s!" % (self.srcdir))
         if failed:
