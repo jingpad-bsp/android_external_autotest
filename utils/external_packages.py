@@ -983,6 +983,23 @@ class FaultHandlerPackage(ExternalPackage):
             ExternalPackage._build_and_install_current_dir_noegg)
 
 
+class PsutilPackage(ExternalPackage):
+    """
+    psutil module
+    """
+    module_name = 'psutil'
+    version = '2.1.1'
+    url_filename = '%s-%s.tar.gz' % (module_name, version)
+    local_filename = url_filename
+    urls = ('http://pypi.python.org/packages/source/p/psutil/%s' %
+            (url_filename),)
+    hex_sum = '0c20a20ed316e69f2b0881530439213988229916'
+
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+                        ExternalPackage._build_and_install_current_dir_setup_py)
+
+
 class _ExternalGitRepo(ExternalPackage):
     """
     Parent class for any package which needs to pull a git repo.
