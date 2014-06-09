@@ -25,6 +25,12 @@ from optparse import OptionParser
 
 import common
 
+try:
+    # Does not exist, nor is needed, on moblab.
+    import psutil
+except ImportError:
+    psutil = None
+
 import job_directories
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.scheduler import email_manager
@@ -355,6 +361,10 @@ def main():
   # the system.
   logging.debug('Set process to nice value: %d', NICENESS)
   os.nice(NICENESS)
+  if psutil:
+      proc = psutil.Process()
+      logging.debug('Set process to ionice IDLE')
+      proc.ionice(psutil.IOPRIO_CLASS_IDLE)
 
   # os.listdir returns relative paths, so change to where we need to be to avoid
   # an os.path.join on each loop.
