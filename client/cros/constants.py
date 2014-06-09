@@ -136,9 +136,6 @@ RESOLV_CONF_FILE = '/etc/resolv.conf'
 PENDING_SHUTDOWN_PATH = '/var/lib/crash_reporter/pending_clean_shutdown'
 UNCLEAN_SHUTDOWN_DETECTED_PATH = '/var/run/unclean-shutdown-detected'
 
-FAKE_ROOT_CA_DIR = '/etc/fake_root_ca'
-FAKE_NSSDB_DIR = FAKE_ROOT_CA_DIR + '/nssdb'
-
 INTERACTIVE_XMLRPC_SERVER_PORT = 9980
 INTERACTIVE_XMLRPC_SERVER_COMMAND = (
         'cd /usr/local/autotest/common_lib/cros; '
