@@ -8,7 +8,9 @@ import collections
 import itertools
 import logging
 import operator
+import os
 import re
+import string
 
 from autotest_lib.client.bin import utils, test
 
@@ -90,7 +92,9 @@ def parse_processes(lines):
     processes = []
     for line in lines[1:]:
         process_usage = parse_process_usage(line, headers)
-        if process_usage.command.startswith('autotest'):
+        ignored = [process_usage.command.startswith(cmd) for cmd in
+            ('autotest', 'top')]
+        if any(ignored):
             continue
         processes.append(process_usage)
         logging.debug('Process usage: %r', process_usage)
@@ -197,12 +201,134 @@ def group_by_service(processes):
     return perf_values
 
 
+def parse_smap(filename):
+    """Parses /proc/*/smaps file to extract detailed memory usage of a process.
+
+    The return value is a dictionary of component paths (such as "/bin/bash",
+    "[vdso]") and 2-tuple (shared, private) sums of memory in KB.
+
+    For example:
+
+        {
+            '/bin/bash': (460, 0),
+            '/lib64/ld-2.15.so': (4, 50),
+            '[vdso]': (4, 0),
+            '[stack]': (20, 0),
+        }
+
+    @param filename: The full path to an smaps file
+    @returns dictionary of component paths (such as "/bin/bash", "[vdso]") and
+        2-tuple (shared, private) sums of memory in KB.
+    """
+
+    region_regexp = re.compile(
+        r"""(?P<Address>[0-9A-Fa-f]+-[0-9A-Fa-f]+)\s+
+            (?P<Permissions>[rwxsp-]{4})\s+
+            (?P<Offset>[0-9A-Fa-f]+)\s+
+            (?P<Device>[0-9A-Fa-f]+:[0-9A-Fa-f]+)\s+
+            (?P<Inode>\d+)\s+
+            (?P<Path>.+)?""", re.X)
+    stat_regexp = re.compile(
+        r"""(?P<Name>\w+):\s+
+            (?P<Total>\d+)\s(?P<Unit>\w\w)""", re.X)
+
+    regions = {}
+
+    with open(filename, 'r') as smaps:
+        current_address = None
+        for line in smaps:
+            parsed_region = region_regexp.match(line)
+            if parsed_region:
+                current_address = parsed_region.group('Address')
+                if current_address in regions:
+                    raise Exception('reused address %s' % current_address)
+                regions[current_address] = {
+                    'Path': parsed_region.group('Path'),
+                    'Permissions': parsed_region.group('Permissions'),
+                    'Offset': parsed_region.group('Offset')
+                }
+                continue
+
+            parsed_stat = stat_regexp.match(line)
+            if parsed_stat:
+                name = parsed_stat.group('Name')
+                total = int(parsed_stat.group('Total'))
+                regions[current_address][name] = total
+                continue
+
+    paths = collections.defaultdict(lambda: (0, 0))
+    for stats in regions.values():
+        path = stats['Path']
+        shared = stats['Shared_Clean'] + stats['Shared_Dirty']
+        private = stats['Private_Clean'] + stats['Private_Dirty']
+        paths[path] = (paths[path][0] + shared, paths[path][1] + private)
+
+    return paths
+
+
+def report_shared_libraries(processes):
+    """Report memory used by shared libraries.
+
+    This is the sum of (maximum shared memory across all processes, and sum of
+    all private memory across all processes) in bytes.
+
+    For example:
+
+        {
+            'lib_usr_lib64_xorg_modules_input_evdev_drv.so': 69632,
+            'lib_opt_google_chrome_pepper_libpepflashplayer.so': 23928832,
+        }
+
+    @param processes: List of ProcessUsage objects
+    @returns dictionary whose keys correlate to the library name, and
+        values are sum of resident memory used by that library
+    """
+
+    allowed_chars = string.ascii_letters + string.digits + '.-_'
+    libs_max_shared_sum_private = collections.defaultdict(lambda: (0, 0))
+    for process in processes:
+        proc_exe = None
+        try:
+            exe_link = '/proc/%d/exe' % process.pid
+            proc_exe = os.readlink(exe_link)
+        except OSError:
+            # os.readlink() raises OSError if file is not found.
+            continue
+
+        components = None
+        try:
+            smap_file = '/proc/%d/smaps' % process.pid
+            components = parse_smap(smap_file)
+        except IOError:
+            # IOError can be raised if smaps is not found.
+            continue
+
+        for lib, (shared, private) in components.items():
+            # smaps file contains info about stack, and heap too but we are
+            # only interested in the shared library.
+            if not lib or lib.startswith('[') or lib == proc_exe:
+                continue
+            # Filter key to comply with OutputPerfValues().
+            key = [(c if c in allowed_chars else '_') for c in lib]
+            key = 'lib' + ''.join(key)
+            max_shared, sum_private = libs_max_shared_sum_private[key]
+            max_shared = max(max_shared, shared)
+            sum_private += private
+            libs_max_shared_sum_private[key] = (max_shared, sum_private)
+
+    smaps = dict((key, sum(values) * 1024) for key, values in
+                 libs_max_shared_sum_private.items())
+    return smaps
+
+
 class platform_MemoryMonitor(test.test):
     """Monitor memory usage trend."""
 
     version = 1
 
     def run_once(self):
+        """Execute the test logic."""
+
         cmd = 'top -b -n 1'
         output = utils.system_output(cmd)
         logging.debug('Output from top:\n%s', output)
@@ -232,6 +358,7 @@ class platform_MemoryMonitor(test.test):
         perf_values.update(report_top_processes(processes))
         perf_values.update(group_by_command(processes))
         perf_values.update(group_by_service(processes))
+        perf_values.update(report_shared_libraries(processes))
 
         for key, val in perf_values.items():
             graph_name = key.split('_')[0]
