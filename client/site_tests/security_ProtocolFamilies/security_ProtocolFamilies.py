@@ -67,7 +67,7 @@ class security_ProtocolFamilies(test.test):
     version = 1
     PF_BASELINE = ["PF_FILE", "PF_PACKET", "PF_INET", "PF_INET6", "PF_ROUTE",
                    "PF_LOCAL", "PF_NETLINK", "PF_UNIX", "PF_BLUETOOTH"]
-    PER_BOARD = {"samus" : ["PF_NFC"]}
+    PER_BOARD = {}
 
 
     def pf_name(self, pfn):
