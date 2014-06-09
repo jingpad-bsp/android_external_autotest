@@ -33,7 +33,7 @@ TASK_LOGS = ('http://cautotest/tko/retrieve_logs.cgi?job=/results/hosts/'
 
 def _parse_args(args):
     description=('onerous_tasks.py job_id -id 123 -cutoff 5 or \n'
-                 'onerous_tasks.py host -host 123.123 '
+                 'onerous_tasks.py host -name 123.123 '
                  '-start "2014-03-25 16:26:31" -end "2014-03-25 16:26:31"\n')
     if not args:
         print ('Too few arguments, execute \n%s\nor try '

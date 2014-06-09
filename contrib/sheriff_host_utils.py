@@ -33,7 +33,7 @@ from django.utils import timezone as django_timezone
 
 def _parse_args(args):
     description=('./sheriff_host_utils.py --limit 5 --days_back 5 '
-                 '--query status="Repair Failed" invalid=0 locked=0')
+                 '--query \'status="Repair Failed" invalid=0 locked=0\'')
     if not args:
         print ('Too few arguments, execute %s, or try '
                './sheriff_host_utils.py --help' % description)
