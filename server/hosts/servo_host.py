@@ -295,6 +295,7 @@ class ServoHost(ssh_host.SSHHost):
             return super(ServoHost, self).run(**run_args)
 
 
+    @_timer.decorate
     def _check_servod(self):
         """A sanity check of the servod state."""
         msg_prefix = 'Servod error: %s'
@@ -330,6 +331,24 @@ class ServoHost(ssh_host.SSHHost):
         except (error.AutoservRunError, error.AutoservSSHTimeout) as e:
             raise ServoHostVerifyFailure(
                     'USB sanity check on %s failed: %s' % (self.hostname, e))
+
+
+    def _check_servo_config(self):
+        """Check if config file exists for servod.
+
+        If servod config file does not exist, there is no need to verify if
+        servo is working. The servo could be attached to a board not supported
+        yet.
+
+        @raises ServoHostVerifyFailure if /var/lib/servod/config does not exist.
+
+        """
+        try:
+            self.run('test -f /var/lib/servod/config')
+        except (error.AutoservRunError, error.AutoservSSHTimeout) as e:
+            raise ServoHostVerifyFailure(
+                    'Servo config file check failed for %s: %s' %
+                    (self.hostname, e))
 
 
     @_timer.decorate
@@ -447,9 +466,13 @@ class ServoHost(ssh_host.SSHHost):
         logging.info('Applying an update to the servo host, if necessary.')
         self._update_image()
 
+        logging.info('Verifying if servo config file exists.')
+        self._check_servo_config()
+
         logging.info('Verifying servo host %s with sanity checks.',
                      self.hostname)
         self._check_servo_host_usb()
+
         # If servo is already initialized, we don't need to do it again, call
         # _check_servod should be enough.
         if self._servo:
