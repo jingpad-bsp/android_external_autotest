@@ -25,12 +25,7 @@ class graphics_WebGLAquarium(test.test):
 
     def initialize(self):
         self.test_settings = {
-                1: ('setSetting0', 0),
-                10: ('setSetting1', 1),
                 50: ('setSetting2', 2),
-                100: ('setSetting3', 3),
-                250: ('setSetting4', 4),
-                500: ('setSetting5', 5),
                 1000: ('setSetting6', 6),
         }
         self.perf_keyval = {}
@@ -93,6 +88,9 @@ class graphics_WebGLAquarium(test.test):
         self.perf_keyval['avg_fps_%04d_fishes' % num_fishes] = avg_fps
         self.perf_keyval['avg_render_time_%04d_fishes' % num_fishes] = (
                 avg_render_time)
+        self.output_perf_value(description='avg_fps_%04d_fishes' % num_fishes,
+                               value=avg_fps, units='fps',
+                               higher_is_better=True)
         logging.info('%d fish(es): Average FPS = %f, average render time = %f',
                      num_fishes, avg_fps, avg_render_time)
 
@@ -160,7 +158,7 @@ class graphics_WebGLAquarium(test.test):
                                                stats['flipped'][1]))
 
     def run_once(self, test_duration_secs=30,
-                 test_setting_num_fishes=(1, 10, 50, 100, 250, 500, 1000)):
+                 test_setting_num_fishes=(50, 1000)):
         """Find a brower with telemetry, and run the test.
 
         @param test_duration_secs: The duration in seconds to run each scenario
