@@ -2,6 +2,7 @@ import cPickle, os, tempfile, logging
 import common
 from autotest_lib.scheduler import drone_utility, email_manager
 from autotest_lib.client.common_lib import error, global_config, utils
+from autotest_lib.client.common_lib.cros.graphite import stats
 
 
 AUTOTEST_INSTALL_DIR = global_config.global_config.get_config_value('SCHEDULER',
@@ -59,6 +60,8 @@ class _BaseAbstractDrone(object):
 
 
     def _execute_calls(self, calls):
+        stats.Gauge('drone_execute_call_count').send(
+                    self.hostname.replace('.', '_'), len(calls))
         return_message = self._execute_calls_impl(calls)
         for warning in return_message['warnings']:
             subject = 'Warning from drone %s' % self.hostname

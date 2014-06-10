@@ -295,7 +295,9 @@ class BaseDroneManager(object):
     def _call_all_drones(self, method, *args, **kwargs):
         all_results = {}
         for drone in self.get_drones():
-            all_results[drone] = drone.call(method, *args, **kwargs)
+            with self._timer.get_client(
+                    '%s.%s' % (drone.hostname.replace('.', '_'), method)):
+                all_results[drone] = drone.call(method, *args, **kwargs)
         return all_results
 
 
