@@ -1,5 +1,6 @@
 package autotest.afe;
 
+import autotest.afe.ITextBox;
 import autotest.common.JSONArrayList;
 import autotest.common.StaticDataRepository;
 import autotest.common.Utils;
@@ -29,6 +30,7 @@ public class TestSelector extends Composite implements DataTableListener, Change
                                                 TableWidgetFactory, SelectionListener {
     public static interface Display {
         public SimplifiedList getTestTypeSelect();
+        public ITextBox getTestNameFilter();
         public IDataTable getTestTable();
         public ISelectionManager getTestSelection();
         public HasHTML getTestInfo();
@@ -155,6 +157,7 @@ public class TestSelector extends Composite implements DataTableListener, Change
         populateTests();
 
         display.getTestSelection().addListener(this);
+        display.getTestNameFilter().addChangeHandler(this);
     }
 
     private void populateTests() {
@@ -168,7 +171,9 @@ public class TestSelector extends Composite implements DataTableListener, Change
                 continue;
             }
             String testType = test.get("test_type").isString().stringValue();
-            if (testType.equals(getSelectedTestType())) {
+            String testName = test.get("name").isString().stringValue().toLowerCase();
+            if (testType.equals(getSelectedTestType()) &&
+                testName.contains(getTestNameFilterText())) {
                 display.getTestTable().addRow(test);
             }
         }
@@ -199,9 +204,14 @@ public class TestSelector extends Composite implements DataTableListener, Change
         return display.getTestTypeSelect().getSelectedName();
     }
 
+    public String getTestNameFilterText() {
+        return display.getTestNameFilter().getText().toLowerCase();
+    }
+
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
         display.getTestTypeSelect().setEnabled(enabled);
+        display.getTestNameFilter().setEnabled(enabled);
         display.getTestTable().refreshWidgets();
     }
 
@@ -216,6 +226,7 @@ public class TestSelector extends Composite implements DataTableListener, Change
 
     public void reset() {
         display.getTestTypeSelect().selectByName(CLIENT_TYPE);
+        display.getTestNameFilter().setText("");
         populateTests();
     }
 

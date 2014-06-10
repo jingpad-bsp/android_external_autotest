@@ -1,5 +1,7 @@
 package autotest.afe;
 
+import autotest.afe.ITextBox;
+import autotest.afe.ITextBox.TextBoxImpl;
 import autotest.afe.TestSelector.IDataTable;
 import autotest.afe.TestSelector.IDataTable.DataTableImpl;
 import autotest.afe.TestSelector.ISelectionManager;
@@ -24,6 +26,7 @@ public class TestSelectorDisplay extends Composite implements TestSelector.Displ
     };
 
     private ExtendedListBox testTypeSelect = new ExtendedListBox();
+    private TextBoxImpl testNameFilter = new TextBoxImpl();
     private DataTableImpl testTable = new DataTableImpl(testTableColumns);
     private SelectionManagerImpl testSelection = new SelectionManagerImpl(testTable, false);
     private HTML testInfo = new HTML("Click a test to view its description");
@@ -39,6 +42,10 @@ public class TestSelectorDisplay extends Composite implements TestSelector.Displ
         testTypePanel.add(new Label("Test type:"));
         testTypePanel.add(testTypeSelect);
 
+        Panel testFilterPanel = new HorizontalPanel();
+        testFilterPanel.add(new Label("Test name:"));
+        testFilterPanel.add(testNameFilter);
+
         Panel testInfoPanel = new VerticalPanel();
         testInfoPanel.add(testInfo);
 
@@ -49,6 +56,7 @@ public class TestSelectorDisplay extends Composite implements TestSelector.Displ
 
         Panel container = new VerticalPanel();
         container.add(testTypePanel);
+        container.add(testFilterPanel);
         container.add(mainPanel);
         container.setWidth("100%");
 
@@ -57,6 +65,10 @@ public class TestSelectorDisplay extends Composite implements TestSelector.Displ
 
     public SimplifiedList getTestTypeSelect() {
         return testTypeSelect;
+    }
+
+    public ITextBox getTestNameFilter() {
+        return testNameFilter;
     }
 
     public HasHTML getTestInfo() {
