@@ -42,6 +42,36 @@ Networking.prototype._setResult = function(function_name, result_value) {
   }
 };
 
+Networking.prototype.getEnabledNetworkDevices = function() {
+  if (!this._setupFunctionCall("getEnabledNetworkDevices"))
+    return;
+  var self = this;
+  chrome.networkingPrivate.getEnabledNetworkTypes(function(networkTypes) {
+    self._setResult("getEnabledNetworkDevices", networkTypes);
+  });
+};
+
+Networking.prototype.enableNetworkDevice = function(type) {
+  if (!this._setupFunctionCall("enableNetworkDevice"))
+    return;
+  var self = this;
+  chrome.networkingPrivate.enableNetworkType(type);
+};
+
+Networking.prototype.disableNetworkDevice = function(type) {
+  if (!this._setupFunctionCall("disableNetworkDevice"))
+    return;
+  var self = this;
+  chrome.networkingPrivate.disableNetworkType(type);
+};
+
+Networking.prototype.requestNetworkScan = function() {
+  if (!this._setupFunctionCall("requestNetworkScan"))
+    return;
+  var self = this;
+  chrome.networkingPrivate.requestNetworkScan();
+};
+
 Networking.prototype.createNetwork = function(shared, properties) {
   if (!this._setupFunctionCall("createNetwork"))
     return;
@@ -97,6 +127,46 @@ Networking.prototype.setWifiTDLSEnabledState = function(ip_or_mac, enable) {
   });
 };
 
+Networking.prototype.getWifiTDLSStatus = function(ip_or_mac) {
+  if (!this._setupFunctionCall("getWifiTDLSStatus"))
+    return;
+  var self = this;
+  chrome.networkingPrivate.getWifiTDLSStatus(ip_or_mac,
+      function(TDLSStatus) {
+    self._setResult("getWifiTDLSStatus", TDLSStatus);
+  });
+};
+
+Networking.prototype.getCaptivePortalStatus = function(networkPath) {
+  if (!this._setupFunctionCall("getCaptivePortalStatus"))
+    return;
+  var self = this;
+  chrome.networkingPrivate.getCaptivePortalStatus(networkPath,
+      function(CaptivePortalStatus) {
+    self._setResult("getCaptivePortalStatus", CaptivePortalStatus);
+  });
+};
+
+
+Networking.prototype.onNetworkListChanged = function() {
+  if (!this._setupFunctionCall("onNetworkListChanged"))
+    return;
+  var self = this;
+  chrome.networkingPrivate.onNetworkListChanged.addListener(
+      function(changes) {
+    self._setResult("onNetworkListChanged", changes);
+  });
+};
+
+Networking.prototype.onPortalDetectionCompleted = function() {
+  if (!this._setupFunctionCall("onPortalDetectionCompleted"))
+    return;
+  var self = this;
+  chrome.networkingPrivate.onPortalDetectionCompleted.addListener(
+      function(networkPath, state) {
+    self._setResult("onPortalDetectionCompleted", networkPath);
+  });
+};
 
 var chromeTesting = {
   STATUS_PENDING: "chrome-test-call-status-pending",
