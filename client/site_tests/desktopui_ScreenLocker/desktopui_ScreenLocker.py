@@ -34,7 +34,7 @@ class desktopui_ScreenLocker(test.test):
     @property
     def error_bubble_visible(self):
         """True if the error bubble for bad password is visible."""
-        return not self._chrome.browser.oobe.EvaluateJavaScript(
+        return self._chrome.browser.oobe.EvaluateJavaScript(
                 "cr.ui.login.DisplayManager.errorMessageWasShownForTesting_;")
 
 
