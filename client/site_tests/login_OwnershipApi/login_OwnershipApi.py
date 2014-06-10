@@ -103,7 +103,9 @@ class login_OwnershipApi(test.test):
 
 
     def cleanup(self):
-        self._cryptohome_proxy.unmount(ownership.TESTUSER)
         if self._tempdir: self._tempdir.clean()
-        cros_ui.start(allow_fail=True)
+        # Best effort to bounce the UI, which may be up or down.
+        cros_ui.stop(allow_fail=True)
+        self._cryptohome_proxy.remove(ownership.TESTUSER)
+        cros_ui.start(allow_fail=True, wait_for_login_prompt=False)
         super(login_OwnershipApi, self).cleanup()

@@ -8,7 +8,7 @@ from dbus.mainloop.glib import DBusGMainLoop
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import policy, session_manager
-from autotest_lib.client.cros import cryptohome, ownership
+from autotest_lib.client.cros import cros_ui, cryptohome, ownership
 
 
 class login_RemoteOwnership(test.test):
@@ -74,5 +74,8 @@ class login_RemoteOwnership(test.test):
 
 
     def cleanup(self):
-        self._cryptohome_proxy.unmount(self.username)
+        # Best effort to bounce the UI, which may be up or down.
+        cros_ui.stop(allow_fail=True)
+        self._cryptohome_proxy.remove(self.username)
+        cros_ui.start(allow_fail=True, wait_for_login_prompt=False)
         super(login_RemoteOwnership, self).cleanup()
