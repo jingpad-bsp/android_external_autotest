@@ -164,10 +164,6 @@ class ChaosParser(object):
                fw_version = re.search('firmware_version\': \'([\w\s:().]+)',
                                       line).group(1)
             elif line.startswith('ERROR') or line.startswith('FAIL'):
-                if 'Router name' in line:
-                    # TODO: Should not appearing in the scan be a connect
-                    # failure?
-                    ap_names.append(self.get_ap_name(line))
                 title_info = line.split()
                 if 'reboot' in title_info:
                     continue
@@ -200,8 +196,6 @@ class ChaosParser(object):
                         hostnames.append(ssid)
                     else:
                         ap_names.append(ssid)
-            elif line.startswith('Debug info'):
-                ap_names.append(self.get_ap_name(line))
             elif ('END GOOD' in line and ('ChaosConnectDisconnect' in line or
                                           'ChaosLongConnect' in line)):
                     test_name = line.split()[2]
@@ -219,7 +213,7 @@ class ChaosParser(object):
         connect_pass_string = self.generate_percentage_string(connect_pass,
                                                               config_pass)
 
-        base_csv_list = [board, os_version, kernel_version, fw_version,
+        base_csv_list = [board, os_version, fw_version, kernel_version,
                          self.convert_set_to_string(set(modes)),
                          self.convert_set_to_string(set(channels)),
                          security]
