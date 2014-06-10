@@ -752,6 +752,85 @@ def get_disk_from_filename(filename):
     return m.group(0)
 
 
+def get_disk_firmware_version(disk_name):
+    """
+    Return firmware version for internal storage device. (empty string for eMMC)
+
+    @param disk_name: disk name to find model
+    """
+    cmd1 = 'udevadm info --query=property --name=%s' % disk_name
+    cmd2 = 'grep -E "ID_REVISION="'
+    cmd3 = 'cut -f 2 -d"="'
+    cmd = ' | '.join([cmd1, cmd2, cmd3])
+    return utils.system_output(cmd)
+
+
+def is_disk_scsi(disk_name):
+    """
+    Return true if disk is a scsi device, return false otherwise
+
+    @param disk_name: disk name check
+    """
+    return re.match('/dev/sd[a-z]+', disk_name)
+
+
+def is_disk_harddisk(disk_name):
+    """
+    Return true if disk is a harddisk, return false otherwise
+
+    @param disk_name: disk name check
+    """
+    cmd1 = 'udevadm info --query=property --name=%s' % disk_name
+    cmd2 = 'grep -E "ID_ATA_ROTATION_RATE_RPM="'
+    cmd3 = 'cut -f 2 -d"="'
+    cmd = ' | '.join([cmd1, cmd2, cmd3])
+
+    rtt = utils.system_output(cmd)
+
+    # eMMC will not have this field; rtt == ''
+    # SSD will have zero rotation rate; rtt == '0'
+    # For harddisk rtt > 0
+    return rtt and int(rtt) > 0
+
+
+def verify_hdparm_feature(disk_name, feature):
+    """
+    Check for feature support for SCSI disk using hdparm
+
+    @param disk_name: target disk
+    @param feature: hdparm output string of the feature
+    """
+    cmd = 'hdparm -I %s | grep -q "%s"' % (disk_name, feature)
+    ret = utils.system(cmd, ignore_status=True)
+    if ret == 0:
+        return True
+    elif ret == 1:
+        return False
+    else:
+        raise error.TestFail('Error running command %s' % cmd)
+
+
+def get_storage_error_msg(disk_name, reason):
+    """
+    Get Error message for storage test which include disk model.
+    and also include the firmware version for the SCSI disk
+
+    @param disk_name: target disk
+    @param reason: Reason of the error.
+    """
+
+    msg = reason
+
+    model = get_disk_model(disk_name)
+    msg += ' Disk model: %s' % model
+
+    if is_disk_scsi(disk_name):
+        fw = get_disk_firmware_version(disk_name)
+        msg += ' firmware: %s' % fw
+
+    return msg
+
+
 def load_module(module_name):
     # Checks if a module has already been loaded
     if module_is_loaded(module_name):

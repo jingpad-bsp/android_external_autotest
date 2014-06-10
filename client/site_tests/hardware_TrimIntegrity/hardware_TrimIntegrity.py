@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os, fcntl, logging, struct, random
+import os, fcntl, logging, struct, random, re
 
-from autotest_lib.client.bin import site_utils, test, utils
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
 
@@ -18,13 +18,26 @@ class hardware_TrimIntegrity(test.test):
 
     Also, perform 4K random read QD32 before and after trim. We should see some
     speed / latency difference if the device firmware trim data properly.
+
+    Condition for test result:
+    - Trim command is not supported
+      -> Target disk is a harddisk           : TestNA
+      -> Target disk is SCSI disk w/o trim   : TestNA
+      -> Otherwise                           : TestFail
+    - Can not verify integrity of untrimmed data
+      -> All case                            : TestFail
+    - Trim data is not Zero
+      -> SSD with RZAT                       : TestFail
+      -> Otherwise                           : TestNA
     """
 
     version = 1
     FILE_SIZE = 1024 * 1024 * 1024
-    CHUNK_SIZE = 64 * 1024
+    CHUNK_SIZE = 192 * 1024
     TRIM_RATIO = [0, 0.25, 0.5, 0.75, 1]
-    boards_trim_not_supported = ['butterfly', 'kiev', 'parrot', 'stout']
+
+    hdparm_trim = 'Data Set Management TRIM supported'
+    hdparm_rzat = 'Deterministic read ZEROs after TRIM'
 
     # Use hash value to check integrity of the random data.
     HASH_CMD = 'sha256sum | cut -d" " -f 1'
@@ -47,6 +60,37 @@ class hardware_TrimIntegrity(test.test):
         """
         fcntl.ioctl(fd, self.IOCTL_TRIM_CMD, struct.pack('QQ', offset, size))
 
+    def _verify_trim_support(self, size):
+        """
+        Check for trim support in ioctl. Raise TestNAError if not support.
+
+        @param size: size to try the trim command
+        """
+        try:
+            fd = os.open(self._filename, os.O_RDWR, 0666)
+            self._do_trim(fd, 0, size)
+        except IOError, err:
+            if err.errno == self.IOCTL_NOT_SUPPORT_ERRNO:
+                reason = 'IOCTL Does not support trim.'
+                msg = utils.get_storage_error_msg(self._diskname, reason)
+
+                if utils.is_disk_scsi(self._diskname):
+                    if utils.is_disk_harddisk(self._diskname):
+                        msg += ' Disk is a hard disk.'
+                        raise error.TestNAError(msg)
+                    if utils.verify_hdparm_feature(self._diskname,
+                                                   self.hdparm_trim):
+                        msg += ' Disk claims trim supported.'
+                    else:
+                        msg += ' Disk does not claim trim supported.'
+                        raise error.TestNAError(msg)
+                # SSD with trim support / mmc / sd card
+                raise error.TestFailError(msg)
+            else:
+                raise
+        finally:
+            os.close(fd)
+
     def run_once(self, filename=None, file_size=FILE_SIZE,
                  chunk_size=CHUNK_SIZE, trim_ratio=TRIM_RATIO):
         """
@@ -58,13 +102,16 @@ class hardware_TrimIntegrity(test.test):
         @param trim_ratio: list of ratio of file size to trim data
                            default: [0, 0.25, 0.5, 0.75, 1]
         """
+
         if not filename:
-            self._filename = site_utils.get_fixed_dst_drive()
-            if self._filename == site_utils.get_root_device():
-                self._filename = site_utils.get_free_root_partition()
-            logging.debug("target device: %s", self._filename)
+            self._diskname = utils.get_fixed_dst_drive()
+            if self._diskname == utils.get_root_device():
+                self._filename = utils.get_free_root_partition()
+            else:
+                self._filename = self._diskname
         else:
             self._filename = filename
+            self._diskname = utils.get_disk_from_filename(filename)
 
         if file_size == 0:
             fulldisk = True
@@ -86,22 +133,7 @@ class hardware_TrimIntegrity(test.test):
 
         logging.info('filename: %s, filesize: %d', self._filename, file_size)
 
-        # Check for trim support in ioctl. Raise TestNAError if not support.
-        try:
-            fd = os.open(self._filename, os.O_RDWR, 0666)
-            self._do_trim(fd, 0, chunk_size)
-        except IOError, err:
-            if err.errno == self.IOCTL_NOT_SUPPORT_ERRNO:
-                board = utils.get_board()
-                if board in self.boards_trim_not_supported:
-                    msg = 'Trim does not supported on %s.' % board
-                    raise error.TestNAError(msg)
-                else:
-                    raise error.TestFail("IOCTL Does not support trim.")
-            else:
-                raise
-        finally:
-            os.close(fd)
+        self._verify_trim_support(chunk_size)
 
         # Calculate hash value for zero'ed and one'ed data
         cmd = str('dd if=/dev/zero bs=%d count=1 | %s' %
@@ -194,9 +226,17 @@ class hardware_TrimIntegrity(test.test):
                           requirements=[('4k_read_qd32', [])],
                           tag='after_trim')
 
-        # Raise error when untrimmed data changed only.
-        # Don't care about trimmed data.
         if data_verify_match < data_verify_count:
-            raise error.TestFail("Fail to verify untrimmed data.")
-        if trim_verify_non_delete > 0 :
-            raise error.TestFail("Trimmed data are not deleted.")
+            reason = 'Fail to verify untrimmed data.'
+            msg = utils.get_storage_error_msg(self._diskname, reason)
+            raise error.TestFail(msg)
+
+        if trim_verify_zero <  trim_verify_count:
+            reason = 'Trimmed data are not zeroed.'
+            msg = utils.get_storage_error_msg(self._diskname, reason)
+            if utils.is_disk_scsi(self._diskname):
+                if utils.verify_hdparm_feature(self._diskname,
+                                               self.hdparm_rzat):
+                    msg += ' Disk claim deterministic read zero after trim.'
+                    raise error.TestFail(msg)
+            raise error.TestNAError(msg)
