@@ -39,7 +39,7 @@ def run(machine):
 
     host = hosts.create_host(machine, initialize=False)
     job.run_test('provision_AutoUpdate', host=host, value=value,
-                 disable_sysinfo=True)
+                 disable_sysinfo=False)
 
 
 job.parallel_simple(run, machines)
