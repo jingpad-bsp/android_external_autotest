@@ -12,7 +12,12 @@ from autotest_lib.client.cros import cryptohome
 _PASSWD_FILE = '/var/tmp/tpm_password'
 
 
-def _TPMStatus(client):
+class NoTPMPasswordException(Exception):
+    """No TPM Password could be found."""
+    pass
+
+
+def TPMStatus(client):
     """Returns a dictionary with TPM status.
 
     @param client: client object to run commands on.
@@ -34,38 +39,52 @@ def _TPMStatus(client):
     return status
 
 
+def IsTPMAvailable(client):
+    """Returns True if the TPM is unowned and enabled.
+
+    @param client: client object to run commands on.
+    """
+    status = TPMStatus(client)
+    return status['Enabled'] and not status['Owned']
+
+
 def ClearTPMServer(client, out_dir):
     """Clears the TPM and reboots from a server-side autotest.
 
     @param client: client object to run commands on.
     @param out_dir: temporary directory to store the retrieved password file.
     """
-    status = _TPMStatus(client)
-    if not status['Owned']:
+    if IsTPMAvailable(client):
         logging.debug('TPM is not owned')
-        return
-    password = status['Password']
-    if not password:
-        try:
-            client.get_file(_PASSWD_FILE, out_dir)
-        except error.AutoservRunError:
-            logging.warn('Password file %s doesn\'t exist, cannot clear TPM. '
-                         'You need to have the firmware clear the TPM, for '
-                         'instance using crossystem or by toggling the dev '
-                         'switch.', _PASSWD_FILE)
-            return
-        with open(os.path.join(out_dir, os.path.basename(_PASSWD_FILE))) as f:
-            password = f.read().rstrip()
-    if not password:
-        logging.warn('Password file %s empty, cannot clear TPM. '
-                     'You need to have the firmware clear the TPM, for '
-                     'instance using crossystem or by toggling the dev switch.',
-                     _PASSWD_FILE)
         return
 
     client.run('stop ui')
-    res = client.run('tpm_clear --pass ' + password).stdout.strip()
-    logging.warn(repr(res))
+    try:
+        password = TPMStatus(client)['Password']
+        if not password:
+            try:
+                client.get_file(_PASSWD_FILE, out_dir)
+            except error.AutoservRunError:
+                raise NoTPMPasswordException(
+                        'TPM Password file %s doesn\'t exist, falling back on '
+                        'clear_tpm_owner_request to clear the TPM. You may '
+                        'need to have the firmware clear the TPM, for instance '
+                        'by toggling the dev switch.' % _PASSWD_FILE)
+            with open(os.path.join(out_dir,
+                      os.path.basename(_PASSWD_FILE))) as f:
+                password = f.read().rstrip()
+        if not password:
+            raise NoTPMPasswordException(
+                    'TPM Password file %s empty, falling back on '
+                    'clear_tpm_owner_request to clear the TPM. You may need to '
+                    'have the firmware clear the TPM, for instance by toggling '
+                    'the dev switch.' % _PASSWD_FILE)
+
+        res = client.run('tpm_clear --pass ' + password).stdout.strip()
+        logging.warn(repr(res))
+    except NoTPMPasswordException as e:
+        logging.warn(e.args[0])
+        client.run('crossystem clear_tpm_owner_request=1')
 
     client.run('rm -rf /home/.shadow/*')
     client.run('rm -rf /var/lib/whitelist/*')
