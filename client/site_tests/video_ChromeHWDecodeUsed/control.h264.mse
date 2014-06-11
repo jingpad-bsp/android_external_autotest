@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Project, chromeos-video@google.com"
-NAME = "video_ChromeHWDecodeUsed"
+NAME = "video_ChromeHWDecodeUsed.H264.MSE"
 PURPOSE = "Verify that H.264 decode acceleration works for MSE videos in Chrome"
 CRITERIA = """
 This test will fail if VDA doesn't work with Chrome navigating to an MSE mp4 file.
@@ -14,6 +14,7 @@ TEST_CATEGORY = "General"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
 DEPENDENCIES = "hw_video_acc_h264"
+JOB_RETRIES = 1
 
 DOC = """
 This test verifies H.264 decode acceleration works for MSE videos.

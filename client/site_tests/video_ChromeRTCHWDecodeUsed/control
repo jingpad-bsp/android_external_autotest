@@ -11,6 +11,7 @@ TEST_CATEGORY = "General"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
 DEPENDENCIES = "hw_video_acc_vp8"
+JOB_RETRIES = 1
 
 DOC = """
 This test verifies that HW decoding works for WebRTC/vp8 video.

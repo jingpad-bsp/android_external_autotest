@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Project, chromeos-video@google.com"
-NAME = "video_ChromeHWDecodeUsed"
+NAME = "video_ChromeHWDecodeUsed.H264"
 PURPOSE = "Verify that H.264 video decode acceleration works in Chrome"
 CRITERIA = """
 This test will fail if VDA doesn't work with Chrome navigating to an mp4 file.
@@ -13,9 +13,8 @@ TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
-JOB_RETRIES = 1
 DEPENDENCIES = "hw_video_acc_h264"
-RETRIES = 2
+JOB_RETRIES = 1
 
 DOC = """
 This test verifies H.264 video decode acceleration works.
