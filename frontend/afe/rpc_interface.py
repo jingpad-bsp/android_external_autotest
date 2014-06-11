@@ -77,13 +77,16 @@ def label_remove_hosts(id, hosts):
     models.Label.smart_get(id).host_set.remove(*host_objs)
 
 
-def get_labels(**filter_data):
+def get_labels(exclude_filters=(), **filter_data):
     """\
+    @param exclude_filters: A sequence of dictionaries of filters.
+
     @returns A sequence of nested dictionaries of label information.
     """
-    return rpc_utils.prepare_rows_as_nested_dicts(
-            models.Label.query_objects(filter_data),
-            ('atomic_group',))
+    labels = models.Label.query_objects(filter_data)
+    for exclude_filter in exclude_filters:
+        labels = labels.exclude(**exclude_filter)
+    return rpc_utils.prepare_rows_as_nested_dicts(labels, ('atomic_group',))
 
 
 # atomic groups
@@ -884,7 +887,8 @@ def get_static_data():
     priorities: List of job priority choices.
     default_priority: Default priority value for new jobs.
     users: Sorted list of all users.
-    labels: Sorted list of all labels.
+    labels: Sorted list of labels not start with 'cros-version' and
+            'fw-version'.
     atomic_groups: Sorted list of all atomic groups.
     tests: Sorted list of all tests.
     profilers: Sorted list of all profilers.
@@ -893,7 +897,7 @@ def get_static_data():
     job_statuses: Sorted list of possible HostQueueEntry statuses.
     job_timeout_default: The default job timeout length in minutes.
     parse_failed_repair_default: Default value for the parse_failed_repair job
-    option.
+            option.
     reboot_before_options: A list of valid RebootBefore string enums.
     reboot_after_options: A list of valid RebootAfter string enums.
     motd: Server's message of the day.
@@ -914,7 +918,13 @@ def get_static_data():
     result['default_priority'] = 'Default'
     result['max_schedulable_priority'] = priorities.Priority.DEFAULT
     result['users'] = get_users(sort_by=['login'])
-    result['labels'] = get_labels(sort_by=['-platform', 'name'])
+
+    label_exclude_filters = [{'name__startswith': 'cros-version'},
+                             {'name__startswith': 'fw-version'}]
+    result['labels'] = get_labels(
+        label_exclude_filters,
+        sort_by=['-platform', 'name'])
+
     result['atomic_groups'] = get_atomic_groups(sort_by=['name'])
     result['tests'] = get_tests(sort_by=['name'])
     result['profilers'] = get_profilers(sort_by=['name'])
