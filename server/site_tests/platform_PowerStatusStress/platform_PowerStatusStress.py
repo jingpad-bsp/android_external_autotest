@@ -8,7 +8,7 @@ from autotest_lib.client.common_lib import error
 
 _CHARGING = 'CHARGING'
 _DISCHARGING = 'DISCHARGING'
-_WAIT_SECS_AFTER_SWITCH = 1
+_WAIT_SECS_AFTER_SWITCH = 2
 
 class platform_PowerStatusStress(test.test):
     version = 1
