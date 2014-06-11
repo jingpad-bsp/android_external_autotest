@@ -5,7 +5,6 @@
 import ConfigParser
 import datetime
 import os
-import shutil
 
 from autotest_lib.client.bin import utils
 
@@ -74,7 +73,7 @@ class MediaTestFactory(object):
         self.channel = channel
 
         # Configuration file names
-        self.autotest_dir = '/usr/local/autotest/cros/video'
+        self.autotest_cros_video_dir = '/usr/local/autotest/cros/video'
         self.device_spec_filename = 'device_spec.conf'
         self.test_constants_filename = 'test_constants.conf'
         self.video_info_filename = 'video_spec.conf'
@@ -141,7 +140,7 @@ class MediaTestFactory(object):
         @raises TestNAError if the test shouldn't be run on the current device.
 
         """
-        self.parser.read(os.path.join(self.autotest_dir,
+        self.parser.read(os.path.join(self.autotest_cros_video_dir,
                                       self.device_spec_filename))
 
         eligible_devices = self.parser.sections()
@@ -159,7 +158,7 @@ class MediaTestFactory(object):
         Reads test constants configuration file and stores parameters.
 
         """
-        self.parser.read(os.path.join(self.autotest_dir,
+        self.parser.read(os.path.join(self.autotest_cros_video_dir,
                                       self.test_constants_filename))
 
         # test_constants.conf has a constant section storing conf values
@@ -203,7 +202,7 @@ class MediaTestFactory(object):
         Reads device info configuration file and stores parameters.
 
         """
-        self.parser.read(os.path.join(self.autotest_dir,
+        self.parser.read(os.path.join(self.autotest_cros_video_dir,
                                       self.device_spec_filename))
 
         self.screen_height_pixels = self.parser.getint(self.device_under_test,
@@ -222,7 +221,7 @@ class MediaTestFactory(object):
         Reads video info configuration file and stores parameters.
 
         """
-        self.parser.read(os.path.join(self.autotest_dir,
+        self.parser.read(os.path.join(self.autotest_cros_video_dir,
                                       self.video_info_filename))
 
         length_str = self.parser.get(self.video_name, 'length')
@@ -232,11 +231,6 @@ class MediaTestFactory(object):
         self.media_length = datetime.timedelta(hours=duration.hour,
                                                minutes=duration.minute,
                                                seconds=duration.second)
-
-        path = os.path.join(self.autotest_dir, self.html_filename)
-
-        # Copy video.html file into what this bin_dir is
-        shutil.copy(path, self.bin_dir)
 
         # We must have succeeded copying, save new file path
         http_fullpath = os.path.join(self.bin_dir, self.html_filename)
@@ -260,7 +254,7 @@ class MediaTestFactory(object):
         Reads channel info configuration file and stores parameters.
 
         """
-        self.parser.read(os.path.join(self.autotest_dir,
+        self.parser.read(os.path.join(self.autotest_cros_video_dir,
                                       self.channel_spec_filename))
 
         self.samples_per_min = self.parser.getint(self.channel,
