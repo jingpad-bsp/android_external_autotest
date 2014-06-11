@@ -16,6 +16,7 @@ import logging
 import os
 import re
 import site
+import xml.etree.ElementTree
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faft.config.config import Config as FAFTConfig
@@ -217,18 +218,39 @@ class ProgrammerV2(object):
             raise ProgrammerError(
                     'Unable to locate data directory of Python servo module')
         SERVOFLEX_V2_R0_P50_CONFIG = 'servoflex_v2_r0_p50.xml'
+        SERVO_CONFIG_GLOB = 'servo_*_overlay.xml'
         SERVO_CONFIG_REGEXP = 'servo_(?P<board>.+)_overlay.xml'
 
+        def is_v2_compatible_board(board_config_path):
+            """Check if the given board config file is v2-compatible.
+
+            @param board_config_path: Path to a board config XML file.
+
+            @return True if the board is v2-compatible; False otherwise.
+            """
+            configs = []
+            def get_all_includes(config_path):
+                """Get all included XML config names in the given config file.
+
+                @param config_path: Path to a servo config file.
+                """
+                root = xml.etree.ElementTree.parse(config_path).getroot()
+                for element in root.findall('include'):
+                    include_name = element.find('name').text
+                    configs.append(include_name)
+                    get_all_includes(os.path.join(
+                            SERVOD_CONFIG_DATA_DIR, include_name))
+
+            get_all_includes(board_config_path)
+            return True if SERVOFLEX_V2_R0_P50_CONFIG in configs else False
+
         result = []
-        config_glob = glob.glob(os.path.join(SERVOD_CONFIG_DATA_DIR,
-                                             SERVO_CONFIG_REGEXP.replace(
-                                                     '(?P<board>.+)', '*')))
-        for config in config_glob:
-            with open(config) as f:
-                if SERVOFLEX_V2_R0_P50_CONFIG in f.read():
-                    result.append(
-                            re.search(SERVO_CONFIG_REGEXP,
-                                      config).group('board'))
+        board_overlays = glob.glob(
+                os.path.join(SERVOD_CONFIG_DATA_DIR, SERVO_CONFIG_GLOB))
+        for overlay_path in board_overlays:
+            if is_v2_compatible_board(overlay_path):
+                result.append(re.search(SERVO_CONFIG_REGEXP,
+                                        overlay_path).group('board'))
         return result
 
 
