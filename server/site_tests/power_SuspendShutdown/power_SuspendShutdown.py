@@ -2,12 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
+import json, logging, threading, time, traceback
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server import test
+from autotest_lib.server import autotest, test
 from autotest_lib.server.cros.faft.config.config import Config as FAFTConfig
-from autotest_lib.server.cros import pyauto_proxy
 
 _RETRY_SUSPEND_ATTEMPTS = 1
 _RETRY_SUSPEND_MS = 10000
@@ -20,6 +19,12 @@ class power_SuspendShutdown(test.test):
     version = 1
 
     def initialize(self, host):
+        """
+        Initial settings before running test.
+
+        @param host: Host/DUT object to run test on.
+
+        """
         # save original boot id
         self.orig_boot_id = host.get_boot_id()
 
@@ -46,12 +51,16 @@ class power_SuspendShutdown(test.test):
         # restart powerd to pick up new retry settings
         logging.info('restarting powerd')
         host.run('restart powerd')
-
-        # initialize pyauto
-        self.pyauto = pyauto_proxy.create_pyauto_proxy(host, auto_login=True)
+        time.sleep(2)
 
 
     def platform_check(self, platform_name):
+        """
+        Raises error if device does not have a lid.
+
+        @param platform_name: Name of the platform
+
+        """
         client_attr = FAFTConfig(platform_name)
 
         if not client_attr.has_lid:
@@ -63,13 +72,116 @@ class power_SuspendShutdown(test.test):
                     "lid on the device %s" % client_attr.platform)
 
 
-    def run_once(self, host=None):
+    def login_into_dut(self, client_autotest, thread_started_evt,
+                       exit_without_logout=True):
+        """
+        Runs the Desktopui_Simple login client test in a seperate thread. The
+        Desktopui_Simple client test will exit without logout.
+
+        @param client_autotest: Client autotest name to login into DUT
+
+        @param thread_started_evt: Thread attribute to start the thread
+
+        @param exit_without_logout: if flag is set thread exists without logout.
+                                    if not set, thread will wait fot logout
+                                    event.
+
+        """
+        logging.info('Login into client started')
+        thread_started_evt.set()
+        try:
+            self.autotest_client.run_test(client_autotest,
+                                          exit_without_logout=
+                                          exit_without_logout)
+        except:
+            logging.info('DUT login process failed')
+
+
+    def create_thread(self, client_autotest, exit_without_logout):
+        """
+        Created seperate thread for client test
+
+        @param client_autotest: Client autotest name to login into DUT
+
+        @param exit_without_logout: if flag is set thread exists without logout.
+                                    if not set, thread will wait fot logout
+                                    event.
+        @return t: thread object
+
+        """
+        thread_started_evt = threading.Event()
+        logging.info('Launching Desktopui_simplelogin thread')
+        try:
+            t = threading.Thread(target=self.login_into_dut,
+                                 args=(client_autotest,
+                                 thread_started_evt, exit_without_logout))
+        except:
+            raise error.TestError('Thread creation failed')
+        t.start()
+        thread_started_evt.wait()
+        logging.info('Login thread started')
+        return t
+
+
+    def logged_in(self):
+        """
+        Checks if the host has a logged in user.
+
+        @param host: Host/DUT object
+
+        @return True if a user is logged in on the device.
+
+        """
+        host = self.host
+        try:
+            out = host.run('cryptohome --action=status').stdout.strip()
+        except:
+            return False
+        try:
+            status = json.loads(out)
+        except ValueError:
+            logging.info('Cryptohome did not return a value, retrying.')
+            return False
+
+        return any((mount['mounted'] for mount in status['mounts']))
+
+
+    def run_once(self, client_autotest, host=None):
+        """
+        Run the acutal test on device.
+
+        @param client_autotest: Client autotest name to login into DUT
+
+        @param host: Host/DUT object
+
+        """
         # check platform is capable of running the test
         platform = host.run_output('mosys platform name')
         logging.info('platform is %s', platform)
         self.platform_check(platform)
+        self.autotest_client = autotest.Autotest(host)
+        self.host = host
+        exit_without_logout = True
+        t = self.create_thread(client_autotest, exit_without_logout)
+        t.join()
 
-        # close the lid to initiate suspend
+        # Waiting for the login thread to finish
+        max_wait_time = 15
+        for check_count in range(int(max_wait_time)):
+            if check_count == max_wait_time:
+                raise error.TestError('Login thread is still'
+                                      'alive after %s seconds' % max_wait_time)
+            if t.is_alive():
+                time.sleep(1)
+            else:
+                logging.info('Login thread successfully finished')
+                break
+
+        # Check for the login status
+        if not self.logged_in():
+            raise error.TestError('Logged out before closing lid')
+
+        # close the lid while logged_in to initiate suspend
         logging.info('closing lid')
         host.servo.lid_close()
 
@@ -89,8 +201,17 @@ class power_SuspendShutdown(test.test):
         host.wait_up(timeout=_BOOT_WAIT_SECONDS)
 
 
-    def cleanup(self, host):
+    def cleanup(self, client_autotest):
+        """
+        Clean up the mounts and restore the settings.
+
+        @param client_autotest: Client autotest name to login into DUT
+
+        @param host: Host/DUT object.
+
+        """
         # reopen lid - might still be closed due to failure
+        host = self.host
         logging.info('reopening lid')
         host.servo.lid_open()
 
@@ -106,5 +227,10 @@ class power_SuspendShutdown(test.test):
             # restart powerd to pick up old retry settings
             host.run('restart powerd')
 
-            # cleanup pyauto
-            self.pyauto.cleanup()
+        # Reboot Device to logout and cleanup
+        logging.info('Server: reboot client')
+        try:
+            self.host.reboot()
+        except error.AutoservRebootError as e:
+            raise error.TestFail('%s.\nTest failed with error %s' % (
+                    traceback.format_exc(), str(e)))

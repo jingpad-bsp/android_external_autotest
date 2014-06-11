@@ -25,6 +25,7 @@ servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
 def run(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
-    job.run_test("power_SuspendShutdown", host=host, disable_sysinfo=True)
+    job.run_test("power_SuspendShutdown", host=host, disable_sysinfo=True,
+                 client_autotest='desktopui_SimpleLogin')
 
 parallel_simple(run, machines)
