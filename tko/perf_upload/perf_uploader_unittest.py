@@ -30,15 +30,15 @@ class test_aggregate_iterations(unittest.TestCase):
                 'stddev': 0.0,
                 'units': 'units2',
                 'higher_is_better': True,
-                'graph':None,
+                'graph': 'graph1',
             },
             {
-                'description': 'metric3',
+                'description': 'metric2',
                 'value': 100,
                 'stddev': 1.7,
                 'units': 'units3',
                 'higher_is_better': False,
-                'graph':None,
+                'graph': 'graph2',
             }
         ],
         '2': [
@@ -56,15 +56,15 @@ class test_aggregate_iterations(unittest.TestCase):
                 'stddev': 0.0,
                 'units': 'units2',
                 'higher_is_better': True,
-                'graph':None,
+                'graph': 'graph1',
             },
             {
-                'description': 'metric3',
+                'description': 'metric2',
                 'value': 200,
                 'stddev': 21.2,
                 'units': 'units3',
                 'higher_is_better': False,
-                'graph':None,
+                'graph': 'graph2',
             }
         ],
     }
@@ -82,30 +82,34 @@ class test_aggregate_iterations(unittest.TestCase):
         """Tests that data for 1 iteration is aggregated properly."""
         result = perf_uploader._aggregate_iterations([self._perf_values[0]])
         self.assertEqual(len(result), 3, msg='Expected results for 3 metrics.')
+        key = [('metric1', None), ('metric2', 'graph1'), ('metric2', 'graph2')]
         self.assertTrue(
-            all([x in result for x in ['metric1', 'metric2', 'metric3']]),
+            all([x in result for x in key]),
             msg='Parsed metrics not as expected.')
         msg = 'Perf values for metric not aggregated properly.'
-        self.assertEqual(result['metric1']['value'], [1], msg=msg)
-        self.assertEqual(result['metric2']['value'], [10], msg=msg)
-        self.assertEqual(result['metric3']['value'], [100], msg=msg)
+        self.assertEqual(result[('metric1', None)]['value'], [1], msg=msg)
+        self.assertEqual(result[('metric2', 'graph1')]['value'], [10], msg=msg)
+        self.assertEqual(result[('metric2', 'graph2')]['value'], [100], msg=msg)
         msg = 'Standard deviation values not retained properly.'
-        self.assertEqual(result['metric1']['stddev'], 0.0, msg=msg)
-        self.assertEqual(result['metric2']['stddev'], 0.0, msg=msg)
-        self.assertEqual(result['metric3']['stddev'], 1.7, msg=msg)
+        self.assertEqual(result[('metric1', None)]['stddev'], 0.0, msg=msg)
+        self.assertEqual(result[('metric2', 'graph1')]['stddev'], 0.0, msg=msg)
+        self.assertEqual(result[('metric2', 'graph2')]['stddev'], 1.7, msg=msg)
 
 
     def test_two_iterations(self):
         """Tests that data for 2 iterations is aggregated properly."""
         result = perf_uploader._aggregate_iterations(self._perf_values)
         self.assertEqual(len(result), 3, msg='Expected results for 3 metrics.')
+        key = [('metric1', None), ('metric2', 'graph1'), ('metric2', 'graph2')]
         self.assertTrue(
-            all([x in result for x in ['metric1', 'metric2', 'metric3']]),
+            all([x in result for x in key]),
             msg='Parsed metrics not as expected.')
         msg = 'Perf values for metric not aggregated properly.'
-        self.assertEqual(result['metric1']['value'], [1, 2], msg=msg)
-        self.assertEqual(result['metric2']['value'], [10, 20], msg=msg)
-        self.assertEqual(result['metric3']['value'], [100, 200], msg=msg)
+        self.assertEqual(result[('metric1', None)]['value'], [1, 2], msg=msg)
+        self.assertEqual(result[('metric2', 'graph1')]['value'], [10, 20],
+                         msg=msg)
+        self.assertEqual(result[('metric2', 'graph2')]['value'], [100, 200],
+                         msg=msg)
 
 
 class test_compute_avg_stddev(unittest.TestCase):
@@ -232,14 +236,14 @@ class test_format_for_upload(unittest.TestCase):
     """Tests for the format_for_upload function."""
 
     _PERF_DATA = {
-        'metric1': {
+        ('metric1', 'graph_name'): {
             'value': 2.7,
             'stddev': 0.2,
             'units': 'msec',
             'graph': 'graph_name',
             'higher_is_better': False,
         },
-        'metric2': {
+        ('metric2', None): {
             'value': 101.35,
             'stddev': 5.78,
             'units': 'frames_per_sec',
@@ -320,14 +324,14 @@ class test_format_for_upload(unittest.TestCase):
         expected_result_string = (
                 '[{"supplemental_columns": {"r_cros_version": "1200.0.0", '
                 '"r_chrome_version": "25.10.0.0"}, "bot": "cros-platform", '
-                '"higher_is_better": true, "value": 101.35, '
-                '"units": "frames_per_sec", "master": "new_master_name", '
-                '"error": 5.78, "test": "new_test_name/metric2"}, '
-                '{"supplemental_columns": {"r_cros_version": "1200.0.0", '
-                '"r_chrome_version": "25.10.0.0"}, "bot": "cros-platform", '
                 '"higher_is_better": false, "value": 2.7, '
                 '"units": "msec", "master": "new_master_name", '
-                '"error": 0.2, "test": "new_test_name/graph_name/metric1"}]')
+                '"error": 0.2, "test": "new_test_name/graph_name/metric1"}, '
+                '{"supplemental_columns": {"r_cros_version": "1200.0.0", '
+                '"r_chrome_version": "25.10.0.0"}, "bot": "cros-platform", '
+                '"higher_is_better": true, "value": 101.35, '
+                '"units": "frames_per_sec", "master": "new_master_name", '
+                '"error": 5.78, "test": "new_test_name/metric2"}]')
         self._verify_result_string(result['data'], expected_result_string)
 
 

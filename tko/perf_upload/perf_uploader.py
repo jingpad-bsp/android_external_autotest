@@ -39,15 +39,17 @@ def _aggregate_iterations(perf_values):
     @param perf_values: A list of tko.models.perf_value_iteration objects.
 
     @return A dictionary mapping each unique measured perf value (keyed by
-        its description) to information about that perf value (in particular,
-        the value is a list of values for each iteration).
+        tuple of its description and graph name) to information about that
+        perf value (in particular, the value is a list of values
+        for each iteration).
 
     """
     perf_data = {}
     for perf_iteration in perf_values:
         for perf_dict in perf_iteration.perf_measurements:
-            if perf_dict['description'] not in perf_data:
-                perf_data[perf_dict['description']] = {
+            key = (perf_dict['description'], perf_dict['graph'])
+            if key not in perf_data:
+                perf_data[key] = {
                     'units': perf_dict['units'],
                     'higher_is_better': perf_dict['higher_is_better'],
                     'graph': perf_dict['graph'],
@@ -55,8 +57,7 @@ def _aggregate_iterations(perf_values):
                     'stddev': perf_dict['stddev']
                 }
             else:
-                perf_data[perf_dict['description']]['value'].append(
-                        perf_dict['value'])
+                perf_data[key]['value'].append(perf_dict['value'])
                 # Note: the stddev will be recomputed later when the results
                 # from each of the multiple iterations are averaged together.
     return perf_data
@@ -178,12 +179,11 @@ def _format_for_upload(platform_name, cros_version, chrome_version, perf_data,
 
     """
     dash_entries = []
-    for desc in perf_data:
+    for (desc, graph), data in perf_data.iteritems():
         # Each perf metric is named by a path that encodes the test name,
         # a graph name (if specified), and a description.  This must be defined
         # according to rules set by the Chrome team, as implemented in:
         # chromium/tools/build/scripts/slave/results_dashboard.py.
-        data = perf_data[desc]
         if desc.endswith('_ref'):
             desc = 'ref'
         desc = desc.replace('_by_url', '')
