@@ -335,7 +335,8 @@ class ChaosRunner(object):
                     return None
 
                 result = re.search(pattern, result_str)
-                return result.group(0)
+                if result:
+                    return result.group(0)
 
         return None
 
