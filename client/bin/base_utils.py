@@ -683,7 +683,7 @@ def get_disk_size(disk_name):
     device = os.path.basename(disk_name)
     for line in file('/proc/partitions'):
         try:
-            major, minor, blocks, name = re.split(r' +', line.strip())
+            _, _, blocks, name = re.split(r' +', line.strip())
         except ValueError:
             continue
         if name == device:
@@ -711,6 +711,45 @@ def get_disk_model(disk_name):
     cmd3 = 'cut -f 2 -d"="'
     cmd = ' | '.join([cmd1, cmd2, cmd3])
     return utils.system_output(cmd)
+
+
+def get_disk_from_filename(filename):
+    """
+    Return the disk device the filename is on.
+    If the file is on tmpfs or other special file systems,
+    return None.
+
+    @param filename: name of file, full path.
+    """
+    re_disk = re.compile('/dev/sd[a-z]|/dev/mmcblk[0-9]*')
+
+    if not os.path.isfile(filename):
+        raise error.TestError('file %s missing' % filename)
+
+    if filename[0] != '/':
+        raise error.TestError('This code works only with full path')
+
+    m = re_disk.match(filename)
+    while not m:
+        if filename[0] != '/':
+            return None
+        if filename == '/dev/root':
+            cmd = 'rootdev -d -s'
+        elif filename.startswith('/dev/mapper'):
+            cmd = 'dmsetup table "%s"' % os.path.basename(filename)
+            dmsetup_output = utils.system_output(cmd).split(' ')
+            if dmsetup_output[2] == 'verity':
+                maj_min = dmsetup_output[4]
+            elif dmsetup_output[2] == 'crypt':
+                maj_min = dmsetup_output[6]
+            cmd = 'realpath "/dev/block/%s"' % maj_min
+        elif filename.startswith('/dev/loop'):
+            cmd = 'losetup -O BACK-FILE "%s" | tail -1' % filename
+        else:
+            cmd = 'df "%s" | tail -1 | cut -f 1 -d" "' % filename
+        filename = utils.system_output(cmd)
+        m = re_disk.match(filename)
+    return m.group(0)
 
 
 def load_module(module_name):
