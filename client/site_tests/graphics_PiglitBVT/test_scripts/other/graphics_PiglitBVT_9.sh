@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=418
+need_pass=419
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -30,8 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat4-mat4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat4-mat4.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-vec2-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-vec2-float.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-vec2-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-vec2-vec2.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-vec3-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-vec3-float.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-vec3-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-vec3-vec3.shader_test -auto"
@@ -448,11 +446,14 @@ run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-neg-int" 0.0 "bin/sh
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-neg-ivec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-neg-ivec2.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-neg-ivec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-neg-ivec3.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-neg-ivec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-neg-ivec4.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-neg-mat2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-neg-mat2.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-neg-mat3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-neg-mat3.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-neg-mat4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-neg-mat4.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 418 tests have passed. |"
+  echo "| Overall pass, as all 419 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

@@ -30,8 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.20/execution/variable-indexing/vs-uniform-mat2-col-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/vs-uniform-mat2-col-rd.shader_test -auto"
-run_test "spec/glsl-1.20/execution/variable-indexing/vs-uniform-mat2-col-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/vs-uniform-mat2-col-row-rd.shader_test -auto"
 run_test "spec/glsl-1.20/execution/variable-indexing/vs-uniform-mat2-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/vs-uniform-mat2-rd.shader_test -auto"
 run_test "spec/glsl-1.20/execution/variable-indexing/vs-uniform-mat2-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/vs-uniform-mat2-row-rd.shader_test -auto"
 run_test "spec/glsl-1.20/execution/variable-indexing/vs-uniform-mat3-col-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/vs-uniform-mat3-col-rd.shader_test -auto"
@@ -462,6 +460,8 @@ run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec2-uint.frag" 0
 run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec2-uint.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec2-uint.vert pass 1.30"
 run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec2-uvec2.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec2-uvec2.frag pass 1.30"
 run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec2-uvec2.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec2-uvec2.vert pass 1.30"
+run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec3-uint.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec3-uint.frag pass 1.30"
+run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec3-uint.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec3-uint.vert pass 1.30"
 popd
 
 if [ $need_pass == 0 ] ; then

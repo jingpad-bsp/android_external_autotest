@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=380
+need_pass=379
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -409,12 +409,11 @@ run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-01.vert" 0.0 "b
 run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-02.frag" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.20/compiler/layout-02.frag fail 1.20 GL_ARB_explicit_attrib_location"
 run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-02.vert" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.20/compiler/layout-02.vert fail 1.20 GL_ARB_explicit_attrib_location"
 run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-03.frag" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.20/compiler/layout-03.frag pass 1.20 GL_ARB_explicit_attrib_location"
-run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-03.vert" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.20/compiler/layout-03.vert pass 1.20 GL_ARB_explicit_attrib_location"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 380 tests have passed. |"
+  echo "| Overall pass, as all 379 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

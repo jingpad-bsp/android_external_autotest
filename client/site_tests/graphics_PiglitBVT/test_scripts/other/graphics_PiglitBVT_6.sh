@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=352
+need_pass=351
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -30,6 +30,7 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/ARB_texture_rg/fbo-colormask-formats-float" 0.0 "bin/fbo-colormask-formats -auto GL_ARB_texture_rg-float"
 run_test "spec/ARB_texture_rg/fbo-generatemipmap-formats" 0.0 "bin/fbo-generatemipmap-formats -auto GL_ARB_texture_rg"
 run_test "spec/ARB_texture_rg/fbo-generatemipmap-formats-float" 0.0 "bin/fbo-generatemipmap-formats -auto GL_ARB_texture_rg-float"
 run_test "spec/ARB_texture_rg/fbo-rg-GL_R16" 0.0 "bin/fbo-rg -auto GL_R16"
@@ -167,7 +168,6 @@ run_test "spec/EXT_framebuffer_object/fbo-3d" 0.0 "bin/fbo-3d -auto"
 run_test "spec/EXT_framebuffer_object/fbo-alphatest-formats" 0.0 "bin/fbo-alphatest-formats -auto"
 run_test "spec/EXT_framebuffer_object/fbo-alphatest-nocolor" 0.0 "bin/fbo-alphatest-nocolor -auto"
 run_test "spec/EXT_framebuffer_object/fbo-alphatest-nocolor-ff" 0.0 "bin/fbo-alphatest-nocolor-ff -auto"
-run_test "spec/EXT_framebuffer_object/fbo-bind-renderbuffer" 0.0 "bin/fbo-bind-renderbuffer -auto"
 run_test "spec/EXT_framebuffer_object/fbo-blending-formats" 0.0 "bin/fbo-blending-formats -auto"
 run_test "spec/EXT_framebuffer_object/fbo-clear-formats" 0.0 "bin/fbo-clear-formats -auto"
 run_test "spec/EXT_framebuffer_object/fbo-clearmipmap" 0.0 "bin/fbo-clearmipmap -auto"
@@ -334,7 +334,6 @@ run_test "spec/EXT_texture_sRGB/texwrap formats" 0.0 "bin/texwrap -fbo -auto GL_
 run_test "spec/EXT_texture_sRGB/texwrap formats bordercolor" 0.0 "bin/texwrap -fbo -auto GL_EXT_texture_sRGB bordercolor"
 run_test "spec/EXT_texture_sRGB/texwrap formats bordercolor-swizzled" 0.0 "bin/texwrap -fbo -auto GL_EXT_texture_sRGB bordercolor swizzled"
 run_test "spec/EXT_texture_shared_exponent/fbo-generatemipmap-formats" 0.0 "bin/fbo-generatemipmap-formats -auto GL_EXT_texture_shared_exponent"
-run_test "spec/EXT_texture_shared_exponent/get-renderbuffer-internalformat" 0.0 "bin/get-renderbuffer-internalformat GL_EXT_texture_shared_exponent -auto -fbo"
 run_test "spec/EXT_texture_shared_exponent/texwrap formats" 0.0 "bin/texwrap -fbo -auto GL_EXT_texture_shared_exponent"
 run_test "spec/EXT_texture_shared_exponent/texwrap formats bordercolor" 0.0 "bin/texwrap -fbo -auto GL_EXT_texture_shared_exponent bordercolor"
 run_test "spec/EXT_texture_shared_exponent/texwrap formats bordercolor-swizzled" 0.0 "bin/texwrap -fbo -auto GL_EXT_texture_shared_exponent bordercolor swizzled"
@@ -386,7 +385,7 @@ popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 352 tests have passed. |"
+  echo "| Overall pass, as all 351 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

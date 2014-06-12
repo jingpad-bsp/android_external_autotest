@@ -93,6 +93,21 @@
       "pass rate": "0.93",
       "result": "flaky"
     },
+    "spec/glsl-1.10/compiler/reserved/double-underscore-01.frag": {
+      "comment": "Remove when we have piglit 3a521d467c108f25b2033132ca6ac665786c0e04",
+      "pass rate": "0.5",
+      "result": "flaky"
+    },
+    "spec/glsl-1.10/compiler/reserved/double-underscore-02.frag": {
+      "comment": "Remove when we have piglit 3a521d467c108f25b2033132ca6ac665786c0e04",
+      "pass rate": "0.5",
+      "result": "flaky"
+    },
+    "spec/glsl-1.10/compiler/reserved/double-underscore-03.frag": {
+      "comment": "Remove when we have piglit 3a521d467c108f25b2033132ca6ac665786c0e04",
+      "pass rate": "0.5",
+      "result": "flaky"
+    },
     "spec/glsl-1.30/preprocessor/reserved/double-underscore-01.frag": {
       "comment": "Remove when we have piglit 3a521d467c108f25b2033132ca6ac665786c0e04",
       "pass rate": "0.5",
@@ -283,6 +298,11 @@
       "pass rate": "0.47",
       "result": "flaky"
     },
+    "spec/EXT_framebuffer_object/fbo-bind-renderbuffer": {
+      "comment": "Remove when we have piglit 9ed80d2cf76d20f58eee218be699839f6a6e9223",
+      "pass rate": "0.5",
+      "result": "flaky"
+    },
     "spec/EXT_packed_float/multisample-formats 2 GL_EXT_packed_float": {
       "pass rate": "0.5",
       "result": "flaky"
@@ -321,6 +341,11 @@
     },
     "spec/EXT_texture_integer/texture_integer_glsl130": {
       "pass rate": "0.84",
+      "result": "flaky"
+    },
+    "spec/EXT_texture_shared_exponent/get-renderbuffer-internalformat": {
+      "comment": "Remove when we have piglit 055342ddd35952aba69774e30609649e71cba4fa",
+      "pass rate": "0.5",
       "result": "flaky"
     },
     "spec/EXT_texture_sRGB/multisample-formats 2 GL_EXT_texture_sRGB": {

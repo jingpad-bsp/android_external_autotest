@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=8054
+need_pass=8049
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -1865,7 +1865,6 @@ run_test "spec/EXT_framebuffer_object/fbo-3d" 0.0 "bin/fbo-3d -auto"
 run_test "spec/EXT_framebuffer_object/fbo-alphatest-formats" 0.0 "bin/fbo-alphatest-formats -auto"
 run_test "spec/EXT_framebuffer_object/fbo-alphatest-nocolor" 0.0 "bin/fbo-alphatest-nocolor -auto"
 run_test "spec/EXT_framebuffer_object/fbo-alphatest-nocolor-ff" 0.0 "bin/fbo-alphatest-nocolor-ff -auto"
-run_test "spec/EXT_framebuffer_object/fbo-bind-renderbuffer" 0.0 "bin/fbo-bind-renderbuffer -auto"
 run_test "spec/EXT_framebuffer_object/fbo-blending-formats" 0.0 "bin/fbo-blending-formats -auto"
 run_test "spec/EXT_framebuffer_object/fbo-clear-formats" 0.0 "bin/fbo-clear-formats -auto"
 run_test "spec/EXT_framebuffer_object/fbo-clearmipmap" 0.0 "bin/fbo-clearmipmap -auto"
@@ -2032,7 +2031,6 @@ run_test "spec/EXT_texture_sRGB/texwrap formats" 0.0 "bin/texwrap -fbo -auto GL_
 run_test "spec/EXT_texture_sRGB/texwrap formats bordercolor" 0.0 "bin/texwrap -fbo -auto GL_EXT_texture_sRGB bordercolor"
 run_test "spec/EXT_texture_sRGB/texwrap formats bordercolor-swizzled" 0.0 "bin/texwrap -fbo -auto GL_EXT_texture_sRGB bordercolor swizzled"
 run_test "spec/EXT_texture_shared_exponent/fbo-generatemipmap-formats" 0.0 "bin/fbo-generatemipmap-formats -auto GL_EXT_texture_shared_exponent"
-run_test "spec/EXT_texture_shared_exponent/get-renderbuffer-internalformat" 0.0 "bin/get-renderbuffer-internalformat GL_EXT_texture_shared_exponent -auto -fbo"
 run_test "spec/EXT_texture_shared_exponent/texwrap formats" 0.0 "bin/texwrap -fbo -auto GL_EXT_texture_shared_exponent"
 run_test "spec/EXT_texture_shared_exponent/texwrap formats bordercolor" 0.0 "bin/texwrap -fbo -auto GL_EXT_texture_shared_exponent bordercolor"
 run_test "spec/EXT_texture_shared_exponent/texwrap formats bordercolor-swizzled" 0.0 "bin/texwrap -fbo -auto GL_EXT_texture_shared_exponent bordercolor swizzled"
@@ -2488,9 +2486,6 @@ run_test "spec/glsl-1.10/compiler/qualifiers/varying-bvec4-prohibited.frag" 0.0 
 run_test "spec/glsl-1.10/compiler/qualifiers/varying-bvec4-prohibited.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-bvec4-prohibited.vert fail 1.10"
 run_test "spec/glsl-1.10/compiler/qualifiers/varying-struct-prohibited.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-struct-prohibited.frag fail 1.10"
 run_test "spec/glsl-1.10/compiler/qualifiers/varying-struct-prohibited.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-struct-prohibited.vert fail 1.10"
-run_test "spec/glsl-1.10/compiler/reserved/double-underscore-01.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/reserved/double-underscore-01.frag fail 1.10"
-run_test "spec/glsl-1.10/compiler/reserved/double-underscore-02.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/reserved/double-underscore-02.frag fail 1.10"
-run_test "spec/glsl-1.10/compiler/reserved/double-underscore-03.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/reserved/double-underscore-03.frag fail 1.10"
 run_test "spec/glsl-1.10/compiler/samplers/inout-struct.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/samplers/inout-struct.frag fail 1.10"
 run_test "spec/glsl-1.10/compiler/samplers/inout.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/samplers/inout.frag fail 1.10"
 run_test "spec/glsl-1.10/compiler/samplers/nonuniform-struct.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/samplers/nonuniform-struct.frag fail 1.10"
@@ -8088,7 +8083,7 @@ popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 8054 tests have passed. |"
+  echo "| Overall pass, as all 8049 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

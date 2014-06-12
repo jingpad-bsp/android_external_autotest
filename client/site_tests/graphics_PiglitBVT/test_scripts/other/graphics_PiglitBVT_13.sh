@@ -30,8 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-mult-mat4x3-mat4.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-mult-mat4x3-mat4.vert pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-mult-mat4x3-vec4.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-mult-mat4x3-vec4.frag pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/op-mult-mat4x3-vec4.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-mult-mat4x3-vec4.vert pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/op-mult-vec2-float.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-mult-vec2-float.frag pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/op-mult-vec2-float.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-mult-vec2-float.vert pass 1.20"
@@ -470,6 +468,8 @@ run_test "spec/glsl-1.20/compiler/qualifiers/fn-inout-array-allowed.frag" 0.0 "b
 run_test "spec/glsl-1.20/compiler/qualifiers/fn-inout-array-allowed.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.20/compiler/qualifiers/fn-inout-array-allowed.vert pass 1.20 --check-link"
 run_test "spec/glsl-1.20/compiler/qualifiers/fn-out-array-allowed-cstyle.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.20/compiler/qualifiers/fn-out-array-allowed-cstyle.frag pass 1.20 --check-link"
 run_test "spec/glsl-1.20/compiler/qualifiers/fn-out-array-allowed-cstyle.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.20/compiler/qualifiers/fn-out-array-allowed-cstyle.vert pass 1.20 --check-link"
+run_test "spec/glsl-1.20/compiler/qualifiers/fn-out-array-allowed.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.20/compiler/qualifiers/fn-out-array-allowed.frag pass 1.20 --check-link"
+run_test "spec/glsl-1.20/compiler/qualifiers/fn-out-array-allowed.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.20/compiler/qualifiers/fn-out-array-allowed.vert pass 1.20 --check-link"
 popd
 
 if [ $need_pass == 0 ] ; then

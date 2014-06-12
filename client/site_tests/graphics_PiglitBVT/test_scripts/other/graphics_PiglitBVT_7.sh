@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=432
+need_pass=431
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -438,9 +438,6 @@ run_test "spec/glsl-1.10/compiler/qualifiers/varying-bvec4-prohibited.frag" 0.0 
 run_test "spec/glsl-1.10/compiler/qualifiers/varying-bvec4-prohibited.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-bvec4-prohibited.vert fail 1.10"
 run_test "spec/glsl-1.10/compiler/qualifiers/varying-struct-prohibited.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-struct-prohibited.frag fail 1.10"
 run_test "spec/glsl-1.10/compiler/qualifiers/varying-struct-prohibited.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-struct-prohibited.vert fail 1.10"
-run_test "spec/glsl-1.10/compiler/reserved/double-underscore-01.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/reserved/double-underscore-01.frag fail 1.10"
-run_test "spec/glsl-1.10/compiler/reserved/double-underscore-02.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/reserved/double-underscore-02.frag fail 1.10"
-run_test "spec/glsl-1.10/compiler/reserved/double-underscore-03.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/reserved/double-underscore-03.frag fail 1.10"
 run_test "spec/glsl-1.10/compiler/samplers/inout-struct.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/samplers/inout-struct.frag fail 1.10"
 run_test "spec/glsl-1.10/compiler/samplers/inout.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/samplers/inout.frag fail 1.10"
 run_test "spec/glsl-1.10/compiler/samplers/nonuniform-struct.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/samplers/nonuniform-struct.frag fail 1.10"
@@ -462,11 +459,13 @@ run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-fog-frag-coord.
 run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-frag-coord.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-frag-coord.frag fail 1.10"
 run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-front-facing.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-front-facing.frag fail 1.10"
 run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord0.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord0.vert fail 1.10"
+run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord1.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord1.vert fail 1.10"
+run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord2.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord2.vert fail 1.10"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 432 tests have passed. |"
+  echo "| Overall pass, as all 431 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

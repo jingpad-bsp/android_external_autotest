@@ -30,9 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat3-index-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat3-index-row-rd.shader_test -auto"
-run_test "spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat3-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat3-rd.shader_test -auto"
-run_test "spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat3-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat3-row-rd.shader_test -auto"
 run_test "spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat4-col-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat4-col-rd.shader_test -auto"
 run_test "spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat4-col-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat4-col-row-rd.shader_test -auto"
 run_test "spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat4-index-col-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat4-index-col-rd.shader_test -auto"
@@ -454,6 +451,9 @@ run_test "spec/glsl-1.20/compiler/built-in-functions/min-vec3-vec3.vert" 0.0 "bi
 run_test "spec/glsl-1.20/compiler/built-in-functions/min-vec4-float.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/min-vec4-float.frag pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/min-vec4-float.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/min-vec4-float.vert pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/min-vec4-vec4.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/min-vec4-vec4.frag pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/min-vec4-vec4.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/min-vec4-vec4.vert pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/mix-float-float-float.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/mix-float-float-float.frag pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/mix-float-float-float.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/mix-float-float-float.vert pass 1.20"
 popd
 
 if [ $need_pass == 0 ] ; then

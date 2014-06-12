@@ -30,7 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.30/execution/built-in-functions/fs-op-mod-int-ivec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/fs-op-mod-int-ivec4.shader_test -auto"
 run_test "spec/glsl-1.30/execution/built-in-functions/fs-op-mod-ivec2-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/fs-op-mod-ivec2-int.shader_test -auto"
 run_test "spec/glsl-1.30/execution/built-in-functions/fs-op-mod-ivec2-ivec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/fs-op-mod-ivec2-ivec2.shader_test -auto"
 run_test "spec/glsl-1.30/execution/built-in-functions/fs-op-mod-ivec3-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/fs-op-mod-ivec3-int.shader_test -auto"
@@ -457,6 +456,7 @@ run_test "spec/glsl-1.30/execution/built-in-functions/vs-sign-ivec2" 0.0 "bin/sh
 run_test "spec/glsl-1.30/execution/built-in-functions/vs-sign-ivec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/vs-sign-ivec3.shader_test -auto"
 run_test "spec/glsl-1.30/execution/built-in-functions/vs-sign-ivec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/vs-sign-ivec4.shader_test -auto"
 run_test "spec/glsl-1.30/execution/built-in-functions/vs-sinh-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/vs-sinh-float.shader_test -auto"
+run_test "spec/glsl-1.30/execution/built-in-functions/vs-sinh-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/vs-sinh-vec2.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
