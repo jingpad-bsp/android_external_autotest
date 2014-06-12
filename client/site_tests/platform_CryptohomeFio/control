@@ -16,7 +16,7 @@ TEST_CLASS = 'platform'
 TEST_CATEGORY = 'Stress'
 TEST_TYPE = 'client'
 
-job.run_test('platform_CryptohomeFio', 
+job.run_test('platform_CryptohomeFio',
              script='surfing',
-             tag='ecryptfs+surfing',
+             disk_configs=['crypto'],
              runtime=20)

@@ -15,17 +15,14 @@ TEST_CLASS = 'platform'
 TEST_CATEGORY = 'Stress'
 TEST_TYPE = 'client'
 
-disk_configs = {'plain' : False,
-                'ecryptfs' : True,
-               }
+sysctls_list = [
+    { 'vm/dirty_background_ratio': 1 },
+    { 'vm/dirty_background_ratio': 5 }, # the current default at the end.
+]
 
-TEST='1m_write'
-
-for dirty_background in [1, 5]:
-    for config, opts in disk_configs.items():
-        job.run_test('platform_CryptohomeFio',
-                     script=TEST,
-                     tag='%s_%s-%d' % (TEST, config, dirty_background),
-                     mount_cryptohome=opts,
-                     runtime=120,
-                     sysctls=[{ 'vm/dirty_background_ratio': dirty_background }])
+job.run_test('platform_CryptohomeFio',
+        script='1m_write',
+        tag=NAME.split('.')[1],
+        disk_configs=['crypto', 'plain'],
+        runtime=120,
+        sysctls_list=sysctls_list)

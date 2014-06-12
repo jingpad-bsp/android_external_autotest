@@ -17,31 +17,24 @@ TEST_TYPE = 'client'
 
 RUNTIME=60  # seconds.
 
-disk_configs = {#'tmpfs' : (False, True),
-	        'ext3+ssd' : (False, False),
- 		'ecryptfs+ext3+ssd' : (True, False),
-		}
-
-tests = { 'surfing': 'iops',
-          'boot': 'bw',
-          'login': 'bw',
-          'seq_read': 'bw',
-          'seq_write': 'bw',
-          '16k_read': 'iops',
-          '16k_write': 'iops',
-          '8k_read': 'iops',
-          '8k_write': 'iops',
-          '4k_read': 'iops',
-          '4k_write': 'iops',
-          }
-
+tests = {
+    'surfing': 'iops',
+    'boot': 'bw',
+    'login': 'bw',
+    'seq_read': 'bw',
+    'seq_write': 'bw',
+    '16k_read': 'iops',
+    '16k_write': 'iops',
+    '8k_read': 'iops',
+    '8k_write': 'iops',
+    '4k_read': 'iops',
+    '4k_write': 'iops',
+}
 
 for test in tests.keys():
-    for config, opts in disk_configs.items():
-        job.run_test('platform_CryptohomeFio', 
-                     script=test,
-                     tag='%s_%s' % (test, config),
-                     runtime=RUNTIME,
-                     mount_cryptohome=opts[0],
-                     tmpfs=opts[1])
+    job.run_test('platform_CryptohomeFio',
+        script=test,
+        tag=test,
+        runtime=RUNTIME,
+        disk_configs=['crypto', 'plain'])
 
