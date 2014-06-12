@@ -6,12 +6,21 @@ import logging
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.common_lib.cros import chrome, session_manager
 
+import gobject
+from dbus.mainloop.glib import DBusGMainLoop
 
 class desktopui_ScreenLocker(test.test):
     """This is a client side test that exercises the screenlocker."""
     version = 1
+
+    _SCREEN_IS_LOCKED_TIMEOUT = 15
+
+
+    def initialize(self):
+        super(desktopui_ScreenLocker, self).initialize()
+        DBusGMainLoop(set_as_default=True)
 
 
     @property
@@ -55,8 +64,12 @@ class desktopui_ScreenLocker(test.test):
         logging.debug('lock_screen')
         if self.screen_locked:
             raise error.TestFail('Screen already locked')
+        signal_listener = session_manager.ScreenIsLockedSignalListener(
+                gobject.MainLoop())
         ext = self._chrome.autotest_ext
         ext.EvaluateJavaScript('chrome.autotestPrivate.lockScreen();')
+        signal_listener.wait_for_signals(desc='Screen is locked.',
+                                         timeout=self._SCREEN_IS_LOCKED_TIMEOUT)
         utils.poll_for_condition(lambda: self.screenlocker_visible,
                 exception=error.TestFail('Screenlock screen not visible'))
         if not self.screen_locked:

@@ -215,3 +215,37 @@ class SessionSignalListener(SignalListener):
         @param state: the state transition being signaled.
         """
         self._new_state = state
+
+
+
+class ScreenIsLockedSignalListener(SignalListener):
+    """A class to listen for ScreenIsLocked DBus signal.
+
+    The session_manager emits a DBus signal when screen lock operation is
+    completed.
+    """
+
+    def __init__(self, g_main_loop):
+        """Constructor
+
+        @param g_main_loop: glib main loop object.
+        """
+        super(ScreenIsLockedSignalListener, self).__init__(g_main_loop)
+        self._screen_is_locked_received = False
+        self.listen_to_signal(self.__handle_signal, 'ScreenIsLocked')
+
+
+    def reset_signal_state(self):
+        """Resets internal signal tracking state."""
+        self._screen_is_locked_received = False
+
+
+    def all_signals_received(self):
+        """Returns true when expected signals are all receieved."""
+        return self._screen_is_locked_received
+
+
+    def __handle_signal(self):
+        """Callback to be used when ScreenIsLocked signal is received.
+        """
+        self._screen_is_locked_received = True
