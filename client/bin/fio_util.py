@@ -15,6 +15,7 @@ Decoding class can be invoked independently.
 """
 
 import json, logging, re, utils
+
 from UserDict import UserDict
 
 class fio_parser_exception(Exception):
@@ -223,11 +224,12 @@ class fio_job_output(UserDict):
                 ('_%s_disk_util_percent'            , 170, self._parse_gen)])
 
 
-    def __init__(self, data):
+    def __init__(self, data, prefix=None):
         """
         Fills the dictionary object with the fio output upon instantiation.
 
         @param data: fio HOWTO documents list of values from fio output.
+        @param prefix: name to append for the result key value pair.
 
         @raises fio_parser_exception.
 
@@ -254,6 +256,8 @@ class fio_job_output(UserDict):
 
         # Fill dictionary object.
         self._job_name = data[2]
+        if prefix:
+            self._job_name = prefix + '_' + self._job_name
         for field, idx, parser in self._fio_table:
             # Field 162-170 only reported when we test on block device.
             if len(data) <= idx:
@@ -313,7 +317,7 @@ class fio_graph_generator():
     pass_list = ''
 
     @classmethod
-    def _parse_log_file(self, file_name, pass_index, pass_count, percentile):
+    def _parse_log_file(cls, file_name, pass_index, pass_count, percentile):
         """
         Generate row for google.visualization.DataTable from one log file.
         Log file is the one that generated using write_{bw,lat,iops}_log
@@ -357,7 +361,7 @@ class fio_graph_generator():
         return all_row
 
     @classmethod
-    def _gen_data_col(self, pass_list, percentile):
+    def _gen_data_col(cls, pass_list, percentile):
         """
         Generate col for google.visualization.DataTable
 
@@ -377,7 +381,7 @@ class fio_graph_generator():
         return [{'label': name, 'type': 'number'} for name in col_name_list]
 
     @classmethod
-    def _gen_data_row(self, test_name, test_type, pass_list, percentile):
+    def _gen_data_row(cls, test_name, test_type, pass_list, percentile):
         """
         Generate row for google.visualization.DataTable by generate all log
         file name and call _parse_log_file for each file
@@ -394,12 +398,12 @@ class fio_graph_generator():
         for pass_index, pass_str in enumerate(pass_list):
             log_file_name = str('%s_%s_%s.log' %
                                 (test_name, pass_str, test_type))
-            all_row.extend(self._parse_log_file(log_file_name, pass_index,
+            all_row.extend(cls._parse_log_file(log_file_name, pass_index,
                                                 pass_count, percentile))
         return all_row
 
     @classmethod
-    def _write_data(self, f, test_name, test_type, pass_list, percentile):
+    def _write_data(cls, f, test_name, test_type, pass_list, percentile):
         """
         Write google.visualization.DataTable object to output file.
         https://developers.google.com/chart/interactive/docs/reference
@@ -409,8 +413,8 @@ class fio_graph_generator():
         @param pass_list: list of run passes for current test
         @param percentile: flag to use percentile as key instead of timestamp
         """
-        col = self._gen_data_col(pass_list, percentile)
-        row = self._gen_data_row(test_name, test_type, pass_list, percentile)
+        col = cls._gen_data_col(pass_list, percentile)
+        row = cls._gen_data_row(test_name, test_type, pass_list, percentile)
         data_dict = { 'cols' : col, 'rows' : row}
 
         f.write('var data = new google.visualization.DataTable(')
@@ -418,7 +422,7 @@ class fio_graph_generator():
         f.write(');\n')
 
     @classmethod
-    def _write_option(self, f, test_name, test_type, percentile):
+    def _write_option(cls, f, test_name, test_type, percentile):
         """
         Write option to render scatter graph to output file.
         https://google-developers.appspot.com/chart/interactive/docs/gallery/scatterchart
@@ -430,20 +434,20 @@ class fio_graph_generator():
         option = {'pointSize': 1 }
         if percentile:
             option['title'] = ('Percentile graph of %s for %s workload' %
-                               (self.graph_title[test_type], test_name))
+                               (cls.graph_title[test_type], test_name))
         else:
             option['title'] = ('Graph of %s for %s workload over time' %
-                               (self.graph_title[test_type], test_name))
+                               (cls.graph_title[test_type], test_name))
 
-        option['hAxis'] = { 'title': self.h_title[percentile]}
-        option['vAxis'] = { 'title': self.v_title[test_type]}
+        option['hAxis'] = { 'title': cls.h_title[percentile]}
+        option['vAxis'] = { 'title': cls.v_title[test_type]}
 
         f.write('var options = ')
         json.dump(option, f)
         f.write(';\n')
 
     @classmethod
-    def _write_graph(self, test_name, test_type, pass_list, percentile=False):
+    def _write_graph(cls, test_name, test_type, pass_list, percentile=False):
         """
         Generate graph for test name / test type
 
@@ -462,10 +466,10 @@ class fio_graph_generator():
             out_file_name = '%s_%s.html' % (test_name, test_type)
 
         with open(out_file_name, 'w') as f:
-            f.write(self.html_head)
-            self._write_data(f, test_name, test_type, pass_list, percentile)
-            self._write_option(f, test_name, test_type, percentile)
-            f.write(self.html_tail)
+            f.write(cls.html_head)
+            cls._write_data(f, test_name, test_type, pass_list, percentile)
+            cls._write_option(f, test_name, test_type, percentile)
+            f.write(cls.html_tail)
 
     def __init__(self, test_name, test_type, pass_list):
         """
@@ -485,13 +489,14 @@ class fio_graph_generator():
         self._write_graph(self.test_name, self.test_type, self.pass_list, True)
 
 
-def fio_parser(lines):
+def fio_parser(lines, prefix=None):
     """Parse the terse fio output
 
     This collects all metrics given by fio and labels them according to unit
     of measurement and test case name.
 
     @param lines: text output of terse fio output.
+    @param prefix: prefix for result keys.
 
     """
     # fio version 2.0.8+ outputs all needed information with --minimal
@@ -513,7 +518,7 @@ def fio_parser(lines):
         # instead of the job description or possible blank lines.
         if len(values) <= 128:
             continue
-        results.update(fio_job_output(values))
+        results.update(fio_job_output(values, prefix))
 
     return results
 
@@ -531,10 +536,6 @@ def fio_generate_graph():
         logs = utils.system_output('ls *_%s.log' % log_type, ignore_status=True)
         if not logs:
             continue
-
-        # log file name should be in logname_pass_type.log
-        # Example randread_p1_iops.log
-        log_dict = dict()
 
         pattern = r"""(?P<jobname>.*)_                    # jobname
                       ((?P<runpass>p\d+)_)                # pass
@@ -573,15 +574,28 @@ def fio_generate_graph():
         utils.run('mv *.html results', ignore_status=True)
 
 
-def fio_runner(test, job, env_vars, perfdb_name_prefix=None):
+def fio_runner(test, job, env_vars,
+               name_prefix=None,
+               graph_prefix=None):
     """
     Runs fio.
+
+    Build a result keyval and performence json.
+    The JSON would look like:
+    {"description": "<name_prefix>_<modle>_<size>G",
+     "graph": "<graph_prefix>_1m_write_wr_lat_99.00_percent_usec",
+     "higher_is_better": false, "units": "us", "value": "xxxx"}
+    {...
+
 
     @param test: test to upload perf value
     @param job: fio config file to use
     @param env_vars: environment variable fio will substituete in the fio
         config file.
-    @param perfdb_name_prefix: prefix of name to use in chrome perf dashboard
+    @param name_prefix: prefix of the descriptions to use in chrome perfi
+        dashboard.
+    @param graph_prefix: prefix of the graph name in chrome perf dashboard
+        and result keyvals.
     @return fio results.
 
     """
@@ -608,26 +622,22 @@ def fio_runner(test, job, env_vars, perfdb_name_prefix=None):
 
     fio_generate_graph()
 
-    result = fio_parser(fio.stdout)
-
     filename = re.match('.*FILENAME=(?P<f>[^ ]*)', env_vars).group('f')
-    m = re.match('/dev/sd[a-z]|/dev/mmcblk[0-9]*', filename)
-    if not m:
-        cmd = 'df %s | tail -1 | cut -f 1 -d" "' % filename
-        filesystem = utils.system_output(cmd)
-        m = re.match('/dev/sd[a-z]|/dev/mmcblk[0-9]*', filesystem)
-        logging.info('filename:%s filesystem:%s', filename, filesystem)
+    diskname = utils.get_disk_from_filename(filename)
 
-    if m:
-        diskname = m.group(0)
+    if diskname:
         model = utils.get_disk_model(diskname)
         size = utils.get_disk_size_gb(diskname)
         perfdb_name = '%s_%dG' % (model, size)
     else:
-        perfdb_name = filesystem.replace('/', '_')
+        perfdb_name = filename.replace('/', '_')
 
-    if perfdb_name_prefix:
-        perfdb_name = perfdb_name_prefix + '_' + perfdb_name
+    if name_prefix:
+        perfdb_name = name_prefix + '_' + perfdb_name
+
+    result = fio_parser(fio.stdout, prefix=perfdb_name)
+    if not graph_prefix:
+        graph_prefix = ''
 
     # Upload bw / 99% lat to dashboard
     bw_matcher = re.compile('.*(rd|wr)_bw_KB_sec')
@@ -635,6 +645,8 @@ def fio_runner(test, job, env_vars, perfdb_name_prefix=None):
     # don't log useless stat like 16k_randwrite_rd_bw_KB_sec
     skip_matcher = re.compile('.*(trim.*|write.*_rd|read.*_wr)_.*')
     for k, v in result.iteritems():
+        # Remove the prefix for value, and replace it the graph prefix.
+        k = k.replace('_' + perfdb_name, graph_prefix)
         if skip_matcher.match(k):
             continue
         if bw_matcher.match(k):
