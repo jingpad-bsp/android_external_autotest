@@ -92,6 +92,12 @@ class DLinkDIR505lAPConfigurator(
         """
         # All settings are on the same page, we can ignore page_number
         self.click_button_by_id('apply_btn', alert_handler=self._alert_handler)
+        # Second alert may pop-up, so we must send it to our alert handler
+        try:
+            alert = self.driver.switch_to_alert()
+            self._handler(self._alert_handler)
+        except:
+            logging.debug("No alert present")
         timer = self.wait_for_object_by_id('show_second', wait_time=20)
         while (self.object_by_id_exist('show_second') and
                int(timer.text) > 5):
