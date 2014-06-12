@@ -70,15 +70,6 @@ class _PowerStateController(object):
                                  'sleep:%.4f' % self._RESET_HOLD_TIME,
                                  'warm_reset:off'])
 
-    def recovery_supported(self):
-        """Return whether the power on/off methods are supported.
-
-        @return True means the power_on() and power_off() methods will
-                not raise a NotImplementedError.  False means they will.
-
-        """
-        return True
-
     def power_off(self):
         """Force the DUT to power off.
 
@@ -537,21 +528,6 @@ class Servo(object):
             return diff_set.pop()
         else:
             return None
-
-
-    def recovery_supported(self):
-        """Return whether servo-based recovery should work.
-
-        Use of `image_to_servo_usb()` and `install_recovery_image()`
-        relies on DUT-board specific behaviors, and is not supported
-        for all types of board.  Return whether these two operations
-        are expected to succeed for the current DUT.
-
-        @return `True` iff the recovery related methods are supported
-                for this servo and DUT.
-
-        """
-        return self._power_state.recovery_supported()
 
 
     def image_to_servo_usb(self, image_path=None,
