@@ -18,7 +18,7 @@ class logging_AsanCrash(test.test):
 
 
     def run_once(self):
-        if not 'asan' in utils.read_file('/etc/session_manager_use_flags.txt'):
+        if not 'asan' in utils.read_file('/etc/ui_use_flags.txt'):
             raise error.TestFail('Current image not built with ASAN')
 
         extension_path = os.path.join(os.path.dirname(__file__),
