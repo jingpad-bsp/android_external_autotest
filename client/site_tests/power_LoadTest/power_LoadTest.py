@@ -28,28 +28,11 @@ params_dict = {
 class power_LoadTest(test.test):
     """test class"""
     version = 2
-    _creds = 'powerloadtest@gmail.com:power_LoadTest1'
+    _username = 'powerloadtest@gmail.com'
+    _password = 'power_LoadTest1'
 
 
-    def start_authserver(self):
-        """
-        Override cros_ui_test.UITest's start_authserver.
-        Do not use auth server and local dns for our test. We need to be
-        able to reach the web.
-        """
-        pass
-
-
-    def ensure_login_complete(self):
-        """
-        Override cros_ui_test.UITest's ensure_login_complete.
-        Do not use auth server and local dns for our test. We need to be
-        able to reach the web.
-        """
-        pass
-
-
-    def initialize(self, creds=_creds, percent_initial_charge_min=None,
+    def initialize(self, percent_initial_charge_min=None,
                  check_network=True, loop_time=3600, loop_count=1,
                  should_scroll='true', should_scroll_up='true',
                  scroll_loop='false', scroll_interval_ms='10000',
@@ -59,7 +42,6 @@ class power_LoadTest(test.test):
                  volume_level=10, mic_gain=10, low_batt_margin_p=2,
                  ac_ok=False):
         """
-        creds: the login credentials to be used for the test
         percent_initial_charge_min: min battery charge at start of test
         check_network: check that Ethernet interface is not running
         loop_time: length of time to run the test for in each loop
@@ -104,7 +86,6 @@ class power_LoadTest(test.test):
         self._force_wifi = force_wifi
         self._testServer = None
         self._tasks = '\'' + tasks.replace(' ','') + '\''
-        self._creds = creds.split(':')
         self._backchannel = None
         self._shill_proxy = None
         self._kblight_percent = kblight_percent
@@ -232,9 +213,10 @@ class power_LoadTest(test.test):
         self._tlog.start()
 
         ext_path = os.path.join(os.path.dirname(__file__), 'extension')
-        browser = chrome.Chrome(extension_paths=[ext_path], gaia_login=True,
-                                username=self._creds[0],
-                                password=self._creds[1])
+        browser = chrome.Chrome(extension_paths=[ext_path],
+                                gaia_login=True,
+                                username=self._username,
+                                password=self._password)
         extension = browser.get_extension(ext_path)
 
         for i in range(self._loop_count):
