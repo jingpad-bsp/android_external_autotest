@@ -10,16 +10,9 @@ from datetime import datetime
 
 import common
 
-from autotest_lib.client.common_lib import global_config
 from autotest_lib.server import utils
 from autotest_lib.server.cros.dynamic_suite import reporting_utils
 
-# Minimum number of duts to allow a suite job being queued.
-MIN_AVAILABLE_DUTS = global_config.global_config.get_config_value(
-        'SERVER', 'minimum_available_duts', type=int, default=4)
-# Suites that require minimum available duts check.
-SUITES_REQUIRE_MIN_DUTS =  global_config.global_config.get_config_value(
-        'SERVER', 'suites_require_min_available_duts', type=list, default=[])
 
 class JobTimer(object):
     """Utility class capable of measuring job timeouts.
@@ -133,13 +126,12 @@ class RPCHelper(object):
                           limit, time_delta_hours, job_info)
 
 
-    def check_dut_availability(self, board, pool, suite, minimum_duts=0):
+    def check_dut_availability(self, board, pool, minimum_duts=0):
         """Check if DUT availability for a given board and pool is less than
         minimum.
 
         @param board: The board to check DUT availability.
         @param pool: The pool to check DUT availability.
-        @param suite: Name of the suite.
         @param minimum_duts: Minimum Number of available machines required to
                              run the suite. Default is set to 0, which means do
                              not force the check of available machines before
@@ -147,22 +139,7 @@ class RPCHelper(object):
         @raise: TestLabException if DUT availability is lower than minimum,
                 or failed to get host information from rpc interface.
         """
-        # TODO(dshi): crbug.com/377063 After cbuildbot config is updated to use
-        # run_suite arg minimum_duts for desired suite runs, check if
-        # minimum_duts is 0 here, exit the function if it's 0.
-
-        # TODO(dshi): crbug.com/377063 Remove following two checks after
-        # cbuildbot config is updated to use run_suite arg minimum_duts for
-        # desired bvt runs.
-        if not suite in SUITES_REQUIRE_MIN_DUTS:
-            logging.debug('Suite %s is not required to check minimum available '
-                          'DUTs.', suite)
-            return
-
-        # Do not enforce the minimum available duts rule if it's not in lab.
-        if not utils.is_in_lab():
-            logging.debug('This is not in lab zone. Minimum available DUT rule '
-                          'is not enforced.')
+        if minimum_duts == 0:
             return
 
         hosts = self.rpc_interface.get_hosts(
@@ -173,15 +150,12 @@ class RPCHelper(object):
                     'No hosts found for board:%s in pool:%s' %
                     (board, pool))
 
-        # TODO(dshi): crbug.com/377063 replace MIN_AVAILABLE_DUTS with
-        # minimum_duts after cbuildbot config is updated to use the new
-        # argument.
-        if len(hosts) <= MIN_AVAILABLE_DUTS:
+        if len(hosts) < minimum_duts:
             logging.debug('The total number of DUTs for %s in pool:%s is %d, '
                           'which is no more than the required minimum number of'
                           ' available DUTS of %d. Minimum available DUT rule is'
                           ' not enforced.', board, pool, len(hosts),
-                          MIN_AVAILABLE_DUTS)
+                          minimum_duts)
             return
 
         # TODO(dshi): Replace the hard coded string with enum value,
@@ -193,11 +167,11 @@ class RPCHelper(object):
                            if not host.status in bad_statuses]
         logging.debug('%d of %d DUTs are available for board %s pool %s.',
                       len(available_hosts), len(hosts), board, pool)
-        if len(available_hosts) < MIN_AVAILABLE_DUTS:
+        if len(available_hosts) < minimum_duts:
             raise utils.TestLabException(
                     'Number of available DUTs for board %s pool %s is %d, which'
                     ' is less than the minimum value %d.' %
-                    (board, pool, len(available_hosts), MIN_AVAILABLE_DUTS))
+                    (board, pool, len(available_hosts), minimum_duts))
 
 
     def diagnose_job(self, job_id):

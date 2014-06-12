@@ -141,11 +141,12 @@ def parse_options():
     parser.add_option('--retry', dest='retry', default='False',
                       action='store', help='Enable test retry. '
                       'Must pass "True" or "False" if used.')
-    parser.add_option('--minimum_duts', dest='minimum_duts', default=0,
-                      action='store', help='Minimum Number of available '
-                      'machines required to run the suite. Default is set to 0,'
-                      ' which means do not force the check of available '
-                      'machines before running the suite.')
+    parser.add_option('--minimum_duts', dest='minimum_duts', type=int,
+                      default=0, action='store',
+                      help='Minimum Number of available machines required to '
+                      'run the suite. Default is set to 0, which means do not '
+                      'force the check of available machines before running '
+                      'the suite.')
     parser.add_option("--suite_args", dest="suite_args",
                       default=None, action="store",
                       help="Argument string for suite control file.")
@@ -1166,7 +1167,7 @@ def main():
 
     try:
         rpc_helper.check_dut_availability(options.board, options.pool,
-                                          options.name, options.minimum_duts)
+                                          options.minimum_duts)
     except utils.TestLabException as e:
         logging.warning('Not enough DUTs to run this suite: %s', e)
         return RETURN_CODES.INFRA_FAILURE
