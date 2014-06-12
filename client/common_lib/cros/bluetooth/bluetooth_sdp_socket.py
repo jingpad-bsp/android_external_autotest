@@ -446,7 +446,8 @@ class BluetoothSDPSocket(btsocket.socket):
             raise BluetoothSDPSocketError('Invalid size descriptor')
 
 
-    def service_attribute_request(self, handle, max_attr_byte_count, attr_ids):
+    def service_attribute_request(self, handle, max_attr_byte_count, attr_ids,
+                                  forced_pdu_size=None, invalid_request=None):
         """Send a Service Attribute Request
 
         @param handle: service record from which attribute values are to be
@@ -455,6 +456,10 @@ class BluetoothSDPSocket(btsocket.socket):
                be returned in the response to this request.
         @param attr_ids: a list, where each element is either an attribute ID
                or a range of attribute IDs.
+        @param forced_pdu_size: Use certain PDU size parameter instead of
+               calculating actual length of sequence.
+        @param invalid_request: Whether to send request with intentionally
+               invalid syntax for testing purposes (string with raw request).
 
         @return list of found attributes IDs and their values or Error Code
         @raise BluetoothSDPSocketError: arguments do not match the SDP
@@ -472,10 +477,11 @@ class BluetoothSDPSocket(btsocket.socket):
         complete_response = ''
 
         while True:
-            request = pattern + cont_state
+            request = (invalid_request if invalid_request
+                       else pattern + cont_state)
 
             code, response = self.send_request_and_wait(
-                    SDP_SVC_ATTR_REQ, request)
+                    SDP_SVC_ATTR_REQ, request, forced_pdu_size)
 
             if code == SDP_ERROR_RSP:
                 return self._unpack_error_code(response)

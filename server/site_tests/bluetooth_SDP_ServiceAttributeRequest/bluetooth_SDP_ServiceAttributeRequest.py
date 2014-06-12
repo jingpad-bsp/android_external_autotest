@@ -64,6 +64,13 @@ class bluetooth_SDP_ServiceAttributeRequest(bluetooth_test.BluetoothTest):
     BLUETOOTH_BASE_UUID              = 0x0000000000001000800000805F9B34FB
     SERVICE_CLASS_ID_ATTR_ID         = 0x0001
 
+    ERROR_CODE_INVALID_RECORD_HANDLE = 0x0002
+    ERROR_CODE_INVALID_SYNTAX        = 0x0003
+    ERROR_CODE_INVALID_PDU_SIZE      = 0x0004
+    INVALID_RECORD_HANDLE            = 0xFEEE
+    INVALID_SYNTAX_REQUEST           = '123'
+    INVALID_PDU_SIZE                 = 11
+
 
     def get_single_handle(self, class_id):
         """Send a Service Search Request to get a handle for specific class ID.
@@ -306,6 +313,57 @@ class bluetooth_SDP_ServiceAttributeRequest(bluetooth_test.BluetoothTest):
         return True
 
 
+    def test_invalid_record_handle(self):
+        """Implementation of test TP/SERVER/SA/BI-01-C from SDP Specification.
+
+        @return True if test passes, False if test fails
+
+        """
+        res = self.tester.service_attribute_request(
+                  self.INVALID_RECORD_HANDLE, self.MAX_ATTR_BYTE_CNT,
+                  [self.NON_EXISTING_ATTRIBUTE_ID])
+
+        return res == self.ERROR_CODE_INVALID_RECORD_HANDLE
+
+
+    def test_invalid_request_syntax(self):
+        """Implementation of test TP/SERVER/SA/BI-02-C from SDP Specification.
+
+        @return True if test passes, False if test fails
+
+        """
+        record_handle = self.get_single_handle(self.SDP_SERVER_CLASS_ID)
+        if record_handle == -1:
+            return False
+
+        res = self.tester.service_attribute_request(
+                  record_handle,
+                  self.MAX_ATTR_BYTE_CNT,
+                  [self.SERVICE_RECORD_HANDLE_ATTR_ID],
+                  invalid_request=self.INVALID_SYNTAX_REQUEST)
+
+        return res == self.ERROR_CODE_INVALID_SYNTAX
+
+
+    def test_invalid_pdu_size(self):
+        """Implementation of test TP/SERVER/SA/BI-03-C from SDP Specification.
+
+        @return True if test passes, False if test fails
+
+        """
+        record_handle = self.get_single_handle(self.SDP_SERVER_CLASS_ID)
+        if record_handle == -1:
+            return False
+
+        res = self.tester.service_attribute_request(
+                  record_handle,
+                  self.MAX_ATTR_BYTE_CNT,
+                  [self.SERVICE_RECORD_HANDLE_ATTR_ID],
+                  forced_pdu_size=self.INVALID_PDU_SIZE)
+
+        return res == self.ERROR_CODE_INVALID_PDU_SIZE
+
+
     def correct_request(self):
         """Run basic tests for Service Attribute Request.
 
@@ -327,7 +385,10 @@ class bluetooth_SDP_ServiceAttributeRequest(bluetooth_test.BluetoothTest):
                 self.test_profile_descriptor_list_attribute() and
                 self.test_additional_protocol_descriptor_list_attribute() and
                 self.test_fake_attributes() and
-                self.test_non_existing_attribute())
+                self.test_non_existing_attribute() and
+                self.test_invalid_record_handle() and
+                self.test_invalid_request_syntax() and
+                self.test_invalid_pdu_size())
 
 
     def build_service_record(self):

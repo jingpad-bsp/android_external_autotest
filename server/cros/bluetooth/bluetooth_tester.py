@@ -143,7 +143,8 @@ class BluetoothTester(object):
                                                   invalid_request)
 
 
-    def service_attribute_request(self, handle, max_attr_byte_count, attr_ids):
+    def service_attribute_request(self, handle, max_attr_byte_count, attr_ids,
+                                  forced_pdu_size=None, invalid_request=None):
         """Send a Service Attribute Request
 
         @param handle: service record from which attribute values are to be
@@ -152,13 +153,19 @@ class BluetoothTester(object):
                be returned in the response to this request.
         @param attr_ids: a list, where each element is either an attribute ID
                or a range of attribute IDs.
+        @param forced_pdu_size: Use certain PDU size parameter instead of
+               calculating actual length of sequence.
+        @param invalid_request: Whether to send request with intentionally
+               invalid syntax for testing purposes (string with raw request).
 
         @return list of found attributes IDs and their values or Error Code
 
         """
         return self._proxy.service_attribute_request(handle,
                                                      max_attr_byte_count,
-                                                     attr_ids)
+                                                     attr_ids,
+                                                     forced_pdu_size,
+                                                     invalid_request)
 
 
 def create_host_from(device_host):

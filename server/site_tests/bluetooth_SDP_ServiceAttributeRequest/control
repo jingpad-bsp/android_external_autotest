@@ -22,7 +22,7 @@ BluetoothProfileDescriptorList, AdditionalProtocolDescriptorLists, ServiceID,
 ServiceRecordState, ServiceInfoTime, LanguageBaseAttributeIdList,
 ServiceAvailability, ServiceName, ServiceDescription, ProviderName.
 It also checks that responses with continuation state work properly,
-as well as responses with non-existing attributes.
+as well as requests with non-existing attributes and various invalid requests.
 
 This test covers the Bluetooth SIG test cases:
 TP/SERVER/SA/BV-01-C
@@ -45,6 +45,9 @@ TP/SERVER/SA/BV-18-C
 TP/SERVER/SA/BV-19-C
 TP/SERVER/SA/BV-20-C
 TP/SERVER/SA/BV-21-C
+TP/SERVER/SA/BI-01-C
+TP/SERVER/SA/BI-02-C
+TP/SERVER/SA/BI-03-C
 """
 
 from autotest_lib.server.cros.bluetooth import bluetooth_tester
