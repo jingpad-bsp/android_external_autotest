@@ -2,17 +2,22 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from selenium.common.exceptions import WebDriverException
 
 import linksyse1500_ap_configurator
 
 
 class LinksysM10APConfigurator(
         linksyse1500_ap_configurator.Linksyse1500APConfigurator):
-    """Base class for objects to configure Linksys m10 and m20 access points
-       using webdriver."""
+    """Base class for objects to configure Linksys m10 and m20."""
 
 
     def save_page(self, page_number):
+        """Saves the page.
+
+        @param page_number: the page number as an integer
+
+        """
         submit_btn = '//a[@href="javascript:to_submit(document.forms[0])"]'
         continue_btn = '//input[@value="Continue" and @onclick="to_submit()"]'
         try:
