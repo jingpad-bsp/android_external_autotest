@@ -96,8 +96,8 @@ class ServiceHandler(object):
         timer = stats.Timer('rpc')
 
         try:
-            meth = self.findServiceEndpoint(methName)
             timer.start()
+            meth = self.findServiceEndpoint(methName)
             results['result'] = self.invokeServiceEndpoint(meth, args)
         except Exception, err:
             results['err_traceback'] = traceback.format_exc()

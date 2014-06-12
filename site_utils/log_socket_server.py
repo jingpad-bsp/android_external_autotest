@@ -19,6 +19,9 @@ import SocketServer
 import struct
 import time
 
+import common
+from autotest_lib.client.bin import utils
+
 class LogRecordStreamHandler(SocketServer.StreamRequestHandler):
     """Handler for a streaming logging request.
 
@@ -79,13 +82,15 @@ class LogRecordSocketReceiver(SocketServer.ThreadingTCPServer):
 
     allow_reuse_address = 1
 
-    def __init__(self, host='localhost',
-                 port=logging.handlers.DEFAULT_TCP_LOGGING_PORT,
+    def __init__(self, host='localhost', port=None,
                  handler=LogRecordStreamHandler):
+        if not port:
+            port = utils.get_unused_port()
         SocketServer.ThreadingTCPServer.__init__(self, (host, port), handler)
         self.abort = 0
         self.timeout = 1
         self.logname = None
+        self.port = port
 
 
     def serve_until_stopped(self):
@@ -105,6 +110,7 @@ class LogSocketServer:
     """A wrapper class to start and stop a TCP server for logging."""
 
     process = None
+    port = None
 
     @staticmethod
     def start(**kwargs):
@@ -117,21 +123,28 @@ class LogSocketServer:
         if LogSocketServer.process:
             raise Exception('Log Record Socket Receiver is already running.')
         server_started = multiprocessing.Value(ctypes.c_bool, False)
+        port = multiprocessing.Value(ctypes.c_int, 0)
         LogSocketServer.process = multiprocessing.Process(
-                target=LogSocketServer._start_server, args=(server_started,),
+                target=LogSocketServer._start_server,
+                args=(server_started, port),
                 kwargs=kwargs)
         LogSocketServer.process.start()
         while not server_started.value:
             time.sleep(0.1)
-        print 'Log Record Socket Server is started.'
+        LogSocketServer.port = port.value
+        print 'Log Record Socket Server is started at port %d.' % port.value
 
 
     @staticmethod
-    def _start_server(server_started, **kwargs):
+    def _start_server(server_started, port, **kwargs):
         """Start the TCP server to receive log.
 
+        @param server_started: True if socket log server is started.
+        @param port: Port used by socket log server.
         @param kwargs: log configuration, e.g., format, filename.
         """
+        # Clear all existing log handlers.
+        logging.getLogger().handlers = []
         if not kwargs:
             logging.basicConfig(
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -141,6 +154,7 @@ class LogSocketServer:
         tcp_server = LogRecordSocketReceiver()
         print('Starting TCP server...')
         server_started.value = True
+        port.value = tcp_server.port
         tcp_server.serve_until_stopped()
 
 
@@ -151,3 +165,4 @@ class LogSocketServer:
         if LogSocketServer.process:
             LogSocketServer.process.terminate()
             LogSocketServer.process = None
+            LogSocketServer.port = None

@@ -86,7 +86,7 @@ def set_up_logging(log_filename_format=None, use_log_server=False):
     """
     if use_log_server:
         socketHandler = logging.handlers.SocketHandler(
-                'localhost', logging.handlers.DEFAULT_TCP_LOGGING_PORT)
+                'localhost', log_socket_server.LogSocketServer.port)
         logging.getLogger().addHandler(socketHandler)
     else:
         log_filename = get_log_filename(log_filename_format)

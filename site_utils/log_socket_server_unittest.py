@@ -19,14 +19,14 @@ class TestLogSocketServer(mox.MoxTestBase):
     """
 
 
-    def log_call(self, value):
+    def log_call(self, value, port):
         """Method to be called in a new process to log to a socket server.
 
         @param value: Data to be logged.
+        @param port: Port used by log socket server.
         """
         logging.getLogger().handlers = []
-        socketHandler = logging.handlers.SocketHandler('localhost',
-                logging.handlers.DEFAULT_TCP_LOGGING_PORT)
+        socketHandler = logging.handlers.SocketHandler('localhost', port)
         logging.getLogger().addHandler(socketHandler)
         logging.getLogger().level = logging.INFO
         logging.info(value)
@@ -41,8 +41,10 @@ class TestLogSocketServer(mox.MoxTestBase):
                                                 level=logging.INFO)
         processes = []
         process_number = 10
+        port = log_socket_server.LogSocketServer.port
         for i in range(process_number):
-            process = multiprocessing.Process(target=self.log_call, args=(i,))
+            process = multiprocessing.Process(target=self.log_call,
+                                              args=(i, port))
             process.start()
             processes.append(process)
 
