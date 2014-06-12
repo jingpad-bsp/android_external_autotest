@@ -92,7 +92,6 @@ class BuffalowzrAPConfigurator(
         self.driver.refresh()
         self._switch_frame()
         self.wait_for_object_by_xpath(apply_set, wait_time=40)
-        self.click_button_by_xpath(apply_set)
 
 
     def save_page(self, page_number):
@@ -109,6 +108,7 @@ class BuffalowzrAPConfigurator(
             self.click_button_by_xpath(apply_set)
         except:
             self.refresh_page(apply_set)
+            self.click_button_by_xpath(apply_set)
         # We need to hit one more apply button when settings have changed.
         try:
             if self.driver.find_element_by_xpath(apply_set):
@@ -123,6 +123,7 @@ class BuffalowzrAPConfigurator(
             self.wait_for_object_by_xpath(complete, wait_time=40)
         except:
             self.refresh_page(apply_set)
+            self.click_button_by_xpath(apply_set)
         self.wait_for_object_by_xpath(complete, wait_time=40)
         self.driver.find_element_by_xpath(complete)
         self.click_button_by_xpath(complete)
@@ -165,6 +166,7 @@ class BuffalowzrAPConfigurator(
 
 
     def _set_channel(self, channel):
+        apply_set = '//input[@type="submit"]'
         self._switch_frame()
         position = self._get_channel_popup_position(channel)
         channel_choice = ['Auto', 'Channel 1', 'Channel 2', 'Channel 3',
@@ -176,9 +178,12 @@ class BuffalowzrAPConfigurator(
             channel_choice = ['Auto', 'Channel 36', 'Channel 40', 'Channel 44',
                               'Channel 48', 'Channel 149', 'Channel 153',
                               'Channel 157', 'Channel 161', 'Channel 165']
-        if self.number_of_items_in_popup_by_xpath(xpath) == 0:
-            # If the popup is empty, refresh.
-            self.driver.refresh()
+        try:
+            if self.number_of_items_in_popup_by_xpath(xpath) == 0:
+                # If the popup is empty, refresh.
+                self.refresh_page(apply_set)
+        except:
+            self.refresh_page(apply_set)
         self.select_item_from_popup_by_xpath(channel_choice[position], xpath)
         default = self.driver.switch_to_default_content()
 

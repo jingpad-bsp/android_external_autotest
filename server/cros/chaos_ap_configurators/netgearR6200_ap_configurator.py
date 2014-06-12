@@ -89,6 +89,7 @@ class NetgearR6200APConfigurator(netgear_WNDR_dual_band_configurator.
             raise RuntimeError('You selected a mode that is not assigned '
                                'to this router. Select either b, g or n '
                                'for 2.4Ghz or either g, a or n for 5Ghz.')
+        self.wait_for_object_by_xpath(xpath, wait_time=10)
         self.select_item_from_popup_by_xpath(router_mode, xpath)
 
 
