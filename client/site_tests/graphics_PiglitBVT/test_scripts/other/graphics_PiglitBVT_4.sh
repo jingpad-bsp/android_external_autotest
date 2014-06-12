@@ -30,6 +30,8 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/!OpenGL 1.1/depthstencil-default_fb-drawpixels-32F_24_8_REV" 0.0 "bin/fbo-depthstencil -auto drawpixels default_fb 32F_24_8_REV"
+run_test "spec/!OpenGL 1.1/depthstencil-default_fb-drawpixels-FLOAT-and-USHORT" 0.0 "bin/fbo-depthstencil -auto drawpixels default_fb FLOAT-and-USHORT"
 run_test "spec/!OpenGL 1.1/depthstencil-default_fb-readpixels-24_8" 0.0 "bin/fbo-depthstencil -auto readpixels default_fb 24_8"
 run_test "spec/!OpenGL 1.1/depthstencil-default_fb-readpixels-32F_24_8_REV" 0.0 "bin/fbo-depthstencil -auto readpixels default_fb 32F_24_8_REV"
 run_test "spec/!OpenGL 1.1/depthstencil-default_fb-readpixels-FLOAT-and-USHORT" 0.0 "bin/fbo-depthstencil -auto readpixels default_fb FLOAT-and-USHORT"
@@ -187,7 +189,6 @@ run_test "spec/!OpenGL 3.0/depth-cube-map" 0.0 "bin/depth-cube-map -auto"
 run_test "spec/!OpenGL 3.0/genmipmap-errors" 0.0 "bin/genmipmap-errors -auto -fbo"
 run_test "spec/!OpenGL 3.0/getfragdatalocation" 0.0 "bin/getfragdatalocation -auto -fbo"
 run_test "spec/!OpenGL 3.0/gl-3.0-required-renderbuffer-attachment-formats" 0.0 "bin/gl-3.0-required-renderbuffer-attachment-formats -auto -fbo"
-run_test "spec/!OpenGL 3.0/gl-3.0-required-sized-texture-formats" 0.0 "bin/gl-3.0-required-sized-texture-formats -auto -fbo"
 run_test "spec/!OpenGL 3.0/gl-3.0-required-texture-attachment-formats" 0.0 "bin/gl-3.0-required-texture-attachment-formats -auto -fbo"
 run_test "spec/!OpenGL 3.0/integer-errors" 0.0 "bin/integer-errors -auto -fbo"
 run_test "spec/!OpenGL 3.0/minmax" 0.0 "bin/gl-3.0-minmax -auto -fbo"
@@ -409,7 +410,6 @@ run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-02.frag" 0.0 "b
 run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-02.vert" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.20/compiler/layout-02.vert fail 1.20 GL_ARB_explicit_attrib_location"
 run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-03.frag" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.20/compiler/layout-03.frag pass 1.20 GL_ARB_explicit_attrib_location"
 run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-03.vert" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.20/compiler/layout-03.vert pass 1.20 GL_ARB_explicit_attrib_location"
-run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-04.frag" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.20/compiler/layout-04.frag fail 1.20 GL_ARB_explicit_attrib_location"
 popd
 
 if [ $need_pass == 0 ] ; then

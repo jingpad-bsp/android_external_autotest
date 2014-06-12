@@ -30,6 +30,9 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/glsl-1.30/execution/built-in-functions/vs-sinh-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/vs-sinh-vec2.shader_test -auto"
+run_test "spec/glsl-1.30/execution/built-in-functions/vs-sinh-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/vs-sinh-vec3.shader_test -auto"
+run_test "spec/glsl-1.30/execution/built-in-functions/vs-sinh-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/vs-sinh-vec4.shader_test -auto"
 run_test "spec/glsl-1.30/execution/built-in-functions/vs-tanh-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/vs-tanh-float.shader_test -auto"
 run_test "spec/glsl-1.30/execution/built-in-functions/vs-tanh-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/vs-tanh-vec2.shader_test -auto"
 run_test "spec/glsl-1.30/execution/built-in-functions/vs-tanh-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/vs-tanh-vec3.shader_test -auto"
@@ -407,9 +410,6 @@ run_test "spec/glsl-1.30/preprocessor/concat/concat-03.frag" 0.0 "bin/glslparser
 run_test "spec/glsl-1.30/preprocessor/concat/concat-04.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/preprocessor/concat/concat-04.frag fail 1.30"
 run_test "spec/glsl-1.30/preprocessor/feature-macros/gl_fragment_precision_high.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/preprocessor/feature-macros/gl_fragment_precision_high.frag pass 1.30"
 run_test "spec/glsl-1.30/preprocessor/feature-macros/gl_fragment_precision_high.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/preprocessor/feature-macros/gl_fragment_precision_high.vert pass 1.30"
-run_test "spec/glsl-1.30/preprocessor/reserved/double-underscore-01.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/preprocessor/reserved/double-underscore-01.frag fail 1.30"
-run_test "spec/glsl-1.30/preprocessor/reserved/double-underscore-02.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/preprocessor/reserved/double-underscore-02.frag fail 1.30"
-run_test "spec/glsl-1.30/preprocessor/reserved/double-underscore-03.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/preprocessor/reserved/double-underscore-03.frag fail 1.30"
 run_test "spec/glsl-1.30/texel-offset-limits" 0.0 "bin/glsl-1.30-texel-offset-limits -auto -fbo"
 run_test "spec/glsl-es-3.00/compiler/array-length-is-constant.vert" 0.0 "bin/glslparsertest tests/spec/glsl-es-3.00/compiler/array-length-is-constant.vert pass 3.00"
 run_test "spec/glsl-es-3.00/compiler/array-length-is-not-float.vert" 0.0 "bin/glslparsertest tests/spec/glsl-es-3.00/compiler/array-length-is-not-float.vert fail 3.00"

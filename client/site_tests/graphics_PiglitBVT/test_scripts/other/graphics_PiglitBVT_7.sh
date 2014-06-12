@@ -219,9 +219,7 @@ run_test "spec/EXT_transform_feedback/tessellation triangles wireframe" 0.0 "bin
 run_test "spec/EXT_vertex_array_bgra/bgra-sec-color-pointer" 0.0 "bin/bgra-sec-color-pointer -auto"
 run_test "spec/EXT_vertex_array_bgra/bgra-vert-attrib-pointer" 0.0 "bin/bgra-vert-attrib-pointer -auto"
 run_test "spec/NV_conditional_render/begin-while-active" 0.0 "bin/nv_conditional_render-begin-while-active -auto -fbo"
-run_test "spec/NV_conditional_render/begin-zero" 0.0 "bin/nv_conditional_render-begin-zero -auto -fbo"
 run_test "spec/NV_conditional_render/bitmap" 0.0 "bin/nv_conditional_render-bitmap -auto"
-run_test "spec/NV_conditional_render/blitframebuffer" 0.0 "bin/nv_conditional_render-blitframebuffer -auto"
 run_test "spec/NV_conditional_render/clear" 0.0 "bin/nv_conditional_render-clear -auto"
 run_test "spec/NV_conditional_render/copypixels" 0.0 "bin/nv_conditional_render-copypixels -auto"
 run_test "spec/NV_conditional_render/copyteximage" 0.0 "bin/nv_conditional_render-copyteximage -auto"
@@ -462,6 +460,8 @@ run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-color.vert" 0.0
 run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-fog-coord.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-fog-coord.vert fail 1.10"
 run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-fog-frag-coord.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-fog-frag-coord.frag fail 1.10"
 run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-frag-coord.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-frag-coord.frag fail 1.10"
+run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-front-facing.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-front-facing.frag fail 1.10"
+run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord0.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord0.vert fail 1.10"
 popd
 
 if [ $need_pass == 0 ] ; then

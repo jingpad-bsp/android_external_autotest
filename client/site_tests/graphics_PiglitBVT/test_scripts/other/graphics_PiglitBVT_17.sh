@@ -30,6 +30,9 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec3-uint.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec3-uint.frag pass 1.30"
+run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec3-uint.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec3-uint.vert pass 1.30"
+run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec3-uvec3.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec3-uvec3.frag pass 1.30"
 run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec3-uvec3.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec3-uvec3.vert pass 1.30"
 run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec4-uint.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec4-uint.frag pass 1.30"
 run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec4-uint.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitor-uvec4-uint.vert pass 1.30"
@@ -474,9 +477,6 @@ run_test "spec/glsl-1.30/compiler/keywords/ivec2.frag" 0.0 "bin/glslparsertest t
 run_test "spec/glsl-1.30/compiler/keywords/ivec3.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/compiler/keywords/ivec3.frag fail 1.30"
 run_test "spec/glsl-1.30/compiler/keywords/ivec4.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/compiler/keywords/ivec4.frag fail 1.30"
 run_test "spec/glsl-1.30/compiler/keywords/lowp.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/compiler/keywords/lowp.frag fail 1.30"
-run_test "spec/glsl-1.30/compiler/keywords/mat2.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/compiler/keywords/mat2.frag fail 1.30"
-run_test "spec/glsl-1.30/compiler/keywords/mat2x2.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/compiler/keywords/mat2x2.frag fail 1.30"
-run_test "spec/glsl-1.30/compiler/keywords/mat2x3.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/compiler/keywords/mat2x3.frag fail 1.30"
 popd
 
 if [ $need_pass == 0 ] ; then

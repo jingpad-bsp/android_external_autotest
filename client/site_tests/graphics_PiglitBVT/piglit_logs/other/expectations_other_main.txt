@@ -36,6 +36,11 @@
       "pass rate": "0.5",
       "result": "flaky"
     },
+    "spec/!OpenGL 3.0/gl-3.0-required-sized-texture-formats": {
+      "comment": "Remove when we have piglit 604ddadd85af0874171aa0a1dec999ae619f78c4",
+      "pass rate": "0.5",
+      "result": "flaky"
+    },
     "spec/!OpenGL 3.0/gl-3.0-texture-integer": {
       "pass rate": "0.98",
       "result": "flaky"
@@ -86,6 +91,36 @@
     },
     "spec/AMD_conservative_depth/glsl-1.30/preprocessor/feature-macro.vert": {
       "pass rate": "0.93",
+      "result": "flaky"
+    },
+    "spec/glsl-1.30/preprocessor/reserved/double-underscore-01.frag": {
+      "comment": "Remove when we have piglit 3a521d467c108f25b2033132ca6ac665786c0e04",
+      "pass rate": "0.5",
+      "result": "flaky"
+    },
+    "spec/glsl-1.30/preprocessor/reserved/double-underscore-02.frag": {
+      "comment": "Remove when we have piglit 3a521d467c108f25b2033132ca6ac665786c0e04",
+      "pass rate": "0.5",
+      "result": "flaky"
+    },
+    "spec/glsl-1.30/preprocessor/reserved/double-underscore-03.frag": {
+      "comment": "Remove when we have piglit 3a521d467c108f25b2033132ca6ac665786c0e04",
+      "pass rate": "0.5",
+      "result": "flaky"
+    },
+    "spec/NV_conditional_render/begin-zero": {
+      "comment": "Remove when we have piglit 271b998e079a8d73e3f0de6ec3494a5c374593aa",
+      "pass rate": "0.5",
+      "result": "flaky"
+    },
+    "spec/NV_conditional_render/blitframebuffer": {
+      "comment": "Remove when we have piglit 0364f161c9b41b7b1fe94f7b761241ccfdca4981",
+      "pass rate": "0.5",
+      "result": "flaky"
+    },
+    "spec/ARB_texture_cube_map/copyteximage CUBE": {
+      "comment": "See https://bugs.freedesktop.org/show_bug.cgi?id=77553",
+      "pass rate": "0.5",
       "result": "flaky"
     },
     "spec/ARB_depth_texture/depthstencil-render-miplevels 146 d=z16": {

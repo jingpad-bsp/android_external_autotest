@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=8061
+need_pass=8054
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -1149,7 +1149,6 @@ run_test "spec/!OpenGL 3.0/depth-cube-map" 0.0 "bin/depth-cube-map -auto"
 run_test "spec/!OpenGL 3.0/genmipmap-errors" 0.0 "bin/genmipmap-errors -auto -fbo"
 run_test "spec/!OpenGL 3.0/getfragdatalocation" 0.0 "bin/getfragdatalocation -auto -fbo"
 run_test "spec/!OpenGL 3.0/gl-3.0-required-renderbuffer-attachment-formats" 0.0 "bin/gl-3.0-required-renderbuffer-attachment-formats -auto -fbo"
-run_test "spec/!OpenGL 3.0/gl-3.0-required-sized-texture-formats" 0.0 "bin/gl-3.0-required-sized-texture-formats -auto -fbo"
 run_test "spec/!OpenGL 3.0/gl-3.0-required-texture-attachment-formats" 0.0 "bin/gl-3.0-required-texture-attachment-formats -auto -fbo"
 run_test "spec/!OpenGL 3.0/integer-errors" 0.0 "bin/integer-errors -auto -fbo"
 run_test "spec/!OpenGL 3.0/minmax" 0.0 "bin/gl-3.0-minmax -auto -fbo"
@@ -1660,7 +1659,6 @@ run_test "spec/ARB_texture_compression/texwrap formats bordercolor" 0.0 "bin/tex
 run_test "spec/ARB_texture_compression/texwrap formats bordercolor-swizzled" 0.0 "bin/texwrap -fbo -auto GL_ARB_texture_compression bordercolor swizzled"
 run_test "spec/ARB_texture_compression/unknown formats" 0.0 "bin/arb_texture_compression-invalid-formats unknown"
 run_test "spec/ARB_texture_compression_bptc/invalid formats" 0.0 "bin/arb_texture_compression-invalid-formats bptc"
-run_test "spec/ARB_texture_cube_map/copyteximage CUBE" 0.0 "bin/copyteximage -auto CUBE"
 run_test "spec/ARB_texture_cube_map/crash-cubemap-order" 0.0 "bin/crash-cubemap-order -auto"
 run_test "spec/ARB_texture_cube_map/cubemap" 0.0 "bin/cubemap -auto"
 run_test "spec/ARB_texture_cube_map/cubemap npot" 0.0 "bin/cubemap -auto npot"
@@ -2271,9 +2269,7 @@ run_test "spec/EXT_transform_feedback/tessellation triangles wireframe" 0.0 "bin
 run_test "spec/EXT_vertex_array_bgra/bgra-sec-color-pointer" 0.0 "bin/bgra-sec-color-pointer -auto"
 run_test "spec/EXT_vertex_array_bgra/bgra-vert-attrib-pointer" 0.0 "bin/bgra-vert-attrib-pointer -auto"
 run_test "spec/NV_conditional_render/begin-while-active" 0.0 "bin/nv_conditional_render-begin-while-active -auto -fbo"
-run_test "spec/NV_conditional_render/begin-zero" 0.0 "bin/nv_conditional_render-begin-zero -auto -fbo"
 run_test "spec/NV_conditional_render/bitmap" 0.0 "bin/nv_conditional_render-bitmap -auto"
-run_test "spec/NV_conditional_render/blitframebuffer" 0.0 "bin/nv_conditional_render-blitframebuffer -auto"
 run_test "spec/NV_conditional_render/clear" 0.0 "bin/nv_conditional_render-clear -auto"
 run_test "spec/NV_conditional_render/copypixels" 0.0 "bin/nv_conditional_render-copypixels -auto"
 run_test "spec/NV_conditional_render/copyteximage" 0.0 "bin/nv_conditional_render-copyteximage -auto"
@@ -8064,9 +8060,6 @@ run_test "spec/glsl-1.30/preprocessor/concat/concat-03.frag" 0.0 "bin/glslparser
 run_test "spec/glsl-1.30/preprocessor/concat/concat-04.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/preprocessor/concat/concat-04.frag fail 1.30"
 run_test "spec/glsl-1.30/preprocessor/feature-macros/gl_fragment_precision_high.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/preprocessor/feature-macros/gl_fragment_precision_high.frag pass 1.30"
 run_test "spec/glsl-1.30/preprocessor/feature-macros/gl_fragment_precision_high.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/preprocessor/feature-macros/gl_fragment_precision_high.vert pass 1.30"
-run_test "spec/glsl-1.30/preprocessor/reserved/double-underscore-01.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/preprocessor/reserved/double-underscore-01.frag fail 1.30"
-run_test "spec/glsl-1.30/preprocessor/reserved/double-underscore-02.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/preprocessor/reserved/double-underscore-02.frag fail 1.30"
-run_test "spec/glsl-1.30/preprocessor/reserved/double-underscore-03.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/preprocessor/reserved/double-underscore-03.frag fail 1.30"
 run_test "spec/glsl-1.30/texel-offset-limits" 0.0 "bin/glsl-1.30-texel-offset-limits -auto -fbo"
 run_test "spec/glsl-es-3.00/compiler/array-length-is-constant.vert" 0.0 "bin/glslparsertest tests/spec/glsl-es-3.00/compiler/array-length-is-constant.vert pass 3.00"
 run_test "spec/glsl-es-3.00/compiler/array-length-is-not-float.vert" 0.0 "bin/glslparsertest tests/spec/glsl-es-3.00/compiler/array-length-is-not-float.vert fail 3.00"
@@ -8095,7 +8088,7 @@ popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 8061 tests have passed. |"
+  echo "| Overall pass, as all 8054 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

@@ -30,6 +30,7 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-04.frag" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.20/compiler/layout-04.frag fail 1.20 GL_ARB_explicit_attrib_location"
 run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-04.vert" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.20/compiler/layout-04.vert fail 1.20 GL_ARB_explicit_attrib_location"
 run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-05.frag" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.20/compiler/layout-05.frag fail 1.20 GL_ARB_explicit_attrib_location"
 run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-05.vert" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.20/compiler/layout-05.vert fail 1.20 GL_ARB_explicit_attrib_location"
@@ -318,7 +319,6 @@ run_test "spec/ARB_texture_compression/texwrap formats bordercolor" 0.0 "bin/tex
 run_test "spec/ARB_texture_compression/texwrap formats bordercolor-swizzled" 0.0 "bin/texwrap -fbo -auto GL_ARB_texture_compression bordercolor swizzled"
 run_test "spec/ARB_texture_compression/unknown formats" 0.0 "bin/arb_texture_compression-invalid-formats unknown"
 run_test "spec/ARB_texture_compression_bptc/invalid formats" 0.0 "bin/arb_texture_compression-invalid-formats bptc"
-run_test "spec/ARB_texture_cube_map/copyteximage CUBE" 0.0 "bin/copyteximage -auto CUBE"
 run_test "spec/ARB_texture_cube_map/crash-cubemap-order" 0.0 "bin/crash-cubemap-order -auto"
 run_test "spec/ARB_texture_cube_map/cubemap" 0.0 "bin/cubemap -auto"
 run_test "spec/ARB_texture_cube_map/cubemap npot" 0.0 "bin/cubemap -auto npot"

@@ -30,8 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-front-facing.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-front-facing.frag fail 1.10"
-run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord0.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord0.vert fail 1.10"
 run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord1.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord1.vert fail 1.10"
 run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord2.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord2.vert fail 1.10"
 run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord3.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord3.vert fail 1.10"
@@ -448,6 +446,8 @@ run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-ivec4-ivec4" 0.0
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat2-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat2-float.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat2-mat2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat2-mat2.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat3-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat3-float.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat3-mat3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat3-mat3.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat4-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-op-sub-mat4-float.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then

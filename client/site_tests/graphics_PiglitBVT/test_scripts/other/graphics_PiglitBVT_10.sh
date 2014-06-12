@@ -30,7 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-neg-ivec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-neg-ivec4.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-neg-mat2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-neg-mat2.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-neg-mat3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-neg-mat3.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-neg-mat4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-neg-mat4.shader_test -auto"
@@ -453,6 +452,7 @@ run_test "spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat3-col-r
 run_test "spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat3-col-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat3-col-row-rd.shader_test -auto"
 run_test "spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat3-index-col-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat3-index-col-rd.shader_test -auto"
 run_test "spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat3-index-col-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat3-index-col-row-rd.shader_test -auto"
+run_test "spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat3-index-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-uniform-array-mat3-index-rd.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then

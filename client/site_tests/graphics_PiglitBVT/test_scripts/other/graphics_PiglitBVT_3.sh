@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=312
+need_pass=311
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -30,6 +30,7 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "shaders/glsl-fs-if-nested-loop" 0.0 "bin/shader_runner tests/shaders/glsl-fs-if-nested-loop.shader_test -auto"
 run_test "shaders/glsl-fs-if-texture2d-discard" 0.0 "bin/shader_runner tests/shaders/glsl-fs-if-texture2d-discard.shader_test -auto"
 run_test "shaders/glsl-fs-implicit-array-size-01" 0.0 "bin/shader_runner tests/shaders/glsl-fs-implicit-array-size-01.shader_test -auto"
 run_test "shaders/glsl-fs-implicit-array-size-02" 0.0 "bin/shader_runner tests/shaders/glsl-fs-implicit-array-size-02.shader_test -auto"
@@ -340,13 +341,11 @@ run_test "spec/!OpenGL 1.1/depthfunc" 0.0 "bin/depthfunc -auto"
 run_test "spec/!OpenGL 1.1/depthstencil-default_fb-blit" 0.0 "bin/fbo-depthstencil -auto blit default_fb"
 run_test "spec/!OpenGL 1.1/depthstencil-default_fb-copypixels" 0.0 "bin/fbo-depthstencil -auto copypixels default_fb"
 run_test "spec/!OpenGL 1.1/depthstencil-default_fb-drawpixels-24_8" 0.0 "bin/fbo-depthstencil -auto drawpixels default_fb 24_8"
-run_test "spec/!OpenGL 1.1/depthstencil-default_fb-drawpixels-32F_24_8_REV" 0.0 "bin/fbo-depthstencil -auto drawpixels default_fb 32F_24_8_REV"
-run_test "spec/!OpenGL 1.1/depthstencil-default_fb-drawpixels-FLOAT-and-USHORT" 0.0 "bin/fbo-depthstencil -auto drawpixels default_fb FLOAT-and-USHORT"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 312 tests have passed. |"
+  echo "| Overall pass, as all 311 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

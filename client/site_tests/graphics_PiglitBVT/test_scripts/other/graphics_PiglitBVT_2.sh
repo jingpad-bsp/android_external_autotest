@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=305
+need_pass=304
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -334,12 +334,11 @@ run_test "shaders/glsl-fs-if-greater" 0.0 "bin/shader_runner tests/shaders/glsl-
 run_test "shaders/glsl-fs-if-greater-equal" 0.0 "bin/shader_runner tests/shaders/glsl-fs-if-greater-equal.shader_test -auto"
 run_test "shaders/glsl-fs-if-less" 0.0 "bin/shader_runner tests/shaders/glsl-fs-if-less.shader_test -auto"
 run_test "shaders/glsl-fs-if-less-equal" 0.0 "bin/shader_runner tests/shaders/glsl-fs-if-less-equal.shader_test -auto"
-run_test "shaders/glsl-fs-if-nested-loop" 0.0 "bin/shader_runner tests/shaders/glsl-fs-if-nested-loop.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 305 tests have passed. |"
+  echo "| Overall pass, as all 304 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

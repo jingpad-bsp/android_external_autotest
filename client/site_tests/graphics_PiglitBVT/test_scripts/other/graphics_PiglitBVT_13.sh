@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=441
+need_pass=440
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -470,12 +470,11 @@ run_test "spec/glsl-1.20/compiler/qualifiers/fn-inout-array-allowed.frag" 0.0 "b
 run_test "spec/glsl-1.20/compiler/qualifiers/fn-inout-array-allowed.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.20/compiler/qualifiers/fn-inout-array-allowed.vert pass 1.20 --check-link"
 run_test "spec/glsl-1.20/compiler/qualifiers/fn-out-array-allowed-cstyle.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.20/compiler/qualifiers/fn-out-array-allowed-cstyle.frag pass 1.20 --check-link"
 run_test "spec/glsl-1.20/compiler/qualifiers/fn-out-array-allowed-cstyle.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.20/compiler/qualifiers/fn-out-array-allowed-cstyle.vert pass 1.20 --check-link"
-run_test "spec/glsl-1.20/compiler/qualifiers/fn-out-array-allowed.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.20/compiler/qualifiers/fn-out-array-allowed.frag pass 1.20 --check-link"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 441 tests have passed. |"
+  echo "| Overall pass, as all 440 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"
