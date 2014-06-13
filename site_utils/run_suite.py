@@ -536,23 +536,33 @@ class TestView(object):
     SUITE_PREP = 'Suite prep'
 
 
-    def __init__(self, view, suite_job_id, suite_name, build):
+    def __init__(self, view, afe_job, suite_name, build):
         """Init a TestView object representing a tko test view.
 
         @param view: A dictionary representing a tko test view.
-        @param suite_job_id: The id of the suite job
-                             that kicks off the test.
+        @param afe_job: An instance of frontend.afe.models.Job
+                        representing the job that kicked off the test.
         @param suite_name: The name of the suite
                            that the test belongs to.
         @param build: The build for which the test is run.
         """
         self.view = view
-        self.suite_job_id = suite_job_id
+        self.afe_job = afe_job
         self.suite_name = suite_name
         self.build = build
-        self.is_suite_view = suite_job_id == view['afe_job_id']
+        self.is_suite_view = afe_job.parent_job is None
         # This is the test name that will be shown in the output.
         self.testname = None
+
+        # The case that a job was aborted before it got a chance to run
+        # usually indicates suite has timed out (unless aborted by user).
+        # In this case, the abort reason will be None.
+        # Update the reason with proper information.
+        if (self.is_relevant_suite_view() and
+                not self.get_testname() == self.SUITE_PREP and
+                self.view['status'] == 'ABORT' and
+                not self.view['reason']):
+            self.view['reason'] = 'Timed out, did not run.'
 
 
     def __getitem__(self, key):
@@ -564,16 +574,6 @@ class TestView(object):
 
         """
         return self.view[key]
-
-
-    def __setitem__(self, key, item):
-        """Overload __setitem so that we can still use []
-
-        @param key: A key of the tko test view.
-        @param item: A value to set
-
-        """
-        self.view[key] = item
 
 
     def __iter__(self):
@@ -608,7 +608,7 @@ class TestView(object):
              'experimental_dummy_Pass_SERVER_JOB'
              'dummy_Fail_SERVER_JOB'
 
-        2) A test view is of a suite job and its status is ABORT.
+        3) A test view is of a suite job and its status is ABORT.
            In this case, the view['test_name'] is the child job's name.
            If it is an experimental test, 'experimental' will be part
            of the name. For instance,
@@ -621,7 +621,7 @@ class TestView(object):
              'experimental_dummy_Pass'
              'dummy_Fail'
 
-        3) A test view's status is of a suite job and its status is TEST_NA.
+        4) A test view's status is of a suite job and its status is TEST_NA.
            In this case, the view['test_name'] is the NAME field of the control
            file. If it is an experimental test, 'experimental' will part of
            the name. For instance,
@@ -703,20 +703,56 @@ class TestView(object):
                         self.view['test_name']).startswith('experimental'))
 
 
-    def is_timeout_and_not_run(self):
-        """Check whether the view is for a test that timed out and did not run.
+    def hit_timeout(self):
+        """Check whether the corresponding job has hit its own timeout.
 
-        A child job that was aborted before it got a chance to
-        run will have a view assoicated to suite job.
-        This mostly happens when a job timed out due to
-        starving for hosts (unless aborted manually by user,
-        which we don't consider here).
+        Note this method should not be called for those test views
+        that belongs to a suite job and are determined as irrelevant
+        by is_relevant_suite_view.  This is because they are associated
+        to the suite job, whose job start/finished time make no sense
+        to an irrelevant test view.
 
-        @returns: True if the test represented by the view
-                  timed out and did not run; False otherwise.
+        @returns: True if the corresponding afe job has hit timeout.
+                  False otherwise.
+        """
+        if (self.is_relevant_suite_view() and
+                self.get_testname() != self.SUITE_PREP):
+            # Any relevant suite test view except SUITE_PREP
+            # did not hit its own timeout because it was not ever run.
+            return False
+        start = (datetime.strptime(
+                self.view['job_started_time'], job_status.TIME_FMT)
+                if self.view['job_started_time'] else None)
+        end = (datetime.strptime(
+                self.view['job_finished_time'], job_status.TIME_FMT)
+                if self.view['job_finished_time'] else None)
+        if not start or not end:
+            return False
+        else:
+            return ((end - start).total_seconds()/60.0
+                        > self.afe_job.max_runtime_mins)
+
+
+    def is_aborted(self):
+        """Check if the view was aborted.
+
+        For suite prep and child job test views, we check job keyval
+        'aborted_by' and test status.
+
+        For relevant suite job test views, we only check test status
+        because the suite job keyval won't make sense to individual
+        test views.
+
+        @returns: True if the test was as aborted, False otherwise.
 
         """
-        return (self.is_suite_view and self.view['status'] == 'ABORT')
+
+        if (self.is_relevant_suite_view() and
+                self.get_testname() != self.SUITE_PREP):
+            return self.view['status'] == 'ABORT'
+        else:
+            return (bool(self.view['job_keyvals'].get('aborted_by')) and
+                    self.view['status'] in ['ABORT', 'RUNNING'])
 
 
     def is_in_fail_status(self):
@@ -784,18 +820,27 @@ class TestView(object):
     def should_display_buildbot_link(self):
         """Check whether a buildbot link should show for this view.
 
-        Show links on the buildbot waterfall if
-        1) it is a normal test that are not in GOOD/TEST_NA status
-           and did not time out before running; or
-        2) this is a retry.
+        For suite prep view, show buildbot link if it fails.
+        For normal test view,
+            show buildbot link if it is a retry
+            show buildbot link if it hits its own timeout.
+            show buildbot link if it fails. This doesn't
+            include the case where it was aborted but has
+            not hit its own timeout (most likely it was aborted because
+            suite has timed out).
 
         @returns: True if we should show the buildbot link.
                   False otherwise.
         """
         is_bad_status = (self.view['status'] != 'GOOD' and
                          self.view['status'] != 'TEST_NA')
-        is_timeout = self.is_timeout_and_not_run()
-        return (is_bad_status and not is_timeout) or self.is_retry()
+        if self.get_testname() == self.SUITE_PREP:
+            return is_bad_status
+        else:
+            if self.is_retry():
+                return True
+            if is_bad_status:
+                return not self.is_aborted() or self.hit_timeout()
 
 
 class ResultCollector(object):
@@ -901,15 +946,14 @@ class ResultCollector(object):
                   test views of the suite job.
 
         """
+        suite_job = self._afe.get_jobs(id=self._suite_job_id)[0]
         views = self._tko.run(call='get_detailed_test_views',
                               afe_job_id=self._suite_job_id)
         relevant_views = []
         for v in views:
-            v = TestView(v, self._suite_job_id, self._suite_name, self._build)
+            v = TestView(v, suite_job, self._suite_name, self._build)
             if v.is_relevant_suite_view():
                 relevant_views.append(v)
-            if v.is_timeout_and_not_run():
-                v['reason'] = 'Timed out, did not run.'
         return relevant_views
 
 
@@ -941,16 +985,13 @@ class ResultCollector(object):
                   counts that are greater than 0.
 
         """
-        child_job_ids = set(job.id for job in
-                            self._afe.get_jobs(
-                                parent_job_id=self._suite_job_id))
         child_views = []
         retry_counts = {}
-        for job_id in child_job_ids:
-            views = [TestView(v, self._suite_job_id,
-                              self._suite_name, self._build)
+        child_jobs = self._afe.get_jobs(parent_job_id=self._suite_job_id)
+        for job in child_jobs:
+            views = [TestView(v, job, self._suite_name, self._build)
                      for v in self._tko.run(
-                         call='get_detailed_test_views', afe_job_id=job_id,
+                         call='get_detailed_test_views', afe_job_id=job.id,
                          invalid=0)]
             contains_test_failure = any(
                     v.is_test() and v['status'] != 'GOOD' for v in views)
@@ -1034,28 +1075,45 @@ class ResultCollector(object):
         tests_passed_after_retry = False
 
         for v in self._test_views:
+            # The order of checking each case is important.
             if v.is_experimental():
                 continue
-            if (v.get_testname() == TestView.SUITE_PREP
-                    and v.is_in_fail_status()):
-                # Suite job failed (with status FAIL/ERROR/ABORT).
-                # If the suite job was aborted, it may or may not be
-                # caused by timing out. Here we only categorize it as
-                # INFRA_FAILURE which is less severe than SUITE_TIMEOUT.
-                # Suite timing out will be diagnosed later using
-                # other methods which will upgrade the severity accordingly.
-                code = get_worse_code(code, RETURN_CODES.INFRA_FAILURE)
-            elif v.is_timeout_and_not_run():
-                code = get_worse_code(code, RETURN_CODES.SUITE_TIMEOUT)
-            elif v['status'] == 'WARN':
-                code = get_worse_code(code, RETURN_CODES.WARNING)
-            elif v.is_in_fail_status():
-                code = get_worse_code(code, RETURN_CODES.ERROR)
-            elif v.is_retry():
-                code = get_worse_code(code, RETURN_CODES.WARNING)
-                tests_passed_after_retry = True
+            if v.get_testname() == TestView.SUITE_PREP:
+                if v.is_aborted() and v.hit_timeout():
+                    current_code = RETURN_CODES.SUITE_TIMEOUT
+                elif v.is_in_fail_status():
+                    current_code = RETURN_CODES.INFRA_FAILURE
+                elif v['status'] == 'WARN':
+                    current_code = RETURN_CODES.WARNING
+                else:
+                    current_code = RETURN_CODES.OK
             else:
-                code = get_worse_code(code, RETURN_CODES.OK)
+                if v.is_aborted() and v.is_relevant_suite_view():
+                    # The test was aborted before started
+                    # This gurantees that the suite has timed out.
+                    current_code = RETURN_CODES.SUITE_TIMEOUT
+                elif v.is_aborted() and not v.hit_timeout():
+                    # The test was aborted, but
+                    # not due to a timeout. This is most likely
+                    # because the suite has timed out, but may
+                    # also because it was aborted by the user.
+                    # Since suite timing out is determined by checking
+                    # the suite prep view, we simply ignore this view here.
+                    current_code = RETURN_CODES.OK
+                elif v.is_in_fail_status():
+                    # The test job failed.
+                    current_code = RETURN_CODES.ERROR
+                elif v['status'] == 'WARN':
+                    # The test/suite job raised a wanrning.
+                    current_code = RETURN_CODES.WARNING
+                elif v.is_retry():
+                    # The test is a passing retry.
+                    current_code = RETURN_CODES.WARNING
+                    tests_passed_after_retry = True
+                else:
+                    current_code = RETURN_CODES.OK
+            code = get_worse_code(code, current_code)
+
         self.return_code = code
         self.return_message = self._get_return_msg(
                 code, tests_passed_after_retry)
@@ -1219,6 +1277,20 @@ def main():
                 logging.info('The suite job has another %s till timeout.',
                              job_timer.timeout_hours - job_timer.elapsed_time())
             time.sleep(10)
+        # For most cases, ResultCollector should be able to determine whether
+        # a suite has timed out by checking information in the test view.
+        # However, occationally tko parser may fail on parsing the
+        # job_finished time from the job's keyval file. So we add another
+        # layer of timeout check in run_suite. We do the check right after
+        # the suite finishes to make it as accurate as possible.
+        # There is a minor race condition here where we might have aborted
+        # for some reason other than a timeout, and the job_timer thinks
+        # it's a timeout because of the jitter in waiting for results.
+        # The consequence would be that run_suite exits with code
+        # SUITE_TIMEOUT while it should  have returned INFRA_FAILURE
+        # instead, which should happen very rarely.
+        # Note the timeout will have no sense when using -m option.
+        is_suite_timeout = job_timer.is_suite_timeout()
 
         # Start collecting test results.
         collector = ResultCollector(instance_server=instance_server,
@@ -1238,13 +1310,6 @@ def main():
             if collector.is_aborted == False:
                 collector.timings.SendResultsToStatsd(
                         options.name, options.build, options.board)
-            # There is a minor race condition here where we might have aborted
-            # for some reason other than a timeout, and the job_timer thinks
-            # it's a timeout because of the jitter in waiting for results.
-            # The consequence would be that run_suite exits with code
-            # SUITE_TIMEOUT while it should  have returned INFRA_FAILURE
-            # instead, which should happen very rarely.
-            is_suite_timeout = job_timer.is_suite_timeout()
             if collector.is_aborted == True and is_suite_timeout:
                 # There are two possible cases when a suite times out.
                 # 1. the suite job was aborted due to timing out
