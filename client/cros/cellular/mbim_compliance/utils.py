@@ -99,14 +99,14 @@ def get_configuration_extra_descriptors(extra_bytes):
     @returns a list of interface association descriptor
 
     """
-    interface_association_descriptor = None
+    interface_association_descriptors = []
     extra_len = len(extra_bytes)
     index = 0
     while index < extra_len:
         stream = extra_bytes[index: index + extra_bytes[index]]
         index += extra_bytes[index]
         descriptor_type = stream[1]
-        if descriptor_type == 0x0B and interface_association_descriptor is None:
+        if descriptor_type == 0x0B:
             interface_association_descriptor = (
                     containers.InterfaceAssociationDescriptor(stream[0],
                                                               stream[1],
@@ -116,11 +116,39 @@ def get_configuration_extra_descriptors(extra_bytes):
                                                               stream[5],
                                                               stream[6],
                                                               stream[7]))
+            interface_association_descriptors.append(
+                    interface_association_descriptor)
         else:
             mbim_errors.log_raise(mbim_errors.MBIMComplianceFrameworkError,
                                   'Parser: wrong bDescriptorType for interface'
                                   'association descriptor')
-    return interface_association_descriptor
+    return interface_association_descriptors
+
+
+def descriptor_filter(descriptor_type, descriptors):
+    """
+    Filter a list of descriptors based on target descriptor type.
+
+    @param descriptor_type: target descriptor type
+    @param descriptors: the list of functional descriptors
+    @returns a set of tuples(index, descriptor)
+
+    """
+    return filter(lambda (index, descriptor): isinstance(descriptor,
+                                                         descriptor_type),
+                  enumerate(descriptors))
+
+
+def has_distinct_descriptors(descriptor_tuples):
+    """
+    Check if there are distinct descriptors of the target descriptor type.
+
+    @param descriptor_tuples: the list of descriptor tuples(index, descriptor)
+    @returns True if distinct descriptor are found, False otherwise.
+
+    """
+    return not all([descriptor == descriptor_tuples[0][1]
+                    for (_, descriptor) in descriptor_tuples])
 
 
 def print_extra_bytes(configuration_extra=None, interface_extra=None):

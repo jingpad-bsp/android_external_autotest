@@ -15,11 +15,8 @@ class Test(entity.Entity):
     def run(self):
         """ Run the test. """
         logging.info('-- Test (%s) begin --', self.name())
-        result = self.run_internal()
-        logging.info('-- Test (%s) end [%s]--',
-                     self.name(),
-                     'PASS' if result else 'FAIL')
-        return result
+        self.run_internal()
+        logging.info('-- Test (%s) end --', self.name())
 
 
     def run_internal(self):

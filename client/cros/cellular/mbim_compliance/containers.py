@@ -54,7 +54,7 @@ class MBIMFunctionalDescriptor:
                  bcdMBIMVersion,
                  wMaxControlMessage,
                  bNumberFilters,
-                 bNumberFilterSize,
+                 bMaxFilterSize,
                  wMaxSegmentSize,
                  bmNetworkCapabilities):
         self.bLength = bLength
@@ -63,7 +63,7 @@ class MBIMFunctionalDescriptor:
         self.bcdMBIMVersion = bcdMBIMVersion
         self.wMaxControlMessage = wMaxControlMessage
         self.bNumberFilters = bNumberFilters
-        self.bNumberFilterSize = bNumberFilterSize
+        self.bMaxFilterSize = bMaxFilterSize
         self.wMaxSegmentSize = wMaxSegmentSize
         self.bmNetworkCapabilities = bmNetworkCapabilities
 

@@ -13,26 +13,16 @@ class Sequence(entity.Entity):
     """ Base class for all sequences. """
 
     def run(self):
-        """
-        Run the sequence.
-
-        @returns the result of the sequence
-
-        """
+        """ Run the sequence. """
         logging.info('---- Sequence (%s) begin ----', self.name())
-        result = self.run_internal()
-        logging.info('---- Sequence (%s) end [%s] ----',
-                     self.name(),
-                     'PASS' if result else 'FAIL')
-        return result
+        self.run_internal()
+        logging.info('---- Sequence (%s) end ----', self.name())
 
 
     def run_internal(self):
         """
         The actual method runs the sequence.
         Subclasses should override this method to run their own sequence.
-
-        @returns True if the sequence passed, false otherwise.
 
         """
         mbim_errors.log_and_raise(NotImplementedError)

@@ -27,9 +27,8 @@ class GetDescriptorSequence(sequence.Sequence):
 
     def __init__(self, test_context):
         """
-        @param test_context: An object that wraps information about the test
-                environment. Used to obtain vendor and product id of the USB
-                device.
+        @param test_context: An object that wraps information about the device
+               under test.
         """
         self.test_context = test_context
 
@@ -41,11 +40,12 @@ class GetDescriptorSequence(sequence.Sequence):
                                       'Test context not found')
         device = self.test_context.device
         if device is None:
-            mbim_errors.log_and_raise(mbim_errors.MBIMComplianceSequenceError,
+            mbim_errors.log_and_raise(mbim_errors.MBIMComplianceFrameworkError,
                                       'Device %04X:%04X not found' %
-                                      (device.idVendor, device.idProduct))
+                                      (self.test_context.id_vendor,
+                                       self.test_context.id_product))
 
-        config = device.get_active_configuration()
+        configuration = device.get_active_configuration()
         # Get the actual wTotalLength by retrieving partial descriptor.
         # desc_index corresponds to the index of a configuration. Note that
         # index is of 0 base while configuration is of 1 base.
@@ -53,7 +53,7 @@ class GetDescriptorSequence(sequence.Sequence):
                 dev=device,
                 desc_size=9,
                 desc_type=util.DESC_TYPE_CONFIG,
-                desc_index=config.bConfigurationValue - 1,
+                desc_index=configuration.bConfigurationValue - 1,
                 wIndex=0)
         if descriptor is None:
             mbim_errors.log_and_raise(
@@ -72,5 +72,5 @@ class GetDescriptorSequence(sequence.Sequence):
                 dev=device,
                 desc_size=descriptor[2],
                 desc_type=util.DESC_TYPE_CONFIG,
-                desc_index=config.bConfigurationValue - 1,
+                desc_index=configuration.bConfigurationValue - 1,
                 wIndex=0)

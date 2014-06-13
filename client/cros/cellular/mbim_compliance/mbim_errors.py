@@ -52,7 +52,7 @@ class MBIMComplianceAssertionError(MBIMComplianceError):
                                'functional and endpoint descriptors shall be '
                                'constructed according to the rules given in '
                                '[USBNCM10].',
-            'mbim1.0:3.2.1#2': 'For alternate setting 1 of the Communication '
+            'mbim1.0:3.2.1#3': 'For alternate setting 1 of the Communication '
                                'Interface of an NCM/MBIM function: interface, '
                                'functional and endpoint descriptors shall be '
                                'constructed according to the rules given in '
@@ -70,8 +70,41 @@ class MBIMComplianceAssertionError(MBIMComplianceError):
                                  'interface class, subclass, and protocol '
                                  'codes shall match those given in alternate '
                                  'setting 0 of the Communication Interface. ',
+            'mbim1.0:3.2.2.4#1': 'Functions that implement both NCM 1.0 and '
+                                 'MBIM (an "NCM/MBIM function") shall provide '
+                                 'three alternate settings for the Data '
+                                 'Interface.',
+            'mbim1.0:3.2.2.4#2': 'For an NCM/MBIM function, the Data Interface '
+                                 'descriptors for alternate settings 0 and 1 '
+                                 'must have bInterfaceSubClass == 00h, and '
+                                 'bInterfaceProtocol == 01h.',
+            'mbim1.0:3.2.2.4#3': 'For an NCM/MBIM function, the Data Interface '
+                                 'descriptor for alternate setting 2 must have '
+                                 'bInterfaceSubClass == 00h, and '
+                                 'bInterfaceProtocol == 02h.',
+            'mbim1.0:3.2.2.4#4': 'For an NCM/MBIM function there must be no '
+                                 'endpoints for alternate setting 0 of the '
+                                 'Data Interface. For each of the other two '
+                                 'alternate settings (1 and 2) there must be '
+                                 'exactly two endpoints: one Bulk IN and one '
+                                 'Bulk OUT.',
 
             # Assertion group: 6.x#x
+            'mbim1.0:6.1#1': 'If an Interface Association Descriptor (IAD) is '
+                             'provided for the MBIM function, the IAD and the '
+                             'mandatory CDC Union Functional Descriptor '
+                             'specified for the MBIM function shall group '
+                             'together the same interfaces.',
+            'mbim1.0:6.1#2': 'If an Interface Association Descriptor (IAD) is '
+                             'provided for the MBIM only function, its '
+                             'interface class, subclass, and protocol codes '
+                             'shall match those given in the Communication '
+                             'Interface descriptor.',
+            'mbim1.0:6.3#1': 'The descriptor for alternate setting 0 of the '
+                             'Communication Interface of an MBIM only function '
+                             'shall have bInterfaceClass == 02h, '
+                             'bInterfaceSubClass == 0Eh, and '
+                             'bInterfaceProtocol == 00h.',
             'mbim1.0:6.3#2': 'MBIM Communication Interface description shall '
                              'include the following functional descriptors: '
                              'CDC Header Functional Descriptor, CDC Union '
@@ -84,9 +117,53 @@ class MBIMComplianceAssertionError(MBIMComplianceError):
                              'function shall group together the MBIM '
                              'Communication Interface and the MBIM Data '
                              'Interface.',
+            'mbim1.0:6.3#5': 'The class-specific descriptors must be followed '
+                             'by an Interrupt IN endpoint descriptor.',
+            'mbim1.0:6.4#1': 'Field wMaxControlMessage of MBIM Functional '
+                             'Descriptor must not be smaller than 64.',
+            'mbim1.0:6.4#2': 'Field bNumberFilters of MBIM Functional '
+                             'Descriptor must not be smaller than 16.',
+            'mbim1.0:6.4#3': 'Field bMaxFilterSize of MBIM Functional '
+                             'Descriptor must not exceed 192.',
+            'mbim1.0:6.4#4': 'Field wMaxSegmentSize of MBIM Functional '
+                             'Descriptor must not be smaller than 2048.',
+            'mbim1.0:6.4#5': 'Field bFunctionLength of MBIM Functional '
+                             'Descriptor must be 12 representing the size of '
+                             'the descriptor.',
+            'mbim1.0:6.4#6': 'Field bcdMBIMVersion of MBIM Functional '
+                             'Descriptor must be 0x0100 in little endian '
+                             'format.',
+            'mbim1.0:6.4#7': 'Field bmNetworkCapabilities of MBIM Functional '
+                             'Descriptor should have the following bits set to '
+                             'zero: D0, D1, D2, D4, D6 and D7.',
             'mbim1.0:6.5#1': 'If MBIM Extended Functional Descriptor is '
                              'provided, it must appear after MBIM Functional '
-                             'Descriptor.'
+                             'Descriptor.',
+            'mbim1.0:6.5#2': 'Field bFunctionLength of MBIM Extended '
+                             'Functional Descriptor must be 8 representing the '
+                             'size of the descriptor.',
+            'mbim1.0:6.5#3': 'Field bcdMBIMEFDVersion of MBIM Extended '
+                             'Functional Descriptor must be 0x0100 in little '
+                             'endian format.',
+            'mbim1.0:6.5#4': 'Field bMaxOutstandingCommandMessages of MBIM '
+                             'Extended Functional Descriptor shall be greater '
+                             'than 0.',
+            'mbim1.0:6.6#1': 'The Data Interface for an MBIM only function '
+                             'shall provide two alternate settings.',
+            'mbim1.0:6.6#2': 'The first alternate setting for the Data '
+                             'Interface of an MBIM only function (the default '
+                             'interface setting, alternate setting 0) shall '
+                             'include no endpoints.',
+            'mbim1.0:6.6#3': 'The second alternate setting for the Data '
+                             'Interface of an MBIM only function (alternate '
+                             'setting 1) is used for normal operation, and '
+                             'shall include one Bulk IN endpoint and one Bulk '
+                             'OUT endpoint.',
+            'mbim1.0:6.6#4': 'For an MBIM only function the Data Interface '
+                             'descriptors for alternate settings 0 and 1 must '
+                             'have bInterfaceSubClass == 00h, and '
+                             'bInterfaceProtocol == 02h. Refer to Table 6.4 of '
+                             '[USBMBIM10].'
     }
 
     def __init__(self, assertion_id, error_string=None):

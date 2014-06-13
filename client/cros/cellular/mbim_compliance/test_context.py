@@ -10,8 +10,8 @@ class TestContext:
     Context of device under test.
     """
 
-    _id_vendor = 0x12d1
-    _id_product = 0x15bb
+    _id_vendor = 0x1983
+    _id_product = 0x1003
     _device = None
 
     def __init__(self):
