@@ -150,8 +150,9 @@ class ChaosParser(object):
         # Items that can have multiple values
         modes = list()
         channels = list()
-        ap_names = list()
-        hostnames = list()
+        test_fail_aps = list()
+        static_config_failures = list()
+        dynamic_config_failures = list()
         kernel_version = ""
         fw_version = ""
         f = open(status_log_path, 'r')
@@ -175,9 +176,6 @@ class ChaosParser(object):
                 # Get the hostname for the AP that failed configuration.
                 if 'PDU' in title_info[1]:
                     continue
-                if 'chromeos' in title_info[1]:
-                    hostname = title_info[1].split('.')[1].split('_')[0]
-                    hostnames.append(hostname)
                 else:
                     # Get the router name, band for the AP that failed
                     # connect.
@@ -185,22 +183,27 @@ class ChaosParser(object):
                         failure_type = CONFIG_FAIL
                     else:
                         failure_type = CONNECT_FAIL
-                    ssid_info = title_info[1].split('.')
-                    ssid = ssid_info[1]
 
-                    network_dict = self.get_ap_mode_chan_freq(ssid)
-                    modes.append(network_dict['mode'])
-                    channels.append(network_dict['channel'])
+                    if (failure_type == CONFIG_FAIL and
+                        'chromeos' in title_info[1]):
+                        ssid = title_info[1].split('.')[1].split('_')[0]
+                    else:
+                        ssid_info = title_info[1].split('.')
+                        ssid = ssid_info[1]
+                        network_dict = self.get_ap_mode_chan_freq(ssid)
+                        modes.append(network_dict['mode'])
+                        channels.append(network_dict['channel'])
 
                     # Security mismatches and Ping failures are not connect
                     # failures.
-                    if ('Ping command' in line or
-                        'correct security' in line):
-                        hostnames.append(ssid)
-                    elif failure_type == CONFIG_FAIL:
-                        hostnames.append(ssid)
+                    if (('Ping command' in line or 'correct security' in line)
+                        or failure_type == CONFIG_FAIL):
+                        if 'StaticAPConfigurator' in line:
+                            static_config_failures.append(ssid)
+                        else:
+                            dynamic_config_failures.append(ssid)
                     else:
-                        ap_names.append(ssid)
+                        test_fail_aps.append(ssid)
             elif ('END GOOD' in line and ('ChaosConnectDisconnect' in line or
                                           'ChaosLongConnect' in line)):
                     test_name = line.split()[2]
@@ -211,10 +214,11 @@ class ChaosParser(object):
             else:
                 continue
 
-        config_pass = total - len(hostnames)
+        config_pass = total - (len(dynamic_config_failures) +
+                               len(static_config_failures))
         config_pass_string = self.generate_percentage_string(config_pass,
                                                              total)
-        connect_pass = config_pass - len(ap_names)
+        connect_pass = config_pass - len(test_fail_aps)
         connect_pass_string = self.generate_percentage_string(connect_pass,
                                                               config_pass)
 
@@ -223,28 +227,52 @@ class ChaosParser(object):
                          self.convert_set_to_string(set(channels)),
                          security]
 
-        config_csv_list = copy.deepcopy(base_csv_list)
-        config_csv_list.append(config_pass_string)
-        config_csv_list.extend(hostnames)
+        static_config_csv_list = copy.deepcopy(base_csv_list)
+        static_config_csv_list.append(config_pass_string)
+        static_config_csv_list.extend(static_config_failures)
+
+        dynamic_config_csv_list = copy.deepcopy(base_csv_list)
+        dynamic_config_csv_list.append(config_pass_string)
+        dynamic_config_csv_list.extend(dynamic_config_failures)
 
         connect_csv_list = copy.deepcopy(base_csv_list)
         connect_csv_list.append(connect_pass_string)
-        connect_csv_list.extend(ap_names)
+        connect_csv_list.extend(test_fail_aps)
 
         print('Connect failure for security: %s' % security)
         print ', '.join(connect_csv_list)
         print('\n')
 
         if self._print_config_failures:
-            print('Config failures for security: %s' % security)
-            print ', '.join(config_csv_list)
-            print('\n')
+            config_files = [('Static', static_config_csv_list),
+                            ('Dynamic', dynamic_config_csv_list)]
+            for config_data in config_files:
+                self.print_config_failures(config_data[0], security,
+                                           config_data[1])
 
         if self._create_file:
-            self.create_csv('chaos_WiFi_config_fail.' + security,
-                            config_csv_list)
+            self.create_csv('chaos_WiFi_dynamic_config_fail.' + security,
+                            dynamic_config_csv_list)
+            self.create_csv('chaos_WiFi_static_config_fail.' + security,
+                            static_config_csv_list)
             self.create_csv('chaos_WiFi_connect_fail.' + security,
                             connect_csv_list)
+
+
+    def print_config_failures(self, config_type, security, config_csv_list):
+        """Prints out the configuration failures.
+
+        @param config_type: string describing the configurator type
+        @param security: the security type as a string
+        @param config_csv_list: list of the configuration failures
+
+        """
+        # 8 because that is the lenth of the base list
+        if len(config_csv_list) <= 8:
+            return
+        print('%s config failures for security: %s' % (config_type, security))
+        print ', '.join(config_csv_list)
+        print('\n')
 
 
     def traverse_results_dir(self, path):
