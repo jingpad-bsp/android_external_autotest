@@ -15,6 +15,31 @@
     "spec/!OpenGL 1.1/dlist-fdo31590": {
       "pass rate": "0.5",
       "result": "flaky"
+    },
+    "spec/EXT_framebuffer_object/fbo-generatemipmap-filtering": {
+      "comment": "Regression tracked at crbug.com/384409",
+      "pass rate": "0.5",
+      "result": "flaky"
+    },
+    "spec/EXT_framebuffer_object/fbo-bind-renderbuffer": {
+      "comment": "Remove when we have piglit 9ed80d2cf76d20f58eee218be699839f6a6e9223",
+      "pass rate": "0.5",
+      "result": "flaky"
+    },
+    "spec/glsl-1.10/compiler/reserved/double-underscore-01.frag": {
+      "comment": "Remove when we have piglit 3a521d467c108f25b2033132ca6ac665786c0e04",
+      "pass rate": "0.5",
+      "result": "flaky"
+    },
+    "spec/glsl-1.10/compiler/reserved/double-underscore-02.frag": {
+      "comment": "Remove when we have piglit 3a521d467c108f25b2033132ca6ac665786c0e04",
+      "pass rate": "0.5",
+      "result": "flaky"
+    },
+    "spec/glsl-1.10/compiler/reserved/double-underscore-03.frag": {
+      "comment": "Remove when we have piglit 3a521d467c108f25b2033132ca6ac665786c0e04",
+      "pass rate": "0.5",
+      "result": "flaky"
     }
   }
 }

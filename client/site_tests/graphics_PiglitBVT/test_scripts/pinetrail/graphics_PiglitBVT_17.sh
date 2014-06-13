@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=390
+need_pass=389
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -30,8 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3x2-float.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3x2-float.frag pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3x2-float.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3x2-float.vert pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3x2-mat3x2.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3x2-mat3x2.frag pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3x2-mat3x2.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3x2-mat3x2.vert pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3x4-float.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3x4-float.frag pass 1.20"
@@ -420,11 +418,12 @@ run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-eq-mat2x3-mat2x3-usi
 run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-eq-mat2x4-mat2x4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-eq-mat2x4-mat2x4.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-eq-mat2x4-mat2x4-using-if" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-eq-mat2x4-mat2x4-using-if.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-eq-mat3x2-mat3x2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-eq-mat3x2-mat3x2.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-eq-mat3x2-mat3x2-using-if" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-eq-mat3x2-mat3x2-using-if.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 390 tests have passed. |"
+  echo "| Overall pass, as all 389 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

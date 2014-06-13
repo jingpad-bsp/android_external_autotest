@@ -30,7 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.10/execution/built-in-functions/fs-step-float-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-step-float-vec3.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-step-float-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-step-float-vec4.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-step-vec2-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-step-vec2-vec2.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-step-vec3-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-step-vec3-vec3.shader_test -auto"
@@ -239,6 +238,7 @@ run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-add-vec2-vec2" 0.0 "
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-add-vec3-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-add-vec3-float.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-add-vec3-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-add-vec3-vec3.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-add-vec4-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-add-vec4-float.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-add-vec4-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-add-vec4-vec4.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then

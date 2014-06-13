@@ -30,8 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.20/compiler/built-in-functions/greaterThanEqual-ivec3-ivec3.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/greaterThanEqual-ivec3-ivec3.vert pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/greaterThanEqual-ivec4-ivec4.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/greaterThanEqual-ivec4-ivec4.frag pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/greaterThanEqual-ivec4-ivec4.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/greaterThanEqual-ivec4-ivec4.vert pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/greaterThanEqual-vec2-vec2.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/greaterThanEqual-vec2-vec2.frag pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/greaterThanEqual-vec2-vec2.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/greaterThanEqual-vec2-vec2.vert pass 1.20"
@@ -415,6 +413,8 @@ run_test "spec/glsl-1.20/compiler/built-in-functions/op-eq-mat2x3-mat2x3.frag" 0
 run_test "spec/glsl-1.20/compiler/built-in-functions/op-eq-mat2x3-mat2x3.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-eq-mat2x3-mat2x3.vert pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/op-eq-mat2x4-mat2x4.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-eq-mat2x4-mat2x4.frag pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/op-eq-mat2x4-mat2x4.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-eq-mat2x4-mat2x4.vert pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/op-eq-mat3-mat3.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-eq-mat3-mat3.frag pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/op-eq-mat3-mat3.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-eq-mat3-mat3.vert pass 1.20"
 popd
 
 if [ $need_pass == 0 ] ; then

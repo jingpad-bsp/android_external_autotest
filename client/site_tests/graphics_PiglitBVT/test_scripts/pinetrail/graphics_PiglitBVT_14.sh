@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=290
+need_pass=291
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -30,7 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-array-mat4-wr.shader_test -auto"
 run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-mat2-col-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-mat2-col-rd.shader_test -auto"
 run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-mat2-col-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-mat2-col-row-rd.shader_test -auto"
 run_test "spec/glsl-1.10/execution/variable-indexing/vs-temp-mat2-col-row-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/vs-temp-mat2-col-row-wr.shader_test -auto"
@@ -320,11 +319,13 @@ run_test "spec/glsl-1.20/compiler/built-in-functions/greaterThan-vec4-vec4.vert"
 run_test "spec/glsl-1.20/compiler/built-in-functions/greaterThanEqual-ivec2-ivec2.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/greaterThanEqual-ivec2-ivec2.frag pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/greaterThanEqual-ivec2-ivec2.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/greaterThanEqual-ivec2-ivec2.vert pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/greaterThanEqual-ivec3-ivec3.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/greaterThanEqual-ivec3-ivec3.frag pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/greaterThanEqual-ivec3-ivec3.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/greaterThanEqual-ivec3-ivec3.vert pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/greaterThanEqual-ivec4-ivec4.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/greaterThanEqual-ivec4-ivec4.frag pass 1.20"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 290 tests have passed. |"
+  echo "| Overall pass, as all 291 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

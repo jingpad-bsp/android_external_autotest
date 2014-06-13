@@ -30,8 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-eq-mat3-mat3.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-eq-mat3-mat3.frag pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-eq-mat3-mat3.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-eq-mat3-mat3.vert pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/op-eq-mat3x2-mat3x2.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-eq-mat3x2-mat3x2.frag pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/op-eq-mat3x2-mat3x2.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-eq-mat3x2-mat3x2.vert pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/op-eq-mat3x4-mat3x4.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-eq-mat3x4-mat3x4.frag pass 1.20"
@@ -414,6 +412,8 @@ run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3-float.frag" 0.0
 run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3-float.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3-float.vert pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3-mat3.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3-mat3.frag pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3-mat3.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3-mat3.vert pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3x2-float.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3x2-float.frag pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3x2-float.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat3x2-float.vert pass 1.20"
 popd
 
 if [ $need_pass == 0 ] ; then

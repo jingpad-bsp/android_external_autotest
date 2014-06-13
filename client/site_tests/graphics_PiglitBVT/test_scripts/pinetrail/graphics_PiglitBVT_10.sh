@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=226
+need_pass=225
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -30,8 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.10/execution/built-in-functions/fs-lessThan-ivec4-ivec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-lessThan-ivec4-ivec4.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/fs-lessThan-vec2-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-lessThan-vec2-vec2.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-lessThan-vec3-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-lessThan-vec3-vec3.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-lessThan-vec4-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-lessThan-vec4-vec4.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-lessThanEqual-ivec2-ivec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-lessThanEqual-ivec2-ivec2.shader_test -auto"
@@ -256,11 +254,12 @@ run_test "spec/glsl-1.10/execution/built-in-functions/fs-sign-vec3" 0.0 "bin/sha
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-sign-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-sign-vec4.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-step-float-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-step-float-float.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-step-float-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-step-float-vec2.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-step-float-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-step-float-vec3.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 226 tests have passed. |"
+  echo "| Overall pass, as all 225 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=80
+need_pass=78
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -48,7 +48,6 @@ run_test "spec/EXT_framebuffer_object/fbo-3d" 0.0 "bin/fbo-3d -auto"
 run_test "spec/EXT_framebuffer_object/fbo-alphatest-formats" 0.0 "bin/fbo-alphatest-formats -auto"
 run_test "spec/EXT_framebuffer_object/fbo-alphatest-nocolor" 0.0 "bin/fbo-alphatest-nocolor -auto"
 run_test "spec/EXT_framebuffer_object/fbo-alphatest-nocolor-ff" 0.0 "bin/fbo-alphatest-nocolor-ff -auto"
-run_test "spec/EXT_framebuffer_object/fbo-bind-renderbuffer" 0.0 "bin/fbo-bind-renderbuffer -auto"
 run_test "spec/EXT_framebuffer_object/fbo-clear-formats" 0.0 "bin/fbo-clear-formats -auto"
 run_test "spec/EXT_framebuffer_object/fbo-clearmipmap" 0.0 "bin/fbo-clearmipmap -auto"
 run_test "spec/EXT_framebuffer_object/fbo-copyteximage-simple" 0.0 "bin/fbo-copyteximage-simple -auto"
@@ -59,7 +58,6 @@ run_test "spec/EXT_framebuffer_object/fbo-flushing" 0.0 "bin/fbo-flushing -auto"
 run_test "spec/EXT_framebuffer_object/fbo-flushing-2" 0.0 "bin/fbo-flushing-2 -auto"
 run_test "spec/EXT_framebuffer_object/fbo-fragcoord" 0.0 "bin/fbo-fragcoord -auto"
 run_test "spec/EXT_framebuffer_object/fbo-generatemipmap" 0.0 "bin/fbo-generatemipmap -auto"
-run_test "spec/EXT_framebuffer_object/fbo-generatemipmap-filtering" 0.0 "bin/fbo-generatemipmap-filtering -auto"
 run_test "spec/EXT_framebuffer_object/fbo-generatemipmap-noimage" 0.0 "bin/fbo-generatemipmap-noimage -auto -fbo"
 run_test "spec/EXT_framebuffer_object/fbo-generatemipmap-nonsquare" 0.0 "bin/fbo-generatemipmap-nonsquare -auto"
 run_test "spec/EXT_framebuffer_object/fbo-generatemipmap-npot" 0.0 "bin/fbo-generatemipmap-npot -auto"
@@ -114,7 +112,7 @@ popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 80 tests have passed. |"
+  echo "| Overall pass, as all 78 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

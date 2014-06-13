@@ -5,6 +5,7 @@
       "result": "flaky"
     },
     "glean/texture_srgb": {
+      "comment": "Regression tracked at crbug.com/384415",
       "pass rate": "0.5",
       "result": "flaky"
     },
