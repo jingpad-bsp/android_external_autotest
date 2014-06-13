@@ -346,6 +346,11 @@ class ServoHost(ssh_host.SSHHost):
         try:
             self.run('test -f /var/lib/servod/config')
         except (error.AutoservRunError, error.AutoservSSHTimeout) as e:
+            if not self._is_cros_host():
+                logging.info('Ignoring servo config check failure, either %s '
+                             'is not running chromeos or we cannot find enough '
+                             'information about the host.', self.hostname)
+                return
             raise ServoHostVerifyFailure(
                     'Servo config file check failed for %s: %s' %
                     (self.hostname, e))
