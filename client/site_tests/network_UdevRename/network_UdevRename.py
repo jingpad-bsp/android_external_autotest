@@ -2,11 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import fcntl
 import logging
 import os
-import socket
-import struct
 import time
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
@@ -15,14 +12,11 @@ from autotest_lib.client.common_lib import error, utils
 def FindDriver(ifname):
   """Finds the driver associated with network interface.
 
-  Args:
-    ifname: Interface name
-
-  Returns:
-    String containing the kernel driver name for this interface
+  @param ifname Interface name
+  @return String containing the kernel driver name for this interface
   """
 
-  driver_file = '/sys/class/net/%s/device/driver' % ifname
+  driver_file = '/sys/class/net/%s/device/driver/module' % ifname
   if os.path.exists(driver_file):
     return os.path.basename(os.readlink(driver_file))
 
@@ -30,25 +24,22 @@ def FindDriver(ifname):
 def GetInterfaceList():
   """Gets the list of network interfaces on this host.
 
-  Returns:
-    List containing a string for each interface name
+  @return List containing a string for each interface name
   """
   return os.listdir('/sys/class/net')
 
 
-def FindInterface(typelist=('wlan','eth')):
+def FindInterface(typelist=('wlan','mlan','eth')):
   """Finds an interface that we can unload the driver for.
 
   Retrieves a dict containing the name of a network interface
   that can quite likely be removed using the "rmmod" command,
   and the name of the module used to load the driver.
 
-  Args:
-    typelist: A list/tuple of interface prefixes to filter from -- only
-              return an interface that matches one of these prefixes
-  Returns:
-    dict containing the a 'intf' key with the interface name
-    and a 'wlan' key with the kernel module name for the driver.
+  @param typelist An iterable of interface prefixes to filter from. Only
+                  return an interface that matches one of these prefixes
+  @return Dict containing a 'intf' key with the interface name
+          and a 'wlan' key with the kernel module name for the driver.
 
   """
   interface_list = GetInterfaceList()
@@ -68,8 +59,7 @@ def RestartInterface():
 
   This function simulates a device eject and re-insert.
 
-  Returns:
-    True if successful, or if nothing was done
+  @return True if successful, or if nothing was done
   """
   interface = FindInterface()
   if interface is None:
@@ -99,12 +89,10 @@ def Upstart(service, action='status'):
   Accepts arguments to initctl and executes them, raising an exception
   if it fails.
 
-  Args:
-    service: Service name to call initctl with.
-    action: Action to perform on the service
+  @param service Service name to call initctl with.
+  @param action Action to perform on the service
 
-  Returns:
-    The returned service status from initctl
+  @return The returned service status from initctl
   """
   if action not in ('status', 'start', 'stop'):
     logging.debug('Bad action')
@@ -129,8 +117,7 @@ def RestartUdev():
 
   Stops and then restarts udev
 
-  Returns:
-    True if successful
+  @return True if successful
   """
   if Upstart('udev') != 'start/running':
     raise error.TestFail('udev not running')
@@ -153,9 +140,7 @@ def TestUdevDeviceList(restart_fn):
   Performs an operation, then compares the network interface list between
   a time before the test and after.  Raises an exception if the list changes.
 
-  Args:
-    restart_fn: A function taking n arguments that should be performed
-                between samples of the interface list
+  @param restart_fn The function that performs the operation of interest
   """
   iflist_pre = GetInterfaceList()
   if not restart_fn():
@@ -175,6 +160,7 @@ def TestUdevDeviceList(restart_fn):
 
 
 class network_UdevRename(test.test):
+  """Test that network devices are not renamed unexpectedly"""
   version = 1
 
   def run_once(self):
