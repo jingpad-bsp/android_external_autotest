@@ -89,7 +89,7 @@ class network_8021xWiredAuthentication(test.test):
             'EAP.InnerEAP': 'auth=%s' % hostapd_server.HostapdServer.EAP_PHASE2,
             'EAP.Identity': hostapd_server.HostapdServer.EAP_USERNAME,
             'EAP.Password': hostapd_server.HostapdServer.EAP_PASSWORD,
-            'EAP.CACertPEM': site_eap_certs.ca_cert_1
+            'EAP.CACertPEM': [ site_eap_certs.ca_cert_1 ]
         })
 
 
