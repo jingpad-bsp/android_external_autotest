@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 import logging, os, re
-from autotest_lib.client.bin import test
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
 
@@ -21,6 +21,7 @@ class hardware_StorageWearoutDetect(test.test):
 
     version = 1
     STORAGE_INFO_PATH = '/var/log/storage_info.txt'
+    STORAGE_INFO_UPDATE_PATH = '/usr/share/userfeedback/scripts/storage_info'
 
     # Example     "   Model Number:    LITEONIT LSS-32L6G-HP"
     SSD_DETECT = r"\s*Model Number:\s*(?P<model>.*)\s*$"
@@ -41,10 +42,21 @@ class hardware_StorageWearoutDetect(test.test):
     MMC_FAIL = r".*(?P<param>DEVICE_LIFE_TIME_EST_TYP_.): 0x0\D"
 
 
-    def run_once(self):
+    def run_once(self, use_cached_result=True):
         """
         Run the test
+
+        @param use_cached_result: Use the result that generated when machine
+                                  booted or generate new one.
         """
+
+        if not use_cached_result:
+            if not os.path.exists(self.STORAGE_INFO_UPDATE_PATH):
+                msg = str('Test failed with error: %s not exist'
+                          % self.STORAGE_INFO_UPDATE_PATH)
+                raise error.TestFail(msg)
+            utils.system(self.STORAGE_INFO_UPDATE_PATH)
+
         # Check that storage_info file exist.
         if not os.path.exists(self.STORAGE_INFO_PATH):
             msg = str('Test failed with error: %s not exist'
