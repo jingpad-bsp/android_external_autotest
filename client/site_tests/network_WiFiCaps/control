@@ -14,7 +14,7 @@ If the following requirements are not present the test case will fail:
   - HT40
   - Short GI in HT40
 """
-SUITE = "hwqual"
+SUITE = 'network_nightly'
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
