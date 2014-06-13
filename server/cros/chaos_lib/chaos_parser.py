@@ -240,7 +240,7 @@ class ChaosParser(object):
         connect_csv_list.extend(test_fail_aps)
 
         print('Connect failure for security: %s' % security)
-        print ', '.join(connect_csv_list)
+        print ','.join(connect_csv_list)
         print('\n')
 
         if self._print_config_failures:
@@ -271,7 +271,7 @@ class ChaosParser(object):
         if len(config_csv_list) <= 8:
             return
         print('%s config failures for security: %s' % (config_type, security))
-        print ', '.join(config_csv_list)
+        print ','.join(config_csv_list)
         print('\n')
 
 
