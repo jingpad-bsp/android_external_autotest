@@ -30,7 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "glean/vp1-EX2 test" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
 run_test "glean/vp1-EXP test" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
 run_test "glean/vp1-FLR test" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
 run_test "glean/vp1-FRC test" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
@@ -334,6 +333,7 @@ run_test "shaders/glsl-fs-if-greater" 0.0 "bin/shader_runner tests/shaders/glsl-
 run_test "shaders/glsl-fs-if-greater-equal" 0.0 "bin/shader_runner tests/shaders/glsl-fs-if-greater-equal.shader_test -auto"
 run_test "shaders/glsl-fs-if-less" 0.0 "bin/shader_runner tests/shaders/glsl-fs-if-less.shader_test -auto"
 run_test "shaders/glsl-fs-if-less-equal" 0.0 "bin/shader_runner tests/shaders/glsl-fs-if-less-equal.shader_test -auto"
+run_test "shaders/glsl-fs-if-nested-loop" 0.0 "bin/shader_runner tests/shaders/glsl-fs-if-nested-loop.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then

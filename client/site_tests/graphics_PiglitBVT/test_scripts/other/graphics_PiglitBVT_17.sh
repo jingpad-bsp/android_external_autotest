@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=447
+need_pass=446
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -476,12 +476,11 @@ run_test "spec/glsl-1.30/compiler/keywords/ivec3.frag" 0.0 "bin/glslparsertest t
 run_test "spec/glsl-1.30/compiler/keywords/ivec4.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/compiler/keywords/ivec4.frag fail 1.30"
 run_test "spec/glsl-1.30/compiler/keywords/lowp.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/compiler/keywords/lowp.frag fail 1.30"
 run_test "spec/glsl-1.30/compiler/keywords/mat2.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/compiler/keywords/mat2.frag fail 1.30"
-run_test "spec/glsl-1.30/compiler/keywords/mat2x2.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.30/compiler/keywords/mat2x2.frag fail 1.30"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 447 tests have passed. |"
+  echo "| Overall pass, as all 446 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

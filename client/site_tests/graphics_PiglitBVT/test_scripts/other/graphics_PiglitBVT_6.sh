@@ -30,7 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/ARB_texture_rg/fbo-colormask-formats-float" 0.0 "bin/fbo-colormask-formats -auto GL_ARB_texture_rg-float"
 run_test "spec/ARB_texture_rg/fbo-generatemipmap-formats" 0.0 "bin/fbo-generatemipmap-formats -auto GL_ARB_texture_rg"
 run_test "spec/ARB_texture_rg/fbo-generatemipmap-formats-float" 0.0 "bin/fbo-generatemipmap-formats -auto GL_ARB_texture_rg-float"
 run_test "spec/ARB_texture_rg/fbo-rg-GL_R16" 0.0 "bin/fbo-rg -auto GL_R16"
@@ -381,6 +380,7 @@ run_test "spec/EXT_transform_feedback/api-errors interleaved_unbound" 0.0 "bin/e
 run_test "spec/EXT_transform_feedback/api-errors link_current_active" 0.0 "bin/ext_transform_feedback-api-errors link_current_active -auto -fbo"
 run_test "spec/EXT_transform_feedback/api-errors link_other_active" 0.0 "bin/ext_transform_feedback-api-errors link_other_active -auto -fbo"
 run_test "spec/EXT_transform_feedback/api-errors no_prog_active" 0.0 "bin/ext_transform_feedback-api-errors no_prog_active -auto -fbo"
+run_test "spec/EXT_transform_feedback/api-errors not_a_program" 0.0 "bin/ext_transform_feedback-api-errors not_a_program -auto -fbo"
 popd
 
 if [ $need_pass == 0 ] ; then

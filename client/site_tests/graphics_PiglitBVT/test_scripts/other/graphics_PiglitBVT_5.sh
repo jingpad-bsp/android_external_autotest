@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=358
+need_pass=357
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -30,8 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-03.vert" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.20/compiler/layout-03.vert pass 1.20 GL_ARB_explicit_attrib_location"
-run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-04.frag" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.20/compiler/layout-04.frag fail 1.20 GL_ARB_explicit_attrib_location"
 run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-04.vert" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.20/compiler/layout-04.vert fail 1.20 GL_ARB_explicit_attrib_location"
 run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-05.frag" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.20/compiler/layout-05.frag fail 1.20 GL_ARB_explicit_attrib_location"
 run_test "spec/ARB_explicit_attrib_location/1.20/compiler/layout-05.vert" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.20/compiler/layout-05.vert fail 1.20 GL_ARB_explicit_attrib_location"
@@ -388,11 +386,12 @@ run_test "spec/ARB_texture_rg/fbo-blending-formats-float" 0.0 "bin/fbo-blending-
 run_test "spec/ARB_texture_rg/fbo-clear-formats" 0.0 "bin/fbo-clear-formats -auto GL_ARB_texture_rg"
 run_test "spec/ARB_texture_rg/fbo-clear-formats-float" 0.0 "bin/fbo-clear-formats -auto GL_ARB_texture_rg-float"
 run_test "spec/ARB_texture_rg/fbo-colormask-formats" 0.0 "bin/fbo-colormask-formats -auto GL_ARB_texture_rg"
+run_test "spec/ARB_texture_rg/fbo-colormask-formats-float" 0.0 "bin/fbo-colormask-formats -auto GL_ARB_texture_rg-float"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 358 tests have passed. |"
+  echo "| Overall pass, as all 357 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

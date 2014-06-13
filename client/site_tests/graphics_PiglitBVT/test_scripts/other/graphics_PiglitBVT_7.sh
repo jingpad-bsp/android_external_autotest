@@ -30,7 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/EXT_transform_feedback/api-errors not_a_program" 0.0 "bin/ext_transform_feedback-api-errors not_a_program -auto -fbo"
 run_test "spec/EXT_transform_feedback/api-errors separate_no_varyings" 0.0 "bin/ext_transform_feedback-api-errors separate_no_varyings -auto -fbo"
 run_test "spec/EXT_transform_feedback/api-errors separate_ok_1" 0.0 "bin/ext_transform_feedback-api-errors separate_ok_1 -auto -fbo"
 run_test "spec/EXT_transform_feedback/api-errors separate_ok_2" 0.0 "bin/ext_transform_feedback-api-errors separate_ok_2 -auto -fbo"
@@ -461,6 +460,7 @@ run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-front-facing.fr
 run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord0.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord0.vert fail 1.10"
 run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord1.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord1.vert fail 1.10"
 run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord2.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord2.vert fail 1.10"
+run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord3.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord3.vert fail 1.10"
 popd
 
 if [ $need_pass == 0 ] ; then

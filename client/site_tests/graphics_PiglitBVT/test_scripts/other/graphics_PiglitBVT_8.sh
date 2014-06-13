@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=418
+need_pass=417
 failures=0
 PIGLIT_PATH=/usr/local/autotest/deps/piglit/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/autotest/deps/piglit/piglit/
@@ -30,7 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord3.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord3.vert fail 1.10"
 run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord4.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord4.vert fail 1.10"
 run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord5.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord5.vert fail 1.10"
 run_test "spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord6.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/storage-qualfiers/static-write-multitexcoord6.vert fail 1.10"
@@ -452,7 +451,7 @@ popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 418 tests have passed. |"
+  echo "| Overall pass, as all 417 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

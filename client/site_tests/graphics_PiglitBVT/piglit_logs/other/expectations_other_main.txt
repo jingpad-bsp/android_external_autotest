@@ -4,6 +4,10 @@
       "pass rate": "0.5",
       "result": "flaky"
     },
+    "glean/texture_srgb": {
+      "pass rate": "0.5",
+      "result": "flaky"
+    },
     "glx/GLX_OML_sync_control/swapbuffersmsc-return swap_interval 1": {
       "pass rate": "0.5",
       "result": "flaky"

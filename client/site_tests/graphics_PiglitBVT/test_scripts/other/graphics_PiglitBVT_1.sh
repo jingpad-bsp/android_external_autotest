@@ -365,7 +365,6 @@ run_test "glean/texRect" 0.0 "bin/glean -o -v -v -v -t +texRect --quick"
 run_test "glean/texSwizzle" 0.0 "bin/glean -o -v -v -v -t +texSwizzle --quick"
 run_test "glean/texUnits" 0.0 "bin/glean -o -v -v -v -t +texUnits --quick"
 run_test "glean/texgen" 0.0 "bin/glean -o -v -v -v -t +texgen --quick"
-run_test "glean/texture_srgb" 0.0 "bin/glean -o -v -v -v -t +texture_srgb --quick"
 run_test "glean/vertattrib" 0.0 "bin/glean -o -v -v -v -t +vertattrib --quick"
 run_test "glean/vp1-ABS test" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
 run_test "glean/vp1-ADD test" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
@@ -375,6 +374,7 @@ run_test "glean/vp1-DP4 test" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
 run_test "glean/vp1-DPH test" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
 run_test "glean/vp1-DST test" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
 run_test "glean/vp1-Divide by zero test" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
+run_test "glean/vp1-EX2 test" 0.0 "bin/glean -o -v -v -v -t +vertProg1 --quick"
 popd
 
 if [ $need_pass == 0 ] ; then
