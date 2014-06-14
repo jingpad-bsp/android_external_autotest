@@ -63,8 +63,8 @@ public class AfeClient implements EntryPoint {
             }
         });
         jobDetail = new JobDetailView(new JobDetailListener() {
-            public void onHostSelected(String hostname) {
-                showHost(hostname);
+            public void onHostSelected(String hostId) {
+                showHost(hostId);
             }
 
             public void onCloneJob(JSONValue cloneInfo) {
@@ -82,15 +82,15 @@ public class AfeClient implements EntryPoint {
 
         recurringView = new RecurringView(new RecurringSelectListener() {
             public void onRecurringSelected(int jobId) {
-            	showJob(jobId);
+                showJob(jobId);
             }
         });
 
         createJob = AfeUtils.factory.getCreateJobView(jobCreateListener);
 
         hostListView = new HostListView(new HostListListener() {
-            public void onHostSelected(String hostname) {
-                showHost(hostname);
+            public void onHostSelected(String hostId) {
+                showHost(hostId);
             }
         }, jobCreateListener);
 
@@ -125,9 +125,9 @@ public class AfeClient implements EntryPoint {
         mainTabPanel.selectTabView(jobDetail);
     }
 
-    protected void showHost(String hostname) {
+    protected void showHost(String hostId) {
         hostDetailView.ensureInitialized();
-        hostDetailView.updateObjectId(hostname);
+        hostDetailView.updateObjectId(hostId);
         mainTabPanel.selectTabView(hostDetailView);
     }
 }

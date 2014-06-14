@@ -52,7 +52,7 @@ public class JobDetailView extends DetailView implements TableWidgetFactory, Tab
     public static final String RESULTS_MAX_HEIGHT = "500px";
 
     public interface JobDetailListener {
-        public void onHostSelected(String hostname);
+        public void onHostSelected(String hostId);
         public void onCloneJob(JSONValue result);
         public void onCreateRecurringJob(int id);
     }
@@ -207,8 +207,8 @@ public class JobDetailView extends DetailView implements TableWidgetFactory, Tab
         hostsTable.addListener(new DynamicTableListener() {
             public void onRowClicked(int rowIndex, JSONObject row, boolean isRightClick) {
                 JSONObject host = row.get("host").isObject();
-                String hostname = host.get("hostname").isString().stringValue();
-                listener.onHostSelected(hostname);
+                String id = host.get("id").toString();
+                listener.onHostSelected(id);
             }
 
             public void onTableRefreshed() {}

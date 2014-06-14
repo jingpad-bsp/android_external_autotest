@@ -277,8 +277,9 @@ class RpcInterfaceTest(unittest.TestCase,
     def test_get_host_queue_entries_and_special_tasks(self):
         self._setup_special_tasks()
 
+        host = self.hosts[0]
         entries_and_tasks = (
-                rpc_interface.get_host_queue_entries_and_special_tasks('host1'))
+                rpc_interface.get_host_queue_entries_and_special_tasks(host))
 
         paths = [entry['execution_path'] for entry in entries_and_tasks]
         self.assertEquals(paths, ['hosts/host1/3-verify',
@@ -303,7 +304,8 @@ class RpcInterfaceTest(unittest.TestCase,
     def test_view_invalid_host(self):
         # RPCs used by View Host page should work for invalid hosts
         self._create_job_helper(hosts=[1])
-        self.hosts[0].delete()
+        host = self.hosts[0]
+        host.delete()
 
         self.assertEquals(1, rpc_interface.get_num_hosts(hostname='host1',
                                                          valid_only=False))
@@ -316,10 +318,10 @@ class RpcInterfaceTest(unittest.TestCase,
         self.assertEquals(1, len(data))
 
         count = rpc_interface.get_num_host_queue_entries_and_special_tasks(
-                hostname='host1')
+                host_id=host)
         self.assertEquals(1, count)
         data = rpc_interface.get_host_queue_entries_and_special_tasks(
-                hostname='host1')
+                host_id=host)
         self.assertEquals(1, len(data))
 
 

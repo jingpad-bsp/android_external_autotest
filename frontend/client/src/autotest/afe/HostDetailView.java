@@ -22,6 +22,9 @@ import autotest.common.ui.TableActionsPanel.TableActionsListener;
 
 import com.google.gwt.event.dom.client.ClickEvent;
 import com.google.gwt.event.dom.client.ClickHandler;
+import com.google.gwt.event.dom.client.KeyCodes;
+import com.google.gwt.event.dom.client.KeyPressEvent;
+import com.google.gwt.event.dom.client.KeyPressHandler;
 import com.google.gwt.json.client.JSONArray;
 import com.google.gwt.json.client.JSONBoolean;
 import com.google.gwt.json.client.JSONObject;
@@ -30,6 +33,7 @@ import com.google.gwt.json.client.JSONValue;
 import com.google.gwt.user.client.Command;
 import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.CheckBox;
+import com.google.gwt.user.client.ui.TextBox;
 
 import java.util.List;
 
@@ -70,30 +74,27 @@ public class HostDetailView extends DetailView
                               "get_num_host_queue_entries_and_special_tasks");
 
         private SimpleFilter hostFilter = new SimpleFilter();
-        private String hostname;
+        private String hostId;
 
         public HostJobsTable() {
             super(HOST_JOBS_COLUMNS, normalDataSource);
             addFilter(hostFilter);
         }
 
-        public void setHostname(String hostname) {
-            this.hostname = hostname;
+        public void setHostId(String hostId) {
+            this.hostId = hostId;
             updateFilter();
         }
 
         private void updateFilter() {
-            String key;
             if (getDataSource() == normalDataSource) {
-                key = "host__hostname";
                 sortOnColumn("job__id", SortDirection.DESCENDING);
             } else {
-                key = "hostname";
                 clearSorts();
             }
 
             hostFilter.clear();
-            hostFilter.setParameter(key, new JSONString(hostname));
+            hostFilter.setParameter("host_id", new JSONString(hostId));
         }
 
         public void setSpecialTasksEnabled(boolean enabled) {
@@ -125,6 +126,7 @@ public class HostDetailView extends DetailView
     }
 
     private String hostname = "";
+    private String hostId = "";
     private DataSource hostDataSource = new HostDataSource();
     private HostJobsTable jobsTable = new HostJobsTable();
     private TableDecorator tableDecorator = new TableDecorator(jobsTable);
@@ -139,6 +141,8 @@ public class HostDetailView extends DetailView
     private Button reinstallButton = new Button("Reinstall");
     private Button repairButton = new Button("Repair");
     private CheckBox showSpecialTasks = new CheckBox();
+    private TextBox hostnameInput = new TextBox();
+    private Button hostnameFetchButton = new Button("Go");
 
     public HostDetailView(HostDetailListener hostDetailListener,
                           JobCreateListener jobCreateListener) {
@@ -154,6 +158,10 @@ public class HostDetailView extends DetailView
     @Override
     protected String getFetchControlsElementId() {
         return "view_host_fetch_controls";
+    }
+
+    private String getFetchByHostnameControlsElementId() {
+        return "view_host_fetch_by_hostname_controls";
     }
 
     @Override
@@ -173,7 +181,7 @@ public class HostDetailView extends DetailView
 
     @Override
     protected String getObjectId() {
-        return hostname;
+        return hostId;
     }
 
     @Override
@@ -181,15 +189,30 @@ public class HostDetailView extends DetailView
         if (id.length() == 0) {
             throw new IllegalArgumentException();
         }
-        this.hostname = id;
+        this.hostId = id;
     }
 
     @Override
     protected void fetchData() {
         JSONObject params = new JSONObject();
+        params.put("id", new JSONString(getObjectId()));
+        fetchDataCommmon(params);
+    }
+
+    private void fetchDataByHostname(String hostname) {
+        JSONObject params = new JSONObject();
         params.put("hostname", new JSONString(hostname));
+        fetchDataCommmon(params);
+    }
+
+    private void fetchDataCommmon(JSONObject params) {
         params.put("valid_only", JSONBoolean.getInstance(false));
         hostDataSource.query(params, this);
+    }
+
+    private void fetchByHostname(String hostname) {
+        fetchDataByHostname(hostname);
+        updateHistory();
     }
 
     @Override
@@ -210,6 +233,8 @@ public class HostDetailView extends DetailView
             return;
         }
 
+        setObjectId(currentHostObject.get("id").toString());
+
         String lockedText = Utils.jsonToString(currentHostObject.get(HostDataSource.LOCKED_TEXT));
         if (currentHostObject.get("locked").isBoolean().booleanValue()) {
             String lockedBy = Utils.jsonToString(currentHostObject.get("locked_by"));
@@ -223,17 +248,35 @@ public class HostDetailView extends DetailView
         showField(currentHostObject, HostDataSource.OTHER_LABELS, "view_host_labels");
         showText(lockedText, "view_host_locked");
         showField(currentHostObject, "protection", "view_host_protection");
+        hostname = currentHostObject.get("hostname").isString().stringValue();
         String pageTitle = "Host " + hostname;
+        hostnameInput.setText(hostname);
         updateLockButton();
         displayObjectData(pageTitle);
 
-        jobsTable.setHostname(hostname);
+        jobsTable.setHostId(getObjectId());
         jobsTable.refresh();
     }
 
     @Override
     public void initialize() {
         super.initialize();
+
+        // Replace fetch by id with fetch by hostname
+        addWidget(hostnameInput, getFetchByHostnameControlsElementId());
+        addWidget(hostnameFetchButton, getFetchByHostnameControlsElementId());
+
+        hostnameInput.addKeyPressHandler(new KeyPressHandler() {
+            public void onKeyPress (KeyPressEvent event) {
+                if (event.getCharCode() == (char) KeyCodes.KEY_ENTER)
+                    fetchByHostname(hostnameInput.getText());
+            }
+        });
+        hostnameFetchButton.addClickHandler(new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                fetchByHostname(hostnameInput.getText());
+            }
+        });
 
         jobsTable.setRowsPerPage(JOBS_PER_PAGE);
         jobsTable.setClickable(true);

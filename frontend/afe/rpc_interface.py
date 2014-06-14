@@ -810,7 +810,7 @@ def get_special_tasks(**filter_data):
 
 # support for host detail view
 
-def get_host_queue_entries_and_special_tasks(hostname, query_start=None,
+def get_host_queue_entries_and_special_tasks(host_id, query_start=None,
                                              query_limit=None):
     """
     @returns an interleaved list of HostQueueEntries and SpecialTasks,
@@ -820,7 +820,7 @@ def get_host_queue_entries_and_special_tasks(hostname, query_start=None,
     total_limit = None
     if query_limit is not None:
         total_limit = query_start + query_limit
-    filter_data = {'host__hostname': hostname,
+    filter_data = {'host': host_id,
                    'query_limit': total_limit,
                    'sort_by': ['-id']}
 
@@ -836,8 +836,8 @@ def get_host_queue_entries_and_special_tasks(hostname, query_start=None,
     return rpc_utils.prepare_for_serialization(interleaved_entries)
 
 
-def get_num_host_queue_entries_and_special_tasks(hostname):
-    filter_data = {'host__hostname': hostname}
+def get_num_host_queue_entries_and_special_tasks(host_id):
+    filter_data = {'host': host_id}
     return (models.HostQueueEntry.query_count(filter_data)
             + models.SpecialTask.query_count(filter_data))
 

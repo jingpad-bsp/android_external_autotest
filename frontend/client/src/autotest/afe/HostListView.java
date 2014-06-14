@@ -19,7 +19,7 @@ public class HostListView extends TabView implements TableActionsListener {
     protected static final int HOSTS_PER_PAGE = 30;
 
     public interface HostListListener {
-        public void onHostSelected(String hostname);
+        public void onHostSelected(String id);
     }
 
     protected HostListListener hostListListener = null;
@@ -53,8 +53,8 @@ public class HostListView extends TabView implements TableActionsListener {
         table.setClickable(true);
         table.addListener(new DynamicTableListener() {
             public void onRowClicked(int rowIndex, JSONObject row, boolean isRightClick) {
-                String hostname = row.get("hostname").isString().stringValue();
-                hostListListener.onHostSelected(hostname);
+                String hostId = row.get("id").toString();
+                hostListListener.onHostSelected(hostId);
             }
 
             public void onTableRefreshed() {}
