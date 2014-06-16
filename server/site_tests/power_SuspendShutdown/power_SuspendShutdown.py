@@ -201,15 +201,8 @@ class power_SuspendShutdown(test.test):
         host.wait_up(timeout=_BOOT_WAIT_SECONDS)
 
 
-    def cleanup(self, client_autotest):
-        """
-        Clean up the mounts and restore the settings.
-
-        @param client_autotest: Client autotest name to login into DUT
-
-        @param host: Host/DUT object.
-
-        """
+    def cleanup(self):
+        """Clean up the mounts and restore the settings."""
         # reopen lid - might still be closed due to failure
         host = self.host
         logging.info('reopening lid')
