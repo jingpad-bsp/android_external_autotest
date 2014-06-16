@@ -910,6 +910,7 @@ def get_gpu_family():
         0x0a06: 'haswell',
         0x0a16: 'haswell',
         0x0f31: 'baytrail',
+        0x1616: 'broadwell',
     }
 
     return intel_architecture[device_id]
