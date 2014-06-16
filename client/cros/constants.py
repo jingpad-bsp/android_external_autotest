@@ -71,13 +71,7 @@ FLIMFLAM_TEST_PATH = '/usr/lib/flimflam/test/'
 
 GUEST_USER = '$guest'
 
-KEYGEN = 'keygen'
-
-LOGGED_IN_MAGIC_FILE = '/var/run/state/logged-in'
-
 LOGIN_PROFILE = USER_DATA_DIR + '/Default'
-LOGIN_ERROR = 'Error=BadAuthentication'
-LOGIN_TRUST_ROOTS = '/etc/login_trust_root.pem'
 
 LOGIN_PROMPT_STATUS_COMMAND = 'bootstat_get_last login-prompt-visible'
 
@@ -117,7 +111,6 @@ SERVICE_LOGIN_AUTH_URL = '/ServiceLoginAuth'
 SERVICE_LOGIN_AUTH_ERROR = 'The username or password you entered is incorrect.'
 
 SESSION_MANAGER = 'session_manager'
-SESSION_MANAGER_LOG = '/var/log/session_manager'
 SIGNED_POLICY_FILE = WHITELIST_DIR + '/policy'
 SPECIAL_CASE_DOMAIN = 'gmail.com'
 USER_POLICY_DIR = '/var/run/user_policy'
