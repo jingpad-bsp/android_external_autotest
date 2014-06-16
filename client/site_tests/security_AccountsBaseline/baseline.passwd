@@ -3,7 +3,6 @@ bin:!:1:1:bin:/bin:/bin/false
 daemon:!:2:2:daemon:/sbin:/bin/false
 adm:!:3:4:adm:/var/adm:/bin/false
 lp:!:4:7:lp:/var/spool/lpd:/bin/false
-sync:!:5:0:sync:/sbin:/bin/sync
 news:!:9:13:news:/var/spool/news:/bin/false
 uucp:!:10:14:uucp:/var/spool/uucp:/bin/false
 portage:!:250:250:portage:/var/tmp/portage:/bin/false
