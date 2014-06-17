@@ -1860,18 +1860,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         return 'graphics:gl'
 
 
-    @label_decorator('gpu_family')
-    def get_gpu_family(self):
-        """
-        Determine GPU family.
-
-        @returns a string representing the gpu family. Examples are mali, tegra,
-        pinetrail, sandybridge, ivybridge, haswell and baytrail.
-        """
-        gpu_family = utils.get_gpu_family()
-        return 'gpu_family:%s' % gpu_family
-
-
     @label_decorator('ec')
     def get_ec(self):
         """
