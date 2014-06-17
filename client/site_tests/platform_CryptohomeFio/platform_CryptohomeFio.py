@@ -20,6 +20,11 @@ class platform_CryptohomeFio(test.test):
     USE_TMPFS = 'tmpfs'
     DISK_CONFIG_KEYS = [ USE_CRYPTO, USE_PLAIN, USE_TMPFS ]
 
+    def initialize(self, from_internal_disk_only=True):
+        """ Check that we are running on the fixed device"""
+        if from_internal_disk_only and not utils.is_booted_from_internal_disk():
+            raise error.TestNAError('Test only on internal disk')
+
     def run_once(self, runtime, disk_configs,
                  script=None, sysctls_list=None):
         """
