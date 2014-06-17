@@ -524,6 +524,9 @@ class base_test(object):
 
                 _call_test_function(self.execute, *p_args, **p_dargs)
             except Exception:
+                utils.take_screenshot(self.debugdir,
+                                      '%s-fail' % self.tagged_testname)
+
                 # Save the exception while we run our cleanup() before
                 # reraising it.
                 exc_info = sys.exc_info()
