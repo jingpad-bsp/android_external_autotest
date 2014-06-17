@@ -12,7 +12,7 @@ https://docs.google.com/a/google.com/document/d/1JMz0xS3fZRSHMpFkkKAL_rxsdbNZomh
 
 To verify if prod branch can be pushed to lab, run following command in
 chromeos-autotest.cbf server:
-/usr/locl/autotest/site_util/test_push.py -e someone@company.com
+/usr/local/autotest/site_utils/test_push.py -e someone@company.com
 
 The script uses latest stumpy canary build as test build by default.
 
