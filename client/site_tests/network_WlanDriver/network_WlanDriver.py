@@ -42,7 +42,8 @@ class network_WlanDriver(test.test):
                      '3.10': 'wireless-3.8/mwifiex/mwifiex_pcie.ko'
             },
             'Marvell 88W8897 SDIO': {
-                     '3.8': 'wireless/mwifiex/mwifiex_sdio.ko'
+                     '3.8': 'wireless/mwifiex/mwifiex_sdio.ko',
+                     '3.10': 'wireless-3.8/mwifiex/mwifiex_sdio.ko'
             },
             'Broadcom 4354 SDIO': {
                      '3.8': 'wireless/brcm80211/brcmfmac/brcmfmac.ko'
