@@ -24,6 +24,7 @@ These test data integrity, etc.
 """
 
 import common
+from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 
 dynamic_suite.reimage_and_run(
