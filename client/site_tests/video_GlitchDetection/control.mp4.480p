@@ -13,6 +13,7 @@ TIME = "LONG"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
+DEPENDENCIES = "video_glitch_detection"
 
 DOC = """
 This test uses cloud based image comparison to determine test PASS or FAIL.
