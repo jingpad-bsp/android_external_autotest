@@ -21,11 +21,11 @@ Example
 
 ./glbench -save -outdir=img
 # board_id: NVIDIA Corporation - Quadro FX 380/PCI/SSE2
-us_swap_swap                    =   214.77   [us_swap_swap.pixmd5-20dbc406b95e214a799a6a7f9c700d2f.png]
-mpixels_sec_clear_color         =  4448.28   [mpixels_sec_clear_color.pixmd5-e3609de1022a164fe240a562c69367de.png]
-mpixels_sec_clear_depth         = 10199.76   [mpixels_sec_clear_depth.pixmd5-e3609de1022a164fe240a562c69367de.png]
-mpixels_sec_clear_colordepth    =  3250.57   [mpixels_sec_clear_colordepth.pixmd5-e3609de1022a164fe240a562c69367de.png]
-mpixels_sec_clear_depthstencil  = 26447.22   [mpixels_sec_clear_depthstencil.pixmd5-e3609de1022a164fe240a562c69367de.png]
+swap_swap                    =   214.77 us           [us_swap_swap.pixmd5-20dbc406b95e214a799a6a7f9c700d2f.png]
+clear_color                  =  4448.28 mpixels_sec  [mpixels_sec_clear_color.pixmd5-e3609de1022a164fe240a562c69367de.png]
+clear_depth                  = 10199.76 mpixels_sec  [mpixels_sec_clear_depth.pixmd5-e3609de1022a164fe240a562c69367de.png]
+clear_colordepth             =  3250.57 mpixels_sec  [mpixels_sec_clear_colordepth.pixmd5-e3609de1022a164fe240a562c69367de.png]
+clear_depthstencil           = 26447.22 mpixels_sec  [mpixels_sec_clear_depthstencil.pixmd5-e3609de1022a164fe240a562c69367de.png]
 [...]
 
 ls img

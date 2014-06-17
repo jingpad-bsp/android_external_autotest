@@ -32,30 +32,38 @@ class graphics_GLBench(test.test):
   # These tests do not draw anything, they can only be used to check
   # performance.
   no_checksum_tests = set([
-      '1280x768_fps_compositing_no_fill',
-      'mpixels_sec_pixel_read',
-      'mpixels_sec_pixel_read_2',
-      'mpixels_sec_pixel_read_3',
-      'mtexel_sec_texture_reuse_teximage2d_1024',
-      'mtexel_sec_texture_reuse_teximage2d_128',
-      'mtexel_sec_texture_reuse_teximage2d_1536',
-      'mtexel_sec_texture_reuse_teximage2d_2048',
-      'mtexel_sec_texture_reuse_teximage2d_256',
-      'mtexel_sec_texture_reuse_teximage2d_32',
-      'mtexel_sec_texture_reuse_teximage2d_512',
-      'mtexel_sec_texture_reuse_teximage2d_768',
-      'mtexel_sec_texture_reuse_texsubimage2d_1024',
-      'mtexel_sec_texture_reuse_texsubimage2d_128',
-      'mtexel_sec_texture_reuse_texsubimage2d_1536',
-      'mtexel_sec_texture_reuse_texsubimage2d_2048',
-      'mtexel_sec_texture_reuse_texsubimage2d_256',
-      'mtexel_sec_texture_reuse_texsubimage2d_32',
-      'mtexel_sec_texture_reuse_texsubimage2d_512',
-      'mtexel_sec_texture_reuse_texsubimage2d_768',
-      'us_context_glsimple',
-      'us_swap_glsimple', ])
+      'compositing_no_fill',
+      'pixel_read',
+      'pixel_read_2',
+      'pixel_read_3',
+      'texture_reuse_teximage2d_1024',
+      'texture_reuse_teximage2d_128',
+      'texture_reuse_teximage2d_1536',
+      'texture_reuse_teximage2d_2048',
+      'texture_reuse_teximage2d_256',
+      'texture_reuse_teximage2d_32',
+      'texture_reuse_teximage2d_512',
+      'texture_reuse_teximage2d_768',
+      'texture_reuse_texsubimage2d_1024',
+      'texture_reuse_texsubimage2d_128',
+      'texture_reuse_texsubimage2d_1536',
+      'texture_reuse_texsubimage2d_2048',
+      'texture_reuse_texsubimage2d_256',
+      'texture_reuse_texsubimage2d_32',
+      'texture_reuse_texsubimage2d_512',
+      'texture_reuse_texsubimage2d_768',
+      'context_glsimple',
+      'swap_glsimple', ])
 
   blacklist = ''
+
+  unit_higher_is_better = {
+    'mpixels_sec': True,
+    'mtexel_sec': True,
+    'mtri_sec': True,
+    'mvtx_sec': True,
+    'us': False,
+    '1280x768_fps': True }
 
   def setup(self):
     self.job.setup_dep(['glbench'])
@@ -78,21 +86,6 @@ class graphics_GLBench(test.test):
     logging.info('%s = %f degree Celsius', keyname, temperature)
     self.output_perf_value(description=keyname, value=temperature,
                            units='Celsius', higher_is_better=False)
-
-  def get_unit_from_test(self, testname):
-    if testname.startswith('mpixels_sec_'):
-      return ('mpixels_sec', True)
-    if testname.startswith('mtexel_sec_'):
-      return ('mtexel_sec', True)
-    if testname.startswith('mtri_sec_'):
-      return ('mtri_sec', True)
-    if testname.startswith('mvtx_sec_'):
-      return ('mvtx_sec', True)
-    if testname.startswith('us_'):
-      return ('us', False)
-    if testname.startswith('1280x768_fps_'):
-      return ('fps', True)
-    raise error.TestFail('Unknown test unit in ' + testname)
 
   def run_once(self, options='', hasty=False):
     dep = 'glbench'
@@ -159,7 +152,7 @@ class graphics_GLBench(test.test):
     # Analyze the output. Sample:
     ## board_id: NVIDIA Corporation - Quadro FX 380/PCI/SSE2
     ## Running: ../glbench -save -outdir=img
-    #us_swap_swap = 221.36 [us_swap_swap.pixmd5-20dbc...f9c700d2f.png]
+    #swap_swap = 221.36 us [us_swap_swap.pixmd5-20dbc...f9c700d2f.png]
     results = summary.splitlines()
     if not results:
       f.close()
@@ -194,11 +187,19 @@ class graphics_GLBench(test.test):
       keyval, remainder = line[9:].split('[')
       key, val = keyval.split('=')
       testname = key.strip()
-      testrating = float(val)
+      score, unit = val.split()
+      testrating = float(score)
       imagefile = remainder.split(']')[0]
-      unit, higher = self.get_unit_from_test(testname)
+
+      higher = self.unit_higher_is_better.get(unit)
+      if higher is None:
+        raise error.TestFail('Unknown test unit "%s" for %s' % (unit, testname))
+
       if not hasty:
-        self.output_perf_value(description=testname, value=testrating,
+        # prepend unit to test name to maintain backwards compatibility with
+        # existing per data
+        perf_value_name = '%s_%s' % (unit, testname)
+        self.output_perf_value(description=perf_value_name, value=testrating,
                                units=unit, higher_is_better=higher)
 
       # classify result image
