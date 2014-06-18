@@ -28,7 +28,7 @@ int check_smram(struct pci_dev *northbridge, int offset)
     smram_value = pci_read_byte(northbridge, offset);
 
     if (smram_value & D_OPEN) {
-        printf("FAIL: D_OPEN is set\n");
+        fprintf(stderr, "FAIL: D_OPEN is set\n");
         code = EXIT_FAILURE;
     } else {
         printf("ok: D_OPEN is unset\n");
@@ -37,7 +37,7 @@ int check_smram(struct pci_dev *northbridge, int offset)
     if (smram_value & D_LCK) {
         printf("ok: D_LCK is set\n");
     } else {
-        printf("FAIL: D_LCK is unset\n");
+        fprintf(stderr, "FAIL: D_LCK is unset\n");
         code = EXIT_FAILURE;
     }
 
@@ -75,6 +75,9 @@ int guess_offset(struct pci_dev *northbridge)
         printf("Detected Haswell ULT\n");
         offset = 0x88;
         break;
+    case 0x0f00:
+        printf("Detected Baytrail, skipping test\n");
+        exit(EXIT_SUCCESS);
     default:
         fprintf(stderr, "FAIL: unknown Northbridge 0x%04x\n", id);
         exit(1);
