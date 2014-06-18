@@ -37,6 +37,7 @@ from autotest_lib.client.common_lib import priorities
 from autotest_lib.frontend.afe import models, model_logic, model_attributes
 from autotest_lib.frontend.afe import control_file, rpc_utils
 from autotest_lib.frontend.afe import site_rpc_interface
+from autotest_lib.server.cros.dynamic_suite import tools
 
 def get_parameterized_autoupdate_image_url(job):
     """Get the parameterized autoupdate image url from a parameterized job."""
@@ -530,7 +531,8 @@ def create_job(name, priority, control_file, control_type,
                run_verify=False, email_list='', dependencies=(),
                reboot_before=None, reboot_after=None, parse_failed_repair=None,
                hostless=False, keyvals=None, drone_set=None, image=None,
-               parent_job_id=None, test_retry=0, run_reset=True, **kwargs):
+               parent_job_id=None, test_retry=0, run_reset=True, args=(),
+               **kwargs):
     """\
     Create and enqueue a job.
 
@@ -539,12 +541,12 @@ def create_job(name, priority, control_file, control_type,
     @param control_file String contents of the control file.
     @param control_type Type of control file, Client or Server.
     @param synch_count How many machines the job uses per autoserv execution.
-    synch_count == 1 means the job is asynchronous.  If an atomic group is
-    given this value is treated as a minimum.
+        synch_count == 1 means the job is asynchronous.  If an atomic group is
+        given this value is treated as a minimum.
     @param is_template If true then create a template job.
     @param timeout Hours after this call returns until the job times out.
     @param timeout_mins Minutes after this call returns until the job times
-    out.
+        out.
     @param max_runtime_mins Minutes from job starting time until job times out
     @param run_verify Should the host be verified before running the test?
     @param email_list String containing emails to mail when the job is done
@@ -552,24 +554,28 @@ def create_job(name, priority, control_file, control_type,
     @param reboot_before Never, If dirty, or Always
     @param reboot_after Never, If all tests passed, or Always
     @param parse_failed_repair if true, results of failed repairs launched by
-    this job will be parsed as part of the job.
+        this job will be parsed as part of the job.
     @param hostless if true, create a hostless job
     @param keyvals dict of keyvals to associate with the job
     @param hosts List of hosts to run job on.
     @param meta_hosts List where each entry is a label name, and for each entry
-    one host will be chosen from that label to run the job on.
+        one host will be chosen from that label to run the job on.
     @param one_time_hosts List of hosts not in the database to run the job on.
     @param atomic_group_name The name of an atomic group to schedule the job on.
     @param drone_set The name of the drone set to run this test on.
     @param image OS image to install before running job.
     @param parent_job_id id of a job considered to be parent of created job.
     @param test_retry Number of times to retry test if the test did not
-                       complete successfully. (optional, default: 0)
+        complete successfully. (optional, default: 0)
     @param run_reset Should the host be reset before running the test?
+    @param args A list of args to be injected into control file.
     @param kwargs extra keyword args. NOT USED.
 
     @returns The created Job id number.
     """
+    if args:
+        control_file = tools.inject_vars({'args': args}, control_file)
+
     if image is None:
         return rpc_utils.create_job_common(
                 **rpc_utils.get_create_job_common_args(locals()))

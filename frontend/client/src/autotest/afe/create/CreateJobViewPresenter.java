@@ -76,6 +76,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         public HasValue<Boolean> getParseFailedRepair();
         public ICheckBox getHostless();
         public HasText getPool();
+        public ITextBox getArgs();
         public HostSelector.Display getHostSelectorDisplay();
         public SimplifiedList getDroneSet();
         public ITextBox getSynchCountInput();
@@ -328,13 +329,12 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         for (JSONObject test : testSelector.getSelectedTests()) {
             tests.set(tests.size(), test.get("id"));
         }
+        params.put("tests", tests);
 
         JSONArray profilers = new JSONArray();
         for (ICheckBox profiler : profilersPanel.getChecked()) {
             profilers.set(profilers.size(), new JSONString(profiler.getText()));
         }
-
-        params.put("tests", tests);
         params.put("profilers", profilers);
 
         if (display.getRunNonProfiledIteration().isVisible()) {
@@ -615,6 +615,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         hostSelector.reset();
         dependencies = new JSONArray();
         display.getPool().setText("");
+        display.getArgs().setText("");
     }
 
     private void submitJob(final boolean isTemplate) {
@@ -684,6 +685,15 @@ public class CreateJobViewPresenter implements TestSelectorListener {
                 String imageUrlString = display.getImageUrl().getText();
                 if (!imageUrlString.equals("")) {
                     args.put("image", new JSONString(imageUrlString));
+                }
+
+                String argsString = display.getArgs().getText().trim();
+                if (!argsString.equals("")) {
+                    JSONArray argsArray = new JSONArray();
+                    for (String arg : argsString.split(",")) {
+                        argsArray.set(argsArray.size(), new JSONString(arg.trim()));
+                    }
+                    args.put("args", argsArray);
                 }
 
                 rpcProxy.rpcCall("create_job_page_handler", args, new JsonRpcCallback() {
