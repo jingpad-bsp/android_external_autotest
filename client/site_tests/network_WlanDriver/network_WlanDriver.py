@@ -2,13 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import collections
 import logging
-import os
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros.network import interface
 
 
 class network_WlanDriver(test.test):
@@ -17,18 +16,6 @@ class network_WlanDriver(test.test):
     """
     version = 1
     DEVICES = [ 'wlan0', 'mlan0' ]
-    DEVICE_INFO_ROOT = '/sys/class/net'
-    DeviceInfo = collections.namedtuple('DeviceInfo', ['vendor', 'device'])
-    DEVICE_NAME_LOOKUP = {
-        DeviceInfo('0x02df', '0x9129'): 'Marvell 88W8797 SDIO',
-        DeviceInfo('0x02df', '0x912d'): 'Marvell 88W8897 SDIO',
-        DeviceInfo('0x11ab', '0x2b38'): 'Marvell 88W8897 PCIE',
-        DeviceInfo('0x168c', '0x002a'): 'Atheros AR9280',
-        DeviceInfo('0x168c', '0x0030'): 'Atheros AR9382',
-        DeviceInfo('0x168c', '0x0034'): 'Atheros AR9462',
-        DeviceInfo('0x8086', '0x08b1'): 'Intel 7260',
-        DeviceInfo('0x02d0', '0x4354'): 'Broadcom 4354 SDIO',
-    }
     EXPECTED_DRIVER = {
             'Atheros AR9280': {
                     '3.4': 'wireless/ath/ath9k/ath9k.ko',
@@ -63,76 +50,23 @@ class network_WlanDriver(test.test):
     }
 
 
-    def get_kernel_release(self):
-        """
-        Get the kernel release for a device under test.
-
-        @return string representing the kernel revision, e.g. "3.4.0".
-
-        """
-        return utils.system_output('uname -r')
-
-
-    def get_kernel_base(self):
-        """
-        Get the base kernel revision for a device under test.
-
-        @return string representing the kernel base revision, e.g. "3.4".
-
-        """
-        return '.'.join(self.get_kernel_release().split('.')[:2])
-
-
-    def get_net_device_info(self, device_name):
-        """
-        Get the information associated with a device.
-
-        @param device_name string name of device to get information on.
-        @return list representing the identifying device information, namely
-            [ 'part_name', 'module_path' ], or None if the device does not
-            exist.
-
-        """
-        device_path = os.path.join(self.DEVICE_INFO_ROOT, device_name,
-                                     'device')
-        if not os.path.exists(device_path):
-            return None
-        with open(os.path.join(device_path, 'vendor'), 'r') as f:
-            vendor_id = f.read().rstrip()
-        with open(os.path.join(device_path, 'device'), 'r') as f:
-            product_id = f.read().rstrip()
-
-        driver_info = self.DeviceInfo(vendor_id, product_id)
-        if not driver_info in self.DEVICE_NAME_LOOKUP:
-            raise error.TestNAError('Device vendor/product pair %r '
-                                    'for device %s is unknown!' %
-                                    (driver_info, device_name))
-        device_name = self.DEVICE_NAME_LOOKUP[driver_info]
-        logging.info('Device is %s',  device_name)
-
-        module_name = os.path.basename(os.readlink(os.path.join(
-                device_path, 'driver', 'module')))
-        module_path = utils.system_output('find '
-                                          '/lib/modules/%s/kernel/drivers/net '
-                                          '-name %s.ko -printf %%P' %
-                                          (self.get_kernel_release(),
-                                           module_name))
-        return (device_name, module_path)
-
-
     def run_once(self):
         """Test main loop"""
-        base_revision = self.get_kernel_base()
+        # full_revision looks like "3.4.0".
+        full_revision = utils.system_output('uname -r')
+        # base_revision looks like "3.4".
+        base_revision = '.'.join(full_revision.split('.')[:2])
         logging.info('Kernel base is %s', base_revision)
 
         found_devices = 0
         for device in self.DEVICES:
-            devinfo = self.get_net_device_info(device)
+            net_if = interface.Interface(device)
+            device_description = net_if.device_description
 
-            if not devinfo:
+            if not device_description:
                 continue
 
-            device_name, module_path = devinfo
+            device_name, module_path = device_description
             logging.info('Device name %s, module path %s',
                          device_name, module_path)
             if not device_name in self.EXPECTED_DRIVER:
