@@ -112,7 +112,7 @@ def compile_and_install_client(project_client, extra_args='',
                                             project_client)
         return True
     except error.CmdError:
-        logging.info('Error compiling %s, leaving old client', project_client)
+        logging.error('Error compiling %s, leaving old client', project_client)
 
     return False
 
