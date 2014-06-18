@@ -1481,6 +1481,19 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             self.rpc_disconnect(port)
 
 
+    def poor_mans_rpc(self, fun):
+        """
+        Calls a function from client utils on the host and returns a string.
+
+        @param fun function in client utils namespace.
+        @return output string from calling fun.
+        """
+        script = 'cd /usr/local/autotest/bin; '
+        script += 'python -c "import common; import utils;'
+        script += 'print utils.%s"' % fun
+        return script
+
+
     def _ping_check_status(self, status):
         """Ping the host once, and return whether it has a given status.
 
@@ -1831,6 +1844,19 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         return board_format_string % '-'.join(board.split('-')[0:2])
 
 
+    @label_decorator('board_freq_mem')
+    def get_board_with_frequency_and_memory(self):
+        """
+        Determines the board name with frequency and memory.
+
+        @returns a more detailed string representing the board. Examples are
+        butterfly_1.1GHz_2GB, link_1.8GHz_4GB, x86-zgb_1.7GHz_2GB
+        """
+        board = self.run(self.poor_mans_rpc(
+                         'get_board_with_frequency_and_memory()')).stdout
+        return 'board_freq_mem:%s' % str.strip(board)
+
+
     @label_decorator('lightsensor')
     def has_lightsensor(self):
         """Determine the correct board label for this host.
@@ -1867,6 +1893,18 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             # test exited with a return code 1 meaning the directory did not
             # exist.
             return None
+
+
+    @label_decorator('gpu_family')
+    def get_gpu_family(self):
+        """
+        Determine GPU family.
+
+        @returns a string representing the gpu family. Examples are mali, tegra,
+        pinetrail, sandybridge, ivybridge, haswell and baytrail.
+        """
+        gpu_family = self.run(self.poor_mans_rpc('get_gpu_family()')).stdout
+        return 'gpu_family:%s' % str.strip(gpu_family)
 
 
     @label_decorator('graphics')
