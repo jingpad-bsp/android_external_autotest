@@ -202,7 +202,16 @@ class graphics_GLBench(test.test):
                                units=unit, higher_is_better=higher)
 
       # classify result image
-      if imagefile in knownbad_imagenames:
+      if testrating == -1.0:
+        # tests that generate GL Errors
+        glerror = imagefile.split('=')[1]
+        f.write('# GLError ' + glerror + ' during test (perf set to -3.0)\n')
+        keyvals[testname] = -3.0
+      elif testrating == 0.0:
+        # tests for which glbench does not generate a meaningful perf score
+        f.write('# No score for test\n')
+        keyvals[testname] = 0.0
+      elif imagefile in knownbad_imagenames:
         # we already know the image looks bad and have filed a bug
         # so don't throw an exception and remind there is a problem
         keyvals[testname] = -1.0
