@@ -34,4 +34,5 @@ class network_WiFi_SimpleConnect(wifi_cell_test_base.WiFiCellTestBase):
             else:
                 self.context.assert_ping_from_dut()
                 self.context.client.shill.disconnect(client_conf.ssid)
+            self.context.client.shill.delete_entries_for_ssid(client_conf.ssid)
             self.context.router.deconfig()
