@@ -1,4 +1,4 @@
-NAME = 'Flaky server side test'
+NAME = 'dummy_FailServer'
 AUTHOR = 'scottz'
 TIME = 'SHORT'
 TEST_CATEGORY = 'Functional'
@@ -10,9 +10,8 @@ DOC = """
 Test that always fails.
 """
 
-from autotest_lib.client.common_lib import utils
 def run(machine):
     host = hosts.create_host(machine)
-    job.run_test('dummy_Fail', disable_sysinfo=True)
+    job.run_test('dummy_FailServer', disable_sysinfo=False)
 
 job.parallel_simple(run, machines)

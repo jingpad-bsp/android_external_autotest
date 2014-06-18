@@ -1,4 +1,4 @@
-NAME = 'Flaky server side test'
+NAME = 'dummy_FailServer_Flaky'
 AUTHOR = 'scottz'
 TIME = 'SHORT'
 TEST_CATEGORY = 'Functional'
@@ -16,6 +16,6 @@ after first run due to failure not being of type TestFailRetry.
 from autotest_lib.client.common_lib import utils
 def run(machine):
     host = hosts.create_host(machine)
-    job.run_test('dummy_Fail', disable_sysinfo=True)
+    job.run_test('dummy_FailServer', disable_sysinfo=True)
 
 job.parallel_simple(run, machines)
