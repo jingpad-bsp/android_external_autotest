@@ -84,6 +84,7 @@ class video_VimeoVideo(test.test):
 
         self._tab.ExecuteJavaScript('pause.click()')
         self._wait_for_player_status(self._PLAYER_PAUSE_STATE)
+        time.sleep(1)
 
         # Verifying video playback.
         self._tab.ExecuteJavaScript('play.click()')
