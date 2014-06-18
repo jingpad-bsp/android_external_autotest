@@ -52,30 +52,8 @@ class graphics_GLBench(test.test):
       'mtexel_sec_texture_reuse_texsubimage2d_32',
       'mtexel_sec_texture_reuse_texsubimage2d_512',
       'mtexel_sec_texture_reuse_texsubimage2d_768',
-      'mtexel_sec_texture_upload_teximage2d_1024',
-      'mtexel_sec_texture_upload_teximage2d_128',
-      'mtexel_sec_texture_upload_teximage2d_1536',
-      'mtexel_sec_texture_upload_teximage2d_2048',
-      'mtexel_sec_texture_upload_teximage2d_256',
-      'mtexel_sec_texture_upload_teximage2d_32',
-      'mtexel_sec_texture_upload_teximage2d_512',
-      'mtexel_sec_texture_upload_teximage2d_768',
-      'mtexel_sec_texture_upload_texsubimage2d_1024',
-      'mtexel_sec_texture_upload_texsubimage2d_128',
-      'mtexel_sec_texture_upload_texsubimage2d_1536',
-      'mtexel_sec_texture_upload_texsubimage2d_2048',
-      'mtexel_sec_texture_upload_texsubimage2d_256',
-      'mtexel_sec_texture_upload_texsubimage2d_32',
-      'mtexel_sec_texture_upload_texsubimage2d_512',
-      'mtexel_sec_texture_upload_texsubimage2d_768',
-      'mvtx_sec_attribute_fetch_shader',
-      'mvtx_sec_attribute_fetch_shader_2_attr',
-      'mvtx_sec_attribute_fetch_shader_4_attr',
-      'mvtx_sec_attribute_fetch_shader_8_attr',
       'us_context_glsimple',
-      'us_context_nogl',
-      'us_swap_glsimple',
-      'us_swap_nogl', ])
+      'us_swap_glsimple', ])
 
   blacklist = ''
 
@@ -231,6 +209,9 @@ class graphics_GLBench(test.test):
         f.write('# knownbad [' + imagefile + '] (setting perf as -1.0)\n')
       elif imagefile in reference_imagenames:
         # known good reference images
+        keyvals[testname] = testrating
+      elif imagefile == 'none':
+        # tests that do not write images
         keyvals[testname] = testrating
       elif testname in self.no_checksum_tests:
         # TODO(ihf) these really should not write any images
