@@ -30,6 +30,7 @@ MM_MODEM_STATE_CONNECTING = '10'
 MM_MODEM_STATE_CONNECTED = '11'
 
 GOBI_MODEM_STATE_UNKNOWN = '0'
+GOBI_MODEM_STATE_DISABLED = '10'
 GOBI_MODEM_STATE_DISABLING = '20'
 GOBI_MODEM_STATE_ENABLING = '30'
 GOBI_MODEM_STATE_ENABLED = '40'
@@ -39,38 +40,19 @@ GOBI_MODEM_STATE_DISCONNECTING = '70'
 GOBI_MODEM_STATE_CONNECTING = '80'
 GOBI_MODEM_STATE_CONNECTED = '90'
 
-GOBI_MODEM_STATES = [
-    GOBI_MODEM_STATE_DISABLING,
-    GOBI_MODEM_STATE_ENABLING,
-    GOBI_MODEM_STATE_ENABLED,
-    GOBI_MODEM_STATE_SEARCHING,
-    GOBI_MODEM_STATE_REGISTERED,
-    GOBI_MODEM_STATE_DISCONNECTING,
-    GOBI_MODEM_STATE_CONNECTING,
-    GOBI_MODEM_STATE_CONNECTED
-]
-
 ENABLED_MODEM_STATES = [
     MM_MODEM_STATE_ENABLED,
     GOBI_MODEM_STATE_ENABLED
 ]
 
-WAIT_DELAY_MODEM_STATES = [
-    MM_MODEM_STATE_INITIALIZING,
-    MM_MODEM_STATE_ENABLING,
-    MM_MODEM_STATE_ENABLED,
-    MM_MODEM_STATE_SEARCHING,
-    MM_MODEM_STATE_CONNECTING,
-    GOBI_MODEM_STATE_ENABLING,
-    GOBI_MODEM_STATE_ENABLED,
-    GOBI_MODEM_STATE_SEARCHING,
-    GOBI_MODEM_STATE_CONNECTING
-]
-
-STABLE_MODEM_STATES = [
+MM_STABLE_MODEM_STATES = [
     MM_MODEM_STATE_DISABLED,
     MM_MODEM_STATE_REGISTERED,
     MM_MODEM_STATE_CONNECTED,
+]
+
+GOBI_STABLE_MODEM_STATES = [
+    GOBI_MODEM_STATE_DISABLED,
     GOBI_MODEM_STATE_REGISTERED,
     GOBI_MODEM_STATE_CONNECTED
 ]
@@ -88,17 +70,32 @@ class cellular_StaleModemReboot(test.test):
 
     version = 1
 
-    def _modem_state_to_string(self, state):
+    def _modem_state_to_string(self, state, is_gobi):
+        """Takes the numerical modem state and returns associated state name.
+
+        @param state: The state of the modem on the device.
+        @param is_gobi: True if the device has a gobi modem.
+        @return MODEM_STATE_STRINGS as the actual name of the state associated
+                with the numeric value.
+
+        """
         if not state:
             return NO_MODEM_STATE_AVAILABLE
 
-        if state in GOBI_MODEM_STATES:
-            """
-            Fix the index for MODEM_STATE_STRINGS
-            """
-            state = ''.join(('1', state[:-1]))
-
-        state = int(state)
+        if is_gobi:
+            MODEM_STATE_STRINGS = [
+                'UNKNOWN',
+                'DISABLED',
+                'DISABLING',
+                'ENABLING',
+                'ENABLED',
+                'SEARCHING',
+                'REGISTERED',
+                'DISCONNECTING',
+                'CONNECTING',
+                'CONNECTED'
+            ]
+            return MODEM_STATE_STRINGS[int(state[:1])]
 
         MODEM_STATE_STRINGS = [
             'FAILED',
@@ -113,22 +110,13 @@ class cellular_StaleModemReboot(test.test):
             'REGISTERED',
             'DISCONNECTING',
             'CONNECTING',
-            'CONNECTED',
-            'DISABLING',
-            'ENABLING',
-            'ENABLED',
-            'SEARCHING',
-            'REGISTERED',
-            'DISCONNECTING',
-            'CONNECTING',
             'CONNECTED'
         ]
-        return MODEM_STATE_STRINGS[state + 1]
+        return MODEM_STATE_STRINGS[int(state) + 1]
 
 
     def _format_modem_status(self, modem_status):
-        """
-        Formats the modem status data and inserts it into a dictionary.
+        """Formats the modem status data and inserts it into a dictionary.
 
         @param modem_status: Command line output of 'modem status'.
         @return modem status dictionary
@@ -155,6 +143,12 @@ class cellular_StaleModemReboot(test.test):
 
 
     def _get_modem_status(self):
+        """Gets the status of the modem by running 'modem status' command.
+
+        @return modem_status_dict: is the dictionary of all the lines retuned
+                by modem status command.
+
+        """
         try:
             modem_status = self._client.run('modem status').stdout.strip()
             modem_status_dict = self._format_modem_status(modem_status)
@@ -191,10 +185,9 @@ class cellular_StaleModemReboot(test.test):
         so the test can continue with rebooting the device again as needed.
 
         """
-
         try:
             utils.poll_for_condition(
-                  lambda: self._get_modem_state() in STABLE_MODEM_STATES,
+                  lambda: self._get_modem_state() in self.STABLE_MODEM_STATES,
                   exception=utils.TimeoutError('Modem not in stable state '
                                                'after %s seconds.' %
                                                _MODEM_WAIT_DELAY),
@@ -225,27 +218,31 @@ class cellular_StaleModemReboot(test.test):
             logging.info('Host %s does not have a servo.', host.hostname)
             return
 
+        self.STABLE_MODEM_STATES = MM_STABLE_MODEM_STATES
+        gobi = False
+        if 'gobi' in self._client.run('modem status').stdout.strip().lower():
+            self.STABLE_MODEM_STATES = GOBI_STABLE_MODEM_STATES
+            gobi = True
+
         if not expect_auto_registration:
-            STABLE_MODEM_STATES.extend(ENABLED_MODEM_STATES)
-            WAIT_DELAY_MODEM_STATES.remove(MM_MODEM_STATE_ENABLED)
-            WAIT_DELAY_MODEM_STATES.remove(GOBI_MODEM_STATE_ENABLED)
+            self.STABLE_MODEM_STATES.extend(ENABLED_MODEM_STATES)
 
         original_modem_state = self._get_modem_state()
 
         logging.info('Modem state before reboot on host %s: %s',
                      host.hostname,
-                     self._modem_state_to_string(original_modem_state))
+                     self._modem_state_to_string(original_modem_state, gobi))
 
         boot_id = self._client.get_boot_id()
-        self._cold_reset_dut(boot_id)
-        new_modem_state = self._get_modem_state()
 
         num_tries = 0
 
         while True:
-            if new_modem_state in STABLE_MODEM_STATES:
-                logging.info('Modem is in testable state: '
-                             '%s', self._modem_state_to_string(new_modem_state))
+            self._cold_reset_dut(boot_id)
+            new_modem_state = self._get_modem_state()
+            if new_modem_state in self.STABLE_MODEM_STATES:
+                logging.info('Modem is in testable state: %s',
+                             self._modem_state_to_string(new_modem_state, gobi))
                 break
             if new_modem_state == MM_MODEM_STATE_LOCKED:
                 raise error.TestFail('Modem in locked state.')
@@ -253,8 +250,6 @@ class cellular_StaleModemReboot(test.test):
                 logging.info('Modem still in bad state after %s reboot tries '
                              'on host %s. Modem state: %s ',
                              tries+1, host.hostname,
-                             self._modem_state_to_string(new_modem_state))
+                             self._modem_state_to_string(new_modem_state, gobi))
                 raise error.TestFail('Modem is not in testable state')
             num_tries += 1
-            self._cold_reset_dut(boot_id)
-            new_modem_state = self._get_modem_state()
