@@ -18,6 +18,7 @@ _DEFAULT_FILES_TO_LOG_PER_BOOT = [
     "/proc/pci", "/proc/meminfo", "/proc/slabinfo", "/proc/version",
     "/proc/cpuinfo", "/proc/modules", "/proc/interrupts", "/proc/partitions",
     '/var/log/messages', constants.LOG_CONSOLE_RAMOOPS,
+    '/var/log/bios_info.txt',
     ]
 _DEFAULT_FILES_TO_LOG_BEFORE_ITERATION = [
     "/proc/schedstat", "/proc/meminfo", "/proc/slabinfo", "/proc/interrupts"
