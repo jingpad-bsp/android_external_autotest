@@ -49,9 +49,9 @@ class SpuriousWakeupError(SuspendFailure):
         ]
     S0_WHITELIST = [  # (<board>, <kernel wake source>)
             # crbug.com/290923: spurious keyboard IRQ, believed to be from Servo
-            ('^x86-alex', 'serio0'),
-            # unknown, probably the same as crbug.com/355106 & crbug.com/290923
-            ('^lumpy|^parrot', 'serio0'),
+            ('^x86-alex|^lumpy|^parrot|^butterfly', 'serio0'),
+            # crbug.com/383434: "Lumpy, beware the Ides of March (plus five)!"
+            ('^lumpy', 'unknown|7-0067'),
         ]
 
 class MemoryError(SuspendFailure):

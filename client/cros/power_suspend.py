@@ -71,8 +71,6 @@ class Suspender(object):
 
     # alarm/not_before value guaranteed to raise SpuriousWakeup in _hwclock_ts
     _ALARM_FORCE_EARLY_WAKEUP = 2147483647
-    # alarm constant used to signify that we should retry the suspend attempt
-    _ALARM_FORCE_RETRY = 0
 
     # File written by send_metrics_on_resume containing timing information about
     # the last resume.
@@ -299,6 +297,55 @@ class Suspender(object):
             return "unknown"
 
 
+    def _check_for_errors(self):
+        """Find and identify suspend errors. Return True iff we should retry."""
+        warning_regex = re.compile(r' kernel: \[.*WARNING:')
+        abort_regex = re.compile(r' kernel: \[.*Freezing of tasks abort'
+                r'| powerd_suspend\[.*Cancel suspend at kernel'
+                r'| kernel: \[.*PM: Wakeup pending, aborting suspend')
+        # rsyslogd can put this out of order with dmesg, so track in variable
+        fail_regex = re.compile(r'powerd_suspend\[\d+\]: Error')
+        failed = False
+
+        # TODO(scottz): warning_monitor crosbug.com/38092
+        for i in xrange(len(self._logs)):
+            line = self._logs[i]
+            if warning_regex.search(line):
+                # match the source file from the WARNING line, and the
+                # actual error text by peeking two lines below that
+                src = cros_logging.strip_timestamp(line)
+                text = cros_logging.strip_timestamp(self._logs[i + 2])
+                for p1, p2 in sys_power.KernelError.WHITELIST:
+                    if re.search(p1, src) and re.search(p2, text):
+                        logging.info('Whitelisted KernelError: %s', src)
+                        break
+                else:
+                    raise sys_power.KernelError("%s\n%s" % (src, text))
+            if abort_regex.search(line):
+                wake_source = 'unknown'
+                match = re.search(r'last active wakeup source: (.*)$',
+                        '\n'.join(self._logs[i-5:i+3]), re.MULTILINE)
+                if match:
+                    wake_source = match.group(1)
+                driver = self._identify_driver(wake_source)
+                for b, w in sys_power.SpuriousWakeupError.S0_WHITELIST:
+                    if (re.search(b, utils.get_board()) and
+                            re.search(w, wake_source)):
+                        logging.warning('Whitelisted spurious wake before '
+                                'S3: %s | %s' % (wake_source, driver))
+                        return True
+                if "rtc" in driver:
+                    raise sys_power.SuspendTimeout('System took too '
+                                                   'long to suspend.')
+                raise sys_power.SpuriousWakeupError('Spurious wake '
+                        'before S3: %s | %s' % (wake_source, driver))
+            if fail_regex.search(line):
+                failed = True
+        if failed:
+            raise sys_power.SuspendFailure('Unidentified problem.')
+        return False
+
+
     def suspend(self, duration=10):
         """
         Do a single suspend for 'duration' seconds. Estimates the amount of time
@@ -324,7 +371,6 @@ class Suspender(object):
                     # might be another error, we check for it ourselves below
                     alarm = self._ALARM_FORCE_EARLY_WAKEUP
 
-                # look for errors
                 if os.path.exists('/sys/firmware/log'):
                     for msg in re.findall(r'^.*ERROR.*$',
                             utils.read_file('/sys/firmware/log'), re.M):
@@ -339,54 +385,11 @@ class Suspender(object):
                             logging.info('Saved firmware log: ' + firmware_log)
                             raise sys_power.FirmwareError(msg.strip('\r\n '))
 
-                warning_regex = re.compile(r' kernel: \[.*WARNING:')
-                abort_regex = re.compile(r' kernel: \[.*Freezing of tasks abort'
-                        r'| powerd_suspend\[.*Cancel suspend at kernel'
-                        r'| kernel: \[.*PM: Wakeup pending, aborting suspend')
-                unknown_regex = re.compile(r'powerd_suspend\[\d+\]: Error')
-                # TODO(scottz): warning_monitor crosbug.com/38092
                 self._update_logs()
-                for i in xrange(len(self._logs)):
-                    line = self._logs[i]
-                    if warning_regex.search(line):
-                        # match the source file from the WARNING line, and the
-                        # actual error text by peeking two lines below that
-                        src = cros_logging.strip_timestamp(line)
-                        text = cros_logging.strip_timestamp(self._logs[i + 2])
-                        for p1, p2 in sys_power.KernelError.WHITELIST:
-                            if re.search(p1, src) and re.search(p2, text):
-                                logging.info('Whitelisted KernelError: %s', src)
-                                break
-                        else:
-                            raise sys_power.KernelError("%s\n%s" % (src, text))
-                    if abort_regex.search(line):
-                        wake_source = 'unknown'
-                        match = re.search(r'last active wakeup source: (.*)$',
-                                '\n'.join(self._logs[i-5:i+3]), re.MULTILINE)
-                        if match:
-                            wake_source = match.group(1)
-                        driver = self._identify_driver(wake_source)
-                        for b, w in sys_power.SpuriousWakeupError.S0_WHITELIST:
-                            if (re.search(b, utils.get_board()) and
-                                    re.search(w, wake_source)):
-                                logging.warning('Whitelisted spurious wake before '
-                                        'S3: %s | %s' % (wake_source, driver))
-                                alarm = self._ALARM_FORCE_RETRY
-                        if alarm == self._ALARM_FORCE_RETRY:
-                            break
-                        if "rtc" in driver:
-                            raise sys_power.SuspendTimeout('System took too '
-                                                           'long to suspend.')
-                        raise sys_power.SpuriousWakeupError('Spurious wake '
-                                'before S3: %s | %s' % (wake_source, driver))
-                    if unknown_regex.search(line):
-                        raise sys_power.SuspendFailure('Unidentified problem.')
-
-                if alarm == self._ALARM_FORCE_RETRY:
-                    continue
-                hwclock_ts = self._hwclock_ts(alarm)
-                if hwclock_ts:
-                    break
+                if not self._check_for_errors():
+                    hwclock_ts = self._hwclock_ts(alarm)
+                    if hwclock_ts:
+                        break
             else:
                 raise error.TestWarn('Ten tries failed due to whitelisted bug')
 
