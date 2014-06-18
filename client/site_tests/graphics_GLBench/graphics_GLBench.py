@@ -152,7 +152,7 @@ class graphics_GLBench(test.test):
     # Analyze the output. Sample:
     ## board_id: NVIDIA Corporation - Quadro FX 380/PCI/SSE2
     ## Running: ../glbench -save -outdir=img
-    #swap_swap = 221.36 us [us_swap_swap.pixmd5-20dbc...f9c700d2f.png]
+    #swap_swap = 221.36 us [swap_swap.pixmd5-20dbc...f9c700d2f.png]
     results = summary.splitlines()
     if not results:
       f.close()

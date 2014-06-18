@@ -6,7 +6,7 @@ These directories contains reference images for graphics_GLBench test.  After
 uncompressing to RGBA these images will match the checksums in their name:
 For example:
 
-    > convert mpixels_sec_clear_color.pixmd5-e3609de122a164fe240a562c69367de.png rgba:- | md5sum
+    > convert clear_color.pixmd5-e3609de122a164fe240a562c69367de.png rgba:- | md5sum
     e3609de1022a164fe240a562c69367de  -
 
 Combining test name with MD5 makes it possible to keep multiple versions
