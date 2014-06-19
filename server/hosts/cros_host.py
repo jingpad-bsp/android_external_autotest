@@ -1156,11 +1156,14 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             global_config.global_config.get_config_value(
                 'SERVER', 'gb_diskspace_required', type=float,
                 default=20.0))
-        self.check_diskspace(
-            '/mnt/stateful_partition/encrypted',
-            global_config.global_config.get_config_value(
-                'SERVER', 'gb_encrypted_diskspace_required', type=float,
-                default=0.1))
+        encrypted_stateful_path = '/mnt/stateful_partition/encrypted'
+        # Not all targets build with encrypted stateful support.
+        if self.path_exists(encrypted_stateful_path):
+            self.check_diskspace(
+                encrypted_stateful_path,
+                global_config.global_config.get_config_value(
+                    'SERVER', 'gb_encrypted_diskspace_required', type=float,
+                    default=0.1))
 
         services_status = self.run('status system-services').stdout
         if services_status != 'system-services start/running\n':
