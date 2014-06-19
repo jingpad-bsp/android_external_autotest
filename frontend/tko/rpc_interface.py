@@ -1,5 +1,6 @@
 import os, pickle, datetime, itertools, operator
 from django.db import models as dbmodels
+from autotest_lib.client.common_lib import priorities
 from autotest_lib.frontend.afe import rpc_utils, model_logic
 from autotest_lib.frontend.afe import models as afe_models, readonly_connection
 from autotest_lib.frontend.tko import models, tko_rpc_utils, graphing_utils
@@ -430,6 +431,7 @@ def get_static_data():
         ['Performance Keyval (Value)', 'iteration_value'],
     ]
 
+    result['priorities'] = priorities.Priority.choices()
     result['group_fields'] = sorted(group_fields)
     result['all_fields'] = sorted(model_fields + extra_fields)
     result['test_labels'] = get_test_labels(sort_by=['name'])
