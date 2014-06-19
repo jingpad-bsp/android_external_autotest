@@ -319,6 +319,9 @@ def take_screenshot(dest_dir, fname_prefix, format='png'):
     @returns complete path to saved screenshot file.
 
     """
+    if not _is_x_running():
+        return
+
     next_index = len(glob.glob(
         os.path.join(dest_dir, '%s-*.%s' % (fname_prefix, format))))
     screenshot_file = os.path.join(
@@ -382,3 +385,10 @@ def _execute_screenshot_capture_command(import_cmd_string):
         if old_exc_type is None:
             raise
         logging.error(err)
+
+
+def _is_x_running():
+    try:
+        return int(base_utils.system_output('pgrep -o ^X$')) > 0
+    except Exception:
+        return False
