@@ -22,6 +22,7 @@ from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.server import site_utils as server_site_utils
 from autotest_lib.server.cros.servo import servo
 from autotest_lib.server.hosts import ssh_host
@@ -629,8 +630,22 @@ def create_servo_host(dut, servo_args):
     is_in_lab = utils.host_is_in_lab_zone(lab_servo_hostname)
 
     if is_in_lab:
-        return ServoHost(servo_host=lab_servo_hostname, is_in_lab=is_in_lab,
-                         required_by_test=(servo_args is not None))
+        # Technically, this duplicates the SSH ping done early in the servo
+        # proxy initialization code.  However, this ping ends in a couple
+        # seconds when if fails, rather than the 60 seconds it takes to decide
+        # that an SSH ping has timed out.  Specifically, that timeout happens
+        # when our servo DNS name resolves, but there is no host at that IP.
+        # TODO(dshi): crbug.com/380773 Remove this ping check once the bug is
+        #             fixed. Autotest should not try to verify servo if servo is
+        #             not required for the test.
+        ping_config = ping_runner.PingConfig(
+                lab_servo_hostname, count=3,
+                ignore_result=True, ignore_status=True)
+        logging.info('Pinging servo at %s', lab_servo_hostname)
+        host_is_up = ping_runner.PingRunner().ping(ping_config).received > 0
+        if host_is_up:
+            return ServoHost(servo_host=lab_servo_hostname, is_in_lab=is_in_lab,
+                             required_by_test=(servo_args is not None))
     elif servo_args is not None:
         return ServoHost(required_by_test=True, is_in_lab=False, **servo_args)
     else:
