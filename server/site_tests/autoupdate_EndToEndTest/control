@@ -13,6 +13,7 @@ TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "server"
+JOB_RETRIES = 2
 
 DOC = """
 This is an end-to-end update test of Chrome OS releases. Given a test
