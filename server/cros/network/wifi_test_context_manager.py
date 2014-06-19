@@ -32,7 +32,6 @@ class WiFiTestContextManager(object):
     CMDLINE_PACKET_CAPTURE_SNAPLEN = 'capture_snaplen'
     CMDLINE_ROUTER_ADDR = 'router_addr'
     CMDLINE_ROUTER_PACKET_CAPTURES = 'router_capture'
-    CMDLINE_ROUTER_PORT = 'router_port'
     CONNECTED_STATES = 'ready', 'portal', 'online'
 
 
@@ -50,21 +49,6 @@ class WiFiTestContextManager(object):
         logging.debug('Test not running in lab zone and no '
                       'attenuator address given')
         return None
-
-
-    @property
-    def _router_address(self):
-        """@return string address of WiFi router host in test."""
-        hostname = self.client.host.hostname
-        if utils.host_is_in_lab_zone(hostname):
-            # Lab naming convention in: go/chromeos-lab-hostname-convention
-            return wifi_test_utils.get_router_addr_in_lab(hostname)
-
-        elif self.CMDLINE_ROUTER_ADDR in self._cmdline_args:
-            return self._cmdline_args[self.CMDLINE_ROUTER_ADDR]
-
-        raise error.TestError('Test not running in lab zone and no '
-                              'router address given')
 
 
     @property
@@ -117,17 +101,6 @@ class WiFiTestContextManager(object):
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.teardown()
-
-
-    def _is_hostname_pingable(self, hostname):
-        ping_helper = ping_runner.PingRunner()
-        ping_config = ping_runner.PingConfig(hostname, count=3,
-                                             interval=0.5, ignore_result=True,
-                                             ignore_status=True)
-        ping_result = ping_helper.ping(ping_config)
-        if ping_result is None or ping_result.loss:
-            return False
-        return True
 
 
     def get_wifi_addr(self, ap_num=0):
@@ -192,24 +165,18 @@ class WiFiTestContextManager(object):
 
     def setup(self):
         """Construct the state used in a WiFi test."""
-        # Build up our router we're going to use in the test.  This involves
-        # figuring out what kind of test setup we're using.
-        router_port = int(self._cmdline_args.get(self.CMDLINE_ROUTER_PORT, 22))
-        logging.info('Connecting to router at %s:%d',
-                     self._router_address, router_port)
-        if not self._is_hostname_pingable(self._router_address):
-            raise error.TestError('Router at %s is not pingable.',
-                                  self._router_address)
-
-        self._router = site_linux_router.LinuxRouter(
-                hosts.SSHHost(self._router_address, port=router_port),
-                self._test_name)
+        self._router = site_linux_router.build_router_proxy(
+                test_name=self._test_name,
+                client_hostname=self.client.host.hostname,
+                router_addr=self._cmdline_args.get(self.CMDLINE_ROUTER_ADDR,
+                                                   None))
         # The attenuator host gives us the ability to attenuate particular
         # antennas on the router.  Most setups don't have this capability
         # and most tests do not require it.  We use this for RvR
         # (network_WiFi_AttenuatedPerf) and some roaming tests.
         attenuator_addr = self._attenuator_address
-        if attenuator_addr and self._is_hostname_pingable(attenuator_addr):
+        ping_helper = ping_runner.PingRunner()
+        if attenuator_addr and ping_helper.simple_ping(attenuator_addr):
             self._attenuator = attenuator_controller.AttenuatorController(
                     hosts.SSHHost(self._attenuator_address, port=22))
         # Set up a clean context to conduct WiFi tests in.

@@ -9,8 +9,11 @@ import string
 import time
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros.network import interface
 from autotest_lib.client.common_lib.cros.network import netblock
+from autotest_lib.client.common_lib.cros.network import ping_runner
+from autotest_lib.server import hosts
 from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros import wifi_test_utils
 from autotest_lib.server.cros.network import hostap_config
@@ -21,6 +24,52 @@ StationInstance = collections.namedtuple('StationInstance',
 HostapdInstance = collections.namedtuple('HostapdInstance',
                                          ['ssid', 'conf_file', 'log_file',
                                           'interface', 'config_dict'])
+
+def build_router_hostname(client_hostname=None, router_hostname=None):
+    """Build a router hostname from a client hostname.
+
+    @param client_hostname: string hostname of DUT connected to a router.
+    @param router_hostname: string hostname of router.
+    @return string hostname of connected router or None if the hostname
+            cannot be inferred from the client hostname.
+
+    """
+    if not router_hostname and not client_hostname:
+        raise error.TestError('Either client_hostname or router_hostname must '
+                              'be specified to build_router_hostname.')
+
+    if router_hostname:
+        return router_hostname
+
+    if utils.host_is_in_lab_zone(client_hostname):
+        # Lab naming convention in: go/chromeos-lab-hostname-convention
+        return wifi_test_utils.get_router_addr_in_lab(client_hostname)
+
+    raise error.TestError('Could not infer router hostname from client'
+                          'hostname: %s.' % client_hostname)
+
+
+def build_router_proxy(test_name='', client_hostname=None, router_addr=None):
+    """Build up a LinuxRouter object.
+
+    Verifies that the remote host responds to ping.
+    Either client_hostname or router_addr must be specified.
+
+    @param test_name: string name of this test (e.g. 'network_WiFi_TestName').
+    @param client_hostname: string hostname of DUT if we're in the lab.
+    @param router_addr: string DNS/IPv4 address to use for router host object.
+
+    @return LinuxRouter or raise error.TestError on failure.
+
+    """
+    router_hostname = build_router_hostname(client_hostname)
+    logging.info('Connecting to router at %s', router_hostname)
+    ping_helper = ping_runner.PingRunner()
+    if not ping_helper.simple_ping(router_hostname):
+        raise error.TestError('Router at %s is not pingable.' %
+                              router_hostname)
+
+    return LinuxRouter(hosts.create_host(router_hostname), test_name)
 
 
 class LinuxRouter(site_linux_system.LinuxSystem):

@@ -188,6 +188,22 @@ class PingRunner(object):
         self.command_ping = command_ping
 
 
+    def simple_ping(self, host_name):
+        """Quickly test that a hostname or IPv4 address responds to ping.
+
+        @param host_name: string name or IPv4 address.
+        @return True iff host_name responds to at least one ping.
+
+        """
+        ping_config = PingConfig(host_name, count=3,
+                                 interval=0.5, ignore_result=True,
+                                 ignore_status=True)
+        ping_result = self.ping(ping_config)
+        if ping_result is None or ping_result.received == 0:
+            return False
+        return True
+
+
     def ping(self, ping_config):
         """Run ping with the given |ping_config|.
 
