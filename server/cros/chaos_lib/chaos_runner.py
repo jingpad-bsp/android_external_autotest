@@ -341,7 +341,7 @@ class ChaosRunner(object):
         return None
 
 
-    def run(self, job, batch_size=15, tries=10, capturer_hostname=None,
+    def run(self, job, batch_size=7, tries=10, capturer_hostname=None,
             conn_worker=None, work_client_hostname=None,
             disabled_sysinfo=False):
         """Executes Chaos test.
