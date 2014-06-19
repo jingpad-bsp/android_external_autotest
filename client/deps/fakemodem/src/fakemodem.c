@@ -451,7 +451,7 @@ static const gchar *
 handle_cmd(FakeModem *fakemodem, const gchar *cmd)
 {
   guint i;
-  Pattern *pat;
+  Pattern *pat = NULL;
 
   printf (" Cmd:  '%s'\n", cmd);
 
