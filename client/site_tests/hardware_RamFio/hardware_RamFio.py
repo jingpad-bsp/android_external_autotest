@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.bin import test
-from autotest_lib.client.bin import utils
+import os, shutil
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
 
@@ -24,7 +24,6 @@ class hardware_RamFio(test.test):
                      0 means all usable memory
         @param requirements: requirement to pass to hardware_StorageFio
         """
-
         # assume 20% overhead with ramfs
         usable_mem = int(utils.usable_memtotal() * 1024 * 0.8)
 
@@ -49,3 +48,6 @@ class hardware_RamFio(test.test):
 
         utils.run('umount /tmp/ramdisk')
 
+        dst = os.path.join(self.resultsdir, 'perf_measurements')
+        src = dst.replace('hardware_RamFio', 'hardware_StorageFio')
+        shutil.copyfile(src, dst)

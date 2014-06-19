@@ -44,6 +44,10 @@
     "master_name": "ChromeOS_Graphics"
   },
   {
+    "autotest_name": "hardware_RamFio",
+    "master_name": "ChromeOSPerf"
+  },
+  {
     "autotest_name": "hardware_StorageFio",
     "master_name": "ChromeOSPerf"
   },
