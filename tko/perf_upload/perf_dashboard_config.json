@@ -151,6 +151,10 @@
     "master_name": "ChromeOSTouchpad"
   },
   {
+    "autotest_name": "platform_CryptohomeFio.dirty_setting",
+    "master_name": "ChromeOSPerf"
+  },
+  {
     "autotest_name": "platform_MemoryMonitor",
     "master_name": "ChromeOSPerf"
   },
