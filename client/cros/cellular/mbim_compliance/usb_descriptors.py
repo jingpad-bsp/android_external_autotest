@@ -82,6 +82,13 @@ class DescriptorMeta(type):
                         'Expected descriptor type 0x%02X, got 0x%02X' %
                         (descriptor_type, obj.bDescriptorType))
 
+            descriptor_subtype = attrs.get('DESCRIPTOR_SUBTYPE')
+            if (descriptor_subtype is not None and
+                descriptor_subtype != obj.bDescriptorSubtype):
+                raise mbim_errors.MBIMComplianceFrameworkError(
+                        'Expected descriptor subtype 0x%02X, got 0x%02X' %
+                        (descriptor_subtype, obj.bDescriptorSubtype))
+
             if data_length != obj.bLength:
                 raise mbim_errors.MBIMComplianceFrameworkError(
                         'Expected descriptor length %d, got %d' %

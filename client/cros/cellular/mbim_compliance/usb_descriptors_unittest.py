@@ -14,7 +14,10 @@ from autotest_lib.client.cros.cellular.mbim_compliance.usb_descriptors \
 class TestDescriptor(Descriptor):
     """ Descriptor for unit testing. """
     DESCRIPTOR_TYPE = 0xAA
-    _FIELDS = (('B', 'bLength'), ('B', 'bDescriptorType'))
+    DESCRIPTOR_SUBTYPE = 0xBB
+    _FIELDS = (('B', 'bLength'),
+               ('B', 'bDescriptorType'),
+               ('B', 'bDescriptorSubtype'))
 
 
 class DescriptorTestCase(unittest.TestCase):
@@ -44,7 +47,7 @@ class DescriptorTestCase(unittest.TestCase):
             _FIELDS = (('B', 'bLength'), ('B', 'bDescriptorType'))
 
         descriptor_data = array('B', [0x02, 0xAA])
-        descriptor = TestDescriptor(descriptor_data)
+        descriptor = DescriptorTypeNotDefined(descriptor_data)
         self.assertEqual(2, descriptor.bLength)
         self.assertEqual(0xAA, descriptor.bDescriptorType)
         self.assertEqual(descriptor_data, descriptor.data)
@@ -60,7 +63,20 @@ class DescriptorTestCase(unittest.TestCase):
         with self.assertRaisesRegexp(
                 mbim_errors.MBIMComplianceFrameworkError,
                 '^Expected descriptor type 0xAA, got 0xBB$'):
-            descriptor = TestDescriptor(array('B', [0x02, 0xBB]))
+            descriptor = TestDescriptor(array('B', [0x03, 0xBB, 0xBB]))
+
+
+    def test_descriptor_subtype_mismatch(self):
+        """
+        Verifies that an exception is raised when constructing a Descriptor
+        subclass from raw descriptor data with a descriptor subtype that differs
+        from the value specified by the DESCRIPTOR_SUBTYPE attribute of the
+        subclass.
+        """
+        with self.assertRaisesRegexp(
+                mbim_errors.MBIMComplianceFrameworkError,
+                '^Expected descriptor subtype 0xBB, got 0xCC$'):
+            descriptor = TestDescriptor(array('B', [0x03, 0xAA, 0xCC]))
 
 
     def test_descriptor_length_mismatch(self):
@@ -71,13 +87,13 @@ class DescriptorTestCase(unittest.TestCase):
         """
         with self.assertRaisesRegexp(
                 mbim_errors.MBIMComplianceFrameworkError,
-                '^Expected descriptor length 2, got 1$'):
-            descriptor = TestDescriptor(array('B', [0x01, 0xAA]))
+                '^Expected descriptor length 3, got 1$'):
+            descriptor = TestDescriptor(array('B', [0x01, 0xAA, 0xBB]))
 
         with self.assertRaisesRegexp(
                 mbim_errors.MBIMComplianceFrameworkError,
-                '^Expected descriptor length 2, got 3$'):
-            descriptor = TestDescriptor(array('B', [0x03, 0xAA]))
+                '^Expected descriptor length 3, got 4$'):
+            descriptor = TestDescriptor(array('B', [0x04, 0xAA, 0xBB]))
 
 
     def test_descriptor_data_less_than_total_size_of_fields(self):
@@ -88,8 +104,8 @@ class DescriptorTestCase(unittest.TestCase):
         """
         with self.assertRaisesRegexp(
                 mbim_errors.MBIMComplianceFrameworkError,
-                '^Expected 2 or more bytes of descriptor data, got 1$'):
-            descriptor = TestDescriptor(array('B', [0x02]))
+                '^Expected 3 or more bytes of descriptor data, got 1$'):
+            descriptor = TestDescriptor(array('B', [0x03]))
 
 
     def test_descriptor_data_more_than_total_size_of_fields(self):
