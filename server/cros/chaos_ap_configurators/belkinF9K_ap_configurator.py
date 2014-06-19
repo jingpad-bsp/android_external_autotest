@@ -6,9 +6,10 @@
 
 import logging
 import urlparse
-
+import time
 import dynamic_ap_configurator
 import ap_spec
+from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import WebDriverException
 from selenium.common.exceptions import TimeoutException as \
     SeleniumTimeoutException
@@ -35,13 +36,25 @@ class BelkinF9KAPConfigurator(
             raise RuntimeError('Unhandeled modal dialog. %s' % text)
 
 
+    def open_new_tab(self):
+         """Re-Opens tab on the browser"""
+         body = self.driver.find_element_by_tag_name("body")
+         body.send_keys(Keys.CONTROL + 't')
+
+
     def _login(self):
         """Opens the login page and logs in using the password.
            We need to login before doing any other change to make sure that
            we have access to the router."""
         page_url = urlparse.urljoin(self.admin_interface_url,'login.stm')
-        self.get_url(page_url, page_title='login.stm')
         xpath = '//input[@name="pws"]'
+        try:
+            self.open_new_tab()
+            self.get_url(page_url, page_title='login.stm')
+            self.wait_for_object_by_xpath(xpath, wait_time=10)
+        except WebDriverException as e:
+            logging.info("Page did not load or %s", str(e))
+            self.driver.refresh()
         self.wait_for_object_by_xpath(xpath, wait_time=10)
         self.set_content_of_text_field_by_xpath('password', xpath,
                                                 abort_check=True)
@@ -130,19 +143,9 @@ class BelkinF9KAPConfigurator(
             self.wait_for_object_by_xpath_to_vanish('//input[@name= \
                                                     "timeRemain]"',wait_time=30)
             self.wait.until(lambda _:'setup.htm' in self.driver.title)
-        except SeleniumTimeoutException, e:
+        except WebDriverException, e:
             logging.info("Driver title page did not load or %s", str(e))
-            self.driver.refresh()
-            xpath= '//h1[contains(text(), "Duplicate Administrator")]'
-            try:
-                self.wait.until(lambda _:'setup.htm' in self.driver.title)
-                if (self.driver.find_element_by_xpath(xpath)):
-                    logging.info("We got a 'Duplicate Administrator' page "
-                                 "when we saved the changes.")
-            except:
-                # If home page did not load even after a refresh just continue
-                # because we already clicked Apply and waited.
-                pass
+            self.open_new_tab()
         finally:
             self.restore_default_wait_time()
 
@@ -183,6 +186,9 @@ class BelkinF9KAPConfigurator(
             raise RuntimeError('The mode %d not supported by router %s. ',
                                hex(mode), self.name)
         xpath = '//select[@name="wbr"]'
+        self.wait_for_object_by_xpath(xpath)
+        while self.number_of_items_in_popup_by_xpath(xpath) < 3:
+            time.sleep(0.25)
         self.select_item_from_popup_by_xpath(mode_name, xpath,
                                              wait_for_xpath=None,
                                              alert_handler=self._security_alert)
