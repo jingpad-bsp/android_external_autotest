@@ -284,8 +284,10 @@ def main():
     except Exception:
         email_manager.manager.log_stacktrace(
                 'Uncaught exception; terminating host_scheduler.')
-    email_manager.manager.send_queued_emails()
-    _db_manager.disconnect()
+        raise
+    finally:
+        email_manager.manager.send_queued_emails()
+        _db_manager.disconnect()
 
 
 if __name__ == '__main__':
