@@ -635,7 +635,7 @@ def fio_runner(test, job, env_vars,
     if name_prefix:
         perfdb_name = name_prefix + '_' + perfdb_name
 
-    result = fio_parser(fio.stdout, prefix=perfdb_name)
+    result = fio_parser(fio.stdout, prefix=name_prefix)
     if not graph_prefix:
         graph_prefix = ''
 
@@ -646,7 +646,8 @@ def fio_runner(test, job, env_vars,
     skip_matcher = re.compile('.*(trim.*|write.*_rd|read.*_wr)_.*')
     for k, v in result.iteritems():
         # Remove the prefix for value, and replace it the graph prefix.
-        k = k.replace('_' + perfdb_name, graph_prefix)
+        if name_prefix:
+            k = k.replace('_' + name_prefix, graph_prefix)
         if skip_matcher.match(k):
             continue
         if bw_matcher.match(k):
