@@ -7,7 +7,6 @@
 import logging, re
 
 from autotest_lib.client.bin import test, utils
-from autotest_lib.client.common_lib import error
 
 
 class kernel_HdParm(test.test):
@@ -17,10 +16,7 @@ class kernel_HdParm(test.test):
     version = 1
 
     def run_once(self):
-        if (utils.get_cpu_arch() == "arm"):
-            disk = '/dev/mmcblk0'
-        else:
-            disk = '/dev/sda'
+        disk = utils.get_fixed_dst_drive()
 
         logging.debug("Using device %s", disk)
 
