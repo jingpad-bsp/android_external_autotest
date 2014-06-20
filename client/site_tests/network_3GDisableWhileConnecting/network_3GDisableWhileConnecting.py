@@ -139,11 +139,15 @@ class FlimflamDisableTester(DisableTester):
     network.ResetAllModems(self.flimflam)
 
     self.cellular_device = self.flimflam.FindCellularDevice()
+    if self.cellular_device is None:
+      raise error.TestError("Could not find cellular device")
 
     self.synchronous_enable(self.cellular_device, False)
     self.synchronous_enable(self.cellular_device, True)
 
     self.cellular_service = self.flimflam.FindCellularService()
+    if self.cellular_service is None:
+      raise error.TestError("Could not find cellular service")
 
     self.assert_(self.cellular_device.GetProperties()['Address'].lower() in
                  self.cellular_service.GetProperties()['Device'])
