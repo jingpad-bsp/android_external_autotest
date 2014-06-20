@@ -8,6 +8,9 @@ import urlparse
 import dynamic_ap_configurator
 import ap_spec
 
+from selenium.common.exceptions import TimeoutException as \
+    SeleniumTimeoutException
+
 
 class NetgearDualBandAPConfigurator(
         dynamic_ap_configurator.DynamicAPConfigurator):
@@ -33,6 +36,8 @@ class NetgearDualBandAPConfigurator(
         elif 'recommends that you set the router to a high channel' in text:
             alert.accept()
         elif 'security authentication cannot work with WPS' in text:
+            alert.accept()
+        elif 'WPS requires SSID broadcasting in order to work' in text:
             alert.accept()
         else:
             raise RuntimeError('We have an unhandled alert on AP %s: %s' %
@@ -91,12 +96,19 @@ class NetgearDualBandAPConfigurator(
         page_url = urlparse.urljoin(self.admin_interface_url,
                                     'WLG_wireless_dual_band.htm')
         try:
-            self.get_url(page_url, page_title='NETGEAR Router')
-        except:
+            for i in range(5):
+                self.get_url(page_url, page_title='NETGEAR Router')
+                if 'NETGEAR Router' in self.driver.title:
+                    break
+        except SeleniumTimeoutException, e:
             xpath = '//button[@name="yes" and @class="purpleBtn"]'
-            element = self.wait_for_object_by_xpath(xpath)
-            if element and element.is_displayed():
-                self.click_button_by_xpath(xpath)
+            for i in range(5):
+                element = self.wait_for_object_by_xpath(xpath)
+                if element and element.is_displayed():
+                    self.click_button_by_xpath(xpath)
+                    break
+            else:
+                self.driver.refresh()
         self.wait_for_object_by_xpath('//input[@name="ssid" and @type="text"]')
 
 
@@ -180,9 +192,9 @@ class NetgearDualBandAPConfigurator(
 
 
     def _set_security_disabled(self):
-        xpath = ('//input[@name="security_type" and @value="Disable"]')
+        xpath = '//input[@name="security_type"]'
         if self.current_band == ap_spec.BAND_5GHZ:
-            xpath = ('//input[@name="security_type_an" and @value="Disable"]')
+            xpath = '//input[@name="security_type_an"]'
         self.click_button_by_xpath(xpath, alert_handler=self._alert_handler)
 
 
@@ -248,7 +260,7 @@ class NetgearDualBandAPConfigurator(
 
     def set_visibility(self, visible=True):
         # This router is very fussy with WPS even if it is not enabled.  It
-        # throws a dialog is visibility is off before you adjust security.
+        # throws an alert if visibility is off before you adjust security.
         # Bump visibilities priority to avoid that warning.
         self.add_item_to_command_list(self._set_visibility, (visible,), 1, 500)
 
@@ -261,4 +273,4 @@ class NetgearDualBandAPConfigurator(
         # These check boxes behave different from other APs.
         value = check_box.is_selected()
         if (visible and not value) or (not visible and value):
-            check_box.click()
+            self.click_button_by_xpath(xpath, alert_handler=self._alert_handler)
