@@ -2,56 +2,49 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os, time
+from autotest_lib.client.common_lib import utils
+from autotest_lib.client.cros.ui import ui_test_base
 
 
-from autotest_lib.client.bin import test, utils
-from autotest_lib.client.common_lib import file_utils
-from autotest_lib.client.cros.video import bp_image_comparer
+class ui_SystemTray(ui_test_base.ui_TestBase):
+    """
+    Collects system tray screenshots.
+
+    See comments on parent class for overview of how things flow.
+
+    """
+
+    shelf_height = None
+    x_offset_in_pixels = None
+    y_offset_in_pixels = None
 
 
-WORKING_DIR = '/tmp/test'
-BIOPIC_PROJECT_NAME = 'chromeos.test.desktopui.systemtray.private'
-
-# TODO: Set up an alias so that anyone can monitor results.
-BIOPIC_CONTACT_EMAIL = 'mussa@google.com'
-BIOPIC_TIMEOUT_S = 1
+    @property
+    def test_area(self):
+        return 'system_tray'
 
 
-class ui_SystemTray(test.test):
+    def capture_screenshot(self, filepath):
+        utils.take_screen_shot_crop_by_height(filepath,
+                                              ui_SystemTray.shelf_height,
+                                              ui_SystemTray.x_offset_in_pixels,
+                                              ui_SystemTray.y_offset_in_pixels)
 
-    # Comply with autotest requiring 'version' attribute
-    version = 2
 
     def run_once(self, shelf_height, x_offset_in_pixels, y_offset_in_pixels):
+        """ Called by autotest. Calls the parent template method that runs test.
+
         """
-        Runs the test.
-        """
 
-        file_utils.make_leaf_dir(WORKING_DIR)
+        # store values passed in from control file.
+        # we will use them in capture_screenshot() which will get called as
+        # part of run_screenshot_comparison_test() - the parent's method.
 
-        timestamp = time.strftime('%Y_%m_%d_%H%M', time.localtime())
+        ui_SystemTray.shelf_height = shelf_height
+        ui_SystemTray.x_offset_in_pixels = x_offset_in_pixels
+        ui_SystemTray.y_offset_in_pixels = y_offset_in_pixels
 
-        filename = '%s_%s_%s.png' % (timestamp,
-                                     utils.get_current_board(),
-                                     utils.get_chromeos_release_version())
-
-        filepath = os.path.join(WORKING_DIR, filename)
-
-        utils.take_screen_shot_crop_by_height(filepath,
-                                              shelf_height,
-                                              x_offset_in_pixels,
-                                              y_offset_in_pixels)
-
-        with bp_image_comparer.BpImageComparer(BIOPIC_PROJECT_NAME,
-                                               BIOPIC_CONTACT_EMAIL,
-                                               BIOPIC_TIMEOUT_S) as comparer:
-            # We just care about storing these images for we can look at them
-            # later. We don't wish to compare images right now.
-            # Make reference images same as test image!
-            comparer.compare(filepath, filepath)
-
-        file_utils.rm_dir_if_exists(WORKING_DIR)
-
+        # see parent for implementation!
+        self.run_screenshot_comparison_test()
 
 
