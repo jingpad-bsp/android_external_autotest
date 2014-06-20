@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import ConfigParser
 import functools
 import httplib
 import logging
@@ -12,6 +13,7 @@ import subprocess
 import time
 import xmlrpclib
 
+import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
@@ -2064,6 +2066,34 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         except error.AutoservRunError:
             # The tool is not installed.
             return []
+
+
+    @label_decorator('video_glitch_detection')
+    def is_video_glitch_detection_supported(self):
+        """ Determine if a board under test is supported for video glitch
+        detection tests.
+
+        @return: 'video_glitch_detection' if board is supported, None otherwise.
+        """
+        parser = ConfigParser.SafeConfigParser()
+        filename = os.path.join(
+                common.autotest_dir, 'client/cros/video/device_spec.conf')
+
+        dut = self.get_board().replace(ds_constants.BOARD_PREFIX, '')
+
+        try:
+            parser.read(filename)
+
+            supported_boards = parser.sections()
+
+            if dut in supported_boards:
+                return 'video_glitch_detection'
+            else:
+                return None
+
+        except ConfigParser.error:
+            # something went wrong while parsing the conf file
+            return None
 
 
     def get_labels(self):
