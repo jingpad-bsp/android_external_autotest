@@ -25,6 +25,11 @@ class MBIMComplianceFrameworkError(MBIMComplianceError):
     pass
 
 
+class MBIMComplianceChannelError(MBIMComplianceError):
+    """ Errors raised in the MBIM communication channel. """
+    pass
+
+
 class MBIMComplianceTestError(MBIMComplianceError):
     """ Errors raised by compliance suite tests. """
     pass
