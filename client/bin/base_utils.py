@@ -723,7 +723,7 @@ def get_disk_from_filename(filename):
     """
     re_disk = re.compile('/dev/sd[a-z]|/dev/mmcblk[0-9]*')
 
-    if not os.path.isfile(filename):
+    if not os.path.exists(filename):
         raise error.TestError('file %s missing' % filename)
 
     if filename[0] != '/':
