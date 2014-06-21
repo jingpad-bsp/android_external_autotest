@@ -14,13 +14,16 @@ Copyright Martin J. Bligh, Andy Whitcroft 2007
 import getpass, os, sys, re, tempfile, time, select, platform
 import traceback, shutil, warnings, fcntl, pickle, logging, itertools, errno
 from autotest_lib.client.bin import sysinfo
-from autotest_lib.client.common_lib import base_job
+from autotest_lib.client.common_lib import base_job, global_config
 from autotest_lib.client.common_lib import error, utils, packages
 from autotest_lib.client.common_lib import logging_manager
 from autotest_lib.server import test, subcommand, profilers
 from autotest_lib.server.hosts import abstract_ssh, factory as host_factory
 from autotest_lib.tko import db as tko_db, status_lib, utils as tko_utils
 
+
+INCREMENTAL_TKO_PARSING = global_config.global_config.get_config_value(
+        'autoserv', 'incremental_tko_parsing', type=bool, default=False)
 
 def _control_segment_path(name):
     """Get the pathname of the named control segment file."""
@@ -235,7 +238,8 @@ class base_server_job(base_job.base_job):
             utils.write_keyval(self.resultdir, job_data)
 
         self._parse_job = parse_job
-        self._using_parser = (self._parse_job and len(machines) <= 1)
+        self._using_parser = (INCREMENTAL_TKO_PARSING and self._parse_job
+                              and len(machines) <= 1)
         self.pkgmgr = packages.PackageManager(
             self.autodir, run_function_dargs={'timeout':600})
         self.num_tests_run = 0
@@ -462,7 +466,7 @@ class base_server_job(base_job.base_job):
         if self._parse_job and is_forking and log:
             def wrapper(machine):
                 self._parse_job += "/" + machine
-                self._using_parser = True
+                self._using_parser = INCREMENTAL_TKO_PARSING
                 self.machines = [machine]
                 self.push_execution_context(machine)
                 os.chdir(self.resultdir)
