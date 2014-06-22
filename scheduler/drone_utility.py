@@ -1,4 +1,15 @@
 #!/usr/bin/python
+#pylint: disable-msg=C0111
+
+"""Utility module that executes management commands on the drone.
+
+1. This is the module responsible for orchestrating processes on a drone.
+2. It receives instructions via stdin and replies via stdout.
+3. Each invocation is responsible for the initiation of a set of batched calls.
+4. The batched calls may be synchronous or asynchronous.
+5. The caller is responsible for monitoring asynchronous calls through pidfiles.
+"""
+
 
 import pickle, subprocess, os, shutil, sys, time, signal, getpass
 import datetime, traceback, tempfile, itertools, logging
@@ -100,9 +111,17 @@ class BaseDroneUtility(object):
     @classmethod
     @timer.decorate
     def _get_process_info(cls):
-        """
+        """Parse ps output for all process information.
+
         @returns A generator of dicts with cls._PS_ARGS as keys and
-                string values each representing a running process.
+            string values each representing a running process. eg:
+            {
+                'comm': command_name,
+                'pgid': process group id,
+                'ppid': parent process id,
+                'pid': process id,
+                'args': args the command was invoked with,
+            }
         """
         @retry.retry(subprocess.CalledProcessError,
                      timeout_min=0.5, delay_sec=0.25)
@@ -119,6 +138,16 @@ class BaseDroneUtility(object):
 
     def _refresh_processes(self, command_name, open=open,
                            site_check_parse=None):
+        """Refreshes process info for the given command_name.
+
+        Examines ps output as returned by get_process_info and returns
+        the process dicts for processes matching the given command name.
+
+        @param command_name: The name of the command, eg 'autoserv'.
+
+        @return: A list of process info dictionaries as returned by
+            _get_process_info.
+        """
         # The open argument is used for test injection.
         check_mark = global_config.global_config.get_config_value(
             'SCHEDULER', 'check_processes_for_dark_mark', bool, False)

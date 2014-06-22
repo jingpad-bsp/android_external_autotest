@@ -1,6 +1,9 @@
+#pylint: disable-msg=C0111
+
 import cPickle, os, tempfile, logging
 import common
 from autotest_lib.scheduler import drone_utility, email_manager
+from autotest_lib.client.bin import local_host
 from autotest_lib.client.common_lib import error, global_config, utils
 from autotest_lib.client.common_lib.cros.graphite import stats
 
@@ -26,10 +29,18 @@ class _BaseAbstractDrone(object):
         self.max_processes = 0
         self.active_processes = 0
         self.allowed_users = None
+        self._autotest_install_dir = AUTOTEST_INSTALL_DIR
+        self._host = None
 
 
     def shutdown(self):
         pass
+
+
+    @property
+    def _drone_utility_path(self):
+        return os.path.join(self._autotest_install_dir,
+                            'scheduler', 'drone_utility.py')
 
 
     def used_capacity(self):
@@ -56,7 +67,17 @@ class _BaseAbstractDrone(object):
 
 
     def _execute_calls_impl(self, calls):
-        raise NotImplementedError
+        if not self._host:
+            raise ValueError('Drone cannot execute calls without a host.')
+        logging.info("Running drone_utility on %s", self.hostname)
+        result = self._host.run('python %s' % self._drone_utility_path,
+                                stdin=cPickle.dumps(calls), stdout_tee=None,
+                                connect_timeout=300)
+        try:
+            return cPickle.loads(result.stdout)
+        except Exception: # cPickle.loads can throw all kinds of exceptions
+            logging.critical('Invalid response:\n---\n%s\n---', result.stdout)
+            raise
 
 
     def _execute_calls(self, calls):
@@ -68,6 +89,14 @@ class _BaseAbstractDrone(object):
             logging.warning(subject + '\n' + warning)
             email_manager.manager.enqueue_notify_email(subject, warning)
         return return_message['results']
+
+
+    def get_calls(self):
+        """Returns the calls queued against this drone.
+
+        @return: A list of calls queued against the drone.
+        """
+        return self._calls
 
 
     def call(self, method, *args, **kwargs):
@@ -85,8 +114,9 @@ class _BaseAbstractDrone(object):
     def execute_queued_calls(self):
         if not self._calls:
             return
-        self._execute_calls(self._calls)
+        results = self._execute_calls(self._calls)
         self.clear_call_queue()
+        return results
 
 
     def set_autotest_install_dir(self, path):
@@ -106,11 +136,8 @@ class _LocalDrone(_AbstractDrone):
     def __init__(self):
         super(_LocalDrone, self).__init__()
         self.hostname = 'localhost'
+        self._host = local_host.LocalHost()
         self._drone_utility = drone_utility.DroneUtility()
-
-
-    def _execute_calls_impl(self, calls):
-        return self._drone_utility.execute_calls(calls)
 
 
     def send_file_to(self, drone, source_path, destination_path,
@@ -131,13 +158,6 @@ class _RemoteDrone(_AbstractDrone):
         if not self._host.is_up():
             logging.error('Drone %s is unpingable, kicking out', hostname)
             raise DroneUnreachable
-        self._autotest_install_dir = AUTOTEST_INSTALL_DIR
-
-
-    @property
-    def _drone_utility_path(self):
-        return os.path.join(self._autotest_install_dir,
-                            'scheduler', 'drone_utility.py')
 
 
     def set_autotest_install_dir(self, path):
@@ -147,18 +167,6 @@ class _RemoteDrone(_AbstractDrone):
     def shutdown(self):
         super(_RemoteDrone, self).shutdown()
         self._host.close()
-
-
-    def _execute_calls_impl(self, calls):
-        logging.info("Running drone_utility on %s", self.hostname)
-        result = self._host.run('python %s' % self._drone_utility_path,
-                                stdin=cPickle.dumps(calls), stdout_tee=None,
-                                connect_timeout=300)
-        try:
-            return cPickle.loads(result.stdout)
-        except Exception: # cPickle.loads can throw all kinds of exceptions
-            logging.critical('Invalid response:\n---\n%s\n---', result.stdout)
-            raise
 
 
     def send_file_to(self, drone, source_path, destination_path,

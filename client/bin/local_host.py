@@ -27,7 +27,7 @@ class LocalHost(hosts.Host):
 
     def run(self, command, timeout=3600, ignore_status=False,
             stdout_tee=utils.TEE_TO_LOGS, stderr_tee=utils.TEE_TO_LOGS,
-            stdin=None, args=()):
+            stdin=None, args=(), **kwargs):
         """
         @see common_lib.hosts.Host.run()
         """
