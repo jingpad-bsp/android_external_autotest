@@ -79,14 +79,13 @@ class hardware_StorageStress(test.test):
         else:
             raise error.TestFail('Test failed with error: Invalid test command')
 
-        setup_func()
-
         # init statistic variable
         min_time_per_loop = sys.maxsize
         max_time_per_loop = 0
         all_loop_time = 0
         avr_time_per_loop = 0
         self._loop_count = 0
+        setup_func()
 
         start_time = time.time()
 
