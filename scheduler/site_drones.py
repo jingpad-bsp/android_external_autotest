@@ -40,4 +40,4 @@ class _SiteAbstractDrone(object):
         if self._processes_to_kill:
             self.queue_call('kill_processes', self._processes_to_kill)
         self.clear_processes_to_kill()
-        super(_SiteAbstractDrone, self).execute_queued_calls()
+        return super(_SiteAbstractDrone, self).execute_queued_calls()

@@ -1,10 +1,18 @@
-import os, time, heapq, traceback, logging
+import collections
+import heapq
+import os
+import Queue
+import time
+import threading
+import traceback
+import logging
 
 import common
 from autotest_lib.client.common_lib import error, global_config, utils
 from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.scheduler import email_manager, drone_utility, drones
 from autotest_lib.scheduler import scheduler_config
+from autotest_lib.scheduler import thread_lib
 
 
 # results on drones will be placed under the drone_installation_directory in a
@@ -144,7 +152,8 @@ class BaseDroneManager(object):
     # Minimum time to wait before next email
     # about a drone hitting process limit is sent.
     NOTIFY_INTERVAL = 60 * 60 * 24 # one day
-    _timer = stats.Timer('drone_manager')
+    _STATS_KEY = 'drone_manager'
+    _timer = stats.Timer(_STATS_KEY)
 
 
     def __init__(self):
@@ -172,6 +181,9 @@ class BaseDroneManager(object):
         # map drone hostname to time stamp of email that
         # has been sent about the drone hitting process limit.
         self._notify_record = {}
+        # A threaded task queue used to refresh drones asynchronously.
+        self._refresh_task_queue = thread_lib.ThreadedTaskQueue(
+                name='%s.refresh_queue' % self._STATS_KEY)
 
 
     def initialize(self, base_results_dir, drone_hostnames,
@@ -302,6 +314,12 @@ class BaseDroneManager(object):
 
 
     def _parse_pidfile(self, drone, raw_contents):
+        """Parse raw pidfile contents.
+
+        @param drone: The drone on which this pidfile was found.
+        @param raw_contents: The raw contents of a pidfile, eg:
+            "pid\nexit_staus\nnum_tests_failed\n".
+        """
         contents = PidfileContents()
         if not raw_contents:
             return contents
@@ -390,19 +408,66 @@ class BaseDroneManager(object):
                 self._notify_record[drone.hostname] = now
 
 
-    def refresh(self):
-        """
-        Called at the beginning of a scheduler cycle to refresh all process
-        information.
+    def trigger_refresh(self):
+        """Triggers a drone manager refresh.
+
+        @raises DroneManagerError: If a drone has un-executed calls.
+            Since they will get clobbered when we queue refresh calls.
         """
         self._reset()
         self._drop_old_pidfiles()
         pidfile_paths = [pidfile_id.path
                          for pidfile_id in self._registered_pidfile_info]
-        with self._timer.get_client('refresh'):
-            all_results = self._call_all_drones('refresh', pidfile_paths)
-        logging.info("Drones refreshed")
+        drones = list(self.get_drones())
+        for drone in drones:
+            calls = drone.get_calls()
+            if calls:
+                raise DroneManagerError('Drone %s has un-executed calls: %s '
+                                        'which might get corrupted through '
+                                        'this invocation' %
+                                        (drone, [str(call) for call in calls]))
+            drone.queue_call('refresh', pidfile_paths)
+        logging.info("Invoking drone refresh.")
+        with self._timer.get_client('trigger_refresh'):
+            self._refresh_task_queue.execute(drones, wait=False)
 
+
+    def sync_refresh(self):
+        """Complete the drone refresh started by trigger_refresh.
+
+        Waits for all drone threads then refreshes internal datastructures
+        with drone process information.
+        """
+
+        # This gives us a dictionary like what follows:
+        # {drone: [{'pidfiles': (raw contents of pidfile paths),
+        #           'autoserv_processes': (autoserv process info from ps),
+        #           'all_processes': (all process info from ps),
+        #           'parse_processes': (parse process infor from ps),
+        #           'pidfile_second_read': (pidfile contents, again),}]
+        #   drone2: ...}
+        # The values of each drone are only a list because this adheres to the
+        # drone utility interface (each call is executed and its results are
+        # places in a list, but since we never couple the refresh calls with
+        # any other call, this list will always contain a single dict).
+        with self._timer.get_client('sync_refresh'):
+            all_results = self._refresh_task_queue.get_results()
+        logging.info("Drones refreshed.")
+
+        # The loop below goes through and parses pidfile contents. Pidfiles
+        # are used to track autoserv execution, and will always contain < 3
+        # lines of the following: pid, exit code, number of tests. Each pidfile
+        # is identified by a PidfileId object, which contains a unique pidfile
+        # path (unique because it contains the job id) making it hashable.
+        # All pidfiles are stored in the drone managers _pidfiles dict as:
+        #   {pidfile_id: pidfile_contents(Process(drone, pid),
+        #                                 exit_code, num_tests_failed)}
+        # In handle agents, each agent knows its pidfile_id, and uses this
+        # to retrieve the refreshed contents of its pidfile via the
+        # PidfileRunMonitor (through its tick) before making decisions. If
+        # the agent notices that its process has exited, it unregisters the
+        # pidfile from the drone_managers._registered_pidfile_info dict
+        # through its epilog.
         for drone, results_list in all_results.iteritems():
             results = results_list[0]
             drone_hostname = drone.hostname.replace('.', '_')
@@ -430,13 +495,23 @@ class BaseDroneManager(object):
                 self._check_drone_process_limit(drone)
 
 
+    def refresh(self):
+        """Refresh all drones."""
+        with self._timer.get_client('refresh'):
+            self.trigger_refresh()
+            self.sync_refresh()
+
+
     def execute_actions(self):
         """
         Called at the end of a scheduler cycle to execute all queued actions
         on drones.
         """
-        for drone in self._drones.values():
-            drone.execute_queued_calls()
+        # Invoke calls queued on all drones since the last call to execute
+        # and wait for them to return.
+        thread_lib.ThreadedTaskQueue(
+                name='%s.execute_queue' % self._STATS_KEY).execute(
+                        self._drones.values())
 
         try:
             self._results_drone.execute_queued_calls()
