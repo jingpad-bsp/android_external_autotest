@@ -206,13 +206,14 @@ class _MockJobDirectory(job_directories._JobDirectory):
     def set_incomplete(self):
         """Make this job appear to have failed offload just once."""
         self._offload_count += 1
+        self._first_offload_start = time.time()
         if not os.path.isdir(self._dirname):
             os.mkdir(self._dirname)
 
     def set_reportable(self):
         """Make this job be reportable."""
-        self._offload_count += 1
         self.set_incomplete()
+        self._offload_count += 1
 
     def set_complete(self):
         """Make this job be completed."""
@@ -578,16 +579,16 @@ class JobDirectoryOffloadTests(_TempResultsDirTestBase):
         `logging.debug()`, regardless of whether the job was
         enqueued.  Nothing else is allowed to be logged.
      B. If the job is not eligible to be offloaded,
-        `_first_offload_start` and `_offload_count` are 0.
+        `get_failure_time()` and `get_failure_count()` are 0.
      C. If the job is not eligible for offload, nothing is
         enqueued in `queue`.
-     D. When the job is offloaded, `_offload_count` increments
+     D. When the job is offloaded, `get_failure_count()` increments
         each time.
      E. When the job is offloaded, the appropriate parameters are
         enqueued exactly once.
-     F. The first time a job is offloaded, `_first_offload_start` is
+     F. The first time a job is offloaded, `get_failure_time()` is
         set to the current time.
-     G. `_first_offload_start` only changes the first time that the
+     G. `get_failure_time()` only changes the first time that the
         job is offloaded.
 
     The test cases below are designed to exercise all of the
@@ -599,20 +600,6 @@ class JobDirectoryOffloadTests(_TempResultsDirTestBase):
         super(JobDirectoryOffloadTests, self).setUp()
         self._job = self.make_job(self.REGULAR_JOBLIST[0])
         self._queue = Queue.Queue()
-        self.mox.StubOutWithMock(logging, 'debug')
-
-    def _offload_once(self, days_old):
-        """Make one call to the `enqueue_offload()` method.
-
-        This method tests assertion A regarding message
-        logging.
-
-        """
-        logging.debug(mox.IgnoreArg(), self._job._dirname)
-        self.mox.ReplayAll()
-        self._job.enqueue_offload(self._queue, days_old)
-        self.mox.VerifyAll()
-        self.mox.ResetAll()
 
     def _offload_unexpired_job(self, days_old):
         """Make calls to `enqueue_offload()` for an unexpired job.
@@ -621,13 +608,14 @@ class JobDirectoryOffloadTests(_TempResultsDirTestBase):
         `enqueue_offload()` has no effect.
 
         """
-        self.assertEqual(self._job._offload_count, 0)
-        self.assertEqual(self._job._first_offload_start, 0)
-        self._offload_once(days_old)
-        self._offload_once(days_old)
+        self.assertEqual(self._job.get_failure_count(), 0)
+        self.assertEqual(self._job.get_failure_time(), 0)
+        self._job.enqueue_offload(self._queue, days_old)
+        self._job.enqueue_offload(self._queue, days_old)
         self.assertTrue(self._queue.empty())
-        self.assertEqual(self._job._offload_count, 0)
-        self.assertEqual(self._job._first_offload_start, 0)
+        self.assertEqual(self._job.get_failure_count(), 0)
+        self.assertEqual(self._job.get_failure_time(), 0)
+        self.assertFalse(self._job.is_reportable())
 
     def _offload_expired_once(self, days_old, count):
         """Make one call to `enqueue_offload()` for an expired job.
@@ -636,8 +624,8 @@ class JobDirectoryOffloadTests(_TempResultsDirTestBase):
         expected when a job is offloaded.
 
         """
-        self._offload_once(days_old)
-        self.assertEqual(self._job._offload_count, count)
+        self._job.enqueue_offload(self._queue, days_old)
+        self.assertEqual(self._job.get_failure_count(), count)
         self.assertFalse(self._queue.empty())
         v = self._queue.get_nowait()
         self.assertTrue(self._queue.empty())
@@ -647,18 +635,21 @@ class JobDirectoryOffloadTests(_TempResultsDirTestBase):
         """Make calls to `enqueue_offload()` for a just-expired job.
 
         This method directly tests assertions F and G regarding
-        side-effects on `_first_offload_start`.
+        side-effects on `get_failure_time()`.
 
         """
         t0 = time.time()
         self._offload_expired_once(days_old, 1)
-        t1 = self._job._first_offload_start
+        self.assertFalse(self._job.is_reportable())
+        t1 = self._job.get_failure_time()
         self.assertLessEqual(t1, time.time())
         self.assertGreaterEqual(t1, t0)
         self._offload_expired_once(days_old, 2)
-        self.assertEqual(self._job._first_offload_start, t1)
+        self.assertTrue(self._job.is_reportable())
+        self.assertEqual(self._job.get_failure_time(), t1)
         self._offload_expired_once(days_old, 3)
-        self.assertEqual(self._job._first_offload_start, t1)
+        self.assertTrue(self._job.is_reportable())
+        self.assertEqual(self._job.get_failure_time(), t1)
 
     def test_case_1_no_expiration(self):
         """Test a series of `enqueue_offload()` calls with `days_old` of 0.
@@ -767,10 +758,13 @@ class AddJobsTests(_TempResultsDirTestBase):
 
     def setUp(self):
         super(AddJobsTests, self).setUp()
+        self._initial_job_names = (
+            set(self.REGULAR_JOBLIST) | set(self.SPECIAL_JOBLIST))
         self.make_job_hierarchy()
         self._offloader = gs_offloader.Offloader(_get_options(['-a']))
+        self.mox.StubOutWithMock(logging, 'debug')
 
-    def _check_open_jobs(self, expected_key_set):
+    def _run_add_new_jobs(self, expected_key_set):
         """Basic test assertions for `_add_new_jobs()`.
 
         Asserts the following:
@@ -780,10 +774,16 @@ class AddJobsTests(_TempResultsDirTestBase):
             directory name.
 
         """
+        count = len(expected_key_set) - len(self._offloader._open_jobs)
+        logging.debug(mox.IgnoreArg(), count)
+        self.mox.ReplayAll()
+        self._offloader._add_new_jobs()
         self.assertEqual(expected_key_set,
                          set(self._offloader._open_jobs.keys()))
         for jobkey, job in self._offloader._open_jobs.items():
             self.assertEqual(jobkey, job._dirname)
+        self.mox.VerifyAll()
+        self.mox.ResetAll()
 
     def test_add_jobs_empty(self):
         """Test adding jobs to an empty dictionary.
@@ -792,9 +792,7 @@ class AddJobsTests(_TempResultsDirTestBase):
         the assertions of `self._check_open_jobs()`.
 
         """
-        self._offloader._add_new_jobs()
-        self._check_open_jobs(set(self.REGULAR_JOBLIST) |
-                              set(self.SPECIAL_JOBLIST))
+        self._run_add_new_jobs(self._initial_job_names)
 
     def test_add_jobs_non_empty(self):
         """Test adding jobs to a non-empty dictionary.
@@ -807,14 +805,12 @@ class AddJobsTests(_TempResultsDirTestBase):
         job object after the second call.
 
         """
-        self._offloader._add_new_jobs()
+        self._run_add_new_jobs(self._initial_job_names)
         jobs_copy = self._offloader._open_jobs.copy()
         for d in self.MOREJOBS:
             os.mkdir(d)
-        self._offloader._add_new_jobs()
-        self._check_open_jobs(set(self.REGULAR_JOBLIST) |
-                              set(self.SPECIAL_JOBLIST) |
-                              set(self.MOREJOBS))
+        self._run_add_new_jobs(self._initial_job_names |
+                                 set(self.MOREJOBS))
         for key in jobs_copy.keys():
             self.assertIs(jobs_copy[key],
                           self._offloader._open_jobs[key])
@@ -889,12 +885,38 @@ class ReportingTests(_TempResultsDirTestBase):
         self._offloader = gs_offloader.Offloader(_get_options([]))
         self.mox.StubOutWithMock(email_manager.manager,
                                  'send_email')
+        self.mox.StubOutWithMock(logging, 'debug')
 
     def _add_job(self, jobdir):
         """Add a job to the dictionary of unfinished jobs."""
         j = self.make_job(jobdir)
         self._offloader._open_jobs[j._dirname] = j
         return j
+
+    def _expect_log_message(self, new_open_jobs, with_failures):
+        """Mock expected logging calls.
+
+        `_update_offload_results()` logs one message with the number
+        of jobs removed from the open job set and the number of jobs
+        still remaining.  Additionally, if there are reportable
+        jobs, then it logs the number of jobs that haven't yet
+        offloaded.
+
+        This sets up the logging calls using `new_open_jobs` to
+        figure the job counts.  If `with_failures` is true, then
+        the log message is set up assuming that all jobs in
+        `new_open_jobs` have offload failures.
+
+        @param new_open_jobs New job set for calculating counts
+                             in the messages.
+        @param with_failures Whether the log message with a
+                             failure count is expected.
+
+        """
+        count = len(self._offloader._open_jobs) - len(new_open_jobs)
+        logging.debug(mox.IgnoreArg(), count, len(new_open_jobs))
+        if with_failures:
+            logging.debug(mox.IgnoreArg(), len(new_open_jobs))
 
     def _run_update_no_report(self, new_open_jobs):
         """Call `_update_offload_results()` expecting no report.
@@ -936,6 +958,7 @@ class ReportingTests(_TempResultsDirTestBase):
                              new value of the offloader's
                              `_open_jobs` field.
         """
+        logging.debug(mox.IgnoreArg())
         email_manager.manager.send_email(
             mox.IgnoreArg(), mox.IgnoreArg(), mox.IgnoreArg())
         self.mox.ReplayAll()
@@ -957,6 +980,7 @@ class ReportingTests(_TempResultsDirTestBase):
         e-mail report, and an empty `_open_jobs` list.
 
         """
+        self._expect_log_message({}, False)
         self._run_update_no_report({})
 
     def test_all_completed(self):
@@ -970,6 +994,7 @@ class ReportingTests(_TempResultsDirTestBase):
         """
         for d in self.REGULAR_JOBLIST:
             self._add_job(d).set_complete()
+        self._expect_log_message({}, False)
         self._run_update_no_report({})
 
     def test_none_finished(self):
@@ -983,7 +1008,9 @@ class ReportingTests(_TempResultsDirTestBase):
         """
         for d in self.REGULAR_JOBLIST:
             self._add_job(d)
-        self._run_update_no_report(self._offloader._open_jobs.copy())
+        new_jobs = self._offloader._open_jobs.copy()
+        self._expect_log_message(new_jobs, False)
+        self._run_update_no_report(new_jobs)
 
     def test_none_reportable(self):
         """Test `_update_offload_results()` with only incomplete jobs.
@@ -996,7 +1023,9 @@ class ReportingTests(_TempResultsDirTestBase):
         """
         for d in self.REGULAR_JOBLIST:
             self._add_job(d).set_incomplete()
-        self._run_update_no_report(self._offloader._open_jobs.copy())
+        new_jobs = self._offloader._open_jobs.copy()
+        self._expect_log_message(new_jobs, False)
+        self._run_update_no_report(new_jobs)
 
     def test_report_not_ready(self):
         """Test `_update_offload_results()` e-mail throttling.
@@ -1012,7 +1041,9 @@ class ReportingTests(_TempResultsDirTestBase):
         for d in self.REGULAR_JOBLIST:
             self._add_job(d).set_reportable()
         self._offloader._next_report_time += _MARGIN_SECS
-        self._run_update_no_report(self._offloader._open_jobs.copy())
+        new_jobs = self._offloader._open_jobs.copy()
+        self._expect_log_message(new_jobs, True)
+        self._run_update_no_report(new_jobs)
 
     def test_reportable(self):
         """Test `_update_offload_results()` with reportable jobs.
@@ -1025,7 +1056,27 @@ class ReportingTests(_TempResultsDirTestBase):
         """
         for d in self.REGULAR_JOBLIST:
             self._add_job(d).set_reportable()
-        self._run_update_with_report(self._offloader._open_jobs.copy())
+        new_jobs = self._offloader._open_jobs.copy()
+        self._expect_log_message(new_jobs, True)
+        self._run_update_with_report(new_jobs)
+
+    def test_reportable_mixed(self):
+        """Test `_update_offload_results()` with a mixture of jobs.
+
+        Initial conditions are an `_open_jobs` list consisting of
+        one reportable jobs and the remainder of the jobs
+        incomplete.  The value of `_next_report_time` is in the
+        past.  Expected result is an e-mail report that includes
+        both the reportable and the incomplete jobs, and no change
+        to the `_open_jobs` list.
+
+        """
+        self._add_job(self.REGULAR_JOBLIST[0]).set_reportable()
+        for d in self.REGULAR_JOBLIST[1:]:
+            self._add_job(d).set_incomplete()
+        new_jobs = self._offloader._open_jobs.copy()
+        self._expect_log_message(new_jobs, True)
+        self._run_update_with_report(new_jobs)
 
 
 if __name__ == '__main__':

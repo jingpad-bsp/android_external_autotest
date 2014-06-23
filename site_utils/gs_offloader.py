@@ -110,8 +110,6 @@ def get_cmd_list(dir_entry, relative_path):
   @return: A command list to be executed by Popen.
 
   """
-  logging.debug('Using google storage for offloading %s to %s.',
-                dir_entry, relative_path)
   return ['gsutil', '-m', 'cp', '-eR', '-a', 'project-private',
           dir_entry, GS_URI_PATTERN % relative_path]
 
@@ -243,17 +241,26 @@ class Offloader(object):
     that are currently not in `self._open_jobs`, and add them in.
 
     """
+    new_job_count = 0
     for cls in self._jobdir_classes:
       for resultsdir in cls.get_job_directories():
         if resultsdir in self._open_jobs:
           continue
         self._open_jobs[resultsdir] = cls(resultsdir)
+        new_job_count += 1
+    logging.debug("Start of offload cycle - found %d new jobs",
+                  new_job_count)
 
   def _remove_offloaded_jobs(self):
     """Removed offloaded jobs from `self._open_jobs`."""
+    removed_job_count = 0
     for jobkey, job in self._open_jobs.items():
       if job.is_offloaded():
         del self._open_jobs[jobkey]
+        removed_job_count += 1
+    logging.debug("End of offload cycle - cleared %d new jobs, "
+                  "carrying %d open jobs",
+                  removed_job_count, len(self._open_jobs))
 
   def _have_reportable_errors(self):
     """Return whether any jobs need reporting via e-mail.
@@ -280,13 +287,17 @@ class Offloader(object):
 
     """
     self._remove_offloaded_jobs()
-    if (self._have_reportable_errors() and
-        time.time() >= self._next_report_time):
+    if self._have_reportable_errors():
       # N.B. We include all jobs that have failed at least once,
       # which may include jobs that aren't otherwise reportable.
-      report_offload_failures([j for j in self._open_jobs.values()
-                                 if j.get_failure_time()])
-      self._next_report_time = time.time() + REPORT_INTERVAL_SECS
+      failed_jobs = [j for j in self._open_jobs.values()
+                             if j.get_failure_time()]
+      logging.debug("Currently there are %d jobs with offload failures",
+                    len(failed_jobs))
+      if time.time() >= self._next_report_time:
+          logging.debug("Reporting failures by e-mail")
+          report_offload_failures(failed_jobs)
+          self._next_report_time = time.time() + REPORT_INTERVAL_SECS
 
   def offload_once(self):
     """Perform one offload cycle.

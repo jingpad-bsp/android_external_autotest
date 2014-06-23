@@ -1,7 +1,6 @@
 import abc
 import datetime
 import glob
-import logging
 import os
 import time
 
@@ -113,13 +112,10 @@ class _JobDirectory(object):
     if not self._offload_count:
       timestamp = self.get_timestamp_if_finished()
       if not timestamp:
-        logging.debug('Skipping %s - not finished.', self._dirname)
         return
       if not _is_job_expired(age_limit, timestamp):
-        logging.debug('Skipping %s - not old enough.', self._dirname)
         return
       self._first_offload_start = time.time()
-    logging.debug('Processing %s', self._dirname)
     self._offload_count += 1
     queue.put([self._dirname, os.path.dirname(self._dirname)])
 
