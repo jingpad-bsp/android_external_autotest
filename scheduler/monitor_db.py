@@ -239,7 +239,7 @@ class BaseDispatcher(object):
     def __init__(self):
         self._agents = []
         self._last_clean_time = time.time()
-        user_cleanup_time = scheduler_config.config.clean_interval
+        user_cleanup_time = scheduler_config.config.clean_interval_minutes
         self._periodic_cleanup = monitor_db_cleanup.UserCleanup(
                 _db_manager.get_connection(), user_cleanup_time)
         self._24hr_upkeep = monitor_db_cleanup.TwentyFourHourUpkeep(
@@ -1257,10 +1257,11 @@ class HostlessQueueTask(AbstractQueueTask):
         # When a job is added to database, its initial status is always
         # Starting. In a scheduler tick, scheduler finds all jobs in Starting
         # status, check if any of them can be started. If scheduler hits some
-        # limit, e.g., max_hostless_jobs_per_drone, max_jobs_started_per_cycle,
-        # scheduler will leave these jobs in Starting status. Otherwise, the
-        # jobs' status will be changed to Running, and an autoserv process will
-        # be started in drone for each of these jobs.
+        # limit, e.g., max_hostless_jobs_per_drone,
+        # max_processes_started_per_cycle, scheduler will leave these jobs in
+        # Starting status. Otherwise, the jobs' status will be changed to
+        # Running, and an autoserv process will be started in drone for each of
+        # these jobs.
         # If the entry is still in status Starting, the process has not started
         # yet. Therefore, there is no need to parse and collect log. Without
         # this check, exception will be raised by scheduler as execution_subdir

@@ -13,9 +13,9 @@ from autotest_lib.client.common_lib.cros.graphite import stats
 class PeriodicCleanup(object):
 
 
-    def __init__(self, db, clean_interval, run_at_initialize=False):
+    def __init__(self, db, clean_interval_minutes, run_at_initialize=False):
         self._db = db
-        self.clean_interval = clean_interval
+        self.clean_interval_minutes = clean_interval_minutes
         self._last_clean_time = time.time()
         self._run_at_initialize = run_at_initialize
 
@@ -26,7 +26,8 @@ class PeriodicCleanup(object):
 
 
     def run_cleanup_maybe(self):
-        should_cleanup = (self._last_clean_time + self.clean_interval * 60
+        should_cleanup = (self._last_clean_time +
+                          self.clean_interval_minutes * 60
                           < time.time())
         if should_cleanup:
             self._cleanup()
@@ -40,7 +41,7 @@ class PeriodicCleanup(object):
 
 class UserCleanup(PeriodicCleanup):
     """User cleanup that is controlled by the global config variable
-       clean_interval in the SCHEDULER section.
+       clean_interval_minutes in the SCHEDULER section.
     """
     timer = stats.Timer('monitor_db_cleanup.user_cleanup')
 
@@ -222,9 +223,9 @@ class TwentyFourHourUpkeep(PeriodicCleanup):
 
 
     def __init__(self, db, run_at_initialize=True):
-        clean_interval = 24 * 60 # 24 hours
+        clean_interval_minutes = 24 * 60 # 24 hours
         super(TwentyFourHourUpkeep, self).__init__(
-            db, clean_interval, run_at_initialize=run_at_initialize)
+            db, clean_interval_minutes, run_at_initialize=run_at_initialize)
 
 
     @timer.decorate

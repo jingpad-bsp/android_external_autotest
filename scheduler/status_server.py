@@ -44,7 +44,7 @@ class StatusServerRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
     def _write_all_fields(self):
         self._write_line('Config values:')
-        for field in scheduler_config.SchedulerConfig.FIELDS:
+        for field, datatype in scheduler_config.SchedulerConfig.FIELDS:
             self._write_field(field, getattr(scheduler_config.config, field))
         self._write_line()
 
