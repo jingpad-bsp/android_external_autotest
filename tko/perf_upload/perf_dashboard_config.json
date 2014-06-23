@@ -52,6 +52,10 @@
     "master_name": "ChromeOSPerf"
   },
   {
+    "autotest_name": "hardware_StorageFio.bvt",
+    "master_name": "ChromeOSPerf"
+  },
+  {
     "autotest_name": "network_WiFi_AttenuatedPerf.ht40_ch001",
     "master_name": "ChromeOSWiFi",
     "dashboard_test_name": "network_WiFi_AttenuatedPerf"
