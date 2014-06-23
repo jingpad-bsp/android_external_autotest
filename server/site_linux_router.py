@@ -18,6 +18,9 @@ from autotest_lib.server.cros.network import hostap_config
 
 StationInstance = collections.namedtuple('StationInstance',
                                          ['ssid', 'interface', 'dev_type'])
+HostapdInstance = collections.namedtuple('HostapdInstance',
+                                         ['ssid', 'conf_file', 'log_file',
+                                          'interface', 'config_dict'])
 
 
 class LinuxRouter(site_linux_system.LinuxSystem):
@@ -32,7 +35,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
     """
 
     KNOWN_TEST_PREFIX = 'network_WiFi_'
-    STARTUP_POLLING_INTERVAL_SECONDS = 0.5
+    POLLING_INTERVAL_SECONDS = 0.5
     STARTUP_TIMEOUT_SECONDS = 10
     SUFFIX_LETTERS = string.ascii_lowercase + string.digits
     SUBNET_PREFIX_OCTETS = (192, 168)
@@ -119,8 +122,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.dhcp_high = 128
 
         # Kill hostapd and dhcp server if already running.
-        self.kill_hostapd()
-        self.stop_dhcp_servers()
+        self._kill_process_instance('hostapd', timeout_seconds=30)
+        self.stop_dhcp_server(instance=None)
 
         # Place us in the US by default
         self.iw_runner.set_regulatory_domain('US')
@@ -171,13 +174,12 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         start_command = '%s -dd -t %s &> %s & echo $!' % (
                 self.cmd_hostapd, conf_file, log_file)
         pid = int(self.router.run(start_command).stdout.strip())
-        self.hostapd_instances.append({
-            'ssid': hostapd_conf_dict['ssid'],
-            'conf_file': conf_file,
-            'log_file': log_file,
-            'interface': interface,
-            'config_dict': hostapd_conf_dict.copy()
-        })
+        self.hostapd_instances.append(HostapdInstance(
+                hostapd_conf_dict['ssid'],
+                conf_file,
+                log_file,
+                interface,
+                hostapd_conf_dict.copy()))
 
         # Wait for confirmation that the router came up.
         logging.info('Waiting for hostapd to startup.')
@@ -204,51 +206,78 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                 if early_exit:
                     raise error.TestFail('hostapd process terminated.')
 
-            time.sleep(self.STARTUP_POLLING_INTERVAL_SECONDS)
+            time.sleep(self.POLLING_INTERVAL_SECONDS)
         else:
             raise error.TestFail('Timed out while waiting for hostapd '
                                  'to start.')
 
 
-    def _kill_process_instance(self, process, instance=None, wait=0):
+    def _kill_process_instance(self,
+                               process,
+                               instance=None,
+                               timeout_seconds=10,
+                               ignore_timeouts=False):
         """Kill a process on the router.
 
-        Kills program named |process|, optionally only a specific
-        |instance|.  If |wait| is specified, we makes sure |process| exits
-        before returning.
+        Kills remote program named |process| (optionally only a specific
+        |instance|).  Wait |timeout_seconds| for |process| to die
+        before returning.  If |ignore_timeouts| is False, raise
+        a TestError on timeouts.
 
-        @param process string name of process to kill.
-        @param instance string instance of process to kill.
-        @param wait int timeout in seconds to wait for.
+        @param process: string name of process to kill.
+        @param instance: string fragment of the command line unique to
+                this instance of the remote process.
+        @param timeout_seconds: float timeout in seconds to wait.
+        @param ignore_timeouts: True iff we should ignore failures to
+                kill processes.
+        @return True iff the specified process has exited.
 
         """
-        if instance:
+        if instance is not None:
             search_arg = '-f "%s.*%s"' % (process, instance)
         else:
             search_arg = process
 
-        cmd = "pkill %s >/dev/null 2>&1" % search_arg
+        self.host.run('pkill %s' % search_arg, ignore_status=True)
+        is_dead = False
+        start_time = time.time()
+        while not is_dead and time.time() - start_time < timeout_seconds:
+            time.sleep(self.POLLING_INTERVAL_SECONDS)
+            is_dead = self.host.run(
+                    'pgrep %s' % search_arg,
+                    ignore_status=True).exit_status != 0
+        if is_dead or ignore_timeouts:
+            return is_dead
 
-        if wait:
-            cmd += (" && while pgrep %s &> /dev/null; do sleep 1; done" %
-                    search_arg)
-            self.router.run(cmd, timeout=wait, ignore_status=True)
-        else:
-            self.router.run(cmd, ignore_status=True)
+        raise error.TestError(
+                'Timed out waiting for %s%s to die' %
+                (process,
+                '' if instance is None else ' (instance=%s)' % instance))
 
 
     def kill_hostapd_instance(self, instance):
         """Kills a hostapd instance.
 
-        @param instance string instance to kill.
+        @param instance HostapdInstance object.
 
         """
-        self._kill_process_instance('hostapd', instance, 30)
-
-
-    def kill_hostapd(self):
-        """Kill all hostapd instances."""
-        self.kill_hostapd_instance(None)
+        is_dead = self._kill_process_instance(
+                'hostapd',
+                instance=instance.conf_file,
+                timeout_seconds=30,
+                ignore_timeouts=True)
+        if self.host.run('ls %s >/dev/null 2>&1' % instance.log_file,
+                         ignore_status=True).exit_status:
+            logging.error('Did not collect hostapd log file because '
+                          'it was missing.')
+        else:
+            self.router.get_file(instance.log_file,
+                                 'debug/hostapd_router_%d_%s.log' %
+                                 (self._total_hostapd_instances,
+                                  instance.interface))
+        self._total_hostapd_instances += 1
+        if not is_dead:
+            raise error.TestError('Timed out killing hostapd.')
 
 
     def _build_unique_ssid(self, suffix):
@@ -281,7 +310,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                                         self.station_instances):
             self.deconfig()
         self.start_hostapd(configuration)
-        interface = self.hostapd_instances[-1]['interface']
+        interface = self.hostapd_instances[-1].interface
         self.iw_runner.set_tx_power(interface, 'auto')
         self.start_local_server(interface)
         logging.info('AP configured.')
@@ -418,12 +447,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         @param instance string instance to kill.
 
         """
-        self._kill_process_instance('dnsmasq', instance, 0)
-
-
-    def stop_dhcp_servers(self):
-        """Stop all dhcp servers on the router."""
-        self.stop_dhcp_server(None)
+        self._kill_process_instance('dnsmasq', instance=instance)
 
 
     def get_wifi_channel(self, ap_num):
@@ -434,7 +458,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
         """
         instance = self.hostapd_instances[ap_num]
-        return instance['config_dict']['channel']
+        return instance.config_dict['channel']
 
 
     def get_wifi_ip(self, ap_num):
@@ -479,7 +503,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                                  (ap_num, len(self.hostapd_instances)))
 
         instance = self.hostapd_instances[ap_num]
-        return instance['interface']
+        return instance.interface
 
 
     def get_hostapd_mac(self, ap_num):
@@ -529,7 +553,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             if instance is not None:
                 instances = [ self.hostapd_instances.pop(instance) ]
                 for server in self.local_servers:
-                    if server['interface'] == instances[0]['interface']:
+                    if server['interface'] == instances[0].interface:
                         local_servers = [server]
                         self.local_servers.remove(server)
                         break
@@ -543,21 +567,10 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                 if silent:
                     # Deconfigure without notifying DUT.  Remove the interface
                     # hostapd uses to send beacon and DEAUTH packets.
-                    self.remove_interface(instance['interface'])
+                    self.remove_interface(instance.interface)
 
-                self.kill_hostapd_instance(instance['conf_file'])
-                if wifi_test_utils.is_installed(self.host,
-                                                instance['log_file']):
-                    self.router.get_file(instance['log_file'],
-                                         'debug/hostapd_router_%d_%s.log' %
-                                         (self._total_hostapd_instances,
-                                          instance['interface']))
-                else:
-                    logging.error('Did not collect hostapd log file because '
-                                  'it was missing.')
-                self.release_interface(instance['interface'])
-#               self.router.run("rm -f %(log_file)s %(conf_file)s" % instance)
-            self._total_hostapd_instances += 1
+                self.kill_hostapd_instance(instance)
+                self.release_interface(instance.interface)
         if self.station_instances:
             local_servers = self.local_servers
             self.local_servers = []
@@ -566,7 +579,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                 self.iw_runner.ibss_leave(instance.interface)
             elif instance.dev_type == 'managed':
                 self._kill_process_instance('wpa_supplicant',
-                                            instance.interface)
+                                            instance=instance.interface)
             else:
                 self.iw_runner.disconnect_station(instance.interface)
             self.router.run('%s link set %s down' %
@@ -585,7 +598,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         @param instance int router instance number.
 
         """
-        log_file = self.hostapd_instances[instance]['log_file']
+        log_file = self.hostapd_instances[instance].log_file
         pmksa_match = 'PMK from PMKSA cache'
         result = self.router.run('grep -q "%s" %s' % (pmksa_match, log_file),
                                  ignore_status=True)
@@ -602,7 +615,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                                      'multiple instances present.')
 
         if self.hostapd_instances:
-            return self.hostapd_instances[instance]['ssid']
+            return self.hostapd_instances[instance].ssid
 
         if self.station_instances:
             return self.station_instances[0].ssid
@@ -617,7 +630,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                deauthenticated.
 
         """
-        control_if = self.hostapd_instances[-1]['config_dict']['ctrl_interface']
+        control_if = self.hostapd_instances[-1].config_dict['ctrl_interface']
         self.router.run('%s -p%s deauthenticate %s' %
                         (self.cmd_hostapd_cli, control_if, client_mac))
 
@@ -630,7 +643,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         @param instance int indicating which hostapd instance to inject into.
 
         """
-        hostap_interface = self.hostapd_instances[instance]['interface']
+        hostap_interface = self.hostapd_instances[instance].interface
         interface = self.get_wlanif(0, 'monitor', same_phy_as=hostap_interface)
         self.router.run("%s link set %s up" % (self.cmd_ip, interface))
         self.router.run('%s -i %s -t %s -c %d' %
@@ -699,9 +712,9 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         @param instance int indicating which hostapd instance to query.
 
         """
-        interface = self.hostapd_instances[instance]['interface']
+        interface = self.hostapd_instances[instance].interface
         deauth_msg = "%s: deauthentication: STA=%s" % (interface, client_mac)
-        log_file = self.hostapd_instances[instance]['log_file']
+        log_file = self.hostapd_instances[instance].log_file
         result = self.router.run("grep -qi '%s' %s" % (deauth_msg, log_file),
                                  ignore_status=True)
         return result.exit_status == 0
@@ -719,7 +732,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                     '.. .. .. .. .. .. .. .. .. .. %s '
                     '.. .. .. .. .. .. .. .. 04 00.*48 01 ..' %
                     ' '.join(client_mac.split(':')))
-        log_file = self.hostapd_instances[instance]['log_file']
+        log_file = self.hostapd_instances[instance].log_file
         result = self.router.run("grep -qi '%s' %s" % (coex_msg, log_file),
                                  ignore_status=True)
         return result.exit_status == 0
@@ -746,7 +759,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             raise error.TestFail('Station is already configured.')
 
         ssid = self.get_ssid(instance)
-        hostap_conf = self.hostapd_instances[instance]['config_dict']
+        hostap_conf = self.hostapd_instances[instance].config_dict
         frequency = hostap_config.HostapConfig.get_frequency_for_channel(
                 hostap_conf['channel'])
         interface = self.get_wlanif(frequency, 'managed')

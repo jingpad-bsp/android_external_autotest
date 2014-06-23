@@ -67,20 +67,6 @@ def get_attenuator_addr_in_lab(hostname):
     return '%s-attenuator%s' % _get_machine_domain(hostname)
 
 
-def is_installed(host, filename):
-    """
-    Checks if a file exists on a remote machine.
-
-    @param host Host object representing the remote machine.
-    @param filename String path of the file to check for existence.
-    @return True if filename is installed on host; False otherwise.
-
-    """
-    result = host.run('ls %s 2> /dev/null' % filename, ignore_status=True)
-    m = re.search(filename, result.stdout)
-    return m is not None
-
-
 def get_install_path(host, filename):
     """
     Checks if a file exists on a remote machine in one of several paths.
@@ -114,7 +100,8 @@ def must_be_installed(host, cmd):
     @return String full path of cmd on success.  Error raised on failure.
 
     """
-    if is_installed(host, cmd):
+    if host.run('ls %s >/dev/null 2>&1' % cmd,
+                ignore_status=True).exit_status == 0:
         return cmd
 
     # Hunt for the equivalent file in a bunch of places.
