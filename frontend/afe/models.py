@@ -1549,6 +1549,7 @@ class SpecialTask(dbmodels.Model, model_logic.ModelExtensions):
     is_complete: task has finished running
     is_aborted: task was aborted
     time_started: date and time the task started
+    time_finished: date and time the task finished
     queue_entry: Host queue entry waiting on this task (or None, if task was not
                  started in preparation of a job)
     """
@@ -1567,6 +1568,7 @@ class SpecialTask(dbmodels.Model, model_logic.ModelExtensions):
     time_started = dbmodels.DateTimeField(null=True, blank=True)
     queue_entry = dbmodels.ForeignKey(HostQueueEntry, blank=True, null=True)
     success = dbmodels.BooleanField(default=False, blank=False, null=False)
+    time_finished = dbmodels.DateTimeField(null=True, blank=True)
 
     objects = model_logic.ExtendedManager()
 
@@ -1653,6 +1655,7 @@ class SpecialTask(dbmodels.Model, model_logic.ModelExtensions):
         self.is_active = False
         self.is_complete = True
         self.success = success
+        self.time_finished = datetime.now()
         self.save()
 
 
