@@ -2096,6 +2096,22 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             # something went wrong while parsing the conf file
             return None
 
+    @label_decorator('touch_labels')
+    def get_touch(self):
+        """
+        Determine whether board under test has a touchpad or touchscreen.
+
+        @return: A list of some combination of 'touchscreen' and 'touchpad',
+            depending on what is present on the device.
+        """
+        labels = []
+        input_cmd = '/opt/google/input/inputcontrol --names -t %s'
+        for elt in ['touchpad', 'touchscreen']:
+            if self.run(input_cmd % elt).stdout:
+                labels.append(elt)
+        return labels
+
+
 
     def get_labels(self):
         """Return a list of labels for this given host.
