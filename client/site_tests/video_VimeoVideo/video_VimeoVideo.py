@@ -7,6 +7,7 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 
+import logging
 import os
 import time
 
@@ -91,6 +92,8 @@ class video_VimeoVideo(test.test):
         self._wait_for_player_status(self._PLAYER_PLAY_STATE)
         playback = 0 # seconds
         prev_playback = 0
+        logging.info('video current time before loop: %s',
+                     self._video_current_time())
         while (playback < self._PLAYBACK_TEST_TIME_S):
             if self._video_current_time() <= prev_playback:
                 utils.poll_for_condition(
@@ -100,7 +103,11 @@ class video_VimeoVideo(test.test):
                         timeout=self._WAIT_TIMEOUT_S,
                         sleep_interval=1)
             prev_playback = self._video_current_time()
+            logging.info('video curr time before sleep n prev playback: %s %s',
+                         self._video_current_time(), prev_playback)
             time.sleep(1)
+            logging.info('video current time after sleep: %s',
+                         self._video_current_time())
             playback = playback + 1
 
 
