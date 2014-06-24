@@ -441,7 +441,7 @@ class HostQueueEntry(DBObject):
     _table_name = 'afe_host_queue_entries'
     _fields = ('id', 'job_id', 'host_id', 'status', 'meta_host',
                'active', 'complete', 'deleted', 'execution_subdir',
-               'atomic_group_id', 'aborted', 'started_on')
+               'atomic_group_id', 'aborted', 'started_on', 'finished_on')
     _timer = stats.Timer('scheduler_models.HostQueueEntry')
 
 
@@ -600,6 +600,7 @@ class HostQueueEntry(DBObject):
         if status is not models.HostQueueEntry.Status.ABORTED:
             self.job.stop_if_necessary()
 
+        self.set_finished_on_now()
         if not self.execution_subdir:
             return
         # unregister any possible pidfiles associated with this queue entry
@@ -700,6 +701,7 @@ class HostQueueEntry(DBObject):
         assert self.host
         self.set_status(models.HostQueueEntry.Status.QUEUED)
         self.update_field('started_on', None)
+        self.update_field('finished_on', None)
         # verify/cleanup failure sets the execution subdir, so reset it here
         self.set_execution_subdir('')
         if self.meta_host:
@@ -844,6 +846,10 @@ class HostQueueEntry(DBObject):
 
     def set_started_on_now(self):
         self.update_field('started_on', datetime.datetime.now())
+
+
+    def set_finished_on_now(self):
+        self.update_field('finished_on', datetime.datetime.now())
 
 
     def is_hostless(self):

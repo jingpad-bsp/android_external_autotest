@@ -580,6 +580,7 @@ True
 ...  'atomic_group': None,
 ...  'aborted': False,
 ...  'started_on': None,
+...  'finished_on': None,
 ...  'full_status': 'Queued'})
 True
 >>> data[2] == (
@@ -595,6 +596,7 @@ True
 ...  'atomic_group': None,
 ...  'aborted': False,
 ...  'started_on': None,
+...  'finished_on': None,
 ...  'full_status': 'Queued'})
 True
 >>> rpc_interface.get_num_host_queue_entries(job=1)

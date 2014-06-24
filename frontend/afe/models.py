@@ -1317,6 +1317,7 @@ class HostQueueEntry(dbmodels.Model, model_logic.ModelExtensions):
     atomic_group = dbmodels.ForeignKey(AtomicGroup, blank=True, null=True)
     aborted = dbmodels.BooleanField(default=False)
     started_on = dbmodels.DateTimeField(null=True, blank=True)
+    finished_on = dbmodels.DateTimeField(null=True, blank=True)
 
     objects = model_logic.ExtendedManager()
 

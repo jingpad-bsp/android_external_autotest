@@ -5,6 +5,7 @@ import datetime
 import common
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import frontend_test_utils
+from autotest_lib.client.common_lib import host_queue_entry_states
 from autotest_lib.client.common_lib.test_utils import mock
 from autotest_lib.client.common_lib.test_utils import unittest
 from autotest_lib.database import database_connection
@@ -157,7 +158,8 @@ class DBObjectTest(BaseSchedulerModelsTest):
         self.god.stub_with(scheduler_models, 'Job', MockJob)
         hqe = scheduler_models.HostQueueEntry(
                 new_record=True,
-                row=[0, 1, 2, 'Queued', None, 0, 0, 0, '.', None, False, None])
+                row=[0, 1, 2, 'Queued', None, 0, 0, 0, '.', None, False, None,
+                     None])
         hqe.save()
         new_id = hqe.id
         # Force a re-query and verify that the correct data was stored.
@@ -174,6 +176,7 @@ class DBObjectTest(BaseSchedulerModelsTest):
         self.assertEqual(hqe.execution_subdir, '.')
         self.assertEqual(hqe.atomic_group_id, None)
         self.assertEqual(hqe.started_on, None)
+        self.assertEqual(hqe.finished_on, None)
 
 
 class HostTest(BaseSchedulerModelsTest):
@@ -272,17 +275,34 @@ class HostQueueEntryTest(BaseSchedulerModelsTest):
         """abort should fail if the hqe still has agent not finished.
         """
         hqe, dispatcher = self.setup_abort_test(agent_finished=False)
+        self.assertIsNone(hqe.finished_on)
         with self.assertRaises(AssertionError):
             hqe.abort(dispatcher)
         self.god.check_playback()
+        # abort failed, finished_on should not be set
+        self.assertIsNone(hqe.finished_on)
 
 
     def test_abort_success(self):
         """abort should succeed if all agents for the hqe are finished.
         """
         hqe, dispatcher = self.setup_abort_test(agent_finished=True)
+        self.assertIsNone(hqe.finished_on)
         hqe.abort(dispatcher)
         self.god.check_playback()
+        self.assertIsNotNone(hqe.finished_on)
+
+
+    def test_set_finished_on(self):
+        """Test that finished_on is set when hqe completes."""
+        for status in host_queue_entry_states.Status.values:
+            hqe = self._create_hqe(hosts=[1])
+            self.assertIsNone(hqe.finished_on)
+            hqe.set_status(status)
+            if status in host_queue_entry_states.COMPLETE_STATUSES:
+                self.assertIsNotNone(hqe.finished_on)
+            else:
+                self.assertIsNone(hqe.finished_on)
 
 
 class JobTest(BaseSchedulerModelsTest):
