@@ -4,6 +4,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import stats_es_mock
+
+
 class Connection:
     """Mock class for statsd.Connection"""
     def __init__(self, host, port):
@@ -15,45 +18,19 @@ class Connection:
         pass
 
 
-class statsd_mock_base(object):
-    """Base class for a mock statsd class."""
-    def __init__(self, name, bare=False):
-        pass
-
-
-    def __getattribute__(self, name):
-        def any_call(*args, **kwargs):
-            pass
-
-        def decorate(f):
-            return f
-
-        # TODO (dshi) crbug.com/256111 - Find better solution for mocking
-        # statsd.
-        def get_client(*args, **kwargs):
-            return self
-
-        if name == 'decorate':
-            return decorate
-        elif name == 'get_client':
-            return get_client
-
-        return any_call
-
-
-class Average(statsd_mock_base):
+class Average(stats_es_mock.mock_class_base):
     """Mock class for statsd.Average."""
 
 
-class Counter(statsd_mock_base):
+class Counter(stats_es_mock.mock_class_base):
     """Mock class for statsd.Counter."""
 
 
-class Gauge(statsd_mock_base):
+class Gauge(stats_es_mock.mock_class_base):
     """Mock class for statsd.Gauge."""
 
 
-class Timer(statsd_mock_base):
+class Timer(stats_es_mock.mock_class_base):
     """Mock class for statsd.Timer."""
 
 
@@ -65,5 +42,5 @@ class Timer(statsd_mock_base):
         pass
 
 
-class Raw(statsd_mock_base):
+class Raw(stats_es_mock.mock_class_base):
     """Mock class for statsd.Raw."""

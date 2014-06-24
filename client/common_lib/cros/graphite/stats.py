@@ -8,6 +8,7 @@ import logging
 
 import common
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib.cros.graphite import es_utils
 
 try:
     import statsd
@@ -90,35 +91,105 @@ _conn = statsd.Connection(host=STATSD_SERVER, port=STATSD_PORT)
 
 class Average(statsd.Average):
     """Wrapper around statsd.Average."""
-    def __init__(self, name, connection=None, bare=False):
+
+    def __init__(self, name, connection=None, bare=False,
+                 metadata=None, index=None,
+                 es_host=es_utils.METADATA_ES_SERVER,
+                 es_port=es_utils.ES_PORT):
         conn = connection or _conn
         super(Average, self).__init__(_prepend_server(name, bare), conn)
+        self.metadata = metadata
+        self.index = index
+        self.es = es_utils.ESMetadata(es_host, es_port)
 
+
+    def send(self, subname, value):
+        """Sends time-series data to graphite and metadata (if any) to es.
+
+        @param subname: The subname to report the data to (i.e. 'daisy.reboot')
+        @param value: Value to be sent.
+        """
+        super(Average, self).send(subname, value)
+        self.es.post(index=self.index, metadata=self.metadata,
+                     subname=subname, value=value)
 
 class Counter(statsd.Counter):
     """Wrapper around statsd.Counter."""
-    def __init__(self, name, connection=None, bare=False):
+
+    def __init__(self, name, connection=None, bare=False,
+                 metadata=None, index=None,
+                 es_host=es_utils.METADATA_ES_SERVER,
+                 es_port=es_utils.ES_PORT):
         conn = connection or _conn
         super(Counter, self).__init__(_prepend_server(name, bare), conn)
+        self.metadata = metadata
+        self.index = index
+        self.es = es_utils.ESMetadata(es_host, es_port)
 
+
+    def _send(self, subname, value):
+        """Sends time-series data to graphite and metadata (if any) to es.
+
+        @param subname: The subname to report the data to (i.e. 'daisy.reboot')
+        @param value: Value to be sent.
+        """
+        super(Counter, self)._send(subname, value)
+        self.es.post(index=self.index, metadata=self.metadata,
+                     subname=subname, value=value)
 
 class Gauge(statsd.Gauge):
     """Wrapper around statsd.Gauge."""
-    def __init__(self, name, connection=None, bare=False):
+
+    def __init__(self, name, connection=None, bare=False,
+                 metadata=None, index=None,
+                 es_host=es_utils.METADATA_ES_SERVER,
+                 es_port=es_utils.ES_PORT):
         conn = connection or _conn
         super(Gauge, self).__init__(_prepend_server(name, bare), conn)
+        self.metadata = metadata
+        self.index = index
+        self.es = es_utils.ESMetadata(es_host, es_port)
+
+
+    def send(self, subname, value):
+        """Sends time-series data to graphite and metadata (if any) to es.
+
+        @param subname: The subname to report the data to (i.e. 'daisy.reboot')
+        @param value: Value to be sent.
+        """
+        super(Gauge, self).send(subname, value)
+        self.es.post(index=self.index, metadata=self.metadata,
+                     subname=subname, value=value)
 
 
 class Timer(statsd.Timer):
     """Wrapper around statsd.Timer."""
-    def __init__(self, name, connection=None, bare=False):
+
+    def __init__(self, name, connection=None, bare=False,
+                 metadata=None, index=None,
+                 es_host=es_utils.METADATA_ES_SERVER,
+                 es_port=es_utils.ES_PORT):
         conn = connection or _conn
         super(Timer, self).__init__(_prepend_server(name, bare), conn)
+        self.metadata = metadata
+        self.index = index
+        self.es = es_utils.ESMetadata(es_host, es_port)
 
 
     # To override subname to not implicitly append 'total'.
     def stop(self, subname=''):
         super(Timer, self).stop(subname)
+
+
+    def send(self, subname, value):
+        """Sends time-series data to graphite and metadata (if any) to es.
+
+        @param subname: The subname to report the data to (i.e. 'daisy.reboot')
+        @param value: Value to be sent.
+        """
+        super(Timer, self).send(subname, value)
+        self.es.post(index=self.index, metadata=self.metadata,
+                     subname=subname, value=value)
 
 
     def __enter__(self):
@@ -133,6 +204,27 @@ class Timer(statsd.Timer):
 
 class Raw(statsd.Raw):
     """Wrapper around statsd.Raw."""
-    def __init__(self, name, connection=None, bare=False):
+
+    def __init__(self, name, connection=None, bare=False,
+                 metadata=None, index=None,
+                 es_host=es_utils.METADATA_ES_SERVER,
+                 es_port=es_utils.ES_PORT):
         conn = connection or _conn
         super(Raw, self).__init__(_prepend_server(name, bare), conn)
+        self.metadata = metadata
+        self.index = index
+        self.es = es_utils.ESMetadata(es_host, es_port)
+
+
+    def send(self, subname, value, timestamp=None):
+        """Sends time-series data to graphite and metadata (if any) to es.
+
+        The datapoint we send is pretty much unchanged (will not be aggregated)
+
+        @param subname: The subname to report the data to (i.e. 'daisy.reboot')
+        @param value: Value to be sent.
+        @param timestamp: Time associated with when this stat was sent.
+        """
+        super(Raw, self).send(subname, value, timestamp)
+        self.es.post(index=self.index, metadata=self.metadata,
+                     subname=subname, value=value, timestamp=timestamp)
