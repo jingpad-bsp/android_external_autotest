@@ -76,7 +76,7 @@ class telemetry_UnitTests(test.test):
                 logging.error(test_spec.error_string())
             else:
                 logging.info('All %d %s unit tests passed.',
-                             len(runner.result.successes), test_spec.test_type)
+                             runner.result.successes_count, test_spec.test_type)
         elif test_spec.tests:
             raise error.TestFail('No results found.')
 
