@@ -39,6 +39,8 @@ class kernel_ConfigVerify(test.test):
         'BLK_DEV_SR',
         'BT',
         'TUN',
+        # Useful modules for users that should not be removed
+        'USB_SERIAL_OTI6858',
     ]
     IS_ENABLED = [
         # Either module or enabled, depending on platform.
