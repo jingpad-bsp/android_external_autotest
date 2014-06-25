@@ -46,16 +46,21 @@ class firmware_CorruptFwBodyB(FirmwareTest):
                               'mainfw_act': 'A',
                               'tried_fwb': '0',
                               }))
-        self.faft_client.system.set_try_fw_b()
+        if self.fw_vboot2:
+            self.faft_client.system.set_fw_try_next('B')
+        else:
+            self.faft_client.system.set_try_fw_b()
         self.reboot_warm()
 
         logging.info("If RO enabled, expected firmware B boot; otherwise, "
                      "still A boot since B is corrupted. Restore B later.")
         self.check_state((self.checkers.crossystem_checker, {
                               'mainfw_act': 'B' if RO_enabled else 'A',
-                              'tried_fwb': '1',
+                              'tried_fwb': '0' if self.fw_vboot2 else '1',
                               }))
         self.faft_client.bios.restore_body('b')
+        if self.fw_vboot2:
+            self.faft_client.system.set_fw_try_next('A')
         self.reboot_warm()
 
         logging.info("Final check and done.")

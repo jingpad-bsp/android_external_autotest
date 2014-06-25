@@ -34,6 +34,8 @@ class firmware_RollbackFirmware(FirmwareTest):
         if self.faft_client.system.get_platform_name() in (
                 'Mario', 'Alex', 'ZGB'):
             recovery_reason = vboot.RECOVERY_REASON['RO_INVALID_RW']
+        elif self.fw_vboot2:
+            recovery_reason = vboot.RECOVERY_REASON['RO_INVALID_RW']
         else:
             recovery_reason = vboot.RECOVERY_REASON['RW_FW_ROLLBACK']
 

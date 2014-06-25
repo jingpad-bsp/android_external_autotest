@@ -172,6 +172,8 @@ class FirmwareTest(FAFTBase):
         self._setup_gbb_flags()
         self._stop_service('update-engine')
         self._setup_ec_write_protect(ec_wp)
+        self.fw_vboot2 = self.faft_client.system.get_fw_vboot2()
+        logging.info('vboot version: %d', 2 if self.fw_vboot2 else 1)
         # See chromium:239034 regarding needing this sync.
         self.faft_client.system.run_shell_command('sync')
         time.sleep(self.faft_config.sync)

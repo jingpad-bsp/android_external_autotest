@@ -38,13 +38,16 @@ class firmware_CorruptFwSigB(FirmwareTest):
                               'mainfw_act': 'A',
                               'tried_fwb': '0',
                               }))
-        self.faft_client.system.set_try_fw_b()
+        if self.fw_vboot2:
+            self.faft_client.system.set_fw_try_next('B')
+        else:
+            self.faft_client.system.set_try_fw_b()
         self.reboot_warm()
 
         logging.info("Expected firmware A boot and restore firmware B.")
         self.check_state((self.checkers.crossystem_checker, {
                               'mainfw_act': 'A',
-                              'tried_fwb': '1',
+                              'tried_fwb': '0' if self.fw_vboot2 else '1',
                               }))
         self.faft_client.bios.restore_sig('b')
         self.reboot_warm()

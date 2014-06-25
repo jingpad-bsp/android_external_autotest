@@ -66,6 +66,8 @@ class firmware_CorruptFwBodyA(FirmwareTest):
                                   'tried_fwb': '0',
                                   }))
             self.faft_client.bios.restore_body('a')
+            if self.fw_vboot2:
+                self.faft_client.system.set_fw_try_next('A')
             self.reboot_warm()
 
             logging.info("Expected firmware A boot, done.")

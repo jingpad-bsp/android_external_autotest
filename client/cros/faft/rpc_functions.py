@@ -255,6 +255,14 @@ class RPCFunctions(object):
         """Set 'Try Frimware B' flag in crossystem."""
         self._chromeos_interface.cs.fwb_tries = 1
 
+    def _system_set_fw_try_next(self, next):
+        """Set fw_try_next to A or B"""
+        self._chromeos_interface.cs.fw_try_next = next
+
+    def _system_get_fw_vboot2(self):
+        """Get fw_vboot2"""
+        return self._chromeos_interface.cs.fw_vboot2 == '1'
+
     def _system_request_recovery_boot(self):
         """Request running in recovery mode on the restart."""
         self._chromeos_interface.cs.request_recovery()

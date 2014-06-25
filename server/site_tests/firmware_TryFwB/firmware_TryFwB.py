@@ -16,7 +16,8 @@ class firmware_TryFwB(FirmwareTest):
         super(firmware_TryFwB, self).initialize(host, cmdline_args, ec_wp=ec_wp)
         self.setup_dev_mode(dev_mode)
         self.setup_usbkey(usbkey=False)
-        self.setup_tried_fwb(tried_fwb=False)
+        if not self.fw_vboot2:
+            self.setup_tried_fwb(tried_fwb=False)
 
     def cleanup(self):
         self.setup_tried_fwb(tried_fwb=False)
@@ -28,14 +29,19 @@ class firmware_TryFwB(FirmwareTest):
                           'mainfw_act': 'A',
                           'tried_fwb': '0',
                           }))
-        self.faft_client.system.set_try_fw_b()
+        if self.fw_vboot2:
+            self.faft_client.system.set_fw_try_next('B')
+        else:
+            self.faft_client.system.set_try_fw_b()
         self.reboot_warm()
 
         logging.info("Expected firmware B boot, reboot")
         self.check_state((self.checkers.crossystem_checker, {
                           'mainfw_act': 'B',
-                          'tried_fwb': '1',
+                          'tried_fwb': '0' if self.fw_vboot2 else '1',
                           }))
+        if self.fw_vboot2:
+            self.faft_client.system.set_fw_try_next('A')
         self.reboot_warm()
 
         logging.info("Expected firmware A boot, done")
