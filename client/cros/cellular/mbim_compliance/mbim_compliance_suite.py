@@ -57,9 +57,10 @@ class MBIMComplianceSuite(object):
         @returns: A list of tests to run.
 
         """
+        device_under_test = test_context.TestContext()
         return [
-            des_01_test.DES_01_Test(test_context.TestContext()),
-            des_02_test.DES_02_Test(test_context.TestContext())
+            des_01_test.DES_01_Test(device_under_test),
+            des_02_test.DES_02_Test(device_under_test)
         ]
 
 

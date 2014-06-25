@@ -10,17 +10,15 @@ Reference:
         http://www.usb.org/developers/docs/devclass_docs/MBIM-Compliance-1.0.pdf
 """
 
-from usb import util
-
 import common
-from autotest_lib.client.cros.cellular.mbim_compliance import containers
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_errors
-from autotest_lib.client.cros.cellular.mbim_compliance import utils
+from autotest_lib.client.cros.cellular.mbim_compliance import usb_descriptors
 from autotest_lib.client.cros.cellular.mbim_compliance.sequences \
-  import get_descriptor_sequence
-from autotest_lib.client.cros.cellular.mbim_compliance.tests import test
+        import get_descriptors_sequence
+from autotest_lib.client.cros.cellular.mbim_compliance.tests import des_test
+from autotest_lib.client.cros.cellular.mbim_compliance import test_context
 
-class DES_02_Test(test.Test):
+class DES_02_Test(des_test.DesTest):
     """ Implement the DES_2 Descriptors Validation for MBIM Only Functions. """
 
     def __init__(self, test_context):
@@ -30,350 +28,293 @@ class DES_02_Test(test.Test):
     def run_internal(self):
         """ Run the DES_02 test. """
         # Precondition.
-        get_descriptor_sequence.GetDescriptorSequence(self.test_context).run()
+        descriptors = get_descriptors_sequence.GetDescriptorsSequence(
+                self.test_context).run()
         device = self.test_context.device
         if not device:
-            mbim_errors.log_and_raise(mbim_errors.MBIMComplianceTestError,
+            mbim_errors.log_and_raise(mbim_errors.MBIMComplianceFrameworkError,
                                       'Device not found')
-        active_configuration = device.get_active_configuration()
 
         # Test step 1
-        interfaces = util.find_descriptor(active_configuration,
-                                          find_all=True,
-                                          bAlternateSetting=0,
-                                          bNumEndpoints=1,
-                                          bInterfaceClass=0x02,
-                                          bInterfaceSubClass=0x0E,
-                                          bInterfaceProtocol=0x00)
-        if not interfaces:
+        # Get MBIM communication interface.
+        interfaces = usb_descriptors.filter_descriptors(
+                             usb_descriptors.InterfaceDescriptor, descriptors)
+
+        mbim_communication_interfaces = (
+                self.filter_interface_descriptors(
+                        interfaces, self.MBIM_ONLY_COMMUNICATION_INTERFACE))
+
+        if not mbim_communication_interfaces:
             mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
                                       'mbim1.0:6.3#1')
 
-        for interface in interfaces:
-            # Test step 2
-            # Get header functional descriptor, union functional descriptor,
-            # MBIM functional descriptor and MBIM extended functional
-            # descriptor.
-            extra_descriptors = utils.get_interface_extra_descriptors(
-                   interface.extra)
-            found_header_functional_descriptor = False
-            found_union_functional_descriptor = False
-            found_MBIM_functional_descriptor = False
-            for descriptor in extra_descriptors:
-                if descriptor.bDescriptorSubtype == 0x00:
-                    found_header_functional_descriptor = True
-                elif descriptor.bDescriptorSubtype == 0x06:
-                    found_union_functional_descriptor = True
-                elif descriptor.bDescriptorSubtype == 0x1B:
-                    found_MBIM_functional_descriptor = True
+        if len(mbim_communication_interfaces) > 1:
+            mbim_errors.log_and_raise(
+                    mbim_errors.MBIMComplianceGenericAssertionError,
+                    'Expected 1 mbim communication interface, got %d.' % (
+                            len(mbim_communication_interfaces)))
+        mbim_communication_interface = mbim_communication_interfaces[0]
 
-            if not(found_header_functional_descriptor and
-                   found_union_functional_descriptor and
-                   found_MBIM_functional_descriptor):
-                mbim_errors.log_and_raise(
-                        mbim_errors.MBIMComplianceAssertionError,
-                        'mbim1.0:6.3#2')
+        # Test step 2
+        # Get header functional descriptor, union functional descriptor,
+        # MBIM functional descriptor and MBIM extended functional
+        # descriptor.
+        mbim_communication_interface_bundle = self.get_descriptor_bundle(
+                descriptors, mbim_communication_interface)
 
-            # Test step 3
-            # Check header functional descriptor.
-            header_descriptor_matches = utils.descriptor_filter(
-                    containers.HeaderFunctionalDescriptor, extra_descriptors)
+        header_descriptors = usb_descriptors.filter_descriptors(
+                usb_descriptors.HeaderFunctionalDescriptor,
+                mbim_communication_interface_bundle)
+        union_descriptors = usb_descriptors.filter_descriptors(
+                usb_descriptors.UnionFunctionalDescriptor,
+                mbim_communication_interface_bundle)
+        mbim_descriptors = usb_descriptors.filter_descriptors(
+                usb_descriptors.MBIMFunctionalDescriptor,
+                mbim_communication_interface_bundle)
+        mbim_extended_descriptors = usb_descriptors.filter_descriptors(
+                usb_descriptors.MBIMExtendedFunctionalDescriptor,
+                mbim_communication_interface_bundle)
+        if not(header_descriptors and union_descriptors and mbim_descriptors):
+            mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
+                                      'mbim1.0:6.3#2')
 
-            if utils.has_distinct_descriptors(header_descriptor_matches):
-                mbim_errors.log_and_raise(
-                        mbim_errors.MBIMComplianceGenericAssertionError,
-                        'Expeated 1 unique header functional descriptor.')
+        # Test step 3
+        # Check header functional descriptor.
+        if usb_descriptors.has_distinct_descriptors(header_descriptors):
+            mbim_errors.log_and_raise(
+                    mbim_errors.MBIMComplianceGenericAssertionError,
+                    'Expected 1 unique header functional descriptor.')
+        header_descriptor = header_descriptors[0]
+        if not(header_descriptor.bDescriptorType == 0x24 and
+               header_descriptor.bDescriptorSubtype == 0x00 and
+               header_descriptor.bLength == 5 and
+               header_descriptor.bcdCDC >= 0x0120):
+            mbim_errors.log_and_raise(
+                mbim_errors.MBIMComplianceGenericAssertionError,
+                    'Header functional descriptor: wrong value(s)')
 
-            header_descriptor_index, header_functional_descriptor = (
-                    header_descriptor_matches[0])
+        # Test step 4
+        # Check union functional descriptor.
+        if usb_descriptors.has_distinct_descriptors(union_descriptors):
+            mbim_errors.log_and_raise(
+                    mbim_errors.MBIMComplianceGenerisAssertionError,
+                    'Expected 1 unique union functional descriptor.')
+        union_descriptor = union_descriptors[0]
+        if union_descriptor.index < header_descriptor.index:
+            mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
+                                      'mbim1.0:6.3#3')
 
-            if not(header_functional_descriptor.bDescriptorType == 0x24 and
-                   header_functional_descriptor.bDescriptorSubtype == 0x00 and
-                   header_functional_descriptor.bLength == 5 and
-                   header_functional_descriptor.bcdCDC >= 0x0120):
-                mbim_errors.log_and_raise(
-                        mbim_errors.MBIMComplianceGenericAssertionError,
-                        'Header functional descriptor: wrong value(s)')
+        # Get CDC no data data interface.
+        no_data_data_interfaces = self.filter_interface_descriptors(
+                interfaces, self.MBIM_ONLY_DATA_INTERFACE_NO_DATA)
+        if not no_data_data_interfaces:
+            mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
+                                      'mbim1.0:6.6#4')
+        if len(no_data_data_interfaces) > 1:
+            mbim_errors.log_and_raise(
+                    mbim_errors.MBIMComplianceGenericAssertionError,
+                    'Exactly 1 CDC data interface, got %d.' % (
+                            len(no_data_data_interfaces)))
+        no_data_data_interface = no_data_data_interfaces[0]
+        no_data_data_interface_bundle = self.get_descriptor_bundle(
+                descriptors, no_data_data_interface)
+        endpoint_descriptors = (
+                usb_descriptors.filter_descriptors(
+                        usb_descriptors.EndpointDescriptor,
+                        no_data_data_interface_bundle))
+        if endpoint_descriptors:
+            mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
+                                      'mbim1.0:6.6#2')
 
-            # Test step 4
-            # Check union functional descriptor.
-            union_descriptor_matches = utils.descriptor_filter(
-                    containers.UnionFunctionalDescriptor, extra_descriptors)
+        # Get MBIM data interface.
+        mbim_data_interfaces = self.filter_interface_descriptors(
+                interfaces, self.MBIM_ONLY_DATA_INTERFACE_MBIM)
+        if not mbim_data_interfaces:
+            mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
+                                      'mbim1.0:6.6#4')
+        if len(mbim_data_interfaces) > 1:
+            mbim_errors.log_and_raise(
+                    mbim_errors.MBIMComplianceGenericAssertionError,
+                    'Expected 1 MBIM data interface, got %d.' % (
+                            len(mbim_data_interfaces)))
+        mbim_data_interface = mbim_data_interfaces[0]
 
-            # If there is more than one union functional descriptor, check if
-            # they are the same.
-            if utils.has_distinct_descriptors(union_descriptor_matches):
+        # Check if there are two endpoint descriptors.
+        if mbim_data_interface.bNumEndpoints != 2:
+            mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
+                                      'mbim1.0:6.6#3.')
+
+        mbim_data_interface_bundle = self.get_descriptor_bundle(
+                descriptors, mbim_data_interface)
+        endpoint_descriptors = usb_descriptors.filter_descriptors(
+                usb_descriptors.EndpointDescriptor,
+                mbim_data_interface_bundle)
+
+        # Check the values of fields in endpoint descriptors.
+        # There should be one bulk OUT and one bulk IN.
+        if not self.has_bulk_in_and_bulk_out(endpoint_descriptors):
+            mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
+                                      'mbim1.0:6.6#3')
+
+        # MBIM cdc data interface should have both no data data interface and
+        # MBIM data interface. Therefore two interface numbers should be
+        # the same.
+        if (no_data_data_interface.bInterfaceNumber !=
+            mbim_data_interface.bInterfaceNumber):
+            mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
+                                      'mbim1.0:6.6#1')
+
+        # Check the fields of union functional descriptor
+        if not(union_descriptor.bLength == 5 and
+               (union_descriptor.bControlInterface ==
+                mbim_communication_interface.bInterfaceNumber) and
+               (union_descriptor.bSubordinateInterface0 ==
+                mbim_data_interface.bInterfaceNumber)):
+            mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
+                                      'mbim1.0:6.3#4')
+
+        # Test step 5
+        # Get MBIM functional descriptor.
+        if usb_descriptors.has_distinct_descriptors(mbim_descriptors):
+            mbim_errors.log_and_raise(
+                    mbim_errors.MBIMComplianceGenericAssertionError,
+                    'Expected 1 unique MBIM functional descriptor.')
+        mbim_descriptor = mbim_descriptors[0]
+
+        if mbim_descriptor.index < header_descriptor.index:
+            mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
+                                      'mbim1.0:6.3#3')
+
+        if mbim_descriptor.bLength != 12:
+            mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
+                                      'mbim1.0:6.4#5')
+
+        if mbim_descriptor.bcdMBIMVersion != 0x0100:
+            mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
+                                      'mbim1.0:6.4#6')
+
+        if mbim_descriptor.wMaxControlMessage < 64:
+            mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
+                                      'mbim1.0:6.4#1')
+
+        if mbim_descriptor.bNumberFilters < 16:
+            mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
+                                      'mbim1.0:6.4#2')
+
+        if mbim_descriptor.bMaxFilterSize > 192:
+            mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
+                                      'mbim1.0:6.4#3')
+
+        # TODO(mcchou): Most of vendors set wMaxSegmentSize to be less than
+        # 1500, so this assertion is skipped for now.
+        #
+        #if not mbim_descriptor.wMaxSegmentSize >= 2048:
+        #    mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
+        #                              'mbim1.0:6.4#4')
+
+        # Use a byte as the mask to check if D0, D1, D2, D4, D6 and D7 are
+        # zeros.
+        if (mbim_descriptor.bmNetworkCapabilities & 0b11010111) > 0:
+            mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
+                                      'mbim1.0:6.4#7')
+
+        # Test step 6
+        # Get MBIM extended functional descriptor, which is optional.
+        if len(mbim_extended_descriptors) >= 1:
+            if usb_descriptors.has_distinct_descriptors(
+                    mbim_extended_descriptors):
                 mbim_errors.log_and_raise(
                         mbim_errors.MBIMComplianceGenerisAssertionError,
-                        'Expected 1 unique union functional descriptor.')
+                        'Expected 1 unique MBIM extended functional '
+                        'descriptor.')
+            mbim_extended_descriptor = mbim_extended_descriptors[0]
 
-            union_descriptor_index, union_functional_descriptor = (
-                    union_descriptor_matches[0])
-
-            if union_descriptor_index < header_descriptor_index:
+            if mbim_extended_descriptor.index < mbim_descriptor.index:
                 mbim_errors.log_and_raise(
                         mbim_errors.MBIMComplianceAssertionError,
-                        'mbim1.0:6.3#3')
+                        'mbim1.0:6.5#1')
 
-            # Get interface numbers with alternate setting 0.
-            interface_with_alternate_setting_0 = util.find_descriptor(
-                    active_configuration,
-                    find_all=True,
-                    bAlternateSetting=0,
-                    bNumEndpoints=0,
-                    bInterfaceClass=0x0A,
-                    bInterfaceSubClass=0x00,
-                    bInterfaceProtocol=0x02)
-
-            if not interface_with_alternate_setting_0:
+            if mbim_extended_descriptor.bLength != 8:
                 mbim_errors.log_and_raise(
                         mbim_errors.MBIMComplianceAssertionError,
-                        'mbim1.0:6.6#4')
-            if len(interface_with_alternate_setting_0) > 1:
-                mbim_errors.log_and_raise(
-                        mbim_errors.MBIMComplianceGenericAssertionError,
-                        'Exactly 1 CDC data interface with alternate setting 0 '
-                        'should be found.')
-            endpoint_descriptors = [
-                    endpoint for endpoint in
-                            interface_with_alternate_setting_0[0]]
-            if endpoint_descriptors:
+                        'mbim1.0:6.5#2')
+
+            if mbim_extended_descriptor.bcdMBIMExtendedVersion != 0x0100:
                 mbim_errors.log_and_raise(
                         mbim_errors.MBIMComplianceAssertionError,
-                        'mbim1.0:6.6#2')
+                        'mbim1.0:6.5#3')
 
-            interface_number_with_alternate_setting_0 = (
-                    interface_with_alternate_setting_0[0].bInterfaceNumber)
-
-            # Get interface numbers with alternate setting 1.
-            interface_with_alternate_setting_1 = util.find_descriptor(
-                    active_configuration,
-                    find_all=True,
-                    bAlternateSetting=1,
-                    bNumEndpoints=2,
-                    bInterfaceClass=0x0A,
-                    bInterfaceSubClass=0x00,
-                    bInterfaceProtocol=0x02)
-
-            if not interface_with_alternate_setting_1:
+            if mbim_extended_descriptor.bMaxOutstandingCommandMessages == 0:
                 mbim_errors.log_and_raise(
                         mbim_errors.MBIMComplianceAssertionError,
-                        'mbim1.0:6.6#4')
-            # There should be exactly one cdc data interface with alternate
-            # setting 1.
-            if len(interface_with_alternate_setting_1) > 1:
-                mbim_errors.log_and_raise(
-                        mbim_errors.MBIMComplianceGenericAssertionError,
-                        'Expected 1 CDC data interface with alternate setting '
-                        '1.')
-            # Check if there are two endpoint descriptors.
-            if interface_with_alternate_setting_1[0].bNumEndpoints != 2:
-                mbim_errors.log_and_raise(
-                        mbim_errors.MBIMComplianceAssertionError,
-                        'mbim1.0:6.6#3.')
-            # Check the values of fields in endpoint descriptors.
-            # There should be one bulk OUT and one bulk IN.
-            bulk_in, bulk_out = False, False
-            for endpoint in interface_with_alternate_setting_1[0]:
-                if (endpoint.bLength == 7 and
-                    endpoint.bEndpointAddress < 0x80 and
-                    endpoint.bmAttributes == 0x02):
-                    bulk_out = True
-                elif (endpoint.bLength == 7 and
-                      endpoint.bEndpointAddress >= 0x80 and
-                      endpoint.bmAttributes == 0x02):
-                    bulk_in = True
-            if not(bulk_in and bulk_out):
-                mbim_errors.log_and_raise(
-                        mbim_errors.MBIMComplianceAssertionError,
-                        'mbim1.0:6.6#3')
+                        'mbim1.0:6.5#4')
 
-            interface_number_with_alternate_setting_1 = (
-                    interface_with_alternate_setting_1[0].bInterfaceNumber)
+        # Test step 7
+        # Get the first endpoint for current interface.
+        endpoint_descriptors = usb_descriptors.filter_descriptors(
+                usb_descriptors.EndpointDescriptor,
+                mbim_communication_interface_bundle)
 
-            # MBIM cdc data interface should have both alternate setting 0 and
-            # alternate setting 1. Therefore two interface numbers should be
-            # the same.
-            if (interface_number_with_alternate_setting_0 !=
-                    interface_number_with_alternate_setting_1):
-                mbim_errors.log_and_raise(
-                        mbim_errors.MBIMComplianceAssertionError,
-                        'mbim1.0:6.6#1')
+        if len(endpoint_descriptors) != 1:
+            mbim_errors.log_and_raise(
+                    mbim_errors.MBIMComplianceGenericAssertionError,
+                    'Expected 1 endpoint, got %d.' % (
+                            len(endpoint_descriptors)))
+        endpoint_descriptor = endpoint_descriptors[0]
+        if not (endpoint_descriptor.bDescriptorType == 0x05 and
+                endpoint_descriptor.bLength == 7 and
+                endpoint_descriptor.bEndpointAddress >= 0x80 and
+                endpoint_descriptor.bmAttributes == 0x03):
+            mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
+                                      'mbim1.0:6.3#5')
 
-            mbim_data_interface_number = (
-                    interface_number_with_alternate_setting_0)
-            # Check the fields of union functional descriptor
-            if not(union_functional_descriptor.bLength == 5 and
-                   (union_functional_descriptor.bControlInterface ==
-                    interface.bInterfaceNumber) and
-                   (union_functional_descriptor.bSubordinateInterface0 ==
-                    mbim_data_interface_number)):
-                mbim_errors.log_and_raise(
-                        mbim_errors.MBIMComplianceAssertionError,
-                        'mbim1.0:6.3#4')
+        appear_before_functional_descriptors = False
+        if mbim_extended_descriptors:
+            if (mbim_extended_descriptor.index >
+                endpoint_descriptor.index):
+                appear_before_functional_descriptors = True
+        else:
+            if (mbim_descriptor.index > endpoint_descriptor.index or
+                union_descriptor.index > endpoint_descriptor.index):
+                appear_before_functional_descriptors = True
+        if appear_before_functional_descriptors:
+            mbim_errors.log_and_raise(
+                    mbim_errors.MBIMComplianceGenericAssertionError,
+                    'All functional descriptors must appear before endpoint'
+                    'descriptors.')
 
-            # Test step 5
-            # Get MBIM functional descriptor.
-            mbim_descriptor_matches = utils.descriptor_filter(
-                    containers.MBIMFunctionalDescriptor, extra_descriptors)
+        # Test step 8
+        # Get interface association descriptor.
+        interface_association_descriptors = (
+                usb_descriptors.filter_descriptors(
+                        usb_descriptors.InterfaceAssociationDescriptor,
+                        descriptors))
 
-            # If there is more then one MBIM functional descriptor, check if
-            # they are the same.
-            if utils.has_distinct_descriptors(mbim_descriptor_matches):
-                mbim_errors.log_and_raise(
-                        mbim_errors.MBIMComplianceGenericAssertionError,
-                        'Expected 1 unique MBIM functional descriptor.')
+        if usb_descriptors.has_distinct_descriptors(
+                interface_association_descriptors):
+            mbim_errors.log_and_raise(
+                    mbim_errors.MBIMComplianceGenericAssertionError,
+                    'Expected 1 interface association descriptor, got %d.' % (
+                            len(interface_association_descriptors)))
 
-            mbim_descriptor_index, mbim_functional_descriptor = (
-                    mbim_descriptor_matches[0])
-
-            if mbim_functional_descriptor.bLength != 12:
-                mbim_errors.log_and_raise(
-                        mbim_errors.MBIMComplianceAssertionError,
-                        'mbim1.0:6.4#5')
-
-            if mbim_functional_descriptor.bcdMBIMVersion != 0x0100:
-                mbim_errors.log_and_raise(
-                        mbim_errors.MBIMComplianceAssertionError,
-                        'mbim1.0:6.4#6')
-
-            if mbim_functional_descriptor.wMaxControlMessage < 64:
-                mbim_errors.log_and_raise(
-                        mbim_errors.MBIMComplianceAssertionError,
-                        'mbim1.0:6.4#1')
-
-            if mbim_functional_descriptor.bNumberFilters < 16:
-                mbim_errors.log_and_raise(
-                        mbim_errors.MBIMComplianceAssertionError,
-                        'mbim1.0:6.4#2')
-
-            if mbim_functional_descriptor.bMaxFilterSize > 192:
-                mbim_errors.log_and_raise(
-                        mbim_errors.MBIMComplianceAssertionError,
-                        'mbim1.0:6.4#3')
-
-            # TODO(mcchou): Most of vendors set wMaxSegmentSize to be less than
-            # 1500, so this assertion is skipped for now.
-            #
-            #if not mbim_functional_descriptor.wMaxSegmentSize >= 2048:
-            #    mbim_errors.log_and_raise(
-            #            mbim_errors.MBIMComplianceAssertionError,
-            #            'mbim1.0:6.4#4')
-
-            # Use a byte as the mask to check if D0, D1, D2, D4, D6 and D7 are
-            # zeros.
-            if (mbim_functional_descriptor.bmNetworkCapabilities &
-                0b11010111) > 0:
-                mbim_errors.log_and_raise(
-                        mbim_errors.MBIMComplianceAssertionError,
-                        'mbim1.0:6.4#7')
-
-            # Test step 6
-            # Get MBIM extended functional descriptor, which is optional.
-            mbim_extended_descriptor_matches = (
-                    utils.descriptor_filter(
-                            containers.MBIMExtendedFunctionalDescriptor,
-                            extra_descriptors))
-
-            # If there is more then one MBIM extended functional descriptor,
-            # check if they are the same.
-            if len(mbim_extended_descriptor_matches) >= 1:
-                if utils.has_distinct_descriptors(
-                        mbim_extended_descriptor_matches):
-                    mbim_errors.log_and_raise(
-                            mbim_errors.MBIMComplianceGenerisAssertionError,
-                            'Expected 1 unique MBIM extended functional '
-                            'descriptor.')
-
-                # Get MBIM extended functional descriptor.
-                (mbim_extended_descriptor_index,
-                 mbim_extended_functional_descriptor) = (
-                        mbim_extended_descriptor_matches[0])
-
-                if mbim_extended_descriptor_index < mbim_descriptor_index:
-                    mbim_errors.log_and_raise(
-                            mbim_errors.MBIMComplianceAssertionError,
-                            'mbim1.0:6.5#1')
-
-                if mbim_extended_functional_descriptor.bLength != 8:
-                    mbim_errors.log_and_raise(
-                            mbim_errors.MBIMComplianceAssertionError,
-                            'mbim1.0:6.5#2')
-
-                if (mbim_extended_functional_descriptor.bcdMBIMEFDVersion !=
-                        0x0100):
-                    mbim_errors.log_and_raise(
-                            mbim_errors.MBIMComplianceAssertionError,
-                            'mbim1.0:6.5#3')
-
-                # Get bMaxOutstandingCommandMessages field.
-                b_max_outstanding_command_messages = getattr(
-                        mbim_extended_functional_descriptor,
-                        'bMaxOutstandingCommandMessages')
-                if b_max_outstanding_command_messages == 0:
-                    mbim_errors.log_and_raise(
-                            mbim_errors.MBIMComplianceAssertionError,
-                            'mbim1.0:6.5#4')
-
-            # Test step 7
-            # Get the first endpoint for current interface.
-            endpoint_descriptors = [endpoint for endpoint in interface]
-            if len(endpoint_descriptors) != 1:
-                mbim_errors.log_and_raise(
-                        mbim_errors.MBIMComplianceGenericAssertionError,
-                        'Expected 1 endpoint, got %d.' % (
-                                len(endpoint_descriptors)))
-
-            endpoint_descriptor = endpoint_descriptors[0]
-            if not (endpoint_descriptor.bDescriptorType == 0x05 and
-                    endpoint_descriptor.bLength == 7 and
-                    endpoint_descriptor.bEndpointAddress >= 0x80 and
-                    endpoint_descriptor.bmAttributes == 0x03):
-                mbim_errors.log_and_raise(
-                        mbim_errors.MBIMComplianceAssertionError,
-                        'mbim1.0:6.3#5')
-
-            # TODO(mcchou): All functional descriptors should come before the
-            # first endpoint descriptor.
-
-            # Test step 8
-            # Get interface association descriptor.
-            interface_association_descriptors = (
-                    utils.get_configuration_extra_descriptors(
-                            active_configuration.extra))
-            interface_association_descriptor_matches = utils.descriptor_filter(
-                    containers.InterfaceAssociationDescriptor,
-                    interface_association_descriptors)
-
-            if utils.has_distinct_descriptors(
-                    interface_association_descriptor_matches):
-                mbim_errors.log_and_raise(
-                        mbim_errors.MBIMComplianceGenericAssertionError,
-                        'Expected 1 interface association descriptor, got '
-                        '%d.' % (len(interface_association_descriptors)))
-
-            interface_association_descriptor = (
-                    interface_association_descriptor_matches[0][1])
+        for association_descriptor in interface_association_descriptors:
             # Check interface association descriptor if one of the following
             # condition is met:
             # 1. bFirstInterface <= bControlInterface < (bFirstInterface +
             #                                            bInterfaceCount)
-            # 2. bFirstInterface <= bSubordinateInterface0 < (bFirstInterface +
-            #                                                 bInterfaceCount)
-            b_first_interface = (
-                    interface_association_descriptor.bFirstInterface)
-            b_interface_count = (
-                    interface_association_descriptor.bInterfaceCount)
-            b_control_interface = (
-                    union_functional_descriptor.bControlInterface)
+            # 2. bFirstInterface <= bSubordinateInterface0 < (
+            #            bFirstInterface + bInterfaceCount)
+            b_first_interface = association_descriptor.bFirstInterface
+            b_interface_count = association_descriptor.bInterfaceCount
+            b_control_interface = union_descriptor.bControlInterface
             b_subordinate_interface_0 = (
-                    union_functional_descriptor.bSubordinateInterface0)
+                    union_descriptor.bSubordinateInterface0)
             check_inteface_association_descriptor = False
 
-            if ((b_first_interface <= b_control_interface < (b_first_interface +
-                        b_interface_count)) or
+            if ((b_first_interface <= b_control_interface < (
+                         b_first_interface + b_interface_count)) or
                 (b_first_interface <= b_subordinate_interface_0 < (
-                        b_first_interface + b_interface_count))):
+                         b_first_interface + b_interface_count))):
                 check_interface_association_descriptor = True
 
             if not check_interface_association_descriptor:
@@ -386,17 +327,22 @@ class DES_02_Test(test.Test):
                         b_first_interface == b_subordinate_interface_0) and
                        (b_interface_count == 2) and
                        (b_subordinate_interface_0 == b_control_interface + 1 or
-                        b_subordinate_interface_0 == b_control_interface - 1)
-                       and
-                       (interface_association_descriptor.bFunctionClass ==
-                        0x02) and
-                       (interface_association_descriptor.bFunctionSubClass ==
-                        0x0E) and
-                       (interface_association_descriptor.bFunctionProtocol ==
-                        0x00)):
+                        b_subordinate_interface_0 ==
+                        b_control_interface - 1) and
+                       (association_descriptor.bFunctionClass == 0x02) and
+                       (association_descriptor.bFunctionSubClass == 0x0E) and
+                       (association_descriptor.bFunctionProtocol == 0x00)):
                     mbim_errors.log_and_raise(
                             mbim_errors.MBIMComplianceAssertionError,
                             'mbim1.0:6.1#2')
-
-        # End of for interface in interfaces
-    # End of run_internal()
+        # Update |test_context| with mbim function settings.
+        if self.test_context.device_type == test_context.DEVICE_TYPE_NCM_MBIM:
+            mbim_errors.log_and_raise(mbim_errors.MBIMComplianceFrameworkError,
+                                      'A device can only be either a MBIM'
+                                      'device or a NCM/MBIM device.')
+        self.test_context.device_type = test_context.DEVICE_TYPE_MBIM
+        self.test_context.mbim_communication_interface = (
+                mbim_communication_interface)
+        self.test_context.no_data_data_interface = no_data_data_interface
+        self.test_context.mbim_data_interface = mbim_data_interface
+    # End of run_internal().

@@ -16,9 +16,11 @@ from usb import util
 import common
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_errors
 from autotest_lib.client.cros.cellular.mbim_compliance.sequences import sequence
+from autotest_lib.client.cros.cellular.mbim_compliance.usb_descriptors import \
+  DescriptorParser
 
 
-class GetDescriptorSequence(sequence.Sequence):
+class GetDescriptorsSequence(sequence.Sequence):
     """
     Implement the Get Descriptor Sequence.
     Given the vendor and product id for a USB device, obtains the USB
@@ -34,7 +36,12 @@ class GetDescriptorSequence(sequence.Sequence):
 
 
     def run_internal(self):
-        """ Run the Get Descriptor Sequence. """
+        """
+        Run the Get Descriptor Sequence.
+
+        @returns a list of descriptor objects.
+
+        """
         if self.test_context is None:
             mbim_errors.log_and_raise(mbim_errors.MBIMComplianceFrameworkError,
                                       'Test context not found')
@@ -46,31 +53,36 @@ class GetDescriptorSequence(sequence.Sequence):
                                        self.test_context.id_product))
 
         configuration = device.get_active_configuration()
+
         # Get the actual wTotalLength by retrieving partial descriptor.
         # desc_index corresponds to the index of a configuration. Note that
         # index is of 0 base while configuration is of 1 base.
-        descriptor = control.get_descriptor(
+        descriptors_byte_stream = control.get_descriptor(
                 dev=device,
                 desc_size=9,
                 desc_type=util.DESC_TYPE_CONFIG,
                 desc_index=configuration.bConfigurationValue - 1,
                 wIndex=0)
-        if descriptor is None:
+        if descriptors_byte_stream is None:
             mbim_errors.log_and_raise(
                     mbim_errors.MBIMComplianceSequenceError,
                     'Failed to find configuration descriptor '
                     'for active configuration of device '
                     '%04X:%04X' % (device.idVendor, device.idProduct))
+
         # Verify returned data is the requested size.
-        descriptor_length = descriptor[0]
+        descriptor_length = descriptors_byte_stream[0]
         if descriptor_length != 9:
             mbim_errors.log_and_raise(mbim_errors.MBIMComplianceSequenceError,
-                                      'Returned data size (%d) does not match'
-                                      'requested value (9)' % descriptor_length)
+                                      'Expected bLength to be 9, got %d.' % (
+                                      descriptor_length))
 
-        descriptor = control.get_descriptor(
+        descriptors_byte_stream = control.get_descriptor(
                 dev=device,
-                desc_size=descriptor[2],
+                desc_size=descriptors_byte_stream[2],
                 desc_type=util.DESC_TYPE_CONFIG,
                 desc_index=configuration.bConfigurationValue - 1,
                 wIndex=0)
+        descriptors = [descriptor for descriptor
+                                  in DescriptorParser(descriptors_byte_stream)]
+        return descriptors

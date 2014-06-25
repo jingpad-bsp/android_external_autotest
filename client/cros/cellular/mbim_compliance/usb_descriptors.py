@@ -61,7 +61,7 @@ class DescriptorMeta(type):
 
             @param cls: The descriptor class of the instance to be created.
             @param data: The raw descriptor data as an array of unsigned bytes.
-            @return The descriptor instance.
+            @returns The descriptor instance.
 
             """
             data_length = len(data)
@@ -287,6 +287,8 @@ class DescriptorParser(object):
         self._data = data
         self._data_length = len(data)
         self._index = 0
+        # The position of each descriptor in the list.
+        self._descriptor_index = 0
 
     def __iter__(self):
         return self
@@ -295,8 +297,8 @@ class DescriptorParser(object):
         """
         Returns the next descriptor found in the descriptor data.
 
-        @return An instance of a subclass of Descriptor.
-        @raise StopIteration if no more descriptor is found,
+        @returns An instance of a subclass of Descriptor.
+        @raises StopIteration if no more descriptor is found,
 
         """
         if self._index >= self._data_length:
@@ -323,4 +325,32 @@ class DescriptorParser(object):
         next_index = self._index + self._data[self._index]
         descriptor = descriptor_class(self._data[self._index:next_index])
         self._index = next_index
+        descriptor.index = self._descriptor_index
+        self._descriptor_index += 1
         return descriptor
+
+
+def filter_descriptors(descriptor_type, descriptors):
+    """
+    Filter a list of descriptors based on the target |descriptor_type|.
+
+    @param descriptor_type: The target descriptor type.
+    @param descriptors: The list of functional descriptors.
+    @returns A list of target descriptors.
+
+    """
+    if not descriptors:
+        return []
+    return filter(lambda descriptor: isinstance(descriptor, descriptor_type),
+                  descriptors)
+
+
+def has_distinct_descriptors(descriptors):
+    """
+    Check if there are distinct descriptors in the given list.
+
+    @param descriptors: The list of descriptors.
+    @returns True if distinct descriptor are found, False otherwise.
+
+    """
+    return not all(descriptor == descriptors[0] for descriptor in descriptors)

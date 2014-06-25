@@ -13,11 +13,17 @@ class Sequence(entity.Entity):
     """ Base class for all sequences. """
 
     def run(self):
-        """ Run the sequence. """
-        logging.info('---- Sequence (%s) begin ----', self.name())
-        self.run_internal()
-        logging.info('---- Sequence (%s) end ----', self.name())
+        """
+        Run the sequence.
 
+        @returns The result of the sequence. The type of value returned varies
+                 by the sequence type.
+
+        """
+        logging.info('---- Sequence (%s) begin ----', self.name())
+        result = self.run_internal()
+        logging.info('---- Sequence (%s) end ----', self.name())
+        return result
 
     def run_internal(self):
         """
