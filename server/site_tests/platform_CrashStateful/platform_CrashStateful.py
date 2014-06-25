@@ -79,7 +79,16 @@ class platform_CrashStateful(test.test):
             interface = "/proc/breakme"
             cmd = 'echo panic > %s' % interface
         try:
-            self.client.reboot(reboot_cmd='%s &' % cmd)
+            """The following is necessary to avoid command execution errors
+            1) If ssh on the DUT doesn't terminate cleanly, it will exit with
+               status 255 causing an exception
+            2) ssh won't terminate if a background process holds open stdin,
+               stdout, or stderr
+            3) without a sleep delay, the reboot may close the connection with
+               an error
+            """
+            wrapped_cmd = '(sleep 1; %s) </dev/null >/dev/null 2>&1 &'
+            self.client.reboot(reboot_cmd=wrapped_cmd % cmd)
         except error.AutoservRebootError as e:
             raise error.TestFail('%s.\nTest failed with error %s' % (
                     traceback.format_exc(), str(e)))
