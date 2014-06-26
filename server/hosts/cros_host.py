@@ -175,7 +175,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         """
         try:
             result = host.run('grep -q CHROMEOS /etc/lsb-release && '
-                             '! which adb >/dev/null 2>&1',
+                             '! which adb >/dev/null 2>&1 && '
+                             '! grep -q moblab /etc/lsb-release',
                               ignore_status=True, timeout=timeout)
         except (error.AutoservRunError, error.AutoservSSHTimeout):
             return False
