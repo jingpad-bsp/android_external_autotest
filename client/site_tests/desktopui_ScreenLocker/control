@@ -15,6 +15,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "desktopui"
 TEST_TYPE = "client"
+JOB_RETRIES = 1
 
 DOC = """
 This test checks if the screen locker can lock and unlock the screen.
