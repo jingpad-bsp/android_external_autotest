@@ -129,9 +129,32 @@ def sam_servers():
     from the rest of the system.
     """
     sams_config = global_config.global_config.get_config_value(
-            'SERVER', 'sam_instances', default='')
+            'CROS', 'sam_instances', default='')
     sams = _csv_to_list(sams_config)
-    return sams
+    return set(sams)
+
+
+def extra_servers():
+    """
+    Servers that have an autotest checkout in /usr/local/autotest, but aren't
+    in any other list.
+
+    @returns: A set of hosts.
+    """
+    servers = global_config.global_config.get_config_value(
+                'CROS', 'extra_servers', default='')
+    return set(_csv_to_list(servers))
+
+
+def test_instance():
+    """
+    A server that is set up to run tests of the autotest infrastructure.
+
+    @returns: A hostname
+    """
+    server = global_config.global_config.get_config_value(
+                'CROS', 'test_instance', default='')
+    return server
 
 
 # The most reliable way to pull information about the state of the lab is to
