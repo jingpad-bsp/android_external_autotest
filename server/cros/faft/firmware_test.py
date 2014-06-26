@@ -316,39 +316,27 @@ class FirmwareTest(FAFTBase):
         except ConnectionError:
             raise error.TestError('Failed to boot the USB image.')
 
-    def _restore_routine_from_timeout(self, next_step=None):
+    def _restore_routine_from_timeout(self):
         """A routine to try to restore the system from a timeout error.
 
         This method is called when FAFT failed to connect DUT after reboot.
 
-        @param next_step: Optional, a FAFT_STEP dict of the next step, which is
-                          used for diagnostic.
         @raise TestFail: This exception is already raised, with a decription
                          why it failed.
         """
         # DUT is disconnected. Capture the UART output for debug.
         self._record_uart_capture()
 
-        next_checker_matched = False
-
         # TODO(waihong@chromium.org): Implement replugging the Ethernet to
         # identify if it is a network flaky.
 
         recovery_reason = self._retrieve_recovery_reason_from_trap()
-        if next_step is not None and recovery_reason:
-            if self._call_action(next_test['state_checker']):
-                # Repluging the USB can pass the state_checker of the next step,
-                # meaning that the firmware failed to boot into USB directly.
-                next_checker_matched = True
 
         # Reset client to a workable state.
         self._reset_client()
 
         # Raise the proper TestFail exception.
-        if next_checker_matched:
-            raise error.TestFail('Firmware failed to auto-boot USB in the '
-                                 'recovery boot (reason: %d)' % recovery_reason)
-        elif recovery_reason:
+        if recovery_reason:
             raise error.TestFail('Trapped in the recovery screen (reason: %d) '
                                  'and timed out' % recovery_reason)
         else:
@@ -1171,7 +1159,7 @@ class FirmwareTest(FAFTBase):
             self._stop_service('update-engine')
         except ConnectionError:
             logging.error('wait_for_client() timed out.')
-            self._restore_routine_from_timeout(next_step)
+            self._restore_routine_from_timeout()
         logging.info("-[FAFT]-[ end wait_for_kernel_up ]-----")
 
     def reboot_warm_trigger(self):
