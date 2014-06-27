@@ -42,8 +42,8 @@ _BUG_TEMPLATE = {
 dynamic_suite.reimage_and_run(
     build=build, board=board, name='network3g', job=job, pool=pool,
     check_hosts=check_hosts, add_experimental=True, num=num,
-    file_bugs=file_bugs, priority=priority, timeout_mins=timeout_mins,
-    suite_dependencies='modem_repair',
+    file_bugs=file_bugs, max_runtime_mins=20, priority=priority,
+    timeout_mins=timeout_mins, suite_dependencies='modem_repair',
     bug_template=_BUG_TEMPLATE, devserver_url=devserver_url,
     version_prefix=provision.CROS_VERSION_PREFIX,
     wait_for_results=wait_for_results, job_retry=job_retry)

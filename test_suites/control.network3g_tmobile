@@ -42,7 +42,7 @@ _BUG_TEMPLATE = {
 dynamic_suite.reimage_and_run(
     build=build, board=board, name='network3g_tmobile', job=job, pool=pool,
     check_hosts=check_hosts, add_experimental=True, num=num,
-    file_bugs=file_bugs, priority=priority,
+    file_bugs=file_bugs, max_runtime_mins=20, priority=priority,
     bug_template=_BUG_TEMPLATE, devserver_url=devserver_url,
     suite_dependencies='carrier:tmobile,modem_repair',
     timeout_mins=timeout_mins,
