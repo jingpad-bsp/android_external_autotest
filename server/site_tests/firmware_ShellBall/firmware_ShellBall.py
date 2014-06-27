@@ -2,11 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
 import os
 
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
-class firmware_ShellBall(FAFTSequence):
+
+class firmware_ShellBall(FirmwareTest):
     """
     chromeos-firmwareupdate functional tests.
 
@@ -19,7 +21,7 @@ class firmware_ShellBall(FAFTSequence):
 
     def update_firmware(self, mode):
         self.faft_client.system.run_shell_command('%s --mode %s' %
-            (self._shellball_name, mode))
+                                                  (self._shellball_name, mode))
         # Enalbe dev mode if the mode is todev.
         if mode == 'todev':
             self.servo.enable_development_mode()
@@ -36,10 +38,10 @@ class firmware_ShellBall(FAFTSequence):
                    shellball_name=None):
         super(firmware_ShellBall, self).initialize(host, cmdline_args)
         self._shellball_name = "/home/chronos/%s" % self._shellball_name
-        host.send_file("%s/%s" %(shellball_path, shellball_name),
+        host.send_file("%s/%s" % (shellball_path, shellball_name),
                        self._shellball_name)
         self.faft_client.system.run_shell_command('chmod +x %s' %
-                                           self._shellball_name)
+                                                  self._shellball_name)
         self.setup_dev_mode(dev_mode=False)
         # Get crossystem fwid.
         [self._current_fwid] = (
@@ -48,8 +50,8 @@ class firmware_ShellBall(FAFTSequence):
         # Get BIOS version from shellball.
         [self._shellball_fwid] = self.faft_client. \
                                         system.run_shell_command_get_output(
-                                            '%s -V | grep "BIOS version"' \
-                                            ' | sed "s/BIOS version: ' \
+                                            '%s -V | grep "BIOS version"'
+                                            ' | sed "s/BIOS version: '
                                             '\(.*\)/\\1/" '
                                             % self._shellball_name)
 
@@ -58,48 +60,47 @@ class firmware_ShellBall(FAFTSequence):
             os.remove(self._shellball_name)
         super(firmware_ShellBall, self).cleanup()
 
-
     def run_once(self):
-        self.register_faft_sequence((
-            { # Step 1, change to devmode.
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'dev_boot_usb': '0',
-                 }),
-                'userspace_action': (self.update_firmware, 'todev'),
-                'firmware_action': (self.wait_fw_screen_and_ctrl_d),
-            },
-            { # Step 2, check mainfw_type and run autoupdate.
-                'state_checker': (self.checkers.crossystem_checker, {
-                     'mainfw_type': 'developer'
-                 }),
-                'userspace_action': (self.update_firmware, 'autoupdate'),
-                'firmware_action': (self.wait_fw_screen_and_ctrl_d),
-            },
-            { # Step 3, verify fwid and install system firmware.
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'fwid': self._shellball_fwid
-                }),
-                'userspace_action': (self.install_original_firmware),
-                'firmware_action': (self.wait_fw_screen_and_ctrl_d),
-            },
-            { # Step 4, verify the old firmware id and test factory_install.
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'fwid': self._current_fwid
-                }),
-                'userspace_action': (self.update_firmware, 'factory_install'),
-                'firmware_action': (self.wait_fw_screen_and_ctrl_d),
-            },
-            { # Step 5, verify fwid and install original firmware.
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'fwid': self._shellball_fwid
-                }),
-                'userspace_action': (self.install_original_firmware),
-                'firmware_action': (self.wait_fw_screen_and_ctrl_d),
-            },
-            { # Step 6, verify old fwid.
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'fwid': self._current_fwid
-                }),
-            }
-        ))
-        self.run_faft_sequence()
+        logging.info("Change to devmode.")
+        self.check_state((self.checkers.crossystem_checker,
+                          {'dev_boot_usb': '0'}))
+        self.update_firmware('todev')
+        self.reboot_warm(wait_for_dut_up=False)
+        self.wait_fw_screen_and_ctrl_d()
+        self.wait_for_kernel_up()
+
+        logging.info("Check mainfw_type and run autoupdate.")
+        self.check_state((self.checkers.crossystem_checker,
+                          {'mainfw_type': 'developer'}))
+        self.update_firmware('autoupdate')
+        self.reboot_warm(wait_for_dut_up=False)
+        self.wait_fw_screen_and_ctrl_d()
+        self.wait_for_kernel_up()
+
+        logging.info("Verify fwid and install system firmware.")
+        self.check_state((self.checkers.crossystem_checker,
+                          {'fwid': self._shellball_fwid}))
+        self.install_original_firmware()
+        self.reboot_warm(wait_for_dut_up=False)
+        self.wait_fw_screen_and_ctrl_d()
+        self.wait_for_kernel_up()
+
+        logging.info("Verify the old firmware id and test factory_install.")
+        self.check_state((self.checkers.crossystem_checker,
+                          {'fwid': self._current_fwid}))
+        self.update_firmware('factory_install')
+        self.reboot_warm(wait_for_dut_up=False)
+        self.wait_fw_screen_and_ctrl_d()
+        self.wait_for_kernel_up()
+
+        logging.info("Verify fwid and install original firmware.")
+        self.check_state((self.checkers.crossystem_checker,
+                          {'fwid': self._shellball_fwid}))
+        self.install_original_firmware()
+        self.reboot_warm(wait_for_dut_up=False)
+        self.wait_fw_screen_and_ctrl_d()
+        self.wait_for_kernel_up()
+
+        logging.info("Verify old fwid.")
+        self.check_state((self.checkers.crossystem_checker,
+                          {'fwid': self._current_fwid}))

@@ -17,7 +17,7 @@ chromeos-firmwareupdate functional testing.
 This script first copies shellball to DUT and runs all functional tests.
 
 Syntax:
-   ./run_remote_tests.sh --remote=<IP> -a "xml_config=<xml_config_file>
+   ./test_that --board=<BOARD> <IP> -a "xml_config=<xml_config_file>
    shellball_path=<shellball_directory> shellball_name=<shellball_name>
    servo_serial=<serial number>" firmware_ShellBall/control
 """
