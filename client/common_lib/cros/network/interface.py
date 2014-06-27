@@ -23,7 +23,8 @@ NAME_ATHEROS_AR9280 = 'Atheros AR9280'
 NAME_ATHEROS_AR9382 = 'Atheros AR9382'
 NAME_ATHEROS_AR9462 = 'Atheros AR9462'
 NAME_INTEL_7260 = 'Intel 7260'
-NAME_BROADCOM_4354_SDIO = 'Broadcom 4354 SDIO'
+NAME_BROADCOM_BCM4354_SDIO = 'Broadcom BCM4354 SDIO'
+NAME_BROADCOM_BCM4356_PCIE = 'Broadcom BCM4356 PCIE'
 
 DEVICE_INFO_ROOT = '/sys/class/net'
 DeviceInfo = collections.namedtuple('DeviceInfo', ['vendor', 'device'])
@@ -35,7 +36,8 @@ DEVICE_NAME_LOOKUP = {
     DeviceInfo('0x168c', '0x0030'): NAME_ATHEROS_AR9382,
     DeviceInfo('0x168c', '0x0034'): NAME_ATHEROS_AR9462,
     DeviceInfo('0x8086', '0x08b1'): NAME_INTEL_7260,
-    DeviceInfo('0x02d0', '0x4354'): NAME_BROADCOM_4354_SDIO,
+    DeviceInfo('0x02d0', '0x4354'): NAME_BROADCOM_BCM4354_SDIO,
+    DeviceInfo('0x14e4', '0x43a3'): NAME_BROADCOM_BCM4356_PCIE,
 }
 
 class Interface:
