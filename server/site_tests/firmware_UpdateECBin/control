@@ -44,7 +44,7 @@ The ec_autest_image.bin is the same binary as ec.bin but shift'ed and its
 version string has the "_shift" suffix.
 
 The new EC image should be specified by the new_ec argument, like:
-  run_remote_tests.sh --args "new_ec=ec_autest_image.bin" ...
+  test_that --args "new_ec=ec_autest_image.bin" ...
 
 So RONORMAL->TWOSTOP, TWOSTOP->TWOSTOP, and TWOSTOP->RONORMAL are covered.
 """
