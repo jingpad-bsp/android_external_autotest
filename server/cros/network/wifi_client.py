@@ -229,6 +229,8 @@ class WiFiClient(site_linux_system.LinuxSystem):
             self._wifi_if = interfaces[0]
             self._raise_logging_level()
         self._interface = interface.Interface(self._wifi_if, host=self.host)
+        logging.debug('WiFi interface is: %r',
+                      self._interface.device_description)
         self._firewall_rules = []
         # Turn off powersave mode by default.
         self.powersave_switch(False)

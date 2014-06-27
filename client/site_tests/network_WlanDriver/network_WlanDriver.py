@@ -74,8 +74,8 @@ class network_WlanDriver(test.test):
             logging.info('Device name %s, module path %s',
                          device_name, module_path)
             if not device_name in self.EXPECTED_DRIVER:
-                raise error.TestNAError('Unexpected device name %s' %
-                                        device_name)
+                raise error.TestFail('Unexpected device name %s' %
+                                     device_name)
 
             if not base_revision in self.EXPECTED_DRIVER[device_name]:
                 raise error.TestNAError('Unexpected base kernel revision %s '
@@ -90,4 +90,4 @@ class network_WlanDriver(test.test):
                                       module_path, expected_driver))
             found_devices += 1
         if not found_devices:
-            raise error.TestNAError('Found no wireless devices?')
+            raise error.TestNAError('Found no recognized wireless devices?')

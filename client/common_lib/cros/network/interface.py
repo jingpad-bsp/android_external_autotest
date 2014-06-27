@@ -25,6 +25,7 @@ NAME_ATHEROS_AR9462 = 'Atheros AR9462'
 NAME_INTEL_7260 = 'Intel 7260'
 NAME_BROADCOM_BCM4354_SDIO = 'Broadcom BCM4354 SDIO'
 NAME_BROADCOM_BCM4356_PCIE = 'Broadcom BCM4356 PCIE'
+NAME_UNKNOWN = 'Unknown WiFi Device'
 
 DEVICE_INFO_ROOT = '/sys/class/net'
 DeviceInfo = collections.namedtuple('DeviceInfo', ['vendor', 'device'])
@@ -135,22 +136,26 @@ class Interface:
         read_file = lambda path: self._run('cat "%s"' % path).stdout.rstrip()
         readlink = lambda path: self._run('readlink "%s"' % path).stdout.strip()
         if not self.is_wifi_device:
+            logging.error('Device description not supported on non-wifi '
+                          'interface: %s.', self._name)
             return None
+
         # This assumes that our path separator is the same as the remote host.
         device_path = os.path.join(DEVICE_INFO_ROOT, self._name, 'device')
         if not exists(device_path):
+            logging.error('No device information found at %s', device_path)
             return None
 
         vendor_id = read_file(os.path.join(device_path, 'vendor'))
         product_id = read_file(os.path.join(device_path, 'device'))
         driver_info = DeviceInfo(vendor_id, product_id)
-        if not driver_info in DEVICE_NAME_LOOKUP:
-            raise error.TestError('Device vendor/product pair %r '
-                                  'for device %s is unknown!' %
-                                  (driver_info, product_id))
-        device_name = DEVICE_NAME_LOOKUP[driver_info]
-        logging.debug('Device is %s',  device_name)
-
+        if driver_info in DEVICE_NAME_LOOKUP:
+            device_name = DEVICE_NAME_LOOKUP[driver_info]
+            logging.debug('Device is %s',  device_name)
+        else:
+            logging.error('Device vendor/product pair %r for device %s is '
+                          'unknown!', driver_info, product_id)
+            device_name = NAME_UNKNOWN
         module_name = os.path.basename(
                 readlink(os.path.join(device_path, 'driver', 'module')))
         kernel_release = self._run('uname -r').stdout.strip()
