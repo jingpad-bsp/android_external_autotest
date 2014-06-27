@@ -4,11 +4,11 @@
 
 import logging
 from autotest_lib.server import utils
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 from autotest_lib.client.common_lib import error
 
 
-class firmware_UpdateFirmwareVersion(FAFTSequence):
+class firmware_UpdateFirmwareVersion(FirmwareTest):
     """
     Servo based firmware update test which checks the firmware version.
 
@@ -36,11 +36,9 @@ class firmware_UpdateFirmwareVersion(FAFTSequence):
                 'Update success, now version is %s',
                 actual_ver)
 
-
     def check_version_and_run_recovery(self):
         self.check_firmware_version(self._update_version)
         self.faft_client.updater.run_recovery()
-
 
     def initialize(self, host, cmdline_args):
         dict_args = utils.args_to_dict(cmdline_args)
@@ -67,7 +65,7 @@ class firmware_UpdateFirmwareVersion(FAFTSequence):
         logging.info('Origin version is %s', actual_ver)
         self._update_version = actual_ver + 1
         logging.info('Firmware version will update to version %s',
-            self._update_version)
+                     self._update_version)
 
         self.faft_client.updater.resign_firmware(self._update_version)
         self.faft_client.updater.repack_shellball('test')
@@ -78,47 +76,38 @@ class firmware_UpdateFirmwareVersion(FAFTSequence):
         self.invalidate_firmware_setup()
         super(firmware_UpdateFirmwareVersion, self).cleanup()
 
-
     def run_once(self):
-        self.register_faft_sequence((
-            {   # Step 1, Update firmware with new version.
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_act': 'A',
-                    'mainfw_type': 'normal',
-                    'tried_fwb': '0',
-                    'fwid': self._fwid
-                }),
-                'userspace_action': (
-                     self.faft_client.updater.run_autoupdate,
-                     'test'
-                )
-            },
-            {   # Step2, Copy firmware form B to A.
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_act': 'B',
-                    'tried_fwb': '1'
-                }),
-                'userspace_action': (self.faft_client.updater.run_bootok,
-                                     'test')
-            },
-            {   # Step3, Check firmware and TPM version, then recovery.
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_act': 'A',
-                    'tried_fwb': '0'
-                }),
-                'userspace_action': (self.check_version_and_run_recovery),
-                'reboot_action': (self.reboot_with_factory_install_shim),
-            },
-            {   # Step4, Check Rollback version.
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_act': 'A',
-                    'tried_fwb': '0',
-                    'fwid': self._fwid
-                }),
-                'userspace_action':(self.check_firmware_version,
-                                    self._update_version - 1)
+        logging.info("Update firmware with new version.")
+        self.check_state((self.checkers.crossystem_checker, {
+                          'mainfw_act': 'A',
+                          'mainfw_type': 'normal',
+                          'tried_fwb': '0',
+                          'fwid': self._fwid
+                          }))
+        self.faft_client.updater.run_autoupdate('test')
+        self.reboot_warm()
 
-            }
-        ))
+        logging.info("Copy firmware form B to A.")
+        self.check_state((self.checkers.crossystem_checker, {
+                          'mainfw_act': 'B',
+                          'tried_fwb': '1'
+                          }))
+        self.faft_client.updater.run_bootok('test')
+        self.reboot_warm()
 
-        self.run_faft_sequence()
+        logging.info("Check firmware and TPM version, then recovery.")
+        self.check_state((self.checkers.crossystem_checker, {
+                          'mainfw_act': 'A',
+                          'tried_fwb': '0'
+                          }))
+        self.check_version_and_run_recovery()
+        self.do_reboot_action(self.reboot_with_factory_install_shim)
+        self.wait_for_kernel_up()
+
+        logging.info("Check Rollback version.")
+        self.check_state((self.checkers.crossystem_checker, {
+                          'mainfw_act': 'A',
+                          'tried_fwb': '0',
+                          'fwid': self._fwid
+                          }))
+        self.check_firmware_version(self._update_version - 1)
