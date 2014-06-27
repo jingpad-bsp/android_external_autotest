@@ -20,6 +20,7 @@ from autotest_lib.client.cros.mainloop import ExceptionForward
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam
 
+DEFAULT_TEST_TIMEOUT_S=600
 DEVICE_TIMEOUT=60
 
 class DisableTester(GenericTesterMainLoop):
@@ -294,6 +295,8 @@ class network_3GDisableWhileConnecting(test.test):
   version = 1
   def run_once(
       self, use_pseudomodem=False, pseudomodem_family='3GPP', **kwargs):
+    timeout_s = kwargs.get('timeout_s', DEFAULT_TEST_TIMEOUT_S)
+
     with backchannel.Backchannel():
       dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
       self.main_loop = gobject.MainLoop()
@@ -304,11 +307,15 @@ class network_3GDisableWhileConnecting(test.test):
               bus=self.bus):
         try:
           logging.info('Flimflam-level test')
-          flimflam = FlimflamDisableTester(self, self.main_loop)
+          flimflam = FlimflamDisableTester(self,
+                                           self.main_loop,
+                                           timeout_s=timeout_s)
           flimflam.run(**kwargs)
 
           logging.info('Modem-level test')
-          modem = ModemDisableTester(self, self.main_loop)
+          modem = ModemDisableTester(self,
+                                     self.main_loop,
+                                     timeout_s=timeout_s)
           modem.run(**kwargs)
         finally:
           network.ClearGobiModemFaultInjection()
