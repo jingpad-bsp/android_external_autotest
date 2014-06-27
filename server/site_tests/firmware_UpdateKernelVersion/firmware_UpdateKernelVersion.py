@@ -3,11 +3,11 @@
 # found in the LICENSE file.
 
 import logging
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 from autotest_lib.client.common_lib import error
 
 
-class firmware_UpdateKernelVersion(FAFTSequence):
+class firmware_UpdateKernelVersion(FirmwareTest):
     """
     This is a servod based kernel update test which should run in developer
     mode. On runtime, this test modifies the kernel version of kernel b and
@@ -28,7 +28,6 @@ class firmware_UpdateKernelVersion(FAFTSequence):
                 'Update success, now version is %s',
                 actual_ver)
 
-
     def modify_kernel_b_and_set_cgpt_priority(self, delta, target_dev):
         if delta == 1:
             self.faft_client.kernel.move_version_forward('b')
@@ -40,7 +39,6 @@ class firmware_UpdateKernelVersion(FAFTSequence):
             self.reset_and_prioritize_kernel('a')
         else:
             self.reset_and_prioritize_kernel('b')
-
 
     def initialize(self, host, cmdline_args, dev_mode=True):
         super(firmware_UpdateKernelVersion, self).initialize(host, cmdline_args)
@@ -55,36 +53,25 @@ class firmware_UpdateKernelVersion(FAFTSequence):
 
         self.setup_kernel('a')
 
-
     def cleanup(self):
         super(firmware_UpdateKernelVersion, self).cleanup()
 
-
     def run_once(self):
-        self.register_faft_sequence((
-            {   # Step 1, Update Kernel Version.
-                'state_checker': (self.check_root_part_on_non_recovery, 'a'),
-                'userspace_action': (
-                     self.modify_kernel_b_and_set_cgpt_priority, (1, 'b')),
-                'reboot_action': self.warm_reboot,
-            },
-            {   # Step 2, Check kernel version and rollback.
-                'state_checker': (self.check_root_part_on_non_recovery, 'b'),
-                'userspace_action': (
-                    self.modify_kernel_b_and_set_cgpt_priority, (-1, 'b')),
-                'reboot_action': self.warm_reboot,
-            },
-            {   # Step 3, Boot with rollback kernel and change boot priority.
-                'state_checker': (self.check_root_part_on_non_recovery, 'b'),
-                'userspace_action':(
-                    self.modify_kernel_b_and_set_cgpt_priority, (0, 'a')),
-                'reboot_action': self.warm_reboot,
-            },
-            {   # Step 4, Check rollback version.
-                'state_checker': (self.check_root_part_on_non_recovery, 'a'),
-                'userspace_action': (self.check_kernel_version,
-                                     self._update_version - 1)
-            }
-        ))
+        logging.info("Update Kernel Version.")
+        self.check_state((self.check_root_part_on_non_recovery, 'a'))
+        self.modify_kernel_b_and_set_cgpt_priority(1, 'b')
+        self.reboot_warm()
 
-        self.run_faft_sequence()
+        logging.info("Check kernel version and rollback.")
+        self.check_state((self.check_root_part_on_non_recovery, 'b'))
+        self.modify_kernel_b_and_set_cgpt_priority(-1, 'b')
+        self.reboot_warm()
+
+        logging.info("Boot with rollback kernel and change boot priority.")
+        self.check_state((self.check_root_part_on_non_recovery, 'b'))
+        self.modify_kernel_b_and_set_cgpt_priority(0, 'a')
+        self.reboot_warm()
+
+        logging.info("Check rollback version.")
+        self.check_state((self.check_root_part_on_non_recovery, 'a'))
+        self.check_kernel_version(self._update_version - 1)
