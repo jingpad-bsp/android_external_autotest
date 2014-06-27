@@ -621,14 +621,16 @@ class CPUIdleStats(AbstractStats):
             cpuidle_stats['C0'] += epoch_usecs
 
             for state in states:
-                if not int(utils.read_one_line(os.path.join(state, 'latency'))):
+                name = utils.read_one_line(os.path.join(state, 'name'))
+                latency = utils.read_one_line(os.path.join(state, 'latency'))
+
+                if not int(latency) and name == 'POLL':
                     # C0 state. Kernel stats aren't right, so calculate by
                     # subtracting all other states from total time (using epoch
                     # timer since we calculate differences in the end anyway).
                     # NOTE: Only x86 lists C0 under cpuidle, ARM does not.
                     continue
 
-                name = utils.read_one_line(os.path.join(state, 'name'))
                 usecs = int(utils.read_one_line(os.path.join(state, 'time')))
                 cpuidle_stats['C0'] -= usecs
 
