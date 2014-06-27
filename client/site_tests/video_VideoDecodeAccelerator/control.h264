@@ -10,9 +10,7 @@ This test will fail if any of the tests in video_decode_accelerator_unittest
 fails. Running video_decode_accelerator_unittest is skipped on machines that are
 known not to support video decode.
 """
-# TODO(posciak): Change this back to "bvt, bvt_cq" after http://crbug.com/383414
-# is fixed.
-SUITE = "experimental"
+SUITE = "bvt, bvt_cq"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "video"
