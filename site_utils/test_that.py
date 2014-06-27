@@ -759,7 +759,9 @@ def _perform_run_from_autotest_root(arguments, autotest_path, argv):
         os.unlink(_LATEST_RESULTS_DIRECTORY)
     except OSError:
         pass
-    os.symlink(results_directory, _LATEST_RESULTS_DIRECTORY)
+    link_target = os.path.relpath(results_directory,
+                                  os.path.dirname(_LATEST_RESULTS_DIRECTORY))
+    os.symlink(link_target, _LATEST_RESULTS_DIRECTORY)
     return final_result
 
 
