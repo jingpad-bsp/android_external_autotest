@@ -4,11 +4,11 @@
 
 import logging, os
 from autotest_lib.server import utils
-from autotest_lib.server.cros.faft.faft_classes import FAFTSequence
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 from autotest_lib.client.common_lib import error
 
 
-class firmware_UpdateFirmwareDataKeyVersion(FAFTSequence):
+class firmware_UpdateFirmwareDataKeyVersion(FirmwareTest):
     """
     This test requires a USB disk plugged-in, which contains a Chrome OS
     install shim (built by "build_image factory_install"). The firmware id
@@ -97,43 +97,37 @@ class firmware_UpdateFirmwareDataKeyVersion(FAFTSequence):
 
 
     def run_once(self):
-        self.register_faft_sequence((
-            {   # Step1. Update firmware with new datakey version.
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_act': 'A',
-                    'tried_fwb': '0',
-                    'mainfw_type': 'normal',
-                    'fwid': self._fwid
-                }),
-                'userspace_action': (
-                     self.faft_client.updater.run_autoupdate,
-                     'test'
-                )
-            },
-            {   # Step2. Check firmware data key version and Rollback.
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_act': 'B',
-                    'tried_fwb': '1'
-                }),
-                'userspace_action': (self.faft_client.updater.run_bootok,
-                                     'test')
-            },
-            {   # Step3, Check firmware and TPM version, then recovery.
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_act': 'A',
-                    'tried_fwb': '0'
-                }),
-                'userspace_action': (self.check_version_and_run_recovery),
-                'reboot_action': (self.reboot_with_factory_install_shim),
-            },
-            {   # Step4, Check Rollback version.
-                'state_checker': (self.checkers.crossystem_checker, {
-                    'mainfw_act': 'A',
-                    'tried_fwb': '0',
-                    'fwid': self._fwid
-                }),
-                'userspace_action':(self.check_firmware_datakey_version,
-                                    self._update_version - 1)
-            }
-        ))
-        self.run_faft_sequence()
+        logging.info("Update firmware with new datakey version.")
+        self.check_state((self.checkers.crossystem_checker, {
+                          'mainfw_act': 'A',
+                          'tried_fwb': '0',
+                          'mainfw_type': 'normal',
+                          'fwid': self._fwid
+                          }))
+        self.faft_client.updater.run_autoupdate('test')
+        self.reboot_warm()
+
+        logging.info("Check firmware data key version and Rollback.")
+        self.check_state((self.checkers.crossystem_checker, {
+                          'mainfw_act': 'B',
+                          'tried_fwb': '1'
+                          }))
+        self.faft_client.updater.run_bootok('test')
+        self.reboot_warm()
+
+        logging.info("Check firmware and TPM version, then recovery.")
+        self.check_state((self.checkers.crossystem_checker, {
+                          'mainfw_act': 'A',
+                          'tried_fwb': '0'
+                           }))
+        self.check_version_and_run_recovery()
+        self.do_reboot_action(self.reboot_with_factory_install_shim)
+        self.wait_for_kernel_up()
+
+        logging.info("Check Rollback version.")
+        self.check_state((self.checkers.crossystem_checker, {
+                          'mainfw_act': 'A',
+                          'tried_fwb': '0',
+                          'fwid': self._fwid
+                          }))
+        self.check_firmware_datakey_version(self._update_version - 1)
