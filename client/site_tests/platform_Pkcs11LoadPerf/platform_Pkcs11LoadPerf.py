@@ -29,6 +29,9 @@ class platform_Pkcs11LoadPerf(test.test):
             re.finditer(r'Elapsed: (\d+)ms', output, flags=re.MULTILINE)]
         if len(time_list) < 3:
             error.TestFail('Expected output not found.')
+        self.output_perf_value(description='Key Ready',
+                               value=(time_list[0] + time_list[1] + time_list[2]),
+                               units='ms', higher_is_better=False)
         self.write_perf_keyval(
             {'cert_ready_ms': time_list[0] + time_list[1],
              'key_ready_ms': time_list[0] + time_list[1] + time_list[2]})

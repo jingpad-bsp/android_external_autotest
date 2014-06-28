@@ -175,6 +175,10 @@
     "master_name": "ChromeOSPerf"
   },
   {
+    "autotest_name": "platform_Pkcs11LoadPerf",
+    "master_name": "ChromeOSPerf"
+  },
+  {
     "autotest_name": "power_Resume",
     "master_name": "ChromeOSPower"
   },
