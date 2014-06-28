@@ -8,6 +8,8 @@ import urlparse
 
 import dynamic_ap_configurator
 import ap_spec
+from selenium.common.exceptions import TimeoutException as \
+SeleniumTimeoutException
 
 
 class TrendnetAPConfigurator(
@@ -56,14 +58,22 @@ class TrendnetAPConfigurator(
             page_url = urlparse.urljoin(self.admin_interface_url,
                                         'wireless/basic.asp')
             self.get_url(page_url, page_title='TEW')
+            ids_list = ['display_SSID1', 'sz11gChannel']
         elif page_number == 2:
             page_url = urlparse.urljoin(self.admin_interface_url,
                                         'wireless/security.asp')
             self.get_url(page_url, page_title='TEW')
+            ids_list = ['ssidIndex', 'security_mode']
         else:
             raise RuntimeError('Invalid page number passed.  Number of pages '
                                '%d, page value sent was %d' %
                                (self.get_number_of_pages(), page_number))
+        try:
+            self.wait_for_objects_by_id(ids_list, wait_time=30)
+        except SeleniumTimeoutException, e:
+            logging.info('Page did not load completely. Refresh driver')
+            self.driver.refresh()
+            self.wait_for_objects_by_id(ids_list, wait_time=30)
 
 
     def wait_for_progress_bar(self):

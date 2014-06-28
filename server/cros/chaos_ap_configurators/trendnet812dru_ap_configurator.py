@@ -5,6 +5,7 @@
 import os
 import ap_spec
 import trendnet692gr_ap_configurator
+import time
 
 
 class Trendnet812druAPConfigurator(trendnet692gr_ap_configurator.
@@ -88,7 +89,7 @@ class Trendnet812druAPConfigurator(trendnet692gr_ap_configurator.
     def _set_mode(self, mode, band=None):
         # Different bands are not supported so we ignore.
         # Create the mode to popup item mapping
-        mode_mapping = {ap_spec.MODE_N: '2.4GHz 802.11 n only'}
+        mode_mapping = {ap_spec.MODE_N: 'Auto'}
         mode_name = ''
         if mode in mode_mapping.keys():
             mode_name = mode_mapping[mode]
@@ -96,8 +97,10 @@ class Trendnet812druAPConfigurator(trendnet692gr_ap_configurator.
             raise RuntimeError('The mode selected %s is not supported by router'
                                ' %s.', ap_spec.mode_string_for_mode(mode),
                                self.name)
-        self.select_item_from_popup_by_xpath('Auto',
-                                             '//select[@name="wl_nmode"]')
+        xpath = '//select[@name="wl_nmode"]'
+        while self.number_of_items_in_popup_by_xpath(xpath) < 2:
+            time.sleep(0.25)
+        self.select_item_from_popup_by_xpath(mode_name, xpath)
 
 
     def set_radio(self, enabled=True):
