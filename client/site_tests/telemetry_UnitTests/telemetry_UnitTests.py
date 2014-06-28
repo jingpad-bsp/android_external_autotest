@@ -4,7 +4,10 @@
 
 import logging, os, StringIO, sys
 
-from telemetry.unittest import gtest_testrunner, run_tests
+from telemetry.core import browser_finder
+from telemetry.core import browser_options
+from telemetry.unittest import gtest_unittest_results
+from telemetry.unittest import run_tests
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
@@ -48,44 +51,41 @@ class telemetry_UnitTests(test.test):
         logging.info('Running %s unit tests with browser_type "%s".',
                      test_spec.test_type, browser_type)
         sys.path.append(test_spec.root)
+        args = browser_options.BrowserFinderOptions()
+        args.browser_type = browser_type
+        args.CreateParser().parse_args([])  # Hack to update BrowserOptions.
+        possible_browser = browser_finder.FindBrowser(args)
+        tests = run_tests.DiscoverTests(
+            [test_spec.root], test_spec.top_level_dir,
+            possible_browser, test_spec.tests)
+        runner = gtest_unittest_results.GTestTestRunner()
         # Capture the Telemetry output when running the unit tests.
         capturer = StringIO.StringIO()
-        sys.stdout = capturer
-        runner = gtest_testrunner.GTestTestRunner(print_result_after_run=False)
-        for test in test_spec.tests:
-            run_tests.Main(['--browser=%s' % browser_type, test],
-                           test_spec.root, test_spec.top_level_dir, runner)
-
-        if runner.result:
-            # The PrintSummary() below is captured in the test debug log file.
-            runner.result.PrintSummary()
-
-        sys.stdout = sys.__stdout__  # Restore sys.stdout.
-        test_output = capturer.getvalue()
+        try:
+            sys.stdout = capturer
+            result = runner.run(tests, 1, args)
+            test_output = capturer.getvalue()
+        finally:
+            sys.stdout = sys.__stdout__  # Restore sys.stdout.
+            capturer.close()
         logging.info(test_output)  # Log the Telemetry output.
-        capturer.close()
 
-        if runner.result:
-            if runner.result.num_errors:
-                all_errors = runner.result.errors[:]
-                all_errors.extend(runner.result.failures)
-                for (test_name, error_string) in all_errors:
-                    test_spec.error_details += '%s\n%s\n' % (test_name,
-                                                             error_string)
-                test_spec.num_errors = runner.result.num_errors
-                logging.error(test_spec.error_string())
-            else:
-                logging.info('All %d %s unit tests passed.',
-                             runner.result.successes_count, test_spec.test_type)
-        elif test_spec.tests:
-            raise error.TestFail('No results found.')
+        if result.wasSuccessful():
+            logging.info('All %d %s unit tests passed.',
+                         len(result.successes), test_spec.test_type)
+        else:
+            for (test_name, error_string) in result.failures_and_errors:
+                test_spec.error_details += '%s\n%s\n' % (test_name,
+                                                         error_string)
+            test_spec.num_errors = len(result.failures_and_errors)
+            logging.error(test_spec.error_string())
 
 
     def run_once(self, browser_type, unit_tests, perf_tests):
         """
         Runs telemetry/perf unit tests.
 
-        @param browser_tye: The string type of browser to use, e.g., 'system'.
+        @param browser_type: The string type of browser to use, e.g., 'system'.
 
         """
         error_str = ''
