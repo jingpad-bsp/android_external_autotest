@@ -4,6 +4,7 @@
 
 import logging
 import Queue
+import signal
 import struct
 import time
 
@@ -51,6 +52,7 @@ class MBIMChannelEndpoint(object):
                  in_buffer_size,
                  request_queue,
                  response_queue,
+                 stop_request_event,
                  strict=True):
         """
         @param device_filter: A filter to find the device we want to communicate
@@ -87,9 +89,9 @@ class MBIMChannelEndpoint(object):
         self._in_buffer_size = in_buffer_size
         self._request_queue = request_queue
         self._response_queue = response_queue
+        self._stop_requested = stop_request_event
         self._strict = strict
 
-        self._stopped = False
         self._num_outstanding_responses = 0
         self._response_available_packet = USBNotificationPacket(
                 bmRequestType=0b10100001,
@@ -98,12 +100,16 @@ class MBIMChannelEndpoint(object):
                 wIndex=self._interface_number,
                 wLength=0x0000)
 
+        # SIGINT recieved by the parent process is forwarded to this process.
+        # Exit graciously when that happens.
+        signal.signal(signal.SIGINT,
+                      lambda signum, frame: self._stop_requested.set())
         self.start()
 
 
     def start(self):
         """ Start the busy-loop that periodically interacts with the modem. """
-        while not self._stopped:
+        while not self._stop_requested.is_set():
             try:
                 self._tick()
             except mbim_errors.MBIMComplianceChannelError as e:
@@ -111,11 +117,6 @@ class MBIMChannelEndpoint(object):
                     raise
 
             time.sleep(self.QUIET_TIME_MS / 1000)
-
-
-    def stop(self):
-        """ Request the process to exit. This is not effective immediately. """
-        self._stopped = True
 
 
     def _tick(self):

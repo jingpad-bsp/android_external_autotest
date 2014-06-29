@@ -26,21 +26,8 @@ class MBIMChannelTestCase(unittest.TestCase):
         self._interrupt_endpoint_address = 0x01
         self._in_buffer_size = 100
 
+        self._setup_mock_subprocess()
         self._mox = mox.Mox()
-
-        mock_process = self._mox.CreateMock(multiprocessing.Process)
-        mock_process(target=mox.IgnoreArg(),
-                     args=mox.IgnoreArg()).AndReturn(mock_process)
-        mock_process.start()
-
-        self._mox.ReplayAll()
-        self._channel = mbim_channel.MBIMChannel(
-                self._device_filter,
-                self._interface_number,
-                self._interrupt_endpoint_address,
-                self._in_buffer_size,
-                mock_process)
-        self._mox.VerifyAll()
 
         # Reach into |MBIMChannel| and mock out the request queue, so we can set
         # expectations on it.
@@ -58,6 +45,43 @@ class MBIMChannelTestCase(unittest.TestCase):
         # Decrease timeouts to small values to speed up tests.
         self._channel.FRAGMENT_TIMEOUT_S = 0.2
         self._channel.TRANSACTION_TIMEOUT_S = 0.5
+
+
+    def tearDown(self):
+        self._channel.close()
+        self._subprocess_mox.VerifyAll()
+
+
+    def _setup_mock_subprocess(self):
+        """
+        Setup long-term expectations on the mocked out subprocess.
+
+        These expectations are only met when |self._channel.close| is called in
+        |tearDown|.
+
+        """
+        self._subprocess_mox = mox.Mox()
+        mock_process = self._subprocess_mox.CreateMock(multiprocessing.Process)
+        mock_process(target=mox.IgnoreArg(),
+                     args=mox.IgnoreArg()).AndReturn(mock_process)
+        mock_process.start()
+
+        # Each API call into MBIMChannel results in an aliveness ping to the
+        # subprocess.
+        # Finally, when |self._channel| is destructed, it will attempt to
+        # terminate the |mock_process|, with increasingly drastic actions.
+        mock_process.is_alive().MultipleTimes().AndReturn(True)
+        mock_process.join(mox.IgnoreArg())
+        mock_process.is_alive().AndReturn(True)
+        mock_process.terminate()
+
+        self._subprocess_mox.ReplayAll()
+        self._channel = mbim_channel.MBIMChannel(
+                self._device_filter,
+                self._interface_number,
+                self._interrupt_endpoint_address,
+                self._in_buffer_size,
+                mock_process)
 
 
     def test_creation(self):

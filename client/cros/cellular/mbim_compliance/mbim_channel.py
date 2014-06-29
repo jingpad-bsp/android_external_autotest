@@ -43,6 +43,7 @@ class MBIMChannel(object):
 
     """
 
+    ENDPOINT_JOIN_TIMEOUT_S = 5
     FRAGMENT_TIMEOUT_S = 3
     # TODO(pprabhu) Consider allowing each transaction to specify its own
     # timeout.
@@ -75,12 +76,12 @@ class MBIMChannel(object):
                 ceation.
 
         """
+        self._stop_request_event = multiprocessing.Event()
         self._request_queue = multiprocessing.Queue()
         self._response_queue = multiprocessing.Queue()
         self._outstanding_packets = []
         self._last_response = []
         self._stashed_first_fragment = None
-        # TODO(pprabhu) Launch properly.
         if process_class is None:
             process_class = multiprocessing.Process
         self._endpoint_process = process_class(
@@ -90,8 +91,41 @@ class MBIMChannel(object):
                       interrupt_endpoint_address,
                       in_buffer_size,
                       self._request_queue,
-                      self._response_queue))
+                      self._response_queue,
+                      self._stop_request_event))
         self._endpoint_process.start()
+
+
+    def __del__(self):
+        """
+        The destructor.
+
+        Note that it is not guaranteed that |__del__| is called for objects that
+        exist when the interpreter exits. It is recommended to call |close|
+        explicitly.
+
+        """
+        self.close()
+
+
+    def close(self):
+        """
+        Cleanly close the MBIMChannel.
+
+        MBIMChannel forks a subprocess to communicate with the USB device. It is
+        recommended that |close| be called explicitly.
+
+        """
+        if not self._endpoint_process:
+            return
+
+        if self._endpoint_process.is_alive():
+            self._stop_request_event.set()
+            self._endpoint_process.join(self.ENDPOINT_JOIN_TIMEOUT_S)
+            if self._endpoint_process.is_alive():
+                self._endpoint_process.terminate()
+
+        self._endpoint_process = None
 
 
     def bidirectional_transaction(self, *args):
@@ -113,6 +147,7 @@ class MBIMChannel(object):
                 out-of-order or non-contigouos.
 
         """
+        self._verify_endpoint_open()
         if not args:
             mbim_errors.log_and_raise(
                     mbim_errors.MBIMComplianceChannelError,
@@ -137,6 +172,7 @@ class MBIMChannel(object):
                 spec.
 
         """
+        self._verify_endpoint_open()
         if not args:
             mbim_errors.log_and_raise(
                     mbim_errors.MBIMComplianceChannelError,
@@ -156,6 +192,7 @@ class MBIMChannel(object):
         @raises: MBIMComplianceChannelError if things don't settle down fast
                 enough.
         """
+        self._verify_endpoint_open()
         num_remaining_fragments = self._request_queue.qsize()
         try:
             timeout = self.FRAGMENT_TIMEOUT_S * num_remaining_fragments
@@ -190,6 +227,7 @@ class MBIMChannel(object):
                     # handle fragment.
 
         """
+        self._verify_endpoint_open()
         # Try to get more packets from the response queue.
         # This can block forever if the modem keeps spewing trash at us.
         while True:
@@ -336,3 +374,12 @@ class MBIMChannel(object):
             current_fragment = 0
 
         return transaction_id, total_fragments, current_fragment
+
+
+    def _verify_endpoint_open(self):
+        if not self._endpoint_process.is_alive():
+            mbim_errors.log_and_raise(
+                    mbim_errors.MBIMComplianceChannelError,
+                    'MBIMChannelEndpoint died unexpectedly. '
+                    'The actual exception can be found in log entries from the '
+                    'subprocess.')
