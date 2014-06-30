@@ -1,6 +1,7 @@
 package autotest.afe;
 
 import autotest.afe.create.CreateJobViewPresenter.JobCreateListener;
+import autotest.common.CustomHistory.HistoryToken;
 import autotest.common.SimpleCallback;
 import autotest.common.Utils;
 import autotest.common.table.DataSource;
@@ -36,6 +37,7 @@ import com.google.gwt.user.client.ui.CheckBox;
 import com.google.gwt.user.client.ui.TextBox;
 
 import java.util.List;
+import java.util.Map;
 
 public class HostDetailView extends DetailView
                             implements DataCallback, TableActionsListener, SelectableRowFilter {
@@ -182,6 +184,10 @@ public class HostDetailView extends DetailView
     @Override
     protected String getObjectId() {
         return hostId;
+    }
+
+    protected String getHostname() {
+        return hostname;
     }
 
     @Override
@@ -405,5 +411,24 @@ public class HostDetailView extends DetailView
 
     public boolean isRowSelectable(JSONObject row) {
         return isJobRow(row);
+    }
+
+    @Override
+    public void handleHistoryArguments(Map<String, String> arguments) {
+        String hostname = arguments.get("hostname");
+        String objectId = arguments.get("object_id");
+
+        if (objectId != null) {
+            try {
+                updateObjectId(objectId);
+            }
+            catch (IllegalArgumentException exc) {
+                return;
+            }
+        } else if (hostname != null) {
+            fetchDataByHostname(hostname);
+        } else {
+            resetPage();
+        }
     }
 }
