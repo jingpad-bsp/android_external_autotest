@@ -37,6 +37,9 @@ DEVICE_NAME_LOOKUP = {
     DeviceInfo('0x168c', '0x0030'): NAME_ATHEROS_AR9382,
     DeviceInfo('0x168c', '0x0034'): NAME_ATHEROS_AR9462,
     DeviceInfo('0x8086', '0x08b1'): NAME_INTEL_7260,
+    # TODO(wiley): Why is this number slightly different on some platforms?
+    #              Is it just a different part source?
+    DeviceInfo('0x8086', '0x08b2'): NAME_INTEL_7260,
     DeviceInfo('0x02d0', '0x4354'): NAME_BROADCOM_BCM4354_SDIO,
     DeviceInfo('0x14e4', '0x43a3'): NAME_BROADCOM_BCM4356_PCIE,
 }
