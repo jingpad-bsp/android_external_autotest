@@ -139,6 +139,11 @@ class HostForm(ModelWithInvalidForm):
         model = models.Host
 
 
+class HostAttributeInline(admin.TabularInline):
+    model = models.HostAttribute
+    extra = 1
+
+
 class HostAdmin(SiteAdmin):
     # TODO(showard) - showing platform requires a SQL query for
     # each row (since labels are many-to-many) - should we remove
@@ -156,6 +161,10 @@ class HostAdmin(SiteAdmin):
     def change_view(self, request, obj_id, form_url='', extra_context=None):
         # Hide labels_autodetection when editing a host.
         self.fields = ('hostname', 'locked', 'leased', 'protection', 'labels')
+        # Only allow editing host attributes when a host has been created.
+        self.inlines = [
+            HostAttributeInline,
+        ]
         return super(HostAdmin, self).change_view(request,
                                                   obj_id,
                                                   form_url,
@@ -209,7 +218,7 @@ class HostAdmin(SiteAdmin):
 
     def save_related(self, request, form, formsets, change):
         """Save many-to-many relations between host and labels."""
-        # Skip save_related if autodetection succeeded, subce cli has already
+        # Skip save_related if autodetection succeeded, since cli has already
         # handled many-to-many relations.
         if not self.successful_hosts:
             super(HostAdmin, self).save_related(request,
