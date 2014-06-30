@@ -11,9 +11,9 @@ import autotest.common.table.DataSource.SortDirection;
 import autotest.common.table.DataTable;
 import autotest.common.table.DynamicTable;
 import autotest.common.table.DynamicTable.DynamicTableListener;
+import autotest.common.table.JSONObjectSet;
 import autotest.common.table.RpcDataSource;
 import autotest.common.table.SelectionManager;
-import autotest.common.table.SelectionManager.SelectableRowFilter;
 import autotest.common.table.SimpleFilter;
 import autotest.common.table.TableDecorator;
 import autotest.common.ui.ContextMenu;
@@ -38,9 +38,9 @@ import com.google.gwt.user.client.ui.TextBox;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
-public class HostDetailView extends DetailView
-                            implements DataCallback, TableActionsListener, SelectableRowFilter {
+public class HostDetailView extends DetailView implements DataCallback, TableActionsListener {
     private static final String[][] HOST_JOBS_COLUMNS = {
             {DataTable.WIDGET_COLUMN, ""}, {"type", "Type"}, {"job__id", "Job ID"},
             {"job_owner", "Job Owner"}, {"job_name", "Job Name"}, {"started_on", "Time started"},
@@ -302,7 +302,6 @@ public class HostDetailView extends DetailView
         });
         tableDecorator.addPaginators();
         selectionManager = tableDecorator.addSelectionManager(false);
-        selectionManager.setSelectableRowFilter(this);
         jobsTable.setWidgetFactory(selectionManager);
         tableDecorator.addTableActionsPanel(this, true);
         tableDecorator.addControl("Show verifies, repairs, cleanups and resets",
@@ -311,6 +310,7 @@ public class HostDetailView extends DetailView
 
         showSpecialTasks.addClickHandler(new ClickHandler() {
             public void onClick(ClickEvent event) {
+                selectionManager.deselectAll();
                 jobsTable.setSpecialTasksEnabled(showSpecialTasks.getValue());
                 jobsTable.refresh();
             }
@@ -368,20 +368,39 @@ public class HostDetailView extends DetailView
 
     public ContextMenu getActionMenu() {
         ContextMenu menu = new ContextMenu();
-        menu.addItem("Abort job entries", new Command() {
+        menu.addItem("Abort", new Command() {
             public void execute() {
-                abortSelectedQueueEntries();
+                abortSelectedQueueEntriesAndSpecialTasks();
             }
         });
         return menu;
     }
 
-    private void abortSelectedQueueEntries() {
-        AfeUtils.abortHostQueueEntries(selectionManager.getSelectedObjects(), new SimpleCallback() {
-            public void doCallback(Object source) {
-                refresh();
-            }
-        });
+    private void abortSelectedQueueEntriesAndSpecialTasks() {
+        Set<JSONObject> selectedEntries = selectionManager.getSelectedObjects();
+        Set<JSONObject> selectedQueueEntries = new JSONObjectSet<JSONObject>();
+        JSONArray selectedSpecialTaskIds = new JSONArray();
+        for (JSONObject entry : selectedEntries) {
+            if (isJobRow(entry))
+                selectedQueueEntries.add(entry);
+            else
+                selectedSpecialTaskIds.set(selectedSpecialTaskIds.size(),
+                                           entry.get("oid"));
+        }
+        if (!selectedQueueEntries.isEmpty()) {
+            AfeUtils.abortHostQueueEntries(selectedQueueEntries, new SimpleCallback() {
+                public void doCallback(Object source) {
+                    refresh();
+                }
+            });
+        }
+        if (selectedSpecialTaskIds.size() > 0) {
+            AfeUtils.abortSpecialTasks(selectedSpecialTaskIds, new SimpleCallback() {
+                public void doCallback(Object source) {
+                    refresh();
+                }
+            });
+        }
     }
 
     private void updateLockButton() {

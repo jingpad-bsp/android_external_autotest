@@ -644,7 +644,8 @@ def _common_entry_to_dict(entry, type, job_dict):
                 execution_path=entry.execution_path(),
                 status=entry.status,
                 started_on=entry.started_on,
-                id=str(entry.id) + type)
+                id=str(entry.id) + type,
+                oid=entry.id)
 
 
 def _special_task_to_dict(special_task):

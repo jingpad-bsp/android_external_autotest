@@ -124,6 +124,7 @@ public class AfeUtils {
             JSONObject job = entry.get("job").isObject();
             int synchCount = (int) job.get("synch_count").isNumber().doubleValue();
             boolean hasExecutionSubdir =
+                entry.containsKey("execution_subdir") &&
                 !Utils.jsonToString(entry.get("execution_subdir")).equals("");
             if (synchCount > 1 && hasExecutionSubdir) {
                 synchronousEntries.add(entry);
@@ -135,7 +136,10 @@ public class AfeUtils {
                 // metahost row
                 extendJsonArray(asynchronousEntryIds, idListValue.isArray());
             } else {
-                asynchronousEntryIds.set(asynchronousEntryIds.size(), entry.get("id"));
+                JSONValue id = entry.get("id");
+                if (entry.containsKey("oid"))
+                    id = entry.get("oid");
+                asynchronousEntryIds.set(asynchronousEntryIds.size(), id);
             }
         }
 
@@ -154,6 +158,24 @@ public class AfeUtils {
                 abortAsynchronousEntries, synchronousEntries, asynchronousEntryIds.size() != 0);
             dialog.center();
         }
+    }
+
+    public static void abortSpecialTasks(final JSONArray specialTaskIds,
+                                         final SimpleCallback onSuccess) {
+        if (specialTaskIds.size() == 0) {
+            NotifyManager.getInstance().showError("No entries selected to abort");
+            return;
+        }
+
+        SimpleCallback abortSpecialTasks = new SimpleCallback() {
+            public void doCallback(Object source) {
+                JSONObject params = new JSONObject();
+                params.put("id__in", specialTaskIds);
+                AfeUtils.callAbortSpecialTasks(params, onSuccess);
+            }
+        };
+
+        abortSpecialTasks.doCallback(null);
     }
 
     private static void extendJsonArray(JSONArray array, JSONArray newValues) {
@@ -180,6 +202,26 @@ public class AfeUtils {
 
     public static void callAbort(JSONObject params, final SimpleCallback onSuccess) {
         callAbort(params, onSuccess, true);
+    }
+
+    public static void callAbortSpecialTasks(JSONObject params, final SimpleCallback onSuccess,
+                                 final boolean showMessage) {
+        JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
+        rpcProxy.rpcCall("abort_special_tasks", params, new JsonRpcCallback() {
+            @Override
+            public void onSuccess(JSONValue result) {
+                if (showMessage) {
+                    NotifyManager.getInstance().showMessage("Special tasks aborted");
+                }
+                if (onSuccess != null) {
+                    onSuccess.doCallback(null);
+                }
+            }
+        });
+    }
+
+    public static void callAbortSpecialTasks(JSONObject params, final SimpleCallback onSuccess) {
+        callAbortSpecialTasks(params, onSuccess, true);
     }
 
     public static void callReverify(JSONObject params, final SimpleCallback onSuccess,
