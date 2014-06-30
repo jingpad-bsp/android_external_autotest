@@ -45,7 +45,7 @@ def build_router_hostname(client_hostname=None, router_hostname=None):
         # Lab naming convention in: go/chromeos-lab-hostname-convention
         return wifi_test_utils.get_router_addr_in_lab(client_hostname)
 
-    raise error.TestError('Could not infer router hostname from client'
+    raise error.TestError('Could not infer router hostname from client '
                           'hostname: %s.' % client_hostname)
 
 
@@ -284,7 +284,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
         """
         if instance is not None:
-            search_arg = '-f "%s.*%s"' % (process, instance)
+            search_arg = '-f "^%s.*%s"' % (process, instance)
         else:
             search_arg = process
 
@@ -294,7 +294,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         while not is_dead and time.time() - start_time < timeout_seconds:
             time.sleep(self.POLLING_INTERVAL_SECONDS)
             is_dead = self.host.run(
-                    'pgrep %s' % search_arg,
+                    'pgrep -l %s' % search_arg,
                     ignore_status=True).exit_status != 0
         if is_dead or ignore_timeouts:
             return is_dead
@@ -312,7 +312,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
         """
         is_dead = self._kill_process_instance(
-                'hostapd',
+                self.cmd_hostapd,
                 instance=instance.conf_file,
                 timeout_seconds=30,
                 ignore_timeouts=True)
@@ -628,7 +628,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             if instance.dev_type == 'ibss':
                 self.iw_runner.ibss_leave(instance.interface)
             elif instance.dev_type == 'managed':
-                self._kill_process_instance('wpa_supplicant',
+                self._kill_process_instance(self.cmd_wpa_supplicant,
                                             instance=instance.interface)
             else:
                 self.iw_runner.disconnect_station(instance.interface)
