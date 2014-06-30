@@ -1131,7 +1131,7 @@ class FirmwareTest(FAFTBase):
         """
         logging.info("-[FAFT]-[ start wait_for_kernel_up ]---")
         try:
-            logging.info("Installing deps after boot : %s" % install_deps)
+            logging.info("Installing deps after boot : %s", install_deps)
             self.wait_for_client(install_deps=install_deps)
             # Stop update-engine as it may change firmware/kernel.
             self._stop_service('update-engine')
