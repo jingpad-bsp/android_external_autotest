@@ -130,7 +130,7 @@ class logging_CrashSender(crash_test.CrashTest):
         the pause file."""
         self._set_system_sending(False)
         self._set_child_sending(False)
-        result = self._call_sender_one_crash()
+        result = self._call_sender_one_crash(should_fail=True)
         if (not result['report_exists'] or
             not 'Exiting early due to' in result['output'] or
             result['send_attempt']):
@@ -185,7 +185,7 @@ class logging_CrashSender(crash_test.CrashTest):
     def _test_sender_single_instance(self):
         """Test the sender fails to start when another instance is running."""
         with self.hold_crash_lock():
-            result = self._call_sender_one_crash()
+            result = self._call_sender_one_crash(should_fail=True)
             if (not 'Already running; quitting.' in result['output'] or
                 result['send_attempt'] or not result['report_exists']):
                 raise error.TestFail('Allowed multiple instances to run')

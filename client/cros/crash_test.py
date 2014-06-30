@@ -4,7 +4,7 @@
 
 import contextlib, fcntl, logging, os, re, shutil
 
-import common, cros_logging
+import common, constants, cros_logging
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
@@ -67,8 +67,6 @@ class CrashTest(test.test):
 
 
     _CONSENT_FILE = '/home/chronos/Consent To Send Stats'
-    _POLICY_FILE = '/var/lib/whitelist/policy'
-    _OWNER_KEY_FILE = '/var/lib/whitelist/owner.key'
     _CORE_PATTERN = '/proc/sys/kernel/core_pattern'
     _CRASH_REPORTER_PATH = '/sbin/crash_reporter'
     _CRASH_SENDER_PATH = '/sbin/crash_sender'
@@ -215,11 +213,12 @@ class CrashTest(test.test):
             has_consent: True to indicate consent, False otherwise
         """
         if has_consent:
-            # Create policy file that enables metrics/consent.
-            shutil.copy('/usr/local/autotest/cros/mock_metrics_on.policy',
-                        self._POLICY_FILE)
-            shutil.copy('/usr/local/autotest/cros/mock_metrics_owner.key',
-                        self._OWNER_KEY_FILE)
+            if os.path.isdir(constants.WHITELIST_DIR):
+                # Create policy file that enables metrics/consent.
+                shutil.copy('/usr/local/autotest/cros/mock_metrics_on.policy',
+                            constants.SIGNED_POLICY_FILE)
+                shutil.copy('/usr/local/autotest/cros/mock_metrics_owner.key',
+                            constants.OWNER_KEY_FILE)
             # Create deprecated consent file.  This is created *after* the
             # policy file in order to avoid a race condition where chrome
             # might remove the consent file if the policy's not set yet.
@@ -232,11 +231,12 @@ class CrashTest(test.test):
             shutil.move(temp_file, self._CONSENT_FILE)
             logging.info('Created ' + self._CONSENT_FILE)
         else:
-            # Create policy file that disables metrics/consent.
-            shutil.copy('/usr/local/autotest/cros/mock_metrics_off.policy',
-                        self._POLICY_FILE)
-            shutil.copy('/usr/local/autotest/cros/mock_metrics_owner.key',
-                        self._OWNER_KEY_FILE)
+            if os.path.isdir(constants.WHITELIST_DIR):
+                # Create policy file that disables metrics/consent.
+                shutil.copy('/usr/local/autotest/cros/mock_metrics_off.policy',
+                            constants.SIGNED_POLICY_FILE)
+                shutil.copy('/usr/local/autotest/cros/mock_metrics_owner.key',
+                            constants.OWNER_KEY_FILE)
             # Remove deprecated consent file.
             utils.system('rm -f "%s"' % (self._CONSENT_FILE))
 
@@ -273,11 +273,11 @@ class CrashTest(test.test):
         if os.path.exists(self._CONSENT_FILE):
             shutil.move(self._CONSENT_FILE,
                         self._get_pushed_consent_file_path())
-        if os.path.exists(self._POLICY_FILE):
-            shutil.move(self._POLICY_FILE,
+        if os.path.exists(constants.SIGNED_POLICY_FILE):
+            shutil.move(constants.SIGNED_POLICY_FILE,
                         self._get_pushed_policy_file_path())
-        if os.path.exists(self._OWNER_KEY_FILE):
-            shutil.move(self._OWNER_KEY_FILE,
+        if os.path.exists(constants.OWNER_KEY_FILE):
+            shutil.move(constants.OWNER_KEY_FILE,
                         self._get_pushed_owner_key_file_path())
 
 
@@ -291,14 +291,14 @@ class CrashTest(test.test):
             utils.system('rm -f "%s"' % self._CONSENT_FILE)
         if os.path.exists(self._get_pushed_policy_file_path()):
             shutil.move(self._get_pushed_policy_file_path(),
-                        self._POLICY_FILE)
+                        constants.SIGNED_POLICY_FILE)
         else:
-            utils.system('rm -f "%s"' % self._POLICY_FILE)
+            utils.system('rm -f "%s"' % constants.SIGNED_POLICY_FILE)
         if os.path.exists(self._get_pushed_owner_key_file_path()):
             shutil.move(self._get_pushed_owner_key_file_path(),
-                        self._OWNER_KEY_FILE)
+                        constants.OWNER_KEY_FILE)
         else:
-            utils.system('rm -f "%s"' % self._OWNER_KEY_FILE)
+            utils.system('rm -f "%s"' % constants.OWNER_KEY_FILE)
 
 
     def _get_crash_dir(self, username):
@@ -518,7 +518,8 @@ class CrashTest(test.test):
                                send_success=True,
                                reports_enabled=True,
                                username='root',
-                               report=None):
+                               report=None,
+                               should_fail=False):
         """Call the crash sender script to mock upload one crash.
 
         Args:
@@ -539,15 +540,22 @@ class CrashTest(test.test):
                                                 reports_enabled,
                                                 report)
         self._log_reader.set_start_by_current()
-        script_output = utils.system_output(
-            '/bin/sh -c "%s" 2>&1' % self._CRASH_SENDER_PATH,
-            ignore_status=True)
+        script_output = ""
+        try:
+            script_output = utils.system_output(
+                '/bin/sh -c "%s" 2>&1' % self._CRASH_SENDER_PATH,
+                ignore_status=should_fail)
+        except error.CmdError as err:
+            raise error.TestFail('"%s" returned an unexpected non-zero '
+                                 'value (%s).'
+                                 % (err.command, err.result_obj.exit_status))
+
         self.wait_for_sender_completion()
         output = self._log_reader.get_logs()
         logging.debug('Crash sender message output:\n' + output)
+
         if script_output != '':
-            raise error.TestFail(
-                'Unexpected crash_sender stdout/stderr: ' + script_output)
+            logging.debug('crash_sender stdout/stderr: ' + script_output)
 
         if os.path.exists(report):
             report_exists = True
