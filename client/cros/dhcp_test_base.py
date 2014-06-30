@@ -255,9 +255,9 @@ class DhcpTestBase(test.test):
                 custom_fields))
         rules[-1].is_final_handler = True
         self.server.start_test(rules, DHCP_NEGOTIATION_TIMEOUT_SECONDS)
-        self.server.wait_for_test_to_finish()
         logging.info('Server is negotiating new lease with options: %s',
                      dhcp_options)
+        self.server.wait_for_test_to_finish()
         if not self.server.last_test_passed:
             raise error.TestFail(
                 'Test failed: active rule is %s' % self.server.current_rule)
