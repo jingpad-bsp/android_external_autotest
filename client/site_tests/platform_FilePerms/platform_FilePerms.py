@@ -94,6 +94,10 @@ class platform_FilePerms(test.test):
         """
         errors = 0
 
+        if not os.access(fs, os.F_OK):
+            # The path does not exist, so exit early.
+            return errors
+
         uid = os.stat(fs)[stat.ST_UID]
         gid = os.stat(fs)[stat.ST_GID]
 
@@ -116,6 +120,10 @@ class platform_FilePerms(test.test):
             int, equivalent to unix permissions.
         """
         MASK = 0777
+
+        if not os.access(fs, os.F_OK):
+            # The path does not exist, so exit early.
+            return None
 
         fstat = os.stat(fs)
         mode = fstat[stat.ST_MODE]
@@ -341,7 +349,7 @@ class platform_FilePerms(test.test):
         # Check permissions on root owned directories.
         for dir in root_dirs:
             fperms = self.get_perm(dir)
-            if fperms not in root_dirs[dir]:
+            if fperms is not None and fperms not in root_dirs[dir]:
                 logging.error('"%s" has "%s" permissions', dir, fperms)
                 errors += 1
 
