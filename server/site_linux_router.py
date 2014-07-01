@@ -62,7 +62,8 @@ def build_router_proxy(test_name='', client_hostname=None, router_addr=None):
     @return LinuxRouter or raise error.TestError on failure.
 
     """
-    router_hostname = build_router_hostname(client_hostname)
+    router_hostname = build_router_hostname(client_hostname=client_hostname,
+                                            router_hostname=router_addr)
     logging.info('Connecting to router at %s', router_hostname)
     ping_helper = ping_runner.PingRunner()
     if not ping_helper.simple_ping(router_hostname):
