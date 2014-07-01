@@ -6,7 +6,7 @@ import grp, logging, os, pwd, re, stat, subprocess
 from signal import SIGSEGV
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import crash_test, cros_ui
+from autotest_lib.client.cros import crash_test, cros_ui, upstart
 
 
 _COLLECTION_ERROR_SIGNATURE = 'crash_reporter-user-collection'
@@ -673,9 +673,11 @@ class logging_UserCrash(crash_test.CrashTest):
 
     def initialize(self):
         super(logging_UserCrash, self).initialize()
-        # Return the device to the sign-in screen, as some tests will fail
-        # inside a user session.
-        cros_ui.restart()
+
+        # If the device has a GUI, return the device to the sign-in screen, as
+        # some tests will fail inside a user session.
+        if upstart.has_service('ui'):
+            cros_ui.restart()
 
 
     # TODO(kmixter): Test crashing a process as ntp or some other

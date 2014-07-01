@@ -7,5 +7,17 @@
 import os
 
 def ensure_running(service_name):
+    """Fails if |service_name| is not running.
+
+    @param service_name: name of the service.
+    """
     cmd = 'initctl status %s | grep start/running' % service_name
     os.system(cmd)
+
+
+def has_service(service_name):
+    """Returns true if |service_name| is installed on the system.
+
+    @param service_name: name of the service.
+    """
+    return os.path.exists('/etc/init/' + service_name + '.conf')
