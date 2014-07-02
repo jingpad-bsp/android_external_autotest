@@ -19,11 +19,18 @@ class platform_BootLockbox(test.test):
         open(self.data_file, mode='w').write('test_lockbox_data')
 
     def cleanup(self):
-        os.remove(self.data_file)
-        signature_file = self.data_file + ".signature"
-        if os.access(signature_file, os.F_OK):
-            os.remove(signature_file)
+        self._remove_file(self.data_file)
+        self._remove_file(self.data_file + '.signature')
+        self._remove_file('/var/lib/boot-lockbox/boot_attributes.pb')
+        self._remove_file('/var/lib/boot-lockbox/boot_attributes.sig')
         test.test.cleanup(self)
+
+    def _remove_file(self, filename):
+        try:
+            os.remove(filename)
+        except OSError:
+            # Ignore errors
+            pass
 
     def _ensure_tpm_ready(self):
         status = cryptohome.get_tpm_status()
@@ -48,22 +55,55 @@ class platform_BootLockbox(test.test):
     def _finalize_lockbox(self):
         utils.system(cryptohome.CRYPTOHOME_CMD + ' --action=finalize_lockbox')
 
+    def _get_boot_attribute(self):
+        return utils.system(cryptohome.CRYPTOHOME_CMD +
+                            ' --action=get_boot_attribute --name=test',
+                            ignore_status=True) == 0
+
+    def _set_boot_attribute(self):
+        utils.system(cryptohome.CRYPTOHOME_CMD +
+                     ' --action=set_boot_attribute --name=test --value=1234')
+
+    def _flush_and_sign_boot_attributes(self):
+        return utils.system(cryptohome.CRYPTOHOME_CMD +
+                            ' --action=flush_and_sign_boot_attributes',
+                            ignore_status=True) == 0
+
     def run_once(self):
         self._ensure_tpm_ready()
         if not self._sign_lockbox():
             # This will fire if you forget to reboot before running the test!
             raise error.TestFail('Boot lockbox could not be signed.')
+
         if not self._verify_lockbox():
             raise error.TestFail('Boot lockbox could not be verified.')
+
         # Setup a bad signature and make sure it doesn't verify.
         open(self.data_file, mode='w').write('test_lockbox_data2')
         if self._verify_lockbox():
             raise error.TestFail('Boot lockbox verified bad data.')
         open(self.data_file, mode='w').write('test_lockbox_data')
+
+        self._set_boot_attribute()
+
+        if self._get_boot_attribute():
+            raise error.TestFail('Boot attributes already have data.')
+
+        if not self._flush_and_sign_boot_attributes():
+            raise error.TestFail('Boot attributes could not sign.')
+
+        if not self._get_boot_attribute():
+            raise error.TestFail('Boot attribute was not available.')
+
         # Finalize and make sure we can verify but not sign.
         self._finalize_lockbox()
+
+        if self._flush_and_sign_boot_attributes():
+            raise error.TestFail('Boot attributes signed after finalization.')
+
         if not self._verify_lockbox():
             raise error.TestFail('Boot lockbox could not be verified after '
                                  'finalization.')
+
         if self._sign_lockbox():
             raise error.TestFail('Boot lockbox signed after finalization.')
