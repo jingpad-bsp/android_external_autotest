@@ -669,19 +669,30 @@ def repair_hosts(**filter_data):
             models.Host.query_objects(filter_data))
 
 
-def get_jobs(not_yet_run=False, running=False, finished=False, **filter_data):
+def get_jobs(not_yet_run=False, running=False, finished=False,
+             suite=False, sub=False, standalone=False, **filter_data):
     """\
-    Extra filter args for get_jobs:
+    Extra status filter args for get_jobs:
     -not_yet_run: Include only jobs that have not yet started running.
     -running: Include only jobs that have start running but for which not
     all hosts have completed.
     -finished: Include only jobs for which all hosts have completed (or
     aborted).
     At most one of these three fields should be specified.
+
+    Extra type filter args for get_jobs:
+    -suite: Include only jobs with child jobs.
+    -sub: Include only jobs with a parent job.
+    -standalone: Inlcude only jobs with no child or parent jobs.
+    At most one of these three fields should be specified.
     """
-    filter_data['extra_args'] = rpc_utils.extra_job_filters(not_yet_run,
-                                                            running,
-                                                            finished)
+    extra_args = rpc_utils.extra_job_status_filters(not_yet_run,
+                                                    running,
+                                                    finished)
+    filter_data['extra_args'] = rpc_utils.extra_job_type_filters(extra_args,
+                                                                 suite,
+                                                                 sub,
+                                                                 standalone)
     job_dicts = []
     jobs = list(models.Job.query_objects(filter_data))
     models.Job.objects.populate_relationships(jobs, models.Label,
@@ -700,13 +711,18 @@ def get_jobs(not_yet_run=False, running=False, finished=False, **filter_data):
 
 
 def get_num_jobs(not_yet_run=False, running=False, finished=False,
+                 suite=False, sub=False, standalone=False,
                  **filter_data):
     """\
     See get_jobs() for documentation of extra filter parameters.
     """
-    filter_data['extra_args'] = rpc_utils.extra_job_filters(not_yet_run,
-                                                            running,
-                                                            finished)
+    extra_args = rpc_utils.extra_job_status_filters(not_yet_run,
+                                                    running,
+                                                    finished)
+    filter_data['extra_args'] = rpc_utils.extra_job_type_filters(extra_args,
+                                                                 suite,
+                                                                 sub,
+                                                                 standalone)
     return models.Job.query_count(filter_data)
 
 

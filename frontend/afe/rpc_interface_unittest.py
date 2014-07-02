@@ -154,7 +154,13 @@ class RpcInterfaceTest(unittest.TestCase,
                                                      'Failed': 2})
 
 
-    def test_get_jobs_filters(self):
+    def _check_job_ids(self, actual_job_dicts, expected_jobs):
+        self.assertEquals(
+                set(job_dict['id'] for job_dict in actual_job_dicts),
+                set(job.id for job in expected_jobs))
+
+
+    def test_get_jobs_status_filters(self):
         HqeStatus = models.HostQueueEntry.Status
         def create_two_host_job():
             return self._create_job(hosts=[1, 2])
@@ -183,16 +189,30 @@ class RpcInterfaceTest(unittest.TestCase,
         parsing = create_two_host_job()
         set_hqe_statuses(parsing, HqeStatus.PARSING, HqeStatus.PARSING)
 
-        def check_job_ids(actual_job_dicts, expected_jobs):
-            self.assertEquals(
-                    set(job_dict['id'] for job_dict in actual_job_dicts),
-                    set(job.id for job in expected_jobs))
-
-        check_job_ids(rpc_interface.get_jobs(not_yet_run=True), [queued])
-        check_job_ids(rpc_interface.get_jobs(running=True),
+        self._check_job_ids(rpc_interface.get_jobs(not_yet_run=True), [queued])
+        self._check_job_ids(rpc_interface.get_jobs(running=True),
                       [queued_and_running, running_and_complete,
                        started_but_inactive, parsing])
-        check_job_ids(rpc_interface.get_jobs(finished=True), [complete])
+        self._check_job_ids(rpc_interface.get_jobs(finished=True), [complete])
+
+
+    def test_get_jobs_type_filters(self):
+        self.assertRaises(AssertionError, rpc_interface.get_jobs,
+                          suite=True, sub=True)
+        self.assertRaises(AssertionError, rpc_interface.get_jobs,
+                          suite=True, standalone=True)
+        self.assertRaises(AssertionError, rpc_interface.get_jobs,
+                          standalone=True, sub=True)
+
+        parent_job = self._create_job(hosts=[1])
+        child_jobs = self._create_job(hosts=[1, 2],
+                                      parent_job_id=parent_job.id)
+        standalone_job = self._create_job(hosts=[1])
+
+        self._check_job_ids(rpc_interface.get_jobs(suite=True), [parent_job])
+        self._check_job_ids(rpc_interface.get_jobs(sub=True), [child_jobs])
+        self._check_job_ids(rpc_interface.get_jobs(standalone=True),
+                            [standalone_job])
 
 
     def _create_job_helper(self, **kwargs):

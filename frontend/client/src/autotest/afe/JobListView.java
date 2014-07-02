@@ -4,6 +4,7 @@ import autotest.common.SimpleCallback;
 import autotest.common.CustomHistory.HistoryToken;
 import autotest.common.table.Filter;
 import autotest.common.table.LinkSetFilter;
+import autotest.common.table.RadioButtonSetFilter;
 import autotest.common.table.SearchFilter;
 import autotest.common.table.SelectionManager;
 import autotest.common.table.TableDecorator;
@@ -26,54 +27,82 @@ import java.util.Set;
 public class JobListView extends TabView implements TableActionsListener {
     protected static final String SELECTED_LINK_STYLE = "selected-link";
     protected static final int JOBS_PER_PAGE = 30;
-    protected static final int QUEUED = 0, RUNNING = 1, FINISHED = 2, 
-                               ALL = 3, LINK_COUNT = 4;
-    private static final int DEFAULT_LINK = ALL;
-    private static final String[] historyTokens = {"queued", "running", 
-                                                     "finished", "all"};
-    private static final String[] linkLabels = {"Queued Jobs", "Running Jobs",
-                                                  "Finished Jobs", "All Jobs"};
-    private static final String[] filterStrings = {"not_yet_run", "running",
-                                                     "finished"};
-    
+    protected static final int STATUS_QUEUED = 0, STATUS_RUNNING = 1,
+                               STATUS_FINISHED = 2, STATUS_ALL = 3,
+                               STATUS_LINK_COUNT = 4;
+    protected static final int STATUS_DEFAULT_LINK = STATUS_ALL;
+    protected static final int TYPE_SUITE = 0, TYPE_SUB = 1, TYPE_STANDALONE = 2,
+                               TYPE_ALL = 3, TYPE_RADIO_BUTTON_COUNT = 4;
+    protected static final int TYPE_DEFAULT_BUTTON = TYPE_ALL;
+    private static final String[] statusHistoryTokens = {"queued", "running",
+                                                         "finished", "all"};
+    private static final String[] statusLinkLabels = {"Queued Jobs", "Running Jobs",
+                                                      "Finished Jobs", "All Jobs"};
+    private static final String[] statusFilterStrings = {"not_yet_run", "running",
+                                                         "finished"};
+    private static final String[] typeHistoryTokens = {"suite", "sub", "standalone",
+                                                       "all"};
+    private static final String[] typeRadionButtonLabels = {"Suite Jobs", "Sub Jobs",
+                                                            "Standalone Jobs",
+                                                            "All Jobs"};
+    private static final String[] typeFilterStrings = {"suite", "sub", "standalone"};
+
     private JobSelectListener selectListener;
 
     private JobTable jobTable;
     private TableDecorator tableDecorator;
     private JobStateFilter jobStateFilter;
+    private JobTypeFilter jobTypeFilter;
     private Filter ownerFilter;
     private SearchFilter nameFilter;
     private SelectionManager selectionManager;
-    
+
     interface JobSelectListener {
         public void onJobSelected(int jobId);
     }
-    
+
     static class JobStateFilter extends LinkSetFilter {
         @Override
         public void addParams(JSONObject params) {
-            params.put(filterStrings[getSelectedLink()], 
+            params.put(statusFilterStrings[getSelectedLink()],
                        JSONBoolean.getInstance(true));
         }
 
         @Override
         public boolean isActive() {
-            return getSelectedLink() < ALL;
+            return getSelectedLink() < STATUS_ALL;
         }
     }
-    
+
+    static class JobTypeFilter extends RadioButtonSetFilter {
+        public JobTypeFilter() {
+            super("job-type");
+        }
+
+        @Override
+        public void addParams(JSONObject params) {
+            params.put(typeFilterStrings[getSelectedButtonIndex()],
+                       JSONBoolean.getInstance(true));
+        }
+
+        @Override
+        public boolean isActive() {
+            return getSelectedButtonIndex() < TYPE_ALL;
+        }
+    }
+
     public void abortSelectedJobs() {
         Set<JSONObject> selectedSet = selectionManager.getSelectedObjects();
         if (selectedSet.isEmpty()) {
             NotifyManager.getInstance().showError("No jobs selected");
             return;
         }
-        
+
         JSONArray ids = new JSONArray();
         for(JSONObject jsonObj : selectedSet) {
             ids.set(ids.size(), jsonObj.get("id"));
         }
-        
+
         JSONObject params = new JSONObject();
         params.put("job__id__in", ids);
         AfeUtils.callAbort(params, new SimpleCallback() {
@@ -109,7 +138,7 @@ public class JobListView extends TabView implements TableActionsListener {
                 int jobId = (int) row.get("id").isNumber().doubleValue();
                 selectListener.onJobSelected(jobId);
             }
-            
+
             public void onTableRefreshed() {}
         });
         
@@ -129,10 +158,10 @@ public class JobListView extends TabView implements TableActionsListener {
         addWidget(nameFilter.getWidget(), "jl_name_search");
         
         jobStateFilter = new JobStateFilter();
-        for (int i = 0; i < LINK_COUNT; i++)
-            jobStateFilter.addLink(linkLabels[i]);
+        for (int i = 0; i < STATUS_LINK_COUNT; i++)
+            jobStateFilter.addLink(statusLinkLabels[i]);
         // all jobs is selected by default
-        jobStateFilter.setSelectedLink(DEFAULT_LINK);
+        jobStateFilter.setSelectedLink(STATUS_DEFAULT_LINK);
         jobStateFilter.addCallback(new SimpleCallback() {
             public void doCallback(Object source) {
                 updateHistory();
@@ -141,14 +170,29 @@ public class JobListView extends TabView implements TableActionsListener {
         jobTable.addFilter(jobStateFilter);
         HorizontalPanel jobControls = new HorizontalPanel();
         jobControls.add(jobStateFilter.getWidget());
-        
         addWidget(jobControls, "job_control_links");
+
+        jobTypeFilter = new JobTypeFilter();
+        for (int i = 0; i < TYPE_RADIO_BUTTON_COUNT; i++)
+            jobTypeFilter.addRadioButon(typeRadionButtonLabels[i]);
+        // All Jobs is selected by default
+        jobTypeFilter.setSelectedButton(TYPE_DEFAULT_BUTTON);
+        jobTypeFilter.addCallback(new SimpleCallback() {
+            public void doCallback(Object source) {
+                updateHistory();
+            }
+        });
+        jobTable.addFilter(jobTypeFilter);
+        addWidget(jobTypeFilter.getWidget(), "job_type_controls");
     }
 
     @Override
     public HistoryToken getHistoryArguments() {
         HistoryToken arguments = super.getHistoryArguments();
-        arguments.put("state_filter", historyTokens[jobStateFilter.getSelectedLink()]);
+        arguments.put("state_filter",
+                      statusHistoryTokens[jobStateFilter.getSelectedLink()]);
+        arguments.put("type_filter",
+                      typeHistoryTokens[jobTypeFilter.getSelectedButtonIndex()]);
         return arguments;
     }
     
@@ -156,14 +200,25 @@ public class JobListView extends TabView implements TableActionsListener {
     public void handleHistoryArguments(Map<String, String> arguments) {
         String stateFilter = arguments.get("state_filter");
         if (stateFilter == null) {
-            jobStateFilter.setSelectedLink(DEFAULT_LINK);
-            return;
+            jobStateFilter.setSelectedLink(STATUS_DEFAULT_LINK);
+        } else {
+            for (int i = 0; i < STATUS_LINK_COUNT; i++) {
+                if (stateFilter.equals(statusHistoryTokens[i])) {
+                    jobStateFilter.setSelectedLink(i);
+                    break;
+                }
+            }
         }
-        
-        for (int i = 0; i < LINK_COUNT; i++) {
-            if (stateFilter.equals(historyTokens[i])) {
-                jobStateFilter.setSelectedLink(i);
-                return;
+
+        String typeFilter = arguments.get("type_filter");
+        if (typeFilter == null) {
+            jobTypeFilter.setSelectedButton(TYPE_DEFAULT_BUTTON);
+        } else {
+            for (int i = 0; i < TYPE_RADIO_BUTTON_COUNT; i++) {
+                if (typeFilter.equals(typeHistoryTokens[i])) {
+                    jobTypeFilter.setSelectedButton(i);
+                    break;
+                }
             }
         }
     }

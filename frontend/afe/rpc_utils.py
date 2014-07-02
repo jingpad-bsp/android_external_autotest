@@ -91,7 +91,7 @@ def gather_unique_dicts(dict_iterable):
     return result
 
 
-def extra_job_filters(not_yet_run=False, running=False, finished=False):
+def extra_job_status_filters(not_yet_run=False, running=False, finished=False):
     """\
     Generate a SQL WHERE clause for job status filtering, and return it in
     a dict of keyword args to pass to query.extra().  No more than one of
@@ -120,6 +120,47 @@ def extra_job_filters(not_yet_run=False, running=False, finished=False):
     else:
         return {}
     return {'where': where}
+
+
+def extra_job_type_filters(extra_args, suite=False,
+                           sub=False, standalone=False):
+    """\
+    Generate a SQL WHERE clause for job status filtering, and return it in
+    a dict of keyword args to pass to query.extra().
+
+    param extra_args: a dict of existing extra_args.
+
+    No more than one of the parameters should be passed as True:
+    * suite: job which is parent of other jobs
+    * sub: job with a parent job
+    * standalone: job with no child or parent jobs
+    """
+    assert not ((suite and sub) or
+                (suite and standalone) or
+                (sub and standalone)), ('Cannot specify more than one '
+                                        'filter to this function')
+
+    where = extra_args.get('where', [])
+    parent_job_id = ('DISTINCT parent_job_id')
+    child_job_id = ('id')
+    filter_common = ('(SELECT %s FROM afe_jobs '
+                     'WHERE parent_job_id IS NOT NULL)')
+
+    if suite:
+        where.append('id IN ' + filter_common % parent_job_id)
+    elif sub:
+        where.append('id IN ' + filter_common % child_job_id)
+    elif standalone:
+        where.append('NOT EXISTS (SELECT 1 from afe_jobs AS sub_query '
+                     'WHERE parent_job_id IS NOT NULL'
+                     ' AND (sub_query.parent_job_id=afe_jobs.id'
+                     ' OR sub_query.id=afe_jobs.id))')
+    else:
+        return extra_args
+
+    extra_args['where'] = where
+    return extra_args
+
 
 
 def extra_host_filters(multiple_labels=()):
