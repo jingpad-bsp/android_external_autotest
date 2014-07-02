@@ -39,9 +39,7 @@ PAGE_CYCLER_BENCHMARKS = [
         'moz2' ]
 
 HTTP_PORT = 8000
-# TODO(llozano): Workaround for crbug.com/388476. Use 127.0.0.1 instead of
-# 'localhost'.
-FILE_URL_PREFIX = 'http://127.0.0.1:%d/test_src/' % HTTP_PORT
+FILE_URL_PREFIX = 'http://localhost:%d/test_src/' % HTTP_PORT
 
 class telemetry_AFDOGenerateClient(test.test):
     """
