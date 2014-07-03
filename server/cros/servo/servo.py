@@ -10,6 +10,7 @@ import os
 import logging, re, time, xmlrpclib
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.server.cros.servo import firmware_programmer
 
 
 class _PowerStateController(object):
@@ -177,12 +178,13 @@ class Servo(object):
             # Lab drones do not necessarily contain hdctools and the
             # initialization of the firmware programmer raises an exception.
             # We need to move the programmer code over to hctools,
-            # see chromium:281718.
-            # Removing the initialization because nothing uses the
-            # functionality right now and it stop causing an exception in the
-            # lab.
-            logging.warning("No firmware programmer initialized for servoV2")
-            #self._programmer = firmware_programmer.ProgrammerV2(self)
+            # see chromium:381718.
+            try:
+                self._programmer = firmware_programmer.ProgrammerV2(self)
+            except firmware_programmer.ProgrammerError:
+                logging.warning(
+                        "No firmware programmer initialized for servoV2")
+                self._programmer = None
         else:
             logging.warning("No firmware programmer for servo version: %s",
                          self.get_version())
@@ -646,10 +648,11 @@ class Servo(object):
                       on the DUT.
 
         """
-        raise NotImplementedError()
-        #if not self.is_localhost():
-        #    image = self._scp_image(image)
-        #self._programmer.program_bios(image)
+        if not self._programmer:
+            raise error.TestError('Firmware programmer is not set')
+        if not self.is_localhost():
+            image = self._scp_image(image)
+        self._programmer.program_bios(image)
 
 
     def program_ec(self, image):
@@ -659,10 +662,11 @@ class Servo(object):
                       on the DUT.
 
         """
-        raise NotImplementedError()
-        #if not self.is_localhost():
-        #    image = self._scp_image(image)
-        #self._programmer.program_ec(image)
+        if not self._programmer:
+            raise error.TestError('Firmware programmer is not set')
+        if not self.is_localhost():
+            image = self._scp_image(image)
+        self._programmer.program_ec(image)
 
 
     def _switch_usbkey_power(self, power_state, detection_delay=False):
