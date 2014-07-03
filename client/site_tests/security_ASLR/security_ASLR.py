@@ -14,10 +14,60 @@ import re
 """A test verifying Address Space Layout Randomization
 
 Uses system calls to get important pids and then gets information about
-the pids in /proc/<pid>/maps.  Restarts the tested processes and reads
-information about them again.  If ASLR is enabled, memory mappings should
+the pids in /proc/<pid>/maps. Restarts the tested processes and reads
+information about them again. If ASLR is enabled, memory mappings should
 change.
 """
+
+
+class Process:
+    """Holds information about a process.
+
+    Stores information about a process and how to restart it.
+
+    Attributes:
+        __name: String name of process.
+        __initctl_name: String name initctl uses to query process.
+        Defaults to None.
+        __parent: String name of process's parent. Defaults to None.
+    """
+    def __init__(self, name, initctl_name = None, parent = None):
+        self.__name = name
+        self.__initctl_name = initctl_name
+        self.__parent = parent
+
+    def get_name(self):
+        return self.__name
+
+    def get_initctl_name(self):
+        return self.__initctl_name
+
+    def get_parent(self):
+        return self.__parent
+
+
+class Mapping:
+    """Holds information about a process's address mapping.
+
+    Stores information about one memory mapping for a process.
+
+    Attributes:
+        __name: String name of process/memory occupying the location.
+        __start: String containing memory address range start.
+    """
+    def __init__(self, name, start):
+        self.__start = start
+        self.__name = name
+
+    def set_start(self, new_value):
+        self.__start = new_value
+
+    def get_start(self):
+        return self.__start
+
+    def __repr__(self):
+        return "<mapping %s %s>" % (self.__name, self.__start)
+
 
 class security_ASLR(test.test):
     """Runs ASLR tests
@@ -39,23 +89,45 @@ class security_ASLR(test.test):
 
     _ASAN_SYMBOL = "__asan_init"
 
+    # 'update_engine' should at least be present on all boards.
+    _PROCESS_LIST = [Process('chrome', 'ui', 'session_manager'),
+                     Process('debugd', 'debugd'),
+                     Process('update_engine', 'update-engine')]
+
+
+    def get_path_of(self, process):
+        """Gets path of process.
+
+        @param process: process to find.
+        """
+        name = process.get_name()
+        try:
+            path = utils.system_output('which %s' % name)
+            logging.debug('Path for "%s" is "%s"', name, path)
+        except:
+            path = None
+            logging.debug('Could not find path for "%s"', name)
+
+        return path
+
 
     def get_processes_to_test(self):
-        """Gets processes to test for main function
+        """Gets processes to test for main function.
 
-        Called by run_once to get processes for this program to test.  This
-        has to be a method because it constructs process objects.
+        Called by run_once to get processes for this program to test.
+        Filters binaries that actually exist on the system.
+        This has to be a method because it constructs process objects.
 
         Returns:
             A list of process objects to be tested (see below for
-            definition of process class.
+            definition of process class).
         """
-        return [
-            self.process('chrome', 'ui', 'session_manager'),
-            self.process('debugd', 'debugd')]
+        return [p for p in self._PROCESS_LIST
+                    if self.get_path_of(p) is not None]
 
 
     def running_on_asan(self):
+        """Returns whether we're running on ASan."""
         # -q, --quiet         * Only output 'bad' things
         # -F, --format <arg>  * Use specified format for output
         # -g, --gmatch        * Use regex rather than string compare (with -s)
@@ -66,55 +138,6 @@ class security_ASLR(test.test):
         logging.debug("running_on_asan(): symbol: '%s', _ASAN_SYMBOL: '%s'",
                       symbol, self._ASAN_SYMBOL)
         return symbol != ""
-
-
-    class process:
-        """Holds information about a process.
-
-        Stores information about a process and how to restart it.
-
-        Attributes:
-            __name: String name of process.
-            __initctl_name: String name initctl uses to query process.
-            Defaults to None.
-            __parent: String name of process's parent.  Defaults to None.
-        """
-        def __init__(self, name, initctl_name = None, parent = None):
-            self.__name = name
-            self.__initctl_name = initctl_name
-            self.__parent = parent
-
-        def get_name(self):
-            return self.__name
-
-        def get_initctl_name(self):
-            return self.__initctl_name
-
-        def get_parent(self):
-            return self.__parent
-
-
-    class mapping:
-        """Holds information about a process's address mapping.
-
-        Stores information about one memory mapping for a process.
-
-        Attributes:
-            __name: String name of process/memory occupying the location.
-            __start: String containing memory address range start.
-        """
-        def __init__(self, name, start):
-            self.__start = start
-            self.__name = name
-
-        def set_start(self, new_value):
-            self.__start = new_value
-
-        def get_start(self):
-            return self.__start
-
-        def __repr__(self):
-            return "<mapping %s %s>" % (self.__name, self.__start)
 
 
     def get_pid_of(self, process):
@@ -159,7 +182,7 @@ class security_ASLR(test.test):
     def test_randomization(self, process):
         """Tests ASLR of a single process.
 
-        This is the main test function for the program.  It creates data
+        This is the main test function for the program. It creates data
         structures out of useful information from sampling /proc/<pid>/maps
         after restarting the process and then compares address starting
         locations of all executable, stack, and heap memory from each iteration.
@@ -247,12 +270,12 @@ class security_ASLR(test.test):
         that it is running and has a status different from initial_status
         (meaning it has a new pid).
 
-        @param process: Process object to be restarted.  See above for process
+        @param process: Process object to be restarted. See above for process
                         class definition.
         @param status_command: String containing the syscall that
                                queries the current status.
         @param initial_status: String containing original output from initctl
-                               status called.  This is what we compare to for
+                               status called. This is what we compare to for
                                detection of change.
 
         Returns:
@@ -303,7 +326,7 @@ class security_ASLR(test.test):
             if not is_useful:
                 continue
             if not name in memory_map:
-                memory_map[name] = self.mapping(name, start)
+                memory_map[name] = Mapping(name, start)
             elif memory_map[name].get_start() < start:
                 memory_map[name].set_start(start)
         return memory_map
@@ -312,13 +335,13 @@ class security_ASLR(test.test):
     def parse_result(self, result):
         """Builds dictionary from columns of a line of /proc/<pid>/maps
 
-        Uses regular expressions to determine column separations.  Puts
+        Uses regular expressions to determine column separations. Puts
         column data into a dict mapping column names to their string values.
 
         @param result: one line of /proc/<pid>/maps as a string, for any <pid>.
 
         Returns:
-            None if the regular expression wasn't matched.  Otherwise:
+            None if the regular expression wasn't matched. Otherwise:
             A dict of string column names mapped to their string values.
             For example:
 
@@ -345,7 +368,7 @@ class security_ASLR(test.test):
     def run_once(self, seconds=1):
         """Main function.
 
-        Called when test is run.  Gets processes to test and calls test on
+        Called when test is run. Gets processes to test and calls test on
         them.
 
         Raises:
@@ -358,19 +381,26 @@ class security_ASLR(test.test):
             return
 
         processes = self.get_processes_to_test()
+        # If we don't find any of the processes we wanted to test, we fail.
+        if len(processes) == 0:
+            proc_names = ", ".join([p.get_name() for p in self._PROCESS_LIST])
+            raise error.TestFail(
+                'Could not find any of "%s" processes to test' % proc_names)
+
         aslr_enabled = True
         full_results = dict()
-        for current_process in processes:
-            test_results = self.test_randomization(current_process)
-            full_results[current_process.get_name()] = test_results['results']
+        for process in processes:
+            test_results = self.test_randomization(process)
+            full_results[process.get_name()] = test_results['results']
             if not test_results['pass']:
                 aslr_enabled = False
+
         logging.debug('SUMMARY:')
         for process_name, results in full_results.iteritems():
             logging.debug('Results for %s:', process_name)
             for result in results:
                 logging.debug(result)
+
         if not aslr_enabled:
             raise error.TestFail('One or more processes had deterministic '
                     'memory mappings')
-
