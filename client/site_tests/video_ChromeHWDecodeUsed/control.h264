@@ -15,6 +15,9 @@ TEST_CLASS = "video"
 TEST_TYPE = "client"
 DEPENDENCIES = "hw_video_acc_h264"
 JOB_RETRIES = 1
+BUG_TEMPLATE = {
+    'labels': ['OS-Chrome', 'Cr-OS-Kernel-Video'],
+}
 
 DOC = """
 This test verifies H.264 video decode acceleration works.

@@ -14,6 +14,9 @@ TEST_CATEGORY = "Performance"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
 DEPENDENCIES = "hw_video_acc_vp8"
+BUG_TEMPLATE = {
+    'labels': ['OS-Chrome', 'Cr-OS-Kernel-Video'],
+}
 
 DOC = """
 This test checks whether video decode time for WebRtc has regression.

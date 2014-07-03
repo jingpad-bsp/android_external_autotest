@@ -16,6 +16,9 @@ TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
+BUG_TEMPLATE = {
+    'labels': ['OS-Chrome', 'Cr-OS-Kernel-Video'],
+}
 
 DOC = """
 This test verifies Vimeo video playback and player states.

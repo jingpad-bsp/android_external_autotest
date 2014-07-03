@@ -13,6 +13,9 @@ TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
+BUG_TEMPLATE = {
+    'labels': ['OS-Chrome', 'Cr-OS-Kernel-Video'],
+}
 
 DOC = """
 This test verifies Chrome can reload mp4 video after reloading the page.

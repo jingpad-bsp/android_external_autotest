@@ -16,6 +16,9 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
 DEPENDENCIES = 'hw_video_acc_enc_vp8'
+BUG_TEMPLATE = {
+    'labels': ['OS-Chrome', 'Cr-OS-Kernel-Video'],
+}
 
 DOC = """
 This is a wrapper test for Chrome video_encode_accelerator_unittest.

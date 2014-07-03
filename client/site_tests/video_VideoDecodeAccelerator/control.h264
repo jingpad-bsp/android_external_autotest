@@ -22,6 +22,9 @@ DEPENDENCIES = "hw_video_acc_h264"
 # Reboot in the lab after the test ends.
 DEPENDENCIES = "cleanup-reboot, hw_video_acc_h264"
 RETRIES = 1
+BUG_TEMPLATE = {
+    'labels': ['OS-Chrome', 'Cr-OS-Kernel-Video'],
+}
 
 DOC = """
 This is a wrapper test for Chrome video_decode_accelerator_unittest.
