@@ -177,7 +177,7 @@ PyMODINIT_FUNC initvaapi() {
   if (m == NULL)
     return;
 
-  VaapiError = PyErr_NewException("vaapi.error", NULL, NULL);
+  VaapiError = PyErr_NewException((char*)"vaapi.error", NULL, NULL);
   Py_INCREF(VaapiError);
   PyModule_AddObject(m, "error", VaapiError);
 }
