@@ -65,7 +65,7 @@ if not TESTING:
 
 if not TESTING:
     print 'Pushing prod...'
-    subprocess.check_call('git rebase cros/prod prod', shell=True)
+    subprocess.check_call('git rebase cros/master prod', shell=True)
     subprocess.check_call('git push cros prod:prod', shell=True)
 
 print 'Deploying...'
