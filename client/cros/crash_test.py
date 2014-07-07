@@ -92,8 +92,7 @@ class CrashTest(test.test):
         crash_sender may still be allowed to run if _set_child_sending is
         called with True and it is run as a child process.
 
-        Args:
-            is_enabled: True to enable crash_sender, False to disable it.
+        @param is_enabled: True to enable crash_sender, False to disable it.
         """
         if is_enabled:
             if os.path.exists(self._PAUSE_FILE):
@@ -110,8 +109,7 @@ class CrashTest(test.test):
         but this function sets up crash_sender to ignore its disabled status
         and do its job.
 
-        Args:
-            is_enabled: True to enable crash sending for child processes.
+        @param is_enabled: True to enable crash sending for child processes.
         """
         if is_enabled:
             os.environ['OVERRIDE_PAUSE_SENDING'] = "1"
@@ -126,8 +124,7 @@ class CrashTest(test.test):
         versions.  If the override is set, however, they will also be
         uploaded for unofficial versions.
 
-        Args:
-            is_enabled: True to enable uploading for unofficial versions.
+        @param is_enabled: True to enable uploading for unofficial versions.
         """
         if is_enabled:
             os.environ['FORCE_OFFICIAL'] = "1"
@@ -138,8 +135,7 @@ class CrashTest(test.test):
     def _set_mock_developer_mode(self, is_enabled):
         """Sets whether or not we should pretend we booted in developer mode.
 
-        Args:
-            is_enabled: True to pretend we are in developer mode.
+        @param is_enabled: True to pretend we are in developer mode.
         """
         if is_enabled:
             os.environ['MOCK_DEVELOPER_MODE'] = "1"
@@ -174,7 +170,7 @@ class CrashTest(test.test):
         if not os.path.exists(self._CRASH_SENDER_RUN_PATH):
             return
         running_pid = int(utils.read_file(self._CRASH_SENDER_RUN_PATH))
-        logging.warning('Detected running crash sender (%d), killing' %
+        logging.warning('Detected running crash sender (%d), killing',
                         running_pid)
         utils.system('kill -9 %d' % running_pid)
         os.remove(self._CRASH_SENDER_RUN_PATH)
@@ -186,9 +182,8 @@ class CrashTest(test.test):
         This uses the _MOCK_CRASH_SENDING file to achieve its aims. See notes
         at the top.
 
-        Args:
-            mock_enabled: If True, mocking is enabled, else it is disabled.
-            send_success: If mock_enabled this is True for the mocking to
+        @param mock_enabled: If True, mocking is enabled, else it is disabled.
+        @param send_success: If mock_enabled this is True for the mocking to
                 indicate success, False to indicate failure.
         """
         if mock_enabled:
@@ -209,8 +204,7 @@ class CrashTest(test.test):
         crash_sender will consider that it has consent to send crash reports.
         It also copies a policy blob with the proper policy setting.
 
-        Args:
-            has_consent: True to indicate consent, False otherwise
+        @param has_consent: True to indicate consent, False otherwise
         """
         if has_consent:
             if os.path.isdir(constants.WHITELIST_DIR):
@@ -308,8 +302,7 @@ class CrashTest(test.test):
         is OK (currently) as the only test that uses this runs when no one
         is actually logged in.
 
-        Args:
-            username: username to use:
+        @param username: username to use:
                 'chronos': Returns user crash directory.
                 'root': Returns system crash directory.
         """
@@ -339,9 +332,8 @@ class CrashTest(test.test):
         This writes a file to _SYSTEM_CRASH_DIR with the given name. This is
         used to insert new crash dump files for testing purposes.
 
-        Args:
-            name: Name of file to write.
-            contents: String to write to the file.
+        @param name: Name of file to write.
+        @param contents: String to write to the file.
         """
         entry = self.get_crash_dir_name(name)
         if not os.path.exists(self._SYSTEM_CRASH_DIR):
@@ -354,12 +346,11 @@ class CrashTest(test.test):
                         complete=True):
         """Writes a fake meta entry to the system crash directory.
 
-        Args:
-            name: Name of file to write.
-            exec_name: Value for exec_name item.
-            payload: Value for payload item.
-            log: Value for log item.
-            complete: True to close off the record, otherwise leave it
+        @param name: Name of file to write.
+        @param exec_name: Value for exec_name item.
+        @param payload: Value for payload item.
+        @param log: Value for log item.
+        @param complete: True to close off the record, otherwise leave it
                 incomplete.
         """
         last_line = ''
@@ -384,12 +375,11 @@ class CrashTest(test.test):
         This enabled mocking of the crash sender, then creates a fake
         crash report for testing purposes.
 
-        Args:
-            send_success: True to make the crash_sender success, False to make
-                it fail.
-            reports_enabled: True to enable consent to that reports will be
+        @param send_success: True to make the crash_sender success, False to
+                make it fail.
+        @param reports_enabled: True to enable consent to that reports will be
                 sent.
-            report: Report to use for crash, if None we create one.
+        @param report: Report to use for crash, if None we create one.
         """
         self._set_sending_mock(mock_enabled=True, send_success=send_success)
         self._set_consent(reports_enabled)
@@ -409,11 +399,9 @@ class CrashTest(test.test):
         This script can run on the logs from either a mocked or true
         crash send.
 
-        Args:
-          output: output from the script
+        @param output: output from the script
 
-        Returns:
-          A dictionary with these values:
+        @returns A dictionary with these values:
             error_type: an error type, if given
             exec_name: name of executable which crashed
             image_type: type of image ("dev","force-official",...), if given
@@ -522,14 +510,12 @@ class CrashTest(test.test):
                                should_fail=False):
         """Call the crash sender script to mock upload one crash.
 
-        Args:
-          send_success: Mock a successful send if true
-          reports_enabled: Has the user consented to sending crash reports.
-          username: user to emulate a crash from
-          report: report to use for crash, if None we create one.
+        @param send_success: Mock a successful send if true
+        @param reports_enabled: Has the user consented to sending crash reports.
+        @param username: user to emulate a crash from
+        @param report: report to use for crash, if None we create one.
 
-        Returns:
-          Returns a dictionary describing the result with the keys
+        @returns a dictionary describing the result with the keys
           from _parse_sender_output, as well as:
             report_exists: does the minidump still exist after calling
               send script
@@ -575,7 +561,7 @@ class CrashTest(test.test):
         # since it's large and earlier in debug output.
         debug_result = dict(result)
         del debug_result['output']
-        logging.debug('Result of send (besides output): %s' % debug_result)
+        logging.debug('Result of send (besides output): %s', debug_result)
 
         return result
 
@@ -591,8 +577,7 @@ class CrashTest(test.test):
         This removes any --filter_in= parameter and optionally replaces it
         with a new one.
 
-        Args:
-            new_parameter: This is parameter to add to the command line
+        @param new_parameter: This is parameter to add to the command line
                 instead of the --filter_in=... that was there.
         """
         core_pattern = utils.read_file(self._CORE_PATTERN)[:-1]
@@ -606,8 +591,7 @@ class CrashTest(test.test):
     def enable_crash_filtering(self, name):
         """Add a --filter_in argument to the kernel core dump cmdline.
 
-        Args:
-            name: Filter text to use. This is passed as a --filter_in
+        @param name: Filter text to use. This is passed as a --filter_in
                 argument to the crash reporter.
         """
         self._replace_crash_reporter_filter_in('--filter_in=' + name)
@@ -671,13 +655,12 @@ class CrashTest(test.test):
                         must_run_all=True):
         """Run crash tests defined in this class.
 
-        Args:
-            test_names: Array of test names.
-            initialize_crash_reporter: Should set up crash reporter for every
+        @param test_names: Array of test names.
+        @param initialize_crash_reporter: Should set up crash reporter for every
                 run.
-            clear_spool_first: Clear all spooled user/system crashes before
+        @param clear_spool_first: Clear all spooled user/system crashes before
                 starting the test.
-            must_run_all: Should make sure every test in this class is
+        @param must_run_all: Should make sure every test in this class is
                 mentioned in test_names.
         """
         if self._automatic_consent_saving:

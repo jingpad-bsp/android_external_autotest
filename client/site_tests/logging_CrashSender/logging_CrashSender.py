@@ -15,6 +15,9 @@ _MIN_UNIQUE_TIMES = 4
 _SECONDS_SEND_SPREAD = 3600
 
 class logging_CrashSender(crash_test.CrashTest):
+    """
+      End-to-end test of crash_sender.
+    """
     version = 1
 
 
@@ -156,7 +159,7 @@ class logging_CrashSender(crash_test.CrashTest):
             if result['rate_count'] != i:
                 raise error.TestFail('Did not properly persist rate on #%d' % i)
             sleep_times.append(result['sleep_time'])
-        logging.debug('Sleeps between sending crashes were: %s' % sleep_times)
+        logging.debug('Sleeps between sending crashes were: %s', sleep_times)
         unique_times = {}
         for i in range(0, _DAILY_RATE_LIMIT):
             unique_times[sleep_times[i]] = True
