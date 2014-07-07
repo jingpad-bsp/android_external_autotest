@@ -42,15 +42,15 @@ def run(machine):
 
     repeat = int(args_dict.get("repeat", 10))
 
-    default_actions = str("login,unplug,plug,suspend,resume,unplug,"
-                          "suspend,plug,resume,suspend,unplug,resume,"
-                          "plug,reboot")
+    default_actions = str("reboot,unplug,plug,login_exit,unplug,plug,suspend,"
+                          "resume,unplug,suspend,plug,resume,suspend,unplug,"
+                          "resume,plug")
 
     action_sequence = str(args_dict.get("action_sequence", default_actions))
 
     usb_checks = {
         # Audio thread - active USB audio
-        "cras_test_client --dump_audio_thread" :
+        "loggedin:cras_test_client --dump_audio_thread" :
             ["output dev.*USB Audio", "input dev.*USB Audio"],
         # USB Audio Output devices
         str("cras_test_client --dump_server_info | "
@@ -61,7 +61,7 @@ def run(machine):
             "awk '/Input Devices:/,/Input Nodes:/'") :
             ["USB Headphone Set: USB Audio", "HD Pro Webcam C920: USB Audio"],
         # USB stick four partitions volumes
-        "ls -l /media/removable/" :
+        "loggedin:ls -l /media/removable/" :
             ["ExFAT", "Ext4", "FAT", "NTFS"],
         # USB Web camera
         "cat /sys/class/video4linux/video*/name" :
