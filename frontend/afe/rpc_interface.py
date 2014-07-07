@@ -975,6 +975,9 @@ def get_static_data():
                                    "Waiting": "Waiting for scheduler action",
                                    "Archiving": "Archiving results",
                                    "Resetting": "Resetting hosts"}
+
+    result['wmatrix_url'] = rpc_utils.get_wmatrix_url()
+
     return result
 
 

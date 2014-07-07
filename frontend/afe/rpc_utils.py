@@ -9,8 +9,8 @@ __author__ = 'showard@google.com (Steve Howard)'
 import datetime, os, inspect
 import django.http
 from autotest_lib.frontend.afe import models, model_logic
-from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib import control_data, error
+from autotest_lib.client.common_lib import global_config, priorities
 from autotest_lib.server.cros import provision
 
 NULL_DATETIME = datetime.datetime.max
@@ -826,3 +826,13 @@ def encode_ascii(control_file):
         return control_file.encode('ascii')
     except UnicodeDecodeError as e:
         raise error.ControlFileMalformed(str(e))
+
+
+def get_wmatrix_url():
+    """Get wmatrix url from config file.
+
+    @returns the wmatrix url or an empty string.
+    """
+    return global_config.global_config.get_config_value('AUTOTEST_WEB',
+                                                        'wmatrix_url',
+                                                        default='')

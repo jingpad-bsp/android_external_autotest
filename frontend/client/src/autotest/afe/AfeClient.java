@@ -17,6 +17,7 @@ import autotest.common.ui.NotifyManager;
 import autotest.common.ui.TabView;
 
 import com.google.gwt.core.client.EntryPoint;
+import com.google.gwt.dom.client.Document;
 import com.google.gwt.json.client.JSONValue;
 import com.google.gwt.user.client.ui.RootPanel;
 
@@ -56,6 +57,14 @@ public class AfeClient implements EntryPoint {
 
     protected void finishLoading() {
         SiteCommonClassFactory.globalInitialize();
+
+        String wmatrixUrl = StaticDataRepository.getRepository().getData(
+            "wmatrix_url").isString().stringValue();
+        if (!wmatrixUrl.equals("")) {
+            Document.get().getElementById("wmatrix-link").setAttribute(
+                "href", wmatrixUrl);
+            Document.get().getElementById("wmatrix").removeClassName("hidden");
+        }
 
         jobList = new JobListView(new JobSelectListener() {
             public void onJobSelected(int jobId) {
