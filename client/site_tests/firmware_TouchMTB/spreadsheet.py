@@ -461,8 +461,8 @@ def print_slope_intercept(worksheet_title):
 
 def main():
     """Parse the gesture events and insert them to the spreadsheet."""
+    worksheet_title = get_worksheet_title()
     if options.print_info:
-        worksheet_title = get_worksheet_title()
         print_slope_intercept(worksheet_title)
         return
 
