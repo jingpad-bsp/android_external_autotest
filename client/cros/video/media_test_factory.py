@@ -187,9 +187,12 @@ class MediaTestFactory(object):
         self.capture_sequence_style = self.parser.get(section,
                                                       'capture_sequence_style')
 
-        self.biopic_project_name = (self.parser.get('biopic',
-                                                    'project_name') + '.' +
-                                    self.device_under_test)
+        biopic_proj_specs = [self.parser.get('biopic', 'project_name'),
+                             self.device_under_test,
+                             self.video_format,
+                             self.video_def]
+
+        self.biopic_project_name = '.'.join(biopic_proj_specs)
 
         self.biopic_contact_email = self.parser.get('biopic', 'contact_email')
         self.biopic_wait_time = self.parser.getint('biopic',
