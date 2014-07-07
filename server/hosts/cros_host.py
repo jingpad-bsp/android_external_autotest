@@ -1965,6 +1965,32 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             return None
 
 
+    @label_decorator('power_supply')
+    def get_power_supply(self):
+        """
+        Determine what type of power supply the host has
+
+        @returns a string representing this host's power supply.
+                 'power:battery' when the device has a battery intended for
+                        extended use
+                 'power:AC_primary' when the device has a battery not intended
+                        for extended use (for moving the machine, etc)
+                 'power:AC_only' when the device has no battery at all.
+        """
+        psu = self.run(command='mosys psu type', ignore_status=True)
+        if psu.exit_status:
+            # The psu command for mosys is not included for all platforms. The
+            # assumption is that the device will have a battery if the command
+            # is not found.
+            return 'power:battery'
+
+        psu_str = psu.stdout.strip()
+        if psu_str == 'unknown':
+            return None
+
+        return 'power:%s' % psu_str
+
+
     @label_decorator('storage')
     def get_storage(self):
         """
