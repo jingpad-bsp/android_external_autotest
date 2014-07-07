@@ -633,6 +633,35 @@ class WiFiClient(site_linux_system.LinuxSystem):
         self._shill_proxy.request_roam(bssid)
 
 
+    def wait_for_roam(self, bssid, timeout_seconds=10.0):
+        """Wait for a roam to the given |bssid|.
+
+        @param bssid: string bssid to expect a roam to
+                (e.g.  '00:11:22:33:44:55').
+        @param timeout_seconds: float number of seconds to wait for a roam.
+        @return True iff we detect an association to the given |bssid| within
+                |timeout_seconds|.
+
+        """
+        start_time = time.time()
+        success = False
+        duration = 0.0
+        while time.time() - start_time < timeout_seconds:
+            duration = time.time() - start_time
+            current_bssid = self.iw_runner.get_current_bssid(self.wifi_if)
+            logging.debug('Current BSSID is %s.', current_bssid)
+            if current_bssid == bssid:
+                success = True
+                break
+            time.sleep(0.5)
+
+        logging.debug('%s to %s in %f seconds.',
+                      'Roamed ' if success else 'Failed to roam ',
+                      bssid,
+                      duration)
+        return success
+
+
     def wait_for_ssid_vanish(self, ssid):
         """Wait for shill to notice that there are no BSS's for an SSID present.
 

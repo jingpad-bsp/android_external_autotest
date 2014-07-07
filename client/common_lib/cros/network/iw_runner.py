@@ -141,6 +141,30 @@ class IwRunner(object):
         self._run('%s dev %s disconnect' % (self._command_iw, interface))
 
 
+    def get_current_bssid(self, interface_name):
+        """Get the BSSID that |interface_name| is associated with.
+
+        @param interface_name: string name of interface (e.g. 'wlan0').
+        @return string bssid of our current association, or None.
+
+        """
+        result = self._run('%s dev %s link' %
+                           (self._command_iw, interface_name),
+                           ignore_status=True)
+        if result.exit_status:
+            # See comment in get_link_value.
+            return None
+
+        # We're looking for a line like:
+        #   Connected to 04:f0:21:03:7d:bb (on wlan0)
+        match = re.search(
+                'Connected to ([0-9a-fA-F:]{17}) \\(on %s\\)' % interface_name,
+                result.stdout)
+        if match is None:
+            return None
+        return match.group(1)
+
+
     def get_interface(self, interface_name):
         """Get full information about an interface given an interface name.
 

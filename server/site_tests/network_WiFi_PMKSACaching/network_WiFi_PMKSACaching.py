@@ -8,6 +8,7 @@ import time
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import site_eap_certs
 from autotest_lib.client.common_lib.cros.network import iw_runner
+from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
 from autotest_lib.server.cros.network import hostap_config
@@ -19,6 +20,7 @@ class network_WiFi_PMKSACaching(wifi_cell_test_base.WiFiCellTestBase):
     version = 1
     AP0_FREQUENCY = 2412
     AP1_FREQUENCY = 5220
+    TIMEOUT_SECONDS = 15
 
 
     def dut_sees_bss(self, bssid):
@@ -35,7 +37,7 @@ class network_WiFi_PMKSACaching(wifi_cell_test_base.WiFiCellTestBase):
         return scan_results and filter(is_requested_bss, scan_results)
 
 
-    def retry(self, func, reason, timeout_seconds=15):
+    def retry(self, func, reason, timeout_seconds=TIMEOUT_SECONDS):
         """
         Retry a function until it returns true or we time out.
 
@@ -80,14 +82,21 @@ class network_WiFi_PMKSACaching(wifi_cell_test_base.WiFiCellTestBase):
                 mode=mode_n, ssid=self.context.router.get_ssid(),
                 frequency=self.AP1_FREQUENCY, security_config=eap_config)
         self.context.configure(ap_config1, multi_interface=True)
-        bssid = self.context.router.get_hostapd_mac(1)
-        has_roamed = lambda freq: self.context.client.get_iw_link_value(
-                iw_runner.IW_LINK_KEY_FREQUENCY,
-                ignore_failures=True) == str(freq)
-        self.retry(lambda: self.dut_sees_bss(bssid), 'DUT to see second AP')
-        self.context.client.request_roam(bssid)
-        self.retry(lambda: has_roamed(self.AP1_FREQUENCY), 'roam to second AP')
+        bssid0 = self.context.router.get_hostapd_mac(0)
+        bssid1 = self.context.router.get_hostapd_mac(1)
+        self.retry(lambda: self.dut_sees_bss(bssid1), 'DUT to see second AP')
+        self.context.client.request_roam(bssid1)
+        if not self.context.client.wait_for_roam(
+                bssid1, timeout_seconds=self.TIMEOUT_SECONDS):
+            raise error.TestFail('Failed to roam to second BSS.')
+
         self.context.router.deconfig_aps(instance=1, silent=True)
-        self.retry(lambda: has_roamed(self.AP0_FREQUENCY),
-                   'fallback to first AP')
+        if not self.context.client.wait_for_roam(
+                bssid0, timeout_seconds=self.TIMEOUT_SECONDS):
+            raise error.TestFail('Failed to fall back to first BSS.')
+
+        pinger = ping_runner.PingRunner(host=self.context.client.host)
+        self.retry(lambda: pinger.simple_ping(
+                           self.context.router.get_wifi_ip(0)),
+                   'DUT to be able to ping first BSS after fallback')
         self.context.router.confirm_pmksa_cache_use(instance=0)
