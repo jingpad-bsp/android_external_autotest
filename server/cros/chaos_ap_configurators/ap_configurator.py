@@ -73,7 +73,8 @@ class APConfiguratorAbstract(object):
         logging.info('Pinging rpm %s', self.pdu)
         ping_result = runner.ping(ping_options)
         logging.info('ping result = %s', str(ping_result))
-        if ping_result.loss:
+        # If all ping packets failed then mark PDU down.
+        if ping_result.loss == 100:
             self.configuration_success = chaos_constants.PDU_FAIL
             raise PduNotResponding(self.pdu)
 
