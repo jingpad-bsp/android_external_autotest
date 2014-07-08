@@ -95,20 +95,36 @@ def _find_default_soundcard_id():
     '''Finds the id of the default hardware soundcard.'''
 
     # If there is only one card, choose it; otherwise,
-    # choose the first card with controls named 'Speaker'
+    # choose the first card with scontrols named 'Speaker'
+    # or with controls named 'Headphone Jack'.
     cmd = 'amixer -c %d scontrols'
     id = 0
     while True:
         p = cmd_utils.popen(shlex.split(cmd % id), stdout=cmd_utils.PIPE)
         output, _ = p.communicate()
         if p.wait() != 0: # end of the card list
-            break;
+            break
         if 'speaker' in output.lower():
             return id
         id = id + 1
 
-    # If there is only one soundcard, return it, else return not found (None)
-    return 0 if id == 1 else None
+    # If there is only one soundcard, return it.
+    if id == 1:
+        return 0
+
+    # Some devices do not have speakers, use 'Headphone Jack' to match.
+    num_cards = id
+    cmd = 'amixer -c %d controls'
+    for id in xrange(num_cards):
+        p = cmd_utils.popen(shlex.split(cmd % id), stdout=cmd_utils.PIPE)
+        output, _ = p.communicate()
+        if p.wait() != 0:
+            continue
+        if 'headphone jack' in output.lower():
+            return id
+
+    return None
+
 
 def dump_control_contents(device=None):
     if device is None:
