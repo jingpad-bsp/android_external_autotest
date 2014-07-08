@@ -370,20 +370,38 @@ class OmahaDevserver(object):
         self._devserver_ssh = hosts.SSHHost(self._omaha_host,
                                             user=os.environ['USER'])
 
-        # Allocate temporary files for various server outputs.
-        self._devserver_logfile = self._create_tempfile_on_devserver('log')
-        self._devserver_portfile = self._create_tempfile_on_devserver('port')
-        self._devserver_pidfile = self._create_tempfile_on_devserver('pid')
+        # Temporary files for various devserver outputs.
+        self._devserver_logfile = None
+        self._devserver_portfile = None
+        self._devserver_pidfile = None
+        self._devserver_static_dir = None
 
-    def _create_tempfile_on_devserver(self, label):
-        """Creates a temporary file on the devserver and returns its path.
+
+    def _cleanup_devserver_files(self):
+        """Cleans up the temporary devserver files."""
+        for filename in (self._devserver_logfile, self._devserver_portfile,
+                         self._devserver_pidfile):
+           if filename:
+              self._devserver_ssh.run('rm -f %s' % filename, ignore_status=True)
+
+        if self._devserver_static_dir:
+            self._devserver_ssh.run('rm -rf %s' % self._devserver_static_dir,
+                                    ignore_status=True)
+
+
+    def _create_tempfile_on_devserver(self, label, dir=False):
+        """Creates a temporary file/dir on the devserver and returns its path.
 
         @param label: Identifier for the file context (string, no whitespaces).
+        @param dir: If True, create a directory instead of a file.
 
         @raises test.TestError: If we failed to invoke mktemp on the server.
         @raises OmahaDevserverFailedToStart: If tempfile creation failed.
         """
         remote_cmd = 'mktemp --tmpdir devserver-%s.XXXXXX' % label
+        if dir:
+            remote_cmd += ' --directory'
+
         try:
             result = self._devserver_ssh.run(remote_cmd, ignore_status=True)
         except error.AutoservRunError as e:
@@ -466,6 +484,14 @@ class OmahaDevserver(object):
         """
         update_payload_url_base, update_payload_path = self._split_url(
                 self._update_payload_staged_url)
+
+        # Allocate temporary files for various server outputs.
+        self._devserver_logfile = self._create_tempfile_on_devserver('log')
+        self._devserver_portfile = self._create_tempfile_on_devserver('port')
+        self._devserver_pidfile = self._create_tempfile_on_devserver('pid')
+        self._devserver_static_dir = self._create_tempfile_on_devserver(
+                'static', dir=True)
+
         # Invoke the Omaha/devserver on the remote server. Will attempt to kill
         # it with a SIGTERM after a predetermined timeout has elapsed, followed
         # by SIGKILL if not dead within 30 seconds from the former signal.
@@ -482,6 +508,7 @@ class OmahaDevserver(object):
                 '--urlbase=%s' % update_payload_url_base,
                 '--max_updates=1',
                 '--host_log',
+                '--static_dir=%s' % self._devserver_static_dir,
         ]
         remote_cmd = '( %s ) </dev/null >/dev/null 2>&1 &' % ' '.join(cmdlist)
 
@@ -496,6 +523,7 @@ class OmahaDevserver(object):
         except OmahaDevserverFailedToStart:
             self._kill_remote_process()
             self._dump_devserver_log()
+            self._cleanup_devserver_file()
             raise
 
 
@@ -557,12 +585,11 @@ class OmahaDevserver(object):
 
 
     def _dump_devserver_log(self, logging_level=logging.ERROR):
-        """Dump the devserver log to the autotest log, then remove the log file.
+        """Dump the devserver log to the autotest log.
 
         @param logging_level: logging level (from logging) to log the output.
         """
         logging.log(logging_level, self._get_devserver_log())
-        self._devserver_ssh.run('rm -f %s' % self._devserver_logfile)
 
 
     @staticmethod
@@ -585,6 +612,7 @@ class OmahaDevserver(object):
         self._kill_remote_process()
         logging.debug('Final devserver log before killing')
         self._dump_devserver_log(logging.DEBUG)
+        self._cleanup_devserver_files()
 
 
 class autoupdate_EndToEndTest(test.test):
