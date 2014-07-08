@@ -78,7 +78,7 @@ class firmware_LockedME(test.test):
             for line in infile:
                 if re.search('ME: Manufacturing Mode', line):
                     last = line
-        if last.find("YES") >= 0:
+        if last is not None and last.find("YES") >= 0:
             raise error.TestFail("The ME is still in Manufacturing Mode")
 
         # Get the bios image and extract the ME components
