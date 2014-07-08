@@ -1,0 +1,21 @@
+#!/bin/bash
+
+if [ $# -ne 1 ]
+then
+    echo "usage: $(basename $0) file" >&2
+    exit 1
+fi
+
+FILE=$1
+sed '
+    s/^[^ ]* ...[A-Z]* //
+    s/is up BOARD=.* CHROMEOS_RELEASE_VERSION=.*/servod is up/
+    s/.*pwr_button:press.*/power button is stuck down/
+    s/^\(not running servod\) \(not running brillo\)$/\1, \2/
+    s/^not running servod$/up but not running servod, reason unknown/
+    s/^servod not configured$/running brillo, BOARD for &/
+    s/^servod failed$/servod running, but not working/
+    s/^is down/no answer to ping/
+    s/^\(not running servod\) \(ssh is down\)$/\1, ping is up, \2/
+' $FILE | sort | uniq -c |
+    awk '{ print ; sum += $1 } END { printf "%7d total\n", sum }' | sort
