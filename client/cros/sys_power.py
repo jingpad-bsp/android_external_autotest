@@ -33,7 +33,9 @@ class FirmwareError(SuspendFailure):
     """String 'ERROR' found in firmware log after resume."""
     WHITELIST = [
             # crosbug.com/36762: no one knows, but it has always been there
-            r'PNP: 002e\.4 70 irq size: 0x0000000001 not assigned'
+            ('^stumpy', r'PNP: 002e\.4 70 irq size: 0x0000000001 not assigned'),
+            # crbug.com/221538: no one knows what ME errors mean anyway
+            ('^parrot', r'ME failed to respond'),
         ]
 
 
@@ -50,8 +52,6 @@ class SpuriousWakeupError(SuspendFailure):
     S0_WHITELIST = [  # (<board>, <kernel wake source>)
             # crbug.com/290923: spurious keyboard IRQ, believed to be from Servo
             ('^x86-alex|^lumpy|^parrot|^butterfly', 'serio0'),
-            # crbug.com/383434: "Lumpy, beware the Ides of March (plus five)!"
-            ('^lumpy', 'unknown|7-0067'),
         ]
 
 class MemoryError(SuspendFailure):

@@ -374,8 +374,9 @@ class Suspender(object):
                 if os.path.exists('/sys/firmware/log'):
                     for msg in re.findall(r'^.*ERROR.*$',
                             utils.read_file('/sys/firmware/log'), re.M):
-                        for pattern in sys_power.FirmwareError.WHITELIST:
-                            if re.search(pattern, msg):
+                        for board, pattern in sys_power.FirmwareError.WHITELIST:
+                            if (re.search(board, utils.get_board()) and
+                                    re.search(pattern, msg)):
                                 logging.info('Whitelisted FW error: ' + msg)
                                 break
                         else:
