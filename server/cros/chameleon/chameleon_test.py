@@ -49,8 +49,8 @@ class ChameleonTest(test.test):
         self.chameleon_port = self._get_connected_port()
         if self.chameleon_port is None:
             raise error.TestError('DUT and Chameleon board not connected')
-        self._platform = host.get_platform().lower()
-        if self._platform in ('snow', 'spring', 'pit', 'pi', 'skate'):
+        self._platform_prefix = host.get_platform().lower().split('_')[0]
+        if self._platform_prefix in ('snow', 'spring', 'skate', 'peach'):
             self._unlevel_func =  _unlevel
         else:
             self._unlevel_func = ord
@@ -69,7 +69,7 @@ class ChameleonTest(test.test):
         # support the HDMI EDIDs and the DP one at 1680x1050. A more proper
         # solution is to build a database of supported resolutions and pixel
         # clocks for each model and check if the EDID is in the supported list.
-        if self._platform in ('snow', 'spring', 'pit', 'pi', 'skate'):
+        if self._platform_prefix in ('snow', 'spring', 'skate', 'peach'):
             if tag == 'DP':
                 return width == 1680 and height == 1050
         return True
