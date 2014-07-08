@@ -13,6 +13,7 @@ import os
 import re
 import time
 import xmlrpclib
+import telemetry
 
 import common   # pylint: disable=W0611
 from autotest_lib.client.bin import utils
@@ -20,6 +21,7 @@ from autotest_lib.client.common_lib.cros import chrome, xmlrpc_server
 from autotest_lib.client.cros import constants, cros_ui, sys_power
 
 EXT_PATH = os.path.join(os.path.dirname(__file__), 'display_test_extension')
+TimeoutException = telemetry.core.util.TimeoutException
 
 
 class DisplayTestingXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
@@ -33,8 +35,9 @@ class DisplayTestingXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
     def get_display_info(self):
         """Gets the display info from Chrome.system.display API.
 
-        @return A dict of display info.
+        @return array of dict for display info.
         """
+
         extension = self._chrome.get_extension(EXT_PATH)
         if not extension:
             raise RuntimeError('Graphics test extension not found')
@@ -48,6 +51,100 @@ class DisplayTestingXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         return extension.EvaluateJavaScript("window.__display_info")
 
 
+    def _wait_for_display_options_to_appear(self, tab, display_index,
+                                            timeout=16):
+        """Waits for option.DisplayOptions to appear.
+
+        The function waits until options.DisplayOptions appears or is timed out
+                after the specified time.
+
+        @param tab: the tab where the display options dialog is shown.
+        @param display_index: index of the display; 0 is the internal one
+                for chromebooks.
+        @param timeout: time wait for display options appear.
+
+        @raise RuntimeError when display_index is out of range
+        @raise TimeoutException when the operation is timed out.
+        """
+
+        tab.WaitForJavaScriptExpression(
+                    "typeof options !== 'undefined' &&"
+                    "typeof options.DisplayOptions !== 'undefined' &&"
+                    "typeof options.DisplayOptions.instance_ !== 'undefined' &&"
+                    "typeof options.DisplayOptions.instance_"
+                    "       .displays_ !== 'undefined'", timeout)
+
+        if not tab.EvaluateJavaScript(
+                    "options.DisplayOptions.instance_.displays_.length > %d"
+                    % (display_index)):
+            raise RuntimeError('Display index out of range: '
+                    + str(tab.EvaluateJavaScript(
+                    "options.DisplayOptions.instance_.displays_.length")))
+
+        tab.WaitForJavaScriptExpression(
+                "typeof options.DisplayOptions.instance_"
+                "         .displays_[%(index)d] !== 'undefined' &&"
+                "typeof options.DisplayOptions.instance_"
+                "         .displays_[%(index)d].id !== 'undefined' &&"
+                "typeof options.DisplayOptions.instance_"
+                "         .displays_[%(index)d].resolutions !== 'undefined'"
+                % {'index': display_index}, timeout)
+
+
+    def get_available_resolutions(self, display_index):
+        """Gets the resolution list from chrome://settings-frame/display via
+        telemetry.
+
+        @param display_index: index of the display to get resolutions from; 0 is
+                the internal one for chromebooks.
+
+        @return: A dict of available resolutions list.
+
+        @raise TimeoutException when the operation is timed out.
+        """
+
+        tab = self._browser.tabs.New()
+        try:
+            tab.Navigate('chrome://settings-frame/display')
+            tab.Activate()
+            self._wait_for_display_options_to_appear(tab, display_index)
+            return tab.EvaluateJavaScript(
+                    "options.DisplayOptions.instance_"
+                    "         .displays_[%(index)d].resolutions"
+                    % {'index': display_index})
+        finally:
+            tab.Close()
+
+
+    def set_resolution(self, display_index, width, height):
+        """Sets the resolution of the specified display.
+
+        @param display_index: index of the display to set resolution for;
+                0 is the internal one for chromebooks.
+        @param width: width of the resolution
+        @param height: height of the resolution
+
+        @raise TimeoutException when the operation is timed out.
+        """
+
+        tab = self._browser.tabs.New()
+        try:
+            tab.Navigate('chrome://settings-frame/display')
+            tab.Activate()
+            self._wait_for_display_options_to_appear(tab, display_index)
+            tab.ExecuteJavaScript(
+                    "chrome.send('setResolution',["
+                    "   options.DisplayOptions.instance_"
+                    "       .displays_[%(index)d].id, %(width)d, %(height)d]);"
+                    % {'index': display_index, 'width': width, 'height': height}
+            )
+            # TODO(tingyuan):
+            # Support for multiple external monitors (i.e. for chromebox)
+            return True
+        finally:
+            tab.Close()
+
+
     def get_resolution(self, output):
         """Gets the resolution of the specified output.
 
@@ -56,6 +153,7 @@ class DisplayTestingXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         @return The resolution of output as a tuple (width, height,
             fb_offset_x, fb_offset_y) of ints.
         """
+
         regexp = re.compile(
                 r'^([-A-Za-z0-9]+)\s+connected\s+(\d+)x(\d+)\+(\d+)\+(\d+)',
                 re.M)

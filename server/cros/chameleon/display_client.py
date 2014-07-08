@@ -17,6 +17,57 @@ from autotest_lib.server import autotest
 from autotest_lib.server.cros.chameleon import image_generator
 
 
+
+class DisplayInfo(object):
+    """The class match displayInfo object from chrome.system.display API.
+    """
+
+    class Bounds(object):
+        """The class match Bounds object from chrome.system.display API.
+
+        @param left: The x-coordinate of the upper-left corner.
+        @param top: The y-coordinate of the upper-left corner.
+        @param width: The width of the display in pixels.
+        @param height: The height of the display in pixels.
+        """
+        def __init__(self, d):
+            self.left = d['left'];
+            self.top = d['top'];
+            self.width = d['width'];
+            self.height = d['height'];
+
+
+    class Insets(object):
+        """The class match Insets object from chrome.system.display API.
+
+        @param left: The x-axis distance from the left bound.
+        @param left: The y-axis distance from the top bound.
+        @param left: The x-axis distance from the right bound.
+        @param left: The y-axis distance from the bottom bound.
+        """
+
+        def __init__(self, d):
+            self.left = d['left'];
+            self.top = d['top'];
+            self.right = d['right'];
+            self.bottom = d['bottom'];
+
+
+    def __init__(self, d):
+        self.display_id = d['id'];
+        self.name = d['name'];
+        self.mirroring_source_id = d['mirroringSourceId'];
+        self.is_primary = d['isPrimary'];
+        self.is_internal = d['isInternal'];
+        self.is_enabled = d['isEnabled'];
+        self.dpi_x = d['dpiX'];
+        self.dpi_y = d['dpiY'];
+        self.rotation = d['rotation'];
+        self.bounds = self.Bounds(d['bounds']);
+        self.overscan = self.Insets(d['overscan']);
+        self.work_area = self.Bounds(d['workArea']);
+
+
 class DisplayClient(object):
     """DisplayClient is a layer to control display logic over a remote DUT.
 
@@ -148,14 +199,22 @@ class DisplayClient(object):
         return self._display_xmlrpc_client.suspend_resume_bg(suspend_time)
 
 
-    def reconnect_output_and_wait(self):
-        """Reconnects output and waits it available."""
+    def reconnect_output_and_wait(self, reconnect=True,
+            expected_display_count=2):
+        """Reconnects output and waits it available.
+
+        @param reconnect: True to perform a re-connection from the DUT; False
+                otherwise.
+        @param expected_display_count:
+                number of displays expected to be connected.
+        """
         output = self.get_connector_name()
-        self._display_xmlrpc_client.reconnect_output(output)
+        if reconnect:
+            self._display_xmlrpc_client.reconnect_output(output)
         self._display_xmlrpc_client.wait_output_connected(output)
         utils.wait_for_value(lambda: (
                 len(self._display_xmlrpc_client.get_display_info())),
-                expected_value=2)
+                expected_value=expected_display_count)
 
 
     def hide_cursor(self):
@@ -190,3 +249,40 @@ class DisplayClient(object):
         output = self.get_connector_name()
         width, height, _, _ = self._display_xmlrpc_client.get_resolution(output)
         return (width, height)
+
+
+    def set_resolution(self, display_index, width, height):
+        """Sets the resolution on the specified display.
+
+        @param display_index: index of the display to set resolutions for; 0 is
+                the internal one for chromebooks.
+        @param width: width of the resolution
+        @param height: height of the resolution
+
+        @return: True if the new resolution meets the set value else False.
+        """
+        return self._display_xmlrpc_client.set_resolution(
+                display_index, width, height)
+
+
+    def get_display_info(self):
+        """Gets the information of all the displays that are connected to the
+                DUT.
+
+        @return: array of object DisplayInfo for display informtion
+        """
+        return map(DisplayInfo, self._display_xmlrpc_client.get_display_info())
+
+
+    def get_available_resolutions(self, display_index):
+        """Gets the available list of the specified display.
+
+        @param display_index: index of the display to get resolutions from; the
+            index is from the DisplayInfo array obtained by get_display_info().
+            For Chromebooks, index 0 indicates the internal display.
+
+        @return: array of available resolutions tuple (width, height)
+        """
+        return [(resolution['width'], resolution['height']) for resolution in
+                        self._display_xmlrpc_client.get_available_resolutions(
+                        display_index)]
