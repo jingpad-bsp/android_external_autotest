@@ -15,10 +15,8 @@ function playAndReload() {
 }
 
 function contentLoaded() {
-  var videoLoaded = false;
-  testvideo.addEventListener("loadeddata", function() { videoLoaded = true; });
-  testvideo.addEventListener("timeupdate", function() {
-      if (videoLoaded && testvideo.currentTime == 0) videoAtStart = true; });
+  testvideo.addEventListener("loadeddata", function() {
+      if (testvideo.currentTime == 0) videoAtStart = true; });
 }
 
 document.addEventListener("DOMContentLoaded", contentLoaded);
