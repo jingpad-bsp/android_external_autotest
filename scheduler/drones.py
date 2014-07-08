@@ -1,5 +1,3 @@
-#pylint: disable-msg=C0111
-
 import cPickle, os, tempfile, logging
 import common
 from autotest_lib.scheduler import drone_utility, email_manager
@@ -72,14 +70,6 @@ class _BaseAbstractDrone(object):
         return return_message['results']
 
 
-    def get_calls(self):
-        """Returns the calls queued against this drone.
-
-        @return: A list of calls queued against the drone.
-        """
-        return self._calls
-
-
     def call(self, method, *args, **kwargs):
         return self._execute_calls(
             [drone_utility.call(method, *args, **kwargs)])
@@ -95,9 +85,8 @@ class _BaseAbstractDrone(object):
     def execute_queued_calls(self):
         if not self._calls:
             return
-        results = self._execute_calls(self._calls)
+        self._execute_calls(self._calls)
         self.clear_call_queue()
-        return results
 
 
     def set_autotest_install_dir(self, path):
