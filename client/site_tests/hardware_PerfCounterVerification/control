@@ -1,0 +1,22 @@
+# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "David Sharp <dhsharp@chromium.org>"
+NAME = "hardware_PerfCounterVerification"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "hardware"
+TEST_TYPE = "client"
+SUITE = "experimental"
+
+DOC = """
+Verify performance counters
+
+Arguments:
+  events: Events to pass to perf stat -e. Events are passed in together, so
+    multiplexing may occur if more than one is specified.
+"""
+
+job.run_test('hardware_PerfCounterVerification',
+             events=('cycles', 'instructions'))
