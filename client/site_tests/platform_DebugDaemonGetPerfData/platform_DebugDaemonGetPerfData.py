@@ -23,13 +23,13 @@ class platform_DebugDaemonGetPerfData(test.test):
 
     # A list of durations over which to gather perf data using quipper (given in
     # seconds), plus the number of times to run perf with each duration.
-    # e.g. the entry "0: 100" means to run perf for 0 seconds 100 times.
-    _profile_duration_and_repetitions = {
-        0 : 100,
-        2 : 3,
-        5 : 1,
-        10  : 1,
-    }
+    # e.g. the entry "1: 50" means to run perf for 1 second 50 times.
+    _profile_duration_and_repetitions = [
+        (1, 50),
+        (2, 3),
+        (5, 1),
+        (10, 1),
+    ]
 
     # Commands to repeatedly run in the background when collecting perf data
     _system_profile_commands = {
@@ -121,8 +121,7 @@ class platform_DebugDaemonGetPerfData(test.test):
                 self._system_profile_commands[profile_type]
             process = subprocess.Popen(cmd, stdout=devnull, shell=True)
 
-            for duration in self._profile_duration_and_repetitions:
-                num_reps = self._profile_duration_and_repetitions[duration]
+            for duration, num_reps in self._profile_duration_and_repetitions:
                 # Collect perf data from debugd.
                 for get_perf_method in get_perf_methods:
                     self.validate_get_perf_method(get_perf_method, duration,
