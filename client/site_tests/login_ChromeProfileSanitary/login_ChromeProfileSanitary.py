@@ -59,7 +59,7 @@ class login_ChromeProfileSanitary(test.test):
 
     def run_once(self, timeout=10):
         with chrome.Chrome() as cr:
-            # Get Default/Cookies mtime.
+            # Get Default/Cookies mtime. None means no Cookies DB.
             cookies_mtime = self.__get_cookies_mtime()
 
             # Wait for chrome to show, then "crash" it.
@@ -80,5 +80,7 @@ class login_ChromeProfileSanitary(test.test):
             # Check mtime of Default/Cookies.  If changed, KABLOOEY.
             new_cookies_mtime = self.__get_cookies_mtime()
 
-            if not new_cookies_mtime or cookies_mtime != new_cookies_mtime:
+            if cookies_mtime != new_cookies_mtime:
+                if not cookies_mtime and new_cookies_mtime:
+                    raise error.TestFail('Cookies created in Default profile!')
                 raise error.TestFail('Cookies in Default profile changed!')
