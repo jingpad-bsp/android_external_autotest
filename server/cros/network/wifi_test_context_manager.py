@@ -208,6 +208,9 @@ class WiFiTestContextManager(object):
 
         @param wifi_params AssociationParameters describing network to connect.
 
+        @returns AssociationResult if successful; None if wifi_params
+                 contains expect_failure; asserts otherwise.
+
         """
         logging.info('Connecting to %s.', wifi_params.ssid)
         assoc_result = xmlrpc_datatypes.deserialize(
@@ -231,9 +234,10 @@ class WiFiTestContextManager(object):
         if wifi_params.expect_failure:
             logging.info('Unable to connect to %s (as intended).',
                          wifi_params.ssid)
-            return
+            return None
 
         logging.info('Connected successfully to %s.', wifi_params.ssid)
+        return assoc_result
 
 
     def assert_ping_from_dut(self, ping_config=None, ap_num=None):

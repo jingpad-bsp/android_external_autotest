@@ -151,6 +151,126 @@
     "dashboard_test_name": "network_WiFi_Perf"
   },
   {
+    "autotest_name": "network_WiFi_SimpleConnect.wifi_check1x_PEAP",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SimpleConnect"
+  },
+  {
+    "autotest_name": "network_WiFi_SimpleConnect.wifi_check1x_TTLS",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SimpleConnect"
+  },
+  {
+    "autotest_name": "network_WiFi_SimpleConnect.wifi_check1x_WEP",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SimpleConnect"
+  },
+  {
+    "autotest_name": "network_WiFi_SimpleConnect.wifi_check1x_WPA",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SimpleConnect"
+  },
+  {
+    "autotest_name": "network_WiFi_SimpleConnect.wifi_check5HT20",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SimpleConnect"
+  },
+  {
+    "autotest_name": "network_WiFi_SimpleConnect.wifi_check5HT40",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SimpleConnect"
+  },
+  {
+    "autotest_name": "network_WiFi_SimpleConnect.wifi_check11a",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SimpleConnect"
+  },
+  {
+    "autotest_name": "network_WiFi_SimpleConnect.wifi_check11b",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SimpleConnect"
+  },
+  {
+    "autotest_name": "network_WiFi_SimpleConnect.wifi_check11g",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SimpleConnect"
+  },
+  {
+    "autotest_name": "network_WiFi_SimpleConnect.wifi_check24HT20",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SimpleConnect"
+  },
+  {
+    "autotest_name": "network_WiFi_SimpleConnect.wifi_check24HT40",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SimpleConnect"
+  },
+  {
+    "autotest_name": "network_WiFi_SimpleConnect.wifi_checkDFS",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SimpleConnect"
+  },
+  {
+    "autotest_name": "network_WiFi_SimpleConnect.wifi_checkHidden",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SimpleConnect"
+  },
+  {
+    "autotest_name": "network_WiFi_SimpleConnect.wifi_checkHiddenWEP",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SimpleConnect"
+  },
+  {
+    "autotest_name": "network_WiFi_SimpleConnect.wifi_checkHiddenWPA",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SimpleConnect"
+  },
+  {
+    "autotest_name": "network_WiFi_SimpleConnect.wifi_checkMixedWPA",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SimpleConnect"
+  },
+  {
+    "autotest_name": "network_WiFi_SimpleConnect.wifi_checkWEP40",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SimpleConnect"
+  },
+  {
+    "autotest_name": "network_WiFi_SimpleConnect.wifi_checkWEP104",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SimpleConnect"
+  },
+  {
+    "autotest_name": "network_WiFi_SimpleConnect.wifi_checkWPA2",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SimpleConnect"
+  },
+  {
+    "autotest_name": "network_WiFi_SimpleConnect.wifi_checkWPA2_PMF",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SimpleConnect"
+  },
+  {
+    "autotest_name": "network_WiFi_SimpleConnect.wifi_checkWPA2_TKIP",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SimpleConnect"
+  },
+  {
+    "autotest_name": "network_WiFi_SimpleConnect.wifi_checkWPA_CCMP",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SimpleConnect"
+  },
+  {
+    "autotest_name": "network_WiFi_SimpleConnect.wifi_checkWPA_TKIP",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SimpleConnect"
+  },
+  {
+    "autotest_name": "network_WiFi_SimpleConnect.wifi_checkWPA_multi",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SimpleConnect"
+  },
+  {
     "autotest_name": "platform_BootPerfServer",
     "master_name": "ChromeOSPerf"
   },

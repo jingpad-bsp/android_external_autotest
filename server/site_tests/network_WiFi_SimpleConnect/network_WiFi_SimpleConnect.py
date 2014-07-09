@@ -30,13 +30,24 @@ class network_WiFi_SimpleConnect(wifi_cell_test_base.WiFiCellTestBase):
                     router_conf.frequency,
                     ht_type=router_conf.ht_packet_capture_mode)
             client_conf.ssid = self.context.router.get_ssid()
-            self.context.assert_connect_wifi(client_conf)
+            assoc_result = self.context.assert_connect_wifi(client_conf)
             if client_conf.expect_failure:
                 logging.info('Skipping ping because we expected this '
                              'attempt to fail.')
             else:
                 self.context.assert_ping_from_dut()
                 self.context.client.shill.disconnect(client_conf.ssid)
+                times_dict = {
+                    'Discovery': assoc_result.discovery_time,
+                    'Association': assoc_result.association_time,
+                    'Configuration': assoc_result.configuration_time}
+                for key in times_dict.keys():
+                    self.output_perf_value(
+                        description=key,
+                        value=times_dict[key],
+                        units='seconds',
+                        higher_is_better=False,
+                        graph=router_conf.perf_loggable_description)
             self.context.client.shill.delete_entries_for_ssid(client_conf.ssid)
             self.context.router.deconfig()
             self.context.router.stop_capture()
