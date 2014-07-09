@@ -38,6 +38,10 @@ class ChromeBinaryTest(test.test):
             shutil.rmtree(self.home_dir, ignore_errors=True)
 
 
+    def get_chrome_binary_path(self, binary_to_run):
+        return os.path.join(self.test_binary_dir, binary_to_run)
+
+
     def run_chrome_test_binary(self, binary_to_run, extra_params='', prefix='',
                                as_chronos=True):
         """
@@ -51,6 +55,7 @@ class ChromeBinaryTest(test.test):
 
         @raises: error.TestFail if there is error running the command.
         """
+        binary = self.get_chrome_binary_path(binary_to_run)
         cmd = '%s/%s %s' % (self.test_binary_dir, binary_to_run, extra_params)
         env_vars = 'HOME=%s CR_SOURCE_ROOT=%s CHROME_DEVEL_SANDBOX=%s' % (
                 self.home_dir, self.cr_source_dir, self.CHROME_SANDBOX)
