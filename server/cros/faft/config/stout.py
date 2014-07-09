@@ -6,6 +6,7 @@
 
 
 class Values():
+    """FAFT config values for Stout."""
     broken_warm_reset = True
     broken_rec_mode = True
     key_checker = [[0x29, 'press'],

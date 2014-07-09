@@ -6,6 +6,7 @@
 
 
 class Values(object):
+    """FAFT config values for Zako."""
     has_lid = False
     has_keyboard = False
     keyboard_dev = True

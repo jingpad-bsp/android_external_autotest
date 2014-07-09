@@ -6,6 +6,7 @@
 
 
 class Values(object):
+    """FAFT config values for Parrot."""
     # Parrot uses UART to switch to rec mode instead of gpio thus to
     # clear rec_mode, devices needs to be sufficiently booted.
     ec_boot_to_console = 4

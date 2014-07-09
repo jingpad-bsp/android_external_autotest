@@ -6,6 +6,7 @@
 
 
 class Values(object):
+    """FAFT config values for Skate."""
     software_sync_update = 6
     chrome_ec = True
     use_u_boot = True

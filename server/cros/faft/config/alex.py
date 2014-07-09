@@ -6,5 +6,6 @@
 
 
 class Values(object):
+    """FAFT config values for Alex."""
     keyboard_dev = False
     gbb_version = 1.0

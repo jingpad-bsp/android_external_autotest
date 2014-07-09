@@ -6,6 +6,7 @@
 
 
 class Values(object):
+    """FAFT config values for Snow."""
     chrome_ec = True
     ec_capability = (['battery', 'keyboard', 'arm'])
     ec_boot_to_console = 0.4
