@@ -110,6 +110,19 @@ GV.NORMAL = 'normal'
 GV.FAST = 'fast'
 GV.FULL_SPEED = 'full_speed'
 GV.GESTURE_SPEED = [GV.SLOW, GV.NORMAL, GV.FAST, GV.FULL_SPEED]
+# constants about noise frequency
+GV.LOW_FREQUENCY = 'low_frequency'
+GV.MED_FREQUENCY = 'med_frequency'
+GV.HIGH_FREQUENCY = 'high_frequency'
+GV.NOISE_FREQUENCY = [GV.LOW_FREQUENCY, GV.MED_FREQUENCY, GV.HIGH_FREQUENCY]
+# constants about noise waveform
+GV.SQUARE_WAVE = 'square_wave'
+GV.SINE_WAVE = 'sine_wave'
+GV.NOISE_WAVEFORM = [GV.SQUARE_WAVE, GV.SINE_WAVE]
+# constants about noise amplitude
+GV.MAX_AMPLITUDE = 'max_amplitude'
+GV.HALF_AMPLITUDE = 'half_amplitude'
+GV.NOISE_AMPLITUDE = [GV.HALF_AMPLITUDE, GV.MAX_AMPLITUDE]
 # constants about metal finger sizes
 GV.SIZE = 'size'
 size_str = lambda i: GV.SIZE + str(i)

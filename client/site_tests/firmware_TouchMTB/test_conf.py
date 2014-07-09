@@ -94,6 +94,8 @@ gestures_sub_path = 'site-packages/touchbotII'
 
 
 # Define the gesture names
+NOISE_LINE = 'noise_line'
+NOISE_STATIONARY = 'noise_stationary'
 ONE_FINGER_TRACKING = 'one_finger_tracking'
 ONE_FINGER_TO_EDGE = 'one_finger_to_edge'
 TWO_FINGER_TRACKING = 'two_finger_tracking'
@@ -136,6 +138,8 @@ fingers_physical_click = [1, 2, 3, 4, 5]
 # Define the complete list
 gesture_names_complete = {
     DEV.TOUCHPAD: [
+        NOISE_LINE,
+        NOISE_STATIONARY,
         ONE_FINGER_TRACKING,
         ONE_FINGER_TO_EDGE,
         TWO_FINGER_TRACKING,
@@ -191,6 +195,8 @@ gesture_names_complete = {
 # This also defines the order for the robot to perform the gestures.
 # Basically, two-fingers gestures follow one-finger gestures.
 robot_capability_list = [
+    NOISE_LINE,
+    NOISE_STATIONARY,
     ONE_FINGER_TRACKING,
     ONE_FINGER_TO_EDGE,
     ONE_FINGER_SWIPE,
@@ -223,6 +229,7 @@ FAT_FINGER = 3
 ALL_FINGERTIP_SIZES = [TINY_FINGER, NORMAL_FINGER, LARGE_FINGER, FAT_FINGER]
 FINGERTIP_DIAMETER_MM = {TINY_FINGER: 8, NORMAL_FINGER: 10,
                          LARGE_FINGER: 12, FAT_FINGER: 14}
+
 custom_tips_required = {
     DRAG_LATENCY: [NO_FINGER, NO_FINGER, FAT_FINGER, NO_FINGER],
     ONE_FINGER_PHYSICAL_CLICK: [NORMAL_FINGER, NO_FINGER, NO_FINGER, NO_FINGER],
@@ -304,6 +311,70 @@ validator_weights = {'CountPacketsValidator': weight_common,
 def get_gesture_dict():
     """Define the dictionary for all gestures."""
     gesture_dict = {
+        NOISE_STATIONARY:
+        Gesture(
+            name=NOISE_STATIONARY,
+            variations=((GV.TL, GV.TR, GV.BL, GV.BR, GV.TS, GV.BS, GV.LS, GV.RS,
+                         GV.CENTER),
+                        (GV.LOW_FREQUENCY, GV.MED_FREQUENCY, GV.HIGH_FREQUENCY),
+                        (GV.HALF_AMPLITUDE, GV.MAX_AMPLITUDE),
+                        (GV.SQUARE_WAVE,),
+            ),
+            prompt='Hold one finger on the {0} of the touch surface with a {1} {2} {3} in noise.',
+            subprompt={
+                GV.TL: ('top left corner',),
+                GV.TR: ('top right corner',),
+                GV.BL: ('bottom left corner',),
+                GV.BR: ('bottom right corner',),
+                GV.TS: ('top edge',),
+                GV.BS: ('bottom side',),
+                GV.LS: ('left hand side',),
+                GV.RS: ('right hand side',),
+                GV.CENTER: ('center',),
+                GV.LOW_FREQUENCY: ('5kHz',),
+                GV.MED_FREQUENCY: ('500kHz',),
+                GV.HIGH_FREQUENCY: ('1MHz',),
+                GV.HALF_AMPLITUDE: ('10Vpp',),
+                GV.MAX_AMPLITUDE: ('20Vpp',),
+                GV.SQUARE_WAVE: ('square wave',),
+            },
+            validators=(
+                CountTrackingIDNormalFingerValidator('== 1'),
+                StationaryTapValidator(stationary_tap_criteria, slot=0),
+            ),
+        ),
+        NOISE_LINE:
+        Gesture(
+            name=NOISE_LINE,
+            variations=((GV.LOW_FREQUENCY, GV.MED_FREQUENCY, GV.HIGH_FREQUENCY),
+                        (GV.HALF_AMPLITUDE, GV.MAX_AMPLITUDE),
+                        (GV.SQUARE_WAVE,),
+                        (GV.BLTR,),
+                        (GV.NORMAL,),
+            ),
+            prompt='Draw a straight line from {3} with a {0} {1} {2} in noise.',
+            subprompt={
+                GV.LOW_FREQUENCY: ('5kHz',),
+                GV.MED_FREQUENCY: ('500kHz',),
+                GV.HIGH_FREQUENCY: ('1MHz',),
+                GV.HALF_AMPLITUDE: ('10Vpp',),
+                GV.MAX_AMPLITUDE: ('20Vpp',),
+                GV.SQUARE_WAVE: ('square wave',),
+                GV.NORMAL: ('',),
+                GV.BLTR: ('bottom left to top right',),
+            },
+            validators=(
+                CountTrackingIDNormalFingerValidator('== 1'),
+                LinearityNormalFingerValidator(linearity_criteria, finger=0,
+                                               segments=VAL.MIDDLE),
+                NoGapValidator(no_gap_criteria, slot=0),
+                NoReversedMotionValidator(no_reversed_motion_criteria, slots=0,
+                                          segments=VAL.MIDDLE),
+                NoReversedMotionValidator(no_reversed_motion_criteria, slots=0,
+                                          segments=VAL.BOTH_ENDS),
+                ReportRateValidator(report_rate_criteria),
+            ),
+        ),
         ONE_FINGER_TRACKING:
         Gesture(
             name=ONE_FINGER_TRACKING,

@@ -4,7 +4,6 @@
 
 """A wrapper for robot manipulation with Touchbot II."""
 
-import math
 import os
 import re
 import shutil
@@ -18,6 +17,7 @@ from firmware_constants import GV, MODE
 
 
 # Define the robot control script names.
+SCRIPT_NOISE = 'generate_noise.py'
 SCRIPT_LINE = 'line.py'
 SCRIPT_TAP = 'tap.py'
 SCRIPT_CLICK = 'click.py'
@@ -67,7 +67,7 @@ class RobotWrapper:
         self.is_touchscreen = is_touchscreen
         self._robot_script_dir = self._get_robot_script_dir()
 
-        # Each get_contorol_command method maps to a script name.
+        # Each get_control_command method maps to a script name.
         self._robot_script_name_dict = {
             self._get_control_command_line: SCRIPT_LINE,
             self._get_control_command_rapid_taps: SCRIPT_TAP,
@@ -84,6 +84,8 @@ class RobotWrapper:
 
         # Each gesture maps to a get_contorol_command method
         self._method_of_control_command_dict = {
+            conf.NOISE_LINE: self._get_control_command_line,
+            conf.NOISE_STATIONARY: self._get_control_command_single_tap,
             conf.ONE_FINGER_TRACKING: self._get_control_command_line,
             conf.ONE_FINGER_TO_EDGE: self._get_control_command_line,
             conf.ONE_FINGER_SWIPE: self._get_control_command_line,
@@ -168,6 +170,25 @@ class RobotWrapper:
             GV.NORMAL: 20,
             GV.FAST: 30,
             GV.FULL_SPEED: 100,
+        }
+
+        # The frequencies of noise in HZ.
+        self._frequency_dict = {
+            GV.LOW_FREQUENCY: 5000,  # 5kHz
+            GV.MED_FREQUENCY: 500000,  # 500kHz
+            GV.HIGH_FREQUENCY: 1000000,  # 1MHz
+        }
+
+        # The waveforms of noise.
+        self._waveform_dict = {
+            GV.SQUARE_WAVE: 'SQUARE',
+            GV.SINE_WAVE: 'SINE',
+        }
+
+        # The amplitude of noise in Vpp.
+        self._amplitude_dict = {
+            GV.HALF_AMPLITUDE: 10,
+            GV.MAX_AMPLITUDE: 20,
         }
 
         self._location_dict = {
@@ -455,13 +476,19 @@ class RobotWrapper:
     def _get_control_command_line(self, robot_script, gesture, variation):
         """Get robot control command for gestures using robot line script."""
         line_type = 'swipe' if bool('swipe' in gesture) else 'basic'
-        line = speed = finger_angle = None
+        line = speed = finger_angle = frequency = waveform = amplitude = None
         for element in variation:
             if element in GV.GESTURE_DIRECTIONS:
                 line = self._line_dict[element]
                 finger_angle = self._angle_dict.get(element, None)
             elif element in GV.GESTURE_SPEED:
                 speed = self._speed_dict[element]
+            elif element in GV.NOISE_FREQUENCY:
+                frequency = self._frequency_dict[element]
+            elif element in GV.NOISE_WAVEFORM:
+                waveform = self._waveform_dict[element]
+            elif element in GV.NOISE_AMPLITUDE:
+                amplitude = self._amplitude_dict[element]
 
         if not speed:
             if line_type is 'swipe':
@@ -493,12 +520,22 @@ class RobotWrapper:
             fingers = (0, 1, 0, 0)
             finger_angle = 0
 
+        # Generate the CLI command
         para = (robot_script, self._board,
                 start_x, start_y, finger_angle, finger_spacing,
                 end_x, end_y, finger_angle, finger_spacing,
                 fingers[0], fingers[1], fingers[2], fingers[3],
                 speed, line_type)
         cmd = 'python %s %s.p %f %f %d %d %f %f %d %d %d %d %d %d %f %s' % para
+
+        if waveform and frequency and amplitude:
+            # Get the path of the script that talks to the function generator.
+            noise_script_dir = os.path.join(self._get_robot_script_dir(), SCRIPT_NOISE)
+            # Command for noise
+            noise_cmd = 'python %s %s %d %d' % (noise_script_dir, waveform, frequency, amplitude)
+
+            cmd = '%s && %s' % (noise_cmd, cmd)
+
         return cmd
 
     def _get_control_command_stationary_with_taps(self, robot_script, gesture,
@@ -515,8 +552,30 @@ class RobotWrapper:
                                               variation, num_taps)
 
     def _get_control_command_single_tap(self, robot_script, gesture, variation):
-        return self._get_control_command_taps(robot_script, gesture,
-                                              variation, 1)
+        # Get the single tap command
+        cmd = self._get_control_command_taps(robot_script, gesture, variation, 1)
+
+        # Get the parameters if this is a stationary noise test,
+        frequency = waveform = amplitude = None
+        for element in variation:
+            if element in GV.NOISE_FREQUENCY:
+                frequency = self._frequency_dict[element]
+            elif element in GV.NOISE_WAVEFORM:
+                waveform = self._waveform_dict[element]
+            elif element in GV.NOISE_AMPLITUDE:
+                amplitude = self._amplitude_dict[element]
+
+        if waveform and frequency and amplitude:
+            # Get the path of the script that talks to the function generator.
+            noise_script_dir = os.path.join(self._get_robot_script_dir(), SCRIPT_NOISE)
+            # Command for noise
+            noise_cmd = 'python %s %s %d %d' % (noise_script_dir, waveform, frequency, amplitude)
+
+           # Add the noise command and a pause to the tap
+            TEST_DURATION = 2  # 2 seconds
+            cmd = '%s && %s %d' % (noise_cmd, cmd, TEST_DURATION)
+
+        return cmd
 
     def _get_control_command_drumroll(self, robot_script, gesture, variation):
         """Get robot control command for the drumroll gesture. There is only
@@ -637,10 +696,16 @@ class RobotWrapper:
                 self._speed_dict[GV.FAST])
         self._execute_control_command('python %s %s.p %s %d' % para)
 
+    def _turn_off_noise(self):
+        noise_script_dir = os.path.join(self._get_robot_script_dir(), SCRIPT_NOISE)
+        off_cmd = 'python %s OFF' % noise_script_dir
+        common_util.simple_system(off_cmd)
+
     def control(self, gesture, variation):
         """Have the robot perform the gesture variation."""
         tips_needed = conf.finger_tips_required[gesture.name]
         if self.fingertips != tips_needed:
+            self._turn_off_noise()
             self._reset_with_safety_clearance('nest')
             self._return_fingertips()
             self._get_fingertips(tips_needed)
@@ -652,6 +717,7 @@ class RobotWrapper:
             print gesture.name, variation
             control_cmd = self._get_control_command(gesture.name, variation)
             self._execute_control_command(control_cmd)
+            self._turn_off_noise()
         except RobotWrapperError as e:
             print gesture.name, variation
             print 'RobotWrapperError: %s' % str(e)
