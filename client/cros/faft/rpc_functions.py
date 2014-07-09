@@ -261,7 +261,10 @@ class RPCFunctions(object):
 
     def _system_get_fw_vboot2(self):
         """Get fw_vboot2"""
-        return self._chromeos_interface.cs.fw_vboot2 == '1'
+        try:
+            return self._chromeos_interface.cs.fw_vboot2 == '1'
+        except chromeos_interface.ChromeOSInterfaceError:
+            return False
 
     def _system_request_recovery_boot(self):
         """Request running in recovery mode on the restart."""
