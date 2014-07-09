@@ -105,7 +105,7 @@ class firmware_SelfSignedBoot(FirmwareTest):
         self.check_state((self.checkers.dev_boot_usb_checker, False,
                           'Not internal disk boot, dev_boot_usb misbehaved'))
         self.enable_rec_mode_and_reboot()
-        self.wait_for_client()
+        self.wait_for_client(install_deps=True)
 
         logging.info("Expected recovery boot and reboot.")
         self.check_state((self.checkers.crossystem_checker, {
@@ -114,7 +114,7 @@ class firmware_SelfSignedBoot(FirmwareTest):
                    }))
         self.reboot_warm(wait_for_dut_up=False)
         self.wait_fw_screen_and_ctrl_d()
-        self.wait_for_client()
+        self.wait_for_client(install_deps=True)
 
         logging.info("Expected internal disk boot, resign with SSD keys.")
         self.check_state((self.checkers.dev_boot_usb_checker, False,
