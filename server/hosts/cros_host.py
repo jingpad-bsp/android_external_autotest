@@ -123,7 +123,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
     _MAX_POWER_CYCLE_ATTEMPTS = 6
     _LAB_MACHINE_FILE = '/mnt/stateful_partition/.labmachine'
-    _RPM_HOSTNAME_REGEX = ('chromeos[0-9]+(-row[0-9]+)?-rack[0-9]+[a-z]*-'
+    # TODO (sbasi) crbug.com/392548 - renable support for chromeos 4 once the
+    # rpm work is done.
+    _RPM_HOSTNAME_REGEX = ('chromeos[0-3|5-9]+(-row[0-9]+)?-rack[0-9]+[a-z]*-'
                            'host[0-9]+')
     _LIGHTSENSOR_FILES = ['in_illuminance0_input',
                           'in_illuminance0_raw',
