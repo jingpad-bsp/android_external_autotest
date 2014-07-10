@@ -6,7 +6,7 @@ import unittest
 import common
 from autotest_lib.mirror import trigger
 from autotest_lib.client.common_lib.test_utils import mock
-from aututest_lib.client.common_lib import control_data
+from autotest_lib.client.common_lib import control_data
 
 CLIENT = control_data.CONTROL_TYPE_NAMES.CLIENT
 
