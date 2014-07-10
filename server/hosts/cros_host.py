@@ -1125,7 +1125,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         # For purposes of logging reboot times:
         # Get the board name i.e. 'daisy_spring'
-        dargs['board'] = self._get_board_from_afe()
+        board_fullname = self.get_board()
+
+        # Strip the prefix and add it to dargs.
+        dargs['board'] = board_fullname[board_fullname.find(':')+1:]
         super(CrosHost, self).reboot(**dargs)
 
 
