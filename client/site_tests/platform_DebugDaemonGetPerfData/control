@@ -15,8 +15,7 @@ TEST_CLASS = "platform"
 TEST_TYPE = "client"
 JOB_RETRIES = 1
 
-# TODO(sque): Move this test back to "bvt, bvt_cq"  (crbug.com/371553).
-SUITE = "experimental"
+SUITE = "bvt, bvt_cq"
 
 DOC = """
 Exercises the debugd GetPerfData API.
