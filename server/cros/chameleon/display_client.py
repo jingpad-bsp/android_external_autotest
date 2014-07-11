@@ -101,11 +101,8 @@ class DisplayClient(object):
         filename = '%dx%d.png' % resolution
         image_path = os.path.join(self._source_images_dir, filename)
         self._client.send_file(image_path, self._dest_tmp_dir)
-        page_url = ('http://localhost:%d/%s' % (self.HTTP_PORT, filename))
-        self._display_xmlrpc_client.start_httpd(self.HTTP_PORT,
-                                                self._dest_tmp_dir)
+        page_url = 'file://%s/%s' % (self._dest_tmp_dir, filename)
         self._display_xmlrpc_client.load_url(page_url)
-        self._display_xmlrpc_client.stop_httpd()
 
 
     def close_tab(self, index=-1):

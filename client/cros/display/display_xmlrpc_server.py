@@ -17,7 +17,7 @@ import xmlrpclib
 import common   # pylint: disable=W0611
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib.cros import chrome, xmlrpc_server
-from autotest_lib.client.cros import constants, cros_ui, httpd, sys_power
+from autotest_lib.client.cros import constants, cros_ui, sys_power
 
 EXT_PATH = os.path.join(os.path.dirname(__file__), 'display_test_extension')
 
@@ -28,7 +28,6 @@ class DisplayTestingXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
     def __init__(self, chrome):
         self._chrome = chrome
         self._browser = chrome.browser
-        self._http_server = None
 
 
     def get_display_info(self):
@@ -178,25 +177,6 @@ class DisplayTestingXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             return xrandr_output[output]
         return utils.wait_for_value(lambda: _is_connected(output),
                                     expected_value=True)
-
-
-    def start_httpd(self, port, root_path):
-        """Starts the local HTTP server to serve the calibration images.
-
-        @param port: A number of port.
-        @param root_path: A path of the document root.
-        """
-        self._http_server = httpd.HTTPListener(port, root_path)
-        self._http_server.run()
-        return True
-
-
-    def stop_httpd(self):
-        """Stops the local HTTP server."""
-        if self._http_server:
-            self._http_server.stop()
-            self._http_server = None
-        return True
 
 
     def load_url(self, url):
