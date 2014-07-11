@@ -37,3 +37,16 @@ class Sequence(entity.Entity):
     def name(self):
         """ Return str name. """
         return self.__class__.__name__
+
+
+    def detach_kernel_driver_if_active(self, interface_number):
+        """
+        Check if interfaces are occupied by kernel driver. If kernel driver is
+        active, then we can't exclusively use the inteface for tests.
+
+        @param interface_number: The bInterfaceNumber value of the interface
+                under check.
+
+        """
+        if self.test_context.device.is_kernel_driver_active(interface_number):
+            self.test_context.device.detach_kernel_driver(interface_number)
