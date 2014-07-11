@@ -59,8 +59,9 @@ class DES_02_Test(des_test.DesTest):
         # Get header functional descriptor, union functional descriptor,
         # MBIM functional descriptor and MBIM extended functional
         # descriptor.
-        mbim_communication_interface_bundle = self.get_descriptor_bundle(
-                descriptors, mbim_communication_interface)
+        mbim_communication_interface_bundle = (
+                usb_descriptors.get_descriptor_bundle(
+                        descriptors, mbim_communication_interface))
 
         header_descriptors = usb_descriptors.filter_descriptors(
                 usb_descriptors.HeaderFunctionalDescriptor,
@@ -116,7 +117,7 @@ class DES_02_Test(des_test.DesTest):
                     'Exactly 1 CDC data interface, got %d.' % (
                             len(no_data_data_interfaces)))
         no_data_data_interface = no_data_data_interfaces[0]
-        no_data_data_interface_bundle = self.get_descriptor_bundle(
+        no_data_data_interface_bundle = usb_descriptors.get_descriptor_bundle(
                 descriptors, no_data_data_interface)
         endpoint_descriptors = (
                 usb_descriptors.filter_descriptors(
@@ -144,7 +145,7 @@ class DES_02_Test(des_test.DesTest):
             mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
                                       'mbim1.0:6.6#3.')
 
-        mbim_data_interface_bundle = self.get_descriptor_bundle(
+        mbim_data_interface_bundle = usb_descriptors.get_descriptor_bundle(
                 descriptors, mbim_data_interface)
         endpoint_descriptors = usb_descriptors.filter_descriptors(
                 usb_descriptors.EndpointDescriptor,

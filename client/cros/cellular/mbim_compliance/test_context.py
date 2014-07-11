@@ -54,6 +54,28 @@ class TestContext:
 
 
     @property
+    def id_vendor(self):
+        """
+        Refer to the idVendor for the device under test.
+
+        @returns The value of idVendor.
+
+        """
+        return self._id_vendor
+
+
+    @property
+    def id_product(self):
+        """
+        Refer to the idProduct for the device under test.
+
+        @returns The value of idProduct.
+
+        """
+        return self._id_product
+
+
+    @property
     def device(self):
         """
         Refer to the device under test.

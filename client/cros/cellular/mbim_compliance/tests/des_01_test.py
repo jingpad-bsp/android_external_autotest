@@ -76,8 +76,9 @@ class DES_01_Test(des_test.DesTest):
         # Get header functional descriptor, union functinoal descriptor,
         # MBIM functinoal descriptor and MBIM extended functional
         # descriptor from |ncm_communication_interface|[0].
-        ncm_communication_interface_bundle = self.get_descriptor_bundle(
-                descriptors, ncm_communication_interface)
+        ncm_communication_interface_bundle = (
+                usb_descriptors.get_descriptor_bundle(
+                        descriptors, ncm_communication_interface))
 
         header_descriptors = usb_descriptors.filter_descriptors(
                 usb_descriptors.HeaderFunctionalDescriptor,
@@ -131,7 +132,7 @@ class DES_01_Test(des_test.DesTest):
                     'mbim1.0:3.2.2.4#2')
 
         no_data_data_interface = no_data_data_interfaces[0]
-        no_data_data_interface_bundle = self.get_descriptor_bundle(
+        no_data_data_interface_bundle = usb_descriptors.get_descriptor_bundle(
                 descriptors, no_data_data_interface)
         endpoint_descriptors = (
                 usb_descriptors.filter_descriptors(
@@ -156,7 +157,8 @@ class DES_01_Test(des_test.DesTest):
             mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
                                       'mbim1.0:3.2.2.4#4')
         ncm_data_interface_bundle = (
-                self.get_descriptor_bundle(descriptors, ncm_data_interface))
+                usb_descriptors.get_descriptor_bundle(descriptors,
+                                                      ncm_data_interface))
         endpoint_descriptors = (
                 usb_descriptors.filter_descriptors(
                         usb_descriptors.EndpointDescriptor,
@@ -180,7 +182,8 @@ class DES_01_Test(des_test.DesTest):
                                       'mbim1.0:3.2.2.4#4')
 
         mbim_data_interface_bundle = (
-                self.get_descriptor_bundle(descriptors, mbim_data_interface))
+                usb_descriptors.get_descriptor_bundle(descriptors,
+                                                      mbim_data_interface))
         endpoint_descriptors = (
                 usb_descriptors.filter_descriptors(
                         usb_descriptors.EndpointDescriptor,

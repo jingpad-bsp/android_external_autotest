@@ -14,6 +14,7 @@ class Test(entity.Entity):
 
     def run(self):
         """ Run the test. """
+
         logging.info('-- Test (%s) begin --', self.name())
         self.run_internal()
         logging.info('-- Test (%s) end --', self.name())

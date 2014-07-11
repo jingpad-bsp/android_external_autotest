@@ -354,3 +354,21 @@ def has_distinct_descriptors(descriptors):
 
     """
     return not all(descriptor == descriptors[0] for descriptor in descriptors)
+
+
+def get_descriptor_bundle(descriptors, descriptor):
+    """
+    Get the bundle for the |descriptor|. For example, if |descriptor| is of
+    inferface type, this bundle should include functional descriptors and
+    endpoint descriptors.
+
+    @param descriptors: A list of all descriptors.
+    @param descriptor: The starting point of the bundle.
+    @returns The bundle for |descriptor|.
+
+    """
+    index = descriptor.index + 1
+    while (index < len(descriptors) and
+           type(descriptor) != type(descriptors[index])):
+        index += 1
+    return descriptors[descriptor.index: index]
