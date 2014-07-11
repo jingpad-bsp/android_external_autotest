@@ -14,7 +14,7 @@ class PingConfig(object):
     """Describes the parameters for a ping command."""
 
     DEFAULT_COUNT = 10
-    PACKET_WAIT_MARGIN_SECONDS = 10
+    PACKET_WAIT_MARGIN_SECONDS = 30
 
     @property
     def ping_args(self):
