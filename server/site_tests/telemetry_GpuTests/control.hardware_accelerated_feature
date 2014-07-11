@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = 'chromeos-gfx'
-NAME = 'telemetry_GpuTests.maps'
+NAME = 'telemetry_GpuTests.hardware_accelerated_feature'
 SUITE = 'graphics, perf_v2'
 TIME = 'SHORT'
 TEST_CATEGORY = 'Functional'
@@ -11,12 +11,14 @@ TEST_CLASS = 'gl'
 TEST_TYPE = 'server'
 
 DOC = """
-This server control file executes the GPU telemetry test: maps.
+This server control file executes the GPU telemetry test:
+hardware_accelerated_feature.
 """
 
 def run_test(machine):
     host = hosts.create_host(machine)
-    job.run_test('telemetry_GpuTests', host=host, test='maps')
+    job.run_test('telemetry_GpuTests', host=host,
+                 test='hardware_accelerated_feature')
 
 
 parallel_simple(run_test, machines)
