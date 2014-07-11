@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = 'pstew, wiley, quiche'
-NAME = 'network_Connect.openvpn_user_pass'
+NAME = 'network_VPNConnect.openvpn_user_pass'
 SUITE = 'network_nightly, qav'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
