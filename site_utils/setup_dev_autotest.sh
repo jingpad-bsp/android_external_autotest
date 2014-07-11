@@ -11,17 +11,22 @@ Install and configure software needed to run autotest locally.\n\
 If you're just working on tests, you do not need to run this.\n\n\
 Options:\n\
   -p Desired Autotest DB password\n\
-  -a Absolute path to autotest source tree.\n"
+  -a Absolute path to autotest source tree.\n
+  -v Show info logging from build_externals.py and compile_gwt_clients.py \n"
 
 AUTOTEST_DIR=
 PASSWD=
-while getopts ":p:a:h" opt; do
+verbose="FALSE"
+while getopts ":p:a:vh" opt; do
   case $opt in
     a)
       AUTOTEST_DIR=$OPTARG
       ;;
     p)
       PASSWD=$OPTARG
+      ;;
+    v)
+      verbose="TRUE"
       ;;
     h)
       echo -e "${HELP}" >&2
@@ -196,8 +201,15 @@ else
 fi
 
 echo -n "Reticulating splines..."
-"${AT_DIR}"/utils/build_externals.py &> /dev/null
-"${AT_DIR}"/utils/compile_gwt_clients.py -a &> /dev/null
+
+if [ "${verbose}" = "TRUE" ]; then
+  "${AT_DIR}"/utils/build_externals.py
+  "${AT_DIR}"/utils/compile_gwt_clients.py -a
+else
+  "${AT_DIR}"/utils/build_externals.py &> /dev/null
+  "${AT_DIR}"/utils/compile_gwt_clients.py -a &> /dev/null
+fi
+
 echo -e "Done!\n"
 
 echo "Populating autotest mysql DB..."
