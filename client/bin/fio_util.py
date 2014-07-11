@@ -425,7 +425,7 @@ def fio_runner(test, job, env_vars,
         if k.endswith('bw'):
             test.output_perf_value(description=perfdb_name, graph=k, value=v,
                                    units='KB_per_sec', higher_is_better=True)
-        elif k.endswith('clat_percentile_99.00'):
+        elif k.rstrip('0').endswith('clat_percentile_99.'):
             test.output_perf_value(description=perfdb_name, graph=k, value=v,
                                    units='us', higher_is_better=False)
     return result
