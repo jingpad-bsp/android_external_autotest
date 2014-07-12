@@ -67,6 +67,7 @@ class power_LoadTest(test.test):
         """
         self._backlight = None
         self._services = None
+        self._browser = None
         self._loop_time = loop_time
         self._loop_count = loop_count
         self._mseconds = self._loop_time * 1000
@@ -213,11 +214,11 @@ class power_LoadTest(test.test):
         self._tlog.start()
 
         ext_path = os.path.join(os.path.dirname(__file__), 'extension')
-        browser = chrome.Chrome(extension_paths=[ext_path],
+        self._browser = chrome.Chrome(extension_paths=[ext_path],
                                 gaia_login=True,
                                 username=self._username,
                                 password=self._password)
-        extension = browser.get_extension(ext_path)
+        extension = self._browser.get_extension(ext_path)
 
         for i in range(self._loop_count):
             start_time = time.time()
@@ -352,6 +353,8 @@ class power_LoadTest(test.test):
             self._shill_proxy.remove_all_wifi_entries()
         if self._backchannel:
             self._backchannel.teardown()
+        if self._browser:
+            self._browser.close()
         if self._testServer:
             self._testServer.stop()
 

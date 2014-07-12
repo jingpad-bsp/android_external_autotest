@@ -98,7 +98,7 @@ class Chrome(object):
 
 
     def __exit__(self, *args):
-        self.browser.Close()
+        self.close()
 
 
     @property
@@ -174,3 +174,8 @@ class Chrome(object):
                 exceptions.BrowserConnectionGoneException):
             return True
         return False
+
+
+    def close(self):
+        """Closes the browser."""
+        self._browser.Close()
