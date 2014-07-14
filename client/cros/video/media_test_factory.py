@@ -108,6 +108,7 @@ class MediaTestFactory(object):
         self.biopic_project_name = None
         self.biopic_contact_email = None
         self.biopic_wait_time = None
+        self.biopic_num_upload_retries = None
 
         self.parser = None
 
@@ -195,6 +196,8 @@ class MediaTestFactory(object):
         self.biopic_contact_email = self.parser.get('biopic', 'contact_email')
         self.biopic_wait_time = self.parser.getint('biopic',
                                                    'wait_time_btwn_comparisons')
+        self.biopic_num_upload_retries = self.parser.getint('biopic',
+                                                            'upload_retries')
 
 
     @method_logger.log
@@ -355,4 +358,5 @@ class MediaTestFactory(object):
         """
         return bp_image_comparer.BpImageComparer(self.biopic_project_name,
                                                  self.biopic_contact_email,
-                                                 self.biopic_wait_time)
+                                                 self.biopic_wait_time,
+                                                 self.biopic_num_upload_retries)
