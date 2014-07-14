@@ -35,8 +35,9 @@ class security_RootfsStatefulSymlinks(test.test):
         """
         destination = os.readlink(link)
         if destination != expectations['destination']:
-            logging.error("Expected %s to point to %s, but it points to %s" %
-                          (link, expectations['destination'], destination))
+            logging.error(
+                "Expected '%s' to point to '%s', but it points to '%s'",
+                link, expectations['destination'], destination)
             logging.error(utils.system_output("ls -ald '%s'" % destination))
             return False
 
@@ -44,6 +45,8 @@ class security_RootfsStatefulSymlinks(test.test):
         # need to determine if the destination exists (and, if not, if
         # that's permitted by "can_dangle": true in the baseline.
         if not os.path.exists(destination):
+            logging.warning("'%s' points to '%s', but it's dangling",
+                            link, destination)
             return expectations['can_dangle']
 
         # It exists, it's the right path, so check the permissions.
@@ -56,10 +59,10 @@ class security_RootfsStatefulSymlinks(test.test):
             mode == expectations['mode']):
             return True
         else:
-            logging.error("%s: Expected %s:%s %s; Saw %s:%s %s" %
-                          (destination, expectations['owner'],
-                           expectations['group'], expectations['mode'],
-                           owner, group, mode))
+            logging.error("'%s': expected %s:%s %s, saw %s:%s %s",
+                          destination, expectations['owner'],
+                          expectations['group'], expectations['mode'],
+                          owner, group, mode)
             return False
 
 
@@ -81,7 +84,7 @@ class security_RootfsStatefulSymlinks(test.test):
         for link in links_seen:
             # Check if this link is in the baseline. If not, test fails.
             if not link in baseline:
-                logging.error("No baseline entry for %s" % link)
+                logging.error("No baseline entry for '%s'", link)
                 logging.error(utils.system_output("ls -ald '%s'" % link))
                 test_pass = False
                 continue
@@ -101,5 +104,5 @@ class security_RootfsStatefulSymlinks(test.test):
                 logging.warning(d)
 
         if not test_pass:
-            raise error.TestFail('Baseline mismatch')
+            raise error.TestFail("Baseline mismatch")
 

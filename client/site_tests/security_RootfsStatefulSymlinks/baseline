@@ -28,7 +28,7 @@
     "mode": "0640"
   },
   "/etc/localtime": {
-    "can_dangle": false,
+    "can_dangle": true,
     "destination": "/var/lib/timezone/localtime",
     "owner": "root",
     "group": "root",
@@ -86,6 +86,13 @@
   "/usr/lib/debug": {
     "can_dangle": true,
     "destination": "/usr/local/usr/lib/debug",
+    "owner": "root",
+    "group": "root",
+    "mode": "0755"
+  },
+  "/usr/bin/ssh": {
+    "can_dangle": true,
+    "destination": "/usr/local/bin/ssh",
     "owner": "root",
     "group": "root",
     "mode": "0755"
