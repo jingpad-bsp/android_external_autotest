@@ -1656,7 +1656,8 @@ class SpecialTask(dbmodels.Model, model_logic.ModelExtensions):
         self.is_active = False
         self.is_complete = True
         self.success = success
-        self.time_finished = datetime.now()
+        if self.time_started:
+            self.time_finished = datetime.now()
         self.save()
 
 
