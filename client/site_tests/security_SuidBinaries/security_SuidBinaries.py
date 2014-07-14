@@ -11,7 +11,7 @@ from autotest_lib.client.common_lib import error
 class security_SuidBinaries(test.test):
     version = 1
 
-    def load_baseline(self,bltype):
+    def load_baseline(self, bltype):
         baseline_file = open(os.path.join(self.bindir, 'baseline.' + bltype))
         return set(l.strip() for l in baseline_file)
 
@@ -19,7 +19,7 @@ class security_SuidBinaries(test.test):
     def run_once(self, baseline='suid'):
         """
         Do a find on the system for setuid binaries, compare against baseline.
-        Fail if these do not match.
+        Fail if setuid binaries are found on the system but not on the baseline.
         """
         mask = {'suid': '4000', 'sgid': '2000'}
         cmd = ('find / -wholename /proc -prune -o '
@@ -33,20 +33,14 @@ class security_SuidBinaries(test.test):
         observed_set = set(cmd_output.splitlines())
         baseline_set = self.load_baseline(baseline)
 
-        # If something in the observed set is not
-        # covered by the baseline...
-        diff = observed_set.difference(baseline_set)
-        if len(diff) > 0:
-            for filepath in diff:
-                logging.error('Unexpected %s binary: %s' %
-                              (baseline, filepath))
+        # Log but not fail if we find missing binaries.
+        missing = baseline_set.difference(observed_set)
+        if len(missing) > 0:
+            for filepath in missing:
+                logging.error('Missing %s binary: %s', baseline, filepath)
 
-        # Or, things in baseline are missing from the system:
-        diff2 = baseline_set.difference(observed_set)
-        if len(diff2) > 0:
-            for filepath in diff2:
-                logging.error('Missing %s binary: %s' %
-                              (baseline, filepath))
-
-        if (len(diff) + len(diff2)) > 0:
-            raise error.TestFail('Baseline mismatch')
+        # Fail if we find new binaries.
+        new = observed_set.difference(baseline_set)
+        if len(new) > 0:
+            message = 'New %s binaries: %s' % (baseline, ', '.join(new))
+            raise error.TestFail(message)
