@@ -19,7 +19,7 @@ NSSMODUTIL = '/usr/local/bin/modutil'
 OPENSSL = '/usr/bin/openssl'
 
 # This glob pattern is coupled to the snprintf() format in
-# get_cert_by_subject() in crypto/x509/by_dir.c in the openssl
+# get_cert_by_subject() in crypto/x509/by_dir.c in the OpenSSL
 # sources.  In theory the glob can catch files not created by that
 # snprintf(); such file names probably shouldn't be allowed to exist
 # anyway.
@@ -27,7 +27,7 @@ OPENSSL_CERT_GLOB = '/etc/ssl/certs/' + '[0-9a-f]' * 8 + '.*'
 
 
 class security_RootCA(test.test):
-    """Verifies that the root CAs trusted by both nss and openssl
+    """Verifies that the root CAs trusted by both NSS and OpenSSL
        match the expected set."""
     version = 1
 
@@ -47,8 +47,17 @@ class security_RootCA(test.test):
         return baselines
 
     def get_nss_certs(self):
-        """Returns a dict of certificate fingerprints observed in nss."""
+        """
+        Returns the dict of certificate fingerprints observed in NSS,
+        or None if NSS is not available.
+        """
         tmpdir = self.tmpdir
+
+        nss_shlib_glob = glob.glob('/usr/lib*/libnssckbi.so')
+        if len(nss_shlib_glob) == 0:
+            return None
+        elif len(nss_shlib_glob) > 1:
+            logging.warn("Found more than one copy of libnssckbi.so")
 
         # Create new empty cert DB.
         child = pexpect.spawn('"%s" -N -d %s' % (NSSCERTUTIL, tmpdir))
@@ -60,7 +69,7 @@ class security_RootCA(test.test):
 
         # Add the certs found in the compiled NSS shlib to a new module in DB.
         cmd = ('"%s" -add testroots -libfile %s -dbdir %s' %
-               (NSSMODUTIL, glob.glob('/usr/lib*/libnssckbi.so')[0], tmpdir))
+               (NSSMODUTIL, nss_shlib_glob[0], tmpdir))
         nssmodutil = pexpect.spawn(cmd)
         nssmodutil.expect('\'q <enter>\' to abort, or <enter> to continue:')
         nssmodutil.sendline('\n')
@@ -87,7 +96,7 @@ class security_RootCA(test.test):
 
 
     def get_openssl_certs(self):
-        """Returns the dict of certificate fingerprints observed in openssl."""
+        """Returns the dict of certificate fingerprints observed in OpenSSL."""
         fingerprint_cmd = ' '.join([OPENSSL, 'x509', '-fingerprint',
                                     '-issuer', '-noout',
                                     '-in %s'])
@@ -148,7 +157,7 @@ class security_RootCA(test.test):
 
     def verify_rootcas(self, baseline_file=DEFAULT_BASELINE, exact_match=True):
         """Verify installed Root CA's all appear on a specified whitelist.
-           Covers both nss and openssl.
+           Covers both NSS and OpenSSL.
 
            @param baseline_file: name of baseline file to use in verification.
            @param exact_match: boolean indicating if expected-but-missing CAs
@@ -158,24 +167,29 @@ class security_RootCA(test.test):
 
         # Dump certificate info and run comparisons.
         seen = {}
-        seen['nss'] = self.get_nss_certs()
-        seen['openssl'] = self.get_openssl_certs()
+        nss_store = self.get_nss_certs()
+        openssl_store = self.get_openssl_certs()
+        if nss_store is not None:
+            seen['nss'] = nss_store
+        if openssl_store is not None:
+            seen['openssl'] = openssl_store
+
         # Merge all 4 dictionaries (seen-nss, seen-openssl, expected-nss,
         # and expected-openssl) into 1 so we have 1 place to lookup
         # fingerprint -> comment for logging purposes.
         expected = self.get_baseline_sets(baseline_file)
         cert_details = {}
-        for certdict in [expected, seen]:
-            for i in ['openssl', 'nss']:
-                cert_details.update(certdict[i])
-                certdict[i] = set(certdict[i])
+        for store in seen.keys():
+            for certdict in [expected, seen]:
+                cert_details.update(certdict[store])
+                certdict[store] = set(certdict[store])
 
-        for lib in seen.keys():
-            missing = expected[lib].difference(seen[lib])
-            unexpected = seen[lib].difference(expected[lib])
+        for store in seen.keys():
+            missing = expected[store].difference(seen[store])
+            unexpected = seen[store].difference(expected[store])
             if unexpected or (missing and exact_match):
                 testfail = True
-                logging.error('Results for %s', lib)
+                logging.error('Results for %s', store)
                 logging.error('Unexpected')
                 for i in unexpected:
                     logging.error('"%s": "%s"', i, cert_details[i])
