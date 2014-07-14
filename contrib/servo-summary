@@ -9,7 +9,9 @@ fi
 FILE=$1
 sed '
     s/^[^ ]* ...[A-Z]* //
-    s/is up BOARD=.* CHROMEOS_RELEASE_VERSION=.*/servod is up/
+    s/ CHROMEOS_RELEASE_VERSION=[^ ]*//
+    s/ BOARD=[^ ]*//
+    s/is up/servod &/
     s/.*pwr_button:press.*/power button is stuck down/
     s/^\(not running servod\) \(not running brillo\)$/\1, \2/
     s/^not running servod$/up but not running servod, reason unknown/
@@ -18,4 +20,5 @@ sed '
     s/^is down/no answer to ping/
     s/^\(not running servod\) \(ssh is down\)$/\1, ping is up, \2/
 ' $FILE | sort | uniq -c |
-    awk '{ print ; sum += $1 } END { printf "%7d total\n", sum }' | sort
+    awk '{ print ; sum += $1 } END { printf "%7d total\n", sum }' |
+      sort | cut -c -72
