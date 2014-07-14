@@ -37,12 +37,15 @@ def main():
 
         ''')
 
+    parser.add_argument("name",
+                        help="Name of video to use.")
+
     parser.add_argument("format",
                         choices=['mp4', 'webm'],
                         help="Video format to use.")
 
     parser.add_argument("definition",
-                        choices=['480p', '720p', '1080p'],
+                        choices=['480p', '720p', '1080p', '720p_1080p'],
                         help="Video definition to use.")
 
     parser.add_argument("--start",
@@ -76,6 +79,7 @@ def main():
                                                       cr.browser.http_server,
                                                       bindir,
                                                       'dev',
+                                                      args.name,
                                                       args.format,
                                                       args.definition)
 

@@ -45,8 +45,8 @@ class MediaTestFactory(object):
 
 
     @method_logger.log
-    def __init__(self, tab, http_server, bin_dir, channel, video_format,
-                 video_def):
+    def __init__(self, tab, http_server, bin_dir, channel, video_name,
+                 video_format, video_def):
         """
         Initializes factory.
 
@@ -85,7 +85,7 @@ class MediaTestFactory(object):
         self.device_under_test = None
 
         # Video specifications
-        self.video_name = None
+        self.video_name = video_name
         self.video_format = video_format
         self.video_def = video_def
         self.time_format = "%H:%M:%S"
@@ -173,8 +173,6 @@ class MediaTestFactory(object):
 
         self.remote_golden_image_root_dir = self.parser.get(
                 section, 'remote_golden_image_root_dir').replace('\n', '')
-
-        self.video_name = self.parser.get(section, 'video_name')
 
         self.media_id = self.parser.get(section, 'video_id')
 
@@ -270,6 +268,8 @@ class MediaTestFactory(object):
 
         self.stop_capture = (self.start_capture +
                              datetime.timedelta(minutes=duration_in_minutes))
+
+        self.stop_capture = min(self.stop_capture, self.media_length)
 
 
     def make_golden_image_downloader(self):

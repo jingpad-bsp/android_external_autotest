@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Mussa Kiroga"
-NAME = "video_GlitchDetection"
+NAME = "video_GlitchDetection.mp4.480p"
 PURPOSE = "Verify that Chrome Video Playback is glitch and corruption free"
 CRITERIA = """
 
@@ -25,5 +25,6 @@ All test results regardless of result are stored and viewable.
 
 job.run_test('video_GlitchDetection',
               channel='dev',
+              video_name='big_buck',
               video_format='mp4',
               video_def='480p')

@@ -18,7 +18,7 @@ class video_GlitchDetection(test.test):
 
     version = 2
 
-    def run_video_glitch_detection_test(self, browser, channel,
+    def run_video_glitch_detection_test(self, browser, channel, video_name,
                                         video_format, video_def):
         """
         Takes video screenshots and compares them against known golden images.
@@ -39,6 +39,7 @@ class video_GlitchDetection(test.test):
         @param channel: The channel we are running on: dev, beta
                         This is used to choose how many screenshots we will take
         @param video_format: Format of the video to test
+        @param video_name: Name of video to use for test
         @param video_def: Resolution of the video to test
 
         """
@@ -46,6 +47,7 @@ class video_GlitchDetection(test.test):
         factory = media_test_factory.MediaTestFactory(browser.tabs[0],
                                                       browser.http_server,
                                                       self.bindir, channel,
+                                                      video_name,
                                                       video_format,
                                                       video_def)
 
@@ -82,8 +84,11 @@ class video_GlitchDetection(test.test):
         file_utils.rm_dir_if_exists(test_dir)
 
 
-    def run_once(self, channel, video_format, video_def):
+    def run_once(self, channel, video_name, video_format, video_def):
         with chrome.Chrome() as cr:
             cr.browser.SetHTTPServerDirectories(self.bindir)
-            self.run_video_glitch_detection_test(cr.browser, channel,
-                                                 video_format, video_def)
+            self.run_video_glitch_detection_test(cr.browser,
+                                                 channel,
+                                                 video_name,
+                                                 video_format,
+                                                 video_def)
