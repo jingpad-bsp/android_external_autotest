@@ -115,7 +115,7 @@ bool GetXExtensions(Display* display) {
 int main(int argc, char* argv[]) {
   // Initialize graphics.
   Display* display = NULL;
-  Window window = NULL;
+  Window window = 0;
   GLXContext context = NULL;
   bool rt_code = InitGraphics(&display, &window, &context);
 
