@@ -171,6 +171,10 @@ class DhcpHandlingRule(object):
     def force_reply_options(self, value):
         self._force_reply_options = value
 
+    @property
+    def response_packet_count(self):
+        return 1
+
     def emit_warning(self, warning):
         """
         Log a warning, and retain that warning as |_last_warning|.
@@ -539,3 +543,43 @@ class DhcpHandlingRule_AcceptRelease(DhcpHandlingRule):
         if self.is_final_handler:
             ret |= RESPONSE_TEST_SUCCEEDED
         return ret
+
+
+class DhcpHandlingRule_RejectAndRespondToRequest(
+        DhcpHandlingRule_RespondToRequest):
+    """
+    This handler accepts any REQUEST packet that contains options for SERVER_ID
+    and REQUESTED_IP that match |expected_server_ip| and |expected_requested_ip|
+    respectively.  It responds with both an ACKNOWLEDGEMENT packet from a DHCP
+    server as well as a NAK, in order to simulate a network with two conflicting
+    servers.
+    """
+    def __init__(self,
+                 expected_requested_ip,
+                 expected_server_ip,
+                 additional_options,
+                 custom_fields,
+                 send_nak_before_ack):
+        super(DhcpHandlingRule_RejectAndRespondToRequest, self).__init__(
+                expected_requested_ip,
+                expected_server_ip,
+                additional_options,
+                custom_fields)
+        self._send_nak_before_ack = send_nak_before_ack
+        self._response_counter = 0
+
+    @property
+    def response_packet_count(self):
+        return 2
+
+    def respond(self, query_packet):
+        """ Respond to |query_packet| with a NAK then ACK or ACK then NAK. """
+        if ((self._response_counter == 0 and self._send_nak_before_ack) or
+            (self._response_counter != 0 and not self._send_nak_before_ack)):
+            response_packet = dhcp_packet.DhcpPacket.create_nak_packet(
+                query_packet.transaction_id, query_packet.client_hw_address)
+        else:
+            response_packet = super(DhcpHandlingRule_RejectAndRespondToRequest,
+                                    self).respond(query_packet)
+        self._response_counter += 1
+        return response_packet

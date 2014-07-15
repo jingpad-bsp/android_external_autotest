@@ -258,11 +258,14 @@ class DhcpTestServer(threading.Thread):
                 self._handling_rules.pop(0)
 
             if response_code & dhcp_handling_rule.RESPONSE_HAVE_RESPONSE:
-                response = handling_rule.respond(packet)
-                if not self._send_response_unsafe(response):
-                    self._logger.error("Failed to send packet, ending test.")
-                    self._end_test_unsafe(False)
-                    return
+                for response_instance in range(
+                        handling_rule.response_packet_count):
+                    response = handling_rule.respond(packet)
+                    if not self._send_response_unsafe(response):
+                        self._logger.error(
+                                "Failed to send packet, ending test.")
+                        self._end_test_unsafe(False)
+                        return
 
             if response_code & dhcp_handling_rule.RESPONSE_TEST_FAILED:
                 self._logger.info("Handling rule %s rejected packet %s." %

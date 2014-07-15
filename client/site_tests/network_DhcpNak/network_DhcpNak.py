@@ -96,6 +96,41 @@ class network_DhcpNak(dhcp_test_base.DhcpTestBase):
             rules, dhcp_test_base.DHCP_NEGOTIATION_TIMEOUT_SECONDS)
         self.get_interface_ipconfig_objects(self.interface_name)[0].Refresh()
 
+    def send_both_nak_and_ack(self, is_nak_before_ack):
+        """
+        Send both a NAK and an ACK on re-connect to Ethernet.
+
+        Ask shill to disconnect and reconnect the Service for our
+        virtual Ethernet link. This causes shill to shut down and
+        restart dhcpcd for the link.  Then perform a test where
+        the server responds to a REQUEST with both a NAK and an ACK.
+
+        @param is_nak_before_ack bool whether the NAK should be sent
+             before the ACK, otherwise vice-versa.
+        """
+        service = self.find_ethernet_service(self.interface_name)
+        service.Disconnect()
+        rules = [
+            # Respond to DISCOVERY, but then both NAK and ACK the REQUEST.
+            dhcp_handling_rule.DhcpHandlingRule_RespondToDiscovery(
+                self.intended_ip, self.server_ip, self.dhcp_options, {}),
+            dhcp_handling_rule.DhcpHandlingRule_RejectAndRespondToRequest(
+                self.intended_ip, self.server_ip, self.dhcp_options, {},
+                is_nak_before_ack),
+            ]
+        rules[-1].is_final_handler = True
+        self.server.start_test(
+            rules, dhcp_test_base.DHCP_NEGOTIATION_TIMEOUT_SECONDS)
+        service.Connect()
+
+    def send_nak_then_ack(self):
+        """ Respond with a NAK, then with an ACK. """
+        self.send_both_nak_and_ack(True)
+
+    def send_ack_then_nak(self):
+        """ Respond with a ACK, then with an NAK. """
+        self.send_both_nak_and_ack(False)
+
     def test_body(self):
         """
         Entry point for this test.
@@ -103,7 +138,10 @@ class network_DhcpNak(dhcp_test_base.DhcpTestBase):
         This is called from DhcpTestBase.run_once().
         """
         self.common_setup()
-        for sub_test in self.reconnect_service, self.force_dhcp_renew:
+        for sub_test in (self.reconnect_service,
+                         self.force_dhcp_renew,
+                         self.send_nak_then_ack,
+                         self.send_ack_then_nak):
             sub_test()
             self.server.wait_for_test_to_finish()
             if not self.server.last_test_passed:
