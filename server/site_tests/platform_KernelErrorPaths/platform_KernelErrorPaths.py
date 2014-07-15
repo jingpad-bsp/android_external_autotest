@@ -5,6 +5,7 @@
 import logging, os, time
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import constants
 from autotest_lib.client.cros.crash_test import CrashTest as CrashTestDefs
 from autotest_lib.server import test
 
@@ -63,8 +64,8 @@ class platform_KernelErrorPaths(test.test):
         self._consent_files = [
             (CrashTestDefs._PAUSE_FILE, None, 'chronos'),
             (CrashTestDefs._CONSENT_FILE, None, 'chronos'),
-            (CrashTestDefs._POLICY_FILE, 'mock_metrics_on.policy', 'root'),
-            (CrashTestDefs._OWNER_KEY_FILE, 'mock_metrics_owner.key', 'root'),
+            (constants.SIGNED_POLICY_FILE, 'mock_metrics_on.policy', 'root'),
+            (constants.OWNER_KEY_FILE, 'mock_metrics_owner.key', 'root'),
             ]
         for dst, src, owner in self._consent_files:
             if self._exists_on_client(dst):
