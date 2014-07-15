@@ -241,6 +241,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             if success:
                 break
 
+            # TODO(wiley) Remove this once we resolve crbug.com/393667
+            self.host.run('tail -1 %s' % log_file, ignore_status=True)
             # A common failure is an invalid router configuration.
             # Detect this and exit early if we see it.
             bad_config = self.router.run(
