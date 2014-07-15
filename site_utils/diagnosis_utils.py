@@ -14,6 +14,43 @@ from autotest_lib.server import utils
 from autotest_lib.server.cros.dynamic_suite import reporting_utils
 
 
+class SimpleTimer(object):
+    """A simple timer used to periodically check if a deadline has passed."""
+
+    def _reset(self):
+        """Reset the deadline."""
+        if not self.interval_hours or self.interval_hours < 0:
+            logging.error('Bad interval %s', self.interval_hours)
+            self.deadline = None
+            return
+        self.deadline = datetime.now() + datetime_base.timedelta(
+                hours=self.interval_hours)
+
+
+    def __init__(self, interval_hours=0.5):
+        """Initialize a simple periodic deadline timer.
+
+        @param interval_hours: Interval of the deadline.
+        """
+        self.interval_hours = interval_hours
+        self._reset()
+
+
+    def poll(self):
+        """Poll the timer to see if we've hit the deadline.
+
+        This method resets the deadline if it has passed. If the deadline
+        hasn't been set, or the current time is less than the deadline, the
+        method returns False.
+
+        @return: True if the deadline has passed, False otherwise.
+        """
+        if not self.deadline or datetime.now() < self.deadline:
+            return False
+        self._reset()
+        return True
+
+
 class JobTimer(object):
     """Utility class capable of measuring job timeouts.
     """
@@ -30,6 +67,7 @@ class JobTimer(object):
         """
         self.job_created_time = datetime.fromtimestamp(job_created_time)
         self.timeout_hours = datetime_base.timedelta(hours=timeout_mins/60.0)
+        self.debug_output_timer = SimpleTimer(interval_hours=0.5)
         self.past_halftime = False
 
 

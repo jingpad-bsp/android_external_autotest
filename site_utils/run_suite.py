@@ -1215,7 +1215,8 @@ def main():
             # this is the easiest work around.
             if job_timer.first_past_halftime():
                 rpc_helper.diagnose_job(job_id)
-                logging.info('The suite job has another %s till timeout \n',
+            if job_timer.debug_output_timer.poll():
+                logging.info('The suite job has another %s till timeout.',
                              job_timer.timeout_hours - job_timer.elapsed_time())
             time.sleep(10)
 

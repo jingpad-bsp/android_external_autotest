@@ -3,14 +3,18 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import datetime as datetime_base
+from datetime import datetime
 import getpass
 import mock
+import time
 import unittest
 
 import common
 
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.site_utils import run_suite
+from autotest_lib.site_utils import diagnosis_utils
 
 
 class ResultCollectorUnittest(unittest.TestCase):
@@ -472,6 +476,31 @@ class ResultCollectorUnittest(unittest.TestCase):
                 include_timeout_test=True)
         self.assertEqual(
                 collector.return_code, run_suite.RETURN_CODES.SUITE_TIMEOUT)
+
+
+class SimpleTimerUnittests(unittest.TestCase):
+    """Test the simple timer."""
+
+    def testPoll(self):
+        """Test polling the timer."""
+        interval_hours = 0.0001
+        t = diagnosis_utils.SimpleTimer(interval_hours=interval_hours)
+        deadline = t.deadline
+        self.assertTrue(deadline is not None and
+                        t.interval_hours == interval_hours)
+        min_deadline = (datetime.now() +
+                        datetime_base.timedelta(hours=interval_hours))
+        time.sleep(interval_hours * 3600)
+        self.assertTrue(t.poll())
+        self.assertTrue(t.deadline >= min_deadline)
+
+
+    def testBadInterval(self):
+        """Test a bad interval."""
+        t = diagnosis_utils.SimpleTimer(interval_hours=-1)
+        self.assertTrue(t.deadline is None and t.poll() == False)
+        t._reset()
+        self.assertTrue(t.deadline is None and t.poll() == False)
 
 
 if __name__ == '__main__':
