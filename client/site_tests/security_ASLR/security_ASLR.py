@@ -376,8 +376,8 @@ class security_ASLR(test.test):
             same after restarting.
         """
 
-        if self.running_on_asan() and utils.get_arch() == "i386":
-            logging.warning("security_ASLR is not available on 32-bit ASan.")
+        if self.running_on_asan():
+            logging.warning("security_ASLR is not available on ASan.")
             return
 
         processes = self.get_processes_to_test()
