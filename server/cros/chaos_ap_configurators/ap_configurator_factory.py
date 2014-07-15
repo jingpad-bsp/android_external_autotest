@@ -95,6 +95,9 @@ class APConfiguratorFactory(object):
         'Netgear3700APConfigurator':
             [PREFIX + 'netgear3700_ap_configurator',
                 'Netgear3700APConfigurator'],
+        'Netgear3400APConfigurator':
+            [PREFIX + 'netgear3400_ap_configurator',
+                'Netgear3400APConfigurator'],
         'NetgearR6200APConfigurator':
             [PREFIX + 'netgearR6200_ap_configurator',
                 'NetgearR6200APConfigurator'],

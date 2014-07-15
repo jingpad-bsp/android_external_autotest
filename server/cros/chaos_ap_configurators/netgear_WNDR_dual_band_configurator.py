@@ -140,7 +140,8 @@ class NetgearDualBandAPConfigurator(
         if self.current_band == ap_spec.BAND_5GHZ:
             xpath = '//select[@name="opmode_an"]'
         self.wait_for_object_by_xpath(xpath)
-        self.select_item_from_popup_by_xpath(mode, xpath)
+        self.select_item_from_popup_by_xpath(mode, xpath,
+                                             alert_handler=self._alert_handler)
 
 
     def set_radio(self, enabled=True):
