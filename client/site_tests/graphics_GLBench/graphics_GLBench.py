@@ -34,40 +34,10 @@ class graphics_GLBench(test.test):
   no_checksum_tests = set([
       'compositing_no_fill',
       'pixel_read',
-      'pixel_read_2',
-      'pixel_read_3',
-      'texture_reuse_luminance_teximage2d_1024',
-      'texture_reuse_luminance_teximage2d_128',
-      'texture_reuse_luminance_teximage2d_1536',
-      'texture_reuse_luminance_teximage2d_2048',
-      'texture_reuse_luminance_teximage2d_256',
-      'texture_reuse_luminance_teximage2d_32',
-      'texture_reuse_luminance_teximage2d_512',
-      'texture_reuse_luminance_teximage2d_768',
-      'texture_reuse_luminance_texsubimage2d_1024',
-      'texture_reuse_luminance_texsubimage2d_128',
-      'texture_reuse_luminance_texsubimage2d_1536',
-      'texture_reuse_luminance_texsubimage2d_2048',
-      'texture_reuse_luminance_texsubimage2d_256',
-      'texture_reuse_luminance_texsubimage2d_32',
-      'texture_reuse_luminance_texsubimage2d_512',
-      'texture_reuse_luminance_texsubimage2d_768',
-      'texture_reuse_rgba_teximage2d_1024',
-      'texture_reuse_rgba_teximage2d_128',
-      'texture_reuse_rgba_teximage2d_1536',
-      'texture_reuse_rgba_teximage2d_2048',
-      'texture_reuse_rgba_teximage2d_256',
-      'texture_reuse_rgba_teximage2d_32',
-      'texture_reuse_rgba_teximage2d_512',
-      'texture_reuse_rgba_teximage2d_768',
-      'texture_reuse_rgba_texsubimage2d_1024',
-      'texture_reuse_rgba_texsubimage2d_128',
-      'texture_reuse_rgba_texsubimage2d_1536',
-      'texture_reuse_rgba_texsubimage2d_2048',
-      'texture_reuse_rgba_texsubimage2d_256',
-      'texture_reuse_rgba_texsubimage2d_32',
-      'texture_reuse_rgba_texsubimage2d_512',
-      'texture_reuse_rgba_texsubimage2d_768',
+      'texture_reuse_luminance_teximage2d',
+      'texture_reuse_luminance_texsubimage2d',
+      'texture_reuse_rgba_teximage2d',
+      'texture_reuse_rgba_texsubimage2d',
       'context_glsimple',
       'swap_glsimple', ])
 
@@ -102,6 +72,12 @@ class graphics_GLBench(test.test):
     logging.info('%s = %f degree Celsius', keyname, temperature)
     self.output_perf_value(description=keyname, value=temperature,
                            units='Celsius', higher_is_better=False)
+
+  def is_no_checksum_test(self, testname):
+    for prefix in self.no_checksum_tests:
+      if testname.startswith(prefix):
+        return True
+    return False
 
   def run_once(self, options='', hasty=False):
     dep = 'glbench'
@@ -239,7 +215,7 @@ class graphics_GLBench(test.test):
       elif imagefile == 'none':
         # tests that do not write images
         keyvals[testname] = testrating
-      elif testname in self.no_checksum_tests:
+      elif self.is_no_checksum_test(testname):
         # TODO(ihf) these really should not write any images
         keyvals[testname] = testrating
       else:
