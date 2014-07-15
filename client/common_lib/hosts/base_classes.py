@@ -15,7 +15,7 @@ poirier@google.com (Benjamin Poirier),
 stutsman@google.com (Ryan Stutsman)
 """
 
-import cPickle, cStringIO, logging, os, re
+import cPickle, cStringIO, logging, os, re, time
 
 from autotest_lib.client.common_lib import global_config, error, utils
 from autotest_lib.client.common_lib import host_protections
@@ -199,6 +199,17 @@ class Host(object):
         raise NotImplementedError('Wait down not implemented!')
 
 
+    def construct_host_metadata(self):
+        """Returns dictionary of metadata containing hostname,
+        and the time recorded.
+        """
+        metadata = {
+            'hostname': self.hostname,
+            'time_recorded': time.time(),
+        }
+        return metadata
+
+
     def wait_for_restart(self, timeout=DEFAULT_REBOOT_TIMEOUT,
                          down_timeout=WAIT_DOWN_REBOOT_TIMEOUT,
                          down_warning=WAIT_DOWN_REBOOT_WARNING,
@@ -207,8 +218,10 @@ class Host(object):
         implementation based entirely on wait_up and wait_down. """
         key_string = 'Reboot.%s' % dargs.get('board')
 
-        total_reboot_timer = stats.Timer('%s.total' % key_string)
-        wait_down_timer = stats.Timer('%s.wait_down' % key_string)
+        total_reboot_timer = stats.Timer('%s.total' % key_string,
+                metadata=self.construct_host_metadata())
+        wait_down_timer = stats.Timer('%s.wait_down' % key_string,
+                metadata=self.construct_host_metadata())
 
         total_reboot_timer.start()
         wait_down_timer.start()
@@ -219,7 +232,8 @@ class Host(object):
                 self.record("ABORT", None, "reboot.verify", "shut down failed")
             raise error.AutoservShutdownError("Host did not shut down")
         wait_down_timer.stop()
-        wait_up_timer = stats.Timer('%s.wait_up' % key_string)
+        wait_up_timer = stats.Timer('%s.wait_up' % key_string,
+                metadata=self.construct_host_metadata())
         wait_up_timer.start()
         if self.wait_up(timeout):
             self.record("GOOD", None, "reboot.verify")

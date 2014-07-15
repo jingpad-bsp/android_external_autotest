@@ -93,7 +93,7 @@ class Average(statsd.Average):
     """Wrapper around statsd.Average."""
 
     def __init__(self, name, connection=None, bare=False,
-                 metadata=None, index=None,
+                 metadata=None, index=es_utils.INDEX_STATS_METADATA,
                  es_host=es_utils.METADATA_ES_SERVER,
                  es_port=es_utils.ES_PORT):
         conn = connection or _conn
@@ -117,7 +117,7 @@ class Counter(statsd.Counter):
     """Wrapper around statsd.Counter."""
 
     def __init__(self, name, connection=None, bare=False,
-                 metadata=None, index=None,
+                 metadata=None, index=es_utils.INDEX_STATS_METADATA,
                  es_host=es_utils.METADATA_ES_SERVER,
                  es_port=es_utils.ES_PORT):
         conn = connection or _conn
@@ -141,7 +141,7 @@ class Gauge(statsd.Gauge):
     """Wrapper around statsd.Gauge."""
 
     def __init__(self, name, connection=None, bare=False,
-                 metadata=None, index=None,
+                 metadata=None, index=es_utils.INDEX_STATS_METADATA,
                  es_host=es_utils.METADATA_ES_SERVER,
                  es_port=es_utils.ES_PORT):
         conn = connection or _conn
@@ -166,7 +166,7 @@ class Timer(statsd.Timer):
     """Wrapper around statsd.Timer."""
 
     def __init__(self, name, connection=None, bare=False,
-                 metadata=None, index=None,
+                 metadata=None, index=es_utils.INDEX_STATS_METADATA,
                  es_host=es_utils.METADATA_ES_SERVER,
                  es_port=es_utils.ES_PORT):
         conn = connection or _conn
@@ -189,7 +189,7 @@ class Timer(statsd.Timer):
         """
         super(Timer, self).send(subname, value)
         self.es.post(index=self.index, metadata=self.metadata,
-                     subname=subname, value=value)
+                     subname=self.name, value=value)
 
 
     def __enter__(self):
@@ -206,7 +206,7 @@ class Raw(statsd.Raw):
     """Wrapper around statsd.Raw."""
 
     def __init__(self, name, connection=None, bare=False,
-                 metadata=None, index=None,
+                 metadata=None, index=es_utils.INDEX_STATS_METADATA,
                  es_host=es_utils.METADATA_ES_SERVER,
                  es_port=es_utils.ES_PORT):
         conn = connection or _conn

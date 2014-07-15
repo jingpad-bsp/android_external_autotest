@@ -93,6 +93,11 @@ ES_USE_HTTP = global_config.global_config.get_config_value(
 # 3 Seconds before connection to esdb timeout.
 DEFAULT_TIMEOUT = 3
 
+# For metadata reported along with stats in stats.py
+INDEX_STATS_METADATA = '%s_stats_metadata' % (
+        global_config.global_config.get_config_value(
+                'SERVER', 'hostname', type=str, default='localhost'))
+
 
 def create_udp_message_from_metadata(index, metadata):
     """Outputs a json encoded string to send via udp to es server.
