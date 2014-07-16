@@ -96,40 +96,130 @@ class network_DhcpNak(dhcp_test_base.DhcpTestBase):
             rules, dhcp_test_base.DHCP_NEGOTIATION_TIMEOUT_SECONDS)
         self.get_interface_ipconfig_objects(self.interface_name)[0].Refresh()
 
-    def send_both_nak_and_ack(self, is_nak_before_ack):
+    def send_ack_then_nak(self):
         """
-        Send both a NAK and an ACK on re-connect to Ethernet.
+        Send an ACK followed by a NAK on re-connect to Ethernet.
 
         Ask shill to disconnect and reconnect the Service for our
         virtual Ethernet link. This causes shill to shut down and
         restart dhcpcd for the link.  Then perform a test where
-        the server responds to a REQUEST with both a NAK and an ACK.
-
-        @param is_nak_before_ack bool whether the NAK should be sent
-             before the ACK, otherwise vice-versa.
+        the server responds to a REQUEST with an ACK followed by
+        an ACK.
         """
         service = self.find_ethernet_service(self.interface_name)
         service.Disconnect()
         rules = [
-            # Respond to DISCOVERY, but then both NAK and ACK the REQUEST.
+            # Respond to DISCOVERY, but then both ACK and NAK the REQUEST.
             dhcp_handling_rule.DhcpHandlingRule_RespondToDiscovery(
                 self.intended_ip, self.server_ip, self.dhcp_options, {}),
             dhcp_handling_rule.DhcpHandlingRule_RejectAndRespondToRequest(
                 self.intended_ip, self.server_ip, self.dhcp_options, {},
-                is_nak_before_ack),
+                False),
             ]
         rules[-1].is_final_handler = True
         self.server.start_test(
             rules, dhcp_test_base.DHCP_NEGOTIATION_TIMEOUT_SECONDS)
         service.Connect()
 
-    def send_nak_then_ack(self):
-        """ Respond with a NAK, then with an ACK. """
-        self.send_both_nak_and_ack(True)
+    def send_nak_then_ack_with_conflict(self):
+        """
+        Send an NAK followed by an ACK on re-connect to with address conflict.
 
-    def send_ack_then_nak(self):
-        """ Respond with a ACK, then with an NAK. """
-        self.send_both_nak_and_ack(False)
+        Ask shill to disconnect and reconnect the Service for our
+        virtual Ethernet link. This causes shill to shut down and
+        restart dhcpcd for the link.
+
+        On reconnect, perform a test where the server responds to a
+        REQUEST with a NAK followed by an ACK, however with a lease
+        for an invalid address (the same IP address as the DHCP server).
+
+        Ensure that the client rejects the invalid lease with a DECLINE,
+        and that it also ignores the first OFFER for the same invalid
+        address.
+        """
+        service = self.find_ethernet_service(self.interface_name)
+        service.Disconnect()
+        rules = [
+            # Respond to DISCOVERY, but then both NAK then ACK the REQUEST,
+            # supplying the server's own IP address.
+            dhcp_handling_rule.DhcpHandlingRule_RespondToDiscovery(
+                self.server_ip, self.server_ip, self.dhcp_options, {}),
+            dhcp_handling_rule.DhcpHandlingRule_RejectAndRespondToRequest(
+                self.server_ip, self.server_ip, self.dhcp_options, {},
+                True),
+
+            # The client should eventually reject this lease since this
+            # address is in use.
+            dhcp_handling_rule.DhcpHandlingRule_AcceptDecline(
+                self.server_ip, self.dhcp_options, {}),
+
+            # Offer up the same (invalid) IP address.
+            dhcp_handling_rule.DhcpHandlingRule_RespondToDiscovery(
+                self.server_ip, self.server_ip, self.dhcp_options, {}),
+
+            # The client should ignore the previous offer and perform
+            # another DISCOVER request.
+            dhcp_handling_rule.DhcpHandlingRule_RespondToDiscovery(
+                self.intended_ip, self.server_ip, self.dhcp_options, {}),
+            dhcp_handling_rule.DhcpHandlingRule_RespondToRequest(
+                self.intended_ip, self.server_ip, self.dhcp_options, {}),
+            ]
+        rules[-1].is_final_handler = True
+        self.server.start_test(
+            rules, dhcp_test_base.DHCP_NEGOTIATION_TIMEOUT_SECONDS)
+        service.Connect()
+
+    def send_nak_then_ack_then_verify(self):
+        """
+        Send an NAK followed by an ACK then verify client IP address.
+
+        Ask shill to disconnect and reconnect the Service for our
+        virtual Ethernet link. This causes shill to shut down and
+        restart dhcpcd for the link.
+
+        On reconnect, perform a test where the server responds to a
+        REQUEST with a NAK followed by an ACK.  This method asserts
+        that the client does not DECLINE this address.
+        """
+        service = self.find_ethernet_service(self.interface_name)
+        service.Disconnect()
+
+        # This rule serves two purposes: First it asserts that the client
+        # does not send a DECLINE response.  Second, it waits until the
+        # test timeout, by which time client will have completed an "ARP
+        # self" operation to validate the offered IP adddres.
+        decline_rule = dhcp_handling_rule.DhcpHandlingRule_AcceptDecline(
+            self.intended_ip, self.dhcp_options, {})
+
+        rules = [
+            # Respond to DISCOVERY, but then both NAK then ACK the REQUEST,
+            # supplying the server's own IP address.
+            dhcp_handling_rule.DhcpHandlingRule_RespondToDiscovery(
+                self.intended_ip, self.server_ip, self.dhcp_options, {}),
+            dhcp_handling_rule.DhcpHandlingRule_RejectAndRespondToRequest(
+                self.intended_ip, self.server_ip, self.dhcp_options, {},
+                True),
+            decline_rule
+            ]
+        rules[-1].is_final_handler = True
+        self.server.start_test(
+            rules, dhcp_test_base.DHCP_NEGOTIATION_TIMEOUT_SECONDS)
+        service.Connect()
+        self.server.wait_for_test_to_finish()
+
+        # This is a negative test, since we expect the last rule to fail.
+        if self.server.last_test_passed:
+            raise error.TestFail('DHCP DECLINE message was received')
+        elif self.server.current_rule != decline_rule:
+            raise error.TestFail('Failed on %s rule' % self.server.current_rule)
+
+        dhcp_config = self.get_interface_ipconfig(
+                self.ethernet_pair.peer_interface_name)
+        if dhcp_config is None:
+            raise error.TestFail('Did not get a DHCP config')
+        if dhcp_config[dhcp_test_base.DHCPCD_KEY_ADDRESS] != self.intended_ip:
+            raise error.TestFail('Client did not attain expected address %s' %
+                                 self.intended_ip)
 
     def test_body(self):
         """
@@ -140,10 +230,14 @@ class network_DhcpNak(dhcp_test_base.DhcpTestBase):
         self.common_setup()
         for sub_test in (self.reconnect_service,
                          self.force_dhcp_renew,
-                         self.send_nak_then_ack,
-                         self.send_ack_then_nak):
+                         self.send_ack_then_nak,
+                         self.send_nak_then_ack_with_conflict):
             sub_test()
             self.server.wait_for_test_to_finish()
             if not self.server.last_test_passed:
                 raise error.TestFail('Test failed (%s): active rule is %s' % (
                         sub_test.__name__, self.server.current_rule))
+
+        # This method is outside the loop above since it performs its own
+        # special verification.
+        self.send_nak_then_ack_then_verify()

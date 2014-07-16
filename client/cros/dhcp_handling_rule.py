@@ -527,7 +527,7 @@ class DhcpHandlingRule_AcceptRelease(DhcpHandlingRule):
 
         self.logger.info("Received RELEASE packet, checking fields...")
         server_ip = query_packet.get_option(dhcp_packet.OPTION_SERVER_ID)
-        if (server_ip is None):
+        if server_ip is None:
             self.logger.info("RELEASE packet did not have the expected "
                              "options, discarding.")
             return RESPONSE_NO_ACTION
@@ -583,3 +583,47 @@ class DhcpHandlingRule_RejectAndRespondToRequest(
                                     self).respond(query_packet)
         self._response_counter += 1
         return response_packet
+
+
+class DhcpHandlingRule_AcceptDecline(DhcpHandlingRule):
+    """
+    This handler accepts any DECLINE packet that contains an option for
+    SERVER_ID matches |expected_server_ip|.  There is no response to this
+    packet.
+    """
+    def __init__(self,
+                 expected_server_ip,
+                 additional_options,
+                 custom_fields):
+        """
+        All *_ip arguments are IPv4 address strings like "192.168.1.101".
+
+        |additional_options| is handled as explained by DhcpHandlingRule.
+        """
+        super(DhcpHandlingRule_AcceptDecline, self).__init__(
+                dhcp_packet.MESSAGE_TYPE_DECLINE, additional_options,
+                custom_fields)
+        self._expected_server_ip = expected_server_ip
+
+    def handle_impl(self, query_packet):
+        if not self.is_our_message_type(query_packet):
+            return RESPONSE_NO_ACTION
+
+        self.logger.info("Received DECLINE packet, checking fields...")
+        server_ip = query_packet.get_option(dhcp_packet.OPTION_SERVER_ID)
+        if server_ip is None:
+            self.logger.info("DECLINE packet did not have the expected "
+                             "options, discarding.")
+            return RESPONSE_NO_ACTION
+
+        if server_ip != self._expected_server_ip:
+            self.emit_warning("DECLINE packet's server ip did not match our "
+                                "expectations; expected %s but got %s" %
+                                (self._expected_server_ip, server_ip))
+            return RESPONSE_NO_ACTION
+
+        self.logger.info("Received valid DECLINE packet, processing")
+        ret = RESPONSE_POP_HANDLER
+        if self.is_final_handler:
+            ret |= RESPONSE_TEST_SUCCEEDED
+        return ret
