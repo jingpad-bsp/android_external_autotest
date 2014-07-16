@@ -11,7 +11,8 @@ import com.google.gwt.user.client.ui.PopupPanel;
 
 public class ContextMenu {
     private  PopupPanel popup = new PopupPanel(true);
-    private MenuBar menu = new AutoHideMenu();
+    private AutoHideMenu menu = new AutoHideMenu();
+    private boolean enabled = true;
     
     private class CommandWrapper implements Command {
         private Command command;
@@ -35,15 +36,25 @@ public class ContextMenu {
         public MenuItem addItem(String text, Command cmd) {
             return super.addItem(text, new CommandWrapper(cmd));
         }
+
+        public void setEnabled(boolean enabled) {
+            for (MenuItem menuItem : getItems()) {
+                menuItem.setEnabled(enabled);
+            }
+        }
     }
 
     public ContextMenu() {
         menu.setAutoOpen(true);
+        setUseHandCursor(true);
         popup.add(menu);
     }
     
-    public void useHandCursor() {
-        menu.addStyleName("menubar-hand-cursor");
+    protected void setUseHandCursor(boolean enabled) {
+        if (enabled)
+            menu.addStyleName("menubar-hand-cursor");
+        else
+            menu.removeStyleName("menubar-hand-cursor");
     }
 
     public void addItem(String text, Command cmd) {
@@ -69,4 +80,13 @@ public class ContextMenu {
         popup.addCloseHandler(closeHandler);
     }
 
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+        menu.setEnabled(enabled);
+        setUseHandCursor(enabled);
+    }
 }

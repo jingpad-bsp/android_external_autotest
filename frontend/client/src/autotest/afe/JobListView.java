@@ -232,6 +232,8 @@ public class JobListView extends TabView implements TableActionsListener {
                 abortSelectedJobs();
             }
         });
+        if (selectionManager.isEmpty())
+            menu.setEnabled(false);
         return menu;
     }
 }

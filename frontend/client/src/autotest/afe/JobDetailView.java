@@ -271,6 +271,8 @@ public class JobDetailView extends DetailView implements TableWidgetFactory {
                     }
                 });
 
+                if (hostsSelectionManager.isEmpty())
+                    menu.setEnabled(false);
                 return menu;
             }
         }, true);

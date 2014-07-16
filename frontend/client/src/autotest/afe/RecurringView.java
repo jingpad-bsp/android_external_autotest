@@ -113,6 +113,8 @@ public class RecurringView extends TabView implements TableActionsListener {
                 removeSelectedRecurring();
             }
         });
+        if (selectionManager.isEmpty())
+            menu.setEnabled(false);
         return menu;
     }
 

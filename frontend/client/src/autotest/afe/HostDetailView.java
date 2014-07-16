@@ -373,6 +373,8 @@ public class HostDetailView extends DetailView implements DataCallback, TableAct
                 abortSelectedQueueEntriesAndSpecialTasks();
             }
         });
+        if (selectionManager.isEmpty())
+            menu.setEnabled(false);
         return menu;
     }
 

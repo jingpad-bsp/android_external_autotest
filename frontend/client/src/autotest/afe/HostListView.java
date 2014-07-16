@@ -156,6 +156,8 @@ public class HostListView extends TabView implements TableActionsListener {
             }
         });
 
+        if (selectionManager.isEmpty())
+            menu.setEnabled(false);
         return menu;
     }
 }
