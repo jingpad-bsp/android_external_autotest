@@ -87,7 +87,12 @@ public class CustomTabPanel extends Composite implements CustomHistoryListener,
                 if (autorefreshTimer == null)
                     initialize();
 
-                if (autorefreshCheckbox.getValue()) {
+                Boolean value = autorefreshCheckbox.getValue();
+                TabView selectedTabView = tabViews.get(
+                        tabPanel.getTabBar().getSelectedTab());
+                if (selectedTabView != null)
+                    selectedTabView.setAutorefresh(value);
+                if (value) {
                     autorefreshTimer.scheduleRepeating(AUTOREFRESH_INTERVAL);
                 } else {
                     autorefreshTimer.cancel();
@@ -200,8 +205,10 @@ public class CustomTabPanel extends Composite implements CustomHistoryListener,
     
     @Override
     public void onSelection(SelectionEvent<Integer> event) {
+        TabView selectedTabView = tabViews.get(event.getSelectedItem());
         if (doUpdateHistory)
-            tabViews.get(event.getSelectedItem()).updateHistory();
-        autorefreshCheckbox.setValue(false);
+            selectedTabView.updateHistory();
+        // The second parameter is to fire a valueChange event if value changed.
+        autorefreshCheckbox.setValue(selectedTabView.isAutorefreshOn(), true);
     }
 }
