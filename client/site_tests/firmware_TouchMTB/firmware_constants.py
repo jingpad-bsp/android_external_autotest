@@ -114,7 +114,11 @@ GV.GESTURE_SPEED = [GV.SLOW, GV.NORMAL, GV.FAST, GV.FULL_SPEED]
 GV.LOW_FREQUENCY = 'low_frequency'
 GV.MED_FREQUENCY = 'med_frequency'
 GV.HIGH_FREQUENCY = 'high_frequency'
-GV.NOISE_FREQUENCY = [GV.LOW_FREQUENCY, GV.MED_FREQUENCY, GV.HIGH_FREQUENCY]
+# constants used in the extended frequency sweep.
+# Sweep from 0Hz to 1MHz at an interval of 400Hz for 2500 tests.
+GV.EXTENDED_FREQUENCIES = ['%dHz' % x for x in range(0, 1000000, 400)]
+GV.NOISE_FREQUENCY = [GV.LOW_FREQUENCY, GV.MED_FREQUENCY, GV.HIGH_FREQUENCY] + \
+                      GV.EXTENDED_FREQUENCIES
 # constants about noise waveform
 GV.SQUARE_WAVE = 'square_wave'
 GV.SINE_WAVE = 'sine_wave'
@@ -144,6 +148,7 @@ MODE = _Mode()
 MODE.CALIBRATION = 'calibration'
 MODE.COMPLETE = 'complete'
 MODE.MANUAL = 'manual'
+MODE.NOISE = 'noise'
 MODE.QUICKSTEP = 'quickstep'
 MODE.REPLAY = 'replay'
 MODE.ROBOT = 'robot'

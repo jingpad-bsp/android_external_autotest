@@ -82,10 +82,11 @@ class RobotWrapper:
             self._get_control_command_quickstep: SCRIPT_QUICKSTEP,
         }
 
-        # Each gesture maps to a get_contorol_command method
+        # Each gesture maps to a get_control_command method
         self._method_of_control_command_dict = {
             conf.NOISE_LINE: self._get_control_command_line,
             conf.NOISE_STATIONARY: self._get_control_command_single_tap,
+            conf.NOISE_STATIONARY_EXTENDED: self._get_control_command_single_tap,
             conf.ONE_FINGER_TRACKING: self._get_control_command_line,
             conf.ONE_FINGER_TO_EDGE: self._get_control_command_line,
             conf.ONE_FINGER_SWIPE: self._get_control_command_line,
@@ -172,12 +173,15 @@ class RobotWrapper:
             GV.FULL_SPEED: 100,
         }
 
-        # The frequencies of noise in HZ.
+        # The frequencies of noise in Hz.
         self._frequency_dict = {
             GV.LOW_FREQUENCY: 5000,  # 5kHz
             GV.MED_FREQUENCY: 500000,  # 500kHz
             GV.HIGH_FREQUENCY: 1000000,  # 1MHz
         }
+        # Add the list of extended frequency values to the dict.
+        freq_value_dict = {freq: int(freq.replace('Hz', '')) for freq in GV.EXTENDED_FREQUENCIES}
+        self._frequency_dict = dict(self._frequency_dict.items() + freq_value_dict.items())
 
         # The waveforms of noise.
         self._waveform_dict = {
@@ -311,7 +315,7 @@ class RobotWrapper:
 
         In the robot action mode, it actually invokes the robot control script.
         """
-        return self._mode in [MODE.ROBOT, MODE.QUICKSTEP]
+        return self._mode in [MODE.ROBOT, MODE.QUICKSTEP, MODE.NOISE]
 
     def _raise_error(self, msg):
         """Only raise an error if it is in the robot action mode."""

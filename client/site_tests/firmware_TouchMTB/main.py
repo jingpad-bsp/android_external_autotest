@@ -347,6 +347,7 @@ def _usage_and_exit():
     print '            complete: all gestures including those in ' \
                                 'both manual mode and robot mode'
     print '            manual: all gestures minus gestures in robot mode'
+    print '            noise: an extensive, 4 hour noise test'
     print '            robot: using robot to perform gestures automatically'
     print '            robot_sim: robot simulation, for developer only'
     print '  --%s log_dir' % OPTIONS.REPLAY
@@ -383,6 +384,8 @@ def _usage_and_exit():
     print '  $ DISPLAY=:0 OPTIONS="-m calibration" python main.py\n'
     print '  # Use the robot to perform a latency test with Quickstep'
     print '  $ DISPLAY=:0 OPTIONS="-m quickstep" python main.py\n'
+    print '  # Use the robot to perform an extensive, 4 hour noise test'
+    print '  $ DISPLAY=:0 OPTIONS="-m noise" python main.py\n'
     print '  # Replay the gesture files in the latest log directory.'
     print '  $ DISPLAY=:0 OPTIONS="--replay latest" python main.py\n'
     example_log_dir = '20130226_040802-fw_1.2-manual'

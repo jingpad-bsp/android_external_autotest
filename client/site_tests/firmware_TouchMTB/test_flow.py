@@ -28,7 +28,7 @@ sys.path.append('../../bin/input')
 import input_device
 
 # Include some constants
-from firmware_constants import DEV, MODE, OPTIONS, TFK
+from firmware_constants import DEV, GV, MODE, OPTIONS, TFK
 
 
 class TestFlow:
@@ -96,12 +96,15 @@ class TestFlow:
 
     def _is_robot_mode(self):
         """Is it in robot mode?"""
-        return self.mode in [MODE.ROBOT, MODE.ROBOT_SIM, MODE.QUICKSTEP]
+        return self.mode in [MODE.ROBOT, MODE.ROBOT_SIM, MODE.QUICKSTEP,
+                             MODE.NOISE]
 
     def _get_gesture_names(self):
         """Determine the gesture names based on the mode."""
         if self.mode == MODE.QUICKSTEP:
-          return conf.gesture_names_quickstep
+            return conf.gesture_names_quickstep
+        elif self.mode == MODE.NOISE:
+            return conf.gesture_names_noise_extended
         elif self._is_robot_mode():
             # The mode could be MODE.ROBOT or MODE.ROBOT_SIM.
             # The same gesture names list is used in both modes.
@@ -111,7 +114,9 @@ class TestFlow:
         elif self.mode == MODE.CALIBRATION:
             return conf.gesture_names_calibration
         else:
-            return conf.gesture_names_complete[self.device_type]
+            # Filter out tests that need special equipment for COMPLETE mode
+            return [n for n in conf.gesture_names_complete[self.device_type]
+                    if n not in conf.gesture_names_equipment_required]
 
     def _non_blocking_open(self, filename):
         """Open the file in non-blocing mode."""

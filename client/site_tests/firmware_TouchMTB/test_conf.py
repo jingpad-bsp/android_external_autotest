@@ -96,6 +96,7 @@ gestures_sub_path = 'site-packages/touchbotII'
 # Define the gesture names
 NOISE_LINE = 'noise_line'
 NOISE_STATIONARY = 'noise_stationary'
+NOISE_STATIONARY_EXTENDED = 'noise_stationary_extended'
 ONE_FINGER_TRACKING = 'one_finger_tracking'
 ONE_FINGER_TO_EDGE = 'one_finger_to_edge'
 TWO_FINGER_TRACKING = 'two_finger_tracking'
@@ -263,14 +264,21 @@ gesture_names_robot = {
 
 gesture_names_quickstep = [DRAG_LATENCY]
 
+# Define the list of gestures that require equipment our vendors may not have.
+gesture_names_equipment_required = [NOISE_LINE, NOISE_STATIONARY,
+                                    NOISE_STATIONARY_EXTENDED]
 
-# Define the manual list which is gesture_names_complete - gesture_names_robot
+# Define the list of gestures to test in NOISE mode.
+gesture_names_noise_extended = [NOISE_STATIONARY_EXTENDED]
+
+# Define the manual list which is gesture_names_complete - gesture_names_robot - gesture_names_equipment_required
 gesture_names_manual = {}
 for dev in DEV.DEVICE_TYPE_LIST:
     complete_gesture_list = gesture_names_complete[dev]
     manual_set = set(complete_gesture_list) - set(gesture_names_robot[dev])
     gesture_names_manual[dev] = [gesture for gesture in complete_gesture_list
-                                 if gesture in manual_set]
+                                 if gesture in manual_set
+                                 and gesture not in gesture_names_equipment_required]
 
 
 # Define the gesture for pressure calibration
@@ -316,13 +324,13 @@ def get_gesture_dict():
         NOISE_STATIONARY:
         Gesture(
             name=NOISE_STATIONARY,
-            variations=((GV.TL, GV.TR, GV.BL, GV.BR, GV.TS, GV.BS, GV.LS, GV.RS,
-                         GV.CENTER),
-                        (GV.LOW_FREQUENCY, GV.MED_FREQUENCY, GV.HIGH_FREQUENCY),
+            variations=((GV.LOW_FREQUENCY, GV.MED_FREQUENCY, GV.HIGH_FREQUENCY),
                         (GV.HALF_AMPLITUDE, GV.MAX_AMPLITUDE),
                         (GV.SQUARE_WAVE,),
+                        (GV.TL, GV.TR, GV.BL, GV.BR, GV.TS, GV.BS, GV.LS, GV.RS,
+                         GV.CENTER),
             ),
-            prompt='Hold one finger on the {0} of the touch surface with a {1} {2} {3} in noise.',
+            prompt='Hold one finger on the {3} of the touch surface with a {0} {1} {2} in noise.',
             subprompt={
                 GV.TL: ('top left corner',),
                 GV.TR: ('top right corner',),
@@ -375,6 +383,25 @@ def get_gesture_dict():
                 NoReversedMotionValidator(no_reversed_motion_criteria, slots=0,
                                           segments=VAL.BOTH_ENDS),
                 ReportRateValidator(report_rate_criteria),
+            ),
+        ),
+        NOISE_STATIONARY_EXTENDED:
+        Gesture(
+            name=NOISE_STATIONARY_EXTENDED,
+            variations=(tuple(GV.EXTENDED_FREQUENCIES),
+                        (GV.MAX_AMPLITUDE,),
+                        (GV.SQUARE_WAVE,),
+                        (GV.CENTER,),
+            ),
+            prompt='Hold one finger on the {3} of the touch surface with a {0} {1} {2} in noise.',
+            subprompt=dict({
+                GV.CENTER: ('center',),
+                GV.MAX_AMPLITUDE: ('20Vpp',),
+                GV.SQUARE_WAVE: ('square wave',),
+            }.items() + {freq: (freq,) for freq in GV.EXTENDED_FREQUENCIES}.items()),
+            validators=(
+                CountTrackingIDNormalFingerValidator('== 1'),
+                StationaryTapValidator(stationary_tap_criteria, slot=0),
             ),
         ),
         ONE_FINGER_TRACKING:
