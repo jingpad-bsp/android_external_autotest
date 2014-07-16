@@ -163,7 +163,9 @@ class GestureEventFiles:
         # An example gesture event file looks like
         #   pressure_calibration.size0-lumpy-fw_11.27-calibration-20130307.dat
         filepath = os.path.join(self.result_dir, self.FILE_PATTERN % '')
-        cmd = 'scp root@%s:%s %s' % (self.machine_ip, filepath, self.event_dir)
+        cmd = ('scp -o UserKnownHostsFile=/dev/null ' +
+               '-o StrictHostKeyChecking=no root@%s:%s %s') % (
+          self.machine_ip, filepath, self.event_dir)
         try:
             print ('scp gesture event files from "machine_ip:%s" to %s\n' %
                    (self.machine_ip, self.event_dir))
