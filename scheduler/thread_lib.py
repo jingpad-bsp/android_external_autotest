@@ -21,15 +21,12 @@ queue is as follows:
 """
 
 import collections
-import datetime as datetime_base
-from datetime import datetime
 import Queue
 import threading
 import logging
 
 import common
 from autotest_lib.client.common_lib.cros.graphite import stats
-from autotest_lib.scheduler import drone_utility
 
 
 class DroneTaskQueueException(Exception):
@@ -43,7 +40,8 @@ class ExceptionRememberingThread(threading.Thread):
     def run(self):
         """Wrapper around the thread's run method."""
         try:
-            super(ExceptionRememberingThread, self).run()
+            with stats.Timer(self.name):
+                super(ExceptionRememberingThread, self).run()
         except Exception as self.err:
             logging.error('%s raised an exception that will be re-raised by '
                           'the thread pool manager.', self.getName())
@@ -104,10 +102,10 @@ class ThreadedTaskQueue(object):
         @param results_queue: A queue, into which the worker places
             ThreadedTaskQueue.result from the drone calls.
         """
-        logging.info('(Worker-%s) starting.', drone.hostname)
+        logging.info('(Worker.%s) starting.', drone.hostname)
         results_queue.put(ThreadedTaskQueue.result(
             drone, drone.execute_queued_calls()))
-        logging.info('(Worker-%s) finished.', drone.hostname)
+        logging.info('(Worker.%s) finished.', drone.hostname)
 
 
     def wait_on_drones(self):
@@ -128,9 +126,7 @@ class ThreadedTaskQueue(object):
         for drone, thread in self.drone_threads.iteritems():
             tname = thread.getName()
             logging.info('(Task Queue) Waiting for %s', tname)
-            # Note that this is only the incremental overhead of drone refresh.
-            with stats.Timer('%s.%s' % (self.name, tname.replace('.', '_'))):
-                thread.join()
+            thread.join()
             if thread.err:
                 drone_exceptions.append((drone, thread.err))
         logging.info('(Task Queue) All threads have returned, clearing map.')
@@ -203,7 +199,8 @@ class ThreadedTaskQueue(object):
             # die unexpectedly we can just forsake the daemon threads.
             self.drone_threads[drone] = worker_thread
             # The name is only used for debugging
-            worker_thread.setName('Worker-%s' % drone.hostname)
+            worker_thread.setName('%s.%s' %
+                                  (self.name, drone.hostname.replace('.', '_')))
             worker_thread.daemon = True
             worker_thread.start()
         return self.get_results() if wait else None
