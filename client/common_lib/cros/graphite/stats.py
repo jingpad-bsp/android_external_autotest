@@ -30,6 +30,9 @@ STATSD_SERVER = global_config.global_config.get_config_value('CROS',
 STATSD_PORT = global_config.global_config.get_config_value('CROS',
         'STATSD_PORT', type=int, default=0)
 
+# This is _type for all metadata logged to elasticsearch from here.
+STATS_ES_TYPE = 'stats_metadata'
+
 
 def _prepend_server(name, bare=False):
     """
@@ -93,7 +96,7 @@ class Average(statsd.Average):
     """Wrapper around statsd.Average."""
 
     def __init__(self, name, connection=None, bare=False,
-                 metadata=None, index=es_utils.INDEX_STATS_METADATA,
+                 metadata=None, index=es_utils.INDEX_METADATA,
                  es_host=es_utils.METADATA_ES_SERVER,
                  es_port=es_utils.ES_PORT):
         conn = connection or _conn
@@ -110,14 +113,15 @@ class Average(statsd.Average):
         @param value: Value to be sent.
         """
         super(Average, self).send(subname, value)
-        self.es.post(index=self.index, metadata=self.metadata,
-                     subname=subname, value=value)
+        self.es.post(type_str=STATS_ES_TYPE, index=self.index,
+                     metadata=self.metadata, subname=subname, value=value)
+
 
 class Counter(statsd.Counter):
     """Wrapper around statsd.Counter."""
 
     def __init__(self, name, connection=None, bare=False,
-                 metadata=None, index=es_utils.INDEX_STATS_METADATA,
+                 metadata=None, index=es_utils.INDEX_METADATA,
                  es_host=es_utils.METADATA_ES_SERVER,
                  es_port=es_utils.ES_PORT):
         conn = connection or _conn
@@ -134,14 +138,15 @@ class Counter(statsd.Counter):
         @param value: Value to be sent.
         """
         super(Counter, self)._send(subname, value)
-        self.es.post(index=self.index, metadata=self.metadata,
-                     subname=subname, value=value)
+        self.es.post(type_str=STATS_ES_TYPE, index=self.index,
+                     metadata=self.metadata, subname=subname, value=value)
+
 
 class Gauge(statsd.Gauge):
     """Wrapper around statsd.Gauge."""
 
     def __init__(self, name, connection=None, bare=False,
-                 metadata=None, index=es_utils.INDEX_STATS_METADATA,
+                 metadata=None, index=es_utils.INDEX_METADATA,
                  es_host=es_utils.METADATA_ES_SERVER,
                  es_port=es_utils.ES_PORT):
         conn = connection or _conn
@@ -158,15 +163,15 @@ class Gauge(statsd.Gauge):
         @param value: Value to be sent.
         """
         super(Gauge, self).send(subname, value)
-        self.es.post(index=self.index, metadata=self.metadata,
-                     subname=subname, value=value)
+        self.es.post(type_str=STATS_ES_TYPE, index=self.index,
+                     metadata=self.metadata, subname=subname, value=value)
 
 
 class Timer(statsd.Timer):
     """Wrapper around statsd.Timer."""
 
     def __init__(self, name, connection=None, bare=False,
-                 metadata=None, index=es_utils.INDEX_STATS_METADATA,
+                 metadata=None, index=es_utils.INDEX_METADATA,
                  es_host=es_utils.METADATA_ES_SERVER,
                  es_port=es_utils.ES_PORT):
         conn = connection or _conn
@@ -188,8 +193,8 @@ class Timer(statsd.Timer):
         @param value: Value to be sent.
         """
         super(Timer, self).send(subname, value)
-        self.es.post(index=self.index, metadata=self.metadata,
-                     subname=self.name, value=value)
+        self.es.post(type_str=STATS_ES_TYPE, index=self.index,
+                     metadata=self.metadata, subname=subname, value=value)
 
 
     def __enter__(self):
@@ -206,7 +211,7 @@ class Raw(statsd.Raw):
     """Wrapper around statsd.Raw."""
 
     def __init__(self, name, connection=None, bare=False,
-                 metadata=None, index=es_utils.INDEX_STATS_METADATA,
+                 metadata=None, index=es_utils.INDEX_METADATA,
                  es_host=es_utils.METADATA_ES_SERVER,
                  es_port=es_utils.ES_PORT):
         conn = connection or _conn
@@ -226,5 +231,6 @@ class Raw(statsd.Raw):
         @param timestamp: Time associated with when this stat was sent.
         """
         super(Raw, self).send(subname, value, timestamp)
-        self.es.post(index=self.index, metadata=self.metadata,
-                     subname=subname, value=value, timestamp=timestamp)
+        self.es.post(type_str=STATS_ES_TYPE, index=self.index,
+                     metadata=self.metadata, subname=subname, value=value,
+                     timestamp=timestamp)

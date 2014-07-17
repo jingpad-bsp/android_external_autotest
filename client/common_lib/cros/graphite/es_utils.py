@@ -93,16 +93,16 @@ ES_USE_HTTP = global_config.global_config.get_config_value(
 # 3 Seconds before connection to esdb timeout.
 DEFAULT_TIMEOUT = 3
 
-# For metadata reported along with stats in stats.py
-INDEX_STATS_METADATA = '%s_stats_metadata' % (
-        global_config.global_config.get_config_value(
-                'SERVER', 'hostname', type=str, default='localhost'))
+# Index is determined solely by autotest instance.
+INDEX_METADATA = global_config.global_config.get_config_value(
+        'SERVER', 'hostname', type=str, default='localhost')
 
 
-def create_udp_message_from_metadata(index, metadata):
+def create_udp_message_from_metadata(index, type_str, metadata):
     """Outputs a json encoded string to send via udp to es server.
 
     @param index: index in elasticsearch to insert data to
+    @param type_str: sets the _type field in elasticsearch db.
     @param metadata: dictionary object containing metadata
     @returns: string representing udp message.
 
@@ -110,7 +110,7 @@ def create_udp_message_from_metadata(index, metadata):
     """
     metadata_message = json.dumps(metadata, separators=(', ', ' : '))
     message_header = json.dumps(
-            {'index': {'_index': index, '_type': 'metadata'}},
+            {'index': {'_index': index, '_type': type_str}},
             separators=(', ', ' : '))
     # Add new line, then the metadata message, then another new line.
     return '%s\n%s\n' % (message_header, metadata_message)
@@ -132,9 +132,10 @@ class ESMetadata(object):
         self.timeout = timeout
 
 
-    def send_data(self, index, metadata, use_http):
+    def _send_data(self, type_str, index, metadata, use_http):
         """Sends data to insert into elasticsearch.
 
+        @param type_str: sets the _type field in elasticsearch db.
         @param index: index in elasticsearch to insert data to.
         @param metadata: dictionary object containing metadata
         @param use_http: whether to use http. udp is very little overhead
@@ -143,7 +144,8 @@ class ESMetadata(object):
         """
         if not use_http:
             try:
-                message = create_udp_message_from_metadata(index, metadata)
+                message = create_udp_message_from_metadata(index, type_str,
+                                                           metadata)
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 result = sock.sendto(message, (self.host, ES_UDP_PORT))
             except socket.error as e:
@@ -152,12 +154,14 @@ class ESMetadata(object):
             self.es = elasticsearch.Elasticsearch(host=self.host,
                                                   port=self.port,
                                                   timeout=self.timeout)
-            self.es.index(index=index, doc_type='metadata', body=metadata)
+            self.es.index(index=index, doc_type=type_str, body=metadata)
 
 
-    def post(self, index, metadata=None, use_http=ES_USE_HTTP, **kwargs):
+    def post(self, type_str, metadata=None, index=INDEX_METADATA,
+             use_http=ES_USE_HTTP, **kwargs):
         """Wraps call of send_data, inserts entry into elasticsearch.
 
+        @param type_str: sets the _type field in elasticsearch db.
         @param index: index in elasticsearch to insert data to.
         @param metadata: dictionary object containing metadata
         @param use_http: will use udp to send data when this is False.
@@ -170,6 +174,6 @@ class ESMetadata(object):
         # kwargs could be extra metadata, append to metadata.
         metadata_copy.update(kwargs)
         try:
-            self.send_data(index, metadata_copy, use_http)
+            self._send_data(type_str, index, metadata_copy, use_http)
         except elasticsearch.ElasticsearchException as e:
             logging.error(e)

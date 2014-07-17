@@ -17,9 +17,11 @@ back to the rdb.
 """
 
 import logging
+import time
 from django.core import exceptions as django_exceptions
 
 import common
+from autotest_lib.client.common_lib.cros.graphite import es_utils
 from autotest_lib.frontend.afe import rdb_model_extensions as rdb_models
 from autotest_lib.frontend.afe import models as afe_models
 from autotest_lib.scheduler import rdb_requests
@@ -205,13 +207,30 @@ class RDBClientHostWrapper(RDBHost):
         super(RDBClientHostWrapper, self)._update_attributes(payload)
 
 
+    def record_state(self, type_str, state, value):
+        """Record metadata in elasticsearch.
+
+        @param type_str: sets the _type field in elasticsearch db.
+        @param state: string representing what state we are recording,
+                      e.g. 'status'
+        @param value: value of the state, e.g. 'running'
+        """
+        metadata = {
+            'time_recorded': time.time(),
+             state: value,
+            'dbg_str': self.dbg_str,
+            'hostname': self.hostname,
+        }
+        es_utils.ESMetadata().post(type_str=type_str, metadata=metadata)
+
+
     def set_status(self, status):
         """Proxy for setting the status of a host via the rdb.
 
         @param status: The new status.
         """
         self._update({'status': status})
-
+        self.record_state('host_history', 'status', status)
 
     def update_field(self, fieldname, value):
         """Proxy for updating a field on the host.

@@ -571,13 +571,13 @@ class HostQueueEntry(DBObject):
                  flags_str))
 
 
-    def record_state(self, index, state, value):
+    def record_state(self, type_str, state, value):
         """Record metadata in elasticsearch.
 
         If ES configured to use http, then we will time that http request.
         Otherwise, it uses UDP, so we will not need to time it.
 
-        @param index: Index in es we will insert entry to.
+        @param type_str: sets the _type field in elasticsearch db.
         @param state: string representing what state we are recording,
                       e.g. 'status'
         @param value: value of the state, e.g. 'verifying'
@@ -589,7 +589,7 @@ class HostQueueEntry(DBObject):
         }
         if self.host:
             metadata['hostname'] = self.host.hostname
-        es_utils.ESMetadata().post(index=index, metadata=metadata)
+        es_utils.ESMetadata().post(type_str=type_str, metadata=metadata)
 
 
     @_timer.decorate
