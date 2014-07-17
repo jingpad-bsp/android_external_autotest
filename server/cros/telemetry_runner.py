@@ -249,12 +249,12 @@ class TelemetryRunner(object):
         """
         TELEMETRY_DIR = 'src'
         CHROME_LOCAL_SRC = '/var/cache/chromeos-cache/distfiles/target/'
-        CHROME_EXTERNAL_SRC = '~/chrome_root/'
+        CHROME_EXTERNAL_SRC = os.path.expanduser('~/chrome_root/')
 
         logging.debug('Setting up telemetry for local testing')
 
         sources_list = ('chrome-src-internal', 'chrome-src')
-        dir_list = [os.path.join(CHROME_EXTERNAL_SRC, x) for x in sources_list]
+        dir_list = [CHROME_EXTERNAL_SRC]
         dir_list.extend(
                 [os.path.join(CHROME_LOCAL_SRC, x) for x in sources_list])
         if 'CHROME_ROOT' in os.environ:
