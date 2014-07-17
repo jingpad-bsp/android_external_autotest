@@ -13,12 +13,12 @@ import uuid
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import autotest
+from autotest_lib.server import test
 from autotest_lib.server.cros import vboot_constants as vboot
 from autotest_lib.server.cros.faft.config.config import Config as FAFTConfig
 from autotest_lib.server.cros.faft.rpc_proxy import RPCProxy
 from autotest_lib.server.cros.faft.utils.faft_checkers import FAFTCheckers
 from autotest_lib.server.cros.servo import chrome_ec
-from autotest_lib.server.cros.servo_test import ServoTest
 
 
 class ConnectionError(Exception):
@@ -26,7 +26,7 @@ class ConnectionError(Exception):
     pass
 
 
-class FAFTBase(ServoTest):
+class FAFTBase(test.test):
     """The base class of FAFT classes.
 
     It launches the FAFTClient on DUT, such that the test can access its
@@ -36,7 +36,8 @@ class FAFTBase(ServoTest):
     """
     def initialize(self, host):
         """Create a FAFTClient object and install the dependency."""
-        super(FAFTBase, self).initialize(host)
+        self.servo = host.servo
+        self.servo.initialize_dut()
         self._client = host
         self._autotest_client = autotest.Autotest(self._client)
         self._autotest_client.install()
