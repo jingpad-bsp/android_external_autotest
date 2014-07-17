@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import Image
 import httplib
 import logging
 import os
@@ -162,23 +163,23 @@ class DisplayClient(object):
         self._display_xmlrpc_client.press_key('Up')
 
 
-    def capture_external_screen(self, file_path):
+    def capture_external_screen(self):
         """Captures the external screen framebuffer.
 
-        @param file_path: The path of file for output.
-
-        @return: The byte-array for the screen.
+        @return: An Image object.
         """
         output = self.get_connector_name()
         fb_w, fb_h, fb_x, fb_y = (
                 self._display_xmlrpc_client.get_resolution(output))
-        basename = os.path.basename(file_path)
-        remote_path = os.path.join('/tmp', basename)
-        command = ('%s import -window root -depth 8 -crop %dx%d+%d+%d %s' %
-                   (self.X_ENV_VARIABLES, fb_w, fb_h, fb_x, fb_y, remote_path))
-        self._client.run(command)
-        self._client.get_file(remote_path, file_path)
-        return open(file_path).read()
+        with tempfile.NamedTemporaryFile(suffix='.png') as f:
+            basename = os.path.basename(f.name)
+            remote_path = os.path.join('/tmp', basename)
+            command = ('%s import -window root -depth 8 -crop %dx%d+%d+%d %s' %
+                       (self.X_ENV_VARIABLES, fb_w, fb_h, fb_x, fb_y,
+                        remote_path))
+            self._client.run(command)
+            self._client.get_file(remote_path, f.name)
+            return Image.open(f.name)
 
 
     def get_resolution(self):

@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import Image
 import time
 import xmlrpclib
 
@@ -160,16 +161,16 @@ class ChameleonPort(object):
                 repeat_count)
 
 
-    def capture_screen(self, file_path):
+    def capture_screen(self):
         """Captures Chameleon framebuffer.
 
-        @param file_path: The path of file for output.
-
-        @return The byte-array for the screen.
+        @return An Image object.
         """
-        pixels = self._chameleond_proxy.DumpPixels(self._input_id).data
-        open(file_path, 'w+').write(pixels)
-        return pixels
+        image = Image.fromstring(
+                self._chameleond_proxy.GetPixelFormat().upper(),
+                self.get_resolution(),
+                self._chameleond_proxy.DumpPixels(self._input_id).data)
+        return image.convert('RGB')
 
 
     def get_resolution(self):
