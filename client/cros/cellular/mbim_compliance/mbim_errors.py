@@ -30,6 +30,11 @@ class MBIMComplianceChannelError(MBIMComplianceError):
     pass
 
 
+class MBIMComplianceControlMessageError(MBIMComplianceError):
+    """ Errors raised in the MBIM control module. """
+    pass
+
+
 class MBIMComplianceTestError(MBIMComplianceError):
     """ Errors raised by compliance suite tests. """
     pass
