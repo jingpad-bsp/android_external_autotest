@@ -12,4 +12,9 @@ class Entity(object):
     likely do so by defining their own base class that inherits from this.
 
     """
-    pass
+    def __init__(self, test_context):
+        """
+        @param test_context: An object that wraps information about the device
+                under test.
+        """
+        self.test_context = test_context

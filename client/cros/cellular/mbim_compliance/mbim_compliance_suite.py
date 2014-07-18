@@ -8,6 +8,7 @@ import logging
 import common
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_errors
 from autotest_lib.client.cros.cellular.mbim_compliance import test_context
+from autotest_lib.client.cros.cellular.mbim_compliance.tests import cm_10_test
 from autotest_lib.client.cros.cellular.mbim_compliance.tests import des_01_test
 from autotest_lib.client.cros.cellular.mbim_compliance.tests import des_02_test
 
@@ -60,7 +61,8 @@ class MBIMComplianceSuite(object):
         device_under_test = test_context.TestContext()
         return [
             des_01_test.DES_01_Test(device_under_test),
-            des_02_test.DES_02_Test(device_under_test)
+            des_02_test.DES_02_Test(device_under_test),
+            cm_10_test.CM10Test(device_under_test)
         ]
 
 

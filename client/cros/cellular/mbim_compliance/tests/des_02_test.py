@@ -21,10 +21,6 @@ from autotest_lib.client.cros.cellular.mbim_compliance import test_context
 class DES_02_Test(des_test.DesTest):
     """ Implement the DES_2 Descriptors Validation for MBIM Only Functions. """
 
-    def __init__(self, test_context):
-        self.test_context = test_context
-
-
     def run_internal(self):
         """ Run the DES_02 test. """
         # Precondition.

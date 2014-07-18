@@ -173,7 +173,56 @@ class MBIMComplianceAssertionError(MBIMComplianceError):
                              'descriptors for alternate settings 0 and 1 must '
                              'have bInterfaceSubClass == 00h, and '
                              'bInterfaceProtocol == 02h. Refer to Table 6.4 of '
-                             '[USBMBIM10].'
+                             '[USBMBIM10].',
+
+            # Assertion Groups: 9.x#x, 9.x.x and 9.x.x#x
+            'mbim1.0:9.1#2': 'MessageLength in MBIM_MESSAGE_HEADER must be >= '
+                             '0x0C.',
+            'mbim1.0:9.3.1#1': 'In case MBIM_OPEN_MSG message is sent to a '
+                               'function that is already opened, the function '
+                               'shall interpret this as that the host and the '
+                               'function are out of synchronization. The '
+                               'function shall then perform the actions '
+                               'dictated by the MBIM_CLOSE_MSG before it '
+                               'performs the actions dictated by this '
+                               'command.The function shall not send the '
+                               'MBIM_CLOSE_DONE when the transition to the '
+                               'Closed state has been completed. Only the '
+                               ' MBIM_OPEN_DONE message is sent upon '
+                               'successful completion of this message.',
+            'mbim1.0:9.3.2#1': 'Between the host\'s sending MBIM_CLOSE_MSG '
+                               'message and the function\'s completing the '
+                               'request (acknowledged with MBIM_CLOSE_DONE), '
+                               'the function shall ignore any MBIM control '
+                               'messages it receives on the control plane or '
+                               'the data on the bulk pipes.',
+            'mbim1.0:9.3.2#2': 'The function shall not send any MBIM control '
+                               'messages on the control plane or data on the '
+                               'bulk pipes after completing '
+                               'MBIM_CLOSE_MSG message (acknowledging it with '
+                               'the MBIM_CLOSE_DONE message) with one '
+                               'exception and that is MBIM_ERROR_NOT_OPENED.',
+            'mbim1.0:9.3.2#3': 'On MBIM_CLOSE_MSG, any active context between '
+                               'the function and the host shall be terminated ',
+            'mbim1.0:9.4.1#1': 'The function shall respond to the '
+                               'MBIM_OPEN_MSG message with an MBIM_OPEN_DONE '
+                               'message in which the TransactionId must match '
+                               'the TransactionId in the MBIM_OPEN_MSG.',
+            'mbim1.0:9.4.1#2': 'The Status field of MBIM_OPEN_DONE shall be '
+                               'set to MBIM_STATUS_SUCCESS if the function '
+                               'initialized successfully.',
+            'mbim1.0:9.4.2#1': 'The function shall respond to the '
+                               'MBIM_CLOSE_MSG message with an '
+                               'MBIM_CLOSE_DONE message in which the '
+                               'TransactionId must match the TransactionId in '
+                               'the MBIM_CLOSE_MSG.',
+            'mbim1.0:9.4.2#2': 'The Status field of MBIM_CLOSE_DONE shall '
+                               'always be set to MBIM_STATUS_SUCCESS.',
+            'mbim1.0:9.4.3': 'The function shall respond to '
+                             'the MBIM_COMMAND_MSG message with an '
+                             'MBIM_COMMAND_DONE message in which the '
+                             'TransactionId must match the TransactionId in '
+                             'the MBIM_COMMAND_MSG.'
     }
 
     def __init__(self, assertion_id, error_string=None):

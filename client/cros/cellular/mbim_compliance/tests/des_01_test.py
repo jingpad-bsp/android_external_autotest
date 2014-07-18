@@ -23,10 +23,6 @@ from autotest_lib.client.cros.cellular.mbim_compliance.tests import des_test
 class DES_01_Test(des_test.DesTest):
     """ Implement the DES_01 Descriptors Validation for NCM/MBIM Functions """
 
-    def __init__(self, test_context):
-        self.test_context = test_context
-
-
     def run_internal(self):
         """ Run the DES_01 test. """
         # Precondition.

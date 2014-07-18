@@ -27,14 +27,6 @@ class GetDescriptorsSequence(sequence.Sequence):
     descriptors for that device.
     """
 
-    def __init__(self, test_context):
-        """
-        @param test_context: An object that wraps information about the device
-               under test.
-        """
-        self.test_context = test_context
-
-
     def run_internal(self):
         """
         Run the Get Descriptor Sequence.
