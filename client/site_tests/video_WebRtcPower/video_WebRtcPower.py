@@ -30,7 +30,7 @@ RTC_INIT_HISTOGRAM = 'Media.RTCVideoDecoderInitDecodeSuccess'
 HISTOGRAMS_URL = 'chrome://histograms/' + RTC_INIT_HISTOGRAM
 
 # Minimum battery charge percentage we prefer to run the test
-BATTERY_INITIAL_CHARGED_MIN = 30
+BATTERY_INITIAL_CHARGED_MIN = 10
 
 WEBRTC_WITH_HARDWARE_ACCELERATION = 'webrtc_with_hardware_acceleration'
 WEBRTC_WITHOUT_HARDWARE_ACCELERATION = 'webrtc_without_hardware_acceleration'
@@ -96,24 +96,25 @@ class video_WebRtcPower(test.test):
                     'document.documentElement.innerText.search("%s") != -1'
                     % RTC_INIT_HISTOGRAM)
 
-        if is_hardware_accelerated:
+        try:
             utils.poll_for_condition(
                     histograms_loaded,
                     timeout=5,
                     exception=error.TestError(
                             'Cannot find rtc video decoder histogram.'),
                     sleep_interval=1)
-
+        except error.TestError as e:
+            if is_hardware_accelerated:
+                raise e
+        else:
+            if not is_hardware_accelerated:
+                raise error.TestError(
+                        'Video decode acceleration shoud not be working.')
             if tab.EvaluateJavaScript(
                     'document.documentElement.innerText.search('
                     '"1 = 100.0%") == -1'):
                 raise error.TestError(
                         'Video decode acceleration is not working.')
-        else:
-            time.sleep(5)
-            if histograms_loaded():
-                raise error.TestError(
-                        'Video decode acceleration should not be working.')
 
         tab.Close()
 
