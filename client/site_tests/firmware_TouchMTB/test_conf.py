@@ -167,6 +167,8 @@ gesture_names_complete = {
         DRAG_LATENCY,
     ],
     DEV.TOUCHSCREEN: [
+        NOISE_LINE,
+        NOISE_STATIONARY,
         ONE_FINGER_TRACKING,
         ONE_FINGER_TO_EDGE,
         TWO_FINGER_TRACKING,
