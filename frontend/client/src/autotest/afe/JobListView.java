@@ -12,6 +12,7 @@ import autotest.common.ui.ContextMenu;
 import autotest.common.ui.NotifyManager;
 import autotest.common.ui.TabView;
 import autotest.common.ui.TableActionsPanel.TableActionsListener;
+import autotest.common.ui.ToolTip;
 
 import com.google.gwt.json.client.JSONArray;
 import com.google.gwt.json.client.JSONBoolean;
@@ -185,6 +186,10 @@ public class JobListView extends TabView implements TableActionsListener {
             }
         });
         jobTable.addFilter(jobTypeFilter);
+        addWidget(new ToolTip("?", "Suite jobs: jobs with child jobs. " +
+                                   "Sub jobs: jobs with a parent jobs. " +
+                                   "Standalone jobs: jobs without a parent or child job."),
+                  "job_type_tooltip");
         addWidget(jobTypeFilter.getWidget(), "job_type_controls");
     }
 

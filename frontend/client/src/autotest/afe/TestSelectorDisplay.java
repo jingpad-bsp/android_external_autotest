@@ -9,6 +9,7 @@ import autotest.afe.TestSelector.ISelectionManager.SelectionManagerImpl;
 import autotest.common.table.DataTable;
 import autotest.common.ui.ExtendedListBox;
 import autotest.common.ui.SimplifiedList;
+import autotest.common.ui.ToolTip;
 
 import com.google.gwt.user.client.ui.Composite;
 import com.google.gwt.user.client.ui.HTML;
@@ -31,6 +32,10 @@ public class TestSelectorDisplay extends Composite implements TestSelector.Displ
     private SelectionManagerImpl testSelection = new SelectionManagerImpl(testTable, false);
     private HTML testInfo = new HTML("Click a test to view its description");
     private HorizontalSplitPanel mainPanel = new HorizontalSplitPanel();
+    private ToolTip testTypeToolTip = new ToolTip(
+        "?",
+        "Client tests run asynchronously, as hosts become available. " +
+        "Server tests run synchronously, when all hosts are available.");
 
     public TestSelectorDisplay() {
         testInfo.setStyleName("test-description");
@@ -41,6 +46,7 @@ public class TestSelectorDisplay extends Composite implements TestSelector.Displ
         Panel testTypePanel = new HorizontalPanel();
         testTypePanel.add(new Label("Filter by test type:"));
         testTypePanel.add(testTypeSelect);
+        testTypePanel.add(testTypeToolTip);
 
         Panel testFilterPanel = new HorizontalPanel();
         testFilterPanel.add(new Label("Filter by test name:"));

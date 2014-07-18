@@ -36,8 +36,9 @@
             <td>Status:</td><td id="job_status_controls"></td>
           </tr>
           <tr>
-            <td>
+            <td class="has-tooltip">
               <span>Type:</span>
+              <span id="job_type_tooltip"></span>
             </td>
             <td id="job_type_controls"></td>
           </tr>
@@ -162,69 +163,69 @@
         <table class="data-table data-table-outlined">
           <tr class="data-row">
             <td class="field-name">Job name:</td>
-            <td id="create_job_name"></td>
+            <td class="has-tooltip" id="create_job_name"></td>
           </tr>
           <tr class="data-row data-row-alternate">
             <td class="field-name">Priority:</td>
-            <td id="create_priority"></td>
+            <td class="has-tooltip" id="create_priority"></td>
           </tr>
           <tr class="data-row">
             <td>Kernel(s): (optional)</td>
-            <td id="create_kernel"></td>
+            <td class="has-tooltip" id="create_kernel"></td>
           </tr>
           <tr class="data-row data-row-alternate">
             <td>Kernel "cmd": (optional)</td>
-            <td id="create_kernel_cmdline"></td></tr>
+            <td class="has-tooltip" id="create_kernel_cmdline"></td></tr>
           <tr class="data-row">
             <td>Image URL/Build: (optional)</td>
-            <td id="create_image_url"></td></tr>
+            <td class="has-tooltip" id="create_image_url"></td></tr>
           <tr class="data-row data-row-alternate">
             <td class="field-name">Timeout (minutes):</td>
-            <td id="create_timeout"></td>
+            <td class="has-tooltip" id="create_timeout"></td>
           </tr>
           <tr class="data-row">
             <td class="field-name">Max runtime (minutes):</td>
-            <td id="create_max_runtime"></td>
+            <td class="has-tooltip" id="create_max_runtime"></td>
           </tr>
           <tr class="data-row data-row-alternate">
             <td>Test retries: (optional)</td>
-            <td id="create_test_retry"></td>
+            <td class="has-tooltip" id="create_test_retry"></td>
           </tr>
           <tr class="data-row">
             <td>Email List: (optional)</td>
-            <td id="create_email_list"></td>
+            <td class="has-tooltip" id="create_email_list"></td>
           </tr>
           <tr class="data-row data-row-alternate">
             <td class="field-name">Skip verify:</td>
-            <td id="create_skip_verify"></td>
+            <td class="has-tooltip" id="create_skip_verify"></td>
           </tr>
           <tr class="data-row">
             <td class="field-name">Skip reset:</td>
-            <td id="create_skip_reset"></td>
+            <td class="has-tooltip" id="create_skip_reset"></td>
           </tr>
           <tr class="data-row data-row-alternate">
             <td class="field-name">Reboot before:</td>
-            <td id="create_reboot_before"></td>
+            <td class="has-tooltip" id="create_reboot_before"></td>
           </tr>
           <tr class="data-row">
             <td class="field-name">Reboot after:</td>
-            <td id="create_reboot_after"></td>
+            <td class="has-tooltip" id="create_reboot_after"></td>
           </tr>
           <tr class="data-row data-row-alternate">
             <td class="field-name">Include failed repair results:</td>
-            <td id="create_parse_failed_repair"></td>
+            <td class="has-tooltip" id="create_parse_failed_repair"></td>
           </tr>
           <tr class="data-row">
             <td class="field-name">Hostless (Suite Job):</td>
-            <td id="create_hostless"></td>
+            <td class="has-tooltip" id="create_hostless"></td>
           </tr>
           <tr class="data-row data-row-alternate">
             <td>Pool: (optional)</td>
-            <td id="create_pool"></td>
+            <td class="has-tooltip" id="create_pool"></td>
           </tr>
           <tr class="data-row">
             <td>Args: (optional)</td>
-            <td id="create_args"></td></tr>
+            <td class="has-tooltip" id="create_args"></td></tr>
 
           <tr class="data-row data-row-alternate">
             <td>Profilers: (optional)</td>

@@ -8,6 +8,7 @@ import autotest.common.Utils;
 import autotest.common.ui.RadioChooser;
 import autotest.common.ui.RadioChooserDisplay;
 import autotest.common.ui.TabView;
+import autotest.common.ui.ToolTip;
 
 import com.google.gwt.event.dom.client.ClickEvent;
 import com.google.gwt.event.dom.client.ClickHandler;
@@ -66,9 +67,23 @@ public class UserPreferencesView extends TabView implements ClickHandler {
 
         saveButton.addClickHandler(this);
 
-        addOption("Reboot before", rebootBeforeDisplay);
-        addOption("Reboot after", rebootAfterDisplay);
-        addOption("Show experimental tests", showExperimental);
+        ToolTip rebootBeforeToolTip = new ToolTip(
+            "?",
+            "Reboots all assigned hosts before the job runs. " +
+            "Click If dirty to reboot the host only if it hasn’t been rebooted " +
+            "since it was added, locked, or after running the last job.");
+        ToolTip rebootAfterToolTip = new ToolTip(
+            "?",
+            "Reboots all assigned hosts after the job runs. Click If all tests passed " +
+            "to skip rebooting the host if any test in the job fails.");
+        ToolTip showExperimentalToolTip = new ToolTip(
+            "?",
+            "Make the Create Job page show tests that are " +
+            "marked as \"experimental\" in the control file");
+
+        addOption("Default reboot before value", rebootBeforeDisplay, rebootBeforeToolTip);
+        addOption("Default reboot after value", rebootAfterDisplay, rebootAfterToolTip);
+        addOption("Show experimental tests", showExperimental, showExperimentalToolTip);
         if (staticData.getData("drone_sets_enabled").isBoolean().booleanValue()) {
             AfeUtils.populateListBox(droneSet, "drone_sets");
             addOption("Drone set", droneSet);
@@ -130,5 +145,12 @@ public class UserPreferencesView extends TabView implements ClickHandler {
         int row = preferencesTable.getRowCount();
         preferencesTable.setText(row, 0, name);
         preferencesTable.setWidget(row, 1, widget);
+    }
+
+    private void addOption(String name, Widget widget, Widget extraWidget) {
+        int row = preferencesTable.getRowCount();
+        preferencesTable.setText(row, 0, name);
+        preferencesTable.setWidget(row, 1, widget);
+        preferencesTable.setWidget(row, 2, extraWidget);
     }
 }
