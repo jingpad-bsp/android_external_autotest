@@ -516,6 +516,9 @@ def create_job_page_handler(name, priority, control_file, control_type,
     @returns The created Job id number.
     """
     control_file = rpc_utils.encode_ascii(control_file)
+    if not control_file:
+        raise model_logic.ValidationError({
+                'control_file' : "Control file cannot be empty"})
 
     if image and hostless:
         return site_rpc_interface.create_suite_job(
