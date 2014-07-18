@@ -2,13 +2,19 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import re
 import shlex
 
 from autotest_lib.client.cros.audio import cmd_utils
 
-ARECORD_PATH='/usr/bin/arecord'
-APLAY_PATH='/usr/bin/aplay'
-AMIXER_PATH='/usr/bin/amixer'
+
+ARECORD_PATH = '/usr/bin/arecord'
+APLAY_PATH = '/usr/bin/aplay'
+AMIXER_PATH = '/usr/bin/amixer'
+CARD_NUM_RE = re.compile('(\d+) \[.*\]:.*')
+CONTROL_NAME_RE = re.compile("name='(.*)'")
+SCONTROL_NAME_RE = re.compile("Simple mixer control '(.*)'")
+
 
 def _get_format_args(channels, bits, rate):
     args = ['-c', str(channels)]
@@ -17,13 +23,140 @@ def _get_format_args(channels, bits, rate):
     return args
 
 
-def _get_default_device():
-    return 'plughw:%d' % get_default_soundcard_id()
+def get_num_soundcards():
+    '''Returns the number of soundcards.
+
+    Number of soundcards is parsed from /proc/asound/cards.
+    Sample content:
+
+      0 [PCH            ]: HDA-Intel - HDA Intel PCH
+                           HDA Intel PCH at 0xef340000 irq 103
+      1 [NVidia         ]: HDA-Intel - HDA NVidia
+                           HDA NVidia at 0xef080000 irq 36
+    '''
+
+    card_id = None
+    with open('/proc/asound/cards', 'r') as f:
+        for line in f:
+            match = CARD_NUM_RE.search(line)
+            if match:
+                card_id = int(match.group(1))
+    if card_id is None:
+        return 0
+    else:
+        return card_id + 1
 
 
-def playback(*args, **kargs):
-    '''A helper funciton to execute playback_cmd.'''
-    cmd_utils.execute(playback_cmd(*args, **kargs))
+def _get_soundcard_controls(card_id):
+    '''Gets the controls for a soundcard.
+
+    @param card_id: Soundcard ID.
+    @raise RuntimeError: If failed to get soundcard controls.
+
+    Controls for a soundcard is retrieved by 'amixer controls' command.
+    amixer output format:
+
+      numid=32,iface=CARD,name='Front Headphone Jack'
+      numid=28,iface=CARD,name='Front Mic Jack'
+      numid=1,iface=CARD,name='HDMI/DP,pcm=3 Jack'
+      numid=8,iface=CARD,name='HDMI/DP,pcm=7 Jack'
+
+    Controls with iface=CARD are parsed from the output and returned in a set.
+    '''
+
+    cmd = AMIXER_PATH + ' -c %d controls' % card_id
+    p = cmd_utils.popen(shlex.split(cmd), stdout=cmd_utils.PIPE)
+    output, _ = p.communicate()
+    if p.wait() != 0:
+        raise RuntimeError('amixer command failed')
+
+    controls = set()
+    for line in output.splitlines():
+        if not 'iface=CARD' in line:
+            continue
+        match = CONTROL_NAME_RE.search(line)
+        if match:
+            controls.add(match.group(1))
+    return controls
+
+
+def _get_soundcard_scontrols(card_id):
+    '''Gets the simple mixer controls for a soundcard.
+
+    @param card_id: Soundcard ID.
+    @raise RuntimeError: If failed to get soundcard simple mixer controls.
+
+    Simple mixer controls for a soundcard is retrieved by 'amixer scontrols'
+    command.  amixer output format:
+
+      Simple mixer control 'Master',0
+      Simple mixer control 'Headphone',0
+      Simple mixer control 'Speaker',0
+      Simple mixer control 'PCM',0
+
+    Simple controls are parsed from the output and returned in a set.
+    '''
+
+    cmd = AMIXER_PATH + ' -c %d scontrols' % card_id
+    p = cmd_utils.popen(shlex.split(cmd), stdout=cmd_utils.PIPE)
+    output, _ = p.communicate()
+    if p.wait() != 0:
+        raise RuntimeError('amixer command failed')
+
+    scontrols = set()
+    for line in output.splitlines():
+        match = SCONTROL_NAME_RE.findall(line)
+        if match:
+            scontrols.add(match[0])
+    return scontrols
+
+
+def get_first_soundcard_with_control(cname, scname):
+    '''Returns the soundcard ID with matching control name.
+
+    @param cname: Control name to look for.
+    @param scname: Simple control name to look for.
+    '''
+
+    for card_id in xrange(get_num_soundcards()):
+        for name, func in [(cname, _get_soundcard_controls),
+                           (scname, _get_soundcard_scontrols)]:
+            if any(name in c for c in func(card_id)):
+                return card_id
+    return None
+
+
+def get_default_playback_device():
+    '''Gets the first playback device.
+
+    Returns the first playback device or None if it fails to find one.
+    '''
+
+    card_id = get_first_soundcard_with_control(cname='Headphone Jack',
+                                               scname='Headphone')
+    if card_id is None:
+        return None
+    return 'plughw:%d' % card_id
+
+
+def get_default_record_device():
+    '''Gets the first record device.
+
+    Returns the first record device or None if it fails to find one.
+    '''
+
+    card_id = get_first_soundcard_with_control(cname='Mic Jack', scname='Mic')
+    if card_id is None:
+        return None
+    return 'plughw:%d' % card_id
+
+
+def playback(*args, **kwargs):
+    '''A helper funciton to execute playback_cmd.
+
+    @param kwargs: kwargs passed to playback_cmd.
+    '''
+    cmd_utils.execute(playback_cmd(*args, **kwargs))
 
 
 def playback_cmd(
@@ -36,21 +169,27 @@ def playback_cmd(
     @param bits: The number of bits of each audio sample.
     @param rate: The sampling rate.
     @param device: The device to play the audio on.
+    @raise RuntimeError: If no playback device is available.
     '''
     args = [APLAY_PATH]
     if duration is not None:
         args += ['-d', str(duration)]
     args += _get_format_args(channels, bits, rate)
     if device is None:
-        device = _get_default_device()
+        device = get_default_playback_device()
+        if device is None:
+            raise RuntimeError('no playback device')
     args += ['-D', device]
     args += [input]
     return args
 
 
-def record(*args, **kargs):
-    '''A helper function to execute record_cmd.'''
-    cmd_utils.execute(record_cmd(*args, **kargs))
+def record(*args, **kwargs):
+    '''A helper function to execute record_cmd.
+
+    @param kwargs: kwargs passed to record_cmd.
+    '''
+    cmd_utils.execute(record_cmd(*args, **kwargs))
 
 
 def record_cmd(
@@ -63,71 +202,16 @@ def record_cmd(
     @param bits: The number of bits of each audio sample.
     @param rate: The sampling rate.
     @param device: The device used to recorded the audio from.
+    @raise RuntimeError: If no record device is available.
     '''
     args = [ARECORD_PATH]
     if duration is not None:
         args += ['-d', str(duration)]
     args += _get_format_args(channels, bits, rate)
     if device is None:
-        device = _get_default_device()
+        device = get_default_record_device()
+        if device is None:
+            raise RuntimeError('no record device')
     args += ['-D', device]
     args += [output]
     return args
-
-
-_default_soundcard_id = -1
-
-def get_default_soundcard_id():
-    '''Gets the ID of the default soundcard.
-
-    @raise RuntimeError: if it fails to find the default soundcard id.
-    '''
-    global _default_soundcard_id
-    if _default_soundcard_id == -1:
-        _default_soundcard_id = _find_default_soundcard_id()
-
-    if _default_soundcard_id is None:
-        raise RuntimeError('no soundcard found')
-    return _default_soundcard_id
-
-
-def _find_default_soundcard_id():
-    '''Finds the id of the default hardware soundcard.'''
-
-    # If there is only one card, choose it; otherwise,
-    # choose the first card with scontrols named 'Speaker'
-    # or with controls named 'Headphone Jack'.
-    cmd = 'amixer -c %d scontrols'
-    id = 0
-    while True:
-        p = cmd_utils.popen(shlex.split(cmd % id), stdout=cmd_utils.PIPE)
-        output, _ = p.communicate()
-        if p.wait() != 0: # end of the card list
-            break
-        if 'speaker' in output.lower():
-            return id
-        id = id + 1
-
-    # If there is only one soundcard, return it.
-    if id == 1:
-        return 0
-
-    # Some devices do not have speakers, use 'Headphone Jack' to match.
-    num_cards = id
-    cmd = 'amixer -c %d controls'
-    for id in xrange(num_cards):
-        p = cmd_utils.popen(shlex.split(cmd % id), stdout=cmd_utils.PIPE)
-        output, _ = p.communicate()
-        if p.wait() != 0:
-            continue
-        if 'headphone jack' in output.lower():
-            return id
-
-    return None
-
-
-def dump_control_contents(device=None):
-    if device is None:
-        device = 'hw:%d' % get_default_soundcard_id()
-    args = [AMIXER_PATH, '-D', device, 'contents']
-    return cmd_utils.execute(args, stdout=cmd_utils.PIPE)
