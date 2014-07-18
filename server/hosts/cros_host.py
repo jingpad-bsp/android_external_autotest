@@ -2131,6 +2131,11 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         @return: A list of labels detected by tool avtest_label_detect.
         """
         try:
+            # TODO (sbasi) crbug.com/391081 - Remove once the proper fix has
+            # landed and supporting images older than the fix is no longer
+            # necessary.
+            # Change back to VT1 so avtest_label_detect does not get stuck.
+            self.run('chvt 1')
             result = self.run('/usr/local/bin/avtest_label_detect').stdout
             return re.findall('^Detected label: (\w+)$', result, re.M)
         except error.AutoservRunError:
