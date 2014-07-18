@@ -9,8 +9,6 @@ Reference:
     [1] Universal Serial Bus Communication Class MBIM Compliance Testing: 19
         http://www.usb.org/developers/docs/devclass_docs/MBIM-Compliance-1.0.pdf
 """
-import struct
-import array
 from usb import core
 
 import common
@@ -24,14 +22,6 @@ from autotest_lib.client.cros.cellular.mbim_compliance.sequences \
 
 class MBIMOpenGenericSequence(open_sequence.OpenSequence):
     """ Implement the MBIM Open Generic Sequence. """
-
-    def __init__(self, test_context):
-        """
-        @param test_context: An object that wraps information about the device
-               under test.
-        """
-        self.test_context = test_context
-
 
     def run_internal(self):
         """ Run the MBIM Open Generic Sequence. """
@@ -117,8 +107,11 @@ class MBIMOpenGenericSequence(open_sequence.OpenSequence):
 
         # TODO(mcchou): For unblocking the CM_xx tests. A new version of
         #               message contructing will be presented.
-        packets = [array.array('B',
-                [1, 0, 0, 0, 16, 0, 0, 0, 1, 0, 0, 0, 0, 6, 0, 0])]
+        max_control_message = (
+                mbim_functional_descriptor.wMaxControlMessage)
+        open_message = mbim_control.MBIMOpenMessage(
+                max_control_transfer=max_control_message)
+        packets = open_message.generate_packets()
         device_filter = {'idVendor': self.test_context.id_vendor,
                          'idProduct': self.test_context.id_product}
 
@@ -142,15 +135,14 @@ class MBIMOpenGenericSequence(open_sequence.OpenSequence):
 
         # Step 13
         # Verify if MBIM_OPEN_MSG request succeeds.
+        response_message = mbim_control.parse_response_packets(response_packets)
 
-        # TODO(mcchou): For unblocking the CM_xx tests. A new version of
-        #               message contructing will be presented.
-        response_packet = response_packets[0]
-        status_codes = struct.unpack_from(
-                '<I', response_packet.tostring(), offset=12)
+        if response_message.transaction_id != open_message.transaction_id:
+            mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
+                                      'mbim1.0:9.4.1#1')
 
-        if status_codes[0] != mbim_control.MBIM_STATUS_SUCCESS:
+        if response_message.status_codes != mbim_control.MBIM_STATUS_SUCCESS:
             mbim_errors.log_and_raise(mbim_errors.MBIMComplianceSequenceError,
-                                      'MBIM_OPEN_MSG request failed.')
+                                      'mbim1.0:9.4.1#2')
 
-    # end of run_internal()
+        return open_message, response_message
