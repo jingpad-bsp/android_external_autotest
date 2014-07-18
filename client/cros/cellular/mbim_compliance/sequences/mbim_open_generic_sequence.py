@@ -18,9 +18,6 @@ from autotest_lib.client.cros.cellular.mbim_compliance import mbim_channel
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_control
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_errors
 from autotest_lib.client.cros.cellular.mbim_compliance import test_context
-from autotest_lib.client.cros.cellular.mbim_compliance import usb_descriptors
-from autotest_lib.client.cros.cellular.mbim_compliance.sequences \
-        import get_descriptors_sequence
 from autotest_lib.client.cros.cellular.mbim_compliance.sequences \
         import open_sequence
 
@@ -38,13 +35,7 @@ class MBIMOpenGenericSequence(open_sequence.OpenSequence):
 
     def run_internal(self):
         """ Run the MBIM Open Generic Sequence. """
-        # Step 1
-        # TODO(mcchou): This step will be removed once mbim functional
-        #               descriptor and endpoint descriptors are stashed to
-        #               test_context.py.
-        descriptors = get_descriptors_sequence.GetDescriptorsSequence(
-                self.test_context).run()
-        # Step 2
+        # Step 1 and 2
         # Find communication interface and data interface for MBIM only function
         mbim_found, ncm_mbim_found = False, False
         if self.test_context.device_type == test_context.DEVICE_TYPE_MBIM:
@@ -106,19 +97,7 @@ class MBIMOpenGenericSequence(open_sequence.OpenSequence):
 
         # Step 9
         # Send SetMaxDatagramSize() request to communication interface.
-        mbim_communication_interface_bundle = (
-                usb_descriptors.get_descriptor_bundle(
-                        descriptors, mbim_communication_interface))
-        # TODO(mcchou): Stash |mbim_functional_descriptor| to test_context.py.
-        mbim_functional_descriptors = (
-                usb_descriptors.filter_descriptors(
-                        usb_descriptors.MBIMFunctionalDescriptor,
-                        mbim_communication_interface_bundle))
-        if len(mbim_functional_descriptors) != 1:
-            mbim_errors.log_and_raise(mbim_errors.MBIMComplianceSequenceError,
-                                      'Expected 1 MBIM functional descriptor.')
-
-        mbim_functional_descriptor = mbim_functional_descriptors[0]
+        mbim_functional_descriptor = self.test_context.mbim_functional
         # Bit 3 determines whether the device can process SetMaxDatagramSize()
         # and GetMaxDatagramSize() requests.
         if (mbim_functional_descriptor.bmNetworkCapabilities>>3) & 1:
@@ -133,19 +112,9 @@ class MBIMOpenGenericSequence(open_sequence.OpenSequence):
 
         # Step 11 and 12
         # Send MBIM_OPEN_MSG request and receive the response.
-        # TODO(mcchou): Stash |interrupt_endpoint| to test_context.py.
-        interrupt_endpoint = (
-                usb_descriptors.filter_descriptors(
-                        usb_descriptors.EndpointDescriptor,
-                        mbim_communication_interface_bundle))
-        interrupt_endpoint_address = interrupt_endpoint[0].bEndpointAddress
-        """
-        packet_generator = (
-                mbim_control.PacketGenerator(
-                        mbim_control.MBIM_OPEN_MSG,
-                        mbim_functional_descriptor.wMaxControlMessage))
-        packets = packet_generator.generate_packets()
-        """
+        interrupt_endpoint_address = (
+                self.test_context.interrupt_endpoint.bEndpointAddress)
+
         # TODO(mcchou): For unblocking the CM_xx tests. A new version of
         #               message contructing will be presented.
         packets = [array.array('B',

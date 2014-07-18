@@ -119,11 +119,11 @@ class DES_02_Test(des_test.DesTest):
         no_data_data_interface = no_data_data_interfaces[0]
         no_data_data_interface_bundle = usb_descriptors.get_descriptor_bundle(
                 descriptors, no_data_data_interface)
-        endpoint_descriptors = (
+        data_endpoint_descriptors = (
                 usb_descriptors.filter_descriptors(
                         usb_descriptors.EndpointDescriptor,
                         no_data_data_interface_bundle))
-        if endpoint_descriptors:
+        if data_endpoint_descriptors:
             mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
                                       'mbim1.0:6.6#2')
 
@@ -147,13 +147,13 @@ class DES_02_Test(des_test.DesTest):
 
         mbim_data_interface_bundle = usb_descriptors.get_descriptor_bundle(
                 descriptors, mbim_data_interface)
-        endpoint_descriptors = usb_descriptors.filter_descriptors(
+        data_endpoint_descriptors = usb_descriptors.filter_descriptors(
                 usb_descriptors.EndpointDescriptor,
                 mbim_data_interface_bundle)
 
         # Check the values of fields in endpoint descriptors.
         # There should be one bulk OUT and one bulk IN.
-        if not self.has_bulk_in_and_bulk_out(endpoint_descriptors):
+        if not self.has_bulk_in_and_bulk_out(data_endpoint_descriptors):
             mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
                                       'mbim1.0:6.6#3')
 
@@ -251,32 +251,32 @@ class DES_02_Test(des_test.DesTest):
                         'mbim1.0:6.5#4')
 
         # Test step 7
-        # Get the first endpoint for current interface.
-        endpoint_descriptors = usb_descriptors.filter_descriptors(
+        # Get the first endpoint for the communication interface.
+        interrupt_endpoint_descriptors = usb_descriptors.filter_descriptors(
                 usb_descriptors.EndpointDescriptor,
                 mbim_communication_interface_bundle)
 
-        if len(endpoint_descriptors) != 1:
+        if len(interrupt_endpoint_descriptors) != 1:
             mbim_errors.log_and_raise(
                     mbim_errors.MBIMComplianceGenericAssertionError,
                     'Expected 1 endpoint, got %d.' % (
-                            len(endpoint_descriptors)))
-        endpoint_descriptor = endpoint_descriptors[0]
-        if not (endpoint_descriptor.bDescriptorType == 0x05 and
-                endpoint_descriptor.bLength == 7 and
-                endpoint_descriptor.bEndpointAddress >= 0x80 and
-                endpoint_descriptor.bmAttributes == 0x03):
+                            len(interrupt_endpoint_descriptors)))
+        interrupt_endpoint_descriptor = interrupt_endpoint_descriptors[0]
+        if not (interrupt_endpoint_descriptor.bDescriptorType == 0x05 and
+                interrupt_endpoint_descriptor.bLength == 7 and
+                interrupt_endpoint_descriptor.bEndpointAddress >= 0x80 and
+                interrupt_endpoint_descriptor.bmAttributes == 0x03):
             mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
                                       'mbim1.0:6.3#5')
 
         appear_before_functional_descriptors = False
         if mbim_extended_descriptors:
             if (mbim_extended_descriptor.index >
-                endpoint_descriptor.index):
+                interrupt_endpoint_descriptor.index):
                 appear_before_functional_descriptors = True
         else:
-            if (mbim_descriptor.index > endpoint_descriptor.index or
-                union_descriptor.index > endpoint_descriptor.index):
+            if (mbim_descriptor.index > interrupt_endpoint_descriptor.index or
+                union_descriptor.index > interrupt_endpoint_descriptor.index):
                 appear_before_functional_descriptors = True
         if appear_before_functional_descriptors:
             mbim_errors.log_and_raise(
@@ -336,6 +336,7 @@ class DES_02_Test(des_test.DesTest):
                     mbim_errors.log_and_raise(
                             mbim_errors.MBIMComplianceAssertionError,
                             'mbim1.0:6.1#2')
+
         # Update |test_context| with mbim function settings.
         if self.test_context.device_type == test_context.DEVICE_TYPE_NCM_MBIM:
             mbim_errors.log_and_raise(mbim_errors.MBIMComplianceFrameworkError,
@@ -346,4 +347,6 @@ class DES_02_Test(des_test.DesTest):
                 mbim_communication_interface)
         self.test_context.no_data_data_interface = no_data_data_interface
         self.test_context.mbim_data_interface = mbim_data_interface
+        self.test_context.mbim_functional = mbim_descriptor
+        self.test_context.interrupt_endpoint = interrupt_endpoint_descriptor
     # End of run_internal().
