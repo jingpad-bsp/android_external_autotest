@@ -39,11 +39,11 @@ public class TestSelectorDisplay extends Composite implements TestSelector.Displ
         testTable.setClickable(true);
 
         Panel testTypePanel = new HorizontalPanel();
-        testTypePanel.add(new Label("Test type:"));
+        testTypePanel.add(new Label("Filter by test type:"));
         testTypePanel.add(testTypeSelect);
 
         Panel testFilterPanel = new HorizontalPanel();
-        testFilterPanel.add(new Label("Test name:"));
+        testFilterPanel.add(new Label("Filter by test name:"));
         testFilterPanel.add(testNameFilter);
 
         Panel testInfoPanel = new VerticalPanel();
@@ -52,7 +52,8 @@ public class TestSelectorDisplay extends Composite implements TestSelector.Displ
         mainPanel.setLeftWidget(testTable);
         mainPanel.setRightWidget(testInfoPanel);
         mainPanel.setSize("100%", "30em");
-        mainPanel.setSplitPosition("20em");
+        mainPanel.setSplitPosition("30%");
+        mainPanel.addStyleName("test-selector");
 
         Panel container = new VerticalPanel();
         container.add(testTypePanel);

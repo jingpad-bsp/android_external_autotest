@@ -17,17 +17,22 @@ public class SearchFilter extends FieldFilter {
     private TextBox searchBox = new TextBox();
     private Button searchButton;
     private Panel container = new FlowPanel();
-    
+
     private String activeSearch = "";
-    
+
     public SearchFilter(String fieldName, final boolean isIncremental) {
+        this(fieldName, "Search", isIncremental);
+    }
+
+    public SearchFilter(String fieldName, String buttonName,
+                        final boolean isIncremental) {
         super(fieldName);
         setExactMatch(false);
         container.add(searchBox);
         searchBox.setStylePrimaryName("filter-box");
 
         if (!isIncremental) {
-            searchButton = new Button("Search");
+            searchButton = new Button(buttonName);
             container.add(searchButton);
             searchButton.addClickHandler(new ClickHandler() {
                 public void onClick(ClickEvent event) {

@@ -3,7 +3,6 @@ package autotest.afe;
 import autotest.common.SimpleCallback;
 import autotest.common.CustomHistory.HistoryToken;
 import autotest.common.table.Filter;
-import autotest.common.table.LinkSetFilter;
 import autotest.common.table.RadioButtonSetFilter;
 import autotest.common.table.SearchFilter;
 import autotest.common.table.SelectionManager;
@@ -19,6 +18,7 @@ import com.google.gwt.json.client.JSONBoolean;
 import com.google.gwt.json.client.JSONObject;
 import com.google.gwt.user.client.Command;
 import com.google.gwt.user.client.ui.HorizontalPanel;
+import com.google.gwt.user.client.ui.HTMLPanel;
 
 import java.util.Map;
 import java.util.Set;
@@ -29,20 +29,20 @@ public class JobListView extends TabView implements TableActionsListener {
     protected static final int JOBS_PER_PAGE = 30;
     protected static final int STATUS_QUEUED = 0, STATUS_RUNNING = 1,
                                STATUS_FINISHED = 2, STATUS_ALL = 3,
-                               STATUS_LINK_COUNT = 4;
-    protected static final int STATUS_DEFAULT_LINK = STATUS_ALL;
+                               STATUS_RADIO_BUTTON_COUNT = 4;
+    protected static final int STATUS_DEFAULT_BUTTON = STATUS_ALL;
     protected static final int TYPE_SUITE = 0, TYPE_SUB = 1, TYPE_STANDALONE = 2,
                                TYPE_ALL = 3, TYPE_RADIO_BUTTON_COUNT = 4;
     protected static final int TYPE_DEFAULT_BUTTON = TYPE_ALL;
     private static final String[] statusHistoryTokens = {"queued", "running",
                                                          "finished", "all"};
-    private static final String[] statusLinkLabels = {"Queued Jobs", "Running Jobs",
-                                                      "Finished Jobs", "All Jobs"};
+    private static final String[] statusRadioButtonLabels = {"Queued Jobs", "Running Jobs",
+                                                             "Finished Jobs", "All Jobs"};
     private static final String[] statusFilterStrings = {"not_yet_run", "running",
                                                          "finished"};
     private static final String[] typeHistoryTokens = {"suite", "sub", "standalone",
                                                        "all"};
-    private static final String[] typeRadionButtonLabels = {"Suite Jobs", "Sub Jobs",
+    private static final String[] typeRadioButtonLabels = {"Suite Jobs", "Sub Jobs",
                                                             "Standalone Jobs",
                                                             "All Jobs"};
     private static final String[] typeFilterStrings = {"suite", "sub", "standalone"};
@@ -61,16 +61,20 @@ public class JobListView extends TabView implements TableActionsListener {
         public void onJobSelected(int jobId);
     }
 
-    static class JobStateFilter extends LinkSetFilter {
+    static class JobStateFilter extends RadioButtonSetFilter {
+        public JobStateFilter() {
+            super("job-status");
+        }
+
         @Override
         public void addParams(JSONObject params) {
-            params.put(statusFilterStrings[getSelectedLink()],
+            params.put(statusFilterStrings[getSelectedButtonIndex()],
                        JSONBoolean.getInstance(true));
         }
 
         @Override
         public boolean isActive() {
-            return getSelectedLink() < STATUS_ALL;
+            return getSelectedButtonIndex() < STATUS_ALL;
         }
     }
 
@@ -153,28 +157,26 @@ public class JobListView extends TabView implements TableActionsListener {
         jobTable.addFilter(ownerFilter);
         addWidget(ownerFilter.getWidget(), "user_list");
         
-        nameFilter = new SearchFilter("name", false);
+        nameFilter = new SearchFilter("name", "Filter", false);
         jobTable.addFilter(nameFilter);
         addWidget(nameFilter.getWidget(), "jl_name_search");
         
         jobStateFilter = new JobStateFilter();
-        for (int i = 0; i < STATUS_LINK_COUNT; i++)
-            jobStateFilter.addLink(statusLinkLabels[i]);
-        // all jobs is selected by default
-        jobStateFilter.setSelectedLink(STATUS_DEFAULT_LINK);
+        for (int i = 0; i < STATUS_RADIO_BUTTON_COUNT; i++)
+            jobStateFilter.addRadioButon(statusRadioButtonLabels[i]);
+        // All Jobs is selected by default
+        jobStateFilter.setSelectedButton(STATUS_DEFAULT_BUTTON);
         jobStateFilter.addCallback(new SimpleCallback() {
             public void doCallback(Object source) {
                 updateHistory();
-            } 
+            }
         });
         jobTable.addFilter(jobStateFilter);
-        HorizontalPanel jobControls = new HorizontalPanel();
-        jobControls.add(jobStateFilter.getWidget());
-        addWidget(jobControls, "job_control_links");
+        addWidget(jobStateFilter.getWidget(), "job_status_controls");
 
         jobTypeFilter = new JobTypeFilter();
         for (int i = 0; i < TYPE_RADIO_BUTTON_COUNT; i++)
-            jobTypeFilter.addRadioButon(typeRadionButtonLabels[i]);
+            jobTypeFilter.addRadioButon(typeRadioButtonLabels[i]);
         // All Jobs is selected by default
         jobTypeFilter.setSelectedButton(TYPE_DEFAULT_BUTTON);
         jobTypeFilter.addCallback(new SimpleCallback() {
@@ -190,7 +192,7 @@ public class JobListView extends TabView implements TableActionsListener {
     public HistoryToken getHistoryArguments() {
         HistoryToken arguments = super.getHistoryArguments();
         arguments.put("state_filter",
-                      statusHistoryTokens[jobStateFilter.getSelectedLink()]);
+                      statusHistoryTokens[jobStateFilter.getSelectedButtonIndex()]);
         arguments.put("type_filter",
                       typeHistoryTokens[jobTypeFilter.getSelectedButtonIndex()]);
         return arguments;
@@ -200,11 +202,11 @@ public class JobListView extends TabView implements TableActionsListener {
     public void handleHistoryArguments(Map<String, String> arguments) {
         String stateFilter = arguments.get("state_filter");
         if (stateFilter == null) {
-            jobStateFilter.setSelectedLink(STATUS_DEFAULT_LINK);
+            jobStateFilter.setSelectedButton(STATUS_DEFAULT_BUTTON);
         } else {
-            for (int i = 0; i < STATUS_LINK_COUNT; i++) {
+            for (int i = 0; i < STATUS_RADIO_BUTTON_COUNT; i++) {
                 if (stateFilter.equals(statusHistoryTokens[i])) {
-                    jobStateFilter.setSelectedLink(i);
+                    jobStateFilter.setSelectedButton(i);
                     break;
                 }
             }

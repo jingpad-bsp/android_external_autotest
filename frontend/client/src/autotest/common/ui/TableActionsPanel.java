@@ -25,7 +25,7 @@ public class TableActionsPanel extends Composite implements ClickHandler, CloseH
 
     private TableActionsListener listener;
     private TableActionsWithExportCsvListener csvListener;
-    private ToggleButton actionsButton = new ToggleButton("Actions");
+    private ToggleButton actionsButton = new ToggleButton("Actions ▾");
     private TableSelectionPanel selectionPanel;
     private Anchor exportCsvLink = new Anchor("Export to CSV");
 

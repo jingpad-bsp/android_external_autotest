@@ -3,8 +3,11 @@ package autotest.afe;
 import autotest.common.table.DataSource;
 import autotest.common.table.DynamicTable;
 
+import com.google.gwt.json.client.JSONObject;
+
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 public class HostTable extends DynamicTable {
     private static final String[][] HOST_COLUMNS = {
@@ -27,5 +30,12 @@ public class HostTable extends DynamicTable {
     
     public HostTable(DataSource dataSource, boolean wantSelect) {
         super(wantSelect ? HOST_COLUMNS_SELECT : HOST_COLUMNS, dataSource);
+    }
+
+    @Override
+    public void handlePage(List<JSONObject> data) {
+        super.handlePage(data);
+        // No wrap on "Hostname" of host table.
+        addStyleNameByColumnName("Hostname", "nowrap");
     }
 }

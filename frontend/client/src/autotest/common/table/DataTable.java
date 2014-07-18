@@ -13,6 +13,7 @@ import com.google.gwt.json.client.JSONObject;
 import com.google.gwt.json.client.JSONValue;
 import com.google.gwt.user.client.ui.Composite;
 import com.google.gwt.user.client.ui.HTMLTable;
+import com.google.gwt.user.client.ui.HTMLTable.CellFormatter;
 import com.google.gwt.user.client.ui.Widget;
 
 import java.util.ArrayList;
@@ -310,5 +311,19 @@ public class DataTable extends Composite implements ClickHandler, ContextMenuHan
 
     private Widget getWidgetForCell(int row, int column) {
         return widgetFactory.createWidget(row - 1, column, jsonObjects.get(row - 1));
+    }
+
+    /**
+     * Add a style name to a specific column by column name.
+     */
+    public void addStyleNameByColumnName(String columnName, String styleName) {
+        CellFormatter cellFormatter = table.getCellFormatter();
+        for (int column = 0; column < columns.length; column++) {
+            if (columns[column][1].equals(columnName)) {
+                for (int row = 1; row < table.getRowCount(); row++) {
+                    cellFormatter.addStyleName(row, column, styleName);
+                }
+            }
+        }
     }
 }

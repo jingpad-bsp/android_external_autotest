@@ -34,7 +34,7 @@ public class HostSelectorDisplay extends Composite implements HostSelector.Displ
     public HostSelectorDisplay() {
         // available host table
         availableTablePanel = new SimplePanel();
-        tabPanel.add(availableTablePanel, "Browse hosts");
+        tabPanel.add(availableTablePanel, "By browsing hosts");
 
         // choose by hostname
         Panel hostnamePanel = new VerticalPanel();
@@ -47,7 +47,7 @@ public class HostSelectorDisplay extends Composite implements HostSelector.Displ
         lowerPanel.add(addByHostnameButton);
         lowerPanel.add(allowOneTimeHostsBox);
         hostnamePanel.add(lowerPanel);
-        tabPanel.add(hostnamePanel, "Specify hostnames");
+        tabPanel.add(hostnamePanel, "By specifing hostnames");
 
         // add metahosts
         Panel labelPanel = new VerticalPanel();
@@ -62,17 +62,18 @@ public class HostSelectorDisplay extends Composite implements HostSelector.Displ
         addByLabelButton.setText("Add hosts");
         labelBottom.add(addByLabelButton);
         labelPanel.add(labelBottom);
-        tabPanel.add(labelPanel, "Specify host labels");
+        tabPanel.add(labelPanel, "By specifing host labels");
 
         tabPanel.selectTab(0);
 
         // the tabbed selector is displayed alongside the list of selected hosts
         selectedTablePanel = new VerticalPanel();
-        selectedTablePanel.addStyleName("box");
-        Label selectedTitle = new Label("Selected hosts");
+        selectedTablePanel.addStyleName("data-table");
+        selectedTablePanel.addStyleName("data-table data-table-outlined");
+        Label selectedTitle = new Label("Selected hosts:");
         selectedTitle.addStyleName("field-name");
         selectedTablePanel.add(selectedTitle);
-        Panel outerPanel = new HorizontalPanel();
+        Panel outerPanel = new VerticalPanel();
         outerPanel.add(tabPanel);
         outerPanel.add(selectedTablePanel);
         initWidget(outerPanel);

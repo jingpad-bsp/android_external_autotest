@@ -30,10 +30,11 @@ public class TableDecorator extends Composite implements DynamicTableListener {
     
     private static class LayoutRows {
         public static final int FILTERS = 0,
-                                ACTIONS = 1,
+                                TOP_ACTIONS = 1,
                                 TOP_PAGINATOR = 2,
                                 TABLE = 3,
-                                BOTTOM_PAGINATOR = 4;
+                                BOTTOM_PAGINATOR = 4,
+                                BOTTOM_ACTIONS = 5;
     }
     
     public TableDecorator(DynamicTable dataTable) {
@@ -45,13 +46,13 @@ public class TableDecorator extends Composite implements DynamicTableListener {
     
     public void addPaginators() {
         for(int i = 0; i < 2; i++) {
-            Paginator p = new Paginator();
-            dataTable.attachPaginator(p);
+            Paginator paginator = new Paginator();
+            dataTable.attachPaginator(paginator);
             if (i == 0) { // add at top
-                setRow(LayoutRows.TOP_PAGINATOR, p);
+                setRow(LayoutRows.TOP_PAGINATOR, paginator);
             }
             else { // add at bottom
-                setRow(LayoutRows.BOTTOM_PAGINATOR, p);
+                setRow(LayoutRows.BOTTOM_PAGINATOR, paginator);
             }
         }
     }
@@ -76,9 +77,14 @@ public class TableDecorator extends Composite implements DynamicTableListener {
     
     public void addSelectionPanel(boolean wantSelectVisible) {
         assert selectionManager != null;
-        TableSelectionPanel selectionPanel = new TableSelectionPanel(wantSelectVisible);
-        selectionPanel.setListener(selectionManager);
-        setActionsWidget(selectionPanel);
+        for(int i = 0; i < 2; i++) {
+            TableSelectionPanel selectionPanel = new TableSelectionPanel(wantSelectVisible);
+            selectionPanel.setListener(selectionManager);
+            if (i == 0)
+                setRow(LayoutRows.TOP_ACTIONS, selectionPanel);
+            else
+                setRow(LayoutRows.BOTTOM_ACTIONS, selectionPanel);
+        }
     }
 
     private TableActionsPanel createTableActionsPanel(boolean wantSelectVisible) {
@@ -89,19 +95,22 @@ public class TableDecorator extends Composite implements DynamicTableListener {
     }
 
     public void addTableActionsPanel(TableActionsListener listener, boolean wantSelectVisible) {
-        TableActionsPanel actionsPanel = createTableActionsPanel(wantSelectVisible);
-        actionsPanel.setActionsListener(listener);
-        setActionsWidget(actionsPanel);
+        for(int i = 0; i < 2; i++) {
+            TableActionsPanel actionsPanel = createTableActionsPanel(wantSelectVisible);
+            actionsPanel.setActionsListener(listener);
+            if (i == 0)
+                setRow(LayoutRows.TOP_ACTIONS, actionsPanel);
+            else
+                setRow(LayoutRows.BOTTOM_ACTIONS, actionsPanel);
+        }
     }
 
     public void addTableActionsWithExportCsvListener(TableActionsWithExportCsvListener listener) {
-        TableActionsPanel actionsPanel = createTableActionsPanel(true);
-        actionsPanel.setActionsWithCsvListener(listener);
-        setActionsWidget(actionsPanel);
+        addTableActionsPanel(listener, true);
     }
 
     public void setActionsWidget(Widget widget) {
-        setRow(LayoutRows.ACTIONS, widget);
+        setRow(LayoutRows.TOP_ACTIONS, widget);
     }
 
     private void setRow(int row, Widget widget) {

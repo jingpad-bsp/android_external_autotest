@@ -102,7 +102,8 @@ public class CustomTabPanel extends Composite implements CustomHistoryListener,
         otherWidgetsPanel.add(autorefreshCheckbox);
         
         CustomHistory.addHistoryListener(this);
-        
+
+        top.setStyleName("custom-tab-top");
         container.setStyleName("custom-tab-panel");
         initWidget(container);
     }

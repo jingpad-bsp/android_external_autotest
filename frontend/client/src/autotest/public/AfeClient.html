@@ -1,7 +1,7 @@
 <html>
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Autotest Frontend</title>
+    <title>Autotest Web Frontend</title>
     <script type='text/javascript' src='autotest.AfeClient.nocache.js'>
     </script>
   </head>
@@ -12,27 +12,34 @@
             style="width:0;height:0;border:0"></iframe>
 
 
-    <span class="links-box" style="float: right;">
-      Frontend |
-      <a href="server/admin">Admin interface</a> |
-      <a href="/new_tko">Results database</a> |
-      <a href="http://www.chromium.org/chromium-os/testing">Chromium OS Testing</a> |
-      <a href="/results/dashboard">Dashboard</a>
-      <span id="wmatrix" class="hidden">
+    <div class="nav-header">
+      <span class="links-box">
+        Frontend |
+        <a href="server/admin">Admin interface</a> |
+        <a href="/new_tko">Results database</a> |
+        <a href="http://www.chromium.org/chromium-os/testing">Chromium OS Testing</a> |
+        <a href="/results/dashboard">Dashboard</a>
+        <span id="wmatrix" class="hidden">
          | <a id="wmatrix-link">WMatrix</a>
+        </span>
+        <div id="motd" class="motd"></div>
       </span>
-      <div id="motd" class="motd"></div>
-    </span>
-    <img src="header.png" />
-    <br /><br />
+      <img alt="Autotest" src="header.png" class="logo" />
+      <h1> Web Frontend</h1>
+    </div>
 
     <div id="tabs" class="hidden">
       <div id="job_list" title="Job List">
-        <div id="job_control_links" class="job-control"></div>
         <!--  Table is necessary here to get the right layout with the filter widgets -->
         <table class="job-control">
           <tr>
-            <td>Type:</td><td id="job_type_controls"></td>
+            <td>Status:</td><td id="job_status_controls"></td>
+          </tr>
+          <tr>
+            <td>
+              <span>Type:</span>
+            </td>
+            <td id="job_type_controls"></td>
           </tr>
           <tr>
             <td>Owner:</td><td id="user_list"></td>
@@ -58,46 +65,82 @@
         <div id="view_data">
           <span id="view_abort"></span><span id="view_clone"></span>
           <span id="view_recurring"></span><br>
-          <span class="field-name">Label:</span>
-          <span id="view_label"></span><br>
-          <span class="field-name">Owner:</span>
-          <span id="view_owner"></span><br>
-          <span class="field-name">Parent job id:</span>
-          <a id="view_parent"></a><br>
-          <span class="field-name">Test retries:</span>
-          <span id="view_test_retry"></span><br>
-          <span class="field-name">Priority:</span>
-          <span id="view_priority"></span><br>
-          <span class="field-name">Created:</span>
-          <span id="view_created"></span><br>
-          <span class="field-name">Timeout:</span>
-          <span id="view_timeout"></span> minutes<br>
-          <span class="field-name">Image (Build Name):</span>
-          <span id="view_image_url"></span><br>
-          <span class="field-name">Max runtime:</span>
-          <span id="view_max_runtime"></span> minutes<br>
-          <span class="field-name">Email List:</span>
-          <span id="view_email_list"></span><br>
-          <span class="field-name">Run verify:</span>
-          <span id="view_run_verify"></span><br>
-          <span class="field-name">Reboot options:</span>
-          <span id="view_reboot_before"></span> before job,
-          <span id="view_reboot_after"></span> after job<br>
+          <table class="data-table data-table-outlined">
+            <tr class="data-row">
+              <td><span class="field-name">Label:</span></td>
+              <td><span id="view_label"></span></td>
+            </tr>
+            <tr class="data-row data-row-alternate">
+              <td><span class="field-name">Owner:</span></td>
+              <td><span id="view_owner"></span></td>
+            </tr>
+            <tr class="data-row">
+              <td><span class="field-name">Parent job id:</span></td>
+              <td><a id="view_parent"></a></td>
+            </tr>
+            <tr class="data-row data-row-alternate">
+              <td><span class="field-name">Test retries:</span></td>
+              <td><span id="view_test_retry"></span></td>
+            </tr>
+            <tr class="data-row">
+              <td><span class="field-name">Priority:</span></td>
+              <td><span id="view_priority"></span></td>
+            </tr>
+            <tr class="data-row data-row-alternate">
+              <td><span class="field-name">Created:</span></td>
+              <td><span id="view_created"></span></td>
+            </tr>
+            <tr class="data-row">
+              <td><span class="field-name">Timeout:</span></td>
+              <td><span id="view_timeout"></span> minutes</td>
+            </tr>
+            <tr class="data-row data-row-alternate">
+              <td><span class="field-name">Image (Build Name):</span></td>
+              <td><span id="view_image_url"></span></td>
+            </tr>
+            <tr class="data-row">
+              <td><span class="field-name">Max runtime:</span></td>
+              <td><span id="view_max_runtime"></span> minutes</td>
+            </tr>
+            <tr class="data-row data-row-alternate">
+              <td><span class="field-name">Email List:</span></td>
+              <td><span id="view_email_list"></span></td>
+            </tr>
+            <tr class="data-row">
+              <td><span class="field-name">Run verify:</span></td>
+              <td><span id="view_run_verify"></span></td>
+            </tr>
+            <tr class="data-row data-row-alternate">
+              <td><span class="field-name">Reboot options:</span></td>
+              <td>
+                <span id="view_reboot_before"></span> before job,
+                <span id="view_reboot_after"></span> after job
+              </td>
+            </tr>
+            <tr class="data-row">
+              <td><span class="field-name">Include failed repair results:</span></td>
+              <td><span id="view_parse_failed_repair"></span></td>
+            </tr>
+            <tr class="data-row data-row-alternate">
+              <td><span class="field-name">Dependencies:</span></td>
+              <td><span id="view_dependencies"></span></td>
+            </tr>
+            <tr class="data-row">
+              <td><span class="field-name">Synchronization count:</span></td>
+              <td><span id="view_synch_count"></span></td>
+            </tr>
+            <tr class="data-row data-row-alternate">
+              <td><span class="field-name">Status:</span></td>
+              <td><span id="view_status"></span></td>
+            </tr>
+            <tr class="data-row" id="view_drone_set_wrapper">
+              <td><span class="field-name">Drone set:</span></td>
+              <td><span id="view_drone_set"></span></td>
+            </tr>
+          </table><br>
 
-          <span id="view_drone_set_wrapper">
-            <span class="field-name">Drone set:</span>
-            <span id="view_drone_set"></span><br>
-          </span>
-
-          <span class="field-name">Include failed repair results:</span>
-          <span id="view_parse_failed_repair"></span><br>
-          <span class="field-name">Dependencies:</span>
-          <span id="view_dependencies"></span><br>
-          <span class="field-name">Synchronization count:</span>
-          <span id="view_synch_count"></span><br>
-          <span class="field-name">Status:</span>
-          <span id="view_status"></span><br>
           <div id="view_control_file"></div><br>
+
           <span class="field-name">
             Full results
             <a id="old_results_link" target="_blank">(open in new window)</a>
@@ -105,11 +148,10 @@
             <a id="triage_failures_link" target="_blank">(triage failures)</a>
             <a id="raw_results_link" target="_blank">(raw results logs)</a><br>
           </span>
+          <span id="tko_results"></span><br><br>
 
-          <span id="tko_results"></span><br>
-
-          <span class="field-name">Hosts</span>
-          <div id="job_hosts_table"></div>
+          <span class="field-name">Hosts for this job</span>
+          <div id="job_hosts_table"></div><br>
 
           <span class="field-name">Child jobs</span>
           <div id="child_jobs_table"></div><br>
@@ -117,73 +159,102 @@
       </div>
 
       <div id="create_job"  title="Create Job">
-        <div class="links-box" style="float: right">
-          <a href="http://autotest.kernel.org/wiki/WebFrontendHowTo#Createjobparameters">
-            Create Job Help
-          </a>
-        </div>
-        <table class="form-table">
-          <tr><td class="field-name">Job name:</td>
-              <td id="create_job_name"></td><td></td></tr>
-          <tr><td class="field-name">Priority:</td>
-              <td id="create_priority"></td><td></td></tr>
-          <tr><td class="field-name">Kernel(s):</td>
-              <td id="create_kernel"></td>
-              <td class="help">Example: "2.6.18-rc3" or
-              "http://example.com/kernel-2.6.30.rpm"
-              Separate multiple kernels with a comma and/or space.
-              </td></tr>
-          <tr><td class="field-name">Kernel "cmdline":</td>
-              <td id="create_kernel_cmdline"></td></tr>
-          <tr><td class="field-name">Image URL/Build:</td>
-              <td id="create_image_url"></td>
-              <td class="help">Example: "x86-alex-release/R27-3837.0.0"
-              </td></tr>
-          <tr><td class="field-name">Timeout (minutes):</td>
-              <td id="create_timeout"></td><td></td></tr>
-          <tr><td class="field-name">Max runtime (minutes):</td>
-              <td id="create_max_runtime"></td><td></td></tr>
-          <tr><td class="field-name">Test retries:</td>
-              <td id="create_test_retry"></td><td></td></tr>
-          <tr><td class="field-name">Email List:</td>
-              <td id="create_email_list"></td><td></td></tr>
-          <tr><td class="field-name">Skip verify:</td>
-              <td id="create_skip_verify"></td><td></td></tr>
-          <tr><td class="field-name">Skip reset:</td>
-              <td id="create_skip_reset"></td><td></td></tr>
-          <tr><td class="field-name">Reboot before:</td>
-              <td id="create_reboot_before"></td><td></td></tr>
-          <tr><td class="field-name">Reboot after:</td>
-              <td id="create_reboot_after"></td><td></td></tr>
-          <tr><td class="field-name">Include failed repair results:</td>
-              <td id="create_parse_failed_repair"></td><td></td></tr>
-          <tr><td class="field-name">Hostless (Suite Job):</td>
-              <td id="create_hostless"></td><td></td></tr>
-          <tr><td class="field-name">Pool:</td>
-              <td id="create_pool"></td><td></td></tr>
-          <tr><td class="field-name">Args:</td>
-              <td id="create_args"></td>
-              <td class="help">Example: "device_addrs=00:1F:20:33:6A:1E,
-              arg2=value2, arg3=value3" Separate multiple args with commas.
-              </td></tr>
+        <table class="data-table data-table-outlined">
+          <tr class="data-row">
+            <td class="field-name">Job name:</td>
+            <td id="create_job_name"></td>
+          </tr>
+          <tr class="data-row data-row-alternate">
+            <td class="field-name">Priority:</td>
+            <td id="create_priority"></td>
+          </tr>
+          <tr class="data-row">
+            <td>Kernel(s): (optional)</td>
+            <td id="create_kernel"></td>
+          </tr>
+          <tr class="data-row data-row-alternate">
+            <td>Kernel "cmd": (optional)</td>
+            <td id="create_kernel_cmdline"></td></tr>
+          <tr class="data-row">
+            <td>Image URL/Build: (optional)</td>
+            <td id="create_image_url"></td></tr>
+          <tr class="data-row data-row-alternate">
+            <td class="field-name">Timeout (minutes):</td>
+            <td id="create_timeout"></td>
+          </tr>
+          <tr class="data-row">
+            <td class="field-name">Max runtime (minutes):</td>
+            <td id="create_max_runtime"></td>
+          </tr>
+          <tr class="data-row data-row-alternate">
+            <td>Test retries: (optional)</td>
+            <td id="create_test_retry"></td>
+          </tr>
+          <tr class="data-row">
+            <td>Email List: (optional)</td>
+            <td id="create_email_list"></td>
+          </tr>
+          <tr class="data-row data-row-alternate">
+            <td class="field-name">Skip verify:</td>
+            <td id="create_skip_verify"></td>
+          </tr>
+          <tr class="data-row">
+            <td class="field-name">Skip reset:</td>
+            <td id="create_skip_reset"></td>
+          </tr>
+          <tr class="data-row data-row-alternate">
+            <td class="field-name">Reboot before:</td>
+            <td id="create_reboot_before"></td>
+          </tr>
+          <tr class="data-row">
+            <td class="field-name">Reboot after:</td>
+            <td id="create_reboot_after"></td>
+          </tr>
+          <tr class="data-row data-row-alternate">
+            <td class="field-name">Include failed repair results:</td>
+            <td id="create_parse_failed_repair"></td>
+          </tr>
+          <tr class="data-row">
+            <td class="field-name">Hostless (Suite Job):</td>
+            <td id="create_hostless"></td>
+          </tr>
+          <tr class="data-row data-row-alternate">
+            <td>Pool: (optional)</td>
+            <td id="create_pool"></td>
+          </tr>
+          <tr class="data-row">
+            <td>Args: (optional)</td>
+            <td id="create_args"></td></tr>
 
-          <tr id="create_drone_set_wrapper">
-            <td class="field-name">Drone set:</td>
-            <td id="create_drone_set" colspan="2"></td>
+          <tr class="data-row data-row-alternate">
+            <td>Profilers: (optional)</td>
+            <td id="create_profilers"></td>
           </tr>
 
-          <tr><td class="field-name">Tests:</td>
-              <td id="create_tests" colspan="2"></td></tr>
-          <tr><td class="field-name">Profilers:</td>
-              <td id="create_profilers" colspan="2"></td></tr>
-          <tr><td colspan="3" id="create_edit_control"></td></tr>
-          <tr><td colspan="3" id="create_host_selector"></td></tr>
-          <tr>
-            <td id="create_submit"></td>
-            <td id="create_template_job"></td>
-            <td id="create_reset"></td>
+          <tr id="create_drone_set_wrapper" class="data-row data-row-alternate">
+            <td class="field-name">Drone set:</td>
+            <td id="create_drone_set"></td>
           </tr>
         </table>
+        <br>
+
+        <span class="field-name">Select Tests to Run:</span>
+        <span id="create_tests"></span>
+        <br>
+
+        <span class="field-name">Control File:</span>
+        <div id="create_edit_control"></div>
+        <br>
+
+        <span class="field-name">Select Hosts for Running Tests:</span>
+        <span id="create_host_selector"></span>
+        <br>
+
+        <span>
+          <span id="create_submit"></span>
+          <span id="create_template_job"></span>
+          <span id="create_reset"></span>
+        </span>
       </div>
 
       <div id="hosts" title="Host List">
@@ -202,20 +273,36 @@
           <span id="view_host_repair_button"></span>
         </div>
         <div id="view_host_data">
-          <span class="field-name">Platform:</span>
-          <span id="view_host_platform"></span><br>
-          <span class="field-name">Other labels:</span>
-          <span id="view_host_labels"></span><br>
-          <span class="field-name">ACLs:</span>
-          <span id="view_host_acls"></span><br>
-          <span class="field-name">Status:</span>
-          <span id="view_host_status"></span><br>
-          <span class="field-name">Locked:</span>
-          <span id="view_host_locked"></span>
-          <span id="view_host_lock_button"></span><br>
-          <span class="field-name">Protection level:</span>
-          <span id="view_host_protection"></span>
-          <br><br>
+          <table class="data-table data-table-outlined">
+            <tr class="data-row">
+              <td><span class="field-name">Platform:</span></td>
+              <td><span id="view_host_platform"></span></td>
+            </tr>
+            <tr class="data-row data-row-alternate">
+              <td><span class="field-name">Other labels:</span></td>
+              <td><span id="view_host_labels"></span></td>
+            </tr>
+            <tr class="data-row">
+              <td><span class="field-name">ACLs:</span></td>
+              <td><span id="view_host_acls"></span></td>
+            </tr>
+            <tr class="data-row data-row-alternate">
+              <td><span class="field-name">Status:</span></td>
+              <td><span id="view_host_status"></span></td>
+            </tr>
+            <tr class="data-row">
+              <td><span class="field-name">Locked:</span></td>
+              <td>
+                <span id="view_host_locked"></span>
+                <span id="view_host_lock_button"></span>
+              </td>
+            </tr>
+            <tr class="data-row data-row-alternate">
+              <td><span class="field-name">Protection level:</span></td>
+              <td><span id="view_host_protection"></span></td>
+            </tr>
+          </table>
+          <br>
           <span class="field-name">Jobs for this host:</span>
           <div id="view_host_jobs_table"></div>
         </div>
@@ -230,5 +317,14 @@
 
     <!--  for debugging only -->
     <div id="error_display"></div>
+
+    <div id="footer">
+      <span class="links-box">
+        <a href="https://code.google.com/p/chromium/issues/list?q=label%3Aafe">Know Issues</a> |
+        <a href="https://code.google.com/p/chromium/issues/entry?template=Defect%20report%20from%20developer&labels=Type-Bug,Hardware-Lab,OS-Chrome,afe">Report AFE Bug</a> |
+        <a href="https://code.google.com/p/chromium/issues/entry?template=Defect%20report%20from%20developer&labels=Type-Bug,Hardware-Lab,OS-Chrome,Proj-Moblab">Report Moblab Bug</a> |
+        <a href="mailto:chromeos-lab-infrastructure@google.com">Email the developers</a>
+      </span>
+    </div>
   </body>
 </html>

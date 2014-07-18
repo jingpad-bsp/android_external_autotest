@@ -63,7 +63,7 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
         new CheckBoxImpl("Run each test without profilers first");
     private ExtendedListBox droneSet = new ExtendedListBox();
     private TextAreaImpl controlFile = new TextAreaImpl();
-    private DisclosurePanel controlFilePanel = new DisclosurePanel();
+    private DisclosurePanel controlFilePanel = new DisclosurePanel("");
     private ControlTypeSelectDisplay controlTypeSelect = new ControlTypeSelectDisplay();
     private TextBoxImpl synchCountInput = new TextBoxImpl();
     private ButtonImpl editControlButton = new ButtonImpl();
@@ -71,7 +71,7 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
     private ButtonImpl submitJobButton = new ButtonImpl("Submit Job");
     private Button createTemplateJobButton = new Button("Create Template Job");
     private Button resetButton = new Button("Reset");
-    private Anchor viewLink = new Anchor("");
+    private Label viewLink = new Label("");
 
     public void initialize(HTMLPanel panel) {
         Panel profilerControls = new VerticalPanel();
@@ -95,6 +95,7 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
         controlEditPanel.add(controlFile);
 
         Panel controlHeaderPanel = new HorizontalPanel();
+        controlHeaderPanel.add(controlFilePanel.getHeader());
         controlHeaderPanel.add(viewLink);
         controlHeaderPanel.add(editControlButton);
 
