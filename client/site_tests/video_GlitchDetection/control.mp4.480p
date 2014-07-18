@@ -25,6 +25,6 @@ All test results regardless of result are stored and viewable.
 
 job.run_test('video_GlitchDetection',
               channel='dev',
-              video_name='big_buck',
+              video_name='bigbuck',
               video_format='mp4',
               video_def='480p')
