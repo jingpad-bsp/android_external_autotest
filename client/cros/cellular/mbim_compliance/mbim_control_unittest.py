@@ -175,7 +175,7 @@ class MBIMControlTestCase(unittest.TestCase):
                          '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
                          '\x00\x00\x00\x00')
         self.assertEqual(message.cid, 1)
-        self.assertEqual(message.status, mbim_control.MBIM_STATUS_SUCCESS)
+        self.assertEqual(message.status_codes, mbim_control.MBIM_STATUS_SUCCESS)
         self.assertEqual(message.information_buffer_length, 8)
         self.assertEqual(message.information_buffer,
                          array.array('B', [0x01, 0x01, 0x01, 0x01, 0x01, 0x01,

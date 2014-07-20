@@ -222,7 +222,10 @@ class MBIMComplianceAssertionError(MBIMComplianceError):
                              'the MBIM_COMMAND_MSG message with an '
                              'MBIM_COMMAND_DONE message in which the '
                              'TransactionId must match the TransactionId in '
-                             'the MBIM_COMMAND_MSG.'
+                             'the MBIM_COMMAND_MSG.',
+            'mbim1.0:9.4.5#1': 'If the CID is successful, the function shall '
+                               'set the Status field to MBIM_STATUS_SUCCESS '
+                               'in the MBIM_COMMAND_DONE.'
     }
 
     def __init__(self, assertion_id, error_string=None):

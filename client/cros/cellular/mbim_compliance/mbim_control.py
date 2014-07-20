@@ -20,6 +20,7 @@ Reference:
 import array
 import struct
 import sys
+import uuid
 
 import common
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_errors
@@ -42,6 +43,27 @@ MBIM_INDICATE_STATUS_MSG = 0x80000005
 
 # The following type values are defined for the MBIM status codes.
 MBIM_STATUS_SUCCESS = 0x00000000
+
+# The following command codes are defined for the MBIM command identifiers.
+MBIM_CID_DEVICE_CAPS = 0x00000001
+MBIM_CID_SUBSCRIBER_READY_STATUS = 0x00000002
+MBIM_CID_RADIO_STATE = 0x00000003
+MBIM_CID_PIN = 0x00000004
+MBIM_CID_HOME_PROVIDER = 0x00000006
+MBIM_CID_REGISTER_STATE = 0x00000009
+MBIM_CID_PACKET_SERVICE = 0x0000000A
+MBIM_CID_SIGNAL_STATE = 0x0000000B
+MBIM_CID_CONNECT = 0x0000000C
+MBIM_CID_SERVICE_ACTIVATION = 0x0000000E
+MBIM_CID_IP_CONFIGURATION = 0x0000000F
+MBIM_CID_DEVICE_SERVICES = 0x00000010
+
+# The following command types are defined for the MBIM command message.
+COMMAND_TYPE_QUERY = 0
+COMMAND_TYPE_SET = 1
+
+# The following UUID values are defined for the device service identifiers.
+UUID_BASIC_CONNECT = uuid.UUID('a289cc33-bcbb-8b4f-b6b0-133ec2aae6df')
 
 
 class MBIMData(object):
@@ -347,7 +369,7 @@ class MBIMCommandDone(MBIMMessageBase):
     _FIELDS = MBIMHeader.get_fields() + MBIMFragmentHeader.get_fields()
     _COMMAND_INFORMATION = (('16s', 'device_service_id'),
                             ('I', 'cid'),
-                            ('I', 'status'),
+                            ('I', 'status_codes'),
                             ('I', 'information_buffer_length'))
     _DEFAULTS = {'message_type': MBIM_COMMAND_DONE}
 
