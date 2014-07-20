@@ -148,11 +148,15 @@ class MBIMMessageBase(MBIMData):
                     'Unknown field(s) %s found in arguments for %s.' % (
                             unknown_keys, self.__class__.__name__))
 
+        # Some fields will be computed in the process of |generate_packet|, so
+        # these fields are not required in |kwargs|. Packets creation will fail
+        # if there is no value in |kwargs| and |defaults| for any of the
+        # required fields. The optional/required fields depends on the type of
+        # the message created.
         if self.__class__ in [MBIMOpenDone, MBIMCloseDone, MBIMCommandDone]:
             optional_fields = set()
         else:
-            optional_fields = set(['transaction_id', 'message_length',
-                                   'total_fragments', 'current_fragment'])
+            optional_fields = set(['transaction_id', 'message_length'])
         required_fields = (set(self.all_field_names) - optional_fields)
 
         for name in required_fields:
@@ -165,6 +169,7 @@ class MBIMMessageBase(MBIMData):
                         mbim_errors.MBIMComplianceControlMessageError,
                         'Field %s is required to create a %s.' % (
                                 name, self.__class__.__name__))
+
             setattr(self, name, value)
 
 
@@ -257,6 +262,9 @@ class MBIMMessageBase(MBIMData):
                 |MBIMCommandDone|.
 
         """
+        if cls not in [MBIMOpenDone, MBIMCloseDone, MBIMCommandDone]:
+            mbim_errors.log_and_raise(NotImplementedError)
+
         # Parse the first packet.
         response_contents = cls.unpack(packets[0])
         response_message = cls(**response_contents)
@@ -280,9 +288,6 @@ class MBIMMessageBase(MBIMData):
 
                 info_buffer.extend(packet[length_of_headers:])
             setattr(response_message, 'information_buffer', info_buffer)
-
-        elif cls not in [MBIMOpenDone, MBIMCloseDone]:
-            mbim_errors.log_and_raise(NotImplementedError)
 
         return response_message
 
@@ -310,7 +315,7 @@ class MBIMCommandMessage(MBIMMessageBase):
                             ('I', 'command_type'),
                             ('I', 'information_buffer_length'))
     _DEFAULTS = {'message_type': MBIM_COMMAND_MSG,
-                 'total_fragment': 0x00000001,
+                 'total_fragments': 0x00000001,
                  'current_fragment': 0x00000000,
                  'information_buffer_length': 0}
 
@@ -374,7 +379,6 @@ def parse_response_packets(packets):
                   MBIM_COMMAND_DONE: MBIMCommandDone.parse_packets}
     message_type = header_contents['message_type']
     parser = PARSER_MAP.get(message_type)
-
     if parser is None:
         mbim_errors.log_and_raise(NotImplementedError)
 
