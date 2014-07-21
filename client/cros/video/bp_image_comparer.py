@@ -15,7 +15,7 @@ class BpImageComparer(object):
 
     @method_logger.log
     def __init__(self, project_name, contact_email, wait_time_btwn_comparisons,
-                 retries):
+                 retries=0):
         """
         Initializes the underlying bp client.
 
