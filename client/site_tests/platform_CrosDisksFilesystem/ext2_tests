@@ -6,8 +6,7 @@
     "filesystem_type": "ext2",
     "mkfs_options": [ "-L", "MyDisk" ],
     "test_mount_options": [ "ro", "nodev", "noexec", "nosuid", "sync" ],
-    "expected_mount_status": 0,
-    "expected_mount_path": "/media/removable/MyDisk"
+    "expected_mount_status": 102
   },
   {
     "description": "ext2 filesystem with UUID (read)",
@@ -16,8 +15,7 @@
     "filesystem_type": "ext2",
     "mkfs_options": [ "-U", "01234567-89ab-cdef-0123-456789abcdef" ],
     "test_mount_options": [ "ro", "nodev", "noexec", "nosuid", "sync" ],
-    "expected_mount_status": 0,
-    "expected_mount_path": "/media/removable/External Drive"
+    "expected_mount_status": 102
   },
   {
     "description": "ext2 filesystem (write)",
@@ -27,7 +25,6 @@
     "filesystem_type": "ext2",
     "mkfs_options": [ "-L", "MyDisk" ],
     "test_mount_options": [ "rw", "nodev", "noexec", "nosuid", "sync" ],
-    "expected_mount_status": 0,
-    "expected_mount_path": "/media/removable/MyDisk"
+    "expected_mount_status": 102
   }
 ]
