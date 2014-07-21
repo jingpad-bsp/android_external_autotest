@@ -1,8 +1,9 @@
 #!/usr/bin/python
 
-import subprocess
-import smtplib
 import getpass
+import smtplib
+import subprocess
+import sys
 
 import common  # pylint: disable-msg=W0611
 from autotest_lib.site_utils.lib import infra
@@ -16,27 +17,30 @@ ALL_SERVERS = SCHEDULERS.union(DRONES)
 EXTRAS = infra.extra_servers()
 TEST_INSTANCE = infra.test_instance()
 
-deploy_actions = {
-    'scheduler': (SCHEDULERS, 'sudo service scheduler restart'),
-    'host_scheduler': (SCHEDULERS, 'sudo service host-scheduler restart'),
-    'suite_scheduler': ({'cautotest'}, 'sudo service suite-scheduler restart'),
-    'build_externals': (ALL_SERVERS, 'cd /usr/local/autotest ; '
-                                     './utils/build_externals.py'),
-    'apache': (SCHEDULERS, 'sudo service apache2 restart'),
-    'gs_offloader': (DRONES, 'sudo service gs_offloader restart ; '
-                             'sudo service gs_offloader_s restart'),
-    'migrate': (SCHEDULERS, 'cd /usr/local/autotest ; '
-                            './database/migrate.py sync'),
-    'afe': (SCHEDULERS, 'cd /usr/local/autotest ; '
-                        './utils/compile_gwt_clients.py -c autotest.AfeClient'),
-    'tko': (SCHEDULERS, 'cd /usr/local/autotest ; '
-                        './utils/compile_gwt_clients.py -c autotest.TkoClient'),
-    'test_importer': (SCHEDULERS, 'cd /usr/local/autotest ; '
-                                  './utils/test_importer.py'),
-    'stats_poller': ({'chromeos-mcp'}, 'sudo service stats-poller restart'),
-    # Re-use deploy mechanism to do repo sync on all servers.
-    'sync': (ALL_SERVERS.union(EXTRAS), 'cd /usr/local/autotest ; repo sync'),
-}
+# List of deployment actions that can be requested, in the order
+# in which they'll be executed.
+deploy_actions = [
+    ('sync', ALL_SERVERS.union(EXTRAS), 'cd /usr/local/autotest ; '
+                                         'repo sync'),
+    ('build_externals', ALL_SERVERS, 'cd /usr/local/autotest ; '
+                                      './utils/build_externals.py'),
+    ('test_importer', SCHEDULERS, 'cd /usr/local/autotest ; '
+                                   './utils/test_importer.py'),
+    ('migrate', SCHEDULERS, 'cd /usr/local/autotest ; '
+                             './database/migrate.py sync'),
+    ('afe', SCHEDULERS, 'cd /usr/local/autotest ; '
+                    './utils/compile_gwt_clients.py -c autotest.AfeClient'),
+    ('tko', SCHEDULERS, 'cd /usr/local/autotest ; '
+                    './utils/compile_gwt_clients.py -c autotest.TkoClient'),
+    ('apache', SCHEDULERS, 'sudo service apache2 restart'),
+    ('scheduler', SCHEDULERS, 'sudo service scheduler restart'),
+    ('host_scheduler', SCHEDULERS, 'sudo service host-scheduler restart'),
+    ('suite_scheduler', {'cautotest'},
+                            'sudo service suite-scheduler restart'),
+    ('gs_offloader', DRONES, 'sudo service gs_offloader restart ; '
+                              'sudo service gs_offloader_s restart'),
+    ('stats_poller', {'chromeos-mcp'}, 'sudo service stats-poller restart'),
+]
 
 print 'Updating checkout...'
 subprocess.check_call('git fetch', shell=True)
@@ -46,16 +50,20 @@ end = subprocess.check_output('git ls-remote cros master',
                 shell=True).split()[0]
 changes = subprocess.check_output('git log %s..%s --oneline' % (start, end),
                 shell=True)
-deploys = subprocess.check_output('git log %s..%s | grep DEPLOY= | '
-                                  "sed s/DEPLOY=// | tr '\n' ','" %
+deploys = subprocess.check_output(
+                        'git log %s..%s | grep DEPLOY= | '
+                        'sed "s/DEPLOY=//" | tr "\n-" ",_"' %
                                   (start, end), shell=True).split(',')
-deploys = [x.strip() for x in deploys if x]
-# Sync all servers first
-deploys.insert(0, 'sync')
 
-unknowns = filter(lambda x: x not in deploy_actions, deploys)
+deploys = set([x.strip() for x in deploys if x])
+# Always sync.
+deploys.add('sync')
+deploys = deploys.union(set(sys.argv[1:]))
+
+valid_deploys = set([deploy[0] for deploy in deploy_actions])
+unknowns = deploys - valid_deploys
 if unknowns:
-    raise Exception('Unknown deploy actions: %s' % unknowns)
+    raise Exception('Unknown deploy actions: %s' % list(unknowns))
 
 if not TESTING:
     print 'Running cbf test...'
@@ -70,8 +78,9 @@ if not TESTING:
 
 print 'Deploying...'
 actions = []
-for deploy in deploys:
-    servers, action = deploy_actions[deploy]
+deploy_order = [deploy for deploy in deploy_actions
+                      if deploy[0] in deploys]
+for deploy, servers, action in deploy_order:
     for server in servers:
         print '%s $ %s' % (server, action)
         if not TESTING:
@@ -82,17 +91,15 @@ user = getpass.getuser()
 usermail = '%s@google.com' % user
 
 EMAIL = """\
-Subject: push to prod
+Subject: push to prod %(start)s..%(end)s
 From: %(user)s <%(usermail)s>
 To: ChromeOS Lab Infrastructure <chromeos-lab-infrastructure@google.com>
 
 
-%(start)s..%(end)s
-
 %(changes)s
 
 %(actions)s
-""" % dict(start=start, end=end,
+""" % dict(start=start[:7], end=end[:7],
            changes=changes, user=user, usermail=usermail,
            actions='\n'.join(['%s %s' % (x,y) for x, y in actions]))
 
