@@ -7,6 +7,7 @@
 import grp, logging, os, pwd, re, stat, sys, shutil, pwd, grp
 
 from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import error
 
 USER_TOKEN_PREFIX = 'User TPM Token '
 TMP_CHAPS_DIR = '/tmp/chaps'
@@ -241,17 +242,25 @@ def __p11_replay_on_user_token(extra_args=''):
     Returns:
         The command output.
     """
-    return __run_cmd('p11_replay --slot=%s --replay_wifi %s'
+    if not wait_for_pkcs11_token():
+       raise error.TestError('Timeout while waiting for pkcs11 token')
+    return __run_cmd('p11_replay --slot=%s %s'
                      % (__get_token_slot_by_path(USER_TOKEN_PREFIX),
                         extra_args),
                      ignore_status=True)
 
 def inject_and_test_key():
     """Injects a key into a PKCS #11 token and tests that it can sign."""
-    output = __p11_replay_on_user_token('--inject')
+    output = __p11_replay_on_user_token('--replay_wifi --inject')
     return re.search('Sign: CKR_OK', output)
 
 def test_and_cleanup_key():
     """Tests a PKCS #11 key before deleting it."""
-    output = __p11_replay_on_user_token('--cleanup')
+    output = __p11_replay_on_user_token('--replay_wifi --cleanup')
     return re.search('Sign: CKR_OK', output)
+
+def generate_user_key():
+    """Generates a key in the current user token."""
+    output = __p11_replay_on_user_token('--generate')
+    return re.search('Sign: CKR_OK', output)
+
