@@ -71,7 +71,7 @@ class BpImageComparer(object):
 
             except bp_http_client.BiopicClientError as e:
                 e.msg = """ BiopicClientError thrown while uploading image %s.
-                Original message: %s""" % image_path, e.msg
+                Original message: %s""" % (image_path, e.msg)
 
                 logging.debug(e)
                 logging.debug("RETRY LEFT : %d", retries)
