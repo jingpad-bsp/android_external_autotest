@@ -58,7 +58,7 @@ class network_WiFi_ChannelScanDwellTime(wifi_cell_test_base.WiFiCellTestBase):
         if missed_beacons > self.MISSING_BEACON_THRESHOLD:
             logging.info('Missed %d beacon frames, SSID Index: %r',
                          missed_beacons, ssid_index)
-            raise error.TestFail('DUT missed more than %d beacon frames',
+            raise error.TestFail('DUT missed more than %d beacon frames' %
                                  missed_beacons)
         return dwell_time
 
