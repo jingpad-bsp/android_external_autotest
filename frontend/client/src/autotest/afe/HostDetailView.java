@@ -9,6 +9,7 @@ import autotest.common.table.DataSource.DataCallback;
 import autotest.common.table.DataSource.Query;
 import autotest.common.table.DataSource.SortDirection;
 import autotest.common.table.DataTable;
+import autotest.common.table.DatetimeSegmentFilter;
 import autotest.common.table.DynamicTable;
 import autotest.common.table.DynamicTable.DynamicTableListener;
 import autotest.common.table.JSONObjectSet;
@@ -26,6 +27,8 @@ import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.KeyCodes;
 import com.google.gwt.event.dom.client.KeyPressEvent;
 import com.google.gwt.event.dom.client.KeyPressHandler;
+import com.google.gwt.event.logical.shared.ValueChangeEvent;
+import com.google.gwt.event.logical.shared.ValueChangeHandler;
 import com.google.gwt.json.client.JSONArray;
 import com.google.gwt.json.client.JSONBoolean;
 import com.google.gwt.json.client.JSONObject;
@@ -77,6 +80,8 @@ public class HostDetailView extends DetailView implements DataCallback, TableAct
 
         private SimpleFilter hostFilter = new SimpleFilter();
         private String hostId;
+        private String startTime;
+        private String endTime;
 
         public HostJobsTable() {
             super(HOST_JOBS_COLUMNS, normalDataSource);
@@ -85,6 +90,16 @@ public class HostDetailView extends DetailView implements DataCallback, TableAct
 
         public void setHostId(String hostId) {
             this.hostId = hostId;
+            updateFilter();
+        }
+
+        public void setStartTime(String startTime) {
+            this.startTime = startTime;
+            updateFilter();
+        }
+
+        public void setEndTime(String endTime) {
+            this.endTime = endTime;
             updateFilter();
         }
 
@@ -97,6 +112,10 @@ public class HostDetailView extends DetailView implements DataCallback, TableAct
 
             hostFilter.clear();
             hostFilter.setParameter("host_id", new JSONString(hostId));
+            if (startTime != null && startTime != "")
+                hostFilter.setParameter("start_time", new JSONString(startTime));
+            if (endTime != null && endTime != "")
+                hostFilter.setParameter("end_time", new JSONString(endTime));
         }
 
         public void setSpecialTasksEnabled(boolean enabled) {
@@ -143,6 +162,7 @@ public class HostDetailView extends DetailView implements DataCallback, TableAct
     private Button reinstallButton = new Button("Reinstall");
     private Button repairButton = new Button("Repair");
     private CheckBox showSpecialTasks = new CheckBox();
+    private DatetimeSegmentFilter startedTimeFilter = new DatetimeSegmentFilter();
     private TextBox hostnameInput = new TextBox();
     private Button hostnameFetchButton = new Button("Go");
 
@@ -306,6 +326,8 @@ public class HostDetailView extends DetailView implements DataCallback, TableAct
         tableDecorator.addTableActionsPanel(this, true);
         tableDecorator.addControl("Show verifies, repairs, cleanups and resets",
                                   showSpecialTasks);
+        tableDecorator.addFilter("Filter by time started:",
+                                 startedTimeFilter);
         addWidget(tableDecorator, "view_host_jobs_table");
 
         showSpecialTasks.addClickHandler(new ClickHandler() {
@@ -322,6 +344,26 @@ public class HostDetailView extends DetailView implements DataCallback, TableAct
                changeLock(!locked);
             }
         });
+        startedTimeFilter.addValueChangeHandler(
+            new ValueChangeHandler() {
+                public void onValueChange(ValueChangeEvent event) {
+                    String value = (String) event.getValue();
+                    jobsTable.setStartTime(value);
+                    if (value == "")
+                        startedTimeFilter.setStartTimeToPlaceHolderValue();
+                    jobsTable.refresh();
+                }
+            },
+            new ValueChangeHandler() {
+                public void onValueChange(ValueChangeEvent event) {
+                    String value = (String) event.getValue();
+                    jobsTable.setEndTime(value);
+                    if (value == "")
+                        startedTimeFilter.setEndTimeToPlaceHolderValue();
+                    jobsTable.refresh();
+                }
+            }
+        );
         addWidget(lockButton, "view_host_lock_button");
 
         reverifyButton.addClickHandler(new ClickHandler() {

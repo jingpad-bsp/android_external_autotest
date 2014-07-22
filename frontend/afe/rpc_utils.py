@@ -878,3 +878,40 @@ def get_wmatrix_url():
     return global_config.global_config.get_config_value('AUTOTEST_WEB',
                                                         'wmatrix_url',
                                                         default='')
+
+
+def inject_times_to_filter(start_time_key=None, end_time_key=None,
+                         start_time_value=None, end_time_value=None,
+                         **filter_data):
+    """Inject the key value pairs of start and end time if provided.
+
+    @param start_time_key: A string represents the filter key of start_time.
+    @param end_time_key: A string represents the filter key of end_time.
+    @param start_time_value: Start_time value.
+    @param end_time_value: End_time value.
+
+    @returns the injected filter_data.
+    """
+    if start_time_value:
+        filter_data[start_time_key] = start_time_value
+    if end_time_value:
+        filter_data[end_time_key] = end_time_value
+    return filter_data
+
+
+def inject_times_to_hqe_special_tasks_filters(filter_data_common,
+                                              start_time, end_time):
+    """Inject start and end time to hqe and special tasks filters.
+
+    @param filter_data_common: Common filter for hqe and special tasks.
+    @param start_time_key: A string represents the filter key of start_time.
+    @param end_time_key: A string represents the filter key of end_time.
+
+    @returns a pair of hqe and special tasks filters.
+    """
+    filter_data_special_tasks = filter_data_common.copy()
+    return (inject_times_to_filter('started_on__gte', 'started_on__lte',
+                                   start_time, end_time, **filter_data_common),
+           inject_times_to_filter('time_started__gte', 'time_started__lte',
+                                  start_time, end_time,
+                                  **filter_data_special_tasks))

@@ -799,19 +799,29 @@ def get_info_for_clone(id, preserve_metahosts, queue_entry_filter_data=None):
 
 # host queue entries
 
-def get_host_queue_entries(**filter_data):
+def get_host_queue_entries(start_time=None, end_time=None, **filter_data):
     """\
     @returns A sequence of nested dictionaries of host and job information.
     """
+    filter_data = rpc_utils.inject_times_to_filter('started_on__gte',
+                                                   'started_on__lte',
+                                                   start_time,
+                                                   end_time,
+                                                   **filter_data)
     return rpc_utils.prepare_rows_as_nested_dicts(
             models.HostQueueEntry.query_objects(filter_data),
             ('host', 'atomic_group', 'job'))
 
 
-def get_num_host_queue_entries(**filter_data):
+def get_num_host_queue_entries(start_time=None, end_time=None, **filter_data):
     """\
     Get the number of host queue entries associated with this job.
     """
+    filter_data = rpc_utils.inject_times_to_filter('started_on__gte',
+                                                   'started_on__lte',
+                                                   start_time,
+                                                   end_time,
+                                                   **filter_data)
     return models.HostQueueEntry.query_count(filter_data)
 
 
@@ -839,7 +849,8 @@ def get_special_tasks(**filter_data):
 # support for host detail view
 
 def get_host_queue_entries_and_special_tasks(host_id, query_start=None,
-                                             query_limit=None):
+                                             query_limit=None, start_time=None,
+                                             end_time=None):
     """
     @returns an interleaved list of HostQueueEntries and SpecialTasks,
             in approximate run order.  each dict contains keys for type, host,
@@ -848,12 +859,18 @@ def get_host_queue_entries_and_special_tasks(host_id, query_start=None,
     total_limit = None
     if query_limit is not None:
         total_limit = query_start + query_limit
-    filter_data = {'host': host_id,
-                   'query_limit': total_limit,
-                   'sort_by': ['-id']}
+    filter_data_common = {'host': host_id,
+                          'query_limit': total_limit,
+                          'sort_by': ['-id']}
 
-    queue_entries = list(models.HostQueueEntry.query_objects(filter_data))
-    special_tasks = list(models.SpecialTask.query_objects(filter_data))
+    filter_data_queue_entries, filter_data_special_tasks = (
+            rpc_utils.inject_times_to_hqe_special_tasks_filters(
+                    filter_data_common, start_time, end_time))
+
+    queue_entries = list(models.HostQueueEntry.query_objects(
+            filter_data_queue_entries))
+    special_tasks = list(models.SpecialTask.query_objects(
+            filter_data_special_tasks))
 
     interleaved_entries = rpc_utils.interleave_entries(queue_entries,
                                                        special_tasks)
@@ -864,10 +881,16 @@ def get_host_queue_entries_and_special_tasks(host_id, query_start=None,
     return rpc_utils.prepare_for_serialization(interleaved_entries)
 
 
-def get_num_host_queue_entries_and_special_tasks(host_id):
-    filter_data = {'host': host_id}
-    return (models.HostQueueEntry.query_count(filter_data)
-            + models.SpecialTask.query_count(filter_data))
+def get_num_host_queue_entries_and_special_tasks(host_id, start_time=None,
+                                                 end_time=None):
+    filter_data_common = {'host': host_id}
+
+    filter_data_queue_entries, filter_data_special_tasks = (
+            rpc_utils.inject_times_to_hqe_special_tasks_filters(
+                    filter_data_common, start_time, end_time))
+
+    return (models.HostQueueEntry.query_count(filter_data_queue_entries)
+            + models.SpecialTask.query_count(filter_data_special_tasks))
 
 
 # recurring run
