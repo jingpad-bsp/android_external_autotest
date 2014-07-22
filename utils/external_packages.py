@@ -1013,6 +1013,18 @@ class ElasticSearchPackage(ExternalPackage):
             ExternalPackage._build_and_install_current_dir_setup_py)
 
 
+class ImagingLibraryPackage(ExternalPackage):
+    """Python Imaging Library (PIL)."""
+    version = '1.1.7'
+    url_filename = 'Imaging-%s.tar.gz' % version
+    local_filename = url_filename
+    urls = ('http://effbot.org/downloads/%s' % url_filename,)
+    hex_sum = '76c37504251171fda8da8e63ecb8bc42a69a5c81'
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+            ExternalPackage._build_and_install_current_dir_noegg)
+
+
 class _ExternalGitRepo(ExternalPackage):
     """
     Parent class for any package which needs to pull a git repo.

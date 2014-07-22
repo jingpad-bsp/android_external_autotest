@@ -2,10 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import Image
-import ImageChops
 import logging
 import os
+
+from PIL import Image
+from PIL import ImageChops
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import test

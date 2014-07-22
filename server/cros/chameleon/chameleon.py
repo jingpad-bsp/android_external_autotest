@@ -2,9 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import Image
 import time
 import xmlrpclib
+
+from PIL import Image
 
 from autotest_lib.server.cros.chameleon import edid
 

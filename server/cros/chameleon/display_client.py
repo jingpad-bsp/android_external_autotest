@@ -2,13 +2,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import Image
 import httplib
 import logging
 import os
 import socket
 import tempfile
 import xmlrpclib
+
+from PIL import Image
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib.cros import retry
