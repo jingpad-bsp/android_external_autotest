@@ -15,6 +15,8 @@ from autotest_lib.server.cros.network import wifi_cell_test_base
 class network_WiFi_VerifyRouter(wifi_cell_test_base.WiFiCellTestBase):
     """Test that a dual radio router can use both radios."""
     version = 1
+    MAX_ASSOCIATION_RETRIES = 8  # Super lucky number.  Not science.
+
 
     def _connect(self, wifi_params):
         assoc_result = xmlrpc_datatypes.deserialize(
@@ -28,7 +30,7 @@ class network_WiFi_VerifyRouter(wifi_cell_test_base.WiFiCellTestBase):
         return assoc_result.success
 
 
-    def _antenna_test(self, channel):
+    def _antenna_test(self, bitmap, channel):
         """Test to verify each antenna is working on given band.
 
         Setup AP in each radio in given band, and run connection test with one
@@ -36,44 +38,47 @@ class network_WiFi_VerifyRouter(wifi_cell_test_base.WiFiCellTestBase):
         working correctly for given band. Antenna can only be configured when
         the wireless interface is down.
 
+        @param bitmap: int bitmask controlling which antennas to enable.
         @param channel: int Wifi channel to conduct test on
 
         """
         # Connect to AP with only one antenna active at a time
-        for bitmap in (3, 1, 2):
-            self.context.router.deconfig()
+        self.context.router.deconfig()
+        # Set the bitmasks to both antennas on before turning one off.
+        self.context.router.set_antenna_bitmap(3, 3)
+        # This seems to increase the probability that our association
+        # attempts pass.  It is the very definition of a dark incantation.
+        time.sleep(5)
+        if bitmap != 3:
             self.context.router.set_antenna_bitmap(bitmap, bitmap)
-            # Setup two APs in the same band
-            n_mode = hostap_config.HostapConfig.MODE_11N_MIXED
-            ap_config = hostap_config.HostapConfig(channel=channel, mode=n_mode)
-            self.context.configure(ap_config)
-            self.context.configure(ap_config, multi_interface=True)
-            # Added delay to allow APs to "stabilize" before connection attempt.
-            # Connection will fail randomly with antenna bitmap of 2 and AP
-            # configured with channel 136. Leave this hack here until we figure
-            # out the root cause of the random connection failures.
-            time.sleep(5.0)
-            # Verify connectivity to both APs
-            for instance in range(2):
-                context_message = ('bitmap=%d, ap_instance=%d, channel=%d' %
-                                   (bitmap, instance, channel))
-                logging.info('Connecting to AP with settings %s.',
-                             context_message)
-                client_conf = xmlrpc_datatypes.AssociationParameters(
-                        ssid=self.context.router.get_ssid(instance=instance))
-                if self._connect(client_conf):
-                    signal_level = self.context.client.wifi_signal_level
-                    logging.info('Signal level for AP %d with bitmap %d is %d',
-                                 instance, bitmap, signal_level)
-                    self.write_perf_keyval(
-                            {'signal_for_ap_%d_bm_%d_ch_%d' %
-                                     (instance, bitmap, channel):
-                             signal_level})
-                else:
-                    self.failures.append(context_message)
-                # Don't automatically reconnect to this AP.
-                self.context.client.shill.disconnect(
-                        self.context.router.get_ssid(instance=instance))
+        # Setup two APs in the same band
+        n_mode = hostap_config.HostapConfig.MODE_11N_MIXED
+        ap_config = hostap_config.HostapConfig(channel=channel, mode=n_mode)
+        self.context.configure(ap_config)
+        self.context.configure(ap_config, multi_interface=True)
+        failures = []
+        # Verify connectivity to both APs
+        for instance in range(2):
+            context_message = ('bitmap=%d, ap_instance=%d, channel=%d' %
+                               (bitmap, instance, channel))
+            logging.info('Connecting to AP with settings %s.',
+                         context_message)
+            client_conf = xmlrpc_datatypes.AssociationParameters(
+                    ssid=self.context.router.get_ssid(instance=instance))
+            if self._connect(client_conf):
+                signal_level = self.context.client.wifi_signal_level
+                logging.info('Signal level for AP %d with bitmap %d is %d',
+                             instance, bitmap, signal_level)
+                self.write_perf_keyval(
+                        {'signal_for_ap_%d_bm_%d_ch_%d' %
+                                 (instance, bitmap, channel):
+                         signal_level})
+            else:
+                failures.append(context_message)
+            # Don't automatically reconnect to this AP.
+            self.context.client.shill.disconnect(
+                    self.context.router.get_ssid(instance=instance))
+        return failures
 
 
     def cleanup(self):
@@ -92,11 +97,20 @@ class network_WiFi_VerifyRouter(wifi_cell_test_base.WiFiCellTestBase):
         self.context.router.require_capabilities(
                 [site_linux_system.LinuxSystem.CAPABILITY_MULTI_AP_SAME_BAND])
 
-        self.failures = []
+        all_failures = []
         # Run antenna test for 2GHz band and 5GHz band
-        self._antenna_test(6)
-        self._antenna_test(149)
-        if self.failures:
-            all_failures = ', '.join(
-                    ['(' + message + ')' for message in self.failures])
-            raise error.TestFail('Failed to connect when %s.' % all_failures)
+        for channel in (6, 149):
+            for bitmap in (3, 1, 2):
+                failures = set()
+                for attempt in range(self.MAX_ASSOCIATION_RETRIES):
+                    new_failures = self._antenna_test(bitmap, channel)
+                    if not new_failures:
+                        break
+                    failures.update(new_failures)
+                else:
+                    all_failures += failures
+
+        if all_failures:
+            failure_message = ', '.join(
+                    ['(' + message + ')' for message in all_failures])
+            raise error.TestFail('Failed to connect when %s.' % failure_message)
