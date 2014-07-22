@@ -7,7 +7,6 @@ import logging
 import os
 import re
 import shutil
-import socket
 import tempfile
 
 from autotest_lib.client.bin import test, utils
@@ -16,8 +15,10 @@ from autotest_lib.client.common_lib import error
 class security_Minijail0(test.test):
     version = 1
 
+
     def is_64bit(self):
         return os.path.isdir('/lib64')
+
 
     def get_test_option(self, handle, name):
         setup = ''
@@ -26,6 +27,7 @@ class security_Minijail0(test.test):
             if m:
                 setup = m.group(1)
         return setup
+
 
     def run_test(self, path, static):
         # Tests are shell scripts with a magic comment line of the form '# args:
@@ -88,7 +90,7 @@ class security_Minijail0(test.test):
         ran = 0
         for p in glob.glob('%s/test-*' % self.srcdir):
             name = os.path.basename(p)
-            logging.info('Running: %s' % name)
+            logging.info('Running: %s', name)
             if self.run_test(p, static=False):
                 failed.append(name)
             ran += 1
@@ -99,5 +101,5 @@ class security_Minijail0(test.test):
         if ran == 0:
             failed.append("No tests found to run from %s!" % (self.srcdir))
         if failed:
-            logging.error('Failed: %s' % failed)
+            logging.error('Failed: %s', failed)
             raise error.TestFail('Failed: %s' % failed)
