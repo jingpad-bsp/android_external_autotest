@@ -11,7 +11,6 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "power"
 TEST_TYPE = "server"
-DEPENDENCIES = "rpm"
 
 DOC = """
 This tests that the power supply for a device can successfully change state.

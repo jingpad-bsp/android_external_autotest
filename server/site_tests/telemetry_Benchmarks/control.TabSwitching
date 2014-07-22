@@ -1,9 +1,9 @@
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 AUTHOR = "chromeos-perf"
-NAME = "Telemetry Page Loading Benchmark"
+NAME = "Telemetry Tab Switching Benchmark"
 SUITE = "perf_v2"
 TIME = "LONG"
 TEST_CATEGORY = "Benchmark"
@@ -11,8 +11,8 @@ TEST_CLASS = "performance"
 TEST_TYPE = "server"
 
 DOC = """
-This server side test suite executes the Telemetry Page Loading
-Benchmark.  This is part of Chrome for Chrome OS performance testing.
+This server side test suite executes the Telemetry Tab Switching Benchmark.
+This is part of Chrome for Chrome OS performance testing.
 """
 
 def run_benchmark(machine):
@@ -27,8 +27,8 @@ def run_benchmark(machine):
     # is no dependency on rpm, as an RPM failure could cause the job to fail
     # before running the benchmark.
     job.run_test("telemetry_Benchmarks", host=host,
-                 benchmark="page_cycler.typical_25",
-                 tag="page_cycler.typical_25")
+                 benchmark="tab_switching.tough_energy_cases",
+                 tag="tab_switching.tough_energy_cases")
 
     job.run_test("power_RPMTest", host=host, verify=False,
                  power_on=True, tag="on")
