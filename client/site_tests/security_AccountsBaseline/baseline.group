@@ -72,3 +72,4 @@ serial:!:402:chronos,uucp
 devbroker-access:!:403:chronos
 i2c:!:404:power
 netdev:!:408:
+easy-unlock:!:249:
