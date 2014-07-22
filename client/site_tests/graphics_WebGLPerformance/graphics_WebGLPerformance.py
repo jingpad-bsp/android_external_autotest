@@ -67,7 +67,15 @@ class graphics_WebGLPerformance(test.test):
         self.write_perf_keyval(keyvals)
         self.output_perf_value(description='time_geom_mean',
                                value=time_ms_geom_mean, units='ms',
-                               higher_is_better=False)
+                               higher_is_better=False,
+                               graph='time_geom_mean')
+        # Add extra value to the graph distinguishing different boards.
+        variant = utils.get_board_with_frequency_and_memory()
+        desc = 'time_geom_mean (%s)' % variant
+        self.output_perf_value(description=desc,
+                               value=time_ms_geom_mean, units='ms',
+                               higher_is_better=False,
+                               graph='time_geom_mean')
 
         # Get a copy of the test report.
         test_report = tab.EvaluateJavaScript('test_report')
