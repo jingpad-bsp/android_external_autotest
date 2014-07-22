@@ -155,6 +155,15 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.dhcpd_conf = '/tmp/dhcpd.%s.conf'
         self.dhcpd_leases = '/tmp/dhcpd.leases'
 
+        # Log the most recent message on the router so that we can rebuild the
+        # suffix relevant to us when debugging failures.
+        last_log_line = self.host.run('tail -1 /var/log/messages').stdout
+        # We're trying to get the timestamp from:
+        # 2014-07-23T17:29:34.961056+00:00 localhost kernel: blah blah blah
+        self._log_start_timestamp = last_log_line.strip().split(None, 2)[0]
+        logging.debug('Will only retrieve logs after %s.',
+                      self._log_start_timestamp)
+
         # hostapd configuration persists throughout the test, subsequent
         # 'config' commands only modify it.
         self._ssid_prefix = test_name
@@ -185,6 +194,12 @@ class LinuxRouter(site_linux_system.LinuxSystem):
     def close(self):
         """Close global resources held by this system."""
         self.deconfig()
+        # dnsmasq and hostapd cause interesting events to go to system logs.
+        # Retrieve only the suffix of the logs after the timestamp we stored on
+        # router creation.
+        self.host.run("sed -n -e '/%s/,$p' /var/log/messages >/tmp/router_log" %
+                      self._log_start_timestamp, ignore_status=True)
+        self.host.get_file('/tmp/router_log', 'debug/router_host_messages')
         super(LinuxRouter, self).close()
 
 
