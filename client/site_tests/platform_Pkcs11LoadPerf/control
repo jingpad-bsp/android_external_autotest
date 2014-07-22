@@ -2,10 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "Chromium OS Authors"
+AUTHOR = "dkrahn"
 NAME = "platform_Pkcs11LoadPerf"
-PURPOSE = "Tests the performance of loading a PKCS #11 token."
-CRITERIA = "Fails if performance does not meet constraints."
 SUITE = "regression"
 TIME = "SHORT"
 TEST_CATEGORY = "Performance"
