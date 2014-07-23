@@ -1,6 +1,5 @@
-package autotest.common.ui;
+package autotest.afe;
 
-import autotest.afe.IRadioButton;
 import autotest.afe.IRadioButton.RadioButtonImpl;
 
 import com.google.gwt.user.client.ui.Composite;

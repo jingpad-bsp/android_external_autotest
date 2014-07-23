@@ -9,7 +9,6 @@ import autotest.common.StaticDataRepository;
 import autotest.common.Utils;
 import autotest.common.table.JSONObjectSet;
 import autotest.common.ui.NotifyManager;
-import autotest.common.ui.RadioChooser;
 import autotest.common.ui.SimplifiedList;
 
 import com.google.gwt.json.client.JSONArray;

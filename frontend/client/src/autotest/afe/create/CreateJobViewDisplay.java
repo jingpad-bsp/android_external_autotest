@@ -14,11 +14,11 @@ import autotest.afe.ITextArea;
 import autotest.afe.ITextArea.TextAreaImpl;
 import autotest.afe.ITextBox;
 import autotest.afe.ITextBox.TextBoxImpl;
+import autotest.afe.RadioChooser;
+import autotest.afe.RadioChooserDisplay;
 import autotest.afe.TestSelector;
 import autotest.afe.TestSelectorDisplay;
 import autotest.common.ui.ExtendedListBox;
-import autotest.common.ui.RadioChooser;
-import autotest.common.ui.RadioChooserDisplay;
 import autotest.common.ui.SimplifiedList;
 import autotest.common.ui.ToolTip;
 

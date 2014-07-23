@@ -5,8 +5,6 @@ import autotest.common.JsonRpcProxy;
 import autotest.common.StaticDataRepository;
 import autotest.common.StaticDataRepository.FinishedCallback;
 import autotest.common.Utils;
-import autotest.common.ui.RadioChooser;
-import autotest.common.ui.RadioChooserDisplay;
 import autotest.common.ui.TabView;
 import autotest.common.ui.ToolTip;
 

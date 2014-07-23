@@ -8,6 +8,7 @@ import autotest.afe.IButton;
 import autotest.afe.ICheckBox;
 import autotest.afe.ITextArea;
 import autotest.afe.ITextBox;
+import autotest.afe.RadioChooser;
 import autotest.afe.TestSelector;
 import autotest.afe.TestSelector.TestSelectorListener;
 import autotest.common.JSONArrayList;
@@ -17,7 +18,6 @@ import autotest.common.SimpleCallback;
 import autotest.common.StaticDataRepository;
 import autotest.common.Utils;
 import autotest.common.ui.NotifyManager;
-import autotest.common.ui.RadioChooser;
 import autotest.common.ui.SimplifiedList;
 import autotest.common.ui.ExtendedListBox;
 

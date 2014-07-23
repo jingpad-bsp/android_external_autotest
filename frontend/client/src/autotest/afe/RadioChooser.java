@@ -1,6 +1,4 @@
-package autotest.common.ui;
-
-import autotest.afe.IRadioButton;
+package autotest.afe;
 
 import java.util.ArrayList;
 import java.util.List;
