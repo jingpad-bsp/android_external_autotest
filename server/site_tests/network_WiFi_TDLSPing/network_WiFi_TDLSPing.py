@@ -108,7 +108,8 @@ class network_WiFi_TDLSPing(wifi_cell_test_base.WiFiCellTestBase):
 
         # Configure the AP.
         frequency = 2412
-        self.context.configure(hostap_config.HostapConfig(frequency=frequency))
+        self.context.configure(hostap_config.HostapConfig(
+                frequency=frequency, force_wmm=True))
         router_ssid = self.context.router.get_ssid()
 
         # Connect the DUT to the AP.
