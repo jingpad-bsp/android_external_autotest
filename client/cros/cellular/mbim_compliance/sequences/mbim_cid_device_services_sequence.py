@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 """
-MBIM_CID_DEVICE_CAPS Sequence
+MBIM_CID_DEVICE_SERVICES Sequence
 
 Reference:
     [1] Universal Serial Bus Communication Class MBIM Compliance Testing: 22
@@ -16,21 +16,19 @@ from autotest_lib.client.cros.cellular.mbim_compliance.sequences \
         import sequence
 
 
-class MBIMCIDDeviceCapsSequence(sequence.Sequence):
+class MBIMCIDDeviceServicesSequence(sequence.Sequence):
     """
-    Implement |MBIMCIDDeviceCapsSequence|.
-    In this sequence, cid |MBIM_CID_DEVICE_CAPS| and uuid |UUID_BASIC_CONNECT|
-    are used to retrieve a MBIM command done response with a
-    |MBIM_DEVICE_CPAS_INFO| in its information buffer.
+    Implement |MBIMCIDDeviceServicesSequence|.
+    In this sequence, cid |MBIM_CID_DEVICE_SERVICES| is used to query the device
+    services supported by the MBIM devices and their properties.
     """
 
     def run_internal(self):
-        """ Run the MBIM_CID_DEVICE_CAPS Sequence. """
+        """ Run the MBIM_CID_DEVICE_SERVICES Sequence. """
         # Step 1
-        # Send MBIM_COMMAND_MSG.
         command_message = mbim_control.MBIMCommandMessage(
                 device_service_id=mbim_control.UUID_BASIC_CONNECT.bytes,
-                cid=mbim_control.MBIM_CID_DEVICE_CAPS,
+                cid=mbim_control.MBIM_CID_DEVICE_SERVICES,
                 command_type=mbim_control.COMMAND_TYPE_QUERY,
                 information_buffer_length=0)
         packets = command_message.generate_packets()
@@ -47,7 +45,7 @@ class MBIMCIDDeviceCapsSequence(sequence.Sequence):
         response_message = mbim_control.parse_response_packets(response_packets)
 
         # Step 3
-        if (response_message.message_type != mbim_control.MBIM_COMMAND_DONE or
+        if (response_message.message_type == mbim_control.MBIM_COMMAND_DONE and
             response_message.status_codes != mbim_control.MBIM_STATUS_SUCCESS):
             mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
                                       'mbim1.0:9.4.3')

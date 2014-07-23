@@ -21,7 +21,12 @@ from autotest_lib.client.cros.cellular.mbim_compliance.sequences \
 
 
 class MBIMOpenGenericSequence(open_sequence.OpenSequence):
-    """ Implement the MBIM Open Generic Sequence. """
+    """
+    Implement the MBIM Open Generic Sequence.
+    In this sequence, a |MBIM_OPEN_MSG| is sent from the host to the modem in
+    order to start the interaction. The modem should send a |MBIM_OPEN_DONE| as
+    the response to |MBIM_OPEN_MSG|.
+    """
 
     def run_internal(self):
         """ Run the MBIM Open Generic Sequence. """

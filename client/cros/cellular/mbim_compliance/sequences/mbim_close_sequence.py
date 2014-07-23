@@ -19,7 +19,12 @@ from autotest_lib.client.cros.cellular.mbim_compliance.sequences \
 
 
 class MBIMCloseSequence(sequence.Sequence):
-    """ Implement the MBIM Close Sequence. """
+    """
+    Implement the MBIM Close Sequence.
+    In this sequence, a |MBIM_CLOSE_MSG| is sent to the modem in order to
+    terminate the session between the host and the modem. The modem should send
+    a |MBIM_CLOSE_DONE| as the response to |MBIM_CLOSE_MSG|.
+    """
 
     def run_internal(self):
         """ Run the MBIM Close Sequence. """

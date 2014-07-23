@@ -175,6 +175,11 @@ class MBIMComplianceAssertionError(MBIMComplianceError):
                              'bInterfaceProtocol == 02h. Refer to Table 6.4 of '
                              '[USBMBIM10].',
 
+            # Assertion Groups: 8.x.x#x
+            'mbim1.0:8.1.2#2': 'The function must use a separate '
+                                'GET_ENCAPSULATED_RESPONSE transfer for each '
+                                'control message it has to send to the host.',
+
             # Assertion Groups: 9.x#x, 9.x.x and 9.x.x#x
             'mbim1.0:9.1#2': 'MessageLength in MBIM_MESSAGE_HEADER must be >= '
                              '0x0C.',
