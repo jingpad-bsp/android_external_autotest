@@ -674,6 +674,32 @@ class SchedulerFunctionalTest(unittest.TestCase,
         self._assert_nothing_is_running()
 
 
+
+    def test_job_interrupt_scheduling(self):
+        job = self._create_job(hosts=[1])
+        job.run_reset = False
+        job.save()
+        queue_entry = list(job.hostqueueentry_set.all())[0]
+        queue_entry.status = HqeStatus.STARTING
+        queue_entry.save()
+        host = queue_entry.host
+
+        models.SpecialTask.objects.create(
+                host=queue_entry.host,
+                task=models.SpecialTask.Task.RESET,
+                requested_by=models.User.current_user(),
+                is_active = True)
+
+        self._initialize_test()
+        self._run_dispatcher() # launches repair
+        self._check_statuses(queue_entry, HqeStatus.QUEUED)
+        self._check_host_status(queue_entry.host, HostStatus.REPAIRING)
+        self.mock_drone_manager.finish_process(_PidfileType.REPAIR)
+        self._run_dispatcher() # launches job
+        self._check_host_status(queue_entry.host, HostStatus.RUNNING)
+        self._check_statuses(queue_entry, HqeStatus.RUNNING)
+
+
     def test_job_abort_in_verify(self):
         self._initialize_test()
         job = self._create_job(hosts=[1])
@@ -823,7 +849,10 @@ class SchedulerFunctionalTest(unittest.TestCase,
 
         self._initialize_test()
         for queue_entry in job.hostqueueentry_set.all():
-            self.assertEquals(queue_entry.status, HqeStatus.STARTING)
+            self.assertEquals(queue_entry.status, HqeStatus.QUEUED)
+        self._run_dispatcher()
+        for queue_entry in job.hostqueueentry_set.all():
+            self.assertEquals(queue_entry.status, HqeStatus.VERIFYING)
 
 
     def test_recover_parsing(self):
