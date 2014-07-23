@@ -19,7 +19,13 @@ This is intended for use only with Chrome OS test suits that leverage the
 dynamic suite infrastructure in server/cros/dynamic_suite.py.
 """
 
+import logging
 import optparse, os, sys
+
+# Silence messages relating to imports of missing, unneeded
+# modules.
+logging.basicConfig(level=logging.INFO)
+
 import common
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros.dynamic_suite.suite import Suite
@@ -32,12 +38,10 @@ def parse_options():
     parser = optparse.OptionParser(usage=usage)
     parser.add_option('-a', '--autotest_dir', dest='autotest_dir',
                       default=os.path.abspath(
-                          os.path.join('..', os.path.dirname(__file__))),
+                          os.path.join(os.path.dirname(__file__),
+                                       os.pardir)),
                       help='Directory under which to search for tests.'\
                            ' (e.g. /usr/local/autotest)')
-    parser.add_option('-s', '--stable_only', dest='add_experimental',
-                      action='store_false', default=True,
-                      help='List only tests that are not labeled experimental.')
     parser.add_option('-l', '--listall',
                       action='store_true', default=False,
                       help='Print a listing of all suites. Ignores all args.')
@@ -74,16 +78,13 @@ def main():
     for test in filter(lambda test: test.name not in \
                        PRETEST_LIST, suite.stable_tests()):
         print test.path
-    if options.add_experimental:
-        for test in suite.unstable_tests():
-            print test.path
+
     # Check if test_suites/control.suite_name exists.
-    if not options.listall:
-        control_path = os.path.join(options.autotest_dir, 'test_suites',
-                                    'control.' + args[0])
-        if not os.path.exists(control_path):
-            print >> sys.stderr, ('Warning! control file is missing: %s' %
-                                  control_path)
+    control_path = os.path.join(options.autotest_dir, 'test_suites',
+                                'control.' + args[0])
+    if not os.path.exists(control_path):
+        print >> sys.stderr, ('Warning! control file is missing: %s' %
+                              control_path)
 
 
 if __name__ == "__main__":
