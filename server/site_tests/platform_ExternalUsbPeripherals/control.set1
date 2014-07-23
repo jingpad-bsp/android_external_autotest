@@ -40,7 +40,7 @@ servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 def run(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
 
-    repeat = int(args_dict.get("repeat", 10))
+    repeat = int(args_dict.get("repeat", 2))
 
     default_actions = str("reboot,unplug,plug,login_exit,unplug,plug,suspend,"
                           "resume,unplug,suspend,plug,resume,suspend,unplug,"
@@ -48,9 +48,14 @@ def run(machine):
 
     action_sequence = str(args_dict.get("action_sequence", default_actions))
 
+    usb_list = ["C-Media Electronics, Inc. Audio Adapter",
+                "Logitech, Inc. HD Pro Webcam C920",
+                "Kingston Technology Company Inc.",
+               ]
     usb_checks = {
         # Audio thread - active USB audio
-        "loggedin:cras_test_client --dump_audio_thread" :
+        str("loggedin:cras_test_client --dump_audio_thread | "
+            "awk '/devices/,/stream_dump/'") :
             ["output dev.*USB Audio", "input dev.*USB Audio"],
         # USB Audio Output devices
         str("cras_test_client --dump_server_info | "
@@ -71,6 +76,6 @@ def run(machine):
     job.run_test("platform_ExternalUsbPeripherals", host=host,
                  disable_sysinfo=True, client_autotest="desktopui_SimpleLogin",
                  action_sequence=action_sequence, repeat=repeat,
-                 usb_checks=usb_checks)
+                 usb_list = usb_list, usb_checks=usb_checks)
 
 parallel_simple(run, machines)
