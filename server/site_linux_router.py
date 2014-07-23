@@ -236,7 +236,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                      configuration.channel)
         self.router.run('rm %s' % log_file, ignore_status=True)
         self.router.run('stop wpasupplicant', ignore_status=True)
-        start_command = '%s -dd -t %s &> %s & echo $!' % (
+        start_command = 'stdbuf -oL %s -dd -t %s &> %s & echo $!' % (
                 self.cmd_hostapd, conf_file, log_file)
         pid = int(self.router.run(start_command).stdout.strip())
         self.hostapd_instances.append(HostapdInstance(
