@@ -9,7 +9,7 @@ import time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import rtc, sys_power
+from autotest_lib.client.cros import power_suspend, rtc
 from autotest_lib.client.cros.networking.chrome_testing \
         import chrome_networking_test_context as cntc
 
@@ -106,7 +106,8 @@ class network_MobileSuspendResume(test.test):
         return self.get_powered(device) == enable
 
     def suspend_resume(self, duration=10):
-        sys_power.do_suspend(duration)
+        suspender = power_suspend.Suspender(self.resultsdir, throw=True)
+        suspender.suspend(duration)
         logging.info('Machine resumed')
 
         # Race condition hack alert: Before we added this sleep, this
