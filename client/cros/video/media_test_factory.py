@@ -7,7 +7,7 @@ import datetime
 import os
 
 from autotest_lib.client.bin import utils
-
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.video import bp_image_comparer, \
     upload_on_fail_comparer, golden_image_downloader,\
     import_screenshot_capturer, media_player,\
@@ -127,7 +127,6 @@ class MediaTestFactory(object):
         """
 
         self.parser = ConfigParser.SafeConfigParser()
-        self.device_under_test = utils.get_current_board()
         self._load_device_info()
         self._load_test_constants()
         self._load_video_info()
@@ -186,18 +185,31 @@ class MediaTestFactory(object):
         """
         Reads device info configuration file and stores parameters.
 
+        @raises TestError if device resolution was not read.
+
         """
+
+        res = utils.get_dut_display_resolution()
+
+        if res is None:
+            raise error.TestError('Expected a screen resolution. Got None.')
+
+        self.screen_height_pixels = res[1]
+        dut = utils.get_current_board()
+
         self.parser.read(os.path.join(self.autotest_cros_video_dir,
                                       self.device_spec_filename))
+        multires = self.parser.getboolean(dut, 'multires')
 
-        self.screen_height_pixels = self.parser.getint(self.device_under_test,
-                                                       'screen_height_pixels')
+        if multires:
+            dut += '_%d' % self.screen_height_pixels
 
-        self.top_pixels_to_crop = self.parser.getint(self.device_under_test,
-                                                     'top_pixels_to_crop')
+        self.top_pixels_to_crop = self.parser.getint(dut, 'top_pixels_to_crop')
 
-        self.bottom_pixels_to_crop = self.parser.getint(self.device_under_test,
+        self.bottom_pixels_to_crop = self.parser.getint(dut,
                                                         'bottom_pixels_to_crop')
+
+        self.device_under_test = dut
 
 
     @method_logger.log
