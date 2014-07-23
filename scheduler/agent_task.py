@@ -121,8 +121,6 @@ from autotest_lib.scheduler import scheduler_models
 from autotest_lib.server import autoserv_utils
 
 
-_drone_manager = drone_manager.instance()
-
 AUTOSERV_NICE_LEVEL = 10
 
 
@@ -138,6 +136,7 @@ class BaseAgentTask(object):
         """
         @param log_file_name: (optional) name of file to log command output to
         """
+        self._drone_manager = drone_manager.instance()
         self.done = False
         self.started = False
         self.success = None
@@ -394,13 +393,13 @@ class BaseAgentTask(object):
 
 
     def register_necessary_pidfiles(self):
-        pidfile_id = _drone_manager.get_pidfile_id_from(
+        pidfile_id = self._drone_manager.get_pidfile_id_from(
                 self._working_directory(), self._pidfile_name())
-        _drone_manager.register_pidfile(pidfile_id)
+        self._drone_manager.register_pidfile(pidfile_id)
 
         paired_pidfile_id = self._paired_with_monitor().pidfile_id
         if paired_pidfile_id:
-            _drone_manager.register_pidfile(paired_pidfile_id)
+            self._drone_manager.register_pidfile(paired_pidfile_id)
 
 
     def recover(self):
@@ -464,7 +463,7 @@ class TaskWithJobKeyvals(object):
         assert self.monitor
         if not self.monitor.has_process():
             return
-        _drone_manager.write_lines_to_file(
+        self._drone_manager.write_lines_to_file(
             self._keyval_path(), [self._format_keyval(field, value)],
             paired_with_process=self.monitor.get_process())
 
@@ -482,7 +481,7 @@ class TaskWithJobKeyvals(object):
                                     for key, value in keyval_dict.iteritems())
         # always end with a newline to allow additional keyvals to be written
         keyval_contents += '\n'
-        _drone_manager.attach_file_to_execution(self._working_directory(),
+        self._drone_manager.attach_file_to_execution(self._working_directory(),
                                                 keyval_contents,
                                                 file_path=keyval_path)
 
@@ -587,10 +586,10 @@ class SpecialAgentTask(AgentTask, TaskWithJobKeyvals):
                 source_path=self._working_directory() + '/',
                 destination_path=self.queue_entry.execution_path() + '/')
 
-        pidfile_id = _drone_manager.get_pidfile_id_from(
+        pidfile_id = self._drone_manager.get_pidfile_id_from(
                 self.queue_entry.execution_path(),
                 pidfile_name=drone_manager.AUTOSERV_PID_FILE)
-        _drone_manager.register_pidfile(pidfile_id)
+        self._drone_manager.register_pidfile(pidfile_id)
 
         if self.queue_entry.job.parse_failed_repair:
             self._parse_results([self.queue_entry])
@@ -615,7 +614,7 @@ class SpecialAgentTask(AgentTask, TaskWithJobKeyvals):
             if self.monitor.has_process():
                 self._copy_results([self.task])
             if self.monitor.pidfile_id is not None:
-                _drone_manager.unregister_pidfile(self.monitor.pidfile_id)
+                self._drone_manager.unregister_pidfile(self.monitor.pidfile_id)
 
 
     def remove_special_tasks(self, special_task_to_remove, keep_last_one=False):

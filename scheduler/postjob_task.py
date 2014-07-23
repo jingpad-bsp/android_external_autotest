@@ -18,7 +18,6 @@ from autotest_lib.scheduler import scheduler_config
 from autotest_lib.server import autoserv_utils
 
 
-_drone_manager = drone_manager.instance()
 _parser_path = autoserv_utils._parser_path_func(
                 autoserv_utils.AUTOTEST_INSTALL_DIR)
 
@@ -37,7 +36,7 @@ class PostJobTask(agent_task.AgentTask):
     def _command_line(self):
         # Do we need testing_mode?
         return self._generate_command(
-                _drone_manager.absolute_path(self._working_directory()))
+                self._drone_manager.absolute_path(self._working_directory()))
 
 
     def _generate_command(self, results_dir):
@@ -383,7 +382,7 @@ class ArchiveResultsTask(SelfThrottledPostJobTask):
             failed_file = os.path.join(self._working_directory(),
                                        self._ARCHIVING_FAILED_FILE)
             paired_process = self._paired_with_monitor().get_process()
-            _drone_manager.write_lines_to_file(
+            self._drone_manager.write_lines_to_file(
                     failed_file, ['Archiving failed with exit code %s'
                                   % self.monitor.exit_code()],
                     paired_with_process=paired_process)

@@ -51,6 +51,7 @@ system error on the Autotest server.  Full results may not be available.  Sorry.
 """
 
 _db_manager = None
+_db = None
 _shutdown = False
 
 # These 2 globals are replaced for testing
@@ -192,6 +193,8 @@ def initialize():
     os.environ['PATH'] = AUTOTEST_SERVER_DIR + ':' + os.environ['PATH']
     global _db_manager
     _db_manager = scheduler_lib.ConnectionManager()
+    global _db
+    _db = _db_manager.get_connection()
     logging.info("Setting signal handler")
     signal.signal(signal.SIGINT, handle_signal)
     signal.signal(signal.SIGTERM, handle_signal)
@@ -241,9 +244,9 @@ class BaseDispatcher(object):
         self._last_clean_time = time.time()
         user_cleanup_time = scheduler_config.config.clean_interval_minutes
         self._periodic_cleanup = monitor_db_cleanup.UserCleanup(
-                _db_manager.get_connection(), user_cleanup_time)
+                _db, user_cleanup_time)
         self._24hr_upkeep = monitor_db_cleanup.TwentyFourHourUpkeep(
-                _db_manager.get_connection())
+                _db)
         self._host_agents = {}
         self._queue_entry_agents = {}
         self._tick_count = 0

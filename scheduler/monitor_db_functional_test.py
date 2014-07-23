@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import logging, os, unittest
+import logging, os, signal, unittest
 import common
 from autotest_lib.client.common_lib import enum, global_config, host_protections
 from autotest_lib.database import database_connection
@@ -64,6 +64,19 @@ _PIDFILE_TYPE_TO_PIDFILE = dict((value, key) for key, value
                                 in _PIDFILE_TO_PIDFILE_TYPE.iteritems())
 
 
+class MockConnectionManager(object):
+    """docstring for MockConnectionManager"""
+
+    db = None
+
+    def __init__(self):
+        super(MockConnectionManager, self).__init__()
+
+    def get_connection(self):
+        assert MockConnectionManager.db
+        return MockConnectionManager.db
+
+
 class MockDroneManager(NullMethodObject):
     """
     Public attributes:
@@ -71,7 +84,7 @@ class MockDroneManager(NullMethodObject):
             tests can change this to activate throttling.
     """
     _NULL_METHODS = ('reinitialize_drones', 'copy_to_results_repository',
-                     'copy_results_on_drone')
+                     'copy_results_on_drone', 'trigger_refresh', 'sync_refresh')
 
     class _DummyPidfileId(object):
         """
@@ -115,11 +128,12 @@ class MockDroneManager(NullMethodObject):
         # maps process to pidfile IDs
         self._process_index = {}
         # tracks pidfiles of processes that have been killed
-        self._killed_pidfiles = set()
+        self._pids_to_signals_received = {}
         # pidfile IDs that have just been unregistered (so will disappear on the
         # next cycle)
         self._unregistered_pidfiles = set()
-
+        # Pids to write exit status for at end of tick
+        self._set_pidfile_exit_status_queue = []
 
     # utility APIs for use by the test
 
@@ -140,9 +154,9 @@ class MockDroneManager(NullMethodObject):
         contents.num_tests_failed = 0
 
 
-    def was_last_process_killed(self, pidfile_type):
+    def was_last_process_killed(self, pidfile_type, sigs):
         pidfile_id = self._last_pidfile_id[pidfile_type]
-        return pidfile_id in self._killed_pidfiles
+        return sigs == self._pids_to_signals_received[pidfile_id]
 
 
     def nonfinished_pidfile_ids(self):
@@ -200,6 +214,10 @@ class MockDroneManager(NullMethodObject):
             self._pidfiles[pidfile_id].process = process
             self._process_index[process] = pidfile_id
         self._future_pidfiles = []
+
+        for pidfile_id in self._set_pidfile_exit_status_queue:
+            self._set_pidfile_exit_status(pidfile_id, 271)
+        self._set_pidfile_exit_status_queue = []
 
 
     def attach_file_to_execution(self, result_dir, file_contents,
@@ -281,10 +299,15 @@ class MockDroneManager(NullMethodObject):
                                        default_pidfile)
 
 
-    def kill_process(self, process):
+    def kill_process(self, process, sig=signal.SIGKILL):
         pidfile_id = self._process_index[process]
-        self._killed_pidfiles.add(pidfile_id)
-        self._set_pidfile_exit_status(pidfile_id, 271)
+
+        if pidfile_id not in self._pids_to_signals_received:
+            self._pids_to_signals_received[pidfile_id] = set()
+        self._pids_to_signals_received[pidfile_id].add(sig)
+
+        if signal.SIGKILL == sig:
+            self._set_pidfile_exit_status_queue.append(pidfile_id)
 
 
 class MockEmailManager(NullMethodObject):
@@ -335,6 +358,9 @@ class SchedulerFunctionalTest(unittest.TestCase,
         self._database.connect(db_type='django')
         self.god.stub_with(monitor_db, '_db', self._database)
         self.god.stub_with(scheduler_models, '_db', self._database)
+
+        MockConnectionManager.db = self._database
+        scheduler_lib.ConnectionManager = MockConnectionManager
 
         monitor_db.initialize_globals()
         scheduler_models.initialize_globals()
@@ -540,6 +566,7 @@ class SchedulerFunctionalTest(unittest.TestCase,
 
 
     def _finish_job(self, queue_entry):
+        self._check_statuses(queue_entry, HqeStatus.RUNNING)
         self.mock_drone_manager.finish_process(_PidfileType.JOB)
         self._run_dispatcher() # launches parsing
         self._check_statuses(queue_entry, HqeStatus.PARSING)
@@ -650,11 +677,13 @@ class SchedulerFunctionalTest(unittest.TestCase,
     def test_job_abort_in_verify(self):
         self._initialize_test()
         job = self._create_job(hosts=[1])
+        queue_entries = list(job.hostqueueentry_set.all())
         self._run_dispatcher() # launches verify
+        self._check_statuses(queue_entries[0], HqeStatus.VERIFYING)
         job.hostqueueentry_set.update(aborted=True)
         self._run_dispatcher() # kills verify, launches cleanup
         self.assert_(self.mock_drone_manager.was_last_process_killed(
-                _PidfileType.VERIFY))
+                _PidfileType.VERIFY, set([signal.SIGKILL])))
         self.mock_drone_manager.finish_process(_PidfileType.CLEANUP)
         self._run_dispatcher()
 
@@ -664,12 +693,17 @@ class SchedulerFunctionalTest(unittest.TestCase,
         job = self._create_job(hosts=[1])
         job.run_reset = False
         job.save()
+        queue_entries = list(job.hostqueueentry_set.all())
 
         self._run_dispatcher() # launches job
+
+        self._check_statuses(queue_entries[0], HqeStatus.RUNNING)
+
         job.hostqueueentry_set.update(aborted=True)
+
         self._run_dispatcher() # kills job, launches gathering
-        self.assert_(self.mock_drone_manager.was_last_process_killed(
-                _PidfileType.JOB))
+
+        self._check_statuses(queue_entries[0], HqeStatus.GATHERING)
         self.mock_drone_manager.finish_process(_PidfileType.GATHER)
         self._run_dispatcher() # launches parsing + cleanup
         queue_entry = job.hostqueueentry_set.all()[0]
@@ -694,13 +728,17 @@ class SchedulerFunctionalTest(unittest.TestCase,
 
     def test_no_pidfile_leaking(self):
         self._initialize_test()
+
         self.test_simple_job()
+        self.mock_drone_manager.refresh()
         self.assertEquals(self.mock_drone_manager._pidfiles, {})
 
         self.test_job_abort_in_verify()
+        self.mock_drone_manager.refresh()
         self.assertEquals(self.mock_drone_manager._pidfiles, {})
 
         self.test_job_abort()
+        self.mock_drone_manager.refresh()
         self.assertEquals(self.mock_drone_manager._pidfiles, {})
 
 
@@ -936,16 +974,17 @@ class SchedulerFunctionalTest(unittest.TestCase,
 
         self.mock_drone_manager.process_capacity = 2
         self._run_dispatcher() # verify runs on 1 and 2
-        _check_hqe_statuses(HqeStatus.VERIFYING, HqeStatus.VERIFYING,
-                            HqeStatus.QUEUED)
+        queue_entries = list(job.hostqueueentry_set.all())
+        _check_hqe_statuses(HqeStatus.QUEUED,
+                            HqeStatus.VERIFYING, HqeStatus.VERIFYING)
         self.assertEquals(len(self.mock_drone_manager.running_pidfile_ids()), 2)
 
         self.mock_drone_manager.finish_specific_process(
-                'hosts/host1/1-verify', drone_manager.AUTOSERV_PID_FILE)
+                'hosts/host3/1-verify', drone_manager.AUTOSERV_PID_FILE)
         self.mock_drone_manager.finish_process(_PidfileType.VERIFY)
         self._run_dispatcher() # verify runs on 3
-        _check_hqe_statuses(HqeStatus.PENDING, HqeStatus.PENDING,
-                            HqeStatus.VERIFYING)
+        _check_hqe_statuses(HqeStatus.VERIFYING, HqeStatus.PENDING,
+                            HqeStatus.PENDING)
 
         self.mock_drone_manager.finish_process(_PidfileType.VERIFY)
         self._run_dispatcher() # job won't run due to throttling
@@ -999,26 +1038,6 @@ class SchedulerFunctionalTest(unittest.TestCase,
         self._run_dispatcher()
         self._check_statuses(queue_entry, HqeStatus.ABORTED,
                              HostStatus.CLEANING)
-
-
-    def test_simple_atomic_group_job(self):
-        job = self._create_job(atomic_group=1)
-        self._run_dispatcher() # expand + verify
-        queue_entries = job.hostqueueentry_set.all()
-        self.assertEquals(len(queue_entries), 2)
-        self.assertEquals(queue_entries[0].host.hostname, 'host5')
-        self.assertEquals(queue_entries[1].host.hostname, 'host6')
-
-        self.mock_drone_manager.finish_process(_PidfileType.VERIFY)
-        self._run_dispatcher() # delay task started waiting
-
-        self.mock_drone_manager.finish_specific_process(
-                'hosts/host6/1-verify', drone_manager.AUTOSERV_PID_FILE)
-        self._run_dispatcher() # job starts now
-        for entry in queue_entries:
-            self._check_statuses(entry, HqeStatus.RUNNING, HostStatus.RUNNING)
-
-        # rest of job proceeds normally
 
 
     def test_simple_metahost_assignment(self):

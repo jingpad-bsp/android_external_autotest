@@ -536,7 +536,7 @@ class PidfileRunMonitorTest(unittest.TestCase):
         self.god = mock.mock_god()
         self.mock_drone_manager = self.god.create_mock_class(
             drone_manager.DroneManager, 'drone_manager')
-        self.god.stub_with(pidfile_monitor, '_drone_manager',
+        self.god.stub_with(drone_manager, '_the_instance',
                            self.mock_drone_manager)
         self.god.stub_function(email_manager.manager, 'enqueue_notify_email')
         self.god.stub_with(pidfile_monitor, '_get_pidfile_timeout_secs',

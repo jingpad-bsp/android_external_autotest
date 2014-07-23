@@ -443,7 +443,7 @@ class ThreadedDroneTest(unittest.TestCase):
         # Our manager instance isn't the drone manager singletone that the
         # pidfile_monitor will use by default, becuase setUp doesn't call
         # drone_manager.instance().
-        self.god.stub_with(pidfile_monitor, '_drone_manager', self.manager)
+        self.god.stub_with(drone_manager, '_the_instance', self.manager)
         monitor = pidfile_monitor.PidfileRunMonitor()
         monitor.pidfile_id = drone_manager.PidfileId(pidfile_path)
         self.manager.register_pidfile(monitor.pidfile_id)

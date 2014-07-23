@@ -11,7 +11,6 @@ from autotest_lib.scheduler import drone_manager, email_manager
 from autotest_lib.scheduler import scheduler_config
 
 
-_drone_manager = drone_manager.instance()
 
 def _get_pidfile_timeout_secs():
     """@returns How long to wait for autoserv to write pidfile."""
@@ -34,6 +33,7 @@ class PidfileRunMonitor(object):
 
 
     def __init__(self):
+        self._drone_manager = drone_manager.instance()
         self.lost_process = False
         self._start_time = None
         self.pidfile_id = None
@@ -58,7 +58,7 @@ class PidfileRunMonitor(object):
         if nice_level is not None:
             command = ['nice', '-n', str(nice_level)] + command
         self._set_start_time()
-        self.pidfile_id = _drone_manager.execute_command(
+        self.pidfile_id = self._drone_manager.execute_command(
             command, working_directory, pidfile_name=pidfile_name,
             num_processes=num_processes, log_file=log_file,
             paired_with_pidfile=paired_with_pidfile, username=username,
@@ -69,15 +69,15 @@ class PidfileRunMonitor(object):
                                    pidfile_name=drone_manager.AUTOSERV_PID_FILE,
                                    num_processes=None):
         self._set_start_time()
-        self.pidfile_id = _drone_manager.get_pidfile_id_from(
+        self.pidfile_id = self._drone_manager.get_pidfile_id_from(
             execution_path, pidfile_name=pidfile_name)
         if num_processes is not None:
-            _drone_manager.declare_process_count(self.pidfile_id, num_processes)
+            self._drone_manager.declare_process_count(self.pidfile_id, num_processes)
 
 
     def kill(self):
         if self.has_process():
-            _drone_manager.kill_process(self.get_process())
+            self._drone_manager.kill_process(self.get_process())
             self._killed = True
 
 
@@ -95,7 +95,7 @@ class PidfileRunMonitor(object):
     def _read_pidfile(self, use_second_read=False):
         assert self.pidfile_id is not None, (
             'You must call run() or attach_to_existing_process()')
-        contents = _drone_manager.get_pidfile_contents(
+        contents = self._drone_manager.get_pidfile_contents(
             self.pidfile_id, use_second_read=use_second_read)
         if contents.is_invalid():
             self._state = drone_manager.PidfileContents()
@@ -122,7 +122,7 @@ class PidfileRunMonitor(object):
 
         if self._state.exit_status is None:
             # double check whether or not autoserv is running
-            if _drone_manager.is_process_running(self._state.process):
+            if self._drone_manager.is_process_running(self._state.process):
                 return
 
             # pid but no running process - maybe process *just* exited
@@ -195,11 +195,11 @@ class PidfileRunMonitor(object):
     def try_copy_results_on_drone(self, **kwargs):
         if self.has_process():
             # copy results logs into the normal place for job results
-            _drone_manager.copy_results_on_drone(self.get_process(), **kwargs)
+            self._drone_manager.copy_results_on_drone(self.get_process(), **kwargs)
 
 
     def try_copy_to_results_repository(self, source, **kwargs):
         if self.has_process():
-            _drone_manager.copy_to_results_repository(self.get_process(),
+            self._drone_manager.copy_to_results_repository(self.get_process(),
                                                       source, **kwargs)
 
