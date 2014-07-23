@@ -14,7 +14,7 @@ TEST_CLASS = "graphics"
 TEST_TYPE = "client"
 JOB_RETRIES = 1
 
-SUITE = "bvt, bvt_cq, graphics"
+SUITE = "bvt-cq, bvt, bvt_cq, graphics"
 
 DOC = """
 Runs libdrm test apps.

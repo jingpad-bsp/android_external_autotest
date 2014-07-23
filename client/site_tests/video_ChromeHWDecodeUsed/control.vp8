@@ -8,7 +8,7 @@ PURPOSE = "Verify that VP8 video decode acceleration works in Chrome"
 CRITERIA = """
 This test will fail if VDA doesn't work with Chrome navigating to a webm file.
 """
-SUITE = "bvt, bvt_cq, video, qav"
+SUITE = "bvt-cq, bvt, bvt_cq, video"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"

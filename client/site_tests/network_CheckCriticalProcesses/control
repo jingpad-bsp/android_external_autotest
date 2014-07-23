@@ -4,7 +4,7 @@
 
 AUTHOR = 'pstew, quiche, wiley'
 NAME = 'network_CheckCriticalProcesses'
-SUITE='bvt, bvt_cq, network_nightly'
+SUITE='bvt-cq, bvt, bvt_cq, network_nightly'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
 JOB_RETRIES = 1

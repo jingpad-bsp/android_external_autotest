@@ -18,7 +18,7 @@ PURPOSE = "Checks that /dev/chromeos-low-mem reports low-memory conditions."
 CRITERIA = """
 Fails if perf report doesn't contain the correct executable name
 """
-SUITE = "bvt"
+SUITE = "bvt-perbuild, bvt"
 TIME = "FAST"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "kernel"

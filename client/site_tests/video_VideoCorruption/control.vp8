@@ -8,7 +8,7 @@ PURPOSE = "Verify that Chrome can handle corrupted webm video"
 CRITERIA = """
 This test will fail if Chrome fails to catch error for playing corrupted webm video.
 """
-SUITE = "video,qav"
+SUITE = "bvt-perbuild, video, qav"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"

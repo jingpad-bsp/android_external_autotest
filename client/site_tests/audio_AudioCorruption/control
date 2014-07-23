@@ -8,7 +8,7 @@ PURPOSE = "Verify that Chrome can handle corrupted mp3 audio"
 CRITERIA = """
 This test will fail if Chrome can't catch error for playing corrupted mp3 audio.
 """
-SUITE = "audio,qav"
+SUITE = "bvt-perbuild, audio, qav"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "audio"

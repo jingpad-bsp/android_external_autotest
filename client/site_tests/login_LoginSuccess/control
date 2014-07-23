@@ -4,7 +4,7 @@
 
 AUTHOR = "cmasone, achuith"
 NAME = "login_LoginSuccess"
-SUITE = "bvt, bvt_cq, smoke"
+SUITE = "bvt-inline, bvt, bvt_cq, smoke"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "login"

@@ -17,7 +17,7 @@ TEST_CLASS = "graphics"
 TEST_TYPE = "client"
 JOB_RETRIES = 1
 
-SUITE = "bvt, bvt_cq"
+SUITE = "bvt-cq, bvt, bvt_cq"
 
 DOC = """
 Verifies kernel gem objects and memory info values can be read from sysfs.

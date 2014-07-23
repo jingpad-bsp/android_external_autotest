@@ -11,7 +11,7 @@ PURPOSE = "To ensure ASLR is enabled for chrome and debugd"
 CRITERIA = (" Fail if a process can't restart or has address range starts"
     "for any executable stack, or heap memory map to the same location"
     "after restarting")
-SUITE = "smoke, bvt, bvt_cq"
+SUITE = "bvt-inline, smoke, bvt, bvt_cq"
 TEST_CLASS = "security"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"

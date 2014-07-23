@@ -8,7 +8,7 @@ PURPOSE = 'test ram speed'
 TIME = 'SHORT'
 TEST_CLASS = 'hardware'
 TEST_TYPE = 'client'
-SUITE = 'bvt, bvt_cq'
+SUITE = 'bvt-cq, bvt, bvt_cq'
 JOB_RETRIES = 1
 
 DOC = """

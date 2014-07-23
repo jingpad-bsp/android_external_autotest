@@ -24,7 +24,7 @@ or unexpected values for sysctls:
   - net/ipv4/tcp_syncookies
   - vm/mmap_min_addr
 """
-SUITE = "bvt, bvt_cq, smoke"
+SUITE = "bvt-inline, bvt, bvt_cq, smoke"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
