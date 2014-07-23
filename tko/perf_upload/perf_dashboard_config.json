@@ -32,6 +32,10 @@
     "master_name": "ChromeOS_Graphics"
   },
   {
+    "autotest_name": "graphics_WebGLClear",
+    "master_name": "ChromeOS_Graphics"
+  },
+  {
     "autotest_name": "graphics_WebGLConformance",
     "master_name": "ChromeOS_Graphics"
   },
