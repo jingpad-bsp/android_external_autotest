@@ -32,8 +32,8 @@ class cellular_OutOfCreditsSubscriptionState(test.test):
         # interface (crbug.com/343258).
         self.pseudomm.get_modem().iface_properties.Set(
                 mm1_constants.I_MODEM,
-                mm1_constants.MM_MODEM_PROPERTY_NAME_MODEL,
-                'ALT3100')
+                mm1_constants.MM_MODEM_PROPERTY_NAME_PLUGIN,
+                'Altair LTE')
         self.pseudomm.iface_testing.SetSubscriptionState(
                 mm1_constants.MM_MODEM_3GPP_SUBSCRIPTION_STATE_UNKNOWN,
                 subscription_state)

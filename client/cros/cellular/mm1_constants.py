@@ -58,6 +58,7 @@ I_SMS = I_MODEM_MANAGER + '.Sms'
 
 # Frequently accessed propeties
 MM_MODEM_PROPERTY_NAME_MODEL = 'Model'
+MM_MODEM_PROPERTY_NAME_PLUGIN = 'Plugin'
 MM_MODEM_PROPERTY_NAME_STATE = 'State'
 
 
