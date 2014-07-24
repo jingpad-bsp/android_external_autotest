@@ -43,15 +43,19 @@ class network_WiFi_ChaosConnectDisconnect(test.test):
                 success = False
                 logging.info('Connection attempt %d', i)
                 host.syslog('Connection attempt %d' % i)
+                start_time = host.run("date '+%FT%T.%N%:z'").stdout.strip()
                 assoc_result = xmlrpc_datatypes.deserialize(
                         client.shill.connect_wifi(assoc_params))
+                end_time = host.run("date '+%FT%T.%N%:z'").stdout.strip()
                 success = assoc_result.success
                 if not success:
                     logging.info('Connection attempt %d failed; reason: %s',
                                  i, assoc_result.failure_reason)
                     results.append(
                             {'try' : i,
-                             'error' : assoc_result.failure_reason})
+                             'error' : assoc_result.failure_reason,
+                             'start_time': start_time,
+                             'end_time': end_time})
                 else:
                     logging.info('Connection attempt %d passed', i)
             finally:
