@@ -2158,13 +2158,16 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         try:
             parser.read(filename)
-
             supported_boards = parser.sections()
 
-            if dut in supported_boards:
-                return 'video_glitch_detection'
-            else:
-                return None
+            # Some boards have multiple resolutions. e.g: nyan_big has standard
+            # and high definitions. The conf file has something like nyan_big_sd
+
+            for board in supported_boards:
+                if board.startswith(dut):
+                    return 'video_glitch_detection'
+
+            return None
 
         except ConfigParser.error:
             # something went wrong while parsing the conf file
