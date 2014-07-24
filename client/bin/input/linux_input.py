@@ -107,6 +107,9 @@ def EVIOCGUNIQ(length):
 def EVIOCGPROP(length):
     return IOC(IOC_READ, 'E', 0x09, length)  # get device properties
 
+def EVIOCGMTSLOTS(length):
+    return IOC(IOC_READ, 'E', 0x0a, length)  # get mt slot values
+
 def EVIOCGKEY(length):
     return IOC(IOC_READ, 'E', 0x18, length)  # get global key state
 
