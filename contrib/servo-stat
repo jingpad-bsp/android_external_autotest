@@ -13,15 +13,35 @@
 # progress, and if things get hung up, you can see where.
 
 
-REPO=$(dirname $0)/../../../../..
+# readlink -f $0, in case $0 is a symlink from somewhere else
+REPO=$(dirname $(readlink -f $0))/../../../../..
+REPO=$(readlink -f $REPO)
 HDCTOOLS=$(readlink -f $REPO/chroot/usr/lib/python2.7/site-packages/servo)
+KEYFILE=$REPO
+KEYFILE=$KEYFILE/src/third_party/chromiumos-overlay
+KEYFILE=$KEYFILE/chromeos-base/chromeos-test-testauthkeys/files/testing_rsa
+
+# Need some temporary files to keep ssh happy:
+#  + Just setting StrictHostKeyChecking=no won't silence all
+#    possible errors about host keys, so we need a temporary file
+#    where host keys can be cached.
+#  + We don't want to require the user to edit or provide the
+#    standard test keys, so we use the keys from the repo.  But...
+#    The file must be user-readable only, so we need a copy with
+#    the correct modes (mktemp is 600 by default).
+
+TMPKEYS=$(mktemp)
+TMPHOSTS=$(mktemp)
+trap 'rm $TMPKEYS $TMPHOSTS' EXIT
+cp $KEYFILE $TMPKEYS
 
 dut_control() {
   timeout 90 python $HDCTOOLS/dut_control.py "$@"
 }
 
 remote() {
-    local ssh_opts=( -n -o BatchMode=yes -o StrictHostKeyChecking=no )
+    local ssh_opts=( -n -o BatchMode=yes -o StrictHostKeyChecking=no
+                     -o UserKnownHostsFile=$TMPHOSTS -i $TMPKEYS )
     local servo=$1
     shift
     ssh "${ssh_opts[@]}" root@$servo "$@"
