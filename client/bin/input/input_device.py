@@ -20,6 +20,8 @@ import select
 import struct
 import time
 
+from collections import OrderedDict
+
 from linux_input import *
 
 
@@ -279,6 +281,38 @@ class InputDevice:
                 types.append(t)
         return types
 
+    def _convert_slot_index_to_slot_id(self, index):
+        """ Convert a slot index in self.mt_slots to its slot id. """
+        return self.abs_mt_slot.min + index
+
+    def _ioctl_mt_slots(self):
+        """Query mt slots values using ioctl.
+
+        The ioctl buffer argument should be binary equivalent to
+        struct input_mt_request_layout {
+            __u32 code;
+            __s32 values[num_slots];
+
+        Note that the slots information returned by EVIOCGMTSLOTS
+        corresponds to the slot ids ranging from abs_mt_slot.min to
+        abs_mt_slot.max which is not necessarily the same as the
+        slot indexes ranging from 0 to num_slots - 1 in self.mt_slots.
+        We need to map between the slot index and the slot id correctly.
+        };
+        """
+        # Iterate through the absolute mt events that are supported.
+        for c in range(ABS_MT_FIRST, ABS_MT_LAST):
+            if c not in self.events[EV_ABS]:
+                continue
+            # Sync with evdev kernel driver for the specified code c.
+            mt_slot_info = array.array('i', [c] + [0] * self.num_slots)
+            mt_slot_info_len = (self.num_slots + 1) * mt_slot_info.itemsize
+            fcntl.ioctl(self.f, EVIOCGMTSLOTS(mt_slot_info_len), mt_slot_info)
+            values = mt_slot_info[1:]
+            for slot_index in range(self.num_slots):
+                slot_id = self._convert_slot_index_to_slot_id(slot_index)
+                self.mt_slots[slot_index][c].value = values[slot_id]
+
     def _setup_mt_slots(self):
         """
         Sets up the device's mt_slots array.
@@ -299,19 +333,29 @@ class InputDevice:
         mt_abs_info[ABS_MT_TRACKING_ID].value = -1
 
         # Make a copy of mt_abs_info for each MT slot
-        abs_mt_slot = ev_abs[ABS_MT_SLOT]
-        num_slots = abs_mt_slot.max - abs_mt_slot.min + 1
-        for s in range(num_slots):
+        self.abs_mt_slot = ev_abs[ABS_MT_SLOT]
+        self.num_slots = self.abs_mt_slot.max - self.abs_mt_slot.min + 1
+        for s in range(self.num_slots):
             self.mt_slots.append(copy.deepcopy(mt_abs_info))
+
+        self._ioctl_mt_slots()
+
+    def get_current_slot_id(self):
+        """
+        Return the current slot id.
+        """
+        if not self.is_mt_b():
+            return None
+        return self.events[EV_ABS][ABS_MT_SLOT].value
 
     def _get_current_slot(self):
         """
         Returns the current slot, as indicated by the last ABS_MT_SLOT event.
         """
-        if not self.is_mt_b():
+        current_slot_id = self.get_current_slot_id()
+        if current_slot_id is None:
             return None
-        slot_id = self.events[EV_ABS][ABS_MT_SLOT].value
-        return self.mt_slots[slot_id]
+        return self.mt_slots[current_slot_id]
 
     def _get_tid(self, slot):
         """ Returns the tracking_id for the given MT slot. """
@@ -528,6 +572,17 @@ class InputDevice:
                     print '    Event code (%d)' % (c)
                 self.print_abs_info(c)
 
+    def get_slots(self):
+        """ Get those slots with positive tracking IDs. """
+        slot_dict = OrderedDict()
+        for slot_index in range(self.num_slots):
+            slot = self.mt_slots[slot_index]
+            if self._get_tid(slot) == -1:
+                continue
+            slot_id = self._convert_slot_index_to_slot_id(slot_index)
+            slot_dict[slot_id] = slot
+        return slot_dict
+
     def print_slots(self):
         for s_id in range(len(self.mt_slots)):
             slot = self.mt_slots[s_id]
@@ -604,6 +659,11 @@ if __name__ == "__main__":
                    (device.get_x_min(), device.get_x_max(),
                     device.get_y_min(), device.get_y_max(),
                     device.get_pressure_min(), device.get_pressure_max()))
+            device.print_slots()
+            print 'Number of fingers: %d' % device.get_num_fingers()
+            print 'Current slot id: %d' % device.get_current_slot_id()
+    print '------------------'
+    print
 
     ev = InputEvent()
     while True:
