@@ -1195,6 +1195,7 @@ EV_STRINGS = {
         BTN_TOOL_FINGER : 'TOOL_FINGER',
         BTN_TOOL_MOUSE  : 'TOOL_MOUSE',
         BTN_TOOL_LENS   : 'TOOL_LENS',
+        BTN_TOOL_QUINTTAP : 'TOOL_QUINTTAP',
         BTN_TOUCH       : 'TOUCH',
         BTN_STYLUS      : 'STYLUS',
         BTN_STYLUS2     : 'STYLUS2',
