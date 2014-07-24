@@ -118,10 +118,12 @@ def get_first_soundcard_with_control(cname, scname):
     @param scname: Simple control name to look for.
     '''
 
+    cpat = re.compile(r'\b%s\b' % cname, re.IGNORECASE)
+    scpat = re.compile(r'\b%s\b' % scname, re.IGNORECASE)
     for card_id in xrange(get_num_soundcards()):
-        for name, func in [(cname, _get_soundcard_controls),
-                           (scname, _get_soundcard_scontrols)]:
-            if any(name in c for c in func(card_id)):
+        for pat, func in [(cpat, _get_soundcard_controls),
+                          (scpat, _get_soundcard_scontrols)]:
+            if any(pat.search(c) for c in func(card_id)):
                 return card_id
     return None
 
