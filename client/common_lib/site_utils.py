@@ -363,6 +363,25 @@ def take_screen_shot_crop_by_height(fullpath, final_height, x_offset_pixels,
     return fullpath
 
 
+def get_dut_display_resolution():
+    """
+    Parses output of xrandr to determine the display resolution of the dut.
+
+    @return: tuple, (w,h) resolution of device under test.
+    """
+
+    env_vars = 'DISPLAY=:0.0 XAUTHORITY=/home/chronos/.Xauthority'
+    cmd = '%s xrandr | egrep -o "current [0-9]* x [0-9]*"' % env_vars
+    output = base_utils.system_output(cmd)
+
+    m = re.search('(\d+) x (\d+)', output)
+
+    if len(m.groups()) == 2:
+        return int(m.group(1)), int(m.group(2))
+    else:
+        return None
+
+
 def _execute_screenshot_capture_command(import_cmd_string):
     """
     Executes command to capture a screenshot.
