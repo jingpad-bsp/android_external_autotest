@@ -11,7 +11,7 @@ Reference:
 """
 
 import common
-from autotest_lib.client.cros.cellular.mbim_compliance import mbim_control
+from autotest_lib.client.cros.cellular.mbim_compliance import mbim_constants
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_errors
 from autotest_lib.client.cros.cellular.mbim_compliance.sequences \
         import mbim_open_generic_sequence
@@ -32,6 +32,6 @@ class CM03Test(test.Test):
                         self.test_context).run())
 
         # Validate function's behaviour for an unsynchronized MBIM_OPEN_MSG.
-        if response_message.message_type == mbim_control.MBIM_CLOSE_DONE:
+        if response_message.message_type == mbim_constants.MBIM_CLOSE_DONE:
             mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
                                       'mbim1.0:9.3.1#1')

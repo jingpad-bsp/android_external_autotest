@@ -13,6 +13,7 @@ Reference:
 import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_channel
+from autotest_lib.client.cros.cellular.mbim_compliance import mbim_constants
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_control
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_errors
 from autotest_lib.client.cros.cellular.mbim_compliance.sequences \
@@ -30,15 +31,15 @@ class CM05Test(test.Test):
                 self.test_context).run()
 
         caps_command_message = mbim_control.MBIMCommandMessage(
-                device_service_id=mbim_control.UUID_BASIC_CONNECT.bytes,
-                cid=mbim_control.MBIM_CID_DEVICE_CAPS,
-                command_type=mbim_control.COMMAND_TYPE_QUERY,
+                device_service_id=mbim_constants.UUID_BASIC_CONNECT.bytes,
+                cid=mbim_constants.MBIM_CID_DEVICE_CAPS,
+                command_type=mbim_constants.COMMAND_TYPE_QUERY,
                 information_buffer_length=0)
         caps_packets = caps_command_message.generate_packets()
         services_command_message = mbim_control.MBIMCommandMessage(
-                device_service_id=mbim_control.UUID_BASIC_CONNECT.bytes,
-                cid=mbim_control.MBIM_CID_DEVICE_SERVICES,
-                command_type=mbim_control.COMMAND_TYPE_QUERY,
+                device_service_id=mbim_constants.UUID_BASIC_CONNECT.bytes,
+                cid=mbim_constants.MBIM_CID_DEVICE_SERVICES,
+                command_type=mbim_constants.COMMAND_TYPE_QUERY,
                 information_buffer_length=0)
         services_packets = services_command_message.generate_packets()
         self.caps_transaction_id = caps_command_message.transaction_id

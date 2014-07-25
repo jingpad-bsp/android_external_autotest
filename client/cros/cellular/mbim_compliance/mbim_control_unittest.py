@@ -7,6 +7,7 @@ import unittest
 import array
 
 import common
+from autotest_lib.client.cros.cellular.mbim_compliance import mbim_constants
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_control
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_errors
 
@@ -128,10 +129,11 @@ class MBIMControlTestCase(unittest.TestCase):
                                      0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
                                      0x00, 0x00])]
         message = mbim_control.parse_response_packets(packets)
-        self.assertEqual(message.message_type, mbim_control.MBIM_OPEN_DONE)
+        self.assertEqual(message.message_type, mbim_constants.MBIM_OPEN_DONE)
         self.assertEqual(message.message_length, 16)
         self.assertEqual(message.transaction_id, 1)
-        self.assertEqual(message.status_codes, mbim_control.MBIM_STATUS_SUCCESS)
+        self.assertEqual(message.status_codes,
+                         mbim_constants.MBIM_STATUS_SUCCESS)
 
 
     def test_success_of_parsing_mbim_close_done(self):
@@ -142,10 +144,11 @@ class MBIMControlTestCase(unittest.TestCase):
                                      0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
                                      0x00, 0x00])]
         message = mbim_control.parse_response_packets(packets)
-        self.assertEqual(message.message_type, mbim_control.MBIM_CLOSE_DONE)
+        self.assertEqual(message.message_type, mbim_constants.MBIM_CLOSE_DONE)
         self.assertEqual(message.message_length, 16)
         self.assertEqual(message.transaction_id, 1)
-        self.assertEqual(message.status_codes, mbim_control.MBIM_STATUS_SUCCESS)
+        self.assertEqual(message.status_codes,
+                         mbim_constants.MBIM_STATUS_SUCCESS)
 
 
     def test_success_of_parsing_mbim_command_done(self):
@@ -166,7 +169,7 @@ class MBIMControlTestCase(unittest.TestCase):
                                      0x01, 0x01, 0x01])]
         message = mbim_control.parse_response_packets(packets)
 
-        self.assertEqual(message.message_type, mbim_control.MBIM_COMMAND_DONE)
+        self.assertEqual(message.message_type, mbim_constants.MBIM_COMMAND_DONE)
         self.assertEqual(message.message_length, 52)
         self.assertEqual(message.transaction_id, 1)
         self.assertEqual(message.total_fragments, 2)
@@ -175,11 +178,28 @@ class MBIMControlTestCase(unittest.TestCase):
                          '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
                          '\x00\x00\x00\x00')
         self.assertEqual(message.cid, 1)
-        self.assertEqual(message.status_codes, mbim_control.MBIM_STATUS_SUCCESS)
+        self.assertEqual(message.status_codes,
+                         mbim_constants.MBIM_STATUS_SUCCESS)
         self.assertEqual(message.information_buffer_length, 8)
         self.assertEqual(message.information_buffer,
                          array.array('B', [0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
                                            0x01, 0x01]))
+
+
+    def test_success_of_parsing_mbim_function_error_msg(self):
+        """
+        Verifies the |MBIM_FUNCTION_ERROR_MSG| packets are parsed correctly.
+        """
+        packets = [array.array('B', [0x04, 0x00, 0x00, 0x80, 0x10, 0x00, 0x00,
+                                     0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x00,
+                                     0x00, 0x00])]
+        message = mbim_control.parse_response_packets(packets)
+        self.assertEqual(message.message_type,
+                         mbim_constants.MBIM_FUNCTION_ERROR_MSG)
+        self.assertEqual(message.message_length, 16)
+        self.assertEqual(message.transaction_id, 1)
+        self.assertEqual(message.error_status_code,
+                         mbim_constants.MBIM_ERROR_UNKNOWN)
 
 
 if __name__ == '__main__':

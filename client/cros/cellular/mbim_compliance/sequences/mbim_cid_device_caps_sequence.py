@@ -10,6 +10,7 @@ Reference:
 """
 import common
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_channel
+from autotest_lib.client.cros.cellular.mbim_compliance import mbim_constants
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_control
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_errors
 from autotest_lib.client.cros.cellular.mbim_compliance.sequences \
@@ -29,9 +30,9 @@ class MBIMCIDDeviceCapsSequence(sequence.Sequence):
         # Step 1
         # Send MBIM_COMMAND_MSG.
         command_message = mbim_control.MBIMCommandMessage(
-                device_service_id=mbim_control.UUID_BASIC_CONNECT.bytes,
-                cid=mbim_control.MBIM_CID_DEVICE_CAPS,
-                command_type=mbim_control.COMMAND_TYPE_QUERY,
+                device_service_id=mbim_constants.UUID_BASIC_CONNECT.bytes,
+                cid=mbim_constants.MBIM_CID_DEVICE_CAPS,
+                command_type=mbim_constants.COMMAND_TYPE_QUERY,
                 information_buffer_length=0)
         packets = command_message.generate_packets()
         channel = mbim_channel.MBIMChannel(
@@ -47,8 +48,8 @@ class MBIMCIDDeviceCapsSequence(sequence.Sequence):
         response_message = mbim_control.parse_response_packets(response_packets)
 
         # Step 3
-        if (response_message.message_type != mbim_control.MBIM_COMMAND_DONE or
-            response_message.status_codes != mbim_control.MBIM_STATUS_SUCCESS):
+        if (response_message.message_type != mbim_constants.MBIM_COMMAND_DONE or
+            response_message.status_codes != mbim_constants.MBIM_STATUS_SUCCESS):
             mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
                                       'mbim1.0:9.4.3')
 

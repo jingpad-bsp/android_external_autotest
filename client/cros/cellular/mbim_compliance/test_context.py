@@ -15,8 +15,8 @@ class TestContext:
     """ Context of device under test. """
 
     def __init__(self):
-        self._id_vendor = 0x1983
-        self._id_product = 0x1003
+        self._id_vendor = 0x1199
+        self._id_product = 0x9041
         self._device = core.find(idVendor=self._id_vendor,
                                  idProduct=self._id_product)
 

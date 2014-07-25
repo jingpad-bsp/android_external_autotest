@@ -1,11 +1,12 @@
 # Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
 """
-MBIM_CID_DEVICE_SERVICES Sequence
+CM_07 Validation of Status in Case of an Unsupported CID in MBIM_COMMAND_MSG
 
 Reference:
-    [1] Universal Serial Bus Communication Class MBIM Compliance Testing: 22
+    [1] Universal Serial Bus Communication Class MBIM Compliance Testing: 40
         http://www.usb.org/developers/docs/devclass_docs/MBIM-Compliance-1.0.pdf
 """
 import common
@@ -14,23 +15,28 @@ from autotest_lib.client.cros.cellular.mbim_compliance import mbim_constants
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_control
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_errors
 from autotest_lib.client.cros.cellular.mbim_compliance.sequences \
-        import sequence
+        import mbim_open_generic_sequence
+from autotest_lib.client.cros.cellular.mbim_compliance.tests import test
 
 
-class MBIMCIDDeviceServicesSequence(sequence.Sequence):
-    """
-    Implement |MBIMCIDDeviceServicesSequence|.
-    In this sequence, cid |MBIM_CID_DEVICE_SERVICES| is used to query the device
-    services supported by the MBIM devices and their properties.
-    """
+class CM07Test(test.Test):
+    """ Implement the CM_07 test. """
 
     def run_internal(self):
-        """ Run the MBIM_CID_DEVICE_SERVICES Sequence. """
+        """ Run CM_07 test. """
+        # Precondition
+        mbim_open_generic_sequence.MBIMOpenGenericSequence(
+                self.test_context).run()
+
         # Step 1
+        # 255 is an unsupported CID.
         command_message = mbim_control.MBIMCommandMessage(
-                device_service_id=mbim_control.UUID_BASIC_CONNECT.bytes,
-                cid=mbim_constants.MBIM_CID_DEVICE_SERVICES,
-                command_type=mbim_control.COMMAND_TYPE_QUERY,
+                message_length=48,
+                total_fragments=1,
+                current_fragment=0,
+                device_service_id=mbim_constants.UUID_BASIC_CONNECT.bytes,
+                cid=255,
+                command_type=mbim_constants.COMMAND_TYPE_QUERY,
                 information_buffer_length=0)
         packets = command_message.generate_packets()
         channel = mbim_channel.MBIMChannel(
@@ -46,11 +52,8 @@ class MBIMCIDDeviceServicesSequence(sequence.Sequence):
         response_message = mbim_control.parse_response_packets(response_packets)
 
         # Step 3
-        if ((response_message.message_type ==
-             mbim_constants.MBIM_COMMAND_DONE) and
+        if (response_message.message_type != mbim_constants.MBIM_COMMAND_DONE or
             (response_message.status_codes !=
-             mbim_constants.MBIM_STATUS_SUCCESS)):
+             mbim_constants.MBIM_STATUS_NO_DEVICE_SUPPORT)):
             mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
-                                      'mbim1.0:9.4.3')
-
-        return command_message, response_message
+                                      'mbim1.0:9.4.5#2')

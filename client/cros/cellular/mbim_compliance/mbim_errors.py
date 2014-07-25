@@ -181,6 +181,8 @@ class MBIMComplianceAssertionError(MBIMComplianceError):
                                 'control message it has to send to the host.',
 
             # Assertion Groups: 9.x#x, 9.x.x and 9.x.x#x
+            'mbim1.0:9.1#1': 'For notifications, the TransactionId must be set '
+                             'to 0 by the function.',
             'mbim1.0:9.1#2': 'MessageLength in MBIM_MESSAGE_HEADER must be >= '
                              '0x0C.',
             'mbim1.0:9.3.1#1': 'In case MBIM_OPEN_MSG message is sent to a '
@@ -230,7 +232,17 @@ class MBIMComplianceAssertionError(MBIMComplianceError):
                              'the MBIM_COMMAND_MSG.',
             'mbim1.0:9.4.5#1': 'If the CID is successful, the function shall '
                                'set the Status field to MBIM_STATUS_SUCCESS '
-                               'in the MBIM_COMMAND_DONE.'
+                               'in the MBIM_COMMAND_DONE.',
+            'mbim1.0:9.4.5#2': 'If the function does not implement the CID, '
+                               'then the function shall fail the request with '
+                               'MBIM_STATUS_NO_DEVICE_SUPPORT.',
+            'mbim1.0:9.4.5#3': 'If the Status field returned to the host is '
+                               'not equal to MBIM_STATUS_SUCCESS, the function '
+                               'must set the Information BufferLength to 0, '
+                               'indicating an empty InformationBuffer except '
+                               'the following CIDs: MBIM_CID_REGISTER_STATE, '
+                               'MBIM_CID_PACKET_SERVICE, MBIM_CID_CONNECT, '
+                               'MBIM_CID_SERVICE_ACTIVATION.'
     }
 
     def __init__(self, assertion_id, error_string=None):

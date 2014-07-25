@@ -20,50 +20,24 @@ Reference:
 import array
 import struct
 import sys
-import uuid
 
 import common
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_errors
+from autotest_lib.client.cros.cellular.mbim_compliance import mbim_constants
 
 
-# The following type values are defined for the MBIM control messages sent from
-# the host to the device.
-MBIM_OPEN_MSG = 0x00000001
-MBIM_CLOSE_MSG = 0x00000002
-MBIM_COMMAND_MSG = 0x00000003
-MBIM_HOST_ERROR_MSG = 0x00000004
+# Message classes which are sent from the host to the device.
+MSG_FROM_HOST_TO_DEVICE = ('MBIMOpenMessage',
+                           'MBIMCloseMessage',
+                           'MBIMCommandMessage',
+                           'MBIMHostErrorMessage')
 
-# The following type values are defined for the MBIM control messages sent from
-# the device to the host.
-MBIM_OPEN_DONE = 0x80000001
-MBIM_CLOSE_DONE = 0x80000002
-MBIM_COMMAND_DONE = 0x80000003
-MBIM_FUNCTION_ERROR_MSG = 0x80000004
-MBIM_INDICATE_STATUS_MSG = 0x80000005
-
-# The following type values are defined for the MBIM status codes.
-MBIM_STATUS_SUCCESS = 0x00000000
-
-# The following command codes are defined for the MBIM command identifiers.
-MBIM_CID_DEVICE_CAPS = 0x00000001
-MBIM_CID_SUBSCRIBER_READY_STATUS = 0x00000002
-MBIM_CID_RADIO_STATE = 0x00000003
-MBIM_CID_PIN = 0x00000004
-MBIM_CID_HOME_PROVIDER = 0x00000006
-MBIM_CID_REGISTER_STATE = 0x00000009
-MBIM_CID_PACKET_SERVICE = 0x0000000A
-MBIM_CID_SIGNAL_STATE = 0x0000000B
-MBIM_CID_CONNECT = 0x0000000C
-MBIM_CID_SERVICE_ACTIVATION = 0x0000000E
-MBIM_CID_IP_CONFIGURATION = 0x0000000F
-MBIM_CID_DEVICE_SERVICES = 0x00000010
-
-# The following command types are defined for the MBIM command message.
-COMMAND_TYPE_QUERY = 0
-COMMAND_TYPE_SET = 1
-
-# The following UUID values are defined for the device service identifiers.
-UUID_BASIC_CONNECT = uuid.UUID('a289cc33-bcbb-8b4f-b6b0-133ec2aae6df')
+# Message classese which are sent from the device to the host.
+MSG_FROM_DEVICE_TO_HOST = ('MBIMOpenDone',
+                           'MBIMCloseDone',
+                           'MBIMCommandDone',
+                           'MBIMFunctionErrorMessage',
+                           'MBIMIndicateStatusMessage')
 
 
 class MBIMData(object):
@@ -153,7 +127,7 @@ class MBIMMessageBase(MBIMData):
     _transaction_id = 0x00000000
 
 
-    def __init__(self, **kwargs):
+    def __init__(self, information_buffer=None, **kwargs):
         """
         @param kwargs: The keyword arguments for all the fields to be set in the
         message body.
@@ -175,11 +149,11 @@ class MBIMMessageBase(MBIMData):
         # if there is no value in |kwargs| and |defaults| for any of the
         # required fields. The optional/required fields depends on the type of
         # the message created.
-        if self.__class__ in [MBIMOpenDone, MBIMCloseDone, MBIMCommandDone]:
-            optional_fields = set()
-        else:
+        if self.__class__.__name__ in MSG_FROM_HOST_TO_DEVICE:
             optional_fields = set(['transaction_id', 'message_length'])
-        required_fields = (set(self.all_field_names) - optional_fields)
+        else:
+            optional_fields = set()
+        required_fields = set(self.all_field_names) - optional_fields
 
         for name in required_fields:
             # Set the field value to the value given in |kwargs| if the value
@@ -193,6 +167,7 @@ class MBIMMessageBase(MBIMData):
                                 name, self.__class__.__name__))
 
             setattr(self, name, value)
+        setattr(self, 'information_buffer', information_buffer)
 
 
     def _get_transaction_id(self):
@@ -217,16 +192,22 @@ class MBIMMessageBase(MBIMData):
         @returns A list of packets to be sent, and each packet is in binary
                 array form.
         """
+        cls = self.__class__
+        if cls.__name__ not in MSG_FROM_HOST_TO_DEVICE:
+            mbim_errors.log_and_raise(NotImplementedError)
+
         # TODO(mcchou): Handle the fragmentation for MBIM_COMMAND_MSG while
         #               information buffer is not NULL.
-        cls = self.__class__
         packets = []
         self.transaction_id = self._get_transaction_id()
-        if cls in [MBIMOpenMessage, MBIMCloseMessage, MBIMHostErrorMessage,
-                   MBIMCommandMessage]:
-            format_string = '<' + ''.join(self.all_field_formats)
-            self.message_length = struct.calcsize(format_string)
-            packets.append(self.pack(format_string, self.all_field_names))
+        format_string = '<' + ''.join(self.all_field_formats)
+        self.message_length = struct.calcsize(format_string)
+        if self.information_buffer:
+            self.message_length += len(self.information_buffer)
+        packet = self.pack(format_string, self.all_field_names)
+        if self.information_buffer:
+            packet.extend(self.information_buffer)
+        packets.append(packet)
         return packets
 
 
@@ -260,7 +241,7 @@ class MBIMMessageBase(MBIMData):
 
         """
         all_fields = cls._FIELDS
-        if cls in [MBIMCommandMessage, MBIMCommandDone] and get_all:
+        if get_all and hasattr(cls, '_COMMAND_INFORMATION'):
             all_fields += cls._COMMAND_INFORMATION
         return all_fields
 
@@ -284,7 +265,7 @@ class MBIMMessageBase(MBIMData):
                 |MBIMCommandDone|.
 
         """
-        if cls not in [MBIMOpenDone, MBIMCloseDone, MBIMCommandDone]:
+        if cls.__name__ not in MSG_FROM_DEVICE_TO_HOST:
             mbim_errors.log_and_raise(NotImplementedError)
 
         # Parse the first packet.
@@ -293,7 +274,7 @@ class MBIMMessageBase(MBIMData):
         field_formats, _ = zip(*cls.get_fields(get_all=True))
         length_of_all_fields = struct.calcsize('<' + ''.join(field_formats))
 
-        if cls is MBIMCommandDone and len(packets) > 1:
+        if cls in [MBIMCommandDone, MBIMIndicateStatusMessage]:
             # Unpack the continuation packets of type |MBIM_COMMAND_DONE|.
             info_buffer = array.array('B')
             info_buffer.extend(packets[0][length_of_all_fields:])
@@ -318,14 +299,14 @@ class MBIMOpenMessage(MBIMMessageBase):
     """ The class for MBIM_OPEN_MSG. """
 
     _FIELDS = MBIMHeader.get_fields() + (('I', 'max_control_transfer'),)
-    _DEFAULTS = {'message_type': MBIM_OPEN_MSG}
+    _DEFAULTS = {'message_type': mbim_constants.MBIM_OPEN_MSG}
 
 
 class MBIMCloseMessage(MBIMMessageBase):
     """ The class for MBIM_CLOSE_MSG. """
 
     _FIELDS = MBIMHeader.get_fields()
-    _DEFAULTS = {'message_type': MBIM_CLOSE_MSG}
+    _DEFAULTS = {'message_type': mbim_constants.MBIM_CLOSE_MSG}
 
 
 class MBIMCommandMessage(MBIMMessageBase):
@@ -336,7 +317,7 @@ class MBIMCommandMessage(MBIMMessageBase):
                             ('I', 'cid'),
                             ('I', 'command_type'),
                             ('I', 'information_buffer_length'))
-    _DEFAULTS = {'message_type': MBIM_COMMAND_MSG,
+    _DEFAULTS = {'message_type': mbim_constants.MBIM_COMMAND_MSG,
                  'total_fragments': 0x00000001,
                  'current_fragment': 0x00000000,
                  'information_buffer_length': 0}
@@ -346,21 +327,21 @@ class MBIMHostErrorMessage(MBIMMessageBase):
     """ The class for MBIM_ERROR_MSG. """
 
     _FIELDS = MBIMHeader.get_fields() + (('I', 'error_status_code'),)
-    _DEFAULTS = {'message_type': MBIM_HOST_ERROR_MSG}
+    _DEFAULTS = {'message_type': mbim_constants.MBIM_HOST_ERROR_MSG}
 
 
 class MBIMOpenDone(MBIMMessageBase):
     """ The class for MBIM_OPEN_DONE. """
 
     _FIELDS = MBIMHeader.get_fields() + (('I', 'status_codes'),)
-    _DEFAULTS = {'message_type': MBIM_OPEN_DONE}
+    _DEFAULTS = {'message_type': mbim_constants.MBIM_OPEN_DONE}
 
 
 class MBIMCloseDone(MBIMMessageBase):
     """ The class for MBIM_CLOSE_DONE. """
 
     _FIELDS = MBIMHeader.get_fields() + (('I', 'status_codes'),)
-    _DEFAULTS = {'message_type': MBIM_CLOSE_DONE}
+    _DEFAULTS = {'message_type': mbim_constants.MBIM_CLOSE_DONE}
 
 
 class MBIMCommandDone(MBIMMessageBase):
@@ -371,8 +352,24 @@ class MBIMCommandDone(MBIMMessageBase):
                             ('I', 'cid'),
                             ('I', 'status_codes'),
                             ('I', 'information_buffer_length'))
-    _DEFAULTS = {'message_type': MBIM_COMMAND_DONE}
+    _DEFAULTS = {'message_type': mbim_constants.MBIM_COMMAND_DONE}
 
+
+class MBIMIndicateStatusMessage(MBIMMessageBase):
+    """ The class for MBIM_INDICATE_STATUS_MSG. """
+
+    _FIELDS = MBIMHeader.get_fields() + MBIMFragmentHeader.get_fields()
+    _COMMAND_INFORMATION = (('16s', 'device_service_id'),
+                            ('I', 'cid'),
+                            ('I', 'information_buffer_length'))
+    _DEFAULTS = {'message_type': mbim_constants.MBIM_INDICATE_STATUS_MSG}
+
+
+class MBIMFunctionErrorMessage(MBIMMessageBase):
+    """ The class for MBIM_FUNCTION_ERROR_MSG. """
+
+    _FIELDS = MBIMHeader.get_fields() + (('I', 'error_status_code'),)
+    _DEFAULTS = {'message_type': mbim_constants.MBIM_FUNCTION_ERROR_MSG}
 
 
 def parse_response_packets(packets):
@@ -394,11 +391,15 @@ def parse_response_packets(packets):
 
     # Parse the packet header to get the response message type.
     header_contents = MBIMHeader.unpack(packets[0])
-
     # Parse |packets| based on the response message type.
-    PARSER_MAP = {MBIM_OPEN_DONE: MBIMOpenDone.parse_packets,
-                  MBIM_CLOSE_DONE: MBIMCloseDone.parse_packets,
-                  MBIM_COMMAND_DONE: MBIMCommandDone.parse_packets}
+    PARSER_MAP = {
+            mbim_constants.MBIM_OPEN_DONE: MBIMOpenDone.parse_packets,
+            mbim_constants.MBIM_CLOSE_DONE: MBIMCloseDone.parse_packets,
+            mbim_constants.MBIM_COMMAND_DONE: MBIMCommandDone.parse_packets,
+            mbim_constants.MBIM_FUNCTION_ERROR_MSG:
+                    MBIMFunctionErrorMessage.parse_packets,
+            mbim_constants.MBIM_INDICATE_STATUS_MSG:
+                    MBIMIndicateStatusMessage.parse_packets}
     message_type = header_contents['message_type']
     parser = PARSER_MAP.get(message_type)
     if parser is None:

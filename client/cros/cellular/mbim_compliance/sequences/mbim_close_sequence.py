@@ -12,6 +12,7 @@ Reference:
 """
 import common
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_channel
+from autotest_lib.client.cros.cellular.mbim_compliance import mbim_constants
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_control
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_errors
 from autotest_lib.client.cros.cellular.mbim_compliance.sequences \
@@ -49,7 +50,7 @@ class MBIMCloseSequence(sequence.Sequence):
             mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
                                        'mbim1.0:9.4.2#1')
 
-        if response_message.status_codes != mbim_control.MBIM_STATUS_SUCCESS:
+        if response_message.status_codes != mbim_constants.MBIM_STATUS_SUCCESS:
             mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
                                       'mbim1.0:9.4.2#2')
 

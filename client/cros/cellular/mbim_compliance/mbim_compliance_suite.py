@@ -14,7 +14,11 @@ from autotest_lib.client.cros.cellular.mbim_compliance.tests import cm_03_test
 from autotest_lib.client.cros.cellular.mbim_compliance.tests import cm_04_test
 from autotest_lib.client.cros.cellular.mbim_compliance.tests import cm_05_test
 from autotest_lib.client.cros.cellular.mbim_compliance.tests import cm_06_test
+from autotest_lib.client.cros.cellular.mbim_compliance.tests import cm_07_test
+from autotest_lib.client.cros.cellular.mbim_compliance.tests import cm_08_test
+from autotest_lib.client.cros.cellular.mbim_compliance.tests import cm_09_test
 from autotest_lib.client.cros.cellular.mbim_compliance.tests import cm_10_test
+from autotest_lib.client.cros.cellular.mbim_compliance.tests import cm_13_test
 from autotest_lib.client.cros.cellular.mbim_compliance.tests import des_01_test
 from autotest_lib.client.cros.cellular.mbim_compliance.tests import des_02_test
 
@@ -74,7 +78,11 @@ class MBIMComplianceSuite(object):
             cm_04_test.CM04Test(device_under_test),
             cm_05_test.CM05Test(device_under_test),
             cm_06_test.CM06Test(device_under_test),
-            cm_10_test.CM10Test(device_under_test)
+            cm_07_test.CM07Test(device_under_test),
+            cm_08_test.CM08Test(device_under_test),
+            cm_09_test.CM09Test(device_under_test),
+            cm_10_test.CM10Test(device_under_test),
+            cm_13_test.CM13Test(device_under_test)
         ]
 
 
