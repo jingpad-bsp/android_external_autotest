@@ -168,31 +168,37 @@ class ChameleonTest(test.test):
         logging.info('Capturing framebuffer on DUT...')
         dut_image = self.display_client.capture_external_screen()
 
-        if chameleon_image.size != dut_image.size:
-            message = ('Result of %s: lengths of screen not match: %d != %d' %
-                    (tag, chameleon_image.size, dut_image.size))
-            logging.error(message)
-            return message
-
-        logging.info('Comparing the images...')
-        diff_image = ImageChops.difference(chameleon_image, dut_image)
-        histogram = diff_image.convert('L').histogram()
-        total_wrong_pixels = sum(histogram[pixel_diff_value_margin + 1:])
-
-        if total_wrong_pixels > 0:
-            message = ('Result of %s: total %d wrong pixels' %
-                       (tag, total_wrong_pixels))
-            if total_wrong_pixels > total_wrong_pixels_margin:
+        success = False
+        try:
+            # The size property is the resolution of the image.
+            if chameleon_image.size != dut_image.size:
+                message = ('Result of %s: size of screen not match: %r != %r' %
+                        (tag, chameleon_image.size, dut_image.size))
                 logging.error(message)
-                return message
+
+            logging.info('Comparing the images...')
+            diff_image = ImageChops.difference(chameleon_image, dut_image)
+            histogram = diff_image.convert('L').histogram()
+            total_wrong_pixels = sum(histogram[pixel_diff_value_margin + 1:])
+
+            if total_wrong_pixels > 0:
+                logging.debug('Histogram of difference: %r', histogram)
+                message = ('Result of %s: total %d wrong pixels' %
+                           (tag, total_wrong_pixels))
+                if total_wrong_pixels > total_wrong_pixels_margin:
+                    logging.error(message)
+                else:
+                    message += (', within the acceptable range %d' %
+                                total_wrong_pixels_margin)
+                    logging.warning(message)
+                    success = True
             else:
-                message += (', within the acceptable range %d' %
-                            total_wrong_pixels_margin)
-                logging.warning(message)
-            logging.debug('Histogram: %r', histogram)
-            chameleon_image.save(os.path.join(self.outputdir,
-                                              '%s-chameleon.png' % tag))
-            dut_image.save(os.path.join(self.outputdir, '%s-dut.png' % tag))
-        else:
-            logging.info('Result of %s: all pixels match', tag)
-        return None
+                logging.info('Result of %s: all pixels match', tag)
+                success = True
+        finally:
+            if not success:
+                chameleon_image.save(
+                        os.path.join(self.outputdir, '%s-chameleon.png' % tag))
+                dut_image.save(os.path.join(self.outputdir, '%s-dut.png' % tag))
+
+        return None if success else message
