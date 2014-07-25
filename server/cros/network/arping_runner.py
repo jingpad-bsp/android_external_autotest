@@ -12,7 +12,7 @@ class ArpingRunner(object):
     """Delegate to run arping on a remote host."""
 
     DEFAULT_COUNT = 10
-    SSH_TIMEOUT_MARGIN = 2
+    SSH_TIMEOUT_MARGIN = 120
 
 
     def __init__(self, host, ping_interface):
