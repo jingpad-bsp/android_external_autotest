@@ -13,13 +13,14 @@ class telemetry_GpuTests(test.test):
     version = 1
 
 
-    def run_once(self, host=None, test=None):
+    def run_once(self, host=None, test=None, args={}):
         """Run a GPU telemetry test.
 
         @param host: host we are running telemetry on.
         @param test: telemetry test we want to run.
         """
-        telemetry = telemetry_runner.TelemetryRunner(host)
+        local = args.get("local") == "True"
+        telemetry = telemetry_runner.TelemetryRunner(host, local)
         result = telemetry.run_gpu_test(test)
         logging.debug('Telemetry completed with a status of: %s with output:'
                       ' %s', result.status, result.output)

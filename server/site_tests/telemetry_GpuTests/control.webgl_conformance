@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from autotest_lib.client.common_lib import utils
+
 AUTHOR = 'chromeos-gfx'
 NAME = 'telemetry_GpuTests.webgl_conformance'
 SUITE = 'graphics, perf_v2'
@@ -12,11 +14,14 @@ TEST_TYPE = 'server'
 
 DOC = """
 This server control file executes the GPU telemetry test: webgl_conformance.
+
+Pass local=True to run with local telemetry and no AFE server.
 """
 
 def run_test(machine):
     host = hosts.create_host(machine)
-    job.run_test('telemetry_GpuTests', host=host, test='webgl_conformance')
+    job.run_test('telemetry_GpuTests', host=host, test='webgl_conformance',
+                 args=utils.args_to_dict(args))
 
 
 parallel_simple(run_test, machines)
