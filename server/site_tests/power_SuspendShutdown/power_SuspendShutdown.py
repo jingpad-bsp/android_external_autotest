@@ -27,6 +27,7 @@ class power_SuspendShutdown(test.test):
         """
         # save original boot id
         self.orig_boot_id = host.get_boot_id()
+        self.host = host
 
         # override /sys/power/state via bind mount
         logging.info('binding /dev/full to /sys/power/state')
@@ -146,7 +147,7 @@ class power_SuspendShutdown(test.test):
         return any((mount['mounted'] for mount in status['mounts']))
 
 
-    def run_once(self, client_autotest, host=None):
+    def run_once(self, client_autotest):
         """
         Run the acutal test on device.
 
@@ -156,11 +157,11 @@ class power_SuspendShutdown(test.test):
 
         """
         # check platform is capable of running the test
+        host = self.host
         platform = host.run_output('mosys platform name')
-        logging.info('platform is %s', platform)
         self.platform_check(platform)
         self.autotest_client = autotest.Autotest(host)
-        self.host = host
+        logging.info('platform is %s', platform)
         exit_without_logout = True
         t = self.create_thread(client_autotest, exit_without_logout)
         t.join()
@@ -176,10 +177,6 @@ class power_SuspendShutdown(test.test):
             else:
                 logging.info('Login thread successfully finished')
                 break
-
-        # Check for the login status
-        if not self.logged_in():
-            raise error.TestError('Logged out before closing lid')
 
         # close the lid while logged_in to initiate suspend
         logging.info('closing lid')
