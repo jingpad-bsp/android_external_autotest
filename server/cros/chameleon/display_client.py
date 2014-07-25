@@ -78,7 +78,7 @@ class DisplayClient(object):
     """
 
     X_ENV_VARIABLES = 'DISPLAY=:0.0 XAUTHORITY=/home/chronos/.Xauthority'
-    XMLRPC_CONNECT_TIMEOUT = 30
+    XMLRPC_CONNECT_TIMEOUT = 60
     XMLRPC_RETRY_TIMEOUT = 180
     XMLRPC_RETRY_DELAY = 10
     HTTP_PORT = 8000
