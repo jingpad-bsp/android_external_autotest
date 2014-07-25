@@ -71,7 +71,7 @@ class graphics_WebGLPerformance(test.test):
                                graph='time_geom_mean')
         # Add extra value to the graph distinguishing different boards.
         variant = utils.get_board_with_frequency_and_memory()
-        desc = 'time_geom_mean (%s)' % variant
+        desc = 'time_geom_mean-%s' % variant
         self.output_perf_value(description=desc,
                                value=time_ms_geom_mean, units='ms',
                                higher_is_better=False,
