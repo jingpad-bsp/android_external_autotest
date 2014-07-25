@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import collections
+import pprint
 import re
 import xmlrpclib
 
@@ -52,9 +53,13 @@ class StaticAPConfigurator(ap_configurator.APConfiguratorAbstract):
         self._configuration_success = chaos_constants.CONFIG_SUCCESS
         self.config_data = ap_config
 
-        self._name = ('Router name: %s, Controller class: %s,'
-                      'MAC Address: %s' % (self._short_name, self.class_name,
-                      self.mac_address))
+        name_dict = {'Router name': self._short_name,
+                     'Controller class': self.class_name,
+                     '2.4 GHz MAC Address': ap_config.get_bss(),
+                     '5 GHz MAC Address': ap_config.get_bss5(),
+                     'Hostname': ap_config.get_wan_host()}
+
+        self._name = pprint.pformat(name_dict)
 
         if self.rpm_managed:
             rpm_frontend_server = global_config.global_config.get_config_value(

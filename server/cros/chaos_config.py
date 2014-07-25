@@ -115,13 +115,20 @@ class ChaosAP(object):
 
     def get_bss(self):
         """@return string bss for AP from config file"""
-        return self.ap_config.get(self.bss, self.CONF_BSS)
+        try:
+            bss = self.ap_config.get(self.bss, self.CONF_BSS)
+        except ConfigParser.NoOptionError as e:
+            bss = 'N/A'
+        return bss
 
 
     def get_bss5(self):
         """@return string bss5 for AP from config file"""
-        return self.ap_config.get(self.bss, self.CONF_BSS5)
-
+        try:
+            bss5 = self.ap_config.get(self.bss, self.CONF_BSS5)
+        except ConfigParser.NoOptionError as e:
+            bss5 = 'N/A'
+        return bss5
 
     def get_bandwidth(self):
         """@return string bandwidth for AP from config file"""

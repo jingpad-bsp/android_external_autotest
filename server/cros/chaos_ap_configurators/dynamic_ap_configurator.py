@@ -7,6 +7,7 @@ import copy
 import datetime
 import logging
 import os
+import pprint
 import re
 import time
 import xmlrpclib
@@ -57,9 +58,13 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
         self.pdu = re.sub('host\d+', 'rpm1', self.host_name) + '.cros'
         self.config_data = ap_config
 
-        self._name = ('Router name: %s, Controller class: %s,'
-                      'MAC Address: %s' % (self._short_name, self.class_name,
-                      self.mac_address))
+        name_dict = {'Router name': self._short_name,
+                     'Controller class': self.class_name,
+                     '2.4 GHz MAC Address': ap_config.get_bss(),
+                     '5 GHz MAC Address': ap_config.get_bss5(),
+                     'Hostname': ap_config.get_wan_host()}
+
+        self._name = str('%s' % pprint.pformat(name_dict))
 
         # Set a default band, this can be overriden by the subclasses
         self.current_band = ap_spec.BAND_2GHZ
