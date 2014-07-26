@@ -5,6 +5,7 @@ import autotest.common.SimpleCallback;
 import autotest.common.StaticDataRepository;
 import autotest.common.Utils;
 import autotest.common.table.DataTable;
+import autotest.common.table.DataTable.DataTableListener;
 import autotest.common.table.DynamicTable;
 import autotest.common.table.ListFilter;
 import autotest.common.table.RpcDataSource;
@@ -36,6 +37,8 @@ import com.google.gwt.user.client.ui.HTML;
 import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.user.client.ui.Widget;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 public class JobDetailView extends DetailView implements TableWidgetFactory {
@@ -50,6 +53,11 @@ public class JobDetailView extends DetailView implements TableWidgetFactory {
         { "id", "ID" }, { "name", "Name" }, { "priority", "Priority" },
         { "control_type", "Client/Server" }, { JobTable.HOSTS_SUMMARY, "Status" },
         { JobTable.RESULTS_SUMMARY, "Passed Tests" }
+    };
+    private static final String[][] JOB_HISTORY_COLUMNS = {
+        { "id", "ID" }, { "hostname", "Host" }, { "name", "Name" },
+        { "start_time", "Start Time" }, { "end_time", "End Time" },
+        { "time_used", "Time Used (seconds)" }, { "status", "Status" }
     };
     public static final String NO_URL = "about:blank";
     public static final int NO_JOB_ID = -1;
@@ -67,6 +75,12 @@ public class JobDetailView extends DetailView implements TableWidgetFactory {
     protected class ChildJobsListener {
         public void onJobSelected(int id) {
             fetchById(Integer.toString(id));
+        }
+    }
+
+    protected class JobHistoryListener {
+        public void onJobSelected(String url) {
+            Utils.openUrlInNewWindow(url);
         }
     }
 
@@ -93,6 +107,10 @@ public class JobDetailView extends DetailView implements TableWidgetFactory {
     private DisclosurePanel controlFilePanel = new DisclosurePanel("");
 
     protected StaticDataRepository staticData = StaticDataRepository.getRepository();
+
+    protected Button getJobHistoryButton = new Button("Get Job History");
+    protected JobHistoryListener jobHistoryListener = new JobHistoryListener();
+    protected DataTable jobHistoryTable = new DataTable(JOB_HISTORY_COLUMNS);
 
     public JobDetailView(JobDetailListener listener) {
         this.listener = listener;
@@ -193,6 +211,8 @@ public class JobDetailView extends DetailView implements TableWidgetFactory {
 
                 parentJobIdFliter.setParameter("parent_job", new JSONNumber(jobId));
                 childJobsTable.refresh();
+
+                jobHistoryTable.clear();
             }
 
 
@@ -309,6 +329,24 @@ public class JobDetailView extends DetailView implements TableWidgetFactory {
         if (!staticData.getData("drone_sets_enabled").isBoolean().booleanValue()) {
             AfeUtils.removeElement("view_drone_set_wrapper");
         }
+
+        getJobHistoryButton.addClickHandler(new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                getJobHistory();
+            }
+        });
+        addWidget(getJobHistoryButton, "view_get_job_history");
+
+        jobHistoryTable.setClickable(true);
+        jobHistoryTable.addListener(new DataTableListener() {
+            public void onRowClicked(int rowIndex, JSONObject row, boolean isRightClick) {
+                String log_url= row.get("log_url").isString().stringValue();
+                jobHistoryListener.onJobSelected(log_url);
+            }
+
+            public void onTableRefreshed() {}
+        });
+        addWidget(jobHistoryTable, "job_history_table");
     }
 
     protected void addTableFilters() {
@@ -535,5 +573,20 @@ public class JobDetailView extends DetailView implements TableWidgetFactory {
     private String getLogsLinkHtml(String url, String text) {
         url = Utils.getRetrieveLogsUrl(url);
         return "<a target=\"_blank\" href=\"" + url + "\">" + text + "</a>";
+    }
+
+    private void getJobHistory() {
+        JSONObject params = new JSONObject();
+        params.put("job_id", new JSONNumber(jobId));
+        AfeUtils.callGetJobHistory(params, new SimpleCallback() {
+            public void doCallback(Object result) {
+                jobHistoryTable.clear();
+                List<JSONObject> rows = new ArrayList<JSONObject>();
+                JSONArray history = (JSONArray)result;
+                for (int i = 0; i < history.size(); i++)
+                    rows.add((JSONObject)history.get(i));
+                jobHistoryTable.addRows(rows);
+            }
+        }, true);
     }
 }

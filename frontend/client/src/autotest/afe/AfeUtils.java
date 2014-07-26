@@ -436,4 +436,21 @@ public class AfeUtils {
         }
         row.put(targetFieldName, new JSONString(date));
     }
+
+    public static void callGetJobHistory(JSONObject params,
+                                         final SimpleCallback onSuccess,
+                                         final boolean showMessage) {
+        JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
+        rpcProxy.rpcCall("get_job_history", params, new JsonRpcCallback() {
+            @Override
+            public void onSuccess(JSONValue result) {
+                if (showMessage) {
+                    NotifyManager.getInstance().showMessage("Get job history succeeded.");
+                }
+                if (onSuccess != null) {
+                    onSuccess.doCallback(result);
+                }
+            }
+        });
+    }
 }

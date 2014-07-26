@@ -24,6 +24,7 @@ from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.server.hosts import moblab_host
+from autotest_lib.site_utils import job_history
 
 
 _CONFIG = global_config.global_config
@@ -251,3 +252,17 @@ def set_boto_key(boto_key):
     if not os.path.exists(boto_key):
         raise error.RPCException('Boto key: %s does not exist!' % boto_key)
     shutil.copyfile(boto_key, moblab_host.MOBLAB_BOTO_LOCATION)
+
+
+def get_job_history(**filter_data):
+    """Get history of the job, including the special tasks executed for the job
+
+    @param filter_data: filter for the call, should at least include
+                        {'job_id': [job id]}
+    @returns: JSON string of the job's history, including the information such
+              as the hosts run the job and the special tasks executed before
+              and after the job.
+    """
+    job_id = filter_data['job_id']
+    job_info = job_history.get_job_info(job_id)
+    return _rpc_utils().prepare_for_serialization(job_info.get_history())
