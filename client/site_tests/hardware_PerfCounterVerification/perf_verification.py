@@ -62,6 +62,7 @@ def GatherPerfStats(noploop, events, progress_func=lambda i, j: None):
                  '-e', events,
                  noploop, '%d' % loops),
                 stderr=subprocess.STDOUT)
+        unsupported_events = []
         f = {'loops': loops}
         for line in out.splitlines():
             fields = line.split(',')
@@ -72,7 +73,13 @@ def GatherPerfStats(noploop, events, progress_func=lambda i, j: None):
                 count, unit, event = fields
             else:
                 raise Error('Unable to parse perf stat output')
-            f[event] = int(count)
+            if count == '<not supported>':
+                unsupported_events.append(event)
+            else:
+                f[event] = int(count)
+        if unsupported_events:
+            raise Error('These events are not supported: %s'
+                        % unsupported_events)
         facts.append(f)
     progress_func(-1, -1)  # Finished
     return facts

@@ -64,8 +64,8 @@ class hardware_PerfCounterVerification(test.test):
 
         if ('cycles' in self.events and
             results['cycles_r_squared'] < cycles_r_squared_expectation):
-            raise error.TestFail('Poor correlation for loops ~ cycles')
+            raise error.TestFail('Poor correlation for cycles ~ loops')
         if ('instructions' in self.events and
             results['instructions_r_squared'] < 0.999999):
-            raise error.TestFail('Poor correlation for loops ~ instructions')
+            raise error.TestFail('Poor correlation for instructions ~ loops')
 
