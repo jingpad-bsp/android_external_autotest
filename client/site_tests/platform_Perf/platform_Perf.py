@@ -21,41 +21,42 @@ class platform_Perf(test.test):
         num_errors = 0
 
         try:
-          # Create temporary file and get its name. Then close it.
-          perf_file_path = os.tempnam()
+            # Create temporary file and get its name. Then close it.
+            perf_file_path = os.tempnam()
 
-          # Perf command for recording a profile.
-          perf_record_args = [ 'perf', 'record', '-a', '-o', perf_file_path,
-                               '--', 'sleep', '2']
-          # Perf command for getting a detailed report.
-          perf_report_args = [ 'perf', 'report', '-D', '-i', perf_file_path ]
+            # Perf command for recording a profile.
+            perf_record_args = [ 'perf', 'record', '-a', '-o', perf_file_path,
+                                 '--', 'sleep', '2']
+            # Perf command for getting a detailed report.
+            perf_report_args = [ 'perf', 'report', '-D', '-i', perf_file_path ]
 
-          result = subprocess.call(perf_record_args)
-          if result != 0:
-              raise error.TestFail('Could not run command: ' +
-                                   ' '.join(perf_record_args))
+            result = subprocess.call(perf_record_args)
+            if result != 0:
+                raise error.TestFail('Could not run command: ' +
+                                     ' '.join(perf_record_args))
+
+            # Make sure the file still exists.
+            if not os.path.isfile(perf_file_path):
+                raise error.TestFail('Could not find perf output file: ' +
+                                     perf_file_path)
+
+            # Get detailed perf data view and extract the line containing the
+            # kernel MMAP summary.
+            result = None
+            p = subprocess.Popen(perf_report_args, stdout=subprocess.PIPE)
+            for line in p.stdout:
+                if 'PERF_RECORD_MMAP' in line and 'kallsyms' in line:
+                    result = line
+                    break;
+
+            # Read the rest of output to EOF.
+            for _ in p.stdout:
+                pass
+            p.wait();
 
         finally:
             # Delete the perf data file.
             os.remove(perf_file_path)
-
-
-        # Get detailed perf data view and extract the line containing the kernel
-        # MMAP summary.
-        result = None
-        p = subprocess.Popen(perf_report_args, stdout=subprocess.PIPE)
-        for line in p.stdout:
-            if 'PERF_RECORD_MMAP' in line and 'kallsyms' in line:
-                result = line
-                break;
-
-        # Read the rest of output to EOF.
-        for _ in p.stdout:
-            pass
-        p.wait();
-
-        # Delete the perf data file.
-        os.remove(perf_file_path)
 
         if result is None:
             raise error.TestFail('Could not find kernel mapping in perf '
