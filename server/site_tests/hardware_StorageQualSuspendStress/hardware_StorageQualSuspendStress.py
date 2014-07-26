@@ -19,7 +19,7 @@ class hardware_StorageQualSuspendStress(test.test):
             [lambda: job.run_test('power_SuspendStress', tag='disk',
                 duration=%d, init_delay=10, min_suspend=7)],
             [lambda: job.run_test('hardware_StorageFio',
-                quicktest=True, test_length=%d+30,
+                requirements=[('write_stress', [])], test_length=%d+30,
                 tag='qual_suspend')])""" % (duration, duration-30)
         client_at.run(control, '.', None)
 
