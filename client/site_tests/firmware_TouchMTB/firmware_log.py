@@ -274,6 +274,20 @@ class MetricNameProps:
                 'The mean of all rms means of all trials',
                 None,
                 average),
+            # MTB Sanity Validator
+            'MTB_SANITY_ERR': (
+                'pct of MTB errors (%)',
+                None,
+                'pct of MTB errors',
+                '(MTB errors, expected errors)',
+                pct_by_cases_neq),
+            # No Ghost Finger Validator
+            'GHOST_FINGERS': (
+                'pct of ghost fingers (%)',
+                None,
+                'pct of ghost fingers',
+                '(ghost fingers, expected fingers)',
+                pct_by_cases_neq),
             # Physical Click Validator
             'CLICK_CHECK_CLICK': (
                 '{}f-click miss rate (%)',

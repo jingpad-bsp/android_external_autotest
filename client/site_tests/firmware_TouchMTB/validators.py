@@ -63,12 +63,14 @@ import firmware_log
 import fuzzy
 import mtb
 
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 from inspect import isfunction
 
 from common_util import print_and_exit, simple_system_output
 from firmware_constants import AXIS, GV, MTB, UNIT, VAL
 from geometry.elements import Point
+
+from linux_input import EV_ABS, EV_STRINGS
 
 
 # Define the ratio of points taken at both ends of a line for edge tests.
@@ -1273,6 +1275,82 @@ class ReportRateValidator(BaseValidator):
         self.report_rate = self._get_report_rate(list_syn_time)
         self._add_report_rate_metrics2()
         self.vlog.score = self.fc.mf.grade(self.report_rate)
+        return self.vlog
+
+
+class MtbSanityValidator(BaseValidator):
+    """Validator to check if the MTB format is correct.
+
+    A ghost finger is a slot with a positive TRACKING ID without a real
+    object such as a finger touching the device.
+
+    Note that this object should be instantiated before any finger touching
+    the device so that a snapshot could be derived in the very beginning.
+
+    There are potentially many things to check in the MTB format. However,
+    this validator will begin with a simple TRACKING ID examination.
+    A new slot should come with a positive TRACKING ID before the slot
+    can assign values to its attributes or set -1 to its TRACKING ID.
+    This is sort of different from a ghost finger case. A ghost finger
+    occurs when there exist slots with positive TRACKING IDs in the
+    beginning by syncing with the kernel before any finger touching the
+    device.
+
+    Note that there is no need for this class to perform
+        self.init_check(packets)
+    """
+
+    def __init__(self, criteria_str='== 0', mf=None, device=None,
+                 device_info=None):
+        name = self.__class__.__name__
+        super(MtbSanityValidator, self).__init__(criteria_str, mf, device, name)
+        if device_info:
+            self.device_info = device_info
+        else:
+            sys.path.append('../../bin/input')
+            import input_device
+            self.device_info = input_device.InputDevice(self.device.device_node)
+
+    def _check_ghost_fingers(self):
+        """Check if there are ghost fingers by synching with the kernel."""
+        self.number_fingers = self.device_info.get_num_fingers()
+        self.slot_dict = self.device_info.get_slots()
+
+        self.log_details('# fingers: %d' % self.number_fingers)
+        for slot_id, slot in self.slot_dict.items():
+            self.log_details('slot %d:' % slot_id)
+            for prop in slot:
+                prop_name = EV_STRINGS[EV_ABS].get(prop, prop)
+                self.log_details(' %s=%6d' % (prop_name, slot[prop].value))
+
+        self.vlog.metrics.append(
+                firmware_log.Metric(self.mnprops.GHOST_FINGERS,
+                                    (self.number_fingers, 0)),
+        )
+        return self.number_fingers
+
+    def _check_mtb(self, packets):
+        """Check if there are MTB format problems."""
+        mtb_sanity = mtb.MtbSanity(packets)
+        errors = mtb_sanity.check()
+        number_errors = sum(errors.values())
+
+        self.log_details('# MTB errors: %d' % number_errors)
+        for err_string, err_count in errors.items():
+            if err_count > 0:
+                self.log_details('%s: %d' % (err_string, err_count))
+
+        self.vlog.metrics.append(
+                firmware_log.Metric(self.mnprops.MTB_SANITY_ERR,
+                                    (number_errors, 0)),
+        )
+        return number_errors
+
+    def check(self, packets, variation=None):
+        """Check ghost fingers and MTB format."""
+        self.vlog.metrics = []
+        number_errors = self._check_ghost_fingers() + self._check_mtb(packets)
+        self.vlog.score = self.fc.mf.grade(number_errors)
         return self.vlog
 
 

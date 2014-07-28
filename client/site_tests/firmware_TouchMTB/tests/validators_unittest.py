@@ -24,6 +24,7 @@ from validators import (CountPacketsValidator,
                         DrumrollValidator,
                         HysteresisValidator,
                         LinearityValidator,
+                        MtbSanityValidator,
                         NoGapValidator,
                         NoLevelJumpValidator,
                         NoReversedMotionValidator,
@@ -741,6 +742,40 @@ class HysteresisValidatorTest(unittest.TestCase):
         validator = HysteresisValidator(self.criteria, device=link)
         vlog = validator.check(packets)
         self.assertEqual(vlog.metrics[0].value, float('infinity'))
+
+
+class MtbSanityValidatorTest(unittest.TestCase):
+    """Unit tests for MtbSanityValidator class."""
+
+    def setUp(self):
+        import fake_input_device
+        self.fake_device_info = fake_input_device.FakeInputDevice()
+
+    def _get_number_errors(self, filename):
+        packets = parse_tests_data(filename)
+        validator = MtbSanityValidator(device=link,
+                                       device_info=self.fake_device_info)
+        vlog = validator.check(packets)
+        number_errors, _ = vlog.metrics[1].value
+        return number_errors
+
+    def test_sanity_found_errors(self):
+        """Test that the tracking id is set to -1 before being assigned a
+        positive value.
+        """
+        filenames = ['finger_crossing.top_right_to_bottom_left.slow.dat',
+                     'two_finger_tap.vertical.dat']
+        for filename in filenames:
+            number_errors = self._get_number_errors(filename)
+            self.assertTrue(number_errors > 0)
+
+    def test_sanity_pass(self):
+        """Test that the MTB format is correct."""
+        filenames = ['2f_scroll_diagonal.dat',
+                     'drumroll_lumpy.dat']
+        for filename in filenames:
+            number_errors = self._get_number_errors(filename)
+            self.assertTrue(number_errors == 0)
 
 
 if __name__ == '__main__':

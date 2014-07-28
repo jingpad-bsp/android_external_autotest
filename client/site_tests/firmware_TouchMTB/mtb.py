@@ -303,6 +303,83 @@ class MtbEvemu:
             self.num_tracking_ids -= 1
 
 
+class MtbSanity:
+    """Sanity check for MTB format correctness.
+
+    The rules to check the sanity will accumulate over time. However, let's
+    begin with some simple checks:
+    - A finger should not leave before arriving. (Should not set -1 to the
+      tracking ID before assigning a positive value to the slot first.)
+    - Should not assign X, Y, or PRESSURE data to a slot without a positive
+      tracking ID.
+    """
+    ERR_FINGER_LEAVE = 'FINGER_LEAVING_BEFORE_ARRIVING'
+    ERR_ASSIGN_ATTR = 'ASSIGN_ATTRIBUTES_BEFORE_ARRIVING'
+
+    def __init__(self, packets):
+        self.packets = packets
+
+    def check(self):
+        """Do some sanity checks.
+
+        Note that it takes care of the case that X and Y events may come earlier
+        than the TRACKING ID event. We consider it as valid.
+
+        Event: time, type 3 (EV_ABS), code 47 (ABS_MT_SLOT), value 1
+        Event: time, type 3 (EV_ABS), code 53 (ABS_MT_POSITION_X), value 2632
+        Event: time, type 3 (EV_ABS), code 54 (ABS_MT_POSITION_Y), value 288
+        Event: time, type 3 (EV_ABS), code 57 (ABS_MT_TRACKING_ID), value 1017
+        ...
+
+        In this case, X and Y events are stored in tmp_errors. When TRACKING ID
+        event shows up in the packet, it removes the errors associated with
+        this slot 1.
+        """
+        errors = {self.ERR_FINGER_LEAVE: 0, self.ERR_ASSIGN_ATTR: 0}
+
+        def _errors_factory():
+            return copy.deepcopy(
+                    {self.ERR_FINGER_LEAVE: 0, self.ERR_ASSIGN_ATTR: 0})
+
+        curr_slot_id = 0
+        slot_to_tid = {curr_slot_id: -1}
+
+        for packet in self.packets:
+            tmp_errors = defaultdict(_errors_factory)
+            for event in packet:
+                # slot event
+                if MtbEvent.is_ABS_MT_SLOT(event):
+                    curr_slot_id = event[MTB.EV_VALUE]
+                    if curr_slot_id not in slot_to_tid:
+                        slot_to_tid.update({curr_slot_id: -1})
+
+                # finger arriving
+                elif MtbEvent.is_new_contact(event):
+                    slot_to_tid.update({curr_slot_id: event[MTB.EV_VALUE]})
+                    if curr_slot_id in tmp_errors:
+                        del tmp_errors[curr_slot_id]
+
+                # finger leaving
+                elif MtbEvent.is_finger_leaving(event):
+                    if slot_to_tid.get(curr_slot_id, -1) == -1:
+                        tmp_errors[curr_slot_id][self.ERR_FINGER_LEAVE] += 1
+                    else:
+                        slot_to_tid[curr_slot_id] = -1
+
+                # access a slot attribute before finger arriving
+                elif MtbEvent.is_finger_data(event):
+                    if slot_to_tid.get(curr_slot_id, -1) == -1:
+                        tmp_errors[curr_slot_id][self.ERR_ASSIGN_ATTR] += 1
+
+                # At SYN_REPORT, accumulate how many errors occur.
+                elif MtbEvent.is_SYN_REPORT(event):
+                    for _, slot_errors in tmp_errors.items():
+                        for err_string, err_count in slot_errors.items():
+                            errors[err_string] += err_count
+
+        return errors
+
+
 class MtbStateMachine:
     """The state machine for MTB events.
 
