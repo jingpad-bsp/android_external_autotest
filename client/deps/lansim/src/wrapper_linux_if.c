@@ -62,28 +62,6 @@ void _init_linux_if_h(PyObject *m) {
 
   PyModule_AddIntMacro(m, IFF_VOLATILE);
 
-  /* Private (from user) interface flags (netdevice->priv_flags). */
-  PyModule_AddIntMacro(m, IFF_802_1Q_VLAN);
-  PyModule_AddIntMacro(m, IFF_EBRIDGE);
-  PyModule_AddIntMacro(m, IFF_SLAVE_INACTIVE);
-  PyModule_AddIntMacro(m, IFF_MASTER_8023AD);
-  PyModule_AddIntMacro(m, IFF_MASTER_ALB);
-  PyModule_AddIntMacro(m, IFF_BONDING);
-  PyModule_AddIntMacro(m, IFF_SLAVE_NEEDARP);
-  PyModule_AddIntMacro(m, IFF_ISATAP);
-  PyModule_AddIntMacro(m, IFF_MASTER_ARPMON);
-  PyModule_AddIntMacro(m, IFF_WAN_HDLC);
-  PyModule_AddIntMacro(m, IFF_XMIT_DST_RELEASE);
-  PyModule_AddIntMacro(m, IFF_DONT_BRIDGE);
-  PyModule_AddIntMacro(m, IFF_DISABLE_NETPOLL);
-  PyModule_AddIntMacro(m, IFF_MACVLAN_PORT);
-  PyModule_AddIntMacro(m, IFF_BRIDGE_PORT);
-  PyModule_AddIntMacro(m, IFF_OVS_DATAPATH);
-  PyModule_AddIntMacro(m, IFF_TX_SKB_SHARING);
-  PyModule_AddIntMacro(m, IFF_UNICAST_FLT);
-  PyModule_AddIntMacro(m, IFF_TEAM_PORT);
-  PyModule_AddIntMacro(m, IFF_SUPP_NOFCS);
-
   PyModule_AddIntMacro(m, IF_GET_IFACE);
   PyModule_AddIntMacro(m, IF_GET_PROTO);
 
