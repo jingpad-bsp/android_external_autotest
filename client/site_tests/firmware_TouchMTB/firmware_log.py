@@ -234,6 +234,7 @@ class MetricNameProps:
                     'of fingers detected',
                 '(actual tracking IDs, expected tracking IDs)',
                 pct_by_cases_neq),
+            # Drag Latency Validator
             'AVG_LATENCY': (
                 'average latency (ms)',
                 None,
@@ -247,6 +248,19 @@ class MetricNameProps:
                 'the max radius of enclosing circles of tapping points',
                 None,
                 max),
+            # Hysteresis Validator
+            'MAX_INIT_GAP_RATIO': (
+                'max init gap ratio',
+                None,
+                'the max ratio of dist(p0,p1) / dist(p1,p2)',
+                None,
+                max),
+            'AVE_INIT_GAP_RATIO': (
+                'ave init gap ratio',
+                None,
+                'the average ratio of dist(p0,p1) / dist(p1,p2)',
+                None,
+                average),
             # Linearity Validator
             'MAX_ERR': (
                 'max error in {} (mm)',
@@ -306,19 +320,6 @@ class MetricNameProps:
                 'the max report interval',
                 None,
                 max),
-            # Hysteresis Validator
-            'MAX_INIT_GAP_RATIO': (
-                'max init gap ratio',
-                None,
-                'the max ratio of dist(p0,p1) / dist(p1,p2)',
-                None,
-                max),
-            'AVE_INIT_GAP_RATIO': (
-                'ave init gap ratio',
-                None,
-                'the average ratio of dist(p0,p1) / dist(p1,p2)',
-                None,
-                average),
             # Stationary Finger Validator
             'MAX_DISTANCE': (
                 'max distance (mm)',
