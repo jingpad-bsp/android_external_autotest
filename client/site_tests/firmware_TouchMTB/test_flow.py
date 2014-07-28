@@ -654,6 +654,11 @@ class TestFlow:
             self._handle_keyboard_event(TFK.SAVE)
             return
 
+        # Initiate the MtbSanityValidator. Note that this should be done each
+        # time just before recording the gesture file since it requires a
+        # snapshot of the input device before any finger touching the device.
+        self.gesture.mtb_sanity_validator = MtbSanityValidator()
+
         # Now, we will record a new gesture event file.
         # Fork a new process for mtplot. Add io watch for the gesture file.
         self.record_new_file = True

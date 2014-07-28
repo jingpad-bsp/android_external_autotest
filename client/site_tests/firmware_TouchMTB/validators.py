@@ -82,19 +82,12 @@ VALIDATOR = 'Validator'
 
 def validate(packets, gesture, variation):
     """Validate a single gesture."""
-    if packets is None:
-        return (None, None)
-
-    msg_list = []
-    score_list = []
-    vlogs = []
-    for validator in gesture.validators:
+    def _validate(validator, msg_list, score_list, vlogs):
         vlog = validator.check(packets, variation)
         if vlog is None:
-            continue
+            return False
         vlogs.append(copy.deepcopy(vlog))
         score = vlog.score
-
         if score is not None:
             score_list.append(score)
             # save the validator messages
@@ -106,6 +99,24 @@ def validate(packets, gesture, variation):
             msg_list += vlog.details
             msg_list.append(msg_criteria)
             msg_list.append(msg_score)
+        return score == 1.0
+
+    if packets is None:
+        return (None, None)
+
+    msg_list = []
+    score_list = []
+    vlogs = []
+    prerequisite_flag = True
+
+    # If MtbSanityValidator does not pass, there exist some
+    # critical problems which will be reported in its metrics.
+    # No need to check the other validators.
+    mtb_sanity_result = _validate(gesture.mtb_sanity_validator,
+                                  msg_list, score_list, vlogs)
+    if mtb_sanity_result:
+        for validator in gesture.validators:
+            _validate(validator, msg_list, score_list, vlogs)
 
     return (score_list, msg_list, vlogs)
 
