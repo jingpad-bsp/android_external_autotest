@@ -259,8 +259,6 @@ class DisplayClient(object):
                 the internal one for chromebooks.
         @param width: width of the resolution
         @param height: height of the resolution
-
-        @return: True if the new resolution meets the set value else False.
         """
         return self._display_xmlrpc_client.set_resolution(
                 display_index, width, height)

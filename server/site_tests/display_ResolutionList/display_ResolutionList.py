@@ -55,76 +55,85 @@ class display_ResolutionList(chameleon_test.ChameleonTest):
 
 
             display_info = self.display_client.get_display_info()
+            test_display_index = -1
+
+            # get first external and enabled display
             for display_index in xrange(len(display_info)):
                 current_display = display_info[display_index]
-                if current_display.is_internal or not current_display.is_enabled:
+                if current_display.is_internal:
                     logging.info('Display %d (%s): Internal display, '
                             'skipped.' , display_index,
                             current_display.display_id)
                     continue
+                if not current_display.is_enabled:
+                    logging.info('Display %d (%s): Disabled display, '
+                            'skipped.' , display_index,
+                            current_display.display_id)
+                    continue
 
-                resolutions = self.display_client.get_available_resolutions(
-                        display_index)
-                logging.info('Display %d (%s): Total %d resolution modes.'
-                        '%s', display_index,current_display.display_id,
-                        len(resolutions),
-                        " (Primary)"
-                        if current_display.is_primary
-                        else "")
+                test_display_index = display_index
+                break
 
-                resolution_test_seq = [i for i in xrange(len(resolutions))]
-                shuffle(resolution_test_seq)
-                logging.info('Set mirrored: %s', test_mirrored)
-                self.display_client.set_mirrored(test_mirrored)
+            if test_display_index == -1:
+                raise RuntimeError("No external display is found.")
 
-                for test_resolution_index in resolution_test_seq:
-                    # (set_width, set_height) resolution by manual setting
-                    set_width, set_height = resolutions[
-                            test_resolution_index]
+            resolutions = self.display_client.get_available_resolutions(
+                    test_display_index)
+            logging.info('Test display %d (%s): Total %d resolution modes.'
+                    '%s', test_display_index, current_display.display_id,
+                    len(resolutions),
+                    " (Primary)" if current_display.is_primary else "")
 
-                    logging.info('Set external display resolution: mode %d,'
-                                 ' width: %d, height: %d ... %s',
-                                 test_resolution_index, set_width, set_height,
-                                 "Successfully"
-                                 if self.display_client.set_resolution(
-                                         display_index, set_width, set_height)
-                                 else "Unsuccessfully")
+            resolution_test_seq = [i for i in xrange(len(resolutions))]
+            shuffle(resolution_test_seq)
+            logging.info('Set mirrored: %s', test_mirrored)
+            self.display_client.set_mirrored(test_mirrored)
 
-                    logging.info('Waiting the calibration image stable.')
+            for test_resolution_index in resolution_test_seq:
+                # (set_width, set_height) resolution by manual setting
+                set_width, set_height = resolutions[
+                        test_resolution_index]
 
-                    self.display_client.load_calibration_image ((
-                            set_width, set_height))
-                    self.display_client.hide_cursor()
-                    time.sleep(self.CALIBRATION_IMAGE_SETUP_TIME)
+                logging.info('Set external display resolution: mode %d,'
+                             ' width: %d, height: %d',
+                             test_resolution_index, set_width, set_height)
+                self.display_client.set_resolution(
+                        test_display_index, set_width, set_height)
+                logging.info('Waiting the calibration image stable.')
 
-                    logging.info('Checking the resolution.')
-                    chameleon_resolution = self.chameleon_port.get_resolution()
-                    dut_resolution = self.display_client.get_resolution()
-                    # Verify the actual resolution detected by chameleon and
-                    # dut are the same as what is expected.
-                    # Note: In mirrored mode, the device may be in hardware
-                    # mirror (as opposed to software mirror). If so, the
-                    # actual resolution could be different from the expected
-                    # one. So we skip the check in mirrored mode.
-                    if ((set_width, set_height) != chameleon_resolution or
-                            (set_width, set_height) != dut_resolution):
-                        error_message = (
-                                'Detected a different resolution: '
-                                'chameleon: %r; dut: %r; expected %r' %
-                                (chameleon_resolution, dut_resolution,
-                                 (set_width, set_height)))
-                        if test_mirrored:
-                            logging.warn(error_message)
-                        else:
-                            logging.error(error_message)
-                            errors.append(error_message)
+                self.display_client.load_calibration_image ((
+                        set_width, set_height))
+                self.display_client.hide_cursor()
+                time.sleep(self.CALIBRATION_IMAGE_SETUP_TIME)
 
-                    if chameleon_resolution == dut_resolution:
-                        error_message = self.check_screen_with_chameleon(
-                                '%s-%dx%d' % ((tag,) + dut_resolution),
-                                self.PIXEL_DIFF_VALUE_MARGIN, 0)
-                        if error_message:
-                            errors.append(error_message)
+                logging.info('Checking the resolution.')
+                chameleon_resolution = self.chameleon_port.get_resolution()
+                dut_resolution = self.display_client.get_resolution()
+                # Verify the actual resolution detected by chameleon and
+                # dut are the same as what is expected.
+                # Note: In mirrored mode, the device may be in hardware
+                # mirror (as opposed to software mirror). If so, the
+                # actual resolution could be different from the expected
+                # one. So we skip the check in mirrored mode.
+                if ((set_width, set_height) != chameleon_resolution or
+                        (set_width, set_height) != dut_resolution):
+                    error_message = (
+                            'Detected a different resolution: '
+                            'chameleon: %r; dut: %r; expected %r' %
+                            (chameleon_resolution, dut_resolution,
+                             (set_width, set_height)))
+                    if test_mirrored:
+                        logging.warn(error_message)
+                    else:
+                        logging.error(error_message)
+                        errors.append(error_message)
+
+                if chameleon_resolution == dut_resolution:
+                    error_message = self.check_screen_with_chameleon(
+                            '%s-%dx%d' % ((tag,) + dut_resolution),
+                            self.PIXEL_DIFF_VALUE_MARGIN, 0)
+                    if error_message:
+                        errors.append(error_message)
 
         finally:
             self.display_client.close_tab()
