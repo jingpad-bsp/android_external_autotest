@@ -18,6 +18,16 @@ class touch_playback_test_base(test.test):
 
     _TOUCH_TYPES = ['touchpad', 'touchscreen']
 
+    @property
+    def _has_touchpad(self):
+        """True if device under test has a touchpad; else False."""
+        return self._has_inputs['touchpad']
+
+    @property
+    def _has_touchscreen(self):
+        """True if device under test has a touchscreen; else False."""
+        return self._has_inputs['touchscreen']
+
     def warmup(self):
         """Determine the nodes of all present touch devices, if any.
 
@@ -35,9 +45,6 @@ class touch_playback_test_base(test.test):
         self._nodes = {}
 
         for input_type in self._TOUCH_TYPES:
-            self._has_inputs[input_type] = False
-            self._nodes[input_type] = None
-
             id_num = utils.run(type_cmd % input_type).stdout.strip()
             if id_num:
                 self._has_inputs[input_type] = True
@@ -46,9 +53,9 @@ class touch_playback_test_base(test.test):
                 name = utils.run(name_cmd % input_type).stdout.strip()
                 logging.info('Found %s named %s at node %s', input_type,
                              name, self._nodes[input_type])
-
-        self._has_touchpad = self._has_inputs['touchpad']
-        self._has_touchscreen = self._has_inputs['touchscreen']
+            else:
+                self._has_inputs[input_type] = False
+                self._nodes[input_type] = None
 
     def _playback(self, filepath, touch_type='touchpad'):
         """Playback a given set of touch movements.
@@ -57,8 +64,7 @@ class touch_playback_test_base(test.test):
         @param use_touchpad: true to use touchpad, false for touchscreen.
 
         """
-        if touch_type not in self._TOUCH_TYPES:
-            raise error.TestError('Type %s does not exist!' % touch_type)
+        assert(touch_type in self._TOUCH_TYPES)
         node = self._nodes[touch_type]
         logging.info('Playing back finger-movement on %s, file=%s.', node,
                      filepath)

@@ -26,7 +26,7 @@ class touch_ScrollDirection(touch_playback_test_base.touch_playback_test_base):
 
     def _reset_page_position(self):
         """Reset page position to default."""
-        self._tab.ExecuteJavaScript('window.scrollTo(0, %x)'
+        self._tab.ExecuteJavaScript('window.scrollTo(0, %d)'
                                     % self._DEFAULT_SCROLL)
 
     def _check_scroll_direction(self, down):
@@ -62,11 +62,11 @@ class touch_ScrollDirection(touch_playback_test_base.touch_playback_test_base):
         """Entry point of this test."""
 
         # Copy playback files to DUT, if available.  Deleted during cleanup.
+        self._copied_files = []
         device = utils.get_board()
         if device not in self._VALID_BOARDS:
             logging.info('Aborting test; %s is not supported.', device)
             return
-        self._copied_files = []
         gestures_dir = os.path.join(self.bindir, 'gestures')
         down = device + '_scroll_down'
         up = device + '_scroll_up'
