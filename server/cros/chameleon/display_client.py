@@ -260,7 +260,7 @@ class DisplayClient(object):
         @param width: width of the resolution
         @param height: height of the resolution
         """
-        return self._display_xmlrpc_client.set_resolution(
+        self._display_xmlrpc_client.set_resolution(
                 display_index, width, height)
 
 
@@ -282,6 +282,7 @@ class DisplayClient(object):
 
         @return: array of available resolutions tuple (width, height)
         """
-        return [(resolution['width'], resolution['height']) for resolution in
+        return [(resolution['width'], resolution['height'])
+                for resolution in
                         self._display_xmlrpc_client.get_available_resolutions(
                         display_index)]

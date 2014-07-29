@@ -116,14 +116,15 @@ class DisplayTestingXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             tab.Close()
 
 
-    def set_resolution(self, display_index, width, height):
+    def set_resolution(self, display_index, width, height, timeout=3):
         """Sets the resolution of the specified display.
 
         @param display_index: index of the display to set resolution for;
                 0 is the internal one for chromebooks.
         @param width: width of the resolution
         @param height: height of the resolution
-
+        @param timeout: maximal time in sec waiting for the new resolution to
+                settle in.
         @raise TimeoutException when the operation is timed out.
         """
 
@@ -140,7 +141,15 @@ class DisplayTestingXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             )
             # TODO(tingyuan):
             # Support for multiple external monitors (i.e. for chromebox)
-            return True
+
+            end_time = time.time() + timeout
+            while time.time() < end_time:
+                r = self.get_resolution(self.get_ext_connector_name())
+                if (width, height) == (r[0], r[1]):
+                    return True
+                time.sleep(0.1)
+            raise TimeoutException("Failed to change resolution to %r (%r"
+                    " detected)", ((width, height), r))
         finally:
             tab.Close()
 
