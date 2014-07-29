@@ -138,17 +138,18 @@ def start(allow_fail=False, wait_for_login_prompt=True):
     return result
 
 
-def restart(impl=None):
+def restart(report_stop_failure=False):
     """Restart the session manager.
 
     - If the user is logged in, the session will be terminated.
+    - If the UI is currently down, just go ahead and bring it up unless the
+      caller has requested that a failure to stop be reported.
     - To ensure all processes are up and ready, this function will wait
       for the login prompt to show up and be marked as visible.
 
-    Args:
-        impl: Method to use to restart the session manager. By
-              default, the session manager is restarted using upstart.
-
+    @param report_stop_failure: False by default, set to True if you care about
+                                the UI being up at the time of call and
+                                successfully torn down by this call.
     """
     state = get_login_prompt_state()
 
@@ -157,11 +158,9 @@ def restart(impl=None):
     utils.system('logger "%s"' % UI_RESTART_ATTEMPT_MSG)
 
     try:
-        if impl is not None:
-            impl()
-        elif utils.system('restart ui', ignore_status=True) != 0:
+        if stop(allow_fail=not report_stop_failure) != 0:
             raise error.TestError('Could not stop session')
-
+        start(wait_for_login_prompt=False)
         # Wait for login prompt to appear to indicate that all processes are
         # up and running again.
         wait_for_chrome_ready(state)

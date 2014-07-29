@@ -427,7 +427,7 @@ class UITest(pyauto_test.PyAutoTest):
         self._save_logs_from_cryptohome()
 
         try:
-            cros_ui.restart(self.pyauto.Logout)
+            cros_ui.restart()
         except:
             self.__perform_ui_diagnostics()
             if not login.wait_for_browser_exit('Chrome crashed during logout'):

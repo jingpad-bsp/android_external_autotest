@@ -87,7 +87,7 @@ def restart_ui_to_clear_ownership_files():
     The UI must be stopped while we do this, or the session_manager will
     write the policy and key files out again.
     """
-    cros_ui.stop()
+    cros_ui.stop(allow_fail=not cros_ui.is_up())
     clear_ownership_files_no_restart()
     cros_ui.start()
 
