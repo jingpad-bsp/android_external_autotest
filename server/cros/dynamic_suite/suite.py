@@ -740,6 +740,7 @@ class Suite(object):
 
         return (self._file_bugs and result.test_executed and
                 (is_not_experimental or self._file_experimental_bugs) and
+                not result.is_testna() and
                 result.is_worse_than(job_status.Status('GOOD', '', 'reason')))
 
 

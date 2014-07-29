@@ -614,6 +614,11 @@ class Status(object):
         return self._status == 'WARN'
 
 
+    def is_testna(self):
+        """ Returns true if status is TEST_NA """
+        return self._status == 'TEST_NA'
+
+
     def is_worse_than(self, candidate):
         """
         Return whether |self| represents a "worse" failure than |candidate|.
