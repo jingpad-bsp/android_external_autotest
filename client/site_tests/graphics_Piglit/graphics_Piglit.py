@@ -14,13 +14,14 @@ from autotest_lib.client.cros.graphics import graphics_utils
 class graphics_Piglit(test.test):
     """
     Collection of automated tests for OpenGL implementations.
+
+    The binaries are pulled into test images via media-lib/piglit.
+    http://piglit.freedesktop.org
     """
     version = 2
     preserve_srcdir = True
     GSC = None
-
-    def setup(self):
-        self.job.setup_dep(['piglit'])
+    piglit_path = '/usr/local/piglit'
 
     def initialize(self):
         self.GSC = graphics_utils.GraphicsStateChecker()
@@ -29,9 +30,7 @@ class graphics_Piglit(test.test):
         if self.GSC:
             self.GSC.finalize()
 
-    # hard wiring the cros-driver.test config file until we
-    # need to parameterize this test for short/extended testing
-    def run_once(self):
+    def run_once(self, test='cros-driver.py'):
         gpu_family = utils.get_gpu_family()
         logging.info('Detected gpu family %s.', gpu_family)
         # TODO(djkurtz): Delete this once piglit runs on mali/tegra.
@@ -39,68 +38,57 @@ class graphics_Piglit(test.test):
             logging.info('Not running any tests, passing by default.')
             return
 
-        # TODO(ihf): Hook up crash reporting, right now it is doing nothing.
-        self.GSC.crash_blacklist.append('glslparsertest')
-        self.GSC.crash_blacklist.append('shader_runner')
-
-        # SCBA Sandy Bridge crash cases
-        self.GSC.crash_blacklist.append('draw-elements-base-vertex-neg')
-        self.GSC.crash_blacklist.append('glsl-fs-raytrace-bug27060')
-        self.GSC.crash_blacklist.append('glsl-vs-raytrace-bug26691')
-        self.GSC.crash_blacklist.append('fp-long-alu')
-
-        dep = 'piglit'
-        dep_dir = os.path.join(self.autodir, 'deps', dep)
-        self.job.install_pkg(dep, 'dep', dep_dir)
-        # 'results/default/graphics_Piglit/cros-driver')
+        # Keep a copy of stdout in piglit-run.log.
         log_path = os.path.join(self.outputdir, 'piglit-run.log')
+        # Keep the html results in the cros-driver directory.
         results_path = os.path.join(self.outputdir, 'cros-driver')
-        piglit_path = os.path.join(dep_dir, 'piglit')
-        bin_path = os.path.join(piglit_path, 'bin')
-        run_path = os.path.join(piglit_path, 'piglit-run.py')
-        test_path = 'tests/cros-driver.tests'
+        # The location of the piglit executable script.
+        run_path = os.path.join(self.piglit_path, 'bin/piglit')
         summary = ''
-        if not (os.path.exists(run_path) and
-                os.path.exists(bin_path) and
-                os.listdir(bin_path)):
-            raise error.TestError('piglit not found at %s' % piglit_path)
+        if not (os.path.exists(run_path)):
+            raise error.TestError('piglit not found at %s' % self.piglit_path)
 
-        os.chdir(piglit_path)
-
-        # Piglit by default wants to run multiple tests in separate
-        # processes concurrently. Strictly serialize this.
-        flags = '--concurrent=0'
-        cmd = '%s %s %s %s' % (run_path, flags, test_path, results_path)
-        # Output all commands as run sequentially with results in
-        # piglit-run.log and store everything for future inspection.
+        os.chdir(self.piglit_path)
+        logging.info('cd %s', os.getcwd())
+        # Piglit by default wants to run multiple tests in separate processes
+        # concurrently. Strictly serialize this using --no-concurrency.
+        # Now --dmesg also implies no concurrency but we want to be explicit.
+        flags = 'run -v --dmesg --no-concurrency'
+        cmd = 'python %s %s %s %s' % (run_path, flags, test, self.outputdir)
+        # Pipe stdout and stderr into piglit-run.log for later analysis.
         cmd = cmd + ' | tee ' + log_path
         cmd = cros_ui.xcommand(cmd)
-        logging.info('Calling %s', cmd)
+        logging.info(cmd)
         utils.run(cmd,
                   stdout_tee=utils.TEE_TO_LOGS,
                   stderr_tee=utils.TEE_TO_LOGS)
-        # count number of pass, fail, warn and skip in the test summary
-        summary_path = os.path.join(results_path, 'main')
-        f = open(summary_path, 'r')
+
+        # Make sure logs get written before continuing.
+        utils.run('sync')
+        # Convert results.json file to human readable html.
+        cmd = ('python %s summary html --overwrite -e all %s %s/results.json' %
+                  (run_path, results_path, self.outputdir))
+        utils.run(cmd,
+                  stdout_tee=utils.TEE_TO_LOGS,
+                  stderr_tee=utils.TEE_TO_LOGS)
+        # Make sure logs get written before continuing.
+        utils.run('sync')
+
+        # Count number of pass, fail, warn and skip in piglit-run.log (could
+        # also use results.json)
+        f = open(log_path, 'r')
         summary = f.read()
         f.close()
-
         if not summary:
             raise error.TestError('Test summary was empty')
 
-        # output numbers for plotting by harness
+        # Output counts for future processing.
         keyvals = {}
         for k in ['pass', 'fail', 'crash', 'warn', 'skip']:
-            num = len(re.findall(r'"result": "' + k + '",', summary))
+            num = len(re.findall(r'' + k + ' :: ', summary))
             keyvals['count_subtests_' + k] = num
             logging.info('Piglit: %d ' + k, num)
             self.output_perf_value(description=k, value=num,
                                    units='count', higher_is_better=(k=='pass'))
 
         self.write_perf_keyval(keyvals)
-
-        # generate human friendly html output
-        cmd = 'python piglit-summary-html.py'
-        cmd = cmd + ' ' + os.path.join(results_path, 'html')
-        cmd = cmd + ' ' + results_path
-        utils.run(cmd)
