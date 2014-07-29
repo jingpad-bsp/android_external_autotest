@@ -70,8 +70,8 @@ class BpImageComparer(object):
                 return res  # Great Success!!
 
             except bp_http_client.BiopicClientError as e:
-                e.msg = """ BiopicClientError thrown while uploading image %s.
-                Original message: %s""" % (image_path, e.msg)
+                e.message = ("BiopicClientError thrown while uploading file %s."
+                             "Original message: %s" % (image_path, e.message))
 
                 logging.debug(e)
                 logging.debug("RETRY LEFT : %d", retries)
@@ -80,6 +80,7 @@ class BpImageComparer(object):
                     raise
 
                 retries -= 1
+
 
     @property
     def id(self):
@@ -91,58 +92,47 @@ class BpImageComparer(object):
 
 
     @method_logger.log
-    def compare(self, golden_image_paths, test_run_image_paths, retries=None):
+    def compare(self, golden_image_path, test_run_image_path, retries=None):
         """
         Compares a test image with a known reference image.
 
         Uses http_client interface to communicate with biopic service.
 
-        @param golden_image_paths: path, complete path to golden image.
-        @param test_run_image_paths: path, complete path to test image.
+        @param golden_image_path: path, complete path to a golden image.
+        @param test_run_image_path: path, complete path to a test run image.
         @param retries: int, number of times to retry before giving up.
                         This is configured at object creation but test can
-                        override the configured value at method call.
+                        override the configured value at method call..
 
         @raises whatever biopic http interface raises.
 
-        @returns a list of dictionaries containing test results.
+        @returns: int, num of differing pixels. Right now just -1 as we do not
+                       have a way to extract this from biopic.
 
         """
 
-        if retries is None:
-            retries = self.retries
-
-        if type(golden_image_paths) is not list:
-            golden_image_paths = [golden_image_paths]
-
-        if type(test_run_image_paths) is not list:
-            test_run_image_paths = [test_run_image_paths]
-
-        upload_results = []
-
         logging.debug("*** Beginning Biopic Upload ... **** \n")
 
-        for gimage, timage in zip(golden_image_paths, test_run_image_paths):
+        rs = self._upload_image_with_retry(self.bp_client.UploadGoldenImage,
+                                           golden_image_path,
+                                           retries)
 
-            rs = self._upload_image_with_retry(self.bp_client.UploadGoldenImage,
-                                               gimage,
-                                               retries)
+        logging.debug(rs)
 
-            logging.debug(rs)
-            upload_results.append(rs)
+        rs = self._upload_image_with_retry(self.bp_client.UploadRunImage,
+                                           test_run_image_path,
+                                           retries)
 
-            rs = self._upload_image_with_retry(self.bp_client.UploadRunImage,
-                                                timage,
-                                                retries)
+        logging.debug(rs)
 
-            logging.debug(rs)
-            upload_results.append(rs)
-
-            time.sleep(self.wait_time_btwn_comparisons)
+        time.sleep(self.wait_time_btwn_comparisons)
 
         logging.debug("*** Biopic Upload COMPLETED. **** \n")
 
-        return upload_results
+        # We don't have a way to get back the pixel different number from bp
+        # just return -1
+
+        return -1
 
 
     def complete(self):

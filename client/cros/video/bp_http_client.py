@@ -8,7 +8,7 @@ and detect any anomalies in any two images.
 
 import base64
 import os
-import simplejson
+import json as simplejson
 import urllib
 import urllib2
 import urlparse

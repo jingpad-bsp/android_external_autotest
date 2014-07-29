@@ -53,6 +53,9 @@ class video_GlitchDetection(test.test):
 
         golden_image_downloader = factory.make_golden_image_downloader()
         screenshot_collector = factory.make_video_screenshot_collector()
+        comp = media_test_factory.MediaTestFactory.RGB_BP_COMPARER
+        verifier = factory.make_image_verifier(comparer_to_use=comp,
+                                               stop_on_first_failure=False)
 
         test_dir = factory.local_golden_images_dir
 
@@ -78,8 +81,7 @@ class video_GlitchDetection(test.test):
 
         file_utils.ensure_all_files_exist(test_images)
 
-        with factory.make_image_comparer() as comparer:
-            comparer.compare(golden_images, test_images)
+        verifier.verify(golden_images, test_images)
 
         file_utils.rm_dir_if_exists(test_dir)
 

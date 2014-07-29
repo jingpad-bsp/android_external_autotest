@@ -8,13 +8,12 @@ import os
 
 from autotest_lib.client.bin import utils
 
-from autotest_lib.client.common_lib import error
-
 from autotest_lib.client.cros.video import bp_image_comparer, \
-    golden_image_downloader, import_screenshot_capturer, sequence_generator, \
-    media_player, method_logger, screenshot_file_namer, \
+    upload_on_fail_comparer, golden_image_downloader,\
+    import_screenshot_capturer, media_player,\
+    method_logger, rgb_image_comparer,\
+    screenshot_file_namer, sequence_generator, verifier, \
     video_screenshot_collector
-
 
 
 class MediaTestFactory(object):
@@ -42,6 +41,11 @@ class MediaTestFactory(object):
     sequence not caring whether it is random or it is with an interval.
 
     """
+
+
+    BP_COMPARER = 'bp' # biopic comparer
+    RGB_COMPARER = 'rgb_comparer' # RGB pixel by pixel comparer
+    RGB_BP_COMPARER = 'rgb_bp_comparer' # RGB - local comparer, biopic - remote.
 
 
     @method_logger.log
@@ -123,34 +127,11 @@ class MediaTestFactory(object):
         """
 
         self.parser = ConfigParser.SafeConfigParser()
-
-        self._verify_device_is_eligible_for_test()
-
         self.device_under_test = utils.get_current_board()
-        self._load_test_constants()
         self._load_device_info()
+        self._load_test_constants()
         self._load_video_info()
         self._load_channel_specs()
-
-
-    @method_logger.log
-    def _verify_device_is_eligible_for_test(self):
-        """
-        Verifies device under test is supported.
-
-        @raises TestNAError if the test shouldn't be run on the current device.
-
-        """
-        self.parser.read(os.path.join(self.autotest_cros_video_dir,
-                                      self.device_spec_filename))
-
-        eligible_devices = self.parser.sections()
-
-        device_under_test = utils.get_current_board()
-
-        if device_under_test not in eligible_devices:
-            raise error.TestNAError('Test is not available on %s board' %
-                                     device_under_test.upper())
 
 
     @method_logger.log
@@ -350,13 +331,40 @@ class MediaTestFactory(object):
                                                                    capturer)
 
 
-    def make_image_comparer(self):
+    def make_bp_image_comparer(self):
         """
-        Add logic here to support other comparers e.g: Chameleon v2 comparer.
+        @return: a bp-based image comparer.
 
-        @returns an object that can compare two images.
         """
         return bp_image_comparer.BpImageComparer(self.biopic_project_name,
                                                  self.biopic_contact_email,
                                                  self.biopic_wait_time,
                                                  self.biopic_num_upload_retries)
+
+
+    def make_image_verifier(self, comparer_to_use, stop_on_first_failure=False):
+        """
+        Creates a verifier to verify test images against reference images.
+
+        @param comparer_to_use: string, type of image comparer desired.
+        @param stop_on_first_failure: stop test on first test image that is not
+                                      equal to a golden image.
+
+        @return: object, a verifier object.
+
+        """
+
+        comparer = None
+
+        if comparer_to_use == MediaTestFactory.BP_COMPARER:
+            comparer = self.make_bp_image_comparer()
+
+        elif comparer_to_use == MediaTestFactory.RGB_COMPARER:
+            comparer = rgb_image_comparer.RGBImageComparer()
+
+        elif comparer_to_use == MediaTestFactory.RGB_BP_COMPARER:
+            comparer = upload_on_fail_comparer.UploadOnFailComparer(
+                    rgb_image_comparer.RGBImageComparer(),
+                    self.make_bp_image_comparer())
+
+        return verifier.Verifier(comparer, stop_on_first_failure)
