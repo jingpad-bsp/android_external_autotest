@@ -9,7 +9,6 @@ import datetime
 
 import common
 from autotest_lib.client.common_lib.cros.graphite import es_utils
-from autotest_lib.client.common_lib.cros.graphite import es_test_utils
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import models
 
@@ -80,16 +79,14 @@ def find_most_recent_entry_before(t, type_str, hostname, fields):
     @param fields: list of fields we are interested in
     @returns: time, field_value of the latest entry.
     """
-    # TODO(michaelliang): Rename migrate all non test-only
-    #   functions in es_test_utils.py to es_utils.py
-    query = es_test_utils.create_range_eq_query_multiple(
+    query = es_utils.create_range_eq_query_multiple(
             fields_returned=fields,
             equality_constraints=[('_type', type_str),
                                   ('hostname', hostname)],
             range_constraints=[('time_recorded', None, t)],
             size=1,
             sort_specs=[{'time_recorded': 'desc'}])
-    result = es_test_utils.execute_query(
+    result = es_utils.execute_query(
             query, es_utils.INDEX_METADATA,
             es_utils.METADATA_ES_SERVER, es_utils.ES_PORT)
     if result['hits']['total'] > 0:
@@ -127,7 +124,7 @@ def host_history_intervals(t_start, t_end, hostname, size):
     status_first = t_host_stat if t_host else 'Ready'
     t = min([t for t in [t_lock, t_host, t_start] if t])
 
-    query_lock_history = es_test_utils.create_range_eq_query_multiple(
+    query_lock_history = es_utils.create_range_eq_query_multiple(
             fields_returned=['locked', 'time_recorded'],
             equality_constraints=[('_type', 'lock_history'),
                                   ('hostname', hostname)],
@@ -135,20 +132,20 @@ def host_history_intervals(t_start, t_end, hostname, size):
             size=size,
             sort_specs=[{'time_recorded': 'asc'}])
 
-    lock_history_entries = es_test_utils.execute_query(
+    lock_history_entries = es_utils.execute_query(
             query_lock_history, es_utils.INDEX_METADATA,
             es_utils.METADATA_ES_SERVER, es_utils.ES_PORT)
 
     locked_intervals = lock_history_to_intervals(t_lock_val, t, t_end,
                                                  lock_history_entries)
-    query_host_history = es_test_utils.create_range_eq_query_multiple(
+    query_host_history = es_utils.create_range_eq_query_multiple(
             fields_returned=["hostname", "time_recorded", "dbg_str", "status"],
             equality_constraints=[("_type", "host_history"),
                                   ("hostname", hostname)],
             range_constraints=[("time_recorded", t_start, t_end)],
             size=size,
             sort_specs=[{"time_recorded": "asc"}])
-    host_history_entries = es_test_utils.execute_query(
+    host_history_entries = es_utils.execute_query(
             query_host_history, es_utils.INDEX_METADATA,
             es_utils.METADATA_ES_SERVER, es_utils.ES_PORT)
     num_entries_found = host_history_entries['hits']['total']

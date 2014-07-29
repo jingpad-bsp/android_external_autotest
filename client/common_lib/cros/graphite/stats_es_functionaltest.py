@@ -79,7 +79,7 @@ class StatsFunctionalTest(object):
         range_query = es_test_utils.create_range_eq_query(fields_returned=keys,
                                                           range_key='host_id',
                                                           range_low=0)
-        result = es_test_utils.execute_query(range_query,
+        result = es_utils.execute_query(range_query,
                                         self.index,
                                         self.host,
                                         self.port)

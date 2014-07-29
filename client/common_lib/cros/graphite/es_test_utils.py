@@ -5,7 +5,6 @@
 """Helper functions for testing stats module and elasticsearch
 """
 
-import datetime
 import logging
 import time
 
@@ -18,6 +17,7 @@ except ImportError:
                   'no metadata will be reported.')
     import elasticsearch_mock as elasticsearch
 
+from autotest_lib.client.common_lib.cros.graphite import es_utils
 from autotest_lib.client.common_lib.cros.graphite import stats
 
 
@@ -48,22 +48,6 @@ DEFAULT_NUM_ENTRIES = 100
 class EsTestUtilException(Exception):
     """Exception raised when functions here fail. """
     pass
-
-
-def _to_epoch_time(value):
-    """Converts value to epoch time if it is a datetime object.
-
-    This function should only be called in create_range_eq_query_multiple.
-
-    @param value: anything
-    @param returns: epoch time if value is datetime.datetime,
-                    otherwise returns the value.
-    """
-    if isinstance(value, datetime.datetime):
-        # This looks kinda hacky, timetuple() only goes to the
-        # level of seconds. So I need to add on the decimal part.
-        return time.mktime(value.timetuple()) + 0.000001*value.microsecond
-    return value
 
 
 def sequential_random_insert_ints(keys, num_entries, target_type, index,
@@ -141,117 +125,6 @@ def clear_index(index, host, port, timeout, sleep_time=0.5, clear_timeout=5):
     print 'successfully deleted index %s' % (index)
 
 
-def create_range_eq_query_multiple(fields_returned,
-                                   equality_constraints,
-                                   range_constraints,
-                                   size,
-                                   sort_specs):
-    """Creates a dict. representing multple range and/or equality queries.
-
-    Example input:
-        create_range_eq_query_multiple(
-                fields_returned = ['time_recorded', 'hostname',
-                                   'status', 'dbg_str'],
-                equality_constraints = [
-                    ('_type', 'host_history'),
-                    ('hostname', '172.22.169.106'),
-                ],
-                range_constraints = [
-                    ('time_recorded', 1405628341.904379, 1405700341.904379)
-                ],
-                size=20,
-                sort_specs=[
-                    'hostname',
-                    {'time_recorded': 'asc'},
-                ]
-        )
-
-    Output:
-    {
-        'fields': ['time_recorded', 'hostname', 'status', 'dbg_str'],
-        'query': {
-            'bool': {
-                'minimum_should_match': 3,
-                'should': [
-                    {
-                        'term':  {
-                            '_type': 'host_history'
-                        }
-                    },
-
-                    {
-                        'term': {
-                            'hostname': '172.22.169.106'
-                        }
-                    },
-
-                    {
-                        'range': {
-                            'time_recorded': {
-                                'gte': 1405628341.904379,
-                                'lte': 1405700341.904379
-                            }
-                        }
-                    }
-                ]
-            },
-        },
-        'size': 20
-        'sort': [
-            'hostname',
-            { 'time_recorded': 'asc'},
-        ]
-    }
-
-    @param fields_returned: list of fields that we should return when
-                            the query is executed
-    @param equality_constraints: list of tuples of (field, value) pairs
-        representing what each field should equal to in the query.
-        e.g. [ ('field1', 1), ('field2', 'value') ]
-    @param range_constraints: list of tuples of (field, low, high) pairs
-        representing what each field should be between (inclusive).
-        e.g. [ ('field1', 2, 10), ('field2', -1, 20) ]
-        If you want one side to be unbounded, you can use None.
-        e.g. [ ('field1', 2, None) ] means value of field1 >= 2.
-    @param size: max number of entries to return.
-    @param sort_specs: A list of fields to sort on, tiebreakers will be
-        broken by the next field(s).
-    @param returns: dictionary object that represents query to es.
-                    This will return None if there are no equality constraints
-                    and no range constraints.
-    """
-    if not equality_constraints and not range_constraints:
-        raise EsTestUtilException('No range or equality constraints specified...')
-
-    # Creates list of range dictionaries to put in the 'should' list.
-    if range_constraints:
-        range_list = []
-        for key, low, high in range_constraints:
-            if low == None and high == None:
-                continue
-            temp_dict = {}
-            if low != None:
-                temp_dict['gte'] = _to_epoch_time(low)
-            if high != None:
-                temp_dict['lte'] = _to_epoch_time(high)
-            range_list.append( {'range': {key: temp_dict}})
-
-    # Creates the list of term dictionaries to put in the 'should' list.
-    eq_list = [{'term': {k: v}} for k, v in equality_constraints if k]
-    num_constraints = len(equality_constraints) + len(range_constraints)
-    return {
-        'fields': fields_returned,
-        'query': {
-            'bool': {
-                'should': eq_list + range_list,
-                'minimum_should_match': num_constraints,
-            }
-        },
-        'size': size,
-        'sort': sort_specs if sort_specs else [],
-    }
-
-
 def create_range_eq_query(fields_returned,
                           equals_key=None,
                           equals_val=None,
@@ -316,80 +189,10 @@ def create_range_eq_query(fields_returned,
     range_constraints = []
     if range_key:
         range_constraints = [(range_key, range_low, range_high)]
-    return create_range_eq_query_multiple(
+    return es_utils.create_range_eq_query_multiple(
         fields_returned,
         equality_constraints=equality_constraints,
         range_constraints=range_constraints,
         size=size,
         sort_specs=sort_specs,
     )
-
-
-def execute_query(query, index, host, port, timeout=3):
-    """Makes a query on the given index.
-
-    @param query: query dictionary (see create_range_query)
-    @param index: index within db to query
-    @param host: host running es
-    @param port: port running es
-    @param timeout: seconds to wait before es retries if conn. fails.
-                    default is 3 seconds.
-    @returns: dictionary of the results, or None if index does not exist.
-
-    Example output:
-    {
-      "took" : 5,
-      "timed_out" : false,
-      "_shards" : {
-        "total" : 16,
-        "successful" : 16,
-        "failed" : 0
-      },
-      "hits" : {
-        "total" : 4,
-        "max_score" : 1.0,
-        "hits" : [ {
-          "_index" : "graphite_metrics2",
-          "_type" : "metric",
-          "_id" : "rtntrjgdsafdsfdsfdsfdsfdssssssss",
-          "_score" : 1.0,
-          "_source":{"target_type": "timer",
-                     "host_id": 1,
-                     "job_id": 22,
-                     "time_start": 400}
-        }, {
-          "_index" : "graphite_metrics2",
-          "_type" : "metric",
-          "_id" : "dfgfddddddddddddddddddddddhhh",
-          "_score" : 1.0,
-          "_source":{"target_type": "timer",
-                     "host_id": 2,
-                     "job_id": 23,
-                     "time_start": 405}
-        }, {
-          "_index" : "graphite_metrics2",
-          "_type" : "metric",
-          "_id" : "erwerwerwewtrewgfednvfngfngfrhfd",
-          "_score" : 1.0,
-          "_source":{"target_type": "timer",
-                     "host_id": 3,
-                     "job_id": 24,
-                     "time_start": 4098}
-        }, {
-          "_index" : "graphite_metrics2",
-          "_type" : "metric",
-          "_id" : "dfherjgwetfrsupbretowegoegheorgsa",
-          "_score" : 1.0,
-          "_source":{"target_type": "timer",
-                     "host_id": 22,
-                     "job_id": 25,
-                     "time_start": 4200}
-        } ]
-      }
-    }
-
-    """
-    es = elasticsearch.Elasticsearch(host=host, port=port, timeout=timeout)
-    if not es.indices.exists(index=index):
-        return None
-    return es.search(index=index, body=query)
