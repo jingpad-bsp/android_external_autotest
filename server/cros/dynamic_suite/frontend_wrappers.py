@@ -2,11 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, random, time
 import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import retry
-from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.server import frontend
 
 
@@ -15,7 +13,7 @@ class RetryingAFE(frontend.AFE):
 
     Timeout for retries and delay between retries are configurable.
     """
-    def __init__(self, timeout_min, delay_sec, **dargs):
+    def __init__(self, timeout_min=30, delay_sec=10, **dargs):
         """Constructor
 
         @param timeout_min: timeout in minutes until giving up.
@@ -25,10 +23,14 @@ class RetryingAFE(frontend.AFE):
         self.delay_sec = delay_sec
         super(RetryingAFE, self).__init__(**dargs)
 
-    @retry.retry(Exception, timeout_min=30, delay_sec=10,
-                 blacklist=[ImportError, error.RPCException])
+
     def run(self, call, **dargs):
-        return super(RetryingAFE, self).run(call, **dargs)
+        @retry.retry(Exception, timeout_min=self.timeout_min,
+                     delay_sec=self.delay_sec,
+                     blacklist=[ImportError, error.RPCException])
+        def _run(self, call, **dargs):
+            return super(RetryingAFE, self).run(call, **dargs)
+        return _run(self, call, **dargs)
 
 
 class RetryingTKO(frontend.TKO):
@@ -36,7 +38,7 @@ class RetryingTKO(frontend.TKO):
 
     Timeout for retries and delay between retries are configurable.
     """
-    def __init__(self, timeout_min, delay_sec, **dargs):
+    def __init__(self, timeout_min=30, delay_sec=10, **dargs):
         """Constructor
 
         @param timeout_min: timeout in minutes until giving up.
@@ -47,7 +49,10 @@ class RetryingTKO(frontend.TKO):
         super(RetryingTKO, self).__init__(**dargs)
 
 
-    @retry.retry(Exception, timeout_min=30, delay_sec=10,
-                 blacklist=[ImportError, error.RPCException])
     def run(self, call, **dargs):
-        return super(RetryingTKO, self).run(call, **dargs)
+        @retry.retry(Exception, timeout_min=self.timeout_min,
+                     delay_sec=self.delay_sec,
+                     blacklist=[ImportError, error.RPCException])
+        def _run(self, call, **dargs):
+            return super(RetryingTKO, self).run(call, **dargs)
+        return _run(self, call, **dargs)
