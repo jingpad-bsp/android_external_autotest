@@ -54,9 +54,32 @@ class kernel_CpufreqMinMax(test.test):
 
 
     def run_once(self):
-        f = open(self.sys_cpufreq_path + 'scaling_available_frequencies', 'r')
-        available_freqs = sorted(map(int, f.readline().split()))
+        available_freqs = []
+        # When the Intel P-state driver is used, the driver implements an
+        # internal governer which selects the currect P-state automatically.
+        # Any value between cpuinfo_min_freq and cpuinfo_max_freq is allowed
+        # for scaling_max_freq and scaling_min_freq. Setting them is
+        # equivalent to setting max_perf_pct and min_perf_pct under
+        # /sys/devices/system/cpu/intel_pstate/.
+        f = open(self.sys_cpufreq_path + 'scaling_driver', 'r')
+        if ('intel_pstate\n' == f.read()):
+            fmin = open(self.sys_cpufreq_path + 'cpuinfo_min_freq', 'r')
+            fmax = open(self.sys_cpufreq_path + 'cpuinfo_max_freq', 'r')
+            available_freqs = map(int, [fmin.read(), fmax.read()])
+            fmin.close()
+            fmax.close()
+
+            # generate a list of frequencies between min and max
+            step = (available_freqs[1] - available_freqs[0]) / 4
+            if step:
+                available_freqs = range(available_freqs[0],
+                                        available_freqs[1] + 1, step)
         f.close()
+
+        if not available_freqs:
+            f = open(self.sys_cpufreq_path + 'scaling_available_frequencies', 'r')
+            available_freqs = sorted(map(int, f.readline().split()))
+            f.close()
 
         # exit if there are not at least two frequencies
         if (len(available_freqs) < 2):
