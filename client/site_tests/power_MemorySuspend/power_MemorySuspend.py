@@ -14,12 +14,14 @@ class power_MemorySuspend(test.test):
         utils.system('stop ui', ignore_status=True)
 
 
-    def run_once(self):
+    def run_once(self, num_suspends=1):
         meminfo = utils.read_file('/proc/meminfo')
         free_kb = int(utils.get_field(meminfo, 0, 'MemFree:'))
         inactive_kb = int(utils.get_field(meminfo, 0, 'Inactive:'))
         slack_kb = 192 * 1024
-        sys_power.memory_suspend(10, (free_kb + inactive_kb - slack_kb) * 1024)
+        size = (free_kb + inactive_kb - slack_kb) * 1024
+        for _ in range(num_suspends):
+            sys_power.memory_suspend(10, size)
 
 
     def cleanup(self):
