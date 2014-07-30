@@ -1,0 +1,27 @@
+# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Project, chromeos-video@google.com"
+NAME = "video_PlaybackPerf.h264"
+PURPOSE = "Test the cpu usage and dropped frame count of H264 video playback"
+CRITERIA = """
+The test outputs the cpu usage of H264 video playback.
+"""
+TIME = "MEDIUM"
+TEST_CATEGORY = "Performance"
+TEST_CLASS = "video"
+TEST_TYPE = "client"
+DEPENDENCIES = 'hw_video_acc_h264'
+BUG_TEMPLATE = {
+    'labels': ['OS-Chrome', 'Cr-OS-Kernel-Video'],
+}
+
+DOC = """
+This test measures the CPU usage and dropped frame count of H264 video playback
+for hardware decode and software decode.
+"""
+
+VIDEO_NAME = 'crowd1080.mp4'
+job.run_test('video_PlaybackPerf', video_name=VIDEO_NAME, video_format="h264")
+
