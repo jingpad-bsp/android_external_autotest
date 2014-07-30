@@ -10,7 +10,7 @@ Fails if any of the following conditions occur:
   - crash log messages are incorrect
   - crash is sent without user consent
 """
-SUITE = "bvt-inline, bvt, bvt_cq, smoke"
+SUITE = "bvt-inline, smoke"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "logging"

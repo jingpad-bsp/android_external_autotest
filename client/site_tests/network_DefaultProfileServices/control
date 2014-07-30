@@ -4,7 +4,7 @@
 
 AUTHOR = 'quiche, pstew'
 NAME = 'network_DefaultProfileServices'
-SUITE = 'bvt-cq, bvt, bvt_cq, network_nightly'
+SUITE = 'bvt-cq, network_nightly'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
 JOB_RETRIES = 1

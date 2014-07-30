@@ -8,7 +8,7 @@ PURPOSE = 'Reset the GPU and check recovery mechanism.'
 CRITERIA = """
 Detection of udev event notification of a GPU hang.
 """
-SUITE = 'bvt-cq, bvt, bvt_cq, graphics'
+SUITE = 'bvt-cq, graphics'
 TIME='MEDIUM'
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = "gl"

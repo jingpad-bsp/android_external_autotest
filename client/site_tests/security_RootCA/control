@@ -12,7 +12,7 @@ PURPOSE = 'Ensures that the built-in Root CAs matches the whitelist for CrOS.'
 CRITERIA = """
 Fail if the nss/openssl databases fail to match each other or the whitelist.
 """
-SUITE = "bvt-inline, bvt, bvt_cq, smoke"
+SUITE = "bvt-inline, smoke"
 TEST_CLASS = 'security'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'client'

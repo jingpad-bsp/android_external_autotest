@@ -4,7 +4,7 @@
 
 AUTHOR = "cmasone, achuith"
 NAME = "login_LogoutProcessCleanup"
-SUITE = "bvt-inline, smoke, bvt, bvt_cq"
+SUITE = "bvt-inline, smoke"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"

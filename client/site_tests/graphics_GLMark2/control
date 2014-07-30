@@ -5,7 +5,7 @@
 NAME = 'graphics_GLMark2'
 AUTHOR = 'chromeos-gfx'
 PURPOSE = 'Benchmark the graphics library performance.'
-SUITE = 'bvt-cq, bvt, bvt_cq, graphics'
+SUITE = 'bvt-cq, graphics'
 TIME='MEDIUM'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = "gl"
