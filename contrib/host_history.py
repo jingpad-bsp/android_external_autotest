@@ -9,10 +9,6 @@
 """Script for checking host history for a selected group of hosts.
 
 Currently only supports aggregating stats for each host.
-TODOs:
-    Write unit tests for host_history_utils
-    Aggregate stats for > 1 host
-    Incorporate jobs
 
 Example usage:
     python host_history.py --index=cautotest -n 10000 \
@@ -74,13 +70,16 @@ Example usage2: more than one host:
     - -- --- ---- ----- ---- --- -- -
 """
 
+import argparse
+import datetime
 import multiprocessing
 import multiprocessing.pool
-import argparse
 import time
+import traceback
 
 import common
 import host_history_utils
+from autotest_lib.client.common_lib.cros.graphite import es_utils
 from autotest_lib.server import frontend
 
 
@@ -104,8 +103,76 @@ def should_care(board, pool, dut):
     return found_board and found_pool
 
 
+def print_all_stats(results, labels, t_start, t_end):
+    """Prints overall stats followed by stats for each host.
+
+    @param results: A list of tuples of two elements.
+        1st element: String representing report for individual host.
+        2nd element: An ordered dictionary with
+            key being (ti, tf) and value being (status, dbg_str)
+            status = status of the host. e.g. 'Repair Failed'
+            ti is the beginning of the interval where the DUT's has that status
+            tf is the end of the interval where the DUT has that status
+            dbg_str is the self.dbg_str from the host. An example would be:
+                'Special Task 18858263 (host 172.22.169.106,
+                                        task Repair,
+                                        time 2014-07-27 20:01:15)'
+    @param labels: A list of labels useful for describing the group
+                   of hosts these overall stats represent.
+    @param t_start: beginning of time period we are interested in.
+    @param t_end: end of time period we are interested in.
+    """
+    result_strs, stat_intervals_lst = zip(*results)
+    overall_report_str = host_history_utils.get_overall_report(
+            labels, t_start, t_end, stat_intervals_lst)
+    # Print the overall stats
+    print overall_report_str
+    # Print the stats for each individual host.
+    for result_str in result_strs:
+        print result_str
+
+
+def get_host_history(input):
+    """Gets the host history.
+
+    @param input: A dictionary of input arguments to
+                  host_history_utils.host_history_stats.
+                  Must contain these keys:
+                    't_start',
+                    't_end',
+                    'hostname',
+                    'size,'
+                    'print_each_interval'
+    @returns:
+        result_str: String reporting history for specific host.
+        stat_intervals: A ordered dictionary with
+            key being (ti, tf) and value being (status, dbg_str)
+            status = status of the host. e.g. 'Repair Failed'
+            ti is the beginning of the interval where the DUT's has that status
+            tf is the end of the interval where the DUT has that status
+            dbg_str is the self.dbg_str from the host. An example would be:
+                'Special Task 18858263 (host 172.22.169.106,
+                                        task Repair,
+                                        time 2014-07-27 20:01:15)'
+    """
+    try:
+        result_str, stat_intervals = host_history_utils.get_report_for_host(
+                t_start=input['t_start'],
+                t_end=input['t_end'],
+                hostname=input['hostname'],
+                size=input['size'],
+                print_each_interval=input['print_each_interval'])
+        return result_str, stat_intervals
+    except Exception as e:
+        # Incase any process throws an Exception, we want to see it.
+        print traceback.print_exc()
+        return None, None
+
+
 def main():
     """main script. """
+    t_now = time.time()
+    t_now_minus_one_day = t_now - 3600 * 24
     parser = argparse.ArgumentParser()
     parser.add_argument('--index', type=str, dest='index')
     parser.add_argument('-v', action='store_true', dest='verbose',
@@ -116,7 +183,7 @@ def main():
                         default=10000)
     parser.add_argument('-l', type=float, dest='last',
                         help='last hours to search results across',
-                        default=24)
+                        default=None)
     parser.add_argument('--board', type=str, dest='board',
                         help='restrict query by board, not implemented yet',
                         default=None)
@@ -126,10 +193,25 @@ def main():
     parser.add_argument('--hosts', nargs='+', dest='hosts',
                         help='Enter space deliminated hostnames',
                         default=[])
+    parser.add_argument('--start', type=str, dest='start',
+                        help=('Enter start time as: yyyy-mm-dd hh-mm-ss,'
+                              'defualts to 24h ago.'),
+                        default=t_now_minus_one_day)
+    parser.add_argument('--end', type=str, dest='end',
+                        help=('Enter end time in as: yyyy-mm-dd hh-mm-ss,'
+                              'defualts to current time.'),
+                        default=t_now)
     options = parser.parse_args()
 
+    if options.last:
+        t_start = t_now
+        t_end = t_now - 3600 * options.last
+    else:
+        t_start = es_utils._to_epoch_time(datetime.datetime.strptime(
+                options.start, '%Y-%m-%d %H:%M:%S'))
+        t_end = es_utils._to_epoch_time(datetime.datetime.strptime(
+                options.end, '%Y-%m-%d %H:%M:%S'))
 
-    time_now = time.time()
     if options.hosts:
         hosts = options.hosts
     else:
@@ -145,48 +227,22 @@ def main():
 
     args = []
     for hostname in hosts:
-        args.append({'t_start': time_now - 3600*options.last,
-             't_end': time_now,
-             'hostname': hostname,
-             'size': options.size,
-             'print_each_interval': options.verbose})
+        args.append({'t_start': t_start,
+                     't_end': t_end,
+                     'hostname': hostname,
+                     'size': options.size,
+                     'print_each_interval': options.verbose})
 
     # Parallizing this process.
     pool = multiprocessing.pool.ThreadPool()
     results = pool.imap_unordered(get_host_history, args)
-    time.sleep(5)
-    for result in results:
-        print result
-
-
-def get_host_history(input):
-    """Gets the host history.
-
-    @param input: A dictionary of input arguments to
-                  host_history_utils.host_history_stats.
-                  Must contain these keys:
-                    't_start',
-                    't_end',
-                    'hostname',
-                    'size,'
-                    'print_each_interval'
-    @returns: result which is a ordered dictionary with
-        key being (ti, tf) and value being (status, dbg_str)
-        status = status of the host. e.g. 'Repair Failed'
-        ti is the beginning of the interval where the DUT's has that status
-        tf is the end of the interval where the DUT has that status
-        dbg_str is the self.dbg_str from the host. An example would be:
-            'Special Task 18858263 (host 172.22.169.106,
-                                    task Repair,
-                                    time 2014-07-27 20:01:15)'
-    """
-    result = host_history_utils.host_history_stats_report(
-            t_start=input['t_start'],
-            t_end=input['t_end'],
-            hostname=input['hostname'],
-            size=input['size'],
-            print_each_interval=input['print_each_interval'])
-    return result
+    time.sleep(3)
+    labels = []
+    if options.board:
+        labels.append('board:%s' % (options.board))
+    if options.pool:
+        labels.append('pool:%s' % (options.pool))
+    print_all_stats(results, labels, t_start, t_end)
 
 
 if __name__ == '__main__':

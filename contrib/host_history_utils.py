@@ -171,24 +171,6 @@ def host_history_intervals(t_start, t_end, hostname, size):
     return intervals_of_statuses, num_entries_found
 
 
-def host_history_stats_report(t_start, t_end, hostname, size,
-                              print_each_interval):
-    """Gets stats report for a host
-
-    @param t_start: beginning of time period we are interested in.
-    @param t_end: end of time period we are interested in.
-    @param hostname: hostname for the host we are interested in (string)
-    @param print_each_interval: True or False, whether we want to
-                                display all intervals
-    @returns: stats report for this particular host (string)
-    """
-    intervals_of_statuses, num_entries_found = host_history_intervals(
-            t_start, t_end, hostname, size)
-    total_times = calculate_total_times(intervals_of_statuses)
-    return get_stats_string(t_start, t_end, total_times, intervals_of_statuses,
-                        hostname, num_entries_found, print_each_interval)
-
-
 def calculate_total_times(intervals_of_statuses):
     """Calculates total times in each status.
 
@@ -201,6 +183,89 @@ def calculate_total_times(intervals_of_statuses):
         ti, tf = key
         total_times[status_info['status']] += tf - ti
     return total_times
+
+
+def aggregate_multiple_hosts(intervals_of_statuses_list):
+    """Aggregates history of multiple hosts
+
+    @param intervals_of_statuses_list: A list of dictionaries where keys
+        are tuple (ti, tf), and value is the status along with debug string
+        (if applicable) Note: dbg_str is '' if status is locked.
+    @returns: A dictionary where keys are strings, e.g. 'status' and
+              value is total time spent in that status among all hosts.
+    """
+    stats_all = prepopulate_dict(models.Host.Status.names, 0.0,
+                                 extras=['Locked'])
+    num_hosts = len(intervals_of_statuses_list)
+    for intervals_of_statuses in intervals_of_statuses_list:
+        total_times = calculate_total_times(intervals_of_statuses)
+        for status, delta in total_times.iteritems():
+            stats_all[status] += delta
+    return stats_all, num_hosts
+
+
+def get_stats_string_aggregate(labels, t_start, t_end, aggregated_stats,
+                               num_hosts):
+    """Returns string reporting overall host history for a group of hosts.
+
+    @param labels: A list of labels useful for describing the group
+                   of hosts these overall stats represent.
+    @param t_start: beginning of time period we are interested in.
+    @param t_end: end of time period we are interested in.
+    @param aggregated_stats: A dictionary where keys are string, e.g. 'status'
+        value is total time spent in that status among all hosts.
+    @returns: string representing the aggregate stats report.
+    """
+    result = 'Overall stats for hosts: %s \n' % (', '.join(labels))
+    result += ' %s - %s \n' % (unix_time_to_readable_date(t_start),
+                               unix_time_to_readable_date(t_end))
+    result += ' Number of total hosts: %s \n' % (num_hosts)
+    # This is multiplied by time_spent to get percentage_spent
+    multiplication_factor = 100.0 / ((t_end - t_start) * num_hosts)
+    for status, time_spent in aggregated_stats.iteritems():
+        # Normalize by the total time we are interested in among ALL hosts.
+        spaces = ' ' * (15 - len(status))
+        percent_spent = multiplication_factor * time_spent
+        result += '    %s: %s %.2f %%\n' % (status, spaces, percent_spent)
+    result += '- -- --- ---- ----- ---- --- -- -\n'
+    return result
+
+
+def get_overall_report(label, t_start, t_end, intervals_of_statuses_list):
+    """Returns string reporting overall host history for a group of hosts.
+
+    @param label: A string that can be useful for showing what type group
+        of hosts these overall stats represent.
+    @param t_start: beginning of time period we are interested in.
+    @param t_end: end of time period we are interested in.
+    @param intervals_of_statuses_list: A list of dictionaries where keys
+        are tuple (ti, tf), and value is the status along with debug string
+        (if applicable) Note: dbg_str is '' if status is locked.
+    """
+    stats_all, num_hosts = aggregate_multiple_hosts(
+            intervals_of_statuses_list)
+    return get_stats_string_aggregate(
+            label, t_start, t_end, stats_all,num_hosts)
+
+
+def get_report_for_host(t_start, t_end, hostname, size,
+                        print_each_interval):
+    """Gets stats report for a host
+
+    @param t_start: beginning of time period we are interested in.
+    @param t_end: end of time period we are interested in.
+    @param hostname: hostname for the host we are interested in (string)
+    @param print_each_interval: True or False, whether we want to
+                                display all intervals
+    @returns: stats report for this particular host (string)
+    """
+    intervals_of_statuses, num_entries_found = host_history_intervals(
+            t_start, t_end, hostname, size)
+    total_times = calculate_total_times(intervals_of_statuses)
+    return (get_stats_string(
+                    t_start, t_end, total_times, intervals_of_statuses,
+                    hostname, num_entries_found, print_each_interval),
+                    intervals_of_statuses)
 
 
 def get_stats_string(t_start, t_end, total_times, intervals_of_statuses,
