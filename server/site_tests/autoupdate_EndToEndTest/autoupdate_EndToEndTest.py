@@ -1171,6 +1171,65 @@ class autoupdate_EndToEndTest(test.test):
                 pass
 
 
+    def _start_perf_mon(self):
+        """Starts monitoring performance and resource usage on a DUT.
+
+        Call _stop_perf_mon() with the returned PID to stop monitoring
+        and collect the results.
+
+        @return  the PID of the newly created DUT monitoring process.
+        """
+        # We can't assume much about the source image so we copy the
+        # performance monitoring script to the DUT directly.
+        path = os.path.join(self.bindir, 'update_engine_performance_monitor.py')
+        self._host.send_file(path, '/tmp')
+        cmd = 'python /tmp/update_engine_performance_monitor.py --start-bg'
+        return int(self._host.run(cmd).stdout)
+
+
+    def _stop_perf_mon(self, perf_mon_pid):
+        """Stops monitoring performance and resource usage on a DUT.
+
+        The PID returned from _start_perf_mon() should be passed
+        in. See update_engine_performance_monitor.py for known
+        attributes (e.g. |rss_peak|).
+
+        @param perf_mon_pid: the PID returned from _start_perf_mon().
+
+        @return          a Python object created by deserializing JSON or None
+                         if an error occured.
+        """
+        # Gracefully handle problems with performance monitoring by
+        # just returning None.
+        try:
+            cmd = ('python /tmp/update_engine_performance_monitor.py '
+                   '--stop-bg=%d') % perf_mon_pid
+            perf_json_txt = self._host.run(cmd).stdout
+            return json.loads(perf_json_txt)
+        except Exception as e:
+            logging.warning('Failed to parse output from '
+                            'update_engine_performance_monitor.py: %s', e)
+        return None
+
+
+    def _report_perf_data(self, perf_data):
+        """Reports performance and resource data.
+
+        @param perf_data: the value obtained from _stop_perf_mon().
+        """
+        rss_peak = perf_data.get('rss_peak')
+        if rss_peak:
+            rss_peak_kib = rss_peak / 1024
+            logging.info('Peak memory (RSS) usage on DUT: %d KiB', rss_peak_kib)
+            self.output_perf_value(description='mem_usage_peak',
+                                   value=int(rss_peak_kib),
+                                   units='KiB',
+                                   higher_is_better=False)
+        else:
+            logging.warning('No rss_peak key in JSON returned by '
+                            'update_engine_performance_monitor.py')
+
+
     def run_update_test(self, staged_urls, test_conf):
         """Runs the actual update test once preconditions are met.
 
@@ -1188,66 +1247,74 @@ class autoupdate_EndToEndTest(test.test):
             logging.info('Source image rootfs partition: %s',
                          source_rootfs_partition)
 
-        # Trigger an update.
-        if self._use_test_image:
-            self._trigger_test_update(self._omaha_devserver)
-        else:
-            # TODO(garnold) chromium-os:33766: use GPIOs to trigger an
-            # update.
-            pass
+        # Start the performance monitoring process on the DUT.
+        perf_mon_pid = self._start_perf_mon()
+        try:
+            # Trigger an update.
+            if self._use_test_image:
+                self._trigger_test_update(self._omaha_devserver)
+            else:
+                # TODO(garnold) chromium-os:33766: use GPIOs to trigger an
+                # update.
+                pass
 
-        # Track update progress.
-        omaha_netloc = self._omaha_devserver.get_netloc()
-        omaha_hostlog_url = urlparse.urlunsplit(
-                ['http', omaha_netloc, '/api/hostlog',
-                 'ip=' + self._host.ip, ''])
-        logging.info('Polling update progress from omaha/devserver: %s',
-                     omaha_hostlog_url)
-        log_verifier = UpdateEventLogVerifier(
-                omaha_hostlog_url,
-                self._DEVSERVER_HOSTLOG_REQUEST_TIMEOUT_SECONDS)
+            # Track update progress.
+            omaha_netloc = self._omaha_devserver.get_netloc()
+            omaha_hostlog_url = urlparse.urlunsplit(
+                    ['http', omaha_netloc, '/api/hostlog',
+                     'ip=' + self._host.ip, ''])
+            logging.info('Polling update progress from omaha/devserver: %s',
+                         omaha_hostlog_url)
+            log_verifier = UpdateEventLogVerifier(
+                    omaha_hostlog_url,
+                    self._DEVSERVER_HOSTLOG_REQUEST_TIMEOUT_SECONDS)
 
-        # Verify chain of events in a successful update process.
-        chain = ExpectedUpdateEventChain(
-                (self._WAIT_FOR_INITIAL_UPDATE_CHECK_SECONDS,
-                 ExpectedUpdateEvent(
-                     version=test_conf['source_release'],
-                     error_message=('Failed to receive initial update check. '
-                                    'Check Omaha devserver log in this '
-                                    'output.'))),
-                (self._WAIT_FOR_DOWNLOAD_STARTED_SECONDS,
-                 ExpectedUpdateEvent(
-                     event_type=EVENT_TYPE_DOWNLOAD_STARTED,
-                     event_result=EVENT_RESULT_SUCCESS,
-                     version=test_conf['source_release'],
-                     error_message=(
-                             'Failed to start the download of the update '
-                             'payload from the staging server. Check both the '
-                             'omaha log and update_engine.log in sysinfo (or '
-                             'on the DUT).'))),
-                (self._WAIT_FOR_DOWNLOAD_COMPLETED_SECONDS,
-                 ExpectedUpdateEvent(
-                     event_type=EVENT_TYPE_DOWNLOAD_FINISHED,
-                     event_result=EVENT_RESULT_SUCCESS,
-                     version=test_conf['source_release'],
-                     error_message=(
-                             'Failed to finish download from devserver. Check '
-                             'the update_engine.log in sysinfo (or on the '
-                             'DUT).'))),
-                (self._WAIT_FOR_UPDATE_COMPLETED_SECONDS,
-                 ExpectedUpdateEvent(
-                     event_type=EVENT_TYPE_UPDATE_COMPLETE,
-                     event_result=EVENT_RESULT_SUCCESS,
-                     version=test_conf['source_release'],
-                     error_message=(
-                             'Failed to complete update before reboot. Check '
-                             'the update_engine.log in sysinfo (or on the '
-                             'DUT).'))))
+            # Verify chain of events in a successful update process.
+            chain = ExpectedUpdateEventChain(
+                    (self._WAIT_FOR_INITIAL_UPDATE_CHECK_SECONDS,
+                     ExpectedUpdateEvent(
+                         version=test_conf['source_release'],
+                         error_message=('Failed to receive initial update '
+                                        'check. Check Omaha devserver log in '
+                                        'this output.'))),
+                    (self._WAIT_FOR_DOWNLOAD_STARTED_SECONDS,
+                     ExpectedUpdateEvent(
+                         event_type=EVENT_TYPE_DOWNLOAD_STARTED,
+                         event_result=EVENT_RESULT_SUCCESS,
+                         version=test_conf['source_release'],
+                         error_message=(
+                                 'Failed to start the download of the update '
+                                 'payload from the staging server. Check both '
+                                 'the omaha log and update_engine.log in '
+                                 'sysinfo (or on the DUT).'))),
+                    (self._WAIT_FOR_DOWNLOAD_COMPLETED_SECONDS,
+                     ExpectedUpdateEvent(
+                         event_type=EVENT_TYPE_DOWNLOAD_FINISHED,
+                         event_result=EVENT_RESULT_SUCCESS,
+                         version=test_conf['source_release'],
+                         error_message=(
+                                 'Failed to finish download from devserver. '
+                                 'Check the update_engine.log in sysinfo (or '
+                                 'on the DUT).'))),
+                    (self._WAIT_FOR_UPDATE_COMPLETED_SECONDS,
+                     ExpectedUpdateEvent(
+                         event_type=EVENT_TYPE_UPDATE_COMPLETE,
+                         event_result=EVENT_RESULT_SUCCESS,
+                         version=test_conf['source_release'],
+                         error_message=(
+                                 'Failed to complete update before reboot. '
+                                 'Check the update_engine.log in sysinfo (or '
+                                 'on the DUT).'))))
 
-        log_verifier.verify_expected_event_chain(chain)
+            log_verifier.verify_expected_event_chain(chain)
 
-        # Wait after an update completion (safety margin).
-        _wait(self._WAIT_AFTER_UPDATE_SECONDS, 'after update completion')
+            # Wait after an update completion (safety margin).
+            _wait(self._WAIT_AFTER_UPDATE_SECONDS, 'after update completion')
+        finally:
+            # Terminate perf monitoring process and collect its output.
+            perf_data = self._stop_perf_mon(perf_mon_pid)
+            if perf_data:
+                self._report_perf_data(perf_data)
 
         # Reboot the DUT after the update.
         if self._use_servo:
