@@ -179,6 +179,10 @@ class ESMetadata(object):
         metadata_copy = metadata.copy()
         # kwargs could be extra metadata, append to metadata.
         metadata_copy.update(kwargs)
+        # metadata should not contain anything with key '_type'
+        if '_type' in metadata_copy:
+            type_str = metadata_copy['_type']
+            del metadata_copy['_type']
         try:
             self._send_data(type_str, index, metadata_copy, use_http)
         except elasticsearch.ElasticsearchException as e:

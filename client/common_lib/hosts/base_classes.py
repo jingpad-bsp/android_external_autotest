@@ -199,13 +199,16 @@ class Host(object):
         raise NotImplementedError('Wait down not implemented!')
 
 
-    def construct_host_metadata(self):
-        """Returns dictionary of metadata containing hostname,
-        and the time recorded.
+    def construct_host_metadata(self, type_str):
+        """Returns dict of metadata with type_str, hostname, time_recorded.
+
+        @param type_str: String representing _type field in es db.
+            For example: type_str='reboot_total'.
         """
         metadata = {
             'hostname': self.hostname,
             'time_recorded': time.time(),
+            '_type': type_str,
         }
         return metadata
 
@@ -219,9 +222,9 @@ class Host(object):
         key_string = 'Reboot.%s' % dargs.get('board')
 
         total_reboot_timer = stats.Timer('%s.total' % key_string,
-                metadata=self.construct_host_metadata())
+                metadata=self.construct_host_metadata('reboot_total'))
         wait_down_timer = stats.Timer('%s.wait_down' % key_string,
-                metadata=self.construct_host_metadata())
+                metadata=self.construct_host_metadata('reboot_down'))
 
         total_reboot_timer.start()
         wait_down_timer.start()
@@ -233,7 +236,7 @@ class Host(object):
             raise error.AutoservShutdownError("Host did not shut down")
         wait_down_timer.stop()
         wait_up_timer = stats.Timer('%s.wait_up' % key_string,
-                metadata=self.construct_host_metadata())
+                metadata=self.construct_host_metadata('reboot_up'))
         wait_up_timer.start()
         if self.wait_up(timeout):
             self.record("GOOD", None, "reboot.verify")
