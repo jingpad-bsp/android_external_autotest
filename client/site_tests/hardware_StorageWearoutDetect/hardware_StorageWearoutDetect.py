@@ -104,4 +104,4 @@ class hardware_StorageWearoutDetect(test.test):
         if legacy_mmc:
             msg = 'eMMC version %s detected. ' % version
             msg += 'Wearout attributes are supported in eMMC 5.0 and later.'
-            raise error.TestNAError(msg)
+            logging.info(msg)
