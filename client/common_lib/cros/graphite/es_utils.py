@@ -272,8 +272,8 @@ def create_range_eq_query_multiple(fields_returned,
         raise EsUtilException('No range or equality constraints specified...')
 
     # Creates list of range dictionaries to put in the 'should' list.
+    range_list = []
     if range_constraints:
-        range_list = []
         for key, low, high in range_constraints:
             if low == None and high == None:
                 continue
