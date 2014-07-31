@@ -192,7 +192,14 @@ class graphics_GLBench(test.test):
         # existing per data
         perf_value_name = '%s_%s' % (unit, testname)
         self.output_perf_value(description=perf_value_name, value=testrating,
-                               units=unit, higher_is_better=higher)
+                               units=unit, higher_is_better=higher,
+                               graph=perf_value_name)
+        # Add extra value to the graph distinguishing different boards.
+        variant = utils.get_board_with_frequency_and_memory()
+        desc = '%s-%s' % (perf_value_name, variant)
+        self.output_perf_value(description=desc, value=testrating,
+                               units=unit, higher_is_better=higher,
+                               graph=perf_value_name)
 
       # classify result image
       if testrating == -1.0:
