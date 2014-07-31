@@ -1,3 +1,0 @@
-loglevel=LS_INFO
-logfile=/tmp/gtalkplugin.log
-plugin_enable_corp_host=1
