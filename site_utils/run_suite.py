@@ -1272,7 +1272,7 @@ def main():
             # doubt, this is a hack. The timeout is from upstream buildbot and
             # this is the easiest work around.
             if job_timer.first_past_halftime():
-                rpc_helper.diagnose_job(job_id)
+                rpc_helper.diagnose_job(job_id, instance_server)
             if job_timer.debug_output_timer.poll():
                 logging.info('The suite job has another %s till timeout.',
                              job_timer.timeout_hours - job_timer.elapsed_time())

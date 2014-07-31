@@ -212,13 +212,15 @@ class RPCHelper(object):
                     (board, pool, len(available_hosts), minimum_duts))
 
 
-    def diagnose_job(self, job_id):
+    def diagnose_job(self, job_id, instance_server):
         """Diagnose a suite job.
 
         Logs information about the jobs that are still to run in the suite.
 
         @param job_id: The id of the suite job to get information about.
             No meaningful information gets logged if the id is for a sub-job.
+        @param instance_server: The instance server.
+            Eg: cautotest, cautotest-cq, localhost.
         """
         incomplete_jobs = self.rpc_interface.get_jobs(
                 parent_job_id=job_id, summary=True,
@@ -229,6 +231,6 @@ class RPCHelper(object):
                          len(incomplete_jobs))
             for job in incomplete_jobs:
                 logging.info('%s: %s', job.testname[job.testname.rfind('/')+1:],
-                             reporting_utils.link_job(job.id))
+                             reporting_utils.link_job(job.id, instance_server))
         else:
             logging.info('All jobs in suite have already completed.')
