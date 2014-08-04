@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, re, struct, sys, time
+import logging, re, struct, sys, time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -54,20 +54,6 @@ class hardware_SAT(test.test):
     """Run SAT."""
 
     version = 1
-
-    # http://code.google.com/p/stressapptest/
-    def setup(self, tarball='stressapptest-1.0.6_autoconf.tar.gz'):
-        # clean
-        if os.path.exists(self.srcdir):
-            utils.system('rm -rf %s' % self.srcdir)
-
-        tarball = utils.unmap_url(self.bindir, tarball, self.tmpdir)
-        utils.extract_tarball_to_dir(tarball, self.srcdir)
-
-        os.chdir(self.srcdir)
-        # ./configure stores relevant path and environment variables.
-        utils.configure()
-        utils.make()
 
 
     def run_once(self, seconds=60, free_memory_fraction=0.95, wait_secs=0,
@@ -127,8 +113,9 @@ class hardware_SAT(test.test):
                     ['U1', 'U2', 'U3', 'U4'],
                     ['U6', 'U5', 'U7', 'U8']])  # yes, U6 is actually before U5
 
-        os.chdir(os.path.join(self.srcdir, 'src'))
-        sat = utils.run('./stressapptest' + args)
+        # 'stressapptest' is provided by dev-util/stressapptest, pre-installed
+        # in test images.
+        sat = utils.run('stressapptest' + args)
         logging.debug(sat.stdout)
         if not re.search('Status: PASS', sat.stdout):
             raise error.TestFail(sat.stdout)
