@@ -584,11 +584,9 @@ class InputDevice:
         return slot_dict
 
     def print_slots(self):
-        for s_id in range(len(self.mt_slots)):
-            slot = self.mt_slots[s_id]
-            if self._get_tid(slot) == -1:
-                continue
-            print 'slot #%d' % s_id
+        slot_dict = self.get_slots()
+        for slot_id, slot in slot_dict.items():
+            print 'slot #%d' % slot_id
             for a in slot:
                 abs = EV_STRINGS[EV_ABS].get(a, '?')
                 print '  %s = %6d' % (abs, slot[a].value)
