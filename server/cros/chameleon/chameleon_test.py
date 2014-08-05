@@ -204,11 +204,12 @@ class ChameleonTest(test.test):
         """Suspends and resumes the DUT.
 
         @param timeout: time for wait the DUT up (second)"""
-
+        start_time = time.time()
         logging.info('Suspend and resume')
         self.display_client.suspend_resume()
         if self.host.wait_up(timeout):
-            logging.info('DUT is up')
+            logging.info('DUT is up within %.2f '
+                    'second(s).', time.time() - start_time)
         else:
             raise error.TestError('DUT is not up after resume')
 
@@ -280,6 +281,27 @@ class ChameleonTest(test.test):
         return None
 
 
+    def check_external_display_connector(self, expected_connector):
+        """Checks the connecting status of external display on DUT.
+
+        @param expected_connector: Name of the expected connector or None
+                if no external monitor is expected.
+        @raise error.TestFail if the check does not pass.
+        """
+        current_connector = self.display_client.get_connector_name()
+        logging.info('External display connector: %s', current_connector)
+        if not current_connector:
+            current_connector = None
+        if expected_connector != current_connector:
+            if expected_connector:
+                error = 'Expected to see %s but got %s' % (
+                        expected_connector, current_connector)
+            else:
+                error = 'Do not expect to see external monitor but got %s' % (
+                        current_connector)
+            error.TestFail(error)
+
+
     def check_screen_resolution(self, expected_resolution, tag='',
                                 under_mirrored_mode=True):
         """Checks the resolution for DUT external screen with Chameleon.
@@ -338,7 +360,7 @@ class ChameleonTest(test.test):
         """Sets plug/unplug by plug_status.
 
         @param plug_status: True for plug"""
-
+        logging.info('Set plug: %s', plug_status)
         if plug_status:
             self.chameleon_port.plug()
         else:
