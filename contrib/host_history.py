@@ -196,16 +196,18 @@ def main():
     parser.add_argument('--start', type=str, dest='start',
                         help=('Enter start time as: yyyy-mm-dd hh-mm-ss,'
                               'defualts to 24h ago.'),
-                        default=t_now_minus_one_day)
+                        default=host_history_utils.unix_time_to_readable_date(
+                                t_now_minus_one_day))
     parser.add_argument('--end', type=str, dest='end',
                         help=('Enter end time in as: yyyy-mm-dd hh-mm-ss,'
                               'defualts to current time.'),
-                        default=t_now)
+                        default=host_history_utils.unix_time_to_readable_date(
+                                t_now))
     options = parser.parse_args()
 
     if options.last:
-        t_start = t_now
-        t_end = t_now - 3600 * options.last
+        t_start = t_now - 3600 * options.last
+        t_end = t_now
     else:
         t_start = es_utils._to_epoch_time(datetime.datetime.strptime(
                 options.start, '%Y-%m-%d %H:%M:%S'))
