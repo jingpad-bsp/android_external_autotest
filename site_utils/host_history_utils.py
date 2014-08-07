@@ -70,13 +70,14 @@ def lock_history_to_intervals(initial_lock_val, t_start, t_end, lock_history):
     return locked_intervals
 
 
-def find_most_recent_entry_before(t, type_str, hostname, fields):
+def find_most_recent_entry_before(t, type_str, hostname, fields, index):
     """Returns the fields of the most recent entry before t.
 
     @param t: time we are interested in.
     @param type_str: _type in esdb, such as 'host_history' (string)
     @param hostname: hostname of DUT (string)
     @param fields: list of fields we are interested in
+    @param index: index in elasticsearch to query data for.
     @returns: time, field_value of the latest entry.
     """
     query = es_utils.create_range_eq_query_multiple(
@@ -87,7 +88,7 @@ def find_most_recent_entry_before(t, type_str, hostname, fields):
             size=1,
             sort_specs=[{'time_recorded': 'desc'}])
     result = es_utils.execute_query(
-            query, es_utils.INDEX_METADATA,
+            query, index,
             es_utils.METADATA_ES_SERVER, es_utils.ES_PORT)
     if result['hits']['total'] > 0:
         res_fields = result['hits']['hits'][0]['fields']
@@ -95,13 +96,14 @@ def find_most_recent_entry_before(t, type_str, hostname, fields):
     return {}
 
 
-def host_history_intervals(t_start, t_end, hostname, size):
+def host_history_intervals(t_start, t_end, hostname, size, index):
     """Gets stats for a host.
 
     @param t_start: beginning of time period we are interested in.
     @param t_end: end of time period we are interested in.
     @param hostname: hostname for the host we are interested in (string)
     @param size: maximum number of entries returned per query
+    @param index: index in elasticsearch to query data for.
     @returns: dictionary, num_entries_found
         dictionary of status: time spent in that status
         num_entries_found: number of host history entries
@@ -110,13 +112,13 @@ def host_history_intervals(t_start, t_end, hostname, size):
     """
     lock_history_recent = find_most_recent_entry_before(
             t=t_start, type_str='lock_history', hostname=hostname,
-            fields=['time_recorded', 'locked'])
+            fields=['time_recorded', 'locked'], index=index)
     # I use [0] and [None] because lock_history_recent's type is list.
     t_lock = lock_history_recent.get('time_recorded', [None])[0]
     t_lock_val = lock_history_recent.get('locked', [None])[0]
     host_history_recent = find_most_recent_entry_before(
             t=t_start, type_str='host_history', hostname=hostname,
-            fields=['time_recorded', 'status', 'dbg_str'])
+            fields=['time_recorded', 'status', 'dbg_str'], index=index)
     t_host = host_history_recent.get('time_recorded', [None])[0]
     t_host_stat = host_history_recent.get('status', [None])[0]
     t_dbg_str = host_history_recent.get('dbg_str', [''])[0]
@@ -133,7 +135,7 @@ def host_history_intervals(t_start, t_end, hostname, size):
             sort_specs=[{'time_recorded': 'asc'}])
 
     lock_history_entries = es_utils.execute_query(
-            query_lock_history, es_utils.INDEX_METADATA,
+            query_lock_history, index,
             es_utils.METADATA_ES_SERVER, es_utils.ES_PORT)
 
     locked_intervals = lock_history_to_intervals(t_lock_val, t, t_end,
@@ -146,7 +148,7 @@ def host_history_intervals(t_start, t_end, hostname, size):
             size=size,
             sort_specs=[{"time_recorded": "asc"}])
     host_history_entries = es_utils.execute_query(
-            query_host_history, es_utils.INDEX_METADATA,
+            query_host_history, index,
             es_utils.METADATA_ES_SERVER, es_utils.ES_PORT)
     num_entries_found = host_history_entries['hits']['total']
     t_prev = t_start
@@ -249,7 +251,7 @@ def get_overall_report(label, t_start, t_end, intervals_of_statuses_list):
 
 
 def get_report_for_host(t_start, t_end, hostname, size,
-                        print_each_interval):
+                        print_each_interval, index):
     """Gets stats report for a host
 
     @param t_start: beginning of time period we are interested in.
@@ -257,10 +259,11 @@ def get_report_for_host(t_start, t_end, hostname, size,
     @param hostname: hostname for the host we are interested in (string)
     @param print_each_interval: True or False, whether we want to
                                 display all intervals
+    @param index: index in elasticsearch to query data for.
     @returns: stats report for this particular host (string)
     """
     intervals_of_statuses, num_entries_found = host_history_intervals(
-            t_start, t_end, hostname, size)
+            t_start, t_end, hostname, size, index)
     total_times = calculate_total_times(intervals_of_statuses)
     return (get_stats_string(
                     t_start, t_end, total_times, intervals_of_statuses,

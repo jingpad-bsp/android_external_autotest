@@ -78,9 +78,9 @@ import time
 import traceback
 
 import common
-import host_history_utils
 from autotest_lib.client.common_lib.cros.graphite import es_utils
 from autotest_lib.server import frontend
+from autotest_lib.site_utils import host_history_utils
 
 
 def should_care(board, pool, dut):
@@ -161,7 +161,8 @@ def get_host_history(input):
                 t_end=input['t_end'],
                 hostname=input['hostname'],
                 size=input['size'],
-                print_each_interval=input['print_each_interval'])
+                print_each_interval=input['print_each_interval'],
+                index=input['index'])
         return result_str, stat_intervals
     except Exception as e:
         # Incase any process throws an Exception, we want to see it.
@@ -174,10 +175,11 @@ def main():
     t_now = time.time()
     t_now_minus_one_day = t_now - 3600 * 24
     parser = argparse.ArgumentParser()
-    parser.add_argument('--index', type=str, dest='index')
+    parser.add_argument('--index', type=str, dest='index',
+                        help='Enter ES index name, such as "cautotest"')
     parser.add_argument('-v', action='store_true', dest='verbose',
                         default=False,
-                        help='--show to print out ALL entries.')
+                        help='-v to print out ALL entries.')
     parser.add_argument('-n', type=int, dest='size',
                         help='Maximum number of entries to return.',
                         default=10000)
@@ -233,7 +235,8 @@ def main():
                      't_end': t_end,
                      'hostname': hostname,
                      'size': options.size,
-                     'print_each_interval': options.verbose})
+                     'print_each_interval': options.verbose,
+                     'index': options.index})
 
     # Parallizing this process.
     pool = multiprocessing.pool.ThreadPool()
