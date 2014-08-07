@@ -126,7 +126,7 @@ class ChameleonTest(test.test):
 
         self.display_client.load_calibration_image(image_size)
         self.display_client.hide_cursor()
-        logging.info('Waiting the calibration image stable.')
+        logging.info('Waiting for calibration image to stabilize.')
         time.sleep(calibration_image_setup_time)
 
 
@@ -200,13 +200,14 @@ class ChameleonTest(test.test):
         self.display_client.set_mirrored(test_mirrored)
 
 
-    def suspend_resume(self, timeout=20):
+    def suspend_resume(self, suspend_time=10, timeout=20):
         """Suspends and resumes the DUT.
+        @param suspend_time: suspend time in second, default: 10s.
+        @param timeout: time to wait for DUP to fully resume (second)"""
 
-        @param timeout: time for wait the DUT up (second)"""
         start_time = time.time()
-        logging.info('Suspend and resume')
-        self.display_client.suspend_resume()
+        logging.info('Suspend and resume %.2f seconds', suspend_time)
+        self.display_client.suspend_resume(suspend_time)
         if self.host.wait_up(timeout):
             logging.info('DUT is up within %.2f '
                     'second(s).', time.time() - start_time)
@@ -279,6 +280,15 @@ class ChameleonTest(test.test):
             # Unplug the port if it is not the connected.
             chameleon_port.unplug()
         return None
+
+
+    def get_dut_display_connector(self):
+        """Gets the name of the connected display connector of DUT.
+
+        @return: A string for the connector name."""
+        connector = self.display_client.get_connector_name()
+        logging.info('See the display on DUT: %s', connector)
+        return connector
 
 
     def check_external_display_connector(self, expected_connector):
