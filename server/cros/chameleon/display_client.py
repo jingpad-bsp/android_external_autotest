@@ -239,7 +239,7 @@ class DisplayClient(object):
                         remote_path))
             self._client.run(command)
             self._client.get_file(remote_path, f.name)
-            return Image.open(f.name)
+            return Image.open(f.name).convert('RGB')
 
 
     def get_resolution(self):
