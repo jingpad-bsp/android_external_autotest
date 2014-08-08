@@ -41,7 +41,7 @@ class ChameleonTest(test.test):
     _TIMEOUT_VIDEO_STABLE_PROBE = 10
 
     _PIXEL_DIFF_VALUE_MARGIN_FOR_ANALOG_SIGNAL = 5
-    _PIXEL_DIFF_VALUE_MARGIN_FOR_DIGITAL_SIGNAL = 0
+    _PIXEL_DIFF_VALUE_MARGIN_FOR_DIGITAL_SIGNAL = 1
 
     def initialize(self, host):
         """Initializes.
