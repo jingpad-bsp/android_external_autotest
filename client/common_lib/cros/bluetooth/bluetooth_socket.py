@@ -637,7 +637,7 @@ class BluetoothControlSocket(BluetoothSocket):
                 MGMT_OP_SET_FAST_CONNECTABLE,
                 index,
                 msg_data)
-        if status == MGMT_STATUS_NOT_SUPPORTED and not set_fast_connectable:
+        if status == MGMT_STATUS_NOT_SUPPORTED and not connectable:
             return 0
         elif status != MGMT_STATUS_SUCCESS:
             return None
