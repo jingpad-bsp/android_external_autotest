@@ -32,6 +32,8 @@ class MoblabHost(cros_host.CrosHost):
         # Clear the Moblab Image Storage so that staging an image is properly
         # tested.
         self.run('rm -rf %s/*' % MOBLAB_IMAGE_STORAGE)
+        # Ensure the autotest install directory exists.
+        self.run('mkdir -p %s' % self.get_autodir())
 
 
     @staticmethod
@@ -58,7 +60,7 @@ class MoblabHost(cros_host.CrosHost):
 
     def get_autodir(self):
         """Return the directory to install autotest for client side tests."""
-        return '/tmp/autotest'
+        return '/usr/local/autodir'
 
 
     def run_as_moblab(self, command, **kwargs):
