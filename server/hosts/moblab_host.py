@@ -104,6 +104,8 @@ class MoblabHost(cros_host.CrosHost):
         and if they are not already in the AFE, adds them.
         """
         existing_hosts = [host.hostname for host in self.afe.get_hosts()]
+        # Wake up devices on the subnet so they fill the arp table.
+        self.run('ping -b 192.168.231.255 -w 1', ignore_status=True)
         arp_command = self.run('arp -a')
         for line in arp_command.stdout.splitlines():
             match = re.match(SUBNET_DUT_SEARCH_RE, line)
