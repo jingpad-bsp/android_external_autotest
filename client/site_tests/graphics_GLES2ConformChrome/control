@@ -13,6 +13,9 @@ TIME = 'MEDIUM'
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = 'graphics'
 TEST_TYPE = 'client'
+BUG_TEMPLATE = {
+    'labels': ['Cr-OS-Kernel-Graphics'],
+}
 
 DOC = """
 This test runs the Khronos GLES2 Conformance test suite against the Chrome GPU

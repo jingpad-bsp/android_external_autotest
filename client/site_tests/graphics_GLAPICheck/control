@@ -20,6 +20,9 @@ TEST_CATEGORY = 'Performance'
 TEST_CLASS = "graphics"
 TEST_TYPE = 'client'
 JOB_RETRIES = 1
+BUG_TEMPLATE = {
+    'labels': ['Cr-OS-Kernel-Graphics'],
+}
 
 DOC = """
 This test will run some binary programs to extract various version strings from

@@ -12,6 +12,10 @@ This test will fail if the reported interval between vsyncs differs from the
 expected values by more then 200 uS. The expected value is derived from the
 refresh rate, Hz, of the screen.
 """
+BUG_TEMPLATE = {
+    'labels': ['Cr-OS-Kernel-Graphics'],
+}
+
 DOC = """
 This test in a loop sets up the screen to draw a single colour, records current
 sync values, calls swap buffers, and then sleeps for maxium expected time for a

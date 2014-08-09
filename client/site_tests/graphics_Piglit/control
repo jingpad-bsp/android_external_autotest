@@ -19,6 +19,9 @@ TEST_CLASS = 'graphics'
 TEST_TYPE = 'client'
 # Reboot in the lab after the test ends.
 DEPENDENCIES='cleanup-reboot'
+BUG_TEMPLATE = {
+    'labels': ['Cr-OS-Kernel-Graphics'],
+}
 
 DOC = """
 Piglit is a collection of automated tests for OpenGL implementations.

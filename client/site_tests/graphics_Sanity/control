@@ -14,6 +14,9 @@ TEST_CATEGORY = 'Functional'
 TEST_CLASS = "graphics"
 TEST_TYPE = 'client'
 JOB_RETRIES = 1
+BUG_TEMPLATE = {
+    'labels': ['Cr-OS-Kernel-Graphics'],
+}
 
 DOC = """
 This test verifies we can capture graphics from applications. It is meant to be

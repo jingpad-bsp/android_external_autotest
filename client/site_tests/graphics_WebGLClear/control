@@ -11,6 +11,9 @@ TIME = "SHORT"
 TEST_CATEGORY = "Performance"
 TEST_CLASS = "graphics"
 TEST_TYPE = "client"
+BUG_TEMPLATE = {
+    'labels': ['Cr-OS-Kernel-Graphics'],
+}
 
 DOC = """
 This runs the WebGL clear test.

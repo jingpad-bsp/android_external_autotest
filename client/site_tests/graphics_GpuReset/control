@@ -16,6 +16,9 @@ TEST_TYPE = 'client'
 JOB_RETRIES = 1
 # Reboot in the lab after the test ends.
 DEPENDENCIES='cleanup-reboot'
+BUG_TEMPLATE = {
+    'labels': ['Cr-OS-Kernel-Graphics'],
+}
 
 DOC = """
 The purpose of this test is to exercise the GPU failure path. We craft an

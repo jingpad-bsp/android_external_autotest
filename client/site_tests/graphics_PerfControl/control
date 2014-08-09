@@ -16,6 +16,9 @@ TEST_CATEGORY = 'Performance'
 TEST_CLASS = "Performance"
 TEST_TYPE = 'client'
 JOB_RETRIES = 1
+BUG_TEMPLATE = {
+    'labels': ['Cr-OS-Kernel-Graphics'],
+}
 
 DOC = """
 Performance tests should be wrapped in a PerfControl object to ensure

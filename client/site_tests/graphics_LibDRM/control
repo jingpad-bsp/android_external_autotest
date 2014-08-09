@@ -15,6 +15,9 @@ TEST_TYPE = "client"
 JOB_RETRIES = 1
 
 SUITE = "bvt-cq, bvt, bvt_cq, graphics"
+BUG_TEMPLATE = {
+    'labels': ['Cr-OS-Kernel-Graphics'],
+}
 
 DOC = """
 Runs libdrm test apps.
