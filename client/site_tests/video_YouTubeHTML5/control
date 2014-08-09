@@ -14,6 +14,9 @@ TEST_CATEGORY = "General"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
 JOB_RETRIES = 1
+BUG_TEMPLATE = {
+    'labels': ['Cr-OS-Kernel-Video', 'OS-Chrome'],
+}
 
 DOC = """
 This test verify YouTube video playback, states and resolutions.

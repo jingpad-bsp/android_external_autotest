@@ -13,6 +13,9 @@ TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
+BUG_TEMPLATE = {
+    'labels': ['Cr-OS-Kernel-Video', 'OS-Chrome'],
+}
 
 DOC = """
 This test verifies a YouTube video ends in a correct fashion.
