@@ -187,7 +187,12 @@ class Suspender(object):
                 for line in f:
                     words = line.split('=')
                     if name == words[0]:
-                        return float(words[1])
+                        try:
+                            timestamp = float(words[1])
+                        except ValueError:
+                            logging.warning('Invalid timestamp: %s', line)
+                            timestamp = 0
+                        return timestamp
             except IOError:
                 pass
             time.sleep(0.005 * 2**retry)
