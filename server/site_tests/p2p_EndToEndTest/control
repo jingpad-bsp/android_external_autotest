@@ -15,6 +15,9 @@ TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "server"
+BUG_TEMPLATE = {
+    'labels': ['Cr-Internals-Installer'],
+}
 
 DOC = """
 End-to-end test of the peer-to-peer (p2p) file sharing system.

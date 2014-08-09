@@ -4,6 +4,10 @@
 
 TIME='FAST'
 AUTHOR = 'deymo,zeuthen,chromeos-installer'
+BUG_TEMPLATE = {
+    'labels': ['Cr-Internals-Installer'],
+}
+
 DOC = """\
 This test runs the p2p-server daemon which in turns runs the p2p-http-server
 daemon on the DUT and checks that a peer on the network can download a shared

@@ -4,6 +4,10 @@
 
 TIME='FAST'
 AUTHOR = 'deymo,zeuthen,chromeos-installer'
+BUG_TEMPLATE = {
+    'labels': ['Cr-Internals-Installer'],
+}
+
 DOC = """\
 This test runs p2p-client on several common cases using a fake network of peers
 to check that it can discover files on this network. If p2p-client isn't able
