@@ -12,6 +12,9 @@ TEST_CATEGORY = 'Functional'
 TEST_CLASS = 'graphics'
 TEST_TYPE = 'client'
 JOB_RETRIES = 1
+BUG_TEMPLATE = {
+    'labels': ['Cr-OS-Kernel-Graphics'],
+}
 
 DOC = """
 Piglit is a collection of automated tests for OpenGL implementations.

@@ -17,6 +17,9 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "graphics"
 TEST_TYPE = "client"
+BUG_TEMPLATE = {
+    'labels': ['Cr-OS-Kernel-Graphics'],
+}
 
 DOC = """
 Switches between VT1 and VT2 repeatedly and logs in/out of Chrome to make sure

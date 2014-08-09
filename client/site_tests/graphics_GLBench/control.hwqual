@@ -24,6 +24,9 @@ TIME='FAST'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = "gl"
 TEST_TYPE = 'client'
+BUG_TEMPLATE = {
+    'labels': ['Cr-OS-Kernel-Graphics'],
+}
 
 DOC = """
 On hwqual we do not upload performance numbers to the chrome dashboard. We run

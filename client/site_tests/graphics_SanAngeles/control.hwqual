@@ -11,6 +11,9 @@ TIME='MEDIUM'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = "graphics"
 TEST_TYPE = 'client'
+BUG_TEMPLATE = {
+    'labels': ['Cr-OS-Kernel-Graphics'],
+}
 
 DOC = """
 This test runs the San Angeles Observation GPU benchmark. This benchmark uses
