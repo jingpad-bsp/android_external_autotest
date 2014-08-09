@@ -47,7 +47,7 @@ _BUG_TEMPLATE = {
     'status': None,
     'summary': None,
     'title': None,
-    'cc': None
+    'cc': ['chromeos-installer-alerts@google.com']
 }
 
 # TODO(sosa): Really should skip_reimage but suite logic does not currently
