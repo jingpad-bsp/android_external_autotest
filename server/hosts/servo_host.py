@@ -485,6 +485,7 @@ class ServoHost(ssh_host.SSHHost):
             self._check_servod()
         else:
             self._servo = servo.Servo(servo_host=self)
+            self._servo.initialize_dut()
 
         logging.info('Sanity checks pass on servo host %s', self.hostname)
 

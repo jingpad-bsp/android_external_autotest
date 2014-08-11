@@ -165,29 +165,8 @@ class Servo(object):
         self._servo_serial = servo_serial
         self._server = servo_host.get_servod_server_proxy()
         self._power_state = _PowerStateController(self)
-
-        # a string, showing what interface (host or dut) the USB device is
-        # connected to.
         self._usb_state = None
-        self.set('dut_hub_pwren', 'on')
-        self.set('usb_mux_oe1', 'on')
-        self.switch_usbkey('off')
-
-        # Initialize firmware programmer
-        if self.get_version() == "servo_v2":
-            # Lab drones do not necessarily contain hdctools and the
-            # initialization of the firmware programmer raises an exception.
-            # We need to move the programmer code over to hctools,
-            # see chromium:381718.
-            try:
-                self._programmer = firmware_programmer.ProgrammerV2(self)
-            except firmware_programmer.ProgrammerError:
-                logging.warning(
-                        "No firmware programmer initialized for servoV2")
-                self._programmer = None
-        else:
-            logging.warning("No firmware programmer for servo version: %s",
-                         self.get_version())
+        self._programmer = None
 
 
     @property
@@ -227,6 +206,9 @@ class Servo(object):
                           initialization.
         """
         self._server.hwinit()
+        self.set('dut_hub_pwren', 'on')
+        self.set('usb_mux_oe1', 'on')
+        self.switch_usbkey('off')
         if cold_reset:
             self._power_state.reset()
 
@@ -641,6 +623,19 @@ class Servo(object):
                                     args=args).stdout.strip()
 
 
+    def _initialize_programmer(self):
+        if self._programmer:
+            return
+        # Initialize firmware programmer
+        servo_version = self.get_version()
+        if servo_version == 'servo_v2':
+            self._programmer = firmware_programmer.ProgrammerV2(self)
+        else:
+            raise error.TestError(
+                    'No firmware programmer for servo version: %s' %
+                         servo_version)
+
+
     def program_bios(self, image):
         """Program bios on DUT with given image.
 
@@ -648,8 +643,7 @@ class Servo(object):
                       on the DUT.
 
         """
-        if not self._programmer:
-            raise error.TestError('Firmware programmer is not set')
+        self._initialize_programmer()
         if not self.is_localhost():
             image = self._scp_image(image)
         self._programmer.program_bios(image)
@@ -662,8 +656,7 @@ class Servo(object):
                       on the DUT.
 
         """
-        if not self._programmer:
-            raise error.TestError('Firmware programmer is not set')
+        self._initialize_programmer()
         if not self.is_localhost():
             image = self._scp_image(image)
         self._programmer.program_ec(image)
