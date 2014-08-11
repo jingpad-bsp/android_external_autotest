@@ -112,6 +112,9 @@ class BpImageComparer(object):
         """
 
         logging.debug("*** Beginning Biopic Upload ... **** \n")
+        
+        if not retries:
+            retries = self.retries
 
         rs = self._upload_image_with_retry(self.bp_client.UploadGoldenImage,
                                            golden_image_path,
