@@ -373,13 +373,8 @@ def freememtotal():
     return read_from_meminfo('MemFree')
 
 def usable_memtotal():
-    # Assume 30MB reserved by the OS
-    reserved = 30 * 1024
-    ret = read_from_meminfo('MemFree')
-    ret += read_from_meminfo('Buffers')
-    ret += read_from_meminfo('Cached')
-    ret = max(0, ret - reserved)
-    return ret
+    # Reserved 5% for OS use
+    return int(read_from_meminfo('MemFree') * 0.95)
 
 
 def rounded_memtotal():
