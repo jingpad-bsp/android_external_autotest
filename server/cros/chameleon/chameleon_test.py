@@ -294,12 +294,12 @@ class ChameleonTest(test.test):
             current_connector = None
         if expected_connector != current_connector:
             if expected_connector:
-                error = 'Expected to see %s but got %s' % (
+                error_message = 'Expected to see %s but got %s' % (
                         expected_connector, current_connector)
             else:
-                error = 'Do not expect to see external monitor but got %s' % (
+                error_message = 'Do not expect to see external monitor but got %s' % (
                         current_connector)
-            error.TestFail(error)
+            raise error.TestFail(error_message)
 
 
     def check_screen_resolution(self, expected_resolution, tag='',
