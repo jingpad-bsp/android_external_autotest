@@ -47,7 +47,7 @@ class RemoteDroneTest(unittest.TestCase):
                 stdin=cPickle.dumps(mock_calls), stdout_tee=None,
                 connect_timeout=mock.is_instance_comparator(int)).and_return(
                         mock_result)
-        drone = drones._RemoteDrone('fakehost')
+        drone = drones._RemoteDrone('fakehost', timestamp_remote_calls=False)
         self.assertEqual('mock return', drone._execute_calls_impl(mock_calls))
         self.god.check_playback()
 
@@ -58,7 +58,7 @@ class RemoteDroneTest(unittest.TestCase):
         drones.drone_utility.create_host.expect_call('fakehost').and_return(
                 self._mock_host)
         self._mock_host.is_up.expect_call().and_return(True)
-        drone = drones._RemoteDrone('fakehost')
+        drone = drones._RemoteDrone('fakehost', timestamp_remote_calls=False)
         mock_return={}
         mock_return['results'] = ['mock return']
         mock_return['warnings'] = []

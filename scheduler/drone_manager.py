@@ -381,6 +381,9 @@ class BaseDroneManager(object):
                 info = self._registered_pidfile_info[pidfile_id]
                 if info.num_processes is not None:
                     drone.active_processes += info.num_processes
+        stats.Gauge(self._STATS_KEY).send(
+                '%s.%s' % (drone.hostname.replace('.', '_'),
+                           'active_processes'), drone.active_processes)
 
 
     def _check_drone_process_limit(self, drone):

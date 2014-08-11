@@ -222,9 +222,17 @@ def nuke_pids(pid_list, signal_queue=[signal.SIGTERM, signal.SIGKILL]):
 
     @param pid_list: List of PID's to kill.
     @param signal_queue: Queue of signals to send the PID's to terminate them.
+
+    @return: A mapping of the signal name to the number of processes it
+        was sent to.
     """
+    sig_count = {}
+    # Though this is slightly hacky it beats hardcoding names anyday.
+    sig_names = dict((k, v) for v, k in signal.__dict__.iteritems()
+                     if v.startswith('SIG'))
     for sig in signal_queue:
         logging.debug('Sending signal %s to the following pids:', sig)
+        sig_count[sig_names.get(sig, 'unknown_signal')] = len(pid_list)
         for pid in pid_list:
             logging.debug('Pid %d', pid)
             try:
@@ -233,10 +241,13 @@ def nuke_pids(pid_list, signal_queue=[signal.SIGTERM, signal.SIGKILL]):
                 # The process may have died from a previous signal before we
                 # could kill it.
                 pass
+        pid_list = [pid for pid in pid_list if base_utils.pid_is_alive(pid)]
+        if not pid_list:
+            break
         time.sleep(CHECK_PID_IS_ALIVE_TIMEOUT)
     failed_list = []
     if signal.SIGKILL in signal_queue:
-        return
+        return sig_count
     for pid in pid_list:
         if base_utils.pid_is_alive(pid):
             failed_list.append('Could not kill %d for process name: %s.' % pid,
@@ -244,6 +255,7 @@ def nuke_pids(pid_list, signal_queue=[signal.SIGTERM, signal.SIGKILL]):
     if failed_list:
         raise error.AutoservRunError('Following errors occured: %s' %
                                      failed_list, None)
+    return sig_count
 
 
 def externalize_host(host):

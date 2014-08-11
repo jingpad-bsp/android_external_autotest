@@ -29,7 +29,7 @@ class DroneThreadLibTest(unittest.TestCase):
         drones.drone_utility.create_host.expect_call(hostname).and_return(
                 self._mock_host)
         self._mock_host.is_up.expect_call().and_return(True)
-        return drones._RemoteDrone(hostname)
+        return drones._RemoteDrone(hostname, timestamp_remote_calls=False)
 
 
     def setUp(self):

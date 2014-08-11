@@ -11,6 +11,7 @@
 """
 
 
+import argparse
 import pickle, subprocess, os, shutil, sys, time, signal, getpass
 import datetime, traceback, tempfile, itertools, logging
 import common
@@ -30,7 +31,8 @@ DARK_MARK_ENVIRONMENT_VAR = 'AUTOTEST_SCHEDULER_DARK_MARK'
 _TEMPORARY_DIRECTORY = 'drone_tmp'
 _TRANSFER_FAILED_FILE = '.transfer_failed'
 
-timer = stats.Timer('drone_utility')
+_STATS_KEY = 'drone_utility'
+timer = stats.Timer(_STATS_KEY)
 
 class _MethodCall(object):
     def __init__(self, method, args, kwargs):
@@ -210,14 +212,27 @@ class BaseDroneUtility(object):
         return results
 
 
-    def kill_process(self, process):
+    @timer.decorate
+    def kill_processes(self, process_list):
+        """Send signals escalating in severity to the processes in process_list.
+
+        @param process_list: A list of drone_manager.Process objects representing
+            the processes to kill.
+        """
+        kill_proc_key = 'kill_processes'
+        stats.Gauge(_STATS_KEY).send('%s.%s' % (kill_proc_key, 'net'),
+                                     len(process_list))
         signal_queue = (signal.SIGCONT, signal.SIGTERM, signal.SIGKILL)
         try:
-            utils.nuke_pid(process.pid, signal_queue=signal_queue)
-        except error.AutoservPidAlreadyDeadError:
-            self._warn('Tried to kill a pid:%d that did not exist.' %
-                       process.pid)
-
+            logging.info('List of process to be killed: %s', process_list)
+            sig_counts = utils.nuke_pids(
+                            [process.pid for process in process_list],
+                            signal_queue=signal_queue)
+            for name, count in sig_counts.iteritems():
+                stats.Gauge(_STATS_KEY).send('%s.%s' % (kill_proc_key, name),
+                                             count)
+        except error.AutoservRunError as e:
+            self._warn('Error occured when killing processes. Error: %s' % e)
 
 
     def _convert_old_host_log(self, log_path):
@@ -477,6 +492,14 @@ def parse_input():
                           separator))
 
 
+def _parse_args(args):
+    parser = argparse.ArgumentParser(description='Local drone process manager.')
+    parser.add_argument('--call_time',
+                        help='Time this process was invoked from the master',
+                        default=None, type=float)
+    return parser.parse_args(args)
+
+
 SiteDroneUtility = utils.import_site_class(
    __file__, 'autotest_lib.scheduler.site_drone_utility',
    'SiteDroneUtility', BaseDroneUtility)
@@ -495,6 +518,11 @@ def main():
             drone_logging_config.DroneLoggingConfig())
     with timer.get_client('decode'):
         calls = parse_input()
+    args = _parse_args(sys.argv[1:])
+    if args.call_time is not None:
+        stats.Gauge(_STATS_KEY).send('invocation_overhead',
+                                     time.time() - args.call_time)
+
     drone_utility = DroneUtility()
     return_value = drone_utility.execute_calls(calls)
     with timer.get_client('encode'):

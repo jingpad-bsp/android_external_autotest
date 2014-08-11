@@ -1,6 +1,10 @@
 #pylint: disable-msg=C0111
 
-import cPickle, os, tempfile, logging
+import cPickle
+import logging
+import os
+import tempfile
+import time
 import common
 from autotest_lib.scheduler import drone_utility, email_manager
 from autotest_lib.client.bin import local_host
@@ -22,7 +26,13 @@ class _BaseAbstractDrone(object):
     * allowed_users: set of usernames allowed to use this drone.  if None,
             any user can use this drone.
     """
-    def __init__(self):
+    def __init__(self, timestamp_remote_calls=True):
+        """Instantiate an abstract drone.
+
+        @param timestamp_remote_calls: If true, drone_utility is invoked with
+            the --call_time option and the current time. Currently this is only
+            used for testing.
+        """
         self._calls = []
         self.hostname = None
         self.enabled = True
@@ -31,6 +41,7 @@ class _BaseAbstractDrone(object):
         self.allowed_users = None
         self._autotest_install_dir = AUTOTEST_INSTALL_DIR
         self._host = None
+        self.timestamp_remote_calls = timestamp_remote_calls
 
 
     def shutdown(self):
@@ -69,8 +80,12 @@ class _BaseAbstractDrone(object):
     def _execute_calls_impl(self, calls):
         if not self._host:
             raise ValueError('Drone cannot execute calls without a host.')
+        drone_utility_cmd = self._drone_utility_path
+        if self.timestamp_remote_calls:
+            drone_utility_cmd = '%s --call_time %s' % (
+                    drone_utility_cmd, time.time())
         logging.info("Running drone_utility on %s", self.hostname)
-        result = self._host.run('python %s' % self._drone_utility_path,
+        result = self._host.run('python %s' % drone_utility_cmd,
                                 stdin=cPickle.dumps(calls), stdout_tee=None,
                                 connect_timeout=300)
         try:
@@ -133,8 +148,9 @@ class _AbstractDrone(SiteDrone):
 
 
 class _LocalDrone(_AbstractDrone):
-    def __init__(self):
-        super(_LocalDrone, self).__init__()
+    def __init__(self, timestamp_remote_calls=True):
+        super(_LocalDrone, self).__init__(
+                timestamp_remote_calls=timestamp_remote_calls)
         self.hostname = 'localhost'
         self._host = local_host.LocalHost()
         self._drone_utility = drone_utility.DroneUtility()
@@ -151,8 +167,9 @@ class _LocalDrone(_AbstractDrone):
 
 
 class _RemoteDrone(_AbstractDrone):
-    def __init__(self, hostname):
-        super(_RemoteDrone, self).__init__()
+    def __init__(self, hostname, timestamp_remote_calls=True):
+        super(_RemoteDrone, self).__init__(
+                timestamp_remote_calls=timestamp_remote_calls)
         self.hostname = hostname
         self._host = drone_utility.create_host(hostname)
         if not self._host.is_up():

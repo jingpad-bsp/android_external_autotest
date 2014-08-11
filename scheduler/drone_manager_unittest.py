@@ -345,7 +345,8 @@ class ThreadedDroneTest(unittest.TestCase):
     _DRONE_HOST = ssh_host.SSHHost
 
 
-    def create_drone(self, drone_hostname, mock_hostname):
+    def create_drone(self, drone_hostname, mock_hostname,
+                     timestamp_remote_calls=False):
         """Create and initialize a Remote Drone.
 
         @return: A remote drone instance.
@@ -355,7 +356,8 @@ class ThreadedDroneTest(unittest.TestCase):
         drones.drone_utility.create_host.expect_call(drone_hostname).and_return(
                 mock_host)
         mock_host.is_up.expect_call().and_return(True)
-        return self._DRONE_CLASS(drone_hostname)
+        return self._DRONE_CLASS(drone_hostname,
+                                 timestamp_remote_calls=timestamp_remote_calls)
 
 
     def create_fake_pidfile_info(self, tag='tag', name='name'):
@@ -473,14 +475,16 @@ class ThreadedLocalhostDroneTest(ThreadedDroneTest):
     _DRONE_HOST = local_host.LocalHost
 
 
-    def create_drone(self, drone_hostname, mock_hostname):
+    def create_drone(self, drone_hostname, mock_hostname,
+                     timestamp_remote_calls=False):
         """Create and initialize a Remote Drone.
 
         @return: A remote drone instance.
         """
         mock_host = self.god.create_mock_class(self._DRONE_HOST, mock_hostname)
         self.god.stub_function(drones.drone_utility, 'create_host')
-        local_drone = self._DRONE_CLASS()
+        local_drone = self._DRONE_CLASS(
+                timestamp_remote_calls=timestamp_remote_calls)
         self.god.stub_with(local_drone, '_host', mock_host)
         return local_drone
 
