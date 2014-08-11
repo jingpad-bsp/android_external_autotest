@@ -73,8 +73,6 @@ import common
 try:
     import elasticsearch
 except ImportError:
-    logging.debug('import elasticsearch failed,'
-                  'no metadata will be reported.')
     import elasticsearch_mock as elasticsearch
 
 from autotest_lib.client.common_lib import global_config

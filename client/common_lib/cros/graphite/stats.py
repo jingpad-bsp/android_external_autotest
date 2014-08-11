@@ -13,7 +13,6 @@ from autotest_lib.client.common_lib.cros.graphite import es_utils
 try:
     import statsd
 except ImportError:
-    logging.debug('import statsd failed, no stats will be reported.')
     import statsd_mock as statsd
 
 
