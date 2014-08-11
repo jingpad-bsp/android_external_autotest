@@ -307,8 +307,8 @@ class ChameleonTest(test.test):
                 error_message = 'Expected to see %s but got %s' % (
                         expected_connector, current_connector)
             else:
-                error_message = 'Do not expect to see external monitor but got %s' % (
-                        current_connector)
+                error_message = ('Do not expect to see external monitor '
+                        'but got %s' % (current_connector))
             raise error.TestFail(error_message)
 
 

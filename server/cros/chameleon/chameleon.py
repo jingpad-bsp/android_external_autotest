@@ -163,16 +163,22 @@ class ChameleonPort(object):
 
 
     def fire_hpd_pulse(self, deassert_interval_usec, assert_interval_usec=None,
-                       repeat_count=1):
-        """Fires a HPD pulse (high -> low -> high) or multiple HPD pulses.
+                       repeat_count=1, end_level=1):
 
-        @param deassert_interval_usec: The time of the deassert pulse.
-        @param assert_interval_usec: The time of the assert pulse.
-        @param repeat_count: The count of repeating the HPD pulses.
+        """Fires one or more HPD pulse (low -> high -> low -> ...).
+
+        @param deassert_interval_usec: The time in microsecond of the
+                deassert pulse.
+        @param assert_interval_usec: The time in microsecond of the
+                assert pulse. If None, then use the same value as
+                deassert_interval_usec.
+        @param repeat_count: The count of HPD pulses to fire.
+        @param end_level: HPD ends with 0 for LOW (unplugged) or 1 for
+                HIGH (plugged).
         """
         self._chameleond_proxy.FireHpdPulse(
-                self._input_id, deassert_interval_usec, assert_interval_usec,
-                repeat_count)
+                self._input_id, deassert_interval_usec,
+                assert_interval_usec, repeat_count, int(bool(end_level)))
 
 
     def capture_screen(self):

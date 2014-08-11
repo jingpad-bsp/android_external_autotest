@@ -123,8 +123,8 @@ class DisplayTestingXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
                 0 is the internal one for chromebooks.
         @param width: width of the resolution
         @param height: height of the resolution
-        @param timeout: maximal time in sec waiting for the new resolution to
-                settle in.
+        @param timeout: maximal time in seconds waiting for the new resolution
+                to settle in.
         @raise TimeoutException when the operation is timed out.
         """
 
