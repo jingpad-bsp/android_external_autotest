@@ -36,29 +36,12 @@ optional arguments:
 """
 
 import argparse
-import datetime
 import time
 
 import common
-import host_history_utils
+import host_history
+from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib.cros.graphite import es_utils
-from autotest_lib.server import frontend
-
-
-def should_care(board, pool, dut):
-    """Whether we should care to print stats for this dut out
-
-    TODO: Move this to seperate file since host_history.py uses
-          the same function.
-    @param board: board we want, i.e. 'daisy'
-    @param pool: pool we want, i.e. 'bvt'
-    @param dut: Host object representing DUT.
-    @returns: True if the dut's stats should be counted.
-    """
-    pool_label = 'pool:%s' % pool
-    board_label = 'board:%s' % board
-    return ((not pool or pool_label in dut.labels) and
-            (not board or board_label in dut.labels))
 
 
 def get_entries(time_start, time_end, gte, lte, size, index, hostname):
@@ -102,14 +85,14 @@ def get_results_string(hostname, time_start, time_end, results):
     return_string = ' Host: %s \n   Number of entries: %s \n' % (
             hostname, results['hits']['total'])
     return_string += ' %s - %s \n' % (
-            host_history_utils.unix_time_to_readable_date(time_start),
-            host_history_utils.unix_time_to_readable_date(time_end))
+            time_utils.epoch_time_to_date_string(time_start),
+            time_utils.epoch_time_to_date_string(time_end))
     if num_entries <= 0:
         return return_string
     for result in results['hits']['hits']:
         fields = result['fields']
         time_recorded = fields['time_recorded'][0]
-        time_string = host_history_utils.unix_time_to_readable_date(
+        time_string = time_utils.epoch_time_to_date_string(
                 time_recorded)
         reboot_total = fields['value'][0]
         spaces = (15 - len(str(time_string))) * ' '
@@ -163,21 +146,13 @@ if __name__ == '__main__':
         t_start = t_now - 3600 * options.last
         t_end = t_now
     else:
-        t_start = es_utils._to_epoch_time(datetime.datetime.strptime(
-                options.start, '%Y-%m-%d %H:%M:%S'))
-        t_end = es_utils._to_epoch_time(datetime.datetime.strptime(
-                options.end, '%Y-%m-%d %H:%M:%S'))
+        t_start = time_utils.to_epoch_time(options.start)
+        t_end = time_utils.to_epoch_time(options.end)
     if options.hosts:
         hosts = options.hosts
     else:
-        hosts = []
-        print 'trying to get all duts...'
-        afe = frontend.AFE()
-        print 'making the query...'
-        duts = afe.get_hosts()
-        for dut in duts:
-            if should_care(options.board, options.pool, dut):
-                hosts.append(dut.hostname)
+        hosts = host_history.get_matched_hosts(options.autotest_server,
+                                               options.board, options.pool)
 
     for hostname in hosts:
         results = get_entries(

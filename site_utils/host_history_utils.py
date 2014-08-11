@@ -5,25 +5,12 @@
 # This file contains utility functions for host_history.
 
 import collections
-import datetime
 
 import common
+from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib.cros.graphite import es_utils
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import models
-
-
-def unix_time_to_readable_date(unix_time):
-    """ Converts unix time (float) to a human readable date string.
-
-    @param unix_time: Float of the current time since epoch time.
-    @returns: string formatted in the following way:
-        "yyyy-mm-dd hh-mm-ss"
-    """
-    if unix_time:
-        return datetime.datetime.fromtimestamp(
-                int(unix_time)).strftime('%Y-%m-%d %H:%M:%S')
-    return None
 
 
 def prepopulate_dict(keys, value, extras=None):
@@ -56,7 +43,7 @@ def lock_history_to_intervals(initial_lock_val, t_start, t_end, lock_history):
     t_prev = t_start
     state_prev = initial_lock_val
     for entry in lock_history['hits']['hits']:
-        t_curr = entry['fields']['time_recorded']
+        t_curr = entry['fields']['time_recorded'][0]
 
         #If it is locked, then we put into locked_intervals
         if state_prev:
@@ -222,8 +209,8 @@ def get_stats_string_aggregate(labels, t_start, t_end, aggregated_stats,
     @returns: string representing the aggregate stats report.
     """
     result = 'Overall stats for hosts: %s \n' % (', '.join(labels))
-    result += ' %s - %s \n' % (unix_time_to_readable_date(t_start),
-                               unix_time_to_readable_date(t_end))
+    result += ' %s - %s \n' % (time_utils.epoch_time_to_date_string(t_start),
+                               time_utils.epoch_time_to_date_string(t_end))
     result += ' Number of total hosts: %s \n' % (num_hosts)
     # This is multiplied by time_spent to get percentage_spent
     multiplication_factor = 100.0 / ((t_end - t_start) * num_hosts)
@@ -289,8 +276,8 @@ def get_stats_string(t_start, t_end, total_times, intervals_of_statuses,
     """
     delta = t_end - t_start
     result = 'usage stats for host: %s \n' % (hostname)
-    result += ' %s - %s \n' % (unix_time_to_readable_date(t_start),
-                               unix_time_to_readable_date(t_end))
+    result += ' %s - %s \n' % (time_utils.epoch_time_to_date_string(t_start),
+                               time_utils.epoch_time_to_date_string(t_end))
     result += ' Num entries found in this interval: %s\n' % (num_entries_found)
     for status, value in total_times.iteritems():
         spaces = (15 - len(status)) * ' '
@@ -299,8 +286,8 @@ def get_stats_string(t_start, t_end, total_times, intervals_of_statuses,
     if print_each_interval:
         for interval, status_info in intervals_of_statuses.iteritems():
             t0, t1 = interval
-            t0_string = unix_time_to_readable_date(t0)
-            t1_string = unix_time_to_readable_date(t1)
+            t0_string = time_utils.epoch_time_to_date_string(t0)
+            t1_string = time_utils.epoch_time_to_date_string(t1)
             status = status_info['status']
             spaces = (15 - len(status)) * ' '
             delta = int(t1-t0)

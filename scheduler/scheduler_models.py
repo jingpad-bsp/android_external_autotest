@@ -19,9 +19,10 @@ _drone_manager: reference to global DroneManager instance.
 """
 
 import datetime, itertools, logging, os, re, sys, time, weakref
-from autotest_lib.client.common_lib import global_config, host_protections
-from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib import control_data
+from autotest_lib.client.common_lib import global_config, host_protections
+from autotest_lib.client.common_lib import time_utils
+from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros.graphite import es_utils
 from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.frontend.afe import models, model_attributes
@@ -249,13 +250,12 @@ class DBObject(object):
         """
         self._assert_row_length(row)
         differences = {}
-        datetime_cmp_fmt = '%Y-%m-%d %H:%M:%S'  # Leave off the microseconds.
         for field, row_value in itertools.izip(self._fields, row):
             current_value = getattr(self, field)
             if (isinstance(current_value, datetime.datetime)
                 and isinstance(row_value, datetime.datetime)):
-                current_value = current_value.strftime(datetime_cmp_fmt)
-                row_value = row_value.strftime(datetime_cmp_fmt)
+                current_value = current_value.strftime(time_utils.TIME_FMT)
+                row_value = row_value.strftime(time_utils.TIME_FMT)
             if current_value != row_value:
                 differences[field] = (current_value, row_value)
         return differences

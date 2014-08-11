@@ -16,20 +16,20 @@ import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import priorities
+from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.frontend.afe import rpc_utils
 from autotest_lib.server import utils
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
-from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.server.hosts import moblab_host
+from autotest_lib.site_utils import host_history
 from autotest_lib.site_utils import job_history
 
 
 _CONFIG = global_config.global_config
 MOBLAB_BOTO_LOCATION = '/home/moblab/.boto'
-
 
 # Relevant CrosDynamicSuiteExceptions are defined in client/common_lib/error.py.
 
@@ -39,7 +39,7 @@ def canonicalize_suite_name(suite_name):
 
 
 def formatted_now():
-    return datetime.datetime.now().strftime(job_status.TIME_FMT)
+    return datetime.datetime.now().strftime(time_utils.TIME_FMT)
 
 
 def _get_control_file_contents_by_name(build, ds, suite_name):
@@ -269,4 +269,36 @@ def get_job_history(**filter_data):
     """
     job_id = filter_data['job_id']
     job_info = job_history.get_job_info(job_id)
-    return _rpc_utils().prepare_for_serialization(job_info.get_history())
+    return rpc_utils.prepare_for_serialization(job_info.get_history())
+
+
+def get_host_history(start_time, end_time, hosts=None, board=None, pool=None):
+    """Get history of a list of host.
+
+    The return is a JSON string of host history for each host, for example,
+    {'172.22.33.51': [{'status': 'Resetting'
+                       'start_time': '2014-08-07 10:02:16',
+                       'end_time': '2014-08-07 10:03:16',
+                       'log_url': 'http://autotest/reset-546546/debug',
+                       'dbg_str': 'Task: Special Task 19441991 (host ...)'},
+                       {'status': 'Running'
+                       'start_time': '2014-08-07 10:03:18',
+                       'end_time': '2014-08-07 10:13:00',
+                       'log_url': 'http://autotest/reset-546546/debug',
+                       'dbg_str': 'HQE: 15305005, for job: 14995562'}
+                     ]
+    }
+    @param start_time: start time to search for history, can be string value or
+                       epoch time.
+    @param end_time: end time to search for history, can be string value or
+                     epoch time.
+    @param hosts: A list of hosts to search for history. Default is None.
+    @param board: board type of hosts. Default is None.
+    @param pool: pool type of hosts. Default is None.
+    @returns: JSON string of the host history.
+    """
+    return rpc_utils.prepare_for_serialization(
+            host_history.get_history_details(
+                    start_time=start_time, end_time=end_time,
+                    hosts=hosts, board=board, pool=pool,
+                    process_pool_size=4))

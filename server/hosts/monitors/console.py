@@ -5,6 +5,7 @@
 
 import gzip, optparse, os, signal, sys, time
 import common
+from autotest_lib.client.common_lib import time_utils
 from autotest_lib.server.hosts.monitors import monitors_util
 
 PATTERNS_PATH = os.path.join(os.path.dirname(__file__), 'console_patterns')
@@ -13,7 +14,7 @@ usage = 'usage: %prog [options] logfile_name warn_fd'
 parser = optparse.OptionParser(usage=usage)
 parser.add_option(
     '-t', '--log_timestamp_format',
-    default='[%Y-%m-%d %H:%M:%S]',
+    default='[%s]' % time_utils.TIME_FMT,
     help='Timestamp format for log messages')
 parser.add_option(
     '-p', '--pattern_paths',

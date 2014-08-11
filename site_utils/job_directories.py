@@ -5,11 +5,11 @@ import os
 import time
 
 import common
+from autotest_lib.client.common_lib import time_utils
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
-_AFE = frontend_wrappers.RetryingAFE()
 
-JOB_TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
+_AFE = frontend_wrappers.RetryingAFE()
 
 def _is_job_expired(age_limit, timestamp):
   """Check whether a job timestamp is older than an age limit.
@@ -17,13 +17,13 @@ def _is_job_expired(age_limit, timestamp):
   @param age_limit: Minimum age, measured in days.  If the value is
                     not positive, the job is always expired.
   @param timestamp: Timestamp of the job whose age we are checking.
-                    The format must match JOB_TIME_FORMAT.
+                    The format must match time_utils.TIME_FMT.
 
   @returns True iff the job is old enough to be expired.
   """
   if age_limit <= 0:
     return True
-  job_time = datetime.datetime.strptime(timestamp, JOB_TIME_FORMAT)
+  job_time = time_utils.time_string_to_datetime(timestamp)
   expiration = job_time + datetime.timedelta(days=age_limit)
   return datetime.datetime.now() >= expiration
 
@@ -161,8 +161,8 @@ class RegularJobDirectory(_JobDirectory):
     latest_finished_time = hqes[0]['finished_on']
     # While most Jobs have 1 HQE, some can have multiple, so check them all.
     for hqe in hqes[1:]:
-      if (datetime.datetime.strptime(hqe['finished_on'], JOB_TIME_FORMAT) >
-          datetime.datetime.strptime(latest_finished_time, JOB_TIME_FORMAT)):
+      if (time_utils.time_string_to_datetime(hqe['finished_on']) >
+          time_utils.time_string_to_datetime(latest_finished_time)):
         latest_finished_time = hqe['finished_on']
     return latest_finished_time
 

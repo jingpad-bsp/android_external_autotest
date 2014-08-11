@@ -184,9 +184,8 @@ def main():
         end_time = datetime.datetime.now()
         start_time = end_time - datetime.timedelta(seconds=3600 * options.last)
     else:
-        start_time = datetime.datetime.strptime(options.start,
-                                                '%Y-%m-%d %H:%M:%S')
-        end_time = datetime.datetime.strptime(options.end, '%Y-%m-%d %H:%M:%S')
+        start_time = time_utils.time_string_to_datetime(options.start)
+        end_time = time_utils.time_string_to_datetime(options.end)
 
     hosts = get_matched_duts(hostnames=options.hosts, board=options.board,
                              pool=options.pool)

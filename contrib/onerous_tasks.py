@@ -22,6 +22,7 @@ import logging
 import sys
 
 import common
+from autotest_lib.client.common_lib import time_utils
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import models
 from autotest_lib.server.cros.dynamic_suite import job_status
@@ -117,7 +118,7 @@ if __name__ == '__main__':
         lookup_job(args.id, args.cutoff)
     elif args.which == 'host':
         lookup_host(args.name,
-                    datetime.strptime(args.start, job_status.TIME_FMT),
-                    datetime.strptime(args.end, job_status.TIME_FMT))
+                    datetime.strptime(args.start, time_utils.TIME_FMT),
+                    datetime.strptime(args.end, time_utils.TIME_FMT))
     else:
         print 'Unrecognized options. Try onerous_tasks.py --help'

@@ -62,7 +62,6 @@ intended elasticsearch server.
 
 """
 
-import datetime
 import json
 import logging
 import socket
@@ -76,6 +75,7 @@ except ImportError:
     import elasticsearch_mock as elasticsearch
 
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import time_utils
 
 
 # Server and ports for elasticsearch (for metadata use only)
@@ -282,9 +282,9 @@ def create_range_eq_query_multiple(fields_returned,
                 continue
             temp_dict = {}
             if low != None:
-                temp_dict['gte'] = _to_epoch_time(low)
+                temp_dict['gte'] = time_utils.to_epoch_time(low)
             if high != None:
-                temp_dict['lte'] = _to_epoch_time(high)
+                temp_dict['lte'] = time_utils.to_epoch_time(high)
             range_list.append( {'range': {key: temp_dict}})
 
     # Creates the list of term dictionaries to put in the 'should' list.
@@ -303,22 +303,6 @@ def create_range_eq_query_multiple(fields_returned,
     if fields_returned:
         query['fields'] = fields_returned
     return query
-
-
-def _to_epoch_time(value):
-    """Converts value to epoch time if it is a datetime object.
-
-    This function should only be called in create_range_eq_query_multiple.
-
-    @param value: anything
-    @param returns: epoch time if value is datetime.datetime,
-                    otherwise returns the value.
-    """
-    if isinstance(value, datetime.datetime):
-        # This looks kinda hacky, timetuple() only goes to the
-        # level of seconds. So I need to add on the decimal part.
-        return time.mktime(value.timetuple()) + 0.000001*value.microsecond
-    return value
 
 
 def execute_query(query, index, host, port, timeout=3):

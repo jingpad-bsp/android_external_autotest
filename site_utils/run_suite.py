@@ -46,12 +46,12 @@ import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config, enum
 from autotest_lib.client.common_lib import priorities
+from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.server import utils
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
-from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.server.cros.dynamic_suite import reporting_utils
 from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.site_utils import diagnosis_utils
@@ -337,21 +337,6 @@ class Timings(object):
         self.tests_end_time = None
 
 
-
-    def _GetDatetime(self, timing_string, timing_string_format):
-        """
-        Formats the timing_string according to the timing_string_format.
-
-        @param timing_string: A datetime timing string.
-        @param timing_string_format: Format of the time in timing_string.
-        @return: A datetime object for the given timing string.
-        """
-        try:
-            return datetime.strptime(timing_string, timing_string_format)
-        except TypeError:
-            return None
-
-
     def RecordTiming(self, view):
         """Given a test report view, extract and record pertinent time info.
 
@@ -367,11 +352,11 @@ class Timings(object):
         start_candidate = datetime.min
         end_candidate = datetime.max
         if view['test_started_time']:
-            start_candidate = datetime.strptime(view['test_started_time'],
-                                                job_status.TIME_FMT)
+            start_candidate = time_utils.time_string_to_datetime(
+                    view['test_started_time'])
         if view['test_finished_time']:
-            end_candidate = datetime.strptime(view['test_finished_time'],
-                                              job_status.TIME_FMT)
+            end_candidate = time_utils.time_string_to_datetime(
+                    view['test_finished_time'])
 
         if view.get_testname() == TestView.SUITE_PREP:
             self.suite_start_time = start_candidate
@@ -380,17 +365,17 @@ class Timings(object):
             self._UpdateLastTestEndTime(end_candidate)
         if view['afe_job_id'] == self.suite_job_id and 'job_keyvals' in view:
             keyvals = view['job_keyvals']
-            self.download_start_time = self._GetDatetime(
-                keyvals.get(constants.DOWNLOAD_STARTED_TIME),
-                job_status.TIME_FMT)
+            self.download_start_time = time_utils.time_string_to_datetime(
+                    keyvals.get(constants.DOWNLOAD_STARTED_TIME),
+                    handle_type_error=True)
 
-            self.payload_end_time = self._GetDatetime(
-                keyvals.get(constants.PAYLOAD_FINISHED_TIME),
-                job_status.TIME_FMT)
+            self.payload_end_time = time_utils.time_string_to_datetime(
+                    keyvals.get(constants.PAYLOAD_FINISHED_TIME),
+                    handle_type_error=True)
 
-            self.artifact_end_time = self._GetDatetime(
-                keyvals.get(constants.ARTIFACT_FINISHED_TIME),
-                job_status.TIME_FMT)
+            self.artifact_end_time = time_utils.time_string_to_datetime(
+                    keyvals.get(constants.ARTIFACT_FINISHED_TIME),
+                    handle_type_error=True)
 
 
     def _UpdateFirstTestStartTime(self, candidate):
@@ -489,9 +474,10 @@ class Timings(object):
         data_key = self._GetDataKeyForStatsd(suite, build, board)
 
         # Since we don't want to try subtracting corrupted datetime values
-        # we catch TypeErrors in _GetDatetime and insert None instead. This
-        # means that even if, say, keyvals.get(constants.ARTIFACT_FINISHED_TIME)
-        # returns a corrupt value the member artifact_end_time is set to None.
+        # we catch TypeErrors in time_utils.time_string_to_datetime and insert
+        # None instead. This means that even if, say,
+        # keyvals.get(constants.ARTIFACT_FINISHED_TIME) returns a corrupt
+        # value the member artifact_end_time is set to None.
         if self.download_start_time:
             if self.payload_end_time:
                 stats.Timer(data_key).send('payload_download_time',
@@ -725,10 +711,10 @@ class TestView(object):
             # did not hit its own timeout because it was not ever run.
             return False
         start = (datetime.strptime(
-                self.view['job_started_time'], job_status.TIME_FMT)
+                self.view['job_started_time'], time_utils.TIME_FMT)
                 if self.view['job_started_time'] else None)
         end = (datetime.strptime(
-                self.view['job_finished_time'], job_status.TIME_FMT)
+                self.view['job_finished_time'], time_utils.TIME_FMT)
                 if self.view['job_finished_time'] else None)
         if not start or not end:
             return False

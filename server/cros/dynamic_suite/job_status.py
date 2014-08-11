@@ -6,10 +6,10 @@ import datetime, logging, os, time
 
 
 from autotest_lib.client.common_lib import base_job, global_config, log
+from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib.host_queue_entry_states \
     import IntStatus as HqeIntStatus
 
-TIME_FMT = '%Y-%m-%d %H:%M:%S'
 DEFAULT_POLL_INTERVAL_SECONDS = 10
 
 HQE_MAXIMUM_ABORT_RATE_FLOAT = global_config.global_config.get_config_value(
@@ -563,9 +563,9 @@ class Status(object):
         @param status: status code, e.g. 'INFO', 'FAIL', etc.
         @param test_name: the name of the test whose result this is.
         @param reason: message explaining failure, if any; Optional.
-        @param begin_time_str: when test started (in TIME_FMT);
+        @param begin_time_str: when test started (in time_utils.TIME_FMT);
                                now() if None or 'None'.
-        @param end_time_str: when test finished (in TIME_FMT);
+        @param end_time_str: when test finished (in time_utils.TIME_FMT);
                              now() if None or 'None'.
         @param job_id: the ID of the job that generated this Status.
         @param owner: the owner of the job that generated this Status.
@@ -592,14 +592,14 @@ class Status(object):
         if begin_time_str and begin_time_str != 'None':
             self._begin_timestamp = int(time.mktime(
                 datetime.datetime.strptime(
-                    begin_time_str, TIME_FMT).timetuple()))
+                    begin_time_str, time_utils.TIME_FMT).timetuple()))
         else:
             self._begin_timestamp = int(time.time())
 
         if end_time_str and end_time_str != 'None':
             self._end_timestamp = int(time.mktime(
                 datetime.datetime.strptime(
-                    end_time_str, TIME_FMT).timetuple()))
+                    end_time_str, time_utils.TIME_FMT).timetuple()))
         else:
             self._end_timestamp = int(time.time())
 

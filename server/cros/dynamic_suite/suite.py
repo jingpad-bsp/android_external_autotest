@@ -9,8 +9,11 @@ import common
 from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import enum
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import priorities
-from autotest_lib.client.common_lib import site_utils, utils, error
+from autotest_lib.client.common_lib import site_utils
+from autotest_lib.client.common_lib import time_utils
+from autotest_lib.client.common_lib import utils
 from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
@@ -616,7 +619,7 @@ class Suite(object):
         if retry_for:
             msg = msg + ', to retry afe job %d' % retry_for
         logging.debug(msg)
-        begin_time_str = datetime.datetime.now().strftime(job_status.TIME_FMT)
+        begin_time_str = datetime.datetime.now().strftime(time_utils.TIME_FMT)
         try:
             job = self._create_job(test, retry_for=retry_for)
         except error.NoEligibleHostException:

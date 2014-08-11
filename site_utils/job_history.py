@@ -21,7 +21,7 @@ AUTOTEST_SERVER = CONFIG.get_config_value('SERVER', 'hostname', type=str)
 
 LOG_BASE_URL = 'http://%s/tko/retrieve_logs.cgi?job=/results/' % AUTOTEST_SERVER
 JOB_URL = LOG_BASE_URL + '%(job_id)s-%(owner)s/%(hostname)s'
-LOG_PATH_FMT = 'hosts/%(hostname)s/%(task_id)d-%(taskname)s'
+LOG_PATH_FMT = 'hosts/%(hostname)s/%(task_id)d-%(task_name)s'
 TASK_URL = LOG_BASE_URL + LOG_PATH_FMT
 AUTOSERV_DEBUG_LOG = 'debug/autoserv.DEBUG'
 
@@ -89,7 +89,7 @@ class SpecialTaskInfo(JobHistoryObject):
         self.status = task.status
 
         # Link to log
-        task_info = {'task_id': task.id, 'taskname': task.task.lower(),
+        task_info = {'task_id': task.id, 'task_name': task.task.lower(),
                      'hostname': self.hostname}
         self.log_url = TASK_URL % task_info
         self.autoserv_log_url = '%s/%s' % (self.log_url, AUTOSERV_DEBUG_LOG)

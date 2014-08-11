@@ -19,6 +19,7 @@ import common
 import gs_offloader
 import job_directories
 
+from autotest_lib.client.common_lib import time_utils
 from autotest_lib.scheduler import email_manager
 
 # Test value to use for `days_old`, if nothing else is required.
@@ -136,7 +137,7 @@ def _make_timestamp(age_limit, is_expired):
         seconds = -seconds
     delta = datetime.timedelta(days=age_limit, seconds=seconds)
     reference_time = datetime.datetime.now() - delta
-    return reference_time.strftime(job_directories.JOB_TIME_FORMAT)
+    return reference_time.strftime(time_utils.TIME_FMT)
 
 
 class JobExpirationTests(unittest.TestCase):
@@ -293,9 +294,8 @@ class EmailTemplateTests(mox.MoxTestBase):
             date_, time_, count, dir_ = line.split()
             job = _MockJobDirectory(dir_)
             job._offload_count = int(count)
-            timestruct = time.strptime(
-                    "%s %s" % (date_, time_),
-                    gs_offloader.ERROR_EMAIL_TIME_FORMAT)
+            timestruct = time.strptime("%s %s" % (date_, time_),
+                                       gs_offloader.ERROR_EMAIL_TIME_FORMAT)
             job._first_offload_start = time.mktime(timestruct)
             # enter the jobs in reverse order, to make sure we
             # test that the output will be sorted.
