@@ -28,7 +28,8 @@ class chromedriver(object):
     """Wrapper class, a context manager type, for tests to use Chrome Driver."""
 
     def __init__(self, extra_chrome_flags=[], subtract_extra_chrome_flags=[],
-                 extension_paths=[], is_component=True, *args, **kwargs):
+                 extension_paths=[], is_component=True, username=None,
+                 password=None, *args, **kwargs):
         """Initialize.
 
         @param extra_chrome_flags: Extra chrome flags to pass to chrome, if any.
@@ -37,12 +38,16 @@ class chromedriver(object):
         @param extension_paths: A list of paths to unzipped extensions. Note
                                 that paths to crx files won't work.
         @param is_component: True if the manifest.json has a key.
+        @param username: Log in using this username instead of the default.
+        @param username: Log in using this password instead of the default.
         """
         assert os.geteuid() == 0, 'Need superuser privileges'
 
         # Log in with telemetry
         self._chrome = chrome.Chrome(extension_paths=extension_paths,
                                      is_component=is_component,
+                                     username=username,
+                                     password=password,
                                      extra_browser_args=extra_chrome_flags)
         self._browser = self._chrome.browser
         # Close all tabs owned and opened by Telemetry, as these cannot be

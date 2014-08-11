@@ -1,0 +1,18 @@
+# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Nathan Stoddard (nstoddard@chromium.org)"
+NAME = "webstore_SanityTest"
+SUITE = "webstore"
+TIME = "SHORT"
+TEST_TYPE = "client"
+
+DOC = """
+A quick sanity test of the web store, to verify that the landing page
+is accessible and that it has the main components it's supposed to.
+This currently verifies that the 'featured' and 'more recommendations'
+sections appear, and that a marquee and at least one item appear.
+"""
+
+job.run_test('webstore_SanityTest')

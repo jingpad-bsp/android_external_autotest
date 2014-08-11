@@ -97,6 +97,7 @@ SKIP = set((
     'dev_server_test.py',
     'full_release_test.py',
     'scheduler_lib_unittest.py',
+    'webstore_test.py',
     ))
 
 LONG_TESTS = (REQUIRES_MYSQLDB |

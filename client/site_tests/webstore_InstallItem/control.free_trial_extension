@@ -1,0 +1,20 @@
+# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+from autotest_lib.client.cros.webstore_test import ItemType, InstallType
+
+AUTHOR = "Nathan Stoddard (nstoddard@chromium.org)"
+NAME = "webstore_InstallFreeTrialExtension"
+SUITE = "webstore"
+TIME = "SHORT"
+TEST_TYPE = "client"
+
+DOC = """
+Installs a free trial extension from the CWS. Passes if the extension
+can be installed successfully.
+"""
+
+job.run_test('webstore_InstallItem',
+        item_id='kamegmikiiphdlcjlghnpocoapikpfhj',
+        item_type=ItemType.extension, install_type=InstallType.free_trial)
