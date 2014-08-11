@@ -4,7 +4,7 @@
 
 import logging, os, sys
 
-from telemetry.unittest import gtest_output_formatter
+from telemetry.unittest import gtest_progress_reporter
 from telemetry.unittest import run_tests
 
 from autotest_lib.client.bin import test
@@ -77,7 +77,7 @@ class telemetry_UnitTests(test.test):
         sys.path.append(test_spec.top_level_dir)
 
         output_formatters = [
-            gtest_output_formatter.GTestOutputFormatter(LoggingOutputStream())]
+            gtest_progress_reporter.GTestProgressReporter(LoggingOutputStream())]
         run_tests.config = run_tests.Config(
             test_spec.top_level_dir, [test_spec.root], output_formatters)
         test_spec.num_errors = run_tests.RunTestsCommand.main(
