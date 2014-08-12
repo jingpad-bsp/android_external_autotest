@@ -52,7 +52,7 @@ class display_Resolution(chameleon_test.ChameleonTest):
 
             self.load_test_image_and_check(
                     test_name, test_resolution,
-                    under_mirrored_mode = test_mirrored, error_list = errors)
+                    under_mirrored_mode=test_mirrored, error_list=errors)
 
         self.raise_on_errors(errors)
 

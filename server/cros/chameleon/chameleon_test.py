@@ -483,9 +483,7 @@ class ChameleonTest(test.test):
         try:
             self.load_test_image(dut_resolution)
             error_message = self.check_screen_with_chameleon(
-                    tag = tag,
-                    pixel_diff_value_margin = pixel_diff_value_margin,
-                    total_wrong_pixels_margin = total_wrong_pixels_margin)
+                    tag, pixel_diff_value_margin, total_wrong_pixels_margin)
             if error_message:
                 if error_list is not None:
                     error_list.append(error_message)
