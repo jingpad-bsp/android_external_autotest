@@ -373,11 +373,13 @@
   },
   {
     "autotest_name": "video_PlaybackPerf.h264",
-    "master_name": "ChromeOSVideo"
+    "master_name": "ChromeOSVideo",
+    "dashboard_test_name": "video_PlaybackPerf"
   },
   {
     "autotest_name": "video_PlaybackPerf.vp8",
-    "master_name": "ChromeOSVideo"
+    "master_name": "ChromeOSVideo",
+    "dashboard_test_name": "video_PlaybackPerf"
   },
   {
     "autotest_name": "video_PlaybackPower.h264",

@@ -24,5 +24,7 @@ for hardware decode and software decode.
 """
 
 VIDEO_NAME = 'crowd1080.mp4'
-job.run_test('video_PlaybackPerf', video_name=VIDEO_NAME, video_format="h264")
+VIDEO_FORMAT = 'h264'
+job.run_test('video_PlaybackPerf', video_name=VIDEO_NAME,
+             video_format=VIDEO_FORMAT, tag=VIDEO_FORMAT)
 

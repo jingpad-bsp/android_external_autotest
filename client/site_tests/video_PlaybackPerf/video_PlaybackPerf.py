@@ -43,8 +43,8 @@ WAIT_FOR_IDLE_CPU_TIMEOUT = 60.0
 # Maximum percent of cpu usage considered as idle.
 CPU_IDLE_USAGE = 0.1
 
-CPU_USAGE_DESCRIPTION = '_video_cpu_usage'
-DROPPED_FRAMES_DESCRIPTION = '_video_dropped_frames'
+CPU_USAGE_DESCRIPTION = 'video_cpu_usage_'
+DROPPED_FRAMES_DESCRIPTION = 'video_dropped_frames_'
 
 class video_PlaybackPerf(test.test):
     """

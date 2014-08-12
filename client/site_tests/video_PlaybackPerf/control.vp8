@@ -24,5 +24,7 @@ for hardware decode and software decode.
 """
 
 VIDEO_NAME = 'crowd1080.webm'
-job.run_test('video_PlaybackPerf', video_name=VIDEO_NAME, video_format="vp8")
+VIDEO_FORMAT = 'vp8'
+job.run_test('video_PlaybackPerf', video_name=VIDEO_NAME,
+             video_format=VIDEO_FORMAT, tag=VIDEO_FORMAT)
 
