@@ -1999,11 +1999,11 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     def has_chameleon(self):
         """Determine if a Chameleon connected to this host.
 
-        @returns the string 'chameleon' if this host has a Chameleon or
-                 None if it has not.
+        @returns the string 'chameleon:' + label, e.g. 'chameleon:hdmi',
+                 if this host has a Chameleon or None if it has not.
         """
         if self._chameleon_host:
-            return 'chameleon'
+            return 'chameleon:' + self.chameleon.get_label()
         else:
             return None
 

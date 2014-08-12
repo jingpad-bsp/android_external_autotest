@@ -57,6 +57,19 @@ class ChameleonBoard(object):
         return [ChameleonPort(self._chameleond_proxy, port) for port in ports]
 
 
+    def get_label(self):
+        """Gets the label which indicates the display connection.
+
+        @return: A string of the label, like 'hdmi', 'dp_hdmi', etc.
+        """
+        ports = self._chameleond_proxy.ProbeInputs()
+        connectors = [self._chameleond_proxy.GetConnectorType(port).lower()
+                      for port in ports]
+        # Eliminate duplicated ports. It simplifies the labels of dual-port
+        # devices, i.e. dp_dp categorized into dp.
+        return '_'.join(sorted(set(connectors)))
+
+
     def get_pixel_format(self):
         """Gets the pixel format for the output of DumpPixels.
 
