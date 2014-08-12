@@ -231,7 +231,7 @@ class DisplayClient(object):
         output = self.get_connector_name()
         fb_w, fb_h, fb_x, fb_y = (
                 self._display_xmlrpc_client.get_resolution(output))
-        with tempfile.NamedTemporaryFile(suffix='.png') as f:
+        with tempfile.NamedTemporaryFile(suffix='.rgb') as f:
             basename = os.path.basename(f.name)
             remote_path = os.path.join('/tmp', basename)
             command = ('%s import -window root -depth 8 -crop %dx%d+%d+%d %s' %
@@ -239,7 +239,7 @@ class DisplayClient(object):
                         remote_path))
             self._client.run(command)
             self._client.get_file(remote_path, f.name)
-            return Image.open(f.name).convert('RGB')
+            return Image.fromstring('RGB', (fb_w, fb_h), open(f.name).read())
 
 
     def get_resolution(self):
