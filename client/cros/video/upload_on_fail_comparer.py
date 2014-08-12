@@ -38,7 +38,7 @@ class UploadOnFailComparer(object):
 
 
     @method_logger.log
-    def compare(self, golden_image_path, test_image_path):
+    def compare(self, golden_image_path, test_image_path, box=None):
         """
         Compares a test image against a golden image using up to two comparers.
 
@@ -55,6 +55,8 @@ class UploadOnFailComparer(object):
 
         @param golden_image_path: path, complete path to the golden image.
         @param test_image_path: path, complete path  to the test image.
+        @param box: int tuple, left, upper, right, lower pixel coordinates
+                    defining a box region within which the comparison is made.
 
         @return: int, differing pixels as per double check comparer.
 
@@ -63,7 +65,8 @@ class UploadOnFailComparer(object):
 
         with self.local_comparer:
             diffpx = self.local_comparer.compare(golden_image_path,
-                                                 test_image_path)
+                                                 test_image_path,
+                                                 box)
         logging.debug('Primary comparison complete. Diff pixels = %d', diffpx)
 
         diffpx2 = -1
@@ -74,7 +77,8 @@ class UploadOnFailComparer(object):
 
             with self.remote_comparer:
                 diffpx2 = self.remote_comparer.compare(golden_image_path,
-                                                       test_image_path)
+                                                       test_image_path,
+                                                       box)
             logging.debug('Secondary comparison complete. Diff pixels = %d',
                           diffpx2)
 

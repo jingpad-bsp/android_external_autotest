@@ -92,7 +92,8 @@ class BpImageComparer(object):
 
 
     @method_logger.log
-    def compare(self, golden_image_path, test_run_image_path, retries=None):
+    def compare(self, golden_image_path, test_run_image_path, box=None,
+                retries=None):
         """
         Compares a test image with a known reference image.
 
@@ -100,6 +101,8 @@ class BpImageComparer(object):
 
         @param golden_image_path: path, complete path to a golden image.
         @param test_run_image_path: path, complete path to a test run image.
+        @param box: int tuple, left, upper, right, lower pixel coordinates
+                    defining a box region within which the comparison is made.
         @param retries: int, number of times to retry before giving up.
                         This is configured at object creation but test can
                         override the configured value at method call..

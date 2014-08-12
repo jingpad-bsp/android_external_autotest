@@ -21,27 +21,33 @@ class RGBImageComparer(object):
 
 
     @method_logger.log
-    def compare(self, golden_image_path, test_image_path):
+    def compare(self, golden_img_path, test_img_path, box=None):
         """
         Compares a test image against a known golden image.
 
         Both images must be RGB images.
 
-        @param golden_image_path: path, complete path to a golden image.
-        @param test_image_path: path, complete path to a test image.
+        @param golden_img_path: path, complete path to a golden image.
+        @param test_img_path: path, complete path to a test image.
+        @param box: int tuple, left, upper, right, lower pixel coordinates
+                    defining a box region within which the comparison is made.
 
         @throws: ValueError if either image is not an RGB
 
         @return: int, number of pixels that are different.
 
         """
-        golden_image = Image.open(golden_image_path)
-        test_image = Image.open(test_image_path)
+        golden_image = Image.open(golden_img_path)
+        test_image = Image.open(test_img_path)
 
         if golden_image.mode != 'RGB' or test_image.mode != 'RGB':
             logging.debug("Golden image mode is %s", golden_image.mode)
             logging.debug("Test image mode is %s", test_image.mode)
             raise ValueError("Expected both images to be RGB. Bailing out.")
+
+        if box is not None:
+            golden_image = golden_image.crop(box)
+            test_image = test_image.crop(box)
 
         diff_image = ImageChops.difference(golden_image, test_image)
 

@@ -25,7 +25,8 @@ class Verifier(object):
 
 
     @method_logger.log
-    def __init__(self, image_comparer, stop_on_first_failure, threshold=0):
+    def __init__(self, image_comparer, stop_on_first_failure, threshold=0,
+                 box=None):
         """
         @param image_comparer: object, image comparer to use.
         @param stop_on_first_failure: bool, true if the test should be stopped
@@ -33,11 +34,14 @@ class Verifier(object):
         @param threshold: int, a value which the pixel difference between test
                           image and golden image has to exceed before the
                           doublecheck comparer is used.
+        @param box: int tuple, left, upper, right, lower pixel coordinates
+                    defining a box region within which the comparison is made.
 
         """
         self.image_comparer = image_comparer
         self.stop_on_first_failure = stop_on_first_failure
         self.threshold = threshold
+        self.box = box
 
 
     @method_logger.log
@@ -66,7 +70,9 @@ class Verifier(object):
         for g_image, t_image in zip(golden_image_paths, test_image_paths):
 
             with self.image_comparer:
-                diff_pixels = self.image_comparer.compare(g_image, t_image)
+                diff_pixels = self.image_comparer.compare(g_image,
+                                                          t_image,
+                                                          self.box)
 
             log_msg = ("Reference: %s. Test: %s. Pixel diff: %d. Thres.: %d" %
                       (g_image, t_image, diff_pixels, self.threshold))

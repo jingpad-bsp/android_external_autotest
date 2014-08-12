@@ -179,6 +179,9 @@ class MediaTestFactory(object):
         self.biopic_num_upload_retries = self.parser.getint('biopic',
                                                             'upload_retries')
 
+        self.desired_comp_h = self.parser.getint('biopic', 'desired_comp_h')
+        self.desired_comp_w = self.parser.getint('biopic', 'desired_comp_w')
+
 
     @method_logger.log
     def _load_device_info(self):
@@ -379,4 +382,6 @@ class MediaTestFactory(object):
                     rgb_image_comparer.RGBImageComparer(),
                     self.make_bp_image_comparer())
 
-        return verifier.Verifier(comparer, stop_on_first_failure)
+        box = (0, 0, self.desired_comp_w, self.desired_comp_h)
+
+        return verifier.Verifier(comparer, stop_on_first_failure, box=box)
