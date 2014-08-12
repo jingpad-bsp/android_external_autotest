@@ -3,9 +3,9 @@
 # found in the LICENSE file.
 
 AUTHOR = "chromeos-chameleon"
-NAME = "chameleon"
+NAME = "chameleon_dp"
 PURPOSE = "A Chameleon test suite."
-CRITERIA = "All tests with SUITE=chameleon must pass."
+CRITERIA = "All tests with SUITE=chameleon_dp must pass."
 
 TIME = "LENGTHY"
 TEST_CATEGORY = "General"
@@ -13,9 +13,9 @@ TEST_CLASS = "suite"
 TEST_TYPE = "Server"
 
 DOC = """
-Display tests which require Chameleon board connected. The Chameleon board
-can emulate a monitor such that the test can control its behaviors in order
-to test the Chrome OS graphic stack.
+Display tests which require Chameleon board connected via DP connection.
+The Chameleon board can emulate a monitor such that the test can control
+its behaviors in order to test the Chrome OS graphic stack.
 
 @param build: The name of the image to test.
               Ex: x86-mario-release/R17-1412.33.0-a1-b29
@@ -34,7 +34,7 @@ dynamic_suite.reimage_and_run(
     build=build, board=board, name=NAME, job=job, pool=pool,
     check_hosts=check_hosts, add_experimental=True, num=num,
     file_bugs=file_bugs, priority=priority,
-    suite_dependencies='chameleon', timeout_mins=timeout_mins,
+    suite_dependencies='chameleon:dp', timeout_mins=timeout_mins,
     max_runtime_mins=240, devserver_url=devserver_url,
     version_prefix=provision.CROS_VERSION_PREFIX,
     wait_for_results=wait_for_results, job_retry=job_retry)
