@@ -33,8 +33,8 @@ RADVD_DEFAULT_SEND_ADVERT = 'on'
 # (RFC3849), which is guaranteed never to be assigned to a real network.
 RADVD_DEFAULT_SUFFIX = '/64'
 RADVD_DEFAULT_PREFIX = '2001:db8:100:f101::/64'
-RADVD_DEFAULT_RDNSS_SERVERS = ( '2001:db8:100:f101::0001 '
-                                '2001:db8:100:f101::0002' )
+RADVD_DEFAULT_RDNSS_SERVERS = ( '2001:db8:100:f101::1 '
+                                '2001:db8:100:f101::2' )
 
 # Option names.
 OPTION_ADV_ON_LINK = 'adv_on_link'

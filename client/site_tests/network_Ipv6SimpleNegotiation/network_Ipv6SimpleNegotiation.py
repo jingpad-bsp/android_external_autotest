@@ -70,6 +70,22 @@ class network_Ipv6SimpleNegotiation(dhcp_test_base.DhcpTestBase):
                 return parts[1]
 
 
+    def _get_ipconfig_properties(self):
+        for ipconfig in self.get_interface_ipconfig_objects(
+                self.ethernet_pair.peer_interface_name):
+            ipconfig_properties = shill_proxy.ShillProxy.dbus2primitive(
+                    ipconfig.GetProperties(utf8_strings=True))
+            if 'Method' not in ipconfig_properties:
+                continue
+
+            if ipconfig_properties['Method'] != 'ipv6':
+                continue
+
+            return ipconfig_properties
+        else:
+            raise error.TestError('Found no IPv6 IPConfig entries')
+
+
     def negotiate_dhcp_lease(self):
         """Perform a DHCP negotiation.
 
@@ -162,20 +178,7 @@ class network_Ipv6SimpleNegotiation(dhcp_test_base.DhcpTestBase):
         """
         address, prefix_str = address_and_prefix.split('/')
         prefix = int(prefix_str)
-        for ipconfig in self.get_interface_ipconfig_objects(
-                self.ethernet_pair.peer_interface_name):
-            ipconfig_properties = shill_proxy.ShillProxy.dbus2primitive(
-                    ipconfig.GetProperties(utf8_strings=True))
-            if 'Method' not in ipconfig_properties:
-                continue
-
-            if ipconfig_properties['Method'] != 'ipv6':
-                continue
-
-            break
-
-        else:
-            raise error.TestError('Found no IPv6 IPConfig entries')
+        ipconfig_properties = self._get_ipconfig_properties()
 
         for property, value in (('Address', address), ('Prefixlen', prefix)):
             if property not in ipconfig_properties:
@@ -187,6 +190,22 @@ class network_Ipv6SimpleNegotiation(dhcp_test_base.DhcpTestBase):
                                      'instead it is %s' %
                                      (property, value,
                                       ipconfig_properties[property]))
+
+
+    def verify_ipconfig_name_servers(self, name_servers):
+        """Verify that shill has an IPConfig entry with the specified name
+        servers.
+
+        @param name_servers list of expected name servers.
+
+        """
+        ipconfig_properties = self._get_ipconfig_properties()
+
+        if ipconfig_properties['NameServers'] != name_servers:
+            raise error.TestError('IPv6 name servers mismatched: '
+                                  'expected %r actual %r' %
+                                  name_servers,
+                                  ipconfig_properties['NameServers'])
 
 
     def test_body(self):
@@ -202,6 +221,7 @@ class network_Ipv6SimpleNegotiation(dhcp_test_base.DhcpTestBase):
 
             # In this time, we should have also acquired an IPv6 address.
             self.verify_ipv6_addresses()
-
+            self.verify_ipconfig_name_servers(
+                    radvd_server.RADVD_DEFAULT_RDNSS_SERVERS.split(' '))
         finally:
             server.stop_server()
