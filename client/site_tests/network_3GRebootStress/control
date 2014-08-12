@@ -8,6 +8,7 @@ PURPOSE = "Repeatedly reboot modem and ensure it reappears properly"
 CRITERIA = """
 This test will fail if the modem fails to reappear after being rebooted.
 """
+SUITE = "stress"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
