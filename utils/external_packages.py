@@ -1005,9 +1005,22 @@ class ElasticSearchPackage(ExternalPackage):
     version = '1.0.0'
     url_filename = 'elasticsearch-%s.tar.gz' % version
     local_filename = url_filename
-    urls = ('https://pypi.python.org/packages/source/e/elasticsearch/%s' % (
-        url_filename),)
+    urls = ('https://pypi.python.org/packages/source/e/elasticsearch/%s' %
+            (url_filename),)
     hex_sum = 'e53e93eb2729c1dcd1bc3453d22340314027e900'
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+            ExternalPackage._build_and_install_current_dir_setup_py)
+
+
+class Urllib3Package(ExternalPackage):
+    """elasticsearch-py package."""
+    version = '1.9'
+    url_filename = 'urllib3-%s.tar.gz' % version
+    local_filename = url_filename
+    urls = ('https://pypi.python.org/packages/source/u/urllib3/%s' %
+            (url_filename),)
+    hex_sum = '9522197efb2a2b49ce804de3a515f06d97b6602f'
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (
             ExternalPackage._build_and_install_current_dir_setup_py)
