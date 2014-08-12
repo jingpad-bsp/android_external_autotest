@@ -61,7 +61,9 @@ class RGBImageComparer(object):
         hist = diff_image.histogram()
 
         logging.debug("Color counts")
-        logging.debug(diff_image.getcolors())
+        maxcolors = diff_image.size[0] * diff_image.size[1]
+        logging.debug(diff_image.getcolors(maxcolors))
+
         differing_pixels = sum(hist) - hist[0] - hist[256] - hist[512]
 
         return differing_pixels

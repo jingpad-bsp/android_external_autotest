@@ -68,8 +68,6 @@ class Verifier(object):
             with self.image_comparer:
                 diff_pixels = self.image_comparer.compare(g_image, t_image)
 
-            logging.debug("Reference: %s. Test: %s", g_image, t_image)
-
             log_msg = ("Reference: %s. Test: %s. Pixel diff: %d. Thres.: %d" %
                       (g_image, t_image, diff_pixels, self.threshold))
 

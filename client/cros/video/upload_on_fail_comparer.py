@@ -66,6 +66,8 @@ class UploadOnFailComparer(object):
                                                  test_image_path)
         logging.debug('Primary comparison complete. Diff pixels = %d', diffpx)
 
+        diffpx2 = -1
+
         if (diffpx > self.threshold):
             logging.debug('Threshold diff pixels is %d', self.threshold)
             logging.debug('Diff pxls > threshold. Using double check comparer.')
