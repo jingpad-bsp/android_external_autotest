@@ -64,7 +64,7 @@ def lock_history_to_intervals(initial_lock_val, t_start, t_end, lock_history):
 
         # update vars
         t_prev = t_curr
-        state_prev = entry['fields']['status']
+        state_prev = entry['fields']['locked'][0]
     if state_prev:
         locked_intervals.append((t_prev, t_end))
     return locked_intervals
