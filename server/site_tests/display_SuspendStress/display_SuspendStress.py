@@ -24,7 +24,7 @@ class display_SuspendStress(chameleon_test.ChameleonTest):
 
     # TODO: Allow reading testcase_spec from command line.
     def run_once(self, host, test_mirrored=False, testcase_spec=None,
-            repeat_count=16, suspend_time_range=(3,4)):
+            repeat_count=3, suspend_time_range=(1,3)):
         if testcase_spec is None:
             testcase_spec = self.DEFAULT_TESTCASE_SPEC
 
