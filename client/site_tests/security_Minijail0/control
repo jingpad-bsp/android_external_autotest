@@ -12,7 +12,7 @@ PURPOSE = "Regression and integration tests of minijail0."
 CRITERIA = """
 Fail if any of the minijail0 features fail to isolate properly.
 """
-SUITE = "bvt-inline, smoke"
+SUITE = "bvt-inline, bvt, bvt_cq, smoke"
 TEST_CLASS = "security"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"

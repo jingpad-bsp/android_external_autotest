@@ -4,7 +4,7 @@
 
 AUTHOR = 'pstew, wiley, quiche'
 NAME = 'network_VPNConnect.l2tpipsec_xauth'
-SUITE = 'bvt-perbuild'
+SUITE = 'bvt-perbuild, qav'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
 

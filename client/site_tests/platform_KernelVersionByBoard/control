@@ -5,7 +5,7 @@
 AUTHOR = "Chrome OS Team"
 NAME = "platform_KernelVersionByBoard"
 PURPOSE = "Ensure the running kernel is the same as an expected value."
-SUITE = "bvt-perbuild"
+SUITE = "bvt-perbuild, qav"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"

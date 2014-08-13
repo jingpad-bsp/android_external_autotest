@@ -8,7 +8,7 @@ PURPOSE = "Verify that cros-disks d-bus API is running correctly"
 
 CRITERIA = """
 """
-SUITE = "bvt-inline, smoke"
+SUITE = "bvt-inline, bvt, bvt_cq, smoke"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"

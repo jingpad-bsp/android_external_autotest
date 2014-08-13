@@ -1,0 +1,41 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Chrome OS Test chromeos-test-team@"
+NAME = "qav"
+PURPOSE = "Validate quality of build before release."
+TIME = "SHORT"
+TEST_CATEGORY = "General"
+TEST_CLASS = "suite"
+TEST_TYPE = "Server"
+
+DOC = """
+This is the QA Validation suite.
+
+Add tests to this suite that are used to give a signal regarding the quality
+of a feature or area on Chrome OS that should run every build.
+
+These tests are only run on full release builds, not on the commit queue.
+
+@param build: The name of the image to test.
+              Ex: x86-mario-release/R17-1412.33.0-a1-b29
+@param board: The board to test on. Ex: x86-mario
+@param pool: The pool of machines to utilize for scheduling. If pool=None
+             board is used.
+@param check_hosts: require appropriate live hosts to exist in the lab.
+@param SKIP_IMAGE: (optional) If present and True, don't re-image devices.
+"""
+
+import common
+from autotest_lib.server.cros.dynamic_suite import dynamic_suite
+from autotest_lib.server.cros import provision
+
+
+dynamic_suite.reimage_and_run(
+    build=build, board=board, name='qav', job=job, pool=pool,
+    check_hosts=check_hosts, add_experimental=True, num=num,
+    file_bugs=file_bugs, priority=priority, timeout_mins=timeout_mins,
+    max_runtime_mins=120, devserver_url=devserver_url,
+    version_prefix=provision.CROS_VERSION_PREFIX,
+    wait_for_results=wait_for_results, job_retry=job_retry)

@@ -13,7 +13,7 @@ TIME = 'SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = 'platform'
 TEST_TYPE = 'client'
-SUITE = 'bvt-cq'
+SUITE = 'bvt-cq, bvt, bvt_cq'
 DEPENDENCIES = 'cleanup-reboot'
 DOC = """
 Verifies that memory levels look sane.

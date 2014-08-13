@@ -8,7 +8,7 @@ PURPOSE = "Verify that cros-disks can mount supported filesystems correctly"
 
 CRITERIA = """
 """
-SUITE = "bvt-perbuild, regression"
+SUITE = "bvt-perbuild, regression, qav"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
