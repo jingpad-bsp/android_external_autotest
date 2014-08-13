@@ -367,7 +367,7 @@ def take_screen_shot_crop_by_height(fullpath, final_height, x_offset_pixels,
     params = {'height': final_height, 'x_offset': x_offset_pixels,
               'y_offset': y_offset_pixels, 'path': fullpath}
 
-    import_cmd = ('/usr/local/bin/import -window root -depth 8 -colorspace RGB -crop '
+    import_cmd = ('/usr/local/bin/import -window root -depth 8 -crop '
                   'x%(height)d+%(x_offset)d+%(y_offset)d %(path)s' % params)
 
     _execute_screenshot_capture_command(import_cmd)
