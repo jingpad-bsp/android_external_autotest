@@ -140,12 +140,20 @@ class DisplayClient(object):
         self.cleanup()
 
 
-    def get_connector_name(self):
+    def get_external_connector_name(self):
         """Gets the name of the external output connector.
 
         @return The external output connector name as a string.
         """
-        return self._display_xmlrpc_client.get_ext_connector_name()
+        return self._display_xmlrpc_client.get_external_connector_name()
+
+
+    def get_internal_connector_name(self):
+        """Gets the name of the internal output connector.
+
+        @return The internal output connector name as a string.
+        """
+        return self._display_xmlrpc_client.get_internal_connector_name()
 
 
     def load_calibration_image(self, resolution):
@@ -209,7 +217,7 @@ class DisplayClient(object):
         @param expected_display_count:
                 number of displays expected to be connected.
         """
-        output = self.get_connector_name()
+        output = self.get_external_connector_name()
         if reconnect:
             self._display_xmlrpc_client.reconnect_output(output)
         self._display_xmlrpc_client.wait_output_connected(output)
@@ -223,23 +231,59 @@ class DisplayClient(object):
         self._display_xmlrpc_client.press_key('Up')
 
 
+    def _read_root_window_rect(self, w, h, x, y):
+        """Reads the given rectangle from the X root window.
+
+        @param w: The width of the rectangle to read.
+        @param h: The height of the rectangle to read.
+        @param x: The x coordinate.
+        @param y: The y coordinate.
+
+        @return: An Image object.
+        """
+        with tempfile.NamedTemporaryFile(suffix='.rgb') as f:
+            basename = os.path.basename(f.name)
+            remote_path = os.path.join('/tmp', basename)
+            # TODO(waihong): Abstract this X11 specific method.
+            command = ('%s import -window root -depth 8 -crop %dx%d+%d+%d %s' %
+                       (self.X_ENV_VARIABLES, w, h, x, y, remote_path))
+            self._client.run(command)
+            self._client.get_file(remote_path, f.name)
+            return Image.fromstring('RGB', (w, h), open(f.name).read())
+
+
+    def get_internal_display_resolution(self):
+        """Gets the resolution of internal display on framebuffer.
+
+        @return The resolution tuple (width, height). None if any error.
+        """
+        connector = self.get_internal_connector_name()
+        if not connector:
+            return None
+        w, h, _, _ = self._display_xmlrpc_client.get_resolution(connector)
+        return (w, h)
+
+
+    def capture_internal_screen(self):
+        """Captures the internal screen framebuffer.
+
+        @return: An Image object. None if any error.
+        """
+        connector = self.get_internal_connector_name()
+        if not connector:
+            return None
+        return self._read_root_window_rect(
+                *self._display_xmlrpc_client.get_resolution(connector))
+
+
     def capture_external_screen(self):
         """Captures the external screen framebuffer.
 
         @return: An Image object.
         """
-        output = self.get_connector_name()
-        fb_w, fb_h, fb_x, fb_y = (
-                self._display_xmlrpc_client.get_resolution(output))
-        with tempfile.NamedTemporaryFile(suffix='.rgb') as f:
-            basename = os.path.basename(f.name)
-            remote_path = os.path.join('/tmp', basename)
-            command = ('%s import -window root -depth 8 -crop %dx%d+%d+%d %s' %
-                       (self.X_ENV_VARIABLES, fb_w, fb_h, fb_x, fb_y,
-                        remote_path))
-            self._client.run(command)
-            self._client.get_file(remote_path, f.name)
-            return Image.fromstring('RGB', (fb_w, fb_h), open(f.name).read())
+        output = self.get_external_connector_name()
+        w, h, x, y = self._display_xmlrpc_client.get_resolution(output)
+        return self._read_root_window_rect(w, h, x, y)
 
 
     def get_resolution(self):
@@ -247,7 +291,7 @@ class DisplayClient(object):
 
         @return The resolution tuple (width, height)
         """
-        output = self.get_connector_name()
+        output = self.get_external_connector_name()
         width, height, _, _ = self._display_xmlrpc_client.get_resolution(output)
         return (width, height)
 

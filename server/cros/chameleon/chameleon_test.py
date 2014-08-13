@@ -272,7 +272,7 @@ class ChameleonTest(test.test):
             # It will be checked on the matching of the connect names.
             chameleon_port.wait_video_input_stable(
                     self._TIMEOUT_VIDEO_STABLE_PROBE)
-            output = self.display_client.get_connector_name()
+            output = self.display_client.get_external_connector_name()
 
             # TODO(waihong): Make sure eDP work in this way.
             if output and output.startswith(connector_type):
@@ -286,7 +286,7 @@ class ChameleonTest(test.test):
         """Gets the name of the connected display connector of DUT.
 
         @return: A string for the connector name."""
-        connector = self.display_client.get_connector_name()
+        connector = self.display_client.get_external_connector_name()
         logging.info('See the display on DUT: %s', connector)
         return connector
 
@@ -298,7 +298,7 @@ class ChameleonTest(test.test):
                 if no external monitor is expected.
         @raise error.TestFail if the check does not pass.
         """
-        current_connector = self.display_client.get_connector_name()
+        current_connector = self.display_client.get_external_connector_name()
         logging.info('External display connector: %s', current_connector)
         if not current_connector:
             current_connector = None
@@ -324,7 +324,6 @@ class ChameleonTest(test.test):
                 resolution.
         @param under_mirrored_mode: True if don't make fails error on check the
                 resolution between dut and expected.
-
         @return: None if the check passes; otherwise, a string of error message.
         """
         # Verify the actual resolution detected by chameleon and dut
@@ -377,16 +376,13 @@ class ChameleonTest(test.test):
             self.chameleon_port.unplug()
 
 
-    def check_screen_with_chameleon(
-            self, tag, pixel_diff_value_margin=None,
+    def _compare_images(self, tag, image_a, image_b, pixel_diff_value_margin=0,
             total_wrong_pixels_margin=0):
-        """Checks the DUT external screen with Chameleon.
+        """Compares 2 screen image.
 
-        1. Capture the whole screen from the display buffer of Chameleon.
-        2. Capture the framebuffer on DUT.
-        3. Verify that the captured screen match the content of DUT framebuffer.
-
-        @param tag: A string of tag for the prefix of output filenames.
+        @param tag: A string of tag.
+        @param image_a: The first image object for comparing.
+        @param image_b: The second image object for comparing.
         @param pixel_diff_value_margin: The margin for comparing a pixel. Only
                 if a pixel difference exceeds this margin, will treat as a wrong
                 pixel. Sets None means using default value by detecting
@@ -394,61 +390,132 @@ class ChameleonTest(test.test):
         @param total_wrong_pixels_margin: The margin for the number of wrong
                 pixels. If the total number of wrong pixels exceeds this margin,
                 the check fails.
-
         @return: None if the check passes; otherwise, a string of error message.
         """
+
+        # The size property is the resolution of the image.
+        logging.info('Comparing the images of %s...', tag)
+        if image_a.size != image_b.size:
+            message = ('Result of %s: size not match: %r != %r' %
+                       (tag, image_a.size, image_b.size))
+            logging.error(message)
+            return message
+
+        diff_image = ImageChops.difference(image_a, image_b)
+        histogram = diff_image.convert('L').histogram()
+
+        total_wrong_pixels = sum(histogram[pixel_diff_value_margin + 1:])
+        max_diff_value = max(filter(
+                lambda x: histogram[x], xrange(len(histogram))))
+        if total_wrong_pixels > 0:
+            logging.debug('Histogram of difference: %r', histogram)
+            message = ('Result of %s: total %d wrong pixels (diff up to %d)'
+                       % (tag, total_wrong_pixels, max_diff_value))
+            if total_wrong_pixels > total_wrong_pixels_margin:
+                logging.error(message)
+                return message
+
+            message += (', within the acceptable range %d' %
+                        total_wrong_pixels_margin)
+            logging.warning(message)
+        else:
+            logging.info('Result of %s: all pixels match (within +/- %d)',
+                         tag, max_diff_value)
+        return None
+
+
+    def check_screen_with_chameleon(
+            self, tag, pixel_diff_value_margin=None,
+            total_wrong_pixels_margin=0, verify_mirrored=True):
+        """Checks the DUT external screen with Chameleon.
+
+        1. Capture the whole screen from the display buffer of Chameleon.
+        2. Capture the framebuffer on DUT.
+        3. Verify that the captured screen match the content of DUT framebuffer.
+
+        @param tag: A string of tag.
+        @param pixel_diff_value_margin: The margin for comparing a pixel. Only
+                if a pixel difference exceeds this margin, will treat as a wrong
+                pixel. Sets None means using default value by detecting
+                connector type.
+        @param total_wrong_pixels_margin: The margin for the number of wrong
+                pixels. If the total number of wrong pixels exceeds this margin,
+                the check fails.
+        @param verify_mirrored: True if compare the internal screen and
+                the external screen when the resolution matches.
+        @return: None if the check passes; otherwise, a string of error message.
+        """
+
         if pixel_diff_value_margin is None:
             # Tolerate pixel errors differently for VGA.
-            pixel_diff_value_margin = (
-                    self._PIXEL_DIFF_VALUE_MARGIN_FOR_ANALOG_SIGNAL
-                    if self.display_client.get_connector_name() == 'VGA'
-                    else self._PIXEL_DIFF_VALUE_MARGIN_FOR_DIGITAL_SIGNAL)
+            if self.display_client.get_external_connector_name() == 'VGA':
+                pixel_diff_value_margin = (
+                        self._PIXEL_DIFF_VALUE_MARGIN_FOR_ANALOG_SIGNAL)
+            else:
+                pixel_diff_value_margin = (
+                        self._PIXEL_DIFF_VALUE_MARGIN_FOR_DIGITAL_SIGNAL)
 
         logging.info('Capturing framebuffer on Chameleon...')
         chameleon_image = self.chameleon_port.capture_screen()
         if self._unlevel_func:
             chameleon_image = Image.eval(chameleon_image, self._unlevel_func)
-        logging.info('Capturing framebuffer on DUT...')
-        dut_image = self.display_client.capture_external_screen()
 
-        success = False
-        try:
-            # The size property is the resolution of the image.
-            if chameleon_image.size != dut_image.size:
-                message = ('Result of %s: size of screen not match: %r != %r' %
-                        (tag, chameleon_image.size, dut_image.size))
+        logging.info('Capturing framebuffer on external display of DUT...')
+        dut_image_external = self.display_client.capture_external_screen()
+
+        if dut_image_external is None:
+            message = 'Failed to capture the external screen image.'
+            logging.error(message)
+            return message
+
+        if verify_mirrored:
+            internal_resolution = (
+                    self.display_client.get_internal_display_resolution())
+            if 0 in internal_resolution:
+                logging.info('Failed to get the resolution of internal'
+                             ' display: %r, skip the mirroring verify test.',
+                             internal_resolution)
+                verify_mirrored = False
+            elif dut_image_external.size != internal_resolution:
+                logging.info('Size of external and internal screen not match'
+                             ': %r != %r', dut_image_external.size,
+                             internal_resolution)
+                logging.info('In software based mirrored mode, '
+                             'skip the mirroring verify test.')
+                verify_mirrored = False
+
+        if verify_mirrored:
+            logging.info('Capturing framebuffer on internal display of DUT...')
+            dut_image_internal = self.display_client.capture_internal_screen()
+            if dut_image_internal is None or (
+                    dut_image_internal.size != internal_resolution):
+                message = 'Failed to capture the internal screen image.'
                 logging.error(message)
                 return message
 
-            logging.info('Comparing the images...')
-            diff_image = ImageChops.difference(chameleon_image, dut_image)
-            histogram = diff_image.convert('L').histogram()
-            total_wrong_pixels = sum(histogram[pixel_diff_value_margin + 1:])
-
-            if total_wrong_pixels > 0:
-                logging.debug('Histogram of difference: %r', histogram)
-                message = ('Result of %s: total %d wrong pixels' %
-                           (tag, total_wrong_pixels))
-                if total_wrong_pixels > total_wrong_pixels_margin:
-                    logging.error(message)
-                else:
-                    message += (', within the acceptable range %d' %
-                                total_wrong_pixels_margin)
-                    logging.warning(message)
-                    success = True
-                logging.debug('Histogram: %r', histogram)
-            else:
-                max_diff_value = max(filter(
-                        lambda x: histogram[x], xrange(len(histogram))))
-                logging.info('Result of %s: all pixels match (within +/-'
-                        ' %d)', tag, max_diff_value)
-                success = True
+        message = None
+        try:
+            message = self._compare_images(
+                    "%s_C_E" % tag, chameleon_image, dut_image_external,
+                    pixel_diff_value_margin, total_wrong_pixels_margin)
+            if message:
+                return message
+            if verify_mirrored:
+                message = self._compare_images(
+                        "%s_C_I" % tag, chameleon_image, dut_image_internal,
+                        pixel_diff_value_margin, total_wrong_pixels_margin)
+                if message:
+                    return message
         finally:
-            if not success:
-                chameleon_image.save(
-                        os.path.join(self.outputdir, '%s-chameleon.png' % tag))
-                dut_image.save(os.path.join(self.outputdir, '%s-dut.png' % tag))
-        return None if success else message
+            if message is None:
+                return None
+            chameleon_image.save(
+                    os.path.join(self.outputdir, '%s-chameleon.png' % tag))
+            dut_image_external.save(os.path.join(
+                    self.outputdir, '%s-dut-external.png' % tag))
+            if verify_mirrored:
+                dut_image_internal.save(os.path.join(
+                        self.outputdir, '%s-dut-internal.png' % tag))
 
 
     def load_test_image_and_check(self, tag, expected_resolution,
@@ -459,11 +526,9 @@ class ChameleonTest(test.test):
         1. Checks resolution.
         2. Checks screen between Chameleon and DUT.
 
+        @param tag: A string of tag for the prefix of output filenames.
         @param expected_resolution: A tuple (width, height) for the expected
                 resolution.
-        @param under_mirrored_mode: True if don't make fails error on check the
-                resolution between dut and expected.
-        @param tag: A string of tag for the prefix of output filenames.
         @param pixel_diff_value_margin: The margin for comparing a pixel. Only
                 if a pixel difference exceeds this margin, will treat as a wrong
                 pixel. Sets None means using default value by detecting
@@ -471,18 +536,16 @@ class ChameleonTest(test.test):
         @param total_wrong_pixels_margin: The margin for the number of wrong
                 pixels. If the total number of wrong pixels exceeds this margin,
                 the check fails.
-        @param expected_connector: None or False if there is no expected
-                connector. True for checks it exists. A string for connector
-                name for checks it exists and match the actually connector.
+        @param under_mirrored_mode: True if don't make fails error on check the
+                resolution between dut and expected. It will also compare the
+                internal screen and the external screen.
         @param error_list: A list to append the error message to or None.
         @return: None if the check passes; otherwise, a string of error message.
         """
-        # TODO(tingyuan): If under_mirrored_mode, check whether keep mirrored.
         # TODO(tingyuan): Check test_image is keeping full-screen.
 
         error_message = self.check_screen_resolution(
-                expected_resolution, tag = tag,
-                under_mirrored_mode = under_mirrored_mode)
+                expected_resolution, tag, under_mirrored_mode)
         if error_message:
             if error_list is not None:
                 error_list.append(error_message)
@@ -493,7 +556,8 @@ class ChameleonTest(test.test):
         try:
             self.load_test_image(dut_resolution)
             error_message = self.check_screen_with_chameleon(
-                    tag, pixel_diff_value_margin, total_wrong_pixels_margin)
+                    tag, pixel_diff_value_margin, total_wrong_pixels_margin,
+                    under_mirrored_mode)
             if error_message:
                 if error_list is not None:
                     error_list.append(error_message)
