@@ -19,6 +19,7 @@ SUBNET_DUT_SEARCH_RE = (
         r'/?.*\((?P<ip>192.168.231.*)\) at '
         '(?P<mac>[0-9a-fA-F][0-9a-fA-F]:){5}([0-9a-fA-F][0-9a-fA-F])')
 MOBLAB_IMAGE_STORAGE = '/mnt/moblab/static'
+MOBLAB_BOTO_LOCATION = '/home/moblab/.boto'
 
 
 class MoblabHost(cros_host.CrosHost):

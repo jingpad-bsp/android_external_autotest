@@ -1,4 +1,4 @@
-import httplib2, sys, traceback, cgi
+import httplib2, os, sys, traceback, cgi
 
 from django.http import HttpResponse, HttpResponsePermanentRedirect
 from django.http import HttpResponseServerError
@@ -62,3 +62,25 @@ def handler500(request):
         'traceback': cgi.escape(trace)
     })
     return HttpResponseServerError(t.render(context))
+
+
+def handle_file_upload(request):
+    """Handler for uploading files.
+
+    Saves the files to /tmp and returns the resulting paths on disk.
+
+    @param request: request containing the file data.
+
+    @returns HttpResponse: with the paths of the saved files.
+    """
+    if request.method == 'POST':
+        TEMPT_DIR = '/tmp/'
+        file_paths = []
+        for file_name, upload_file in request.FILES.iteritems():
+            file_path = os.path.join(
+                    TEMPT_DIR, '_'.join([file_name, upload_file.name]))
+            with open(file_path, 'wb+') as destination:
+                for chunk in upload_file.chunks():
+                    destination.write(chunk)
+            file_paths.append(file_path)
+        return HttpResponse(rpc_utils.prepare_for_serialization(file_paths))

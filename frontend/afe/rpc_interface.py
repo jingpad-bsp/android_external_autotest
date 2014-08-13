@@ -38,6 +38,7 @@ from autotest_lib.frontend.afe import models, model_logic, model_attributes
 from autotest_lib.frontend.afe import control_file, rpc_utils
 from autotest_lib.frontend.afe import site_rpc_interface
 from autotest_lib.frontend.tko import rpc_interface as tko_rpc_interface
+from autotest_lib.server import utils
 from autotest_lib.server.cros.dynamic_suite import tools
 
 def get_parameterized_autoupdate_image_url(job):
@@ -1019,6 +1020,7 @@ def get_static_data():
                                    "Resetting": "Resetting hosts"}
 
     result['wmatrix_url'] = rpc_utils.get_wmatrix_url()
+    result['is_moblab'] = bool(utils.is_moblab())
 
     return result
 

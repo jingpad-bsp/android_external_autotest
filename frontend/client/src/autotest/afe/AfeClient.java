@@ -65,6 +65,11 @@ public class AfeClient implements EntryPoint {
                 "href", wmatrixUrl);
             Document.get().getElementById("wmatrix").removeClassName("hidden");
         }
+        boolean is_moblab = StaticDataRepository.getRepository().getData(
+            "is_moblab").isBoolean().booleanValue();
+        if (is_moblab) {
+            Document.get().getElementById("moblab_setup").removeClassName("hidden");
+        }
 
         jobList = new JobListView(new JobSelectListener() {
             public void onJobSelected(int jobId) {

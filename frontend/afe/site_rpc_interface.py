@@ -9,8 +9,12 @@ __author__ = 'cmasone@chromium.org (Chris Masone)'
 import common
 import datetime
 import logging
+import os
+import shutil
+import utils
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server import utils
@@ -18,6 +22,11 @@ from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.server.cros.dynamic_suite import tools
+from autotest_lib.server.hosts import moblab_host
+
+
+_CONFIG = global_config.global_config
+MOBLAB_BOTO_LOCATION = '/home/moblab/.boto'
 
 
 # Relevant CrosDynamicSuiteExceptions are defined in client/common_lib/error.py.
@@ -191,3 +200,66 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
                                           control_file=control_file,
                                           hostless=True,
                                           keyvals=timings)
+
+
+# TODO: hide the following rpcs under is_moblab
+def moblab_only(func):
+    """Ensure moblab specific functions only run on Moblab devices."""
+    def verify(*args, **kwargs):
+        if not utils.is_moblab():
+            raise error.RPCException('RPC: %s can only run on Moblab Systems!',
+                                     func.__name__)
+        return func(*args, **kwargs)
+    return verify
+
+
+@moblab_only
+def get_config_values():
+    """Returns all config values parsed from global and shadow configs.
+
+    Config values are grouped by sections, and each section is composed of
+    a list of name value pairs.
+    """
+    sections =_CONFIG.get_sections()
+    config_values = {}
+    for section in sections:
+        config_values[section] = _CONFIG.config.items(section)
+    return _rpc_utils().prepare_for_serialization(config_values)
+
+
+@moblab_only
+def update_config_handler(config_values):
+    """
+    Update config values and override shadow config.
+
+    @param config_values: See get_moblab_settings().
+    """
+    for section, config_value_list in config_values.iteritems():
+        for key, value in config_value_list:
+            _CONFIG.override_config_value(section, key, value)
+    if not _CONFIG.shadow_file or not os.path.exists(_CONFIG.shadow_file):
+        raise error.RPCException('Shadow config file does not exist.')
+
+    with open(_CONFIG.shadow_file, 'w') as config_file:
+        _CONFIG.config.write(config_file)
+    # TODO (sbasi) crbug.com/403916 - Remove the reboot command and
+    # instead restart the services that rely on the config values.
+    os.system('sudo reboot')
+
+
+@moblab_only
+def reset_config_settings():
+    with open(_CONFIG.shadow_file, 'w') as config_file:
+      pass
+    os.system('sudo reboot')
+
+
+@moblab_only
+def set_boto_key(boto_key):
+    """Update the boto_key file.
+
+    @param boto_key: File name of boto_key uploaded through handle_file_upload.
+    """
+    if not os.path.exists(boto_key):
+        raise error.RPCException('Boto key: %s does not exist!' % boto_key)
+    shutil.copyfile(boto_key, moblab_host.MOBLAB_BOTO_LOCATION)

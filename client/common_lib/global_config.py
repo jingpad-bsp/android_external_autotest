@@ -202,6 +202,12 @@ class global_config(object):
             raise ConfigValueError(msg)
 
 
+    def get_sections(self):
+        """Return a list of sections available."""
+        self._ensure_config_parsed()
+        return self.config.sections()
+
+
 # insure the class is a singleton.  Now the symbol global_config
 # will point to the one and only one instace of the class
 global_config = global_config()

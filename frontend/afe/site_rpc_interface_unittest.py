@@ -7,15 +7,20 @@
 """Unit tests for frontend/afe/site_rpc_interface.py."""
 
 
+import __builtin__
+import ConfigParser
 import mox
+import StringIO
 import unittest
 
 import common
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.frontend.afe import site_rpc_interface
+from autotest_lib.server import utils
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import constants
 
@@ -266,6 +271,113 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
                                                 control_file='CONTROL FILE'),
             job_id)
 
+
+    def setIsMoblab(self, is_moblab):
+        """Set utils.is_moblab result.
+
+        @param is_moblab: Value to have utils.is_moblab to return.
+        """
+        self.mox.StubOutWithMock(utils, 'is_moblab')
+        utils.is_moblab().AndReturn(is_moblab)
+
+
+    def testMoblabOnlyDecorator(self):
+        """Ensure the moblab only decorator gates functions properly."""
+        self.setIsMoblab(False)
+        self.mox.ReplayAll()
+        self.assertRaises(error.RPCException,
+                          site_rpc_interface.get_config_values)
+
+
+    def testGetConfigValues(self):
+        """Ensure that the config object is properly converted to a dict."""
+        self.setIsMoblab(True)
+        config_mock = self.mox.CreateMockAnything()
+        site_rpc_interface._CONFIG = config_mock
+        config_mock.get_sections().AndReturn(['section1', 'section2'])
+        config_mock.config = self.mox.CreateMockAnything()
+        config_mock.config.items('section1').AndReturn([('item1', 'value1'),
+                                                        ('item2', 'value2')])
+        config_mock.config.items('section2').AndReturn([('item3', 'value3'),
+                                                        ('item4', 'value4')])
+
+        r = self.mox.CreateMock(SiteRpcInterfaceTest.rpc_utils)
+        r = mox.MockAnything()
+        r.prepare_for_serialization({'section1' : [('item1', 'value1'),
+                                                   ('item2', 'value2')],
+                                     'section2' : [('item3', 'value3'),
+                                                   ('item4', 'value4')]})
+        self.mox.StubOutWithMock(site_rpc_interface, '_rpc_utils')
+        site_rpc_interface._rpc_utils().AndReturn(r)
+        self.mox.ReplayAll()
+        site_rpc_interface.get_config_values()
+
+
+    def testUpdateConfig(self):
+        """Ensure that updating the config works as expected."""
+        self.setIsMoblab(True)
+        # Reset the config.
+        site_rpc_interface._CONFIG = global_config.global_config
+        site_rpc_interface._CONFIG.shadow_file = 'fake_shadow'
+        site_rpc_interface._CONFIG.config = ConfigParser.ConfigParser()
+        site_rpc_interface._CONFIG.config.add_section('section1')
+        site_rpc_interface._CONFIG.config.add_section('section2')
+        site_rpc_interface.os = self.mox.CreateMockAnything()
+        site_rpc_interface.os.path = self.mox.CreateMockAnything()
+        site_rpc_interface.os.path.exists(
+                site_rpc_interface._CONFIG.shadow_file).AndReturn(
+                True)
+
+        self.mox.StubOutWithMock(__builtin__, 'open')
+        mockFile = self.mox.CreateMockAnything()
+        file_contents = StringIO.StringIO()
+        mockFile.__enter__().AndReturn(file_contents)
+        mockFile.__exit__(mox.IgnoreArg(), mox.IgnoreArg(), mox.IgnoreArg())
+        open(site_rpc_interface._CONFIG.shadow_file, 'w').AndReturn(mockFile)
+
+        site_rpc_interface.os.system('sudo reboot')
+        self.mox.ReplayAll()
+        site_rpc_interface.update_config_handler(
+                {'section1' : [('item1', 'value1'),
+                               ('item2', 'value2')],
+                 'section2' : [('item3', 'value3'),
+                               ('item4', 'value4')]})
+        self.assertEquals(
+                file_contents.getvalue(),
+                '[section1]\nitem1 = value1\nitem2 = value2\n\n'
+                '[section2]\nitem3 = value3\nitem4 = value4\n\n')
+
+
+    def testResetConfig(self):
+        """Ensure that reset opens the shadow_config file for writing."""
+        self.setIsMoblab(True)
+        config_mock = self.mox.CreateMockAnything()
+        site_rpc_interface._CONFIG = config_mock
+        config_mock.shadow_file = 'shadow_config.ini'
+        self.mox.StubOutWithMock(__builtin__, 'open')
+        mockFile = self.mox.CreateMockAnything()
+        file_contents = self.mox.CreateMockAnything()
+        mockFile.__enter__().AndReturn(file_contents)
+        mockFile.__exit__(mox.IgnoreArg(), mox.IgnoreArg(), mox.IgnoreArg())
+        open(config_mock.shadow_file, 'w').AndReturn(mockFile)
+        site_rpc_interface.os = self.mox.CreateMockAnything()
+        site_rpc_interface.os.system('sudo reboot')
+        self.mox.ReplayAll()
+        site_rpc_interface.reset_config_settings()
+
+
+    def testSetBotoKey(self):
+        """Ensure that the botokey path supplied is copied correctly."""
+        self.setIsMoblab(True)
+        boto_key = '/tmp/boto'
+        site_rpc_interface.os.path = self.mox.CreateMockAnything()
+        site_rpc_interface.os.path.exists(boto_key).AndReturn(
+                True)
+        site_rpc_interface.shutil = self.mox.CreateMockAnything()
+        site_rpc_interface.shutil.copyfile(
+                boto_key, site_rpc_interface.MOBLAB_BOTO_LOCATION)
+        self.mox.ReplayAll()
+        site_rpc_interface.set_boto_key(boto_key)
 
 
 if __name__ == '__main__':

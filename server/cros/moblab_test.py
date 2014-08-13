@@ -12,7 +12,6 @@ from autotest_lib.server.hosts import moblab_host
 
 DEFAULT_IMAGE_STORAGE_SERVER = global_config.global_config.get_config_value(
         'CROS', 'image_storage_server')
-MOBLAB_BOTO_FILE_DEST = '/home/moblab/.boto'
 STORAGE_SERVER_REGEX = 'gs://.*/'
 
 
@@ -52,8 +51,9 @@ class MoblabTest(test.test):
             boto_path = os.path.join(os.getenv('HOME'), '.boto')
         if not os.path.exists(boto_path):
             raise error.TestError('Boto File:%s does not exist.' % boto_path)
-        self._host.send_file(boto_path, MOBLAB_BOTO_FILE_DEST)
-        self._host.run('chown moblab:moblab %s' % MOBLAB_BOTO_FILE_DEST)
+        self._host.send_file(boto_path, moblab_host.MOBLAB_BOTO_LOCATION)
+        self._host.run('chown moblab:moblab %s' %
+                       moblab_host.MOBLAB_BOTO_LOCATION)
 
 
     def set_image_storage_server(self, image_storage_server):

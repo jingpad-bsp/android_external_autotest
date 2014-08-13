@@ -62,6 +62,10 @@ resource_patterns = defaults.patterns(
 urlpatterns += defaults.patterns(
         '', (r'^resources/', defaults.include(resource_patterns)))
 
+# File upload
+urlpatterns += defaults.patterns(
+        '', (r'^upload/', 'frontend.afe.views.handle_file_upload'))
+
 # Job feeds
 debug_patterns += defaults.patterns(
         '',
