@@ -4,6 +4,11 @@
 
 TIME='MEDIUM'
 AUTHOR = 'Chromium OS'
+BUG_TEMPLATE = {
+    'cc': ['chromeos-installer-alerts@google.com'],
+    'labels': ['Cr-Internals-Installer'],
+}
+
 DOC = """
 Client-side mechanism to update a DUT with a given image. It is used
 in server-side tests such as server/autoupdate_CatchBadSignatures.

@@ -5,6 +5,7 @@
 TIME='FAST'
 AUTHOR = 'deymo,zeuthen,chromeos-installer'
 BUG_TEMPLATE = {
+    'cc': ['chromeos-installer-alerts@google.com'],
     'labels': ['Cr-Internals-Installer'],
 }
 
