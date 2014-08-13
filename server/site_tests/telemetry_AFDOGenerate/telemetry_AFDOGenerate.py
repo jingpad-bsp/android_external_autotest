@@ -50,7 +50,8 @@ TELEMETRY_AFDO_BENCHMARKS = [
 
 
 # List of boards where this test can be run.
-VALID_BOARDS = ['lumpy', 'parrot']
+# Currently, this has only been tested on 'sandybridge' boards.
+VALID_BOARDS = ['butterfly', 'lumpy', 'parrot', 'stumpy']
 
 class telemetry_AFDOGenerate(test.test):
     """
