@@ -186,6 +186,7 @@ class RDBClientHostWrapper(RDBHost):
         self.update_request_manager = rdb_requests.RDBRequestManager(
                 rdb_requests.UpdateHostRequest, rdb.update_hosts)
         self.dbg_str = ''
+        self.metadata = {}
 
 
     def _update(self, payload):
@@ -218,9 +219,9 @@ class RDBClientHostWrapper(RDBHost):
         metadata = {
             'time_recorded': time.time(),
              state: value,
-            'dbg_str': self.dbg_str,
             'hostname': self.hostname,
         }
+        metadata.update(self.metadata)
         es_utils.ESMetadata().post(type_str=type_str, metadata=metadata)
 
 

@@ -91,8 +91,10 @@ def find_most_recent_entry_before(t, type_str, hostname, fields, index):
             query, index,
             es_utils.METADATA_ES_SERVER, es_utils.ES_PORT)
     if result['hits']['total'] > 0:
-        res_fields = result['hits']['hits'][0]['fields']
-        return res_fields
+        # If fields are not specified, the query returns all data for the
+        # record under key "_source"
+        key = 'fields' if fields else '_source'
+        return es_utils.convert_hit(result['hits']['hits'][0][key])
     return {}
 
 
@@ -114,14 +116,15 @@ def host_history_intervals(t_start, t_end, hostname, size, index):
             t=t_start, type_str='lock_history', hostname=hostname,
             fields=['time_recorded', 'locked'], index=index)
     # I use [0] and [None] because lock_history_recent's type is list.
-    t_lock = lock_history_recent.get('time_recorded', [None])[0]
-    t_lock_val = lock_history_recent.get('locked', [None])[0]
+    t_lock = lock_history_recent.get('time_recorded', None)
+    t_lock_val = lock_history_recent.get('locked', None)
     host_history_recent = find_most_recent_entry_before(
             t=t_start, type_str='host_history', hostname=hostname,
-            fields=['time_recorded', 'status', 'dbg_str'], index=index)
-    t_host = host_history_recent.get('time_recorded', [None])[0]
-    t_host_stat = host_history_recent.get('status', [None])[0]
-    t_dbg_str = host_history_recent.get('dbg_str', [''])[0]
+            fields=None, index=index)
+    t_host = host_history_recent.get('time_recorded', None)
+    t_host_stat = host_history_recent.get('status', None)
+    t_metadata = es_utils.get_metadata(host_history_recent,
+                                       ['time_recorded', 'status'])
 
     status_first = t_host_stat if t_host else 'Ready'
     t = min([t for t in [t_lock, t_host, t_start] if t])
@@ -141,7 +144,7 @@ def host_history_intervals(t_start, t_end, hostname, size, index):
     locked_intervals = lock_history_to_intervals(t_lock_val, t, t_end,
                                                  lock_history_entries)
     query_host_history = es_utils.create_range_eq_query_multiple(
-            fields_returned=["hostname", "time_recorded", "dbg_str", "status"],
+            fields_returned=None,
             equality_constraints=[("_type", "host_history"),
                                   ("hostname", hostname)],
             range_constraints=[("time_recorded", t_start, t_end)],
@@ -153,23 +156,24 @@ def host_history_intervals(t_start, t_end, hostname, size, index):
     num_entries_found = host_history_entries['hits']['total']
     t_prev = t_start
     status_prev = status_first
-    dbg_prev = t_dbg_str
+    metadata_prev = t_metadata
     intervals_of_statuses = collections.OrderedDict()
 
     for entry in host_history_entries['hits']['hits']:
-        t_curr = entry['fields']['time_recorded'][0]
-        status_curr = entry['fields']['status'][0]
-        dbg_str = entry['fields']['dbg_str'][0]
-        intervals_of_statuses.update(calculate_all_status_times(
-                t_prev, t_curr, status_prev, dbg_prev, locked_intervals))
+        t_curr = entry['_source']['time_recorded']
+        status_curr = entry['_source']['status']
+        metadata = es_utils.get_metadata(entry['_source'],
+                                         ['time_recorded', 'status'])
+        intervals_of_statuses.update(calculate_status_times(
+                t_prev, t_curr, status_prev, metadata_prev, locked_intervals))
         # Update vars
         t_prev = t_curr
         status_prev = status_curr
-        dbg_prev = dbg_str
+        metadata_prev = metadata
 
     # Do final as well.
-    intervals_of_statuses.update(calculate_all_status_times(
-            t_prev, t_end, status_prev, dbg_prev, locked_intervals))
+    intervals_of_statuses.update(calculate_status_times(
+            t_prev, t_end, status_prev, metadata_prev, locked_intervals))
     return intervals_of_statuses, num_entries_found
 
 
@@ -191,8 +195,7 @@ def aggregate_multiple_hosts(intervals_of_statuses_list):
     """Aggregates history of multiple hosts
 
     @param intervals_of_statuses_list: A list of dictionaries where keys
-        are tuple (ti, tf), and value is the status along with debug string
-        (if applicable) Note: dbg_str is '' if status is locked.
+        are tuple (ti, tf), and value is the status along with other metadata.
     @returns: A dictionary where keys are strings, e.g. 'status' and
               value is total time spent in that status among all hosts.
     """
@@ -241,8 +244,8 @@ def get_overall_report(label, t_start, t_end, intervals_of_statuses_list):
     @param t_start: beginning of time period we are interested in.
     @param t_end: end of time period we are interested in.
     @param intervals_of_statuses_list: A list of dictionaries where keys
-        are tuple (ti, tf), and value is the status along with debug string
-        (if applicable) Note: dbg_str is '' if status is locked.
+        are tuple (ti, tf), and value is the status along with other metadata,
+        e.g., task_id, task_name, job_id etc.
     """
     stats_all, num_hosts = aggregate_multiple_hosts(
             intervals_of_statuses_list)
@@ -279,8 +282,7 @@ def get_stats_string(t_start, t_end, total_times, intervals_of_statuses,
     @param total_times: dictionary where key=status,
                         value=(time spent in that status)
     @param intervals_of_statuses: dictionary where keys is tuple (ti, tf),
-              and value is the status along with debug string (if applicable)
-              Note: dbg_str is '' if status is locked.
+              and value is the status along with other metadata.
     @param hostname: hostname for the host we are interested in (string)
     @param num_entries_found: Number of entries found for the host in es
     @param print_each_interval: boolean, whether to print each interval
@@ -310,70 +312,68 @@ def get_stats_string(t_start, t_end, total_times, intervals_of_statuses,
     return result
 
 
-def calculate_all_status_times(ti, tf, int_status, dbg_str, locked_intervals):
+def calculate_status_times(t_start, t_end, int_status, metadata,
+                           locked_intervals):
     """Returns a list of intervals along w/ statuses associated with them.
 
-    @param ti: start time
-    @param tf: end time
-    @param int_status: status of [ti, tf] if not locked
-    @param dbg_str: dbg_str to pass in
-    @param locked_intervals: list of utples denoting intervals of locked states
+    @param t_start: start time
+    @param t_end: end time
+    @param int_status: status of [t_start, t_end] if not locked
+    @param metadata: metadata of the status change, e.g., task_id, task_name.
+    @param locked_intervals: list of tuples denoting intervals of locked states
     @returns: dictionary where key = (t_interval_start, t_interval_end),
-                               val = (status, dbg_str)
+                               val = (status, metadata)
               t_interval_start: beginning of interval for that status
               t_interval_end: end of the interval for that status
               status: string such as 'Repair Failed', 'Locked', etc.
-              dbg_str: '' if status is 'Locked', otherwise it will
-                       be something like: (String)
-                       Task: Special Task 18858263 (host 172.22.169.106,
-                                                    task Repair,
-                                                    time 2014-07-27 20:01:15)
+              metadata: A dictionary of metadata, e.g.,
+                              {'task_id':123, 'task_name':'Reset'}
     """
     statuses = collections.OrderedDict()
 
-    prev_interval_end = ti
+    prev_interval_end = t_start
 
     # TODO: Put allow more information here in info/locked status
     status_info = {'status': int_status,
-                   'dbg_str': dbg_str}
+                   'metadata': metadata}
     locked_info = {'status': 'Locked',
-                   'dbg_str': ''}
+                   'metadata': {}}
     if not locked_intervals:
-        statuses[(ti, tf)] = status_info
+        statuses[(t_start, t_end)] = status_info
         return statuses
     for lock_start, lock_end in locked_intervals:
-        if lock_start > tf:
+        if lock_start > t_end:
             # optimization to break early
             # case 0
-            # ti    tf
-            #           ls le
+            # Timeline of status change: t_start t_end
+            # Timeline of lock action:                   lock_start lock_end
             break
-        elif lock_end < ti:
+        elif lock_end < t_start:
             # case 1
-            #       ti    tf
-            # ls le
+            #                      t_start    t_end
+            # lock_start lock_end
             continue
-        elif lock_end < tf and lock_start > ti:
+        elif lock_end < t_end and lock_start > t_start:
             # case 2
-            # ti         tf
-            #    ls   le
+            # t_start                       t_end
+            #          lock_start lock_end
             statuses[(prev_interval_end, lock_start)] = status_info
             statuses[(lock_start, lock_end)] = locked_info
-        elif lock_end > ti and lock_start < ti:
+        elif lock_end > t_start and lock_start < t_start:
             # case 3
-            #   ti         tf
-            # ls   le
-            statuses[(ti, lock_end)] = locked_info
-        elif lock_start < tf and lock_end > tf:
+            #             t_start          t_end
+            # lock_start          lock_end
+            statuses[(t_start, lock_end)] = locked_info
+        elif lock_start < t_end and lock_end > t_end:
             # case 4
-            # ti        tf
-            #       ls      le
+            # t_start             t_end
+            #          lock_start        lock_end
             statuses[(prev_interval_end, lock_start)] = status_info
-            statuses[(lock_start, tf)] = locked_info
+            statuses[(lock_start, t_end)] = locked_info
         prev_interval_end = lock_end
-        # Otherwise we are in the case where lock_end < ti OR lock_start > tf,
-        #  which means the lock doesn't apply.
-    if tf > prev_interval_end:
+        # Otherwise we are in the case where lock_end < t_start OR
+        # lock_start > t_end, which means the lock doesn't apply.
+    if t_end > prev_interval_end:
         # This is to avoid logging the same time
-        statuses[(prev_interval_end, tf)] = status_info
+        statuses[(prev_interval_end, t_end)] = status_info
     return statuses

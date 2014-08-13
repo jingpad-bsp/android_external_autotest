@@ -285,17 +285,19 @@ def create_range_eq_query_multiple(fields_returned,
     # Creates the list of term dictionaries to put in the 'should' list.
     eq_list = [{'term': {k: v}} for k, v in equality_constraints if k]
     num_constraints = len(equality_constraints) + len(range_constraints)
-    return {
-        'fields': fields_returned,
-        'query': {
-            'bool': {
-                'should': eq_list + range_list,
-                'minimum_should_match': num_constraints,
+    query = {
+             'query': {
+                       'bool': {
+                                'should': eq_list + range_list,
+                                'minimum_should_match': num_constraints,
+                               }
+                      },
+             'size': size,
+             'sort': sort_specs if sort_specs else [],
             }
-        },
-        'size': size,
-        'sort': sort_specs if sort_specs else [],
-    }
+    if fields_returned:
+        query['fields'] = fields_returned
+    return query
 
 
 def _to_epoch_time(value):
@@ -382,3 +384,47 @@ def execute_query(query, index, host, port, timeout=3):
     if not es.indices.exists(index=index):
         return None
     return es.search(index=index, body=query)
+
+
+def convert_hit(hit):
+    """Convert ES query hits _source value to fields data.
+
+    When query ES without specifying fields value, the return hits retrieve all
+    data of the record and stores under `_source` key. Following is an example
+    of the _source value:
+    {'hostname': 'dut1', 'time_recorded': 17820784, 'status': 'Ready'}
+    On the other hand, if a query specifies fields value, the return hits
+    retrieve data only for given fields, for example:
+    {'hostname': ['dut1'], 'time_recorded': [17820784], 'status': ['Ready']}
+    Note that, althought the result look the same, the second case has value
+    stored in a list. To make the data consistent and easy to process, this
+    function convert the list value to a single data if applicable.
+
+    @param hit: ES query hit.
+    @return: A dictionary of cleaned up key, values.
+    """
+    if not hit:
+        return None
+    cleaned_data = {}
+    for field,value in hit.items():
+        cleaned_data[field] = value[0] if isinstance(value, list) else value
+    return cleaned_data
+
+
+def get_metadata(record, excluded_fields):
+    """Get the metadata from an ES record excluding a given list of fields.
+
+    @param record: A dictionary from ES query result, e.g.,
+                   {'hostname': ['123.3.4.5'],
+                    'time_recorded': [1782038784],
+                    'status': ['Repairing'],
+                    'task_id': [4574],
+                    'task_name': ['Repair']}
+    @param excluded_fields: A list of fields to be excluded from the record.
+    @returns: A dictionary of ES query result excluding a given list of fields.
+    """
+    result = {}
+    including_fields = set(record.keys()) - set(excluded_fields)
+    for field in including_fields:
+        result[field] = record[field]
+    return result

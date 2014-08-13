@@ -523,6 +523,30 @@ class SpecialAgentTask(AgentTask, TaskWithJobKeyvals):
 
         self.task = task
         self._extra_command_args = extra_command_args
+        self.host.metadata = self.get_metadata()
+
+
+    def get_metadata(self):
+        """Get a dictionary that contains task information.
+
+        The return value is a dictionary that includes task information like id,
+        name and related job information. The value will be stored in metadata
+        database.
+        @return: A dictionary containing the task id, name and related job id.
+                 If some attributes are failed to be accessed, an empty
+                 dictionary will be returned, and error will be logged.
+        """
+        try:
+            metadata = {'task_id':self.task.id, 'task_name':self.task.task,
+                        'hostname':self.task.host.hostname}
+            if self.task.queue_entry:
+                job = self.task.queue_entry.job
+                metadata.update(
+                        scheduler_models.get_job_metadata(job))
+            return metadata
+        except AttributeError as e:
+            logging.error('Task has missing attribute: %s', e)
+            return {}
 
 
     def _keyval_path(self):

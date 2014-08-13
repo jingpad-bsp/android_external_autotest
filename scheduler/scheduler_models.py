@@ -75,6 +75,29 @@ def initialize_globals():
     _drone_manager = drone_manager.instance()
 
 
+def get_job_metadata(job):
+    """Get a dictionary of the job information.
+
+    The return value is a dictionary that includes job information like id,
+    name and parent job information. The value will be stored in metadata
+    database.
+
+    @param job: A Job object.
+    @return: A dictionary containing the job id, owner and name.
+    """
+    if not job:
+        logging.error('Job is None, no metadata returned.')
+        return {}
+    try:
+        return {'job_id': job.id,
+                'owner': job.owner,
+                'job_name': job.name,
+                'parent_job_id': job.parent_job_id}
+    except AttributeError as e:
+        logging.error('Job has missing attribute: %s', e)
+        return {}
+
+
 class DelayedCallTask(object):
     """
     A task object like AgentTask for an Agent to run that waits for the
@@ -454,6 +477,7 @@ class HostQueueEntry(DBObject):
         if self.host_id:
             self.host = rdb_lib.get_hosts([self.host_id])[0]
             self.host.dbg_str = self.get_dbg_str()
+            self.host.metadata = get_job_metadata(self.job)
         else:
             self.host = None
 
