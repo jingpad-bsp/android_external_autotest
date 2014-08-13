@@ -133,12 +133,29 @@ class DisplayTestingXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             tab.Navigate('chrome://settings-frame/display')
             tab.Activate()
             self._wait_for_display_options_to_appear(tab, display_index)
+
             tab.ExecuteJavaScript(
-                    "chrome.send('setResolution',["
-                    "   options.DisplayOptions.instance_"
-                    "       .displays_[%(index)d].id, %(width)d, %(height)d]);"
+                    # Previous version before CR:417113012 (targeted for M38)
+                    #"chrome.send('setResolution',["
+                    #"   options.DisplayOptions.instance_"
+                    #"       .displays_[%(index)d].id, %(width)d, %(height)d]);"
+
+                    "for (resolution_index in options.DisplayOptions"
+                    "        .instance_.displays_[%(index)d].resolutions) {"
+                    "    var resolution = options.DisplayOptions"
+                    "            .instance_.displays_[%(index)d].resolutions["
+                    "                    resolution_index];"
+                    "    if (resolution.originalWidth == %(width)d &&"
+                    "            resolution.originalHeight == %(height)d) {"
+                    "        chrome.send('setDisplayMode', ["
+                    "            options.DisplayOptions.instance_"
+                    "                .displays_[%(index)d].id, resolution]);"
+                    "        break;"
+                    "    }"
+                    "}"
                     % {'index': display_index, 'width': width, 'height': height}
             )
+
             # TODO(tingyuan):
             # Support for multiple external monitors (i.e. for chromebox)
 
@@ -149,7 +166,7 @@ class DisplayTestingXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
                     return True
                 time.sleep(0.1)
             raise TimeoutException("Failed to change resolution to %r (%r"
-                    " detected)", ((width, height), r))
+                    " detected)" % ((width, height), r))
         finally:
             tab.Close()
 
