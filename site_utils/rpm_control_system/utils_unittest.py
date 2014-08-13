@@ -73,5 +73,32 @@ class TestUtils(mox.MoxTestBase):
         self._reload_helper(False)
 
 
+    def  test_LRU_cache(self):
+        """Test LRUCache."""
+        p1 = utils.PowerUnitInfo(
+                'host1', utils.PowerUnitInfo.POWERUNIT_TYPES.RPM,
+                'rpm1', 'hydra1')
+        p2 = utils.PowerUnitInfo(
+                'host2', utils.PowerUnitInfo.POWERUNIT_TYPES.RPM,
+                'rpm2', 'hydra2')
+        p3 = utils.PowerUnitInfo(
+                'host3', utils.PowerUnitInfo.POWERUNIT_TYPES.RPM,
+                'rpm3', 'hydra3')
+        # Initialize an LRU with size 2.
+        cache = utils.LRUCache(2)
+        # Add two items, LRU should be full now
+        cache['host1'] = p1
+        cache['host2'] = p2
+        self.assertEqual(len(cache.cache), 2)
+        # Visit host2 and add one more item
+        # host1 should be removed from cache
+        _ = cache['host2']
+        cache['host3'] = p3
+        self.assertEqual(len(cache.cache), 2)
+        self.assertTrue('host1' not in cache)
+        self.assertTrue('host2' in cache)
+        self.assertTrue('host3' in cache)
+
+
 if __name__ == '__main__':
     unittest.main()
