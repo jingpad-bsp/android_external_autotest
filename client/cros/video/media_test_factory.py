@@ -166,10 +166,13 @@ class MediaTestFactory(object):
         self.capture_sequence_style = self.parser.get(section,
                                                       'capture_sequence_style')
 
+        version_nodots = utils.get_chromeos_release_version().replace('.', '_')
+
         biopic_proj_specs = [self.parser.get('biopic', 'project_name'),
                              self.device_under_test,
                              self.video_format,
-                             self.video_def]
+                             self.video_def,
+                             version_nodots]
 
         self.biopic_project_name = '.'.join(biopic_proj_specs)
 
