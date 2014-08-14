@@ -1448,17 +1448,11 @@ def get_arch_userspace(run_function=run):
         'x86_64': 'ELF 64-bit.*, x86-64,',
     }
 
-    # When coreutils is compiled with --enable-single-binary, /bin/true could be
-    # symlink to /bin/coreutils or a shebang script that executes
-    # /bin/coreutils. The following code handles the special cases.
-    for binary in ('/bin/true', '/bin/coreutils'):
-        if not os.path.exists(binary):
-            continue
-        cmd = 'file --brief --dereference %s' % binary
-        filestr = run_function(cmd).stdout.rstrip()
-        for a, regex in archs.iteritems():
-            if re.match(regex, filestr):
-                return a
+    cmd = 'file --brief --dereference /bin/sh'
+    filestr = run_function(cmd).stdout.rstrip()
+    for a, regex in archs.iteritems():
+        if re.match(regex, filestr):
+            return a
 
     return get_arch()
 
