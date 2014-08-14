@@ -198,19 +198,24 @@ class CustomDocStringChecker(base.DocStringChecker):
         """
         super(CustomDocStringChecker, self)._check_docstring(node_type, node)
         docstring = node.doc
+        if pylint_version >= 1.1:
+            key = 'missing-docstring'
+        else:
+            key = 'C0111'
+
         if (docstring is not None and
                (node_type is 'method' or
                 node_type is 'function')):
             args = node.argnames()
-            old_msg = self.linter._messages['C0111'].msg
+            old_msg = self.linter._messages[key].msg
             for arg in args:
                 arg_docstring_rgx = '.*@param '+arg+'.*'
                 line = re.search(arg_docstring_rgx, node.doc)
                 if not line and not self._should_skip_arg(arg):
-                    self.linter._messages['C0111'].msg = ('Docstring needs '
-                                                          '"@param '+arg+':"')
-                    self.add_message('C0111', node=node)
-            self.linter._messages['C0111'].msg = old_msg
+                    self.linter._messages[key].msg = ('Docstring needs '
+                                                      '"@param '+arg+':"')
+                    self.add_message(key, node=node)
+            self.linter._messages[key].msg = old_msg
 
 base.DocStringChecker = CustomDocStringChecker
 imports.ImportsChecker = CustomImportsChecker
