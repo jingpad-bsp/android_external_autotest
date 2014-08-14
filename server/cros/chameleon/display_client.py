@@ -274,15 +274,21 @@ class DisplayClient(object):
 
 
     def get_available_resolutions(self, display_index):
-        """Gets the available list of the specified display.
+        """Gets the available hardware resolutions of the specified display.
 
         @param display_index: index of the display to get resolutions from; the
             index is from the DisplayInfo array obtained by get_display_info().
             For Chromebooks, index 0 indicates the internal display.
 
-        @return: array of available resolutions tuple (width, height)
+        @return: array of available hardware resolutions tuple (width, height)
         """
-        return [(resolution['width'], resolution['height'])
+        # Previous version before CR:417113012 (targeted for M38)
+        # (resolution['width'],resolution['height'])
+
+        # TODO(tingyuan): fix loading test image for cases where original
+        #                 width/height is different from width/height.
+        return list(set([(resolution['originalWidth'],
+                          resolution['originalHeight'])
                 for resolution in
                         self._display_xmlrpc_client.get_available_resolutions(
-                        display_index)]
+                        display_index)]))
