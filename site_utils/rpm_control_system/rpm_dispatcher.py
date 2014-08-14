@@ -6,7 +6,6 @@
 import atexit
 import errno
 import logging
-import os
 import re
 import sys
 import socket
@@ -24,11 +23,6 @@ import common
 from autotest_lib.site_utils.rpm_control_system import utils
 
 LOG_FILENAME_FORMAT = rpm_config.get('GENERAL','dispatcher_logname_format')
-
-# Servo-interface mapping file
-MAPPING_FILE = os.path.join(
-        os.path.dirname(__file__),
-        rpm_config.get('CiscoPOE', 'servo_interface_mapping_file'))
 
 
 class RPMDispatcher(object):
@@ -72,8 +66,6 @@ class RPMDispatcher(object):
         self._worker_dict = {}
         self._frontend_server = rpm_config.get('RPM_INFRASTRUCTURE',
                                                'frontend_uri')
-        self._mapping_last_modified = os.path.getmtime(MAPPING_FILE)
-        self._servo_interface = utils.load_servo_interface_mapping()
         logging.info('Registering this rpm dispatcher with the frontend '
                      'server at %s.', self._frontend_server)
         client = xmlrpclib.ServerProxy(self._frontend_server)
@@ -121,67 +113,31 @@ class RPMDispatcher(object):
         return True
 
 
-    def queue_request(self, dut_hostname, new_state):
+    def queue_request(self, powerunit_info_dict, new_state):
         """
-        Looks up the appropriate RPMController instance for this DUT and queues
+        Looks up the appropriate RPMController instance for the device and queues
         up the request.
 
-        @param dut_hostname: hostname of the DUT whose outlet we are trying to
-                             change.
+        @param powerunit_info_dict: A dictionary, containing the attribute/values
+                                    of an unmarshalled PowerUnitInfo instance.
         @param new_state: [ON, OFF, CYCLE] state we want to the change the
                           outlet to.
         @return: True if the attempt to change power state was successful,
                  False otherwise.
         """
-        logging.info('Received request to set DUT: %s to state: %s',
-                     dut_hostname, new_state)
-        rpm_hostname = self._get_rpm_hostname_for_dut(dut_hostname)
+        powerunit_info = utils.PowerUnitInfo(**powerunit_info_dict)
+        logging.info('Received request to set device: %s to state: %s',
+                     powerunit_info.device_hostname, new_state)
         result = False
-        while not result and rpm_hostname:
-            rpm_controller = self._get_rpm_controller(rpm_hostname)
-            result = rpm_controller.queue_request(dut_hostname, new_state)
-            if not result:
-                # If the request failed, check to see if there is another RPM
-                # at this location.
-                rpm_hostname = rpm_controller.get_next_rpm_hostname()
+        while not result:
+            rpm_controller = self._get_rpm_controller(
+                    powerunit_info.powerunit_hostname,
+                    powerunit_info.hydra_hostname)
+            result = rpm_controller.queue_request(powerunit_info, new_state)
         return result
 
 
-    def _get_rpm_hostname_for_dut(self, dut_hostname):
-        """
-        Private method that retreives the appropriate RPMController instance
-        for this DUT.
-
-        @param dut_hostname: hostname of the DUT whose RPMController we want.
-
-        @return: RPM Hostname responsible for this DUT.
-                 Return None on failure.
-        """
-        if dut_hostname.endswith('servo'):
-            # Servos are managed by Cisco POE switches.
-            reload_info = utils.reload_servo_interface_mapping_if_necessary(
-                    self._mapping_last_modified)
-            if reload_info:
-                self._mapping_last_modified, self._servo_interface = reload_info
-            switch_if_tuple = self._servo_interface.get(dut_hostname)
-            if not switch_if_tuple:
-                logging.error('Could not determine POE hostname for %s. '
-                              'Please check the servo-interface mapping file.',
-                              dut_hostname)
-                return None
-            else:
-                rpm_hostname = switch_if_tuple[0]
-            logging.info('POE hostname for DUT %s is %s', dut_hostname,
-                         rpm_hostname)
-        else:
-            # Regular DUTs are managed by RPMs.
-            rpm_hostname = re.sub('host[^.]*', 'rpm1', dut_hostname, count=1)
-            logging.info('RPM hostname for DUT %s is %s',  dut_hostname,
-                         rpm_hostname)
-        return rpm_hostname
-
-
-    def _get_rpm_controller(self, rpm_hostname):
+    def _get_rpm_controller(self, rpm_hostname, hydra_hostname=None):
         """
         Private method that retreives the appropriate RPMController instance
         for this RPM Hostname or calls _create_rpm_controller it if it does not
@@ -195,12 +151,13 @@ class RPMDispatcher(object):
             return None
         rpm_controller = self._worker_dict_get(rpm_hostname)
         if not rpm_controller:
-            rpm_controller = self._create_rpm_controller(rpm_hostname)
+            rpm_controller = self._create_rpm_controller(
+                    rpm_hostname, hydra_hostname)
             self._worker_dict_put(rpm_hostname, rpm_controller)
         return rpm_controller
 
 
-    def _create_rpm_controller(self, rpm_hostname):
+    def _create_rpm_controller(self, rpm_hostname, hydra_hostname):
         """
         Determines the type of RPMController required and initializes it.
 
@@ -212,8 +169,7 @@ class RPMDispatcher(object):
         if hostname_elements[-2] == 'poe':
             # POE switch hostname looks like 'chromeos2-poe-switch1'.
             logging.info('The controller is a Cisco POE switch.')
-            return rpm_controller.CiscoPOEController(
-                    rpm_hostname, self._servo_interface)
+            return rpm_controller.CiscoPOEController(rpm_hostname)
         else:
             # The device is an RPM.
             rack_id = hostname_elements[-2]
@@ -223,7 +179,9 @@ class RPMDispatcher(object):
                 return rpm_controller.WebPoweredRPMController(rpm_hostname)
             else:
                 logging.info('RPM is a Sentry CDU device.')
-                return rpm_controller.SentryRPMController(rpm_hostname)
+                return rpm_controller.SentryRPMController(
+                        hostname=rpm_hostname,
+                        hydra_hostname=hydra_hostname)
 
 
     def _get_serveruri(self):

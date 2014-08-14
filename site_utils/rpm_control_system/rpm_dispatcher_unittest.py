@@ -11,6 +11,7 @@ import rpm_dispatcher
 
 DUT_SAME_RPM1 = 'chromeos-rack8e-hostbs1'
 DUT_SAME_RPM2 = 'chromeos-rack8e-hostbs2'
+RPM_HOSTNAME = 'chromeos-rack8e-rpm1'
 DUT_DIFFERENT_RPM = 'chromeos-rack1-hostbs1'
 FAKE_DISPATCHER_URI = 'fake-dispatcher'
 FAKE_DISPATCHER_PORT = 9999
@@ -60,10 +61,8 @@ class TestRPMDispatcher(mox.MoxTestBase):
         belong to the same RPM device create and retrieve the same RPMController
         instance.
         """
-        controller1 = self.dispatcher._get_rpm_controller(
-                self.dispatcher._get_rpm_hostname_for_dut(DUT_SAME_RPM1))
-        controller2 = self.dispatcher._get_rpm_controller(
-                self.dispatcher._get_rpm_hostname_for_dut(DUT_SAME_RPM2))
+        controller1 = self.dispatcher._get_rpm_controller(RPM_HOSTNAME)
+        controller2 = self.dispatcher._get_rpm_controller(RPM_HOSTNAME)
         self.assertEquals(controller1, controller2)
 
 

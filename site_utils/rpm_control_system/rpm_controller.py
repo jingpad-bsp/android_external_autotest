@@ -10,7 +10,6 @@ import os
 import pexpect
 import Queue
 import re
-import subprocess
 import threading
 import time
 
@@ -29,32 +28,7 @@ RPM_CALL_TIMEOUT_MINS = rpm_config.getint('RPM_INFRASTRUCTURE',
                                           'call_timeout_mins')
 SET_POWER_STATE_TIMEOUT_SECONDS = rpm_config.getint(
         'RPM_INFRASTRUCTURE', 'set_power_state_timeout_seconds')
-HYDRA_HOST_REGX = 'chromeos2-row\d+-rack(\d+)-rpm1$'
 PROCESS_TIMEOUT_BUFFER = 30
-
-
-def get_hydra_name(hostname):
-    """Return hydra name given rpm hostname.
-
-    @param hostname: the hostname of rpm,
-            e.g. chromeos2-row2-rack1-rpm1, chromeos-rack1-rpm1
-
-    @returns: The corresponding hydra name or None if rpm is not
-              behind a known hydra.
-
-    """
-    # TODO(fdeng): Replace the harded coded mapping with something
-    # dynamic. crbug.com/376538
-    m = re.match(HYDRA_HOST_REGX, hostname)
-    if m:
-        rack = int(m.group(1))
-        # chromeos2-row{..}-rack{1..7} --> Hydra1
-        if rack >= 1 and rack <= 7:
-            return 'hydra1'
-        # chromeos2-row{..}-rack{8..11} --> Hydra2
-        elif rack >= 8 and rack <= 11:
-            return 'hydra2'
-    return None
 
 
 class RPMController(object):
@@ -65,7 +39,7 @@ class RPMController(object):
     The actual interaction with the RPM device will be implemented
     by the RPM specific subclasses.
 
-    It assumes that you know the RPM hostname and that the DUT is on
+    It assumes that you know the RPM hostname and that the device is on
     the specified RPM.
 
     This class also allows support for RPM devices that can be accessed
@@ -109,8 +83,8 @@ class RPMController(object):
     DEVICE_PROMPT = '$'
     PASSWORD_PROMPT = 'Password:'
     # The state change command can be any string format but must accept 2 vars:
-    # state followed by DUT/Plug name.
-    STATE_CMD = '%s %s'
+    # state followed by device/Plug name.
+    SET_STATE_CMD = '%s %s'
     SUCCESS_MSG = None # Some RPM's may not return a success msg.
 
     NEW_STATE_ON = 'ON'
@@ -119,7 +93,7 @@ class RPMController(object):
     TYPE = 'Should set TYPE in subclass.'
 
 
-    def __init__(self, rpm_hostname, hydra_name=None):
+    def __init__(self, rpm_hostname, hydra_hostname=None):
         """
         RPMController Constructor.
         To be called by subclasses.
@@ -131,13 +105,10 @@ class RPMController(object):
         self.request_queue = Queue.Queue()
         self._running = False
         self.is_running_lock = threading.Lock()
-        self.behind_hydra = False
         # If a hydra name is provided by the subclass then we know we are
         # talking to an rpm behind a hydra device.
-        if hydra_name:
-            self.behind_hydra = True
-            self.hydra_name = hydra_name
-            self._hydra_hostname = rpm_config.get(hydra_name,'hostname')
+        self.hydra_hostname = hydra_hostname if hydra_hostname else None
+        self.behind_hydra = hydra_hostname is not None
 
 
     def _start_processing_requests(self):
@@ -180,13 +151,14 @@ class RPMController(object):
           threading.Thread(target=rpm_controller.run).start()
 
         Requests are in the format of:
-          [dut_hostname, new_state, condition_var, result]
+          [powerunit_info, new_state, condition_var, result]
         Run will set the result with the correct value.
         """
         while not self.request_queue.empty():
             try:
                 result = multiprocessing.Value(ctypes.c_bool, False)
                 request = self.request_queue.get()
+                device_hostname = request['powerunit_info'].device_hostname
                 if (datetime.datetime.utcnow() > (request['start_time'] +
                         datetime.timedelta(minutes=RPM_CALL_TIMEOUT_MINS))):
                     logging.error('The request was waited for too long to be '
@@ -204,7 +176,7 @@ class RPMController(object):
                              PROCESS_TIMEOUT_BUFFER)
                 if process.is_alive():
                     logging.debug('%s: process (%s) still running, will be '
-                                  'terminated!', request['dut'], process.pid)
+                                  'terminated!', device_hostname, process.pid)
                     process.terminate()
                     is_timeout.value = True
 
@@ -214,10 +186,10 @@ class RPMController(object):
                             'seconds.' % SET_POWER_STATE_TIMEOUT_SECONDS)
                 if not result.value:
                     logging.error('Request to change %s to state %s failed.',
-                                  request['dut'], request['new_state'])
+                                  device_hostname, request['new_state'])
             except Exception as e:
                 logging.error('Request to change %s to state %s failed: '
-                              'Raised exception: %s', request['dut'],
+                              'Raised exception: %s', device_hostname,
                               request['new_state'], e)
                 result.value = False
 
@@ -227,13 +199,13 @@ class RPMController(object):
 
 
     def _process_request(self, request, result, is_timeout):
-        """Process the request to change a DUT's outlet state.
+        """Process the request to change a device's outlet state.
 
         The call of set_power_state is made in a new running process. If it
         takes longer than SET_POWER_STATE_TIMEOUT_SECONDS, the request will be
         timed out.
 
-        @param request: A request to change a DUT's outlet state.
+        @param request: A request to change a device's outlet state.
         @param result: A Value object passed to the new process for the caller
                        thread to retrieve the result.
         @param is_timeout: A Value object passed to the new process for the
@@ -261,7 +233,7 @@ class RPMController(object):
                     log_filename_format=log_filename_format,
                     use_log_server=False)
             logging.info('Failed to set up logging through log server: %s', e)
-        kwargs = {'dut_hostname':request['dut'],
+        kwargs = {'powerunit_info':request['powerunit_info'],
                   'new_state':request['new_state']}
         is_timeout_value, result_value = retry.timeout(
                 self.set_power_state,
@@ -272,20 +244,20 @@ class RPMController(object):
         is_timeout.value = is_timeout_value
 
 
-    def queue_request(self, dut_hostname, new_state):
+    def queue_request(self, powerunit_info, new_state):
         """
-        Queues up a requested state change for a DUT's outlet.
+        Queues up a requested state change for a device's outlet.
 
         Requests are in the format of:
-          [dut_hostname, new_state, condition_var, result]
+          [powerunit_info, new_state, condition_var, result]
         Run will set the result with the correct value.
 
-        @param dut_hostname: hostname of DUT whose outlet we want to change.
+        @param powerunit_info: And PowerUnitInfo instance.
         @param new_state: ON/OFF/CYCLE - state or action we want to perform on
                           the outlet.
         """
         request = {}
-        request['dut'] = dut_hostname
+        request['powerunit_info'] = powerunit_info
         request['new_state'] = new_state
         request['start_time'] = datetime.datetime.utcnow()
         # Reserve a spot for the result to be stored.
@@ -310,7 +282,7 @@ class RPMController(object):
         if not ssh:
             return
         ssh.expect(RPMController.PASSWORD_PROMPT, timeout=60)
-        ssh.sendline(rpm_config.get(self.hydra_name, 'admin_password'))
+        ssh.sendline(rpm_config.get('HYDRA', 'admin_password'))
         ssh.expect(RPMController.HYDRA_PROMPT)
         ssh.sendline(RPMController.CLI_CMD)
         cli_prompt_re = re.compile(RPMController.CLI_PROMPT)
@@ -362,7 +334,7 @@ class RPMController(object):
                 return False
         if response == 0:
             try:
-                ssh.sendline(rpm_config.get(self.hydra_name,'password'))
+                ssh.sendline(rpm_config.get('HYDRA','password'))
                 ssh.sendline('')
                 response = ssh.expect_list(
                         [re.compile(RPMController.USERNAME_PROMPT),
@@ -409,11 +381,11 @@ class RPMController(object):
                  would be if another user is logged into the device.
         """
         if admin_override:
-            username = rpm_config.get(self.hydra_name, 'admin_username')
+            username = rpm_config.get('HYDRA', 'admin_username')
         else:
-            username = '%s:%s' % (rpm_config.get(self.hydra_name,'username'),
+            username = '%s:%s' % (rpm_config.get('HYDRA','username'),
                                   self.hostname)
-        cmd = RPMController.SSH_LOGIN_CMD % (username, self._hydra_hostname)
+        cmd = RPMController.SSH_LOGIN_CMD % (username, self.hydra_hostname)
         num_attempts = 0
         while num_attempts < RPMController.HYDRA_MAX_CONNECT_RETRIES:
             try:
@@ -490,7 +462,7 @@ class RPMController(object):
             time.sleep(5)
 
 
-    def set_power_state(self, dut_hostname, new_state):
+    def set_power_state(self, powerunit_info, new_state):
         """
         Set the state of the dut's outlet on this RPM.
 
@@ -502,7 +474,7 @@ class RPMController(object):
         proper connection and state change code. And the subclass will handle
         accessing the RPM devices.
 
-        @param dut_hostname: hostname of DUT whose outlet we want to change.
+        @param powerunit_info: An instance of PowerUnitInfo.
         @param new_state: ON/OFF/CYCLE - state or action we want to perform on
                           the outlet.
 
@@ -513,16 +485,16 @@ class RPMController(object):
         if not ssh:
             return False
         if new_state == self.NEW_STATE_CYCLE:
-            logging.debug('Beginning Power Cycle for DUT: %s',
-                          dut_hostname)
-            result = self._change_state(dut_hostname, self.NEW_STATE_OFF, ssh)
+            logging.debug('Beginning Power Cycle for device: %s',
+                          powerunit_info.device_hostname)
+            result = self._change_state(powerunit_info, self.NEW_STATE_OFF, ssh)
             if not result:
                 return result
             time.sleep(RPMController.CYCLE_SLEEP_TIME)
-            result = self._change_state(dut_hostname, self.NEW_STATE_ON, ssh)
+            result = self._change_state(powerunit_info, self.NEW_STATE_ON, ssh)
         else:
-            # Try to change the state of the DUT's power outlet.
-            result = self._change_state(dut_hostname, new_state, ssh)
+            # Try to change the state of the device's power outlet.
+            result = self._change_state(powerunit_info, new_state, ssh)
 
         # Terminate hydra connection if necessary.
         self._logout(ssh)
@@ -530,14 +502,14 @@ class RPMController(object):
         return result
 
 
-    def _change_state(self, dut_hostname, new_state, ssh):
+    def _change_state(self, powerunit_info, new_state, ssh):
         """
         Perform the actual state change operation.
 
         Once we have established communication with the RPM this method is
         responsible for changing the state of the RPM outlet.
 
-        @param dut_hostname: hostname of DUT whose outlet we want to change.
+        @param powerunit_info: An instance of PowerUnitInfo.
         @param new_state: ON/OFF - state or action we want to perform on
                           the outlet.
         @param ssh: The ssh connection used to execute the state change commands
@@ -546,17 +518,25 @@ class RPMController(object):
         @return: True if the attempt to change power state was successful,
                  False otherwise.
         """
-        ssh.sendline(self.SET_STATE_CMD % (new_state, dut_hostname))
+        outlet = powerunit_info.outlet
+        device_hostname = powerunit_info.device_hostname
+        if not outlet:
+            logging.error('Request to change outlet for device: %s to new '
+                          'state %s failed: outlet is unknown, please '
+                          'make sure POWERUNIT_OUTLET exist in the host\'s '
+                          'attributes in afe.', device_hostname, new_state)
+        ssh.sendline(self.SET_STATE_CMD % (new_state, outlet))
         if self.SUCCESS_MSG:
             # If this RPM device returns a success message check for it before
             # continuing.
             try:
                 ssh.expect(self.SUCCESS_MSG, timeout=60)
             except pexpect.ExceptionPexpect:
-                logging.error('Request to change outlet for DUT: %s to new '
-                              'state %s failed.', dut_hostname, new_state)
+                logging.error('Request to change outlet for device: %s to new '
+                              'state %s failed.', device_hostname, new_state)
                 return False
-        logging.debug('Outlet for DUT: %s set to %s', dut_hostname, new_state)
+        logging.debug('Outlet for device: %s set to %s', device_hostname,
+                      new_state)
         return True
 
 
@@ -568,37 +548,6 @@ class RPMController(object):
         @return: string representation of RPM device type.
         """
         return self.TYPE
-
-
-    def get_next_rpm_hostname(self):
-        """Return the hostname of the next RPM in the same location if it
-        exists.
-
-        For example chromeos3-rack2-row3 may have rpm1 and rpm2.
-
-        @returns Hostname of the next rpm or None.
-        """
-        if self.behind_hydra:
-            # For now lets not do the hydra-case. It would require us to log
-            # into the admin console, and see if an entry exists for the next
-            # RPM hostname. This would impact the run time of any failure that
-            # occurs with an RPM behind the hydra, as well as constantly
-            # disconnecting the lab admins from the admin console.
-            return None
-        # Determine the RPM location and number.
-        hostname_regex = '(?P<LOCATION>.*)-rpm(?P<RPM_NUM>[\d]+)(.)*'
-        match = re.match(hostname_regex, self.hostname)
-        location = match.group('LOCATION')
-        rpm_number = int(match.group('RPM_NUM'))
-        next_rpm = '%s-rpm%d' % (location, int(rpm_number) + 1)
-        try:
-            # Ping it to see if it exists.
-            subprocess.check_call(
-                    ['ping', '%s.%s' % (next_rpm, self._dns_zone), '-w 3'],
-                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            return next_rpm
-        except subprocess.CalledProcessError:
-            return None
 
 
 class SentryRPMController(RPMController):
@@ -618,39 +567,14 @@ class SentryRPMController(RPMController):
     DEVICE_PROMPT = 'Switched CDU:'
     SET_STATE_CMD = '%s %s'
     SUCCESS_MSG = 'Command successful'
-    SET_OUTLET_NAME_CMD = 'set outlet name .A%d %s'
     NUM_OF_OUTLETS = 17
     TYPE = 'Sentry'
 
 
-    def __init__(self, hostname, hydra_name=None):
-        hydra_name = hydra_name or get_hydra_name(hostname)
-        super(SentryRPMController, self).__init__(hostname, hydra_name)
+    def __init__(self, hostname, hydra_hostname=None):
+        super(SentryRPMController, self).__init__(hostname, hydra_hostname)
         self._username = rpm_config.get('SENTRY', 'username')
         self._password = rpm_config.get('SENTRY', 'password')
-
-
-    def set_power_state(self, dut_hostname, new_state):
-        """
-        Set the state of the dut's outlet on this RPM.
-
-        Overload set_power_state in RPMController.
-        @param dut_hostname: hostname of DUT whose outlet we want to change.
-        @param new_state: ON/OFF/CYCLE - state or action we want to perform on
-                          the outlet.
-
-        @return: True if the attempt to change power state was successful,
-                 False otherwise.
-        """
-        if 'row' in dut_hostname:
-            # Because the devices with a row and a rack all have long
-            # hostnames, we can't store their full names in the rpm, therefore
-            # for these devices we drop the 'chromeosX' part of their name.
-            # For example: chromeos2-rack2-row1-host1 is just stored as
-            # rack2-row1-host1 inside the RPM.
-            dut_hostname = dut_hostname.split('-', 1)[1]
-        return super(SentryRPMController, self).set_power_state(
-                dut_hostname, new_state)
 
 
     def _setup_test_user(self, ssh):
@@ -695,6 +619,12 @@ class SentryRPMController(RPMController):
         Configure the RPM by adding the test user and setting up the outlet
         names.
 
+        Note the rpm infrastructure does not rely on the outlet name to map a
+        device to its outlet any more. We keep this method in case there is
+        a need to label outlets for other reasons. We may deprecate
+        this method if it has been proved the outlet names will not be used
+        in any scenario.
+
         @param outlet_naming_map: Dictionary used to map the outlet numbers to
                                   host names. Keys must be ints. And names are
                                   in the format of 'hostX'.
@@ -709,12 +639,12 @@ class SentryRPMController(RPMController):
             self._setup_test_user(ssh)
             # Set up the outlet names.
             # Hosts have the same name format as the RPM hostname except they
-            # end in hostX instead of rpm1.
-            dut_name_format = self.hostname.replace('-rpm1', '')
+            # end in hostX instead of rpmX.
+            dut_name_format = re.sub('-rpm[0-9]*', '', self.hostname)
             if self.behind_hydra:
-                # Remove "chromeos2" from DUTs behind the hydra due to a length
+                # Remove "chromeosX" from DUTs behind the hydra due to a length
                 # constraint on the names we can store inside the RPM.
-                dut_name_format = dut_name_format.replace('chromeos2-', '')
+                dut_name_format = re.sub('chromeos[0-9]*-', '', dut_name_format)
             dut_name_format = dut_name_format + '-%s'
             self._clear_outlet_names(ssh)
             for outlet, name in outlet_naming_map.items():
@@ -759,59 +689,62 @@ class WebPoweredRPMController(RPMController):
             self._rpm = powerswitch
 
 
-    def _get_outlet_value_and_state(self, dut_hostname):
+    def _get_outlet_state(self, outlet):
         """
-        Look up the outlet and state for a given hostname on the RPM.
+        Look up the state for a given outlet on the RPM.
 
-        @param dut_hostname: hostname of DUT whose outlet we want to lookup.
+        @param outlet: the outlet to look up.
 
-        @return [outlet, state]: the outlet number as well as its current state.
+        @return state: the outlet's current state.
         """
         status_list = self._rpm.statuslist()
-        for outlet, hostname, state in status_list:
-            if hostname == dut_hostname:
-                return outlet, state
+        for outlet_name, hostname, state in status_list:
+            if outlet_name == outlet:
+                return state
         return None
 
 
-    def set_power_state(self, dut_hostname, new_state):
+    def set_power_state(self, powerunit_info, new_state):
         """
         Since this does not utilize SSH in any manner, this will overload the
         set_power_state in RPMController and completes all steps of changing
-        the DUT's outlet state.
+        the device's outlet state.
         """
-        outlet_and_state = self._get_outlet_value_and_state(dut_hostname)
-        if not outlet_and_state:
-            logging.error('DUT %s is not on rpm %s',
-                          dut_hostname, self.hostname)
+        device_hostname = powerunit_info.device_hostname
+        outlet = powerunit_info.outlet
+        if not outlet:
+            logging.error('Request to change outlet for device %s to '
+                          'new state %s failed: outlet is unknown. Make sure '
+                          'POWERUNIT_OUTLET exists in the host\'s '
+                          'attributes in afe' , device_hostname, new_state)
             return False
-        outlet, state = outlet_and_state
+        state = self._get_outlet_state(outlet)
         expected_state = new_state
         if new_state == self.NEW_STATE_CYCLE:
-            logging.debug('Beginning Power Cycle for DUT: %s',
-                          dut_hostname)
+            logging.debug('Beginning Power Cycle for device: %s',
+                          device_hostname)
             self._rpm.off(outlet)
-            logging.debug('Outlet for DUT: %s set to OFF', dut_hostname)
+            logging.debug('Outlet for device: %s set to OFF', device_hostname)
             # Pause for 5 seconds before restoring power.
             time.sleep(RPMController.CYCLE_SLEEP_TIME)
             self._rpm.on(outlet)
-            logging.debug('Outlet for DUT: %s set to ON', dut_hostname)
+            logging.debug('Outlet for device: %s set to ON', device_hostname)
             expected_state = self.NEW_STATE_ON
         if new_state == self.NEW_STATE_OFF:
             self._rpm.off(outlet)
-            logging.debug('Outlet for DUT: %s set to OFF', dut_hostname)
+            logging.debug('Outlet for device: %s set to OFF', device_hostname)
         if new_state == self.NEW_STATE_ON:
             self._rpm.on(outlet)
-            logging.debug('Outlet for DUT: %s set to ON', dut_hostname)
+            logging.debug('Outlet for device: %s set to ON', device_hostname)
         # Lookup the final state of the outlet
-        return self._is_plug_state(dut_hostname, expected_state)
+        return self._is_plug_state(powerunit_info, expected_state)
 
 
-    def _is_plug_state(self, dut_hostname, expected_state):
-        outlet, state = self._get_outlet_value_and_state(dut_hostname)
+    def _is_plug_state(self, powerunit_info, expected_state):
+        state = self._get_outlet_state(powerunit_info.outlet)
         if expected_state not in state:
-            logging.error('Outlet for DUT: %s did not change to new state'
-                          ' %s', dut_hostname, expected_state)
+            logging.error('Outlet for device: %s did not change to new state'
+                          ' %s', powerunit_info.device_hostname, expected_state)
             return False
         return True
 
@@ -848,13 +781,11 @@ class CiscoPOEController(RPMController):
     TYPE = 'CiscoPOE'
 
 
-    def __init__(self, hostname, servo_interface):
+    def __init__(self, hostname):
         """
         Initialize controller class for a Cisco POE switch.
 
         @param hostname: the Cisco POE switch host name.
-        @param servo_interface: a dictionary that maps servo hostname
-                                to (switch_hostname, interface).
         """
         super(CiscoPOEController, self).__init__(hostname)
         self._username = rpm_config.get('CiscoPOE', 'username')
@@ -865,7 +796,6 @@ class CiscoPOEController(RPMController):
         self.poe_prompt = self.POE_PROMPT % short_hostname
         self.config_prompt = self.CONFIG_PROMPT % short_hostname
         self.config_if_prompt = self.CONFIG_IF_PROMPT % short_hostname
-        self._servo_interface = servo_interface
 
 
     def _login(self):
@@ -999,13 +929,13 @@ class CiscoPOEController(RPMController):
         ssh.sendline(self.EXIT_CMD)
 
 
-    def _change_state(self, dut_hostname, new_state, ssh):
+    def _change_state(self, powerunit_info, new_state, ssh):
         """
         Perform the actual state change operation.
 
         Overload _change_state in RPMController.
 
-        @param dut_hostname: hostname of servo, whose outlet we want to change.
+        @param powerunit_info: An PowerUnitInfo instance.
         @param new_state: ON/OFF - state or action we want to perform on
                           the outlet.
         @param ssh: The ssh connection used to execute the state change commands
@@ -1014,14 +944,13 @@ class CiscoPOEController(RPMController):
         @return: True if the attempt to change power state was successful,
                  False otherwise.
         """
-        switch_if_tuple = self._servo_interface.get(dut_hostname)
-        if not switch_if_tuple:
-            logging.error('Could not find the interface for %s on switch %s. '
-                          'Maybe the mapping file is out of date?',
-                          dut_hostname, self.hostname)
+        interface = powerunit_info.outlet
+        device_hostname = powerunit_info.device_hostname
+        if not interface:
+            logging.error('Could not change state: the interface on %s for %s '
+                          'was not given.', self.hostname, device_hostname)
             return False
-        else:
-            interface = switch_if_tuple[1]
+
         # Enter configuration terminal.
         if not self._enter_configuration_terminal(interface, ssh):
             logging.error('Could not enter configuration terminal for %s',
@@ -1037,26 +966,18 @@ class CiscoPOEController(RPMController):
             return False
         # Exit configuraiton terminal.
         if not self._exit_configuration_terminal(ssh):
-            logging.error('Skipping verifying outlet state for DUT: %s, '
+            logging.error('Skipping verifying outlet state for device: %s, '
                           'because could not exit configuration terminal.',
-                          dut_hostname)
+                          device_hostname)
             return False
         # Verify if the state has changed successfully.
         if not self._verify_state(interface, new_state, ssh):
             logging.error('Could not verify state on interface %s', interface)
             return False
 
-        logging.debug('Outlet for DUT: %s set to %s',
-                      dut_hostname, new_state)
+        logging.debug('Outlet for device: %s set to %s',
+                      device_hostname, new_state)
         return True
-
-
-    def get_next_rpm_hostname(self):
-        """Override from RPMController. Not applicable to POE Controller.
-
-        @returns None.
-        """
-        return None
 
 
 def test_in_order_requests():
