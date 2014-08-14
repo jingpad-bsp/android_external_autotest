@@ -67,9 +67,6 @@ class Values(object):
     # Delay between USB plug-out and plug-in
     between_usb_plug = 10
 
-    # Delay after running the 'sync' command
-    sync = 2
-
     # Delay for waiting client to shutdown
     shutdown = 30
 

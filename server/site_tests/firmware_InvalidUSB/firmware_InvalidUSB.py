@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 import logging
-import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros import vboot_constants as vboot
@@ -61,7 +60,6 @@ class firmware_InvalidUSB(FirmwareTest):
                 'The USB image is surely unable to boot. Restore it and try...')
 
         self.restore_usb()
-        time.sleep(self.faft_config.sync)
         self.servo.switch_usbkey('dut')
         self.wait_for_kernel_up(install_deps=True)
 

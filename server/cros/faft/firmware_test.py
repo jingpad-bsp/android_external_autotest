@@ -176,8 +176,7 @@ class FirmwareTest(FAFTBase):
         self.fw_vboot2 = self.faft_client.system.get_fw_vboot2()
         logging.info('vboot version: %d', 2 if self.fw_vboot2 else 1)
         # See chromium:239034 regarding needing this sync.
-        self.faft_client.system.run_shell_command('sync')
-        time.sleep(self.faft_config.sync)
+        self.blocking_sync()
         logging.info('FirmwareTest initialize done (id=%s)', self.run_id)
 
     def cleanup(self):
@@ -1063,6 +1062,15 @@ class FirmwareTest(FAFTBase):
         self.faft_client.system.run_shell_command('cgpt prioritize -i%s %s' %
                 (self.KERNEL_MAP[part], root_dev))
 
+    def blocking_sync(self):
+        """Run a blocking sync command."""
+        # The double calls to sync fakes a blocking call
+        # since the first call returns before the flush
+        # is complete, but the second will wait for the
+        # first to finish.
+        self.faft_client.system.run_shell_command('sync')
+        self.faft_client.system.run_shell_command('sync')
+
 
     ################################################
     # Reboot APIs
@@ -1080,8 +1088,7 @@ class FirmwareTest(FAFTBase):
         @param ctrl_d: bool, press ctrl-D at dev screen.
         """
         if sync_before_boot:
-            self.faft_client.system.run_shell_command('sync')
-            time.sleep(self.faft_config.sync)
+            self.blocking_sync()
         self.reboot_warm_trigger()
         if ctrl_d:
             self.wait_dev_screen_and_ctrl_d()
@@ -1102,8 +1109,7 @@ class FirmwareTest(FAFTBase):
         @param ctrl_d: bool, press ctrl-D at dev screen.
         """
         if sync_before_boot:
-            self.faft_client.system.run_shell_command('sync')
-            time.sleep(self.faft_config.sync)
+            self.blocking_sync()
         self.reboot_cold_trigger()
         if ctrl_d:
             self.wait_dev_screen_and_ctrl_d()
@@ -1165,8 +1171,7 @@ class FirmwareTest(FAFTBase):
 
         This is the default reboot action on FAFT.
         """
-        self.faft_client.system.run_shell_command('sync')
-        time.sleep(self.faft_config.sync)
+        self.blocking_sync()
         self.reboot_warm_trigger()
 
     def sync_and_cold_reboot(self):
@@ -1174,8 +1179,7 @@ class FirmwareTest(FAFTBase):
 
         This reboot action is used to reset EC for recovery mode.
         """
-        self.faft_client.system.run_shell_command('sync')
-        time.sleep(self.faft_config.sync)
+        self.blocking_sync()
         self.reboot_cold_trigger()
 
     def sync_and_ec_reboot(self, flags=''):
@@ -1186,8 +1190,7 @@ class FirmwareTest(FAFTBase):
                           default: EC soft reboot;
                           'hard': EC cold/hard reboot.
         """
-        self.faft_client.system.run_shell_command('sync')
-        time.sleep(self.faft_config.sync)
+        self.blocking_sync()
         self.ec.reboot(flags)
         time.sleep(self.faft_config.ec_boot_to_console)
         self.check_lid_and_power_on()
@@ -1204,7 +1207,6 @@ class FirmwareTest(FAFTBase):
         is_dev = self.checkers.crossystem_checker({'devsw_boot': '1'})
         if not is_dev:
             self.enable_dev_mode_and_reboot()
-        time.sleep(self.faft_config.sync)
         self.enable_rec_mode_and_reboot()
         self.wait_fw_screen_and_plug_usb()
         time.sleep(self.faft_config.install_shim_done)
