@@ -43,11 +43,10 @@ class BelkinF9K1102APConfigurator(
 
     def get_supported_modes(self):
         return [{'band': ap_spec.BAND_2GHZ,
-                 'modes': [ap_spec.MODE_G, ap_spec.MODE_N,
+                 'modes': [ap_spec.MODE_G,
                            ap_spec.MODE_B | ap_spec.MODE_G | ap_spec.MODE_N]},
                 {'band': ap_spec.BAND_5GHZ,
-                 'modes': [ap_spec.MODE_N, ap_spec.MODE_A,
-                           ap_spec.MODE_A | ap_spec.MODE_N]}]
+                 'modes': [ap_spec.MODE_A, ap_spec.MODE_A | ap_spec.MODE_N]}]
 
 
     def get_number_of_pages(self):

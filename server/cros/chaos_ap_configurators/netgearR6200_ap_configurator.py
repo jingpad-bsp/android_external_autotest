@@ -17,13 +17,29 @@ class NetgearR6200APConfigurator(netgear_WNDR_dual_band_configurator.
         """Checks for any modal dialogs which popup to alert the user and
         either raises a RuntimeError or ignores the alert.
 
-        @params alert: The modal dialog's contents.
+        @param alert: The modal dialog's contents.
         """
         text = alert.text
         if 'WPS requires SSID broadcasting in order to work' in text:
             alert.accept()
         else:
             super(NetgearR6200APConfigurator, self)._alert_handler(alert)
+
+
+    def navigate_to_page(self, page_number):
+        """Navigates to the default page.
+
+        @param page_number: The page to load.
+        """
+        super(NetgearR6200APConfigurator, self).navigate_to_page(page_number)
+        self.set_wait_time(30)
+        self.wait.until(lambda _:
+                self.driver.execute_script('return document.readyState')
+                == 'complete')
+        self.restore_default_wait_time()
+        xpath = '//select[@name="opmode"]'
+        if not self.item_in_popup_by_xpath_exist('Up to 54 Mbps', xpath):
+            raise RuntimeError('Router webpage did not load completely.')
 
 
     def get_supported_modes(self):
@@ -100,4 +116,3 @@ class NetgearR6200APConfigurator(netgear_WNDR_dual_band_configurator.
             return None
         super(NetgearR6200APConfigurator, self).set_security_wep(
                 key_value, authentication)
-

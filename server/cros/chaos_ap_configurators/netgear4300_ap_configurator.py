@@ -63,22 +63,24 @@ class Netgear4300APConfigurator(netgear_WNDR_dual_band_configurator.
 
         @param page_number: the page to navigate to.
         """
+        self.set_wait_time(30)
         try:
             self.get_url(urlparse.urljoin(self.admin_interface_url,
                          'adv_index.htm'), page_title='WNDR4300')
-            self.click_button_by_id('setup_bt')
-            self.wait_for_object_by_id('wireless')
-            self.click_button_by_id('wireless')
+            self.driver.execute_script("click_adv_action('wireless')")
         except Exception as e:
             if os.path.basename(self.driver.current_url) != 'adv_index.htm':
                 raise RuntimeError('Invalid url %s' % self.driver.current_url)
             elif os.path.basename(
                 self.driver.current_url) == 'multi_login.html':
                 self.logout_from_previous_netgear()
-        setframe = self.wait_for_object_by_xpath('//iframe[@name="formframe"]',
-                                                 wait_time=20)
+        setframe = self.wait_for_object_by_xpath('//iframe[@name="formframe"]')
         settings = self.driver.switch_to_frame(setframe)
-        self.wait_for_object_by_xpath('//input[@name="ssid"]')
+        xpath = '//input[@name="security_type_an" and @value="WPA-ENTER"]'
+        self.wait.until(lambda _:
+                        self.wait_for_object_by_xpath(xpath).is_displayed())
+        self.driver.execute_script('window.stop()')
+        self.restore_default_wait_time()
 
 
     def save_page(self, page_number):
@@ -139,6 +141,7 @@ class Netgear4300APConfigurator(netgear_WNDR_dual_band_configurator.
 
 
     def _set_security_wep(self, key_value, authentication):
+        self.set_wait_time(30)
         xpath = ('//input[@name="security_type" and @value="WEP" and '
                  '@type="radio"]')
         text_field = '//input[@name="KEY1"]'
@@ -155,3 +158,4 @@ class Netgear4300APConfigurator(netgear_WNDR_dual_band_configurator.
         self.wait_for_object_by_xpath(text_field)
         self.set_content_of_text_field_by_xpath(key_value, text_field,
                                                 abort_check=True)
+        self.restore_default_wait_time()
