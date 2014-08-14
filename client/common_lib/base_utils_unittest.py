@@ -1,6 +1,16 @@
 #!/usr/bin/python
 
-import os, unittest, StringIO, socket, urllib2, shutil, subprocess, logging
+import errno
+import logging
+import os
+import select
+import shutil
+import socket
+import StringIO
+import subprocess
+import time
+import unittest
+import urllib2
 
 import common
 from autotest_lib.client.common_lib import base_utils, autotemp
@@ -712,6 +722,22 @@ class test_run(unittest.TestCase):
     def test_safe_args_given_string(self):
         cmd = 'echo "hello \\"world" "again"'
         self.assertRaises(TypeError, base_utils.run, 'echo', args='hello')
+
+
+    def test_wait_interrupt(self):
+        """Test that we actually select twice if the first one returns EINTR."""
+        base_utils.logging.debug.expect_any_call()
+
+        bg_job = base_utils.BgJob('echo "hello world"')
+        bg_job.result.exit_status = 0
+        self.god.stub_function(base_utils.select, 'select')
+
+        base_utils.select.select.expect_any_call().and_raises(
+                select.error(errno.EINTR, 'Select interrupted'))
+        base_utils.select.select.expect_any_call().and_return(
+                ([bg_job.sp.stdout, bg_job.sp.stderr], [], None))
+        self.assertFalse(
+                base_utils._wait_for_commands([bg_job], time.time(), None))
 
 
 class test_compare_versions(unittest.TestCase):

@@ -3,6 +3,7 @@
 
 # pylint: disable-msg=C0111
 
+import errno
 import os, pickle, random, re, resource, select, shutil, signal, StringIO
 import socket, struct, subprocess, time, textwrap, urlparse
 import warnings, smtplib, logging, urllib2
@@ -932,7 +933,14 @@ def join_bg_jobs(bg_jobs, timeout=None):
 
 
 def _wait_for_commands(bg_jobs, start_time, timeout):
-    # This returns True if it must return due to a timeout, otherwise False.
+    """Waits for background jobs by select polling their stdout/stderr.
+
+    @param bg_jobs: A list of background jobs to wait on.
+    @param start_time: Time used to calculate the timeout lifetime of a job.
+    @param timeout: The timeout of the list of bg_jobs.
+
+    @return: True if the return was due to a timeout, False otherwise.
+    """
 
     # To check for processes which terminate without producing any output
     # a 1 second timeout is used in select.
@@ -958,12 +966,21 @@ def _wait_for_commands(bg_jobs, start_time, timeout):
         time_left = None # so that select never times out
 
     while not timeout or time_left > 0:
-        # select will return when we may write to stdin or when there is
+        # select will return when we may write to stdin, when there is
         # stdout/stderr output we can read (including when it is
-        # EOF, that is the process has terminated).
-        read_ready, write_ready, _ = select.select(read_list, write_list, [],
-                                                   SELECT_TIMEOUT)
-
+        # EOF, that is the process has terminated) or when a non-fatal
+        # signal was sent to the process. In the last case the select returns
+        # EINTR, and we continue waiting for the job if the signal handler for
+        # the signal that interrupted the call allows us to.
+        try:
+            read_ready, write_ready, _ = select.select(read_list, write_list,
+                                                       [], SELECT_TIMEOUT)
+        except select.error as v:
+            if v[0] == errno.EINTR:
+                logging.warning(v)
+                continue
+            else:
+                raise
         # os.read() has to be used instead of
         # subproc.stdout.read() which will otherwise block
         for file_obj in read_ready:
