@@ -117,8 +117,18 @@ class video_PlaybackPerf(test.test):
         return result
 
 
-    def run_once(self, video_name, video_format,
+    def run_once(self, video_name, video_description,
                  assert_hardware_acceleration=True):
+        """
+        Runs the video_PlaybackPerf test.
+
+        @param video_name: the name of video to play in the DOWNLOAD_BASE
+        @param video_description: a string describes the video to play which
+                will be part of entry name in dashboard.
+        @param assert_hardware_acceleration: True if we want to raise an
+                exception when hardware acceleration is not used,
+                False otherwise.
+        """
         # Download test video.
         url = DOWNLOAD_BASE + video_name
         local_path = os.path.join(self.bindir, video_name)
@@ -126,12 +136,12 @@ class video_PlaybackPerf(test.test):
 
         # Run the video playback dropped frame tests.
         keyvals = self.test_dropped_frames(local_path, assert_hardware_acceleration)
-        self.log_result(keyvals, DROPPED_FRAMES_DESCRIPTION + video_format,
+        self.log_result(keyvals, DROPPED_FRAMES_DESCRIPTION + video_description,
                         'frames')
 
         # Run the video playback cpu usage tests.
         keyvals = self.test_cpu_usage(local_path, assert_hardware_acceleration)
-        self.log_result(keyvals, CPU_USAGE_DESCRIPTION + video_format,
+        self.log_result(keyvals, CPU_USAGE_DESCRIPTION + video_description,
                         'percent')
 
 
@@ -256,7 +266,8 @@ class video_PlaybackPerf(test.test):
 
         @param keyvals: a dictionary that contains results returned by
                 test_playback.
-        @param description: a string that describes the video format and test result.
+        @param description: a string that describes the video and test result
+                and it will be part of the entry name in the dashboard.
         @param units: the units of test result.
         """
         result_with_hw = keyvals.get(PLAYBACK_WITH_HW_ACCELERATION)

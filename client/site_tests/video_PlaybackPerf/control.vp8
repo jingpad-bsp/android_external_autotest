@@ -6,7 +6,7 @@ AUTHOR = "Chrome OS Project, chromeos-video@google.com"
 NAME = "video_PlaybackPerf.vp8"
 PURPOSE = "Test the cpu usage and dropped frame count of VP8 video playback"
 CRITERIA = """
-The test outputs the cpu usage of VP8 video playback.
+The test outputs the cpu usage and dropped frame count of VP8 video playback.
 """
 SUITE = "video"
 TIME = "MEDIUM"
@@ -24,7 +24,7 @@ for hardware decode and software decode.
 """
 
 VIDEO_NAME = 'crowd1080.webm'
-VIDEO_FORMAT = 'vp8'
+VIDEO_DESCRIPTION = 'vp8_1080p'
 job.run_test('video_PlaybackPerf', video_name=VIDEO_NAME,
-             video_format=VIDEO_FORMAT, tag=VIDEO_FORMAT)
+             video_description=VIDEO_DESCRIPTION)
 
