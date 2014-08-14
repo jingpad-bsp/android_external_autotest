@@ -7,6 +7,7 @@
 """Scheduler helper libraries.
 """
 import logging
+import os
 
 import common
 
@@ -141,6 +142,13 @@ class SchedulerLoggingConfig(logging_config.LoggingConfig):
             logfile_name = self.get_log_name(timestamped_logfile_prefix)
 
         self.add_file_handler(logfile_name, logging.DEBUG, log_dir=log_dir)
+        symlink_path = os.path.join(
+                log_dir, '%s.latest' % timestamped_logfile_prefix)
+        try:
+            os.unlink(symlink_path)
+        except OSError:
+            pass
+        os.symlink(os.path.join(log_dir, logfile_name), symlink_path)
 
 
 def setup_logging(log_dir, log_name, timestamped_logfile_prefix='scheduler'):
