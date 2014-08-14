@@ -8,3 +8,8 @@ class RPMInfrastructureException(Exception):
     system.
     """
     pass
+
+
+class RPMLoggingSetupError(RPMInfrastructureException):
+    """Rasied when setup logging fails."""
+    pass

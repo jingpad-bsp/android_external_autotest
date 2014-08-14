@@ -20,10 +20,7 @@ import rpm_logging_config
 import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import retry
-from autotest_lib.site_utils.rpm_control_system import utils
 
-# Format Appears as: [Date] [Time] - [Msg Level] - [Message]
-LOGGING_FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
 RPM_CALL_TIMEOUT_MINS = rpm_config.getint('RPM_INFRASTRUCTURE',
                                           'call_timeout_mins')
 SET_POWER_STATE_TIMEOUT_SECONDS = rpm_config.getint(
@@ -978,69 +975,3 @@ class CiscoPOEController(RPMController):
         logging.debug('Outlet for device: %s set to %s',
                       device_hostname, new_state)
         return True
-
-
-def test_in_order_requests():
-    """Simple integration testing."""
-    rpm = WebPoweredRPMController('chromeos-rack8e-rpm1')
-    rpm.queue_request('chromeos1-rack8e-hostbs1', 'OFF')
-    rpm.queue_request('chromeos1-rack8e-hostbs2', 'OFF')
-    rpm.queue_request('chromeos1-rack8e-hostbs3', 'CYCLE')
-
-
-def test_parrallel_webrequests():
-    """Simple integration testing."""
-    rpm = WebPoweredRPMController('chromeos-rack8e-rpm1')
-    threading.Thread(target=rpm.queue_request,
-                     args=('chromeos1-rack8e-hostbs1', 'OFF')).start()
-    threading.Thread(target=rpm.queue_request,
-                     args=('chromeos1-rack8e-hostbs2', 'ON')).start()
-
-
-def test_parrallel_sshrequests():
-    """Simple integration testing."""
-    rpm = SentryRPMController('chromeos-rack8-rpm1')
-    threading.Thread(target=rpm.queue_request,
-                     args=('chromeos-rack8-hostbs1', 'OFF')).start()
-    threading.Thread(target=rpm.queue_request,
-                     args=('chromeos-rack8-hostbs2', 'OFF')).start()
-
-    # The following test are disabled as the
-    # outlets on the rpm are in actual use.
-    # rpm2 = SentryRPMController('chromeos2-row2-rack3-rpm1')
-    # threading.Thread(target=rpm2.queue_request,
-    #                  args=('chromeos2-row2-rack3-hostbs', 'ON')).start()
-    # threading.Thread(target=rpm2.queue_request,
-    #                  args=('chromeos2-row2-rack3-hostbs2', 'ON')).start()
-    # threading.Thread(target=rpm2.queue_request,
-    #                  args=('chromeos2-row1-rack7-hostbs1', 'ON')).start()
-
-
-def test_in_order_poerequests():
-    """Simple integration testing for poe controller."""
-    servo_interface = utils.load_servo_interface_mapping()
-    poe_controller = CiscoPOEController(
-            'chromeos1-poe-switch1', servo_interface)
-    poe_controller.queue_request('chromeos1-rack4-host1bs-servo', 'OFF')
-    poe_controller.queue_request('chromeos1-rack4-host1bs-servo', 'ON')
-    poe_controller.queue_request('chromeos1-rack4-host2bs-servo', 'CYCLE')
-
-
-def test_parrallel_poerequests():
-    """Simple integration testing for poe controller."""
-    servo_interface = utils.load_servo_interface_mapping()
-    poe_controller = CiscoPOEController(
-            'chromeos1-poe-switch1', servo_interface)
-    threading.Thread(target=poe_controller.queue_request,
-                     args=('chromeos1-rack4-host1bs-servo', 'CYCLE')).start()
-    threading.Thread(target=poe_controller.queue_request,
-                     args=('chromeos1-rack4-host2bs-servo', 'CYCLE')).start()
-
-
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG, format=LOGGING_FORMAT)
-    test_in_order_requests()
-    test_parrallel_webrequests()
-    test_parrallel_sshrequests()
-    test_in_order_poerequests()
-    test_parrallel_poerequests()

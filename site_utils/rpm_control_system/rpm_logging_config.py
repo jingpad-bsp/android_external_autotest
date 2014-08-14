@@ -12,6 +12,7 @@ from config import rpm_config
 
 import common
 from autotest_lib.site_utils import log_socket_server
+from autotest_lib.site_utils.rpm_control_system import rpm_infrastructure_exception
 
 LOGGING_FORMAT = rpm_config.get('GENERAL', 'logging_format')
 RECEIVERS = rpm_config.get('RPM_INFRASTRUCTURE',
@@ -84,6 +85,10 @@ def set_up_logging(log_filename_format=None, use_log_server=False):
 
     @returns email_handler: Logging handler used to send out email alerts.
     """
+    if log_socket_server.LogSocketServer.port is None and use_log_server:
+        # Port is unknown, can't log to the server.
+        raise rpm_infrastructure_exception.RPMLoggingSetupError(
+                'set_up_logging failed: Log server port is unknown.')
     if use_log_server:
         socketHandler = logging.handlers.SocketHandler(
                 'localhost', log_socket_server.LogSocketServer.port)
