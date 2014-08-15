@@ -66,7 +66,7 @@
 ...           'name': 'test_label',
 ...           'platform': 1,
 ...           'kernel_config': '/my/kernel/config',
-...	      'only_if_needed' : False,
+...           'only_if_needed' : False,
 ...           'invalid': 0,
 ...           'atomic_group': None}]
 True
@@ -559,7 +559,8 @@ True
 ...         'drone_set': drone_set,
 ...         'parameterized_job': None,
 ...         'test_retry': 0,
-...         'parent_job': None}
+...         'parent_job': None,
+...         'shard': None}
 True
 
 # get_host_queue_entries returns a lot of data, so let's only check a couple

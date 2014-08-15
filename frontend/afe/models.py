@@ -142,6 +142,16 @@ class Label(model_logic.ModelWithInvalid, dbmodels.Model):
         return unicode(self.name)
 
 
+class Shard(dbmodels.Model, model_logic.ModelExtensions):
+
+    labels = dbmodels.ManyToManyField(Label, blank=True,
+                                      db_table='afe_shards_labels')
+
+    class Meta:
+        """Metadata for class ParameterizedJob."""
+        db_table = 'afe_shards'
+
+
 class Drone(dbmodels.Model, model_logic.ModelExtensions):
     """
     A scheduler drone
@@ -1065,6 +1075,8 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
     run_reset = dbmodels.BooleanField(default=True)
 
     timeout_mins = dbmodels.IntegerField(default=DEFAULT_TIMEOUT_MINS)
+
+    shard = dbmodels.ForeignKey(Shard, blank=True, null=True)
 
     # custom manager
     objects = JobManager()
