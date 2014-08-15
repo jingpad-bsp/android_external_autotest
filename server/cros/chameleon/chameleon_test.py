@@ -145,8 +145,8 @@ class ChameleonTest(test.test):
         @param height: height of the resolution
         """
 
-        logging.info('Display %d: Set resolution to '
-                'width: %d, height: %d', display_index, width, height)
+        logging.info('Display %d: Set resolution to %d x %d', display_index,
+            width, height)
         self.display_client.set_resolution(display_index, width, height)
 
 
@@ -155,7 +155,8 @@ class ChameleonTest(test.test):
 
         @return a tuple (display_index, available resolutions).
         @raise error.TestFail if no external display is found. """
-
+        # TODO (tingyuan): Gets complete display modes data, instead of
+        # resolution, to facilitate the subsequent use. (i.e. for image size)
         display_info = self.display_client.get_display_info()
         test_display_index = None
 
@@ -181,10 +182,10 @@ class ChameleonTest(test.test):
         resolutions = self.display_client.get_available_resolutions(
                 test_display_index)
 
-        logging.info('Display %d (%s): %d resolutions.'
-                '%s ... Selected.', test_display_index,
-                current_display.display_id, len(resolutions),
-                " (Primary)" if current_display.is_primary else "")
+        logging.info('External display %d (%s)%s: %d resolutions found.',
+                test_display_index, current_display.display_id,
+                " (Primary)" if current_display.is_primary else "",
+                len(resolutions))
 
         return display_index, resolutions
 

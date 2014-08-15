@@ -59,8 +59,7 @@ class DisplayTestingXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
                 after the specified time.
 
         @param tab: the tab where the display options dialog is shown.
-        @param display_index: index of the display; 0 is the internal one
-                for chromebooks.
+        @param display_index: index of the display.
         @param timeout: time wait for display options appear.
 
         @raise RuntimeError when display_index is out of range
@@ -91,14 +90,15 @@ class DisplayTestingXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
                 % {'index': display_index}, timeout)
 
 
-    def get_available_resolutions(self, display_index):
-        """Gets the resolution list from chrome://settings-frame/display via
+    def get_display_modes(self, display_index):
+        """Gets all the display modes for the specified display.
+
+        The modes are obtained from chrome://settings-frame/display via
         telemetry.
 
-        @param display_index: index of the display to get resolutions from; 0 is
-                the internal one for chromebooks.
+        @param display_index: index of the display to get modes from.
 
-        @return: A dict of available resolutions list.
+        @return: A list of DisplayMode dicts.
 
         @raise TimeoutException when the operation is timed out.
         """
@@ -119,8 +119,7 @@ class DisplayTestingXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
     def set_resolution(self, display_index, width, height, timeout=3):
         """Sets the resolution of the specified display.
 
-        @param display_index: index of the display to set resolution for;
-                0 is the internal one for chromebooks.
+        @param display_index: index of the display to set resolution for.
         @param width: width of the resolution
         @param height: height of the resolution
         @param timeout: maximal time in seconds waiting for the new resolution
@@ -135,24 +134,31 @@ class DisplayTestingXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             self._wait_for_display_options_to_appear(tab, display_index)
 
             tab.ExecuteJavaScript(
-                    # Previous version before CR:417113012 (targeted for M38)
-                    #"chrome.send('setResolution',["
-                    #"   options.DisplayOptions.instance_"
-                    #"       .displays_[%(index)d].id, %(width)d, %(height)d]);"
-
-                    "for (resolution_index in options.DisplayOptions"
-                    "        .instance_.displays_[%(index)d].resolutions) {"
-                    "    var resolution = options.DisplayOptions"
-                    "            .instance_.displays_[%(index)d].resolutions["
-                    "                    resolution_index];"
-                    "    if (resolution.originalWidth == %(width)d &&"
-                    "            resolution.originalHeight == %(height)d) {"
-                    "        chrome.send('setDisplayMode', ["
-                    "            options.DisplayOptions.instance_"
-                    "                .displays_[%(index)d].id, resolution]);"
-                    "        break;"
-                    "    }"
-                    "}"
+                    # Start from M38 (refer to CR:417113012), a DisplayMode dict
+                    # contains 'originalWidth'/'originalHeight' in addition to
+                    # 'width'/'height'. OriginalWidth/originalHeight is what is
+                    # supported by the display while width/height is what is
+                    # shown to users in the display setting.
+                    """
+                    var display = options.DisplayOptions.instance_
+                              .displays_[%(index)d];
+                    var modes = display.resolutions;
+                    var is_m38 = modes.length > 0
+                             && "originalWidth" in modes[0];
+                    if (is_m38) {
+                      for (index in modes) {
+                          var mode = modes[index];
+                          if (mode.originalWidth == %(width)d &&
+                                  mode.originalHeight == %(height)d) {
+                              chrome.send('setDisplayMode', [display.id, mode]);
+                              break;
+                          }
+                      }
+                    } else {
+                      chrome.send('setResolution',
+                          [display.id, %(width)d, %(height)d]);
+                    }
+                    """
                     % {'index': display_index, 'width': width, 'height': height}
             )
 

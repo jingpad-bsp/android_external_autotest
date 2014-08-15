@@ -299,8 +299,7 @@ class DisplayClient(object):
     def set_resolution(self, display_index, width, height):
         """Sets the resolution on the specified display.
 
-        @param display_index: index of the display to set resolutions for; 0 is
-                the internal one for chromebooks.
+        @param display_index: index of the display to set resolutions for.
         @param width: width of the resolution
         @param height: height of the resolution
         """
@@ -312,27 +311,41 @@ class DisplayClient(object):
         """Gets the information of all the displays that are connected to the
                 DUT.
 
-        @return: array of object DisplayInfo for display informtion
+        @return: list of object DisplayInfo for display informtion
         """
         return map(DisplayInfo, self._display_xmlrpc_client.get_display_info())
 
 
-    def get_available_resolutions(self, display_index):
-        """Gets the available hardware resolutions of the specified display.
+    def get_display_modes(self, display_index):
+        """Gets the display modes of the specified display.
 
-        @param display_index: index of the display to get resolutions from; the
-            index is from the DisplayInfo array obtained by get_display_info().
-            For Chromebooks, index 0 indicates the internal display.
+        @param display_index: index of the display to get modes from; the index
+            is from the DisplayInfo list obtained by get_display_info().
 
-        @return: array of available hardware resolutions tuple (width, height)
+        @return: list of DisplayMode dicts.
         """
-        # Previous version before CR:417113012 (targeted for M38)
-        # (resolution['width'],resolution['height'])
+        return self._display_xmlrpc_client.get_display_modes(display_index)
 
-        # TODO(tingyuan): fix loading test image for cases where original
-        #                 width/height is different from width/height.
-        return list(set([(resolution['originalWidth'],
-                          resolution['originalHeight'])
-                for resolution in
-                        self._display_xmlrpc_client.get_available_resolutions(
-                        display_index)]))
+
+    def get_available_resolutions(self, display_index):
+        """Gets the resolutions from the specified display.
+
+        @return a list of (width, height) tuples.
+        """
+        # Start from M38 (refer to http://codereview.chromium.org/417113012),
+        # a DisplayMode dict contains 'originalWidth'/'originalHeight'
+        # in addition to 'width'/'height'.
+        # OriginalWidth/originalHeight is what is supported by the display
+        # while width/height is what is shown to users in the display setting.
+        modes = self.get_display_modes(display_index)
+        if modes:
+            if 'originalWidth' in modes[0]:
+                # M38 or newer
+                # TODO(tingyuan): fix loading image for cases where original
+                #                 width/height is different from width/height.
+                return list(set([(mode['originalWidth'], mode['originalHeight'])
+                        for mode in modes]))
+
+        # pre-M38
+        return [(mode['width'], mode['height']) for mode in modes
+                if 'scale' not in mode]

@@ -43,10 +43,10 @@ class display_ResolutionList(chameleon_test.ChameleonTest):
         self.set_mirrored(test_mirrored)
 
         errors = []
-        for resolution in resolution_list:
-            self.set_resolution(display_index, *resolution)
-            self.load_test_image_and_check(
-                    test_name, resolution,
+        for r in resolution_list:
+            self.set_resolution(display_index, *r)
+            test_name = "%s_%dx%d" % (testcase_spec[0], r[0], r[1])
+            self.load_test_image_and_check(test_name, r,
                     under_mirrored_mode=test_mirrored, error_list=errors)
 
         self.raise_on_errors(errors)
