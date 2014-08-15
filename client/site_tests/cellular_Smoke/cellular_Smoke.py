@@ -11,7 +11,7 @@ from autotest_lib.client.cros.cellular import cellular, cell_tools, environment
 import contextlib, logging, re, socket, string, time, urllib2
 
 from autotest_lib.client.cros import flimflam_test_path
-import flimflam, routing, mm
+import flimflam, routing
 
 # Cellular smoke test and documentation for writing cell tests
 
