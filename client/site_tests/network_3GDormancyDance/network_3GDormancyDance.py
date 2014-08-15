@@ -9,9 +9,11 @@ import dbus, dbus.mainloop.glib, gobject
 import glib
 
 from autotest_lib.client.cros import flimflam_test_path
-from autotest_lib.client.cros.mainloop import ExceptionForwardingMainLoop
+from autotest_lib.client.cros.cellular import mm
 from autotest_lib.client.cros.mainloop import ExceptionForward
-import flimflam, mm
+from autotest_lib.client.cros.mainloop import ExceptionForwardingMainLoop
+
+import flimflam
 
 class State:
     ENABLING = 0
@@ -196,7 +198,7 @@ class network_3GDormancyDance(test.test):
     def DormancyStatus(self, *args, **kwargs):
         self.tester.DormancyStatus(*args, **kwargs)
 
-    def run_once(self, name='usb', loops=20, seed=None):
+    def run_once(self, name='wwan', loops=20, seed=None):
         dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
         self.bus = dbus.SystemBus()
 
