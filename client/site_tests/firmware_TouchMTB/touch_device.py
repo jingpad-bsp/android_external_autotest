@@ -63,8 +63,11 @@ class TouchDevice:
         """
         device_id = TouchDevice.xinput_helper(
                 'list_touchscreens' if is_touchscreen else 'list_touchpads')
-        device_node = TouchDevice.xinput_helper(
-                'device_get_prop %s "Device Node"' % device_id).strip('"')
+        if device_id:
+            device_node = TouchDevice.xinput_helper(
+                    'device_get_prop %s "Device Node"' % device_id).strip('"')
+        else:
+            device_node = None
         return device_node
 
     def exists(self):
