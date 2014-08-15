@@ -15,6 +15,8 @@ import unittest
 
 import common
 
+from autotest_lib.frontend import setup_django_environment
+from autotest_lib.frontend.afe import rpc_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import priorities
@@ -38,17 +40,6 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
     _BUILD = 'link-release/R36-5812.0.0'
     _PRIORITY = priorities.Priority.DEFAULT
     _TIMEOUT = 24
-
-
-    class rpc_utils(object):
-        """Mockable class to fake autotest rpc_utils module."""
-        def create_job_common(self, name, **kwargs):
-            """Mock method rpc_utils.create_job_common().
-
-            @param name: Name of job.
-            @param kwargs: Other arguments.
-            """
-            pass
 
 
     def setUp(self):
@@ -86,8 +77,8 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
         """
         download_started_time = constants.DOWNLOAD_STARTED_TIME
         payload_finished_time = constants.PAYLOAD_FINISHED_TIME
-        r = self.mox.CreateMock(SiteRpcInterfaceTest.rpc_utils)
-        r.create_job_common(mox.And(mox.StrContains(self._NAME),
+        self.mox.StubOutWithMock(rpc_utils, 'create_job_common')
+        rpc_utils.create_job_common(mox.And(mox.StrContains(self._NAME),
                                     mox.StrContains(self._BUILD)),
                             priority=self._PRIORITY,
                             timeout_mins=self._TIMEOUT*60,
@@ -101,8 +92,6 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
                             keyvals=mox.And(mox.In(download_started_time),
                                             mox.In(payload_finished_time))
                             ).AndReturn(to_return)
-        self.mox.StubOutWithMock(site_rpc_interface, '_rpc_utils')
-        site_rpc_interface._rpc_utils().AndReturn(r)
 
 
     def testStageBuildFail(self):
@@ -301,14 +290,11 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
         config_mock.config.items('section2').AndReturn([('item3', 'value3'),
                                                         ('item4', 'value4')])
 
-        r = self.mox.CreateMock(SiteRpcInterfaceTest.rpc_utils)
-        r = mox.MockAnything()
-        r.prepare_for_serialization({'section1' : [('item1', 'value1'),
-                                                   ('item2', 'value2')],
-                                     'section2' : [('item3', 'value3'),
-                                                   ('item4', 'value4')]})
-        self.mox.StubOutWithMock(site_rpc_interface, '_rpc_utils')
-        site_rpc_interface._rpc_utils().AndReturn(r)
+        rpc_utils.prepare_for_serialization(
+            {'section1' : [('item1', 'value1'),
+                           ('item2', 'value2')],
+             'section2' : [('item3', 'value3'),
+                           ('item4', 'value4')]})
         self.mox.ReplayAll()
         site_rpc_interface.get_config_values()
 

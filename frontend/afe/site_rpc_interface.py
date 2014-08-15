@@ -17,6 +17,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib.cros import dev_server
+from autotest_lib.frontend.afe import rpc_utils
 from autotest_lib.server import utils
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
@@ -30,19 +31,6 @@ MOBLAB_BOTO_LOCATION = '/home/moblab/.boto'
 
 
 # Relevant CrosDynamicSuiteExceptions are defined in client/common_lib/error.py.
-
-
-def _rpc_utils():
-    """Returns the rpc_utils module.  MUST be mocked for unit tests.
-
-    rpc_utils initializes django, which we can't do in unit tests.
-    This layer of indirection allows us to only load that module if we're
-    not running unit tests.
-
-    @return: autotest_lib.frontend.afe.rpc_utils
-    """
-    from autotest_lib.frontend.afe import rpc_utils
-    return rpc_utils
 
 
 def canonicalize_suite_name(suite_name):
@@ -192,7 +180,7 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
 
     control_file = tools.inject_vars(inject_dict, control_file)
 
-    return _rpc_utils().create_job_common(name,
+    return rpc_utils.create_job_common(name,
                                           priority=priority,
                                           timeout_mins=timeout_mins,
                                           max_runtime_mins=timeout*60,
@@ -224,7 +212,7 @@ def get_config_values():
     config_values = {}
     for section in sections:
         config_values[section] = _CONFIG.config.items(section)
-    return _rpc_utils().prepare_for_serialization(config_values)
+    return rpc_utils.prepare_for_serialization(config_values)
 
 
 @moblab_only
