@@ -8,10 +8,10 @@ import logging, os, pty, re, subprocess, traceback
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import network
+from autotest_lib.client.cros.cellular import mm
 
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam
-import mm
 
 TEST_TIMEOUT = 120
 
@@ -216,10 +216,11 @@ class RegularOperationTest(GobiDesyncEventLoop):
 
   def StartTest(self):
     modem_manager, gobi_path = mm.PickOneModem('Gobi')
-    gobi = modem_manager.GobiModem(gobi_path)
-    simple = modem_manager.SimpleModem(gobi_path)
+    modem = modem_manager.GetModem(gobi_path)
+    gobi = modem.GobiModem()
+    simple = modem.SimpleModem()
 
-    modem_manager.Modem(gobi_path).Enable(1)
+    modem.Enable(True)
 
     gobi.InjectFault('SdkError', 12)
     _ = simple.GetStatus()
@@ -239,10 +240,11 @@ class DataConnectTest(GobiDesyncEventLoop):
 
   def StartTest(self):
     modem_manager, gobi_path = mm.PickOneModem('Gobi')
-    gobi = modem_manager.GobiModem(gobi_path)
-    simple = modem_manager.SimpleModem(gobi_path)
+    modem = modem_manager.GetModem(gobi_path)
+    gobi = modem.GobiModem()
+    simple = modem.SimpleModem()
 
-    modem_manager.Modem(gobi_path).Enable(1)
+    modem.Enable(True)
 
     gobi.InjectFault('AsyncConnectSleepMs', 1000)
     gobi.InjectFault('ConnectFailsWithErrorSendingQmiRequest', 1)
@@ -257,15 +259,17 @@ class ApiConnectTest(GobiDesyncEventLoop):
 
   def StartTest(self):
     modem_manager, gobi_path = mm.PickOneModem('Gobi')
-    gobi = modem_manager.GobiModem(gobi_path)
+    modem = modem_manager.GetModem(gobi_path)
+    gobi = modem.GobiModem()
+    simple = modem.SimpleModem()
 
-    modem_manager.Modem(gobi_path).Enable(0)
+    modem.Enable(False)
 
     saw_exception = False
     # Failures on API connect are a different code path
     gobi.InjectFault('SdkError', 1)
     try:
-      modem_manager.Modem(gobi_path).Enable(1)
+      modem.Enable(True)
     except dbus.exceptions.DBusException:
       saw_exception = True
     if not saw_exception:
@@ -274,9 +278,9 @@ class ApiConnectTest(GobiDesyncEventLoop):
 class EnableDisableTest():
   """Test that the Enable and Disable technology functions work."""
 
-  def CompareModemPowerState(self, manager, path, expected_state):
-    """Compare the modem manager power state of a modem to an expected state."""
-    props = manager.Properties(path)
+  def CompareModemPowerState(self, modem, expected_state):
+    """Compare the power state of a modem to an expected state."""
+    props = modem.GetModemProperties()
     state = props['Enabled']
     logging.info('Modem Enabled = %s' % state)
     return state == expected_state
@@ -306,8 +310,9 @@ class EnableDisableTest():
     """
     flim = flimflam.FlimFlam()
     modem_manager, gobi_path = mm.PickOneModem('Gobi')
-    props = modem_manager.Properties(gobi_path)
-    interface= props['Device']
+    modem = modem_manager.GetModem(gobi_path)
+    props = modem.GetModemProperties()
+    interface = props['Device']
     device = flim.FindElementByPropertySubstring('Device',
                                                  'Interface', interface)
 
@@ -317,7 +322,7 @@ class EnableDisableTest():
       utils.poll_for_condition(
           lambda: self.CompareDevicePowerState(device, True),
           error.TestFail('Device Failed to enter state Powered=True'))
-      if not self.CompareModemPowerState(modem_manager, gobi_path, True):
+      if not self.CompareModemPowerState(modem, True):
         raise error.TestFail('Modem Failed to enter state Enabled')
 
       # Disable technology, ensure that device and modem are disabled.
@@ -325,7 +330,7 @@ class EnableDisableTest():
       utils.poll_for_condition(
           lambda: self.CompareDevicePowerState(device, False),
           error.TestFail('Device Failed to enter state Powered=False'))
-      if not self.CompareModemPowerState(modem_manager, gobi_path, False):
+      if not self.CompareModemPowerState(modem, False):
         raise error.TestFail('Modem Failed to enter state Disabled')
 
 
