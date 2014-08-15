@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.server import autotest
 from autotest_lib.server import test
 from autotest_lib.server.cros.faft.rpc_proxy import RPCProxy
 
@@ -11,6 +12,11 @@ class firmware_CompareInstalledToShellBall(test.test):
     version = 1
 
     def run_once(self, host):
+        # Make sure the client library is on the device so that the proxy
+        # code is there when we try to call it.
+        client_at = autotest.Autotest(host)
+        client_at.install()
+
         self.faft_client = RPCProxy(host)
         installed_ec = self.faft_client.ec.get_version()
         installed_bios = self.faft_client.system.get_crossystem_value('fwid')
