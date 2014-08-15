@@ -184,6 +184,8 @@ class MediaTestFactory(object):
 
         self.desired_comp_h = self.parser.getint('biopic', 'desired_comp_h')
         self.desired_comp_w = self.parser.getint('biopic', 'desired_comp_w')
+        self.rgb_pixel_thres = self.parser.getint('biopic',
+                                                  'rgb_pixel_threshold')
 
 
     @method_logger.log
@@ -378,11 +380,11 @@ class MediaTestFactory(object):
             comparer = self.make_bp_image_comparer()
 
         elif comparer_to_use == MediaTestFactory.RGB_COMPARER:
-            comparer = rgb_image_comparer.RGBImageComparer()
+            comparer = rgb_image_comparer.RGBImageComparer(self.rgb_pixel_thres)
 
         elif comparer_to_use == MediaTestFactory.RGB_BP_COMPARER:
             comparer = upload_on_fail_comparer.UploadOnFailComparer(
-                    rgb_image_comparer.RGBImageComparer(),
+                    rgb_image_comparer.RGBImageComparer(self.rgb_pixel_thres),
                     self.make_bp_image_comparer())
 
         box = (0, 0, self.desired_comp_w, self.desired_comp_h)

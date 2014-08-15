@@ -16,6 +16,11 @@ class RGBImageComparer(object):
 
     """
 
+
+    def __init__(self, rgb_pixel_threshold):
+        self.threshold = rgb_pixel_threshold
+
+
     def __enter__(self):
         return self
 
@@ -50,29 +55,22 @@ class RGBImageComparer(object):
             test_image = test_image.crop(box)
 
         diff_image = ImageChops.difference(golden_image, test_image)
-
-        """
-        If the two images are the same, the diff will be pure black. Diff image
-        is also an RGB image whose histogram is a concatenated list of
-        R histogram, G histogram and B histogram
-        Full histogram will be a list with 256 * 3 = 768 elements
-        h[0] contains all R pixels whose value is 0
-        h[256] contains all G pixels whose value is 0
-        h[512] contains all B pixels whose value is 0
-        We must remove these values from the total count to find out the
-        number of non black pixels in the diff image
-
-        """
-
-        hist = diff_image.histogram()
-
-        logging.debug("Color counts")
         maxcolors = diff_image.size[0] * diff_image.size[1]
-        logging.debug(diff_image.getcolors(maxcolors))
+        colorstuples = diff_image.getcolors(maxcolors)
 
-        differing_pixels = sum(hist) - hist[0] - hist[256] - hist[512]
+        logging.debug("***ALL Color counts:")
+        logging.debug(colorstuples)
 
-        return differing_pixels
+        # getcolors returns a list of (count, color) tuples where count is the
+        # number of times the corresponding color in the image.
+
+        above_thres_tuples = [t for t in colorstuples
+                              if any(pixel > self.threshold for pixel in t[1])]
+
+        logging.debug("***Color counts that are above threshold:")
+        logging.debug(above_thres_tuples)
+
+        return sum(t[0] for t in above_thres_tuples)
 
 
     def __exit__(self, exc_type, exc_val, exc_tb):
