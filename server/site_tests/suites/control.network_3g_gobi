@@ -39,7 +39,6 @@ CLIENT_TESTS = [
     ('network_3GRecoverFromGobiDesync', {}),
 
 # These tests shouldn't be run on activated devices.
-#    'network_3GActivate',
 #    'network_3GFailedConnect',
 ]
 
