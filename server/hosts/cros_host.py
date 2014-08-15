@@ -1488,7 +1488,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         @param fun function in client utils namespace.
         @return output string from calling fun.
         """
-        script = 'cd /usr/local/autotest/bin; '
+        script = 'cd %s/bin; ' % self.get_autodir()
         script += 'python -c "import common; import utils;'
         script += 'print utils.%s"' % fun
         return script
