@@ -14,6 +14,7 @@ import sys
 import urllib2
 
 from autotest_lib.client.bin import utils as site_utils
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros import retry
@@ -155,6 +156,18 @@ class DevServer(object):
 
 
     @staticmethod
+    def get_server_name(url):
+        """Strip the http:// prefix and port from a url.
+
+        @param url: A url of a server.
+
+        @return the server name without http:// prefix and port.
+
+        """
+        return re.sub(r':\d+$', '', url.lstrip('http://'))
+
+
+    @staticmethod
     def devserver_healthy(devserver, timeout_min=0.1):
         """Returns True if the |devserver| is healthy to stage build.
 
@@ -162,7 +175,7 @@ class DevServer(object):
         @param timeout_min: How long to wait in minutes before deciding the
                             the devserver is not up (float).
         """
-        server_name = re.sub(r':\d+$', '', devserver.lstrip('http://'))
+        server_name = DevServer.get_server_name(devserver)
         # statsd treats |.| as path separator.
         server_name = server_name.replace('.', '_')
         call = DevServer._build_call(devserver, 'check_health')
@@ -418,6 +431,7 @@ class ImageServer(DevServer):
         return True
 
 
+    @remote_devserver_call()
     def call_and_wait(self, call_name, archive_url, artifacts, files,
                       error_message, expected_response='Success'):
         """Helper method to make a urlopen call, and wait for artifacts staged.
@@ -457,6 +471,56 @@ class ImageServer(DevServer):
         return response
 
 
+    @staticmethod
+    def create_stats_str(subname, server_name, image, artifacts=None, files=None):
+        """Create a graphite name given the staged items.
+
+        The resulting name will look like
+            'dev_server.subname.DEVSERVER_URL.artifact1-artifact2-file1-file2'
+        The name can be used to create a stats object like
+        stats.Timer, stats.Counter, etc.
+
+        @param subname: A name for the graphite sub path.
+        @param server_name: name of the devserver, e.g 172.22.33.44.
+        @param image: The name of the image.
+        @param artifacts: A list of artifacts.
+        @param files: A list of files.
+
+        @return A name described above.
+
+        """
+        staged_items = (artifacts or []) + (files or [])
+        staged_items_str = '_'.join(staged_items).replace(
+                '.', '_') if staged_items else None
+        server_name = server_name.replace('.', '_')
+        stats_str = 'dev_server.%s.%s' % (subname, server_name)
+        if staged_items_str:
+            stats_str += '.%s' % staged_items_str
+        return stats_str
+
+
+    @staticmethod
+    def create_metadata(server_name, image, artifacts=None, files=None):
+        """Create a metadata dictionary given the staged items.
+
+        The metadata can be send to metadata db along with stats.
+
+        @param server_name: name of the devserver, e.g 172.22.33.44.
+        @param image: The name of the image.
+        @param artifacts: A list of artifacts.
+        @param files: A list of files.
+
+        @return A metadata dictionary.
+
+        """
+        metadata = {'devserver': server_name, 'image': image}
+        if artifacts:
+            metadata['artifacts'] = ' '.join(artifacts)
+        if files:
+            metadata['files'] = ' '.join(files)
+        return metadata
+
+
     @remote_devserver_call()
     def stage_artifacts(self, image, artifacts=None, files=None,
                         archive_url=None):
@@ -490,11 +554,35 @@ class ImageServer(DevServer):
                          "HTTP OK not accompanied by 'Success'." %
                          ('artifacts=%s files=%s ' % (artifacts_arg, files_arg),
                           image))
-        self.call_and_wait(call_name='stage',
-                           archive_url=archive_url,
-                           artifacts=artifacts_arg,
-                           files=files_arg,
-                           error_message=error_message)
+        staging_info = 'image=%s, artifacts=%s, files=%s, archive_url=%s' % (
+                       image, artifacts, files, archive_url)
+        logging.info('Staging artifacts on devserver %s: %s',
+                     self.url(), staging_info)
+        server_name = self.get_server_name(self.url())
+        timer_key = self.create_stats_str(
+                'stage_artifacts', server_name, image, artifacts, files)
+        counter_key = self.create_stats_str(
+                'stage_artifacts_count', server_name, image, artifacts, files)
+        metadata = self.create_metadata(server_name, image, artifacts, files)
+        stats.Counter(counter_key, metadata=metadata).increment()
+        timer = stats.Timer(timer_key, metadata=metadata)
+        timer.start()
+        try:
+            self.call_and_wait(call_name='stage',
+                               archive_url=archive_url,
+                               artifacts=artifacts_arg,
+                               files=files_arg,
+                               error_message=error_message)
+            timer.stop()
+            logging.info('Finished staging artifacts: %s', staging_info)
+        except error.TimeoutException as e:
+            logging.error('stage_artifacts timed out: %s', staging_info)
+            timeout_key = self.create_stats_str(
+                    'stage_artifacts_timeout', server_name,
+                    image, artifacts, files)
+            stats.Counter(timeout_key, metadata=metadata).increment()
+            raise DevServerException(
+                    'stage_artifacts timed out: %s' % staging_info)
 
 
     @remote_devserver_call(timeout_min=0.5)
@@ -515,7 +603,6 @@ class ImageServer(DevServer):
             logging.info(line)
 
 
-    @remote_devserver_call()
     def trigger_download(self, image, synchronous=True):
         """Tell the devserver to download and stage |image|.
 
@@ -540,11 +627,29 @@ class ImageServer(DevServer):
         artifacts = _ARTIFACTS_TO_BE_STAGED_FOR_IMAGE
         error_message = ("trigger_download for %s failed;"
                          "HTTP OK not accompanied by 'Success'." % image)
-        response = self.call_and_wait(call_name='stage',
-                                      archive_url=archive_url,
-                                      artifacts=artifacts,
-                                      files='',
-                                      error_message=error_message)
+        logging.info('trigger_download starts for %s', image)
+        server_name = self.get_server_name(self.url())
+        artifacts_list = artifacts.split(',')
+        counter_key = self.create_stats_str(
+                    'trigger_download_count',
+                    server_name, image, artifacts_list)
+        metadata = self.create_metadata(server_name, image, artifacts_list)
+        stats.Counter(counter_key, metadata=metadata).increment()
+        try:
+            response = self.call_and_wait(call_name='stage',
+                                          archive_url=archive_url,
+                                          artifacts=artifacts,
+                                          files='',
+                                          error_message=error_message)
+            logging.info('trigger_download finishes for %s', image)
+        except error.TimeoutException as e:
+            logging.error('trigger_download timed out for %s.', image)
+            timeout_key = self.create_stats_str(
+                    'trigger_download_timeout',
+                    server_name, image, artifacts_list)
+            stats.Counter(timeout_key, metadata=metadata).increment()
+            raise DevServerException(
+                    'trigger_download timed out for %s.' % image)
         was_successful = response == 'Success'
         if was_successful and synchronous:
             self.finish_download(image)
@@ -574,7 +679,6 @@ class ImageServer(DevServer):
         return response
 
 
-    @remote_devserver_call()
     def finish_download(self, image):
         """Tell the devserver to finish staging |image|.
 
@@ -591,11 +695,23 @@ class ImageServer(DevServer):
         artifacts = _ARTIFACTS_TO_BE_STAGED_FOR_IMAGE_WITH_AUTOTEST
         error_message = ("finish_download for %s failed;"
                          "HTTP OK not accompanied by 'Success'." % image)
-        self.call_and_wait(call_name='stage',
-                           archive_url=archive_url,
-                           artifacts=artifacts,
-                           files='',
-                           error_message=error_message)
+        try:
+            self.call_and_wait(call_name='stage',
+                               archive_url=archive_url,
+                               artifacts=artifacts,
+                               files='',
+                               error_message=error_message)
+        except error.TimeoutException as e:
+            logging.error('finish_download timed out for %s', image)
+            server_name = self.get_server_name(self.url())
+            artifacts_list = artifacts.split(',')
+            timeout_key = self.create_stats_str(
+                    'finish_download_timeout',
+                    server_name, image, artifacts_list)
+            metadata = self.create_metadata(server_name, image, artifacts_list)
+            stats.Counter(timeout_key, metadata=metadata).increment()
+            raise DevServerException(
+                    'finish_download timed out for %s.' % image)
 
 
     def get_update_url(self, image):

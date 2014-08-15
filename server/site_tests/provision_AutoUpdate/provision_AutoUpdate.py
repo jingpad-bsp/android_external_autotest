@@ -28,6 +28,7 @@ class provision_AutoUpdate(test.test):
         @param value: The build type and version to install on the host.
 
         """
+        logging.debug('Start provisioning %s to %s', host, value)
         image = value
 
         # If the host is already on the correct build, we have nothing to do.
@@ -71,9 +72,10 @@ class provision_AutoUpdate(test.test):
         # Consider making the add-a-label-to-a-host call automatically create a
         # label if it does not already exist.
         provision.ensure_label_exists(provision.cros_version_to_label(image))
-
+        logging.debug('Installing image')
         try:
             host.machine_install(force_update=True, update_url=url)
         except error.InstallError as e:
             logging.error(e)
             raise error.TestFail(str(e))
+        logging.debug('Finished provisioning %s to %s', host, value)

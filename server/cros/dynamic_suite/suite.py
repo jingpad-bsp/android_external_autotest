@@ -907,9 +907,11 @@ class Suite(object):
                 file text added in |text| attribute. Results are sorted based
                 on the TIME setting in control file, slowest test comes first.
         """
+        logging.debug('Getting control file list for suite: %s', suite_name)
         tests = {}
         files = cf_getter.get_control_file_list(suite_name=suite_name)
 
+        logging.debug('Parsing control files ...')
         matcher = re.compile(r'[^/]+/(deps|profilers)/.+')
         parsed_count = 0
         for file in filter(lambda f: not matcher.match(f), files):

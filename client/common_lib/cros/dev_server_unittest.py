@@ -12,6 +12,7 @@ import StringIO
 import time
 import urllib2
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
@@ -440,3 +441,44 @@ class DevServerTest(mox.MoxTestBase):
         expected_url = '/'.join([self._HOST, 'static', devserver_label,
                                  'chromiumos_image.bin'])
         self.assertEquals(url, expected_url)
+
+
+    def _StageTimeoutHelper(self):
+        """Helper class for testing staging timeout."""
+        self.mox.StubOutWithMock(dev_server.ImageServer, 'call_and_wait')
+        dev_server.ImageServer.call_and_wait(
+                call_name='stage',
+                artifacts=mox.IgnoreArg(),
+                files=mox.IgnoreArg(),
+                archive_url=mox.IgnoreArg(),
+                error_message=mox.IgnoreArg()).AndRaise(error.TimeoutException)
+
+
+    def test_StageArtifactsTimeout(self):
+        """Test DevServerException is raised when stage_artifacts timed out."""
+        self._StageTimeoutHelper()
+        self.mox.ReplayAll()
+        self.assertRaises(dev_server.DevServerException,
+                          self.dev_server.stage_artifacts,
+                          image='fake/image', artifacts=['full_payload'])
+        self.mox.VerifyAll()
+
+
+    def test_TriggerDownloadTimeout(self):
+        """Test DevServerException is raised when trigger_download timed out."""
+        self._StageTimeoutHelper()
+        self.mox.ReplayAll()
+        self.assertRaises(dev_server.DevServerException,
+                          self.dev_server.trigger_download,
+                          image='fake/image')
+        self.mox.VerifyAll()
+
+
+    def test_FinishDownloadTimeout(self):
+        """Test DevServerException is raised when finish_download timed out."""
+        self._StageTimeoutHelper()
+        self.mox.ReplayAll()
+        self.assertRaises(dev_server.DevServerException,
+                          self.dev_server.finish_download,
+                          image='fake/image')
+        self.mox.VerifyAll()
