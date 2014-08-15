@@ -8,7 +8,7 @@ import dbus, os, subprocess, time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import flimflam_test_path
-import mm
+from autotest_lib.client.cros.cellular import modem
 
 log = cellular_logging.SetupCellularLogging('mm_test')
 
@@ -122,7 +122,7 @@ class ModemManagerTest(object):
             raise error.TestFail("ModemManager quit early")
 
         # wait for MM to stabilize?
-        return mm.ModemManager(provider='org.freedesktop')
+        return modem.ModemManager(provider='org.freedesktop')
 
     def _stop_fake_network(self):
         if self.fakenet_process:
