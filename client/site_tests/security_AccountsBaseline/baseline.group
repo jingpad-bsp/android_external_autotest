@@ -73,3 +73,4 @@ devbroker-access:!:403:chronos
 i2c:!:404:power
 netdev:!:408:
 easy-unlock:!:249:
+goofy:!:248:goofy

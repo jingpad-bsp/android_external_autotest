@@ -51,3 +51,4 @@ ntfs-3g:!:300:300::/dev/null:/bin/false
 avfs:!:301:301::/dev/null:/bin/false
 fuse-exfat:!:302:302::/dev/null:/bin/false
 easy-unlock:!:249:249::/dev/null:/bin/false
+goofy:x:248:248:role account for running factory flow tests:/home/goofy:/bin/bash
