@@ -12,6 +12,7 @@ from validators import (CountPacketsValidator,
                         CountTrackingIDNormalFingerValidator,
                         CountTrackingIDFatFingerValidator,
                         DragLatencyValidator,
+                        DiscardInitialSecondsValidator,
                         DrumrollValidator,
                         HysteresisValidator,
                         LinearityFatFingerValidator,
@@ -274,14 +275,16 @@ gesture_names_equipment_required = [NOISE_LINE, NOISE_STATIONARY,
 # Define the list of gestures to test in NOISE mode.
 gesture_names_noise_extended = [NOISE_STATIONARY_EXTENDED]
 
-# Define the manual list which is gesture_names_complete - gesture_names_robot - gesture_names_equipment_required
+# Define the manual list which is gesture_names_complete:
+# gesture_names_robot - gesture_names_equipment_required
 gesture_names_manual = {}
 for dev in DEV.DEVICE_TYPE_LIST:
     complete_gesture_list = gesture_names_complete[dev]
     manual_set = set(complete_gesture_list) - set(gesture_names_robot[dev])
     gesture_names_manual[dev] = [gesture for gesture in complete_gesture_list
                                  if gesture in manual_set
-                                 and gesture not in gesture_names_equipment_required]
+                                 and gesture not in
+                                 gesture_names_equipment_required]
 
 
 # Define the gesture for pressure calibration
@@ -333,7 +336,8 @@ def get_gesture_dict():
                         (GV.TL, GV.TR, GV.BL, GV.BR, GV.TS, GV.BS, GV.LS, GV.RS,
                          GV.CENTER),
             ),
-            prompt='Hold one finger on the {3} of the touch surface with a {0} {1} {2} in noise.',
+            prompt='Hold one finger on the {3} of the touch surface with a '
+                   '{0} {1} {2} in noise.',
             subprompt={
                 GV.TL: ('top left corner',),
                 GV.TR: ('top right corner',),
@@ -352,8 +356,10 @@ def get_gesture_dict():
                 GV.SQUARE_WAVE: ('square wave',),
             },
             validators=(
-                CountTrackingIDNormalFingerValidator('== 1'),
-                StationaryTapValidator(stationary_tap_criteria, slot=0),
+                DiscardInitialSecondsValidator(
+                    CountTrackingIDNormalFingerValidator('== 1')),
+                DiscardInitialSecondsValidator(
+                    StationaryTapValidator(stationary_tap_criteria, slot=0)),
             ),
         ),
         NOISE_LINE:
@@ -377,15 +383,21 @@ def get_gesture_dict():
                 GV.BLTR: ('bottom left to top right',),
             },
             validators=(
-                CountTrackingIDNormalFingerValidator('== 1'),
-                LinearityNormalFingerValidator(linearity_criteria, finger=0,
-                                               segments=VAL.MIDDLE),
-                NoGapValidator(no_gap_criteria, slot=0),
-                NoReversedMotionValidator(no_reversed_motion_criteria, slots=0,
-                                          segments=VAL.MIDDLE),
-                NoReversedMotionValidator(no_reversed_motion_criteria, slots=0,
-                                          segments=VAL.BOTH_ENDS),
-                ReportRateValidator(report_rate_criteria),
+                DiscardInitialSecondsValidator(
+                    CountTrackingIDNormalFingerValidator('== 1')),
+                DiscardInitialSecondsValidator(
+                    LinearityNormalFingerValidator(linearity_criteria, finger=0,
+                                                   segments=VAL.MIDDLE)),
+                DiscardInitialSecondsValidator(
+                    NoGapValidator(no_gap_criteria, slot=0)),
+                DiscardInitialSecondsValidator(
+                    NoReversedMotionValidator(no_reversed_motion_criteria,
+                                              slots=0, segments=VAL.MIDDLE)),
+                DiscardInitialSecondsValidator(
+                    NoReversedMotionValidator(no_reversed_motion_criteria,
+                                              slots=0, segments=VAL.BOTH_ENDS)),
+                DiscardInitialSecondsValidator(
+                    ReportRateValidator(report_rate_criteria)),
             ),
         ),
         NOISE_STATIONARY_EXTENDED:
@@ -396,15 +408,19 @@ def get_gesture_dict():
                         (GV.SQUARE_WAVE,),
                         (GV.CENTER,),
             ),
-            prompt='Hold one finger on the {3} of the touch surface with a {0} {1} {2} in noise.',
+            prompt='Hold one finger on the {3} of the touch surface with a '
+                   '{0} {1} {2} in noise.',
             subprompt=dict({
                 GV.CENTER: ('center',),
                 GV.MAX_AMPLITUDE: ('20Vpp',),
                 GV.SQUARE_WAVE: ('square wave',),
-            }.items() + {freq: (freq,) for freq in GV.EXTENDED_FREQUENCIES}.items()),
+            }.items() +
+                {freq: (freq,) for freq in GV.EXTENDED_FREQUENCIES}.items()),
             validators=(
-                CountTrackingIDNormalFingerValidator('== 1'),
-                StationaryTapValidator(stationary_tap_criteria, slot=0),
+                DiscardInitialSecondsValidator(
+                    CountTrackingIDNormalFingerValidator('== 1')),
+                DiscardInitialSecondsValidator(
+                    StationaryTapValidator(stationary_tap_criteria, slot=0)),
             ),
         ),
         ONE_FINGER_TRACKING:

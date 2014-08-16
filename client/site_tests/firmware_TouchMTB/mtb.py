@@ -126,6 +126,45 @@ def convert_mtplot_file_to_evemu_file(mtplot_file, evemu_dir=None,
     return evemu_file
 
 
+def create_final_state_packet(packets):
+    """Given a sequence of packets, generate a packet representing
+    the final state of events
+    """
+
+    # Put the packets through a state machine to get the
+    # final state of events
+    sm = MtbStateMachine()
+    for packet in packets:
+        for event in packet:
+            sm.add_event(event)
+        sm.get_current_tid_data_for_all_tids()
+
+    # Create the dummy packets representing the final state
+    final_state_packet = []
+    syn_time = None
+    for tid, slot, tid_packet in sm.get_current_tid_data_for_all_tids():
+        # Create events
+        syn_time = tid_packet.syn_time
+        slot_event = (syn_time, EV_ABS, ABS_MT_SLOT, slot)
+        new_contact_event = (syn_time, EV_ABS, ABS_MT_TRACKING_ID, 0)
+        x_event = (syn_time, EV_ABS, ABS_MT_POSITION_X, tid_packet.point.x)
+        y_event = (syn_time, EV_ABS, ABS_MT_POSITION_Y, tid_packet.point.y)
+        pressure_event = (syn_time, EV_ABS, ABS_MT_PRESSURE,
+                          tid_packet.pressure)
+        events = (new_contact_event, slot_event, x_event, y_event,
+                  pressure_event)
+
+        # Create a packet out of the events
+        for event in events:
+            final_state_packet.append(MtbParser.make_ev_dict(event))
+
+    # Add syn_report event to indicate the end of the packet
+    if syn_time:
+        final_state_packet.append(MtbParser.make_syn_report_ev_dict(syn_time))
+
+    return final_state_packet
+
+
 class MtbEvent:
     """Determine what an MTB event is.
 
@@ -248,11 +287,8 @@ class MtbEvemu:
 
     def _convert_event(self, event):
         (tv_sec, tv_usec, ev_type, ev_code, ev_value) = event
-        ev_dict = {MTB.EV_TIME: tv_sec + 0.000001 * tv_usec,
-                   MTB.EV_TYPE: ev_type,
-                   MTB.EV_CODE: ev_code,
-                   MTB.EV_VALUE: ev_value}
-        return ev_dict
+        ev_time = float(tv_sec + tv_usec * 0.000001)
+        return MtbParser.make_ev_dict((ev_time, ev_type, ev_code, ev_value))
 
     def all_fingers_leaving(self):
         """Is there no finger on the touch device?"""
@@ -1287,15 +1323,24 @@ class MtbParser:
     def _get_event_dict_ordinary(self, line):
         """Construct the event dictionary for an ordinary event."""
         result = self.event_re_patt.search(line)
-        ev_dict = {}
         if result is not None:
-            ev_dict[MTB.EV_TIME] = float(result.group(1))
-            ev_dict[MTB.EV_TYPE] = int(result.group(2))
-            ev_dict[MTB.EV_CODE] = int(result.group(3))
-            ev_dict[MTB.EV_VALUE] = int(result.group(4))
+            return MtbParser.make_ev_dict((float(result.group(1)),
+                                          int(result.group(2)),
+                                          int(result.group(3)),
+                                          int(result.group(4))))
+        return {}
+
+    @staticmethod
+    def make_ev_dict(event):
+        (ev_time, ev_type, ev_code, ev_value) = event
+        ev_dict = {MTB.EV_TIME: ev_time,
+                   MTB.EV_TYPE: ev_type,
+                   MTB.EV_CODE: ev_code,
+                   MTB.EV_VALUE: ev_value}
         return ev_dict
 
-    def _make_syn_report_ev_dict(self, syn_time):
+    @staticmethod
+    def make_syn_report_ev_dict(syn_time):
         """Make the event dictionary for a SYN_REPORT event."""
         ev_dict = {}
         ev_dict[MTB.EV_TIME] = float(syn_time)
@@ -1306,7 +1351,7 @@ class MtbParser:
         """Construct the event dictionary for a SYN_REPORT event."""
         result = self.event_re_patt_SYN_REPORT.search(line)
         return ({} if result is None else
-                self._make_syn_report_ev_dict(result.group(1)))
+                MtbParser.make_syn_report_ev_dict(result.group(1)))
 
     def _get_event_dict(self, line):
         """Construct the event dictionary."""
@@ -1341,7 +1386,8 @@ class MtbParser:
                 # when the case described above does occur.
                 elif MtbEvent.is_new_contact(ev_dict) and finger_off:
                     last_ev_time = ev_list[-1][MTB.EV_TIME]
-                    ev_list.append(self._make_syn_report_ev_dict(last_ev_time))
+                    ev_list.append(
+                        MtbParser.make_syn_report_ev_dict(last_ev_time))
                     packets.append(ev_list)
                     ev_list = []
 

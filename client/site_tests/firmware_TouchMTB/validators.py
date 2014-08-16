@@ -259,6 +259,7 @@ class BaseValidator(object):
         list_t = self.packets.get_ordered_finger_path(self.finger, 'syn_time')
         return (list_x, list_y, list_t)
 
+
 class DragLatencyValidator(BaseValidator):
     """ Validator to make check the touchpad's latency
 
@@ -306,6 +307,54 @@ class DragLatencyValidator(BaseValidator):
         self.log_details('Min drag latency (ms): %f' % (1000 * min(latencies)))
         self.vlog.metrics = [firmware_log.Metric(self.mnprops.AVG_LATENCY, avg)]
         return self.vlog
+
+
+class DiscardInitialSecondsValidator(BaseValidator):
+    """ Takes in another validator and validates
+    all the data after the intial number of seconds specified
+    """
+    def __init__(self, validator, mf=None, device=None,
+                 initial_seconds_to_discard=1):
+        self.validator = validator
+        self.initial_seconds_to_discard = initial_seconds_to_discard
+        super(DiscardInitialSecondsValidator, self).__init__(
+            validator.criteria_str, mf, device, validator.__class__.__name__)
+
+    def _discard_initial_seconds(self, packets, seconds_to_discard):
+        # Get the list of syn_time of all packets
+        list_syn_time = self.packets.get_list_syn_time(None)
+
+        # Get the time to cut the list at. list_syn_time is in seconds.
+        cutoff_time = list_syn_time[0] + self.initial_seconds_to_discard
+
+        # Find the index at which the list of timestamps is greater than
+        # the cutoff time.
+        cutoff_index = None
+        for index, time in enumerate(list_syn_time):
+            if time >= cutoff_time:
+                cutoff_index = index
+                break
+
+        if not cutoff_index:
+            return None
+
+        # Create a packet representing the final state of the touchpad
+        # at the end of the discarded seconds
+        final_state_packet = mtb.create_final_state_packet(
+            packets[:cutoff_index])
+        return [final_state_packet] + packets[cutoff_index:]
+
+    def check(self, packets, variation=None):
+        self.init_check(packets)
+        packets = self._discard_initial_seconds(packets,
+                                                self.initial_seconds_to_discard)
+        if packets:
+            return self.validator.check(packets, variation)
+        else:
+            print ('ERROR: The length of the test is '
+                   'less than %d second(s) long.' %
+                   self.initial_seconds_to_discard)
+
 
 class LinearityValidator1(BaseValidator):
     """Validator to verify linearity.

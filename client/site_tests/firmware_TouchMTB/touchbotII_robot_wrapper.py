@@ -537,8 +537,9 @@ class RobotWrapper:
             noise_script_dir = os.path.join(self._get_robot_script_dir(), SCRIPT_NOISE)
             # Command for noise
             noise_cmd = 'python %s %s %d %d' % (noise_script_dir, waveform, frequency, amplitude)
-
-            cmd = '%s && %s' % (noise_cmd, cmd)
+            # A one second pause to give the touchpad time to calibrate
+            DELAY = 1  # 1 seconds
+            cmd = '%s && %s %d' % (noise_cmd, cmd, DELAY)
 
         return cmd
 
@@ -575,8 +576,8 @@ class RobotWrapper:
             # Command for noise
             noise_cmd = 'python %s %s %d %d' % (noise_script_dir, waveform, frequency, amplitude)
 
-           # Add the noise command and a pause to the tap
-            TEST_DURATION = 2  # 2 seconds
+            # Add the noise command and a pause to the tap
+            TEST_DURATION = 3  # 3 seconds
             cmd = '%s && %s %d' % (noise_cmd, cmd, TEST_DURATION)
 
         return cmd
