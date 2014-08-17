@@ -23,7 +23,6 @@ class CrosDisksFilesystemTester(CrosDisksTester):
 
     def _run_test_config(self, config):
         logging.info('Testing "%s"', config['description'])
-        is_experimental = config.get('experimental_features_enabled', False)
         test_mount_filesystem_type = config.get('test_mount_filesystem_type')
         test_mount_options = config.get('test_mount_options')
         is_write_test = config.get('is_write_test', False)
@@ -49,29 +48,6 @@ class CrosDisksFilesystemTester(CrosDisksTester):
             image.unmount()
 
             device_file = image.loop_device
-
-            # If the filesystem type is an experimental feature, verify that
-            # CrosDisks fails to mount the filesystem when the
-            # ExperimentalFeaturesEnabled property is set to false, and succeeds
-            # after ExperimentalFeaturesEnabled is set to true.
-            self.cros_disks.experimental_features_enabled = False
-            if is_experimental:
-                self.cros_disks.mount(device_file, test_mount_filesystem_type,
-                                      test_mount_options)
-                expected_mount_completion = {
-                    'source_path': device_file,
-                }
-                self.cros_disks.expect_mount_completion(
-                        expected_mount_completion)
-                # The mount path is reserved on failure, so the test needs to
-                # unmount it before retrying with ExperimentalFeaturesEnabled
-                # set to true.
-                self.cros_disks.unmount(device_file, ['force'])
-                self.cros_disks.experimental_features_enabled = True
-
-            if self.cros_disks.experimental_features_enabled:
-                logging.debug('Experimental features are enabled in cros-disks')
-
             self.cros_disks.mount(device_file, test_mount_filesystem_type,
                                   test_mount_options)
             expected_mount_completion = {
@@ -101,7 +77,6 @@ class CrosDisksFilesystemTester(CrosDisksTester):
             self.cros_disks.unmount(device_file, ['force'])
 
     def test_using_virtual_filesystem_image(self):
-        experimental = self.cros_disks.experimental_features_enabled
         try:
             for config in self._test_configs:
                 self._run_test_config(config)
@@ -109,11 +84,6 @@ class CrosDisksFilesystemTester(CrosDisksTester):
             cmd = 'ls -la %s' % tempfile.gettempdir()
             logging.debug(utils.run(cmd))
             raise
-        finally:
-            # Always restore the original value of the ExperimentalFeaturesEnabled
-            # property, so cros-disks maintains in the same state of support
-            # experimental features before and after tests.
-            self.cros_disks.experimental_features_enabled = experimental
 
     def get_tests(self):
         return [self.test_using_virtual_filesystem_image]

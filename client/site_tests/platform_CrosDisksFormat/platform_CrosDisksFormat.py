@@ -21,7 +21,6 @@ class CrosDisksFormatTester(CrosDisksTester):
 
     def _run_test_config(self, config):
         logging.info('Testing "%s"', config['description'])
-        is_experimental = config.get('experimental_features_enabled', False)
         filesystem_type = config['filesystem_type']
         format_options = config.get('format_options')
         # Create a zero-filled virtual filesystem image to help stimulate
@@ -33,8 +32,6 @@ class CrosDisksFormatTester(CrosDisksTester):
             # Attach the zero-filled virtual filesystem image to a loop device
             # without actually formatting it.
             device_file = image.attach_to_loop_device()
-
-            self.cros_disks.experimental_features_enabled = is_experimental
 
             # Format the virtual filesystem image via CrosDisks.
             self.cros_disks.format(device_file, filesystem_type, format_options)
@@ -58,15 +55,8 @@ class CrosDisksFormatTester(CrosDisksTester):
                     raise error.TestFail("Failed to verify test content")
 
     def test_using_virtual_filesystem_image(self):
-        experimental = self.cros_disks.experimental_features_enabled
-        try:
-            for config in self._test_configs:
-                self._run_test_config(config)
-        finally:
-            # Always restore the original value of ExperimentalFeaturesEnabled
-            # property, so cros-disks maintains in the same state of support
-            # experimental features before and after tests.
-            self.cros_disks.experimental_features_enabled = experimental
+        for config in self._test_configs:
+            self._run_test_config(config)
 
     def get_tests(self):
         return [self.test_using_virtual_filesystem_image]

@@ -148,9 +148,6 @@
           "Mount",
           "Unmount"
         ],
-        "properties": [
-          "ExperimentalFeaturesEnabled"
-        ],
         "signals": [
           "DeviceAdded",
           "DeviceRemoved",

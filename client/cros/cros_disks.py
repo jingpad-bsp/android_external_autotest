@@ -179,7 +179,6 @@ class CrosDisksClient(DBusClient):
     CROS_DISKS_INTERFACE = 'org.chromium.CrosDisks'
     CROS_DISKS_OBJECT_PATH = '/org/chromium/CrosDisks'
     DBUS_PROPERTIES_INTERFACE = 'org.freedesktop.DBus.Properties'
-    EXPERIMENTAL_FEATURES_ENABLED_PROPERTY = 'ExperimentalFeaturesEnabled'
     FORMAT_COMPLETED_SIGNAL = 'FormatCompleted'
     FORMAT_COMPLETED_SIGNAL_ARGUMENTS = (
         'status', 'path'
@@ -209,28 +208,6 @@ class CrosDisksClient(DBusClient):
         self.handle_signal(self.CROS_DISKS_INTERFACE,
                            self.MOUNT_COMPLETED_SIGNAL,
                            self.MOUNT_COMPLETED_SIGNAL_ARGUMENTS)
-
-    @property
-    def experimental_features_enabled(self):
-        """Gets the CrosDisks ExperimentalFeaturesEnabled property.
-
-        Returns:
-            The current value of the ExperimentalFeaturesEnabled property.
-        """
-        return self.properties.Get(self.CROS_DISKS_INTERFACE,
-                                   self.EXPERIMENTAL_FEATURES_ENABLED_PROPERTY)
-
-    @experimental_features_enabled.setter
-    def experimental_features_enabled(self, value):
-        """Sets the CrosDisks ExperimentalFeaturesEnabled property.
-
-        Args:
-            value: The value to which the ExperimentalFeaturesEnabled property
-                   is set.
-        """
-        return self.properties.Set(self.CROS_DISKS_INTERFACE,
-                                   self.EXPERIMENTAL_FEATURES_ENABLED_PROPERTY,
-                                   value)
 
     def is_alive(self):
         """Invokes the CrosDisks IsAlive method.
