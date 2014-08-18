@@ -262,6 +262,7 @@ class HostQueueEntryTest(BaseSchedulerModelsTest):
         hqe.aborted = True
         hqe.complete = False
         hqe.status = models.HostQueueEntry.Status.STARTING
+        hqe.started_on = datetime.datetime.now()
 
         dispatcher = self.god.create_mock_class(monitor_db.BaseDispatcher,
                                                 'BaseDispatcher')
@@ -297,6 +298,7 @@ class HostQueueEntryTest(BaseSchedulerModelsTest):
         """Test that finished_on is set when hqe completes."""
         for status in host_queue_entry_states.Status.values:
             hqe = self._create_hqe(hosts=[1])
+            hqe.started_on = datetime.datetime.now()
             self.assertIsNone(hqe.finished_on)
             hqe.set_status(status)
             if status in host_queue_entry_states.COMPLETE_STATUSES:

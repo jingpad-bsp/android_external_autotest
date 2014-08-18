@@ -624,7 +624,8 @@ class HostQueueEntry(DBObject):
         if status is not models.HostQueueEntry.Status.ABORTED:
             self.job.stop_if_necessary()
 
-        self.set_finished_on_now()
+        if self.started_on:
+            self.set_finished_on_now()
         if not self.execution_subdir:
             return
         # unregister any possible pidfiles associated with this queue entry
