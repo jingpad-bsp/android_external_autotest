@@ -370,7 +370,70 @@ class JobDirectorySubclassTests(mox.MoxTestBase):
         timestamp = _make_timestamp(0, True)
         job_directories._AFE.run(
             'get_jobs', id=job._id, finished=True).AndReturn(
+                [{'created_on': _make_timestamp(0, True)}])
+        job_directories._AFE.run(
+            'get_host_queue_entries', finished_on__isnull=False,
+            job_id=job._id).AndReturn(
+                [{'finished_on': timestamp}])
+        self.mox.ReplayAll()
+        self.assertEqual(timestamp,
+                         job.get_timestamp_if_finished())
+
+    def test_finished_regular_job_multiple_hqes(self):
+        """Test getting the timestamp for a regular job with multiple hqes.
+
+        Tests the return value for
+        `RegularJobDirectory.get_timestamp_if_finished()` when
+        the AFE indicates the job is finished and the job has multiple host
+        queue entries.
+
+        If there is more than one HQE, this test guarantees latest timestamp is
+        the one returned.
+        """
+        job = job_directories.RegularJobDirectory('118-fubar')
+        created_timestamp = _make_timestamp(2, True)
+        older_hqe_timestamp = _make_timestamp(1, True)
+        newer_hqe_timestamp = _make_timestamp(0, True)
+        job_directories._AFE.run(
+            'get_jobs', id=job._id, finished=True).AndReturn(
+                [{'created_on': created_timestamp}])
+        job_directories._AFE.run(
+            'get_host_queue_entries', finished_on__isnull=False,
+            job_id=job._id).AndReturn(
+                [{'finished_on': older_hqe_timestamp},
+                 {'finished_on': newer_hqe_timestamp}])
+        # For the second call return the latest hqe last.
+        job_directories._AFE.run(
+            'get_jobs', id=job._id, finished=True).AndReturn(
+                [{'created_on': created_timestamp}])
+        job_directories._AFE.run(
+            'get_host_queue_entries', finished_on__isnull=False,
+            job_id=job._id).AndReturn(
+                [{'finished_on': newer_hqe_timestamp},
+                 {'finished_on': older_hqe_timestamp}])
+        self.mox.ReplayAll()
+        self.assertEqual(newer_hqe_timestamp,
+                         job.get_timestamp_if_finished())
+        self.assertEqual(newer_hqe_timestamp,
+                         job.get_timestamp_if_finished())
+
+    def test_finished_regular_job_null_finished_times(self):
+        """Test getting the timestamp for an aborted regular job.
+
+        Tests the return value for
+        `RegularJobDirectory.get_timestamp_if_finished()` when
+        the AFE indicates the job is finished and the job has aborted host
+        queue entries.
+
+        """
+        job = job_directories.RegularJobDirectory('118-fubar')
+        timestamp = _make_timestamp(0, True)
+        job_directories._AFE.run(
+            'get_jobs', id=job._id, finished=True).AndReturn(
                 [{'created_on': timestamp}])
+        job_directories._AFE.run(
+            'get_host_queue_entries', finished_on__isnull=False,
+            job_id=job._id).AndReturn([])
         self.mox.ReplayAll()
         self.assertEqual(timestamp,
                          job.get_timestamp_if_finished())
@@ -403,7 +466,7 @@ class JobDirectorySubclassTests(mox.MoxTestBase):
         job_directories._AFE.run('get_special_tasks',
                                  id=job._id,
                                  is_complete=True).AndReturn(
-                                     [{'time_started': timestamp}])
+                                     [{'time_finished': timestamp}])
         self.mox.ReplayAll()
         self.assertEqual(timestamp,
                          job.get_timestamp_if_finished())

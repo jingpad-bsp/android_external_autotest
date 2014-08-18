@@ -146,8 +146,25 @@ class RegularJobDirectory(_JobDirectory):
   GLOB_PATTERN = '[0-9]*-*'
 
   def get_timestamp_if_finished(self):
+    """Get the timestamp to use for finished jobs.
+
+    @returns the latest hqe finished_on time. If the finished_on times are null
+             returns the job's created_on time.
+    """
     entry = _AFE.run('get_jobs', id=self._id, finished=True)
-    return entry[0]['created_on'] if entry else None
+    if not entry:
+      return None
+    hqes = _AFE.run('get_host_queue_entries', finished_on__isnull=False,
+                    job_id=self._id)
+    if not hqes:
+      return entry[0]['created_on']
+    latest_finished_time = hqes[0]['finished_on']
+    # While most Jobs have 1 HQE, some can have multiple, so check them all.
+    for hqe in hqes[1:]:
+      if (datetime.datetime.strptime(hqe['finished_on'], JOB_TIME_FORMAT) >
+          datetime.datetime.strptime(latest_finished_time, JOB_TIME_FORMAT)):
+        latest_finished_time = hqe['finished_on']
+    return latest_finished_time
 
 
 class SpecialJobDirectory(_JobDirectory):
@@ -160,4 +177,4 @@ class SpecialJobDirectory(_JobDirectory):
 
   def get_timestamp_if_finished(self):
     entry = _AFE.run('get_special_tasks', id=self._id, is_complete=True)
-    return entry[0]['time_started'] if entry else None
+    return entry[0]['time_finished'] if entry else None
