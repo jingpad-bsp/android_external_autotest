@@ -23,7 +23,7 @@ from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.client.cros import constants
 from autotest_lib.client.cros import cros_ui
-from autotest_lib.server import autoserv_parser
+from autotest_lib.server import autoserv_parser, autotest
 from autotest_lib.server import utils as server_utils
 from autotest_lib.server.cros.dynamic_suite import constants as ds_constants
 from autotest_lib.server.cros.dynamic_suite import tools, frontend_wrappers
@@ -1488,7 +1488,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         @param fun function in client utils namespace.
         @return output string from calling fun.
         """
-        script = 'cd /usr/local/autotest/bin; '
+        script = 'cd %s/bin; ' % autotest.Autotest.get_installed_autodir(self)
         script += 'python -c "import common; import utils;'
         script += 'print utils.%s"' % fun
         return script
