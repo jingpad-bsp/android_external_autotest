@@ -45,7 +45,7 @@ def get_board():
     """Get board of the Chromebook machine."""
     with open('/etc/lsb-release') as lsb:
         context = lsb.read()
-    board = 'unknown_board'
+    board = None
     if context is not None:
         for line in context.splitlines():
             if line.startswith('CHROMEOS_RELEASE_BOARD'):
@@ -84,6 +84,36 @@ def get_board_from_directory(directory):
         if board:
             return board
     return None
+
+
+def get_cpu():
+    """Get the processor of the machine."""
+    return common_util.simple_system_output('uname -m')
+
+
+def install_pygtk():
+    """A temporary dirty hack of installing pygtk related packages."""
+    if get_board() is None:
+        print 'This does not look like a chromebook.'
+    elif get_cpu().lower() == 'x86_64':
+        cmd_remount = 'mount -o remount,rw /'
+        if common_util.simple_system(cmd_remount) == 0:
+            cmd_untar = 'tar -jxf pygtk/pygtk_x86_64.tbz2 -C /'
+            if common_util.simple_system(cmd_untar) == 0:
+                # Need to add the gtk path manually. Otherwise, the path
+                # may not be in the sys.path for the first time when the
+                # tarball is extracted.
+                gtk_path = '/usr/local/lib64/python2.7/site-packages/gtk-2.0'
+                sys.path.append(gtk_path)
+                print 'Successful installation of pygtk.'
+                return True
+            else:
+                print 'Error: Failed to install pygtk.'
+        else:
+            print 'Failed to remount. Have you removed the write protect?'
+    else:
+        print 'No pygtk found for non-x86 architecture. Will be supported soon.'
+    return False
 
 
 def get_fw_and_date(filename):

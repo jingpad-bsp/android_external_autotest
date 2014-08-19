@@ -13,6 +13,12 @@ import sys
 import common
 import cros_gs
 import firmware_utils
+
+# TODO(josephsih): remove this hack when not relying on pygtk.
+# The pygtk related stuffs are needed by firmware_window below.
+if not firmware_utils.install_pygtk():
+    sys.exit(1)
+
 import firmware_window
 import keyboard_device
 import mtb
