@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
+import heapq, logging
 
 from PIL import Image
 from PIL import ImageChops
@@ -57,9 +57,10 @@ class RGBImageComparer(object):
         diff_image = ImageChops.difference(golden_image, test_image)
         maxcolors = diff_image.size[0] * diff_image.size[1]
         colorstuples = diff_image.getcolors(maxcolors)
+        max_debug_count = 100
 
-        logging.debug("***ALL Color counts:")
-        logging.debug(colorstuples)
+        logging.debug("***ALL Color counts: %d", maxcolors)
+        logging.debug(heapq.nlargest(max_debug_count, colorstuples))
 
         # getcolors returns a list of (count, color) tuples where count is the
         # number of times the corresponding color in the image.
@@ -67,8 +68,8 @@ class RGBImageComparer(object):
         above_thres_tuples = [t for t in colorstuples
                               if any(pixel > self.threshold for pixel in t[1])]
 
-        logging.debug("***Color counts that are above threshold:")
-        logging.debug(above_thres_tuples)
+        logging.debug("Color counts above thres.: %d", len(above_thres_tuples))
+        logging.debug(heapq.nlargest(max_debug_count, above_thres_tuples))
 
         return sum(t[0] for t in above_thres_tuples)
 
