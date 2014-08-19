@@ -15,7 +15,9 @@ TEST_CLASS = "video"
 TEST_TYPE = "client"
 DEPENDENCIES = "video_glitch_detection"
 BUG_TEMPLATE = {
-    'labels': ['Cr-OS-Kernel-Video', 'OS-Chrome'],
+    'owner': 'avkodipelli@chromium.org'
+    'cc': ['mussa@chromium.org', 'rohitbm@chromium.org'],
+    'labels': ['Cr-OS-Kernel-Video', 'OS-Chrome']
 }
 
 DOC = """
