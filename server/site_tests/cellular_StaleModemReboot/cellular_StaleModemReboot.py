@@ -168,8 +168,6 @@ class cellular_StaleModemReboot(test.test):
 
 
     def _cold_reset_dut(self, boot_id):
-        # TODO(dshi): power_off() / power_on() may not work on all devices at
-        # this time but the fix is on the way. crbug.com/352404
         self._servo.get_power_state_controller().power_off()
         self._servo.get_power_state_controller().power_on()
         time.sleep(self._servo.BOOT_DELAY)
