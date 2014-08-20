@@ -10,9 +10,9 @@ from PIL import Image
 from PIL import ImageChops
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.chameleon import edid
 from autotest_lib.server import test
 from autotest_lib.server.cros.chameleon import display_client
-from autotest_lib.server.cros.chameleon import edid
 
 def _unlevel(p):
     """Unlevel a color value from TV level back to PC level

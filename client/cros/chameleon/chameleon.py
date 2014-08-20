@@ -7,7 +7,7 @@ import xmlrpclib
 
 from PIL import Image
 
-from autotest_lib.server.cros.chameleon import edid
+from autotest_lib.client.cros.chameleon import edid
 
 
 class ChameleonBoard(object):

@@ -9,7 +9,7 @@
 import xmlrpclib
 
 from autotest_lib.client.bin import utils
-from autotest_lib.server.cros.chameleon import chameleon
+from autotest_lib.client.cros.chameleon import chameleon
 from autotest_lib.server.hosts import ssh_host
 
 

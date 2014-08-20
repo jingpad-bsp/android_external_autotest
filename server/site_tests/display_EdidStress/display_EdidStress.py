@@ -9,8 +9,8 @@ import logging
 import os
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.chameleon import edid
 from autotest_lib.server.cros.chameleon import chameleon_test
-from autotest_lib.server.cros.chameleon import edid
 
 
 class display_EdidStress(chameleon_test.ChameleonTest):
