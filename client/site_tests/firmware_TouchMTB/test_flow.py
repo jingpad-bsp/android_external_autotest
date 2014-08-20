@@ -657,7 +657,7 @@ class TestFlow:
         # Initiate the MtbSanityValidator. Note that this should be done each
         # time just before recording the gesture file since it requires a
         # snapshot of the input device before any finger touching the device.
-        self.gesture.mtb_sanity_validator = MtbSanityValidator()
+        self.gesture.mtb_sanity_validator = validators.MtbSanityValidator()
 
         # Now, we will record a new gesture event file.
         # Fork a new process for mtplot. Add io watch for the gesture file.
