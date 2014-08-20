@@ -60,6 +60,11 @@ class TestSpec(object):
                     (self.num_errors, self.test_type))
         return ''
 
+    @property
+    def empty(self):
+        """Returns False if this test spec has any tests."""
+        return len(self.tests) == 0
+
 
 class telemetry_UnitTests(test.test):
     """This is a client side wrapper for the Telemetry unit tests."""
@@ -72,6 +77,8 @@ class telemetry_UnitTests(test.test):
         @param test_spec: Object of type TestSpec.
 
         """
+        if test_spec.empty:
+            return
         logging.info('Running %s unit tests with browser_type "%s".',
                      test_spec.test_type, browser_type)
         sys.path.append(test_spec.top_level_dir)
