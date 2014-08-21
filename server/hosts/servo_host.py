@@ -79,6 +79,8 @@ class ServoHost(ssh_host.SSHHost):
     REBOOT_DELAY_SECS = 20
     # Servod process name.
     SERVOD_PROCESS = 'servod'
+    # Timeout for initializing servo signals.
+    INITIALIZE_SERVO_TIMEOUT_SECS = 30
 
     _MAX_POWER_CYCLE_ATTEMPTS = 3
     _timer = stats.Timer('servo_host')
@@ -357,6 +359,32 @@ class ServoHost(ssh_host.SSHHost):
                     (self.hostname, e))
 
 
+    def _check_servod_status(self):
+        """Check if servod process is running.
+
+        If servod is not running, there is no need to verify if servo is
+        working. Check the process before making any servod call can avoid
+        long timeout that eventually fail any servod call.
+        If the servo host is set to localhost, failure of servod status check
+        will be ignored, as servo call may use ssh tunnel.
+
+        @raises ServoHostVerifyFailure if servod process does not exist.
+
+        """
+        try:
+            pid = int(self.run('pgrep servod').stdout.strip())
+            logging.info('servod is running, PID=%d', pid)
+        except (error.AutoservRunError, error.AutoservSSHTimeout) as e:
+            if self._is_localhost:
+                logging.info('Ignoring servod status check failure. servo host '
+                             'is set to localhost, servo call may use ssh '
+                             'tunnel to go through.')
+            else:
+                raise ServoHostVerifyFailure(
+                        'Servod status check failed for %s: %s' %
+                        (self.hostname, e))
+
+
     @_timer.decorate
     def _update_image(self):
         """Update the image on the servo host, if needed.
@@ -475,6 +503,9 @@ class ServoHost(ssh_host.SSHHost):
         logging.info('Verifying if servo config file exists.')
         self._check_servo_config()
 
+        logging.info('Verifying if servod is running.')
+        self._check_servod_status()
+
         logging.info('Verifying servo host %s with sanity checks.',
                      self.hostname)
         self._check_servo_host_usb()
@@ -485,7 +516,11 @@ class ServoHost(ssh_host.SSHHost):
             self._check_servod()
         else:
             self._servo = servo.Servo(servo_host=self)
-            self._servo.initialize_dut()
+            timeout, _ = retry.timeout(
+                    self._servo.initialize_dut,
+                    timeout_sec=self.INITIALIZE_SERVO_TIMEOUT_SECS)
+            if timeout:
+                raise ServoHostVerifyFailure('Servo initialize timed out.')
 
         logging.info('Sanity checks pass on servo host %s', self.hostname)
 
