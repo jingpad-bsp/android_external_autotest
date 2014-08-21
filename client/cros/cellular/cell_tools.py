@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 """Utilities for cellular tests."""
-import copy, dbus, os, string, tempfile
+import copy, dbus, os, tempfile
 
 # TODO(thieule): Consider renaming mm.py, mm1.py, modem.py, etc to be more
 # descriptive (crosbug.com/37060).
@@ -329,57 +329,6 @@ class OtherDeviceShutdownContext(object):
     def __exit__(self, exception, value, traceback):
         if self.device_manager:
             self.device_manager.RestoreDevices()
-        return False
-
-
-class BlackholeContext(object):
-    """Context manager which uses IP tables to black hole access to hosts.
-
-    A host in hosts can be either a hostname or an IP address.  Using a
-    hostname is potentially troublesome here due to DNS inconsistencies
-    and load balancing, but iptables is generally smart with hostnames,
-    inserting rules for each of the N ip addresses returned by a name
-    lookup.
-
-    Usage:
-        with cell_tools.BlackholeContext(hosts):
-            block
-    """
-
-    def __init__(self, hosts):
-        self.hosts = hosts
-
-    def _rules(self):
-        rules = utils.system_output('iptables -S OUTPUT').splitlines()
-        rules += utils.system_output('iptables -S INPUT').splitlines()
-        return set(rules)
-
-    def __enter__(self):
-        """Preserve original list of rules and blacklist self.hosts."""
-        self.original_rules = self._rules()
-
-        for host, chain in self.hosts:
-            if chain == 'OUTPUT':
-                host_flag = '-d'
-            else:
-                host_flag = '-s'
-            cmd = ' '.join(['iptables',
-                            '-I %s' % chain,
-                            '%s %s' % (host_flag, host),
-                            '-j REJECT'])
-            utils.run(cmd)
-        return self
-
-    def __exit__(self, exception, value, traceback):
-        """Remove all rules not in the original list."""
-        for rule in self._rules():
-            if rule in self.original_rules:
-                logger.info('preserving %s' % rule)
-                continue
-            rule = string.replace(rule, '-A', '-D', 1)
-            logger.info('removing %s' % rule)
-            utils.run('iptables %s' % rule)
-
         return False
 
 
