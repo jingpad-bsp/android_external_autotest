@@ -37,7 +37,7 @@ CLIENT_TESTS= [
     ('hardware_MemoryLatency', {
         'sample_size_kb': [ int(2), int(192), int(1024)]}),
     ('hardware_Memtester', {
-        'tag' : 'memory_qual', 'loop' : 10000}),
+        'tag' : 'memory_qual', 'loop' : 100}),
     ('hardware_SAT', {
         'tag' : 'memory_qual', 'seconds' : 8 * HOUR_IN_SECS}),
     ('power_MemorySuspend', {
