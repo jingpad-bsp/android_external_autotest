@@ -55,10 +55,13 @@ def run_client_test(machine):
     client = hosts.create_host(machine)
     client_at = autotest.Autotest(client)
     for test, argv in CLIENT_TESTS:
+        client.reboot()
         client_at.run_test(test, **argv)
 
 def run_server_test(machine):
+    client = hosts.create_host(machine)
     for test, argv in SERVER_TESTS:
+        client.reboot()
         job.run_test(test, client_ip=machine, **argv)
 
 
