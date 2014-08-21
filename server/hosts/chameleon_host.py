@@ -6,24 +6,9 @@
 """This file provides core logic for connecting a Chameleon Daemon."""
 
 
-import xmlrpclib
-
 from autotest_lib.client.bin import utils
 from autotest_lib.client.cros.chameleon import chameleon
 from autotest_lib.server.hosts import ssh_host
-
-
-def make_chameleon_hostname(dut_hostname):
-    """Given a DUT's hostname, return the hostname of its Chameleon.
-
-    @param dut_hostname: hostname of a DUT.
-
-    @return hostname of the DUT's Chameleon.
-
-    """
-    host_parts = dut_hostname.split('.')
-    host_parts[0] = host_parts[0] + '-chameleon'
-    return '.'.join(host_parts)
 
 
 class ChameleonHost(ssh_host.SSHHost):
@@ -51,8 +36,8 @@ class ChameleonHost(ssh_host.SSHHost):
         super(ChameleonHost, self)._initialize(hostname=chameleon_host,
                                                *args, **dargs)
         self._is_in_lab = utils.host_is_in_lab_zone(self.hostname)
-        remote = 'http://%s:%s' % (self.hostname, chameleon_port)
-        self._chameleond_proxy = xmlrpclib.ServerProxy(remote, allow_none=True)
+        self._chameleon_connection = chameleon.ChameleonConnection(
+                self.hostname, chameleon_port)
 
 
     def is_in_lab(self):
@@ -81,7 +66,7 @@ class ChameleonHost(ssh_host.SSHHost):
         """Create a ChameleonBoard object."""
         # TODO(waihong): Add verify and repair logic which are required while
         # deploying to Cros Lab.
-        return chameleon.ChameleonBoard(self._chameleond_proxy)
+        return chameleon.ChameleonBoard(self._chameleon_connection)
 
 
 def create_chameleon_host(dut, chameleon_args):
@@ -105,7 +90,7 @@ def create_chameleon_host(dut, chameleon_args):
     @returns: A ChameleonHost object or None.
 
     """
-    hostname = make_chameleon_hostname(dut)
+    hostname = chameleon.make_chameleon_hostname(dut)
     if utils.host_is_in_lab_zone(hostname):
         return ChameleonHost(chameleon_host=hostname)
     elif chameleon_args:

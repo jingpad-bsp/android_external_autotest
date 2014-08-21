@@ -2,12 +2,69 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import httplib
+import socket
 import time
 import xmlrpclib
 
 from PIL import Image
 
+from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import edid
+
+
+CHAMELEON_PORT = 9992
+
+
+class ChameleonConnectionError(error.TestError):
+    """Indicates that connecting to Chameleon failed.
+
+    It is fatal to the test unless caught.
+    """
+    pass
+
+
+class ChameleonConnection(object):
+    """ChameleonConnection abstracts the network connection to the board.
+
+    ChameleonBoard and ChameleonPort use it for accessing Chameleon RPC.
+
+    """
+
+    def __init__(self, hostname, port=CHAMELEON_PORT):
+        """Constructs a ChameleonConnection.
+
+        @param hostname: Hostname the chameleond process is running.
+        @param port: Port number the chameleond process is listening on.
+
+        @raise ChameleonConnectionError if connection failed.
+        """
+        self.chameleond_proxy = ChameleonConnection._create_server_proxy(
+                hostname, port)
+
+
+    @staticmethod
+    def _create_server_proxy(hostname, port):
+        """Creates the chameleond server proxy.
+
+        @param hostname: Hostname the chameleond process is running.
+        @param port: Port number the chameleond process is listening on.
+
+        @return ServerProxy object to chameleond.
+
+        @raise ChameleonConnectionError if connection failed.
+        """
+        remote = 'http://%s:%s' % (hostname, port)
+        chameleond_proxy = xmlrpclib.ServerProxy(remote, allow_none=True)
+        # Call a RPC to test.
+        try:
+            chameleond_proxy.ProbeInputs()
+        except (socket.error,
+                xmlrpclib.ProtocolError,
+                httplib.BadStatusLine) as e:
+            raise ChameleonConnectionError(e)
+        return chameleond_proxy
 
 
 class ChameleonBoard(object):
@@ -15,14 +72,15 @@ class ChameleonBoard(object):
 
     A Chameleond RPC proxy is passed to the construction such that it can
     use this proxy to control the Chameleon board.
+
     """
 
-    def __init__(self, chameleond_proxy):
+    def __init__(self, chameleon_connection):
         """Construct a ChameleonBoard.
 
-        @param chameleond_proxy: Chameleond RPC proxy object.
+        @param chameleon_connection: ChameleonConnection object.
         """
-        self._chameleond_proxy = chameleond_proxy
+        self._chameleond_proxy = chameleon_connection.chameleond_proxy
 
 
     def reset(self):
@@ -201,3 +259,45 @@ class ChameleonPort(object):
         # The return value of RPC is converted to a list. Convert it back to
         # a tuple.
         return tuple(self._chameleond_proxy.DetectResolution(self._input_id))
+
+
+def make_chameleon_hostname(dut_hostname):
+    """Given a DUT's hostname, returns the hostname of its Chameleon.
+
+    @param dut_hostname: Hostname of a DUT.
+
+    @return Hostname of the DUT's Chameleon.
+    """
+    host_parts = dut_hostname.split('.')
+    host_parts[0] = host_parts[0] + '-chameleon'
+    return '.'.join(host_parts)
+
+
+def create_chameleon_board(dut_hostname, args):
+    """Given either DUT's hostname or argments, creates a ChameleonBoard object.
+
+    If the DUT's hostname is in the lab zone, it connects to the Chameleon by
+    append the hostname with '-chameleon' suffix. If not, checks if the args
+    contains the key-value pair 'chameleon_host=IP'.
+
+    @param dut_hostname: Hostname of a DUT.
+    @param args: A string of arguments passed from the command line.
+
+    @return A ChameleonBoard object.
+
+    @raise ChameleonConnectionError if unknown hostname.
+    """
+    connection = None
+    hostname = make_chameleon_hostname(dut_hostname)
+    if utils.host_is_in_lab_zone(hostname):
+        connection = ChameleonConnection(hostname)
+    else:
+        args_dict = utils.args_to_dict(args)
+        hostname = args_dict.get('chameleon_host', None)
+        port = args_dict.get('chameleon_port', CHAMELEON_PORT)
+        if hostname:
+            connection = ChameleonConnection(hostname, port)
+        else:
+            raise ChameleonConnectionError('No chameleon_host is given in args')
+
+    return ChameleonBoard(connection)
