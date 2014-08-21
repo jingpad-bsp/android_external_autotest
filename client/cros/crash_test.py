@@ -206,12 +206,13 @@ class CrashTest(test.test):
 
         @param has_consent: True to indicate consent, False otherwise
         """
+        autotest_cros_dir = os.path.dirname(__file__)
         if has_consent:
             if os.path.isdir(constants.WHITELIST_DIR):
                 # Create policy file that enables metrics/consent.
-                shutil.copy('/usr/local/autotest/cros/mock_metrics_on.policy',
+                shutil.copy('%s/mock_metrics_on.policy' % autotest_cros_dir,
                             constants.SIGNED_POLICY_FILE)
-                shutil.copy('/usr/local/autotest/cros/mock_metrics_owner.key',
+                shutil.copy('%s/mock_metrics_owner.key' % autotest_cros_dir,
                             constants.OWNER_KEY_FILE)
             # Create deprecated consent file.  This is created *after* the
             # policy file in order to avoid a race condition where chrome
@@ -227,9 +228,9 @@ class CrashTest(test.test):
         else:
             if os.path.isdir(constants.WHITELIST_DIR):
                 # Create policy file that disables metrics/consent.
-                shutil.copy('/usr/local/autotest/cros/mock_metrics_off.policy',
+                shutil.copy('%s/mock_metrics_off.policy' % autotest_cros_dir,
                             constants.SIGNED_POLICY_FILE)
-                shutil.copy('/usr/local/autotest/cros/mock_metrics_owner.key',
+                shutil.copy('%s/mock_metrics_owner.key' % autotest_cros_dir,
                             constants.OWNER_KEY_FILE)
             # Remove deprecated consent file.
             utils.system('rm -f "%s"' % (self._CONSENT_FILE))
