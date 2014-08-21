@@ -2,9 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os, shutil
+import os, logging, shutil
 from autotest_lib.client.bin import test, utils
-from autotest_lib.client.common_lib import error
 
 
 class hardware_RamFio(test.test):
@@ -30,8 +29,9 @@ class hardware_RamFio(test.test):
         if size == 0:
             size = usable_mem
         elif usable_mem < size:
-            raise error.TestFail(str('Not enough memory. Want: %d, Usable: %d' %
-                           (size, usable_mem)))
+            logging.info('Not enough memory. Want: %d, Usable: %d',
+                         size, usable_mem)
+            size = usable_mem
 
         self.write_perf_keyval({'Size' : size})
 
