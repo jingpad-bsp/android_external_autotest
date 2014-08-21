@@ -527,8 +527,11 @@ class base_test(object):
                 utils.take_screenshot(self.debugdir,
                                       '%s-fail' % self.tagged_testname)
                 # Save the exception while we run our cleanup() before
-                # reraising it.
+                # reraising it, but log it to so actual time of error is known.
                 exc_info = sys.exc_info()
+                logging.warning('Autotest caught exception when running test:',
+                                exc_info=True)
+
                 try:
                     try:
                         if run_cleanup:
