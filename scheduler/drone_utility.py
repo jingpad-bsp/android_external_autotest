@@ -77,7 +77,11 @@ class BaseDroneUtility(object):
     def initialize(self, results_dir):
         temporary_directory = os.path.join(results_dir, _TEMPORARY_DIRECTORY)
         if os.path.exists(temporary_directory):
-            shutil.rmtree(temporary_directory)
+            # TODO crbug.com/391111: before we have a better solution to
+            # periodically cleanup tmp files, we have to use rm -rf to delete
+            # the whole folder. shutil.rmtree has performance issue when a
+            # folder has large amount of files, e.g., drone_tmp.
+            os.system('rm -rf %s' % temporary_directory)
         self._ensure_directory_exists(temporary_directory)
         # TODO (sbasi) crbug.com/345011 - Remove this configuration variable
         # and clean up build_externals so it NO-OP's.
