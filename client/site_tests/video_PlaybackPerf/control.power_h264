@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Project, chromeos-video@google.com"
-NAME = "video_PlaybackPower.h264"
+NAME = "video_PlaybackPerf.power_h264"
 PURPOSE = "Test the power consumption of H264 video playback"
 CRITERIA = """
 The test outputs the power consumption of H264 video playback.
@@ -12,15 +12,18 @@ TIME = "MEDIUM"
 TEST_CATEGORY = "Performance"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
-DEPENDENCIES = 'hw_video_acc_h264'
 BUG_TEMPLATE = {
     'labels': ['OS-Chrome', 'Cr-OS-Kernel-Video'],
 }
 
 DOC = """
-This test checks whether H264 video decode power consumption
-has regression.
+This test measures the power consumption of H264 video playback for hardware
+decode and software decode.
 """
 
-VIDEO_NAME = 'big_buck_bunny_trailer_1080p.mp4'
-job.run_test('video_PlaybackPower', video_name=VIDEO_NAME, video_format="h264")
+VIDEO_NAME = 'crowd1080.mp4'
+VIDEO_DESCRIPTION = 'h264_1080p'
+job.run_test('video_PlaybackPerf', video_name=VIDEO_NAME,
+             video_description=VIDEO_DESCRIPTION,
+             assert_hardware_acceleration=False, power_test=True)
+

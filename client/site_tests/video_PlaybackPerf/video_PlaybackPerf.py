@@ -12,6 +12,7 @@ import urllib2
 from autotest_lib.client.bin import site_utils, test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.cros import power_status, power_utils
 from autotest_lib.client.cros import service_stopper
 
 
@@ -45,11 +46,16 @@ CPU_IDLE_USAGE = 0.1
 
 CPU_USAGE_DESCRIPTION = 'video_cpu_usage_'
 DROPPED_FRAMES_DESCRIPTION = 'video_dropped_frames_'
+POWER_DESCRIPTION = 'video_mean_energy_rate_'
+
+# Minimum battery charge percentage to run the test
+BATTERY_INITIAL_CHARGED_MIN = 10
+
 
 class video_PlaybackPerf(test.test):
     """
-    The test outputs the cpu usage and the dropped frame count for video playback
-    to performance dashboard.
+    The test outputs the cpu usage, the dropped frame count and the power
+    consumption for video playback to performance dashboard.
     """
     version = 1
 
@@ -57,6 +63,7 @@ class video_PlaybackPerf(test.test):
     def initialize(self):
         self._service_stopper = None
         self._original_governors = None
+        self._backlight = None
 
 
     def start_playback(self, cr, local_path):
@@ -118,7 +125,7 @@ class video_PlaybackPerf(test.test):
 
 
     def run_once(self, video_name, video_description,
-                 assert_hardware_acceleration=True):
+                 assert_hardware_acceleration=True, power_test=False):
         """
         Runs the video_PlaybackPerf test.
 
@@ -128,21 +135,31 @@ class video_PlaybackPerf(test.test):
         @param assert_hardware_acceleration: True if we want to raise an
                 exception when hardware acceleration is not used,
                 False otherwise.
+        @param power_test: True if this is a power test and it would only run
+                the power test. If False, it would run the cpu usage test and
+                the dropped frame count test.
         """
         # Download test video.
         url = DOWNLOAD_BASE + video_name
         local_path = os.path.join(self.bindir, video_name)
         self.download_file(url, local_path)
 
-        # Run the video playback dropped frame tests.
-        keyvals = self.test_dropped_frames(local_path, assert_hardware_acceleration)
-        self.log_result(keyvals, DROPPED_FRAMES_DESCRIPTION + video_description,
-                        'frames')
+        if not power_test:
+            # Run the video playback dropped frame tests.
+            keyvals = self.test_dropped_frames(local_path,
+                                               assert_hardware_acceleration)
+            self.log_result(keyvals, DROPPED_FRAMES_DESCRIPTION +
+                                video_description, 'frames')
 
-        # Run the video playback cpu usage tests.
-        keyvals = self.test_cpu_usage(local_path, assert_hardware_acceleration)
-        self.log_result(keyvals, CPU_USAGE_DESCRIPTION + video_description,
-                        'percent')
+            # Run the video playback cpu usage tests.
+            keyvals = self.test_cpu_usage(local_path,
+                                          assert_hardware_acceleration)
+            self.log_result(keyvals, CPU_USAGE_DESCRIPTION + video_description,
+                            'percent')
+        else:
+            keyvals = self.test_power(local_path,
+                                      assert_hardware_acceleration)
+            self.log_result(keyvals, POWER_DESCRIPTION + video_description, 'W')
 
 
     def test_dropped_frames(self, local_path, assert_hardware_acceleration):
@@ -183,7 +200,6 @@ class video_PlaybackPerf(test.test):
             cpu_usage_end = site_utils.get_cpu_usage()
             return site_utils.compute_active_cpu_time(cpu_usage_start,
                                                       cpu_usage_end) * 100
-
         if not utils.wait_for_idle_cpu(WAIT_FOR_IDLE_CPU_TIMEOUT,
                                        CPU_IDLE_USAGE):
             raise error.TestError('Could not get idle CPU.')
@@ -191,11 +207,53 @@ class video_PlaybackPerf(test.test):
             raise error.TestError('Could not get cold machine.')
         # Stop the thermal service that may change the cpu frequency.
         self._service_stopper = service_stopper.ServiceStopper(THERMAL_SERVICES)
+        self._service_stopper.stop_services()
         # Set the scaling governor to performance mode to set the cpu to the
         # highest frequency available.
         self._original_governors = utils.set_high_performance_mode()
         return self.test_playback(local_path, assert_hardware_acceleration,
                                   get_cpu_usage)
+
+
+    def test_power(self, local_path, assert_hardware_acceleration):
+        """
+        Runs the video power consumption test.
+
+        @param local_path: the path to the video file.
+        @param assert_hardware_acceleration: True if we want to raise error
+                exception when it does not use hardware acceleration by
+                default, False otherwise.
+
+        @return a dictionary that contains the test result.
+        """
+
+        self._backlight = power_utils.Backlight()
+        self._backlight.set_default()
+
+        self._service_stopper = service_stopper.ServiceStopper(
+                service_stopper.ServiceStopper.POWER_DRAW_SERVICES)
+        self._service_stopper.stop_services()
+
+        self._power_status = power_status.get_status()
+        # Verify that we are running on battery and the battery is sufficiently
+        # charged.
+        self._power_status.assert_battery_state(BATTERY_INITIAL_CHARGED_MIN)
+
+        measurements = [power_status.SystemPower(
+                self._power_status.battery_path)]
+
+        def get_power(cr):
+            power_logger = power_status.PowerLogger(measurements)
+            power_logger.start()
+            time.sleep(STABILIZATION_DURATION)
+            start_time = time.time()
+            time.sleep(MEASUREMENT_DURATION)
+            power_logger.checkpoint('result', start_time)
+            keyval = power_logger.calc()
+            return keyval['result_' + measurements[0].domain + '_pwr']
+
+        return self.test_playback(local_path, assert_hardware_acceleration,
+                                  get_power)
 
 
     def test_playback(self, local_path, assert_hardware_acceleration,
@@ -284,6 +342,8 @@ class video_PlaybackPerf(test.test):
 
     def cleanup(self):
         # cleanup() is run by common_lib/test.py.
+        if self._backlight:
+            self._backlight.restore()
         if self._service_stopper:
             self._service_stopper.restore_services()
         if self._original_governors:
