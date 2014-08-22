@@ -1,0 +1,8 @@
+{
+  "tests": {
+    "shaders/glsl-fs-lots-of-tex": {
+      "pass rate": "0.67",
+      "result": "flaky"
+    }
+  }
+}

@@ -11,7 +11,9 @@ INPUT_DIR = './piglit_logs/'
 OUTPUT_DIR = './test_scripts/'
 OUTPUT_FILE_PATTERN = OUTPUT_DIR + '/%s/' + AUTOTEST_NAME + '_%d.sh'
 OUTPUT_FILE_SLICES = 20
-PIGLIT_PATH = '/usr/local/autotest/deps/piglit/piglit/'
+PIGLIT_PATH = '/usr/local/piglit/lib/piglit/'
+PIGLIT64_PATH = '/usr/local/piglit/lib64/piglit/'
+
 # Do not generate scripts with "bash -e" as we want to handle errors ourself.
 FILE_HEADER = '#!/bin/bash\n\n'
 
@@ -22,16 +24,16 @@ function run_test()\n\
   local name="$1"\n\
   local time="$2"\n\
   local command="$3"\n\
-  echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"\n\
-  echo "+ Running test \"$name\" of expected runtime $time sec: $command"\n\
+  echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"\n\
+  echo "+ Running test [$name] of expected runtime $time sec: [$command]"\n\
   sync\n\
   $command\n\
   if [ $? == 0 ] ; then\n\
     let "need_pass--"\n\
-    echo "+ Return code 0 -> Test passed. ($name)"\n\
+    echo "+ pass :: $name"\n\
   else\n\
     let "failures++"\n\
-    echo "+ Return code not 0 -> Test failed. ($name)"\n\
+    echo "+ fail :: $name"\n\
   fi\n\
 }\n\
 '
@@ -81,7 +83,7 @@ by providing developers with a simple means to perform regression tests.\n\
 This control file runs slice %d out of %d slices of a passing subset of the\n\
 original collection.\n\
 \n\
-http://people.freedesktop.org/~nh/piglit/\n\
+http://piglit.freedesktop.org\n\
 \"\"\"\n\
 \n\
 job.run_test('" + AUTOTEST_NAME + "', test_slice=%d)\
@@ -96,7 +98,7 @@ def output_control_file(sl, slices):
     print(CONTROL_FILE % (sl, slices, sl), file=f)
 
 
-def append_script_header(f, need_pass):
+def append_script_header(f, need_pass, piglit_path):
   """
   Write the beginning of the test script to f.
   """
@@ -104,8 +106,8 @@ def append_script_header(f, need_pass):
   # need_pass is the script variable that counts down to zero and gets returned.
   print('need_pass=%d' % need_pass, file=f)
   print('failures=0', file=f)
-  print('PIGLIT_PATH=%s' % PIGLIT_PATH, file=f)
-  print('export PIGLIT_SOURCE_DIR=%s' % PIGLIT_PATH, file=f)
+  print('PIGLIT_PATH=%s' % piglit_path, file=f)
+  print('export PIGLIT_SOURCE_DIR=%s' % piglit_path, file=f)
   print('export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PIGLIT_PATH/lib', file=f)
   print('export DISPLAY=:0', file=f)
   print('export XAUTHORITY=/home/chronos/.Xauthority', file=f)
@@ -136,12 +138,12 @@ def mkdir_p(path):
 
 def get_log_filepaths(family_root):
   """
-  Find all log files (*main.txt) that were placed into family_root.
+  Find all log files (*results.json) that were placed into family_root.
   """
   main_files = []
   for root, _, files in os.walk(family_root):
     for filename in files:
-      if filename.endswith('main.txt'):
+      if filename.endswith('results.json'):
         main_files.append(os.path.join(root, filename))
   return main_files
 
@@ -235,11 +237,11 @@ def get_intermittent_tests(statistics):
   return sorted(tests)
 
 
-def cleanup_command(cmd):
+def cleanup_command(cmd, piglit_path):
   """
   Make script less location dependent by stripping path from commands.
   """
-  cmd = cmd.replace(PIGLIT_PATH, '')
+  cmd = cmd.replace(piglit_path, '')
   cmd = cmd.replace('framework/../', '')
   cmd = cmd.replace('tests/../', '')
   return cmd
@@ -254,6 +256,9 @@ def process_gpu_family(family, family_root):
   d = load_log_files(main_files)
   statistics = get_test_statistics(d)
   passing_tests = get_passing_tests(statistics)
+  piglit_path = PIGLIT_PATH
+  if family == 'other':
+    piglit_path = PIGLIT64_PATH
 
   slices = OUTPUT_FILE_SLICES
   current_slice = 1
@@ -272,9 +277,9 @@ def process_gpu_family(family, family_root):
   mkdir_p(os.path.dirname(os.path.realpath(filename)))
   if passing_tests:
     with open(filename, 'w+') as f:
-      append_script_header(f, num_pass_total)
+      append_script_header(f, num_pass_total, piglit_path)
       for test in passing_tests:
-        cmd = cleanup_command(statistics[test].command)
+        cmd = cleanup_command(statistics[test].command, piglit_path)
         time_test = statistics[test].time
         print('run_test "%s" %.1f "%s"' % (test, 0.0, cmd), file=f)
       append_script_summary(f, num_pass_total)
@@ -296,10 +301,10 @@ def process_gpu_family(family, family_root):
       filename = OUTPUT_FILE_PATTERN % (family, current_slice)
       with open(filename, 'w+') as f:
         need_pass = len(slice_tests)
-        append_script_header(f, need_pass)
+        append_script_header(f, need_pass, piglit_path)
         for test in slice_tests:
           # Make script less location dependent by stripping path from commands.
-          cmd = cleanup_command(statistics[test].command)
+          cmd = cleanup_command(statistics[test].command, piglit_path)
           time_test = statistics[test].time
           # TODO(ihf): Pass proper time_test instead of 0.0 once we can use it.
           print('run_test "%s" %.1f "%s"'
@@ -341,7 +346,7 @@ def output_suggested_expectations(statistics, family, family_root):
     # and make it only 2 significiant digits.
     expectations[test] = {'result': 'flaky', 'pass rate' : '%.2f' % pass_rate}
 
-  filename = os.path.join(family_root, 'expectations_%s_main.txt' % family)
+  filename = os.path.join(family_root, 'expectations_%s_results.json' % family)
   with open(filename, 'w+') as f:
     json.dump({'tests': expectations}, f, indent=2, sort_keys=True)
 
@@ -370,7 +375,7 @@ def generate_scripts(root):
 
 # We check the log files in as highly compressed binaries.
 print('Uncompressing log files...', file=sys.stderr)
-os.system('bunzip2 ' + INPUT_DIR + '/*/*/*main.txt.bz2')
+os.system('bunzip2 ' + INPUT_DIR + '/*/*/*results.json.bz2')
 
 # Generate the scripts.
 generate_scripts(INPUT_DIR)
@@ -379,4 +384,4 @@ generate_scripts(INPUT_DIR)
 #   git checkout -- piglit_output
 # or similar to reverse.
 print('Recompressing log files...', file=sys.stderr)
-os.system('bzip2 -9 ' + INPUT_DIR + '/*/*/*main.txt')
+os.system('bzip2 -9 ' + INPUT_DIR + '/*/*/*results.json')
