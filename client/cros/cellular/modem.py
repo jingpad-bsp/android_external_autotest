@@ -263,10 +263,12 @@ class ModemManager(object):
         self.manager = dbus.Interface(
             self.bus.get_object(self.service, self.path),
             ModemManager.INTERFACE)
-        self.manager.SetLogging('DEBUG')
 
     def EnumerateDevices(self):
         return self.manager.EnumerateDevices()
 
     def GetModem(self, path):
         return Modem(self, path)
+
+    def SetDebugLogging(self):
+        self.manager.SetLogging('debug')

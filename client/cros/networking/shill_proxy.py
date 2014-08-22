@@ -21,7 +21,13 @@ class ShillProxy(object):
     # Core DBus error names
     DBUS_ERROR_UNKNOWN_OBJECT = 'org.freedesktop.DBus.Error.UnknownObject'
     # Shill error names
+    ERROR_ALREADY_CONNECTED = 'org.chromium.flimflam.Error.AlreadyConnected'
     ERROR_FAILURE = 'org.chromium.flimflam.Error.Failure'
+    ERROR_INCORRECT_PIN = 'org.chromium.flimflam.Error.IncorrectPin'
+    ERROR_NOT_CONNECTED = 'org.chromium.flimflam.Error.NotConnected'
+    ERROR_NOT_SUPPORTED = 'org.chromium.flimflam.Error.NotSupported'
+    ERROR_PIN_BLOCKED = 'org.chromium.flimflam.Error.PinBlocked'
+
 
     DBUS_INTERFACE = 'org.chromium.flimflam'
     DBUS_SERVICE_UNKNOWN = 'org.freedesktop.DBus.Error.ServiceUnknown'

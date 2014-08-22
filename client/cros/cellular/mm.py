@@ -2,9 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import dbus
+
+import common
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.cellular import modem
 from autotest_lib.client.cros.cellular import modem1
-import dbus
 
 
 MMPROVIDERS = ['org.chromium', 'org.freedesktop']
@@ -50,6 +53,9 @@ def EnumerateDevices(manager=None):
     """
     if not manager:
         manager = GetManager()
+    if not manager:
+        raise error.TestError('Cannot connect to the modem manager, is '
+                              'ModemManager/cromo/PseudoModemManager running?')
 
     result = []
     for path in manager.EnumerateDevices():
@@ -72,15 +78,15 @@ def PickOneModem(modem_pattern, manager=None):
         (ModemManager, Modem DBUS Path) tuple
 
     Raises:
-        ValueError: if there are no matching modems, or there are more
-                    than one
+        TestError: if there are no matching modems, or there are more
+                   than one
     """
     devices = EnumerateDevices(manager)
 
     matches = [(m, path) for m, path in devices if modem_pattern in path]
     if not matches:
-        raise ValueError('No modems had substring: ' + modem_pattern)
+        raise error.TestError('No modems had substring: ' + modem_pattern)
     if len(matches) > 1:
-        raise ValueError('Expected only one modem, got: ' +
-                         ', '.join([modem.path for modem in matches]))
+        raise error.TestError('Expected only one modem, got: ' +
+                              ', '.join([modem.path for modem in matches]))
     return matches[0]

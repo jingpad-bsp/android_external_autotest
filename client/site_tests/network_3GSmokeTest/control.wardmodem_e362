@@ -24,4 +24,8 @@ DOC = """
   Since this test uses the wardmodem, it has no hardware dependencies.
 """
 
-job.run_test('network_3GSmokeTest', use_wardmodem=True, wardmodem_modem='e362')
+from autotest_lib.client.cros.cellular import test_environment
+
+test_env = test_environment.CellularWardModemTestEnvironment(
+        wardmodem_modem='e362')
+job.run_test('network_3GSmokeTest', tag='wardmodem_e362', test_env=test_env)

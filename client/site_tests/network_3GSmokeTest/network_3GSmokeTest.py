@@ -6,18 +6,10 @@ import logging
 import time
 import urlparse
 
-# Import 'flimflam_test_path' first in order to import flimflam' and 'mm'.
-# pylint: disable=W0611
-from autotest_lib.client.cros import flimflam_test_path
-# pylint: enable=W0611
-import flimflam
-
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import backchannel, network
+from autotest_lib.client.cros import network
 from autotest_lib.client.cros.cellular import cell_tools, mm
-from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
-from autotest_lib.client.cros.cellular.wardmodem import wardmodem
 
 
 # Default timeouts in seconds
@@ -53,11 +45,11 @@ class network_3GSmokeTest(test.test):
         """
         logging.info('DisconnectFrom3GNetwork')
 
-        service = self.flim.FindCellularService()
+        service = self.test_env.flim.FindCellularService()
         if not service:
             raise error.TestError('Could not find cellular service.')
 
-        success, status = self.flim.DisconnectService(
+        success, status = self.test_env.flim.DisconnectService(
             service=service,
             wait_timeout=disconnect_timeout)
         if not success:
@@ -90,21 +82,11 @@ class network_3GSmokeTest(test.test):
         Executes the test.
 
         """
-        # Get to a good starting state
-        network.ResetAllModems(self.flim)
-
-        # Wait for the modem to pick up a network after being reenabled. If we
-        # don't wait here, GetModemInfo() (below) might fail partway through
-        # with a "I have no network!" exception, and then at the end when we
-        # test that the modem info matches, it won't. Oops.
-        time.sleep(5)
-        self.DisconnectFrom3GNetwork(disconnect_timeout=DISCONNECT_TIMEOUT)
-
         # Get information about all the modems
         old_modem_info = self.GetModemInfo()
 
         for _ in xrange(self.connect_count):
-            service, state = cell_tools.ConnectToCellular(self.flim,
+            service, state = cell_tools.ConnectToCellular(self.test_env.flim,
                                                           CONNECT_TIMEOUT)
 
             if state == 'portal':
@@ -116,7 +98,7 @@ class network_3GSmokeTest(test.test):
                 url_pattern = network.FETCH_URL_PATTERN_FOR_TEST
                 bytes_to_fetch = 64 * 1024
 
-            device = self.flim.GetObjectInterface(
+            device = self.test_env.flim.GetObjectInterface(
                 'Device', service.GetProperties()['Device'])
             interface = device.GetProperties()['Interface']
             logging.info('Expected interface for %s: %s',
@@ -148,27 +130,12 @@ class network_3GSmokeTest(test.test):
                 time.sleep(self.sleep_kludge)
 
 
-    def run_once(self, connect_count=5, use_pseudomodem=False,
-                 pseudomodem_family='3GPP', use_wardmodem=False,
-                 wardmodem_modem=None, sleep_kludge=5, fetch_timeout=120):
-        if use_pseudomodem and use_wardmodem:
-            raise error.TestFail('Can not run with Pseudomodem and Wardmodem '
-                                 'at the same time.')
+    def run_once(self, test_env, connect_count=5, sleep_kludge=5,
+                 fetch_timeout=120):
+        with test_env:
+            self.test_env = test_env
+            self.connect_count = connect_count
+            self.sleep_kludge = sleep_kludge
+            self.fetch_timeout = fetch_timeout
 
-        self.connect_count = connect_count
-        self.use_pseudomodem = use_pseudomodem
-        self.sleep_kludge = sleep_kludge
-        self.fetch_timeout = fetch_timeout
-
-        with backchannel.Backchannel():
-            with pseudomodem_context.PseudoModemManagerContext(
-                    use_pseudomodem,
-                    {'family' : pseudomodem_family}):
-                with wardmodem.WardModemContext(use_wardmodem,
-                                                args=['--modem',
-                                                      wardmodem_modem]):
-                    with cell_tools.OtherDeviceShutdownContext('cellular'):
-                        time.sleep(3)
-                        self.flim = flimflam.FlimFlam()
-                        self.flim.SetDebugTags(SHILL_LOG_SCOPES)
-                        self.run_once_internal()
+            self.run_once_internal()

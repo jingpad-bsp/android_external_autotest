@@ -26,4 +26,5 @@ DOC = """
   connect/disconnect sequence several times.
 """
 
-job.run_test('network_3GSmokeTest', tag='hefty')
+test_env = test_environment.CellularOTATestEnvironment()
+job.run_test('network_3GSmokeTest', tag='hefty', test_env=test_env)

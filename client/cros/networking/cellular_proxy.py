@@ -27,12 +27,8 @@ class CellularProxy(shill_proxy.ShillProxy):
     VALUE_SIM_LOCK_TYPE_PIN = 'sim-pin'
     VALUE_SIM_LOCK_TYPE_PUK = 'sim-puk'
 
-    # DBus errors raised by shill.
-    ERROR_ALREADY_CONNECTED = 'org.chromium.flimflam.Error.AlreadyConnected'
-    ERROR_INCORRECT_PIN = 'org.chromium.flimflam.Error.IncorrectPin'
-    ERROR_PIN_BLOCKED = 'org.chromium.flimflam.Error.PinBlocked'
-
     # Various timeouts in seconds.
+    SERVICE_DISCONNECT_TIMEOUT = 60
     SERVICE_REGISTRATION_TIMEOUT = 60
     SLEEP_INTERVAL = 0.1
 
