@@ -57,9 +57,9 @@ class platform_MemCheck(test.test):
 
         # Special rule for free memory size for parrot and butterfly
         board = utils.get_board()
-        if board == 'parrot':
+        if board.startswith('parrot'):
             freeref = 100 * 1024
-        elif board == 'butterfly':
+        elif board.startswith('butterfly'):
             freeref = freeref - 400 * 1024
 
         ref = {'MemTotal': memref,
