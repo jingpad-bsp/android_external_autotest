@@ -29,24 +29,32 @@ class BluetoothSemiAutoHelper(semiauto_framework.semiauto_test):
     version = 1
 
     def _err(self, message):
-        """Raise error after first collecting more information."""
+        """Raise error after first collecting more information.
+
+        @param message: error message to raise and add to logs.
+
+        """
         self.collect_logs('ERROR HAS OCCURED: %s' % message)
         raise error.TestError(message)
 
     def _get_objects(self):
+        """Return the managed objects for this chromebook."""
         manager = dbus.Interface(
                 self._bus.get_object('org.bluez', '/'),
                 dbus_interface='org.freedesktop.DBus.ObjectManager')
         return manager.GetManagedObjects()
 
-    def _get_adapter_properties(self):
+    def _get_adapter_info(self):
+        """Return the adapter interface objects, or error if not found."""
         objects = self._get_objects()
-        for _, interfaces in objects.items():
+        for path, interfaces in objects.items():
             if _ADAPTER_INTERFACE in interfaces:
+                self._adapter_path = path
                 return interfaces[_ADAPTER_INTERFACE]
-        self._err('Bluetooth Adapter not found')
+        self._err('Bluetooth Adapter not found.')
 
-    def _get_device_properties(self, addr):
+    def _get_device_info(self, addr):
+        """Return the device interface objects, or None if not found."""
         objects = self._get_objects()
         for _, interfaces in objects.items():
             if _DEVICE_INTERFACE in interfaces:
@@ -55,35 +63,49 @@ class BluetoothSemiAutoHelper(semiauto_framework.semiauto_test):
         return None
 
     def _verify_adapter(self, adapter_status=True):
-        """Return True/False if adapter status matches given value."""
-        properties = self._get_adapter_properties()
-        return True if properties['Powered'] == adapter_status else False
+        """Return True/False if adapter power status matches given value."""
+        info = self._get_adapter_info()
+        return True if info['Powered'] == adapter_status else False
 
     def _verify_connection(self, addr, paired_status=True,
                            connected_status=True):
         """Return True/False if device statuses match given values."""
-        def _check_properties():
-            properties = self._get_device_properties(addr)
-            if properties:
-                if (properties['Paired'] != paired_status or
-                    properties['Connected'] != connected_status):
+        def _check_info():
+            info = self._get_device_info(addr)
+            if info:
+                if (info['Paired'] != paired_status or
+                    info['Connected'] != connected_status):
                     return False
                 return True
             # Return True if no entry was found for an unpaired device
             return not paired_status and not connected_status
 
-        results = _check_properties()
+        results = _check_info()
 
         # To avoid spotting brief connections, sleep and check again.
         if results:
             time.sleep(0.5)
-            results = _check_properties()
+            results = _check_info()
         return results
 
+    def set_adapter(self, adapter_status=True):
+        """Set adapter power status to match given value via dbus call.
+
+        @param adapter_status: True to turn adapter on; False for off.
+
+        """
+        if not hasattr(self, '_adapter_path'):
+            self._get_adapter_info()
+        properties = dbus.Interface(
+                self._bus.get_object('org.bluez', self._adapter_path),
+                dbus_interface='org.freedesktop.DBus.Properties')
+        properties.Set(_ADAPTER_INTERFACE, 'Powered', adapter_status)
+
     def wait_for_adapter(self, adapter_status=True):
-        """Wait until adapter status matches given value.
+        """Wait until adapter power status matches given value.
 
         @param adapter_status: True for adapter is on; False off.
+
         """
         complete = lambda: self._verify_adapter(adapter_status=adapter_status)
         adapter_str = 'ON' if adapter_status else 'OFF'
@@ -112,6 +134,7 @@ class BluetoothSemiAutoHelper(semiauto_framework.semiauto_test):
 
         @param paired_status: True for device paired; False for unpaired.
         @param connected_status: True for device connected; False for not.
+
         """
         for addr in self._addrs:
             self._wait_for_connection(addr, paired_status=paired_status,
@@ -122,6 +145,7 @@ class BluetoothSemiAutoHelper(semiauto_framework.semiauto_test):
 
         Assumes the existence of 'client/cros/audio/music.mp3' file, and will
         fail if not found.
+
         """
         # Open browser and interactive tab
         self.login_and_open_interactive_tab()
@@ -164,6 +188,7 @@ class BluetoothSemiAutoHelper(semiauto_framework.semiauto_test):
         'FAIL' buttons.  Wait for answer.  If no, ask for more information.
 
         @param message: string sent to the user via browswer interaction.
+
         """
         logging.info('Asking user "%s"', message)
         sandbox = 'SANDBOX:<input type="text"/>'
@@ -180,7 +205,7 @@ class BluetoothSemiAutoHelper(semiauto_framework.semiauto_test):
             # Get explanation of error, clear output, and raise error.
             result = self.wait_for_tab_result(timeout=_USER_TIMEOUT_TIME)
             self.clear_output()
-            self._err('Testing %s. "%s"' % (self._test_type, result))
+            self._err('Testing %s. "%s".' % (self._test_type, result))
         elif result != 0:
             raise error.TestError('Bad dialog value: %s' % result)
         logging.info('Answer was PASS')
@@ -192,6 +217,7 @@ class BluetoothSemiAutoHelper(semiauto_framework.semiauto_test):
         """Tell the user the given message in an open tab.
 
         @param message: the text string to be displayed.
+
         """
         logging.info('Telling user "%s"', message)
         html = '<h3>%s</h3>' % message
@@ -205,6 +231,7 @@ class BluetoothSemiAutoHelper(semiauto_framework.semiauto_test):
 
         @param message: string of text the user is asked.  Defaults to asking
                         the user to connect all devices.
+
         """
         if not message:
             message = ('Please connect all devices.<br>(You may need to '
@@ -229,9 +256,12 @@ class BluetoothSemiAutoHelper(semiauto_framework.semiauto_test):
         test type as base filename.  Dumps stored in results folder.
 
         @param message: string of text added to top of log entry.
+
         """
-        if self._dump:
+        if hasattr(self, '_dump') and self._dump:
             self._dump.kill()
+        if not hasattr(self, '_test_type'):
+            self._test_type = 'test'
         logging.info('Starting hcidump')
         filename = '%s_hcidump' % self._test_type
         path = os.path.join(self.resultsdir, filename)
@@ -253,8 +283,11 @@ class BluetoothSemiAutoHelper(semiauto_framework.semiauto_test):
         Use current test type as base filename.  Stored in results folder.
 
         @param message: string of text added to top of log entry.
+
         """
         logging.info('Collecting dbus info')
+        if not hasattr(self, '_test_type'):
+            self._test_type = 'test'
         filename = '%s_dbus' % self._test_type
         path = os.path.join(self.resultsdir, filename)
         with open(path, 'a') as f:
@@ -282,6 +315,7 @@ class BluetoothSemiAutoHelper(semiauto_framework.semiauto_test):
         Not using sys_power so that user can use Bluetooth to wake machine.
 
         @param reset: true to reset to normal idle time, false for short.
+
         """
         powerd_path = '/usr/bin/set_short_powerd_timeouts'
         flag = '--reset' if reset else ''
@@ -298,10 +332,7 @@ class BluetoothSemiAutoHelper(semiauto_framework.semiauto_test):
         time.sleep(5)
 
     def initialize(self):
-        self._will_close_browser = True
         self._bus = dbus.SystemBus()
-        self._dump = None
-        self.login_and_open_browser()
 
     def warmup(self, addrs='', test_phase='client', close_browser=True):
         """Warmup setting paramters for semi-automated Bluetooth Test.
@@ -313,7 +344,10 @@ class BluetoothSemiAutoHelper(semiauto_framework.semiauto_test):
                             the same test before and after a reboot.
         @param: close_browser: True if client side test should close browser
                                at end of test.
+
         """
+        self.login_and_open_browser()
+
         self._addrs = addrs
         self._test_type = 'start'
         self._test_phase = test_phase
@@ -324,12 +358,15 @@ class BluetoothSemiAutoHelper(semiauto_framework.semiauto_test):
 
         Closes running hcidump, closes browser (if asked to at start), and
         deletes files added during test.
+
         """
-        if self._dump:
+        if hasattr(self, '_dump'):
             self._dump.kill()
-        if self._will_close_browser:
+        if hasattr(self, '_will_close_browser') and self._will_close_browser:
             self.close_browser()
-        if os.path.exists(self._added_loop_file):
+        if (hasattr(self, '_added_loop_file')
+                and os.path.exists(self._added_loop_file)):
             os.remove(self._added_loop_file)
-        if os.path.exists(self._added_music_file):
+        if (hasattr(self, '_added_music_file')
+                and os.path.exists(self._added_music_file)):
             os.remove(self._added_music_file)
