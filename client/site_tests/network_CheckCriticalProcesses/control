@@ -4,15 +4,25 @@
 
 AUTHOR = 'pstew, quiche, wiley'
 NAME = 'network_CheckCriticalProcesses'
-SUITE='bvt-cq, bvt, bvt_cq, network_nightly'
+SUITE = 'bvt-cq, bvt, bvt_cq, network_nightly'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
 JOB_RETRIES = 1
 
 DOC = """
 This test has a static list of process names that should be running
-on any "good" ChromeOS image.  It fails if any of these are not
-running at the time of the test.
+on a good Chrome OS Core image with client networking (shill) support.
+It fails if any of these are not running at the time of the test.
 """
 
-job.run_test('network_CheckCriticalProcesses')
+NETWORK_CRITICAL_PROCESSES = [
+    'dbus-daemon',
+    'netfilter-queue',
+    'shill',
+    'udevd',
+    'update_engine',
+    'wpa_supplicant',
+    ]
+
+job.run_test('platform_CheckCriticalProcesses',
+             process_list=NETWORK_CRITICAL_PROCESSES)

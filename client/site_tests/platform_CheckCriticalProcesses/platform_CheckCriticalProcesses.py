@@ -8,25 +8,12 @@ import re
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 
-class network_CheckCriticalProcesses(test.test):
+class platform_CheckCriticalProcesses(test.test):
     """
     Builds a process list (without spawning 'ps'), and validates
-    that among these processes all the expected critical network
-    processes are running.
+    that among these processes all the expected processes are running.
     """
     version = 1
-    NETWORK_CRITICAL_PROCESSES = [
-            'dbus-daemon',
-            'debugd',
-            'metrics_daemon',
-            'netfilter-queue',
-            'powerd',
-            'shill',
-            'tlsdated',
-            'udevd',
-            'update_engine',
-            'wpa_supplicant',
-    ]
 
     def get_process_name(self, pid):
         """Gathers info about one process, given its PID
@@ -51,7 +38,7 @@ class network_CheckCriticalProcesses(test.test):
 
             # There can be a race where after we listdir(), a process
             # exits. In that case get_process_name will throw an IOError
-            # becase /prod/NNNN won't exist.
+            # becase /proc/NNNN won't exist.
             # In those cases, skip to the next go-round of our loop.
             try:
                 process_names.add(self.get_process_name(pid))
@@ -61,11 +48,14 @@ class network_CheckCriticalProcesses(test.test):
         return process_names
 
 
-    def run_once(self):
+    def run_once(self, process_list):
+        """
+        Verify processes in |process_list| are running.
+
+        @param process_list: list of process names to check
+        """
         processes = self.get_process_list()
-        missing_processes = [ p for p in self.NETWORK_CRITICAL_PROCESSES
-                              if p not in processes ]
+        missing_processes = [ p for p in process_list if p not in processes ]
         if missing_processes:
             raise error.TestFail('The following processes are not running: %r.'
-                                 '  This may affect network connectivity.'
                                   % missing_processes)
