@@ -3,10 +3,11 @@
 # found in the LICENSE file.
 
 import logging
+import os
 import pyudev
 import re
 
-from autotest_lib.client.bin import test
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from collections import defaultdict
 from operator import attrgetter
@@ -49,13 +50,27 @@ class platform_UdevVars(test.test):
 
 
     def _dump_roles(self):
-      """Log devices grouped by role for easier debugging."""
-      logging.info('Roles:')
-      for role in sorted(self.devices_with_role.keys()):
-          for device in self.devices_with_role[role]:
-              path = device.device_node
-              name = device.parent.attributes.get('name', '')
-              logging.info('  %-21s %s [%s]', role + ':', path, name)
+        """Log devices grouped by role for easier debugging."""
+        logging.info('Roles:')
+        for role in sorted(self.devices_with_role.keys()):
+            for device in self.devices_with_role[role]:
+                path = device.device_node
+                name = device.parent.attributes.get('name', '')
+                logging.info('  %-21s %s [%s]', role + ':', path, name)
+
+
+    def _dump_udev_attrs(self):
+        """Log udev attributes for selected devices to the debug directory."""
+        for device in self._input_devices():
+            devname = os.path.basename(device.device_node)
+
+            outfile = os.path.join(self.debugdir, "udevattrs.%s" % devname)
+            utils.system('udevadm info --attribute-walk %s > %s' % (
+                    device.sys_path, outfile))
+
+            outfile = os.path.join(self.debugdir, "udevprops.%s" % devname)
+            utils.system('udevadm info --query=property %s > %s' % (
+                    device.sys_path, outfile))
 
 
     def _verify_roles(self):
@@ -91,6 +106,7 @@ class platform_UdevVars(test.test):
         """
         self._get_roles()
         self._dump_roles()
+        self._dump_udev_attrs()
 
         self.errors = 0
         self._verify_roles()
