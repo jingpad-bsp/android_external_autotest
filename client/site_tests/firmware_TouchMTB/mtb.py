@@ -139,24 +139,43 @@ def create_final_state_packet(packets):
             sm.add_event(event)
         sm.get_current_tid_data_for_all_tids()
 
-    # Create the dummy packets representing the final state
+    # Create the dummy packets representing the final state. We use
+    # request_data_ready=False so that we still receive tid_packets
+    # even if not all the events are populated (e.g. if a pressure
+    # or position event is missing.)
     final_state_packet = []
     syn_time = None
-    for tid, slot, tid_packet in sm.get_current_tid_data_for_all_tids():
+    for tid, slot, tid_packet in sm.get_current_tid_data_for_all_tids(
+            request_data_ready=False):
+        # Check for None
+        if not tid_packet:
+            continue
+
+        if tid_packet.syn_time:
+            syn_time = tid_packet.syn_time
+
         # Create events
-        syn_time = tid_packet.syn_time
-        slot_event = (syn_time, EV_ABS, ABS_MT_SLOT, slot)
+        slot_event = new_contact_event = None
+        x_event = y_event = pressure_event = None
+
         new_contact_event = (syn_time, EV_ABS, ABS_MT_TRACKING_ID, 0)
-        x_event = (syn_time, EV_ABS, ABS_MT_POSITION_X, tid_packet.point.x)
-        y_event = (syn_time, EV_ABS, ABS_MT_POSITION_Y, tid_packet.point.y)
-        pressure_event = (syn_time, EV_ABS, ABS_MT_PRESSURE,
-                          tid_packet.pressure)
+        if slot_event:
+            slot_event = (syn_time, EV_ABS, ABS_MT_SLOT, slot)
+        if tid_packet.point.x:
+            x_event = (syn_time, EV_ABS, ABS_MT_POSITION_X, tid_packet.point.x)
+        if tid_packet.point.y:
+            y_event = (syn_time, EV_ABS, ABS_MT_POSITION_Y, tid_packet.point.y)
+        if tid_packet.pressure:
+            pressure_event = (syn_time, EV_ABS, ABS_MT_PRESSURE,
+                              tid_packet.pressure)
+
         events = (new_contact_event, slot_event, x_event, y_event,
                   pressure_event)
 
         # Create a packet out of the events
         for event in events:
-            final_state_packet.append(MtbParser.make_ev_dict(event))
+            if event:
+                final_state_packet.append(MtbParser.make_ev_dict(event))
 
     # Add syn_report event to indicate the end of the packet
     if syn_time:
@@ -388,7 +407,7 @@ class MtbStateMachine:
 
     Note that the kernel driver only reports what is changed. Due to its
     internal state machine, it is possible that either x or y in
-    self.point[tid] is None initially even the instance has been created.
+    self.point[tid] is None initially even though the instance has been created.
     """
     def __init__(self):
         # Set the default slot to 0 as it may not be displayed in the MTB events

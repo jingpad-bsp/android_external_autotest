@@ -21,6 +21,7 @@ from geometry.elements import Point
 from touch_device import TouchDevice
 from validators import (CountPacketsValidator,
                         CountTrackingIDValidator,
+                        DiscardInitialSecondsValidator,
                         DrumrollValidator,
                         HysteresisValidator,
                         LinearityValidator,
@@ -776,6 +777,47 @@ class MtbSanityValidatorTest(unittest.TestCase):
         for filename in filenames:
             number_errors = self._get_number_errors(filename)
             self.assertTrue(number_errors == 0)
+
+
+class DiscardInitialSecondsValidatorTest(unittest.TestCase):
+    """Unit tests for DiscardInitialSecondsValidator class."""
+
+    def setUp(self):
+        import fake_input_device
+        self.fake_device_info = fake_input_device.FakeInputDevice()
+
+    def _get_score(self, filename, criteria_str):
+        packets = parse_tests_data(filename)
+        validator = DiscardInitialSecondsValidator(
+            validator=CountTrackingIDValidator(criteria_str, device=link),
+            device=link)
+        vlog = validator.check(packets)
+        return vlog.score
+
+    def test_single_finger_hold(self):
+        """Test that the state machine reads one finger if
+        only one finger was held for over a second."""
+
+        filename = 'one_finger_long_hold.dat'
+        score = self._get_score(filename, '== 1')
+        self.assertTrue(score == 1)
+
+    def test_double_finger_hold(self):
+        """Test that the state machine reads two fingers if
+        two fingers were held for over a second."""
+
+        filename = 'two_finger_long_hold.dat'
+        score = self._get_score(filename, '== 2')
+        self.assertTrue(score == 1)
+
+    def test_double_tap_single_hold(self):
+        """Test that the validator discards the initial double tap and only
+        validates on the single finger long hold at the end.
+        """
+
+        filename = 'two_finger_tap_one_finger_hold.dat'
+        score = self._get_score(filename, '== 1')
+        self.assertTrue(score == 1)
 
 
 if __name__ == '__main__':
