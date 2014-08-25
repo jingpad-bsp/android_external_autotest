@@ -1147,6 +1147,17 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         super(CrosHost, self).suspend(**dargs)
 
 
+    def upstart_status(self, service_name):
+        """Check the status of an upstart init script.
+
+        @param service_name: Service to look up.
+
+        @returns True if the service is running, False otherwise.
+        """
+        return self.run('status %s | grep start/running' %
+                        service_name).stdout.strip() != ''
+
+
     def verify_software(self):
         """Verify working software on a Chrome OS system.
 
@@ -1173,8 +1184,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                     'SERVER', 'gb_encrypted_diskspace_required', type=float,
                     default=0.1))
 
-        services_status = self.run('status system-services').stdout
-        if services_status != 'system-services start/running\n':
+        if not self.upstart_status('system-services'):
             raise error.AutoservError('Chrome failed to reach login. '
                                       'System services not running.')
 
