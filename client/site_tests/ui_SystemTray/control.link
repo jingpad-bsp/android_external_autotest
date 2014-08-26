@@ -24,6 +24,5 @@ All images will be uploaded to biopic and examined via biopic web interface.
 """
 
 job.run_test('ui_SystemTray',
-              shelf_height = 100,
-              x_offset_in_pixels = 2000,
-              y_offset_in_pixels = 1600)
+              width = 64,
+              height = 100)

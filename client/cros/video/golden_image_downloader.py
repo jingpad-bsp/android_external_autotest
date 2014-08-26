@@ -3,9 +3,9 @@
 # found in the LICENSE file.
 
 import os, os.path
-import urllib2
 
 from autotest_lib.client.cros.video import method_logger
+from autotest_lib.client.common_lib import file_utils
 
 
 class GoldenImageDownloader(object):
@@ -79,32 +79,7 @@ class GoldenImageDownloader(object):
                                    self.screenshot_namer.get_filename(
                                        timestamp))
 
-        # Unlike urllib.urlopen urllib2.urlopen will immediately throw on error
-        # If we could not find the file pointed by remote_path we will get an
-        # exception, catch the exception to log useful information then re-raise
-
-        try:
-            remote_file = urllib2.urlopen(remote_path)
-
-        # Catch exceptions, extract exception properties and then re-raise
-        # This helps us with debugging what went wrong quickly as we get to see
-        # test_that output immediately
-
-        except urllib2.HTTPError as e:
-            e.msg = (("""HTTPError raised while retrieving file %s\n.
-                       Http Code = %s.\n. Reason = %s\n. Headers = %s.\n
-                       Original Message = %s.\n""")
-                     % (remote_path, e.code, e.reason, e.headers, e.msg))
-            raise
-
-        except urllib2.URLError as e:
-            e.msg = (("""URLError raised while retrieving file %s\n.
-                        Reason = %s\n. Original Message = %s\n.""")
-                     % (remote_path, e.reason, e.msg))
-            raise
-
-        with open(local_path, 'wb') as local_file:
-            local_file.write(remote_file.read())
+        file_utils.download_file(remote_path, local_path)
 
         return local_path
 

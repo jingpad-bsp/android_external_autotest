@@ -14,9 +14,8 @@ class ui_SystemTray(ui_test_base.ui_TestBase):
 
     """
 
-    shelf_height = None
-    x_offset_in_pixels = None
-    y_offset_in_pixels = None
+    width = None
+    height = None
 
 
     @property
@@ -25,13 +24,12 @@ class ui_SystemTray(ui_test_base.ui_TestBase):
 
 
     def capture_screenshot(self, filepath):
-        utils.take_screen_shot_crop_by_height(filepath,
-                                              ui_SystemTray.shelf_height,
-                                              ui_SystemTray.x_offset_in_pixels,
-                                              ui_SystemTray.y_offset_in_pixels)
+        w, h = utils.get_dut_display_resolution()
+        box = (w - ui_SystemTray.width, h - ui_SystemTray.height, w, h)
+        utils.take_screenshot_crop(filepath, box)
 
 
-    def run_once(self, shelf_height, x_offset_in_pixels, y_offset_in_pixels):
+    def run_once(self, width, height):
         """ Called by autotest. Calls the parent template method that runs test.
 
         """
@@ -40,9 +38,8 @@ class ui_SystemTray(ui_test_base.ui_TestBase):
         # we will use them in capture_screenshot() which will get called as
         # part of run_screenshot_comparison_test() - the parent's method.
 
-        ui_SystemTray.shelf_height = shelf_height
-        ui_SystemTray.x_offset_in_pixels = x_offset_in_pixels
-        ui_SystemTray.y_offset_in_pixels = y_offset_in_pixels
+        ui_SystemTray.width = width
+        ui_SystemTray.height = height
 
         # see parent for implementation!
         self.run_screenshot_comparison_test()

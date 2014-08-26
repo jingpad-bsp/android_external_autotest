@@ -4,11 +4,11 @@
 
 import abc
 import os
-import time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import file_utils
-from autotest_lib.client.cros.video import bp_image_comparer
+from autotest_lib.client.cros.video import bp_image_comparer,\
+    rgb_image_comparer, upload_on_fail_comparer, verifier
 
 
 class ui_TestBase(test.test):
@@ -55,45 +55,69 @@ class ui_TestBase(test.test):
     __metaclass__ = abc.ABCMeta
 
     WORKING_DIR = '/tmp/test'
-    BIOPIC_PROJECT_NAME_PREFIX = 'chromeos.test.ui.'
+    REMOTE_DIR = 'http://storage.googleapis.com/chromiumos-test-assets-public'
+    BIOPIC_PROJECT_NAME_PREFIX = 'chromeos.test.ui'
     # TODO: Set up an alias so that anyone can monitor results.
     BIOPIC_CONTACT_EMAIL = 'mussa@google.com'
     BIOPIC_TIMEOUT_S = 1
 
     version = 2
 
+
     def run_screenshot_comparison_test(self):
         """
         Template method to run screenshot comparison tests for ui pieces.
 
-        Right now it will only collect images for us to look at later.
+        1. Set up test dirs.
+        2. Create bp project name.
+        3. Download golden image.
+        4. Capture test image.
+        5. Compare images locally, if FAIL upload to bp for analysis later.
+        6. Clean up test dirs.
 
         """
 
-        file_utils.make_leaf_dir(ui_TestBase.WORKING_DIR)
+        project_specs = [ui_TestBase.BIOPIC_PROJECT_NAME_PREFIX,
+                         utils.get_current_board(),
+                         utils.get_chromeos_release_version().replace('.', '_'),
+                         self.test_area]
 
-        timestamp = time.strftime('%Y_%m_%d_%H%M', time.localtime())
+        project_name = '.'.join(project_specs)
 
-        filename = '%s_%s_%s_%s_%s.png' % (timestamp,
-                                           'ui',
-                                           self.test_area,
-                                           utils.get_current_board(),
-                                           utils.get_chromeos_release_version())
+        golden_image_local_dir = os.path.join(ui_TestBase.WORKING_DIR,
+                                              'golden_images')
 
-        filepath = os.path.join(ui_TestBase.WORKING_DIR, filename)
+        file_utils.make_leaf_dir(golden_image_local_dir)
 
-        project_name = ui_TestBase.BIOPIC_PROJECT_NAME_PREFIX + self.test_area
+        filename = '%s.png' % self.test_area
 
-        self.capture_screenshot(filepath)
+        golden_image_remote_path = os.path.join(
+                ui_TestBase.REMOTE_DIR,
+                'ui',
+                self.test_area,
+                filename)
 
-        with bp_image_comparer.BpImageComparer(
+        golden_image_local_path = os.path.join(golden_image_local_dir, filename)
+
+        test_image_filepath = os.path.join(ui_TestBase.WORKING_DIR, filename)
+
+        file_utils.download_file(golden_image_remote_path,
+                                 golden_image_local_path)
+
+        self.capture_screenshot(test_image_filepath)
+
+        bpcomparer = bp_image_comparer.BpImageComparer(
                 project_name,
                 ui_TestBase.BIOPIC_CONTACT_EMAIL,
-                ui_TestBase.BIOPIC_TIMEOUT_S) as comparer:
-            # We just care about storing these images for we can look at them
-            # later. We don't wish to compare images right now.
-            # Make reference images same as test image!
-            comparer.compare(filepath, filepath)
+                ui_TestBase.BIOPIC_TIMEOUT_S)
+
+        comparer = upload_on_fail_comparer.UploadOnFailComparer(
+                rgb_image_comparer.RGBImageComparer(rgb_pixel_threshold=0),
+                bpcomparer)
+
+        v = verifier.Verifier(comparer, stop_on_first_failure=False)
+
+        v.verify(golden_image_local_path, test_image_filepath)
 
         file_utils.rm_dir_if_exists(ui_TestBase.WORKING_DIR)
 

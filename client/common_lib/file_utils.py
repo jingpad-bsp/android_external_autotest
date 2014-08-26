@@ -5,6 +5,7 @@
 import errno
 import os
 import shutil
+import urllib2
 
 
 def rm_dir_if_exists(dir_to_remove):
@@ -113,3 +114,42 @@ def make_leaf_dirs(dirpaths):
     """
     for dirpath in dirpaths:
         make_leaf_dir(dirpath)
+
+
+def download_file(remote_path, local_path):
+    """
+    Download file from a remote resource.
+
+    @param remote_path: path, complete path to the remote file.
+    @param local_path: path, complete path to save downloaded file.
+
+    @raises: urllib2.HTTPError or urlib2.URLError exception. Both with added
+            debug information
+
+    """
+    # Unlike urllib.urlopen urllib2.urlopen will immediately throw on error
+    # If we could not find the file pointed by remote_path we will get an
+    # exception, catch the exception to log useful information then re-raise
+
+    try:
+        remote_file = urllib2.urlopen(remote_path)
+
+        # Catch exceptions, extract exception properties and then re-raise
+        # This helps us with debugging what went wrong quickly as we get to see
+        # test_that output immediately
+
+    except urllib2.HTTPError as e:
+        e.msg = (("""HTTPError raised while retrieving file %s\n.
+                       Http Code = %s.\n. Reason = %s\n. Headers = %s.\n
+                       Original Message = %s.\n""")
+                 % (remote_path, e.code, e.reason, e.headers, e.msg))
+        raise
+
+    except urllib2.URLError as e:
+        e.msg = (("""URLError raised while retrieving file %s\n.
+                        Reason = %s\n. Original Message = %s\n.""")
+                 % (remote_path, e.reason, e.msg))
+        raise
+
+    with open(local_path, 'wb') as local_file:
+        local_file.write(remote_file.read())

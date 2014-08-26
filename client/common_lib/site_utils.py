@@ -375,6 +375,29 @@ def take_screen_shot_crop_by_height(fullpath, final_height, x_offset_pixels,
     return fullpath
 
 
+def take_screenshot_crop(fullpath, box=None):
+    """
+    Take a screenshot using import tool, crop according to dim given by the box.
+
+    @param fullpath: path, full path to save the image to.
+    @param box: 4-tuple giving the upper left and lower right pixel coordinates.
+
+    """
+
+    if box:
+        upperx, uppery, lowerx, lowery = box
+
+        img_w = lowerx - upperx
+        img_h = lowery - uppery
+
+        import_cmd = ('/usr/local/bin/import -window root -depth 8 -crop '
+                      '%dx%d+%d+%d' % (img_w, img_h, upperx, uppery))
+    else:
+        import_cmd = ('/usr/local/bin/import -window root -depth 8')
+
+    _execute_screenshot_capture_command('%s %s' % (import_cmd, fullpath))
+
+
 def get_dut_display_resolution():
     """
     Parses output of xrandr to determine the display resolution of the dut.
