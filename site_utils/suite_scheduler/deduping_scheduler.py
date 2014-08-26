@@ -170,4 +170,8 @@ class DedupingScheduler(object):
 
     def CheckHostsExist(self, *args, **kwargs):
         """Forward a request to check if hosts matching args, kwargs exist."""
-        return self._afe.get_hostnames(*args, **kwargs)
+        try:
+            return self._afe.get_hostnames(*args, **kwargs)
+        except error.TimeoutException as e:
+            logging.exception(e)
+            return []
