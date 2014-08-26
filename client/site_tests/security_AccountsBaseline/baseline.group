@@ -30,7 +30,7 @@ messagebus:!:201:
 syslog:!:202:
 sshd:!:204:
 polkituser:!:206:
-tss:!:207:root,chaps,attestation
+tss:!:207:root,chaps,attestation,trunks
 pkcs11:!:208:root,ipsec,chronos,chaps,wpa
 qdlservice:!:209:
 cromo:!:210:
@@ -63,6 +63,9 @@ brltty:!:240:chronos
 modem:!:241:
 radvd:!:243:radvd
 attestation:!:247:attestation
+goofy:!:248:goofy
+easy-unlock:!:249:
+trunks:!:251:trunks
 ntfs-3g:!:300:
 avfs:!:301:
 fuse-exfat:!:302:
@@ -72,5 +75,3 @@ serial:!:402:chronos,uucp
 devbroker-access:!:403:chronos
 i2c:!:404:power
 netdev:!:408:
-easy-unlock:!:249:
-goofy:!:248:goofy

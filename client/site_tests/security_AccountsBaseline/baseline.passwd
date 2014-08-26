@@ -47,8 +47,9 @@ modem:!:241:241::/dev/null:/bin/false
 gpsd:!:242:242:GPS daemon:/dev/null:/bin/false
 radvd:!:243:243:router advertisement daemon:/dev/null:/bin/false
 attestation:!:247:247::/dev/null:/bin/false
+goofy:x:248:248:role account for running factory flow tests:/home/goofy:/bin/bash
+easy-unlock:!:249:249::/dev/null:/bin/false
+trunks:!:251:251::/dev/null:/bin/false
 ntfs-3g:!:300:300::/dev/null:/bin/false
 avfs:!:301:301::/dev/null:/bin/false
 fuse-exfat:!:302:302::/dev/null:/bin/false
-easy-unlock:!:249:249::/dev/null:/bin/false
-goofy:x:248:248:role account for running factory flow tests:/home/goofy:/bin/bash
