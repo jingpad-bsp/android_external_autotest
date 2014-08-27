@@ -1217,6 +1217,7 @@ class FirmwareTest(FAFTBase):
         # Press power button to trigger Chrome OS normal shutdown process.
         # We use a customized delay since the normal-press 1.2s is not enough.
         self.servo.power_key(self.faft_config.hold_pwr_button)
+        self.wait_for_client_offline()
         time.sleep(self.faft_config.shutdown)
         # Short press power button to boot DUT again.
         self.servo.power_short_press()
