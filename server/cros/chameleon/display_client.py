@@ -116,13 +116,13 @@ class DisplayClient(object):
         def connect_with_retries():
             """Connects the XML-RPC proxy with retries."""
             self._display_xmlrpc_client = self._client.xmlrpc_connect(
-                    constants.DISPLAY_TESTING_XMLRPC_SERVER_COMMAND,
-                    constants.DISPLAY_TESTING_XMLRPC_SERVER_PORT,
+                    constants.MULTIMEDIA_XMLRPC_SERVER_COMMAND,
+                    constants.MULTIMEDIA_XMLRPC_SERVER_PORT,
                     command_name=(
-                        constants.DISPLAY_TESTING_XMLRPC_SERVER_CLEANUP_PATTERN
+                        constants.MULTIMEDIA_XMLRPC_SERVER_CLEANUP_PATTERN
                     ),
                     ready_test_name=(
-                        constants.DISPLAY_TESTING_XMLRPC_SERVER_READY_METHOD),
+                        constants.MULTIMEDIA_XMLRPC_SERVER_READY_METHOD),
                     timeout_seconds=self.XMLRPC_CONNECT_TIMEOUT)
 
         logging.info('Setup the display_client RPC server, with retries...')
@@ -132,7 +132,7 @@ class DisplayClient(object):
     def cleanup(self):
         """Cleans up."""
         self._client.rpc_disconnect(
-                constants.DISPLAY_TESTING_XMLRPC_SERVER_PORT)
+                constants.MULTIMEDIA_XMLRPC_SERVER_PORT)
 
 
     def __del__(self):

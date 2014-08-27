@@ -3,7 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""XML RPC server for display testing."""
+"""XML RPC server for multimedia testing."""
 
 import argparse
 import code
@@ -20,12 +20,12 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib.cros import chrome, xmlrpc_server
 from autotest_lib.client.cros import constants, cros_ui, sys_power
 
-EXT_PATH = os.path.join(os.path.dirname(__file__), 'display_test_extension')
+EXT_PATH = os.path.join(os.path.dirname(__file__), 'multimedia_test_extension')
 TimeoutException = telemetry.core.util.TimeoutException
 
 
-class DisplayTestingXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
-    """XML RPC delegate for display testing."""
+class MultimediaXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
+    """XML RPC delegate for multimedia testing."""
 
     def __init__(self, chrome):
         self._chrome = chrome
@@ -365,11 +365,11 @@ if __name__ == '__main__':
 
     if args.debug:
         s = xmlrpclib.ServerProxy('http://localhost:%d' %
-                                  constants.DISPLAY_TESTING_XMLRPC_SERVER_PORT)
+                                  constants.MULTIMEDIA_XMLRPC_SERVER_PORT)
         code.interact(local=locals())
     else:
         logging.basicConfig(level=logging.DEBUG)
-        logging.debug('display_xmlrpc_server main...')
+        logging.debug('multimedia_xmlrpc_server main...')
 
         os.environ['DISPLAY'] = ':0.0'
         os.environ['XAUTHORITY'] = '/home/chronos/.Xauthority'
@@ -379,6 +379,6 @@ if __name__ == '__main__':
         with chrome.Chrome(extension_paths=[EXT_PATH],
                            extra_browser_args=extra_browser_args) as cr:
             server = xmlrpc_server.XmlRpcServer(
-                    'localhost', constants.DISPLAY_TESTING_XMLRPC_SERVER_PORT)
-            server.register_delegate(DisplayTestingXmlRpcDelegate(cr))
+                    'localhost', constants.MULTIMEDIA_XMLRPC_SERVER_PORT)
+            server.register_delegate(MultimediaXmlRpcDelegate(cr))
             server.run()
