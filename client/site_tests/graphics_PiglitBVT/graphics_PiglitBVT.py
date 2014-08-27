@@ -17,9 +17,6 @@ class graphics_PiglitBVT(test.test):
     test_scripts = 'test_scripts/'
     GSC = None
 
-    def setup(self):
-        self.job.setup_dep(['piglit'])
-
     def initialize(self):
         self.GSC = graphics_utils.GraphicsStateChecker()
 
