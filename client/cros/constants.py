@@ -165,6 +165,8 @@ MULTIMEDIA_XMLRPC_SERVER_COMMAND = (
         './multimedia_xmlrpc_server.py')
 MULTIMEDIA_XMLRPC_SERVER_CLEANUP_PATTERN = 'multimedia_xmlrpc_server'
 MULTIMEDIA_XMLRPC_SERVER_READY_METHOD = 'ready'
+MULTIMEDIA_TEST_EXTENSION = (
+        '/usr/local/autotest/cros/multimedia/multimedia_test_extension')
 
 # Bug filing
 CHROME_VERSION = 'CHROME_VERSION'

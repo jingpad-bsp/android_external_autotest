@@ -115,7 +115,7 @@ class DisplayClient(object):
                      delay_sec=self.XMLRPC_RETRY_DELAY)
         def connect_with_retries():
             """Connects the XML-RPC proxy with retries."""
-            self._display_xmlrpc_client = self._client.xmlrpc_connect(
+            multimedia_xmlrpc_client = self._client.xmlrpc_connect(
                     constants.MULTIMEDIA_XMLRPC_SERVER_COMMAND,
                     constants.MULTIMEDIA_XMLRPC_SERVER_PORT,
                     command_name=(
@@ -124,6 +124,7 @@ class DisplayClient(object):
                     ready_test_name=(
                         constants.MULTIMEDIA_XMLRPC_SERVER_READY_METHOD),
                     timeout_seconds=self.XMLRPC_CONNECT_TIMEOUT)
+            self._display_xmlrpc_client = multimedia_xmlrpc_client.display
 
         logging.info('Setup the display_client RPC server, with retries...')
         connect_with_retries()
