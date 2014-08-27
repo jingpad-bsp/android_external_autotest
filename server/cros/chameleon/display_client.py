@@ -2,19 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import httplib
-import logging
 import os
-import socket
 import tempfile
-import xmlrpclib
 
 from PIL import Image
 
 from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib.cros import retry
-from autotest_lib.client.cros import constants
-from autotest_lib.server import autotest
 from autotest_lib.server.cros.chameleon import image_generator
 
 
@@ -78,67 +71,34 @@ class DisplayClient(object):
     """
 
     X_ENV_VARIABLES = 'DISPLAY=:0.0 XAUTHORITY=/home/chronos/.Xauthority'
-    XMLRPC_CONNECT_TIMEOUT = 60
-    XMLRPC_RETRY_TIMEOUT = 180
-    XMLRPC_RETRY_DELAY = 10
-    HTTP_PORT = 8000
     DEST_TMP_DIR = '/tmp'
     DEST_IMAGE_FILENAME = 'calibration.svg'
 
 
-    def __init__(self, host):
+    def __init__(self, host, multimedia_client_connection):
         """Construct a DisplayClient.
 
         @param host: Host object representing a remote host.
+        @param multimedia_client_connection: MultimediaClientConnection object.
         """
         self._client = host
-        self._display_xmlrpc_client = None
+        self._connection = multimedia_client_connection
         self._image_generator = image_generator.ImageGenerator()
 
 
-    def initialize(self):
-        """Initializes some required servers, like HTTP daemon, RPC connection.
+    @property
+    def _display_proxy(self):
+        """Gets the proxy to DUT display utility.
+
+        @return XML RPC proxy to DUT display utility.
         """
-        # Make sure the client library is on the device so that the proxy code
-        # is there when we try to call it.
-        client_at = autotest.Autotest(self._client)
-        client_at.install()
-        self.connect()
+        return self._connection.xmlrpc_proxy.display
 
 
     def connect(self):
-        """Connects the XML-RPC proxy on the client."""
-        @retry.retry((socket.error,
-                      xmlrpclib.ProtocolError,
-                      httplib.BadStatusLine),
-                     timeout_min=self.XMLRPC_RETRY_TIMEOUT / 60.0,
-                     delay_sec=self.XMLRPC_RETRY_DELAY)
-        def connect_with_retries():
-            """Connects the XML-RPC proxy with retries."""
-            multimedia_xmlrpc_client = self._client.xmlrpc_connect(
-                    constants.MULTIMEDIA_XMLRPC_SERVER_COMMAND,
-                    constants.MULTIMEDIA_XMLRPC_SERVER_PORT,
-                    command_name=(
-                        constants.MULTIMEDIA_XMLRPC_SERVER_CLEANUP_PATTERN
-                    ),
-                    ready_test_name=(
-                        constants.MULTIMEDIA_XMLRPC_SERVER_READY_METHOD),
-                    timeout_seconds=self.XMLRPC_CONNECT_TIMEOUT)
-            self._display_xmlrpc_client = multimedia_xmlrpc_client.display
-
-        logging.info('Setup the display_client RPC server, with retries...')
-        connect_with_retries()
-
-
-    def cleanup(self):
-        """Cleans up."""
-        self._client.rpc_disconnect(
-                constants.MULTIMEDIA_XMLRPC_SERVER_PORT)
-
-
-    def __del__(self):
-        """Destructor of DisplayClient."""
-        self.cleanup()
+        """Connects the XML-RPC proxy on the client again."""
+        # TODO(waihong): Move this method to a better place.
+        self._connection.connect()
 
 
     def get_external_connector_name(self):
@@ -146,7 +106,7 @@ class DisplayClient(object):
 
         @return The external output connector name as a string.
         """
-        return self._display_xmlrpc_client.get_external_connector_name()
+        return self._display_proxy.get_external_connector_name()
 
 
     def get_internal_connector_name(self):
@@ -154,7 +114,7 @@ class DisplayClient(object):
 
         @return The internal output connector name as a string.
         """
-        return self._display_xmlrpc_client.get_internal_connector_name()
+        return self._display_proxy.get_internal_connector_name()
 
 
     def load_calibration_image(self, resolution):
@@ -172,7 +132,7 @@ class DisplayClient(object):
 
         page_url = 'file://%s/%s' % (self.DEST_TMP_DIR,
                                      self.DEST_IMAGE_FILENAME)
-        self._display_xmlrpc_client.load_url(page_url)
+        self._display_proxy.load_url(page_url)
 
 
     def close_tab(self, index=-1):
@@ -180,7 +140,7 @@ class DisplayClient(object):
 
         @param index: The tab index to close. Defaults to the last tab.
         """
-        return self._display_xmlrpc_client.close_tab(index)
+        return self._display_proxy.close_tab(index)
 
 
     def set_mirrored(self, is_mirrored):
@@ -188,7 +148,7 @@ class DisplayClient(object):
 
         @param is_mirrored: True or False to indicate mirrored state.
         """
-        return self._display_xmlrpc_client.set_mirrored(is_mirrored)
+        return self._display_proxy.set_mirrored(is_mirrored)
 
 
     def suspend_resume(self, suspend_time=10):
@@ -197,7 +157,7 @@ class DisplayClient(object):
         @param suspend_time: Suspend time in second, default: 10s.
         """
         # TODO(waihong): Use other general API instead of this RPC.
-        return self._display_xmlrpc_client.suspend_resume(suspend_time)
+        return self._display_proxy.suspend_resume(suspend_time)
 
 
     def suspend_resume_bg(self, suspend_time=10):
@@ -206,7 +166,7 @@ class DisplayClient(object):
         @param suspend_time: Suspend time in second, default: 10s.
         """
         # TODO(waihong): Use other general API instead of this RPC.
-        return self._display_xmlrpc_client.suspend_resume_bg(suspend_time)
+        return self._display_proxy.suspend_resume_bg(suspend_time)
 
 
     def reconnect_output_and_wait(self, reconnect=True,
@@ -220,16 +180,16 @@ class DisplayClient(object):
         """
         output = self.get_external_connector_name()
         if reconnect:
-            self._display_xmlrpc_client.reconnect_output(output)
-        self._display_xmlrpc_client.wait_output_connected(output)
+            self._display_proxy.reconnect_output(output)
+        self._display_proxy.wait_output_connected(output)
         utils.wait_for_value(lambda: (
-                len(self._display_xmlrpc_client.get_display_info())),
+                len(self._display_proxy.get_display_info())),
                 expected_value=expected_display_count)
 
 
     def hide_cursor(self):
         """Hides mouse cursor by sending a keystroke."""
-        self._display_xmlrpc_client.press_key('Up')
+        self._display_proxy.press_key('Up')
 
 
     def _read_root_window_rect(self, w, h, x, y):
@@ -261,7 +221,7 @@ class DisplayClient(object):
         connector = self.get_internal_connector_name()
         if not connector:
             return None
-        w, h, _, _ = self._display_xmlrpc_client.get_resolution(connector)
+        w, h, _, _ = self._display_proxy.get_resolution(connector)
         return (w, h)
 
 
@@ -274,7 +234,7 @@ class DisplayClient(object):
         if not connector:
             return None
         return self._read_root_window_rect(
-                *self._display_xmlrpc_client.get_resolution(connector))
+                *self._display_proxy.get_resolution(connector))
 
 
     def capture_external_screen(self):
@@ -283,7 +243,7 @@ class DisplayClient(object):
         @return: An Image object.
         """
         output = self.get_external_connector_name()
-        w, h, x, y = self._display_xmlrpc_client.get_resolution(output)
+        w, h, x, y = self._display_proxy.get_resolution(output)
         return self._read_root_window_rect(w, h, x, y)
 
 
@@ -293,7 +253,7 @@ class DisplayClient(object):
         @return The resolution tuple (width, height)
         """
         output = self.get_external_connector_name()
-        width, height, _, _ = self._display_xmlrpc_client.get_resolution(output)
+        width, height, _, _ = self._display_proxy.get_resolution(output)
         return (width, height)
 
 
@@ -304,7 +264,7 @@ class DisplayClient(object):
         @param width: width of the resolution
         @param height: height of the resolution
         """
-        self._display_xmlrpc_client.set_resolution(
+        self._display_proxy.set_resolution(
                 display_index, width, height)
 
 
@@ -314,7 +274,7 @@ class DisplayClient(object):
 
         @return: list of object DisplayInfo for display informtion
         """
-        return map(DisplayInfo, self._display_xmlrpc_client.get_display_info())
+        return map(DisplayInfo, self._display_proxy.get_display_info())
 
 
     def get_display_modes(self, display_index):
@@ -325,7 +285,7 @@ class DisplayClient(object):
 
         @return: list of DisplayMode dicts.
         """
-        return self._display_xmlrpc_client.get_display_modes(display_index)
+        return self._display_proxy.get_display_modes(display_index)
 
 
     def get_available_resolutions(self, display_index):

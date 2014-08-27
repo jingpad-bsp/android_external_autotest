@@ -12,7 +12,7 @@ from PIL import ImageChops
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import edid
 from autotest_lib.server import test
-from autotest_lib.server.cros.chameleon import display_client
+from autotest_lib.server.cros.chameleon import multimedia_client_factory
 
 def _unlevel(p):
     """Unlevel a color value from TV level back to PC level
@@ -48,8 +48,8 @@ class ChameleonTest(test.test):
 
         @param host: The Host object of DUT.
         """
-        self.display_client = display_client.DisplayClient(host)
-        self.display_client.initialize()
+        factory = multimedia_client_factory.MultimediaClientFactory(host)
+        self.display_client = factory.create_display_client()
         self.chameleon = host.chameleon
         self.host = host
         self.chameleon_port = self._get_connected_port()
@@ -237,9 +237,6 @@ class ChameleonTest(test.test):
 
     def cleanup(self):
         """Cleans up."""
-        if hasattr(self, 'display_client') and self.display_client:
-            self.display_client.cleanup()
-
         if hasattr(self, 'chameleon') and self.chameleon:
           retry_count = 2
           while not self.chameleon.is_healthy() and retry_count >= 0:
