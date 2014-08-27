@@ -858,7 +858,7 @@ def restore_scaling_governor_states(path_value_list):
     Restores governor states. Inverse operation to get_scaling_governor_states.
     """
     for (path, value) in path_value_list:
-        cmd = 'echo %s > %s' % (value, path)
+        cmd = 'echo %s > %s' % (value.rstrip('\n'), path)
         utils.system(cmd)
 
 
