@@ -210,7 +210,7 @@ class ShillProxy(object):
 
 
     @classmethod
-    def get_proxy(cls, timeout_seconds=10):
+    def get_proxy(cls, bus=None, timeout_seconds=10):
         """Create a Proxy, retrying if necessary.
 
         This method creates a proxy object of the required subclass of
@@ -224,6 +224,8 @@ class ShillProxy(object):
         is answering RPCs. No timeout is applied to the test RPC, so
         this method _may_ block indefinitely.
 
+        @param bus D-Bus bus to use, or specify None and this object will
+            create a mainloop and bus.
         @param timeout_seconds float number of seconds to try connecting
             A value <= 0 will cause the method to return immediately,
             without trying to connect.
@@ -237,7 +239,7 @@ class ShillProxy(object):
                 # We create instance of class on which this classmethod was
                 # called. This way, calling SubclassOfShillProxy.get_proxy()
                 # will get a proxy of the right type.
-                connection = cls()
+                connection = cls(bus=bus)
             except dbus.exceptions.DBusException as e:
                 if e.get_dbus_name() != ShillProxy.DBUS_SERVICE_UNKNOWN:
                     raise ShillProxyError('Error connecting to shill')

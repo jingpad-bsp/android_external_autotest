@@ -34,12 +34,14 @@ class ModemManager1Proxy(object):
     CONNECT_WAIT_INTERVAL_SECONDS = 0.2
 
     @classmethod
-    def get_proxy(cls, timeout_seconds=10):
+    def get_proxy(cls, bus=None, timeout_seconds=10):
         """Connect to ModemManager1 over DBus, retrying if necessary.
 
         After connecting to ModemManager1, this method will verify that
         ModemManager1 is answering RPCs.
 
+        @param bus: D-Bus bus to use, or specify None and this object will
+            create a mainloop and bus.
         @param timeout_seconds: float number of seconds to try connecting
             A value <= 0 will cause the method to return immediately,
             without trying to connect.
@@ -49,13 +51,13 @@ class ModemManager1Proxy(object):
             ModemManager1.
 
         """
-        def _connect_to_mm1():
+        def _connect_to_mm1(bus):
             try:
                 # We create instance of class on which this classmethod was
                 # called. This way, calling
                 # SubclassOfModemManager1Proxy.get_proxy() will get a proxy of
                 # the right type.
-                return cls()
+                return cls(bus=bus)
             except dbus.exceptions.DBusException as e:
                 if _is_unknown_dbus_binding_exception(e):
                     return None
@@ -64,12 +66,12 @@ class ModemManager1Proxy(object):
                         repr(e))
 
         utils.poll_for_condition(
-            lambda: _connect_to_mm1() is not None,
+            lambda: _connect_to_mm1(bus) is not None,
             exception=ModemManager1ProxyError(
                     'Timed out connecting to ModemManager1'),
             timeout=timeout_seconds,
             sleep_interval=ModemManager1Proxy.CONNECT_WAIT_INTERVAL_SECONDS)
-        connection = _connect_to_mm1()
+        connection = _connect_to_mm1(bus)
 
         # Check to make sure ModemManager1 is responding to DBus requests by
         # setting the logging to debug.
