@@ -259,9 +259,14 @@ class telemetry_AFDOGenerate(test.test):
         GS_ACL = 'project-private'
 
         gs_dest = GS_TEST_DEST if self._gs_test_location else GS_DEST
+        remote_file = gs_dest % remote_basename
 
+        logging.info('About to upload to GS: %s', remote_file)
         if not utils.gs_upload(local_file,
-                               gs_dest % remote_basename,
+                               remote_file,
                                GS_ACL, result_dir=self.resultsdir):
-            raise error.TestFail('Unable to gs upload %s to %s as %s' %
-                                 (local_file, gs_dest, remote_basename))
+            logging.info('Failed upload to GS: %s', remote_file)
+            raise error.TestFail('Unable to gs upload %s to %s' %
+                                 (local_file, remote_file))
+
+        logging.info('Successfull upload to GS: %s', remote_file)
