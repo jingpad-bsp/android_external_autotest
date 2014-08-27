@@ -8,7 +8,7 @@ PURPOSE = "Verify that Chrome Video Playback is glitch and corruption free"
 CRITERIA = """
 
 """
-#SUITE = "bvt-perbuild, video, qav"
+SUITE = "bvt-perbuild, video, qav"
 TIME = "LONG"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"
