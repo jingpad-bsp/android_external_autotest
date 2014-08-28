@@ -108,19 +108,6 @@ def ResetAllModems(conn_mgr):
             assert modem.IsEnabled()
 
 
-def ClearGobiModemFaultInjection():
-    """If there's a gobi present, try to clear its fault-injection state."""
-    try:
-        modem_manager, gobi_path = mm.PickOneModem('Gobi')
-    except ValueError:
-        # Didn't find a gobi
-        return
-
-    gobi = modem_manager.GetModem(gobi_path).GobiModem()
-    if gobi:
-        gobi.InjectFault('ClearFaults', 1)
-
-
 class IpTablesContext(object):
     """Context manager that manages iptables rules."""
     IPTABLES = '/sbin/iptables'

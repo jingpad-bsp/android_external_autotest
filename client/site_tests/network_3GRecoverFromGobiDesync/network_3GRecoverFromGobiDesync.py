@@ -9,6 +9,7 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import network
 from autotest_lib.client.cros.cellular import mm
+from autotest_lib.client.cros.cellular import modem_utils
 
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam
@@ -199,7 +200,7 @@ class GobiDesyncEventLoop(TestEventLoop):
       logging.info('Waiting for: ' + str(self.remaining_events))
       context.iteration()
 
-    network.ClearGobiModemFaultInjection()
+    modem_utils.ClearGobiModemFaultInjection()
     self.KillSubprocesses()
     self.CleanupDbusSignalReceivers()
     if self.to_raise:
@@ -353,4 +354,4 @@ class network_3GRecoverFromGobiDesync(test.test):
       logging.info('Testing that Enable and Disable technology still work')
       EnableDisableTest().Test()
     finally:
-      network.ClearGobiModemFaultInjection()
+      modem_utils.ClearGobiModemFaultInjection()

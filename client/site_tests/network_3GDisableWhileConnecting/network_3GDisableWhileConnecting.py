@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -13,6 +12,7 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import backchannel, network
 from autotest_lib.client.cros.cellular import mm
+from autotest_lib.client.cros.cellular import modem_utils
 from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
 from autotest_lib.client.cros.mainloop import GenericTesterMainLoop
 from autotest_lib.client.cros.mainloop import ExceptionForward
@@ -73,7 +73,7 @@ class DisableTester(GenericTesterMainLoop):
     logging.info('Modem enabled: %s', enabled)
     self.assert_(enabled == 0)
     # Will return happily if no Gobi present
-    network.ClearGobiModemFaultInjection()
+    modem_utils.ClearGobiModemFaultInjection()
 
 
 class FlimflamDisableTester(DisableTester):
@@ -318,4 +318,4 @@ class network_3GDisableWhileConnecting(test.test):
                                      timeout_s=timeout_s)
           modem.run(**kwargs)
         finally:
-          network.ClearGobiModemFaultInjection()
+          modem_utils.ClearGobiModemFaultInjection()
