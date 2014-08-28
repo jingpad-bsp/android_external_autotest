@@ -97,7 +97,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     SHUTDOWN_TIMEOUT = 5
     BOOT_TIMEOUT = 60
     USB_BOOT_TIMEOUT = 150
-    INSTALL_TIMEOUT = 240
+    INSTALL_TIMEOUT = 480
     POWERWASH_BOOT_TIMEOUT = 60
 
     # REBOOT_TIMEOUT: How long to wait for a reboot.
