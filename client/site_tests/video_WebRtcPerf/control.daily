@@ -1,12 +1,12 @@
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Project, chromeos-video@google.com"
-NAME = "video_WebRtcPerf"
-PURPOSE = "Make sure WebRTC is hardware decode accelerated."
-CRITERIA = "Fails if hardware decode acceleration is not used."
-SUITE = "bvt-perbuild"
+NAME = "video_WebRtcPerf.daily"
+PURPOSE = "Monitor the performance of CPU usage and decode time of WebRTC."
+CRITERIA = "Fails if hardware acceleration is not used."
+SUITE = "video"
 TIME = "SHORT"
 TEST_CATEGORY = "Performance"
 TEST_CLASS = "video"
@@ -17,13 +17,12 @@ BUG_TEMPLATE = {
 }
 
 DOC = """
-This test runs WebRTC loopback in a tab, checks the histograms, and fails if
-hardware decode acceleration is not used. The test also outputs video decode
-time to the performance dashboard.
+This test outputs the CPU usage and decode time of WebRTC to the performance
+dashboard. The purpose is to watch the regression.
 """
 
 job.run_test("video_WebRtcPerf",
              run_hardware_acceleration_only=True,
              decode_time_test=True,
-             cpu_test=False,
+             cpu_test=True,
              power_test=False)
