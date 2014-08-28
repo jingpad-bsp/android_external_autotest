@@ -44,6 +44,20 @@ class QueryManagerTests(rdb_testing_utils.AbstractBaseRDBTester,
                         jobs_without_hosts[0].host_id is None)
 
 
+    def testPendingQueueEntriesForShard(self):
+        """Test queue entries for shards aren't executed by master scheduler"""
+        job1 = self.create_job(deps=set(['a']))
+        job2 = self.create_job(deps=set(['b']))
+        shard = models.Shard.objects.create()
+        # Assign the job's label to a shard
+        shard.labels.add(job1.dependency_labels.all()[0])
+
+        # Check that we only pull jobs which are not assigned to a shard.
+        jobs_with_hosts = self.job_query_manager.get_pending_queue_entries()
+        self.assertTrue(len(jobs_with_hosts) == 1)
+        self.assertEqual(jobs_with_hosts[0].id, job2.id)
+
+
     def testHostQueries(self):
         """Verify that the host query manager maintains its data structures."""
         # Create a job and use the host_query_managers internal datastructures
