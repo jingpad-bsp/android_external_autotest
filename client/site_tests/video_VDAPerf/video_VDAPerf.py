@@ -25,12 +25,14 @@ KEY_CPU_KERNEL_USAGE = 'cpu_usage.kernel'
 KEY_CPU_USER_USAGE = 'cpu_usage.user'
 KEY_DECODE_TIME_50 = 'decode_time.percentile_0.50'
 
-DOWNLOAD_BASE = 'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/'
+DOWNLOAD_BASE = ('http://commondatastorage.googleapis.com'
+                 '/chromiumos-test-assets-public/')
 BINARY = 'video_decode_accelerator_unittest'
 OUTPUT_LOG = 'test_output.log'
 TIME_LOG = 'time.log'
 
 TIME_BINARY = '/usr/local/bin/time'
+MICROSECONDS_PER_SECOND = 1000000
 
 # These strings should match chromium/src/tools/perf/unit-info.json.
 UNIT_MILLISECOND = 'milliseconds'
@@ -78,20 +80,25 @@ class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
 
 
     def _analyze_frame_delivery_times(self, name, frame_delivery_times):
-        # The average of the first frame delivery time.
-        t = [x[0] for x in frame_delivery_times]
-        self._logperf(name, KEY_DELIVERY_TIME_FIRST, sum(t) / len(t),
+        """
+        Analyzes the frame delivery times and output the statistics to the
+        Chrome Performance dashboard.
+
+        @param name: The name of the test video.
+        @param frame_delivery_times: The delivery time of each frame in the
+                test video.
+        """
+        # Log the delivery time of the first frame.
+        self._logperf(name, KEY_DELIVERY_TIME_FIRST, frame_delivery_times[0],
                       UNIT_MICROSECOND)
 
-        # Flatten the frame_delivery_times.
-        t = sum(frame_delivery_times, [])
+        # Log all the delivery times, the Chrome performance dashboard will do
+        # the statistics.
+        self._logperf(name, KEY_DELIVERY_TIME, frame_delivery_times,
+                      UNIT_MICROSECOND)
 
-        self._logperf(name, KEY_DELIVERY_TIME, t, UNIT_MICROSECOND)
-
-        # Sort the frame delivery times.
-        t.sort()
-
-        # The 25%, 50%, and 75% percentile of the frame delivery times.
+        # Log the 25%, 50%, and 75% percentile of the frame delivery times.
+        t = sorted(frame_delivery_times)
         self._logperf(name, KEY_DELIVERY_TIME_75, _percentile(t, 0.75),
                       UNIT_MICROSECOND)
         self._logperf(name, KEY_DELIVERY_TIME_50, _percentile(t, 0.50),
@@ -100,11 +107,31 @@ class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
                       UNIT_MICROSECOND)
 
 
-    def _analyze_frame_drop_rate(self, name, frame_num, frame_delivery_times):
-        total = frame_num * len(frame_delivery_times)
-        decoded = sum([len(x) for x in frame_delivery_times])
+    def _analyze_frame_drop_rate(
+            self, name, frame_delivery_times, rendering_fps):
+        frame_duration = MICROSECONDS_PER_SECOND / rendering_fps
 
-        drop_rate = float(total - decoded) / total
+        render_time = frame_duration;
+        delivery_time = 0;
+        drop_count = 0
+
+        # Ignore the delivery time of the first frame since we delay the
+        # rendering until we get the first frame.
+        #
+        # Note that we keep accumulating delivery times and don't use deltas
+        # between current and previous delivery time. If the decoder cannot
+        # catch up after falling behind, it will keep dropping frames.
+        for t in frame_delivery_times[1:]:
+            render_time += frame_duration
+            delivery_time += t
+            if delivery_time > render_time:
+                drop_count += 1
+
+        n = len(frame_delivery_times)
+
+        # Since we won't drop the first frame, don't add it to the number of
+        # frames.
+        drop_rate = float(drop_count) / (n - 1) if n > 1 else 0
         self._logperf(name, KEY_FRAME_DROP_RATE, drop_rate, UNIT_PERCENT)
 
         # The performance keys would be used as names of python variables when
@@ -123,7 +150,13 @@ class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
 
 
     def _load_frame_delivery_times(self, test_log_file):
-        """Gets the frame delivery times from the log_file.
+        """
+        Gets the frame delivery times from the |test_log_file|.
+
+        The |test_log_file| could contain frame delivery times for more than
+        one decoder. However, we use only one in this test.
+
+        The expected content in the |test_log_file|:
 
         The first line is the frame number of the first decoder. For exmplae:
           frame count: 250
@@ -134,6 +167,11 @@ class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
 
         Then it is the frame number of the second decoder followed by the
         delivery times, and so on so forth.
+
+        @param test_log_file: The test log file where we load the frame
+                delivery times from.
+        @returns a list of integers which are the delivery times of all frames
+                (in microsecond).
         """
         result = []
         with open(test_log_file, 'r') as f:
@@ -148,7 +186,9 @@ class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
                     assert m, 'invalid format: %s' % line
                     times.append(int(m.group(1)))
                 result.append(times)
-        return result
+        if len(result) != 1:
+            raise error.TestError('Frame delivery times load failed.')
+        return result[0]
 
 
     def _get_test_case_name(self, path):
@@ -195,6 +235,10 @@ class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
         self.run_chrome_test_binary(BINARY, cmd_line)
 
         frame_delivery_times = self._load_frame_delivery_times(test_log_file)
+        if len(frame_delivery_times) != frame_num:
+            raise error.TestError(
+                "frames number mismatch - expected: %d, got: %d" %
+                (frame_num, len(frame_delivery_times)));
         self._analyze_frame_delivery_times(name, frame_delivery_times)
 
         # Get frame drop rate & CPU usage, decode at the specified fps
@@ -209,7 +253,7 @@ class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
         self.run_chrome_test_binary(BINARY, cmd_line, prefix=time_cmd)
 
         frame_delivery_times = self._load_frame_delivery_times(test_log_file)
-        self._analyze_frame_drop_rate(name, frame_num, frame_delivery_times)
+        self._analyze_frame_drop_rate(name, frame_delivery_times, rendering_fps)
         self._analyze_cpu_usage(name, time_log_file)
 
         # Get decode time median.
