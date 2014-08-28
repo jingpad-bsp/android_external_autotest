@@ -31,20 +31,25 @@ class graphics_WebGLClear(test.test):
     """WebGL clear graphics test."""
     version = 1
     GSC = None
-
+    perf_keyval = {}
 
     def setup(self):
         self.job.setup_dep(['webgl_clear'])
 
 
     def initialize(self):
-        self.perf_keyval = {}
         self.GSC = graphics_utils.GraphicsStateChecker()
+        self.perf_keyval = {}
 
 
     def cleanup(self):
         if self.GSC:
+            keyvals = self.GSC.get_memory_keyvals()
+            for key, val in keyvals.iteritems():
+                self.output_perf_value(description=key, value=val,
+                                       units='bytes', higher_is_better=False)
             self.GSC.finalize()
+            self.write_perf_keyval(keyvals)
 
 
     def run_clear_test(self, browser, test_url):

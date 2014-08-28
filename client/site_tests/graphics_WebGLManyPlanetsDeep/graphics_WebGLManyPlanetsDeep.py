@@ -12,11 +12,13 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.cros.graphics import graphics_utils
 
 
 class graphics_WebGLManyPlanetsDeep(test.test):
     """WebGL many planets deep graphics test."""
     version = 1
+    GSC = None
 
     def setup(self):
         self.job.setup_dep(['webgl_mpd'])
@@ -25,6 +27,16 @@ class graphics_WebGLManyPlanetsDeep(test.test):
     def initialize(self):
         self.frame_data = {}
         self.perf_keyval = {}
+        self.GSC = graphics_utils.GraphicsStateChecker()
+
+    def cleanup(self):
+        if self.GSC:
+            keyvals = self.GSC.get_memory_keyvals()
+            for key, val in keyvals.iteritems():
+                self.output_perf_value(description=key, value=val,
+                                       units='bytes', higher_is_better=False)
+            self.GSC.finalize()
+            self.write_perf_keyval(keyvals)
 
     def poll_for_condition(self, tab, condition, error_msg):
         """Waits until javascript condition is true.

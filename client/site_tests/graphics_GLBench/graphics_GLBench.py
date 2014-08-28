@@ -9,6 +9,7 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import perf
 from autotest_lib.client.cros import service_stopper
+from autotest_lib.client.cros.graphics import graphics_utils
 
 # to run this test manually on a test target
 # ssh root@machine
@@ -51,15 +52,25 @@ class graphics_GLBench(test.test):
     'us': False,
     '1280x768_fps': True }
 
+  GSC = None
+
   def setup(self):
     self.job.setup_dep(['glbench'])
 
   def initialize(self):
     self._services = service_stopper.ServiceStopper(['ui'])
+    self.GSC = graphics_utils.GraphicsStateChecker()
 
   def cleanup(self):
     if self._services:
       self._services.restore_services()
+    if self.GSC:
+      keyvals = self.GSC.get_memory_keyvals()
+      for key, val in keyvals.iteritems():
+        self.output_perf_value(description=key, value=val,
+                               units='bytes', higher_is_better=False)
+      self.GSC.finalize()
+      self.write_perf_keyval(keyvals)
 
   def report_temperature(self, keyname):
     temperature = utils.get_temperature_input_max()

@@ -12,11 +12,13 @@ import time
 import sampler
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.cros.graphics import graphics_utils
 
 
 class graphics_WebGLAquarium(test.test):
     """WebGL aquarium graphics test."""
     version = 1
+    GSC = None
 
     def setup(self):
         tarball_path = os.path.join(self.bindir,
@@ -24,6 +26,7 @@ class graphics_WebGLAquarium(test.test):
         utils.extract_tarball_to_dir(tarball_path, self.srcdir)
 
     def initialize(self):
+        self.GSC = graphics_utils.GraphicsStateChecker()
         self.test_settings = {
                 50: ('setSetting2', 2),
                 1000: ('setSetting6', 6),
@@ -45,6 +48,15 @@ class graphics_WebGLAquarium(test.test):
         else:
             # TODO: Create samplers for other platforms (e.g. x86).
             self.kernel_sampler = None
+
+    def cleanup(self):
+        if self.GSC:
+            keyvals = self.GSC.get_memory_keyvals()
+            for key, val in keyvals.iteritems():
+                self.output_perf_value(description=key, value=val,
+                                       units='bytes', higher_is_better=False)
+            self.GSC.finalize()
+            self.write_perf_keyval(keyvals)
 
     def run_fish_test(self, browser, test_url, num_fishes):
         """Run the test with the given number of fishes.

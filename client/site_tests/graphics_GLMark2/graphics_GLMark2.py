@@ -15,6 +15,7 @@ import string
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import service_stopper
+from autotest_lib.client.cros.graphics import graphics_utils
 
 GLMARK2_TEST_RE = r"^\[(?P<scene>.*)\] (?P<options>.*): FPS: (?P<fps>\d+) FrameTime: (?P<frametime>\d+.\d+) ms$"
 GLMARK2_SCORE_RE = r"glmark2 Score: (\d+)"
@@ -32,16 +33,25 @@ class graphics_GLMark2(test.test):
     version = 1
     preserve_srcdir = True
     _services = None
+    GSC = None
 
     def setup(self):
         self.job.setup_dep(['glmark2'])
 
     def initialize(self):
         self._services = service_stopper.ServiceStopper(['ui'])
+        self.GSC = graphics_utils.GraphicsStateChecker()
 
     def cleanup(self):
         if self._services:
-            self._services.restore_services()
+          self._services.restore_services()
+        if self.GSC:
+            keyvals = self.GSC.get_memory_keyvals()
+            for key, val in keyvals.iteritems():
+                self.output_perf_value(description=key, value=val,
+                                       units='bytes', higher_is_better=False)
+            self.GSC.finalize()
+            self.write_perf_keyval(keyvals)
 
     def run_once(self, size='800x600', validation_mode=False, min_score=None):
         dep = 'glmark2'

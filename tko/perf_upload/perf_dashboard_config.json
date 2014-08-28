@@ -16,7 +16,15 @@
     "master_name": "ChromeOS_Graphics"
   },
   {
+    "autotest_name": "graphics_GLES2ConformChrome",
+    "master_name": "ChromeOS_Graphics"
+  },
+  {
     "autotest_name": "graphics_GLMark2",
+    "master_name": "ChromeOS_Graphics"
+  },
+  {
+    "autotest_name": "graphics_GpuReset",
     "master_name": "ChromeOS_Graphics"
   },
   {
@@ -28,15 +36,23 @@
     "master_name": "ChromeOS_Graphics"
   },
   {
+    "autotest_name": "graphics_PiglitBVT",
+    "master_name": "ChromeOS_Graphics"
+  },
+  {
+    "autotest_name": "graphics_SanAngeles",
+    "master_name": "ChromeOS_Graphics"
+  },
+  {
+    "autotest_name": "graphics_Stress",
+    "master_name": "ChromeOS_Graphics"
+  },
+  {
     "autotest_name": "graphics_WebGLAquarium",
     "master_name": "ChromeOS_Graphics"
   },
   {
     "autotest_name": "graphics_WebGLClear",
-    "master_name": "ChromeOS_Graphics"
-  },
-  {
-    "autotest_name": "graphics_WebGLConformance",
     "master_name": "ChromeOS_Graphics"
   },
   {

@@ -28,7 +28,12 @@ class graphics_Piglit(test.test):
 
     def cleanup(self):
         if self.GSC:
+            keyvals = self.GSC.get_memory_keyvals()
+            for key, val in keyvals.iteritems():
+                self.output_perf_value(description=key, value=val,
+                                       units='bytes', higher_is_better=False)
             self.GSC.finalize()
+            self.write_perf_keyval(keyvals)
 
     def run_once(self, test='cros-driver.py'):
         gpu_family = utils.get_gpu_family()
