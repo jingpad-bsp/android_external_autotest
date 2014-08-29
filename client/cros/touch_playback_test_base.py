@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import subprocess
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
@@ -14,9 +15,8 @@ class touch_playback_test_base(test.test):
 
     _PLAYBACK_COMMAND = 'evemu-play --insert-slot0 %s < %s'
     _INPUTCONTROL = '/opt/google/input/inputcontrol'
-    _DEFAULT_SCROLL = 100
 
-    _TOUCH_TYPES = ['touchpad', 'touchscreen']
+    _TOUCH_TYPES = ['touchpad', 'touchscreen', 'mouse']
 
     @property
     def _has_touchpad(self):
@@ -28,11 +28,20 @@ class touch_playback_test_base(test.test):
         """True if device under test has a touchscreen; else False."""
         return self._has_inputs['touchscreen']
 
-    def warmup(self):
+    @property
+    def _has_mouse(self):
+        """True if device under test has or emulates a USB mouse; else False."""
+        return self._has_inputs['mouse']
+
+    def warmup(self, mouse_props=None):
         """Determine the nodes of all present touch devices, if any.
 
         Use inputcontrol command to get the touch ids and xinput to get the
         corresponding node numbers.  These numbers are used for playback.
+        Emulate a USB mouse if a property file is provided.
+
+        @param mouse_props: property file for a mouse to emulate.  Created
+                            using 'evemu-describe /dev/input/X'.
 
         """
         name_cmd = '%s --names -t %s' % (self._INPUTCONTROL, '%s')
@@ -43,7 +52,12 @@ class touch_playback_test_base(test.test):
 
         self._has_inputs = {}
         self._nodes = {}
+        self._device_emulation_process = None
 
+        # Emulate mouse if property file was provided.
+        if mouse_props:
+            self._device_emulation_process = subprocess.Popen(
+                    ['evemu-device', mouse_props], stdout=subprocess.PIPE)
         for input_type in self._TOUCH_TYPES:
             id_num = utils.run(type_cmd % input_type).stdout.strip()
             if id_num:
@@ -57,11 +71,16 @@ class touch_playback_test_base(test.test):
                 self._has_inputs[input_type] = False
                 self._nodes[input_type] = None
 
+        logging.info('This DUT has the following input devices:')
+        logging.info(utils.run('%s --names' % self._INPUTCONTROL).stdout)
+
+
     def _playback(self, filepath, touch_type='touchpad'):
         """Playback a given set of touch movements.
 
         @param filepath: path to the movements file on the DUT.
-        @param use_touchpad: true to use touchpad, false for touchscreen.
+        @param touch_type: name of device type; 'touchpad' by default.  String
+                           must be in self._TOUCH_TYPES list.
 
         """
         assert(touch_type in self._TOUCH_TYPES)
@@ -81,3 +100,7 @@ class touch_playback_test_base(test.test):
                                                     cmd_value))
         logging.info('Australian scrolling turned %s.',
                      'on' if value else 'off')
+
+    def cleanup(self):
+        if self._device_emulation_process:
+            self._device_emulation_process.kill()
