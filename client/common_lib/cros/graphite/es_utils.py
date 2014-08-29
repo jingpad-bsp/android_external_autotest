@@ -181,6 +181,7 @@ class ESMetadata(object):
         if '_type' in metadata_copy:
             type_str = metadata_copy['_type']
             del metadata_copy['_type']
+        metadata_copy['time_recorded'] = time.time()
         try:
             self._send_data(type_str, index, metadata_copy, use_http)
         except elasticsearch.ElasticsearchException as e:

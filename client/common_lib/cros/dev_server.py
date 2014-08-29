@@ -472,24 +472,22 @@ class ImageServer(DevServer):
 
 
     @staticmethod
-    def create_stats_str(subname, server_name, image, artifacts=None, files=None):
+    def create_stats_str(subname, server_name, artifacts):
         """Create a graphite name given the staged items.
 
         The resulting name will look like
-            'dev_server.subname.DEVSERVER_URL.artifact1-artifact2-file1-file2'
+            'dev_server.subname.DEVSERVER_URL.artifact1_artifact2'
         The name can be used to create a stats object like
         stats.Timer, stats.Counter, etc.
 
         @param subname: A name for the graphite sub path.
         @param server_name: name of the devserver, e.g 172.22.33.44.
-        @param image: The name of the image.
         @param artifacts: A list of artifacts.
-        @param files: A list of files.
 
         @return A name described above.
 
         """
-        staged_items = (artifacts or []) + (files or [])
+        staged_items = sorted(artifacts) if artifacts else []
         staged_items_str = '_'.join(staged_items).replace(
                 '.', '_') if staged_items else None
         server_name = server_name.replace('.', '_')
@@ -513,7 +511,9 @@ class ImageServer(DevServer):
         @return A metadata dictionary.
 
         """
-        metadata = {'devserver': server_name, 'image': image}
+        metadata = {'devserver': server_name,
+                    'image': image,
+                    '_type': 'devserver'}
         if artifacts:
             metadata['artifacts'] = ' '.join(artifacts)
         if files:
@@ -558,29 +558,32 @@ class ImageServer(DevServer):
                        image, artifacts, files, archive_url)
         logging.info('Staging artifacts on devserver %s: %s',
                      self.url(), staging_info)
-        server_name = self.get_server_name(self.url())
-        timer_key = self.create_stats_str(
-                'stage_artifacts', server_name, image, artifacts, files)
-        counter_key = self.create_stats_str(
-                'stage_artifacts_count', server_name, image, artifacts, files)
-        metadata = self.create_metadata(server_name, image, artifacts, files)
-        stats.Counter(counter_key, metadata=metadata).increment()
-        timer = stats.Timer(timer_key, metadata=metadata)
-        timer.start()
+        if artifacts:
+            server_name = self.get_server_name(self.url())
+            timer_key = self.create_stats_str(
+                    'stage_artifacts', server_name, artifacts)
+            counter_key = self.create_stats_str(
+                    'stage_artifacts_count', server_name, artifacts)
+            metadata = self.create_metadata(server_name, image, artifacts,
+                                            files)
+            stats.Counter(counter_key, metadata=metadata).increment()
+            timer = stats.Timer(timer_key, metadata=metadata)
+            timer.start()
         try:
             self.call_and_wait(call_name='stage',
                                archive_url=archive_url,
                                artifacts=artifacts_arg,
                                files=files_arg,
                                error_message=error_message)
-            timer.stop()
+            if artifacts:
+                timer.stop()
             logging.info('Finished staging artifacts: %s', staging_info)
         except error.TimeoutException as e:
             logging.error('stage_artifacts timed out: %s', staging_info)
-            timeout_key = self.create_stats_str(
-                    'stage_artifacts_timeout', server_name,
-                    image, artifacts, files)
-            stats.Counter(timeout_key, metadata=metadata).increment()
+            if artifacts:
+                timeout_key = self.create_stats_str(
+                        'stage_artifacts_timeout', server_name, artifacts)
+                stats.Counter(timeout_key, metadata=metadata).increment()
             raise DevServerException(
                     'stage_artifacts timed out: %s' % staging_info)
 
@@ -631,8 +634,7 @@ class ImageServer(DevServer):
         server_name = self.get_server_name(self.url())
         artifacts_list = artifacts.split(',')
         counter_key = self.create_stats_str(
-                    'trigger_download_count',
-                    server_name, image, artifacts_list)
+                    'trigger_download_count', server_name, artifacts_list)
         metadata = self.create_metadata(server_name, image, artifacts_list)
         stats.Counter(counter_key, metadata=metadata).increment()
         try:
@@ -645,8 +647,7 @@ class ImageServer(DevServer):
         except error.TimeoutException as e:
             logging.error('trigger_download timed out for %s.', image)
             timeout_key = self.create_stats_str(
-                    'trigger_download_timeout',
-                    server_name, image, artifacts_list)
+                    'trigger_download_timeout', server_name, artifacts_list)
             stats.Counter(timeout_key, metadata=metadata).increment()
             raise DevServerException(
                     'trigger_download timed out for %s.' % image)
@@ -706,8 +707,7 @@ class ImageServer(DevServer):
             server_name = self.get_server_name(self.url())
             artifacts_list = artifacts.split(',')
             timeout_key = self.create_stats_str(
-                    'finish_download_timeout',
-                    server_name, image, artifacts_list)
+                    'finish_download_timeout', server_name, artifacts_list)
             metadata = self.create_metadata(server_name, image, artifacts_list)
             stats.Counter(timeout_key, metadata=metadata).increment()
             raise DevServerException(

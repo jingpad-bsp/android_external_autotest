@@ -193,7 +193,7 @@ class Timer(statsd.Timer):
         """
         super(Timer, self).send(subname, value)
         self.es.post(type_str=STATS_ES_TYPE, index=self.index,
-                     metadata=self.metadata, subname=subname, value=value)
+                     metadata=self.metadata, subname=self.name, value=value)
 
 
     def __enter__(self):

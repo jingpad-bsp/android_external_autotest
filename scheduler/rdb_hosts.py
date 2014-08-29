@@ -217,8 +217,7 @@ class RDBClientHostWrapper(RDBHost):
         @param value: value of the state, e.g. 'running'
         """
         metadata = {
-            'time_recorded': time.time(),
-             state: value,
+            state: value,
             'hostname': self.hostname,
         }
         metadata.update(self.metadata)

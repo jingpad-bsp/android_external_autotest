@@ -713,8 +713,7 @@ class ModelExtensions(rdb_model_extensions.ModelValidators):
         @param value: value of the state, e.g. True
         """
         metadata = {
-            'time_recorded': time.time(),
-             state: value,
+            state: value,
             'hostname': self.hostname,
         }
         es_utils.ESMetadata().post(type_str=type_str, metadata=metadata)
