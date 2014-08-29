@@ -68,7 +68,6 @@
 /usr/bin/db4.7_stat
 /usr/bin/db4.7_upgrade
 /usr/bin/db4.7_verify
-/usr/bin/futility
 /usr/bin/getent
 /usr/lib64/audit/sotruss-lib.so
 /usr/lib64/gconv/ANSI_X3.110.so
