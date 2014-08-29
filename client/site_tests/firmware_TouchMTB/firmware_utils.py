@@ -93,17 +93,24 @@ def get_cpu():
 
 def install_pygtk():
     """A temporary dirty hack of installing pygtk related packages."""
+    pygtk_dict = {'x86_64': ['pygtk_x86_64.tbz2', 'lib64'],
+                  'i686': ['pygtk_x86_32.tbz2', 'lib'],
+    }
+    pygtk_info = pygtk_dict.get(get_cpu().lower())
+
     if get_board() is None:
         print 'This does not look like a chromebook.'
-    elif get_cpu().lower() == 'x86_64':
+    elif pygtk_info:
         cmd_remount = 'mount -o remount,rw /'
         if common_util.simple_system(cmd_remount) == 0:
-            cmd_untar = 'tar -jxf pygtk/pygtk_x86_64.tbz2 -C /'
+            pygtk_tarball, lib_path = pygtk_info
+            cmd_untar = 'tar -jxf pygtk/%s -C /' % pygtk_tarball
             if common_util.simple_system(cmd_untar) == 0:
                 # Need to add the gtk path manually. Otherwise, the path
                 # may not be in the sys.path for the first time when the
                 # tarball is extracted.
-                gtk_path = '/usr/local/lib64/python2.7/site-packages/gtk-2.0'
+                gtk_path = ('/usr/local/%s/python2.7/site-packages/gtk-2.0' %
+                            lib_path)
                 sys.path.append(gtk_path)
                 print 'Successful installation of pygtk.'
                 return True
@@ -112,7 +119,8 @@ def install_pygtk():
         else:
             print 'Failed to remount. Have you removed the write protect?'
     else:
-        print 'No pygtk found for non-x86 architecture. Will be supported soon.'
+        print 'The pygtk is only supported for %s so far.' % pygtk_dict.keys()
+        print 'The other cpus will be supported soon.'
     return False
 
 
