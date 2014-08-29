@@ -37,17 +37,26 @@ test_that <dut ip> desktopui_SonicExtension
 
 test_that <dut ip> desktopui_SonicExtension
     --board=lumpy
-    --args="sonic_hostname=<sonic hostname>,extension_dir=<dirname>"
+    --args="test_config=<test_config>,sonic_hostname=<sonic hostname>,
+            extension_dir=<dirname>"
 """
 
 args_dict = utils.args_to_dict(args)
+test_config = args_dict.get('test_config')
 sonic_hostname = args_dict.get('sonic_hostname')
+sonic_build = args_dict.get('sonic_build')
 extension_dir = args_dict.get('extension_dir')
 if not sonic_hostname:
     raise error.TestError('Cannot run sonic_AppTest without a sonic host.'
                           'please specify --args="sonic_hostname=<ip>" with '
                           'test_that.')
+if not test_config:
+    raise error.TestError('Cannot run sonic_AppTest without a test_config.'
+                          'please specify --args="test_config=<config file>" '
+                          'with test_that.')
 
 job.run_test('desktopui_SonicExtension',
+             test_config=test_config,
              extension_dir=extension_dir,
-             chromecast_ip=sonic_hostname)
+             sonic_hostname=sonic_hostname,
+             sonic_build=sonic_build)

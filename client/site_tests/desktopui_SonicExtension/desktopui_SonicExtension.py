@@ -2,26 +2,25 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import json
 import logging
 import os
-import json
+import socket
 import time
 
-import common
-
 from autotest_lib.client.bin import test
-from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chromedriver
-from autotest_lib.client.cros import httpd
+
+import config_manager
+import test_utils
 
 
 class desktopui_SonicExtension(test.test):
     """Test loading the sonic extension through chromedriver."""
     version = 1
-    cast_delay = 20
+    wait_time = 5
     dep = 'sonic_extension'
-
 
     def _install_sonic_extension(self):
         dep_dir = os.path.join(self.autodir, 'deps', self.dep)
@@ -51,28 +50,8 @@ class desktopui_SonicExtension(test.test):
                                       'proceed with sonic test')
 
 
-    def tab_cast(self, driver, chromecast_ip, extension_id):
-        """Tab cast through the extension.
-
-        @param driver: A chromedriver instance that has the chromecast
-            extension loaded.
-        @param chromecast_ip: The ip of the chromecast device to cast to.
-        @param extension_id: Id of the extension to use.
-        """
-        extension_url = 'chrome-extension://%s' % extension_id
-        driver.get('%s/%s' % (extension_url, self._test_utils_page))
-        if driver.title != self._test_utils_title:
-            raise error.TestError('Getting title failed, got title: %s'
-                                  % driver.title)
-        driver.find_element_by_id('receiverIpAddress').send_keys(
-                chromecast_ip)
-
-        logging.info('Attempting to cast %s', self._test_url)
-        driver.find_element_by_id('urlToOpen').send_keys(self._test_url)
-        driver.find_element_by_id('mirrorUrl').click()
-
-
-    def initialize(self, extension_dir=None, live=False):
+    def initialize(self, test_config, sonic_hostname, sonic_build='00000',
+        extension_dir=None):
         """Initialize the test.
 
         @param extension_dir: Directory of a custom extension.
@@ -83,85 +62,90 @@ class desktopui_SonicExtension(test.test):
         """
         super(desktopui_SonicExtension, self).initialize()
 
+        auto_test_path = os.path.join(self.autodir, 'tests',
+                                      'desktopui_SonicExtension',)
         if not extension_dir:
             extension_path = self._install_sonic_extension()
         else:
-            extension_path = os.path.join(self.autodir, 'tests',
-                                          'desktopui_SonicExtension',
-                                          extension_dir)
+            extension_path = os.path.join(auto_test_path, extension_dir)
+        config_file = os.path.join(auto_test_path, test_config)
+        logging.info('extension: ' + extension_path)
         if not os.path.exists(extension_path):
             raise error.TestError('Failed to install sonic extension.')
         self._check_manifest(extension_path)
         self._extension_path = extension_path
         self._test_utils_page = 'e2e_test_utils.html'
-        self._test_utils_title = 'Google Cast extension E2E test utilities'
-        self._whitelist_id = 'enhhojjnijigcajfphajepfemndkmdlo'
-
-        if live:
-            self._test_url = 'http://www.google.com'
-            self._test_server = None
-        else:
-            self._test_url = 'http://localhost:8000/hello.html'
-            self._test_server = httpd.HTTPListener(8000, docroot=self.bindir)
-            self._test_server.run()
+        self._config_file = config_file
+        self._sonic_hostname = sonic_hostname
+        self._sonic_build = sonic_build
+        self._settings = config_manager.ConfigurationManager(
+                self._config_file).get_config_settings()
+        self._test_utils = test_utils.TestUtils()
 
 
     def cleanup(self):
         """Clean up the test environment, e.g., stop local http server."""
-        if self._test_server:
-            self._test_server.stop()
         super(desktopui_SonicExtension, self).cleanup()
 
+    def _get_run_information(self, driver, settings):
+        """Get all the information about the test run.
 
-    def _close_popups(self, driver):
-        """Close any popup windows the extension might open by default.
-
-        Since we're going to handle the extension ourselves all we need is
-        the main browser window with a single tab. The safest way to handle
-        the popup however, is to close the currently active tab, so we don't
-        mess with webdrivers ui debugger.
-
-        @param driver: Chromedriver instance.
-
-        @raises WebDriverException: If you close the tab associated with
-            the ui debugger.
+        @param driver: The webdriver instance of the test
+        @param settings: The settings and information about the test
+        @return A json that contains all the different information
+            about the test run
         """
-        # TODO: There are several, albeit hacky ways, to handle this popup
-        # that might need to change with different versions of the extension
-        # until the core issue is resolved. See crbug.com/338399.
-        if len(driver.window_handles) > 1:
-            driver.close()
-        driver.switch_to_window(driver.window_handles[0])
+        information = {}
+        if 'machine_name' in settings:
+            information['machine_name'] = settings['machine_name']
+        else:
+            information['machine_name'] = socket.gethostname()
+        information['network_profile'] = settings['network_profile']
+        information['chrome_version'] = self._test_utils.get_chrome_version(
+                driver)
+        information['chrome_revision'] = self._test_utils.get_chrome_revision(
+                driver)
+        information['sonic_build'] = self._sonic_build
+        information['video_name'] = settings.get('video_name',
+                                                 settings['video_site'])
+        information['comments'] = settings['comments']
+        return information
 
-
-    def run_once(self, chromecast_ip):
+    def run_once(self):
         """Run the test code."""
-
         # TODO: When we've cloned the sonic test repo get these from their
         # test config files.
         logging.info('Starting sonic client test.')
         kwargs = {
-            'extension_paths' : [self._extension_path],
-            'is_component' : True,
-            'extra_chrome_flags': ['--no-proxy-server', '--start-maximized',
-                                   '--disable-web-security',
-                                   '--enable-experimental-extension-apis',
-                                   '--enable-logging=stderr', '--v=2',
-                                   ('--whitelisted-extension-id=%s' %
-                                    self._whitelist_id)],
+            'extension_paths': [self._extension_path],
+            'is_component': True,
+            'extra_chrome_flags': [self._settings['extra_flags']],
         }
-
         with chromedriver.chromedriver(**kwargs) as chromedriver_instance:
             driver = chromedriver_instance.driver
-            self._close_popups(driver)
             extension = chromedriver_instance.get_extension(
-                          self._extension_path)
-            logging.info('Starting tabcast to extension: %s',
-                         extension.extension_id)
-            self.tab_cast(driver, chromecast_ip, extension.extension_id)
-            time.sleep(self.cast_delay)
-            screenshot_file = 'sonic_screenshot'
-            utils.take_screenshot(self.resultsdir, screenshot_file)
-            logging.info('Screenshot of cast extension saved to %s',
-                         os.path.join(self.resultsdir, screenshot_file))
-
+                    self._extension_path)
+            extension_id = extension.extension_id
+            time.sleep(self.wait_time)
+            self._test_utils.close_popup_tabs(driver)
+            self._test_utils.block_setup_dialog(driver, extension_id)
+            test_info = self._get_run_information(driver, self._settings)
+            logging.info('Starting tabcast to extension: %s', extension_id)
+            self._test_utils.set_mirroring_options(
+                    driver, extension_id, self._settings)
+            current_tab_handle = driver.current_window_handle
+            self._test_utils.start_v2_mirroring_test_utils(
+                    driver, extension_id, self._sonic_hostname,
+                    self._settings['video_site'],
+                    self._settings['full_screen'] == 'on')
+            self._test_utils.set_focus_tab(driver, current_tab_handle)
+            driver.switch_to_window(current_tab_handle)
+            time.sleep(int(self._settings['mirror_duration']))
+            self._test_utils.stop_v2_mirroring_test_utils(driver, extension_id)
+            crash_id = self._test_utils.upload_v2_mirroring_logs(
+                    driver, extension_id)
+            test_info['crash_id'] = crash_id
+            self._test_utils.output_dict_to_file(
+                dictionary=test_info, path=self.resultsdir,
+                file_name='test_information.json')
+            time.sleep(self.wait_time)
