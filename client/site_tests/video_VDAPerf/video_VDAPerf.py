@@ -27,11 +27,10 @@ KEY_DECODE_TIME_50 = 'decode_time.percentile_0.50'
 
 DOWNLOAD_BASE = 'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/'
 BINARY = 'video_decode_accelerator_unittest'
-TEST_OUTPUT_LOG = 'test_output.log'
+OUTPUT_LOG = 'test_output.log'
+TIME_LOG = 'time.log'
 
 TIME_BINARY = '/usr/local/bin/time'
-
-TIME_LOG = 'time.log'
 
 # These strings should match chromium/src/tools/perf/unit-info.json.
 UNIT_MILLISECOND = 'milliseconds'
@@ -180,13 +179,15 @@ class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
             raise error.TestError('unmatched md5 sum: %s' % md5sum)
 
 
+    def _results_file(self, test_name, type_name, filename):
+        return os.path.join(self.resultsdir,
+            '%s_%s_%s' % (test_name, type_name, filename))
+
+
     def _run_test_case(self, name, test_video_data, frame_num, rendering_fps):
-        test_log_file = os.path.join(self.tmpdir, TEST_OUTPUT_LOG)
-        time_log_file = os.path.join(self.tmpdir, TIME_LOG)
 
         # Get frame delivery time, decode as fast as possible.
-        _remove_if_exists(test_log_file)
-        _remove_if_exists(time_log_file)
+        test_log_file = self._results_file(name, 'no_rendering', OUTPUT_LOG)
         cmd_line = ('--test_video_data="%s" ' % test_video_data +
                     '--gtest_filter=DecodeVariations/*/0 ' +
                     '--disable_rendering ' +
@@ -197,8 +198,8 @@ class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
         self._analyze_frame_delivery_times(name, frame_delivery_times)
 
         # Get frame drop rate & CPU usage, decode at the specified fps
-        _remove_if_exists(test_log_file)
-        _remove_if_exists(time_log_file)
+        test_log_file = self._results_file(name, 'with_rendering', OUTPUT_LOG)
+        time_log_file = self._results_file(name, 'with_rendering', TIME_LOG)
         cmd_line = ('--test_video_data="%s" ' % test_video_data +
                     '--gtest_filter=DecodeVariations/*/0 ' +
                     ('--rendering_fps=%s ' % rendering_fps) +
@@ -212,7 +213,7 @@ class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
         self._analyze_cpu_usage(name, time_log_file)
 
         # Get decode time median.
-        _remove_if_exists(test_log_file)
+        test_log_file = self._results_file(name, 'decode_time', OUTPUT_LOG)
         cmd_line = ('--test_video_data="%s" ' % test_video_data +
                     '--gtest_filter=*TestDecodeTimeMedian ' +
                     '--output_log="%s"' % test_log_file)
@@ -223,8 +224,6 @@ class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
         decode_time = int(m.group(1))
         self._logperf(name, KEY_DECODE_TIME_50, decode_time, UNIT_MICROSECOND)
 
-        _remove_if_exists(test_log_file)
-        _remove_if_exists(time_log_file)
 
     @chrome_binary_test.nuke_chrome
     def run_once(self, test_cases):
