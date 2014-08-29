@@ -276,8 +276,6 @@ class BaseDispatcher(object):
         self._periodic_cleanup.initialize()
         self._24hr_upkeep.initialize()
 
-        self._restore_tasks_where_scheduling_was_interrupted()
-
         # always recover processes
         self._recover_processes()
 
@@ -293,34 +291,6 @@ class BaseDispatcher(object):
     def _log_extra_msg(self, msg):
         if self._extra_debugging:
             logging.debug(msg)
-
-
-    def _restore_tasks_where_scheduling_was_interrupted(self):
-        """
-        Restore consistent database state after being interrupted.
-
-        If the scheduler gets interrupted in a disadvantageous moment it might
-        leave host queue entries behind that have a host assigned, but not an
-        execution subdirectory. This function restores a consistent state by
-        rescheduling those entries.
-        """
-        # See crosbug.com/334353
-        SQL_SUSPECT_ENTRIES_WHERE = ('complete!=1 AND execution_subdir="" AND '
-                                     'status!="Queued";')
-        queue_entries = scheduler_models.HostQueueEntry.fetch(
-                where=SQL_SUSPECT_ENTRIES_WHERE)
-
-        for queue_entry in queue_entries:
-            # Aborting special tasks. Decoupling them from the HQE so the
-            # HostQueueEntry doesn't get rescheduled because of the aborted
-            # and therefore failing SpecialTask.
-            # Aborting all special tasks will lead to their hosts getting
-            # repaired before releasing them into the ready pool.
-            special_tasks = models.SpecialTask.objects.filter(
-                    host__id=queue_entry.host_id,
-                    is_active=True,
-                    is_complete=False).update(is_aborted=True, queue_entry=None)
-            queue_entry.requeue()
 
 
     def tick(self):
@@ -898,6 +868,7 @@ class BaseDispatcher(object):
             # always needs a host, but doesn't always need a hqe.
             for agent in self._host_agents.get(task.host.id, []):
                 if isinstance(agent.task, agent_task.SpecialAgentTask):
+
                     # The epilog preforms critical actions such as
                     # queueing the next SpecialTask, requeuing the
                     # hqe etc, however it doesn't actually kill the
@@ -908,8 +879,8 @@ class BaseDispatcher(object):
                     # _handle_agents to schedule any more special
                     # tasks against the host, and it must be set
                     # in addition to is_active, is_complete and success.
-                    agent.abort()
                     agent.task.epilog()
+                    agent.task.abort()
 
 
     def _can_start_agent(self, agent, num_started_this_cycle,

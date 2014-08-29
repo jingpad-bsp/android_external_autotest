@@ -5,7 +5,6 @@ import gc, time
 import common
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import frontend_test_utils
-from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.test_utils import mock
 from autotest_lib.client.common_lib.test_utils import unittest
 from autotest_lib.database import database_connection
@@ -104,7 +103,6 @@ class BaseSchedulerTest(unittest.TestCase,
         connection_manager = scheduler_lib.ConnectionManager(autocommit=False)
         self.god.stub_with(connection_manager, 'db_connection', self._database)
         self.god.stub_with(monitor_db, '_db_manager', connection_manager)
-        self.god.stub_with(monitor_db, '_db', self._database)
 
         # These tests only make sense if hosts are acquired inline with the
         # rest of the tick.
@@ -117,10 +115,6 @@ class BaseSchedulerTest(unittest.TestCase,
                            '/test/path')
         self.god.stub_with(drone_manager.instance(), '_temporary_directory',
                            '/test/path/tmp')
-        self.god.stub_with(drone_manager.instance(), 'initialize',
-                           lambda *args: None)
-        self.god.stub_with(drone_manager.instance(), 'execute_actions',
-                           lambda *args: None)
 
         monitor_db.initialize_globals()
         scheduler_models.initialize_globals()
@@ -133,9 +127,6 @@ class BaseSchedulerTest(unittest.TestCase,
 
 
     def tearDown(self):
-        # Without this global_config will keep state over test cases
-        global_config.global_config.reset_config_values()
-
         self._database.disconnect()
         self._frontend_common_teardown()
 
@@ -344,26 +335,6 @@ class DispatcherSchedulingTest(BaseSchedulerTest):
         Basic metahost scheduling
         """
         self._test_basic_scheduling_helper(True)
-
-
-    def test_recover_from_execution_subdir_not_found(self):
-        """Reproduce bug crosbug.com/334353 and recover from it."""
-
-        global_config.global_config.override_config_value(
-                'SCHEDULER', 'drones', 'localhost')
-
-        job = self._create_job_simple([1], True)
-        self._run_scheduler()
-        self._assert_job_scheduled_on(1, 1)
-        hqe = job.hostqueueentry_set.all()[0]
-        host = hqe.host
-        # normally done by monitor_db.main_without_exception_handling on startup
-        monitor_db.initialize()
-        self._dispatcher.initialize()
-        hqe = job.hostqueueentry_set.all()[0]
-        self.assertEquals(hqe.host_id, None)
-        self.assertEquals(hqe.status, 'Queued')
-        self.assertEquals(host.status, 'Ready')
 
 
     def test_metahost_priorities(self):
