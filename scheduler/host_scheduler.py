@@ -264,7 +264,18 @@ def parse_arguments(argv):
     parser = argparse.ArgumentParser(description='Host scheduler.')
     parser.add_argument('--testing', action='store_true', default=False,
                         help='Start the host scheduler in testing mode.')
-    return parser.parse_args(argv)
+    # TODO(dshi): change default to False after puppet change is landed in
+    # production.
+    parser.add_argument('--production',
+                        help=('Indicate that scheduler is running in production'
+                              ' environment and it can use database that is not'
+                              ' hosted in localhost. If it is set to False, '
+                              'scheduler will fail if database is not in '
+                              'localhost.'),
+                        action='store_true', default=True)
+    options = parser.parse_args(argv)
+
+    return options
 
 
 def main():
@@ -276,7 +287,11 @@ def main():
         # hosts inline.
         sys.exit(0)
     try:
-        initialize(parse_arguments(sys.argv[1:]).testing)
+        options = parse_arguments(sys.argv[1:])
+        scheduler_lib.check_production_settings(options)
+
+        initialize(options.testing)
+
         host_scheduler = HostScheduler()
         while not _shutdown:
             host_scheduler.tick()
@@ -287,7 +302,8 @@ def main():
         raise
     finally:
         email_manager.manager.send_queued_emails()
-        _db_manager.disconnect()
+        if _db_manager:
+            _db_manager.disconnect()
 
 
 if __name__ == '__main__':

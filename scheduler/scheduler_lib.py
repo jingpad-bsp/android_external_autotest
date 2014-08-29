@@ -10,8 +10,10 @@ import logging
 
 import common
 
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import logging_config
 from autotest_lib.client.common_lib import logging_manager
+from autotest_lib.client.common_lib import utils
 from autotest_lib.database import database_connection
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import readonly_connection
@@ -151,3 +153,22 @@ def setup_logging(log_dir, log_name, timestamped_logfile_prefix='scheduler'):
     logging_manager.configure_logging(
             SchedulerLoggingConfig(), log_dir=log_dir, logfile_name=log_name,
             timestamped_logfile_prefix=timestamped_logfile_prefix)
+
+
+def check_production_settings(scheduler_options):
+    """Check the scheduler option's production settings.
+
+    @param scheduler_options: Settings for scheduler.
+
+    @raises SchedulerError: If a loclhost scheduler is started with
+       production settings.
+    """
+    db_server = global_config.global_config.get_config_value('AUTOTEST_WEB',
+                                                             'host')
+    if (not scheduler_options.production and
+        not utils.is_localhost(db_server)):
+        raise SchedulerError('Scheduler is not running in production mode, you '
+                             'should not set database to hosts other than '
+                             'localhost. It\'s currently set to %s.\nAdd option'
+                             ' --production if you want to skip this check.' %
+                             db_server)

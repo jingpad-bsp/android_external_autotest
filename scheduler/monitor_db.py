@@ -5,9 +5,14 @@
 Autotest scheduler
 """
 
-import datetime, optparse, os, signal
-import sys, time
-import logging, gc
+import datetime
+import gc
+import logging
+import optparse
+import os
+import signal
+import sys
+import time
 
 import common
 from autotest_lib.frontend import setup_django_environment
@@ -112,10 +117,21 @@ def main_without_exception_handling():
     parser.add_option('--test', help='Indicate that scheduler is under ' +
                       'test and should use dummy autoserv and no parsing',
                       action='store_true')
+    # TODO(dshi): change default to False after puppet change is landed in
+    # production.
+    parser.add_option('--production',
+                      help=('Indicate that scheduler is running in production '
+                            'environment and it can use database that is not '
+                            'hosted in localhost. If it is set to False, '
+                            'scheduler will fail if database is not in '
+                            'localhost.'),
+                      action='store_true', default=True)
     (options, args) = parser.parse_args()
     if len(args) != 1:
         parser.print_usage()
         return
+
+    scheduler_lib.check_production_settings(options)
 
     scheduler_enabled = global_config.global_config.get_config_value(
         scheduler_config.CONFIG_SECTION, 'enable_scheduler', type=bool)

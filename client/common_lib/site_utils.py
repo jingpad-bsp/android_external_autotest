@@ -446,3 +446,21 @@ def _is_x_running():
         return int(base_utils.system_output('pgrep -o ^X$')) > 0
     except Exception:
         return False
+
+
+def is_localhost(server):
+    """Check if server is equivalent to localhost.
+
+    @param server: Name of the server to check.
+
+    @return: True if given server is equivalent to localhost.
+    @raise socket.gaierror: If server name failed to be resolved.
+    """
+    if server in _LOCAL_HOST_LIST:
+        return True
+    try:
+        return (socket.gethostbyname(socket.gethostname()) ==
+                socket.gethostbyname(server))
+    except socket.gaierror:
+        logging.error('Failed to resolve server name %s.', server)
+        return False

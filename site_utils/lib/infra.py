@@ -3,13 +3,13 @@
 # found in the LICENSE file.
 
 import getpass
-import socket
 import subprocess
 
 import common
 from autotest_lib.server.hosts import ssh_host
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import utils
 
 
 def local_runner(cmd):
@@ -92,8 +92,7 @@ def execute_command(host, cmd):
                 is allowed.
     @returns: The output of the command.
     """
-    if (socket.gethostbyaddr(host)[0] == socket.gethostname()
-        or host == 'localhost'):
+    if utils.is_localhost(host):
         runner = local_runner
     elif getpass.getuser() == 'chromeos-test':
         runner = host_object_runner(host)
