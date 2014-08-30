@@ -318,19 +318,21 @@ class ServoHost(ssh_host.SSHHost):
     def _check_servo_host_usb(self):
         """A sanity check of the USB device.
 
-        Sometimes the usb gets wedged due to a kernel bug on the beaglebone.
-        A symptom is the presence of /dev/sda without /dev/sda1. The check
-        here ensures that if /dev/sda exists, /dev/sda1 must also exist.
-        See crbug.com/225932.
+        Test that the USB stick has been properly unplugged.  An old
+        kernel bug sometimes allowed the USB stick block device node
+        to be wedged such that it couldn't be unplugged.
 
-        @raises ServoHostVerifyFailure if /dev/sda exists without /dev/sda1 on
-            the beaglebone.
+        Servo initialization unplugs the stick, so as a prophylactic
+        against a regression, we check that the USB stick is
+        actually unplugged.  (For reference, see crbug.com/225932.)
+
+        @raises ServoHostVerifyFailure if /dev/sda exists
 
         """
         try:
             # The following test exits with a non-zero code
             # and raises AutoserverRunError if error is detected.
-            self.run('test ! -b /dev/sda -o -b /dev/sda1')
+            self.run('test ! -b /dev/sda')
         except (error.AutoservRunError, error.AutoservSSHTimeout) as e:
             raise ServoHostVerifyFailure(
                     'USB sanity check on %s failed: %s' % (self.hostname, e))
@@ -499,16 +501,8 @@ class ServoHost(ssh_host.SSHHost):
         """
         logging.info('Applying an update to the servo host, if necessary.')
         self._update_image()
-
-        logging.info('Verifying if servo config file exists.')
         self._check_servo_config()
-
-        logging.info('Verifying if servod is running.')
         self._check_servod_status()
-
-        logging.info('Verifying servo host %s with sanity checks.',
-                     self.hostname)
-        self._check_servo_host_usb()
 
         # If servo is already initialized, we don't need to do it again, call
         # _check_servod should be enough.
@@ -522,6 +516,7 @@ class ServoHost(ssh_host.SSHHost):
             if timeout:
                 raise ServoHostVerifyFailure('Servo initialize timed out.')
 
+        self._check_servo_host_usb()
         logging.info('Sanity checks pass on servo host %s', self.hostname)
 
 
