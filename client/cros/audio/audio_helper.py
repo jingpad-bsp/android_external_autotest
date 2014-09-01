@@ -3,7 +3,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+
 import logging
+import numpy
 import os
 import pipes
 import re
@@ -17,6 +19,7 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.bin.input.input_device import *
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.audio import alsa_utils
+from autotest_lib.client.cros.audio import audio_data
 from autotest_lib.client.cros.audio import cmd_utils
 from autotest_lib.client.cros.audio import cras_utils
 from autotest_lib.client.cros.audio import sox_utils
@@ -52,6 +55,8 @@ LOOPBACK_LATENCY_PATH = 'loopback_latency'
 SOX_PATH = 'sox'
 TEST_TONES_PATH = 'test_tones'
 
+_MINIMUM_NORM = 0.001
+_CORRELATION_INDEX_THRESHOLD = 0.999
 
 def set_mixer_controls(mixer_settings={}, card='0'):
     '''
@@ -565,6 +570,241 @@ def generate_rms_postmortem():
                 [_AUDIO_DIAGNOSTICS_PATH], stdout=cmd_utils.PIPE))
     except Exception:
         logging.exception('Error while generating postmortem report')
+
+
+def get_max_cross_correlation(signal_a, signal_b):
+    """Gets max cross-correlation and best time delay of two signals.
+
+    Computes cross-correlation function between two
+    signals and gets the maximum value and time delay.
+    The steps includes:
+      1. Compute cross-correlation function of X and Y and get Cxy.
+         The correlation function Cxy is an array where Cxy[k] is the
+         cross product of X and Y when Y is delayed by k.
+         Refer to manual of numpy.correlate for detail of correlation.
+      2. Find the maximum value C_max and index C_index in Cxy.
+      3. Compute L2 norm of X and Y to get norm(X) and norm(Y).
+      4. Divide C_max by norm(X)*norm(Y) to get max cross-correlation.
+
+    Max cross-correlation indicates the similarity of X and Y. The value
+    is 1 if X equals Y multiplied by a positive scalar.
+    The value is -1 if X equals Y multiplied by a negative scaler.
+    Any constant level shift will be regarded as distortion and will make
+    max cross-correlation value deviated from 1.
+    C_index is the best time delay of Y that make Y looks similar to X.
+    Refer to http://en.wikipedia.org/wiki/Cross-correlation.
+
+    @param signal_a: A list of numbers which contains the first signal.
+    @param signal_b: A list of numbers which contains the second signal.
+
+    @raises: ValueError if any number in signal_a or signal_b is not a float.
+             ValueError if norm of any array is less than _MINIMUM_NORM.
+
+    @returns: A tuple (correlation index, best delay). If there are more than
+              one best delay, just return the first one.
+    """
+    def check_list_contains_float(numbers):
+        """Checks the elements in a list are all float.
+
+        @param numbers: A list of numbers.
+
+        @raises: ValueError if there is any element which is not a float
+                 in the list.
+        """
+        if any(not isinstance(x, float) for x in numbers):
+            raise ValueError('List contains number which is not a float')
+
+    check_list_contains_float(signal_a)
+    check_list_contains_float(signal_b)
+
+    norm_a = numpy.linalg.norm(signal_a)
+    norm_b = numpy.linalg.norm(signal_b)
+    logging.debug('norm_a: %f', norm_a)
+    logging.debug('norm_b: %f', norm_b)
+    if norm_a <= _MINIMUM_NORM or norm_b <= _MINIMUM_NORM:
+        raise ValueError('No meaningful data as norm is too small.')
+
+    correlation = numpy.correlate(signal_a, signal_b, 'full')
+    max_correlation = max(correlation)
+    best_delays = [i for i, j in enumerate(correlation) if j == max_correlation]
+    if len(best_delays) > 1:
+        logging.warning('There are more than one best delay: %r', best_delays)
+    return max_correlation / (norm_a * norm_b), best_delays[0]
+
+
+def trim_data(data, threshold=0):
+    """Trims a data by removing value that is too small in head and tail.
+
+    Removes elements in head and tail whose absolute value is smaller than
+    or equal to threshold.
+    E.g. trim_data([0.0, 0.1, 0.2, 0.3, 0.2, 0.1, 0.0], 0.2) =
+    ([0.2, 0.3, 0.2], 2)
+
+    @param data: A list of numbers.
+    @param threshold: The threshold to compare against.
+
+    @returns: A tuple (trimmed_data, valid_index), where valid_index is the
+              original index of the starting element in trimmed_data.
+              Returns ([], None) if there is no valid data.
+    """
+    indice_valid = [
+            i for i, j in enumerate(data) if abs(j) > threshold]
+    if not indice_valid:
+        logging.warning(
+                'There is no element with absolute value greater '
+                'than threshold %f' % threshold)
+        return [], None
+    logging.debug('Start and end of indice_valid: %d, %d',
+                  indice_valid[0], indice_valid[-1])
+    return data[indice_valid[0] : indice_valid[-1] + 1], indice_valid[0]
+
+
+def get_one_channel_correlation(test_data, golden_data):
+    """Gets max cross-correlation of test_data and golden_data.
+
+    Trims test data and compute the max cross-correlation against golden_data.
+    Signal can be trimmed because those zero values in the head and tail of
+    a signal will not affect correlation computation.
+
+    @param test_data: A list containing the data to compare against golden data.
+    @param golden_data: A list containing the golden data.
+
+    @returns: A tuple (max cross-correlation, best_delay) if data is valid.
+              Otherwise returns (None, None). Refer to docstring of
+              get_max_cross_correlation.
+    """
+    trimmed_test_data, start_trimmed_length = trim_data(test_data)
+
+    def to_float(samples):
+      """Casts elements in the list to float.
+
+      @param samples: A list of numbers.
+
+      @returns: A list of original numbers casted to float.
+      """
+      samples_float = [float(x) for x in samples]
+      return samples_float
+
+    max_cross_correlation, best_delay =  get_max_cross_correlation(
+            to_float(golden_data),
+            to_float(trimmed_test_data))
+
+    # Adds back the trimmed length in the head.
+    if max_cross_correlation:
+        return max_cross_correlation, best_delay + start_trimmed_length
+    else:
+        return None, None
+
+
+def compare_one_channel_correlation(test_data, golden_data):
+    """Compares two one-channel data by correlation.
+
+    @param test_data: A list containing the data to compare against golden data.
+    @param golden_data: A list containing the golden data.
+
+    @returns: A dict containing:
+              index: The index of similarity where 1 means they are different
+                  only by a positive scale.
+              best_delay: The best delay of test data in relative to golden
+                  data.
+              equal: A bool containing comparing result.
+    """
+    result_dict = dict()
+    max_cross_correlation, best_delay = get_one_channel_correlation(
+            test_data, golden_data)
+    result_dict['index'] = max_cross_correlation
+    result_dict['best_delay'] = best_delay
+    result_dict['equal'] = True if (
+        max_cross_correlation and
+        max_cross_correlation > _CORRELATION_INDEX_THRESHOLD) else False
+    logging.debug('result_dict: %r', result_dict)
+    return result_dict
+
+
+def compare_one_channel_data(test_data, golden_data, method):
+    """Compares two one-channel data.
+
+    @param test_data: A list containing the data to compare against golden data.
+    @param golden_data: A list containing the golden data.
+    @param method: The comparing method. Currently only 'correlation' is
+                   supported.
+
+    @returns: A dict containing:
+              index: The index of similarity where 1 means they are different
+                  only by a positive scale.
+              best_delay: The best delay of test data in relative to golden
+                  data.
+              equal: A bool containing comparing result.
+
+    @raises: NotImplementedError if method is not supported.
+    """
+    if method == 'correlation':
+        return compare_one_channel_correlation(test_data, golden_data)
+    raise NotImplementedError('method %s is not implemented' % method)
+
+
+def compare_data(golden_data_binary, golden_data_format,
+                 test_data_binary, test_data_format,
+                 channel_map, method):
+    """Compares two raw data.
+
+    @param golden_data_binary: The binary containing golden data.
+    @param golden_data_format: The data format of golden data.
+    @param test_data_binary: The binary containing test data.
+    @param test_data_format: The data format of test data.
+    @param channel_map: A list containing channel mapping.
+                        E.g. [1, 0, None, None, None, None, None, None] means
+                        channel 0 of test data should map to channel 1 of
+                        golden data. Channel 1 of test data should map to
+                        channel 0 of golden data. Channel 2 to 7 of test data
+                        should be skipped.
+    @param method: The method to compare data. Currently only correlation is
+                   implemented.
+
+    @returns: A boolean contains compare result.
+
+    @raises: NotImplementedError if file type is not raw.
+             NotImplementedError if method is not correlation.
+    """
+    if (golden_data_format['file_type'] != 'raw' or
+        test_data_format['file_type'] != 'raw'):
+        raise NotImplementedError('Only support raw data in compare_data.')
+    golden_data = audio_data.AudioRawData(
+            binary=golden_data_binary,
+            channel=golden_data_format['channel'],
+            sample_format=golden_data_format['sample_format'])
+    test_data = audio_data.AudioRawData(
+            binary=test_data_binary,
+            channel=test_data_format['channel'],
+            sample_format=test_data_format['sample_format'])
+    compare_results = []
+    for test_channel, golden_channel in enumerate(channel_map):
+        if golden_channel is None:
+            logging.info('Skipped channel %d', test_channel)
+            continue
+        test_data_one_channel = test_data.channel_data[test_channel]
+        golden_data_one_channel = golden_data.channel_data[golden_channel]
+        result_dict = dict(test_channel=test_channel,
+                           golden_channel=golden_channel)
+        result_dict.update(
+                compare_one_channel_data(
+                        test_data_one_channel, golden_data_one_channel, method))
+        compare_results.append(result_dict)
+    logging.info('compare_results: %r', compare_results)
+    return_value = False if not compare_results else True
+    for result in compare_results:
+        if not result['equal']:
+            logging.error(
+                    'Failed on test channel %d and golden channel %d',
+                    result['test_channel'], result['golden_channel'])
+            return_value = False
+    # Also checks best delay are exactly the same.
+    if method == 'correlation':
+        best_delays = set([result['best_delay'] for result in compare_results])
+        if len(best_delays) > 1:
+            logging.error('There are more than one best delay.')
+            return_value = False
+    return return_value
 
 
 class _base_rms_test(test.test):
