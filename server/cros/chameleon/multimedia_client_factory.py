@@ -10,6 +10,7 @@ import xmlrpclib
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.cros import constants
 from autotest_lib.server import autotest
+from autotest_lib.server.cros.chameleon import audio_client
 from autotest_lib.server.cros.chameleon import display_client
 
 
@@ -93,6 +94,12 @@ class MultimediaClientFactory(object):
         client_at = autotest.Autotest(self._client)
         client_at.install()
         self._connection = MultimediaClientConnection(self._client)
+
+
+    def create_audio_client(self):
+        """Creates an audio client object."""
+        # TODO(cychiang): pass _client to AudioClient if needed.
+        return audio_client.AudioClient(self._connection)
 
 
     def create_display_client(self):

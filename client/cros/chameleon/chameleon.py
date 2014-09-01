@@ -261,6 +261,29 @@ class ChameleonPort(object):
         return tuple(self._chameleond_proxy.DetectResolution(self._input_id))
 
 
+    def start_capturing_audio(self):
+        """Starts capturing audio."""
+        return self._chameleond_proxy.StartCapturingAudio(self._input_id)
+
+
+    def stop_capturing_audio(self):
+        """Stops capturing audio.
+
+        Returns:
+          A tuple (data, format).
+          data: The captured binary data.
+          format: A dict containing:
+            file_type: 'raw' or 'wav'.
+            sample_format: 'S32_LE' for 32-bit signed integer in little-endian.
+              Refer to aplay manpage for other formats.
+            channel: channel number.
+            rate: sampling rate.
+        """
+        rpc_data, data_format = self._chameleond_proxy.StopCapturingAudio(
+            self._input_id)
+        return rpc_data.data, data_format
+
+
 def make_chameleon_hostname(dut_hostname):
     """Given a DUT's hostname, returns the hostname of its Chameleon.
 

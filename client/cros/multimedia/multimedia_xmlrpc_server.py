@@ -14,6 +14,7 @@ import xmlrpclib
 import common   # pylint: disable=W0611
 from autotest_lib.client.common_lib.cros import chrome, xmlrpc_server
 from autotest_lib.client.cros import constants
+from autotest_lib.client.cros.multimedia import audio_utility
 from autotest_lib.client.cros.multimedia import display_utility
 
 
@@ -22,9 +23,10 @@ class MultimediaXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
     def __init__(self, chrome):
         """Initializes the utility objects."""
-        self._utilities = {}
-        self._utilities['display'] = display_utility.DisplayUtility(chrome)
-
+        self._utilities = {
+                'audio': audio_utility.AudioUtility(chrome),
+                'display': display_utility.DisplayUtility(chrome)
+        }
 
     def _dispatch(self, method, params):
         """Dispatches the method to the proper utility.

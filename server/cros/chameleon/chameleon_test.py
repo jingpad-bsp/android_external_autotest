@@ -49,6 +49,7 @@ class ChameleonTest(test.test):
         @param host: The Host object of DUT.
         """
         factory = multimedia_client_factory.MultimediaClientFactory(host)
+        self.audio_client = factory.create_audio_client()
         self.display_client = factory.create_display_client()
         self.chameleon = host.chameleon
         self.host = host
@@ -578,3 +579,68 @@ class ChameleonTest(test.test):
                 return error_message
         finally:
             self.unload_test_image()
+
+    def audio_start_recording(self, host, port):
+        """Starts recording audio on a host using a port.
+
+        @param host: The host to start recording. E.g. 'Chameleon' or 'DUT'.
+                     Currently only 'Chameleon' is supported.
+        @param port: The port to record audio. Currently only 'HDMI' is
+                     supported.
+
+        @returns: It depends on start_capturing_audio implementation on
+                  different host and port.
+
+        @raises: NotImplementedError if host/port is not supported.
+        """
+        if host == 'Chameleon':
+            if port != self.chameleon_port.get_connector_type():
+                raise ValueError(
+                        'Port %s is not connected to Chameleon.' % port)
+            if port == 'HDMI':
+                return self.chameleon_port.start_capturing_audio()
+            raise NotImplementedError(
+                    'Audio recording from %s is not supported' % port)
+        raise NotImplementedError('Audio recording on %s using %s is not '
+                                  'supported' % (host, port))
+
+    def audio_stop_recording(self, host, port):
+        """Stops recording audio on a host using a port.
+
+        @param host: The host to stop recording. E.g. 'Chameleon' or 'DUT'.
+                     Currently only 'Chameleon' is supported.
+        @param port: The port to record audio. Currently only 'HDMI' is
+                     supported.
+
+        @returns: It depends on stop_capturing_audio implementation on
+                  different host and port.
+
+        @raises: NotImplementedError if host/port is not supported.
+        """
+        if host == 'Chameleon':
+            if port != self.chameleon_port.get_connector_type():
+                raise ValueError(
+                        'Port %s is not connected to Chameleon.' % port)
+            # TODO(cychiang): Handle multiple chameleon ports.
+            if port == 'HDMI':
+                return self.chameleon_port.stop_capturing_audio()
+            raise NotImplementedError(
+                    'Audio recording from %s is not supported' % port)
+        raise NotImplementedError('Audio recording on %s using %s is not '
+                                  'supported' % (host, port))
+
+    def audio_playback(self, host, file_name):
+        """Starts playback audio on a host.
+
+        @param host: The host to playback audio. E.g. 'Chameleon' or 'DUT'.
+                     Currently only 'DUT' is supported.
+        @param file_name: The path to the file on the host.
+
+        @returns: It depends on playback implementation on
+                  different host.
+
+        """
+        if host == 'DUT':
+            return self.audio_client.playback(file_name)
+        raise NotImplementedError(
+                'Audio recording on %s is not supported' % host)
