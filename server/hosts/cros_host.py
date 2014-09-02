@@ -711,10 +711,12 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             image_name = autoupdater.url_to_image_name(update_url)
             self.add_cros_version_labels_and_job_repo_url(image_name)
 
-        # Clean up any old autotest directories which may be lying around.
-        for path in global_config.global_config.get_config_value(
-                'AUTOSERV', 'client_autodir_paths', type=list):
-            self.run('rm -rf ' + path)
+        logging.debug('Cleaning up old autotest directories.')
+        try:
+            installed_autodir = autotest.Autotest.get_installed_autodir(self)
+            self.run('rm -rf ' + installed_autodir)
+        except autotest.AutodirNotFoundError:
+            logging.debug('No autotest installed directory found.')
 
 
     def show_update_engine_log(self):

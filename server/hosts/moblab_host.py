@@ -24,7 +24,8 @@ MOBLAB_IMAGE_STORAGE = '/mnt/moblab/static'
 MOBLAB_BOTO_LOCATION = '/home/moblab/.boto'
 MOBLAB_AUTODIR = '/usr/local/autodir'
 DHCPD_LEASE_FILE = '/var/lib/dhcp/dhcpd.leases'
-MOBLAB_SERVICES = ['moblab-database-init',
+MOBLAB_SERVICES = ['moblab-scheduler-init',
+                   'moblab-database-init',
                    'moblab-devserver-init',
                    'moblab-gsoffloader-init',
                    'moblab-gsoffloader_s-init']
