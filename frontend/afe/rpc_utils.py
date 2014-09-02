@@ -915,3 +915,29 @@ def inject_times_to_hqe_special_tasks_filters(filter_data_common,
            inject_times_to_filter('time_started__gte', 'time_started__lte',
                                   start_time, end_time,
                                   **filter_data_special_tasks))
+
+
+def retrieve_shard(shard_hostname):
+    """
+    Retrieves the shard with the given hostname from the database or creates it.
+
+    @param shard_hostname: Hostname of the shard to retrieve
+
+    @returns: Shard object
+    """
+    try:
+        shard = models.Shard.smart_get(shard_hostname)
+    except models.Shard.DoesNotExist:
+        shard = models.Shard.objects.create(hostname=shard_hostname)
+    return shard
+
+
+def find_records_for_shard(shard):
+    """Find records that should be sent to a shard.
+
+    @returns: Tuple of two lists for hosts and jobs: (hosts, jobs)
+    """
+    hosts = models.Host.assign_to_shard(shard)
+    jobs = models.Job.assign_to_shard(shard)
+
+    return hosts, jobs
