@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import datetime
 import unittest
 import common
 from autotest_lib.frontend import setup_django_environment
@@ -302,6 +303,114 @@ class JobTest(unittest.TestCase, frontend_test_utils.FrontendTestMixin):
                 'AUTOTEST_WEB', 'parameterized_jobs', 'True')
         self.assertRaises(Exception, models.Job.check_parameterized_job,
                           control_file=object(), parameterized_job=None)
+
+
+class SerializationTest(unittest.TestCase,
+                        frontend_test_utils.FrontendTestMixin):
+    def setUp(self):
+        self._frontend_common_setup()
+
+
+    def tearDown(self):
+        self._frontend_common_teardown()
+
+
+    def test_serialize(self):
+        platform_label = models.Label.objects.get(platform=True)
+
+        suite_job = self._create_job(hostless=True)
+        job1 = self._create_job(parent_job_id=suite_job.id,
+                                metahosts=[platform_label.id]
+                                )
+        job2 = self._create_job(parent_job_id=suite_job.id,
+                                metahosts=[platform_label.id])
+
+        host1, host2 = models.Host.objects.all()[:2]
+
+        job1_serialized = job1.serialize()
+        host1_serialized = host1.serialize()
+
+        self.assertEqual(
+            job1_serialized,
+            {'control_file': 'control',
+             'control_type': 2,
+             'created_on': datetime.datetime(2008, 1, 1, 0, 0),
+             'dependency_labels': [{u'id': 10,
+                                    'invalid': False,
+                                    'kernel_config': u'',
+                                    'name': u'myplatform',
+                                    'only_if_needed': False,
+                                    'platform': True}],
+             'email_list': u'',
+             'hostqueueentry_set': [{'aborted': False,
+                                     'active': False,
+                                     'complete': False,
+                                     'deleted': False,
+                                     'execution_subdir': u'',
+                                     'finished_on': None,
+                                     u'id': 2,
+                                     'meta_host': {u'id': 10,
+                                                   'invalid': False,
+                                                   'kernel_config': u'',
+                                                   'name': u'myplatform',
+                                                   'only_if_needed': False,
+                                                   'platform': True},
+                                     'started_on': None,
+                                     'status': u'Queued'}],
+             u'id': 2,
+             'jobkeyval_set': [],
+             'max_runtime_hrs': 72,
+             'max_runtime_mins': u'1440',
+             'name': 'test',
+             'owner': 'autotest_system',
+             'parse_failed_repair': True,
+             'priority': 0,
+             'reboot_after': 0,
+             'reboot_before': 0,
+             'run_reset': True,
+             'run_verify': False,
+             'shard': None,
+             'synch_count': 1,
+             'test_retry': 0,
+             'timeout': u'24',
+             'timeout_mins': u'1440'}
+        )
+        self.assertEqual(
+            host1_serialized,
+            {'aclgroup_set': [{'description': u'',
+                               u'id': 2,
+                               'name': u'my_acl',
+                               'users': [{'access_level': 100,
+                                          u'id': 1,
+                                          'login': u'autotest_system',
+                                          'reboot_after': 0,
+                                          'reboot_before': 1,
+                                          'show_experimental': False}]}],
+             'dirty': True,
+             'hostattribute_set': [],
+             'hostname': u'host1',
+             u'id': 1,
+             'invalid': False,
+             'labels': [{u'id': 1,
+                         'invalid': False,
+                         'kernel_config': u'',
+                         'name': u'label1',
+                         'only_if_needed': False,
+                         'platform': False},
+                        {u'id': 10,
+                         'invalid': False,
+                         'kernel_config': u'',
+                         'name': u'myplatform',
+                         'only_if_needed': False,
+                         'platform': True}],
+             'leased': True,
+             'lock_time': None,
+             'locked': False,
+             'protection': 0,
+             'shard': None,
+             'status': u'Ready',
+             'synch_id': None}
+        )
 
 
 if __name__ == '__main__':

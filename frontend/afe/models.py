@@ -377,6 +377,11 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
         locked_by: user that locked the host, or null if the host is unlocked
     """
 
+    SERIALIZATION_LINKS_TO_FOLLOW = set(['aclgroup_set',
+                                         'hostattribute_set',
+                                         'labels',
+                                         'shard'])
+
     # Note: Only specify foreign keys here, specify all native host columns in
     # rdb_model_extensions instead.
     Protection = host_protections.Protection
@@ -674,6 +679,9 @@ class AclGroup(dbmodels.Model, model_logic.ModelExtensions):
     Optional:
     description: arbitrary description of group
     """
+
+    SERIALIZATION_LINKS_TO_FOLLOW = set(['users'])
+
     name = dbmodels.CharField(max_length=255, unique=True)
     description = dbmodels.CharField(max_length=255, blank=True)
     users = dbmodels.ManyToManyField(User, blank=False,
@@ -1025,6 +1033,17 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
     test_retry: Number of times to retry test if the test did not complete
                 successfully. (optional, default: 0)
     """
+
+    # TODO: Investigate, if jobkeyval_set is really needed.
+    # dynamic_suite will write them into an attached file for the drone, but
+    # it doesn't seem like they are actually used. If they aren't used, remove
+    # jobkeyval_set here.
+    SERIALIZATION_LINKS_TO_FOLLOW = set(['dependency_labels',
+                                         'hostqueueentry_set',
+                                         'jobkeyval_set',
+                                         'shard'])
+
+
     # TIMEOUT is deprecated.
     DEFAULT_TIMEOUT = global_config.global_config.get_config_value(
         'AUTOTEST_WEB', 'job_timeout_default', default=24)
@@ -1315,6 +1334,9 @@ class IneligibleHostQueue(dbmodels.Model, model_logic.ModelExtensions):
 
 class HostQueueEntry(dbmodels.Model, model_logic.ModelExtensions):
     """Represents a host queue entry."""
+
+    SERIALIZATION_LINKS_TO_FOLLOW = set(['meta_host'])
+
     Status = host_queue_entry_states.Status
     ACTIVE_STATUSES = host_queue_entry_states.ACTIVE_STATUSES
     COMPLETE_STATUSES = host_queue_entry_states.COMPLETE_STATUSES

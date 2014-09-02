@@ -564,6 +564,22 @@ class ModelExtensions(rdb_model_extensions.ModelValidators):
     # TODO: at least some of these functions really belong in a custom
     # Manager class
 
+
+    SERIALIZATION_LINKS_TO_FOLLOW = set()
+    """
+    To be able to send jobs and hosts to shards, it's necessary to find their
+    dependencies.
+    The most generic approach for this would be to traverse all relationships
+    to other objects recursively. This would list all objects that are related
+    in any way.
+    But this approach finds too many objects: If a host should be transferred,
+    all it's relationships would be traversed. This would find an acl group.
+    If then the acl group's relationships are traversed, the relationship
+    would be followed backwards and many other hosts would be found.
+
+    This mapping tells that algorithm which relations to follow explicitly.
+    """
+
     @classmethod
     def convert_human_readable_values(cls, data, to_human_readable=False):
         """\
@@ -961,6 +977,46 @@ class ModelExtensions(rdb_model_extensions.ModelValidators):
         * call _check_for_updated_attributes() from save().
         """
         pass
+
+
+    def serialize(self):
+        """Serializes the object with dependencies.
+
+        The variable SERIALIZATION_LINKS_TO_FOLLOW defines which dependencies
+        this function will serialize with the object.
+
+        @returns: Dictionary representation of the object.
+        """
+        serialized = {}
+        for field in self._meta.concrete_model._meta.local_fields:
+            if field.rel is None:
+                serialized[field.name] = field._get_val_from_obj(self)
+
+        for link in self.SERIALIZATION_LINKS_TO_FOLLOW:
+            serialized[link] = self._serialize_relation(link)
+
+        return serialized
+
+
+    def _serialize_relation(self, link):
+        """Serializes dependent objects given the name of the relation.
+
+        @param link: Name of the relation to take objects from.
+
+        @returns For To-Many relationships a list of the serialized related
+            objects, for To-One relationships the serialized related object.
+        """
+        try:
+            attr = getattr(self, link)
+        except AttributeError:
+            # One-To-One relationships that point to None may raise this
+            return None
+
+        if attr is None:
+            return None
+        if hasattr(attr, 'all'):
+            return [obj.serialize() for obj in attr.all()]
+        return attr.serialize()
 
 
 class ModelWithInvalid(ModelExtensions):
