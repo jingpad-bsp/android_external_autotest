@@ -388,7 +388,7 @@ class Host(DBObject):
     _table_name = 'afe_hosts'
     _fields = ('id', 'hostname', 'locked', 'synch_id', 'status',
                'invalid', 'protection', 'locked_by_id', 'lock_time', 'dirty',
-               'leased')
+               'leased', 'shard_id')
     _timer = stats.Timer("scheduler_models.Host")
 
 

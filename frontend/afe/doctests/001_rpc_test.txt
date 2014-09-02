@@ -117,7 +117,8 @@ True
 ...           'protection': 'No protection',
 ...           'locked_by': 'debug_user',
 ...           'dirty': True,
-...           'leased': 1}]
+...           'leased': 1,
+...           'shard': None}]
 True
 >>> rpc_interface.modify_host('ipaj1', status='Hello')
 Traceback (most recent call last):
@@ -577,7 +578,8 @@ True
 ...           'locked_by': None,
 ...           'lock_time': None,
 ...           'dirty': True,
-...           'leased': 1},
+...           'leased': 1,
+...           'shard': None},
 ...  'id': 1,
 ...  'job': job, # full job info here
 ...  'meta_host': None,

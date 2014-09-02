@@ -144,6 +144,10 @@ class Label(model_logic.ModelWithInvalid, dbmodels.Model):
 
 class Shard(dbmodels.Model, model_logic.ModelExtensions):
 
+    hostname = dbmodels.CharField(max_length=255, unique=True)
+
+    name_field = 'hostname'
+
     labels = dbmodels.ManyToManyField(Label, blank=True,
                                       db_table='afe_shards_labels')
 
@@ -384,6 +388,7 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
     valid_objects = model_logic.ValidObjectsManager()
     leased_objects = model_logic.LeasedHostManager()
 
+    shard = dbmodels.ForeignKey(Shard, blank=True, null=True)
 
     def __init__(self, *args, **kwargs):
         super(Host, self).__init__(*args, **kwargs)
