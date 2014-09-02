@@ -523,7 +523,7 @@ class OmahaDevserver(object):
         except OmahaDevserverFailedToStart:
             self._kill_remote_process()
             self._dump_devserver_log()
-            self._cleanup_devserver_file()
+            self._cleanup_devserver_files()
             raise
 
 
