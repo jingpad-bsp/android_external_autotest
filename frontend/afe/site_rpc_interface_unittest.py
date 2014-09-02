@@ -17,18 +17,24 @@ import unittest
 import common
 
 from autotest_lib.frontend import setup_django_environment
-from autotest_lib.frontend.afe import rpc_utils
-from autotest_lib.client.common_lib import error
+from autotest_lib.frontend.afe import frontend_test_utils
+from autotest_lib.frontend.afe import models, rpc_utils
+from autotest_lib.client.common_lib import control_data, error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib.cros import dev_server
-from autotest_lib.frontend.afe import site_rpc_interface
+from autotest_lib.frontend.afe import rpc_interface, site_rpc_interface
 from autotest_lib.server import utils
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import constants
 
 
-class SiteRpcInterfaceTest(mox.MoxTestBase):
+CLIENT = control_data.CONTROL_TYPE_NAMES.CLIENT
+SERVER = control_data.CONTROL_TYPE_NAMES.SERVER
+
+
+class SiteRpcInterfaceTest(mox.MoxTestBase,
+                           frontend_test_utils.FrontendTestMixin):
     """Unit tests for functions in site_rpc_interface.py.
 
     @var _NAME: fake suite name.
@@ -48,6 +54,11 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
         self._SUITE_NAME = site_rpc_interface.canonicalize_suite_name(
             self._NAME)
         self.dev_server = self.mox.CreateMock(dev_server.ImageServer)
+        self._frontend_common_setup(fill_data=False)
+
+
+    def tearDown(self):
+        self._frontend_common_teardown()
 
 
     def _setupDevserver(self):
@@ -365,6 +376,136 @@ class SiteRpcInterfaceTest(mox.MoxTestBase):
                 boto_key, site_rpc_interface.MOBLAB_BOTO_LOCATION)
         self.mox.ReplayAll()
         site_rpc_interface.set_boto_key(boto_key)
+
+
+    def _do_heartbeat_and_assert_response(self, shard_hostname=None, **kwargs):
+        expected_shard_hostname = shard_hostname or str(
+            models.Shard.objects.count() + 1)
+        retval = site_rpc_interface.shard_heartbeat(
+            shard_hostname=expected_shard_hostname)
+
+        self._assert_shard_heartbeat_response(expected_shard_hostname, retval,
+                                            **kwargs)
+
+        return expected_shard_hostname
+
+
+    def _assert_shard_heartbeat_response(self, shard_hostname, retval, jobs=[],
+                                         hosts=[], hqes=[]):
+
+        retval_hosts, retval_jobs = retval['hosts'], retval['jobs']
+
+        expected_jobs = [
+            (job.id, job.name, int(shard_hostname)) for job in jobs]
+        returned_jobs = [(job['id'], job['name'], job['shard']['id'])
+                         for job in retval_jobs]
+        self.assertEqual(returned_jobs, expected_jobs)
+
+        expected_hosts = [(host.id, host.hostname) for host in hosts]
+        returned_hosts = [(host['id'], host['hostname'])
+                          for host in retval_hosts]
+        self.assertEqual(returned_hosts, expected_hosts)
+
+        retval_hqes = []
+        for job in retval_jobs:
+            retval_hqes += job['hostqueueentry_set']
+
+        expected_hqes = [(hqe.id) for hqe in hqes]
+        returned_hqes = [(hqe['id']) for hqe in retval_hqes]
+        self.assertEqual(returned_hqes, expected_hqes)
+
+
+    def testShardHeartbeatFetchHostlessJob(self):
+        models.Label.objects.create(name='board:lumpy', platform=True)
+        label2 = models.Label.objects.create(name='bluetooth', platform=False)
+
+        shard_hostname = self._do_heartbeat_and_assert_response()
+        shard = models.Shard.smart_get(shard_hostname)
+        shard.labels.add(models.Label.smart_get('board:lumpy'))
+
+        job1 = self._create_job(hostless=True)
+
+        # Hostless jobs should be executed by the global scheduler.
+        self._do_heartbeat_and_assert_response(
+            shard_hostname=shard_hostname)
+
+
+    def testShardRetrieveJobs(self):
+        host1, host2 = [models.Host.objects.create(
+            hostname=hostname, leased=False) for hostname in ['host1', 'host2']]
+
+        # should never be returned by heartbeat
+        leased_host = models.Host.objects.create(hostname='leased_host',
+                                                 leased=True)
+
+        lumpy_label = models.Label.objects.create(name='board:lumpy',
+                                                  platform=True)
+        grumpy_label = models.Label.objects.create(name='board:grumpy',
+                                                   platform=True)
+
+
+        host1.labels.add(lumpy_label)
+        leased_host.labels.add(lumpy_label)
+        host2.labels.add(grumpy_label)
+
+        shard_hostname1 = self._do_heartbeat_and_assert_response()
+        shard_hostname2 = self._do_heartbeat_and_assert_response()
+
+        shard1 = models.Shard.smart_get(shard_hostname1)
+        shard2 = models.Shard.smart_get(shard_hostname2)
+
+        shard1.labels.add(lumpy_label)
+        shard2.labels.add(grumpy_label)
+
+        job_id = rpc_interface.create_job(name='dummy', priority='Medium',
+                                          control_file='foo',
+                                          control_type=CLIENT,
+                                          meta_hosts=['board:lumpy'],
+                                          dependencies=('board:lumpy',),
+                                          test_retry=10)
+        job1 = models.Job.objects.get(id=job_id)
+        job_id = rpc_interface.create_job(name='dummy', priority='Medium',
+                                          control_file='foo',
+                                          control_type=CLIENT,
+                                          meta_hosts=['board:grumpy'],
+                                          dependencies=('board:grumpy',),
+                                          test_retry=10)
+
+        job2 = models.Job.objects.get(id=job_id)
+        job_id = rpc_interface.create_job(name='dummy', priority='Medium',
+                                          control_file='foo',
+                                          control_type=CLIENT,
+                                          meta_hosts=['board:lumpy'],
+                                          dependencies=('board:lumpy',),
+                                          test_retry=10)
+        job_completed = models.Job.objects.get(id=job_id)
+        # Job is obviously already run, so don't sync it
+        job_completed.hostqueueentry_set.update(complete=True)
+        job_completed.hostqueueentry_set.create(complete=False)
+        job_id = rpc_interface.create_job(name='dummy', priority='Medium',
+                                          control_file='foo',
+                                          control_type=CLIENT,
+                                          meta_hosts=['board:lumpy'],
+                                          dependencies=('board:lumpy',),
+                                          test_retry=10)
+        job_active = models.Job.objects.get(id=job_id)
+        # Job is obviously already started, so don't sync it
+        job_active.hostqueueentry_set.update(active=True)
+        job_active.hostqueueentry_set.create(complete=False, active=False)
+
+        self._do_heartbeat_and_assert_response(
+            shard_hostname=shard_hostname1, jobs=[job1], hosts=[host1],
+            hqes=job1.hostqueueentry_set.all())
+
+        self._do_heartbeat_and_assert_response(
+            shard_hostname=shard_hostname2, jobs=[job2], hosts=[host2],
+            hqes=job2.hostqueueentry_set.all())
+
+        host3 = models.Host.objects.create(hostname='host3', leased=False)
+        host3.labels.add(lumpy_label)
+
+        self._do_heartbeat_and_assert_response(
+            shard_hostname=shard_hostname1, jobs=[], hosts=[host3])
 
 
 if __name__ == '__main__':

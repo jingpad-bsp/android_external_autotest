@@ -2,6 +2,7 @@
 
 import unittest
 import common
+from autotest_lib.frontend import setup_django_environment
 import serviceHandler
 
 

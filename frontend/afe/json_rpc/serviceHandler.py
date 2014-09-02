@@ -21,8 +21,22 @@
 
 import traceback
 
-from json import decoder, encoder
+from json import decoder
+
+try:
+    from django.core import exceptions as django_exceptions
+    # Django JSON encoder uses the standard json encoder but can handle DateTime
+    from django.core.serializers import json as django_encoder
+    json_encoder = django_encoder.DjangoJSONEncoder()
+except django_exceptions.ImproperlyConfigured:
+    from json import encoder
+    json_encoder = encoder.JSONEncoder()
+
 from autotest_lib.client.common_lib.cros.graphite import stats
+
+
+json_decoder = decoder.JSONDecoder()
+
 
 def customConvertJson(value):
     """\
@@ -45,9 +59,6 @@ def customConvertJson(value):
         return new_dict
     else:
         return value
-
-json_encoder = encoder.JSONEncoder()
-json_decoder = decoder.JSONDecoder()
 
 
 def ServiceMethod(fn):
