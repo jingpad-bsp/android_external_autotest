@@ -374,8 +374,9 @@ class ServoHost(ssh_host.SSHHost):
 
         """
         try:
-            pid = int(self.run('pgrep servod').stdout.strip())
-            logging.info('servod is running, PID=%d', pid)
+            pids = [str(int(s)) for s in
+                    self.run('pgrep servod').stdout.strip().split('\n')]
+            logging.info('servod is running, PID=%s', ','.join(pids))
         except (error.AutoservRunError, error.AutoservSSHTimeout) as e:
             if self._is_localhost:
                 logging.info('Ignoring servod status check failure. servo host '
