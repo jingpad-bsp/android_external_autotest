@@ -5,9 +5,9 @@ import os
 import time
 
 import common
-from autotest_lib.server import frontend
+from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
-_AFE = frontend.AFE(debug=False)
+_AFE = frontend_wrappers.RetryingAFE()
 
 JOB_TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
