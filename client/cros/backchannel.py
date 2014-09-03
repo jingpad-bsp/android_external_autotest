@@ -4,6 +4,7 @@
 
 import logging
 import os
+import re
 import time
 
 from autotest_lib.client.bin import utils
@@ -11,6 +12,8 @@ from autotest_lib.client.common_lib import error
 
 # Flag file used to tell backchannel script it's okay to run.
 BACKCHANNEL_FILE = '/mnt/stateful_partition/etc/enable_backchannel_network'
+# Backchannel interface name.
+BACKCHANNEL_IFACE_NAME = 'eth_test'
 
 
 class Backchannel(object):
@@ -50,7 +53,7 @@ class Backchannel(object):
 
         # If the backchannel interface is already up there's nothing
         # for us to do.
-        if is_network_iface_running('eth_test'):
+        if _is_network_iface_running(BACKCHANNEL_IFACE_NAME):
             return True
 
         # Retrieve the gateway for the default route.
@@ -59,11 +62,11 @@ class Backchannel(object):
             # If shill was recently started, it will take some time before
             # DHCP gives us an address.
             utils.poll_for_condition(
-                    lambda: get_route_information(),
+                    lambda: _get_route_information(),
                     exception=utils.TimeoutError(
                             'Timed out waiting for route information'),
                     timeout=30)
-            line = get_route_information()
+            line = _get_route_information()
             self.gateway, self.interface = line.strip().split(' ')
 
             # Retrieve list of open ssh sessions so we can reopen
@@ -89,7 +92,7 @@ class Backchannel(object):
             # Make sure we have a route to the gateway before continuing.
             logging.info('Waiting for route to gateway %s', self.gateway)
             utils.poll_for_condition(
-                    lambda: is_route_ready(self.gateway),
+                    lambda: _is_route_ready(self.gateway),
                     exception=utils.TimeoutError('Timed out waiting for route'),
                     timeout=30)
         except Exception, e:
@@ -117,7 +120,7 @@ class Backchannel(object):
                 logging.info('Waiting for route restore to gateway %s',
                              self.gateway)
                 utils.poll_for_condition(
-                        lambda: is_route_ready(self.gateway),
+                        lambda: _is_route_ready(self.gateway),
                         exception=utils.TimeoutError(
                                 'Timed out waiting for route'),
                         timeout=30)
@@ -146,7 +149,7 @@ def backchannel(args):
     utils.system('/usr/local/lib/flimflam/test/backchannel %s' % args)
 
 
-def is_network_iface_running(name):
+def _is_network_iface_running(name):
     """
     Checks to see if the interface is running.
 
@@ -156,6 +159,7 @@ def is_network_iface_running(name):
 
     """
     try:
+        # TODO: Switch to 'ip' (crbug.com/410601).
         out = utils.system_output('ifconfig %s' % name)
     except error.CmdError, e:
         logging.info(e)
@@ -164,7 +168,7 @@ def is_network_iface_running(name):
     return out.find('RUNNING') >= 0
 
 
-def get_route_information():
+def _get_route_information():
     """
     Retrieves the default route information.
 
@@ -176,7 +180,7 @@ def get_route_information():
             "route -n | awk '/^0.0.0.0/ { print $2, $8 }'").split('\n')[0]
 
 
-def is_route_ready(dest):
+def _is_route_ready(dest):
     """
     Checks to see if there is a route to the specified destination.
 
@@ -193,3 +197,29 @@ def is_route_ready(dest):
         return False
 
     return True
+
+
+def _is_ethernet_port(port):
+    # Some versions of ethtool may report the full name.
+    ETHTOOL_PORT_TWISTED_PAIR = 'TP'
+    ETHTOOL_PORT_TWISTED_PAIR_FULL = 'Twisted Pair'
+    ETHTOOL_PORT_MEDIA_INDEPENDENT_INTERFACE = 'MII'
+    ETHTOOL_PORT_MEDIA_INDEPENDENT_INTERFACE_FULL = \
+            'Media Independent Interface'
+    return port in [ETHTOOL_PORT_TWISTED_PAIR,
+                    ETHTOOL_PORT_TWISTED_PAIR_FULL,
+                    ETHTOOL_PORT_MEDIA_INDEPENDENT_INTERFACE,
+                    ETHTOOL_PORT_MEDIA_INDEPENDENT_INTERFACE_FULL]
+
+
+def is_backchannel_using_ethernet():
+    """
+    Checks to see if the backchannel is using an ethernet device.
+
+    @returns True if the backchannel is using an ethernet device.
+
+    """
+    ethtool_output = utils.system_output(
+            'ethtool %s' % BACKCHANNEL_IFACE_NAME, ignore_status=True)
+    match = re.search('Port: (.+)', ethtool_output)
+    return match and _is_ethernet_port(match.group(1))

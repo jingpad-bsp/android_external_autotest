@@ -156,8 +156,9 @@ class CellularTestEnvironment(object):
         @raise error.TestError if backchannel is not on an ethernet device.
 
         """
-        # TODO: Implement this (crbug.com/403168).
-        pass
+        if not backchannel.is_backchannel_using_ethernet():
+            raise error.TestError('An ethernet connection is required between '
+                                  'the test server and the device under test.')
 
 
     def _verify_sim(self):
