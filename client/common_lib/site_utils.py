@@ -52,13 +52,13 @@ def ping(host, deadline=None, tries=None, timeout=60):
 
 
 def host_is_in_lab_zone(hostname):
-    """Check if the host is in the CROS.dns_zone.
+    """Check if the host is in the CLIENT.dns_zone.
 
     @param hostname: The hostname to check.
     @returns True if hostname.dns_zone resolves, otherwise False.
     """
     host_parts = hostname.split('.')
-    dns_zone = global_config.global_config.get_config_value('CROS', 'dns_zone',
+    dns_zone = global_config.global_config.get_config_value('CLIENT', 'dns_zone',
                                                             default=None)
     fqdn = '%s.%s' % (host_parts[0], dns_zone)
     try:

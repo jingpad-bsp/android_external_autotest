@@ -217,7 +217,7 @@ def devserver_servers():
     @returns: An iterable of all hosts.
     """
     zone = global_config.global_config.get_config_value(
-            'CROS', 'dns_zone')
+            'CLIENT', 'dns_zone')
     servers = _scrape_from_instances('CROS', 'dev_server_hosts')
     # The default text we get back here isn't something you can ssh into unless
     # you've set up your /etc/resolve.conf to automatically try .cros, so we
