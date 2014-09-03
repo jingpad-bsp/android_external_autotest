@@ -211,6 +211,8 @@ class Servo(object):
         self.switch_usbkey('off')
         if cold_reset:
             self._power_state.reset()
+        logging.debug('Servo initialized, version is %s',
+                      self._server.get_version())
 
 
     def is_localhost(self):
@@ -377,13 +379,6 @@ class Servo(object):
         time.sleep(Servo.BOOT_DELAY)
         self.ctrl_d()
         time.sleep(Servo.BOOT_DELAY)
-
-
-    def get_version(self):
-        """Get the version of servod board.
-
-        """
-        return self._server.get_version()
 
 
     def get_board(self):
@@ -627,7 +622,7 @@ class Servo(object):
         if self._programmer:
             return
         # Initialize firmware programmer
-        servo_version = self.get_version()
+        servo_version = self._server.get_version()
         if servo_version == 'servo_v2':
             self._programmer = firmware_programmer.ProgrammerV2(self)
         else:
