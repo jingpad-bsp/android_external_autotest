@@ -16,7 +16,7 @@ class touch_ScrollDirection(touch_playback_test_base.touch_playback_test_base):
     """Plays back scrolls and checks for correct page movement."""
     version = 1
 
-    _DEFAULT_SCROLL = 100
+    _DEFAULT_SCROLL = 1000
     _VALID_BOARDS = ['squawks', 'nyan_big', 'parrot', 'link', 'peppy', 'daisy',
                      'peach_pit', 'x86-alex']
 
@@ -34,19 +34,19 @@ class touch_ScrollDirection(touch_playback_test_base.touch_playback_test_base):
 
         @param down: True if scrolling is supposed to be down; else False.
 
-        @raises TestError if actual scrolling did not match down param.
+        @raises TestFail if actual scrolling did not match down param.
 
         """
         current = self._get_page_position()
         logging.info('Scroll delta was %d', current - self._DEFAULT_SCROLL)
         if down:
             if current <= self._DEFAULT_SCROLL:
-                raise error.TestError('Page did not scroll down! '
-                                      'Australian=%s' % self._australian_state)
+                raise error.TestFail('Page did not scroll down! '
+                                     'Australian=%s' % self._australian_state)
         else:
             if current >= self._DEFAULT_SCROLL:
-                raise error.TestError('Page did not scroll up! '
-                                      'Australian=%s' % self._australian_state)
+                raise error.TestFail('Page did not scroll up! '
+                                     'Australian=%s' % self._australian_state)
 
     def _verify_scrolling(self):
         """Scroll down and check scroll direction, then repeat with up."""
@@ -79,8 +79,7 @@ class touch_ScrollDirection(touch_playback_test_base.touch_playback_test_base):
 
         # Raise error if no touchpad detected.
         if not self._has_touchpad:
-            logging.info('No touchpad found!')
-            raise error.TestError('No touchpad found on this %d' % device)
+            raise error.TestFail('No touchpad found on this %d' % device)
 
         # Log in and start test.
         with chrome.Chrome() as cr:
