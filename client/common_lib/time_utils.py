@@ -59,7 +59,7 @@ def to_epoch_time(value):
     if isinstance(value, basestring):
         value = time_string_to_datetime(value)
     if isinstance(value, datetime.datetime):
-        return time.mktime(value.timetuple()) + 0.000001*value.microsecond
+        return time.mktime(value.timetuple()) + 0.000001 * value.microsecond
     if not isinstance(value, int) and not isinstance(value, float):
         raise ValueError('Value should be a datetime object, string or a '
                          'number. Unexpected value: %s.' % value)

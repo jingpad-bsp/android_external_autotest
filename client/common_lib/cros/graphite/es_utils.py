@@ -196,7 +196,8 @@ def create_range_eq_query_multiple(fields_returned,
                                    equality_constraints,
                                    range_constraints,
                                    size,
-                                   sort_specs):
+                                   sort_specs,
+                                   regex_constraints=[]):
     """Creates a dict. representing multple range and/or equality queries.
 
     Example input:
@@ -255,7 +256,10 @@ def create_range_eq_query_multiple(fields_returned,
     }
 
     @param fields_returned: list of fields that we should return when
-                            the query is executed
+                            the query is executed. Set it to None to return all
+                            fields. Note that the key/vals will be stored in
+                            _source key of the hit object, if fields_returned is
+                            set to None.
     @param equality_constraints: list of tuples of (field, value) pairs
         representing what each field should equal to in the query.
         e.g. [ ('field1', 1), ('field2', 'value') ]
@@ -267,6 +271,9 @@ def create_range_eq_query_multiple(fields_returned,
     @param size: max number of entries to return.
     @param sort_specs: A list of fields to sort on, tiebreakers will be
         broken by the next field(s).
+    @param regex_constraints: A list of regex constraints of tuples of
+        (field, value) pairs, e.g., [('filed1', '.*value.*')].
+
     @param returns: dictionary object that represents query to es.
                     This will return None if there are no equality constraints
                     and no range constraints.
@@ -289,11 +296,13 @@ def create_range_eq_query_multiple(fields_returned,
 
     # Creates the list of term dictionaries to put in the 'should' list.
     eq_list = [{'term': {k: v}} for k, v in equality_constraints if k]
-    num_constraints = len(equality_constraints) + len(range_constraints)
+    regex_list = [{'regexp': {k: v}} for k, v in regex_constraints if k]
+    num_constraints = (len(equality_constraints) + len(range_constraints) +
+                       len(regex_list))
     query = {
              'query': {
                        'bool': {
-                                'should': eq_list + range_list,
+                                'should': eq_list + range_list + regex_list,
                                 'minimum_should_match': num_constraints,
                                }
                       },
@@ -305,13 +314,15 @@ def create_range_eq_query_multiple(fields_returned,
     return query
 
 
-def execute_query(query, index, host, port, timeout=3):
+def execute_query(query, index=INDEX_METADATA, host=METADATA_ES_SERVER,
+                  port=ES_PORT, timeout=3):
     """Makes a query on the given index.
 
     @param query: query dictionary (see create_range_query)
-    @param index: index within db to query
-    @param host: host running es
-    @param port: port running es
+    @param index: index within db to query, default to setting
+                  CLIENT/metadata_index.
+    @param host: host running es, default to setting CROS/ES_HOST.
+    @param port: port running es, default to setting CROS/ES_PORT.
     @param timeout: seconds to wait before es retries if conn. fails.
                     default is 3 seconds.
     @returns: dictionary of the results, or None if index does not exist.
