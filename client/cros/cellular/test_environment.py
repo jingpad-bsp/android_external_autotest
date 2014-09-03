@@ -16,6 +16,7 @@ from autotest_lib.client.cros.cellular import mm
 from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
 from autotest_lib.client.cros.cellular.wardmodem import wardmodem
 from autotest_lib.client.cros.networking import cellular_proxy
+from autotest_lib.client.cros.networking import shill_proxy
 
 # Import 'flimflam_test_path' first in order to import flimflam.
 # pylint: disable=W0611
@@ -96,7 +97,8 @@ class CellularTestEnvironment(object):
             self._verify_cellular_service()
 
             return self
-        except (error.TestError, dbus.DBusException) as e:
+        except (error.TestError, dbus.DBusException,
+                shill_proxy.ShillProxyError) as e:
             except_type, except_value, except_traceback = sys.exc_info()
             lines = traceback.format_exception(except_type, except_value,
                                                except_traceback)
@@ -104,6 +106,9 @@ class CellularTestEnvironment(object):
                           ''.join(lines))
             self.__exit__(*sys.exc_info())
             raise error.TestError('INIT_ERROR: %s' % str(e))
+        except:
+            self.__exit__(*sys.exc_info())
+            raise
 
 
     def __exit__(self, exception, value, traceback):
