@@ -46,7 +46,7 @@ NICENESS = 10
 
 # Maximum number of seconds to allow for offloading a single
 # directory.
-OFFLOAD_TIMEOUT_SECS = 3 * 60 * 60
+OFFLOAD_TIMEOUT_SECS = 60 * 60
 
 # Sleep time per loop.
 SLEEP_TIME_SECS = 5
