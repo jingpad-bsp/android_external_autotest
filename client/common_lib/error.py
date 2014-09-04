@@ -630,6 +630,11 @@ class InvalidBgJobCall(Exception):
     pass
 
 
+class HeartbeatOnlyAllowedInShardModeException(Exception):
+    """Raised when a heartbeat is attempted but not allowed."""
+    pass
+
+
 # This MUST remain at the end of the file.
 # Limit 'from error import *' to only import the exception instances.
 for _name, _thing in locals().items():

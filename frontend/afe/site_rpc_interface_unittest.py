@@ -379,15 +379,15 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
 
 
     def _do_heartbeat_and_assert_response(self, shard_hostname=None, **kwargs):
-        expected_shard_hostname = shard_hostname or str(
+        shard_hostname = shard_hostname or str(
             models.Shard.objects.count() + 1)
         retval = site_rpc_interface.shard_heartbeat(
-            shard_hostname=expected_shard_hostname)
+            shard_hostname=shard_hostname)
 
-        self._assert_shard_heartbeat_response(expected_shard_hostname, retval,
-                                            **kwargs)
+        self._assert_shard_heartbeat_response(shard_hostname, retval,
+                                              **kwargs)
 
-        return expected_shard_hostname
+        return shard_hostname
 
 
     def _assert_shard_heartbeat_response(self, shard_hostname, retval, jobs=[],
