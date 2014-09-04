@@ -23,7 +23,9 @@ StationInstance = collections.namedtuple('StationInstance',
                                          ['ssid', 'interface', 'dev_type'])
 HostapdInstance = collections.namedtuple('HostapdInstance',
                                          ['ssid', 'conf_file', 'log_file',
-                                          'interface', 'config_dict'])
+                                          'interface', 'config_dict',
+                                          'stderr_log_file'])
+
 
 def build_router_hostname(client_hostname=None, router_hostname=None):
     """Build a router hostname from a client hostname.
@@ -92,6 +94,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
     HOSTAPD_CONF_FILE_PATTERN = '/tmp/hostapd-test-%s.conf'
     HOSTAPD_LOG_FILE_PATTERN = '/tmp/hostapd-test-%s.log'
+    HOSTAPD_STDERR_LOG_FILE_PATTERN = '/tmp/hostapd-stderr-test-%s.log'
     HOSTAPD_CONTROL_INTERFACE_PATTERN = '/tmp/hostapd-test-%s.ctrl'
     HOSTAPD_DRIVER_NAME = 'nl80211'
 
@@ -219,6 +222,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
         conf_file = self.HOSTAPD_CONF_FILE_PATTERN % interface
         log_file = self.HOSTAPD_LOG_FILE_PATTERN % interface
+        stderr_log_file = self.HOSTAPD_STDERR_LOG_FILE_PATTERN % interface
         control_interface = self.HOSTAPD_CONTROL_INTERFACE_PATTERN % interface
         hostapd_conf_dict = configuration.generate_dict(
                 interface, control_interface,
@@ -236,15 +240,16 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                      configuration.channel)
         self.router.run('rm %s' % log_file, ignore_status=True)
         self.router.run('stop wpasupplicant', ignore_status=True)
-        start_command = 'stdbuf -oL %s -dd -t %s &> %s & echo $!' % (
-                self.cmd_hostapd, conf_file, log_file)
+        start_command = '%s -dd -t %s > %s 2> %s & echo $!' % (
+                self.cmd_hostapd, conf_file, log_file, stderr_log_file)
         pid = int(self.router.run(start_command).stdout.strip())
         self.hostapd_instances.append(HostapdInstance(
                 hostapd_conf_dict['ssid'],
                 conf_file,
                 log_file,
                 interface,
-                hostapd_conf_dict.copy()))
+                hostapd_conf_dict.copy(),
+                stderr_log_file))
 
         # Wait for confirmation that the router came up.
         logging.info('Waiting for hostapd to startup.')
@@ -333,23 +338,31 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                 instance=instance.conf_file,
                 timeout_seconds=30,
                 ignore_timeouts=True)
-        if self.host.run('ls %s >/dev/null 2>&1' % instance.log_file,
-                         ignore_status=True).exit_status:
-            logging.error('Did not collect hostapd log file because '
-                          'it was missing.')
-        else:
-            self.router.get_file(instance.log_file,
-                                 'debug/hostapd_router_%d_%s.log' %
-                                 (self._total_hostapd_instances,
-                                  instance.interface))
+        files_to_copy = [(instance.log_file, 'debug/hostapd_router_%d_%s.log'  %
+                         (self._total_hostapd_instances, instance.interface)),
+                         (instance.stderr_log_file,
+                          'debug/hostapd_router_%d_%s.stderr.log'  %
+                         (self._total_hostapd_instances, instance.interface))
+                        ]
+        for remote_file, local_file in files_to_copy:
+            if self.host.run('ls %s >/dev/null 2>&1' % remote_file,
+                             ignore_status=True).exit_status:
+                logging.error('Did not collect hostapd log file because '
+                              'it was missing.')
+            else:
+                self.router.get_file(remote_file, local_file)
         self._total_hostapd_instances += 1
         if not is_dead:
             raise error.TestError('Timed out killing hostapd.')
 
 
     def _build_unique_ssid(self, suffix):
-        # Build our unique token by base-<len(self.SUFFIX_LETTERS)> encoding
-        # the number of APs we've constructed already.
+        """ Build our unique token by base-<len(self.SUFFIX_LETTERS)> encoding
+        the number of APs we've constructed already.
+
+        @param suffix string to append to SSID
+
+        """
         base = len(self.SUFFIX_LETTERS)
         number = self._number_unique_ssids
         self._number_unique_ssids += 1
