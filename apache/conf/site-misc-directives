@@ -6,4 +6,4 @@ RewriteCond %{REQUEST_URI} ^/results/([0-9].*)$
 RewriteCond /usr/local/autotest/%{REQUEST_URI} !-f
 RewriteCond /usr/local/autotest/%{REQUEST_URI} !-d
 RewriteRule ^/results/([0-9].*) https://storage.cloud.google.com/chromeos-autotest-results/$1/ [R=301,L]
-RewriteRule ^/results/hosts/(.*/[0-9].*) https://storage.cloud.google.com/chromeos-autotest-results/chromeos-autotest-results/hosts/$1/ [R=301,L]
+RewriteRule ^/results/hosts/(.*/[0-9].*) https://storage.cloud.google.com/chromeos-autotest-results/hosts/$1/ [R=301,L]
