@@ -2210,7 +2210,13 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         """
         labels = []
         for label_function in self._LABEL_FUNCTIONS:
-            label = label_function(self)
+            try:
+                label = label_function(self)
+            except Exception as e:
+                logging.error('Label function %s failed; ignoring it.',
+                              label_function.__name__)
+                logging.exception(e)
+                label = None
             if label:
                 if type(label) is str:
                     labels.append(label)
