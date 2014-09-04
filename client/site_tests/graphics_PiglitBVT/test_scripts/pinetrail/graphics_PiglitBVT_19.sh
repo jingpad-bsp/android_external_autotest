@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=203
+need_pass=204
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib/piglit/
@@ -30,6 +30,9 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec2-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec2-vec4.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec3-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec3-vec2.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec3-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec3-vec3.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec3-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec3-vec4.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec4-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec4-vec2.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec4-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec4-vec3.shader_test -auto"
@@ -231,13 +234,11 @@ run_test "spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat3-row-wr" 
 run_test "spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat3-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat3-wr.shader_test -auto"
 run_test "spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-col-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-col-rd.shader_test -auto"
 run_test "spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-col-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-col-row-rd.shader_test -auto"
-run_test "spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-col-row-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-col-row-wr.shader_test -auto"
-run_test "spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-col-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-col-wr.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 203 tests have passed. |"
+  echo "| Overall pass, as all 204 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

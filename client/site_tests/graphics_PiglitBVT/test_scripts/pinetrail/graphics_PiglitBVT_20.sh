@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=209
+need_pass=211
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib/piglit/
@@ -30,6 +30,8 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-col-row-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-col-row-wr.shader_test -auto"
+run_test "spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-col-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-col-wr.shader_test -auto"
 run_test "spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-index-col-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-index-col-rd.shader_test -auto"
 run_test "spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-index-col-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-index-col-row-rd.shader_test -auto"
 run_test "spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-index-col-row-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-index-col-row-wr.shader_test -auto"
@@ -243,7 +245,7 @@ popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 209 tests have passed. |"
+  echo "| Overall pass, as all 211 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

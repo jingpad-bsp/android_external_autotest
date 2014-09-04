@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=668
+need_pass=667
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib64/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib64/piglit/
@@ -30,6 +30,8 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/glsl-1.20/execution/variable-indexing/fs-temp-array-mat2-index-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/fs-temp-array-mat2-index-wr.shader_test -auto"
+run_test "spec/glsl-1.20/execution/variable-indexing/fs-temp-array-mat2-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/fs-temp-array-mat2-rd.shader_test -auto"
 run_test "spec/glsl-1.20/execution/variable-indexing/fs-temp-array-mat2-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/fs-temp-array-mat2-row-rd.shader_test -auto"
 run_test "spec/glsl-1.20/execution/variable-indexing/fs-temp-array-mat2-row-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/fs-temp-array-mat2-row-wr.shader_test -auto"
 run_test "spec/glsl-1.20/execution/variable-indexing/fs-temp-array-mat2-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/fs-temp-array-mat2-wr.shader_test -auto"
@@ -695,14 +697,11 @@ run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitand-neg-abs-ivec3-int
 run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitand-neg-abs-ivec3-int.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitand-neg-abs-ivec3-int.vert pass 1.30"
 run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitand-neg-abs-ivec3-ivec3.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitand-neg-abs-ivec3-ivec3.frag pass 1.30"
 run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitand-neg-abs-ivec3-ivec3.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitand-neg-abs-ivec3-ivec3.vert pass 1.30"
-run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitand-neg-abs-ivec4-int.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitand-neg-abs-ivec4-int.frag pass 1.30"
-run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitand-neg-abs-ivec4-int.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitand-neg-abs-ivec4-int.vert pass 1.30"
-run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitand-neg-abs-ivec4-ivec4.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitand-neg-abs-ivec4-ivec4.frag pass 1.30"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 668 tests have passed. |"
+  echo "| Overall pass, as all 667 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

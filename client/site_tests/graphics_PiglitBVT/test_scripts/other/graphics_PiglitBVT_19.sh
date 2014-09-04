@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=639
+need_pass=638
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib64/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib64/piglit/
@@ -30,6 +30,10 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/glsl-1.30/execution/built-in-functions/vs-op-assign-lshift-uvec2-uvec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/vs-op-assign-lshift-uvec2-uvec2.shader_test -auto"
+run_test "spec/glsl-1.30/execution/built-in-functions/vs-op-assign-lshift-uvec3-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/vs-op-assign-lshift-uvec3-int.shader_test -auto"
+run_test "spec/glsl-1.30/execution/built-in-functions/vs-op-assign-lshift-uvec3-ivec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/vs-op-assign-lshift-uvec3-ivec3.shader_test -auto"
+run_test "spec/glsl-1.30/execution/built-in-functions/vs-op-assign-lshift-uvec3-uint" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/vs-op-assign-lshift-uvec3-uint.shader_test -auto"
 run_test "spec/glsl-1.30/execution/built-in-functions/vs-op-assign-lshift-uvec3-uvec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/vs-op-assign-lshift-uvec3-uvec3.shader_test -auto"
 run_test "spec/glsl-1.30/execution/built-in-functions/vs-op-assign-lshift-uvec4-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/vs-op-assign-lshift-uvec4-int.shader_test -auto"
 run_test "spec/glsl-1.30/execution/built-in-functions/vs-op-assign-lshift-uvec4-ivec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/vs-op-assign-lshift-uvec4-ivec4.shader_test -auto"
@@ -664,16 +668,11 @@ run_test "spec/glsl-1.30/execution/interpolation/interpolation-flat-other-flat-d
 run_test "spec/glsl-1.30/execution/interpolation/interpolation-flat-other-flat-fixed" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/interpolation/interpolation-flat-other-flat-fixed.shader_test -auto"
 run_test "spec/glsl-1.30/execution/interpolation/interpolation-flat-other-flat-none" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/interpolation/interpolation-flat-other-flat-none.shader_test -auto"
 run_test "spec/glsl-1.30/execution/interpolation/interpolation-flat-other-flat-vertex" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/interpolation/interpolation-flat-other-flat-vertex.shader_test -auto"
-run_test "spec/glsl-1.30/execution/interpolation/interpolation-flat-other-smooth-distance" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/interpolation/interpolation-flat-other-smooth-distance.shader_test -auto"
-run_test "spec/glsl-1.30/execution/interpolation/interpolation-flat-other-smooth-fixed" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/interpolation/interpolation-flat-other-smooth-fixed.shader_test -auto"
-run_test "spec/glsl-1.30/execution/interpolation/interpolation-flat-other-smooth-none" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/interpolation/interpolation-flat-other-smooth-none.shader_test -auto"
-run_test "spec/glsl-1.30/execution/interpolation/interpolation-flat-other-smooth-vertex" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/interpolation/interpolation-flat-other-smooth-vertex.shader_test -auto"
-run_test "spec/glsl-1.30/execution/interpolation/interpolation-mixed" 0.0 "bin/shader_runner tests/spec/glsl-1.30/execution/interpolation/interpolation-mixed.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 639 tests have passed. |"
+  echo "| Overall pass, as all 638 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

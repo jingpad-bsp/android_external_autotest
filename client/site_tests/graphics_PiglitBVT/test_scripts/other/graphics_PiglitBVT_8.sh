@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=405
+need_pass=410
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib64/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib64/piglit/
@@ -30,6 +30,11 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/EXT_transform_feedback/negative-prims" 0.0 "bin/ext_transform_feedback-negative-prims -fbo -auto"
+run_test "spec/EXT_transform_feedback/nonflat-integral" 0.0 "bin/ext_transform_feedback-nonflat-integral -fbo -auto"
+run_test "spec/EXT_transform_feedback/order arrays lines" 0.0 "bin/ext_transform_feedback-order arrays lines -fbo -auto"
+run_test "spec/EXT_transform_feedback/order arrays points" 0.0 "bin/ext_transform_feedback-order arrays points -fbo -auto"
+run_test "spec/EXT_transform_feedback/order arrays triangles" 0.0 "bin/ext_transform_feedback-order arrays triangles -fbo -auto"
 run_test "spec/EXT_transform_feedback/order elements lines" 0.0 "bin/ext_transform_feedback-order elements lines -fbo -auto"
 run_test "spec/EXT_transform_feedback/order elements points" 0.0 "bin/ext_transform_feedback-order elements points -fbo -auto"
 run_test "spec/EXT_transform_feedback/order elements triangles" 0.0 "bin/ext_transform_feedback-order elements triangles -fbo -auto"
@@ -439,7 +444,7 @@ popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 405 tests have passed. |"
+  echo "| Overall pass, as all 410 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

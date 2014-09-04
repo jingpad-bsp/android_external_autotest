@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=274
+need_pass=273
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib/piglit/
@@ -303,12 +303,11 @@ run_test "spec/ARB_vertex_program/fdo24066" 0.0 "bin/fdo24066 -auto"
 run_test "spec/ARB_vertex_program/getenv4d-with-error" 0.0 "bin/arb_vertex_program-getenv4d-with-error -auto"
 run_test "spec/ARB_vertex_program/getlocal4-errors" 0.0 "bin/arb_vertex_program-getlocal4-errors -fbo -auto"
 run_test "spec/ARB_vertex_program/getlocal4d-with-error" 0.0 "bin/arb_vertex_program-getlocal4d-with-error -auto"
-run_test "spec/ARB_vertex_program/getlocal4f-max" 0.0 "bin/arb_vertex_program-getlocal4f-max -fbo -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 274 tests have passed. |"
+  echo "| Overall pass, as all 273 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

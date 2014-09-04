@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=552
+need_pass=551
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib64/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib64/piglit/
@@ -581,12 +581,11 @@ run_test "glx/glx-pixmap13-life" 0.0 "bin/glx-pixmap13-life -fbo -auto"
 run_test "glx/glx-query-drawable-GLXBadDrawable" 0.0 "bin/glx-query-drawable --bad-drawable -auto"
 run_test "glx/glx-shader-sharing" 0.0 "bin/glx-shader-sharing -auto"
 run_test "glx/glx-swap-event_async" 0.0 "bin/glx-swap-event --async -auto"
-run_test "glx/glx-swap-event_event" 0.0 "bin/glx-swap-event --event -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 552 tests have passed. |"
+  echo "| Overall pass, as all 551 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

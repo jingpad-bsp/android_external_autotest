@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=410
+need_pass=415
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib64/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib64/piglit/
@@ -30,6 +30,11 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/glsl-1.30/execution/interpolation/interpolation-flat-other-smooth-distance" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/interpolation/interpolation-flat-other-smooth-distance.shader_test -auto"
+run_test "spec/glsl-1.30/execution/interpolation/interpolation-flat-other-smooth-fixed" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/interpolation/interpolation-flat-other-smooth-fixed.shader_test -auto"
+run_test "spec/glsl-1.30/execution/interpolation/interpolation-flat-other-smooth-none" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/interpolation/interpolation-flat-other-smooth-none.shader_test -auto"
+run_test "spec/glsl-1.30/execution/interpolation/interpolation-flat-other-smooth-vertex" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/interpolation/interpolation-flat-other-smooth-vertex.shader_test -auto"
+run_test "spec/glsl-1.30/execution/interpolation/interpolation-mixed" 0.0 "bin/shader_runner tests/spec/glsl-1.30/execution/interpolation/interpolation-mixed.shader_test -auto"
 run_test "spec/glsl-1.30/execution/interpolation/interpolation-none-gl_BackColor-flat-distance" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/interpolation/interpolation-none-gl_BackColor-flat-distance.shader_test -auto"
 run_test "spec/glsl-1.30/execution/interpolation/interpolation-none-gl_BackColor-smooth-distance" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/interpolation/interpolation-none-gl_BackColor-smooth-distance.shader_test -auto"
 run_test "spec/glsl-1.30/execution/interpolation/interpolation-none-gl_BackSecondaryColor-flat-distance" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/interpolation/interpolation-none-gl_BackSecondaryColor-flat-distance.shader_test -auto"
@@ -444,7 +449,7 @@ popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 410 tests have passed. |"
+  echo "| Overall pass, as all 415 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

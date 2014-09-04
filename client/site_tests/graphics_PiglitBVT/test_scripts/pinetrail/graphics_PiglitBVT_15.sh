@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=490
+need_pass=486
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib/piglit/
@@ -30,6 +30,8 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/glsl-1.10/execution/vs-inner-loop-modifies-outer-loop-var" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/vs-inner-loop-modifies-outer-loop-var.shader_test -auto"
+run_test "spec/glsl-1.10/execution/vs-integer-reduction" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/vs-integer-reduction.shader_test -auto"
 run_test "spec/glsl-1.10/execution/vs-loop-bounds-unrolled" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/vs-loop-bounds-unrolled.shader_test -auto"
 run_test "spec/glsl-1.10/execution/vs-mat2-array-assignment" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/vs-mat2-array-assignment.shader_test -auto"
 run_test "spec/glsl-1.10/execution/vs-mat2-struct-assignment" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/vs-mat2-struct-assignment.shader_test -auto"
@@ -514,17 +516,11 @@ run_test "spec/glsl-1.20/compiler/built-in-functions/op-add-vec3-vec3.frag" 0.0 
 run_test "spec/glsl-1.20/compiler/built-in-functions/op-add-vec3-vec3.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-add-vec3-vec3.vert pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/op-add-vec4-float.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-add-vec4-float.frag pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/op-add-vec4-float.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-add-vec4-float.vert pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-add-vec4-vec4.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-add-vec4-vec4.frag pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-add-vec4-vec4.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-add-vec4-vec4.vert pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-and-bool-bool.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-and-bool-bool.frag pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-and-bool-bool.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-and-bool-bool.vert pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-div-float-float.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-div-float-float.frag pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-div-float-float.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-div-float-float.vert pass 1.20"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 490 tests have passed. |"
+  echo "| Overall pass, as all 486 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

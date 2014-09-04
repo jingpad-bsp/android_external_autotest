@@ -30,6 +30,8 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-mult-mat2x4-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-mult-mat2x4-vec2.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-mult-mat3-mat2x3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-mult-mat3-mat2x3.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-mult-mat3-mat4x3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-mult-mat3-mat4x3.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-mult-mat3x2-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-mult-mat3x2-float.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/fs-op-mult-mat3x2-mat2x3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/fs-op-mult-mat3x2-mat2x3.shader_test -auto"
@@ -512,8 +514,6 @@ run_test "spec/glsl-1.20/execution/variable-indexing/fs-temp-array-mat2-index-co
 run_test "spec/glsl-1.20/execution/variable-indexing/fs-temp-array-mat2-index-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/fs-temp-array-mat2-index-rd.shader_test -auto"
 run_test "spec/glsl-1.20/execution/variable-indexing/fs-temp-array-mat2-index-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/fs-temp-array-mat2-index-row-rd.shader_test -auto"
 run_test "spec/glsl-1.20/execution/variable-indexing/fs-temp-array-mat2-index-row-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/fs-temp-array-mat2-index-row-wr.shader_test -auto"
-run_test "spec/glsl-1.20/execution/variable-indexing/fs-temp-array-mat2-index-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/fs-temp-array-mat2-index-wr.shader_test -auto"
-run_test "spec/glsl-1.20/execution/variable-indexing/fs-temp-array-mat2-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/fs-temp-array-mat2-rd.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then

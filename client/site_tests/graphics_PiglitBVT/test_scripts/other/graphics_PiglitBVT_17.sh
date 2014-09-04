@@ -30,6 +30,9 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/glsl-1.30/compiler/built-in-functions/op-mult-uvec2-uint.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-mult-uvec2-uint.frag pass 1.30"
+run_test "spec/glsl-1.30/compiler/built-in-functions/op-mult-uvec2-uint.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-mult-uvec2-uint.vert pass 1.30"
+run_test "spec/glsl-1.30/compiler/built-in-functions/op-mult-uvec2-uvec2.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-mult-uvec2-uvec2.frag pass 1.30"
 run_test "spec/glsl-1.30/compiler/built-in-functions/op-mult-uvec2-uvec2.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-mult-uvec2-uvec2.vert pass 1.30"
 run_test "spec/glsl-1.30/compiler/built-in-functions/op-mult-uvec3-uint.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-mult-uvec3-uint.frag pass 1.30"
 run_test "spec/glsl-1.30/compiler/built-in-functions/op-mult-uvec3-uint.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-mult-uvec3-uint.vert pass 1.30"
@@ -731,9 +734,6 @@ run_test "spec/glsl-1.30/execution/built-in-functions/fs-op-assign-rshift-uvec2-
 run_test "spec/glsl-1.30/execution/built-in-functions/fs-op-assign-rshift-uvec2-uvec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/fs-op-assign-rshift-uvec2-uvec2.shader_test -auto"
 run_test "spec/glsl-1.30/execution/built-in-functions/fs-op-assign-rshift-uvec3-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/fs-op-assign-rshift-uvec3-int.shader_test -auto"
 run_test "spec/glsl-1.30/execution/built-in-functions/fs-op-assign-rshift-uvec3-ivec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/fs-op-assign-rshift-uvec3-ivec3.shader_test -auto"
-run_test "spec/glsl-1.30/execution/built-in-functions/fs-op-assign-rshift-uvec3-uint" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/fs-op-assign-rshift-uvec3-uint.shader_test -auto"
-run_test "spec/glsl-1.30/execution/built-in-functions/fs-op-assign-rshift-uvec3-uvec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/fs-op-assign-rshift-uvec3-uvec3.shader_test -auto"
-run_test "spec/glsl-1.30/execution/built-in-functions/fs-op-assign-rshift-uvec4-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.30/execution/built-in-functions/fs-op-assign-rshift-uvec4-int.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then

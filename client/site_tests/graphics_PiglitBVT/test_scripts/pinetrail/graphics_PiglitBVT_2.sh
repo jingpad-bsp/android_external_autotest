@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=135
+need_pass=137
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib/piglit/
@@ -150,7 +150,6 @@ run_test "glx/glx-multithread-makecurrent-1" 0.0 "bin/glx-multithread-makecurren
 run_test "glx/glx-multithread-makecurrent-2" 0.0 "bin/glx-multithread-makecurrent-2 -auto"
 run_test "glx/glx-multithread-makecurrent-3" 0.0 "bin/glx-multithread-makecurrent-3 -auto"
 run_test "glx/glx-multithread-makecurrent-4" 0.0 "bin/glx-multithread-makecurrent-4 -auto"
-run_test "glx/glx-multithread-shader-compile" 0.0 "bin/glx-multithread-shader-compile -fbo -auto"
 run_test "glx/glx-multithread-texture" 0.0 "bin/glx-multithread-texture -auto"
 run_test "glx/glx-pixmap-crosscheck" 0.0 "bin/glx-pixmap-crosscheck -fbo -auto"
 run_test "glx/glx-pixmap-life" 0.0 "bin/glx-pixmap-life -fbo -auto"
@@ -165,11 +164,14 @@ run_test "glx/glx-visuals-depth" 0.0 "bin/glx-visuals-depth -auto"
 run_test "glx/glx-visuals-depth -pixmap" 0.0 "bin/glx-visuals-depth -pixmap -fbo -auto"
 run_test "glx/glx-visuals-stencil" 0.0 "bin/glx-visuals-stencil -auto"
 run_test "glx/glx-visuals-stencil -pixmap" 0.0 "bin/glx-visuals-stencil -pixmap -fbo -auto"
+run_test "glx/glx-window-life" 0.0 "bin/glx-window-life -fbo -auto"
+run_test "hiz/hiz-depth-read-fbo-d24-s0" 0.0 "bin/hiz-depth-read-fbo-d24-s0 -auto"
+run_test "hiz/hiz-depth-read-fbo-d24s8" 0.0 "bin/hiz-depth-read-fbo-d24s8 -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 135 tests have passed. |"
+  echo "| Overall pass, as all 137 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=644
+need_pass=643
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib64/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib64/piglit/
@@ -673,12 +673,11 @@ run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-ne-int-int-using-if"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-ne-ivec2-ivec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-ne-ivec2-ivec2.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-ne-ivec2-ivec2-using-if" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-ne-ivec2-ivec2-using-if.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-ne-ivec3-ivec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-ne-ivec3-ivec3.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-ne-ivec3-ivec3-using-if" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-ne-ivec3-ivec3-using-if.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 644 tests have passed. |"
+  echo "| Overall pass, as all 643 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

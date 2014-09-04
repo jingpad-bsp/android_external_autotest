@@ -30,6 +30,9 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-equal-02" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-equal-02.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-equal-03" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-equal-03.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-equal-04" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-equal-04.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-equal-05" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-equal-05.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-equal-06" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-equal-06.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-equal-07" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-equal-07.shader_test -auto"
@@ -245,9 +248,6 @@ run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-uplus-mat4x2" 0.0 "b
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-uplus-mat4x3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-op-uplus-mat4x3.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec2-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec2-vec2.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec2-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec2-vec3.shader_test -auto"
-run_test "spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec2-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec2-vec4.shader_test -auto"
-run_test "spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec3-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec3-vec2.shader_test -auto"
-run_test "spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec3-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec3-vec3.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then

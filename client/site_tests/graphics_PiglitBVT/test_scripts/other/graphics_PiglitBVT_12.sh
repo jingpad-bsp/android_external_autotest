@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=682
+need_pass=681
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib64/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib64/piglit/
@@ -30,6 +30,7 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/glsl-1.20/compiler/built-in-functions/cos-vec4.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/cos-vec4.vert pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/cross-vec3-vec3.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/cross-vec3-vec3.frag pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/cross-vec3-vec3.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/cross-vec3-vec3.vert pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/degrees-float.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/degrees-float.frag pass 1.20"
@@ -710,13 +711,11 @@ run_test "spec/glsl-1.20/compiler/built-in-functions/op-mult-vec4-mat2x4.frag" 0
 run_test "spec/glsl-1.20/compiler/built-in-functions/op-mult-vec4-mat2x4.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-mult-vec4-mat2x4.vert pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/op-mult-vec4-mat3x4.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-mult-vec4-mat3x4.frag pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/op-mult-vec4-mat3x4.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-mult-vec4-mat3x4.vert pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-mult-vec4-mat4.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-mult-vec4-mat4.frag pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-mult-vec4-mat4.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-mult-vec4-mat4.vert pass 1.20"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 682 tests have passed. |"
+  echo "| Overall pass, as all 681 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

@@ -30,6 +30,7 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "glx/glx-swap-event_event" 0.0 "bin/glx-swap-event --event -auto"
 run_test "glx/glx-swap-pixmap" 0.0 "bin/glx-swap-pixmap -auto"
 run_test "glx/glx-swap-singlebuffer" 0.0 "bin/glx-swap-singlebuffer -auto"
 run_test "glx/glx-tfp" 0.0 "bin/glx-tfp -auto"
@@ -416,7 +417,6 @@ run_test "shaders/glsl-mat-from-int-ctor-03" 0.0 "bin/shader_runner tests/shader
 run_test "shaders/glsl-mat-from-vec-ctor-01" 0.0 "bin/shader_runner tests/shaders/glsl-mat-from-vec-ctor-01.shader_test -auto"
 run_test "shaders/glsl-mat-mul-1" 0.0 "bin/shader_runner tests/shaders/glsl-mat-mul-1.shader_test -auto"
 run_test "shaders/glsl-max-varyings" 0.0 "bin/glsl-max-varyings -fbo -auto"
-run_test "shaders/glsl-max-varyings >MAX_VARYING_COMPONENTS" 0.0 "bin/glsl-max-varyings --exceed-limits -fbo -auto"
 popd
 
 if [ $need_pass == 0 ] ; then

@@ -7,6 +7,7 @@
     "glean/texture_srgb": {
       "command": "bin/glean -o -v -v -v -t +texture_srgb --quick",
       "comment": "Regression tracked at crbug.com/384415",
+      "crbug": "384415",
       "result": "skip"
     },
     "glx/GLX_OML_sync_control/swapbuffersmsc-return swap_interval 1": {
@@ -46,6 +47,11 @@
       "command": "bin/glsl-fs-user-varying-ff -fbo -auto",
       "result": "skip"
     },
+    "shaders/glsl-routing": {
+      "command": "bin/glsl-routing -fbo -auto",
+      "crbug": "391395",
+      "result": "skip"
+    },
     "shaders/sso-user-varying-01": {
       "command": "bin/sso-user-varying-01 -fbo -auto",
       "result": "skip"
@@ -61,6 +67,11 @@
     },
     "spec/!OpenGL 1.1/dlist-fdo31590": {
       "command": "bin/dlist-fdo31590 -auto",
+      "result": "skip"
+    },
+    "spec/!OpenGL 1.1/draw-pixels": {
+      "command": "bin/draw-pixels -auto",
+      "crbug": "410528",
       "result": "skip"
     },
     "spec/!OpenGL 3.0/gl-3.0-texture-integer": {

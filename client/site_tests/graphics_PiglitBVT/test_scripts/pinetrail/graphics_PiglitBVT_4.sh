@@ -30,8 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "shaders/glsl-fs-mov-masked" 0.0 "bin/shader_runner tests/shaders/glsl-fs-mov-masked.shader_test -auto"
-run_test "shaders/glsl-fs-neg" 0.0 "bin/shader_runner tests/shaders/glsl-fs-neg.shader_test -auto"
 run_test "shaders/glsl-fs-neg-abs" 0.0 "bin/shader_runner tests/shaders/glsl-fs-neg-abs.shader_test -auto"
 run_test "shaders/glsl-fs-neg-dot" 0.0 "bin/shader_runner tests/shaders/glsl-fs-neg-dot.shader_test -auto"
 run_test "shaders/glsl-fs-pointcoord" 0.0 "bin/glsl-fs-pointcoord -fbo -auto"
@@ -236,6 +234,8 @@ run_test "shaders/glsl-vs-vec4-indexing-2" 0.0 "bin/shader_runner tests/shaders/
 run_test "shaders/glsl-vs-vec4-indexing-3" 0.0 "bin/shader_runner tests/shaders/glsl-vs-vec4-indexing-3.shader_test -auto"
 run_test "shaders/glsl-vs-vec4-indexing-4" 0.0 "bin/shader_runner tests/shaders/glsl-vs-vec4-indexing-4.shader_test -auto"
 run_test "shaders/glsl-vs-vec4-indexing-5" 0.0 "bin/shader_runner tests/shaders/glsl-vs-vec4-indexing-5.shader_test -auto"
+run_test "shaders/glsl-vs-vec4-indexing-6" 0.0 "bin/shader_runner tests/shaders/glsl-vs-vec4-indexing-6.shader_test -auto"
+run_test "shaders/glsl-vs-vec4-indexing-temp-dst" 0.0 "bin/shader_runner tests/shaders/glsl-vs-vec4-indexing-temp-dst.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then

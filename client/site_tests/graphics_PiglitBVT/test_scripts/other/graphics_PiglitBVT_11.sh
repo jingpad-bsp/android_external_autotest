@@ -30,6 +30,7 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-ne-ivec3-ivec3-using-if" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-ne-ivec3-ivec3-using-if.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-ne-ivec4-ivec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-ne-ivec4-ivec4.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-ne-ivec4-ivec4-using-if" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-ne-ivec4-ivec4-using-if.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-ne-mat2-mat2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-ne-mat2-mat2.shader_test -auto"
@@ -686,7 +687,6 @@ run_test "spec/glsl-1.20/compiler/built-in-functions/cos-vec2.vert" 0.0 "bin/gls
 run_test "spec/glsl-1.20/compiler/built-in-functions/cos-vec3.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/cos-vec3.frag pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/cos-vec3.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/cos-vec3.vert pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/cos-vec4.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/cos-vec4.frag pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/cos-vec4.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/cos-vec4.vert pass 1.20"
 popd
 
 if [ $need_pass == 0 ] ; then

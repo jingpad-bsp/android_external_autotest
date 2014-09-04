@@ -30,6 +30,12 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/glsl-1.20/compiler/built-in-functions/op-add-vec4-vec4.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-add-vec4-vec4.frag pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/op-add-vec4-vec4.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-add-vec4-vec4.vert pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/op-and-bool-bool.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-and-bool-bool.frag pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/op-and-bool-bool.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-and-bool-bool.vert pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/op-div-float-float.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-div-float-float.frag pass 1.20"
+run_test "spec/glsl-1.20/compiler/built-in-functions/op-div-float-float.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-div-float-float.vert pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/op-div-float-mat2.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-div-float-mat2.frag pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/op-div-float-mat2.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-div-float-mat2.vert pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/op-div-float-mat2x3.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-div-float-mat2x3.frag pass 1.20"
@@ -547,12 +553,6 @@ run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat4x2-float.vert" 0
 run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat4x2-mat4x2.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat4x2-mat4x2.frag pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat4x2-mat4x2.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat4x2-mat4x2.vert pass 1.20"
 run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat4x3-float.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat4x3-float.frag pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat4x3-float.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat4x3-float.vert pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat4x3-mat4x3.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat4x3-mat4x3.frag pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-mat4x3-mat4x3.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-mat4x3-mat4x3.vert pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-vec2-float.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-vec2-float.frag pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-vec2-float.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-vec2-float.vert pass 1.20"
-run_test "spec/glsl-1.20/compiler/built-in-functions/op-sub-vec2-vec2.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.20/compiler/built-in-functions/op-sub-vec2-vec2.frag pass 1.20"
 popd
 
 if [ $need_pass == 0 ] ; then

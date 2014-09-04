@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=65
+need_pass=66
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib/piglit/
@@ -30,6 +30,7 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/ARB_vertex_program/getlocal4f-max" 0.0 "bin/arb_vertex_program-getlocal4f-max -fbo -auto"
 run_test "spec/ARB_vertex_program/minmax" 0.0 "bin/arb_vertex_program-minmax -fbo -auto"
 run_test "spec/ARB_vertex_program/vp-address-01" 0.0 "bin/vp-address-01 -auto"
 run_test "spec/ARB_vertex_program/vp-arl-constant-array" 0.0 "bin/vpfp-generic tests/shaders/generic/vp-arl-constant-array.vpfp -fbo -auto"
@@ -69,6 +70,7 @@ run_test "spec/EXT_framebuffer_object/fbo-3d" 0.0 "bin/fbo-3d -fbo -auto"
 run_test "spec/EXT_framebuffer_object/fbo-alphatest-formats" 0.0 "bin/fbo-alphatest-formats -fbo -auto"
 run_test "spec/EXT_framebuffer_object/fbo-alphatest-nocolor" 0.0 "bin/fbo-alphatest-nocolor -fbo -auto"
 run_test "spec/EXT_framebuffer_object/fbo-alphatest-nocolor-ff" 0.0 "bin/fbo-alphatest-nocolor-ff -fbo -auto"
+run_test "spec/EXT_framebuffer_object/fbo-bind-renderbuffer" 0.0 "bin/fbo-bind-renderbuffer -fbo -auto"
 run_test "spec/EXT_framebuffer_object/fbo-clear-formats" 0.0 "bin/fbo-clear-formats -fbo -auto"
 run_test "spec/EXT_framebuffer_object/fbo-clearmipmap" 0.0 "bin/fbo-clearmipmap -fbo -auto"
 run_test "spec/EXT_framebuffer_object/fbo-copyteximage" 0.0 "bin/fbo-copyteximage -fbo -auto"
@@ -94,12 +96,11 @@ run_test "spec/EXT_framebuffer_object/fbo-scissor-bitmap" 0.0 "bin/fbo-scissor-b
 run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX1-clear" 0.0 "bin/fbo-stencil clear GL_STENCIL_INDEX1 -fbo -auto"
 run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX1-copypixels" 0.0 "bin/fbo-stencil copypixels GL_STENCIL_INDEX1 -fbo -auto"
 run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX1-drawpixels" 0.0 "bin/fbo-stencil drawpixels GL_STENCIL_INDEX1 -fbo -auto"
-run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX1-readpixels" 0.0 "bin/fbo-stencil readpixels GL_STENCIL_INDEX1 -fbo -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 65 tests have passed. |"
+  echo "| Overall pass, as all 66 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

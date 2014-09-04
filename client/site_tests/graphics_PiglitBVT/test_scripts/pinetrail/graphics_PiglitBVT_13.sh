@@ -30,6 +30,8 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-mult-int-ivec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-mult-int-ivec4.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-mult-ivec2-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-mult-ivec2-int.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-mult-ivec2-ivec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-mult-ivec2-ivec2.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-mult-ivec3-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-mult-ivec3-int.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-mult-ivec3-ivec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-mult-ivec3-ivec3.shader_test -auto"
@@ -242,8 +244,6 @@ run_test "spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat2-row-wr" 
 run_test "spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat2-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat2-wr.shader_test -auto"
 run_test "spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat3-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat3-rd.shader_test -auto"
 run_test "spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat3-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat3-row-rd.shader_test -auto"
-run_test "spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat3-row-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat3-row-wr.shader_test -auto"
-run_test "spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat3-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat3-wr.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then

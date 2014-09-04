@@ -30,6 +30,8 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat3-row-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat3-row-wr.shader_test -auto"
+run_test "spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat3-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat3-wr.shader_test -auto"
 run_test "spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat4-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat4-rd.shader_test -auto"
 run_test "spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat4-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat4-row-rd.shader_test -auto"
 run_test "spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat4-row-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat4-row-wr.shader_test -auto"
@@ -209,8 +211,6 @@ run_test "spec/glsl-1.10/execution/variable-indexing/vs-varying-mat4-wr" 0.0 "bi
 run_test "spec/glsl-1.10/execution/vs-call-in-nested-loop" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/vs-call-in-nested-loop.shader_test -auto"
 run_test "spec/glsl-1.10/execution/vs-inline-notequal" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/vs-inline-notequal.shader_test -auto"
 run_test "spec/glsl-1.10/execution/vs-inner-loop-counts-outer-loop-var" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/vs-inner-loop-counts-outer-loop-var.shader_test -auto"
-run_test "spec/glsl-1.10/execution/vs-inner-loop-modifies-outer-loop-var" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/vs-inner-loop-modifies-outer-loop-var.shader_test -auto"
-run_test "spec/glsl-1.10/execution/vs-integer-reduction" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/vs-integer-reduction.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then

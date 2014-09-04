@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=10450
+need_pass=10448
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib64/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib64/piglit/
@@ -979,7 +979,6 @@ run_test "shaders/glsl-pp-elif-no-expression-1" 0.0 "bin/shader_runner tests/sha
 run_test "shaders/glsl-precision-110" 0.0 "bin/shader_runner tests/shaders/glsl-precision-110.shader_test -auto"
 run_test "shaders/glsl-preprocessor-comments" 0.0 "bin/glsl-preprocessor-comments -fbo -auto"
 run_test "shaders/glsl-reload-source" 0.0 "bin/glsl-reload-source -fbo -auto"
-run_test "shaders/glsl-routing" 0.0 "bin/glsl-routing -fbo -auto"
 run_test "shaders/glsl-sin" 0.0 "bin/glsl-sin -fbo -auto"
 run_test "shaders/glsl-struct-constructor-01" 0.0 "bin/shader_runner tests/shaders/glsl-struct-constructor-01.shader_test -auto"
 run_test "shaders/glsl-texcoord-array-2" 0.0 "bin/shader_runner tests/shaders/glsl-texcoord-array-2.shader_test -auto"
@@ -1151,7 +1150,6 @@ run_test "spec/!OpenGL 1.1/dlist-fdo3129-01" 0.0 "bin/dlist-fdo3129-01 -auto"
 run_test "spec/!OpenGL 1.1/dlist-fdo3129-02" 0.0 "bin/dlist-fdo3129-02 -auto"
 run_test "spec/!OpenGL 1.1/draw-arrays-colormaterial" 0.0 "bin/draw-arrays-colormaterial -auto"
 run_test "spec/!OpenGL 1.1/draw-copypixels-sync" 0.0 "bin/draw-copypixels-sync -auto"
-run_test "spec/!OpenGL 1.1/draw-pixels" 0.0 "bin/draw-pixels -auto"
 run_test "spec/!OpenGL 1.1/drawbuffer-modes" 0.0 "bin/drawbuffer-modes -auto"
 run_test "spec/!OpenGL 1.1/fdo10370" 0.0 "bin/fdo10370 -auto"
 run_test "spec/!OpenGL 1.1/fdo23489" 0.0 "bin/fdo23489 -auto"
@@ -10484,7 +10482,7 @@ popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 10450 tests have passed. |"
+  echo "| Overall pass, as all 10448 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

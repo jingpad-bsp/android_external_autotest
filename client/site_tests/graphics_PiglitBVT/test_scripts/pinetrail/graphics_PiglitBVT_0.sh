@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=5139
+need_pass=5142
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib/piglit/
@@ -564,7 +564,6 @@ run_test "glx/glx-multithread-makecurrent-1" 0.0 "bin/glx-multithread-makecurren
 run_test "glx/glx-multithread-makecurrent-2" 0.0 "bin/glx-multithread-makecurrent-2 -auto"
 run_test "glx/glx-multithread-makecurrent-3" 0.0 "bin/glx-multithread-makecurrent-3 -auto"
 run_test "glx/glx-multithread-makecurrent-4" 0.0 "bin/glx-multithread-makecurrent-4 -auto"
-run_test "glx/glx-multithread-shader-compile" 0.0 "bin/glx-multithread-shader-compile -fbo -auto"
 run_test "glx/glx-multithread-texture" 0.0 "bin/glx-multithread-texture -auto"
 run_test "glx/glx-pixmap-crosscheck" 0.0 "bin/glx-pixmap-crosscheck -fbo -auto"
 run_test "glx/glx-pixmap-life" 0.0 "bin/glx-pixmap-life -fbo -auto"
@@ -1565,6 +1564,7 @@ run_test "spec/EXT_framebuffer_object/fbo-3d" 0.0 "bin/fbo-3d -fbo -auto"
 run_test "spec/EXT_framebuffer_object/fbo-alphatest-formats" 0.0 "bin/fbo-alphatest-formats -fbo -auto"
 run_test "spec/EXT_framebuffer_object/fbo-alphatest-nocolor" 0.0 "bin/fbo-alphatest-nocolor -fbo -auto"
 run_test "spec/EXT_framebuffer_object/fbo-alphatest-nocolor-ff" 0.0 "bin/fbo-alphatest-nocolor-ff -fbo -auto"
+run_test "spec/EXT_framebuffer_object/fbo-bind-renderbuffer" 0.0 "bin/fbo-bind-renderbuffer -fbo -auto"
 run_test "spec/EXT_framebuffer_object/fbo-clear-formats" 0.0 "bin/fbo-clear-formats -fbo -auto"
 run_test "spec/EXT_framebuffer_object/fbo-clearmipmap" 0.0 "bin/fbo-clearmipmap -fbo -auto"
 run_test "spec/EXT_framebuffer_object/fbo-copyteximage" 0.0 "bin/fbo-copyteximage -fbo -auto"
@@ -1899,6 +1899,9 @@ run_test "spec/glsl-1.10/compiler/qualifiers/varying-bvec4-prohibited.frag" 0.0 
 run_test "spec/glsl-1.10/compiler/qualifiers/varying-bvec4-prohibited.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-bvec4-prohibited.vert fail 1.10"
 run_test "spec/glsl-1.10/compiler/qualifiers/varying-struct-prohibited.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-struct-prohibited.frag fail 1.10"
 run_test "spec/glsl-1.10/compiler/qualifiers/varying-struct-prohibited.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-struct-prohibited.vert fail 1.10"
+run_test "spec/glsl-1.10/compiler/reserved/double-underscore-01.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/reserved/double-underscore-01.frag pass 1.10"
+run_test "spec/glsl-1.10/compiler/reserved/double-underscore-02.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/reserved/double-underscore-02.frag pass 1.10"
+run_test "spec/glsl-1.10/compiler/reserved/double-underscore-03.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/reserved/double-underscore-03.frag pass 1.10"
 run_test "spec/glsl-1.10/compiler/row_major.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/row_major.frag pass 1.10"
 run_test "spec/glsl-1.10/compiler/samplers/inout-struct.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/samplers/inout-struct.frag fail 1.10"
 run_test "spec/glsl-1.10/compiler/samplers/inout.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/samplers/inout.frag fail 1.10"
@@ -5173,7 +5176,7 @@ popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 5139 tests have passed. |"
+  echo "| Overall pass, as all 5142 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

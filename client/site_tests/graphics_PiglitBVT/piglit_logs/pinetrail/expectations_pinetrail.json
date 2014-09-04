@@ -8,6 +8,11 @@
       "command": "bin/glx-oml-sync-control-waitformsc -fbo -auto",
       "result": "skip"
     },
+    "glx/glx-multithread-shader-compile": {
+      "command": "bin/glx-multithread-shader-compile -fbo -auto",
+      "crbug": "410498",
+      "result": "skip"
+    },
     "glx/glx-swap-event_interval": {
       "command": "bin/glx-swap-event --interval -auto",
       "result": "skip"
@@ -21,29 +26,10 @@
       "command": "bin/dlist-fdo31590 -auto",
       "result": "skip"
     },
-    "spec/EXT_framebuffer_object/fbo-bind-renderbuffer": {
-      "command": "bin/fbo-bind-renderbuffer -fbo -auto",
-      "comment": "Remove when we have piglit 9ed80d2cf76d20f58eee218be699839f6a6e9223",
-      "result": "skip"
-    },
     "spec/EXT_framebuffer_object/fbo-generatemipmap-filtering": {
       "command": "bin/fbo-generatemipmap-filtering -fbo -auto",
       "comment": "Regression tracked at crbug.com/384409",
-      "result": "skip"
-    },
-    "spec/glsl-1.10/compiler/reserved/double-underscore-01.frag": {
-      "command": "bin/glslparsertest tests/spec/glsl-1.10/compiler/reserved/double-underscore-01.frag pass 1.10",
-      "comment": "Remove when we have piglit 3a521d467c108f25b2033132ca6ac665786c0e04",
-      "result": "skip"
-    },
-    "spec/glsl-1.10/compiler/reserved/double-underscore-02.frag": {
-      "command": "bin/glslparsertest tests/spec/glsl-1.10/compiler/reserved/double-underscore-02.frag pass 1.10",
-      "comment": "Remove when we have piglit 3a521d467c108f25b2033132ca6ac665786c0e04",
-      "result": "skip"
-    },
-    "spec/glsl-1.10/compiler/reserved/double-underscore-03.frag": {
-      "command": "bin/glslparsertest tests/spec/glsl-1.10/compiler/reserved/double-underscore-03.frag pass 1.10",
-      "comment": "Remove when we have piglit 3a521d467c108f25b2033132ca6ac665786c0e04",
+      "crbug": "384409",
       "result": "skip"
     }
   }

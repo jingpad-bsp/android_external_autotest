@@ -30,8 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "shaders/glsl-vs-vec4-indexing-6" 0.0 "bin/shader_runner tests/shaders/glsl-vs-vec4-indexing-6.shader_test -auto"
-run_test "shaders/glsl-vs-vec4-indexing-temp-dst" 0.0 "bin/shader_runner tests/shaders/glsl-vs-vec4-indexing-temp-dst.shader_test -auto"
 run_test "shaders/glsl-vs-vec4-indexing-temp-dst-in-loop" 0.0 "bin/shader_runner tests/shaders/glsl-vs-vec4-indexing-temp-dst-in-loop.shader_test -auto"
 run_test "shaders/glsl-vs-vec4-indexing-temp-dst-in-nested-loop-combined" 0.0 "bin/shader_runner tests/shaders/glsl-vs-vec4-indexing-temp-dst-in-nested-loop-combined.shader_test -auto"
 run_test "shaders/glsl-vs-vec4-indexing-temp-src" 0.0 "bin/shader_runner tests/shaders/glsl-vs-vec4-indexing-temp-src.shader_test -auto"
@@ -150,6 +148,8 @@ run_test "spec/!OpenGL 1.2/crash-texparameter-before-teximage" 0.0 "bin/crash-te
 run_test "spec/!OpenGL 1.2/draw-elements-vs-inputs" 0.0 "bin/draw-elements-vs-inputs -auto"
 run_test "spec/!OpenGL 1.2/getteximage-targets 3D" 0.0 "bin/getteximage-targets 3D -fbo -auto"
 run_test "spec/!OpenGL 1.2/lodclamp" 0.0 "bin/lodclamp -auto"
+run_test "spec/!OpenGL 1.2/lodclamp-between" 0.0 "bin/lodclamp-between -auto"
+run_test "spec/!OpenGL 1.2/lodclamp-between-max" 0.0 "bin/lodclamp-between-max -auto"
 popd
 
 if [ $need_pass == 0 ] ; then

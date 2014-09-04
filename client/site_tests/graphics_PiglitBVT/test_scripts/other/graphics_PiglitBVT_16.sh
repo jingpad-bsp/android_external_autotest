@@ -30,6 +30,9 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitand-neg-abs-ivec4-int.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitand-neg-abs-ivec4-int.frag pass 1.30"
+run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitand-neg-abs-ivec4-int.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitand-neg-abs-ivec4-int.vert pass 1.30"
+run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitand-neg-abs-ivec4-ivec4.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitand-neg-abs-ivec4-ivec4.frag pass 1.30"
 run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitand-neg-abs-ivec4-ivec4.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitand-neg-abs-ivec4-ivec4.vert pass 1.30"
 run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitand-neg-int-int.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitand-neg-int-int.frag pass 1.30"
 run_test "spec/glsl-1.30/compiler/built-in-functions/op-bitand-neg-int-int.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-bitand-neg-int-int.vert pass 1.30"
@@ -709,9 +712,6 @@ run_test "spec/glsl-1.30/compiler/built-in-functions/op-mult-uint-uvec3.frag" 0.
 run_test "spec/glsl-1.30/compiler/built-in-functions/op-mult-uint-uvec3.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-mult-uint-uvec3.vert pass 1.30"
 run_test "spec/glsl-1.30/compiler/built-in-functions/op-mult-uint-uvec4.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-mult-uint-uvec4.frag pass 1.30"
 run_test "spec/glsl-1.30/compiler/built-in-functions/op-mult-uint-uvec4.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-mult-uint-uvec4.vert pass 1.30"
-run_test "spec/glsl-1.30/compiler/built-in-functions/op-mult-uvec2-uint.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-mult-uvec2-uint.frag pass 1.30"
-run_test "spec/glsl-1.30/compiler/built-in-functions/op-mult-uvec2-uint.vert" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-mult-uvec2-uint.vert pass 1.30"
-run_test "spec/glsl-1.30/compiler/built-in-functions/op-mult-uvec2-uvec2.frag" 0.0 "bin/glslparsertest generated_tests/spec/glsl-1.30/compiler/built-in-functions/op-mult-uvec2-uvec2.frag pass 1.30"
 popd
 
 if [ $need_pass == 0 ] ; then

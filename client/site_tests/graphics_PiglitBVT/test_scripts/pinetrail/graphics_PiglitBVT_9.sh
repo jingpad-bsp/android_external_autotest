@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=374
+need_pass=376
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib/piglit/
@@ -30,6 +30,7 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX1-readpixels" 0.0 "bin/fbo-stencil readpixels GL_STENCIL_INDEX1 -fbo -auto"
 run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX16-clear" 0.0 "bin/fbo-stencil clear GL_STENCIL_INDEX16 -fbo -auto"
 run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX16-copypixels" 0.0 "bin/fbo-stencil copypixels GL_STENCIL_INDEX16 -fbo -auto"
 run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX16-drawpixels" 0.0 "bin/fbo-stencil drawpixels GL_STENCIL_INDEX16 -fbo -auto"
@@ -338,6 +339,9 @@ run_test "spec/glsl-1.10/compiler/qualifiers/varying-bvec4-prohibited.frag" 0.0 
 run_test "spec/glsl-1.10/compiler/qualifiers/varying-bvec4-prohibited.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-bvec4-prohibited.vert fail 1.10"
 run_test "spec/glsl-1.10/compiler/qualifiers/varying-struct-prohibited.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-struct-prohibited.frag fail 1.10"
 run_test "spec/glsl-1.10/compiler/qualifiers/varying-struct-prohibited.vert" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/qualifiers/varying-struct-prohibited.vert fail 1.10"
+run_test "spec/glsl-1.10/compiler/reserved/double-underscore-01.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/reserved/double-underscore-01.frag pass 1.10"
+run_test "spec/glsl-1.10/compiler/reserved/double-underscore-02.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/reserved/double-underscore-02.frag pass 1.10"
+run_test "spec/glsl-1.10/compiler/reserved/double-underscore-03.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/reserved/double-underscore-03.frag pass 1.10"
 run_test "spec/glsl-1.10/compiler/row_major.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/row_major.frag pass 1.10"
 run_test "spec/glsl-1.10/compiler/samplers/inout-struct.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/samplers/inout-struct.frag fail 1.10"
 run_test "spec/glsl-1.10/compiler/samplers/inout.frag" 0.0 "bin/glslparsertest tests/spec/glsl-1.10/compiler/samplers/inout.frag fail 1.10"
@@ -402,13 +406,11 @@ run_test "spec/glsl-1.10/execution/built-in-functions/fs-any-bvec3" 0.0 "bin/sha
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-any-bvec3-using-if" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-any-bvec3-using-if.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-any-bvec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-any-bvec4.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-any-bvec4-using-if" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-any-bvec4-using-if.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/fs-asin-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-asin-float.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/fs-asin-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-asin-vec2.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 374 tests have passed. |"
+  echo "| Overall pass, as all 376 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

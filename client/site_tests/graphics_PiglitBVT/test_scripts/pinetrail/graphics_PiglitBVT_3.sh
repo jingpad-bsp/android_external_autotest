@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=245
+need_pass=244
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib/piglit/
@@ -30,9 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "glx/glx-window-life" 0.0 "bin/glx-window-life -fbo -auto"
-run_test "hiz/hiz-depth-read-fbo-d24-s0" 0.0 "bin/hiz-depth-read-fbo-d24-s0 -auto"
-run_test "hiz/hiz-depth-read-fbo-d24s8" 0.0 "bin/hiz-depth-read-fbo-d24s8 -auto"
 run_test "hiz/hiz-depth-read-window-stencil0" 0.0 "bin/hiz-depth-read-window-stencil0 -auto"
 run_test "hiz/hiz-depth-read-window-stencil1" 0.0 "bin/hiz-depth-read-window-stencil1 -auto"
 run_test "hiz/hiz-depth-stencil-test-fbo-d0-s8" 0.0 "bin/hiz-depth-stencil-test-fbo-d0-s8 -auto"
@@ -275,11 +272,13 @@ run_test "shaders/glsl-fs-min-3" 0.0 "bin/shader_runner tests/shaders/glsl-fs-mi
 run_test "shaders/glsl-fs-mix" 0.0 "bin/shader_runner tests/shaders/glsl-fs-mix.shader_test -auto"
 run_test "shaders/glsl-fs-mix-constant" 0.0 "bin/shader_runner tests/shaders/glsl-fs-mix-constant.shader_test -auto"
 run_test "shaders/glsl-fs-mod" 0.0 "bin/shader_runner tests/shaders/glsl-fs-mod.shader_test -auto"
+run_test "shaders/glsl-fs-mov-masked" 0.0 "bin/shader_runner tests/shaders/glsl-fs-mov-masked.shader_test -auto"
+run_test "shaders/glsl-fs-neg" 0.0 "bin/shader_runner tests/shaders/glsl-fs-neg.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 245 tests have passed. |"
+  echo "| Overall pass, as all 244 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"
