@@ -4,7 +4,7 @@
 # found in the LICENSE file.
 from __future__ import print_function
 from collections import namedtuple
-import json, os, sys
+import json, os, re, sys
 
 AUTOTEST_NAME = 'graphics_PiglitBVT'
 INPUT_DIR = './piglit_logs/'
@@ -136,25 +136,25 @@ def mkdir_p(path):
     else:
       raise
 
-def get_log_filepaths(family_root):
+def get_filepaths(family_root, regex):
   """
-  Find all log files (*results.json) that were placed into family_root.
+  Find all files that were placed into family_root.
+  Used to find regular log files (*results.json) and expectations*.json.
   """
   main_files = []
   for root, _, files in os.walk(family_root):
     for filename in files:
-      if filename.endswith('results.json'):
+      if re.search(regex, filename):
         main_files.append(os.path.join(root, filename))
   return main_files
 
 
-def load_log_files(main_files):
+def load_files(main_files):
   """
   The log files are just python dictionaries, load them from disk.
   """
   d = {}
   for main_file in main_files:
-    #print('Loading file %s' % main_file, file=sys.stderr)
     d[main_file] = json.loads(open(main_file).read())
   return d
 
@@ -162,36 +162,36 @@ def load_log_files(main_files):
 # Define a Test data structure containing the command line and runtime.
 Test = namedtuple('Test', 'command time passing_count not_passing_count')
 
-def get_test_statistics(d):
+def get_test_statistics(log_dict):
   """
   Figures out for each test how often is passed/failed, the command line and
   how long it runs.
   """
   statistics = {}
-  for main_file in d:
-    for test in d[main_file]['tests']:
+  for main_file in log_dict:
+    for test in log_dict[main_file]['tests']:
       # Initialize for all known test names to zero stats.
       statistics[test] = Test(None, 0.0, 0, 0)
 
-  for main_file in d:
+  for main_file in log_dict:
     print('Updating statistics from %s.' % main_file, file=sys.stderr)
-    tests = d[main_file]['tests']
+    tests = log_dict[main_file]['tests']
     for test in tests:
       command = statistics[test].command
+      # Verify that each board uses the same command.
+      if 'command' in tests[test]:
+        if command:
+          assert(command == tests[test]['command'])
+        else:
+          command = tests[test]['command']
+      # Bump counts.
       if tests[test]['result'] == 'pass':
-        # A passing test expectation is a no-op and must be ignored.
-        if 'expectation' not in main_file:
-          if 'command' in tests[test]:
-            command = tests[test]['command']
-          statistics[test] = Test(command,
-                                  max(tests[test]['time'],
-                                      statistics[test].time),
-                                  statistics[test].passing_count + 1,
-                                  statistics[test].not_passing_count)
+        statistics[test] = Test(command,
+                                max(tests[test]['time'],
+                                    statistics[test].time),
+                                statistics[test].passing_count + 1,
+                                statistics[test].not_passing_count)
       else:
-        # TODO(ihf): We get a bump due to flaky tests in the expectations file.
-        # While this is intended it should be handled cleaner as it impacts
-        # the computed pass rate.
         statistics[test] = Test(command,
                                 statistics[test].time,
                                 statistics[test].passing_count,
@@ -210,7 +210,7 @@ def get_max_passing(statistics):
   return max_passing_count
 
 
-def get_passing_tests(statistics):
+def get_passing_tests(statistics, expectations):
   """
   Gets a list of all tests that never failed and have a maximum pass count.
   """
@@ -219,7 +219,8 @@ def get_passing_tests(statistics):
   for test in statistics:
     if (statistics[test].passing_count == max_passing_count and
         statistics[test].not_passing_count == 0):
-      tests.append(test)
+      if test not in expectations:
+        tests.append(test)
   return sorted(tests)
 
 
@@ -252,13 +253,21 @@ def process_gpu_family(family, family_root):
   the result log into |slices| runable scripts.
   """
   print('--> Processing "%s".' % family, file=sys.stderr)
-  main_files = get_log_filepaths(family_root)
-  d = load_log_files(main_files)
-  statistics = get_test_statistics(d)
-  passing_tests = get_passing_tests(statistics)
   piglit_path = PIGLIT_PATH
   if family == 'other':
     piglit_path = PIGLIT64_PATH
+
+  log_dict = load_files(get_filepaths(family_root, 'results\.json$'))
+  # Load all expectations but ignore suggested.
+  exp_dict = load_files(get_filepaths(family_root, 'expectations.*\.json$'))
+  statistics = get_test_statistics(log_dict)
+  expectations = compute_expectations(exp_dict, statistics, family, piglit_path)
+  # Try to help the person updating piglit by collecting the variance
+  # across different log files into one expectations file per family.
+  output_suggested_expectations(expectations, family, family_root)
+
+  # Now start computing the new test scripts.
+  passing_tests = get_passing_tests(statistics, expectations)
 
   slices = OUTPUT_FILE_SLICES
   current_slice = 1
@@ -321,34 +330,77 @@ def process_gpu_family(family, family_root):
   print('Total max runtime on "%s" for %d passing tests is %.1f seconds.' %
           (family, num_pass_total, time_total), file=sys.stderr)
 
-  # Try to help the person updating piglit by collecting the variance
-  # across different log files into one expectations file per family.
-  output_suggested_expectations(statistics, family, family_root)
+
+def insert_expectation(expectations, test, expectation):
+  """
+  Insert test with expectation into expectations directory.
+  """
+  if not test in expectations:
+    # Just copy the whole expectation.
+    expectations[test] = expectation
+  else:
+    # Copy over known fields one at a time but don't overwrite existing.
+    expectations[test]['result'] = expectation['result']
+    if (not 'crbug' in expectations[test] and 'crbug' in expectation):
+      expectations[test]['crbug'] = expectation['crbug']
+    if (not 'comment' in expectations[test] and 'comment' in expectation):
+      expectations[test]['comment'] = expectation['comment']
+    if (not 'command' in expectations[test] and 'command' in expectation):
+      expectations[test]['command'] = expectation['command']
+    if (not 'pass rate' in expectations[test] and 'pass rate' in expectation):
+      expectations[test]['pass rate'] = expectation['pass rate']
 
 
-def output_suggested_expectations(statistics, family, family_root):
+def compute_expectations(exp_dict, statistics, family, piglit_path):
   """
   Analyze intermittency and output suggested test expectations.
-  Test expectations are dictionaries with the same structure as logs.
+  The suggested test expectation
+  Test expectations are dictionaries with roughly the same structure as logs.
   """
   flaky_tests = get_intermittent_tests(statistics)
   print('Encountered %d tests that do not always pass in "%s" logs.' %
         (len(flaky_tests), family), file=sys.stderr)
 
-  if not flaky_tests:
-    return
-
   max_passing = get_max_passing(statistics)
   expectations = {}
+  # Merge exp_dict which we loaded from disk into new expectations.
+  for filename in exp_dict:
+    for test in exp_dict[filename]['tests']:
+      expectation = exp_dict[filename]['tests'][test]
+      # Historic results not considered flaky as pass rate makes no sense
+      # without current logs.
+      expectation['result'] = 'skip'
+      if 'pass rate' in expectation:
+        expectation.pop('pass rate')
+      # Overwrite historic commands with recently observed ones.
+      if test in statistics:
+        expectation['command'] = cleanup_command(statistics[test].command,
+                                                 piglit_path)
+        insert_expectation(expectations, test, expectation)
+      else:
+        print ('Historic test [%s] not found in new logs. '
+               'Dropping it from expectations.' % test, file=sys.stderr)
+
+  # Handle the computed flakiness from the result logs that we just processed.
   for test in flaky_tests:
     pass_rate = statistics[test].passing_count / float(max_passing)
+    command = statistics[test].command
     # Loading a json converts everything to string anyways, so save it as such
     # and make it only 2 significiant digits.
-    expectations[test] = {'result': 'flaky', 'pass rate' : '%.2f' % pass_rate}
+    expectation = {'result': 'flaky',
+                   'pass rate': '%.2f' % pass_rate,
+                   'command': command}
+    insert_expectation(expectations, test, expectation)
 
-  filename = os.path.join(family_root, 'expectations_%s_results.json' % family)
+  return expectations
+
+
+def output_suggested_expectations(expectations, family, family_root):
+  filename = os.path.join(family_root,
+                          'suggested_exp_to_rename_%s.json' % family)
   with open(filename, 'w+') as f:
-    json.dump({'tests': expectations}, f, indent=2, sort_keys=True)
+    json.dump({'tests': expectations}, f, indent=2, sort_keys=True,
+              separators=(',', ': '))
 
 
 def get_gpu_families(root):
