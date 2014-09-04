@@ -76,11 +76,38 @@ class platform_UdevVars(test.test):
     def _verify_roles(self):
         """Verify that POWERD_ROLE was set on devices as expected."""
 
-        # TODO(chromium:399007) Adapt this to the actual device characteristics.
+        # TODO(chromium:410968): Consider moving this to USE flags instead of
+        # listing devices here.
+        boards_with_touchscreen = ['link', 'samus']
+        boards_maybe_touchscreen = ['rambi', 'peppy', 'glimmer', 'clapper',
+                                    'nyan_big', 'nyan_blaze']
+        boards_chromebox = ['tricky', 'mccloud', 'zako', 'panther', 'beltino',
+                            'stumpy']
+        boards_aio = ['nyan_kitty', 'tiny', 'anglar', 'monroe']
+
+        expect_keyboard = None
+        expect_touchpad = None
+        expect_touchscreen = None
+
+        board = utils.get_board()
+        if board in boards_chromebox or board in boards_aio:
+            expect_keyboard = [0]
+            expect_touchpad = [0]
+        else:
+            expect_keyboard = [1]
+            expect_touchpad = [1]
+
+        if board in boards_with_touchscreen:
+            expect_touchscreen = [1]
+        elif board in boards_maybe_touchscreen:
+            expect_touchscreen = [0, 1]
+        else:
+            expect_touchscreen = [0]
+
         expected_num_per_role = [
-                ('internal_keyboard', [1]),
-                ('internal_touchpad', [1]),
-                ('internal_touchscreen', [1]),
+                ('internal_keyboard', expect_keyboard),
+                ('internal_touchpad', expect_touchpad),
+                ('internal_touchscreen', expect_touchscreen),
             ]
 
         for role, expected_num in expected_num_per_role:
