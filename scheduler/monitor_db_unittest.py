@@ -15,6 +15,7 @@ from autotest_lib.scheduler import pidfile_monitor
 from autotest_lib.scheduler import scheduler_config, gc_stats
 from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.scheduler import scheduler_models
+from autotest_lib.client.common_lib import global_config
 
 _DEBUG = False
 
@@ -103,6 +104,7 @@ class BaseSchedulerTest(unittest.TestCase,
         connection_manager = scheduler_lib.ConnectionManager(autocommit=False)
         self.god.stub_with(connection_manager, 'db_connection', self._database)
         self.god.stub_with(monitor_db, '_db_manager', connection_manager)
+        self.god.stub_with(monitor_db, '_db', self._database)
 
         # These tests only make sense if hosts are acquired inline with the
         # rest of the tick.
@@ -115,6 +117,10 @@ class BaseSchedulerTest(unittest.TestCase,
                            '/test/path')
         self.god.stub_with(drone_manager.instance(), '_temporary_directory',
                            '/test/path/tmp')
+        self.god.stub_with(drone_manager.instance(), 'initialize',
+                           lambda *args: None)
+        self.god.stub_with(drone_manager.instance(), 'execute_actions',
+                           lambda *args: None)
 
         monitor_db.initialize_globals()
         scheduler_models.initialize_globals()
@@ -404,6 +410,31 @@ class DispatcherSchedulingTest(BaseSchedulerTest):
 #                [self.label4.id, self.label7.id, self.label6.id]))
 #        self.assertEquals(1, host_scheduler._get_host_atomic_group_id(
 #                [self.label7.id, self.label5.id]))
+
+
+    def test_no_execution_subdir_not_found(self):
+        """Reproduce bug crosbug.com/334353 and recover from it."""
+
+        global_config.global_config.override_config_value(
+                'SCHEDULER', 'drones', 'localhost')
+
+        job = self._create_job(hostless=True)
+
+        # Ensure execution_subdir is set before status
+        original_set_status = scheduler_models.HostQueueEntry.set_status
+        def fake_set_status(hqe, *args, **kwargs):
+            self.assertEqual(hqe.execution_subdir, 'hostless')
+            original_set_status(hqe, *args, **kwargs)
+
+        self.god.stub_with(scheduler_models.HostQueueEntry, 'set_status',
+                           fake_set_status)
+
+        self._dispatcher._schedule_new_jobs()
+
+        hqe = job.hostqueueentry_set.all()[0]
+        self.assertEqual(models.HostQueueEntry.Status.STARTING, hqe.status)
+        self.assertEqual('hostless', hqe.execution_subdir)
+
 
     def test_only_schedule_queued_entries(self):
         self._create_job(metahosts=[1])

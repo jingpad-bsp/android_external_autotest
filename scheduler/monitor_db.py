@@ -729,6 +729,23 @@ class BaseDispatcher(object):
         @param queue_entry: The queue_entry representing the hostless job.
         """
         self.add_agent_task(HostlessQueueTask(queue_entry))
+
+        # Need to set execution_subdir before setting the status:
+        # After a restart of the scheduler, agents will be restored for HQEs in
+        # Starting, Running, Gathering, Parsing or Archiving. To do this, the
+        # execution_subdir is needed. Therefore it must be set before entering
+        # one of these states.
+        # Otherwise, if the scheduler was interrupted between setting the status
+        # and the execution_subdir, upon it's restart restoring agents would
+        # fail.
+        # Is there a way to get a status in one of these states without going
+        # through this code? Following cases are possible:
+        # - If it's aborted before being started:
+        #     active bit will be 0, so there's nothing to parse, it will just be
+        #     set to completed by _find_aborting. Critical statuses are skipped.
+        # - If it's aborted or it fails after being started:
+        #     It was started, so this code was executed.
+        queue_entry.update_field('execution_subdir', 'hostless')
         queue_entry.set_status(models.HostQueueEntry.Status.STARTING)
 
 
@@ -1266,7 +1283,6 @@ class HostlessQueueTask(AbstractQueueTask):
 
 
     def prolog(self):
-        self.queue_entries[0].update_field('execution_subdir', 'hostless')
         super(HostlessQueueTask, self).prolog()
 
 
