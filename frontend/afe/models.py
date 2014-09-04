@@ -382,6 +382,12 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
                                          'labels',
                                          'shard'])
 
+
+    def custom_deserialize_relation(self, link, data):
+        assert link == 'shard'
+        self.shard = Shard.deserialize(data)
+
+
     # Note: Only specify foreign keys here, specify all native host columns in
     # rdb_model_extensions instead.
     Protection = host_protections.Protection
@@ -819,12 +825,16 @@ class AclGroup(dbmodels.Model, model_logic.ModelExtensions):
 
 
     def save(self, *args, **kwargs):
-        change = bool(self.id)
-        if change:
+        old_aclgroup = None
+        try:
             # Check the original object for an ACL violation
-            AclGroup.objects.get(id=self.id).check_for_acl_violation_acl_group()
+            old_aclgroup = AclGroup.objects.get(
+                id=self.id).check_for_acl_violation_acl_group()
+        except AclGroup.DoesNotExist:
+            pass
+
         super(AclGroup, self).save(*args, **kwargs)
-        self.perform_after_save(change)
+        self.perform_after_save(bool(old_aclgroup))
 
 
     class Meta:
@@ -1042,6 +1052,19 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
                                          'hostqueueentry_set',
                                          'jobkeyval_set',
                                          'shard'])
+
+
+    def _deserialize_relation(self, link, data):
+        if link in ['hostqueueentry_set', 'jobkeyval_set']:
+            for obj in data:
+                obj['job_id'] = self.id
+
+        super(Job, self)._deserialize_relation(link, data)
+
+
+    def custom_deserialize_relation(self, link, data):
+        assert link == 'shard'
+        self.shard = Shard.deserialize(data)
 
 
     # TIMEOUT is deprecated.
@@ -1336,6 +1359,12 @@ class HostQueueEntry(dbmodels.Model, model_logic.ModelExtensions):
     """Represents a host queue entry."""
 
     SERIALIZATION_LINKS_TO_FOLLOW = set(['meta_host'])
+
+
+    def custom_deserialize_relation(self, link, data):
+        assert link == 'meta_host'
+        self.meta_host = Label.deserialize(data)
+
 
     Status = host_queue_entry_states.Status
     ACTIVE_STATUSES = host_queue_entry_states.ACTIVE_STATUSES

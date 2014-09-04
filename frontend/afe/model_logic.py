@@ -1019,6 +1019,80 @@ class ModelExtensions(rdb_model_extensions.ModelValidators):
         return attr.serialize()
 
 
+    @classmethod
+    def deserialize(cls, data):
+        """Deserializes an object's representation and saves it to the database.
+
+        This takes the result of the serialize method and creates objects
+        in the database that are just like the original. If an object already
+        exists, it will not be overwritten.
+
+        @param data: Representation of an object and its dependencies, as
+                     returned by serialize.
+
+        @returns: The object represented by data if it didn't exist before,
+                  otherwise the object that existed before and has the same type
+                  and id as the one described by data.
+        """
+        if data is None:
+            return None
+
+        try:
+            return cls.objects.get(id=data['id'])
+        except cls.DoesNotExist:
+            return cls._deserialize_new_object(data)
+
+    @classmethod
+    def _deserialize_new_object(cls, data):
+        """Deserialize an object, that does not yet exist in the database.
+
+        The caller has to ensure an object with the same type and id doesn't yet
+        exist in the database.
+
+        @param data: Representation of an object and its dependencies, as
+                     returned by serialize.
+
+        @returns: The object represented by data.
+        """
+        instance = cls()
+        links_to_related_tuples = []
+        for link, value in data.iteritems():
+            if link in cls.SERIALIZATION_LINKS_TO_FOLLOW:
+                # It's a foreign key
+                links_to_related_tuples.append((link, value))
+            else:
+                # It's a local attribute
+                setattr(instance, link, value)
+        instance.save()
+
+        for link, value in links_to_related_tuples:
+            instance._deserialize_relation(link, value)
+        instance.save()
+
+        return instance
+
+
+    def custom_deserialize_relation(self, link, data):
+        raise NotImplementedError(
+            'custom_deserialize_relation must be implemented by subclass %s '
+            'for relation %s' % (type(self), link))
+
+
+    def _deserialize_relation(self, link, data):
+        field = getattr(self, link)
+
+        if field and hasattr(field, 'all'):
+            self._deserialize_2m_relation(link, data, field.model)
+        else:
+            self.custom_deserialize_relation(link, data)
+
+
+    def _deserialize_2m_relation(self, link, data, related_class):
+        relation_set = getattr(self, link)
+        for serialized in data:
+            relation_set.add(related_class.deserialize(serialized))
+
+
 class ModelWithInvalid(ModelExtensions):
     """
     Overrides model methods save() and delete() to support invalidation in
