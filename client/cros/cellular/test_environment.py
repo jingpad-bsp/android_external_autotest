@@ -228,7 +228,8 @@ class CellularPseudoMMTestEnvironment(CellularTestEnvironment):
         """
         super(CellularPseudoMMTestEnvironment, self).__init__(**kwargs)
         self._context_managers.append(
-                pseudomodem_context.PseudoModemManagerContext(*pseudomm_args))
+                pseudomodem_context.PseudoModemManagerContext(
+                        True, bus=self.bus, *pseudomm_args))
 
 
 class CellularWardModemTestEnvironment(CellularTestEnvironment):

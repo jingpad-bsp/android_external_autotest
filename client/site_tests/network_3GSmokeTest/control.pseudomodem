@@ -28,10 +28,10 @@ from autotest_lib.client.cros.cellular import test_environment
 
 # 3GPP
 test_env = test_environment.CellularPseudoMMTestEnvironment(
-        pseudomm_args=({'family': '3GPP'}))
+        pseudomm_args=({'family': '3GPP'},))
 job.run_test('network_3GSmokeTest', tag='pseudomodem_3GPP', test_env=test_env)
 
 # CDMA
 test_env = test_environment.CellularPseudoMMTestEnvironment(
-        pseudomm_args=({'family': 'CDMA'}))
+        pseudomm_args=({'family': 'CDMA'},))
 job.run_test('network_3GSmokeTest', tag='pseudomodem_CDMA', test_env=test_env)
