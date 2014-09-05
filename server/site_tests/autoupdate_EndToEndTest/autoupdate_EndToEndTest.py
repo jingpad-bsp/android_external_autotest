@@ -372,6 +372,7 @@ class OmahaDevserver(object):
 
         # Temporary files for various devserver outputs.
         self._devserver_logfile = None
+        self._devserver_stdoutfile = None
         self._devserver_portfile = None
         self._devserver_pidfile = None
         self._devserver_static_dir = None
@@ -379,10 +380,11 @@ class OmahaDevserver(object):
 
     def _cleanup_devserver_files(self):
         """Cleans up the temporary devserver files."""
-        for filename in (self._devserver_logfile, self._devserver_portfile,
-                         self._devserver_pidfile):
-           if filename:
-              self._devserver_ssh.run('rm -f %s' % filename, ignore_status=True)
+        for filename in (self._devserver_logfile, self._devserver_stdoutfile,
+                         self._devserver_portfile, self._devserver_pidfile):
+            if filename:
+                self._devserver_ssh.run('rm -f %s' % filename,
+                                        ignore_status=True)
 
         if self._devserver_static_dir:
             self._devserver_ssh.run('rm -rf %s' % self._devserver_static_dir,
@@ -487,6 +489,8 @@ class OmahaDevserver(object):
 
         # Allocate temporary files for various server outputs.
         self._devserver_logfile = self._create_tempfile_on_devserver('log')
+        self._devserver_stdoutfile = self._create_tempfile_on_devserver(
+                'stdout')
         self._devserver_portfile = self._create_tempfile_on_devserver('port')
         self._devserver_pidfile = self._create_tempfile_on_devserver('pid')
         self._devserver_static_dir = self._create_tempfile_on_devserver(
@@ -510,7 +514,8 @@ class OmahaDevserver(object):
                 '--host_log',
                 '--static_dir=%s' % self._devserver_static_dir,
         ]
-        remote_cmd = '( %s ) </dev/null >/dev/null 2>&1 &' % ' '.join(cmdlist)
+        remote_cmd = '( %s ) </dev/null >%s 2>&1 &' % (
+                ' '.join(cmdlist), self._devserver_stdoutfile)
 
         logging.info('Starting devserver with %r', remote_cmd)
         try:
@@ -584,12 +589,20 @@ class OmahaDevserver(object):
         return self._get_devserver_file_content(self._devserver_logfile)
 
 
+    def _get_devserver_stdout(self):
+        """Obtain the devserver output in stdout and stderr."""
+        return self._get_devserver_file_content(self._devserver_stdoutfile)
+
+
     def _dump_devserver_log(self, logging_level=logging.ERROR):
         """Dump the devserver log to the autotest log.
 
         @param logging_level: logging level (from logging) to log the output.
         """
-        logging.log(logging_level, self._get_devserver_log())
+        logging.log(logging_level, "devserver stdout and stderr:\n" +
+                    self._get_devserver_log())
+        logging.log(logging_level, "devserver logfile:\n" +
+                    self._get_devserver_log())
 
 
     @staticmethod
