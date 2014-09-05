@@ -411,7 +411,7 @@ class OmahaDevserver(object):
         if result.exit_status != 0:
             raise OmahaDevserverFailedToStart(
                     'Could not create a temporary %s file on the devserver, '
-                    'error output:\n%s' % (label, result.stderr))
+                    'error output: "%s"' % (label, result.stderr))
         return result.stdout.strip()
 
     @staticmethod
