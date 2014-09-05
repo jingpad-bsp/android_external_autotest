@@ -10,6 +10,7 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_ui
 from autotest_lib.client.cros.graphics import graphics_utils
+from optparse import OptionParser
 
 class graphics_Piglit(test.test):
     """
@@ -35,7 +36,14 @@ class graphics_Piglit(test.test):
             self.GSC.finalize()
             self.write_perf_keyval(keyvals)
 
-    def run_once(self, test='cros-driver.py'):
+    def run_once(self, test='cros-driver.py', args=[]):
+        parser = OptionParser()
+        parser.add_option('-t',
+                          '--test-name',
+                          dest='testName',
+                          default='',
+                          help='Run a specific piglit test.')
+        options, args = parser.parse_args(args)
         gpu_family = utils.get_gpu_family()
         logging.info('Detected gpu family %s.', gpu_family)
         # TODO(djkurtz): Delete this once piglit runs on mali/tegra.
@@ -59,6 +67,8 @@ class graphics_Piglit(test.test):
         # concurrently. Strictly serialize this using --no-concurrency.
         # Now --dmesg also implies no concurrency but we want to be explicit.
         flags = 'run -v --dmesg --no-concurrency'
+        if (options.testName != ''):
+            flags = flags + ' -t ' + options.testName
         cmd = 'python %s %s %s %s' % (run_path, flags, test, self.outputdir)
         # Pipe stdout and stderr into piglit-run.log for later analysis.
         cmd = cmd + ' | tee ' + log_path

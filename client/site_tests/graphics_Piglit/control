@@ -38,5 +38,5 @@ The original tests have been taken from
 http://people.freedesktop.org/~nh/piglit/
 """
 
-job.run_test('graphics_Piglit')
+job.run_test('graphics_Piglit', args=args)
 
