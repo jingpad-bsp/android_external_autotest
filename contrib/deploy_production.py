@@ -19,7 +19,7 @@ TEST_INSTANCE = infra.test_instance()
 
 # List of deployment actions that can be requested, in the order
 # in which they'll be executed.
-deploy_actions = [
+DEPLOY_ACTIONS = [
     ('sync', ALL_SERVERS.union(EXTRAS), 'cd /usr/local/autotest ; '
                                          'repo sync'),
     ('build_externals', ALL_SERVERS, 'cd /usr/local/autotest ; '
@@ -42,68 +42,104 @@ deploy_actions = [
     ('stats_poller', {'chromeos-mcp'}, 'sudo service stats-poller restart'),
 ]
 
-print 'Updating checkout...'
-subprocess.check_call('git fetch', shell=True)
-start = subprocess.check_output('git ls-remote cros prod',
-                shell=True).split()[0]
-end = subprocess.check_output('git ls-remote cros master',
-                shell=True).split()[0]
-changes = subprocess.check_output('git log %s..%s --oneline' % (start, end),
-                shell=True)
-deploys = subprocess.check_output(
+
+def update_sources():
+    print '\nUpdating checkout...'
+    subprocess.check_call('git fetch', shell=True)
+    start = subprocess.check_output('git ls-remote cros prod',
+                    shell=True).split()[0]
+    end = subprocess.check_output('git ls-remote cros master',
+                    shell=True).split()[0]
+    return start, end
+
+
+def get_deployment_actions(start, end, extra_actions):
+    actions = subprocess.check_output(
                         'git log %s..%s | grep DEPLOY= | '
                         'sed "s/DEPLOY=//" | tr "\n-" ",_"' %
                                   (start, end), shell=True).split(',')
+    action_set = set([x.strip() for x in actions if x])
+    # Always sync.
+    action_set.add('sync')
+    action_set = action_set.union(set(extra_actions))
+    valid_actions = set([deploy[0] for deploy in DEPLOY_ACTIONS])
+    unknowns = action_set - valid_actions
+    if unknowns:
+        raise Exception('Unknown deploy actions: %s' % list(unknowns))
+    return [deploy for deploy in DEPLOY_ACTIONS
+                          if deploy[0] in action_set]
 
-deploys = set([x.strip() for x in deploys if x])
-# Always sync.
-deploys.add('sync')
-deploys = deploys.union(set(sys.argv[1:]))
 
-valid_deploys = set([deploy[0] for deploy in deploy_actions])
-unknowns = deploys - valid_deploys
-if unknowns:
-    raise Exception('Unknown deploy actions: %s' % list(unknowns))
+def pre_push_test():
+    print '\nRunning cbf test...'
+    if not TESTING:
+        infra.execute_command(TEST_INSTANCE, '~/update_autotest')
+        print infra.execute_command(TEST_INSTANCE,
+                                    'cd /usr/local/autotest ;'
+                                    './site_utils/test_push.py')
+    else:
+        print '    would test on %s' % TEST_INSTANCE
 
-if not TESTING:
-    print 'Running cbf test...'
-    infra.execute_command(TEST_INSTANCE, '~/update_autotest')
-    print infra.execute_command(TEST_INSTANCE, 'cd /usr/local/autotest ;'
-                                               './site_utils/test_push.py')
 
-if not TESTING:
-    print 'Pushing prod...'
-    subprocess.check_call('git rebase cros/master prod', shell=True)
-    subprocess.check_call('git push cros prod:prod', shell=True)
+def rebase_prod_branch():
+    print '\nPushing prod...'
+    if not TESTING:
+        subprocess.check_call('git rebase cros/master prod', shell=True)
+        subprocess.check_call('git push cros prod:prod', shell=True)
+    else:
+        print '    testing - skip push'
 
-print 'Deploying...'
-actions = []
-deploy_order = [deploy for deploy in deploy_actions
-                      if deploy[0] in deploys]
-for deploy, servers, action in deploy_order:
-    for server in servers:
-        print '%s $ %s' % (server, action)
-        if not TESTING:
-            infra.execute_command(server, action)
-        actions.append((server, deploy))
 
-user = getpass.getuser()
-usermail = '%s@google.com' % user
+def run_deployment_actions(action_list):
+    print '\nDeploying...'
+    summary_list = []
+    for deploy, servers, action in action_list:
+        for server in servers:
+            print '%s $ %s' % (server, action)
+            if not TESTING:
+                infra.execute_command(server, action)
+            summary_list.append('%s %s' % (server, deploy))
+    return summary_list
 
-EMAIL = """\
+
+EMAIL_TEMPLATE = """\
 Subject: push to prod %(start)s..%(end)s
 From: %(user)s <%(usermail)s>
 To: ChromeOS Lab Infrastructure <chromeos-lab-infrastructure@google.com>
 
-
 %(changes)s
-
 %(actions)s
-""" % dict(start=start[:7], end=end[:7],
-           changes=changes, user=user, usermail=usermail,
-           actions='\n'.join(['%s %s' % (x,y) for x, y in actions]))
+"""
 
-print EMAIL
-smtp = smtplib.SMTP('localhost')
-if not TESTING:
-    smtp.sendmail(usermail, ['chromeos-lab-infrastructure@google.com'], EMAIL)
+def send_email(start, end, summary_list):
+    print '\nSend e-mail...'
+
+    changes = subprocess.check_output(
+                  'git log %s..%s --oneline' % (start, end),
+                  shell=True)
+    user = getpass.getuser()
+    usermail = '%s@google.com' % user
+
+    email_message = EMAIL_TEMPLATE % dict(
+            start=start[:7], end=end[:7], changes=changes,
+            user=user, usermail=usermail,
+            actions='\n'.join(summary_list))
+    print email_message
+    if not TESTING:
+        smtp = smtplib.SMTP('localhost')
+        smtp.sendmail(usermail,
+                      ['chromeos-lab-infrastructure@google.com'],
+                      email_message)
+
+
+def main(argv):
+    start, end = update_sources()
+    action_list = get_deployment_actions(start, end, argv)
+    pre_push_test()
+    rebase_prod_branch()
+    summary_list = run_deployment_actions(action_list)
+    send_email(start, end, summary_list)
+
+
+if __name__ == '__main__':
+  main(sys.argv[1:])
