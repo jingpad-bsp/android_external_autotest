@@ -128,13 +128,10 @@ class RPMDispatcher(object):
         powerunit_info = utils.PowerUnitInfo(**powerunit_info_dict)
         logging.info('Received request to set device: %s to state: %s',
                      powerunit_info.device_hostname, new_state)
-        result = False
-        while not result:
-            rpm_controller = self._get_rpm_controller(
-                    powerunit_info.powerunit_hostname,
-                    powerunit_info.hydra_hostname)
-            result = rpm_controller.queue_request(powerunit_info, new_state)
-        return result
+        rpm_controller = self._get_rpm_controller(
+                powerunit_info.powerunit_hostname,
+                powerunit_info.hydra_hostname)
+        return rpm_controller.queue_request(powerunit_info, new_state)
 
 
     def _get_rpm_controller(self, rpm_hostname, hydra_hostname=None):
