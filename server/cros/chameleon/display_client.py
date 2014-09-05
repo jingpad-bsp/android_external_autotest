@@ -104,9 +104,11 @@ class DisplayClient(object):
     def get_external_connector_name(self):
         """Gets the name of the external output connector.
 
-        @return The external output connector name as a string.
+        @return The external output connector name as a string; None if nothing
+                is connected.
         """
-        return self._display_proxy.get_external_connector_name()
+        result = self._display_proxy.get_external_connector_name()
+        return result if result else None
 
 
     def get_internal_connector_name(self):

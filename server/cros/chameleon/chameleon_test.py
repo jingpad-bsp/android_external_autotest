@@ -295,17 +295,26 @@ class ChameleonTest(test.test):
         return connector
 
 
-    def check_external_display_connector(self, expected_connector):
+    def check_external_display_connector(self, expected_connector, timeout=5):
         """Checks the connecting status of external display on DUT.
 
         @param expected_connector: Name of the expected connector or None
                 if no external monitor is expected.
+        @param timeout: Duration in second to retry checking the connector.
         @raise error.TestFail if the check does not pass.
         """
         current_connector = self.display_client.get_external_connector_name()
-        logging.info('External display connector: %s', current_connector)
         if not current_connector:
             current_connector = None
+        now = time.time()
+        end_time = now + timeout
+        while expected_connector != current_connector and now < end_time:
+            logging.info('Expected to see %s but got %s',
+                    (expected_connector, current_connector))
+            time.sleep(0.5)
+            now = time.time()
+            current_connector = self.display_client.get_external_connector_name()
+
         if expected_connector != current_connector:
             if expected_connector:
                 error_message = 'Expected to see %s but got %s' % (
@@ -314,6 +323,7 @@ class ChameleonTest(test.test):
                 error_message = ('Do not expect to see external monitor '
                         'but got %s' % (current_connector))
             raise error.TestFail(error_message)
+        logging.info('External display connector: %s', current_connector)
 
 
     def check_screen_resolution(self, expected_resolution, tag='',
