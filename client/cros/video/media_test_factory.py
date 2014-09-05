@@ -8,12 +8,13 @@ import os
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros.video import bp_image_comparer, \
-    upload_on_fail_comparer, golden_image_downloader,\
-    import_screenshot_capturer, media_player,\
-    method_logger, rgb_image_comparer,\
-    screenshot_file_namer, sequence_generator, verifier, \
-    video_screenshot_collector
+from autotest_lib.client.cros.video import golden_image_downloader
+from autotest_lib.client.cros.video import import_screenshot_capturer
+from autotest_lib.client.cros.video import media_player
+from autotest_lib.client.cros.video import method_logger
+from autotest_lib.client.cros.video import screenshot_file_namer
+from autotest_lib.client.cros.video import sequence_generator
+from autotest_lib.client.cros.video import video_screenshot_collector
 
 
 class MediaTestFactory(object):
@@ -41,11 +42,6 @@ class MediaTestFactory(object):
     sequence not caring whether it is random or it is with an interval.
 
     """
-
-
-    BP_COMPARER = 'bp' # biopic comparer
-    RGB_COMPARER = 'rgb_comparer' # RGB pixel by pixel comparer
-    RGB_BP_COMPARER = 'rgb_bp_comparer' # RGB - local comparer, biopic - remote.
 
 
     @method_logger.log
@@ -165,27 +161,6 @@ class MediaTestFactory(object):
 
         self.capture_sequence_style = self.parser.get(section,
                                                       'capture_sequence_style')
-
-        version_nodots = utils.get_chromeos_release_version().replace('.', '_')
-
-        biopic_proj_specs = [self.parser.get('biopic', 'project_name'),
-                             self.device_under_test,
-                             self.video_format,
-                             self.video_def,
-                             version_nodots]
-
-        self.biopic_project_name = '.'.join(biopic_proj_specs)
-
-        self.biopic_contact_email = self.parser.get('biopic', 'contact_email')
-        self.biopic_wait_time = self.parser.getint('biopic',
-                                                   'wait_time_btwn_comparisons')
-        self.biopic_num_upload_retries = self.parser.getint('biopic',
-                                                            'upload_retries')
-
-        self.desired_comp_h = self.parser.getint('biopic', 'desired_comp_h')
-        self.desired_comp_w = self.parser.getint('biopic', 'desired_comp_w')
-        self.rgb_pixel_thres = self.parser.getint('biopic',
-                                                  'rgb_pixel_threshold')
 
 
     @method_logger.log
@@ -349,44 +324,3 @@ class MediaTestFactory(object):
         return video_screenshot_collector.VideoScreenShotCollector(player,
                                                                    namer,
                                                                    capturer)
-
-
-    def make_bp_image_comparer(self):
-        """
-        @return: a bp-based image comparer.
-
-        """
-        return bp_image_comparer.BpImageComparer(self.biopic_project_name,
-                                                 self.biopic_contact_email,
-                                                 self.biopic_wait_time,
-                                                 self.biopic_num_upload_retries)
-
-
-    def make_image_verifier(self, comparer_to_use, stop_on_first_failure=False):
-        """
-        Creates a verifier to verify test images against reference images.
-
-        @param comparer_to_use: string, type of image comparer desired.
-        @param stop_on_first_failure: stop test on first test image that is not
-                                      equal to a golden image.
-
-        @return: object, a verifier object.
-
-        """
-
-        comparer = None
-
-        if comparer_to_use == MediaTestFactory.BP_COMPARER:
-            comparer = self.make_bp_image_comparer()
-
-        elif comparer_to_use == MediaTestFactory.RGB_COMPARER:
-            comparer = rgb_image_comparer.RGBImageComparer(self.rgb_pixel_thres)
-
-        elif comparer_to_use == MediaTestFactory.RGB_BP_COMPARER:
-            comparer = upload_on_fail_comparer.UploadOnFailComparer(
-                    rgb_image_comparer.RGBImageComparer(self.rgb_pixel_thres),
-                    self.make_bp_image_comparer())
-
-        box = (0, 0, self.desired_comp_w, self.desired_comp_h)
-
-        return verifier.Verifier(comparer, stop_on_first_failure, box=box)

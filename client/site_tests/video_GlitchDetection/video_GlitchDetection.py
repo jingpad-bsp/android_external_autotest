@@ -2,11 +2,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.bin import test
+import os
+
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib.cros import chrome
-from autotest_lib.client.cros.video import sequence_generator,\
-    media_test_factory
+from autotest_lib.client.cros.image_comparison import image_comparison_factory
+from autotest_lib.client.cros.video import media_test_factory
+from autotest_lib.client.cros.video import sequence_generator
 
 
 class video_GlitchDetection(test.test):
@@ -44,20 +47,35 @@ class video_GlitchDetection(test.test):
 
         """
 
-        factory = media_test_factory.MediaTestFactory(browser.tabs[0],
+        test_factory = media_test_factory.MediaTestFactory(browser.tabs[0],
                                                       browser.http_server,
                                                       self.bindir, channel,
                                                       video_name,
                                                       video_format,
                                                       video_def)
 
-        golden_image_downloader = factory.make_golden_image_downloader()
-        screenshot_collector = factory.make_video_screenshot_collector()
-        comp = media_test_factory.MediaTestFactory.RGB_BP_COMPARER
-        verifier = factory.make_image_verifier(comparer_to_use=comp,
-                                               stop_on_first_failure=False)
+        img_comp_conf_path = os.path.join(test_factory.autotest_cros_video_dir,
+                                          'image_comparison.conf')
 
-        test_dir = factory.local_golden_images_dir
+        img_comp_factory = image_comparison_factory.ImageComparisonFactory(
+                img_comp_conf_path)
+
+        bp_proj_specs = [img_comp_factory.bp_base_projname,
+                         test_factory.device_under_test,
+                         video_format,
+                         video_def,
+                         utils.get_chromeos_release_version().replace('.', '_')]
+
+        bp_proj_name = '.'.join(bp_proj_specs)
+
+        comparer = img_comp_factory.make_upload_on_fail_comparer(bp_proj_name)
+
+        verifier = img_comp_factory.make_image_verifier(comparer)
+
+        golden_image_downloader = test_factory.make_golden_image_downloader()
+        screenshot_collector = test_factory.make_video_screenshot_collector()
+
+        test_dir = test_factory.local_golden_images_dir
 
         file_utils.rm_dir_if_exists(test_dir)
 
@@ -66,9 +84,9 @@ class video_GlitchDetection(test.test):
         file_utils.ensure_dir_exists(test_dir)
 
         timestamps = sequence_generator.generate_random_sequence(
-                factory.start_capture,
-                factory.stop_capture,
-                factory.samples_per_min)
+                test_factory.start_capture,
+                test_factory.stop_capture,
+                test_factory.samples_per_min)
 
         golden_images = golden_image_downloader.download_images(timestamps)
 

@@ -3,7 +3,8 @@
 # found in the LICENSE file.
 
 import logging, time
-from autotest_lib.client.cros.video import bp_http_client, method_logger
+from autotest_lib.client.cros.image_comparison import bp_http_client
+from autotest_lib.client.cros.video import method_logger
 
 
 class BpImageComparer(object):

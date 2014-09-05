@@ -7,8 +7,7 @@ import os
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import file_utils
-from autotest_lib.client.cros.video import bp_image_comparer,\
-    rgb_image_comparer, upload_on_fail_comparer, verifier
+from autotest_lib.client.cros.image_comparison import image_comparison_factory
 
 
 class ui_TestBase(test.test):
@@ -56,10 +55,8 @@ class ui_TestBase(test.test):
 
     WORKING_DIR = '/tmp/test'
     REMOTE_DIR = 'http://storage.googleapis.com/chromiumos-test-assets-public'
-    BIOPIC_PROJECT_NAME_PREFIX = 'chromeos.test.ui'
-    # TODO: Set up an alias so that anyone can monitor results.
-    BIOPIC_CONTACT_EMAIL = 'mussa@google.com'
-    BIOPIC_TIMEOUT_S = 1
+    AUTOTEST_CROS_UI_DIR = '/usr/local/autotest/cros/ui'
+    IMG_COMP_CONF_FILE = 'image_comparison.conf'
 
     version = 2
 
@@ -77,7 +74,13 @@ class ui_TestBase(test.test):
 
         """
 
-        project_specs = [ui_TestBase.BIOPIC_PROJECT_NAME_PREFIX,
+        img_comp_conf_path = os.path.join(ui_TestBase.AUTOTEST_CROS_UI_DIR,
+                                          ui_TestBase.IMG_COMP_CONF_FILE)
+
+        img_comp_factory = image_comparison_factory.ImageComparisonFactory(
+                img_comp_conf_path)
+
+        project_specs = [img_comp_factory.bp_base_projname,
                          utils.get_current_board(),
                          utils.get_chromeos_release_version().replace('.', '_'),
                          self.test_area]
@@ -106,18 +109,11 @@ class ui_TestBase(test.test):
 
         self.capture_screenshot(test_image_filepath)
 
-        bpcomparer = bp_image_comparer.BpImageComparer(
-                project_name,
-                ui_TestBase.BIOPIC_CONTACT_EMAIL,
-                ui_TestBase.BIOPIC_TIMEOUT_S)
+        comparer = img_comp_factory.make_upload_on_fail_comparer(project_name)
 
-        comparer = upload_on_fail_comparer.UploadOnFailComparer(
-                rgb_image_comparer.RGBImageComparer(rgb_pixel_threshold=0),
-                bpcomparer)
+        verifier = img_comp_factory.make_image_verifier(comparer)
 
-        v = verifier.Verifier(comparer, stop_on_first_failure=False)
-
-        v.verify(golden_image_local_path, test_image_filepath)
+        verifier.verify(golden_image_local_path, test_image_filepath)
 
         file_utils.rm_dir_if_exists(ui_TestBase.WORKING_DIR)
 
