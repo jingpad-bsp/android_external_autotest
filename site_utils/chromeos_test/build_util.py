@@ -216,10 +216,9 @@ def CreateUpdateZip(cros_checkout, staging_dir, image_file=TEST_IMAGE,
   # Use cros_generate_update_payload in the chroot to create update.gz.
   # TODO(dalecurtis): May need to add special failure case for lazy unmounts, no
   # sense in aborting if the only issue is we can't unmount the staging dir.
-  cmd = ('cros_sdk -- cros_generate_update_payload --image %s'
-         ' --output %s --patch_kernel' % (
-             os.path.join(in_chroot_dir, image_file),
-             os.path.join(update_path, 'update.gz')))
+  cmd = ('cros_sdk -- cros_generate_update_payload --image %s --output %s' %
+         (os.path.join(in_chroot_dir, image_file),
+          os.path.join(update_path, 'update.gz')))
 
   if source_image:
     cmd += ' --src_image %s' % os.path.join(in_chroot_dir, source_image)
