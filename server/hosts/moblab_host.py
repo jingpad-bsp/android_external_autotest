@@ -72,7 +72,7 @@ class MoblabHost(cros_host.CrosHost):
 
     def get_autodir(self):
         """Return the directory to install autotest for client side tests."""
-        return MOBLAB_AUTODIR
+        return self.autodir or MOBLAB_AUTODIR
 
 
     def run_as_moblab(self, command, **kwargs):
