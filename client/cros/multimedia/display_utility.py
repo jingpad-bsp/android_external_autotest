@@ -337,13 +337,3 @@ class DisplayUtility(object):
         """
         self._browser.tabs[index].Close()
         return True
-
-
-    def reconnect_output(self, output):
-        """Reconnects output.
-
-        @param output: The output name as a string.
-        """
-        utils.set_xrandr_output(output, False)
-        utils.set_xrandr_output(output, True)
-        return True

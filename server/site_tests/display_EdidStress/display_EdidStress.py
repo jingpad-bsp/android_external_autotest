@@ -46,8 +46,7 @@ class display_EdidStress(chameleon_test.ChameleonTest):
             self.chameleon_port.apply_edid(edid.Edid.from_file(filepath))
 
             try:
-                logging.info('Reconnect output...')
-                self.display_client.reconnect_output_and_wait()
+                self.reconnect_output()
 
                 chameleon_resolution = self.chameleon_port.get_resolution()
                 logging.info('See the resolution on Chameleon: %dx%d',

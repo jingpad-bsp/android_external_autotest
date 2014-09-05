@@ -169,18 +169,13 @@ class DisplayClient(object):
         return self._display_proxy.suspend_resume_bg(suspend_time)
 
 
-    def reconnect_output_and_wait(self, reconnect=True,
-            expected_display_count=2):
-        """Reconnects output and waits it available.
+    def wait_for_output(self, output, expected_display_count=2):
+        """Waits for the specified output to be connected.
 
-        @param reconnect: True to perform a re-connection from the DUT; False
-                otherwise.
+        @param output: The output name as a string.
         @param expected_display_count:
                 number of displays expected to be connected.
         """
-        output = self.get_external_connector_name()
-        if reconnect:
-            self._display_proxy.reconnect_output(output)
         self._display_proxy.wait_output_connected(output)
         utils.wait_for_value(lambda: (
                 len(self._display_proxy.get_display_info())),

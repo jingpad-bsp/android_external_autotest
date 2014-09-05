@@ -228,11 +228,17 @@ class ChameleonTest(test.test):
            self.display_client.connect()
 
 
-    def reconnect_output(self):
-        """Reconnects the output within DUT."""
+    def reconnect_output(self, unplug_duration_sec=0.5):
+        """Reconnects the output with an unplug followed by a plug.
 
+        @param unplug_duration_sec: duration of unplug in second.
+        """
         logging.info('Reconnect output...')
-        self.display_client.reconnect_output_and_wait()
+        output = self.display_client.get_external_connector_name()
+        self.chameleon_port.unplug()
+        time.sleep(unplug_duration_sec)
+        self.chameleon_port.plug()
+        self.display_client.wait_for_output(output)
 
 
     def cleanup(self):
