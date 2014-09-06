@@ -600,7 +600,7 @@ class OmahaDevserver(object):
         @param logging_level: logging level (from logging) to log the output.
         """
         logging.log(logging_level, "devserver stdout and stderr:\n" +
-                    self._get_devserver_log())
+                    self._get_devserver_stdout())
         logging.log(logging_level, "devserver logfile:\n" +
                     self._get_devserver_log())
 
