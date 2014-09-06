@@ -56,10 +56,18 @@ IGNORE_TABLES = ['performance_schema.cond_instances',
                  'performance_schema.setup_instruments',
                  'performance_schema.setup_timers',
                  'performance_schema.threads']
+
+# Conventional mysqldump schedules.
 _DAILY = 'daily'
 _WEEKLY = 'weekly'
 _MONTHLY = 'monthly'
-_SCHEDULER_TYPES = [_DAILY, _WEEKLY, _MONTHLY]
+
+# Contrary to a conventional mysql dump which takes O(hours) on large databases,
+# a host dump is the cheapest form of backup possible. We dump the output of a
+# of a mysql command showing all hosts and their pool labels to a text file that
+# is backed up to google storage.
+_ONLY_HOSTS = 'only_hosts'
+_SCHEDULER_TYPES = [_ONLY_HOSTS, _DAILY, _WEEKLY, _MONTHLY]
 
 
 class MySqlArchiver(object):
@@ -75,6 +83,7 @@ class MySqlArchiver(object):
     def __init__(self, scheduled_type, number_to_keep, gs_bucket):
         self._gs_dir = '/'.join([gs_bucket, scheduled_type])
         self._number_to_keep = number_to_keep
+        self._type = scheduled_type
 
 
     @staticmethod
@@ -103,11 +112,40 @@ class MySqlArchiver(object):
         return filename
 
 
-    @staticmethod
-    def _get_name():
-        """Returns the name to use for this mysql dump."""
-        return 'autotest-dump.%s.gz' % (
-                datetime.datetime.now().strftime('%y.%m.%d'))
+    def create_host_dump(self):
+        """Dumps hosts and their labels into a text file.
+
+        @return: The path to a tempfile containing a dump of
+            hosts and their pool labels.
+        """
+        user, password = self._get_user_pass()
+        _, filename = tempfile.mkstemp('autotest_db_dump')
+        logging.debug('Dumping hosts to file %s', filename)
+        utils.system(
+                'set -o pipefail; mysql -u %s -p%s chromeos_autotest_db -e '
+                '"select hostname, labels.name from afe_hosts as hosts join '
+                'afe_hosts_labels on hosts.id = afe_hosts_labels.host_id join '
+                'afe_labels as labels on labels.id = afe_hosts_labels.label_id '
+                'where labels.name like \'%%pool%%\';" > %s' %
+                (user, password, filename))
+        return filename
+
+
+    def dump(self):
+        """Creates a data dump based on the type of schedule.
+
+        @return: The path to a file containing the dump.
+        """
+        if self._type == _ONLY_HOSTS:
+            return self.create_host_dump()
+        return self.create_mysql_dump()
+
+
+    def _get_name(self):
+        """Returns the name of the dump as presented to google storage."""
+        file_type = 'gz' if self._type != _ONLY_HOSTS else 'txt'
+        return 'autotest-dump.%s.%s' % (
+                datetime.datetime.now().strftime('%y.%m.%d'), file_type)
 
 
     @staticmethod
@@ -128,7 +166,10 @@ class MySqlArchiver(object):
 
 
     def upload_to_google_storage(self, dump_file):
-        """Uploads the given |dump_file| to Google Storage."""
+        """Uploads the given |dump_file| to Google Storage.
+
+        @param dump_file: The path to the file containing the dump.
+        """
         cmd = '%(gs_util)s cp %(dump_file)s %(gs_dir)s/%(name)s'
         input_dict = dict(gs_util=_GSUTIL_BIN, dump_file=dump_file,
                           name=self._get_name(), gs_dir=self._gs_dir)
@@ -197,7 +238,7 @@ def main():
     logging_manager.configure_logging(test_importer.TestImporterLoggingConfig(),
                                       verbose=options.verbose)
     archiver = MySqlArchiver(options.type, options.keep, options.gs_bucket)
-    dump_file = archiver.create_mysql_dump()
+    dump_file = archiver.dump()
     archiver.upload_to_google_storage(dump_file)
     archiver.cleanup()
 
