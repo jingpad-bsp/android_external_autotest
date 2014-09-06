@@ -30,3 +30,5 @@ netfilter-queue,nfqueue,Yes,Yes,No,Yes,Yes
 warn_collector,root,No,No,No,No,No
 tlsdated-setter,root,No,No,No,No,No
 attestationd,attestation,No,No,No,No,No
+periodic_schedu,root,No,No,No,No,No
+esif_ufd,root,No,No,No,No,No
