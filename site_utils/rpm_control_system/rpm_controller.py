@@ -232,13 +232,24 @@ class RPMController(object):
             logging.info('Failed to set up logging through log server: %s', e)
         kwargs = {'powerunit_info':request['powerunit_info'],
                   'new_state':request['new_state']}
-        is_timeout_value, result_value = retry.timeout(
-                self.set_power_state,
-                args=(),
-                kwargs=kwargs,
-                timeout_sec=SET_POWER_STATE_TIMEOUT_SECONDS)
-        result.value = result_value
-        is_timeout.value = is_timeout_value
+        try:
+            is_timeout_value, result_value = retry.timeout(
+                    self.set_power_state,
+                    args=(),
+                    kwargs=kwargs,
+                    timeout_sec=SET_POWER_STATE_TIMEOUT_SECONDS)
+            result.value = result_value
+            is_timeout.value = is_timeout_value
+        except Exception as e:
+            # This method runs in a subprocess. Must log the exception,
+            # otherwise exceptions raised in set_power_state just get lost.
+            # Need to convert e to a str type, because our logging server
+            # code doesn't handle the conversion very well.
+            logging.error('Request to change %s to state %s failed: '
+                          'Raised exception: %s',
+                          request['powerunit_info'].device_hostname,
+                          request['new_state'], str(e))
+            raise e
 
 
     def queue_request(self, powerunit_info, new_state):
