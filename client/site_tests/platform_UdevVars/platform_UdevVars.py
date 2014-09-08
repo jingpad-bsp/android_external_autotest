@@ -80,7 +80,7 @@ class platform_UdevVars(test.test):
         # listing devices here.
         boards_with_touchscreen = ['link', 'samus']
         boards_maybe_touchscreen = ['rambi', 'peppy', 'glimmer', 'clapper',
-                                    'nyan_big', 'nyan_blaze']
+                                    'nyan_big', 'nyan_blaze', 'expresso']
         boards_chromebox = ['tricky', 'mccloud', 'zako', 'panther', 'beltino',
                             'stumpy']
         boards_aio = ['nyan_kitty', 'tiny', 'anglar', 'monroe']
@@ -131,6 +131,7 @@ class platform_UdevVars(test.test):
         Check that udev variables are assigned correctly by udev rules. In
         particular, verifies that powerd tags are set correctly.
         """
+        logging.debug('Board: %s', utils.get_board())
         self._get_roles()
         self._dump_roles()
         self._dump_udev_attrs()
