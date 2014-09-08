@@ -4,8 +4,10 @@
 # found in the LICENSE file.
 """Implement a modem proxy to talk to a ModemManager1 modem."""
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.cellular import cellular
 from autotest_lib.client.cros.cellular import mm1
+from autotest_lib.client.cros.cellular import mm1_constants
 import dbus
 import cellular_logging
 
@@ -142,15 +144,37 @@ class Modem(object):
         """Returns the modem version information."""
         return self.GetModemProperties()['Revision']
 
-    def _GetRegistrationState(self):
-        props = self.SimpleModem().GetStatus()
-        state = props.get('m3gpp-registration-state')
-        # HOME=1, ROAMING=5
-        return state == 1 or state == 5
+    def _CDMAModemIsRegistered(self):
+        modem_status = self.SimpleModem().GetStatus()
+        cdma1x_state = modem_status.get(
+                'cdma-cdma1x-registration-state',
+                mm1_constants.MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN)
+        evdo_state = modem_status.get(
+                'cdma-evdo-registration-state',
+                mm1_constants.MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN)
+        return (cdma1x_state !=
+                mm1_constants.MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN or
+                evdo_state !=
+                mm1_constants.MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN)
+
+    def _3GPPModemIsRegistered(self):
+        modem_status = self.SimpleModem().GetStatus()
+        state = modem_status.get('m3gpp-registration-state')
+        return (state == mm1_constants.MM_MODEM_3GPP_REGISTRATION_STATE_HOME or
+                state == mm1_constants.MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING)
 
     def ModemIsRegistered(self):
         """Ensure that modem is registered on the network."""
-        return self._GetRegistrationState()
+        props = self.GetAll(mm1.MODEM_INTERFACE)
+        capabilities = props.get('SupportedCapabilities')
+        if mm1_constants.MM_MODEM_CAPABILITY_CDMA_EVDO in capabilities:
+            return self._CDMAModemIsRegistered()
+        elif (mm1_constants.MM_MODEM_CAPABILITY_LTE in capabilities or
+              mm1_constants.MM_MODEM_CAPABILITY_LTE_ADVANCED in capabilities or
+              mm1_constants.MM_MODEM_CAPABILITY_GSM_UMTS in capabilities):
+            return self._3GPPModemIsRegistered()
+        else:
+            raise error.TestError('Invalid modem type')
 
     def ModemIsRegisteredUsing(self, technology):
         """Ensure that modem is registered on the network with a technology."""

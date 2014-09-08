@@ -24,6 +24,7 @@ class ShillProxy(object):
     ERROR_ALREADY_CONNECTED = 'org.chromium.flimflam.Error.AlreadyConnected'
     ERROR_FAILURE = 'org.chromium.flimflam.Error.Failure'
     ERROR_INCORRECT_PIN = 'org.chromium.flimflam.Error.IncorrectPin'
+    ERROR_IN_PROGRESS = 'org.chromium.flimflam.Error.InProgress'
     ERROR_NOT_CONNECTED = 'org.chromium.flimflam.Error.NotConnected'
     ERROR_NOT_SUPPORTED = 'org.chromium.flimflam.Error.NotSupported'
     ERROR_PIN_BLOCKED = 'org.chromium.flimflam.Error.PinBlocked'
@@ -56,6 +57,7 @@ class ShillProxy(object):
         'AnyService': ( DBUS_TYPE_SERVICE, MANAGER_PROPERTY_ALL_SERVICES )
     }
 
+    DEVICE_ENABLE_DISABLE_TIMEOUT = 60
     SERVICE_DISCONNECT_TIMEOUT = 5
 
     SERVICE_PROPERTY_AUTOCONNECT = 'AutoConnect'

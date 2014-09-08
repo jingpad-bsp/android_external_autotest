@@ -130,7 +130,8 @@ class CellularProxy(shill_proxy.ShillProxy):
         CellularProxy._poll_for_condition(
                 lambda: self._is_old_modem_gone(old_modem_path,
                                                 old_modem_mm_object),
-                'Old modem disappeared')
+                'Old modem disappeared',
+                timeout=60)
 
         # (2) Wait for the device to reappear
         if not expect_device:

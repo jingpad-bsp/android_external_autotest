@@ -9,6 +9,7 @@ import sys
 import traceback
 
 import common
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import backchannel
 from autotest_lib.client.cros.cellular import cell_tools
@@ -115,6 +116,25 @@ class CellularTestEnvironment(object):
         return self._nested.__exit__(exception, value, traceback)
 
 
+    def _enable_modem(self):
+        modem_device = self.shill.find_cellular_device_object()
+        if not modem_device:
+            raise error.TestError('Cannot find cellular device in shill. '
+                                  'Is the modem plugged in?')
+        try:
+            modem_device.Enable()
+        except dbus.DBusException as e:
+            if (e.get_dbus_name() !=
+                    shill_proxy.ShillProxy.ERROR_IN_PROGRESS):
+                raise
+
+        utils.poll_for_condition(
+            lambda: modem_device.GetProperties()['Powered'],
+            exception=error.TestError(
+                    'Failed to enable modem.'),
+            timeout=shill_proxy.ShillProxy.DEVICE_ENABLE_DISABLE_TIMEOUT)
+
+
     def _reset_modem(self):
         modem_device = self.shill.find_cellular_device_object()
         if not modem_device:
@@ -141,9 +161,13 @@ class CellularTestEnvironment(object):
         # cellular_proxy.
         self.flim = flimflam.FlimFlam()
 
+        # Enable modem first so shill initializes the modemmanager proxies so
+        # we can call reset on it.
+        self._enable_modem()
+        self._reset_modem()
+
         # PickOneModem() makes sure there's a modem manager and that there is
         # one and only one modem.
-        self._reset_modem()
         self.modem_manager, modem_path = mm.PickOneModem('')
         self.modem = self.modem_manager.GetModem(modem_path)
         if self.modem is None:
@@ -179,13 +203,14 @@ class CellularTestEnvironment(object):
     def _wait_for_modem_registration(self):
         """Wait for the modem to register with the network.
 
-        The modem should be enabled and registered with the network.
-
         @raise error.TestError if modem is not registered.
 
         """
-        # TODO: Implement this (crbug.com/403160).
-        pass
+        utils.poll_for_condition(
+            self.modem.ModemIsRegistered,
+            exception=error.TestError(
+                    'Modem failed to register with the network.'),
+            timeout=cellular_proxy.CellularProxy.SERVICE_REGISTRATION_TIMEOUT)
 
 
     def _verify_cellular_service(self):
@@ -205,15 +230,17 @@ class CellularTestEnvironment(object):
             if (e.get_dbus_name() !=
                     cellular_proxy.CellularProxy.ERROR_NOT_CONNECTED):
                 raise
-        success, _, _ = self.shill.wait_for_property_in(
+        success, state, _ = self.shill.wait_for_property_in(
                 service,
                 cellular_proxy.CellularProxy.SERVICE_PROPERTY_STATE,
                 ('idle',),
                 cellular_proxy.CellularProxy.SERVICE_DISCONNECT_TIMEOUT)
         if not success:
             raise error.TestError(
-                    'Cellular service needs to start in the idle state. '
-                    'Modem disconnect may have failed.')
+                    'Cellular service needs to start in the "idle" state. '
+                    'Current state is "%s". '
+                    'Modem disconnect may have failed.' %
+                    state)
 
 
 class CellularOTATestEnvironment(CellularTestEnvironment):
