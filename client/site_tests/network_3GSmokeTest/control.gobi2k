@@ -26,5 +26,7 @@ DOC = """
   connect/disconnect sequence several times.
 """
 
+from autotest_lib.client.cros.cellular import test_environment
+
 test_env = test_environment.CellularOTATestEnvironment()
 job.run_test('network_3GSmokeTest', tag='gobi2k', test_env=test_env)
