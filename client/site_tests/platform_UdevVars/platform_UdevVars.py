@@ -65,11 +65,11 @@ class platform_UdevVars(test.test):
             devname = os.path.basename(device.device_node)
 
             outfile = os.path.join(self.debugdir, "udevattrs.%s" % devname)
-            utils.system('udevadm info --attribute-walk %s > %s' % (
+            utils.system('udevadm info --attribute-walk --path=%s > %s' % (
                     device.sys_path, outfile))
 
             outfile = os.path.join(self.debugdir, "udevprops.%s" % devname)
-            utils.system('udevadm info --query=property %s > %s' % (
+            utils.system('udevadm info --query=property --path=%s > %s' % (
                     device.sys_path, outfile))
 
 
