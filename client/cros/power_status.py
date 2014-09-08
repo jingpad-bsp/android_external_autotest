@@ -538,6 +538,15 @@ class AbstractStats(object):
             results['percent_%s_%s_time' % (name, key)] = percent_stats[key]
 
 
+    @staticmethod
+    def format_results_wavg(results, name, wavg):
+        """
+        Add an autotest result keys to format: wavg_<name>
+        """
+        if wavg is not None:
+            results['wavg_%s' % (name)] = wavg
+
+
     def __init__(self, name=None, incremental=True):
         if not name:
             error.TestFail("Need to name AbstractStats instance please.")
@@ -557,6 +566,48 @@ class AbstractStats(object):
         return self.to_percent(result)
 
 
+    def _automatic_weighted_average(self):
+        """
+        Turns a dict with absolute times (or percentages) into a weighted
+        average value.
+        """
+        total = sum(self._stats.itervalues())
+        if total == 0:
+            return None
+
+        return sum((float(k)*v) / total for (k, v) in self._stats.iteritems())
+
+
+    def _supports_automatic_weighted_average(self):
+        """
+        Override!
+
+        Returns True if stats collected can be automatically converted from
+        percent distribution to weighted average. False otherwise.
+        """
+        return False
+
+
+    def weighted_average(self):
+        """
+        Return weighted average calculated using the automated average method
+        (if supported) or using a custom method defined by the stat.
+        """
+        if self._supports_automatic_weighted_average():
+            return self._automatic_weighted_average()
+
+        return self._weighted_avg_fn()
+
+
+    def _weighted_avg_fn(self):
+        """
+        Override! Custom weighted average function.
+
+        Returns weighted average as a single floating point value.
+        """
+        return None
+
+
     def _read_stats(self):
         """
         Override! Reads the raw data values that shall be measured into a dict.
@@ -572,13 +623,49 @@ class CPUFreqStats(AbstractStats):
     def __init__(self):
         cpufreq_stats_path = '/sys/devices/system/cpu/cpu*/cpufreq/stats/' + \
                              'time_in_state'
+        intel_pstate_stats_path = '/sys/devices/system/cpu/intel_pstate/' + \
+                             'aperf_mperf'
         self._file_paths = glob.glob(cpufreq_stats_path)
+        self._intel_pstate_file_paths = glob.glob(intel_pstate_stats_path)
+        self._running_intel_pstate = False
+        self._initial_perf = None
+        self._current_perf = None
+        self._max_freq = 0
+
         if not self._file_paths:
             logging.debug('time_in_state file not found')
+            if self._intel_pstate_file_paths:
+                logging.debug('intel_pstate frequency stats file found')
+                self._running_intel_pstate = True
+
         super(CPUFreqStats, self).__init__(name='cpufreq')
 
 
     def _read_stats(self):
+        if self._running_intel_pstate:
+            aperf = 0
+            mperf = 0
+
+            for path in self._intel_pstate_file_paths:
+                if not os.path.exists(path):
+                    logging.debug('%s is not found', path)
+                    continue
+                data = utils.read_file(path)
+                for line in data.splitlines():
+                    pair = line.split()
+                    # max_freq is supposed to be the same for all CPUs
+                    # and remain constant throughout.
+                    # So, we set the entry only once
+                    if not self._max_freq:
+                        self._max_freq = int(pair[0])
+                    aperf += int(pair[1])
+                    mperf += int(pair[2])
+
+            if not self._initial_perf:
+                self._initial_perf = (aperf, mperf)
+
+            self._current_perf = (aperf, mperf)
+
         stats = {}
         for path in self._file_paths:
             if not os.path.exists(path):
@@ -595,6 +682,22 @@ class CPUFreqStats(AbstractStats):
                 else:
                     stats[freq] = timeunits
         return stats
+
+
+    def _supports_automatic_weighted_average(self):
+        return not self._running_intel_pstate
+
+
+    def _weighted_avg_fn(self):
+        if not self._running_intel_pstate:
+            return None
+
+        if self._current_perf[1] != self._initial_perf[1]:
+            # Avg freq = max_freq * aperf_delta / mperf_delta
+            return self._max_freq * \
+                float(self._current_perf[0] - self._initial_perf[0]) / \
+                (self._current_perf[1] - self._initial_perf[1])
+        return 1.0
 
 
 class CPUIdleStats(AbstractStats):
@@ -1027,6 +1130,10 @@ class StatoMatic(object):
             new_res = {}
             AbstractStats.format_results_percent(new_res, stat_obj.name,
                                                  percent_stats)
+            wavg = stat_obj.weighted_average()
+            if wavg:
+                AbstractStats.format_results_wavg(new_res, stat_obj.name, wavg)
+
             results.update(new_res)
 
         new_res = {}
