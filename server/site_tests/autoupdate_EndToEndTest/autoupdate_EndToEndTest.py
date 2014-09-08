@@ -340,7 +340,7 @@ class OmahaDevserverFailedToStart(error.TestError):
 class OmahaDevserver(object):
     """Spawns a test-private devserver instance."""
     # How long to wait for a devserver to start.
-    _WAIT_FOR_DEVSERVER_STARTED_SECONDS = 15
+    _WAIT_FOR_DEVSERVER_STARTED_SECONDS = 30
 
     # How long to sleep (seconds) between checks to see if a devserver is up.
     _WAIT_SLEEP_INTERVAL = 1
@@ -454,10 +454,15 @@ class OmahaDevserver(object):
             except Exception:  # Couldn't read file or corrupt content.
                 time.sleep(self._WAIT_SLEEP_INTERVAL)
         else:
+            try:
+                self._devserver_ssh.run_output('uptime')
+            except error.AutoservRunError as e:
+                logging.debug('Failed to run uptime on the devserver: %s', e)
             raise OmahaDevserverFailedToStart(
                     'The test failed to find the pid/port of the omaha '
-                    'devserver. Check the dumped devserver logs for more '
-                    'information.')
+                    'devserver after %d seconds. Check the dumped devserver '
+                    'logs and devserver load for more information.' %
+                    self._WAIT_FOR_DEVSERVER_STARTED_SECONDS)
 
         # Check that the server is reponsding to network requests.
         logging.warning('Waiting for devserver to accept network requests.')
