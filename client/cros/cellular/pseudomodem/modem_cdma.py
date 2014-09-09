@@ -302,7 +302,13 @@ class ModemCdma(modem.Modem):
     # Inherited from modem.Modem.
     def RegisterWithNetwork(
             self, operator_id="", return_cb=None, raise_cb=None):
-        """ Overridden from superclass. """
+        """ Overridden from superclass.
+
+        @param operator_id: See superclass.
+        @param return_cb: See superclass.
+        @param raise_cb: See superclass.
+
+        """
         logging.info('ModemCdma.RegisterWithNetwork')
         machine = self._state_machine_factory.CreateMachine(
                 pm_constants.STATE_MACHINE_REGISTER_CDMA,
@@ -379,7 +385,7 @@ class ModemCdma(modem.Modem):
         cdma_props = self.GetAll(mm1_constants.I_MODEM_CDMA)
         retval = {}
         retval['state'] = modem_props['State']
-        if retval['state'] == mm1_constants.MM_MODEM_STATE_REGISTERED:
+        if retval['state'] >= mm1_constants.MM_MODEM_STATE_REGISTERED:
             retval['signal-quality'] = modem_props['SignalQuality'][0]
             retval['bands'] = modem_props['CurrentBands']
             retval['cdma-cdma1x-registration-state'] = \

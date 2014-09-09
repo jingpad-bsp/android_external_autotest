@@ -529,7 +529,7 @@ class Modem3gpp(modem.Modem):
         m3gpp_props = self.GetAll(mm1_constants.I_MODEM_3GPP)
         retval = {}
         retval['state'] = modem_props['State']
-        if retval['state'] == mm1_constants.MM_MODEM_STATE_REGISTERED:
+        if retval['state'] >= mm1_constants.MM_MODEM_STATE_REGISTERED:
             retval['signal-quality'] = modem_props['SignalQuality'][0]
             retval['bands'] = modem_props['CurrentBands']
             retval['access-technology'] = self.sim.access_technology
