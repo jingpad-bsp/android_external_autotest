@@ -264,15 +264,13 @@ def parse_arguments(argv):
     parser = argparse.ArgumentParser(description='Host scheduler.')
     parser.add_argument('--testing', action='store_true', default=False,
                         help='Start the host scheduler in testing mode.')
-    # TODO(dshi): change default to False after puppet change is landed in
-    # production.
     parser.add_argument('--production',
                         help=('Indicate that scheduler is running in production'
                               ' environment and it can use database that is not'
                               ' hosted in localhost. If it is set to False, '
                               'scheduler will fail if database is not in '
                               'localhost.'),
-                        action='store_true', default=True)
+                        action='store_true', default=False)
     options = parser.parse_args(argv)
 
     return options

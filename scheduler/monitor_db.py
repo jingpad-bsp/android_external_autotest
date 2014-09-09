@@ -117,15 +117,13 @@ def main_without_exception_handling():
     parser.add_option('--test', help='Indicate that scheduler is under ' +
                       'test and should use dummy autoserv and no parsing',
                       action='store_true')
-    # TODO(dshi): change default to False after puppet change is landed in
-    # production.
     parser.add_option('--production',
                       help=('Indicate that scheduler is running in production '
                             'environment and it can use database that is not '
                             'hosted in localhost. If it is set to False, '
                             'scheduler will fail if database is not in '
                             'localhost.'),
-                      action='store_true', default=True)
+                      action='store_true', default=False)
     (options, args) = parser.parse_args()
     if len(args) != 1:
         parser.print_usage()
