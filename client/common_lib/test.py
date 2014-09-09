@@ -80,6 +80,7 @@ class base_test(object):
         utils.write_keyval(self.outputdir, attr_dict,
                            tap_report=self.job._tap)
 
+
     @staticmethod
     def _append_type_to_keys(dictionary, typename):
         new_dict = {}
@@ -90,7 +91,7 @@ class base_test(object):
 
 
     def output_perf_value(self, description, value, units=None,
-                          higher_is_better=True, graph=None):
+                          higher_is_better=True, graph=None, replacement='_'):
         """
         Records a measured performance value in an output file.
 
@@ -113,25 +114,27 @@ class base_test(object):
                 assumed that a "lower" measured value is considered to be
                 better.
         @param graph: A string indicating the name of the graph on which
-                      the perf value will be subsequently displayed on
-                      the chrome perf dashboard.
-                      This allows multiple metrics be grouped together
-                      on the same graphs. Defaults to None, indicating
-                      that the perf value should be displayed individually
-                      on a separate graph.
-
+                the perf value will be subsequently displayed on the chrome perf
+                dashboard. This allows multiple metrics be grouped together on
+                the same graphs. Defaults to None, indicating that the perf
+                value should be displayed individually on a separate graph.
+        @param replacement: string to replace illegal characters in
+                |description| and |units| with.
         """
         if len(description) > 256:
             raise ValueError('The description must be at most 256 characters.')
         if len(units) > 32:
             raise ValueError('The units must be at most 32 characters.')
-        string_regex = re.compile(r'^[-\.\w]+$')
-        if (not string_regex.search(description) or
-            (units and not string_regex.search(units))):
-            raise ValueError('Invalid description or units string. May only '
-                             'contain letters, numbers, periods, dashes, and '
-                             'underscores. description: %s, units: %s' %
-                             (description, units))
+
+        # If |replacement| is legal replace illegal characters with it.
+        string_regex = re.compile(r'[^-\.\w]')
+        if replacement is None or re.search(string_regex, replacement):
+            raise ValueError('Invalid replacement string to mask illegal '
+                             'characters. May only contain letters, numbers, '
+                             'periods, dashes, and underscores. '
+                             'replacement: %s' % replacement)
+        description = re.sub(string_regex, replacement, description)
+        units = re.sub(string_regex, replacement, units) if units else None
 
         entry = {
             'description': description,
@@ -495,7 +498,7 @@ class base_test(object):
                 try:
                     fcntl.flock(lockfile, fcntl.LOCK_EX)
                     # Setup: (compile and install the test, if needed)
-                    p_args, p_dargs = _cherry_pick_args(self.setup,args,dargs)
+                    p_args, p_dargs = _cherry_pick_args(self.setup, args, dargs)
                     utils.update_version(self.srcdir, self.preserve_srcdir,
                                          self.version, self.setup,
                                          *p_args, **p_dargs)
@@ -537,7 +540,8 @@ class base_test(object):
                         if run_cleanup:
                             _cherry_pick_call(self.cleanup, *args, **dargs)
                     except Exception:
-                        logging.error('Ignoring exception during cleanup() phase:')
+                        logging.error('Ignoring exception during cleanup() '
+                                      'phase:')
                         traceback.print_exc()
                         logging.error('Now raising the earlier %s error',
                                       exc_info[0])
@@ -748,7 +752,6 @@ def runtest(job, url, tag, args, dargs,
         (testgroup, testname) = _installtest(job, url)
         bindir = os.path.join(job.testdir, 'download', testgroup, testname)
         importdir = os.path.join(job.testdir, 'download')
-        site_bindir = None
         modulename = '%s.%s' % (re.sub('/', '.', testgroup), testname)
         classname = '%s.%s' % (modulename, testname)
         path = testname
@@ -768,15 +771,14 @@ def runtest(job, url, tag, args, dargs,
             try:
                 bindir = os.path.join(job.testdir, testname)
                 job.install_pkg(testname, 'test', bindir)
-            except error.PackageInstallError, e:
+            except error.PackageInstallError:
                 # continue as a fall back mechanism and see if the test code
                 # already exists on the machine
                 pass
 
-        bindir = testdir = None
+        bindir = None
         for dir in [job.testdir, getattr(job, 'site_testdir', None)]:
             if dir is not None and os.path.exists(os.path.join(dir, path)):
-                testdir = dir
                 importdir = bindir = os.path.join(dir, path)
         if not bindir:
             raise error.TestError(testname + ': test does not exist')
