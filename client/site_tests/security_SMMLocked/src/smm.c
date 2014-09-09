@@ -78,6 +78,10 @@ int guess_offset(struct pci_dev *northbridge)
     case 0x0f00:
         printf("Detected Baytrail, skipping test\n");
         exit(EXIT_SUCCESS);
+    case 0x1604:
+        printf("Detected Broadwell ULT\n");
+        offset = 0x88;
+        break;
     default:
         fprintf(stderr, "FAIL: unknown Northbridge 0x%04x\n", id);
         exit(1);
