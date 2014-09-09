@@ -17,6 +17,10 @@ class CellularProxy(shill_proxy.ShillProxy):
     DEVICE_PROPERTY_MODEL_ID = 'Cellular.ModelID'
     DEVICE_PROPERTY_OUT_OF_CREDITS = 'Cellular.OutOfCredits'
     DEVICE_PROPERTY_SIM_LOCK_STATUS = 'Cellular.SIMLockStatus'
+    DEVICE_PROPERTY_SIM_PRESENT = 'Cellular.SIMPresent'
+    DEVICE_PROPERTY_TECHNOLOGY_FAMILY = 'Cellular.Family'
+    DEVICE_PROPERTY_TECHNOLOGY_FAMILY_CDMA = 'CDMA'
+    DEVICE_PROPERTY_TECHNOLOGY_FAMILY_GSM = 'GSM'
 
     # Keys into the dictionaries exposed as properties.
     PROPERTY_KEY_SIM_LOCK_TYPE = 'LockType'

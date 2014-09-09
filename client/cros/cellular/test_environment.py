@@ -89,11 +89,17 @@ class CellularTestEnvironment(object):
             self._nested = contextlib.nested(*self._context_managers)
             self._nested.__enter__()
 
-            self._initialize_components()
+            self._initialize_shill()
+
+            # Perform SIM verification now to ensure that we can enable the
+            # modem in _initialize_modem_components(). ModemManager does not
+            # allow enabling a modem without a SIM.
+            self._verify_sim()
+            self._initialize_modem_components()
+
             self._setup_logging()
 
             self._verify_backchannel()
-            self._verify_sim()
             self._wait_for_modem_registration()
             self._verify_cellular_service()
 
@@ -116,11 +122,16 @@ class CellularTestEnvironment(object):
         return self._nested.__exit__(exception, value, traceback)
 
 
-    def _enable_modem(self):
+    def _get_shill_cellular_device_object(self):
         modem_device = self.shill.find_cellular_device_object()
         if not modem_device:
             raise error.TestError('Cannot find cellular device in shill. '
                                   'Is the modem plugged in?')
+        return modem_device
+
+
+    def _enable_modem(self):
+        modem_device = self._get_shill_cellular_device_object()
         try:
             modem_device.Enable()
         except dbus.DBusException as e:
@@ -143,10 +154,7 @@ class CellularTestEnvironment(object):
                  'operation not supported' in e.get_dbus_message()))
 
     def _reset_modem(self):
-        modem_device = self.shill.find_cellular_device_object()
-        if not modem_device:
-            raise error.TestError('Cannot find cellular device in shill. '
-                                  'Is the modem plugged in?')
+        modem_device = self._get_shill_cellular_device_object()
         try:
             # Cromo/MBIM modems do not support being reset.
             self.shill.reset_modem(modem_device, expect_service=False)
@@ -155,8 +163,8 @@ class CellularTestEnvironment(object):
                 raise
 
 
-    def _initialize_components(self):
-        """Get access to various test environment components. """
+    def _initialize_shill(self):
+        """Get access to shill."""
         # CellularProxy.get_proxy() checks to see if shill is running and
         # responding to DBus requests. It returns None if that's not the case.
         self.shill = cellular_proxy.CellularProxy.get_proxy(self.bus)
@@ -167,6 +175,9 @@ class CellularTestEnvironment(object):
         # cellular_proxy.
         self.flim = flimflam.FlimFlam()
 
+
+    def _initialize_modem_components(self):
+        """Reset the modem and get access to modem components."""
         # Enable modem first so shill initializes the modemmanager proxies so
         # we can call reset on it.
         self._enable_modem()
@@ -185,6 +196,45 @@ class CellularTestEnvironment(object):
         self.modem_manager.SetDebugLogging()
 
 
+    def _verify_sim(self):
+        """Verify SIM is valid.
+
+        Make sure a SIM in inserted and that it is not locked.
+
+        @raise error.TestError if SIM does not exist or is locked.
+
+        """
+        modem_device = self._get_shill_cellular_device_object()
+        props = modem_device.GetProperties()
+
+        # No SIM in CDMA modems.
+        family = props[
+                cellular_proxy.CellularProxy.DEVICE_PROPERTY_TECHNOLOGY_FAMILY]
+        if (family ==
+                cellular_proxy.CellularProxy.
+                DEVICE_PROPERTY_TECHNOLOGY_FAMILY_CDMA):
+            return
+
+        # Make sure there is a SIM.
+        if not props[cellular_proxy.CellularProxy.DEVICE_PROPERTY_SIM_PRESENT]:
+            raise error.TestError('There is no SIM in the modem.')
+
+        # Make sure SIM is not locked.
+        lock_status = props.get(
+                cellular_proxy.CellularProxy.DEVICE_PROPERTY_SIM_LOCK_STATUS,
+                None)
+        if lock_status is None:
+            raise error.TestError('Failed to read SIM lock status.')
+        locked = lock_status.get(
+                cellular_proxy.CellularProxy.PROPERTY_KEY_SIM_LOCK_ENABLED,
+                None)
+        if locked is None:
+            raise error.TestError('Failed to read SIM LockEnabled status.')
+        elif locked:
+            raise error.TestError(
+                    'SIM is locked, test requires an unlocked SIM.')
+
+
     def _verify_backchannel(self):
         """Verify backchannel is on an ethernet device.
 
@@ -194,16 +244,6 @@ class CellularTestEnvironment(object):
         if not backchannel.is_backchannel_using_ethernet():
             raise error.TestError('An ethernet connection is required between '
                                   'the test server and the device under test.')
-
-
-    def _verify_sim(self):
-        """Verify SIM is valid.
-
-        @raise error.TestError if SIM does not exist or is invalid.
-
-        """
-        # TODO: Implement this (crbug.com/403155).
-        pass
 
 
     def _wait_for_modem_registration(self):
