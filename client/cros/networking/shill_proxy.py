@@ -362,11 +362,12 @@ class ShillProxy(object):
                     time.sleep(0.2)
 
                 while update_queue:
-                    updated_property, last_value = map(self.dbus2primitive,
-                                                       update_queue.popleft())
+                    updated_property, value = map(self.dbus2primitive,
+                                                  update_queue.popleft())
                     if property_name != updated_property:
                         continue
 
+                    last_value = value
                     if not last_value in expected_values:
                         continue
 
