@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import os
 
 from autotest_lib.client.cros.video import method_logger
 from autotest_lib.client.common_lib import error
@@ -65,30 +66,39 @@ class Verifier(object):
 
         logging.debug("***BEGIN Image Verification***")
 
-        log_msgs = []
+        log_msgs = ["Threshold for diff pixel count = %d" % self.threshold]
 
         for g_image, t_image in zip(golden_image_paths, test_image_paths):
 
             with self.image_comparer:
-                diff_pixels = self.image_comparer.compare(g_image,
-                                                          t_image,
-                                                          self.box)
-
-            log_msg = ("Reference: %s. Test: %s. Pixel diff: %d. Thres.: %d" %
-                      (g_image, t_image, diff_pixels, self.threshold))
-
-            logging.debug(log_msg)
-            log_msgs.append(log_msg)
+                comp_res = self.image_comparer.compare(g_image,
+                                                       t_image,
+                                                       self.box)
+                diff_pixels = comp_res.diff_pixel_count
 
             if diff_pixels > self.threshold:
                 failure_count += 1
+
+                log_msg = ("Image: %s. Pixel diff: %d." %
+                           (os.path.basename(g_image), diff_pixels))
+
+                logging.debug(log_msg)
+                log_msgs.append(log_msg)
 
                 if self.stop_on_first_failure:
                     raise error.TestError("%s. Bailing out." % log_msg)
 
         if failure_count > 0:
             cnt = len(golden_image_paths)
-            raise error.TestError("%d / %d test images were not golden.%s"
-                                  % (failure_count, cnt, log_msgs))
+            # grab the parent link for comparison urls
+            comparison_url = os.path.dirname(comp_res.comparison_url)
+
+            report_mes = '''
+            %d / %d test images were not golden
+            Comparison url: %s
+            %s
+            ''' % (failure_count, cnt, comparison_url, '\n\t\t'.join(log_msgs))
+
+            raise error.TestError(report_mes)
 
         logging.debug("***All Good.***")

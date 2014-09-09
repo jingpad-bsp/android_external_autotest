@@ -3,7 +3,9 @@
 # found in the LICENSE file.
 
 import logging, time
+
 from autotest_lib.client.cros.image_comparison import bp_http_client
+from autotest_lib.client.cros.image_comparison import comparison_result
 from autotest_lib.client.cros.video import method_logger
 
 
@@ -116,7 +118,6 @@ class BpImageComparer(object):
         """
 
         logging.debug("*** Beginning Biopic Upload ... **** \n")
-        
         if not retries:
             retries = self.retries
 
@@ -139,7 +140,7 @@ class BpImageComparer(object):
         # We don't have a way to get back the pixel different number from bp
         # just return -1
 
-        return -1
+        return comparison_result.ComparisonResult(-1, rs['comparison_url'])
 
 
     def complete(self):
