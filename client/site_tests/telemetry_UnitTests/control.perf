@@ -3,8 +3,8 @@
 # found in the LICENSE file.
 
 AUTHOR = "achuith@chromium.org"
-NAME = "telemetry_UnitTests_guest"
-PURPOSE = "Run the Telemetry unit tests as guest (incognito)."
+NAME = "telemetry_UnitTests_perf"
+PURPOSE = "Run the Telemetry perf unit tests as a logged-in user."
 SUITE = "telemetry_unit"
 TIME = "LONG"
 TEST_CATEGORY = "Functional"
@@ -12,8 +12,8 @@ TEST_CLASS = "desktopui"
 TEST_TYPE = "client"
 
 DOC = """
-Verifies that all Telemetry unit tests pass when run as guest (incognito).
+Verifies that all Telemetry perf unit tests pass when run as a logged-in user.
 """
 
-job.run_test('telemetry_UnitTests', browser_type='system-guest', tag='guest',
-             unit_tests=['BrowserTest'], perf_tests=[])
+job.run_test('telemetry_UnitTests', browser_type='system', tag='user',
+             unit_tests=[], perf_tests=[''])

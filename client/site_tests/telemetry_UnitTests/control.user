@@ -1,12 +1,12 @@
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "Chrome OS Lab Infrastructure Team"
+AUTHOR = "achuith@chromium.org"
 NAME = "telemetry_UnitTests"
 PURPOSE = "Run the Telemetry unit tests as a logged-in user."
 SUITE = "telemetry_unit"
-TIME = "MEDIUM"
+TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "desktopui"
 TEST_TYPE = "client"
@@ -16,4 +16,4 @@ Verifies that all Telemetry unit tests pass when run as a logged-in user.
 """
 
 job.run_test('telemetry_UnitTests', browser_type='system', tag='user',
-             unit_tests=[''], perf_tests=[''])
+             unit_tests=[''], perf_tests=[])
