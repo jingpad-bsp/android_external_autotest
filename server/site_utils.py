@@ -53,9 +53,10 @@ def ParseBuildName(name):
                       Will be None for relative build names.
 
     """
-    match = re.match(r'(?P<board>[\w-]+)-(?P<type>\w+)/(R(?P<milestone>\d+)-'
-                     r'(?P<manifest>[\d.ab-]+)|LATEST)', name)
-    if match and len(match.groups()) == 5:
+    match = re.match(r'(trybot-)?(?P<board>[\w-]+)-(?P<type>\w+)/'
+                     r'(R(?P<milestone>\d+)-(?P<manifest>[\d.ab-]+)|LATEST)',
+                     name)
+    if match and len(match.groups()) >= 5:
         return (match.group('board'), match.group('type'),
                 match.group('milestone'), match.group('manifest'))
     raise ParseBuildNameException('%s is a malformed build name.' % name)
