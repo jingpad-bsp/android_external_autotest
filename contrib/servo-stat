@@ -71,7 +71,7 @@ do
       else
         echo -n "C"
         LID=$(dut_control -s $SERVO lid_open 2>&1)
-        if [ "$LID" != "lid_open:yes" ]
+        if [ "$LID" = "lid_open:no" ]
         then
           STATUS=("${STATUS[@]}" "lid_open is '$LID'")
         fi
