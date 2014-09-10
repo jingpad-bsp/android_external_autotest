@@ -12,12 +12,37 @@ If you're just working on tests, you do not need to run this.\n\n\
 Options:\n\
   -p Desired Autotest DB password\n\
   -a Absolute path to autotest source tree.\n
-  -v Show info logging from build_externals.py and compile_gwt_clients.py \n"
+  -v Show info logging from build_externals.py and compile_gwt_clients.py \n
+  -n Non-interactive mode, doesn't ask for any user input.
+     Requires -p and -a to be set."
+
+function get_y_or_n_interactive {
+    local ret
+    while true; do
+        read -p "$2" yn
+        case $yn in
+            [Yy]* ) ret="y"; break;;
+            [Nn]* ) ret="n"; break;;
+            * ) echo "Please enter y or n.";;
+        esac
+    done
+    eval $1="'$ret'"
+}
+
+function get_y_or_n {
+  local ret=$3
+  if [ "${noninteractive}" = "FALSE" ]; then
+    get_y_or_n_interactive sub "$2"
+    ret=$sub
+  fi
+  eval $1="'$ret'"
+}
 
 AUTOTEST_DIR=
 PASSWD=
 verbose="FALSE"
-while getopts ":p:a:vh" opt; do
+noninteractive="FALSE"
+while getopts ":p:a:nvh" opt; do
   case $opt in
     a)
       AUTOTEST_DIR=$OPTARG
@@ -27,6 +52,9 @@ while getopts ":p:a:vh" opt; do
       ;;
     v)
       verbose="TRUE"
+      ;;
+    n)
+      noninteractive="TRUE"
       ;;
     h)
       echo -e "${HELP}" >&2
@@ -44,6 +72,19 @@ while getopts ":p:a:vh" opt; do
       ;;
   esac
 done
+
+
+if [ "${noninteractive}" = "TRUE" ]; then
+  if [ -z "${AUTOTEST_DIR}" ]; then
+    echo "-a must be specified in non-interactive mode." >&2
+    exit 1
+  fi
+  if [ -z "${PASSWD}" ]; then
+    echo "-p must be specified in non-interactive mode." >&2
+    exit 1
+  fi
+fi
+
 
 if [ -z "${PASSWD}" ]; then
   read -s -p "Autotest DB password: " PASSWD
@@ -87,15 +128,8 @@ echo "Autotest supports local overrides of global configuration through a "
 echo "'shadow' configuration file.  Setting one up for you now."
 CLOBBER=0
 if [ -f ${SHADOW_CONFIG_PATH} ]; then
-  clobber=
-  while read -n 1 -p "Clobber existing shadow config? [Y/n]: " clobber; do
-    echo
-    if [[ -z "${clobber}" || $(echo ${clobber} | egrep -qi 'y|n') -eq 0 ]]; then
-      break
-    fi
-    echo "Please enter y or n."
-  done
-  if [[ "${clobber}" = 'n' || "${clobber}" = 'N' ]]; then
+  get_y_or_n clobber "Clobber existing shadow config? [Y/n]: " "n"
+  if [[ "${clobber}" = 'n' ]]; then
     CLOBBER=1
     echo "Refusing to clobber existing shadow_config.ini."
   else
@@ -153,20 +187,12 @@ if ! mysqladmin ping ; then
   sudo service mysql start
 fi
 
-CLOBBERDB=
+CLOBBERDB='y'
 EXISTING_DATABASE=$(mysql -u root "${PASSWD_STRING}" -e "SELECT SCHEMA_NAME \
 FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'chromeos_autotest_db'")
+
 if [ -n "${EXISTING_DATABASE}" ]; then
-  while read -n 1 -p "Clobber existing MySQL database? [y/N]: " CLOBBERDB; do
-    echo
-    if [[ -z "${CLOBBERDB}" ||
-          $(echo ${CLOBBERDB} | egrep -qi 'y|n') -eq 0 ]]; then
-      break
-    fi
-    echo "Please enter y or n."
-  done
-else
-  CLOBBERDB='y'
+  get_y_or_n CLOBBERDB "Clobber existing shadow config? [Y/n]: " "n"
 fi
 
 SQL_COMMAND="drop database if exists chromeos_autotest_db; \
@@ -175,7 +201,7 @@ grant all privileges on chromeos_autotest_db.* TO \
 'chromeosqa-admin'@'localhost' identified by '${PASSWD}'; \
 FLUSH PRIVILEGES;"
 
-if [[ "${CLOBBERDB}" = 'y' || "${CLOBBERDB}" = 'Y' ]]; then
+if [[ "${CLOBBERDB}" = 'y' ]]; then
   mysql -u root "${PASSWD_STRING}" -e "${SQL_COMMAND}"
 fi
 echo -e "Done!\n"
@@ -213,10 +239,10 @@ fi
 echo -e "Done!\n"
 
 echo "Populating autotest mysql DB..."
-"${AT_DIR}"/database/migrate.py sync
-"${AT_DIR}"/frontend/manage.py syncdb
+"${AT_DIR}"/database/migrate.py sync -f
+"${AT_DIR}"/frontend/manage.py syncdb --noinput
 # You may have to run this twice.
-"${AT_DIR}"/frontend/manage.py syncdb
+"${AT_DIR}"/frontend/manage.py syncdb --noinput
 "${AT_DIR}"/utils/test_importer.py
 echo -e "Done!\n"
 
