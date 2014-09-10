@@ -135,9 +135,11 @@ def _pwr_button_test(servo_host, servod):
 def _lid_test(servo_host, servod):
     """Test whether the 'lid_open' signal is correct.
 
-    This tests whether the state of the 'lid_open' signal is
-    'yes'.  There is a manual switch on the servo board; if that
-    switch is set wrong, the signal will be stuck at 'no'.
+    This tests whether the state of the 'lid_open' signal has a
+    correct value.  There is a manual switch on the servo board; if
+    that switch is set wrong, the signal will be stuck at 'no'.
+    Working units may return a setting of 'yes' (meaning the lid is
+    open) or 'not_applicable' (meaning the device has no lid).
 
     Pre-requisite:  This test depends on the 'pwr_button' test.
 
@@ -149,7 +151,7 @@ def _lid_test(servo_host, servod):
     @param servod     The Servo object to be tested.
 
     """
-    return servod.get('lid_open') == 'yes'
+    return servod.get('lid_open') != 'no'
 
 
 def _command_test(servo_host, command):
