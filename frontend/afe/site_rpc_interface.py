@@ -106,7 +106,7 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
                      check_hosts=True, num=None, file_bugs=False, timeout=24,
                      timeout_mins=None, priority=priorities.Priority.DEFAULT,
                      suite_args=None, wait_for_results=True, job_retry=False,
-                     **kwargs):
+                     max_runtime_mins=None, **kwargs):
     """
     Create a job to run a test suite on the given device with the given image.
 
@@ -133,6 +133,8 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
     @param wait_for_results: Set to False to run the suite job without waiting
                              for test jobs to finish. Default is True.
     @param job_retry: Set to True to enable job-level retry. Default is False.
+    @param max_runtime_mins: Maximum amount of time a job can be running in
+                             minutes.
     @param kwargs: extra keyword args. NOT USED.
 
     @raises ControlFileNotFound: if a unique suite control file doesn't exist.
@@ -159,6 +161,7 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
       name = '%s-%s' % (build, suite_name)
 
     timeout_mins = timeout_mins or timeout * 60
+    max_runtime_mins = max_runtime_mins or timeout * 60
 
     if not board:
         board = utils.ParseBuildName(build)[0]
@@ -176,7 +179,8 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
                    'priority': priority,
                    'suite_args' : suite_args,
                    'wait_for_results': wait_for_results,
-                   'job_retry': job_retry
+                   'job_retry': job_retry,
+                   'max_runtime_mins': max_runtime_mins
                    }
 
     control_file = tools.inject_vars(inject_dict, control_file)
@@ -184,7 +188,7 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
     return rpc_utils.create_job_common(name,
                                           priority=priority,
                                           timeout_mins=timeout_mins,
-                                          max_runtime_mins=timeout*60,
+                                          max_runtime_mins=max_runtime_mins,
                                           control_type='Server',
                                           control_file=control_file,
                                           hostless=True,
