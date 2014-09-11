@@ -1,3 +1,45 @@
+"""
+Autotest has some surprisingly complicated logging behaviour.
+
+Managers allow you to define logging contexts, which define a set of rules on
+how to handle stdout/stderr.  The niceness that you get by going through the
+logging_manager for this is that you can push/pop these contexts.  So if you
+wish to temporarily change how logging works, this gives you that mechanism.
+
+Most of this file is actually setting up for a confusing
+fork-for-a-logging-subprocess ordeal that's better explained as
+
+                                           normal python logging
+                                                     ^
+                                                     |
+                      +--------+                     |
+                      |AUTOSERV|                 +---+---+
+                      |        +------stdout---->+LOGGING|
+                      | fork() |                 +---+---+
+                      ++------++                     ^
+                       |      |                      |
+              +--------+      +--------+           stdout
+              |                        |             |
+    +---------+--------+      +--------+---------+   |
+    |     AUTOSERV     |      |     AUTOSERV     |   |
+    |                  |      |                  |   |
+    ++----------------++      ++----------------++   |
+    ||      test      ||      ||      test      ||   |
+    ||                ||      ||                ||---+
+    ||logging.info('')||      ||logging.info('')||
+    |------------------|      |------------------|
+    +------------------+      +------------------+
+
+Each top-level box is a process.  When autoserv starts up, it'll fork off a
+logging subprocess, and set its stdout/stderr fd's to the subprocess's stdin.
+When we fork to create the processes that will run the test code, they inherit
+this.  As do any processes they themselves fork and exec (such as shelling out
+to some command).  This isn't the nicest, as it involves closing and dup'ing
+over stdout/stderr, but it does make sure that the whole process tree logs to
+python logging in a very consistent way.
+"""
+
+
 import fcntl, logging, os, signal, sys, warnings
 
 # primary public APIs
