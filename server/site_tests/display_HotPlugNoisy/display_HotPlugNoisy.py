@@ -6,6 +6,7 @@
 display in extended mode using the Chameleon board."""
 
 import logging
+import time
 from autotest_lib.server.cros.chameleon import chameleon_test
 
 
@@ -17,15 +18,16 @@ class display_HotPlugNoisy(chameleon_test.ChameleonTest):
     """
     version = 1
     PLUG_CONFIGS = [
-        # (pulse_width_us, pulse_count, plugged_before_noise,
-        #  plugged_after_noise)
+        # (plugged_before_noise, plugged_after_noise)
 
-        (100, 10000, False, False),
-        (100, 10000, False, True),
-        (100, 10000, True, False),
-        (100, 10000, True, True),
-        (1, 1000000, True, True),
+        (False, False),
+        (False, True),
+        (True, False),
+        (True, True),
     ]
+
+    PULSES_PLUGGED = [1, 2, 16, 32, 256, 512, 4096, 8192, (1<<16), (1<<17), (1<<20)]
+    PULSES_UNPLUGGED = PULSES_PLUGGED + [1<<21]
 
 
     def run_once(self, host, test_mirrored=False):
@@ -40,8 +42,7 @@ class display_HotPlugNoisy(chameleon_test.ChameleonTest):
 
         self.set_mirrored(test_mirrored)
         errors = []
-        for (pulse_width_us, pulse_count, plugged_before_noise,
-                plugged_after_noise) in self.PLUG_CONFIGS:
+        for (plugged_before_noise, plugged_after_noise) in self.PLUG_CONFIGS:
             logging.info('TESTING THE CASE: %s > noise > %s',
                          'plug' if plugged_before_noise else 'unplug',
                          'plug' if plugged_after_noise else 'unplug')
@@ -51,8 +52,9 @@ class display_HotPlugNoisy(chameleon_test.ChameleonTest):
             self.check_external_display_connector(
                     expected_connector if plugged_before_noise else None)
 
-            self.chameleon_port.fire_hpd_pulse(pulse_width_us, repeat_count=
-                    pulse_count, end_level=plugged_after_noise)
+            self.chameleon_port.fire_mixed_hpd_pulses(
+                    self.PULSES_PLUGGED if plugged_after_noise
+                                        else self.PULSES_UNPLUGGED)
 
             self.check_external_display_connector(
                     expected_connector if plugged_after_noise else None)
@@ -63,5 +65,7 @@ class display_HotPlugNoisy(chameleon_test.ChameleonTest):
                 self.load_test_image_and_check(
                         test_name, resolution,
                         under_mirrored_mode=test_mirrored, error_list=errors)
+            else:
+                time.sleep(1)
 
         self.raise_on_errors(errors)

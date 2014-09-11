@@ -248,6 +248,20 @@ class ChameleonPort(object):
                 assert_interval_usec, repeat_count, int(bool(end_level)))
 
 
+    def fire_mixed_hpd_pulses(self, widths):
+        """Fires one or more HPD pulses, starting at low, of mixed widths.
+
+        One must specify a list of segment widths in the widths argument where
+        widths[0] is the width of the first low segment, widths[1] is that of
+        the first high segment, widths[2] is that of the second low segment...
+        etc. The HPD line stops at low if even number of segment widths are
+        specified; otherwise, it stops at high.
+
+        @param widths: list of pulse segment widths in usec.
+        """
+        self._chameleond_proxy.FireMixedHpdPulses(self._input_id, widths)
+
+
     def capture_screen(self):
         """Captures Chameleon framebuffer.
 
