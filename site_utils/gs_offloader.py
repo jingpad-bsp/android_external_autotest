@@ -33,6 +33,7 @@ except ImportError:
 
 import job_directories
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.scheduler import email_manager
 from chromite.lib import parallel
 
@@ -40,6 +41,10 @@ from chromite.lib import parallel
 GS_URI = global_config.global_config.get_config_value(
         'CROS', 'results_storage_server')
 GS_URI_PATTERN = GS_URI + '%s'
+
+STATS_KEY = 'gs_offloader.%s' % socket.gethostname()
+
+timer = stats.Timer(STATS_KEY)
 
 # Nice setting for process, the higher the number the lower the priority.
 NICENESS = 10
@@ -114,6 +119,35 @@ def get_cmd_list(dir_entry, relative_path):
           dir_entry, GS_URI_PATTERN % relative_path]
 
 
+def get_directory_size_kibibytes_cmd_list(directory):
+    """Returns command to get a directory's total size."""
+    # Having this in its own method makes it easier to mock in unittests.
+    return ['du', '-sk', directory]
+
+
+def get_directory_size_kibibytes(directory):
+    """Calculate the total size of a directory with all its contents.
+
+    @param directory: Path to the directory
+
+    @returns: Size of the directory in kibibytes.
+    """
+    cmd = get_directory_size_kibibytes_cmd_list(directory)
+    process = subprocess.Popen(cmd,
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout_data, stderr_data = process.communicate()
+
+    if process.returncode != 0:
+        # This function is used for statistics only, if it fails, nothing else
+        # should crash.
+        logging.warning('Getting size of %s failed. Stderr:', directory)
+        logging.warning(stderr_data)
+        return 0
+
+    return int(stdout_data.split('\t', 1)[0])
+
+
+@timer.decorate
 def offload_dir(dir_entry, dest_path):
   """Offload the specified directory entry to Google storage.
 
@@ -123,6 +157,9 @@ def offload_dir(dir_entry, dest_path):
 
   """
   try:
+    counter = stats.Counter(STATS_KEY)
+    counter.increment('jobs_offload_started')
+
     error = False
     stdout_file = tempfile.TemporaryFile('w+')
     stderr_file = tempfile.TemporaryFile('w+')
@@ -132,7 +169,14 @@ def offload_dir(dir_entry, dest_path):
                                stdout=stdout_file, stderr=stderr_file)
     process.wait()
     signal.alarm(0)
+
     if process.returncode == 0:
+      kibibytes_transferred = get_directory_size_kibibytes(dir_entry)
+
+      counter.increment('kibibytes_transferred_total', kibibytes_transferred)
+      stats.Gauge(STATS_KEY).send(
+          'kibibytes_transferred', kibibytes_transferred)
+      counter.increment('jobs_offloaded')
       shutil.rmtree(dir_entry)
     else:
       error = True
