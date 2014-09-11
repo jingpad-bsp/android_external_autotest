@@ -19,7 +19,8 @@ import common
 import gs_offloader
 import job_directories
 
-from autotest_lib.client.common_lib import time_utils
+from autotest_lib.client.common_lib import utils, time_utils
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.scheduler import email_manager
 
 # Test value to use for `days_old`, if nothing else is required.
@@ -41,7 +42,7 @@ def _get_options(argv):
     return gs_offloader.parse_options()
 
 
-class OffloaderOptionsTests(unittest.TestCase):
+class OffloaderOptionsTests(mox.MoxTestBase):
     """Tests for the `Offloader` constructor.
 
     Tests that offloader instance fields are set as expected
@@ -53,45 +54,70 @@ class OffloaderOptionsTests(unittest.TestCase):
     _SPECIAL_ONLY = set([job_directories.SpecialJobDirectory])
     _BOTH = _REGULAR_ONLY | _SPECIAL_ONLY
 
+    def setUp(self):
+        super(OffloaderOptionsTests, self).setUp()
+        self.mox.StubOutWithMock(utils, 'get_offload_gsuri')
+
+    def _mock_get_offload_func(self, is_moblab):
+        """Mock the process of getting the offload_dir function."""
+        if is_moblab:
+            expected_gsuri = '%sresults/%s/%s/' % (
+                    global_config.global_config.get_config_value(
+                            'CROS', 'image_storage_server'),
+                    'Fa:ke:ma:c0:12:34', 'rand0m-uu1d')
+        else:
+            expected_gsuri = utils.DEFAULT_OFFLOAD_GSURI
+        utils.get_offload_gsuri().AndReturn(expected_gsuri)
+        offload_func = gs_offloader.get_offload_dir_func(expected_gsuri)
+        self.mox.StubOutWithMock(gs_offloader, 'get_offload_dir_func')
+        gs_offloader.get_offload_dir_func(expected_gsuri).AndReturn(
+                offload_func)
+        self.mox.ReplayAll()
+        return offload_func
+
     def test_process_no_options(self):
         """Test default offloader options."""
+        offload_func = self._mock_get_offload_func(False)
         offloader = gs_offloader.Offloader(_get_options([]))
         self.assertEqual(set(offloader._jobdir_classes),
                          self._REGULAR_ONLY)
         self.assertEqual(offloader._processes, 1)
         self.assertEqual(offloader._offload_func,
-                         gs_offloader.offload_dir)
+                         offload_func)
         self.assertEqual(offloader._age_limit, 0)
 
     def test_process_all_option(self):
         """Test offloader handling for the --all option."""
+        offload_func = self._mock_get_offload_func(False)
         offloader = gs_offloader.Offloader(_get_options(['--all']))
         self.assertEqual(set(offloader._jobdir_classes), self._BOTH)
         self.assertEqual(offloader._processes, 1)
         self.assertEqual(offloader._offload_func,
-                         gs_offloader.offload_dir)
+                         offload_func)
         self.assertEqual(offloader._age_limit, 0)
 
     def test_process_hosts_option(self):
         """Test offloader handling for the --hosts option."""
+        offload_func = self._mock_get_offload_func(False)
         offloader = gs_offloader.Offloader(
                 _get_options(['--hosts']))
         self.assertEqual(set(offloader._jobdir_classes),
                          self._SPECIAL_ONLY)
         self.assertEqual(offloader._processes, 1)
         self.assertEqual(offloader._offload_func,
-                         gs_offloader.offload_dir)
+                         offload_func)
         self.assertEqual(offloader._age_limit, 0)
 
     def test_parallelism_option(self):
         """Test offloader handling for the --parallelism option."""
+        offload_func = self._mock_get_offload_func(False)
         offloader = gs_offloader.Offloader(
                 _get_options(['--parallelism', '2']))
         self.assertEqual(set(offloader._jobdir_classes),
                          self._REGULAR_ONLY)
         self.assertEqual(offloader._processes, 2)
         self.assertEqual(offloader._offload_func,
-                         gs_offloader.offload_dir)
+                         offload_func)
         self.assertEqual(offloader._age_limit, 0)
 
     def test_delete_only_option(self):
@@ -107,14 +133,26 @@ class OffloaderOptionsTests(unittest.TestCase):
 
     def test_delete_only_option(self):
         """Test offloader handling for the --days_old option."""
+        offload_func = self._mock_get_offload_func(False)
         offloader = gs_offloader.Offloader(
                 _get_options(['--days_old', '7']))
         self.assertEqual(set(offloader._jobdir_classes),
                          self._REGULAR_ONLY)
         self.assertEqual(offloader._processes, 1)
         self.assertEqual(offloader._offload_func,
-                         gs_offloader.offload_dir)
+                         offload_func)
         self.assertEqual(offloader._age_limit, 7)
+
+    def test_moblab_gsuri_generation(self):
+        """Test offloader construction for Moblab."""
+        offload_func = self._mock_get_offload_func(True)
+        offloader = gs_offloader.Offloader(_get_options([]))
+        self.assertEqual(set(offloader._jobdir_classes),
+                         self._REGULAR_ONLY)
+        self.assertEqual(offloader._processes, 1)
+        self.assertEqual(offloader._offload_func,
+                         offload_func)
+        self.assertEqual(offloader._age_limit, 0)
 
 
 def _make_timestamp(age_limit, is_expired):
@@ -234,10 +272,8 @@ class CommandListTests(unittest.TestCase):
           * The arguments contain the 'cp' subcommand.
           * The next-to-last argument (the source directory) is the
             job's `queue_args[0]`.
-          * The last argument (the destination URL) ends with the
-            job's `queue_args[1]`.
-          * The last argument (the destination URL) starts with
-            `GS_URI`.
+          * The last argument (the destination URL) is the job's
+            'queue_args[1]'.
 
         @param job A job with properly calculated arguments to
                    `get_cmd_list()`
@@ -248,8 +284,7 @@ class CommandListTests(unittest.TestCase):
         self.assertEqual(command[0], 'gsutil')
         self.assertTrue('cp' in command)
         self.assertEqual(command[-2], job.queue_args[0])
-        self.assertTrue(command[-1].endswith(job.queue_args[1]))
-        self.assertTrue(command[-1].startswith(gs_offloader.GS_URI))
+        self.assertEqual(command[-1], job.queue_args[1])
 
     def test_get_cmd_list_regular(self):
         """Test `get_cmd_list()` as for a regular job."""
@@ -553,7 +588,7 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         logging.getLogger().setLevel(self._saved_loglevel)
         super(OffloadDirectoryTests, self).tearDown()
 
-    def _mock_offload_dir_calls(self, command):
+    def _mock_offload_dir_calls(self, command, queue_args):
         """Mock out the calls needed by `offload_dir()`.
 
         This covers only the calls made when there is no timeout.
@@ -563,8 +598,10 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
 
         """
         signal.alarm(gs_offloader.OFFLOAD_TIMEOUT_SECS)
+        command.append(queue_args[0])
         gs_offloader.get_cmd_list(
-                mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
+                queue_args[0], '%s%s' % (utils.DEFAULT_OFFLOAD_GSURI,
+                                         queue_args[1])).AndReturn(
                         command)
         signal.alarm(0)
         signal.alarm(0)
@@ -580,22 +617,23 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
 
         """
         self.mox.ReplayAll()
-        gs_offloader.offload_dir(self._job.queue_args[0],
-                                 self._job.queue_args[1])
+        gs_offloader.get_offload_dir_func(
+                utils.DEFAULT_OFFLOAD_GSURI)(self._job.queue_args[0],
+                                     self._job.queue_args[1])
         self.mox.VerifyAll()
         self.assertEqual(not should_succeed,
                          os.path.isdir(self._job.queue_args[0]))
 
     def test_offload_success(self):
         """Test that `offload_dir()` can succeed correctly."""
-        self._mock_offload_dir_calls(['test', '-d',
-                                      self._job.queue_args[0]])
+        self._mock_offload_dir_calls(['test', '-d'],
+                                     self._job.queue_args)
         self._run_offload_dir(True)
 
     def test_offload_failure(self):
         """Test that `offload_dir()` can fail correctly."""
-        self._mock_offload_dir_calls(['test', '!', '-d',
-                                      self._job.queue_args[0]])
+        self._mock_offload_dir_calls(['test', '!', '-d'],
+                                     self._job.queue_args)
         self._run_offload_dir(False)
 
     def test_offload_timeout_early(self):

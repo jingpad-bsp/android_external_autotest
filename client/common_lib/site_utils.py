@@ -11,6 +11,7 @@ import socket
 import sys
 import time
 import urllib2
+import uuid
 
 from autotest_lib.client.common_lib import base_utils, error, global_config
 from autotest_lib.client.cros import constants
@@ -21,6 +22,12 @@ CHECK_PID_IS_ALIVE_TIMEOUT = 6
 
 _LOCAL_HOST_LIST = ('localhost', '127.0.0.1')
 
+# Google Storage bucket URI to store results in.
+DEFAULT_OFFLOAD_GSURI = global_config.global_config.get_config_value(
+        'CROS', 'results_storage_server', default=None)
+
+# Default Moblab Ethernet Interface.
+MOBLAB_ETH = 'eth0'
 
 def ping(host, deadline=None, tries=None, timeout=60):
     """Attempt to ping |host|.
@@ -145,6 +152,47 @@ def is_moblab():
         return _lsbrelease_search(r'.*moblab')
     except IOError as e:
         logging.error('Unable to determine if this is a moblab system: %s', e)
+
+
+def get_interface_mac_address(interface):
+    """Return the MAC address of a given interface.
+
+    @param interface: Interface to look up the MAC address of.
+    """
+    interface_link = base_utils.run(
+            'ip addr show %s | grep link/ether' % interface).stdout
+    # The output will be in the format of:
+    # 'link/ether <mac> brd ff:ff:ff:ff:ff:ff'
+    return interface_link.split()[1]
+
+
+def get_offload_gsuri():
+    """Return the GSURI to offload test results to.
+
+    For the normal use case this is the results_storage_server in the
+    global_config.
+
+    However partners using Moblab will be offloading their results to a
+    subdirectory of their image storage buckets. The subdirectory is
+    determined by the MAC Address of the Moblab device.
+
+    @returns gsuri to offload test results to.
+    """
+    if not is_moblab():
+        return DEFAULT_OFFLOAD_GSURI
+    moblab_id_filepath = '/home/moblab/.moblab_id'
+    if os.path.exists(moblab_id_filepath):
+        with open(moblab_id_filepath, 'r') as moblab_id_file:
+            random_id = moblab_id_file.read()
+    else:
+        random_id = uuid.uuid1()
+        with open(moblab_id_filepath, 'w') as moblab_id_file:
+            moblab_id_file.write('%s' % random_id)
+    return '%sresults/%s/%s/' % (
+            global_config.global_config.get_config_value(
+                    'CROS', 'image_storage_server'),
+            get_interface_mac_address(MOBLAB_ETH), random_id)
+
 
 # TODO(petermayo): crosbug.com/31826 Share this with _GsUpload in
 # //chromite.git/buildbot/prebuilt.py somewhere/somehow

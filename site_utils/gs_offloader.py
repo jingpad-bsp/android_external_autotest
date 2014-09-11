@@ -24,6 +24,7 @@ import time
 from optparse import OptionParser
 
 import common
+from autotest_lib.client.common_lib import utils
 
 try:
     # Does not exist, nor is needed, on moblab.
@@ -37,10 +38,6 @@ from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.scheduler import email_manager
 from chromite.lib import parallel
 
-# Google Storage bucket URI to store results in.
-GS_URI = global_config.global_config.get_config_value(
-        'CROS', 'results_storage_server')
-GS_URI_PATTERN = GS_URI + '%s'
 
 STATS_KEY = 'gs_offloader.%s' % socket.gethostname()
 
@@ -104,20 +101,19 @@ def timeout_handler(_signum, _frame):
   raise TimeoutException('Process Timed Out')
 
 
-def get_cmd_list(dir_entry, relative_path):
+def get_cmd_list(dir_entry, gs_path):
   """Return the command to offload a specified directory.
 
   @param dir_entry: Directory entry/path that which we need a cmd_list to
                     offload.
-  @param relative_path: Location in google storage where we will
-                        offload the directory.
+  @param gs_path: Location in google storage where we will
+                  offload the directory.
 
   @return: A command list to be executed by Popen.
 
   """
   return ['gsutil', '-m', 'cp', '-eR', '-a', 'project-private',
-          dir_entry, GS_URI_PATTERN % relative_path]
-
+          dir_entry, gs_path]
 
 def get_directory_size_kibibytes_cmd_list(directory):
     """Returns command to get a directory's total size."""
@@ -147,65 +143,74 @@ def get_directory_size_kibibytes(directory):
     return int(stdout_data.split('\t', 1)[0])
 
 
-@timer.decorate
-def offload_dir(dir_entry, dest_path):
-  """Offload the specified directory entry to Google storage.
+def get_offload_dir_func(gs_uri):
+  """Returns the offload directory function for the given gs_uri
 
-  @param dir_entry: Directory entry to offload.
-  @param dest_path: Location in google storage where we will offload
-                    the directory.
+  @param gs_uri: Google storage bucket uri to offload to.
 
+  @returns offload_dir function to preform the offload.
   """
-  try:
-    counter = stats.Counter(STATS_KEY)
-    counter.increment('jobs_offload_started')
+  @timer.decorate
+  def offload_dir(dir_entry, dest_path):
+    """Offload the specified directory entry to Google storage.
 
-    error = False
-    stdout_file = tempfile.TemporaryFile('w+')
-    stderr_file = tempfile.TemporaryFile('w+')
-    process = None
-    signal.alarm(OFFLOAD_TIMEOUT_SECS)
-    process = subprocess.Popen(get_cmd_list(dir_entry, dest_path),
-                               stdout=stdout_file, stderr=stderr_file)
-    process.wait()
-    signal.alarm(0)
+    @param dir_entry: Directory entry to offload.
+    @param dest_path: Location in google storage where we will offload
+                      the directory.
 
-    if process.returncode == 0:
-      kibibytes_transferred = get_directory_size_kibibytes(dir_entry)
+    """
+    try:
+      counter = stats.Counter(STATS_KEY)
+      counter.increment('jobs_offload_started')
 
-      counter.increment('kibibytes_transferred_total', kibibytes_transferred)
-      stats.Gauge(STATS_KEY).send(
-          'kibibytes_transferred', kibibytes_transferred)
-      counter.increment('jobs_offloaded')
-      shutil.rmtree(dir_entry)
-    else:
+      error = False
+      stdout_file = tempfile.TemporaryFile('w+')
+      stderr_file = tempfile.TemporaryFile('w+')
+      process = None
+      signal.alarm(OFFLOAD_TIMEOUT_SECS)
+      gs_path = '%s%s' % (gs_uri, dest_path)
+      process = subprocess.Popen(get_cmd_list(dir_entry, gs_path),
+                                 stdout=stdout_file, stderr=stderr_file)
+      process.wait()
+      signal.alarm(0)
+
+      if process.returncode == 0:
+        kibibytes_transferred = get_directory_size_kibibytes(dir_entry)
+
+        counter.increment('kibibytes_transferred_total', kibibytes_transferred)
+        stats.Gauge(STATS_KEY).send(
+            'kibibytes_transferred', kibibytes_transferred)
+        counter.increment('jobs_offloaded')
+        shutil.rmtree(dir_entry)
+      else:
+        error = True
+    except TimeoutException:
+      # If we finished the call to Popen(), we may need to terminate
+      # the child process.  We don't bother calling process.poll();
+      # that inherently races because the child can die any time it
+      # wants.
+      if process:
+          try:
+              process.terminate()
+          except OSError:
+              # We don't expect any error other than "No such
+              # process".
+              pass
+      logging.error('Offloading %s timed out after waiting %d seconds.',
+                    dir_entry, OFFLOAD_TIMEOUT_SECS)
       error = True
-  except TimeoutException:
-    # If we finished the call to Popen(), we may need to terminate
-    # the child process.  We don't bother calling process.poll();
-    # that inherently races because the child can die any time it
-    # wants.
-    if process:
-        try:
-            process.terminate()
-        except OSError:
-            # We don't expect any error other than "No such
-            # process".
-            pass
-    logging.error('Offloading %s timed out after waiting %d seconds.',
-                  dir_entry, OFFLOAD_TIMEOUT_SECS)
-    error = True
-  finally:
-    signal.alarm(0)
-    if error:
-      # Rewind the log files for stdout and stderr and log their contents.
-      stdout_file.seek(0)
-      stderr_file.seek(0)
-      logging.error('Error occurred when offloading %s:', dir_entry)
-      logging.error('Stdout:\n%s \nStderr:\n%s',
-                    stdout_file.read(), stderr_file.read())
-    stdout_file.close()
-    stderr_file.close()
+    finally:
+      signal.alarm(0)
+      if error:
+        # Rewind the log files for stdout and stderr and log their contents.
+        stdout_file.seek(0)
+        stderr_file.seek(0)
+        logging.error('Error occurred when offloading %s:', dir_entry)
+        logging.error('Stdout:\n%s \nStderr:\n%s',
+                      stdout_file.read(), stderr_file.read())
+      stdout_file.close()
+      stderr_file.close()
+  return offload_dir
 
 
 def delete_files(dir_entry, dest_path):
@@ -265,7 +270,9 @@ class Offloader(object):
     if options.delete_only:
       self._offload_func = delete_files
     else:
-      self._offload_func = offload_dir
+      gs_uri = utils.get_offload_gsuri()
+      logging.debug('Offloading to: %s', gs_uri)
+      self._offload_func = get_offload_dir_func(gs_uri)
     classlist = []
     if options.process_hosts_only or options.process_all:
       classlist.append(job_directories.SpecialJobDirectory)
@@ -366,8 +373,8 @@ class Offloader(object):
 
 def parse_options():
   """Parse the args passed into gs_offloader."""
-  defaults = 'Defaults:\n  Destination: %s\n  Results Path: %s' % (GS_URI,
-                                                                   RESULTS_DIR)
+  defaults = 'Defaults:\n  Destination: %s\n  Results Path: %s' % (
+      utils.DEFAULT_OFFLOAD_GSURI, RESULTS_DIR)
   usage = 'usage: %prog [options]\n' + defaults
   parser = OptionParser(usage)
   parser.add_option('-a', '--all', dest='process_all', action='store_true',
