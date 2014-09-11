@@ -44,7 +44,7 @@ remote() {
                      -o UserKnownHostsFile=$TMPHOSTS -i $TMPKEYS )
     local servo=$1
     shift
-    ssh "${ssh_opts[@]}" root@$servo "$@"
+    timeout 45 ssh "${ssh_opts[@]}" root@$servo "$@"
 }
 
 CONFIG=/var/lib/servod/config
