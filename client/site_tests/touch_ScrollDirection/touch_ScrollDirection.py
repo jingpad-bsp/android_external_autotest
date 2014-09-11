@@ -16,47 +16,34 @@ class touch_ScrollDirection(touch_playback_test_base.touch_playback_test_base):
     """Plays back scrolls and checks for correct page movement."""
     version = 1
 
-    _DEFAULT_SCROLL = 1000
     _VALID_BOARDS = ['squawks', 'nyan_big', 'parrot', 'link', 'peppy', 'daisy',
                      'peach_pit', 'x86-alex']
 
-    def _get_page_position(self):
-        """Return current scroll position of page."""
-        return self._tab.EvaluateJavaScript('document.body.scrollTop')
-
-    def _reset_page_position(self):
-        """Reset page position to default."""
-        self._tab.ExecuteJavaScript('window.scrollTo(0, %d)'
-                                    % self._DEFAULT_SCROLL)
-
-    def _check_scroll_direction(self, down):
-        """Raise error if actual scrolling does not match down value.
+    def _check_scroll_direction(self, filename, down):
+        """Playback and raise error if scrolling does not match down value.
 
         @param down: True if scrolling is supposed to be down; else False.
 
-        @raises TestFail if actual scrolling did not match down param.
+        @raises TestFail if actual scrolling did not match expected.
 
         """
-        current = self._get_page_position()
-        logging.info('Scroll delta was %d', current - self._DEFAULT_SCROLL)
-        if down:
-            if current <= self._DEFAULT_SCROLL:
-                raise error.TestFail('Page did not scroll down! '
-                                     'Australian=%s' % self._australian_state)
-        else:
-            if current >= self._DEFAULT_SCROLL:
-                raise error.TestFail('Page did not scroll up! '
-                                     'Australian=%s' % self._australian_state)
+        self._reset_scroll_position()
+        self._playback(filepath=self._down_file)
+        self._wait_for_scroll_position_to_settle()
+
+        delta = self._get_scroll_position() - self._DEFAULT_SCROLL
+        logging.info('Scroll delta was %d', delta)
+        if (down and delta <= 0) or (not down and delta >= 0):
+            raise error.TestFail('Page scroll was in wrong direction! '
+                                 'Delta=%d, Australian=%s'
+                                  % (delta, self._australian_state))
 
     def _verify_scrolling(self):
-        """Scroll down and check scroll direction, then repeat with up."""
-        self._reset_page_position()
-        self._playback(filepath=self._down_file)
-        self._check_scroll_direction(down=not self._australian_state)
-
-        self._reset_page_position()
-        self._playback(filepath=self._up_file)
-        self._check_scroll_direction(down=self._australian_state)
+        """Check scrolling direction for down then up."""
+        self._check_scroll_direction(filename=self._down_file,
+                                     down=not self._australian_state)
+        self._check_scroll_direction(filename=self._up_file,
+                                     down=self._australian_state)
 
     def run_once(self):
         """Entry point of this test."""
@@ -90,12 +77,12 @@ class touch_ScrollDirection(touch_playback_test_base.touch_playback_test_base):
                     os.path.join(self.bindir, 'long_page.html')))
             self._tab.WaitForDocumentReadyStateToBeComplete()
 
-            # Check default scroll - australian for touchscreens.
+            # Check default scroll - Australian for touchscreens.
             self._australian_state = self._has_touchscreen
             logging.info('Expecting Australian=%s', self._australian_state)
             self._verify_scrolling()
 
-            # Toggle australian scrolling and check again.
+            # Toggle Australian scrolling and check again.
             self._australian_state = not self._australian_state
             self._set_australian_scrolling(value=self._australian_state)
             self._verify_scrolling()

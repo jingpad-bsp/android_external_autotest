@@ -5,9 +5,7 @@
 import os
 import logging
 import shutil
-import time
 
-from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import touch_playback_test_base
@@ -17,22 +15,11 @@ class touch_MouseScroll(touch_playback_test_base.touch_playback_test_base):
     """Plays back mouse scrolls and checks for correct page movement."""
     version = 1
 
-    _DEFAULT_SCROLL = 5000
     _MOUSE_DESCRIPTION = 'amazon_mouse.prop'
+    _MOUSE_NAME = 'Amazon Test Mouse'
     _EXPECTED_VALUE_1 = 16 # Expected value of one scroll wheel turn.
     _EXPECTED_DIRECTION = {'down': 1, 'up': -1}
     _TOLLERANCE = 4 # Fast scroll should go at least X times slow scroll.
-
-    def _get_page_position(self):
-        """Return current scroll position of page."""
-        return self._tab.EvaluateJavaScript('document.body.scrollTop')
-
-    def _reset_page_position(self):
-        """Reset page position to default."""
-        self._tab.ExecuteJavaScript('window.scrollTo(0, %d)'
-                                    % self._DEFAULT_SCROLL)
-        if self._get_page_position() != self._DEFAULT_SCROLL:
-            raise error.TestError('Could not set default scroll value!')
 
     def _get_scroll_delta(self, name, expected_direction):
         """Playback the given test and return the amount the page moved.
@@ -43,15 +30,13 @@ class touch_MouseScroll(touch_playback_test_base.touch_playback_test_base):
         @raise: TestFail if scrolling did not occur in expected direction.
 
         """
-        self._reset_page_position()
+        self._reset_scroll_position()
         self._playback(self._dut_paths[name], touch_type='mouse')
-        time.sleep(2) # Sleep while playback occurs.
-        delta = self._get_page_position() - self._DEFAULT_SCROLL
+        self._wait_for_scroll_position_to_settle()
+        delta = self._get_scroll_position() - self._DEFAULT_SCROLL
         logging.info('Test %s: saw scroll delta of %d.  Expected direction %d.',
                      name, delta, expected_direction)
 
-        if delta == 0:
-            raise error.TestFail('No scrolling occured (%s)!' % name)
         if delta * expected_direction < 0:
             raise error.TestFail('Scroll was in wrong direction!  Delta '
                                  'for %s was %d.' % (name, delta))
@@ -100,7 +85,8 @@ class touch_MouseScroll(touch_playback_test_base.touch_playback_test_base):
                         self._mouse_file)
 
         # Initiate super with property file for emulation.
-        super(touch_MouseScroll, self).warmup(mouse_props=self._mouse_file)
+        super(touch_MouseScroll, self).warmup(
+                mouse_props=self._mouse_file, mouse_name=self._MOUSE_NAME)
 
     def run_once(self):
         """Entry point of this test."""
