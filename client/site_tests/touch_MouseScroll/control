@@ -9,7 +9,7 @@ CRITERIA = """
 This test will fail if, after playback of emulated mouse events, the scrolling
 does not match the expected direction or behavior.
 """
-SUITE = "bvt-perbuild"
+SUITE = "bvt-perbuild,touch"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "touch"
