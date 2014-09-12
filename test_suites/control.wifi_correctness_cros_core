@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = 'wiley@chromium.org'
-NAME = 'wifi_android_correctness'
+AUTHOR = 'wiley, zqiu, pstew'
+NAME = 'wifi_correctness_cros_core'
 PURPOSE = 'Verify basic WiFi functionality.'
-CRITERIA = 'All tests with SUITE=wifi_android_correctness must pass.'
+CRITERIA = 'All tests with SUITE=wifi_correctness_cros_core must pass.'
 
 TIME = 'SHORT'
 TEST_CATEGORY = 'General'
