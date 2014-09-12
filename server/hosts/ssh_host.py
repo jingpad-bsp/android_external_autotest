@@ -137,7 +137,8 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
         except error.CmdError, cmderr:
             # We get a CmdError here only if there is timeout of that command.
             # Catch that and stuff it into AutoservRunError and raise it.
-            raise error.AutoservRunError(cmderr.args[0], cmderr.args[1])
+            timeout_message = str('Timeout encountered: %s' % cmderr.args[0])
+            raise error.AutoservRunError(timeout_message, cmderr.args[1])
 
 
     def run_short(self, command, **kwargs):
