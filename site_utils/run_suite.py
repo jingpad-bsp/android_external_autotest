@@ -24,6 +24,9 @@ This script exits with one of the following codes:
     * Suite job issues, like bug in dynamic suite,
       user aborted the suite, lose a drone/all devservers/rpc server,
       0 tests ran, etc.
+    * provision failed
+      TODO(fdeng): crbug.com/413918, reexamine treating all provision
+                   failures as INFRA failures.
 4 - SUITE_TIMEOUT: Suite timed out, some tests ran,
     none failed by the time the suite job was aborted. This will cover,
     but not limited to, the following cases:
@@ -64,8 +67,8 @@ RETURN_CODES = enum.Enum(
 # we should return 'ERROR'.
 SEVERITY = {RETURN_CODES.OK: 0,
             RETURN_CODES.WARNING: 1,
-            RETURN_CODES.INFRA_FAILURE: 2,
-            RETURN_CODES.SUITE_TIMEOUT: 3,
+            RETURN_CODES.SUITE_TIMEOUT: 2,
+            RETURN_CODES.INFRA_FAILURE: 3,
             RETURN_CODES.ERROR: 4}
 
 
@@ -534,6 +537,7 @@ class TestView(object):
 
 
     SUITE_PREP = 'Suite prep'
+    INFRA_TESTS = ['provision']
 
 
     def __init__(self, view, afe_job, suite_name, build):
@@ -756,14 +760,22 @@ class TestView(object):
 
 
     def is_in_fail_status(self):
-        """
-        Check if the given test's status corresponds to a failure.
+        """Check if the given test's status corresponds to a failure.
 
         @returns: True if the test's status is FAIL or ERROR. False otherwise.
 
         """
         # All the statuses tests can have when they fail.
         return self.view['status'] in ['FAIL', 'ERROR', 'ABORT']
+
+
+    def is_infra_test(self):
+        """Check whether this is a test that only lab infra is concerned.
+
+        @returns: True if only lab infra is concerned, False otherwise.
+
+        """
+        return self.get_testname() in self.INFRA_TESTS
 
 
     def get_buildbot_link_reason(self):
@@ -1053,7 +1065,7 @@ class ResultCollector(object):
 
         """
         if code == RETURN_CODES.INFRA_FAILURE:
-            return 'Suite job failed'
+            return 'Suite job failed or provisioning failed.'
         elif code == RETURN_CODES.SUITE_TIMEOUT:
             return ('Some test(s) was aborted before running,'
                     ' suite must have timed out.')
@@ -1102,7 +1114,10 @@ class ResultCollector(object):
                     current_code = RETURN_CODES.OK
                 elif v.is_in_fail_status():
                     # The test job failed.
-                    current_code = RETURN_CODES.ERROR
+                    if v.is_infra_test():
+                        current_code = RETURN_CODES.INFRA_FAILURE
+                    else:
+                        current_code = RETURN_CODES.ERROR
                 elif v['status'] == 'WARN':
                     # The test/suite job raised a wanrning.
                     current_code = RETURN_CODES.WARNING
