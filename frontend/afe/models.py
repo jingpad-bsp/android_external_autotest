@@ -425,43 +425,6 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
         return host
 
 
-    @classmethod
-    def assign_to_shard(cls, shard):
-        """Assigns hosts to a shard.
-
-        This function will check which labels are associated with the given
-        shard. It will assign those hosts, that have labels that are assigned
-        to the shard and haven't been returned to shard earlier.
-
-        @param shard: The shard object to assign labels/hosts for.
-        @returns the hosts objects that should be sent to the shard.
-        """
-
-        # Disclaimer: concurrent heartbeats should theoretically not occur in
-        # the current setup. As they may be introduced in the near future,
-        # this comment will be left here.
-
-        # Sending stuff twice is acceptable, but forgetting something isn't.
-        # Detecting duplicates on the client is easy, but here it's harder. The
-        # following options were considered:
-        # - SELECT ... WHERE and then UPDATE ... WHERE: Update might update more
-        #   than select returned, as concurrently more hosts might have been
-        #   inserted
-        # - UPDATE and then SELECT WHERE shard=shard: select always returns all
-        #   hosts for the shard, this is overhead
-        # - SELECT and then UPDATE only selected without requerying afterwards:
-        #   returns the old state of the records.
-        host_ids = list(Host.objects.filter(
-            shard=None,
-            labels=shard.labels.all(),
-            leased=False
-            ).values_list('pk', flat=True))
-
-        if host_ids:
-            Host.objects.filter(pk__in=host_ids).update(shard=shard)
-            return list(Host.objects.filter(pk__in=host_ids).all())
-        return []
-
     def resurrect_object(self, old_object):
         super(Host, self).resurrect_object(old_object)
         # invalid hosts can be in use by the scheduler (as one-time hosts), so
@@ -1258,33 +1221,6 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
                 JobKeyval.objects.create(job=job, key=key, value=value)
 
         return job
-
-
-    @classmethod
-    def assign_to_shard(cls, shard):
-        """Assigns unassigned jobs to a shard.
-
-        All jobs that have the platform label that was assigned to the given
-        shard are assigned to the shard and returned.
-        @param shard: The shard to assign jobs to.
-        @returns The job objects that should be sent to the shard.
-        """
-        # Disclaimer: Concurrent heartbeats should not occur in today's setup.
-        # If this changes or they are triggered manually, this applies:
-        # Jobs may be returned more than once by concurrent calls of this
-        # function, as there is a race condition between SELECT and UPDATE.
-        job_ids = list(Job.objects.filter(
-            shard=None,
-            dependency_labels=shard.labels.all()
-            ).exclude(
-            hostqueueentry__complete=True
-            ).exclude(
-            hostqueueentry__active=True
-            ).values_list('pk', flat=True))
-        if job_ids:
-            Job.objects.filter(pk__in=job_ids).update(shard=shard)
-            return list(Job.objects.filter(pk__in=job_ids).all())
-        return []
 
 
     def save(self, *args, **kwargs):
