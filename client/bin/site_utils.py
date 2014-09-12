@@ -9,6 +9,8 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.bin import base_utils
 
+_UI_USE_FLAGS_FILE_PATH = '/etc/ui_use_flags.txt'
+
 class TimeoutError(error.TestError):
     """Error raised when we time out when waiting on a condition."""
     pass
@@ -972,3 +974,20 @@ def is_booted_from_internal_disk():
     """Return True if boot from internal disk. False, otherwise."""
     return get_root_device() == get_fixed_dst_drive()
 
+def get_ui_use_flags():
+    """Parses the USE flags as listed in /etc/ui_use_flags.txt.
+
+    @return: A list of flag strings found in the ui use flags file.
+    """
+    flags = []
+    for flag in utils.read_file(_UI_USE_FLAGS_FILE_PATH).splitlines():
+        # Removes everything after the '#'.
+        flag_before_comment = flag.split('#')[0].strip()
+        if len(flag_before_comment) != 0:
+            flags.append(flag_before_comment)
+
+    return flags
+
+def is_freon():
+    """Returns False if the system uses X, True otherwise."""
+    return 'X' not in get_ui_use_flags()
