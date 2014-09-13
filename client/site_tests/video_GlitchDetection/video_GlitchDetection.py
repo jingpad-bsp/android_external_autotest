@@ -105,7 +105,27 @@ class video_GlitchDetection(test.test):
 
 
     def run_once(self, channel, video_name, video_format, video_def):
-        with chrome.Chrome() as cr:
+
+        """
+        Work around. See crbug/404773. Some boards have a scaling factor that
+        results in screenshots being larger than expected. (This factor was
+        intentionally changed.
+        To have the same canvas size we force the scale factor.
+        This only affects hd devices on our list: nyan and pi and has no
+        effect on sd devices.
+        For link specifically, we don't force that factor has that causes
+        the actual device resolution to change. We don't want that.
+        """
+
+        # TODO: mussa: Remove code if scale factor get reverted to prev value.
+
+        do_not_scale_boards = ['link']
+        this_board = utils.get_current_board()
+        scale_args = ['--force-device-scale-factor', '1']
+
+        args = [] if this_board in do_not_scale_boards else scale_args
+
+        with chrome.Chrome(extra_browser_args=args) as cr:
             cr.browser.SetHTTPServerDirectories(self.bindir)
             self.run_video_glitch_detection_test(cr.browser,
                                                  channel,
