@@ -43,6 +43,7 @@ class ShillProxy(object):
 
     MANAGER_PROPERTY_ACTIVE_PROFILE = 'ActiveProfile'
     MANAGER_PROPERTY_DEVICES = 'Devices'
+    MANAGER_PROPERTY_NO_AUTOCONNECT_TECHNOLOGIES = 'NoAutoConnectTechnologies'
     MANAGER_PROPERTY_PROFILES = 'Profiles'
     MANAGER_PROPERTY_SERVICES = 'Services'
     MANAGER_PROPERTY_ALL_SERVICES = 'ServiceCompleteList'

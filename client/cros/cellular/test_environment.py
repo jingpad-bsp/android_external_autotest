@@ -76,6 +76,7 @@ class CellularTestEnvironment(object):
         self.modem_manager = None
         self.modem = None
 
+        self._nested = None
         self._context_managers = []
         if use_backchannel:
             self._context_managers.append(backchannel.Backchannel())
@@ -84,26 +85,38 @@ class CellularTestEnvironment(object):
                     cell_tools.OtherDeviceShutdownContext('cellular'))
 
 
+    @contextlib.contextmanager
+    def _disable_shill_autoconnect(self):
+        self._enable_shill_cellular_autoconnect(False)
+        yield
+        self._enable_shill_cellular_autoconnect(True)
+
+
     def __enter__(self):
         try:
-            self._nested = contextlib.nested(*self._context_managers)
-            self._nested.__enter__()
+            # Temporarily disable shill autoconnect to cellular service while
+            # the test environment is setup to prevent a race condition
+            # between disconnecting the modem in _verify_cellular_service()
+            # and shill autoconnect.
+            with self._disable_shill_autoconnect():
+                self._nested = contextlib.nested(*self._context_managers)
+                self._nested.__enter__()
 
-            self._initialize_shill()
+                self._initialize_shill()
 
-            # Perform SIM verification now to ensure that we can enable the
-            # modem in _initialize_modem_components(). ModemManager does not
-            # allow enabling a modem without a SIM.
-            self._verify_sim()
-            self._initialize_modem_components()
+                # Perform SIM verification now to ensure that we can enable the
+                # modem in _initialize_modem_components(). ModemManager does not
+                # allow enabling a modem without a SIM.
+                self._verify_sim()
+                self._initialize_modem_components()
 
-            self._setup_logging()
+                self._setup_logging()
 
-            self._verify_backchannel()
-            self._wait_for_modem_registration()
-            self._verify_cellular_service()
+                self._verify_backchannel()
+                self._wait_for_modem_registration()
+                self._verify_cellular_service()
 
-            return self
+                return self
         except (error.TestError, dbus.DBusException,
                 shill_proxy.ShillProxyError) as e:
             except_type, except_value, except_traceback = sys.exc_info()
@@ -119,7 +132,8 @@ class CellularTestEnvironment(object):
 
 
     def __exit__(self, exception, value, traceback):
-        return self._nested.__exit__(exception, value, traceback)
+        if self._nested:
+            return self._nested.__exit__(exception, value, traceback)
 
 
     def _get_shill_cellular_device_object(self):
@@ -146,12 +160,21 @@ class CellularTestEnvironment(object):
             timeout=shill_proxy.ShillProxy.DEVICE_ENABLE_DISABLE_TIMEOUT)
 
 
+    def _enable_shill_cellular_autoconnect(self, enable):
+        shill = cellular_proxy.CellularProxy.get_proxy(self.bus)
+        shill.manager.SetProperty(
+                shill_proxy.ShillProxy.
+                MANAGER_PROPERTY_NO_AUTOCONNECT_TECHNOLOGIES,
+                '' if enable else 'cellular')
+
+
     def _is_unsupported_error(self, e):
         return (e.get_dbus_name() ==
                 shill_proxy.ShillProxy.ERROR_NOT_SUPPORTED or
                 (e.get_dbus_name() ==
                  shill_proxy.ShillProxy.ERROR_FAILURE and
                  'operation not supported' in e.get_dbus_message()))
+
 
     def _reset_modem(self):
         modem_device = self._get_shill_cellular_device_object()
