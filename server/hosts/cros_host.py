@@ -1053,8 +1053,11 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         It first verifies and repairs servo if it is a DUT in CrOS
         lab and a servo is attached.
 
-        If `self.check_device()` fails, the following procedures are
-        attempted:
+        This escalates in order through the following procedures and verifies
+        the status using `self.check_device()` after each of them. This is done
+        until both the repair and the veryfing step succeed.
+
+        Escalation order of repair procedures:
           1. Try to re-install to a known stable image using
              auto-update.
           2. If there's a servo for the DUT, try to power the DUT off and
@@ -1076,6 +1079,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 to ssh to the servo host due to permission error.
 
         """
+        # Caution: Deleting shards relies on repair to always reboot the DUT.
+
         if self._servo_host and not self.servo:
             try:
                 self._servo_host.repair_full()

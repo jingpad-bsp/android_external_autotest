@@ -18,7 +18,7 @@ import common
 
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import frontend_test_utils
-from autotest_lib.frontend.afe import models, rpc_utils
+from autotest_lib.frontend.afe import models, model_logic, rpc_utils
 from autotest_lib.client.common_lib import control_data, error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import priorities
@@ -506,6 +506,40 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
 
         self._do_heartbeat_and_assert_response(
             shard_hostname=shard_hostname1, jobs=[], hosts=[host3])
+
+        site_rpc_interface.delete_shard(hostname=shard_hostname1)
+
+        self.assertRaises(
+            models.Shard.DoesNotExist, models.Shard.objects.get, pk=shard1.id)
+
+        job1 = models.Job.objects.get(pk=job1.id)
+        lumpy_label = models.Label.objects.get(pk=lumpy_label.id)
+        host1 = models.Host.objects.get(pk=host1.id)
+
+        self.assertIsNone(job1.shard)
+        self.assertEqual(len(lumpy_label.shard_set.all()), 0)
+        self.assertIsNone(host1.shard)
+        self.assertEqual([s.task for s in host1.specialtask_set.all()],
+                         ['Repair'])
+
+
+    def testCreateListShard(self):
+        lumpy_label = models.Label.objects.create(name='board:lumpy',
+                                                  platform=True)
+
+        shard_id = site_rpc_interface.add_shard(
+            hostname='host1', label='board:lumpy')
+        self.assertRaises(model_logic.ValidationError,
+                          site_rpc_interface.add_shard,
+                          hostname='host1', label='board:lumpy')
+        shard = models.Shard.objects.get(pk=shard_id)
+        self.assertEqual(shard.hostname, 'host1')
+        self.assertEqual(shard.labels.values_list('pk')[0], (lumpy_label.id,))
+
+        self.assertEqual(site_rpc_interface.get_shards(),
+                         [{'labels': ['board:lumpy'],
+                           'hostname': 'host1',
+                           'id': 1}])
 
 
 if __name__ == '__main__':

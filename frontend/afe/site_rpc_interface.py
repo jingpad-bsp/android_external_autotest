@@ -12,6 +12,7 @@ import logging
 import os
 import shutil
 
+from autotest_lib.frontend.afe import models
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import priorities
@@ -319,3 +320,72 @@ def shard_heartbeat(shard_hostname):
             'hosts': [host.serialize() for host in hosts],
             'jobs': [job.serialize() for job in jobs],
         }
+
+
+def get_shards(**filter_data):
+    """Return a list of all shards.
+
+    @returns A sequence of nested dictionaries of shard information.
+    """
+    shards = models.Shard.query_objects(filter_data)
+    serialized_shards = rpc_utils.prepare_rows_as_nested_dicts(shards, ())
+    for serialized, shard in zip(serialized_shards, shards):
+        serialized['labels'] = [label.name for label in shard.labels.all()]
+
+    return serialized_shards
+
+
+def add_shard(hostname, label):
+    """Add a shard and start running jobs on it.
+
+    @param hostname: The hostname of the shard to be added; needs to be unique.
+    @param label: A platform label. Jobs of this label will be assigned to the
+                  shard.
+
+    @raises model_logic.ValidationError if a shard with the given hostname
+            already exists.
+    """
+    shard = models.Shard.add_object(hostname=hostname)
+    shard.labels.add(models.Label.smart_get(label))
+    return shard.id
+
+
+def delete_shard(hostname):
+    """Delete a shard and reclaim all resources from it.
+
+    This claims back all assigned hosts from the shard. To ensure all DUTs are
+    in a sane state, a Repair task is scheduled for them. This reboots the DUTs
+    and therefore clears all running processes that might be left.
+
+    The shard_id of jobs of that shard will be set to None.
+
+    The status of jobs that haven't been reported to be finished yet, will be
+    lost. The master scheduler will pick up the jobs and execute them.
+
+    @param hostname: Hostname of the shard to delete.
+    """
+    shard = rpc_utils.retrieve_shard(shard_hostname=hostname)
+
+    # TODO(beeps): Power off shard
+
+    # For ChromeOS hosts, repair reboots the DUT.
+    # Repair will excalate through multiple repair steps and will verify the
+    # success after each of them. Anyway, it will always run at least the first
+    # one, which includes a reboot.
+    # After a reboot we can be sure no processes from prior tests that were run
+    # by a shard are still running on the DUT.
+    # Important: Don't just set the status to Repair Failed, as that would run
+    # Verify first, before doing any repair measures. Verify would probably
+    # succeed, so this wouldn't change anything on the DUT.
+    for host in models.Host.objects.filter(shard=shard):
+            models.SpecialTask.objects.create(
+                    task=models.SpecialTask.Task.REPAIR,
+                    host=host,
+                    requested_by=models.User.current_user())
+    models.Host.objects.filter(shard=shard).update(shard=None)
+
+    models.Job.objects.filter(shard=shard).update(shard=None)
+
+    shard.labels.clear()
+
+    shard.delete()
