@@ -528,6 +528,23 @@ class TestMergeBugTemplate(mox.MoxTestBase):
                          test_bug_template['cc'] + suite_bug_template['cc'],
                          'List values for an attribute should be merged.')
 
+        self.assertEqual(merged_bug_template['labels'],
+                         test_bug_template['labels'] +
+                         suite_bug_template['labels'],
+                         'List values for an attribute should be merged.')
+
+        test_bug_template['owner'] = ''
+        test_bug_template['cc'] = ['']
+        suite_bug_template['owner'] = ''
+        suite_bug_template['cc'] = ['']
+        bug_template = reporting_utils.BugTemplate(suite_bug_template)
+        merged_bug_template = bug_template.finalize_bug_template(
+                test_bug_template)
+        self.assertFalse('owner' in merged_bug_template,
+                         'owner should be removed from the merged template.')
+        self.assertFalse('cc' in merged_bug_template,
+                         'cc should be removed from the merged template.')
+
 
 if __name__ == '__main__':
     unittest.main()

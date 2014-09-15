@@ -93,7 +93,7 @@ class BugTemplate(object):
         @param bug_template: initial bug template, e.g., bug template from suite
                              control file.
         """
-        self.bug_template = bug_template
+        self.bug_template = self.cleanup_bug_template(bug_template)
 
 
     @classmethod
@@ -126,6 +126,33 @@ class BugTemplate(object):
                                 'Invalid email address: %s.' % email)
 
 
+    @classmethod
+    def cleanup_bug_template(cls, bug_template):
+        """Remove empty entries in given bug template.
+
+        @param bug_template: bug template to be verified.
+
+        @return: A cleaned up bug template.
+        @raise InvalidBugTemplateException: raised when a bug template
+                is not a dictionary.
+        """
+        if not type(bug_template) is dict:
+            raise InvalidBugTemplateException('Bug template must be a '
+                                              'dictionary.')
+        template = copy.deepcopy(bug_template)
+        # If owner or cc is set but the value is empty or None, remove it from
+        # the template.
+        for email_attribute in cls.EMAIL_ATTRIBUTES:
+            if email_attribute in template:
+                value = template[email_attribute]
+                if isinstance(value, list):
+                    template[email_attribute] = [email for email in value
+                                                 if email]
+                if not template[email_attribute]:
+                    del(template[email_attribute])
+        return template
+
+
     def finalize_bug_template(self, test_template):
         """Merge test and suite bug templates.
 
@@ -136,10 +163,11 @@ class BugTemplate(object):
                 invalid, e.g., has missing essential attribute, or any given
                 template is not a dictionary.
         """
+        test_template = self.cleanup_bug_template(test_template)
         self.validate_bug_template(self.bug_template)
         self.validate_bug_template(test_template)
 
-        merged_template = copy.deepcopy(test_template)
+        merged_template = test_template
         merged_template.update((k, v) for k, v in self.bug_template.iteritems()
                                if k not in merged_template)
 
