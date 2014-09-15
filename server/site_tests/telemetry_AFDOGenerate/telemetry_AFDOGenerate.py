@@ -20,7 +20,7 @@ be pretty close.
 Example invocation:
 /usr/bin/test_that --debug --board=lumpy <DUT IP>
   --args="ignore_failures=True local=True gs_test_location=True"
-  telemetry_PGOGenerate
+  telemetry_AFDOGenerate
 """
 
 import bz2
