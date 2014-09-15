@@ -349,11 +349,19 @@ def add_shard(hostname, label):
     @param label: A platform label. Jobs of this label will be assigned to the
                   shard.
 
-    @raises model_logic.ValidationError if a shard with the given hostname
+    @raises error.RPCException: If label provided doesn't start with `board:`
+    @raises model_logic.ValidationError: If a shard with the given hostname
             already exists.
+    @raises models.Label.DoesNotExist: If the label specified doesn't exist.
     """
+    if not label.startswith('board:'):
+        raise error.RPCException('Sharding only supported for `board:.*` '
+                                 'labels.')
+
+    # Fetch label first, so shard isn't created when label doesn't exist.
+    label = models.Label.smart_get(label)
     shard = models.Shard.add_object(hostname=hostname)
-    shard.labels.add(models.Label.smart_get(label))
+    shard.labels.add(label)
     return shard.id
 
 

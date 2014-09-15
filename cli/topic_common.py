@@ -162,7 +162,7 @@ class item_parse_info(object):
                  filename_option='', use_leftover=False):
         """Object keeping track of the parsing options that will
         make up the content of the atest attribute:
-        atttribute_name: the atest attribute name to populate    (label)
+        attribute_name: the atest attribute name to populate    (label)
         inline_option: the option containing the items           (--label)
         filename_option: the option containing the filename      (--blist)
         use_leftover: whether to add the leftover arguments or not."""
@@ -241,7 +241,7 @@ class atest(object):
     Should only be instantiated by itself for usage
     references, otherwise, the <topic> objects should
     be used."""
-    msg_topic = "[acl|host|job|label|atomicgroup|test|user]"
+    msg_topic = "[acl|host|job|label|shard|atomicgroup|test|user]"
     usage_action = "[action]"
     msg_items = ''
 
