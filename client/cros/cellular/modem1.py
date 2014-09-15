@@ -144,6 +144,18 @@ class Modem(object):
         """Returns the modem version information."""
         return self.GetModemProperties()['Revision']
 
+    def _IsCDMAModem(self, capabilities):
+        return mm1_constants.MM_MODEM_CAPABILITY_CDMA_EVDO in capabilities
+
+    def _Is3GPPModem(self, capabilities):
+        for capability in capabilities:
+            if (capability &
+                    (mm1_constants.MM_MODEM_CAPABILITY_LTE |
+                     mm1_constants.MM_MODEM_CAPABILITY_LTE_ADVANCED |
+                     mm1_constants.MM_MODEM_CAPABILITY_GSM_UMTS)):
+                return True
+        return False
+
     def _CDMAModemIsRegistered(self):
         modem_status = self.SimpleModem().GetStatus()
         cdma1x_state = modem_status.get(
@@ -167,11 +179,9 @@ class Modem(object):
         """Ensure that modem is registered on the network."""
         props = self.GetAll(mm1.MODEM_INTERFACE)
         capabilities = props.get('SupportedCapabilities')
-        if mm1_constants.MM_MODEM_CAPABILITY_CDMA_EVDO in capabilities:
+        if self._IsCDMAModem(capabilities):
             return self._CDMAModemIsRegistered()
-        elif (mm1_constants.MM_MODEM_CAPABILITY_LTE in capabilities or
-              mm1_constants.MM_MODEM_CAPABILITY_LTE_ADVANCED in capabilities or
-              mm1_constants.MM_MODEM_CAPABILITY_GSM_UMTS in capabilities):
+        elif self._Is3GPPModem(capabilities):
             return self._3GPPModemIsRegistered()
         else:
             raise error.TestError('Invalid modem type')

@@ -135,17 +135,23 @@ class CellularTestEnvironment(object):
             timeout=shill_proxy.ShillProxy.DEVICE_ENABLE_DISABLE_TIMEOUT)
 
 
+    def _is_unsupported_error(self, e):
+        return (e.get_dbus_name() ==
+                shill_proxy.ShillProxy.ERROR_NOT_SUPPORTED or
+                (e.get_dbus_name() ==
+                 shill_proxy.ShillProxy.ERROR_FAILURE and
+                 'operation not supported' in e.get_dbus_message()))
+
     def _reset_modem(self):
         modem_device = self.shill.find_cellular_device_object()
         if not modem_device:
             raise error.TestError('Cannot find cellular device in shill. '
                                   'Is the modem plugged in?')
         try:
-            # Cromo modems do not support being reset.
+            # Cromo/MBIM modems do not support being reset.
             self.shill.reset_modem(modem_device, expect_service=False)
         except dbus.DBusException as e:
-            if (e.get_dbus_name() !=
-                    cellular_proxy.CellularProxy.ERROR_NOT_SUPPORTED):
+            if not self._is_unsupported_error(e):
                 raise
 
 
