@@ -477,7 +477,7 @@ class FirmwareTest(FAFTBase):
         self.faft_client.bios.reload()
         # If changing FORCE_DEV_SWITCH_ON flag, reboot to get a clear state
         if ((gbb_flags ^ new_flags) & vboot.GBB_FLAG_FORCE_DEV_SWITCH_ON):
-            self.reboot_warm_trigger()
+            self.sync_and_warm_reboot()
             self.wait_dev_screen_and_ctrl_d()
             self.wait_for_kernel_up()
 
@@ -900,6 +900,7 @@ class FirmwareTest(FAFTBase):
         i.e. switch ON + reboot + switch OFF, and the new keyboard controlled
         recovery mode, i.e. just press Power + Esc + Refresh.
         """
+        self.blocking_sync()
         psc = self.servo.get_power_state_controller()
         psc.power_off()
         psc.power_on(psc.REC_ON)
@@ -966,7 +967,7 @@ class FirmwareTest(FAFTBase):
         if (not self.faft_config.chrome_ec and
             not self.faft_config.broken_rec_mode):
             self.servo.disable_recovery_mode()
-        self.reboot_cold_trigger()
+        self.sync_and_cold_reboot()
         self.wait_for_client_offline()
         self.wait_fw_screen_and_switch_keyboard_dev_mode(dev=False)
 
@@ -1071,6 +1072,11 @@ class FirmwareTest(FAFTBase):
         self.faft_client.system.run_shell_command('sync')
         self.faft_client.system.run_shell_command('sync')
 
+        # sync only sends SYNCHRONIZE_CACHE but doesn't
+        # check the status. hdparm sends TUR to check if
+        # a device is ready for transfer operation.
+        root_dev = self.faft_client.system.get_root_dev()
+        self.faft_client.system.run_shell_command('hdparm -f %s' % root_dev)
 
     ################################################
     # Reboot APIs
