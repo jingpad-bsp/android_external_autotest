@@ -72,6 +72,18 @@ def _prepare_data(data):
         return data
 
 
+def fetchall_as_list_of_dicts(cursor):
+    """
+    Converts each row in the cursor to a dictionary so that values can be read
+    by using the column name.
+    @param cursor: The database cursor to read from.
+    @returns: A list of each row in the cursor as a dictionary.
+    """
+    desc = cursor.description
+    return [ dict(zip([col[0] for col in desc], row))
+             for row in cursor.fetchall() ]
+
+
 def raw_http_response(response_data, content_type=None):
     response = django.http.HttpResponse(response_data, mimetype=content_type)
     response['Content-length'] = str(len(response.content))

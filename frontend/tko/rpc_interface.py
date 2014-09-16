@@ -1,4 +1,4 @@
-import os, pickle, datetime, itertools, operator
+import pickle, datetime, itertools, operator
 from django.db import models as dbmodels
 from autotest_lib.client.common_lib import priorities
 from autotest_lib.frontend.afe import rpc_utils, model_logic
@@ -209,6 +209,39 @@ def get_detailed_test_views(**filter_data):
         test_view['job_keyvals'] = _job_keyvals_to_dict(job.keyvals)
 
     return rpc_utils.prepare_for_serialization(test_views)
+
+
+def get_tests_summary(job_names):
+    """
+    Gets the count summary of all passed and failed tests per suite.
+    @param job_names: Names of the suite jobs to get the summary from.
+    @returns: A summary of all the passed and failed tests per suite job.
+    """
+    # Take advantage of Django's literal escaping to prevent SQL injection
+    sql_list = ','.join(['%s'] * len(job_names))
+    query = ('''SELECT job_name, IF (status = 'GOOD', status, 'FAIL')
+                   AS test_status, COUNT(*) num
+                 FROM tko_test_view_2
+                 WHERE job_name IN (%s)
+                   AND test_name <> 'SERVER_JOB'
+                   AND test_name NOT LIKE 'CLIENT_JOB%%%%'
+                   AND status <> 'TEST_NA'
+                 GROUP BY job_name, IF (status = 'GOOD', status, 'FAIL')'''
+            % sql_list)
+
+    cursor = readonly_connection.connection().cursor()
+    cursor.execute(query, job_names)
+    results = rpc_utils.fetchall_as_list_of_dicts(cursor)
+
+    summaries = {}
+    for result in results:
+        label = result['job_name']
+        status = 'passed' if result['test_status'] == 'GOOD' else 'failed'
+        summary = summaries.setdefault(label, {})
+        summary[status] = result['num']
+
+    return summaries
+
 
 # graphing view support
 

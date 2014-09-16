@@ -11,6 +11,9 @@ RewriteRule ^/new_tko((?!\/server\/).*)$ /usr/share/autotest/frontend/client/www
 
 <Location "/new_tko">
     DirectoryIndex TkoClient.html
+    # Allow all requests from localhost or corp.google.com subdomains with any port
+    SetEnvIf Origin "^http(s)?://(localhost|([^/]+\.)?corp\.google\.com)(:[0-9]+)?$" origin_is=$0
+    Header set Access-Control-Allow-Origin %{origin_is}e env=origin_is
     <IfVersion >= 2.4>
         Require all granted
     </IfVersion>
