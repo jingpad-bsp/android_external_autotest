@@ -14,6 +14,8 @@ date >&2
 for MASTER in cautotest cautotest-cq
 do
     ../cli/atest host list -w $MASTER
-done | awk '$0 !~ /^Host / {print $1}' | sort |
-    ./haveservo | xargs -l1 ./servo-stat
+done | awk '
+        $0 !~ /^Host / &&
+          $0 !~ /board:(parrot|butterfly)/ {print $1}
+    ' | sort | ./haveservo | xargs -l1 ./servo-stat
 date >&2
