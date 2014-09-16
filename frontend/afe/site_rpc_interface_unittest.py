@@ -600,6 +600,12 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
         self._do_heartbeat_and_assert_response(
             shard_hostname=shard_hostname1, jobs=[], hosts=[host3])
 
+        job1.hostqueueentry_set.update(aborted=True)
+        self._do_heartbeat_and_assert_response(
+            shard_hostname=shard_hostname1, jobs=[job1],
+            hqes=job1.hostqueueentry_set.all())
+
+
         site_rpc_interface.delete_shard(hostname=shard_hostname1)
 
         self.assertRaises(

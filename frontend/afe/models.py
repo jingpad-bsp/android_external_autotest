@@ -1328,14 +1328,16 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
         # If this changes or they are triggered manually, this applies:
         # Jobs may be returned more than once by concurrent calls of this
         # function, as there is a race condition between SELECT and UPDATE.
+        unassigned_or_aborted_query = (
+            dbmodels.Q(shard=None) | dbmodels.Q(hostqueueentry__aborted=True))
         job_ids = list(Job.objects.filter(
-            shard=None,
+            unassigned_or_aborted_query,
             dependency_labels=shard.labels.all()
             ).exclude(
             hostqueueentry__complete=True
             ).exclude(
             hostqueueentry__active=True
-            ).values_list('pk', flat=True))
+            ).distinct().values_list('pk', flat=True))
         if job_ids:
             Job.objects.filter(pk__in=job_ids).update(shard=shard)
             return list(Job.objects.filter(pk__in=job_ids).all())
