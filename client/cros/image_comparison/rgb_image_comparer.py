@@ -38,18 +38,19 @@ class RGBImageComparer(object):
         @param box: int tuple, left, upper, right, lower pixel coordinates
                     defining a box region within which the comparison is made.
 
-        @throws: ValueError if either image is not an RGB
-
         @return: int, number of pixels that are different.
 
         """
         golden_image = Image.open(golden_img_path)
         test_image = Image.open(test_img_path)
 
-        if golden_image.mode != 'RGB' or test_image.mode != 'RGB':
-            logging.debug("Golden image mode is %s", golden_image.mode)
-            logging.debug("Test image mode is %s", test_image.mode)
-            raise ValueError("Expected both images to be RGB. Bailing out.")
+        if golden_image.mode != 'RGB':
+            logging.debug('Golden image was not RGB. Converting to RGB.')
+            golden_image = golden_image.convert('RGB')
+
+        if test_image.mode != 'RGB':
+            logging.debug('Test image was not RGB. Converting to RGB.')
+            test_image = test_image.convert('RGB')
 
         if box is not None:
             golden_image = golden_image.crop(box)
@@ -75,6 +76,7 @@ class RGBImageComparer(object):
         diff_pixels = sum(t[0] for t in above_thres_tuples)
 
         return comparison_result.ComparisonResult(diff_pixels, '')
+
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
