@@ -13,7 +13,7 @@ floppy:!:11:root
 news:!:13:news
 uucp:!:14:uucp,gpsd
 console:!:17:
-audio:!:18:cras,chronos,volume
+audio:!:18:cras,chronos
 cdrom:!:19:
 tape:!:26:root
 video:!:27:root,chronos,xorg
@@ -66,8 +66,6 @@ attestation:!:247:attestation
 goofy:!:248:goofy
 easy-unlock:!:249:
 trunks:!:251:trunks
-volume:!:257:
-uinput:!:258:bluetooth,volume
 ntfs-3g:!:300:
 avfs:!:301:
 fuse-exfat:!:302:
