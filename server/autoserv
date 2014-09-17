@@ -6,7 +6,7 @@
 Run a control file through the server side engine
 """
 
-import sys, os, re, traceback, signal, time, logging, getpass
+import sys, os, re, traceback, signal, time, logging, getpass, urllib2
 
 import common
 
@@ -296,11 +296,15 @@ def main():
             if test_name in measure_run_time_tests:
                 machines = parser.options.machines.replace(',', ' '
                                                            ).strip().split()
-                afe = frontend.AFE()
-                board = server_utils.get_board_from_afe(machines[0], afe)
-                timer = stats.Timer('autoserv_run_time.%s.%s' %
-                                    (board, test_name))
-                timer.start()
+                try:
+                    afe = frontend.AFE()
+                    board = server_utils.get_board_from_afe(machines[0], afe)
+                    timer = stats.Timer('autoserv_run_time.%s.%s' %
+                                        (board, test_name))
+                    timer.start()
+                except (urllib2.HTTPError, urllib2.URLError):
+                    # Ignore error if RPC failed to get board
+                    pass
     except control_data.ControlVariableException as e:
         logging.error(str(e))
     exit_code = 0
