@@ -93,9 +93,13 @@ ES_USE_HTTP = global_config.global_config.get_config_value(
 # 3 Seconds before connection to esdb timeout.
 DEFAULT_TIMEOUT = 3
 
-# Index is determined solely by autotest instance.
+# If CLIENT/metadata_index is not set, INDEX_METADATA falls back to autotest
+# instance name (SERVER/hostname).
 INDEX_METADATA = global_config.global_config.get_config_value(
-        'SERVER', 'hostname', type=str, default='localhost')
+        'CLIENT', 'metadata_index', type=str, default=None)
+if not INDEX_METADATA:
+    INDEX_METADATA = global_config.global_config.get_config_value(
+            'SERVER', 'hostname', type=str, default='localhost')
 
 
 class EsUtilException(Exception):
