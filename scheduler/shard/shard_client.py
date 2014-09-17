@@ -21,7 +21,7 @@ from autotest_lib.client.common_lib import logging_manager
 from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.frontend.afe import models, rpc_utils
 from autotest_lib.scheduler import email_manager
-from autotest_lib.server import frontend
+from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.shard import shard_logging_config
 
 
@@ -75,23 +75,29 @@ On the client side, this will happen:
 
 
 HEARTBEAT_AFE_ENDPOINT = 'shard_heartbeat'
-STATS_KEY = 'shard_client.%s' % socket.gethostname()
 
+RPC_TIMEOUT_MIN = 5
+RPC_DELAY_SEC = 5
+
+STATS_KEY = 'shard_client.%s' % socket.gethostname()
 timer = stats.Timer(STATS_KEY)
 
 
 class ShardClient(object):
     """Performs client side tasks of sharding, i.e. the heartbeat.
 
-    This class contains the to do periodic heartbeats to a global AFE,
+    This class contains the logic to do periodic heartbeats to a global AFE,
     to retrieve new jobs from it and to report completed jobs back.
     """
 
     def __init__(self, global_afe_hostname, shard_hostname, tick_pause_sec):
-        self.afe = frontend.AFE(server=global_afe_hostname)
+        self.afe = frontend_wrappers.RetryingAFE(server=global_afe_hostname,
+                                                 timeout_min=RPC_TIMEOUT_MIN,
+                                                 delay_sec=RPC_DELAY_SEC)
         self.hostname = shard_hostname
         self.tick_pause_sec = tick_pause_sec
         self._shutdown = False
+        self._shard = None
 
 
     @timer.decorate
@@ -120,6 +126,53 @@ class ShardClient(object):
             models.Job.deserialize(job)
 
 
+    @property
+    def shard(self):
+        """Return this shard's own shard object, fetched from the database.
+
+        A shard's object is fetched from the master with the first jobs. It will
+        not exist before that time.
+
+        @returns: The shard object if it already exists, otherwise None
+        """
+        if self._shard is None:
+            try:
+                self._shard = models.Shard.smart_get(self.hostname)
+            except models.Shard.DoesNotExist:
+                # This might happen before any jobs are assigned to this shard.
+                # This is okay because then there is nothing to offload anyway.
+                pass
+        return self._shard
+
+
+    def _get_jobs_to_upload(self):
+        jobs = []
+        # The scheduler sets shard to None upon completion of the job.
+        # For more information on the shard field's semantic see
+        # models.Job.shard.
+        job_ids = list(models.Job.objects.filter(
+            shard=None).values_list('pk', flat=True))
+
+        for job_to_upload in models.Job.objects.filter(pk__in=job_ids).all():
+            jobs.append(job_to_upload)
+        return jobs
+
+
+    def _mark_jobs_as_uploaded(self, jobs):
+        job_ids = [job.id for job in jobs]
+        # self.shard might be None if no jobs were downloaded yet.
+        # But then job_ids is empty, so this is harmless.
+        # Even if there were jobs we'd in the worst case upload them twice.
+        models.Job.objects.filter(pk__in=job_ids).update(shard=self.shard)
+
+
+    def _get_hqes_for_jobs(self, jobs):
+        hqes = []
+        for job in jobs:
+            hqes.extend(job.hostqueueentry_set.all())
+        return hqes
+
+
     @timer.decorate
     def do_heartbeat(self):
         """Perform a heartbeat: Retreive new jobs.
@@ -129,8 +182,17 @@ class ShardClient(object):
         objects in the local database.
         """
         logging.info("Performing heartbeat.")
-        response = self.afe.run(HEARTBEAT_AFE_ENDPOINT,
-                                shard_hostname=self.hostname)
+
+        jobs = self._get_jobs_to_upload()
+        hqes = self._get_hqes_for_jobs(jobs)
+
+        response = self.afe.run(
+            HEARTBEAT_AFE_ENDPOINT, shard_hostname=self.hostname,
+            jobs=[job.serialize(include_dependencies=False) for job in jobs],
+            hqes=[hqe.serialize(include_dependencies=False) for hqe in hqes])
+
+        self._mark_jobs_as_uploaded(jobs)
+
         self.process_heartbeat_response(response)
         logging.info("Heartbeat completed.")
 
@@ -159,30 +221,27 @@ def handle_signal(signum, frame):
     _heartbeat_client.shutdown()
 
 
-def _ensure_running_on_shard():
-    """Raises an exception if run from elsewhere than a shard.
-
-    @raises error.HeartbeatOnlyAllowedInShardModeException if run from
-            elsewhere than from a shard.
-    """
-    is_shard = global_config.global_config.get_config_value(
-            'SHARD', 'is_slave_shard', type=bool)
-
-    if not is_shard:
-        raise error.HeartbeatOnlyAllowedInShardModeException(
-            'To run the shard client, is_slave_shard must be set to True')
-
-
 def _get_global_afe_hostname():
     """Read the hostname of the global AFE from the global configuration."""
     return global_config.global_config.get_config_value(
             'SHARD', 'global_afe_hostname')
 
 
-def _get_my_shard_hostname():
-    """Read the hostname the local shard from the global configuration."""
-    return global_config.global_config.get_config_value(
-        'SHARD', 'shard_hostname')
+def _get_shard_hostname_and_ensure_running_on_shard():
+    """Read the hostname the local shard from the global configuration.
+
+    Raise an exception if run from elsewhere than a shard.
+
+    @raises error.HeartbeatOnlyAllowedInShardModeException if run from
+            elsewhere than from a shard.
+    """
+    hostname = global_config.global_config.get_config_value(
+        'SHARD', 'shard_hostname', default=None)
+    if not hostname:
+        raise error.HeartbeatOnlyAllowedInShardModeException(
+            'To run the shard client, shard_hostname must neither be None nor '
+            'empty.')
+    return hostname
 
 
 def _get_tick_pause_sec():
@@ -198,10 +257,8 @@ def get_shard_client():
 
     @returns A shard client instance.
     """
-    _ensure_running_on_shard()
-
     global_afe_hostname = _get_global_afe_hostname()
-    shard_hostname = _get_my_shard_hostname()
+    shard_hostname = _get_shard_hostname_and_ensure_running_on_shard()
     tick_pause_sec = _get_tick_pause_sec()
     return ShardClient(global_afe_hostname, shard_hostname, tick_pause_sec)
 

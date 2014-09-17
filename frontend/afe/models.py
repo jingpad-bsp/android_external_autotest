@@ -1101,7 +1101,7 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
 
 
     def sanity_check_update_from_shard(self, shard, updated_serialized):
-        if not self.shard_id == shard.id:
+        if self.shard_id != shard.id:
             raise error.UnallowedRecordsSentToMaster(
                 'Job id=%s is assigned to shard (%s). Cannot update it with %s '
                 'from shard %s.' % (self.id, self.shard_id, updated_serialized,
@@ -1164,6 +1164,8 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
 
     timeout_mins = dbmodels.IntegerField(default=DEFAULT_TIMEOUT_MINS)
 
+    # If this is None on the master, a slave should be found.
+    # If this is None on a slave, it should be synced back to the master
     shard = dbmodels.ForeignKey(Shard, blank=True, null=True)
 
     # custom manager
