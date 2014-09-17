@@ -299,12 +299,15 @@ class HostQueueEntryTest(BaseSchedulerModelsTest):
         for status in host_queue_entry_states.Status.values:
             hqe = self._create_hqe(hosts=[1])
             hqe.started_on = datetime.datetime.now()
+            hqe.job.update_field('shard_id', 3)
             self.assertIsNone(hqe.finished_on)
             hqe.set_status(status)
             if status in host_queue_entry_states.COMPLETE_STATUSES:
                 self.assertIsNotNone(hqe.finished_on)
+                self.assertIsNone(hqe.job.shard_id)
             else:
                 self.assertIsNone(hqe.finished_on)
+                self.assertEquals(hqe.job.shard_id, 3)
 
 
 class JobTest(BaseSchedulerModelsTest):

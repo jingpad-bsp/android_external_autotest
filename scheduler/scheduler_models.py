@@ -633,6 +633,9 @@ class HostQueueEntry(DBObject):
 
         if complete:
             self._on_complete(status)
+            if self.job.shard_id is not None:
+                # If shard_id is None, the job will be synced back to the master
+                self.job.update_field('shard_id', None)
             self._email_on_job_complete()
 
         should_email_status = (status.lower() in _notify_email_statuses or
