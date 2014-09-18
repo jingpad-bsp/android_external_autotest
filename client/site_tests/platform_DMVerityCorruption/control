@@ -8,7 +8,7 @@ TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "Platform"
 TEST_TYPE = "client"
-SUITE = "bvt-perbuild"
+SUITE = "bvt-inline"
 
 DOC = """
 Ensures the dm-verity module is properly failing on invalid data
