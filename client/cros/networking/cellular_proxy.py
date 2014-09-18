@@ -32,6 +32,7 @@ class CellularProxy(shill_proxy.ShillProxy):
     VALUE_SIM_LOCK_TYPE_PUK = 'sim-puk'
 
     # Various timeouts in seconds.
+    SERVICE_CONNECT_TIMEOUT = 60
     SERVICE_DISCONNECT_TIMEOUT = 60
     SERVICE_REGISTRATION_TIMEOUT = 60
     SLEEP_INTERVAL = 0.1

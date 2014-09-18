@@ -22,4 +22,7 @@ DOC = """
   that has been factory reset and cannot start a data session.
 """
 
-job.run_test('network_3GFailedConnect')
+from autotest_lib.client.cros.cellular import test_environment
+
+test_env = test_environment.CellularOTATestEnvironment()
+job.run_test('network_3GFailedConnect', test_env=test_env)
