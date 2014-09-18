@@ -28,7 +28,7 @@ class touch_ScrollDirection(touch_playback_test_base.touch_playback_test_base):
 
         """
         self._reset_scroll_position()
-        self._playback(filepath=self._down_file)
+        self._playback(filepath=filename)
         self._wait_for_scroll_position_to_settle()
 
         delta = self._get_scroll_position() - self._DEFAULT_SCROLL
