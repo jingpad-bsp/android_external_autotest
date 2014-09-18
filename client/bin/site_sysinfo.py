@@ -333,7 +333,8 @@ class site_sysinfo(base_sysinfo.base_sysinfo):
             of "chrome --version" and the milestone will be the empty string.
 
         """
-        version_string = utils.system_output(constants.CHROME_VERSION_COMMAND)
+        version_string = utils.system_output(constants.CHROME_VERSION_COMMAND,
+                                             ignore_status=True)
         return utils.parse_chrome_version(version_string)
 
 
