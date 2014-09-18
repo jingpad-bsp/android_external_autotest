@@ -586,5 +586,21 @@ class SerializationTest(unittest.TestCase,
                          self._get_example_response())
 
 
+    def test_update(self):
+        job = self._create_job(hosts=[1])
+        serialized = job.serialize(include_dependencies=False)
+        serialized['owner'] = 'some_other_owner'
+
+        job.update_from_serialized(serialized)
+        self.assertEqual(job.owner, 'some_other_owner')
+
+        serialized = job.serialize()
+        self.assertRaises(
+            ValueError,
+            job.update_from_serialized, serialized)
+
+
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -384,7 +384,7 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
 
 
     def custom_deserialize_relation(self, link, data):
-        assert link == 'shard'
+        assert link == 'shard', 'Link %s should not be deserialized' % link
         self.shard = Shard.deserialize(data)
 
 
@@ -862,16 +862,12 @@ class AclGroup(dbmodels.Model, model_logic.ModelExtensions):
 
 
     def save(self, *args, **kwargs):
-        old_aclgroup = None
-        try:
+        change = bool(self.id)
+        if change:
             # Check the original object for an ACL violation
-            old_aclgroup = AclGroup.objects.get(
-                id=self.id).check_for_acl_violation_acl_group()
-        except AclGroup.DoesNotExist:
-            pass
-
+            AclGroup.objects.get(id=self.id).check_for_acl_violation_acl_group()
         super(AclGroup, self).save(*args, **kwargs)
-        self.perform_after_save(bool(old_aclgroup))
+        self.perform_after_save(change)
 
 
     class Meta:
@@ -1100,7 +1096,7 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
 
 
     def custom_deserialize_relation(self, link, data):
-        assert link == 'shard'
+        assert link == 'shard', 'Link %s should not be deserialized' % link
         self.shard = Shard.deserialize(data)
 
 

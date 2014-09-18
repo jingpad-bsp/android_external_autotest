@@ -979,11 +979,18 @@ class ModelExtensions(rdb_model_extensions.ModelValidators):
         pass
 
 
-    def serialize(self):
+    def serialize(self, include_dependencies=True):
         """Serializes the object with dependencies.
 
         The variable SERIALIZATION_LINKS_TO_FOLLOW defines which dependencies
         this function will serialize with the object.
+
+        @param include_dependencies: Whether or not to follow relations to
+                                     objects this object depends on.
+                                     This parameter is used when uploading
+                                     jobs from a shard to the master, as the
+                                     master already has all the dependent
+                                     objects.
 
         @returns: Dictionary representation of the object.
         """
@@ -992,8 +999,9 @@ class ModelExtensions(rdb_model_extensions.ModelValidators):
             if field.rel is None:
                 serialized[field.name] = field._get_val_from_obj(self)
 
-        for link in self.SERIALIZATION_LINKS_TO_FOLLOW:
-            serialized[link] = self._serialize_relation(link)
+        if include_dependencies:
+            for link in self.SERIALIZATION_LINKS_TO_FOLLOW:
+                serialized[link] = self._serialize_relation(link)
 
         return serialized
 
@@ -1020,12 +1028,71 @@ class ModelExtensions(rdb_model_extensions.ModelValidators):
 
 
     @classmethod
+    def _split_local_from_foreign_values(cls, data):
+        """This splits local from foreign values in a serialized object.
+
+        @param data: The serialized object.
+
+        @returns A tuple of two lists, both containing tuples in the form
+                 (link_name, link_value). The first list contains all links
+                 for local fields, the second one contains those for foreign
+                 fields/objects.
+        """
+        links_to_local_values, links_to_related_values = [], []
+        for link, value in data.iteritems():
+            if link in cls.SERIALIZATION_LINKS_TO_FOLLOW:
+                # It's a foreign key
+                links_to_related_values.append((link, value))
+            else:
+                # It's a local attribute
+                links_to_local_values.append((link, value))
+        return links_to_local_values, links_to_related_values
+
+
+    def _deserialize_local(self, data):
+        """Set local attributes from a list of tuples.
+
+        @param data: List of tuples like returned by
+                     _split_local_from_foreign_values.
+        """
+        for link, value in data:
+            setattr(self, link, value)
+        # Overwridden save() methods are prone to errors, so don't execute them.
+        # This is because:
+        # - the overwritten methods depend on ACL groups that don't yet exist
+        #   and don't handle errors
+        # - the overwritten methods think this object already exists in the db
+        #   because the id is already set
+        super(type(self), self).save()
+
+
+    def _deserialize_relations(self, data):
+        """Set foreign attributes from a list of tuples.
+
+        This deserialized the related objects using their own deserialize()
+        function and then sets the relation.
+
+        @param data: List of tuples like returned by
+                     _split_local_from_foreign_values.
+        """
+        for link, value in data:
+            self._deserialize_relation(link, value)
+        # See comment in _deserialize_local
+        super(type(self), self).save()
+
+
+    @classmethod
     def deserialize(cls, data):
-        """Deserializes an object's representation and saves it to the database.
+        """Recursively deserializes and saves an object with it's dependencies.
 
         This takes the result of the serialize method and creates objects
-        in the database that are just like the original. If an object already
-        exists, it will not be overwritten.
+        in the database that are just like the original.
+
+        If an object of the same type with the same id already exists, it's
+        local values will be left untouched.
+        Deserialize will still recursively propagate to all related objects
+        present in data though.
+        I.e. this is necessary to add users to an already existing acl-group.
 
         @param data: Representation of an object and its dependencies, as
                      returned by serialize.
@@ -1037,48 +1104,68 @@ class ModelExtensions(rdb_model_extensions.ModelValidators):
         if data is None:
             return None
 
+        local, related = cls._split_local_from_foreign_values(data)
+
         try:
-            return cls.objects.get(id=data['id'])
+            instance = cls.objects.get(id=data['id'])
         except cls.DoesNotExist:
-            return cls._deserialize_new_object(data)
+            instance = cls()
+            instance._deserialize_local(local)
 
-    @classmethod
-    def _deserialize_new_object(cls, data):
-        """Deserialize an object, that does not yet exist in the database.
-
-        The caller has to ensure an object with the same type and id doesn't yet
-        exist in the database.
-
-        @param data: Representation of an object and its dependencies, as
-                     returned by serialize.
-
-        @returns: The object represented by data.
-        """
-        instance = cls()
-        links_to_related_tuples = []
-        for link, value in data.iteritems():
-            if link in cls.SERIALIZATION_LINKS_TO_FOLLOW:
-                # It's a foreign key
-                links_to_related_tuples.append((link, value))
-            else:
-                # It's a local attribute
-                setattr(instance, link, value)
-        instance.save()
-
-        for link, value in links_to_related_tuples:
-            instance._deserialize_relation(link, value)
-        instance.save()
+        instance._deserialize_relations(related)
 
         return instance
 
 
+    def update_from_serialized(self, serialized):
+        """Updates local fields of an existing object from a serialized form.
+
+        This is different than the normal deserialize() in the way that it
+        does update local values, which deserialize doesn't, but doesn't
+        recursively propagate to related objects, which deserialize() does.
+
+        The use case of this function is to update job records on the master
+        after the jobs have been executed on a slave, as the master is not
+        interested in updates for users, labels, specialtasks, etc.
+
+        @param serialized: Representation of an object and its dependencies, as
+                           returned by serialize.
+
+        @raises ValueError: if serialized contains related objects, i.e. not
+                            only local fields.
+        """
+        local, related = (
+            self._split_local_from_foreign_values(serialized))
+        if related:
+            raise ValueError('Serialized must not contain foreign '
+                             'objects: %s' % related)
+
+        self._deserialize_local(local)
+
+
     def custom_deserialize_relation(self, link, data):
+        """Allows overriding the deserialization behaviour by subclasses."""
         raise NotImplementedError(
             'custom_deserialize_relation must be implemented by subclass %s '
             'for relation %s' % (type(self), link))
 
 
     def _deserialize_relation(self, link, data):
+        """Deserializes related objects and sets references on this object.
+
+        Relations that point to a list of objects are handled automatically.
+        For many-to-one or one-to-one relations custom_deserialize_relation
+        must be overridden by the subclass.
+
+        Related objects are deserialized using their deserialize() method.
+        Thereby they and their dependencies are created if they don't exist
+        and saved to the database.
+
+        @param link: Name of the relation.
+        @param data: Serialized representation of the related object(s).
+                     This means a list of dictionaries for to-many relations,
+                     just a dictionary for to-one relations.
+        """
         field = getattr(self, link)
 
         if field and hasattr(field, 'all'):
@@ -1088,6 +1175,12 @@ class ModelExtensions(rdb_model_extensions.ModelValidators):
 
 
     def _deserialize_2m_relation(self, link, data, related_class):
+        """Deserialize related objects for one to-many relationship.
+
+        @param link: Name of the relation.
+        @param data: Serialized representation of the related objects.
+                     This is a list with of dictionaries.
+        """
         relation_set = getattr(self, link)
         for serialized in data:
             relation_set.add(related_class.deserialize(serialized))
