@@ -18,13 +18,16 @@ DOC = """
   Stress-tests enabling and disabling a technology at short intervals.
 """
 
+from autotest_lib.client.cros.cellular import test_environment
+
 # 3GPP
-job.run_test('network_3GStressEnable',
-             use_pseudomodem=True,
-             tag='pseudomodem_3GPP')
+test_env = test_environment.CellularPseudoMMTestEnvironment(
+        pseudomm_args=({'family': '3GPP'},))
+job.run_test('network_3GStressEnable', tag='pseudomodem_3GPP',
+             test_env=test_env)
 
 # CDMA
-job.run_test('network_3GStressEnable',
-             use_pseudomodem=True,
-             pseudomodem_family='CDMA',
-             tag='pseudomodem_CDMA')
+test_env = test_environment.CellularPseudoMMTestEnvironment(
+        pseudomm_args=({'family': 'CDMA'},))
+job.run_test('network_3GStressEnable', tag='pseudomodem_CDMA',
+             test_env=test_env)

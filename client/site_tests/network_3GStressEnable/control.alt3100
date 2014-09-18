@@ -19,4 +19,7 @@ DOC = """
   Stress-tests enabling and disabling a technology at short intervals.
 """
 
-job.run_test('network_3GStressEnable', tag='alt3100')
+from autotest_lib.client.cros.cellular import test_environment
+
+test_env = test_environment.CellularOTATestEnvironment()
+job.run_test('network_3GStressEnable', tag='alt3100', test_env=test_env)
