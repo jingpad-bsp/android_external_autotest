@@ -19,8 +19,28 @@
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
 
+from django import conf as django_conf
+import os
 import urllib2
 from autotest_lib.client.common_lib import error as exceptions
+
+from json import decoder
+
+
+# The serializers can't be imported if django isn't configured.
+# Using try except here doesn't work, as test_that initializes it's own
+# django environment (setup_django_lite_environment) which raises import errors
+# if the django dbutils have been previously imported, as importing them leaves
+# some state behind.
+# This the variable name must not be undefined or emtpy string.
+if os.environ.get(django_conf.ENVIRONMENT_VARIABLE, None):
+    # Django JSON encoder uses the standard json encoder but can handle DateTime
+    from django.core.serializers import json as django_encoder
+    json_encoder_class = django_encoder.DjangoJSONEncoder
+else:
+    from json import encoder as json_encoder
+    json_encoder_class = json_encoder.JSONEncoder
+
 
 class JSONRPCException(Exception):
     pass
@@ -74,13 +94,9 @@ class ServiceProxy(object):
         return ServiceProxy(self.__serviceURL, name, self.__headers)
 
     def __call__(self, *args, **kwargs):
-        # pull in json imports lazily so that the library isn't required
-        # unless you actually need to do encoding and decoding
-        from json import decoder, encoder
-
-        postdata = encoder.JSONEncoder().encode({"method": self.__serviceName,
+        postdata = json_encoder_class().encode({'method': self.__serviceName,
                                                 'params': args + (kwargs,),
-                                                'id':'jsonrpc'})
+                                                'id': 'jsonrpc'})
         request = urllib2.Request(self.__serviceURL, data=postdata,
                                   headers=self.__headers)
         respdata = urllib2.urlopen(request).read()

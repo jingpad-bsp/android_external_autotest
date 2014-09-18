@@ -16,10 +16,10 @@ import common
 from autotest_lib.frontend.afe import model_logic, model_attributes
 from autotest_lib.frontend.afe import rdb_model_extensions
 from autotest_lib.frontend import settings, thread_local
-from autotest_lib.client.common_lib import enum, host_protections, global_config
+from autotest_lib.client.common_lib import enum, error, host_protections
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import host_queue_entry_states
-from autotest_lib.client.common_lib import control_data, priorities
-from autotest_lib.client.common_lib import decorators
+from autotest_lib.client.common_lib import control_data, priorities, decorators
 
 # job options and user preferences
 DEFAULT_REBOOT_BEFORE = model_attributes.RebootBefore.IF_DIRTY
@@ -1100,6 +1100,14 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
         self.shard = Shard.deserialize(data)
 
 
+    def sanity_check_update_from_shard(self, shard, updated_serialized):
+        if not self.shard_id == shard.id:
+            raise error.UnallowedRecordsSentToMaster(
+                'Job id=%s is assigned to shard (%s). Cannot update it with %s '
+                'from shard %s.' % (self.id, self.shard_id, updated_serialized,
+                                    shard.id))
+
+
     # TIMEOUT is deprecated.
     DEFAULT_TIMEOUT = global_config.global_config.get_config_value(
         'AUTOTEST_WEB', 'job_timeout_default', default=24)
@@ -1424,6 +1432,14 @@ class HostQueueEntry(dbmodels.Model, model_logic.ModelExtensions):
     def custom_deserialize_relation(self, link, data):
         assert link == 'meta_host'
         self.meta_host = Label.deserialize(data)
+
+
+    def sanity_check_update_from_shard(self, shard, updated_serialized,
+                                       job_ids_sent):
+        if self.job_id not in job_ids_sent:
+            raise error.UnallowedRecordsSentToMaster(
+                'Sent HostQueueEntry without corresponding '
+                'job entry: %s' % updated_serialized)
 
 
     Status = host_queue_entry_states.Status
