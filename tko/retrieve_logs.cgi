@@ -12,6 +12,8 @@ Content-Type: text/plain
 Location: %s\r\n\r
 """
 
+GOOGLE_STORAGE_PATTERN = 'storage.cloud.google.com/'
+
 # Define function for retrieving logs
 def _retrieve_logs_dummy(job_path):
     pass
@@ -70,6 +72,16 @@ def find_repository_host(job_path):
             return 'http', utils.normalize_hostname(drone), job_path
         except urllib2.URLError:
             pass
+
+    # If the URL requested is a test result, it is now either on the local
+    # host or in Google Storage.
+    if job_path.startswith('/results/'):
+        # We only care about the path after '/results/'.
+        job_relative_path = job_path[9:]
+        if not os.path.exists(os.path.join('/usr/local/autotest/results',
+                                           job_relative_path)):
+            gsuri = utils.get_offload_gsuri().split('gs://')[1]
+            return ['https', GOOGLE_STORAGE_PATTERN, gsuri + job_relative_path]
 
 
 def get_full_url(info, log_path):
