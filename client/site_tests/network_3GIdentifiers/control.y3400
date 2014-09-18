@@ -26,4 +26,7 @@ DOC = """
     - SIM operator ID
 """
 
-job.run_test('network_3GIdentifiers', tag='y3400')
+from autotest_lib.client.cros.cellular import test_environment
+
+test_env = test_environment.CellularOTATestEnvironment()
+job.run_test('network_3GIdentifiers', tag='y3400', test_env=test_env)

@@ -25,4 +25,14 @@ DOC = """
     - SIM operator ID
 """
 
-job.run_test('network_3GIdentifiers', use_pseudomodem=True, tag='pseudomodem')
+import os
+
+from autotest_lib.client.cros.cellular import test_environment
+
+test_module_path = os.path.join(
+        job.testdir, 'network_3GIdentifiers', 'network_3GIdentifiers.py')
+test_env = test_environment.CellularPseudoMMTestEnvironment(
+        pseudomm_args=({'family': '3GPP',
+                        'test-module' : test_module_path,
+                        'test-sim-class' : 'TestSIM'},))
+job.run_test('network_3GIdentifiers',  tag='pseudomodem', test_env=test_env)

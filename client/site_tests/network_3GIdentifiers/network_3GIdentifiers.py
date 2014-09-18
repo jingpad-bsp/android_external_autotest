@@ -6,14 +6,8 @@ import logging
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import network
-from autotest_lib.client.cros.cellular import mm
-
 from autotest_lib.client.cros.cellular import mm1_constants
-from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
 from autotest_lib.client.cros.cellular.pseudomodem import sim
-
-import flimflam
 
 # Disable pylint warning W1201 because we pass the string to the log as well
 # as use it to raise an error, see _ValidateIdentifier().
@@ -92,36 +86,16 @@ class network_3GIdentifiers(test.test):
                                  modem_props['Meid'],
                                  14, 14)
 
-    def run_once(self, use_pseudomodem=False):
-        """Calls by autotest to run this test."""
-        self.use_pseudomodem = use_pseudomodem
-        with pseudomodem_context.PseudoModemManagerContext(
-                use_pseudomodem,
-                {'family' : '3GPP',
-                 'test-module' : __file__,
-                 'test-sim-class' : 'TestSIM'}):
-            flim = flimflam.FlimFlam()
-            flim.SetDebugTags(
-                'dbus+service+device+modem+cellular+portal+network+'
-                'manager+dhcp')
-            network.ResetAllModems(flim)
-
-            device = flim.FindCellularDevice()
-            if not device:
-                raise error.TestFail('Failed to find cellular device')
-            service = flim.FindCellularService(SERVICE_REGISTRATION_TIMEOUT)
-            if not service:
-                raise error.TestFail('Cellular device failed to register with '
-                                     'network.')
+    def run_once(self, test_env):
+        """Called by autotest to run this test."""
+        with test_env:
+            device = test_env.shill.find_cellular_device_object()
+            service = test_env.shill.find_cellular_service_object()
             device_props = device.GetProperties(utf8_strings=True)
             service_props = service.GetProperties(utf8_strings=True)
             self.is_modemmanager = 'freedesktop' in device_props['DBus.Service']
-            if self.is_modemmanager and not device_props['Cellular.SIMPresent']:
-                raise error.TestFail('Test requires a valid SIM')
 
-            manager, modem_path = mm.PickOneModem('')
-            modem = manager.GetModem(modem_path)
-            modem_props = modem.GetModemProperties()
+            modem_props = test_env.modem.GetModemProperties()
 
             logging.debug('shill service properties: %s', service_props)
             logging.debug('shill device_properties: %s', device_props)
