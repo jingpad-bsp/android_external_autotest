@@ -77,6 +77,8 @@ class ShillProxy(object):
     SERVICE_PROPERTY_STATE = 'State'
     SERVICE_PROPERTY_TYPE = 'Type'
 
+    SERVICE_CONNECTED_STATES = ['portal', 'online']
+
     SUPPORTED_WIFI_STATION_TYPES = {'managed': 'managed',
                                     'ibss': 'adhoc',
                                     None: 'managed'}
@@ -518,3 +520,44 @@ class ShillProxy(object):
 
         """
         return self.find_object('Service', properties)
+
+
+    def connect_service_synchronous(self, service, timeout_seconds):
+        """Connect a service and wait for its state to become connected.
+
+        @param service DBus service object to connect.
+        @param timeout_seconds number of seconds to wait for service to go
+            enter a connected state.
+        @return True if the service connected successfully.
+
+        """
+        try:
+            service.Connect()
+        except dbus.exceptions.DBusException as e:
+            if e.dbus_get_name() != self.ERROR_ALREADY_CONNECTED:
+                raise e
+        success, _, _ = self.wait_for_property_in(
+                service, self.SERVICE_PROPERTY_STATE,
+                self.SERVICE_CONNECTED_STATES,
+                timeout_seconds=timeout_seconds)
+        return success
+
+
+    def disconnect_service_synchronous(self, service, timeout_seconds):
+        """Disconnect a service and wait for its state to go idle.
+
+        @param service DBus service object to disconnect.
+        @param timeout_seconds number of seconds to wait for service to go idle.
+        @return True if the service disconnected successfully.
+
+        """
+        try:
+            service.Disconnect()
+        except dbus.exceptions.DBusException as e:
+            if e.dbus_get_name() not in [self.ERROR_IN_PROGRESS,
+                                         self.ERROR_NOT_CONNECTED]:
+                raise e
+        success, _, _ = self.wait_for_property_in(
+                service, self.SERVICE_PROPERTY_STATE, ['idle'],
+                timeout_seconds=timeout_seconds)
+        return success
