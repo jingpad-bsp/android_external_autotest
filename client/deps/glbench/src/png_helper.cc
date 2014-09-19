@@ -10,7 +10,6 @@
 #include <png.h>
 
 #include "base/memory/scoped_ptr.h"
-#include "base/file_util.h"
 
 #include "png_helper.h"
 
