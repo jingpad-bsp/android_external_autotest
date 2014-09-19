@@ -60,7 +60,8 @@ CONFIG = global_config.global_config
 
 # Return code that will be sent back to autotest_rpc_server.py
 RETURN_CODES = enum.Enum(
-        'OK', 'ERROR', 'WARNING', 'INFRA_FAILURE', 'SUITE_TIMEOUT')
+        'OK', 'ERROR', 'WARNING', 'INFRA_FAILURE', 'SUITE_TIMEOUT',
+        'INVALID_OPTIONS')
 # The severity of return code. If multiple codes
 # apply, the script should always return the severest one.
 # E.g. if we have a test failure and the suite also timed out,
@@ -69,7 +70,8 @@ SEVERITY = {RETURN_CODES.OK: 0,
             RETURN_CODES.WARNING: 1,
             RETURN_CODES.SUITE_TIMEOUT: 2,
             RETURN_CODES.INFRA_FAILURE: 3,
-            RETURN_CODES.ERROR: 4}
+            RETURN_CODES.ERROR: 4,
+            RETURN_CODES.INVALID_OPTIONS: 5}
 
 
 def get_worse_code(code1, code2):
@@ -120,11 +122,12 @@ def parse_options():
     # If you really want no pool, --pool="" will do it. USE WITH CARE.
     parser.add_option("-p", "--pool", dest="pool", default="suites")
     parser.add_option("-s", "--suite_name", dest="name")
-    parser.add_option("-a", "--afe_timeout_mins", dest="afe_timeout_mins",
-                      default=30)
-    parser.add_option("-t", "--timeout_mins", dest="timeout_mins",
-                      default=1440)
-    parser.add_option("-d", "--delay_sec", dest="delay_sec", default=10)
+    parser.add_option("-a", "--afe_timeout_mins", type="int",
+                      dest="afe_timeout_mins", default=30)
+    parser.add_option("-t", "--timeout_mins", type="int",
+                      dest="timeout_mins", default=1440)
+    parser.add_option("-d", "--delay_sec", type="int",
+                      dest="delay_sec", default=10)
     parser.add_option("-m", "--mock_job_id", dest="mock_job_id",
                       help="Skips running suite; creates report for given ID.")
     parser.add_option("-u", "--num", dest="num", type="int", default=None,
@@ -1182,14 +1185,14 @@ class ResultCollector(object):
         self._compute_return_code()
 
 
-def main():
+def main_without_exception_handling():
     """
-    Entry point for run_suite script.
+    Entry point for run_suite script without exception handling.
     """
     parser, options, args = parse_options()
     if not verify_options_and_args(options, args):
         parser.print_help()
-        return
+        return RETURN_CODES.INVALID_OPTIONS
 
     log_name = 'run_suite-default.log'
     if not options.mock_job_id:
@@ -1208,6 +1211,7 @@ def main():
         except AttributeError:
             print 'Unknown priority level %s.  Try one of %s.' % (
                   options.priority, ', '.join(priorities.Priority.names))
+            return RETURN_CODES.INVALID_OPTIONS
 
     try:
         if not options.bypass_labstatus:
@@ -1355,6 +1359,18 @@ def main():
         logging.info(link.GenerateBuildbotLink())
         logging.info('--no_wait specified; Exiting.')
     return code
+
+
+def main():
+    """Entry point."""
+    try:
+        return main_without_exception_handling()
+    except Exception as e:
+        code = RETURN_CODES.INFRA_FAILURE
+        logging.exception('Unhandled run_suite exception: %s', e)
+        logging.info('Will return from run_suite with status: %s',
+                     RETURN_CODES.get_string(code))
+        return code
 
 
 if __name__ == "__main__":
