@@ -177,6 +177,7 @@ OPTIONS = _Options()
 OPTIONS.DEBUG = 'debug'
 OPTIONS.DEVICE = 'system_device'
 OPTIONS.DIR = 'directory'
+OPTIONS.FNGENERATOR = 'function_generator'
 OPTIONS.HELP = 'help'
 OPTIONS.INDIVIDUAL = 'individual'
 OPTIONS.ITERATIONS = 'iterations'

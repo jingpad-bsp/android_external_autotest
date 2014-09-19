@@ -269,23 +269,12 @@ gesture_names_robot = {
 
 gesture_names_quickstep = [DRAG_LATENCY]
 
-# Define the list of gestures that require equipment our vendors may not have.
-gesture_names_equipment_required = [NOISE_LINE, NOISE_STATIONARY,
-                                    NOISE_STATIONARY_EXTENDED]
+# Define the list of gestures that require a function generator to run
+gesture_names_fngenerator_required = [NOISE_LINE, NOISE_STATIONARY,
+                                      NOISE_STATIONARY_EXTENDED]
 
 # Define the list of gestures to test in NOISE mode.
 gesture_names_noise_extended = [NOISE_STATIONARY_EXTENDED]
-
-# Define the manual list which is gesture_names_complete:
-# gesture_names_robot - gesture_names_equipment_required
-gesture_names_manual = {}
-for dev in DEV.DEVICE_TYPE_LIST:
-    complete_gesture_list = gesture_names_complete[dev]
-    manual_set = set(complete_gesture_list) - set(gesture_names_robot[dev])
-    gesture_names_manual[dev] = [gesture for gesture in complete_gesture_list
-                                 if gesture in manual_set
-                                 and gesture not in
-                                 gesture_names_equipment_required]
 
 
 # Define the gesture for pressure calibration

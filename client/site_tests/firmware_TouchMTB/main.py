@@ -352,6 +352,9 @@ def _usage_and_exit():
     print '        show this help'
     print '  -i, --%s iterations' % OPTIONS.ITERATIONS
     print '        specify the number of iterations'
+    print '  -f, --%s' % OPTIONS.FNGENERATOR
+    print '        Indicate that (despite not having a touchbot) there is a'
+    print '        function generator attached for the noise tests'
     print '  -m, --%s mode' % OPTIONS.MODE
     print '        specify the gesture playing mode'
     print '        mode could be one of the following options'
@@ -440,6 +443,7 @@ def _parse_options():
     """
     # Set the default values of options.
     options = {OPTIONS.DEVICE: False,
+               OPTIONS.FNGENERATOR: False,
                OPTIONS.ITERATIONS: 1,
                OPTIONS.MODE: MODE.MANUAL,
                OPTIONS.REPLAY: None,
@@ -455,8 +459,9 @@ def _parse_options():
     if not options_list:
         return options
 
-    short_opt = 'dhi:m:stu:'
+    short_opt = 'dfhi:m:stu:'
     long_opt = [OPTIONS.DEVICE,
+                OPTIONS.FNGENERATOR,
                 OPTIONS.HELP,
                 OPTIONS.ITERATIONS + '=',
                 OPTIONS.MODE + '=',
@@ -475,6 +480,8 @@ def _parse_options():
     for opt, arg in opts:
         if opt in ('-d', '--%s' % OPTIONS.DEVICE):
             options[OPTIONS.DEVICE] = True
+        if opt in ('-f', '--%s' % OPTIONS.FNGENERATOR):
+            options[OPTIONS.FNGENERATOR] = True
         elif opt in ('-h', '--%s' % OPTIONS.HELP):
             _usage_and_exit()
         elif opt in ('-i', '--%s' % OPTIONS.ITERATIONS):

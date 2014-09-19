@@ -13,7 +13,7 @@ import time
 import common_util
 import test_conf as conf
 
-from firmware_constants import GV, MODE
+from firmware_constants import GV, MODE, OPTIONS
 
 
 # Define the robot control script names.
@@ -61,11 +61,14 @@ class RobotWrapperError(Exception):
 class RobotWrapper:
     """A class to wrap and manipulate the robot library."""
 
-    def __init__(self, board, mode, is_touchscreen):
+    def __init__(self, board, options):
         self._board = board
-        self._mode = mode
-        self.is_touchscreen = is_touchscreen
+        self._mode = options[OPTIONS.MODE]
+        self._is_touchscreen = options[OPTIONS.TOUCHSCREEN]
+        self._fngenerator_only = options[OPTIONS.FNGENERATOR]
         self._robot_script_dir = self._get_robot_script_dir()
+        self._noise_script_dir = os.path.join(self._get_robot_script_dir(),
+                                              SCRIPT_NOISE)
 
         # Each get_control_command method maps to a script name.
         self._robot_script_name_dict = {
@@ -215,6 +218,9 @@ class RobotWrapper:
         self._get_device_spec()
 
     def _get_device_spec(self):
+        if not self.is_robot_action_mode():
+            return
+
         # First check if there is already a device spec in this directory
         if (os.path.isfile('%s.p' % self._board) and
             os.path.isfile('%s_min.p' % self._board)):
@@ -310,16 +316,23 @@ class RobotWrapper:
         calib_cmd = 'python %s %s' % (calib_script, board)
         self._execute_control_command(calib_cmd)
 
-    def _is_robot_action_mode(self):
+    def is_manual_noise_test_mode(self):
+        return (self._mode in [MODE.NOISE, MODE.COMPLETE]
+                and self._fngenerator_only)
+
+    def is_robot_action_mode(self):
         """Is it in robot action mode?
 
         In the robot action mode, it actually invokes the robot control script.
         """
+        if self.is_manual_noise_test_mode():
+            return False
+
         return self._mode in [MODE.ROBOT, MODE.QUICKSTEP, MODE.NOISE]
 
     def _raise_error(self, msg):
         """Only raise an error if it is in the robot action mode."""
-        if self._is_robot_action_mode():
+        if self.is_robot_action_mode():
             raise RobotWrapperError(msg)
 
     def _get_robot_script_dir(self):
@@ -347,7 +360,7 @@ class RobotWrapper:
 
         @param coordinates: a tuple of coordinates
         """
-        return (tuple(1.0 - c for c in coordinates) if self.is_touchscreen else
+        return (tuple(1.0 - c for c in coordinates) if self._is_touchscreen else
                 coordinates)
 
     def _get_control_command_pinch(self, robot_script, gesture, variation):
@@ -480,19 +493,13 @@ class RobotWrapper:
     def _get_control_command_line(self, robot_script, gesture, variation):
         """Get robot control command for gestures using robot line script."""
         line_type = 'swipe' if bool('swipe' in gesture) else 'basic'
-        line = speed = finger_angle = frequency = waveform = amplitude = None
+        line = speed = finger_angle = None
         for element in variation:
             if element in GV.GESTURE_DIRECTIONS:
                 line = self._line_dict[element]
                 finger_angle = self._angle_dict.get(element, None)
             elif element in GV.GESTURE_SPEED:
                 speed = self._speed_dict[element]
-            elif element in GV.NOISE_FREQUENCY:
-                frequency = self._frequency_dict[element]
-            elif element in GV.NOISE_WAVEFORM:
-                waveform = self._waveform_dict[element]
-            elif element in GV.NOISE_AMPLITUDE:
-                amplitude = self._amplitude_dict[element]
 
         if not speed:
             if line_type is 'swipe':
@@ -532,14 +539,10 @@ class RobotWrapper:
                 speed, line_type)
         cmd = 'python %s %s.p %f %f %d %d %f %f %d %d %d %d %d %d %f %s' % para
 
-        if waveform and frequency and amplitude:
-            # Get the path of the script that talks to the function generator.
-            noise_script_dir = os.path.join(self._get_robot_script_dir(), SCRIPT_NOISE)
-            # Command for noise
-            noise_cmd = 'python %s %s %d %d' % (noise_script_dir, waveform, frequency, amplitude)
+        if self._get_noise_command(gesture, variation):
             # A one second pause to give the touchpad time to calibrate
             DELAY = 1  # 1 seconds
-            cmd = '%s && %s %d' % (noise_cmd, cmd, DELAY)
+            cmd = '%s %d' % (cmd, DELAY)
 
         return cmd
 
@@ -560,25 +563,10 @@ class RobotWrapper:
         # Get the single tap command
         cmd = self._get_control_command_taps(robot_script, gesture, variation, 1)
 
-        # Get the parameters if this is a stationary noise test,
-        frequency = waveform = amplitude = None
-        for element in variation:
-            if element in GV.NOISE_FREQUENCY:
-                frequency = self._frequency_dict[element]
-            elif element in GV.NOISE_WAVEFORM:
-                waveform = self._waveform_dict[element]
-            elif element in GV.NOISE_AMPLITUDE:
-                amplitude = self._amplitude_dict[element]
-
-        if waveform and frequency and amplitude:
-            # Get the path of the script that talks to the function generator.
-            noise_script_dir = os.path.join(self._get_robot_script_dir(), SCRIPT_NOISE)
-            # Command for noise
-            noise_cmd = 'python %s %s %d %d' % (noise_script_dir, waveform, frequency, amplitude)
-
+        if self._get_noise_command(gesture, variation):
             # Add the noise command and a pause to the tap
             TEST_DURATION = 3  # 3 seconds
-            cmd = '%s && %s %d' % (noise_cmd, cmd, TEST_DURATION)
+            cmd = '%s %d' % (cmd, TEST_DURATION)
 
         return cmd
 
@@ -689,7 +677,7 @@ class RobotWrapper:
     def _execute_control_command(self, control_cmd):
         """Execute a control command."""
         print 'Executing: "%s"' % control_cmd
-        if self._is_robot_action_mode():
+        if self.is_robot_action_mode():
             # Pausing to give everything time to settle
             time.sleep(0.5)
             return common_util.simple_system(control_cmd)
@@ -701,16 +689,43 @@ class RobotWrapper:
                 self._speed_dict[GV.FAST])
         self._execute_control_command('python %s %s.p %s %d' % para)
 
-    def _turn_off_noise(self):
-        noise_script_dir = os.path.join(self._get_robot_script_dir(), SCRIPT_NOISE)
-        off_cmd = 'python %s OFF' % noise_script_dir
+    def turn_off_noise(self):
+        off_cmd = 'python %s OFF' % self._noise_script_dir
         common_util.simple_system(off_cmd)
+
+    def _execute_noise_command(self, noise_cmd):
+        if self.is_robot_action_mode() or self.is_manual_noise_test_mode():
+            return common_util.simple_system(noise_cmd)
+
+    def _get_noise_command(self, gesture, variation):
+        waveform = frequency = amplitude = None
+        for element in variation:
+            if element.endswith('Hz'):
+                frequency = int(element[:-2])
+            elif element in GV.NOISE_FREQUENCY:
+                frequency = self._frequency_dict[element]
+            elif element in GV.NOISE_WAVEFORM:
+                waveform = self._waveform_dict[element]
+            elif element in GV.NOISE_AMPLITUDE:
+                amplitude = self._amplitude_dict[element]
+
+        if waveform and frequency and amplitude:
+            return 'python %s %s %d %d' % (self._noise_script_dir,
+                                           waveform, frequency, amplitude)
+        return None
+
+    def configure_noise(self, gesture, variation):
+        if not isinstance(variation, tuple):
+            variation = (variation,)
+
+        noise_cmd = self._get_noise_command(gesture.name, variation)
+        if noise_cmd:
+            self._execute_noise_command(noise_cmd)
 
     def control(self, gesture, variation):
         """Have the robot perform the gesture variation."""
         tips_needed = conf.finger_tips_required[gesture.name]
         if self.fingertips != tips_needed:
-            self._turn_off_noise()
             self._reset_with_safety_clearance('nest')
             self._return_fingertips()
             self._get_fingertips(tips_needed)
@@ -722,7 +737,7 @@ class RobotWrapper:
             print gesture.name, variation
             control_cmd = self._get_control_command(gesture.name, variation)
             self._execute_control_command(control_cmd)
-            self._turn_off_noise()
+
         except RobotWrapperError as e:
             print gesture.name, variation
             print 'RobotWrapperError: %s' % str(e)

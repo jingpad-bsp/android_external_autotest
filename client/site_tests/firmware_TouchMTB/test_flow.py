@@ -53,29 +53,31 @@ class TestFlow:
         self.prefix_space = self.output.get_prefix_space()
         self.scores = []
         self.mode = options[OPTIONS.MODE]
+        self.fngenerator_only = options[OPTIONS.FNGENERATOR]
         self.iterations = options[OPTIONS.ITERATIONS]
         self.replay_dir = options[OPTIONS.REPLAY]
         self.resume_dir = options[OPTIONS.RESUME]
         self.recording = not any([bool(self.replay_dir), bool(self.resume_dir)])
         self.device_type = (DEV.TOUCHSCREEN if options[OPTIONS.TOUCHSCREEN]
                                             else DEV.TOUCHPAD)
+
+        self.robot = robot_wrapper.RobotWrapper(self.board, options)
+        self.robot_waiting = False
+
         self.gv_count = float('infinity')
         gesture_names = self._get_gesture_names()
-
         order = None
         if self._is_robot_mode():
             order = lambda x: conf.finger_tips_required[x.name]
         self.gesture_list = GestureList(gesture_names).get_gesture_list(order)
-
         self._get_all_gesture_variations(options[OPTIONS.SIMPLIFIED])
+
         self.init_flag = False
         self.system_device = self._non_blocking_open(self.device_node)
         self.evdev_device = input_device.InputEvent()
         self.screen_shot = firmware_utils.ScreenShot(self.geometry_str)
         self.mtb_evemu = mtb.MtbEvemu(device)
-        self.robot = robot_wrapper.RobotWrapper(
-                self.board, self.mode, options[OPTIONS.TOUCHSCREEN])
-        self.robot_waiting = False
+
         self._rename_old_log_and_html_files()
         self._set_static_prompt_messages()
         self.gesture_image_name = None
@@ -95,9 +97,7 @@ class TestFlow:
                     os.rename(old_path_name, new_path_name)
 
     def _is_robot_mode(self):
-        """Is it in robot mode?"""
-        return self.mode in [MODE.ROBOT, MODE.ROBOT_SIM, MODE.QUICKSTEP,
-                             MODE.NOISE]
+        return self.robot.is_robot_action_mode() or self.mode == MODE.ROBOT_SIM
 
     def _get_gesture_names(self):
         """Determine the gesture names based on the mode."""
@@ -110,13 +110,20 @@ class TestFlow:
             # The same gesture names list is used in both modes.
             return conf.gesture_names_robot[self.device_type]
         elif self.mode == MODE.MANUAL:
-            return conf.gesture_names_manual[self.device_type]
+            # Define the manual list which is gesture_names_complete:
+            # gesture_names_robot - gesture_names_equipment_required
+            manual_set = (set(gesture_names_complete[self.device_type]) -
+                          set(gesture_names_robot[self.device_type]))
+            return list(manual_set - set(gesture_names_fngenerator_required))
+
         elif self.mode == MODE.CALIBRATION:
             return conf.gesture_names_calibration
         else:
-            # Filter out tests that need special equipment for COMPLETE mode
+            # Filter out tests that need a function generator for COMPLETE mode
+            # unless they've indicated that they have one
             return [n for n in conf.gesture_names_complete[self.device_type]
-                    if n not in conf.gesture_names_equipment_required]
+                    if (self.fngenerator_only or
+                        n not in conf.gesture_names_fngenerator_required)]
 
     def _non_blocking_open(self, filename):
         """Open the file in non-blocing mode."""
@@ -361,6 +368,9 @@ class TestFlow:
 
     def _robot_action(self):
         """Control the robot to perform the action."""
+        if self._is_robot_mode() or self.robot.is_manual_noise_test_mode():
+            self.robot.configure_noise(self.gesture, self.variation)
+
         if self._is_robot_mode():
             self.robot.control(self.gesture, self.variation)
             # Once the script terminates start a timeout to clean up if one
@@ -632,6 +642,9 @@ class TestFlow:
             self.saved_msg = None
             self.deleted_msg = None
         self.new_scores = None
+
+        if self.robot.is_robot_action_mode() or self.robot.is_manual_noise_test_mode():
+            self.robot.turn_off_noise()
 
         (msg, color_msg, glog) = self._create_prompt(self.gesture,
                                                      self.variation)
