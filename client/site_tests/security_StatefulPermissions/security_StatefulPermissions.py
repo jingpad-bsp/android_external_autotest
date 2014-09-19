@@ -44,7 +44,6 @@ class security_StatefulPermissions(test.test):
                                  "/home/user"],
                      "chronos-access": [],
                      "cras": [],
-                     "cromo": [],
                      "cros-disks": [],
                      "daemon": [],
                      "debugd": [],
@@ -58,14 +57,12 @@ class security_StatefulPermissions(test.test):
                      "nobody": [],
                      "ntfs-3g": [],
                      "openvpn": [],
-                     "portage": [],
+                     "portage": ["/encrypted/var/log/emerge.log"],
                      "power": ["/encrypted/var/lib/power_manager",
                                "/encrypted/var/log/power_manager"],
                      "pkcs11": [],
-                     "qdlservice": [],
                      "root": None,
                      "sshd": [],
-                     "sync": ["/home/root"],
                      "syslog": ["/encrypted/var/log"],
                      "tcpdump": [],
                      "tlsdate": [],
@@ -88,14 +85,21 @@ class security_StatefulPermissions(test.test):
         if prunelist is None:
             return "true" # return a no-op shell command, e.g. for root.
 
-        # Cover-up crosbug.com/14947 by masking out uma-events in all tests.
-        # TODO(jorgelo): remove this when 14947 is resolved.
+        # Exclude world-writeable stuff.
+        # '/var/log/metrics/uma-events' is world-writeable: crbug.com/198054.
         prunelist.append("/encrypted/var/log/metrics/uma-events")
+        # '/run/lock' is world-writeable.
+        prunelist.append("/encrypted/var/lock")
 
-        # Workaround crbug.com/316231 by masking out preserve/log in all tests.
-        prunelist.append("/unencrypted/preserve/log");
+        # 'preserve/log' is test-only.
+        prunelist.append("/unencrypted/preserve/log")
 
-        # Cover-up autotest noise.
+        # Cover up Portage noise.
+        prunelist.append("/encrypted/var/cache/edb")
+        prunelist.append("/encrypted/var/lib/gentoo")
+        prunelist.append("/encrypted/var/log/portage")
+
+        # Cover up Autotest noise.
         prunelist.append("/dev_image")
         prunelist.append("/var_overlay")
 
@@ -113,16 +117,13 @@ class security_StatefulPermissions(test.test):
         """Returns the set of file/directory owners expected in stateful."""
         # In other words, this is basically the users mentioned in
         # tests_byuser, except for any expected to actually own zero files.
-        exclusions = set(["nobody"])
-        return set(self._masks_byuser.keys()).difference(exclusions)
+        # Currently, there's no exclusions.
+        return set(self._masks_byuser.keys())
 
 
     def observed_owners(self):
         """Returns the set of file/directory owners present in stateful."""
-        # The -user 101 prune is covering crosbug.com/14929.
-        # TODO(jimhebert) remove this when 14929 is resolved.
         cmd = ("find STATEFUL_ROOT "
-               "-user 101 -prune -o "
                "-path STATEFUL_ROOT/dev_image -prune -o "
                "-printf '%u\\n' | sort -u")
         return set(self.subst_run(cmd).splitlines())
