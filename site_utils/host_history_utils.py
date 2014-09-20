@@ -5,13 +5,14 @@
 # This file contains utility functions for host_history.
 
 import collections
+import copy
 
 import common
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib.cros.graphite import es_utils
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import models
-
+from autotest_lib.site_utils import job_history
 
 def prepopulate_dict(keys, value, extras=None):
     """Creates a dictionary with val=value for each key.
@@ -178,7 +179,7 @@ def calculate_total_times(intervals_of_statuses):
     return total_times
 
 
-def aggregate_multiple_hosts(intervals_of_statuses_list):
+def aggregate_hosts(intervals_of_statuses_list):
     """Aggregates history of multiple hosts
 
     @param intervals_of_statuses_list: A list of dictionaries where keys
@@ -234,10 +235,10 @@ def get_overall_report(label, t_start, t_end, intervals_of_statuses_list):
         are tuple (ti, tf), and value is the status along with other metadata,
         e.g., task_id, task_name, job_id etc.
     """
-    stats_all, num_hosts = aggregate_multiple_hosts(
+    stats_all, num_hosts = aggregate_hosts(
             intervals_of_statuses_list)
     return get_stats_string_aggregate(
-            label, t_start, t_end, stats_all,num_hosts)
+            label, t_start, t_end, stats_all, num_hosts)
 
 
 def get_report_for_host(t_start, t_end, hostname, size,
@@ -364,3 +365,143 @@ def calculate_status_times(t_start, t_end, int_status, metadata,
         # This is to avoid logging the same time
         statuses[(prev_interval_end, t_end)] = status_info
     return statuses
+
+
+def get_log_url(hostname, metadata):
+    """Compile a url to job's debug log from debug string.
+
+    @param hostname: Hostname of the dut.
+    @param metadata: A dictionary of other metadata, e.g.,
+                                     {'task_id':123, 'task_name':'Reset'}
+    @return: Url of the debug log for special task or job url for test job.
+    """
+    log_url = None
+    if 'task_id' in metadata and 'task_name' in metadata:
+        log_url = job_history.TASK_URL % {'hostname': hostname,
+                                          'task_id': metadata['task_id'],
+                                          'task_name': metadata['task_name']}
+    elif 'job_id' in metadata and 'owner' in metadata:
+        log_url = job_history.JOB_URL % {'hostname': hostname,
+                                         'job_id': metadata['job_id'],
+                                         'owner': metadata['owner']}
+
+    return log_url
+
+
+def build_history(hostname, status_intervals):
+    """Get host history information from given state intervals.
+
+    @param hostname: Hostname of the dut.
+    @param status_intervals: A ordered dictionary with
+                    key as (t_start, t_end) and value as (status, metadata)
+                    status = status of the host. e.g. 'Repair Failed'
+                    t_start is the beginning of the interval where the DUT's has
+                            that status
+                    t_end is the end of the interval where the DUT has that
+                            status
+                    metadata: A dictionary of other metadata, e.g.,
+                                        {'task_id':123, 'task_name':'Reset'}
+    @return: A list of host history, e.g.,
+             [{'status': 'Resetting'
+               'start_time': '2014-08-07 10:02:16',
+               'end_time': '2014-08-07 10:03:16',
+               'log_url': 'http://autotest/reset-546546/debug',
+               'task_id': 546546},
+              {'status': 'Running'
+               'start_time': '2014-08-07 10:03:18',
+               'end_time': '2014-08-07 10:13:00',
+               'log_url': 'http://autotest/afe/#tab_id=view_job&object_id=1683',
+               'job_id': 1683}
+             ]
+    """
+    history = []
+    for time_interval, status_info in status_intervals.items():
+        start_time = time_utils.epoch_time_to_date_string(time_interval[0])
+        end_time = time_utils.epoch_time_to_date_string(time_interval[1])
+        interval = {'status': status_info['status'],
+                    'start_time': start_time,
+                    'end_time': end_time}
+        interval['log_url'] = get_log_url(hostname, status_info['metadata'])
+        interval.update(status_info['metadata'])
+        history.append(interval)
+    return history
+
+
+def get_status_intervals(history_details):
+    """Get a list of status interval from history details.
+
+    This is a reverse method of above build_history. Caller gets the history
+    details from RPC get_host_history, and use this method to get the list of
+    status interval, which can be used to calculate stats from
+    host_history_utils.aggregate_hosts.
+
+    @param history_details: A dictionary of host history for each host, e.g.,
+            {'172.22.33.51': [{'status': 'Resetting'
+                               'start_time': '2014-08-07 10:02:16',
+                               'end_time': '2014-08-07 10:03:16',
+                               'log_url': 'http://autotest/reset-546546/debug',
+                               'task_id': 546546},]
+            }
+    @return: A list of dictionaries where keys are tuple (start_time, end_time),
+             and value is a dictionary containing at least key 'status'.
+    """
+    status_intervals = []
+    for host,history in history_details.iteritems():
+        intervals = collections.OrderedDict()
+        for interval in history:
+            start_time = time_utils.to_epoch_time(interval['start_time'])
+            end_time = time_utils.to_epoch_time(interval['end_time'])
+            metadata = copy.deepcopy(interval)
+            metadata['hostname'] = host
+            intervals[(start_time, end_time)] = {'status': interval['status'],
+                                                 'metadata': metadata}
+        status_intervals.append(intervals)
+    return status_intervals
+
+
+def get_machine_utilization_rate(stats):
+    """Get machine utilization rate from given stats.
+
+    @param stats: A dictionary with a status as key and value is the total
+                  number of seconds spent on the status.
+    @return: The percentage of time when dut is running test jobs.
+    """
+    not_utilized_status = ['Repairing', 'Repair Failed', 'Ready', 'Verifying']
+    excluded_status = ['Locked']
+    total_time = 0
+    total_time_not_utilized = 0.0
+    for status, interval in stats.iteritems():
+        if status in excluded_status:
+            continue
+        total_time += interval
+        if status in not_utilized_status:
+            total_time_not_utilized += interval
+    if total_time == 0:
+        # All duts are locked, assume MUR is 0%
+        return 0
+    else:
+        return 1 - total_time_not_utilized/total_time
+
+
+def get_machine_availability_rate(stats):
+    """Get machine availability rate from given stats.
+
+    @param stats: A dictionary with a status as key and value is the total
+                  number of seconds spent on the status.
+    @return: The percentage of time when dut is available to run jobs.
+    """
+    not_available_status = ['Repairing', 'Repair Failed', 'Verifying']
+    excluded_status = ['Locked']
+    total_time = 0
+    total_time_not_available = 0.0
+    for status, interval in stats.iteritems():
+        if status in excluded_status:
+            continue
+        total_time += interval
+        if status in not_available_status:
+            total_time_not_available += interval
+    if total_time == 0:
+        # All duts are locked, assume MAR is 0%
+        return 0
+    else:
+        return 1 - total_time_not_available/total_time

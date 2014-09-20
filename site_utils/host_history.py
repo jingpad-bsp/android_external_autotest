@@ -80,7 +80,6 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.site_utils import host_history_utils
-from autotest_lib.site_utils import job_history
 
 
 AUTOTEST_SERVER = global_config.global_config.get_config_value(
@@ -172,66 +171,6 @@ def get_host_history(input):
         return None, None, None
 
 
-def get_log_url(hostname, metadata):
-    """Compile a url to job's debug log from debug string.
-
-    @param hostname: Hostname of the dut.
-    @param metadata: A dictionary of other metadata, e.g.,
-                                     {'task_id':123, 'task_name':'Reset'}
-    @return: Url of the debug log for special task or job url for test job.
-    """
-    log_url = None
-    if 'task_id' in metadata and 'task_name' in metadata:
-        log_url = job_history.TASK_URL % {'hostname': hostname,
-                                          'task_id': metadata['task_id'],
-                                          'task_name': metadata['task_name']}
-    elif 'job_id' in metadata and 'owner' in metadata:
-        log_url = job_history.JOB_URL % {'hostname': hostname,
-                                         'job_id': metadata['job_id'],
-                                         'owner': metadata['owner']}
-
-    return log_url
-
-
-def build_history(hostname, status_intervals):
-    """Get host history information from given state intervals.
-
-    @param hostname: Hostname of the dut.
-    @param status_intervals: A ordered dictionary with
-                    key as (t_start, t_end) and value as (status, metadata)
-                    status = status of the host. e.g. 'Repair Failed'
-                    t_start is the beginning of the interval where the DUT's has
-                            that status
-                    t_end is the end of the interval where the DUT has that
-                            status
-                    metadata: A dictionary of other metadata, e.g.,
-                                        {'task_id':123, 'task_name':'Reset'}
-    @return: A list of host history, e.g.,
-             [{'status': 'Resetting'
-               'start_time': '2014-08-07 10:02:16',
-               'end_time': '2014-08-07 10:03:16',
-               'log_url': 'http://autotest/reset-546546/debug',
-               'task_id': 546546},
-              {'status': 'Running'
-               'start_time': '2014-08-07 10:03:18',
-               'end_time': '2014-08-07 10:13:00',
-               'log_url': 'http://autotest/afe/#tab_id=view_job&object_id=1683',
-               'job_id': 1683}
-             ]
-    """
-    history = []
-    for time_interval, status_info in status_intervals.items():
-        start_time = time_utils.epoch_time_to_date_string(time_interval[0])
-        end_time = time_utils.epoch_time_to_date_string(time_interval[1])
-        interval = {'status': status_info['status'],
-                    'start_time': start_time,
-                    'end_time': end_time}
-        interval['log_url'] = get_log_url(hostname, status_info['metadata'])
-        interval.update(status_info['metadata'])
-        history.append(interval)
-    return history
-
-
 def get_results_in_parallel(start_time, end_time,
                             autotest_server=AUTOTEST_SERVER,
                             hosts=None, board=None, pool=None, size=10000,
@@ -276,7 +215,8 @@ def get_results_in_parallel(start_time, end_time,
         hosts = [dut['hostname'] for dut in
                  afe.run('get_hosts', multiple_labels=multiple_labels)]
         if not hosts:
-            raise Exception('No host found to search for history.')
+            print 'No host found to search for history.'
+            return None
     print 'Found %d duts. Time to get host_history.' % len(hosts)
 
     args = []
@@ -326,10 +266,14 @@ def get_history_details(start_time, end_time, hosts=None, board=None,
     results = get_results_in_parallel(start_time=start_time, end_time=end_time,
                                       hosts=hosts, board=board, pool=pool,
                                       process_pool_size=process_pool_size)
+    if not results:
+        # No host found.
+        return None
     all_history = {}
     for result_str, status_intervals, hostname in results:
         if hostname:
-            all_history[hostname] = build_history(hostname, status_intervals)
+            all_history[hostname] = host_history_utils.build_history(
+                    hostname, status_intervals)
     return all_history
 
 
