@@ -921,7 +921,9 @@ def get_gpu_family():
 def has_no_monitor():
     """Return whether a machine doesn't have a built-in monitor"""
     board_name = get_board()
-    if (board_name == 'stumpy' or board_name == 'panther' or
+    if (board_name == 'anglar' or board_name == 'mccloud' or
+        board_name == 'monroe' or board_name == 'stumpy' or
+        board_name == 'panther' or board_name == 'tricky' or
         board_name == 'zako'):
         return True
 
