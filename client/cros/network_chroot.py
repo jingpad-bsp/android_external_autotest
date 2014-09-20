@@ -33,6 +33,9 @@ class NetworkChroot(object):
                              'proc', 'sbin', 'sys', 'usr', 'usr/local')
     # Subset of BIND_ROOT_DIRECTORIES that should be mounted writable.
     BIND_ROOT_WRITABLE_DIRECTORIES = frozenset(('dev/pts',))
+    # Directories we'll bind mount when we want to bridge DBus namespaces.
+    # Includes directories containing the system bus socket and machine ID.
+    DBUS_BRIDGE_DIRECTORIES = ('var/run/dbus/', 'var/lib/dbus/')
 
     ROOT_DIRECTORIES = ('etc',  'tmp', 'var', 'var/log', 'var/run')
     STARTUP = 'etc/chroot_startup.sh'
@@ -65,6 +68,7 @@ class NetworkChroot(object):
 
         # Copy these values from the class-static since specific instances
         # of this class are allowed to modify their contents.
+        self._bind_root_directories = list(self.BIND_ROOT_DIRECTORIES)
         self._root_directories = list(self.ROOT_DIRECTORIES)
         self._copied_config_files = list(self.COPIED_CONFIG_FILES)
         self._config_file_templates = self.CONFIG_FILE_TEMPLATES.copy()
@@ -116,6 +120,17 @@ class NetworkChroot(object):
         self._config_file_values.update(value_dict)
 
 
+    def add_copied_config_files(self, files):
+        """Add |files| to the set to be copied to the chroot.
+
+        @param files iterable object containing a list of files to
+            be copied into the chroot.  These elements should not contain a
+            leading '/'.
+
+        """
+        self._copied_config_files += files
+
+
     def add_root_directories(self, directories):
         """Add |directories| to the set created within the chroot.
 
@@ -140,6 +155,12 @@ class NetworkChroot(object):
         """Return the logfiles from the chroot."""
         return utils.system_output("head -10000 %s" %
                                    self.chroot_path("var/log/*"))
+
+
+    def bridge_dbus_namespaces(self):
+        """Make the system DBus daemon visible inside the chroot."""
+        # Need the system socket and the machine-id.
+        self._bind_root_directories += self.DBUS_BRIDGE_DIRECTORIES
 
 
     def chroot_path(self, path):
@@ -184,7 +205,7 @@ class NetworkChroot(object):
             and should be ignored.
 
         """
-        pid = self.get_pid_file(pid_file, missing_ok)
+        pid = self.get_pid_file(pid_file, missing_ok=missing_ok)
         if missing_ok and pid == 0:
             return
         utils.system('kill %d' % pid, ignore_status=True)
@@ -198,7 +219,7 @@ class NetworkChroot(object):
             os.mkdir(self.chroot_path(rootdir))
 
         self._jail_args = []
-        for rootdir in self.BIND_ROOT_DIRECTORIES:
+        for rootdir in self._bind_root_directories:
             src_path = os.path.join('/', rootdir)
             dst_path = self.chroot_path(rootdir)
             if not os.path.exists(src_path):
@@ -207,7 +228,7 @@ class NetworkChroot(object):
                 link_path = os.readlink(src_path)
                 os.symlink(link_path, dst_path)
             else:
-                os.mkdir(dst_path)
+                os.makedirs(dst_path)  # Recursively create directories.
                 mount_arg = '%s,%s' % (src_path, src_path)
                 if rootdir in self.BIND_ROOT_WRITABLE_DIRECTORIES:
                     mount_arg += ',1'
