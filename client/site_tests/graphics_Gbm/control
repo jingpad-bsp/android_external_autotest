@@ -1,0 +1,20 @@
+# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+NAME = 'graphics_Gbm'
+AUTHOR = 'chromeos-gfx'
+PURPOSE = 'Test GBM'
+CRITERIA = 'Fails if the GBM tests fail'
+SUITE = 'graphics'
+TIME = 'SHORT'
+TEST_CLASS = 'Hardware'
+TEST_CATEGORY = 'Functional'
+TEST_TYPE = 'Client'
+DOC = """
+
+This test exercises the functions from libgbm to create graphics buffer and
+check that they are useable (different sizes, formats, usage flags, etc.).
+"""
+
+job.run_test('graphics_Gbm')
