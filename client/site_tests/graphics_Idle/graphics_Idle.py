@@ -227,7 +227,7 @@ class graphics_Idle(test.test):
         logging.info('Running verify_graphics_gem_idle')
         if (self._gpu_type == 'baytrail' or self._gpu_type == 'broadwell' or
             self._gpu_type == 'haswell' or self._gpu_type == 'ivybridge' or
-            self._gpu_type == 'pinetrail' or self._gpu_type == 'sandybridge'):
+            self._gpu_type == 'sandybridge'):
             tries = 0
             found = False
             while not found and tries < 240:
