@@ -60,7 +60,7 @@ class graphics_Idle(test.test):
         logging.info('Running verify_short_blanking')
         board = utils.get_board()
         # TODO(marcheu): add more BYT machines
-        if (board != 'rambi' and board != 'squawks'):
+        if (board != 'rambi'):
             return ''
 
         # Get the downclock message from the logs.
