@@ -10,7 +10,7 @@ This test will fail if any of the tests in video_encode_accelerator_unittest
 fails. Running video_encode_accelerator_unittest is skipped on machines that are
 known not to support video encode.
 """
-SUITE = "video"
+SUITE = "bvt-perbuild"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "video"
