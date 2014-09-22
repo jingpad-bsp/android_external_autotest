@@ -145,6 +145,9 @@ class kernel_ConfigVerify(test.test):
                 if entry['regex'] == 'BINFMT_':
                     entry['builtin'].append('BINFMT_SCRIPT')
 
+        if utils.compare_versions(kernel_ver, "3.14") >= 0:
+            self.IS_MODULE.append('TEST_ASYNC_DRIVER_PROBE')
+
         # Run the static checks.
         map(config.has_builtin, self.IS_BUILTIN)
         map(config.has_module, self.IS_MODULE)
