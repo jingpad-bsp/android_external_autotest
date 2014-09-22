@@ -4,6 +4,7 @@
 
 import logging
 import os
+import re
 from autotest_lib.client.common_lib import utils as client_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import dev_server
@@ -156,41 +157,89 @@ def get_site_crashdumps(host, test_start_time):
     return orphans
 
 
-def find_packages_of(host, exec_name):
+def find_package_of(host, exec_name):
     """
     Find the package that an executable came from.
 
     @param host A host object that has the executable.
-    @param exec_name The name of the executable.
+    @param exec_name Name of or path to executable.
     @return The name of the package that installed the executable.
     """
-    packages = []
+    # Run "portageq owners" on "host" to determine which package owns
+    # "exec_name."  Portageq queue output consists of package names followed
+    # tab-prefixed path names.  For example, owners of "python:"
+    #
+    # sys-devel/gdb-7.7.1-r2
+    #         /usr/share/gdb/python
+    # chromeos-base/dev-install-0.0.1-r711
+    #         /usr/bin/python
+    # dev-lang/python-2.7.3-r7
+    #         /etc/env.d/python
+    #
+    # This gets piped into "xargs stat" to annotate each line with
+    # information about the path, so we later can consider only packages
+    # with executable files.  After annotation the above looks like:
+    #
+    # stat: cannot stat '@@@ sys-devel/gdb-7.7.1-r2 @@@': ...
+    # stat: cannot stat '/usr/share/gdb/python': ...
+    # stat: cannot stat '@@@ chromeos-base/dev-install-0.0.1-r711 @@@': ...
+    # 755 -rwxr-xr-x /usr/bin/python
+    # stat: cannot stat '@@@ dev-lang/python-2.7.3-r7 @@@': ...
+    # 755 drwxr-xr-x /etc/env.d/python
+    #
+    # Package names are surrounded by "@@@" to facilitate parsing.  Lines
+    # starting with an octal number were successfully annotated, because
+    # the path existed on "host."
+    # The above is then parsed to find packages which contain executable files
+    # (not directories), in this case "chromeos-base/dev-install-0.0.1-r711."
+    #
+    # The final "|& cat" in the pipeline serves two purposes: it merges the
+    # stdout and stderr of "xargs stat" so we can parse both together, and it
+    # ensures a successful return from the command.  Otherwise "xargs stat"
+    # exits with error status, causing "host.run" to raise an exception.
+    #
+    # TODO(milleral): portageq can show scary looking error messages
+    # in the debug logs via stderr. We only look at stdout, so those
+    # get filtered, but it would be good to silence them.
+    cmd = ('portageq owners / ' + exec_name +
+            r'| sed -e "s/^[^\t].*/@@@ & @@@/" -e "s/^\t//"'
+            r'| tr \\n \\0'
+            ' | xargs -0 -r stat -L -c "%a %A %n"'
+            ' |& cat')
+    portageq = host.run(cmd)
 
-    # TODO(milleral): It would be significantly faster to iterate through
-    # $PATH and run this than to point it at all of /
-    find = host.run('find / -executable -type f -name %s' % exec_name)
-    for full_path in find.stdout.splitlines():
-        # TODO(milleral): This currently shows scary looking error messages
-        # in the debug logs via stderr. We only look at stdout, so those
-        # get filtered, but it would be good to silence them.
-        portageq = host.run('portageq owners / %s' % full_path)
-        if portageq.stdout:
-            packages.append(portageq.stdout.splitlines()[0].strip())
+    # Parse into a set of names of packages containing an executable file.
+    packages = set()
+    pkg = ''
+    pkg_re = re.compile('@@@ (.*) @@@')
+    path_re = re.compile('^([0-7]{3,}) (.)')
+    for line in portageq.stdout.splitlines():
+        match = pkg_re.search(line)
+        if match:
+            pkg = match.group(1)
+            continue
+        match = path_re.match(line)
+        if match:
+            isexec = int(match.group(1), 8) & 0o111
+            isfile = match.group(2) == '-'
+            if pkg and isexec and isfile:
+                packages.add(pkg)
 
-    # TODO(milleral): This chunk of code is here to verify that mapping
-    # executable name to package gives you one and only one package.
+    # If exactly one package found it must be the one we want, return it.
+    if len(packages) == 1:
+        return packages.pop()
+
+    # TODO(milleral): Decide if it really is an error if not exactly one
+    # package is found.
     # It is highly questionable as to if this should be left in the
     # production version of this code or not.
     if len(packages) == 0:
-        raise error.NoUniquePackageFound('no package for %s' % exec_name)
-    if len(packages) > 1:
-        # Running through all of /usr/bin in the chroot showed this should
-        # never happen, but still maybe possible?
-        raise error.NoUniquePackageFound('Crash detection found more than one'
-            'package for %s: %s' % exec_name, packages)
-
-    # |len(packages) == 1| at this point, as it should be anyway
-    return packages[0]
+        logging.warning('find_package_of() found no packages for "%s"',
+                        exec_name)
+    else:
+        logging.warning('find_package_of() found multiple packages for "%s": '
+                        '%s', exec_name, ', '.join(packages))
+    return ''
 
 
 def report_bug_from_crash(host, minidump_path):
@@ -209,8 +258,9 @@ def report_bug_from_crash(host, minidump_path):
             for line in f.readlines():
                 parts = line.split('=')
                 if parts[0] == 'exec_name':
-                    packages = find_packages_of(host, parts[1].strip())
-                    logging.info('Would report crash on %s.', packages)
-                    break
+                    package = find_package_of(host, parts[1].strip())
+                    if not package:
+                        package = '<unknown package>'
+                    logging.info('Would report crash on %s.', package)
     except Exception as e:
         logging.warning('Crash detection failed with: %s', e)
