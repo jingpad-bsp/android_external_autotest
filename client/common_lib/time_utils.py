@@ -31,10 +31,22 @@ def time_string_to_datetime(time_string, handle_type_error=False):
             raise
 
 
-def epoch_time_to_date_string(epoch_time):
-    """ Convert epoch time (float) to a human readable date string.
+def date_string_to_epoch_time(date_string):
+    """Parse a date time string into seconds since the epoch.
 
-    @param epoch_time: Float of the current time since epoch time.
+    @param date_string A string, formatted according to `TIME_FMT`.
+
+    @return The number of seconds since the UNIX epoch, as a float.
+
+    """
+    return time.mktime(time.strptime(date_string, TIME_FMT))
+
+
+def epoch_time_to_date_string(epoch_time):
+    """Convert epoch time (float) to a human readable date string.
+
+    @param epoch_time The number of seconds since the UNIX epoch, as
+                      a float.
     @returns: string formatted in the following way: "yyyy-mm-dd hh:mm:ss"
     """
     if epoch_time:

@@ -8,6 +8,8 @@ import os
 import time
 import unittest
 
+import common
+
 from autotest_lib.client.common_lib import time_utils
 
 
@@ -37,6 +39,14 @@ class time_utils_unittest(unittest.TestCase):
     TIME_SECONDS = 1408569836
     TIME_OBJ = datetime.datetime(year=2014, month=8, day=20, hour=14,
                                  minute=23, second=56)
+
+    def test_date_string_to_epoch_time(self):
+        """Test date parsing in date_string_to_epoch_time()."""
+        with set_time_zone('US/Pacific'):
+            parsed_seconds = time_utils.date_string_to_epoch_time(
+                    self.TIME_STRING)
+            self.assertEqual(self.TIME_SECONDS, parsed_seconds)
+
 
     def test_epoch_time_to_date_string(self):
         """Test function epoch_time_to_date_string."""
