@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import os
 import re
 
 from autotest_lib.client.bin import utils
@@ -18,9 +19,9 @@ class touch_WakeupSource(touch_playback_test_base.touch_playback_test_base):
 
     # Devices with Synaptics touchpads that do not report wake source.
     _INVALID_BOARDS = ['x86-alex', 'x86-alex_he', 'x86-zgb', 'x86-zgb_he',
-                       'x86-mario']
+                       'x86-mario', 'stout']
 
-    _NODE_CMD = 'cat /sys/class/input/input%s/device/power/wakeup'
+    _NODE_FILE = '/sys/class/input/input%s/device/power/wakeup'
 
     def _is_wake_source(self, input_type):
         """Return True if the given device is a wake source, else False.
@@ -33,7 +34,11 @@ class touch_WakeupSource(touch_playback_test_base.touch_playback_test_base):
         """
         node = self._nodes[input_type]
         node_num = re.search('event([0-9]+)', node).group(1)
-        result = utils.run(self._NODE_CMD % node_num).stdout.strip()
+
+        filename = self._NODE_FILE % node_num
+        if not os.path.isfile(filename):
+            raise error.TestError('Wakeup file %s not found!' % filename)
+        result = utils.run('cat %s' % filename).stdout.strip()
         if result == 'enabled':
             return True
         elif result == 'disabled':
