@@ -1,0 +1,36 @@
+# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+from autotest_lib.server import utils
+
+AUTHOR = "chromeos-chameleon"
+NAME = "display_EndToEnd.extended"
+PURPOSE = "Remotely controlled display hot-plug and reboot test."
+CRITERIA = "This test will fail if status checks fail."
+SUITE = "chameleon_dp,chameleon_hdmi"
+TIME = "LONG"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "display"
+TEST_TYPE = "server"
+DEPENDENCIES = 'chameleon,servo'
+
+DOC = """
+This test remotely emulates external display end-to-end scenario.
+This test will fail if DUT doesn't
+ - see the display after boot
+ - image test fail
+ - connection fails
+ - crash is generated
+"""
+
+args_dict = utils.args_to_dict(args)
+chameleon_args = hosts.CrosHost.get_chameleon_arguments(args_dict)
+servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
+
+def run(machine):
+    host = hosts.create_host(machine, chameleon_args=chameleon_args,
+                             servo_args=servo_args)
+    job.run_test("display_EndToEnd", host=host, tag="extended")
+
+parallel_simple(run, machines)
