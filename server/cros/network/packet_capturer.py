@@ -238,10 +238,10 @@ class PacketCapturer(object):
             if ht_type not in ('HT20', 'HT40+', 'HT40-'):
                 raise error.TestError('Cannot set HT mode: %s', ht_type)
 
+        self._host.run("%s link set %s up" % (self._cmd_ip, monitor_device))
         self._host.run("%s dev %s set freq %s" % (self._cmd_iw,
                                                   monitor_device,
                                                   channel_args))
-        self._host.run("%s link set %s up" % (self._cmd_ip, monitor_device))
 
 
     def create_managed_monitor(self, existing_dev, monitor_device=None):
