@@ -931,17 +931,15 @@ def inject_times_to_hqe_special_tasks_filters(filter_data_common,
 
 def retrieve_shard(shard_hostname):
     """
-    Retrieves the shard with the given hostname from the database or creates it.
+    Retrieves the shard with the given hostname from the database.
 
     @param shard_hostname: Hostname of the shard to retrieve
 
+    @raises models.Shard.DoesNotExist, if no shard with this hostname was found.
+
     @returns: Shard object
     """
-    try:
-        shard = models.Shard.smart_get(shard_hostname)
-    except models.Shard.DoesNotExist:
-        shard = models.Shard.objects.create(hostname=shard_hostname)
-    return shard
+    return models.Shard.smart_get(shard_hostname)
 
 
 def find_records_for_shard(shard):

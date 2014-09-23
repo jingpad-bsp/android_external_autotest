@@ -396,8 +396,8 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
         retval_hosts, retval_jobs = retval['hosts'], retval['jobs']
 
         expected_jobs = [
-            (job.id, job.name, int(shard_hostname)) for job in jobs]
-        returned_jobs = [(job['id'], job['name'], job['shard']['id'])
+            (job.id, job.name, shard_hostname) for job in jobs]
+        returned_jobs = [(job['id'], job['name'], job['shard']['hostname'])
                          for job in retval_jobs]
         self.assertEqual(returned_jobs, expected_jobs)
 
@@ -419,8 +419,8 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
         models.Label.objects.create(name='board:lumpy', platform=True)
         label2 = models.Label.objects.create(name='bluetooth', platform=False)
 
-        shard_hostname = self._do_heartbeat_and_assert_response()
-        shard = models.Shard.smart_get(shard_hostname)
+        shard_hostname = 'host1'
+        shard = models.Shard.objects.create(hostname=shard_hostname)
         shard.labels.add(models.Label.smart_get('board:lumpy'))
 
         job1 = self._create_job(hostless=True)
@@ -448,11 +448,11 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
         leased_host.labels.add(lumpy_label)
         host2.labels.add(grumpy_label)
 
-        shard_hostname1 = self._do_heartbeat_and_assert_response()
-        shard_hostname2 = self._do_heartbeat_and_assert_response()
+        shard_hostname1 = 'host1'
+        shard_hostname2 = 'host2'
 
-        shard1 = models.Shard.smart_get(shard_hostname1)
-        shard2 = models.Shard.smart_get(shard_hostname2)
+        shard1 = models.Shard.objects.create(hostname=shard_hostname1)
+        shard2 = models.Shard.objects.create(hostname=shard_hostname2)
 
         shard1.labels.add(lumpy_label)
         shard2.labels.add(grumpy_label)
