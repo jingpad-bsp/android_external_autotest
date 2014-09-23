@@ -6,6 +6,9 @@
  * Test code for seccomp bpf.
  */
 
+/* Need to include sys/types.h before asm/siginfo.h such that clock_t, pid_t,
+ * and timer_t are defined. */
+#include <sys/types.h>
 #include <asm/siginfo.h>
 #define __have_siginfo_t 1
 #define __have_sigval_t 1
