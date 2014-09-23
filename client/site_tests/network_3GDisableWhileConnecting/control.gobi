@@ -18,9 +18,13 @@ DOC = """
 Check that the 3G modem can handle a disconnect while connecting.
 """
 
+from autotest_lib.client.cros.cellular import test_environment
+
 ITERATIONS_PER_TEST=1
 
+test_env = test_environment.CellularOTATestEnvironment()
 job.run_test('network_3GDisableWhileConnecting',
+             test_env=test_env,
              delay_before_disable_ms=200,
              async_connect_sleep_ms=3000,
              iterations=ITERATIONS_PER_TEST,
@@ -31,6 +35,7 @@ job.run_test('network_3GDisableWhileConnecting',
 # There's no good way to track what actually gets sent first, so we
 # sleep.
 job.run_test('network_3GDisableWhileConnecting',
+             test_env=test_env,
              delay_before_disable_ms=0,
              disable_delay_per_iteration_ms=0,
              connect_fails_with_error_sending_qmi_request=1,
