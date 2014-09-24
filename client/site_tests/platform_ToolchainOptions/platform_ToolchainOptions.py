@@ -2,10 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os
-
+import fnmatch
 import glob
 import logging
+import os
+
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from optparse import OptionParser
@@ -44,15 +45,23 @@ class ToolchainOptionSet:
 
         @param whitelist_file: path to whitelist file
         """
-        if not os.path.isfile(whitelist_file):
-            self.whitelist_set = self.whitelist_set.union(set([]))
-        else:
+        if os.path.isfile(whitelist_file):
             f = open(whitelist_file)
             whitelist = [x for x in f.read().splitlines()
                                     if not x.startswith('#')]
             f.close()
             self.whitelist_set = self.whitelist_set.union(set(whitelist))
-        self.filtered_set = self.bad_set.difference(self.whitelist_set)
+
+        filtered_list = []
+        for bad_file in self.bad_set:
+            # Does |bad_file| match any entry in the whitelist?
+            in_whitelist = any([fnmatch.fnmatch(bad_file, whitelist_entry)
+                                for whitelist_entry in self.whitelist_set])
+            if not in_whitelist:
+                filtered_list.append(bad_file)
+
+        self.filtered_set = set(filtered_list)
+        # TODO(jorgelo): remove glob patterns from |new_passes|.
         self.new_passes = self.whitelist_set.difference(self.bad_set)
 
 
@@ -193,7 +202,7 @@ class platform_ToolchainOptions(test.test):
                     "egrep -q \".note.gnu.gold-ve\"" % readelf_cmd)
         gold_find_options = ""
         if utils.get_cpu_arch() == "arm":
-          # gold is only enabled for Chrome on arm.
+          # gold is only enabled for Chrome on ARM.
           gold_find_options = "-path \"/opt/google/chrome/chrome\""
         gold_whitelist = os.path.join(self.bindir, "gold_whitelist")
         option_sets.append(self.create_and_filter("gold",

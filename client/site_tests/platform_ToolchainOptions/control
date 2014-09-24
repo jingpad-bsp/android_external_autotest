@@ -16,7 +16,7 @@ Fail if we find any ELF files compiled without the following options:
 4. -Wl,-z,relro
 5. -fPIE
 """
-SUITE = "security"
+SUITE = "bvt-perbuild"
 TEST_CLASS = "platform"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"
