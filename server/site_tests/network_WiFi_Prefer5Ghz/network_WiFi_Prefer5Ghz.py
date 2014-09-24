@@ -15,6 +15,7 @@ class network_WiFi_Prefer5Ghz(wifi_cell_test_base.WiFiCellTestBase):
 
     def run_once(self):
         """Body of the test."""
+        self.context.client.clear_supplicant_blacklist()
         mode_n = hostap_config.HostapConfig.MODE_11N_PURE
         ap_config0 = hostap_config.HostapConfig(channel=1, mode=mode_n)
         self.context.configure(ap_config0)
@@ -22,6 +23,10 @@ class network_WiFi_Prefer5Ghz(wifi_cell_test_base.WiFiCellTestBase):
         ap_config1 = hostap_config.HostapConfig(
                 ssid=ssid, channel=48, mode=mode_n)
         self.context.configure(ap_config1, multi_interface=True)
+        # Wait for both BSSes to be discovered. Since sometimes devices failed
+        # to discover both BSSes in the initial scan, which results in client
+        # connecting to the wrong BSS.
+        self.context.client.wait_for_bsses(ssid, 2)
         self.context.assert_connect_wifi(
                 xmlrpc_datatypes.AssociationParameters(ssid=ssid))
         self.context.client.check_iw_link_value(

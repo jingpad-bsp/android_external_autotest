@@ -482,6 +482,36 @@ class WiFiClient(site_linux_system.LinuxSystem):
                                      (ssid, bss_list))
 
 
+    def wait_for_bsses(self, ssid, num_bss_expected, timeout_seconds=15):
+      """Wait for all BSSes associated with given SSID to be discovered in the
+      scan.
+
+      @param ssid string name of network being queried
+      @param num_bss_expected int number of BSSes expected
+      @param timeout_seconds int seconds to wait for BSSes to be discovered
+
+      """
+      start_time = time.time()
+      while time.time() - start_time < timeout_seconds:
+          bss_list = self.iw_runner.scan(
+                  self.wifi_if, frequencies=[], ssids=[ssid])
+
+          # Determine number of BSSes found in the scan result.
+          num_bss_found = 0
+          if bss_list is not None:
+              for bss in bss_list:
+                  if bss.ssid == ssid:
+                      num_bss_found += 1
+
+          # Verify all BSSes are found.
+          if num_bss_found == num_bss_expected:
+              break
+
+          time.sleep(0.5)
+      else:
+          raise error.TestFail('Failed to discover all BSSes.')
+
+
     def wait_for_service_states(self, ssid, states, timeout_seconds):
         """Waits for a WiFi service to achieve one of |states|.
 
