@@ -15,5 +15,5 @@ DOC = """
 Verifies that all Telemetry perf unit tests pass when run as a logged-in user.
 """
 
-job.run_test('telemetry_UnitTests', browser_type='system', tag='user',
+job.run_test('telemetry_UnitTests', browser_type='system', tag='perf',
              unit_tests=[], perf_tests=[''])
