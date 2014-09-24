@@ -19,9 +19,13 @@ DOC = """
 Check that the 3G modem can handle a disconnect while connecting.
 """
 
+from autotest_lib.client.cros.cellular import test_environment
+
 ITERATIONS_PER_TEST=1
 
+test_env = test_environment.CellularOTATestEnvironment()
 job.run_test('network_3GDisableWhileConnecting',
+             test_env=test_env,
              timeout_s=20,
              delay_before_disable_ms=0,
              disable_delay_per_iteration_ms=0,
@@ -32,7 +36,9 @@ job.run_test('network_3GDisableWhileConnecting',
 # (often?) the case that the disable arrives before the connect.
 # There's no good way to track what actually gets sent first, so we
 # sleep.
+test_env = test_environment.CellularOTATestEnvironment()
 job.run_test('network_3GDisableWhileConnecting',
+             test_env=test_env,
              timeout_s=20,
              delay_before_disable_ms=0,
              disable_delay_per_iteration_ms=int(1000.0 / ITERATIONS_PER_TEST),
@@ -44,14 +50,18 @@ job.run_test('network_3GDisableWhileConnecting',
 # Similarly, we can't be sure what the relative timings of the
 # completion of the session starter thread and arrival of the disable
 # request are.  Try pushing the start thread completion way out.
+test_env = test_environment.CellularOTATestEnvironment()
 job.run_test('network_3GDisableWhileConnecting',
+             test_env=test_env,
              timeout_s=20,
              delay_before_disable_ms=200,
              async_connect_sleep_ms=3000,
              iterations=ITERATIONS_PER_TEST,
              tag='short_delay_disable')
 
+test_env = test_environment.CellularOTATestEnvironment()
 job.run_test('network_3GDisableWhileConnecting',
+             test_env=test_env,
              timeout_s=20,
              delay_before_disable_ms=0,
              disable_delay_per_iteration_ms=0,
