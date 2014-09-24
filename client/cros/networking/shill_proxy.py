@@ -99,8 +99,8 @@ class ShillProxy(object):
     TECHNOLOGY_WIFI = 'wifi'
     TECHNOLOGY_WIMAX = 'wimax'
 
-    VALUE_POWERED_ON = 'on'
-    VALUE_POWERED_OFF = 'off'
+    VALUE_POWERED_ON = True
+    VALUE_POWERED_OFF = False
 
     POLLING_INTERVAL_SECONDS = 0.2
 

@@ -153,8 +153,14 @@ class CellularProxy(shill_proxy.ShillProxy):
         # (3) Check powered state of the device
         if not expect_powered:
             return new_modem, None
-        self.wait_for_property_in(new_modem, self.DEVICE_PROPERTY_POWERED,
-                                  [self.VALUE_POWERED_ON], timeout_seconds=10)
+        success, _, _ = self.wait_for_property_in(new_modem,
+                                                  self.DEVICE_PROPERTY_POWERED,
+                                                  [self.VALUE_POWERED_ON],
+                                                  timeout_seconds=10)
+        if not success:
+            raise shill_proxy.ShillProxyError(
+                    'After modem reset, new modem failed to enter powered '
+                    'state.')
 
         # (4) Check that service reappears
         if not expect_service:
