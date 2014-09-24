@@ -67,7 +67,8 @@ _MONTHLY = 'monthly'
 # of a mysql command showing all hosts and their pool labels to a text file that
 # is backed up to google storage.
 _ONLY_HOSTS = 'only_hosts'
-_SCHEDULER_TYPES = [_ONLY_HOSTS, _DAILY, _WEEKLY, _MONTHLY]
+_ONLY_SHARDS = 'only_shards'
+_SCHEDULER_TYPES = [_ONLY_HOSTS, _ONLY_SHARDS, _DAILY, _WEEKLY, _MONTHLY]
 
 
 class MySqlArchiver(object):
@@ -112,23 +113,49 @@ class MySqlArchiver(object):
         return filename
 
 
+    def _create_dump_from_query(self, query):
+        """Dumps result of a query into a text file.
+
+        @param query: Query to execute.
+
+        @return: The path to a tempfile containing the response of the query.
+        """
+        parameters = {'query': query}
+        parameters['user'], parameters['password'] = self._get_user_pass()
+        _, parameters['filename'] = tempfile.mkstemp('autotest_db_dump')
+        utils.system(
+                'set -o pipefail; mysql -u %(user)s -p%(password)s '
+                'chromeos_autotest_db -e "%(query)s" > %(filename)s' %
+                parameters)
+        return parameters['filename']
+
+
     def create_host_dump(self):
         """Dumps hosts and their labels into a text file.
 
         @return: The path to a tempfile containing a dump of
-            hosts and their pool labels.
+                 hosts and their pool labels.
         """
-        user, password = self._get_user_pass()
-        _, filename = tempfile.mkstemp('autotest_db_dump')
-        logging.debug('Dumping hosts to file %s', filename)
-        utils.system(
-                'set -o pipefail; mysql -u %s -p%s chromeos_autotest_db -e '
-                '"select hostname, labels.name from afe_hosts as hosts join '
-                'afe_hosts_labels on hosts.id = afe_hosts_labels.host_id join '
-                'afe_labels as labels on labels.id = afe_hosts_labels.label_id '
-                'where labels.name like \'%%pool%%\';" > %s' %
-                (user, password, filename))
-        return filename
+        query = ('SELECT hostname, labels.name FROM afe_hosts AS hosts '
+                 'JOIN afe_hosts_labels ON hosts.id = afe_hosts_labels.host_id '
+                 'JOIN afe_labels AS labels '
+                 'ON labels.id = afe_hosts_labels.label_id '
+                 'WHERE labels.name LIKE \'%%pool%%\';')
+        return self._create_dump_from_query(query)
+
+
+    def create_shards_dump(self):
+        """Dumps shards and their labels into a text file.
+
+        @return: The path to a tempfile containing a dump of
+                 shards and their labels.
+        """
+        query = ('SELECT hostname, labels.name FROM afe_shards AS shards '
+                 'JOIN afe_shards_labels '
+                 'ON shards.id = afe_shards_labels.shard_id '
+                 'JOIN afe_labels AS labels '
+                 'ON labels.id = afe_shards_labels.label_id;')
+        return self._create_dump_from_query(query)
 
 
     def dump(self):
@@ -138,12 +165,17 @@ class MySqlArchiver(object):
         """
         if self._type == _ONLY_HOSTS:
             return self.create_host_dump()
+        if self._type == _ONLY_SHARDS:
+            return self.create_shards_dump()
         return self.create_mysql_dump()
 
 
     def _get_name(self):
         """Returns the name of the dump as presented to google storage."""
-        file_type = 'gz' if self._type != _ONLY_HOSTS else 'txt'
+        if self._type in [_ONLY_HOSTS, _ONLY_SHARDS]:
+            file_type = 'txt'
+        else:
+            file_type = 'gz'
         return 'autotest-dump.%s.%s' % (
                 datetime.datetime.now().strftime('%y.%m.%d'), file_type)
 
