@@ -319,6 +319,8 @@ def get_arm_soc_family():
         return 'exynos5'
     elif list_grep(cpuinfo, 'Tegra'):
         return 'tegra'
+    elif list_grep(cpuinfo, 'Rockchip'):
+        return 'rockchip'
     return 'arm'
 
 def get_cpu_soc_family():

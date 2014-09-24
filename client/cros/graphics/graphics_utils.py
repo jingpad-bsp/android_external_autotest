@@ -402,6 +402,9 @@ class GraphicsKernelMemory(object):
         'memory'      : ['/sys/class/misc/mali0/device/memory',
                          '/sys/class/misc/mali0/device/gpu_memory'],
     }
+    # TODO Add memory nodes once the GPU patches landed.
+    rockchip_fields = {
+    }
     tegra_fields = {
         'memory': ['/sys/kernel/debug/memblock/memory'],
     }
@@ -412,6 +415,7 @@ class GraphicsKernelMemory(object):
     arch_fields = {
         'exynos5' : exynos_fields,
         'tegra'   : tegra_fields,
+        'rockchip': rockchip_fields,
         'i386'    : x86_fields,
         'x86_64'  : x86_fields,
     }

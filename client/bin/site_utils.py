@@ -892,7 +892,7 @@ def set_dirty_writeback_centisecs(time=60000):
 def get_gpu_family():
     """Return the GPU family name"""
     cpuarch = base_utils.get_cpu_soc_family()
-    if cpuarch == 'exynos5':
+    if cpuarch == 'exynos5' or cpuarch == 'rockchip':
         return 'mali'
     if cpuarch == 'tegra':
         return 'tegra'
