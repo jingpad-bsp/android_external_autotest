@@ -10,9 +10,10 @@ class platform_Mosys(test.test):
     version = 1
 
     def __TestAllLeafCommands(self):
-        """Tests all "leaf" sub-commands.
+        """Tests all "leaf" sub-commands return non-error.
 
         Commands that return ENOSYS or EINVAL are not counted as error.
+        Return value are not check for correctness.
 
         Raises:
             error.TestFail Raised for commands that return non-zero exit code.
@@ -60,11 +61,14 @@ class platform_Mosys(test.test):
             not_supported = (stderr and
                 stderr.startswith('Command not supported on this platform'))
             need_argument = stdout and stdout.startswith('usage:')
-            if not_supported or need_argument:
-                if not_supported:
-                    logging.debug('cmd not supported: "%s"', cmd);
-                else:
-                    logging.debug('cmd needs argument: "%s"', cmd);
+            unable_to_determine = (stderr and
+                stderr.startswith('Unable to determine'))
+            if not_supported:
+                logging.info('cmd not supported: "%s"', cmd);
+            elif need_argument:
+                logging.info('cmd needs argument: "%s"', cmd);
+            elif unable_to_determine:
+                logging.info('Unable to determine: "%s"', cmd);
             else:
                 logging.error('failed to execute "%s"; exit code=%d', cmd, rc);
                 return False

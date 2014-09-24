@@ -4,12 +4,12 @@
 
 AUTHOR = "Chrome OS Team"
 NAME = "platform_Mosys"
-PURPOSE = "Ensure mosys is properly implemented."
+PURPOSE = "Exercise all mosys command, return value are not checked."
 CRITERIA = """
 Fails if executing any leaf sub-command returns a non-zero status code
-(except ENOSYS and EINVAL).
+(except ENOSYS and EINVAL). Return values are not checked for correctness.
 """
-SUITE = "faft"
+SUITE = "faft,faft_bios"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
