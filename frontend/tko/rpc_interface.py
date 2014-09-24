@@ -235,10 +235,37 @@ def get_tests_summary(job_names):
 
     summaries = {}
     for result in results:
-        label = result['job_name']
         status = 'passed' if result['test_status'] == 'GOOD' else 'failed'
-        summary = summaries.setdefault(label, {})
+        summary = summaries.setdefault(result['job_name'], {})
         summary[status] = result['num']
+
+    return summaries
+
+
+def get_tests_summary_with_wildcards(job_names):
+    """
+    Like get_tests_summary(job_names) but allowing wildcards.
+    @param job_names: Names of the suite jobs to get the summary from.
+    @returns: A summary of all the passed and failed tests per suite job.
+    """
+    query = '''SELECT IF (status = 'GOOD', status, 'FAIL')
+                   AS test_status, COUNT(*) num
+                 FROM tko_test_view_2
+                 WHERE job_name LIKE %s
+                   AND test_name <> 'SERVER_JOB'
+                   AND test_name NOT LIKE 'CLIENT_JOB%%'
+                   AND status <> 'TEST_NA'
+                 GROUP BY IF (status = 'GOOD', status, 'FAIL')'''
+
+    summaries = {}
+    cursor = readonly_connection.connection().cursor()
+    for job_name in job_names:
+        cursor.execute(query, job_name)
+        results = rpc_utils.fetchall_as_list_of_dicts(cursor)
+        summary = summaries.setdefault(job_name, {})
+        for result in results:
+            status = 'passed' if result['test_status'] == 'GOOD' else 'failed'
+            summary[status] = result['num']
 
     return summaries
 
