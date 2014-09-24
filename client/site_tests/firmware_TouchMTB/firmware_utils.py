@@ -95,6 +95,7 @@ def install_pygtk():
     """A temporary dirty hack of installing pygtk related packages."""
     pygtk_dict = {'x86_64': ['pygtk_x86_64.tbz2', 'lib64'],
                   'i686': ['pygtk_x86_32.tbz2', 'lib'],
+                  'armv7l': ['pygtk_armv7l.tbz2', 'lib'],
     }
     pygtk_info = pygtk_dict.get(get_cpu().lower())
 
@@ -120,7 +121,8 @@ def install_pygtk():
             print 'Failed to remount. Have you removed the write protect?'
     else:
         print 'The pygtk is only supported for %s so far.' % pygtk_dict.keys()
-        print 'The other cpus will be supported soon.'
+        print 'The other cpus will be supported on demand.'
+        print 'The plan is to remove gtk totally and upgrade to Chrome browser.'
     return False
 
 
