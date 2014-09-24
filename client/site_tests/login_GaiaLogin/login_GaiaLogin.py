@@ -24,7 +24,7 @@ class login_GaiaLogin(test.test):
             if not cryptohome.is_vault_mounted(user=self._USERNAME):
                 raise error.TestFail('Expected to find a mounted vault for %s'
                                      % self._USERNAME)
-            tab = cr.browser.tabs[0]
+            tab = cr.browser.tabs.New()
             # TODO(achuith): Use a better signal of being logged in, instead of
             # parsing accounts.google.com.
             tab.Navigate('http://accounts.google.com')
@@ -43,4 +43,4 @@ class login_GaiaLogin(test.test):
             if not found:
                 raise error.TestFail('No references to %s on accounts page.'
                                      % self._USERNAME_DISPLAY)
-
+            tab.Close()
