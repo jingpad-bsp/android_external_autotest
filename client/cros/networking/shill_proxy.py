@@ -360,9 +360,9 @@ class ShillProxy(object):
 
             context = gobject.MainLoop().get_context()
             while duration() < timeout_seconds:
-                # This has caused 1 or fewer events to be dispatched.
+                # Dispatch all pending events.
                 while context.iteration(False):
-                    time.sleep(0.2)
+                    pass
 
                 while update_queue:
                     updated_property, value = map(self.dbus2primitive,
