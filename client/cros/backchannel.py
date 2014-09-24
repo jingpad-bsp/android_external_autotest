@@ -53,7 +53,7 @@ class Backchannel(object):
 
         # If the backchannel interface is already up there's nothing
         # for us to do.
-        if _is_network_iface_running(BACKCHANNEL_IFACE_NAME):
+        if is_network_iface_running(BACKCHANNEL_IFACE_NAME):
             return True
 
         # Retrieve the gateway for the default route.
@@ -149,7 +149,7 @@ def backchannel(args):
     utils.system('/usr/local/lib/flimflam/test/backchannel %s' % args)
 
 
-def _is_network_iface_running(name):
+def is_network_iface_running(name):
     """
     Checks to see if the interface is running.
 
