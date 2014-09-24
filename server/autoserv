@@ -16,6 +16,10 @@ require_atfork = global_config.global_config.get_config_value(
         'AUTOSERV', 'require_atfork_module', type=bool, default=True)
 
 
+# Number of seconds to wait before returning if testing mode is enabled
+TESTING_MODE_SLEEP_SECS = 10
+
+
 try:
     import atfork
     atfork.monkeypatch_os_fork_functions()
@@ -310,7 +314,12 @@ def main():
     exit_code = 0
     try:
         try:
-            run_autoserv(pid_file_manager, results, parser)
+            if not global_config.global_config.get_config_value(
+                        'AUTOSERV', 'testing_mode', type=bool, default=False):
+                run_autoserv(pid_file_manager, results, parser)
+            else:
+                # TODO(beeps): Extend this to cover different failure modes.
+                time.sleep(TESTING_MODE_SLEEP_SECS)
         except SystemExit as e:
             exit_code = e.code
             if exit_code:
