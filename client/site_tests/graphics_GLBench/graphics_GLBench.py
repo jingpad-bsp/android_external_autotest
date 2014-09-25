@@ -124,8 +124,9 @@ class graphics_GLBench(test.test):
       # On BVT the test will not monitor thermals so we will not verify its
       # correct status using PerControl
       summary = utils.run(cmd,
-                          stdout_tee=utils.TEE_TO_LOGS,
-                          stderr_tee=utils.TEE_TO_LOGS).stdout
+                          stderr_is_expected = False,
+                          stdout_tee = utils.TEE_TO_LOGS,
+                          stderr_tee = utils.TEE_TO_LOGS).stdout
     else:
       self.report_temperature_critical('temperature_critical')
       self.report_temperature('temperature_1_start')
@@ -138,8 +139,9 @@ class graphics_GLBench(test.test):
 
         # Run the test. If it gets the CPU too hot pc should notice.
         summary = utils.run(cmd,
-                            stdout_tee=utils.TEE_TO_LOGS,
-                            stderr_tee=utils.TEE_TO_LOGS).stdout
+                            stderr_is_expected = False,
+                            stdout_tee = utils.TEE_TO_LOGS,
+                            stderr_tee = utils.TEE_TO_LOGS).stdout
         if not pc.verify_is_valid():
           raise error.TestError(pc.get_error_reason())
 

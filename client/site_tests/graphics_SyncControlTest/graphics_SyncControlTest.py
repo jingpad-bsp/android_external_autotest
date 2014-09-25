@@ -35,7 +35,7 @@ class graphics_SyncControlTest(test.test):
 
         # synccontroltest exits with a non zero status if a deviation above
         # 200uS us is detected.
-        ret = utils.system(cmd, ignore_status=True)
+        ret = utils.run(cmd, stderr_is_expected = False)
         if ret != 0:
             raise error.TestFail(
                 "Failed: graphics_SyncControlTest with {0}".format(ret))

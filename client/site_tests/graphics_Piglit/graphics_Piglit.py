@@ -75,8 +75,9 @@ class graphics_Piglit(test.test):
         cmd = cros_ui.xcommand(cmd)
         logging.info(cmd)
         utils.run(cmd,
-                  stdout_tee=utils.TEE_TO_LOGS,
-                  stderr_tee=utils.TEE_TO_LOGS)
+                  stderr_is_expected = False,
+                  stdout_tee = utils.TEE_TO_LOGS,
+                  stderr_tee = utils.TEE_TO_LOGS)
 
         # Make sure logs get written before continuing.
         utils.run('sync')
@@ -84,8 +85,9 @@ class graphics_Piglit(test.test):
         cmd = ('python %s summary html --overwrite -e all %s %s/results.json' %
                   (run_path, results_path, self.outputdir))
         utils.run(cmd,
-                  stdout_tee=utils.TEE_TO_LOGS,
-                  stderr_tee=utils.TEE_TO_LOGS)
+                  stderr_is_expected = False,
+                  stdout_tee = utils.TEE_TO_LOGS,
+                  stderr_tee = utils.TEE_TO_LOGS)
         # Make sure logs get written before continuing.
         utils.run('sync')
 

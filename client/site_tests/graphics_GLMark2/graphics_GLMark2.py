@@ -97,8 +97,9 @@ class graphics_GLMark2(test.test):
             raise error.TestFail('Could not get cold machine.')
 
         result = utils.run(cmd,
-                           stdout_tee=utils.TEE_TO_LOGS,
-                           stderr_tee=utils.TEE_TO_LOGS)
+                           stderr_is_expected = False,
+                           stdout_tee = utils.TEE_TO_LOGS,
+                           stderr_tee = utils.TEE_TO_LOGS)
         logging.info(result)
         for line in result.stderr.splitlines():
             if line.startswith('Error:'):

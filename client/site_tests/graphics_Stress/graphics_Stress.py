@@ -53,7 +53,7 @@ class graphics_Stress(test.test):
         """Uses xsendevt to send an event.
 
         @param event_name: name of the event. Usually a keystroke."""
-        os.system('/usr/bin/xsendevt %s' % event_name)
+        utils.system('/usr/bin/xsendevt %s' % event_name)
 
 
     def new_chrome(self):
