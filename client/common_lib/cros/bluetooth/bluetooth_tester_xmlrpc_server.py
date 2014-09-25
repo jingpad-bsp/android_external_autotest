@@ -344,6 +344,26 @@ class BluetoothTesterXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
                                                    invalid_request)
 
 
+    def service_search_attribute_request(self, uuids, max_attr_byte_count,
+                                         attr_ids, preferred_size=32):
+        """Send a Service Search Attribute Request
+
+        @param uuids: list of UUIDs (as integers) to look for.
+        @param max_attr_byte_count: maximum number of bytes of attribute data to
+               be returned in the response to this request.
+        @param attr_ids: a list, where each element is either an attribute ID
+               or a range of attribute IDs.
+        @param preferred_size: Preffered size of UUIDs in bits (16, 32, or 128).
+
+        @return list of found attributes IDs and their values or Error Code
+
+        """
+        return self._sdp.service_search_attribute_request(uuids,
+                                                          max_attr_byte_count,
+                                                          attr_ids,
+                                                          preferred_size)
+
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     handler = logging.handlers.SysLogHandler(address = '/dev/log')
