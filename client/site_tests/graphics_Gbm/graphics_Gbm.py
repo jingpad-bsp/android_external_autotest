@@ -33,8 +33,9 @@ class graphics_Gbm(test.test):
         cmd = os.path.join(self.srcdir, 'gbmtest')
         cmd = cros_ui.xcommand(cmd)
         result = utils.run(cmd,
-                           stdout_tee=utils.TEE_TO_LOGS,
-                           stderr_tee=utils.TEE_TO_LOGS,
+                           stderr_is_expected = False,
+                           stdout_tee = utils.TEE_TO_LOGS,
+                           stderr_tee = utils.TEE_TO_LOGS,
                            ignore_status = True)
         report = re.findall(r'[  PASSED  ]', result.stdout)
         if not report:
