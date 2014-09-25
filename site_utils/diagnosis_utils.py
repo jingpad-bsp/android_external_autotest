@@ -14,6 +14,14 @@ from autotest_lib.server import utils
 from autotest_lib.server.cros.dynamic_suite import reporting_utils
 
 
+class BoardNotAvailableError(utils.TestLabException):
+    """Raised when a board is not available in the lab."""
+
+
+class NotEnoughDutsError(utils.TestLabException):
+    """Rasied when the lab doesn't have the minimum number of duts."""
+
+
 class SimpleTimer(object):
     """A simple timer used to periodically check if a deadline has passed."""
 
@@ -174,8 +182,9 @@ class RPCHelper(object):
                              run the suite. Default is set to 0, which means do
                              not force the check of available machines before
                              running the suite.
-        @raise: TestLabException if DUT availability is lower than minimum,
-                or failed to get host information from rpc interface.
+        @raise: NotEnoughDutsError if DUT availability is lower than minimum.
+        @raise: BoardNotAvailableError if no host found for requested
+                board/pool.
         """
         if minimum_duts == 0:
             return
@@ -184,7 +193,7 @@ class RPCHelper(object):
                 invalid=False,
                 multiple_labels=('pool:%s' % pool, 'board:%s' % board))
         if not hosts:
-            raise utils.TestLabException(
+            raise BoardNotAvailableError(
                     'No hosts found for board:%s in pool:%s' %
                     (board, pool))
 
@@ -206,7 +215,7 @@ class RPCHelper(object):
         logging.debug('%d of %d DUTs are available for board %s pool %s.',
                       len(available_hosts), len(hosts), board, pool)
         if len(available_hosts) < minimum_duts:
-            raise utils.TestLabException(
+            raise NotEnoughDutsError(
                     'Number of available DUTs for board %s pool %s is %d, which'
                     ' is less than the minimum value %d.' %
                     (board, pool, len(available_hosts), minimum_duts))

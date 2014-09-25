@@ -34,6 +34,8 @@ This script exits with one of the following codes:
     * No DUTs available midway through a suite
     * Provision/Reset/Cleanup took longer time than expected for new image
     * A regression in scheduler tick time.
+5- BOARD_NOT_AVAILABLE: If there is no host for the requested board/pool.
+6- INVALID_OPTIONS: If options are not valid.
 """
 
 
@@ -61,7 +63,7 @@ CONFIG = global_config.global_config
 # Return code that will be sent back to autotest_rpc_server.py
 RETURN_CODES = enum.Enum(
         'OK', 'ERROR', 'WARNING', 'INFRA_FAILURE', 'SUITE_TIMEOUT',
-        'INVALID_OPTIONS')
+        'BOARD_NOT_AVAILABLE', 'INVALID_OPTIONS')
 # The severity of return code. If multiple codes
 # apply, the script should always return the severest one.
 # E.g. if we have a test failure and the suite also timed out,
@@ -70,8 +72,7 @@ SEVERITY = {RETURN_CODES.OK: 0,
             RETURN_CODES.WARNING: 1,
             RETURN_CODES.SUITE_TIMEOUT: 2,
             RETURN_CODES.INFRA_FAILURE: 3,
-            RETURN_CODES.ERROR: 4,
-            RETURN_CODES.INVALID_OPTIONS: 5}
+            RETURN_CODES.ERROR: 4}
 
 
 def get_worse_code(code1, code2):
@@ -1213,12 +1214,8 @@ def main_without_exception_handling():
                   options.priority, ', '.join(priorities.Priority.names))
             return RETURN_CODES.INVALID_OPTIONS
 
-    try:
-        if not options.bypass_labstatus:
-            utils.check_lab_status(options.build)
-    except utils.TestLabException as e:
-        logging.warning('Error Message: %s', e)
-        return RETURN_CODES.INFRA_FAILURE
+    if not options.bypass_labstatus:
+        utils.check_lab_status(options.build)
 
     instance_server = instance_for_pool(options.pool)
     afe = frontend_wrappers.RetryingAFE(server=instance_server,
@@ -1227,13 +1224,8 @@ def main_without_exception_handling():
     logging.info('Autotest instance: %s', instance_server)
 
     rpc_helper = diagnosis_utils.RPCHelper(afe)
-
-    try:
-        rpc_helper.check_dut_availability(options.board, options.pool,
-                                          options.minimum_duts)
-    except utils.TestLabException as e:
-        logging.warning('Not enough DUTs to run this suite: %s', e)
-        return RETURN_CODES.INFRA_FAILURE
+    rpc_helper.check_dut_availability(options.board, options.pool,
+                                      options.minimum_duts)
 
     wait = options.no_wait == 'False'
     file_bugs = options.file_bugs == 'True'
@@ -1363,14 +1355,22 @@ def main_without_exception_handling():
 
 def main():
     """Entry point."""
+    code = RETURN_CODES.OK
     try:
         return main_without_exception_handling()
+    except diagnosis_utils.BoardNotAvailableError as e:
+        logging.warning('Can not run suite: %s', e)
+        code = RETURN_CODES.BOARD_NOT_AVAILABLE
+    except utils.TestLabException as e:
+        logging.warning('Can not run suite: %s', e)
+        code = RETURN_CODES.INFRA_FAILURE
     except Exception as e:
         code = RETURN_CODES.INFRA_FAILURE
         logging.exception('Unhandled run_suite exception: %s', e)
-        logging.info('Will return from run_suite with status: %s',
-                     RETURN_CODES.get_string(code))
-        return code
+
+    logging.info('Will return from run_suite with status: %s',
+                  RETURN_CODES.get_string(code))
+    return code
 
 
 if __name__ == "__main__":
