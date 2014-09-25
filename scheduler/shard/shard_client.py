@@ -10,6 +10,7 @@ import datetime
 import logging
 import os
 import signal
+import socket
 import time
 
 import common
@@ -17,6 +18,7 @@ from autotest_lib.frontend import setup_django_environment
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import logging_manager
+from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.frontend.afe import models, rpc_utils
 from autotest_lib.scheduler import email_manager
 from autotest_lib.server import frontend
@@ -73,6 +75,9 @@ On the client side, this will happen:
 
 
 HEARTBEAT_AFE_ENDPOINT = 'shard_heartbeat'
+STATS_KEY = 'shard_client.%s' % socket.gethostname()
+
+timer = stats.Timer(STATS_KEY)
 
 
 class ShardClient(object):
@@ -89,6 +94,7 @@ class ShardClient(object):
         self._shutdown = False
 
 
+    @timer.decorate
     def process_heartbeat_response(self, heartbeat_response):
         """Save objects returned by a heartbeat to the local database.
 
@@ -102,6 +108,11 @@ class ShardClient(object):
         hosts_serialized = heartbeat_response['hosts']
         jobs_serialized = heartbeat_response['jobs']
 
+        stats.Gauge(STATS_KEY).send(
+            'hosts_received', len(hosts_serialized))
+        stats.Gauge(STATS_KEY).send(
+            'jobs_received', len(jobs_serialized))
+
         # Persisting is automatically done inside deserialize
         for host in hosts_serialized:
             models.Host.deserialize(host)
@@ -109,6 +120,7 @@ class ShardClient(object):
             models.Job.deserialize(job)
 
 
+    @timer.decorate
     def do_heartbeat(self):
         """Perform a heartbeat: Retreive new jobs.
 
@@ -196,11 +208,13 @@ def get_shard_client():
 
 def main():
     try:
+        stats.Counter(STATS_KEY).send('starts').increment()
         main_without_exception_handling()
     except Exception as e:
         message = 'Uncaught exception; terminating shard_client.'
         email_manager.manager.log_stacktrace(message)
         logging.exception(message)
+        stats.Counter(STATS_KEY).send('uncaught_exceptions').increment()
         raise
     finally:
         email_manager.manager.send_queued_emails()
