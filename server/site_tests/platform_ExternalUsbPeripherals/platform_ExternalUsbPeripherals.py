@@ -10,10 +10,13 @@ from autotest_lib.client.common_lib import error, site_utils
 
 _WAIT_DELAY = 10
 _SUSPEND_RESUME_TIMEOUT = 200
-_UNSUPPORTED_GBB_BOARDS = ['x86-mario', 'x86-alex', 'x86-zgb']
 _SUSPEND_RESUME_BOARDS = ['daisy', 'panther']
-_LOGIN_TIMEOUT_MESSAGE = 'DEVICE DID NOT LOGIN IN TIME!'
-
+_LOGIN_FAILED = 'DEVICE COULD NOT LOGIN!'
+_SUSPEND_FAILED = 'Failed to SUSPEND within timeout'
+_RESUME_FAILED = 'Failed to RESUME within timeout'
+_CRASH_PATHS = ['/var/spool',
+                '/home/chronos',
+                '/home/chronos/u*']
 class platform_ExternalUsbPeripherals(test.test):
     """Uses servo to repeatedly connect/remove USB devices during boot."""
     version = 1
@@ -53,48 +56,55 @@ class platform_ExternalUsbPeripherals(test.test):
         self.host.servo.set('dut_hub1_rst1', reset)
         self.pluged_status = on
 
+
+    def is_logged_in(self):
+        """Checks if DUT is logged"""
+        out = self.host.run('ls /home/chronos/user/',
+                            ignore_status=True).stdout.strip()
+        if len(re.findall('Downloads', out)) > 0:
+            return True
+        return False
+
+
     def action_login(self):
-        """Login i.e. start running client test"""
-        self.autotest_client.run_test(
-            self.client_autotest,
-            exit_without_logout=self.exit_without_logout)
+        """Login i.e. runs running client test
+
+        @exception TestFail failed to login within timeout.
+
+        """
+        self.autotest_client.run_test(self.client_autotest,
+                                      exit_without_logout=True)
+        if not self.is_logged_in():
+            raise error.TestFail(_LOGIN_FAILED)
 
 
-    def action_logout(self):
-        """Logout i.e. stop the client test."""
-        client_termination_file_path = '/tmp/simple_login_exit'
-        self.host.run('touch %s' % client_termination_file_path)
-
-
-    def wait_to_suspend(self, suspend_timeout):
+    def wait_to_disconnect(self, fail_msg, suspend_timeout):
         """Wait for DUT to suspend.
 
-        @param resume_timeout: Time in seconds to wait for suspend
+        @param fail_msg: Failure message
+        @param resume_timeout: Time in seconds to wait to disconnect
 
-        @exception TestFail  if fail to suspend in time
-        @returns time took to suspend
+        @exception TestFail  if fail to disconnect in time
+        @returns time took to disconnect
         """
         start_time = int(time.time())
         if not self.host.ping_wait_down(timeout=suspend_timeout):
-            raise error.TestFail(
-                'Failed to SUSPEND after %d seconds' %
-                    suspend_timeout)
+            raise error.TestFail(fail_msg)
         return int(time.time()) - start_time
 
 
-    def wait_to_resume(self, resume_timeout):
+    def wait_to_come_up(self, fail_msg, resume_timeout):
         """Wait for DUT to resume.
 
-        @param resume_timeout: Time in seconds to wait for resuming
+        @param fail_msg: Failure message
+        @param resume_timeout: Time in seconds to wait to come up
 
-        @exception TestFail  if fail to resume in time
-        @returns time took to resume
+        @exception TestFail  if fail to come_up in time
+        @returns time took to come up
         """
         start_time = int(time.time())
         if not self.host.wait_up(timeout=resume_timeout):
-            raise error.TestFail(
-                'Failed to RESUME after %d seconds' %
-                    resume_timeout)
+            raise error.TestFail(fail_msg)
         return int(time.time()) - start_time
 
 
@@ -123,23 +133,11 @@ class platform_ExternalUsbPeripherals(test.test):
         return True
 
 
-    def wait_to_login(self):
-        """Waits untill the user is logged
-
-        @exception TestFail failed to login within timeout.
-        """
-        login_result = self.wait_for_cmd_output('cryptohome --action=status',
-            '"mounted": true', _WAIT_DELAY * 4, _LOGIN_TIMEOUT_MESSAGE)
-        if login_result:
-            logging.debug('Successfully loged-in.')
-        else:
-            raise error.TestFail(_LOGIN_TIMEOUT_MESSAGE)
-
-
     def action_suspend(self):
         """Suspend i.e. close lid"""
         self.host.servo.lid_close()
-        stime = self.wait_to_suspend(_SUSPEND_RESUME_TIMEOUT)
+        stime = self.wait_to_disconnect(_SUSPEND_FAILED,
+                                        _SUSPEND_RESUME_TIMEOUT)
         self.suspend_status = True
         logging.debug('--- Suspended in %d sec' % stime)
 
@@ -148,9 +146,17 @@ class platform_ExternalUsbPeripherals(test.test):
     def action_resume(self):
         """Resume i.e. open lid"""
         self.host.servo.lid_open()
-        rtime = self.wait_to_resume(_SUSPEND_RESUME_TIMEOUT)
+        rtime = self.wait_to_come_up(_RESUME_FAILED, _SUSPEND_RESUME_TIMEOUT)
         self.suspend_status = False
         logging.debug('--- Resumed in %d sec' % rtime)
+
+
+    def action_reboot(self):
+        """Reboot DUT"""
+        boot_id = self.host.get_boot_id()
+        self.host.reboot(wait=False)
+        self.host.test_wait_for_shutdown()
+        self.host.test_wait_for_boot(boot_id)
 
 
     def powerd_suspend_with_timeout(self, timeout):
@@ -176,7 +182,7 @@ class platform_ExternalUsbPeripherals(test.test):
         thread = threading.Thread(target = self.powerd_suspend_with_timeout,
                                   args = (_SUSPEND_RESUME_TIMEOUT,))
         thread.start()
-        self.wait_to_suspend(_SUSPEND_RESUME_TIMEOUT)
+        self.wait_to_disconnect(_SUSPEND_RESUME_TIMEOUT)
 
         # Execute action after suspending
         do_while_suspended = re.findall(r'SUSPEND(\w*)RESUME', action)[0]
@@ -191,7 +197,7 @@ class platform_ExternalUsbPeripherals(test.test):
         # Press power key and resume ( and terminate thread)
         logging.info('--- RESUMING')
         self.host.servo.power_key(0.1)
-        self.wait_to_resume(_SUSPEND_RESUME_TIMEOUT)
+        self.wait_to_come_up(_RESUME_FAILED, _SUSPEND_RESUME_TIMEOUT)
         if thread.is_alive():
             raise error.TestFail('SUSPEND thread did not terminate!')
 
@@ -234,7 +240,7 @@ class platform_ExternalUsbPeripherals(test.test):
         else:
             dev_list = self.off_list
         time.sleep(_WAIT_DELAY)
-        on_now = self.getPluggedUsbDevices( )
+        on_now = self.getPluggedUsbDevices()
         if not len(set(dev_list).difference(set(on_now))) == 0:
             self.fail_reasons.append('The list of connected peripherals '
                                      'is wrong. --- Now: %s --- Should be: '
@@ -277,14 +283,11 @@ class platform_ExternalUsbPeripherals(test.test):
             # Detect the USB peripherals
             result = self.check_plugged_usb_devices()
             # Check for crash files
-            crash_result = (self.crash_not_detected('/var/spool/') and
-                self.crash_not_detected('/home/chronos/u*/') and
-                self.crash_not_detected('/home/chronos/'))
-            result = result and crash_result
+            for crash_path in _CRASH_PATHS:
+                result = result and self.crash_not_detected(crash_path)
             if self.pluged_status and (self.usb_checks != None):
                 # Check for plugged USB devices details
-                usb_check_result = self.check_usb_peripherals_details()
-                result = result and usb_check_result
+                result = result and self.check_usb_peripherals_details()
         return result
 
 
@@ -303,6 +306,14 @@ class platform_ExternalUsbPeripherals(test.test):
         return actions
 
 
+    def remove_crash_data(self):
+        """Delete crash meta files"""
+        for crash_path in _CRASH_PATHS:
+            if not self.crash_not_detected(crash_path):
+                self.host.run('rm -rf %s/crash' % crash_path,
+                              ignore_status=True)
+
+
     def run_once(self, host, client_autotest, action_sequence, repeat,
                  usb_list=None, usb_checks=None):
         self.client_autotest = client_autotest
@@ -315,7 +326,6 @@ class platform_ExternalUsbPeripherals(test.test):
         self.login_status = False
         self.exit_without_logout = False
         self.fail_reasons = []
-        skipped_gbb = False
 
         self.host.servo.switch_usbkey('dut')
         self.host.servo.set('usb_mux_sel3', 'dut_sees_usbkey')
@@ -338,17 +348,14 @@ class platform_ExternalUsbPeripherals(test.test):
                                   'and DUT_HUB1_USB on the servo board.')
         logging.debug('Connected devices list: %s' % diff_list)
 
-        skip_gbb = False
         board = host.get_board().split(':')[1]
-        if board in _UNSUPPORTED_GBB_BOARDS:
-            skip_gbb = True
         action_sequence = action_sequence.upper()
         if board in _SUSPEND_RESUME_BOARDS:
             action_sequence = self.change_suspend_resume(action_sequence)
         actions = action_sequence.split(',')
-        for iteration in xrange(repeat):
+        self.remove_crash_data()
+        for iteration in xrange(1, repeat + 1):
             step = 0
-            iteration += 1
             for action in actions:
                 step += 1
                 action = action.strip()
@@ -363,40 +370,15 @@ class platform_ExternalUsbPeripherals(test.test):
                     self.set_hub_power(True)
                 elif self.suspend_status == False:
                     if action.startswith('LOGIN'):
-                        if self.login_status == True:
+                        if self.is_logged_in():
                             logging.debug('Skipping login. Already logged in.')
                             continue
                         else:
-                            if action =='LOGIN_EXIT':
-                                self.exit_without_logout = True
-                            stressor = stress.ControlledStressor(
-                                self.action_login)
-                            stressor.start()
-                            self.wait_to_login()
-                            if action =='LOGIN_EXIT':
-                                stressor.stop()
+                            self.action_login()
                             self.login_status = True
-                    elif action == 'LOGOUT':
-                        if self.login_status == False:
-                            logging.debug('Skipping. Already logged out.')
-                            continue
-                        else:
-                            self.action_logout()
-                            logging.debug('--- Logged out.')
-                            stressor.stop()
-                            self.login_status = False
                     elif action == 'REBOOT':
-                        if self.login_status == True:
-                            self.action_logout()
-                            stressor.stop()
-                            logging.debug('---Logged out.')
-                            self.login_status = False
-                        # We want fast boot past the dev screen
-                        if not skip_gbb and not skipped_gbb:
-                            self.host.run('/usr/share/vboot/bin/'
-                                        'set_gbb_flags.sh 0x01')
-                            skipped_gbb = True
-                        self.host.reboot()
+                        self.action_reboot()
+                        self.login_status = False
                     elif action == 'SUSPEND':
                         self.action_suspend()
                     elif re.match(r'SUSPEND\w*RESUME',action) is not None:
@@ -408,8 +390,3 @@ class platform_ExternalUsbPeripherals(test.test):
                 if not self.check_status():
                     raise error.TestFail('Step %s failed with: %s' %
                                          (action_step, str(self.fail_reasons)))
-
-        if self.login_status and self.exit_without_logout == False:
-            self.action_logout()
-            logging.debug('--- Logged out.')
-            stressor.stop()
