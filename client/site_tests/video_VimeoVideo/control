@@ -11,12 +11,13 @@ PURPOSE = "Verify that Vimeo (html5) video works"
 CRITERIA = """
 This test will fail if Vimeo video fails to play.
 """
-SUITE = "bvt-perbuild, video, qav"
+SUITE = "bvt-perbuild"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
 BUG_TEMPLATE = {
+    'owner': 'rohitbm@chromium.org',
     'labels': ['OS-Chrome', 'Cr-OS-Kernel-Video'],
 }
 

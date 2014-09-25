@@ -78,11 +78,6 @@ class video_VimeoVideo(test.test):
                 timeout=self._WAIT_TIMEOUT_S,
                 sleep_interval=1)
 
-        # Verify that Vimeo is playing the video in html5 mode.
-        prc = utils.get_process_list('chrome', '--type=ppapi')
-        if prc:
-            raise error.TestFail('Vimeo is playing the video in Flash mode.')
-
         self._tab.ExecuteJavaScript('pause.click()')
         self._wait_for_player_status(self._PLAYER_PAUSE_STATE)
         time.sleep(1)
