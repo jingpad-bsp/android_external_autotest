@@ -89,7 +89,6 @@ class Chrome(object):
             try:
                 browser_to_create = browser_finder.FindBrowser(finder_options)
                 self._browser = browser_to_create.Create()
-                self._browser.Start()
                 break
             except (util.TimeoutException, exceptions.LoginException) as e:
                 logging.error('Timed out logging in, tries=%d, error=%s',
