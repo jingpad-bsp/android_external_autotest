@@ -10,6 +10,7 @@ from autotest_lib.server.hosts import ssh_host
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
+from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
 
 def local_runner(cmd):
@@ -205,7 +206,7 @@ def drone_servers():
     Generate a list of all drones used by all instances of autotest in
     production.
 
-    @returns: An iterable of all hosts.
+    @returns: An iterable of drone servers.
     """
     return _scrape_from_instances('SCHEDULER', 'drones')
 
@@ -223,3 +224,20 @@ def devserver_servers():
     # you've set up your /etc/resolve.conf to automatically try .cros, so we
     # append the zone to try and make this more in line with everything else.
     return set([server+'.'+zone for server in servers])
+
+
+def shard_servers():
+    """
+    Generate a list of all shard servers.
+
+    @returns: An iterable of all shard servers.
+    """
+    shard_hostnames = set()
+    sams = sam_servers()
+    for sam in sams:
+        afe = frontend_wrappers.RetryingAFE(server=sam)
+        shards = afe.run('get_shards')
+        for shard in shards:
+            shard_hostnames.add(shard['hostname'])
+
+    return list(shard_hostnames)

@@ -11,8 +11,10 @@ from autotest_lib.site_utils.lib import infra
 TESTING = False
 
 print 'Pulling servers...'
-SCHEDULERS = infra.sam_servers()
-DRONES = infra.drone_servers()
+SHARDS = infra.shard_servers()
+SAMS = infra.sam_servers()
+SCHEDULERS = SAMS.union(SHARDS)
+DRONES = infra.drone_servers().union(SHARDS)
 ALL_SERVERS = SCHEDULERS.union(DRONES)
 EXTRAS = infra.extra_servers()
 TEST_INSTANCE = infra.test_instance()
@@ -39,6 +41,7 @@ DEPLOY_ACTIONS = [
                             'sudo service suite-scheduler restart'),
     ('gs_offloader', DRONES, 'sudo service gs_offloader restart ; '
                               'sudo service gs_offloader_s restart'),
+    ('shard_client', SHARDS, 'sudo service shard_client restart'),
     ('stats_poller', {'chromeos-mcp'}, 'sudo service stats-poller restart'),
 ]
 
