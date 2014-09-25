@@ -8,7 +8,7 @@ PURPOSE = "Verify that VP8 non-resolution-changing video seek works in Chrome"
 CRITERIA = """
 This test will fail if a non-resolution-changing VP8 video fails to seek in Chrome HTML5 page.
 """
-SUITE = "bvt-perbuild, video, qav"
+SUITE = "bvt-perbuild"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"

@@ -8,7 +8,7 @@ PURPOSE = "Verify that VDA works for H264 resolution-changing video."
 CRITERIA = """
 This test will fail if VDA doesn't work for mp4 resolution-changing video.
 """
-SUITE = "bvt-perbuild, video, qav"
+SUITE = "bvt-perbuild"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"
