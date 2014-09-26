@@ -23,6 +23,7 @@ from autotest_lib.client.common_lib import utils, time_utils
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.scheduler import email_manager
 
+
 # Test value to use for `days_old`, if nothing else is required.
 _TEST_EXPIRATION_AGE = 7
 
@@ -54,9 +55,11 @@ class OffloaderOptionsTests(mox.MoxTestBase):
     _SPECIAL_ONLY = set([job_directories.SpecialJobDirectory])
     _BOTH = _REGULAR_ONLY | _SPECIAL_ONLY
 
+
     def setUp(self):
         super(OffloaderOptionsTests, self).setUp()
         self.mox.StubOutWithMock(utils, 'get_offload_gsuri')
+
 
     def _mock_get_offload_func(self, is_moblab):
         """Mock the process of getting the offload_dir function."""
@@ -75,6 +78,7 @@ class OffloaderOptionsTests(mox.MoxTestBase):
         self.mox.ReplayAll()
         return offload_func
 
+
     def test_process_no_options(self):
         """Test default offloader options."""
         offload_func = self._mock_get_offload_func(False)
@@ -86,6 +90,7 @@ class OffloaderOptionsTests(mox.MoxTestBase):
                          offload_func)
         self.assertEqual(offloader._age_limit, 0)
 
+
     def test_process_all_option(self):
         """Test offloader handling for the --all option."""
         offload_func = self._mock_get_offload_func(False)
@@ -95,6 +100,7 @@ class OffloaderOptionsTests(mox.MoxTestBase):
         self.assertEqual(offloader._offload_func,
                          offload_func)
         self.assertEqual(offloader._age_limit, 0)
+
 
     def test_process_hosts_option(self):
         """Test offloader handling for the --hosts option."""
@@ -108,6 +114,7 @@ class OffloaderOptionsTests(mox.MoxTestBase):
                          offload_func)
         self.assertEqual(offloader._age_limit, 0)
 
+
     def test_parallelism_option(self):
         """Test offloader handling for the --parallelism option."""
         offload_func = self._mock_get_offload_func(False)
@@ -120,6 +127,7 @@ class OffloaderOptionsTests(mox.MoxTestBase):
                          offload_func)
         self.assertEqual(offloader._age_limit, 0)
 
+
     def test_delete_only_option(self):
         """Test offloader handling for the --delete_only option."""
         offloader = gs_offloader.Offloader(
@@ -130,6 +138,7 @@ class OffloaderOptionsTests(mox.MoxTestBase):
         self.assertEqual(offloader._offload_func,
                          gs_offloader.delete_files)
         self.assertEqual(offloader._age_limit, 0)
+
 
     def test_delete_only_option(self):
         """Test offloader handling for the --days_old option."""
@@ -142,6 +151,7 @@ class OffloaderOptionsTests(mox.MoxTestBase):
         self.assertEqual(offloader._offload_func,
                          offload_func)
         self.assertEqual(offloader._age_limit, 7)
+
 
     def test_moblab_gsuri_generation(self):
         """Test offloader construction for Moblab."""
@@ -204,14 +214,17 @@ class _MockJobDirectory(job_directories._JobDirectory):
 
     GLOB_PATTERN = '[0-9]*-*'
 
+
     def __init__(self, resultsdir):
         """Create new job in initial state."""
         super(_MockJobDirectory, self).__init__(resultsdir)
         self._timestamp = None
         self.queue_args = [resultsdir, os.path.dirname(resultsdir)]
 
+
     def get_timestamp_if_finished(self):
         return self._timestamp
+
 
     def set_finished(self, days_old):
         """Make this job appear to be finished.
@@ -229,6 +242,7 @@ class _MockJobDirectory(job_directories._JobDirectory):
         """
         self._timestamp = _make_timestamp(days_old, False)
 
+
     def set_expired(self, days_old):
         """Make this job eligible to be offloaded.
 
@@ -242,6 +256,7 @@ class _MockJobDirectory(job_directories._JobDirectory):
         """
         self._timestamp = _make_timestamp(days_old, True)
 
+
     def set_incomplete(self):
         """Make this job appear to have failed offload just once."""
         self._offload_count += 1
@@ -249,10 +264,12 @@ class _MockJobDirectory(job_directories._JobDirectory):
         if not os.path.isdir(self._dirname):
             os.mkdir(self._dirname)
 
+
     def set_reportable(self):
         """Make this job be reportable."""
         self.set_incomplete()
         self._offload_count += 1
+
 
     def set_complete(self):
         """Make this job be completed."""
@@ -264,7 +281,7 @@ class _MockJobDirectory(job_directories._JobDirectory):
 class CommandListTests(unittest.TestCase):
     """Tests for `get_cmd_list()`."""
 
-    def _command_list_assertions(self, job):
+    def _command_list_assertions(self, job, use_rsync=True):
         """Call `get_cmd_list()` and check the return value.
 
         Check the following assertions:
@@ -279,22 +296,49 @@ class CommandListTests(unittest.TestCase):
                    `get_cmd_list()`
 
         """
-        command = gs_offloader.get_cmd_list(job.queue_args[0],
-                                            job.queue_args[1])
+        test_bucket_uri = 'gs://a-test-bucket'
+
+        gs_offloader.USE_RSYNC_ENABLED = use_rsync
+
+        command = gs_offloader.get_cmd_list(
+            job.queue_args[0],
+            os.path.join(test_bucket_uri, job.queue_args[1]))
+
         self.assertEqual(command[0], 'gsutil')
-        self.assertTrue('cp' in command)
         self.assertEqual(command[-2], job.queue_args[0])
-        self.assertEqual(command[-1], job.queue_args[1])
+
+        if use_rsync:
+            self.assertTrue('rsync' in command)
+            self.assertEqual(command[-1],
+                             os.path.join(test_bucket_uri, job.queue_args[0]))
+        else:
+            self.assertTrue('cp' in command)
+            self.assertEqual(command[-1],
+                             os.path.join(test_bucket_uri, job.queue_args[1]))
+
 
     def test_get_cmd_list_regular(self):
         """Test `get_cmd_list()` as for a regular job."""
         job = _MockJobDirectory('118-debug')
         self._command_list_assertions(job)
 
+
     def test_get_cmd_list_special(self):
         """Test `get_cmd_list()` as for a special job."""
         job = _MockJobDirectory('hosts/host1/118-reset')
         self._command_list_assertions(job)
+
+
+    def test_get_cmd_list_regular_no_rsync(self):
+        """Test `get_cmd_list()` as for a regular job."""
+        job = _MockJobDirectory('118-debug')
+        self._command_list_assertions(job, use_rsync=False)
+
+
+    def test_get_cmd_list_special_no_rsync(self):
+        """Test `get_cmd_list()` as for a special job."""
+        job = _MockJobDirectory('hosts/host1/118-reset')
+        self._command_list_assertions(job, use_rsync=False)
 
 
 # Below is partial sample of e-mail notification text.  This text is
@@ -336,6 +380,7 @@ class EmailTemplateTests(mox.MoxTestBase):
             # test that the output will be sorted.
             self._joblist.insert(0, job)
 
+
     def test_email_template(self):
         """Trigger an e-mail report and check its contents."""
         # The last line of the report is a separator that we
@@ -368,6 +413,7 @@ class JobDirectorySubclassTests(mox.MoxTestBase):
         super(JobDirectorySubclassTests, self).setUp()
         self.mox.StubOutWithMock(job_directories._AFE, 'run')
 
+
     def test_regular_job_fields(self):
         """Test the constructor for `RegularJobDirectory`.
 
@@ -379,6 +425,7 @@ class JobDirectorySubclassTests(mox.MoxTestBase):
         job = job_directories.RegularJobDirectory(resultsdir)
         self.assertEqual(job._dirname, resultsdir)
         self.assertEqual(job._id, '118')
+
 
     def test_special_job_fields(self):
         """Test the constructor for `SpecialJobDirectory`.
@@ -392,6 +439,7 @@ class JobDirectorySubclassTests(mox.MoxTestBase):
         job = job_directories.SpecialJobDirectory(resultsdir)
         self.assertEqual(job._dirname, resultsdir)
         self.assertEqual(job._id, '118')
+
 
     def test_finished_regular_job(self):
         """Test getting the timestamp for a finished regular job.
@@ -413,6 +461,7 @@ class JobDirectorySubclassTests(mox.MoxTestBase):
         self.mox.ReplayAll()
         self.assertEqual(timestamp,
                          job.get_timestamp_if_finished())
+
 
     def test_finished_regular_job_multiple_hqes(self):
         """Test getting the timestamp for a regular job with multiple hqes.
@@ -452,6 +501,7 @@ class JobDirectorySubclassTests(mox.MoxTestBase):
         self.assertEqual(newer_hqe_timestamp,
                          job.get_timestamp_if_finished())
 
+
     def test_finished_regular_job_null_finished_times(self):
         """Test getting the timestamp for an aborted regular job.
 
@@ -473,6 +523,7 @@ class JobDirectorySubclassTests(mox.MoxTestBase):
         self.assertEqual(timestamp,
                          job.get_timestamp_if_finished())
 
+
     def test_unfinished_regular_job(self):
         """Test getting the timestamp for an unfinished regular job.
 
@@ -486,6 +537,7 @@ class JobDirectorySubclassTests(mox.MoxTestBase):
             'get_jobs', id=job._id, finished=True).AndReturn(None)
         self.mox.ReplayAll()
         self.assertIsNone(job.get_timestamp_if_finished())
+
 
     def test_finished_special_job(self):
         """Test getting the timestamp for a finished special job.
@@ -505,6 +557,7 @@ class JobDirectorySubclassTests(mox.MoxTestBase):
         self.mox.ReplayAll()
         self.assertEqual(timestamp,
                          job.get_timestamp_if_finished())
+
 
     def test_unfinished_special_job(self):
         """Test getting the timestamp for an unfinished special job.
@@ -533,16 +586,19 @@ class _TempResultsDirTestBase(mox.MoxTestBase):
         'hosts/host1/333-reset', 'hosts/host1/334-reset',
         'hosts/host2/444-reset', 'hosts/host3/555-reset']
 
+
     def setUp(self):
         super(_TempResultsDirTestBase, self).setUp()
         self._resultsroot = tempfile.mkdtemp()
         self._cwd = os.getcwd()
         os.chdir(self._resultsroot)
 
+
     def tearDown(self):
         os.chdir(self._cwd)
         shutil.rmtree(self._resultsroot)
         super(_TempResultsDirTestBase, self).tearDown()
+
 
     def make_job(self, jobdir):
         """Create a job with results in `self._resultsroot`.
@@ -553,6 +609,7 @@ class _TempResultsDirTestBase(mox.MoxTestBase):
         """
         os.mkdir(jobdir)
         return _MockJobDirectory(jobdir)
+
 
     def make_job_hierarchy(self):
         """Create a sample hierarchy of job directories.
@@ -584,9 +641,11 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         self.mox.StubOutWithMock(gs_offloader, 'get_cmd_list')
         self.mox.StubOutWithMock(signal, 'alarm')
 
+
     def tearDown(self):
         logging.getLogger().setLevel(self._saved_loglevel)
         super(OffloadDirectoryTests, self).tearDown()
+
 
     def _mock_offload_dir_calls(self, command, queue_args):
         """Mock out the calls needed by `offload_dir()`.
@@ -606,6 +665,7 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         signal.alarm(0)
         signal.alarm(0)
 
+
     def _run_offload_dir(self, should_succeed):
         """Make one call to `offload_dir()`.
 
@@ -624,17 +684,20 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         self.assertEqual(not should_succeed,
                          os.path.isdir(self._job.queue_args[0]))
 
+
     def test_offload_success(self):
         """Test that `offload_dir()` can succeed correctly."""
         self._mock_offload_dir_calls(['test', '-d'],
                                      self._job.queue_args)
         self._run_offload_dir(True)
 
+
     def test_offload_failure(self):
         """Test that `offload_dir()` can fail correctly."""
         self._mock_offload_dir_calls(['test', '!', '-d'],
                                      self._job.queue_args)
         self._run_offload_dir(False)
+
 
     def test_offload_timeout_early(self):
         """Test that `offload_dir()` times out correctly.
@@ -647,6 +710,7 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
                         gs_offloader.TimeoutException('fubar'))
         signal.alarm(0)
         self._run_offload_dir(False)
+
 
     def test_offload_timeout_late(self):
         """Test that `offload_dir()` times out correctly.
@@ -702,6 +766,7 @@ class JobDirectoryOffloadTests(_TempResultsDirTestBase):
         self._job = self.make_job(self.REGULAR_JOBLIST[0])
         self._queue = Queue.Queue()
 
+
     def _offload_unexpired_job(self, days_old):
         """Make calls to `enqueue_offload()` for an unexpired job.
 
@@ -718,6 +783,7 @@ class JobDirectoryOffloadTests(_TempResultsDirTestBase):
         self.assertEqual(self._job.get_failure_time(), 0)
         self.assertFalse(self._job.is_reportable())
 
+
     def _offload_expired_once(self, days_old, count):
         """Make one call to `enqueue_offload()` for an expired job.
 
@@ -731,6 +797,7 @@ class JobDirectoryOffloadTests(_TempResultsDirTestBase):
         v = self._queue.get_nowait()
         self.assertTrue(self._queue.empty())
         self.assertEqual(v, self._job.queue_args)
+
 
     def _offload_expired_job(self, days_old):
         """Make calls to `enqueue_offload()` for a just-expired job.
@@ -752,6 +819,7 @@ class JobDirectoryOffloadTests(_TempResultsDirTestBase):
         self.assertTrue(self._job.is_reportable())
         self.assertEqual(self._job.get_failure_time(), t1)
 
+
     def test_case_1_no_expiration(self):
         """Test a series of `enqueue_offload()` calls with `days_old` of 0.
 
@@ -763,6 +831,7 @@ class JobDirectoryOffloadTests(_TempResultsDirTestBase):
         self._job.set_finished(0)
         self._offload_expired_job(0)
 
+
     def test_case_2_no_expiration(self):
         """Test a series of `enqueue_offload()` calls with `days_old` of 0.
 
@@ -772,6 +841,7 @@ class JobDirectoryOffloadTests(_TempResultsDirTestBase):
         """
         self._job.set_finished(0)
         self._offload_expired_job(0)
+
 
     def test_case_1_with_expiration(self):
         """Test a series of `enqueue_offload()` calls with `days_old` non-zero.
@@ -787,6 +857,7 @@ class JobDirectoryOffloadTests(_TempResultsDirTestBase):
         self._job.set_expired(_TEST_EXPIRATION_AGE)
         self._offload_expired_job(_TEST_EXPIRATION_AGE)
 
+
     def test_case_2_with_expiration(self):
         """Test a series of `enqueue_offload()` calls with `days_old` non-zero.
 
@@ -799,6 +870,7 @@ class JobDirectoryOffloadTests(_TempResultsDirTestBase):
         self._job.set_expired(_TEST_EXPIRATION_AGE)
         self._offload_expired_job(_TEST_EXPIRATION_AGE)
 
+
     def test_case_3_with_expiration(self):
         """Test a series of `enqueue_offload()` calls with `days_old` non-zero.
 
@@ -809,6 +881,7 @@ class JobDirectoryOffloadTests(_TempResultsDirTestBase):
         self._offload_unexpired_job(_TEST_EXPIRATION_AGE)
         self._job.set_expired(_TEST_EXPIRATION_AGE)
         self._offload_expired_job(_TEST_EXPIRATION_AGE)
+
 
     def test_case_4_with_expiration(self):
         """Test a series of `enqueue_offload()` calls with `days_old` non-zero.
@@ -830,6 +903,7 @@ class GetJobDirectoriesTests(_TempResultsDirTestBase):
         os.mkdir('not-a-job')
         open('not-a-dir', 'w').close()
 
+
     def _run_get_directories(self, cls, expected_list):
         """Test `get_job_directories()` for the given class.
 
@@ -841,10 +915,12 @@ class GetJobDirectoriesTests(_TempResultsDirTestBase):
         dirlist = cls.get_job_directories()
         self.assertEqual(set(dirlist), set(expected_list))
 
+
     def test_get_regular_jobs(self):
         """Test `RegularJobDirectory.get_job_directories()`."""
         self._run_get_directories(job_directories.RegularJobDirectory,
                                   self.REGULAR_JOBLIST)
+
 
     def test_get_special_jobs(self):
         """Test `SpecialJobDirectory.get_job_directories()`."""
@@ -864,6 +940,7 @@ class AddJobsTests(_TempResultsDirTestBase):
         self.make_job_hierarchy()
         self._offloader = gs_offloader.Offloader(_get_options(['-a']))
         self.mox.StubOutWithMock(logging, 'debug')
+
 
     def _run_add_new_jobs(self, expected_key_set):
         """Basic test assertions for `_add_new_jobs()`.
@@ -886,6 +963,7 @@ class AddJobsTests(_TempResultsDirTestBase):
         self.mox.VerifyAll()
         self.mox.ResetAll()
 
+
     def test_add_jobs_empty(self):
         """Test adding jobs to an empty dictionary.
 
@@ -894,6 +972,7 @@ class AddJobsTests(_TempResultsDirTestBase):
 
         """
         self._run_add_new_jobs(self._initial_job_names)
+
 
     def test_add_jobs_non_empty(self):
         """Test adding jobs to a non-empty dictionary.
@@ -938,6 +1017,7 @@ class JobStateTests(_TempResultsDirTestBase):
         self.assertFalse(job.is_offloaded())
         self.assertFalse(job.is_reportable())
 
+
     def test_incomplete_job(self):
         """Test that an incomplete job reports the correct state.
 
@@ -951,6 +1031,7 @@ class JobStateTests(_TempResultsDirTestBase):
         self.assertFalse(job.is_offloaded())
         self.assertFalse(job.is_reportable())
 
+
     def test_reportable_job(self):
         """Test that a reportable job reports the correct state.
 
@@ -963,6 +1044,7 @@ class JobStateTests(_TempResultsDirTestBase):
         job.set_reportable()
         self.assertFalse(job.is_offloaded())
         self.assertTrue(job.is_reportable())
+
 
     def test_completed_job(self):
         """Test that a completed job reports the correct state.
@@ -988,11 +1070,13 @@ class ReportingTests(_TempResultsDirTestBase):
                                  'send_email')
         self.mox.StubOutWithMock(logging, 'debug')
 
+
     def _add_job(self, jobdir):
         """Add a job to the dictionary of unfinished jobs."""
         j = self.make_job(jobdir)
         self._offloader._open_jobs[j._dirname] = j
         return j
+
 
     def _expect_log_message(self, new_open_jobs, with_failures):
         """Mock expected logging calls.
@@ -1019,6 +1103,7 @@ class ReportingTests(_TempResultsDirTestBase):
         if with_failures:
             logging.debug(mox.IgnoreArg(), len(new_open_jobs))
 
+
     def _run_update_no_report(self, new_open_jobs):
         """Call `_update_offload_results()` expecting no report.
 
@@ -1042,6 +1127,7 @@ class ReportingTests(_TempResultsDirTestBase):
         self.assertEqual(self._offloader._open_jobs, new_open_jobs)
         self.mox.VerifyAll()
         self.mox.ResetAll()
+
 
     def _run_update_with_report(self, new_open_jobs):
         """Call `_update_offload_results()` expecting an e-mail report.
@@ -1073,6 +1159,7 @@ class ReportingTests(_TempResultsDirTestBase):
         self.mox.VerifyAll()
         self.mox.ResetAll()
 
+
     def test_no_jobs(self):
         """Test `_update_offload_results()` with no open jobs.
 
@@ -1083,6 +1170,7 @@ class ReportingTests(_TempResultsDirTestBase):
         """
         self._expect_log_message({}, False)
         self._run_update_no_report({})
+
 
     def test_all_completed(self):
         """Test `_update_offload_results()` with only complete jobs.
@@ -1097,6 +1185,7 @@ class ReportingTests(_TempResultsDirTestBase):
             self._add_job(d).set_complete()
         self._expect_log_message({}, False)
         self._run_update_no_report({})
+
 
     def test_none_finished(self):
         """Test `_update_offload_results()` with only unfinished jobs.
@@ -1113,6 +1202,7 @@ class ReportingTests(_TempResultsDirTestBase):
         self._expect_log_message(new_jobs, False)
         self._run_update_no_report(new_jobs)
 
+
     def test_none_reportable(self):
         """Test `_update_offload_results()` with only incomplete jobs.
 
@@ -1127,6 +1217,7 @@ class ReportingTests(_TempResultsDirTestBase):
         new_jobs = self._offloader._open_jobs.copy()
         self._expect_log_message(new_jobs, False)
         self._run_update_no_report(new_jobs)
+
 
     def test_report_not_ready(self):
         """Test `_update_offload_results()` e-mail throttling.
@@ -1146,6 +1237,7 @@ class ReportingTests(_TempResultsDirTestBase):
         self._expect_log_message(new_jobs, True)
         self._run_update_no_report(new_jobs)
 
+
     def test_reportable(self):
         """Test `_update_offload_results()` with reportable jobs.
 
@@ -1160,6 +1252,7 @@ class ReportingTests(_TempResultsDirTestBase):
         new_jobs = self._offloader._open_jobs.copy()
         self._expect_log_message(new_jobs, True)
         self._run_update_with_report(new_jobs)
+
 
     def test_reportable_mixed(self):
         """Test `_update_offload_results()` with a mixture of jobs.

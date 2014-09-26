@@ -83,6 +83,10 @@ First failure       Count   Directory name
 ERROR_EMAIL_DIRECTORY_FORMAT = '%19s  %5d  %-1s\n'
 ERROR_EMAIL_TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
+USE_RSYNC_ENABLED = global_config.global_config.get_config_value(
+    'CROS', 'gs_offloader_use_rsync', type=bool, default=False)
+
+
 class TimeoutException(Exception):
   """Exception raised by the timeout_handler."""
   pass
@@ -112,8 +116,12 @@ def get_cmd_list(dir_entry, gs_path):
   @return: A command list to be executed by Popen.
 
   """
+  if USE_RSYNC_ENABLED:
+    return ['gsutil', '-m', 'rsync', '-eR',
+            dir_entry, os.path.join(gs_path, os.path.basename(dir_entry))]
   return ['gsutil', '-m', 'cp', '-eR', '-a', 'project-private',
           dir_entry, gs_path]
+
 
 def get_directory_size_kibibytes_cmd_list(directory):
     """Returns command to get a directory's total size."""
