@@ -33,6 +33,7 @@ CRASH_REPORTER_RESIDUE_DIR = '/tmp/crash_reporter'
 # LOGS to collect from DUTs
 LOG_CONSOLE_RAMOOPS = '/dev/pstore/console-ramoops'
 LOG_I915_ERROR_STATE = '/sys/kernel/debug/dri/0/i915_error_state'
+PRIOR_LOGS_DIR = '/mnt/stateful_partition/unencrypted/prior_logs'
 
 CREDENTIALS = {
     '$mockowner': ['mockowner.test.account@gmail.com', 'perfsmurf'],

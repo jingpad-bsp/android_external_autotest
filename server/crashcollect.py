@@ -37,7 +37,7 @@ def get_crashinfo(host, test_start_time):
         # run any site-specific collection
         get_site_crashinfo(host, test_start_time)
 
-        crashinfo_dir = get_crashinfo_dir(host)
+        crashinfo_dir = get_crashinfo_dir(host, 'crashinfo')
         collect_messages(host)
         collect_command(host, "dmesg", os.path.join(crashinfo_dir, "dmesg"))
         collect_uncollected_logs(host)
@@ -90,10 +90,11 @@ def wait_for_machine_to_recover(host, hours_to_wait=HOURS_TO_WAIT):
         return True
 
 
-def get_crashinfo_dir(host):
+def get_crashinfo_dir(host, dir_prefix):
     """Find and if necessary create a directory to store crashinfo in.
 
     @param host: The RemoteHost object that crashinfo will be collected from
+    @param dir_prefix: Prefix of directory name.
 
     @returns: The path to an existing directory for writing crashinfo into
     """
@@ -102,7 +103,7 @@ def get_crashinfo_dir(host):
         infodir = host_resultdir
     else:
         infodir = os.path.abspath(os.getcwd())
-    infodir = os.path.join(infodir, "crashinfo.%s" % host.hostname)
+    infodir = os.path.join(infodir, "%s.%s" % (dir_prefix, host.hostname))
     if not os.path.exists(infodir):
         os.mkdir(infodir)
     return infodir
@@ -189,7 +190,7 @@ def collect_messages(host):
 
     @param host: The RemoteHost to collect from
     """
-    crashinfo_dir = get_crashinfo_dir(host)
+    crashinfo_dir = get_crashinfo_dir(host, 'crashinfo')
 
     try:
         # paths to the messages files

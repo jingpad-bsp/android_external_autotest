@@ -738,5 +738,3 @@ class AbstractSSHHost(remote.RemoteHost):
                 shutil.rmtree(local_dest_dir, ignore_errors=ignore_errors)
             if not ignore_errors:
                 raise
-
-

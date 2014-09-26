@@ -557,7 +557,7 @@ class BaseDispatcher(object):
         Construct an AgentTask class to run the given SpecialTask and add it
         to this dispatcher.
 
-        A special task is create through schedule_special_tasks, but only if
+        A special task is created through schedule_special_tasks, but only if
         the host doesn't already have an agent. This happens through
         add_agent_task. All special agent tasks are given a host on creation,
         and a Null hqe. To create a SpecialAgentTask object, you need a

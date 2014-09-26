@@ -373,4 +373,3 @@ class AFEHostQueryManager(object):
         self._label_hosts, self._host_labels = (
                 self._get_label_hosts(host_ids))
         self._labels = self._get_labels(self._job_dependencies)
-

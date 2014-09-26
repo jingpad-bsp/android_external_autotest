@@ -6,6 +6,7 @@
 import httplib
 import json
 import logging
+import os
 import random
 import re
 import time
@@ -309,3 +310,44 @@ def get_test_views_from_tko(suite_job_id, tko):
         test_views[view['test_name']] = view['status']
 
     return test_views
+
+
+def parse_simple_config(config_file):
+    """Get paths by parsing a simple config file.
+
+    Each line of the config file is a path for a file or directory.
+    Ignore an empty line and a line starting with a hash character ('#').
+    One example of this kind of simple config file is
+    client/common_lib/logs_to_collect.
+
+    @param config_file: Config file path
+    @return: A list of directory strings
+    """
+    dirs = []
+    for l in open(config_file):
+        l = l.strip()
+        if l and not l.startswith('#'):
+            dirs.append(l)
+    return dirs
+
+
+def concat_path_except_last(base, sub):
+    """Concatenate two paths but exclude last entry.
+
+    Take two paths as parameters and return a path string in which
+    the second path becomes under the first path.
+    In addition, remove the last path entry from the concatenated path.
+    This works even when two paths are absolute paths.
+
+    e.g., /usr/local/autotest/results/ + /var/log/ =
+    /usr/local/autotest/results/var
+
+    e.g., /usr/local/autotest/results/ + /var/log/syslog =
+    /usr/local/autotest/results/var/log
+
+    @param base: Beginning path
+    @param sub: The path that is concatenated to base
+    @return: Concatenated path string
+    """
+    dirname = os.path.dirname(sub.rstrip('/'))
+    return os.path.join(base, dirname.strip('/'))

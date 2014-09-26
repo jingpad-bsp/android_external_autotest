@@ -23,7 +23,7 @@ AgentTasks:
     are the QueueTask, which is created when a hqe goes into the Starting state
     and the FinalReparseTask, which is created when the hqe goes into parsing.
 SpecialAgentTasks:
-    Unlink AgentTasks, SpecialAgentTasks are only created when a row is inserted
+    Unlike AgentTasks, SpecialAgentTasks are only created when a row is inserted
     in the afe_special_tasks table. All PrejobTasks are SpecialAgentTasks.
 
 Monitor_db.get_agent_task_for_special_task/get_agent_task_for_queue_entry maps
