@@ -193,22 +193,23 @@ class platform_ToolchainOptions(test.test):
                                            "egrep -q \"__asan_init\" || "
                                            "echo no ASAN" % readelf_cmd)
         if not no_asan_used:
-          logging.debug("ASAN detected on /opt/google/chrome/chrome. "
-                        "Will skip all checks.")
-          return
+            logging.debug("ASAN detected on /opt/google/chrome/chrome. "
+                          "Will skip all checks.")
+            return
 
         # Check that gold was used to build binaries.
-        gold_cmd = ("%s -S {} 2>&1 | "
-                    "egrep -q \".note.gnu.gold-ve\"" % readelf_cmd)
-        gold_find_options = ""
-        if utils.get_cpu_arch() == "arm":
-          # gold is only enabled for Chrome on ARM.
-          gold_find_options = "-path \"/opt/google/chrome/chrome\""
-        gold_whitelist = os.path.join(self.bindir, "gold_whitelist")
-        option_sets.append(self.create_and_filter("gold",
-                                                  gold_cmd,
-                                                  gold_whitelist,
-                                                  gold_find_options))
+        # TODO(jorgelo): re-enable this check once crbug.com/417912 is fixed.
+        # gold_cmd = ("%s -S {} 2>&1 | "
+        #             "egrep -q \".note.gnu.gold-ve\"" % readelf_cmd)
+        # gold_find_options = ""
+        # if utils.get_cpu_arch() == "arm":
+        #     # gold is only enabled for Chrome on ARM.
+        #     gold_find_options = "-path \"/opt/google/chrome/chrome\""
+        # gold_whitelist = os.path.join(self.bindir, "gold_whitelist")
+        # option_sets.append(self.create_and_filter("gold",
+        #                                           gold_cmd,
+        #                                           gold_whitelist,
+        #                                           gold_find_options))
 
         # Verify non-static binaries have BIND_NOW in dynamic section.
         now_cmd = ("(%s {} | grep -q statically) ||"
