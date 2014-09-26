@@ -2,10 +2,32 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import contextlib
 import datetime
+import os
+import time
 import unittest
 
 from autotest_lib.client.common_lib import time_utils
+
+
+@contextlib.contextmanager
+def set_time_zone(tz):
+    """Temporarily set the timezone to the specified value.
+
+    This is needed because the unittest can be run in a server not in PST.
+
+    @param tz: Name of the timezone for test, e.g., US/Pacific
+    """
+    old_environ = os.environ.copy()
+    try:
+        os.environ['TZ'] = tz
+        time.tzset()
+        yield
+    finally:
+        os.environ.clear()
+        os.environ.update(old_environ)
+        time.tzset()
 
 
 class time_utils_unittest(unittest.TestCase):
@@ -18,17 +40,20 @@ class time_utils_unittest(unittest.TestCase):
 
     def test_epoch_time_to_date_string(self):
         """Test function epoch_time_to_date_string."""
-        time_string = time_utils.epoch_time_to_date_string(self.TIME_SECONDS)
-        self.assertEqual(self.TIME_STRING, time_string)
+        with set_time_zone('US/Pacific'):
+            time_string = time_utils.epoch_time_to_date_string(
+                    self.TIME_SECONDS)
+            self.assertEqual(self.TIME_STRING, time_string)
 
 
     def test_to_epoch_time_success(self):
         """Test function to_epoch_time."""
-        self.assertEqual(self.TIME_SECONDS,
-                         time_utils.to_epoch_time(self.TIME_STRING))
+        with set_time_zone('US/Pacific'):
+            self.assertEqual(self.TIME_SECONDS,
+                             time_utils.to_epoch_time(self.TIME_STRING))
 
-        self.assertEqual(self.TIME_SECONDS,
-                         time_utils.to_epoch_time(self.TIME_OBJ))
+            self.assertEqual(self.TIME_SECONDS,
+                             time_utils.to_epoch_time(self.TIME_OBJ))
 
 
 if __name__ == '__main__':
