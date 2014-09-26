@@ -305,23 +305,16 @@ def get_host_history(start_time, end_time, hosts=None, board=None, pool=None):
                     process_pool_size=4))
 
 
-def shard_heartbeat(shard_hostname, jobs=(), hqes=()):
-    """Register shard if not existing, then assign hosts and jobs.
+def shard_heartbeat(shard_hostname):
+    """Register shard if it doesn't exist, then assign hosts and jobs.
 
     @param shard_hostname: Hostname of the calling shard
-    @param jobs: Jobs in serialized form that should be updated with newer
-                 status from a shard.
-    @param hqes: Hostqueueentries in serialized form that should be updated with
-                 newer status from a shard. Note that for every hostqueueentry
-                 the corresponding job must be in jobs.
-
     @returns: Serialized representations of hosts, jobs and their dependencies
               to be inserted into a shard's database.
     """
     timer = stats.Timer('shard_heartbeat')
     with timer:
         shard_obj = rpc_utils.retrieve_shard(shard_hostname=shard_hostname)
-        rpc_utils.persist_records_sent_from_shard(shard_obj, jobs, hqes)
         hosts, jobs = rpc_utils.find_records_for_shard(shard_obj)
         return {
             'hosts': [host.serialize() for host in hosts],

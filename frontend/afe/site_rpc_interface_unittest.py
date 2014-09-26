@@ -14,8 +14,6 @@ import mox
 import StringIO
 import unittest
 
-from django.core import exceptions as django_exceptions
-
 import common
 
 from autotest_lib.frontend import setup_django_environment
@@ -380,46 +378,11 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
         site_rpc_interface.set_boto_key(boto_key)
 
 
-    def _get_records_for_sending_to_master(self):
-        return [{'control_file': 'foo',
-                 'control_type': 1,
-                 'created_on': datetime.datetime(2014, 8, 21),
-                 'drone_set': None,
-                 'email_list': '',
-                 'max_runtime_hrs': 72,
-                 'max_runtime_mins': 1440,
-                 'name': 'dummy',
-                 'owner': 'autotest_system',
-                 'parse_failed_repair': True,
-                 'priority': 40,
-                 'reboot_after': 0,
-                 'reboot_before': 1,
-                 'run_reset': True,
-                 'run_verify': False,
-                 'synch_count': 0,
-                 'test_retry': 10,
-                 'timeout': 24,
-                 'timeout_mins': 1440,
-                 'id': 1
-                 }], [{
-                    'aborted': False,
-                    'active': False,
-                    'complete': False,
-                    'deleted': False,
-                    'execution_subdir': '',
-                    'finished_on': None,
-                    'started_on': None,
-                    'status': 'Queued',
-                    'id': 1
-                }]
-
-
-    def _do_heartbeat_and_assert_response(self, shard_hostname=None, upload_jobs=[],
-                                         upload_hqes=[], **kwargs):
+    def _do_heartbeat_and_assert_response(self, shard_hostname=None, **kwargs):
         shard_hostname = shard_hostname or str(
             models.Shard.objects.count() + 1)
         retval = site_rpc_interface.shard_heartbeat(
-            shard_hostname=shard_hostname, jobs=upload_jobs, hqes=upload_hqes)
+            shard_hostname=shard_hostname)
 
         self._assert_shard_heartbeat_response(shard_hostname, retval,
                                               **kwargs)
@@ -450,62 +413,6 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
         expected_hqes = [(hqe.id) for hqe in hqes]
         returned_hqes = [(hqe['id']) for hqe in retval_hqes]
         self.assertEqual(returned_hqes, expected_hqes)
-
-
-    def _send_records_to_master_helper(
-        self, jobs, hqes, shard_hostname='host1',
-        exception_to_throw=error.UnallowedRecordsSentToMaster):
-        job_id = rpc_interface.create_job(name='dummy', priority='Medium',
-                                          control_file='foo',
-                                          control_type=SERVER,
-                                          test_retry=10, hostless=True)
-        job = models.Job.objects.get(pk=job_id)
-        shard = models.Shard.objects.create(hostname='host1')
-        job.shard = shard
-        job.save()
-        hqe = job.hostqueueentry_set.all()[0]
-        if not exception_to_throw:
-            self._do_heartbeat_and_assert_response(
-                shard_hostname=shard_hostname,
-                upload_jobs=jobs, upload_hqes=hqes)
-        else:
-            self.assertRaises(
-                exception_to_throw,
-                self._do_heartbeat_and_assert_response,
-                shard_hostname=shard_hostname,
-                upload_jobs=jobs, upload_hqes=hqes)
-
-
-    def testSendingRecordsToMaster(self):
-        jobs, hqes = self._get_records_for_sending_to_master()
-        hqes[0]['status'] = 'Completed'
-        self._send_records_to_master_helper(
-            jobs=jobs, hqes=hqes, exception_to_throw=None)
-
-        # Check the entry was actually written to db
-        self.assertEqual(models.HostQueueEntry.objects.all()[0].status,
-                         'Completed')
-
-
-    def testSendingRecordsToMasterJobAssignedToDifferentShard(self):
-        jobs, hqes = self._get_records_for_sending_to_master()
-        models.Shard.objects.create(hostname='other_shard')
-        self._send_records_to_master_helper(
-            jobs=jobs, hqes=hqes, shard_hostname='other_shard')
-
-
-    def testSendingRecordsToMasterJobHqeWithoutJob(self):
-        _, hqes = self._get_records_for_sending_to_master()
-        self._send_records_to_master_helper(
-            jobs=[], hqes=hqes)
-
-
-    def testSendingRecordsToMasterNotExistingJob(self):
-        jobs, hqes = self._get_records_for_sending_to_master()
-        jobs[0]['id'] = 3
-
-        self._send_records_to_master_helper(
-            jobs=jobs, hqes=hqes)
 
 
     def testShardHeartbeatFetchHostlessJob(self):

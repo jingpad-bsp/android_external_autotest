@@ -1117,18 +1117,6 @@ class ModelExtensions(rdb_model_extensions.ModelValidators):
         return instance
 
 
-    def sanity_check_update_from_shard(self, shard, updated_serialized,
-                                       *args, **kwargs):
-        """Check if an update sent from a shard is legitimate.
-
-        @raises error.UnallowedRecordsSentToMaster if an update is not
-                legitimate.
-        """
-        raise NotImplementedError(
-            'sanity_check_update_from_shard must be implemented by subclass %s '
-            'for type %s' % type(self))
-
-
     def update_from_serialized(self, serialized):
         """Updates local fields of an existing object from a serialized form.
 

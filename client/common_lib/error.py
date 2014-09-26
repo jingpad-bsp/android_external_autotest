@@ -635,10 +635,6 @@ class HeartbeatOnlyAllowedInShardModeException(Exception):
     pass
 
 
-class UnallowedRecordsSentToMaster(Exception):
-    pass
-
-
 # This MUST remain at the end of the file.
 # Limit 'from error import *' to only import the exception instances.
 for _name, _thing in locals().items():
