@@ -30,6 +30,10 @@ class ImportScreenShotCapturer(object):
         self.bottom_pixels_to_crop = bottom_pixels_to_crop
 
 
+    def __enter__(self):
+        return self
+
+
     @method_logger.log
     def capture(self, filename):
         """
@@ -54,3 +58,7 @@ class ImportScreenShotCapturer(object):
                                               self.top_pixels_to_crop)
 
         return fullpath
+
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass

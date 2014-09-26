@@ -1,0 +1,39 @@
+# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "Mussa Kiroga"
+NAME = "video_GlitchDetection.chameleon.mp4.480p"
+PURPOSE = "Verify that Chrome Video Playback is glitch and corruption free"
+CRITERIA = """
+
+"""
+SUITE = "bvt-perbuild, video, qav"
+TIME = "LONG"
+TEST_CATEGORY = "General"
+TEST_CLASS = "video"
+TEST_TYPE = "client"
+DEPENDENCIES = "board:peach_pi", "video_glitch_detection", "chameleon"
+BUG_TEMPLATE = {
+    'owner': 'avkodipelli@chromium.org',
+    'cc': ['mussa@chromium.org', 'rohitbm@chromium.org'],
+    'labels': ['Cr-OS-Kernel-Video', 'OS-Chrome']
+}
+
+DOC = """
+This test uses cloud based image comparison to determine test PASS or FAIL.
+Images are captured using Chameleon and compared locally first. If that
+comparison fails, images will be uploaded to a web comparer for viewing test
+results.
+
+"""
+host = next(iter(job.hosts))
+
+job.run_test('video_GlitchDetection',
+              channel='dev',
+              video_name='bigbuck',
+              video_format='mp4',
+              video_def='480p',
+              use_chameleon=True,
+              host=host,
+              args=args)

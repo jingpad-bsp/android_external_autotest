@@ -8,6 +8,9 @@ import os
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.chameleon import chameleon
+from autotest_lib.client.cros.multimedia import display_utility
+from autotest_lib.client.cros.video import chameleon_screenshot_capturer
 from autotest_lib.client.cros.video import golden_image_downloader
 from autotest_lib.client.cros.video import import_screenshot_capturer
 from autotest_lib.client.cros.video import media_player
@@ -162,6 +165,12 @@ class MediaTestFactory(object):
         self.capture_sequence_style = self.parser.get(section,
                                                       'capture_sequence_style')
 
+        self.chameleon_interface = self.parser.get(section,
+                                                   'chameleon_interface')
+
+        self.timeout_video_input_s = self.parser.getint(section,
+                                                        'timeout_video_input_s')
+
 
     @method_logger.log
     def _load_device_info(self):
@@ -177,7 +186,9 @@ class MediaTestFactory(object):
         if res is None:
             raise error.TestError('Expected a screen resolution. Got None.')
 
+        self.screen_width_pixels = res[0]
         self.screen_height_pixels = res[1]
+
         dut = utils.get_current_board()
 
         self.parser.read(os.path.join(self.autotest_cros_video_dir,
@@ -296,11 +307,52 @@ class MediaTestFactory(object):
         return gn
 
 
-    def make_video_screenshot_collector(self):
+    def make_chameleon_screenshot_capturer(self, chrome, hostname, args):
+        """
+
+        @param chrome: Chrome instance.
+        @param hostname: string, DUT's hostname.
+        @param args: string, arguments passed from autotest command. This
+                      typically is the IP of the Chameleon board.
+
+        @returns a ChameleonScreenshotCapturer object.
+
+        """
+
+        chameleon_board = chameleon.create_chameleon_board(hostname, args)
+
+        box = (0, self.top_pixels_to_crop, self.screen_width_pixels,
+        self.screen_height_pixels - self.bottom_pixels_to_crop)
+
+        return chameleon_screenshot_capturer.ChameleonScreenshotCapturer(
+                chameleon_board,
+                self.chameleon_interface,
+                display_utility.DisplayUtility(chrome),
+                self.test_working_dir,
+                self.timeout_video_input_s,
+                box)
+
+
+    def make_import_screenshot_capturer(self):
+        """
+        @returns an ImportScreenShotCapturer configured according to values in
+                 the config file
+
+        """
+        return import_screenshot_capturer.ImportScreenShotCapturer(
+                self.test_working_dir,
+                self.screen_height_pixels,
+                self.top_pixels_to_crop,
+                self.bottom_pixels_to_crop)
+
+
+    def make_video_screenshot_collector(self, capturer):
         """
         Create an object to coordinate navigating video to specific times and
         taking screenshots.
 
+        @param capturer: ImportScreenshotCapturer or ChameleonScreenshotCapturer
+                         object.
         @returns an object that accepts timestamps as input and takes
         screenshots of a video at those times.
 
@@ -314,12 +366,6 @@ class MediaTestFactory(object):
 
         namer = screenshot_file_namer.ScreenShotFileNamer(
                 self.screenshot_image_format)
-
-        capturer = import_screenshot_capturer.ImportScreenShotCapturer(
-                self.test_working_dir,
-                self.screen_height_pixels,
-                self.top_pixels_to_crop,
-                self.bottom_pixels_to_crop)
 
         return video_screenshot_collector.VideoScreenShotCollector(player,
                                                                    namer,

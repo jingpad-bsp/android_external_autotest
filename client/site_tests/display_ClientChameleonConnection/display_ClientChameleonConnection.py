@@ -7,9 +7,9 @@
 import logging
 
 from autotest_lib.client.bin import test
-from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import chameleon
+from autotest_lib.client.cros.chameleon import chameleon_port_finder
 
 
 class display_ClientChameleonConnection(test.test):
@@ -27,39 +27,14 @@ class display_ClientChameleonConnection(test.test):
         self.chameleon = chameleon.create_chameleon_board(host.hostname, args)
         self.chameleon.reset()
 
-        connected_ports = []
-        dut_failed_ports = []
-        for chameleon_port in self.chameleon.get_all_ports():
-            connector_type = chameleon_port.get_connector_type()
-            # Try to plug the port such that DUT can detect it.
-            chameleon_port.plug()
-            # DUT takes some time to respond. Wait until the video signal
-            # to stabilize.
-            chameleon_port.wait_video_input_stable(
-                    self._TIMEOUT_VIDEO_STABLE_PROBE)
+        finder = chameleon_port_finder.ChameleonPortFinder(self.chameleon)
+        ports = finder.find_all_ports()
 
-            # Add the connected ports if they are detected by xrandr.
-            xrandr_output = utils.get_xrandr_output_state()
-            for output in xrandr_output.iterkeys():
-                if output.startswith(connector_type):
-                    connected_ports.append(chameleon_port)
-                    break
-            else:
-                dut_failed_ports.append(chameleon_port)
+        connected_ports = ports.connected
+        dut_failed_ports = ports.failed
 
-            # Unplug the port afterward.
-            chameleon_port.unplug()
+        msg = str(finder)
+        logging.debug(msg)
 
-        if connected_ports:
-            ports_to_str = lambda ports: ', '.join(
-                    '%s(%d)' % (p.get_connector_type(), p.get_connector_id())
-                    for p in ports)
-            logging.info('Detected %d connected ports: %s',
-                         len(connected_ports), ports_to_str(connected_ports))
-            if dut_failed_ports:
-                message = 'DUT failed to detect Chameleon ports: %s' % (
-                        ports_to_str(dut_failed_ports))
-                logging.error(message)
-                raise error.TestFail(message)
-        else:
-            raise error.TestFail('No port connected to Chameleon')
+        if dut_failed_ports or not connected_ports:
+            raise error.TestFail(msg)

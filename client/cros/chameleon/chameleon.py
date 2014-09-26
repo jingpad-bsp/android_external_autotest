@@ -220,6 +220,15 @@ class ChameleonPort(object):
         self._chameleond_proxy.Unplug(self._input_id)
 
 
+    @property
+    def plugged(self):
+        """
+        @returns True if this port is plugged to Chameleon, False otherwise.
+
+        """
+        return self._chameleond_proxy.IsPlugged(self._input_id)
+
+
     def fire_hpd_pulse(self, deassert_interval_usec, assert_interval_usec=None,
                        repeat_count=1, end_level=1):
 
@@ -248,6 +257,7 @@ class ChameleonPort(object):
                 self._chameleond_proxy.GetPixelFormat().upper(),
                 self.get_resolution(),
                 self._chameleond_proxy.DumpPixels(self._input_id).data)
+
         return image.convert('RGB')
 
 

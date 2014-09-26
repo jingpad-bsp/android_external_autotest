@@ -62,4 +62,7 @@ class VideoScreenShotCollector(object):
         @returns a list of complete paths for screenshot captured.
 
         """
-        return [self.collect_screenshot(t) for t in timestamps]
+        self.ensure_player_is_ready()
+
+        with self.screnshot_capturer:
+            return [self.collect_screenshot(t) for t in timestamps]

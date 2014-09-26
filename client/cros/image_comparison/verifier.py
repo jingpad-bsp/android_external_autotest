@@ -97,8 +97,8 @@ class Verifier(object):
             %d / %d test images were not golden
             Comparison url: %s
             %s
-            ''' % (failure_count, cnt, comparison_url, '\n\t\t'.join(log_msgs))
+            ''' % (failure_count, cnt, comparison_url, '\t'.join(log_msgs))
 
-            raise error.TestError(report_mes)
+            raise error.TestFail(report_mes)
 
         logging.debug("***All Good.***")
