@@ -162,7 +162,8 @@ class camera_V4L2(test.test):
 
     def run_v4l2_default_capture_test(self, device, time):
         options = ["--device=%s" % device ]
-        options.append("--display")
+        if not utils.is_freon():
+            options.append("--display")
         if time:
             options.append("--time=%d" % time)
         okay, stdout = self.run_v4l2_capture_test(False, options)
@@ -214,5 +215,6 @@ class camera_V4L2(test.test):
                 raise error.TestError("capture test failed")
 
             # Run the test again with X display.
-            option.append("--display")
+            if not utils.is_freon():
+                option.append("--display")
             okay, stdout = self.run_v4l2_capture_test(False, option)
