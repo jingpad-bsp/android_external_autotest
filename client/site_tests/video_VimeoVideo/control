@@ -16,6 +16,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
+DEPENDENCIES = "hw_video_acc_h264"
 BUG_TEMPLATE = {
     'owner': 'rohitbm@chromium.org',
     'labels': ['OS-Chrome', 'Cr-OS-Kernel-Video'],
