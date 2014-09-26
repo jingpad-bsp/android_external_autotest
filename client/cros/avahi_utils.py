@@ -13,6 +13,9 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 
 
+BUS_NAME = 'org.freedesktop.Avahi'
+INTERFACE_SERVER = 'org.freedesktop.Avahi.Server'
+
 def avahi_config(options, src_file='/etc/avahi/avahi-daemon.conf'):
     """Creates a temporary avahi-daemon.conf file with the specified changes.
 
@@ -60,8 +63,8 @@ def avahi_ping():
     bus = dbus.SystemBus()
     try:
         ret = bus.call_blocking(
-                bus_name='org.freedesktop.Avahi', object_path='/',
-                dbus_interface='org.freedesktop.Avahi.Server',
+                bus_name=BUS_NAME, object_path='/',
+                dbus_interface=INTERFACE_SERVER,
                 method='GetState',
                 signature='', args=[], timeout=2.0)
     except dbus.exceptions.DBusException:
@@ -107,3 +110,31 @@ def avahi_start_on_iface(iface):
     conf = avahi_config(opts)
     avahi_start(config_file=conf)
     os.unlink(conf)
+
+
+def avahi_get_hostname():
+    """Get the lan-unique hostname of the DUT."""
+    bus = dbus.SystemBus()
+    try:
+        ret = bus.call_blocking(
+                bus_name=BUS_NAME, object_path='/',
+                dbus_interface=INTERFACE_SERVER,
+                method='GetHostName',
+                signature='', args=[], timeout=2.0)
+    except dbus.exceptions.DBusException:
+        return None
+    return str(ret)
+
+
+def avahi_get_domain_name():
+    """Get the current domain name being used by Avahi."""
+    bus = dbus.SystemBus()
+    try:
+        ret = bus.call_blocking(
+                bus_name=BUS_NAME, object_path='/',
+                dbus_interface=INTERFACE_SERVER,
+                method='GetDomainName',
+                signature='', args=[], timeout=2.0)
+    except dbus.exceptions.DBusException:
+        return None
+    return str(ret)

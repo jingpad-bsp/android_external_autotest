@@ -2,10 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import collections
 import dpkt
 import socket
 import time
 
+
+DnsRecord = collections.namedtuple('DnsResult', ['rrname', 'rrtype', 'data', 'ts'])
 
 MDNS_IP_ADDR = '224.0.0.251'
 MDNS_PORT = 5353
@@ -400,7 +403,7 @@ class ZeroconfDaemon(object):
         res = []
         for data, data_ts in self._peer_records[rrname][rrtype].iteritems():
             if data_ts >= timestamp:
-                res.append((rrname, rrtype, data, data_ts))
+                res.append(DnsRecord(rrname, rrtype, data, data_ts))
         return res
 
 
