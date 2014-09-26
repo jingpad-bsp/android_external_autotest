@@ -310,15 +310,15 @@ class ChameleonTest(test.test):
         now = time.time()
         end_time = now + timeout
         while expected_connector != current_connector and now < end_time:
-            logging.info('Expected to see %s but got %s',
-                    (expected_connector, current_connector))
+            logging.info('Expect to see %s but got %s', expected_connector,
+                    current_connector)
             time.sleep(0.5)
             now = time.time()
             current_connector = self.display_client.get_external_connector_name()
 
         if expected_connector != current_connector:
             if expected_connector:
-                error_message = 'Expected to see %s but got %s' % (
+                error_message = 'Expect to see %s but got %s' % (
                         expected_connector, current_connector)
             else:
                 error_message = ('Do not expect to see external monitor '
