@@ -1,0 +1,26 @@
+<html><title>Tap Settings Page</title><body onload="onLoad()">
+<script>
+var startX;
+var startY;
+var movementOccurred = false;
+var clickCount = 0;
+
+function onLoad() {
+    document.addEventListener('mousedown', mouseDown, false);
+    document.addEventListener('mouseup', mouseUp, false);
+}
+
+function mouseUp(e) {
+    var deltaX = e.pageX - startX;
+    var deltaY = e.pageY - startY;
+    movementOccurred = ((deltaX != 0) || (deltaY != 0));
+    clickCount = clickCount + 1;
+    console.log(movementOccurred, deltaX, deltaY, clickCount)
+}
+
+function mouseDown(e) {
+    startX = e.pageX;
+    startY = e.pageY;
+}
+</script>
+</body></html>

@@ -99,17 +99,40 @@ class touch_playback_test_base(test.test):
                      filepath)
         utils.run(self._PLAYBACK_COMMAND % (node, filepath))
 
+    def _set_touch_setting(self, setting, value):
+        """Set a given touch setting the given value.
+
+        @param setting: Name of touch setting, e.g. 'tapclick'.
+        @param value: True for enabled, False for disabled.
+
+        """
+        cmd_value = 1 if value else 0
+        utils.run('%s --%s %d' % (self._INPUTCONTROL, setting, cmd_value))
+        logging.info('%s turned %s.', setting, 'on' if value else 'off')
+
     def _set_australian_scrolling(self, value):
         """Set australian scrolling to the given value.
 
         @param value: True for enabled, False for disabled.
 
         """
-        cmd_value = 1 if value else 0
-        utils.run('%s --australian_scrolling %d' % (self._INPUTCONTROL,
-                                                    cmd_value))
-        logging.info('Australian scrolling turned %s.',
-                     'on' if value else 'off')
+        self._set_touch_setting('australian_scrolling', value)
+
+    def _set_tap_to_click(self, value):
+        """Set tap-to-click to the given value.
+
+        @param value: True for enabled, False for disabled.
+
+        """
+        self._set_touch_setting('tapclick', value)
+
+    def _set_tap_dragging(self, value):
+        """Set tap dragging to the given value.
+
+        @param value: True for enabled, False for disabled.
+
+        """
+        self._set_touch_setting('tapdrag', value)
 
     def cleanup(self):
         if self._device_emulation_process:
