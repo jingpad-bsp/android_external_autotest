@@ -20,6 +20,12 @@ from autotest_lib.site_utils import job_history
 _HOST_HISTORY_TYPE = 'host_history'
 _LOCK_HISTORY_TYPE = 'lock_history'
 
+
+class NoHostFoundException(Exception):
+    """Exception raised when no host is found to search for history.
+    """
+
+
 def get_matched_hosts(board, pool):
     """Get duts with matching board and pool labels from metaDB.
 
@@ -303,8 +309,8 @@ def get_intervals_for_hosts(t_start, t_end, hosts=None, board=None, pool=None):
     else:
         hosts = get_matched_hosts(board, pool)
         if not hosts:
-            raise Exception('No host is found for board:%s, pool:%s.' %
-                            (board, pool))
+            raise NoHostFoundException('No host is found for board:%s, pool:%s.'
+                                       % (board, pool))
         equality_constraints=[('_type', _HOST_HISTORY_TYPE),]
         if board:
             equality_constraints.append(('labels', 'board:'+board))

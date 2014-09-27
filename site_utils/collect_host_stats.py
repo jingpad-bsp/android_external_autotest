@@ -4,8 +4,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# This script is to be run daily to report machine utilization stats across
-# each board and pool.
+"""This script is to be run daily to report machine utilization stats across
+each board and pool.
+"""
 
 
 import argparse
@@ -14,17 +15,12 @@ from datetime import datetime
 from datetime import timedelta
 
 import common
-from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib.cros.graphite import stats
-from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
+from autotest_lib.site_utils import host_history
 from autotest_lib.site_utils import host_history_utils
+from autotest_lib.site_utils import host_label_utils
 
-
-INSTANCE_SERVER = global_config.global_config.get_config_value(
-        'SERVER', 'hostname', type=str)
-_AFE = frontend_wrappers.RetryingAFE(
-        server=INSTANCE_SERVER, timeout_min=60, delay_sec=0)
 
 def report_stats(board, pool, start_time, end_time, span):
     """Report machine stats for given board, pool and time period.
@@ -36,39 +32,48 @@ def report_stats(board, pool, start_time, end_time, span):
     @param span: Number of hours that the stats should be collected for.
     """
     print '================ %-12s %-12s ================' % (board, pool)
-    history = _AFE.run('get_host_history', board=board, pool=pool,
-                       start_time=start_time, end_time=end_time)
-    if not history:
-        print 'No history found.'
-        return
-    status_intervals = host_history_utils.get_status_intervals(history)
-    stats_all, num_hosts = host_history_utils.aggregate_hosts(
-            status_intervals)
-    total = 0
-    total_time = span*3600*num_hosts
-    for status, interval in stats_all.iteritems():
-        total += interval
-    if abs(total - total_time) > 10:
-        print ('Status intervals do not add up. No stats will be collected for '
-               'board: %s, pool: %s, diff: %s' %
-               (board, pool, total - total_time))
-        return
+    try:
+        history = host_history.get_history_details(start_time=start_time,
+                                                   end_time=end_time,
+                                                   board=board,
+                                                   pool=pool)
+    except host_history_utils.NoHostFoundException as e:
+        print 'No history found. Error:\n%s' % e
+        history = None
+        mur = -1
+        mar = -1
+        mir = -1
 
-    mur = host_history_utils.get_machine_utilization_rate(stats_all)
-    mar = host_history_utils.get_machine_availability_rate(stats_all)
+    if history:
+        status_intervals = host_history_utils.get_status_intervals(history)
+        stats_all, num_hosts = host_history_utils.aggregate_hosts(
+                status_intervals)
+        total = 0
+        total_time = span*3600*num_hosts
+        for status, interval in stats_all.iteritems():
+            total += interval
+        if abs(total - total_time) > 10:
+            print ('Status intervals do not add up. No stats will be collected '
+                   'for board: %s, pool: %s, diff: %s' %
+                   (board, pool, total - total_time))
+            return
+
+        mur = host_history_utils.get_machine_utilization_rate(stats_all)
+        mar = host_history_utils.get_machine_availability_rate(stats_all)
+        mir = mar - mur
+
+        for status, interval in stats_all.iteritems():
+            print '%-18s %-16s %-10.2f%%' % (status, interval,
+                                             100*interval/total_time)
+        print 'Machine utilization rate  = %-4.2f%%' % (100*mur)
+        print 'Machine availability rate = %-4.2f%%' % (100*mar)
 
     stats.Gauge('machine_utilization_rate').send('%s_hours.%s.%s' %
                                                  (span, board, pool), mur)
     stats.Gauge('machine_availability_rate').send('%s_hours.%s.%s' %
                                                   (span, board, pool), mar)
     stats.Gauge('machine_idle_rate').send('%s_hours.%s.%s' %
-                                          (span, board, pool), mar-mur)
-
-    for status, interval in stats_all.iteritems():
-        print '%-18s %-16s %-10.2f%%' % (status, interval,
-                                         100*interval/total_time)
-    print 'Machine utilization rate  = %-4.2f%%' % (100*mur)
-    print 'Machine availability rate = %-4.2f%%' % (100*mar)
+                                          (span, board, pool), mir)
 
 
 def main():
@@ -82,9 +87,7 @@ def main():
                         default=1)
     options = parser.parse_args()
 
-    labels = _AFE.get_labels(name__startswith='board:')
-    boards = [label.name[6:] for label in labels]
-
+    boards = host_label_utils.get_all_boards()
     pools = ['bvt', 'suites', 'try-bot', 'cq', 'pfq']
 
     if options.span == 24:

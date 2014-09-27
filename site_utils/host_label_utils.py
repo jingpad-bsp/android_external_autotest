@@ -14,6 +14,7 @@ This script provides functions to:
 """
 
 import argparse
+import itertools
 import logging
 import pprint
 import time
@@ -28,6 +29,22 @@ from autotest_lib.frontend.afe import models
 # _type used for ES
 _HOST_LABEL_TYPE = 'host_labels'
 _HOST_LABEL_TIME_INDEX_TYPE = 'host_labels_time_index'
+
+
+def get_all_boards():
+    """Get a list of boards from host labels.
+
+    Scan through all labels of all duts and get all possible boards based on
+    label of name board:*
+
+    @return: A list of board names, e.g., ['peppy', 'daisy']
+    """
+    host_labels = get_host_labels()
+    board_labels = [[label[6:] for label in labels
+                     if label.startswith('board:')]
+                    for labels in host_labels.values()]
+    boards = list(set(itertools.chain.from_iterable(board_labels)))
+    return boards
 
 
 def get_host_labels(days_back=0, hostname=None, labels=None):
