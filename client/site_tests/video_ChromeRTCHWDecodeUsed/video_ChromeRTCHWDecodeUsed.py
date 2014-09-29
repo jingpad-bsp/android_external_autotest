@@ -5,13 +5,12 @@
 from contextlib import closing
 import logging
 import os
-import re
-import time
 import urllib2
 
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.cros.video import histogram_parser
 
 
 # Chrome flags to use fake camera and skip camera permission.
@@ -24,6 +23,7 @@ VIDEO_NAME = 'crowd720_25frames.y4m'
 RTC_VIDEO_DECODE = 'Media.RTCVideoDecoderInitDecodeSucces'
 RTC_VIDEO_DECODE_BUCKET = 1
 HISTOGRAMS_URL = 'chrome://histograms/'
+
 
 class video_ChromeRTCHWDecodeUsed(test.test):
     """The test verifies HW Encoding for WebRTC video."""
@@ -38,7 +38,7 @@ class video_ChromeRTCHWDecodeUsed(test.test):
         """
         tab = cr.browser.tabs[0]
         tab.Navigate(cr.browser.http_server.UrlOf(
-                os.path.join(self.bindir, 'loopback.html')))
+            os.path.join(self.bindir, 'loopback.html')))
         tab.WaitForDocumentReadyStateToBeComplete()
 
 
@@ -50,31 +50,15 @@ class video_ChromeRTCHWDecodeUsed(test.test):
 
         @raises error.TestError if decoding is not hardware accelerated.
         """
-        tab = cr.browser.tabs.New()
-        def histograms_loaded(histogram):
-            """Returns true if histogram is loaded."""
-            tab.Navigate(HISTOGRAMS_URL + histogram)
-            tab.WaitForDocumentReadyStateToBeComplete()
-            return tab.EvaluateJavaScript(
-                    'document.documentElement.innerText.search("%s") != -1'
-                    % histogram)
+        parser = histogram_parser.HistogramParser(cr.browser.tabs.New(),
+                                                  RTC_VIDEO_DECODE)
+        buckets = parser.buckets
 
-        def histogram_sucess(histogram, bucket):
-            lines = tab.EvaluateJavaScript('document.documentElement.innerText')
-            logging.info(lines)
-            re_string = '^'+ str(bucket) +'\s\s-(.*)100.0%(.*)'
-            if not re.findall(re_string, lines, re.MULTILINE):
-                raise error.TestError(
-                        '{0} didn\'t show up or is not 100%'
-                        ' successful.'.format(histogram))
+        if (not buckets or not buckets[RTC_VIDEO_DECODE_BUCKET]
+                or buckets[RTC_VIDEO_DECODE_BUCKET].percent < 100.0):
 
-        utils.poll_for_condition(
-                lambda: histograms_loaded(RTC_VIDEO_DECODE),
-                timeout=5,
-                exception=error.TestError('Cannot find %s histogram.' %
-                                          RTC_VIDEO_DECODE),
-                sleep_interval=1)
-        histogram_sucess(RTC_VIDEO_DECODE, RTC_VIDEO_DECODE_BUCKET)
+            raise error.TestError('%s not found or not at 100 percent. %s'
+                                  % RTC_VIDEO_DECODE, str(parser))
 
 
     def run_once(self):

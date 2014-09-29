@@ -2,12 +2,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.cros.video import histogram_parser
 
 
 MEDIA_GVD_INIT_STATUS = 'Media.GpuVideoDecoderInitializeStatus'
+MEDIA_GVD_BUCKET = 0
 
 
 class video_ChromeHWDecodeUsed(test.test):
@@ -26,25 +28,12 @@ class video_ChromeHWDecodeUsed(test.test):
             tab1.WaitForDocumentReadyStateToBeComplete()
 
             # Waits for histogram updated for the test video.
-            tab2 = cr.browser.tabs.New()
+            parser = histogram_parser.HistogramParser(cr, MEDIA_GVD_INIT_STATUS)
 
-            def search_histogram_text(text):
-                """Searches the histogram text in the second tab.
+            buckets = parser.buckets
 
-                @param text: Text to be searched in the histogram tab.
-                """
-                return tab2.EvaluateJavaScript('document.documentElement && '
-                         'document.documentElement.innerText.search('
-                         '\'%s\') != -1' % text)
+            if (not buckets or not buckets[MEDIA_GVD_BUCKET]
+                    or buckets[MEDIA_GVD_BUCKET].percent < 100.0):
 
-            def gpu_histogram_loaded():
-                """Loads the histogram in the second tab."""
-                tab2.Navigate('chrome://histograms/%s' % MEDIA_GVD_INIT_STATUS)
-                return search_histogram_text(MEDIA_GVD_INIT_STATUS)
-
-            utils.poll_for_condition(gpu_histogram_loaded,
-                    exception=error.TestError(
-                            'Histogram gpu status failed to load.'),
-                            sleep_interval=1)
-            if not search_histogram_text('average = 0.0'):
-                raise error.TestError('Video decode acceleration not working.')
+                raise error.TestError('%s not found or not at 100 percent. %s'
+                                      % MEDIA_GVD_BUCKET, str(parser))

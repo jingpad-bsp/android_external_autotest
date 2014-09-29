@@ -8,9 +8,11 @@ import time
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.cros.video import histogram_parser
 
 
 MEDIA_GVD_INIT_STATUS = 'Media.GpuVideoDecoderInitializeStatus'
+MEDIA_GVD_BUCKET = 0
 
 
 class video_ChromeVidResChangeHWDecode(test.test):
@@ -33,28 +35,15 @@ class video_ChromeVidResChangeHWDecode(test.test):
                 'loadVideo("%s")' % (video_file))
 
             # Waits for histogram updated for the test video.
-            tab2 = cr.browser.tabs.New()
+            parser = histogram_parser.HistogramParser(cr.browser.tabs.New(),
+                                                      MEDIA_GVD_INIT_STATUS)
+            buckets = parser.buckets
 
-            def search_histogram_text(text):
-                """Searches the histogram text in the second tab.
+            if (not buckets or not buckets[MEDIA_GVD_BUCKET]
+                    or buckets[MEDIA_GVD_BUCKET].percent < 100.0):
 
-                @param text: Text to be searched in the histogram tab.
-                """
-                return tab2.EvaluateJavaScript('document.documentElement && '
-                         'document.documentElement.innerText.search('
-                         '\'%s\') != -1' % text)
-
-            def gpu_histogram_loaded():
-                """Loads the histogram in the second tab."""
-                tab2.Navigate('chrome://histograms/%s' % MEDIA_GVD_INIT_STATUS)
-                return search_histogram_text(MEDIA_GVD_INIT_STATUS)
-
-            utils.poll_for_condition(gpu_histogram_loaded,
-                    exception=error.TestError(
-                            'Histogram gpu status failed to load.'),
-                            sleep_interval=1)
-            if not search_histogram_text('average = 0.0'):
-                raise error.TestError('Video decode acceleration not working.')
+                raise error.TestError('%s not found or not at 100 percent. %s'
+                                      % MEDIA_GVD_BUCKET, str(parser))
 
             # Verify the video playback.
             for i in range(1, video_len/2):
@@ -66,7 +55,6 @@ class video_ChromeVidResChangeHWDecode(test.test):
             # Verify that video ends successfully.
             utils.poll_for_condition(
                     lambda: tab1.EvaluateJavaScript('testvideo.ended'),
-                    timeout=video_len - video_len/2,
-                    exception=error.TestError(
-                            'Video didn\'t end successfully.'),
+                    timeout=video_len,
+                    exception=error.TestError('Video did not end successfully'),
                     sleep_interval=1)
