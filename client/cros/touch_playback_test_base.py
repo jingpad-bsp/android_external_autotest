@@ -37,7 +37,7 @@ class touch_playback_test_base(test.test):
         """True if device under test has or emulates a USB mouse; else False."""
         return self._has_inputs['mouse']
 
-    def warmup(self, mouse_props=None, mouse_name=None):
+    def warmup(self, mouse_props=None, mouse_name=''):
         """Determine the nodes of all present touch devices, if any.
 
         Use inputcontrol command to get the touch ids and xinput to get the
@@ -62,9 +62,11 @@ class touch_playback_test_base(test.test):
 
         # Emulate mouse if property file was provided.
         if mouse_props:
+            logging.info('Emulating mouse: %s', mouse_props)
             self._device_emulation_process = subprocess.Popen(
                     ['evemu-device', mouse_props], stdout=subprocess.PIPE)
             self._names['mouse'] = mouse_name
+        # Find all touch/mouse input devices.
         for input_type in self._TOUCH_TYPES:
             id_num = utils.run(type_cmd % (
                     input_type, self._names[input_type])).stdout.strip()
@@ -72,9 +74,11 @@ class touch_playback_test_base(test.test):
                 self._has_inputs[input_type] = True
                 self._nodes[input_type] = utils.run(
                         node_cmd % id_num).stdout.strip()
-                name = utils.run(name_cmd % input_type).stdout.strip()
+                if not self._names[input_type]:
+                    self._names[input_type] = utils.run(
+                            name_cmd % input_type).stdout.strip()
                 logging.info('Found %s named %s at node %s', input_type,
-                             name, self._nodes[input_type])
+                             self._names[input_type], self._nodes[input_type])
 
         logging.info('This DUT has the following input devices:')
         logging.info(
@@ -111,22 +115,18 @@ class touch_playback_test_base(test.test):
         if self._device_emulation_process:
             self._device_emulation_process.kill()
 
-
-    def _get_scroll_position(self):
-        """Return current scroll position of page.  Presuposes self._tab."""
-        return int(self._tab.EvaluateJavaScript('document.body.scrollTop'))
-
-    def _reset_scroll_position(self):
-        """Reset page position to default.  Presuposes self._tab.
+    def _reload_page(self):
+        """Reloads test page.  Presuposes self._tab.
 
         @raise: TestError if page is not reset.
 
         """
-        self._tab.ExecuteJavaScript('window.scrollTo(0, %d)'
-                                    % self._DEFAULT_SCROLL)
-        utils.poll_for_condition(
-                lambda: self._get_scroll_position() == self._DEFAULT_SCROLL,
-                exception=error.TestError('Default scroll was not set!'))
+        self._tab.Navigate(self._tab.url)
+        self._tab.WaitForDocumentReadyStateToBeComplete()
+
+    def _get_scroll_position(self):
+        """Return current scroll position of page.  Presuposes self._tab."""
+        return int(self._tab.EvaluateJavaScript('document.body.scrollTop'))
 
     def _wait_for_scroll_position_to_settle(self):
         """Wait for page to move and then stop moving.
