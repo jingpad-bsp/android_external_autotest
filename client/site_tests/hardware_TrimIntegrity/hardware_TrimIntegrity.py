@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os, fcntl, logging, struct, random, re
+import os, fcntl, logging, struct, random
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -90,6 +90,9 @@ class hardware_TrimIntegrity(test.test):
                 raise
         finally:
             os.close(fd)
+
+    def initialize(self):
+        self.job.use_sequence_number = True
 
     def run_once(self, filename=None, file_size=FILE_SIZE,
                  chunk_size=CHUNK_SIZE, trim_ratio=TRIM_RATIO):
