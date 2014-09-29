@@ -79,11 +79,13 @@ class EnterpriseTest(test.test):
         @return: A telemetry browser instance.
         """
         extra_browser_args = (extra_browser_args +
-                             '--device-management-url=%s ' % self.dm_server_url)
+                             '--device-management-url=%s ' % self.dm_server_url +
+                             '--enterprise-enrollment-skip-robot-auth')
         username = self.USERNAME if username is None else username
         password = self.PASSWORD if password is None else password
         return chrome.Chrome(extra_browser_args=extra_browser_args,
                              autotest_ext=autotest_ext,
+                             disable_gaia_services=False,
                              gaia_login=True,
                              username=username,
                              password=password)
