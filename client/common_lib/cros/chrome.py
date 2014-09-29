@@ -19,7 +19,7 @@ class Chrome(object):
     def __init__(self, logged_in=True, extension_paths=[], autotest_ext=False,
                  is_component=True, num_tries=3, extra_browser_args=None,
                  clear_enterprise_policy=True, dont_override_profile=False,
-                 auto_login=True, gaia_login=False,
+                 disable_gaia_services=True, auto_login=True, gaia_login=False,
                  username=None, password=None):
         """
         Constructor of telemetry wrapper.
@@ -38,6 +38,8 @@ class Chrome(object):
         @param dont_override_profile: Don't delete cryptohome before login.
                                       Telemetry will output a warning with this
                                       option.
+        @param disable_gaia_services: For enterprise autotests, this option may
+                                      be used to enable policy fetch.
         @param auto_login: Does not login automatically if this is False.
                            Useful if you need to examine oobe.
         @param gaia_login: Logs in to real gaia.
@@ -77,6 +79,7 @@ class Chrome(object):
         b_options.create_browser_with_oobe = True
         b_options.clear_enterprise_policy = clear_enterprise_policy
         b_options.dont_override_profile = dont_override_profile
+        b_options.disable_gaia_services = disable_gaia_services
 
         b_options.auto_login = auto_login
         b_options.gaia_login = gaia_login
