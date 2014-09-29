@@ -580,6 +580,14 @@ class ModelExtensions(rdb_model_extensions.ModelValidators):
     This mapping tells that algorithm which relations to follow explicitly.
     """
 
+
+    SERIALIZATION_LOCAL_LINKS_TO_UPDATE = set()
+    """
+    On deserializion, if the object to persist already exists, local fields
+    will only be updated, if their name is in this set.
+    """
+
+
     @classmethod
     def convert_human_readable_values(cls, data, to_human_readable=False):
         """\
@@ -1049,6 +1057,31 @@ class ModelExtensions(rdb_model_extensions.ModelValidators):
         return links_to_local_values, links_to_related_values
 
 
+    @classmethod
+    def _filter_update_allowed_fields(cls, data):
+        """Filters data and returns only files that updates are allowed on.
+
+        This is i.e. needed for syncing aborted bits from the master to shards.
+
+        Local links are only allowed to be updated, if they are in
+        SERIALIZATION_LOCAL_LINKS_TO_UPDATE.
+        Overwriting existing values is allowed in order to be able to sync i.e.
+        the aborted bit from the master to a shard.
+
+        The whitelisting mechanism is in place to prevent overwriting local
+        status: If all fields were overwritten, jobs would be completely be
+        set back to their original (unstarted) state.
+
+        @param data: List with tuples of the form (link_name, link_value), as
+                     returned by _split_local_from_foreign_values.
+
+        @returns List of the same format as data, but only containing data for
+                 fields that updates are allowed on.
+        """
+        return [pair for pair in data
+                if pair[0] in cls.SERIALIZATION_LOCAL_LINKS_TO_UPDATE]
+
+
     def _deserialize_local(self, data):
         """Set local attributes from a list of tuples.
 
@@ -1089,8 +1122,10 @@ class ModelExtensions(rdb_model_extensions.ModelValidators):
         in the database that are just like the original.
 
         If an object of the same type with the same id already exists, it's
-        local values will be left untouched.
-        Deserialize will still recursively propagate to all related objects
+        local values will be left untouched, unless they are explicitly
+        whitelisted in SERIALIZATION_LOCAL_LINKS_TO_UPDATE.
+
+        Deserialize will always recursively propagate to all related objects
         present in data though.
         I.e. this is necessary to add users to an already existing acl-group.
 
@@ -1108,10 +1143,11 @@ class ModelExtensions(rdb_model_extensions.ModelValidators):
 
         try:
             instance = cls.objects.get(id=data['id'])
+            local = cls._filter_update_allowed_fields(local)
         except cls.DoesNotExist:
             instance = cls()
-            instance._deserialize_local(local)
 
+        instance._deserialize_local(local)
         instance._deserialize_relations(related)
 
         return instance

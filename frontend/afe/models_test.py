@@ -600,6 +600,18 @@ class SerializationTest(unittest.TestCase,
             job.update_from_serialized, serialized)
 
 
+    def test_sync_aborted(self):
+        job = self._create_job(hosts=[1])
+        serialized = job.serialize()
+
+        serialized['hostqueueentry_set'][0]['aborted'] = True
+        serialized['hostqueueentry_set'][0]['status'] = 'Running'
+
+        models.Job.deserialize(serialized)
+
+        job = models.Job.objects.get(pk=job.id)
+        self.assertTrue(job.hostqueueentry_set.all()[0].aborted)
+        self.assertEqual(job.hostqueueentry_set.all()[0].status, 'Queued')
 
 
 if __name__ == '__main__':

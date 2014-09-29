@@ -1429,6 +1429,7 @@ class HostQueueEntry(dbmodels.Model, model_logic.ModelExtensions):
     """Represents a host queue entry."""
 
     SERIALIZATION_LINKS_TO_FOLLOW = set(['meta_host'])
+    SERIALIZATION_LOCAL_LINKS_TO_UPDATE = set(['aborted'])
 
 
     def custom_deserialize_relation(self, link, data):
