@@ -38,5 +38,3 @@
 /usr/lib/xorg/modules/input/syntp_drv.so
 /usr/sbin/iotools
 /usr/sbin/vpd
-# crbug.com/196629
-/usr/bin/futility
