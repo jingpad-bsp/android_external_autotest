@@ -744,8 +744,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         frequency = hostap_config.HostapConfig.get_frequency_for_channel(
                 channel)
         interface = self.get_wlanif(frequency, 'monitor')
-        self.iw_runner.set_freq(interface, frequency)
         self.router.run('%s link set %s up' % (self.cmd_ip, interface))
+        self.iw_runner.set_freq(interface, frequency)
         return interface
 
 
