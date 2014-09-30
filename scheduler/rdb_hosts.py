@@ -17,7 +17,6 @@ back to the rdb.
 """
 
 import logging
-import time
 from django.core import exceptions as django_exceptions
 
 import common
@@ -26,6 +25,7 @@ from autotest_lib.frontend.afe import rdb_model_extensions as rdb_models
 from autotest_lib.frontend.afe import models as afe_models
 from autotest_lib.scheduler import rdb_requests
 from autotest_lib.scheduler import rdb_utils
+from autotest_lib.site_utils.suite_scheduler import constants
 
 
 class RDBHost(object):
@@ -219,6 +219,8 @@ class RDBClientHostWrapper(RDBHost):
         metadata = {
             state: value,
             'hostname': self.hostname,
+            'board': self.board,
+            'pools': self.pools,
         }
         metadata.update(self.metadata)
         es_utils.ESMetadata().post(type_str=type_str, metadata=metadata)
@@ -231,6 +233,7 @@ class RDBClientHostWrapper(RDBHost):
         """
         self._update({'status': status})
         self.record_state('host_history', 'status', status)
+
 
     def update_field(self, fieldname, value):
         """Proxy for updating a field on the host.
@@ -257,6 +260,39 @@ class RDBClientHostWrapper(RDBHost):
         @return: A string representing the name of the platform.
         """
         return self.platform_name
+
+
+    def find_labels_start_with(self, search_string):
+        """Find all labels started with given string.
+
+        @param search_string: A string to match the beginning of the label.
+        @return: A list of all matched labels.
+        """
+        try:
+            return [l for l in self.labels if l.startswith(search_string)]
+        except AttributeError:
+            return []
+
+
+    @property
+    def board(self):
+        """Get the names of the board of this host.
+
+        @return: A string of the name of the board, e.g., lumpy.
+        """
+        boards = self.find_labels_start_with(constants.Labels.BOARD_PREFIX)
+        return (boards[0][len(constants.Labels.BOARD_PREFIX):] if boards
+                else None)
+
+
+    @property
+    def pools(self):
+        """Get the names of the pools of this host.
+
+        @return: A list of pool names that the host is assigned to.
+        """
+        return [label[len(constants.Labels.POOL_PREFIX):] for label in
+                self.find_labels_start_with(constants.Labels.POOL_PREFIX)]
 
 
     def get_object_dict(self, **kwargs):
