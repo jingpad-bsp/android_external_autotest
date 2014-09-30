@@ -5,7 +5,7 @@
                 {"platform": "alex", "au_test": false},
                 {"platform": "alex", "test_suite": true},
                 {"platform": "alex",
-                 "groups": ["network_3g_modem_gobi2k", "network_3g_modem_gobi3k", "network_3g_modem_y3300", "network_3g_modem_y3400", "network_3g_gobi_test_gobi2k", "network_3g_gobi_test_gobi3k", "audio", "desktopui_pyauto_perf", "enterprise", "pagecycler"]},
+                 "groups": ["network_3g_modem_gobi2k", "network_3g_modem_gobi3k", "network_3g_modem_y3300", "network_3g_modem_y3400", "network_3g_gobi_test_gobi2k", "network_3g_gobi_test_gobi3k", "audio", "enterprise", "pagecycler"]},
                 {"platform": "alex_enterprise",
                  "groups": ["enroll_enterprise"]}
             ]
@@ -16,7 +16,7 @@
                 {"platform": "zgb", "au_test": false},
                 {"platform": "zgb", "test_suite": true},
                 {"platform": "zgb",
-                 "groups": ["network_3g_modem_gobi2k", "audio", "desktopui_pyauto_perf", "enterprise", "pagecycler"]},
+                 "groups": ["network_3g_modem_gobi2k", "audio", "enterprise", "pagecycler"]},
                 {"platform": "zgb_enterprise",
                  "groups": ["enroll_enterprise"]}
             ]
@@ -28,14 +28,14 @@
             "platforms": [
                 {"platform": "mario", "au_test": true},
                 {"platform": "mario",
-                 "groups": ["network_3g_modem_gobi2k", "desktopui_pyauto_perf", "pagecycler"]}
+                 "groups": ["network_3g_modem_gobi2k", "pagecycler"]}
             ]
         },
 
        "stumpy-release": {
             "platforms": [
                 {"platform": "stumpy",
-                 "groups": ["desktopui_pyauto_perf_celeron", "enterprise", "pagecycler_celeron", "audio"]},
+                 "groups": ["enterprise", "pagecycler_celeron", "audio"]},
                 {"platform": "stumpy", "au_test": false},
                 {"platform": "stumpy", "test_suite": true}
             ]
@@ -44,7 +44,7 @@
        "lumpy-release": {
             "platforms": [
                 {"platform": "lumpy",
-                 "groups": ["desktopui_pyauto_perf_celeron", "enterprise", "pagecycler_celeron", "audio"]},
+                 "groups": ["enterprise", "pagecycler_celeron", "audio"]},
                 {"platform": "lumpy", "au_test": false},
                 {"platform": "lumpy", "test_suite": true}
             ]
@@ -91,25 +91,8 @@
             {"name": "browsertests",
              "control": "server/site_tests/suites/control.desktopui_browsertest"},
 
-            {"name": "pyauto",
-             "control": "server/site_tests/suites/control.desktopui_pyautofunctionaltests"},
-
-            {"name": "pyauto_basic",
-             "control": "server/site_tests/suites/control.desktopui_pyauto_basic"},
-
             {"name": "sync",
              "control": "server/site_tests/suites/control.desktopui_syncintegrationtests"}
-        ],
-
-        "desktopui_pyauto_perf": [
-            {"name": "pyauto_perf",
-             "control": "server/site_tests/suites/control.desktopui_pyauto_perf"}
-        ],
-
-        "desktopui_pyauto_perf_celeron": [
-            {"name": "pyauto_perf",
-             "control": "server/site_tests/suites/control.desktopui_pyauto_perf",
-             "labels": ["cpu:celeron"]}
         ],
 
         "desktopui_tegra2": [
