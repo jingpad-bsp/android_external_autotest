@@ -11,6 +11,7 @@ from autotest_lib.client.common_lib import error
 import numpy
 
 import perf_verification
+import stats_utils
 
 
 class hardware_PerfCounterVerification(test.test):
@@ -43,10 +44,10 @@ class hardware_PerfCounterVerification(test.test):
     def postprocess_iteration(self):
         dt = numpy.dtype([('loops', numpy.int)] +
                          [(e, numpy.int) for e in self.events])
-        arr = perf_verification.FactsToNumpyArray(self.facts, dt)
+        arr = stats_utils.FactsToNumpyArray(self.facts, dt)
         results = {}
         for y_var in self.events:
-            (slope, intercept), r2 = perf_verification.LinearRegression(
+            (slope, intercept), r2 = stats_utils.LinearRegression(
                     arr['loops'], arr[y_var])
             prefix = y_var + '_'
             results[prefix+'slope'] = slope
