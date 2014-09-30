@@ -43,7 +43,8 @@ class display_EdidStress(chameleon_test.ChameleonTest):
         for filepath in glob.glob(edid_path):
             filename = os.path.basename(filepath)
             logging.info('Apply EDID: %s...', filename)
-            self.chameleon_port.apply_edid(edid.Edid.from_file(filepath))
+            self.chameleon_port.apply_edid(
+                    edid.Edid.from_file(filepath, skip_verify=True))
 
             try:
                 self.reconnect_output()
