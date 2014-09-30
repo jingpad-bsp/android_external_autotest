@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 import common
 import logging
+import os
 import re
 import tempfile
 import time
@@ -31,7 +32,7 @@ MOBLAB_SERVICES = ['moblab-scheduler-init',
                    'moblab-gsoffloader_s-init']
 MOBLAB_PROCESSES = ['apache2', 'dhcpd']
 DUT_VERIFY_SLEEP_SECS = 5
-DUT_VERIFY_TIMEOUT = 5 * 60
+DUT_VERIFY_TIMEOUT = 15 * 60
 
 
 class MoblabHost(cros_host.CrosHost):
@@ -68,6 +69,22 @@ class MoblabHost(cros_host.CrosHost):
         except (error.AutoservRunError, error.AutoservSSHTimeout):
             return False
         return result.exit_status == 0
+
+
+    def install_boto_file(self, boto_path=''):
+        """Install a boto file on the Moblab device.
+
+        @param boto_path: Path to the boto file to install. If None, sends the
+                          boto file in the current HOME directory.
+
+        @raises error.TestError if the boto file does not exist.
+        """
+        if not boto_path:
+            boto_path = os.path.join(os.getenv('HOME'), '.boto')
+        if not os.path.exists(boto_path):
+            raise error.TestError('Boto File:%s does not exist.' % boto_path)
+        self.send_file(boto_path, MOBLAB_BOTO_LOCATION)
+        self.run('chown moblab:moblab %s' % MOBLAB_BOTO_LOCATION)
 
 
     def get_autodir(self):
@@ -174,6 +191,9 @@ class MoblabHost(cros_host.CrosHost):
         """
         # Add the DUTs if they have not yet been added.
         self.find_and_add_duts()
+        # Ensure a boto file is installed in case this Moblab was wiped in
+        # repair.
+        self.install_boto_file()
         hosts = self.afe.reverify_hosts()
         logging.debug('DUTs scheduled for reverification: %s', hosts)
         # Wait till all pending special tasks are completed.

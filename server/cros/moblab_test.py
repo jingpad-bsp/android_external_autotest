@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 import logging
-import os
 import re
 
 from autotest_lib.client.common_lib import error, global_config
@@ -33,27 +32,10 @@ class MoblabTest(test.test):
         """
         super(MoblabTest, self).initialize()
         self._host = host
-        self.install_boto_file(boto_path)
+        self._host.install_boto_file(boto_path)
         self.set_image_storage_server(image_storage_server)
         self._host.wait_afe_up()
         self._host.find_and_add_duts()
-
-
-    def install_boto_file(self, boto_path=''):
-        """Install a boto file on the Moblab device.
-
-        @param boto_path: Path to the boto file to install. If None, sends the
-                          boto file in the current HOME directory.
-
-        @raises error.TestError if the boto file does not exist.
-        """
-        if not boto_path:
-            boto_path = os.path.join(os.getenv('HOME'), '.boto')
-        if not os.path.exists(boto_path):
-            raise error.TestError('Boto File:%s does not exist.' % boto_path)
-        self._host.send_file(boto_path, moblab_host.MOBLAB_BOTO_LOCATION)
-        self._host.run('chown moblab:moblab %s' %
-                       moblab_host.MOBLAB_BOTO_LOCATION)
 
 
     def set_image_storage_server(self, image_storage_server):
