@@ -414,12 +414,17 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
                 }]
 
 
-    def _do_heartbeat_and_assert_response(self, shard_hostname=None, upload_jobs=[],
-                                         upload_hqes=[], **kwargs):
-        shard_hostname = shard_hostname or str(
-            models.Shard.objects.count() + 1)
+    def _do_heartbeat_and_assert_response(self, shard_hostname='shard1',
+                                          upload_jobs=(), upload_hqes=(),
+                                          known_jobs=(), known_hosts=(),
+                                          **kwargs):
+        known_job_ids = [job.id for job in known_jobs]
+        known_host_ids = [host.id for host in known_hosts]
+
         retval = site_rpc_interface.shard_heartbeat(
-            shard_hostname=shard_hostname, jobs=upload_jobs, hqes=upload_hqes)
+            shard_hostname=shard_hostname,
+            jobs=upload_jobs, hqes=upload_hqes,
+            known_job_ids=known_job_ids, known_host_ids=known_host_ids)
 
         self._assert_shard_heartbeat_response(shard_hostname, retval,
                                               **kwargs)
@@ -477,6 +482,7 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
 
 
     def testSendingRecordsToMaster(self):
+        """Send records to the master and ensure they are persisted."""
         jobs, hqes = self._get_records_for_sending_to_master()
         hqes[0]['status'] = 'Completed'
         self._send_records_to_master_helper(
@@ -488,6 +494,7 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
 
 
     def testSendingRecordsToMasterJobAssignedToDifferentShard(self):
+        """Ensure records that belong to a different shard are rejected."""
         jobs, hqes = self._get_records_for_sending_to_master()
         models.Shard.objects.create(hostname='other_shard')
         self._send_records_to_master_helper(
@@ -495,12 +502,14 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
 
 
     def testSendingRecordsToMasterJobHqeWithoutJob(self):
+        """Ensure update for hqe without update for it's job gets rejected."""
         _, hqes = self._get_records_for_sending_to_master()
         self._send_records_to_master_helper(
             jobs=[], hqes=hqes)
 
 
     def testSendingRecordsToMasterNotExistingJob(self):
+        """Ensure update for non existing job gets rejected."""
         jobs, hqes = self._get_records_for_sending_to_master()
         jobs[0]['id'] = 3
 
@@ -508,105 +517,125 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
             jobs=jobs, hqes=hqes)
 
 
-    def testShardHeartbeatFetchHostlessJob(self):
-        models.Label.objects.create(name='board:lumpy', platform=True)
-        label2 = models.Label.objects.create(name='bluetooth', platform=False)
+    def _createShardAndHostWithLabel(self, shard_hostname='shard1',
+                                     host_hostname='host1',
+                                     label_name='board:lumpy'):
+        label = models.Label.objects.create(name=label_name)
 
-        shard_hostname = 'host1'
         shard = models.Shard.objects.create(hostname=shard_hostname)
-        shard.labels.add(models.Label.smart_get('board:lumpy'))
+        shard.labels.add(label)
+
+        host = models.Host.objects.create(hostname=host_hostname, leased=False)
+        host.labels.add(label)
+
+        return shard, host, label
+
+
+    def _createJobForLabel(self, label):
+        job_id = rpc_interface.create_job(name='dummy', priority='Medium',
+                                          control_file='foo',
+                                          control_type=CLIENT,
+                                          meta_hosts=[label.name],
+                                          dependencies=(label.name,))
+        return models.Job.objects.get(id=job_id)
+
+
+    def testShardHeartbeatFetchHostlessJob(self):
+        """Create a hostless job and ensure it's not assigned to a shard."""
+        shard1, host1, lumpy_label = self._createShardAndHostWithLabel(
+            'shard1', 'host1', 'board:lumpy')
+
+        label2 = models.Label.objects.create(name='bluetooth', platform=False)
 
         job1 = self._create_job(hostless=True)
 
         # Hostless jobs should be executed by the global scheduler.
-        self._do_heartbeat_and_assert_response(
-            shard_hostname=shard_hostname)
+        self._do_heartbeat_and_assert_response(hosts=[host1])
 
 
     def testShardRetrieveJobs(self):
-        host1, host2 = [models.Host.objects.create(
-            hostname=hostname, leased=False) for hostname in ['host1', 'host2']]
-
+        """Create jobs and retrieve them."""
         # should never be returned by heartbeat
         leased_host = models.Host.objects.create(hostname='leased_host',
                                                  leased=True)
 
-        lumpy_label = models.Label.objects.create(name='board:lumpy',
-                                                  platform=True)
-        grumpy_label = models.Label.objects.create(name='board:grumpy',
-                                                   platform=True)
+        shard1, host1, lumpy_label = self._createShardAndHostWithLabel()
+        shard2, host2, grumpy_label = self._createShardAndHostWithLabel(
+            'shard2', 'host2', 'board:grumpy')
 
-
-        host1.labels.add(lumpy_label)
         leased_host.labels.add(lumpy_label)
-        host2.labels.add(grumpy_label)
 
-        shard_hostname1 = 'host1'
-        shard_hostname2 = 'host2'
+        job1 = self._createJobForLabel(lumpy_label)
 
-        shard1 = models.Shard.objects.create(hostname=shard_hostname1)
-        shard2 = models.Shard.objects.create(hostname=shard_hostname2)
+        job2 = self._createJobForLabel(grumpy_label)
 
-        shard1.labels.add(lumpy_label)
-        shard2.labels.add(grumpy_label)
-
-        job_id = rpc_interface.create_job(name='dummy', priority='Medium',
-                                          control_file='foo',
-                                          control_type=CLIENT,
-                                          meta_hosts=['board:lumpy'],
-                                          dependencies=('board:lumpy',),
-                                          test_retry=10)
-        job1 = models.Job.objects.get(id=job_id)
-        job_id = rpc_interface.create_job(name='dummy', priority='Medium',
-                                          control_file='foo',
-                                          control_type=CLIENT,
-                                          meta_hosts=['board:grumpy'],
-                                          dependencies=('board:grumpy',),
-                                          test_retry=10)
-
-        job2 = models.Job.objects.get(id=job_id)
-        job_id = rpc_interface.create_job(name='dummy', priority='Medium',
-                                          control_file='foo',
-                                          control_type=CLIENT,
-                                          meta_hosts=['board:lumpy'],
-                                          dependencies=('board:lumpy',),
-                                          test_retry=10)
-        job_completed = models.Job.objects.get(id=job_id)
-        # Job is obviously already run, so don't sync it
+        job_completed = self._createJobForLabel(lumpy_label)
+        # Job is already being run, so don't sync it
         job_completed.hostqueueentry_set.update(complete=True)
         job_completed.hostqueueentry_set.create(complete=False)
-        job_id = rpc_interface.create_job(name='dummy', priority='Medium',
-                                          control_file='foo',
-                                          control_type=CLIENT,
-                                          meta_hosts=['board:lumpy'],
-                                          dependencies=('board:lumpy',),
-                                          test_retry=10)
-        job_active = models.Job.objects.get(id=job_id)
-        # Job is obviously already started, so don't sync it
+
+        job_active = self._createJobForLabel(lumpy_label)
+        # Job is already started, so don't sync it
         job_active.hostqueueentry_set.update(active=True)
         job_active.hostqueueentry_set.create(complete=False, active=False)
 
         self._do_heartbeat_and_assert_response(
-            shard_hostname=shard_hostname1, jobs=[job1], hosts=[host1],
-            hqes=job1.hostqueueentry_set.all())
+            jobs=[job1], hosts=[host1], hqes=job1.hostqueueentry_set.all())
 
         self._do_heartbeat_and_assert_response(
-            shard_hostname=shard_hostname2, jobs=[job2], hosts=[host2],
-            hqes=job2.hostqueueentry_set.all())
+            shard_hostname=shard2.hostname,
+            jobs=[job2], hosts=[host2], hqes=job2.hostqueueentry_set.all())
 
         host3 = models.Host.objects.create(hostname='host3', leased=False)
         host3.labels.add(lumpy_label)
 
         self._do_heartbeat_and_assert_response(
-            shard_hostname=shard_hostname1, jobs=[], hosts=[host3])
+            known_jobs=[job1], known_hosts=[host1], hosts=[host3])
 
-        job1.hostqueueentry_set.update(aborted=True)
+
+    def testResendJobsAfterFailedHeartbeat(self):
+        """Create jobs, retrieve them, fail on client, fetch them again."""
+        shard1, host1, lumpy_label = self._createShardAndHostWithLabel()
+
+        job1 = self._createJobForLabel(lumpy_label)
+
         self._do_heartbeat_and_assert_response(
-            shard_hostname=shard_hostname1, jobs=[job1],
-            hqes=job1.hostqueueentry_set.all())
+            jobs=[job1],
+            hqes=job1.hostqueueentry_set.all(), hosts=[host1])
 
+        # Make sure it's resubmitted by sending last_job=None again
+        self._do_heartbeat_and_assert_response(
+            known_hosts=[host1],
+            jobs=[job1], hqes=job1.hostqueueentry_set.all(), hosts=[])
 
-        site_rpc_interface.delete_shard(hostname=shard_hostname1)
+        # Now it worked, make sure it's not sent again
+        self._do_heartbeat_and_assert_response(
+            known_jobs=[job1], known_hosts=[host1])
+
+        job1 = models.Job.objects.get(pk=job1.id)
+        job1.hostqueueentry_set.all().update(complete=True)
+
+        # Job is completed, make sure it's not sent again
+        self._do_heartbeat_and_assert_response(
+            known_hosts=[host1])
+
+        job2 = self._createJobForLabel(lumpy_label)
+
+        # job2's creation was later, it should be returned now.
+        self._do_heartbeat_and_assert_response(
+            known_hosts=[host1],
+            jobs=[job2], hqes=job2.hostqueueentry_set.all())
+
+        self._do_heartbeat_and_assert_response(
+            known_jobs=[job2], known_hosts=[host1])
+
+        job2.hostqueueentry_set.update(aborted=True)
+        self._do_heartbeat_and_assert_response(
+            known_jobs=[job2], known_hosts=[host1],
+            jobs=[job2],
+            hqes=job2.hostqueueentry_set.all())
+
+        site_rpc_interface.delete_shard(hostname=shard1.hostname)
 
         self.assertRaises(
             models.Shard.DoesNotExist, models.Shard.objects.get, pk=shard1.id)
@@ -623,6 +652,7 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
 
 
     def testCreateListShard(self):
+        """Retrieve a list of all shards."""
         lumpy_label = models.Label.objects.create(name='board:lumpy',
                                                   platform=True)
 
@@ -639,6 +669,20 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
                          [{'labels': ['board:lumpy'],
                            'hostname': 'host1',
                            'id': 1}])
+
+
+    def testResendHostsAfterFailedHeartbeat(self):
+        """Check that master accepts resending updated records after failure."""
+        shard1, host1, lumpy_label = self._createShardAndHostWithLabel()
+
+        # Send the host
+        self._do_heartbeat_and_assert_response(hosts=[host1])
+
+        # Send it again because previous one didn't persist correctly
+        self._do_heartbeat_and_assert_response(hosts=[host1])
+
+        # Now it worked, make sure it isn't sent again
+        self._do_heartbeat_and_assert_response(known_hosts=[host1])
 
 
 if __name__ == '__main__':

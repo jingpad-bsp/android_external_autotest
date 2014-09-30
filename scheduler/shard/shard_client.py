@@ -46,14 +46,19 @@ global AFE, which will then complete the following actions:
      master's afe to see the statuses of all jobs. Otherwise one would have to
      check the tko tables or the individual slave AFEs.
 3. Find labels that have been assigned to this shard.
-4. Assign hosts
-   - All hosts that have the specified label and aren't leased will be assigned
-5. Assign jobs, that:
+4. Assign hosts that:
+   - have the specified label
+   - aren't leased
+   - have an id which is not in the known_host_ids which were sent in the
+     heartbeat request.
+5. Assign jobs that:
    - depend on the specified label
    - haven't been assigned before
    - aren't started yet
    - aren't completed yet
-6. Serialize the chosen jobs and hosts:
+   - have an id which is not in the jobs_known_ids which were sent in the
+     heartbeat request.
+6. Serialize the chosen jobs and hosts.
    - Find objects that the Host/Job objects depend on: Labels, AclGroups, Users,
      and many more. Details about this can be found around
      model_logic.serialize()
@@ -71,6 +76,10 @@ On the client side, this will happen:
    - The master will persist them as described earlier.
    - the shard_id will be set back to the shard's id, so the record won't be
      uploaded again.
+   The heartbeat request will also contain the ids of incomplete jobs and the
+   ids of all hosts. This is used to not send objects repeatedly. For more
+   information on this and alternatives considered
+   see site_rpc_interface.shard_heartbeat.
 """
 
 
@@ -173,6 +182,25 @@ class ShardClient(object):
         return hqes
 
 
+    def _get_known_ids(self):
+        """Returns lists of host and job ids to send in a heartbeat.
+
+        The host and job ids are ids of objects that are already present on the
+        shard and therefore don't need to be sent again.
+
+        For jobs, only incomplete jobs are sent, as the master won't sent
+        already completed jobs anyway. This helps keeping the list of id's
+        considerably small.
+
+        @returns: Tuple of two dictionaries. The first one contains job ids, the
+                  second one host ids.
+        """
+        job_ids = list(models.Job.objects.filter(
+            hostqueueentry__complete=False).values_list('id', flat=True))
+        host_ids = list(models.Host.objects.values_list('id', flat=True))
+        return job_ids, host_ids
+
+
     @timer.decorate
     def do_heartbeat(self):
         """Perform a heartbeat: Retreive new jobs.
@@ -183,16 +211,20 @@ class ShardClient(object):
         """
         logging.info("Performing heartbeat.")
 
+        known_job_ids, known_host_ids = self._get_known_ids()
+
         jobs = self._get_jobs_to_upload()
         hqes = self._get_hqes_for_jobs(jobs)
 
+        # See site_rpc_interface.shard_heartbeat for explanations on the params.
         response = self.afe.run(
             HEARTBEAT_AFE_ENDPOINT, shard_hostname=self.hostname,
+            known_job_ids=known_job_ids,
+            known_host_ids=known_host_ids,
             jobs=[job.serialize(include_dependencies=False) for job in jobs],
             hqes=[hqe.serialize(include_dependencies=False) for hqe in hqes])
 
         self._mark_jobs_as_uploaded(jobs)
-
         self.process_heartbeat_response(response)
         logging.info("Heartbeat completed.")
 

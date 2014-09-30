@@ -943,15 +943,17 @@ def retrieve_shard(shard_hostname):
     return models.Shard.smart_get(shard_hostname)
 
 
-def find_records_for_shard(shard):
+def find_records_for_shard(shard, known_job_ids, known_host_ids):
     """Find records that should be sent to a shard.
 
     @param shard: Shard to find records for.
+    @param known_job_ids: List of ids of jobs the shard already has.
+    @param known_host_ids: List of ids of hosts the shard already has.
 
     @returns: Tuple of two lists for hosts and jobs: (hosts, jobs).
     """
-    hosts = models.Host.assign_to_shard(shard)
-    jobs = models.Job.assign_to_shard(shard)
+    hosts = models.Host.assign_to_shard(shard, known_host_ids)
+    jobs = models.Job.assign_to_shard(shard, known_job_ids)
 
     return hosts, jobs
 

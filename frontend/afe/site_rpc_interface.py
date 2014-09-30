@@ -305,8 +305,9 @@ def get_host_history(start_time, end_time, hosts=None, board=None, pool=None):
                     process_pool_size=4))
 
 
-def shard_heartbeat(shard_hostname, jobs=(), hqes=()):
-    """Register shard if not existing, then assign hosts and jobs.
+def shard_heartbeat(shard_hostname, jobs=(), hqes=(),
+                    known_job_ids=(), known_host_ids=()):
+    """Receive updates for job statuses from shards and assign hosts and jobs.
 
     @param shard_hostname: Hostname of the calling shard
     @param jobs: Jobs in serialized form that should be updated with newer
@@ -314,15 +315,51 @@ def shard_heartbeat(shard_hostname, jobs=(), hqes=()):
     @param hqes: Hostqueueentries in serialized form that should be updated with
                  newer status from a shard. Note that for every hostqueueentry
                  the corresponding job must be in jobs.
+    @param known_job_ids: List of ids of jobs the shard already has.
+    @param known_host_ids: List of ids of hosts the shard already has.
 
     @returns: Serialized representations of hosts, jobs and their dependencies
               to be inserted into a shard's database.
     """
+    # The following alternatives to sending host and job ids in every heartbeat
+    # have been considered:
+    # 1. Sending the highest known job and host ids. This would work for jobs:
+    #    Newer jobs always have larger ids. Also, if a job is not assigned to a
+    #    particular shard during a heartbeat, it never will be assigned to this
+    #    shard later.
+    #    This is not true for hosts though: A host that is leased won't be sent
+    #    to the shard now, but might be sent in a future heartbeat. This means
+    #    sometimes hosts should be transfered that have a lower id than the
+    #    maximum host id the shard knows.
+    # 2. Send the number of jobs/hosts the shard knows to the master in each
+    #    heartbeat. Compare these to the number of records that already have
+    #    the shard_id set to this shard. In the normal case, they should match.
+    #    In case they don't, resend all entities of that type.
+    #    This would work well for hosts, because there aren't that many.
+    #    Resending all jobs is quite a big overhead though.
+    #    Also, this approach might run into edge cases when entities are
+    #    ever deleted.
+    # 3. Mixtures of the above: Use 1 for jobs and 2 for hosts.
+    #    Using two different approaches isn't consistent and might cause
+    #    confusion. Also the issues with the case of deletions might still
+    #    occur.
+    #
+    # The overhead of sending all job and host ids in every heartbeat is low:
+    # At peaks one board has about 1200 created but unfinished jobs.
+    # See the numbers here: http://goo.gl/gQCGWH
+    # Assuming that job id's have 6 digits and that json serialization takes a
+    # comma and a space as overhead, the traffic per id sent is about 8 bytes.
+    # If 5000 ids need to be sent, this means 40 kilobytes of traffic.
+    # A NOT IN query with 5000 ids took about 30ms in tests made.
+    # These numbers seem low enough to outweigh the disadvantages of the
+    # solutions described above.
     timer = stats.Timer('shard_heartbeat')
     with timer:
         shard_obj = rpc_utils.retrieve_shard(shard_hostname=shard_hostname)
         rpc_utils.persist_records_sent_from_shard(shard_obj, jobs, hqes)
-        hosts, jobs = rpc_utils.find_records_for_shard(shard_obj)
+        hosts, jobs = rpc_utils.find_records_for_shard(
+            shard_obj,
+            known_job_ids=known_job_ids, known_host_ids=known_host_ids)
         return {
             'hosts': [host.serialize() for host in hosts],
             'jobs': [job.serialize() for job in jobs],

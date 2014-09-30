@@ -433,14 +433,24 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
 
 
     @classmethod
-    def assign_to_shard(cls, shard):
+    def assign_to_shard(cls, shard, known_ids):
         """Assigns hosts to a shard.
 
-        This function will check which labels are associated with the given
-        shard. It will assign those hosts, that have labels that are assigned
-        to the shard and haven't been returned to shard earlier.
+        For all labels that have been assigned to this shard, all hosts that
+        have this label, are assigned to this shard.
+
+        Hosts that are assigned to the shard but aren't already present on the
+        shard are returned.
 
         @param shard: The shard object to assign labels/hosts for.
+        @param known_ids: List of all host-ids the shard already knows.
+                          This is used to figure out which hosts should be sent
+                          to the shard. If shard_ids were used instead, hosts
+                          would only be transferred once, even if the client
+                          failed persisting them.
+                          The number of hosts usually lies in O(100), so the
+                          overhead is acceptable.
+
         @returns the hosts objects that should be sent to the shard.
         """
 
@@ -459,9 +469,10 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
         # - SELECT and then UPDATE only selected without requerying afterwards:
         #   returns the old state of the records.
         host_ids = list(Host.objects.filter(
-            shard=None,
             labels=shard.labels.all(),
             leased=False
+            ).exclude(
+            id__in=known_ids,
             ).values_list('pk', flat=True))
 
         if host_ids:
@@ -1316,23 +1327,38 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
 
 
     @classmethod
-    def assign_to_shard(cls, shard):
+    def assign_to_shard(cls, shard, known_ids):
         """Assigns unassigned jobs to a shard.
 
-        All jobs that have the platform label that was assigned to the given
-        shard are assigned to the shard and returned.
+        For all labels that have been assigned to this shard, all jobs that
+        have this label, are assigned to this shard.
+
+        Jobs that are assigned to the shard but aren't already present on the
+        shard are returned.
+
         @param shard: The shard to assign jobs to.
+        @param known_ids: List of all ids of incomplete jobs, the shard already
+                          knows about.
+                          This is used to figure out which jobs should be sent
+                          to the shard. If shard_ids were used instead, jobs
+                          would only be transferred once, even if the client
+                          failed persisting them.
+                          The number of unfinished jobs usually lies in O(1000).
+                          Assuming one id takes 8 chars in the json, this means
+                          overhead that lies in the lower kilobyte range.
+                          A not in query with 5000 id's takes about 30ms.
+
         @returns The job objects that should be sent to the shard.
         """
         # Disclaimer: Concurrent heartbeats should not occur in today's setup.
         # If this changes or they are triggered manually, this applies:
         # Jobs may be returned more than once by concurrent calls of this
         # function, as there is a race condition between SELECT and UPDATE.
-        unassigned_or_aborted_query = (
-            dbmodels.Q(shard=None) | dbmodels.Q(hostqueueentry__aborted=True))
         job_ids = list(Job.objects.filter(
-            unassigned_or_aborted_query,
             dependency_labels=shard.labels.all()
+            ).exclude(
+            id__in=known_ids,
+            hostqueueentry__aborted=False
             ).exclude(
             hostqueueentry__complete=True
             ).exclude(
