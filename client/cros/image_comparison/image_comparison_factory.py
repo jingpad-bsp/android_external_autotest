@@ -111,7 +111,11 @@ class ImageComparisonFactory(object):
             box = None
         else:
             box = (0, 0, self.desired_comp_w, self.desired_comp_h)
-        return verifier.Verifier(image_comparer, stop_on_first_failure, box=box)
+
+        return verifier.Verifier(image_comparer,
+                                 stop_on_first_failure,
+                                 threshold=self.pixel_count_thres,
+                                 box=box)
 
 
     def _make_bp_comparer_helper(self, project_name):
