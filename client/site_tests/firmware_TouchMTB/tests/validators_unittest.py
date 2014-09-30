@@ -15,7 +15,7 @@ import test_conf as conf
 import validators
 
 from common_unittest_utils import create_mocked_devices, parse_tests_data
-from firmware_constants import AXIS, GV, PLATFORM, VAL
+from firmware_constants import AXIS, GV, MTB, PLATFORM, VAL
 from firmware_log import MetricNameProps
 from geometry.elements import Point
 from touch_device import TouchDevice
@@ -818,6 +818,40 @@ class DiscardInitialSecondsValidatorTest(unittest.TestCase):
         filename = 'two_finger_tap_one_finger_hold.dat'
         score = self._get_score(filename, '== 1')
         self.assertTrue(score == 1)
+
+    def test_discard_initial_seconds(self):
+        """Test that discard_initial_seconds() cuts at the proper packet.
+
+        Note: to print the final_state_packet, use the following statements:
+            import mtb
+            print mtb.make_pretty_packet(final_state_packet)
+        """
+        packets = parse_tests_data('noise_stationary_extended.dat')
+        validator = DiscardInitialSecondsValidator(
+            validator=CountTrackingIDValidator('== 1', device=link),
+            device=link)
+        validator.init_check(packets)
+        packets = validator._discard_initial_seconds(
+                packets, validator.initial_seconds_to_discard)
+        final_state_packet = packets[0]
+
+        self.assertTrue(len(final_state_packet) == 11)
+        # Assert the correctness of the 1st finger data in the order of
+        #     SLOT, TRACKING_ID, POSITION_X, POSITION_Y, PRESSURE
+        self.assertTrue(final_state_packet[0][MTB.EV_VALUE] == 2)
+        self.assertTrue(final_state_packet[1][MTB.EV_VALUE] == 2427)
+        self.assertTrue(final_state_packet[2][MTB.EV_VALUE] == 670)
+        self.assertTrue(final_state_packet[3][MTB.EV_VALUE] == 361)
+        self.assertTrue(final_state_packet[4][MTB.EV_VALUE] == 26)
+        # Assert the correctness of the 2nd finger data in the order of
+        #     SLOT, TRACKING_ID, POSITION_X, POSITION_Y, PRESSURE
+        self.assertTrue(final_state_packet[5][MTB.EV_VALUE] == 3)
+        self.assertTrue(final_state_packet[6][MTB.EV_VALUE] == 2426)
+        self.assertTrue(final_state_packet[7][MTB.EV_VALUE] == 670)
+        self.assertTrue(final_state_packet[8][MTB.EV_VALUE] == 368)
+        self.assertTrue(final_state_packet[9][MTB.EV_VALUE] == 21)
+        # EVENT TIME
+        self.assertTrue(final_state_packet[0][MTB.EV_TIME] == 1412021965.723953)
 
 
 if __name__ == '__main__':

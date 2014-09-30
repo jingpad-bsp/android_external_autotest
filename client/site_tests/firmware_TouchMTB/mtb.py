@@ -144,43 +144,26 @@ def create_final_state_packet(packets):
     # even if not all the events are populated (e.g. if a pressure
     # or position event is missing.)
     final_state_packet = []
-    syn_time = None
-    for tid, slot, tid_packet in sm.get_current_tid_data_for_all_tids(
-            request_data_ready=False):
-        # Check for None
-        if not tid_packet:
-            continue
 
-        if tid_packet.syn_time:
-            syn_time = tid_packet.syn_time
+    # It is possible that all fingers have left at this time instant.
+    if sm.number_fingers == 0:
+        return final_state_packet
 
-        # Create events
-        slot_event = new_contact_event = None
-        x_event = y_event = pressure_event = None
+    # Extract slot data from the snapshot of the state machine.
+    for slot_data in sm.get_snapshot():
+        syn_time, slot, tid, point, pressure = slot_data
+        tid_event = (syn_time, EV_ABS, ABS_MT_TRACKING_ID, tid)
+        slot_event = (syn_time, EV_ABS, ABS_MT_SLOT, slot)
+        x_event = (syn_time, EV_ABS, ABS_MT_POSITION_X, point.x)
+        y_event = (syn_time, EV_ABS, ABS_MT_POSITION_Y, point.y)
+        pressure_event = (syn_time, EV_ABS, ABS_MT_PRESSURE, pressure)
 
-        new_contact_event = (syn_time, EV_ABS, ABS_MT_TRACKING_ID, 0)
-        if slot_event:
-            slot_event = (syn_time, EV_ABS, ABS_MT_SLOT, slot)
-        if tid_packet.point.x:
-            x_event = (syn_time, EV_ABS, ABS_MT_POSITION_X, tid_packet.point.x)
-        if tid_packet.point.y:
-            y_event = (syn_time, EV_ABS, ABS_MT_POSITION_Y, tid_packet.point.y)
-        if tid_packet.pressure:
-            pressure_event = (syn_time, EV_ABS, ABS_MT_PRESSURE,
-                              tid_packet.pressure)
-
-        events = (new_contact_event, slot_event, x_event, y_event,
-                  pressure_event)
-
-        # Create a packet out of the events
+        events = [slot_event, tid_event, x_event, y_event, pressure_event]
         for event in events:
-            if event:
-                final_state_packet.append(MtbParser.make_ev_dict(event))
+            final_state_packet.append(MtbParser.make_ev_dict(event))
 
     # Add syn_report event to indicate the end of the packet
-    if syn_time:
-        final_state_packet.append(MtbParser.make_syn_report_ev_dict(syn_time))
-
+    final_state_packet.append(MtbParser.make_syn_report_ev_dict(syn_time))
     return final_state_packet
 
 
@@ -485,6 +468,15 @@ class MtbStateMachine:
             # Use the SYN_REPORT time as the packet time
             elif MtbEvent.is_SYN_REPORT(event):
                 self.syn_time = event[MTB.EV_TIME]
+
+    def get_snapshot(self):
+        """Get the snapshot of current data of all slots."""
+        slots_data = []
+        for slot, tid in self.slot_to_tid.items():
+            slot_data = [self.syn_time, slot, tid,
+                         self.point[tid], self.pressure[tid]]
+            slots_data.append(slot_data)
+        return slots_data
 
     def get_current_tid_data_for_all_tids(self, request_data_ready=True):
         """Get current packet's tid data including the point, the pressure, and
