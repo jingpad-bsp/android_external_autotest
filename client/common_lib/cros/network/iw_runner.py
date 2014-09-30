@@ -181,7 +181,7 @@ class IwRunner(object):
         return matching_interfaces[0]
 
 
-    def get_link_value(self, interface, iw_link_key, ignore_failures=False):
+    def get_link_value(self, interface, iw_link_key):
         """Get the value of a link property for |interface|.
 
         This command parses fields of iw link:
@@ -204,7 +204,7 @@ class IwRunner(object):
 
         """
         result = self._run('%s dev %s link' % (self._command_iw, interface),
-                           ignore_status=ignore_failures)
+                           ignore_status=True)
         if result.exit_status:
             # When roaming, there is a period of time for mac80211 based drivers
             # when the driver is 'associated' with an SSID but not a particular
@@ -217,11 +217,7 @@ class IwRunner(object):
         find_results = filter(bool,
                               map(find_re.match, result.stdout.splitlines()))
         if not find_results:
-            if ignore_failures:
-                return None
-
-            raise error.TestFail('Could not find iw link property %s.' %
-                                 iw_link_key)
+            return None
 
         actual_value = find_results[0].group(1)
         logging.info('Found iw link key %s with value %s.',

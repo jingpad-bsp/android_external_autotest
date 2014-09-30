@@ -374,9 +374,13 @@ class WiFiClient(site_linux_system.LinuxSystem):
                                                       actual_value))
 
 
-    def get_iw_link_value(self, iw_link_key, ignore_failures=False):
-        return self.iw_runner.get_link_value(self.wifi_if, iw_link_key,
-                                             ignore_failures=ignore_failures)
+    def get_iw_link_value(self, iw_link_key):
+        """Get the current value of a link property for this WiFi interface.
+
+        @param iw_link_key string one of IW_LINK_KEY_* defined in iw_runner.
+
+        """
+        return self.iw_runner.get_link_value(self.wifi_if, iw_link_key)
 
 
     def powersave_switch(self, turn_on):
