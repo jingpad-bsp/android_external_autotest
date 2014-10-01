@@ -120,10 +120,10 @@ True
 ...           'leased': 1,
 ...           'shard': None}]
 True
->>> rpc_interface.modify_host('ipaj1', status='Hello')
+>>> rpc_interface.modify_host(id='ipaj1', status='Hello')
 Traceback (most recent call last):
 ValidationError: {'status': 'Host status can not be modified by the frontend.'}
->>> rpc_interface.modify_host('ipaj1', hostname='ipaj1000')
+>>> rpc_interface.modify_host(id='ipaj1', hostname='ipaj1000')
 >>> rpc_interface.modify_hosts(
 ...     host_filter_data={'hostname': 'ipaj1000'},
 ...     update_data={'locked': False})
@@ -132,17 +132,17 @@ ValidationError: {'status': 'Host status can not be modified by the frontend.'}
 False
 
 # test already locked/unlocked failures
->>> rpc_interface.modify_host('ipaj1000', locked=False)
+>>> rpc_interface.modify_host(id='ipaj1000', locked=False)
 Traceback (most recent call last):
 ValidationError: {'locked': 'Host already unlocked.'}
->>> rpc_interface.modify_host('ipaj1000', locked=True)
+>>> rpc_interface.modify_host(id='ipaj1000', locked=True)
 >>> try:
-...     rpc_interface.modify_host('ipaj1000', locked=True)
+...     rpc_interface.modify_host(id='ipaj1000', locked=True)
 ... except model_logic.ValidationError, err:
 ...     pass
 >>> assert ('locked' in err.message_dict
 ...         and err.message_dict['locked'].startswith('Host already locked'))
->>> rpc_interface.delete_host('ipaj1000')
+>>> rpc_interface.delete_host(id='ipaj1000')
 >>> rpc_interface.get_hosts() == []
 True
 
@@ -626,8 +626,8 @@ True
 {u'Aborted (Queued)': 4}
 
 # Remove the two hosts in my_label
->>> rpc_interface.delete_host('my_label_host1')
->>> rpc_interface.delete_host('my_label_host2')
+>>> rpc_interface.delete_host(id='my_label_host1')
+>>> rpc_interface.delete_host(id='my_label_host2')
 
 
 # extra querying parameters

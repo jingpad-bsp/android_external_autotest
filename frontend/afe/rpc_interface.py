@@ -130,23 +130,66 @@ def add_host(hostname, status=None, locked=None, protection=None):
                                   locked=locked, protection=protection).id
 
 
+@rpc_utils.forward_single_host_rpc_to_shard
 def modify_host(id, **data):
+    """Modify local attributes of a host.
+
+    If this is called on the master, but the host is assigned to a shard, this
+    will also forward the call to the responsible shard. This means i.e. if a
+    host is being locked using this function, this change will also propagate to
+    shards.
+
+    @param id: id of the host to modify.
+    @param **data: key=value pairs of values to set on the host.
+    """
     rpc_utils.check_modify_host(data)
     host = models.Host.smart_get(id)
+
     rpc_utils.check_modify_host_locking(host, data)
     host.update_object(data)
 
 
 def modify_hosts(host_filter_data, update_data):
-    """
+    """Modify local attributes of multiple hosts.
+
+    If this is called on the master, but one of the hosts in that match the
+    filters is assigned to a shard, this will also forward the call to the
+    responsible shard.
+
+    The filters are always applied on the master, not on the shards. This means
+    if the states of a host differ on the master and a shard, the state on the
+    master will be used. I.e. this means:
+    A host was synced to Shard 1. On Shard 1 the status of the host was set to
+    'Repair Failed'.
+    - A call to modify_hosts with host_filter_data={'status': 'Ready'} will
+    update the host (both on the shard and on the master), because the state
+    of the host as the master knows it is still 'Ready'.
+    - A call to modify_hosts with host_filter_data={'status': 'Repair failed'
+    will not update the host, because the filter doesn't apply on the master.
+
     @param host_filter_data: Filters out which hosts to modify.
     @param update_data: A dictionary with the changes to make to the hosts.
     """
     rpc_utils.check_modify_host(update_data)
     hosts = models.Host.query_objects(host_filter_data)
+
+    affected_shard_hostnames = set()
+    affected_host_ids = []
+
     # Check all hosts before changing data for exception safety.
     for host in hosts:
         rpc_utils.check_modify_host_locking(host, update_data)
+        if host.shard:
+            affected_shard_hostnames.add(host.shard.hostname)
+            affected_host_ids.append(host.id)
+
+    if not rpc_utils.is_shard():
+        # Caution: Changing the filter from the original here. See docstring.
+        rpc_utils.run_rpc_on_multiple_hostnames(
+            'modify_hosts', affected_shard_hostnames,
+            host_filter_data={'id__in': affected_host_ids},
+            update_data=update_data)
+
     for host in hosts:
         host.update_object(update_data)
 
@@ -203,6 +246,7 @@ def set_host_attribute(attribute, value, **host_filter_data):
         host.set_or_delete_attribute(attribute, value)
 
 
+@rpc_utils.forward_single_host_rpc_to_shard
 def delete_host(id):
     models.Host.smart_get(id).delete()
 

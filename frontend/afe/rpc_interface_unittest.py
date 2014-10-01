@@ -14,6 +14,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib.test_utils import mock
 from autotest_lib.client.common_lib.test_utils import unittest
+from autotest_lib.server import frontend
 
 CLIENT = control_data.CONTROL_TYPE_NAMES.CLIENT
 SERVER = control_data.CONTROL_TYPE_NAMES.SERVER
@@ -31,6 +32,7 @@ class RpcInterfaceTest(unittest.TestCase,
     def tearDown(self):
         self.god.unstub_all()
         self._frontend_common_teardown()
+        global_config.global_config.reset_config_values()
 
 
     def test_validation(self):
@@ -428,6 +430,122 @@ class RpcInterfaceTest(unittest.TestCase,
         self.assertEqual(parameters_obj.test_parameter, test_parameter)
         self.assertEqual(parameters_obj.parameter_value, 'value')
         self.assertEqual(parameters_obj.parameter_type, string_type)
+
+
+    def _modify_host_helper(self, on_shard=False, host_on_shard=False):
+        shard_hostname = 'shard1'
+        if on_shard:
+            global_config.global_config.override_config_value(
+                'SHARD', 'shard_hostname', shard_hostname)
+
+        host = models.Host.objects.all()[0]
+        if host_on_shard:
+            shard = models.Shard.objects.create(hostname=shard_hostname)
+            host.shard = shard
+            host.save()
+
+        self.assertFalse(host.locked)
+
+        self.god.stub_class_method(frontend.AFE, 'run')
+
+        if host_on_shard and not on_shard:
+            mock_afe = self.god.create_mock_class_obj(
+                frontend.AFE, 'MockAFE')
+            self.god.stub_with(frontend, 'AFE', mock_afe)
+
+            mock_afe2 = frontend.AFE.expect_new(server=shard_hostname)
+            mock_afe2.run.expect_call('modify_host', id=host.id, locked=True)
+
+        rpc_interface.modify_host(id=host.id, locked=True)
+
+        host = models.Host.objects.get(pk=host.id)
+        self.assertTrue(host.locked)
+        self.god.check_playback()
+
+
+    def test_modify_host_on_master_host_on_master(self):
+        """Ensure no RPC is made on modify_host if the host isn't on a shard."""
+        self._modify_host_helper()
+
+
+    def test_modify_host_on_master_host_on_shard(self):
+        """Ensure an RPC is made on modify_host if the host is on a shard."""
+        self._modify_host_helper(host_on_shard=True)
+
+
+    def test_modify_host_on_shard(self):
+        """Ensure no RPC is made on modify_host if executed on a shard."""
+        self._modify_host_helper(on_shard=True, host_on_shard=True)
+
+
+    def test_modify_hosts_on_master_host_on_shard(self):
+        """Ensure calls to modify_hosts are correctly forwarded to shards."""
+        host1 = models.Host.objects.all()[0]
+        host2 = models.Host.objects.all()[1]
+
+        shard1 = models.Shard.objects.create(hostname='shard1')
+        host1.shard = shard1
+        host1.save()
+
+        shard2 = models.Shard.objects.create(hostname='shard2')
+        host2.shard = shard2
+        host2.save()
+
+        self.assertFalse(host1.locked)
+        self.assertFalse(host2.locked)
+
+        mock_afe = self.god.create_mock_class_obj(frontend.AFE,
+                                                 'MockAFE')
+        self.god.stub_with(frontend, 'AFE', mock_afe)
+
+        # The statuses of one host might differ on master and shard.
+        # Filters are always applied on the master. So the host on the shard
+        # will be affected no matter what his status is.
+        filters_to_use = {'status': 'Ready'}
+
+        mock_afe2 = frontend.AFE.expect_new(server='shard2')
+        mock_afe2.run.expect_call(
+            'modify_hosts',
+            host_filter_data={'id__in': [shard1.id, shard2.id]},
+            update_data={'locked': True})
+
+        mock_afe1 = frontend.AFE.expect_new(server='shard1')
+        mock_afe1.run.expect_call(
+            'modify_hosts',
+            host_filter_data={'id__in': [shard1.id, shard2.id]},
+            update_data={'locked': True})
+
+        rpc_interface.modify_hosts(host_filter_data={'status': 'Ready'},
+                                   update_data={'locked': True})
+
+        host1 = models.Host.objects.get(pk=host1.id)
+        self.assertTrue(host1.locked)
+        host2 = models.Host.objects.get(pk=host2.id)
+        self.assertTrue(host2.locked)
+        self.god.check_playback()
+
+
+    def test_delete_host(self):
+        """Ensure an RPC is made on delete a host, if it is on a shard."""
+        host1 = models.Host.objects.all()[0]
+        shard1 = models.Shard.objects.create(hostname='shard1')
+        host1.shard = shard1
+        host1.save()
+        host1_id = host1.id
+
+        mock_afe = self.god.create_mock_class_obj(frontend.AFE,
+                                                 'MockAFE')
+        self.god.stub_with(frontend, 'AFE', mock_afe)
+
+        mock_afe1 = frontend.AFE.expect_new(server='shard1')
+        mock_afe1.run.expect_call('delete_host', id=host1.id)
+
+        rpc_interface.delete_host(id=host1.id)
+
+        self.assertRaises(models.Host.DoesNotExist,
+                          models.Host.smart_get, host1_id)
+
+        self.god.check_playback()
 
 
 if __name__ == '__main__':
