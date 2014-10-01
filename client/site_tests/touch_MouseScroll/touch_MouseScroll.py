@@ -31,6 +31,7 @@ class touch_MouseScroll(touch_playback_test_base.touch_playback_test_base):
 
         """
         self._reload_page()
+        self._wait_for_default_scroll_position()
         self._playback(self._dut_paths[name], touch_type='mouse')
         self._wait_for_scroll_position_to_settle()
         delta = self._get_scroll_position() - self._DEFAULT_SCROLL

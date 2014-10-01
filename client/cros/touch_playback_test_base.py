@@ -128,6 +128,17 @@ class touch_playback_test_base(test.test):
         """Return current scroll position of page.  Presuposes self._tab."""
         return int(self._tab.EvaluateJavaScript('document.body.scrollTop'))
 
+    def _wait_for_default_scroll_position(self):
+        """Wait for page to be the default scroll position.
+
+        @raise: TestError if page either does not move or does not stop moving.
+
+        """
+        utils.poll_for_condition(
+                lambda: self._get_scroll_position() == self._DEFAULT_SCROLL,
+                exception=error.TestError('Page not set to default scroll!'))
+
+
     def _wait_for_scroll_position_to_settle(self):
         """Wait for page to move and then stop moving.
 
