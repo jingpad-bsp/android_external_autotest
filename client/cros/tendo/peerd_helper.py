@@ -80,7 +80,7 @@ class PeerdHelper(object):
 
         """
         if self._pid is not None:
-            utils.run('kill %d' % self._pid)
+            utils.run('kill %d' % self._pid, ignore_status=True)
             self._pid = None
 
 
