@@ -89,7 +89,8 @@ class VideoPlayer(object):
         # TODO: Fix this.
         # There is a lag between assigning a value to the currentTimeElement
         # and the new assigned value being displayed.
-        time.sleep(0.1)
+        # TODO: Wait for 100ms once crosbug.com/p/32518 is fixed
+        time.sleep(1.5)
 
 
     @method_logger.log
