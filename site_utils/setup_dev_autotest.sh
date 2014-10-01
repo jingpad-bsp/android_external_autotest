@@ -262,6 +262,8 @@ sudo a2enmod rewrite
 sudo a2enmod wsgi
 # enable version
 sudo a2enmod version
+# enable headers
+sudo a2enmod headers
 # Setup permissions so that Apache web user can read the proper files.
 chmod -R o+r "${AT_DIR}"
 find "${AT_DIR}"/ -type d -print0 | xargs --null chmod o+x
