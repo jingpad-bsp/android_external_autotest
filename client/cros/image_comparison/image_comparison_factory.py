@@ -87,8 +87,9 @@ class ImageComparisonFactory(object):
         if success:
             # bp comparer was successfully made
             return upload_on_fail_comparer.UploadOnFailComparer(
-                    self.make_rgb_comparer(),
-                    comparer)
+                    local_comparer = self.make_rgb_comparer(),
+                    remote_comparer = comparer,
+                    threshold = self.pixel_count_thres)
 
         # bp comparer was not made, we must have gotten rgb instead
         return comparer
