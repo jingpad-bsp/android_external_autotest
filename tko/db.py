@@ -1,8 +1,12 @@
+# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
 import re, os, sys, types, time, random
-from django.conf import settings
 
 import common
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.frontend import database_settings_helper
 from autotest_lib.tko import utils
 
 
@@ -55,31 +59,32 @@ class db_sql(object):
         @param password: If set, this password will be used, if not, the
                          password will be retrieved from global_config.
         """
-        DATABASE_SETTINGS = settings.DATABASES['global']
+        database_settings = database_settings_helper.get_database_config(
+                'global_db_')
 
         # grab the host, database
         if host:
             self.host = host
         else:
-            self.host = DATABASE_SETTINGS['HOST']
+            self.host = database_settings['HOST']
         if database:
             self.database = database
         else:
-            self.database = DATABASE_SETTINGS['NAME']
+            self.database = database_settings['NAME']
 
         # grab the user and password
         if user:
             self.user = user
         else:
-            self.user = DATABASE_SETTINGS['USER']
+            self.user = database_settings['USER']
         if password is not None:
             self.password = password
         else:
-            self.password = DATABASE_SETTINGS['PASSWORD']
+            self.password = database_settings['PASSWORD']
 
         # grab the timeout configuration
         self.query_timeout =(
-                DATABASE_SETTINGS.get('OPTIONS', {}).get('timeout', 3600))
+                database_settings.get('OPTIONS', {}).get('timeout', 3600))
 
         # Using fallback to non-global in order to work without configuration
         # overhead on non-shard instances.

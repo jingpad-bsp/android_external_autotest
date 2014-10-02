@@ -162,8 +162,10 @@ class database_selection_test(mox.MoxTestBase,
         global_config.global_config.override_config_value(
                 'SHARD', 'shard_hostname', 'host1')
         from autotest_lib.frontend import settings
+        from autotest_lib.frontend import database_settings_helper
         # settings module was already loaded during the imports of this file,
         # so before the configuration setting was made, therefore reload it:
+        reload(database_settings_helper)
         self.assertRaises(global_config.ConfigError,
                           reload, settings)
 
@@ -172,20 +174,33 @@ class database_selection_test(mox.MoxTestBase,
         global_config.global_config.override_config_value(
                 'SHARD', 'shard_hostname', '')
         from autotest_lib.frontend import settings
+        from autotest_lib.frontend import database_settings_helper
         # settings module was already loaded during the imports of this file,
         # so before the configuration setting was made, therefore reload it:
+        reload(database_settings_helper)
         reload(settings)
 
 
     def testTkoDatabase(self):
         global_host = 'GLOBAL_HOST'
+        global_user = 'GLOBAL_USER'
+        global_db = 'GLOBAL_DB'
+        global_pw = 'GLOBAL_PW'
         local_host = 'LOCAL_HOST'
 
         global_config.global_config.override_config_value(
                 'AUTOTEST_WEB', 'global_db_type', '')
 
-        settings.DATABASES['global']['HOST'] = global_host
-        settings.DATABASES['default']['HOST'] = local_host
+        global_config.global_config.override_config_value(
+                'AUTOTEST_WEB', 'global_db_host', global_host)
+        global_config.global_config.override_config_value(
+                'AUTOTEST_WEB', 'global_db_database', global_db)
+        global_config.global_config.override_config_value(
+                'AUTOTEST_WEB', 'global_db_user', global_user)
+        global_config.global_config.override_config_value(
+                'AUTOTEST_WEB', 'global_db_password', global_pw)
+        global_config.global_config.override_config_value(
+                'AUTOTEST_WEB', 'host', local_host)
 
         class ConnectCalledException(Exception):
             pass
@@ -199,7 +214,8 @@ class database_selection_test(mox.MoxTestBase,
         tko_db.db_sql.connect = None
         self.mox.StubOutWithMock(tko_db.db_sql, 'connect')
         tko_db.db_sql.connect(
-                global_host, ':memory:', '', '').WithSideEffects(fake_connect)
+                global_host, global_db, global_user, global_pw).WithSideEffects(
+                        fake_connect)
 
         self.mox.ReplayAll()
 
