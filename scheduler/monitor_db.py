@@ -974,6 +974,7 @@ class BaseDispatcher(object):
                 task based on this exit code.
         """
         num_started_this_cycle = 0
+        num_finished_this_cycle = 0
         have_reached_limit = False
         # iterate over copy, so we can remove agents during iteration
         logging.debug('Handling %d Agents', len(self._agents))
@@ -992,8 +993,13 @@ class BaseDispatcher(object):
             agent.tick()
             self._log_extra_msg('Agent tick completed.')
             if agent.is_done():
+                num_finished_this_cycle += agent.task.num_processes
                 self._log_extra_msg("Agent finished")
                 self.remove_agent(agent)
+        stats.Gauge('scheduler.jobs_per_tick').send(
+                'agents_started', num_started_this_cycle)
+        stats.Gauge('scheduler.jobs_per_tick').send(
+                'agents_finished', num_finished_this_cycle)
         logging.info('%d running processes. %d added this cycle.',
                      _drone_manager.total_running_processes(),
                      num_started_this_cycle)

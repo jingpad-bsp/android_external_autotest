@@ -152,6 +152,9 @@ class HostScheduler(BaseHostScheduler):
     @_timer.decorate
     def _schedule_jobs(self):
         """Schedule new jobs against hosts."""
+
+        key = 'host_scheduler.jobs_per_tick'
+        new_jobs_with_hosts = 0
         queue_entries = self.job_query_manager.get_pending_queue_entries(
                 only_hostless=False)
         unverified_host_jobs = [job for job in queue_entries
@@ -160,6 +163,10 @@ class HostScheduler(BaseHostScheduler):
             return
         for acquisition in self.find_hosts_for_jobs(unverified_host_jobs):
             self.schedule_host_job(acquisition.host, acquisition.job)
+            new_jobs_with_hosts += 1
+        stats.Gauge(key).send('new_jobs_with_hosts', new_jobs_with_hosts)
+        stats.Gauge(key).send('new_jobs_without_hosts',
+                              len(unverified_host_jobs) - new_jobs_with_hosts)
 
 
     @_timer.decorate
