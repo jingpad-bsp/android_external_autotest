@@ -105,7 +105,8 @@ def fetch_local_suite(autotest_path, suite_predicate, afe, remote,
             ignore_deps=ignore_deps,
             results_dir=results_directory, forgiving_parser=False)
     if len(my_suite.tests) == 0:
-        raise ValueError('Suite contained no tests.')
+        raise ValueError('Found no tests. Check your suite name, test name, '
+                         'or test matching wildcard.')
 
     if not ignore_deps:
         # Log tests whose dependencies can't be satisfied.
