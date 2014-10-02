@@ -172,6 +172,9 @@ class ShardClientTest(mox.MoxTestBase,
 
     def testHeartbeatNoShardMode(self):
         """Ensure an exception is thrown when run on a non-shard machine."""
+        global_config.global_config.override_config_value(
+                'SHARD', 'shard_hostname', '')
+
         self.mox.ReplayAll()
 
         self.assertRaises(error.HeartbeatOnlyAllowedInShardModeException,

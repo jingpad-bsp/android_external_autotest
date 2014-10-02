@@ -7,14 +7,23 @@
 
 #pylint: disable-msg=C0111
 
-import os, shutil, tempfile, unittest
+import mox, os, shutil, tempfile, unittest
+
+from django.conf import settings
 
 import common
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend import setup_test_environment
+from autotest_lib.frontend.afe import frontend_test_utils
+from autotest_lib.frontend.afe import models as django_afe_models
+from autotest_lib.frontend.tko import models as django_tko_models
+from autotest_lib.tko import db as tko_db
 from autotest_lib.tko.site_parse import StackTrace
 
+# Have to import this after setup_django_environment and setup_test_environment.
+# It creates a database connection, so the mocking has to be done first.
+from django.db import connections
 
 class stack_trace_test(unittest.TestCase):
 
@@ -104,6 +113,97 @@ class stack_trace_test(unittest.TestCase):
         self.assertEqual(board, 'x86-alex')
         self.assertEqual(rev, 'r16')
         self.assertEqual(version, '1166.0.0')
+
+
+class database_selection_test(mox.MoxTestBase,
+                              frontend_test_utils.FrontendTestMixin):
+
+    def setUp(self):
+        super(database_selection_test, self).setUp()
+        self._frontend_common_setup(fill_data=False)
+
+
+    def tearDown(self):
+        super(database_selection_test, self).tearDown()
+        self._frontend_common_teardown()
+
+
+    def assertQueries(self, database, assert_in, assert_not_in):
+        assert_in_found = False
+        for query in connections[database].queries:
+            sql = query['sql']
+            # Ignore CREATE TABLE statements as they are always executed
+            if 'INSERT INTO' in sql or 'SELECT' in sql:
+                self.assertNotIn(assert_not_in, sql)
+                if assert_in in sql:
+                    assert_in_found = True
+        self.assertTrue(assert_in_found)
+
+
+    def testDjangoModels(self):
+        # If DEBUG=False connection.query will be empty
+        settings.DEBUG = True
+
+        afe_job = django_afe_models.Job.objects.create(created_on='2014-08-12')
+        # Machine has less dependencies than tko Job so it's easier to create
+        tko_job = django_tko_models.Machine.objects.create()
+
+        django_afe_models.Job.objects.get(pk=afe_job.id)
+        django_tko_models.Machine.objects.get(pk=tko_job.pk)
+
+        self.assertQueries('global', 'tko_machines', 'afe_jobs')
+        self.assertQueries('default', 'afe_jobs', 'tko_machines')
+
+        # Avoid unnecessary debug output from other tests
+        settings.DEBUG = True
+
+
+    def testRunOnShardWithoutGlobalConfigsFails(self):
+        global_config.global_config.override_config_value(
+                'SHARD', 'shard_hostname', 'host1')
+        from autotest_lib.frontend import settings
+        # settings module was already loaded during the imports of this file,
+        # so before the configuration setting was made, therefore reload it:
+        self.assertRaises(global_config.ConfigError,
+                          reload, settings)
+
+
+    def testRunOnMasterWithoutGlobalConfigsWorks(self):
+        global_config.global_config.override_config_value(
+                'SHARD', 'shard_hostname', '')
+        from autotest_lib.frontend import settings
+        # settings module was already loaded during the imports of this file,
+        # so before the configuration setting was made, therefore reload it:
+        reload(settings)
+
+
+    def testTkoDatabase(self):
+        global_host = 'GLOBAL_HOST'
+        local_host = 'LOCAL_HOST'
+
+        global_config.global_config.override_config_value(
+                'AUTOTEST_WEB', 'global_db_type', '')
+
+        settings.DATABASES['global']['HOST'] = global_host
+        settings.DATABASES['default']['HOST'] = local_host
+
+        class ConnectCalledException(Exception):
+            pass
+
+        # We're only interested in the parameters connect is called with here.
+        # Take the fast path out so we don't have to mock all the other calls
+        # that will later be made on the connection
+        def fake_connect(*args, **kwargs):
+            raise ConnectCalledException
+
+        tko_db.db_sql.connect = None
+        self.mox.StubOutWithMock(tko_db.db_sql, 'connect')
+        tko_db.db_sql.connect(
+                global_host, ':memory:', '', '').WithSideEffects(fake_connect)
+
+        self.mox.ReplayAll()
+
+        self.assertRaises(ConnectCalledException, tko_db.db_sql)
 
 
 if __name__ == "__main__":
