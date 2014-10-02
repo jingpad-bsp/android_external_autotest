@@ -12,7 +12,7 @@ as long as this is stable. For this reason it should be treated as a
 performance test plotting counts over time. If there is a problem with this
 approach we will investigate black/whitelisting.
 """
-SUITE = 'graphics'
+SUITE = 'graphics_per-day, graphics, graphics_system'
 TIME='MEDIUM'
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = 'graphics'

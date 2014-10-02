@@ -36,6 +36,6 @@ TIME='FAST'
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = 'graphics'
 TEST_TYPE = 'client'
-SUITE = 'graphicsGLES'
+SUITE = 'graphics_per-day, graphics, graphics_system'
 
 job.run_test('graphics_SyncControlTest')

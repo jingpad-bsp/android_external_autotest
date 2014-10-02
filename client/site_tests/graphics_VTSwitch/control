@@ -18,7 +18,7 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "graphics"
 TEST_TYPE = "client"
 
-SUITE = "graphics"
+SUITE = 'graphics_per-day, graphics, graphics_system'
 BUG_TEMPLATE = {
     'labels': ['Cr-OS-Kernel-Graphics'],
 }

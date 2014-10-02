@@ -3,17 +3,16 @@
 # found in the LICENSE file.
 
 AUTHOR = "chromeos-gfx"
-NAME = "graphics_per-build"
-PURPOSE = "Test graphics functionality once for every new build."
-CRITERIA = "All tests with SUITE=graphics_per-build should complete."
-
+NAME = "graphics_per-day"
+PURPOSE = "Test graphics functionality once per day."
+CRITERIA = "All tests with SUITE=graphics_per-day should complete."
 TIME = "MEDIUM"
 TEST_CATEGORY = "Graphics"
 TEST_CLASS = "suite"
 TEST_TYPE = "Server"
 
 DOC = """
-This is the part of the graphics test suite which should run once per build.
+This is the part of the graphics test suite which should run once every week
 Tests should be run in order of increasing likeness of hanging the system
 
 The machine should reboot after finishing the suite or timing out.
@@ -32,9 +31,9 @@ from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 
 dynamic_suite.reimage_and_run(
-    build=build, board=board, name='graphics_per-build', job=job, pool=pool,
+    build=build, board=board, name='graphics_per-week', job=job, pool=pool,
     check_hosts=check_hosts, add_experimental=True, num=num,
     file_bugs=file_bugs, priority=priority, timeout_mins=timeout_mins,
-    max_runtime_mins=60, devserver_url=devserver_url,
+    max_runtime_mins=240, devserver_url=devserver_url,
     version_prefix=provision.CROS_VERSION_PREFIX,
     wait_for_results=wait_for_results, job_retry=job_retry)
