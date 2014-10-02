@@ -4,7 +4,7 @@
 
 AUTHOR = 'derat, gauravsh'
 NAME = 'platform_CheckPowerdProcesses'
-SUITE = 'bvt-cq, bvt, bvt_cq, smoke'
+SUITE = 'bvt-cq, bvt, bvt_cq'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
 JOB_RETRIES = 1
