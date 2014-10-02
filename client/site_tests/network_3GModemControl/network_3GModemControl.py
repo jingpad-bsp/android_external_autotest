@@ -9,14 +9,10 @@ import time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import backchannel
 from autotest_lib.client.cros.cellular import cell_tools
-from autotest_lib.client.cros.cellular import emulator_config
-from autotest_lib.client.cros.cellular import mm
-from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
-
-from autotest_lib.client.cros import flimflam_test_path
-import flimflam
+from autotest_lib.client.cros.cellular import cellular
+from autotest_lib.client.cros.networking import cellular_proxy
+from autotest_lib.client.cros.networking import shill_proxy
 
 # Number of seconds we wait for the cellular service to perform an action.
 DEVICE_TIMEOUT=45
@@ -32,16 +28,18 @@ SLOW_CONNECT_WAIT_SECONDS=20
 
 
 class TechnologyCommands():
-    """Control the modem mostly using flimflam Technology interfaces."""
-    def __init__(self, flim, command_delegate):
-        self.flim = flim
+    """Control the modem mostly using shill Technology interfaces."""
+    def __init__(self, shill, command_delegate):
+        self.shill = shill
         self.command_delegate = command_delegate
 
     def Enable(self):
-        self.flim.EnableTechnology('cellular')
+        self.shill.manager.EnableTechnology(
+                shill_proxy.ShillProxy.TECHNOLOGY_CELLULAR)
 
     def Disable(self):
-        self.flim.DisableTechnology('cellular')
+        self.shill.manager.DisableTechnology(
+                shill_proxy.ShillProxy.TECHNOLOGY_CELLULAR)
 
     def Connect(self, **kwargs):
         self.command_delegate.Connect(**kwargs)
@@ -76,15 +74,13 @@ class ModemCommands():
         Disconnect Modem.
 
         Returns:
-            True - to indicate that flimflam may autoconnect again.
+            True - to indicate that shill may autoconnect again.
         """
         try:
             self.modem.Disconnect()
-        except dbus.exceptions.DBusException, e:
-            if e._dbus_error_name == ('org.chromium.ModemManager'
-                                      '.Error.OperationInitiated'):
-                pass
-            else:
+        except dbus.DBusException as e:
+            if (e.get_dbus_name() !=
+                    'org.chromium.ModemManager.Error.OperationInitiated'):
                 raise e
         return True
 
@@ -93,15 +89,15 @@ class ModemCommands():
 
 
 class DeviceCommands():
-    """Control the modem using flimflam device interfaces."""
-    def __init__(self, flim, device, slow_connect):
-        self.flim = flim
+    """Control the modem using shill device interfaces."""
+    def __init__(self, shill, device, slow_connect):
+        self.shill = shill
         self.device = device
         self.slow_connect = slow_connect
         self.service = None
 
     def GetService(self):
-        service = self.flim.FindCellularService()
+        service = self.shill.find_cellular_service_object()
         if not service:
             raise error.TestFail(
                 'Service failed to appear when using device commands.')
@@ -124,7 +120,7 @@ class DeviceCommands():
         Disconnect Modem.
 
         Returns:
-            False - to indicate that flimflam may not autoconnect again.
+            False - to indicate that shill may not autoconnect again.
         """
         self.GetService().Disconnect()
         return False
@@ -173,14 +169,14 @@ class network_3GModemControl(test.test):
         return modem.IsEnabled() == expected_state
 
     def CompareDevicePowerState(self, device, expected_state):
-        """Compare the flimflam device power state to an expected state."""
+        """Compare the shill device power state to an expected state."""
         device_properties = device.GetProperties(utf8_strings=True);
         state = device_properties['Powered']
         logging.info('Device Enabled = %s' % state)
         return state == expected_state
 
     def CompareServiceState(self, service, expected_states):
-        """Compare the flimflam service state to a set of expected states."""
+        """Compare the shill service state to a set of expected states."""
         if not service:
             logging.info('Service not found.')
             return False
@@ -203,7 +199,7 @@ class network_3GModemControl(test.test):
         # attempts.
         for _ in range(NUM_MODEM_STATE_CHECKS):
             utils.poll_for_condition(
-                lambda: not self.modem.IsConnectingOrDisconnecting(),
+                lambda: not self.test_env.modem.IsConnectingOrDisconnecting(),
                 error.TestFail('Timed out waiting for modem to finish ' +
                                'connecting or disconnecting.'),
                 timeout=SERVICE_TIMEOUT)
@@ -217,13 +213,13 @@ class network_3GModemControl(test.test):
             error.TestFail if the states are not consistent.
         """
         utils.poll_for_condition(
-            lambda: self.CompareModemPowerState(self.modem, False),
+            lambda: self.CompareModemPowerState(self.test_env.modem, False),
             error.TestFail('Modem failed to enter state Disabled.'))
         utils.poll_for_condition(
             lambda: self.CompareDevicePowerState(self.device, False),
             error.TestFail('Device failed to enter state Powered=False.'))
         utils.poll_for_condition(
-            lambda: not self.flim.FindCellularService(timeout=1),
+            lambda: not self.test_env.shill.find_cellular_service_object(),
             error.TestFail('Service should not be available.'),
             timeout=SERVICE_TIMEOUT)
 
@@ -240,18 +236,17 @@ class network_3GModemControl(test.test):
             error.TestFail if the states are not consistent.
         """
         utils.poll_for_condition(
-            lambda: self.CompareModemPowerState(self.modem, True),
+            lambda: self.CompareModemPowerState(self.test_env.modem, True),
             error.TestFail('Modem failed to enter state Enabled'))
         utils.poll_for_condition(
             lambda: self.CompareDevicePowerState(self.device, True),
             error.TestFail('Device failed to enter state Powered=True.'),
             timeout=30)
 
+        service = self.test_env.shill.wait_for_cellular_service_object()
         if check_idle:
             utils.poll_for_condition(
-                lambda: self.CompareServiceState(
-                    self.flim.FindCellularService(timeout=SERVICE_TIMEOUT),
-                    ['idle']),
+                lambda: self.CompareServiceState(service, ['idle']),
                 error.TestFail('Service failed to enter idle state.'),
                 timeout=SERVICE_TIMEOUT)
 
@@ -264,8 +259,9 @@ class network_3GModemControl(test.test):
         """
         self.EnsureEnabled(check_idle=False)
         utils.poll_for_condition(
-            lambda: self.CompareServiceState(self.flim.FindCellularService(),
-                                             ['ready', 'portal', 'online']),
+            lambda: self.CompareServiceState(
+                    self.test_env.shill.find_cellular_service_object(),
+                    ['ready', 'portal', 'online']),
             error.TestFail('Service failed to connect.'),
             timeout=SERVICE_TIMEOUT)
 
@@ -276,7 +272,7 @@ class network_3GModemControl(test.test):
 
         Changes the state of the modem in various ways including
         disable while connected and then verifies the state of the
-        modem manager and flimflam.
+        modem manager and shill.
 
         Raises:
             error.TestFail if the states are not consistent.
@@ -288,7 +284,8 @@ class network_3GModemControl(test.test):
         commands.Enable()
         self.EnsureEnabled(check_idle=not self.autoconnect)
 
-        if self.pseudo_modem and self.pseudomodem_family == 'CDMA':
+        technology_family = self.test_env.modem.GetCurrentTechnologyFamily()
+        if technology_family == cellular.TechnologyFamily.CDMA:
             simple_connect_props = {'number': r'#777'}
         else:
             simple_connect_props = {'number': r'#777', 'apn': self.FindAPN()}
@@ -336,70 +333,50 @@ class network_3GModemControl(test.test):
         self.EnsureDisabled()
 
     def FindAPN(self):
-        return cell_tools.FindLastGoodAPN(self.flim.FindCellularService(),
-                                          default='None')
+        default = 'None'
+        service = self.test_env.shill.find_cellular_service_object()
+        props = service.GetProperties()
+        last_good_apn = props.get(
+                cellular_proxy.CellularProxy.SERVICE_PROPERTY_LAST_GOOD_APN,
+                None)
+        if not last_good_apn:
+            return default
+        return last_good_apn.get(
+                cellular_proxy.CellularProxy.APN_INFO_PROPERTY_APN, default)
 
-    def run_once(self, autoconnect,
-                 pseudo_modem=False,
-                 pseudomodem_family='3GPP',
-                 mixed_iterations=2,
-                 config=None, technology=None, slow_connect=False):
-        # Use a backchannel so that flimflam will restart when the
-        # test is over.  This ensures flimflam is in a known good
-        # state even if this test fails.
-        with backchannel.Backchannel():
-            self.autoconnect = autoconnect
-            self.pseudo_modem = pseudo_modem
-            self.pseudomodem_family = pseudomodem_family
+    def run_once(self, test_env, autoconnect, mixed_iterations=2,
+                 slow_connect=False):
+        self.test_env = test_env
+        self.autoconnect = autoconnect
 
-            if config and technology:
-                bs, verifier = emulator_config.StartDefault(config, technology)
-                cell_tools.PrepareModemForTechnology('', technology)
+        with test_env:
+            self.device = self.test_env.shill.find_cellular_device_object()
 
-                # Clear all errors before we start.
-                # Preparing the modem above may have caused some errors on the
-                # 8960 (eg. lost connection, etc).
-                bs.ClearErrors()
+            modem_commands = ModemCommands(self.test_env.modem,
+                                           slow_connect)
+            technology_commands = TechnologyCommands(self.test_env.shill,
+                                                     modem_commands)
+            device_commands = DeviceCommands(self.test_env.shill,
+                                             self.device,
+                                             slow_connect)
 
-            with pseudomodem_context.PseudoModemManagerContext(
-                pseudo_modem,
-                {'family' : pseudomodem_family}):
-                self.flim = flimflam.FlimFlam()
+            with cell_tools.AutoConnectContext(self.device,
+                                               self.test_env.flim,
+                                               autoconnect):
+                # Start with cellular disabled.
+                self.test_env.shill.manager.DisableTechnology(
+                        shill_proxy.ShillProxy.TECHNOLOGY_CELLULAR)
+                self.EnsureDisabled()
 
-                # Enabling flimflam debugging makes it easier to debug
-                # problems.  Tags will be cleared when the Backchannel
-                # context exits and flimflam is restarted.
-                self.flim.SetDebugTags(
-                    'dbus+service+device+modem+cellular+portal+network+'
-                    'manager+dhcp')
+                # Run the device commands test first to make sure we have
+                # a valid APN needed to connect using the modem commands.
+                self.TestCommands(device_commands)
+                self.TestCommands(technology_commands)
+                self.TestCommands(modem_commands)
 
-                self.device = self.flim.FindCellularDevice()
-                if not self.device:
-                    raise error.TestFail('Failed to find a cellular device.')
-                manager, modem_path = mm.PickOneModem('')
-                self.modem = manager.GetModem(modem_path)
-
-                modem_commands = ModemCommands(self.modem, slow_connect)
-                technology_commands = TechnologyCommands(self.flim,
-                                                         modem_commands)
-                device_commands = DeviceCommands(self.flim, self.device,
-                                                 slow_connect)
-
-                with cell_tools.AutoConnectContext(self.device, self.flim,
-                                                   autoconnect):
-                    # Get to a well known state.
-                    self.flim.DisableTechnology('cellular')
-                    self.EnsureDisabled()
-
-                    # Run the device commands test first to make sure we have
-                    # a valid APN needed to connect using the modem commands.
-                    self.TestCommands(device_commands)
-                    self.TestCommands(technology_commands)
-                    self.TestCommands(modem_commands)
-
-                    # Run several times using commands mixed from each type
-                    mixed = MixedRandomCommands([modem_commands,
-                                                 technology_commands,
-                                                 device_commands])
-                    for _ in range(mixed_iterations):
-                        self.TestCommands(mixed)
+                # Run several times using commands mixed from each type
+                mixed = MixedRandomCommands([modem_commands,
+                                             technology_commands,
+                                             device_commands])
+                for _ in range(mixed_iterations):
+                    self.TestCommands(mixed)

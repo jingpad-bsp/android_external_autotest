@@ -21,6 +21,10 @@ class CellularProxy(shill_proxy.ShillProxy):
     DEVICE_PROPERTY_TECHNOLOGY_FAMILY = 'Cellular.Family'
     DEVICE_PROPERTY_TECHNOLOGY_FAMILY_CDMA = 'CDMA'
     DEVICE_PROPERTY_TECHNOLOGY_FAMILY_GSM = 'GSM'
+    SERVICE_PROPERTY_LAST_GOOD_APN = 'Cellular.LastGoodAPN'
+
+    # APN info property names.
+    APN_INFO_PROPERTY_APN = 'apn'
 
     # Keys into the dictionaries exposed as properties.
     PROPERTY_KEY_SIM_LOCK_TYPE = 'LockType'

@@ -30,11 +30,14 @@ DOC = """
   if the commands are sent to the modem manager instead of flimflam.
 """
 
+from autotest_lib.client.cros.cellular import test_environment
+
 # For E362 modems, we need to prevent the modem from disconnecting too quickly
 # or else the out-of-credits logic will kick in and attempt to reconnect (see
 # shill/cellular_service.cc).  This is accomplished by setting |slow_connect|
 # to True.
-job.run_test('network_3GModemControl', autoconnect=False, slow_connect=True,
-             tag='no-autoconnect-e362')
-job.run_test('network_3GModemControl', autoconnect=True, slow_connect=True,
-             tag='autoconnect-e362')
+test_env = test_environment.CellularOTATestEnvironment()
+job.run_test('network_3GModemControl', test_env=test_env, autoconnect=False,
+             slow_connect=True, tag='no-autoconnect-e362')
+job.run_test('network_3GModemControl', test_env=test_env, autoconnect=True,
+             slow_connect=True, tag='autoconnect-e362')

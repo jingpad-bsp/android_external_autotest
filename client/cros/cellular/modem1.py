@@ -133,12 +133,12 @@ class Modem(object):
     def GetCurrentTechnologyFamily(self):
         """Returns the modem technology family."""
         props = self.GetAll(mm1.MODEM_INTERFACE)
-        sim = props.get('Sim')
-        log.debug('Modem.Sim = %s' % sim)
-        if sim is not None:
-            return cellular.TechnologyFamily.UMTS
-        else:
+        capabilities = props.get('SupportedCapabilities')
+        if self._IsCDMAModem(capabilities):
             return cellular.TechnologyFamily.CDMA
+        if self._Is3GPPModem(capabilities):
+            return cellular.TechnologyFamily.UMTS
+        raise error.TestError('Invalid modem type')
 
     def GetVersion(self):
         """Returns the modem version information."""

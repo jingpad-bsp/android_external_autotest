@@ -23,7 +23,10 @@ DOC = """
   if the commands are sent to the modem manager instead of flimflam.
 """
 
-job.run_test('network_3GModemControl', autoconnect=False,
+from autotest_lib.client.cros.cellular import test_environment
+
+test_env = test_environment.CellularOTATestEnvironment()
+job.run_test('network_3GModemControl', test_env=test_env, autoconnect=False,
              tag='no-autoconnect-y3300')
-job.run_test('network_3GModemControl', autoconnect=True,
+job.run_test('network_3GModemControl', test_env=test_env, autoconnect=True,
              tag='autoconnect-y3300')

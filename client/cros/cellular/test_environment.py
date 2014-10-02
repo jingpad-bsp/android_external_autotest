@@ -134,6 +134,10 @@ class CellularTestEnvironment(object):
     def __exit__(self, exception, value, traceback):
         if self._nested:
             return self._nested.__exit__(exception, value, traceback)
+        self.shill = None
+        self.flim = None
+        self.modem_manager = None
+        self.modem = None
 
 
     def _get_shill_cellular_device_object(self):
