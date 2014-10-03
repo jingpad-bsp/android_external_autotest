@@ -198,8 +198,10 @@ def run_autoserv(pid_file_manager, results, parser):
                 job.provision(job_labels)
             elif reset:
                 job.reset(job_labels)
+            elif cleanup:
+                job.cleanup(job_labels)
             else:
-                job.run(cleanup, install_before, install_after,
+                job.run(install_before, install_after,
                         verify_job_repo_url=verify_job_repo_url,
                         only_collect_crashinfo=collect_crashinfo,
                         skip_crash_collection=skip_crash_collection,

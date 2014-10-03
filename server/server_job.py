@@ -375,39 +375,61 @@ class base_server_job(base_job.base_job):
         return namespace
 
 
+    def cleanup(self, labels=''):
+        """Cleanup machines.
+
+        @param labels: Comma separated job labels, will be used to
+                       determine special task actions.
+        """
+        if not self.machines:
+            raise error.AutoservError('No machines specified to cleanup')
+        if self.resultdir:
+            os.chdir(self.resultdir)
+
+        namespace = self._make_namespace()
+        namespace.update({'job_labels': labels, 'args': ''})
+        self._execute_code(CLEANUP_CONTROL_FILE, namespace, protect=False)
+
+
     def verify(self, labels=''):
-        """Verify machines are all ssh-able."""
+        """Verify machines are all ssh-able.
+
+        @param labels: Comma separated job labels, will be used to
+                       determine special task actions.
+        """
         if not self.machines:
             raise error.AutoservError('No machines specified to verify')
         if self.resultdir:
             os.chdir(self.resultdir)
-        try:
-            namespace = self._make_namespace()
-            namespace.update({'job_labels': labels, 'args': ''})
-            self._execute_code(VERIFY_CONTROL_FILE, namespace, protect=False)
-        except Exception, e:
-            msg = ('Verify failed\n' + str(e) + '\n' + traceback.format_exc())
-            raise
+
+        namespace = self._make_namespace()
+        namespace.update({'job_labels': labels, 'args': ''})
+        self._execute_code(VERIFY_CONTROL_FILE, namespace, protect=False)
 
 
     def reset(self, labels=''):
-        """Reset machines by first cleanup then verify each machine."""
+        """Reset machines by first cleanup then verify each machine.
+
+        @param labels: Comma separated job labels, will be used to
+                       determine special task actions.
+        """
         if not self.machines:
             raise error.AutoservError('No machines specified to reset.')
         if self.resultdir:
             os.chdir(self.resultdir)
 
-        try:
-            namespace = self._make_namespace()
-            namespace.update({'job_labels': labels, 'args': ''})
-            self._execute_code(RESET_CONTROL_FILE, namespace, protect=False)
-        except Exception as e:
-            msg = ('Reset failed\n' + str(e) + '\n' +
-                   traceback.format_exc())
-            raise
+        namespace = self._make_namespace()
+        namespace.update({'job_labels': labels, 'args': ''})
+        self._execute_code(RESET_CONTROL_FILE, namespace, protect=False)
 
 
     def repair(self, host_protection, labels=''):
+        """Repair machines.
+
+        @param host_protection: level of host protection.
+        @param labels: Comma separated job labels, will be used to
+                       determine special task actions.
+        """
         if not self.machines:
             raise error.AutoservError('No machines specified to repair')
         if self.resultdir:
@@ -416,7 +438,6 @@ class base_server_job(base_job.base_job):
         namespace = self._make_namespace()
         namespace.update({'protection_level' : host_protection,
                           'job_labels': labels, 'args': ''})
-
         self._execute_code(REPAIR_CONTROL_FILE, namespace, protect=False)
 
 
@@ -533,7 +554,7 @@ class base_server_job(base_job.base_job):
 
 
     _USE_TEMP_DIR = object()
-    def run(self, cleanup=False, install_before=False, install_after=False,
+    def run(self, install_before=False, install_after=False,
             collect_crashdumps=True, namespace={}, control=None,
             control_file_dir=None, verify_job_repo_url=False,
             only_collect_crashinfo=False, skip_crash_collection=False,
@@ -653,8 +674,6 @@ class base_server_job(base_job.base_job):
                 else:
                     self._execute_code(CRASHDUMPS_CONTROL_FILE, namespace)
             self.disable_external_logging()
-            if cleanup and machines:
-                self._execute_code(CLEANUP_CONTROL_FILE, namespace)
             if self._uncollected_log_file and created_uncollected_logs:
                 os.remove(self._uncollected_log_file)
             if install_after and machines:
