@@ -698,6 +698,9 @@ class RobotWrapper:
             return common_util.simple_system(noise_cmd)
 
     def _get_noise_command(self, gesture, variation):
+        if not gesture or not variation:
+            return None
+
         waveform = frequency = amplitude = None
         for element in variation:
             if element.endswith('Hz'):
@@ -715,6 +718,9 @@ class RobotWrapper:
         return None
 
     def configure_noise(self, gesture, variation):
+        if not gesture or not variation:
+            return None
+
         if not isinstance(variation, tuple):
             variation = (variation,)
 

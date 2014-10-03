@@ -112,9 +112,9 @@ class TestFlow:
         elif self.mode == MODE.MANUAL:
             # Define the manual list which is gesture_names_complete:
             # gesture_names_robot - gesture_names_equipment_required
-            manual_set = (set(gesture_names_complete[self.device_type]) -
-                          set(gesture_names_robot[self.device_type]))
-            return list(manual_set - set(gesture_names_fngenerator_required))
+            manual_set = (set(conf.gesture_names_complete[self.device_type]) -
+                          set(conf.gesture_names_robot[self.device_type]))
+            return list(manual_set - set(conf.gesture_names_fngenerator_required))
 
         elif self.mode == MODE.CALIBRATION:
             return conf.gesture_names_calibration
