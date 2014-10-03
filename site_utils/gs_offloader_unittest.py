@@ -59,6 +59,7 @@ class OffloaderOptionsTests(mox.MoxTestBase):
     def setUp(self):
         super(OffloaderOptionsTests, self).setUp()
         self.mox.StubOutWithMock(utils, 'get_offload_gsuri')
+        gs_offloader.GS_OFFLOADING_ENABLED = True
 
 
     def _mock_get_offload_func(self, is_moblab):
@@ -163,6 +164,15 @@ class OffloaderOptionsTests(mox.MoxTestBase):
         self.assertEqual(offloader._offload_func,
                          offload_func)
         self.assertEqual(offloader._age_limit, 0)
+
+
+    def test_globalconfig_offloading_flag(self):
+        """Test enabling of --delete_only via global_config."""
+        gs_offloader.GS_OFFLOADING_ENABLED = False
+        offloader = gs_offloader.Offloader(
+                _get_options([]))
+        self.assertEqual(offloader._offload_func,
+                         gs_offloader.delete_files)
 
 
 def _make_timestamp(age_limit, is_expired):

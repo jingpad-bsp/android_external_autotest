@@ -39,6 +39,9 @@ from autotest_lib.scheduler import email_manager
 from chromite.lib import parallel
 
 
+GS_OFFLOADING_ENABLED = global_config.global_config.get_config_value(
+    'CROS', 'gs_offloading_enabled', type=bool, default=True)
+
 STATS_KEY = 'gs_offloader.%s' % socket.gethostname()
 
 timer = stats.Timer(STATS_KEY)
@@ -396,8 +399,11 @@ def parse_options():
   parser.add_option('-o', '--delete_only', dest='delete_only',
                     action='store_true',
                     help='GS Offloader will only the delete the directories '
-                         'and will not offload them to google storage.',
-                    default=False)
+                         'and will not offload them to google storage. '
+                         'NOTE: If global_config variable '
+                         'CROS.gs_offloading_enabled is False, --delete_only'
+                         ' is automatically True.',
+                    default=not GS_OFFLOADING_ENABLED)
   parser.add_option('-d', '--days_old', dest='days_old',
                     help='Minimum job age in days before a result can be '
                     'offloaded.', type='int', default=0)
