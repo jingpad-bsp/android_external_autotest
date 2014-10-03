@@ -170,6 +170,24 @@ def host_remove_labels(id, labels):
     models.Host.smart_get(id).labels.remove(*labels)
 
 
+def get_host_attribute(attribute, **host_filter_data):
+    """
+    @param attribute: string name of attribute
+    @param host_filter_data: filter data to apply to Hosts to choose hosts to
+                             act upon
+    """
+    hosts = rpc_utils.get_host_query((), False, False, True, host_filter_data)
+    hosts = list(hosts)
+    models.Host.objects.populate_relationships(hosts, models.HostAttribute,
+                                               'attribute_list')
+    host_attr_dicts = []
+    for host_obj in hosts:
+        for attr_obj in host_obj.attribute_list:
+            if attr_obj.attribute == attribute:
+                host_attr_dicts.append(attr_obj.get_object_dict())
+    return rpc_utils.prepare_for_serialization(host_attr_dicts)
+
+
 def set_host_attribute(attribute, value, **host_filter_data):
     """
     @param attribute string name of attribute

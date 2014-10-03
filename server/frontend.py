@@ -236,6 +236,11 @@ class AFE(RpcClient):
         return self.get_hosts(id=id)[0]
 
 
+    def get_host_attribute(self, attr, **dargs):
+        host_attrs = self.run('get_host_attribute', attribute=attr, **dargs)
+        return [HostAttribute(self, a) for a in host_attrs]
+
+
     def set_host_attribute(self, attr, val, **dargs):
         self.run('set_host_attribute', attribute=attr, value=val, **dargs)
 
@@ -933,6 +938,17 @@ class TestStatus(RpcObject):
     """
     def __repr__(self):
         return 'TEST STATUS: %s' % self.id
+
+
+class HostAttribute(RpcObject):
+    """
+    AFE host attribute object
+
+    Fields:
+        id, host, attribute, value
+    """
+    def __repr__(self):
+        return 'HOST ATTRIBUTE %d' % self.id
 
 
 class MachineTestPairing(object):

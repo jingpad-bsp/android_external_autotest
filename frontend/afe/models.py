@@ -594,7 +594,7 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
         return unicode(self.hostname)
 
 
-class HostAttribute(dbmodels.Model):
+class HostAttribute(dbmodels.Model, model_logic.ModelExtensions):
     """Arbitrary keyvals associated with hosts."""
     host = dbmodels.ForeignKey(Host)
     attribute = dbmodels.CharField(max_length=90)
