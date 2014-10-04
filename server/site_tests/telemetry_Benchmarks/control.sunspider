@@ -2,17 +2,21 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "chromeos-perf"
-NAME = "Telemetry Page Loading Benchmark"
-SUITE = "perf_v2"
+from autotest_lib.client.common_lib import utils
+
+AUTHOR = "sbasi, achuith, rohitbm"
+NAME = "telemetry_Benchmarks.sunspider"
+SUITE = "bvt-perbuild"
 TIME = "LONG"
 TEST_CATEGORY = "Benchmark"
 TEST_CLASS = "performance"
 TEST_TYPE = "server"
 
 DOC = """
-This server side test suite executes the Telemetry Page Loading
-Benchmark.  This is part of Chrome for Chrome OS performance testing.
+This server side test suite executes the Telemetry Sun Spider Benchmark.
+This is part of Chrome for Chrome OS performance testing.
+
+Pass local=True to run with local telemetry and no AFE server.
 """
 
 def run_benchmark(machine):
@@ -27,8 +31,8 @@ def run_benchmark(machine):
     # is no dependency on rpm, as an RPM failure could cause the job to fail
     # before running the benchmark.
     job.run_test("telemetry_Benchmarks", host=host,
-                 benchmark="page_cycler.typical_25",
-                 tag="page_cycler.typical_25")
+                 benchmark="sunspider", tag="sunspider",
+                 args=utils.args_to_dict(args))
 
     job.run_test("power_RPMTest", host=host, verify=False,
                  power_on=True, tag="on")
