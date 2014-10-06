@@ -33,12 +33,20 @@ def set_power(hostname, new_state, timeout_mins=RPM_CALL_TIMEOUT_MINS):
     @param new_state: State we want to set the power outlet to.
     """
     client = xmlrpclib.ServerProxy(RPM_FRONTEND_URI, verbose=False)
-    timeout, result = retry.timeout(client.queue_request,
-                                    args=(hostname, new_state),
-                                    timeout_sec=timeout_mins * 60,
-                                    default_result=False)
+    timeout = None
+    result = None
+    try:
+        timeout, result = retry.timeout(client.queue_request,
+                                        args=(hostname, new_state),
+                                        timeout_sec=timeout_mins * 60,
+                                        default_result=False)
+    except Exception as e:
+        logging.exception(e)
+        raise RemotePowerException(
+                'Client call exception: ' + str(e))
     if timeout:
-        raise RemotePowerException('Call to RPM Infrastructure timed out.')
+        raise RemotePowerException(
+                'Call to RPM Infrastructure timed out.')
     if not result:
         error_msg = ('Failed to change outlet status for host: %s to '
                      'state: %s.' % (hostname, new_state))
