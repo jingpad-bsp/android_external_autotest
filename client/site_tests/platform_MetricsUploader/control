@@ -11,7 +11,7 @@ MetricsUploader must pick up the metrics from the file and upload them
 periodically.
 """
 
-SUITE=experimental
+SUITE = "experimental"
 TIME = "FAST"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
