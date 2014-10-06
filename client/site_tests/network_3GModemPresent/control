@@ -22,4 +22,7 @@ DOC = """
 
 """
 
-job.run_test('network_3GModemPresent')
+from autotest_lib.client.cros.cellular import test_environment
+
+test_env = test_environment.CellularOTATestEnvironment()
+job.run_test('network_3GModemPresent', test_env=test_env)

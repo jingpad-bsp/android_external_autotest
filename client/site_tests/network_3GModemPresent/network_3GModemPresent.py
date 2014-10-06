@@ -4,10 +4,7 @@
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
 
-from autotest_lib.client.cros import flimflam_test_path
-import flimflam
 
 class network_3GModemPresent(test.test):
     """
@@ -18,11 +15,8 @@ class network_3GModemPresent(test.test):
     """
     version = 1
 
-    def run_once(self, pseudo_modem=False, pseudomodem_family='3GPP'):
-        with pseudomodem_context.PseudoModemManagerContext(
-                pseudo_modem,
-                {'family': pseudomodem_family}):
-            flim = flimflam.FlimFlam()
-            device = flim.FindCellularDevice()
+    def run_once(self, test_env):
+        with test_env:
+            device = test_env.shill.find_cellular_device_object()
             if not device:
                 raise error.TestFail("Could not find cellular device")

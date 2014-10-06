@@ -23,13 +23,16 @@ DOC = """
 
 """
 
+from autotest_lib.client.cros.cellular import test_environment
+
 # 3GPP
-job.run_test('network_3GModemPresent',
-             pseudo_modem=True,
+test_env = test_environment.CellularPseudoMMTestEnvironment(
+        pseudomm_args=({'family': '3GPP'},))
+job.run_test('network_3GModemPresent', test_env=test_env,
              tag='pseudomodem_3GPP')
 
 # CDMA
-job.run_test('network_3GModemPresent',
-             pseudo_modem=True,
-             pseudomodem_family='CDMA',
+test_env = test_environment.CellularPseudoMMTestEnvironment(
+        pseudomm_args=({'family': 'CDMA'},))
+job.run_test('network_3GModemPresent', test_env=test_env,
              tag='pseudomodem_CDMA')
