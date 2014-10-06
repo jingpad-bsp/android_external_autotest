@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Mussa Kiroga"
-NAME = "video_GlitchDetection.chameleon.mp4.480p"
+NAME = "video_GlitchDetection_chameleon_mp4_480p"
 PURPOSE = "Verify that Chrome Video Playback is glitch and corruption free"
 CRITERIA = """
 
@@ -13,7 +13,7 @@ TIME = "LONG"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
-DEPENDENCIES = "board:peach_pi", "video_glitch_detection", "chameleon"
+DEPENDENCIES = "board:peach_pi, video_glitch_detection, chameleon"
 BUG_TEMPLATE = {
     'owner': 'avkodipelli@chromium.org',
     'cc': ['mussa@chromium.org', 'rohitbm@chromium.org'],
