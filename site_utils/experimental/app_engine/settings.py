@@ -18,7 +18,7 @@ DEFAULT_BOARD_ORDER = ('x86-alex-r13,x86-alex-r12,x86-alex-r11,'
 DEFAULT_CATEGORIES = 'bvt'
 DEFAULT_CATEGORY = 'bvt'
 EXTRA_CATEGORIES = ["browsertest", "bvt", "flaky", "hwqual", "network_3g",
-                    "pagecycler", "sync", "regression"]
+                    "pagecycler", "pyauto", "sync", "regression"]
 
 COLOR_GREEN = '#32CD32'
 COLOR_ORANGE = '#FF8040'

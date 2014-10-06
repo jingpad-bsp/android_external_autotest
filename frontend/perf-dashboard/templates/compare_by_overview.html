@@ -1,0 +1,44 @@
+{% extends "overview_base.html" %}
+
+{% comment %}
+Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+Use of this source code is governed by a BSD-style license that can be
+found in the LICENSE file.
+
+This template describes the overall page structure for the birds-eye overview
+perf graph webpage that compares the results of a given test among all
+branches or all platforms.
+{% endcomment %}
+
+{% block title %}
+  Compare by
+  {% if compare_type == "branch" %}
+    Branch:
+  {% else %}
+    Platform:
+  {% endif %}
+  {{ test_name }}
+{% endblock %}
+
+{% block content %}
+
+  <h1>{{ autotest_name }}: {{ test_name }}</h1>
+
+  {# Create HTML for the perf graphs table. #}
+  {% for outer_list_item in outer_list %}
+    {% for info in outer_list_item %}
+      {% if forloop.first %}
+        <h1>{{ info.outer_item }}</h1><table><tr>
+      {% endif %}
+      {% if info.has_data %}
+        <script>DisplayGraph("{{ info.branch }}/{{ info.platform }}/{{ test_id }}", "{{ info.inner_item }}");</script>
+      {% else %}
+        <script>DisplayStub("{{ info.branch }}", "{{ info.platform }}", "{{ autotest_name }}: {{ test_name }}");</script>
+      {% endif %}
+
+      {% if forloop.counter|divisibleby:"3" %}</tr><tr>{% endif %}
+    {% endfor %}
+    </tr></table>
+  {% endfor %}
+
+{% endblock %}

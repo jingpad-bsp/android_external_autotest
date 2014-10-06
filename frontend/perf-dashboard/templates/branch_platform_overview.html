@@ -1,0 +1,43 @@
+{% extends "overview_base.html" %}
+
+{% comment %}
+Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+Use of this source code is governed by a BSD-style license that can be
+found in the LICENSE file.
+
+This template describes the overall page structure for the birds-eye overview
+perf graph webpage that shows the summary for a particular branch/platform.
+{% endcomment %}
+
+{% block title %}
+  ChromeOS Perf Overview: {{ branch }}-{{ platform }}
+{% endblock %}
+
+{% block content %}
+
+  {# Create HTML for overview link matrix. #}
+  {% for b in branches %}
+    <b>{{ b }}:</b> [
+    {% for p in platform_list %}
+      <a href="{{ b }}-{{ p }}.html">{{ p }}</a>
+      {% if not forloop.last %} | {% endif %}
+    {% endfor %} ]<br>
+  {% endfor %}
+
+  <h1>ChromeOS Performance Overview: {{ branch }}-{{ platform }}</h1>
+  <h3>(<a href="../../{{ platform_converted }}/{{ platform_converted_2 }}-{{ branch }}/perf_index.html">old-style graphs</a>)</h3>
+
+  {# Create HTML for the perf graphs table. #}
+  <table><tr>
+    {% for test in tests %}
+      {% if test.has_data %}
+        <script>DisplayGraph("{{ branch }}/{{ platform }}/{{ test.id}}");</script>
+      {% else %}
+        <script>DisplayStub("{{ branch }}", "{{ platform }}", "{{ test.name }}");</script>
+      {% endif %}
+
+      {% cycle '' '' '</tr><tr>' %}
+    {% endfor %}
+  </tr></table>
+
+{% endblock %}
