@@ -8,9 +8,9 @@
 This script provides functions to:
 1. collect: Collect all hosts and their labels to metaDB, can be scheduled
             run daily, e.g.,
-            ./site_utils/host_labels_utils.py collect
+            ./site_utils/host_label_utils.py collect
 2. query: Query for hosts and their labels information at a given day, e.g.,
-          ./site_utils/host_labels_utils.py query -n 172.27.213.193 -l peppy
+          ./site_utils/host_label_utils.py query -n 172.27.213.193 -l peppy
 """
 
 import argparse

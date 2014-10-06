@@ -6,13 +6,35 @@
 
 import collections
 import copy
+from itertools import groupby
 
 import common
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib.cros.graphite import es_utils
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import models
+from autotest_lib.site_utils import host_label_utils
 from autotest_lib.site_utils import job_history
+
+
+_HOST_HISTORY_TYPE = 'host_history'
+_LOCK_HISTORY_TYPE = 'lock_history'
+
+def get_matched_hosts(board, pool):
+    """Get duts with matching board and pool labels from metaDB.
+
+    @param board: board of DUT, set to None if board doesn't need to match.
+    @param pool: pool of DUT, set to None if pool doesn't need to match.
+    @return: A list of duts that match the specified board and pool.
+    """
+    labels = []
+    if pool:
+        labels.append('pool:%s' % pool)
+    if board:
+        labels.append('board:%s' % board)
+    host_labels = host_label_utils.get_host_labels(labels=labels)
+    return host_labels.keys()
+
 
 def prepopulate_dict(keys, value, extras=None):
     """Creates a dictionary with val=value for each key.
@@ -58,14 +80,13 @@ def lock_history_to_intervals(initial_lock_val, t_start, t_end, lock_history):
     return locked_intervals
 
 
-def find_most_recent_entry_before(t, type_str, hostname, fields, index):
+def find_most_recent_entry_before(t, type_str, hostname, fields):
     """Returns the fields of the most recent entry before t.
 
     @param t: time we are interested in.
     @param type_str: _type in esdb, such as 'host_history' (string)
     @param hostname: hostname of DUT (string)
     @param fields: list of fields we are interested in
-    @param index: index in elasticsearch to query data for.
     @returns: time, field_value of the latest entry.
     """
     query = es_utils.create_range_eq_query_multiple(
@@ -75,9 +96,7 @@ def find_most_recent_entry_before(t, type_str, hostname, fields, index):
             range_constraints=[('time_recorded', None, t)],
             size=1,
             sort_specs=[{'time_recorded': 'desc'}])
-    result = es_utils.execute_query(
-            query, index,
-            es_utils.METADATA_ES_SERVER, es_utils.ES_PORT)
+    result = es_utils.execute_query(query)
     if result['hits']['total'] > 0:
         # If fields are not specified, the query returns all data for the
         # record under key "_source"
@@ -86,14 +105,19 @@ def find_most_recent_entry_before(t, type_str, hostname, fields, index):
     return {}
 
 
-def host_history_intervals(t_start, t_end, hostname, size, index):
+def get_host_history_intervals(t_start, t_end, hostname, intervals):
     """Gets stats for a host.
+
+    This method uses intervals found in metaDB to build a full history of the
+    host. The intervals argument contains a list of metadata from querying ES
+    for records between t_start and t_end. To get the status from t_start to
+    the first record logged in ES, we need to look back to the last record
+    logged in ES before t_start.
 
     @param t_start: beginning of time period we are interested in.
     @param t_end: end of time period we are interested in.
     @param hostname: hostname for the host we are interested in (string)
-    @param size: maximum number of entries returned per query
-    @param index: index in elasticsearch to query data for.
+    @param intervals: intervals from ES query.
     @returns: dictionary, num_entries_found
         dictionary of status: time spent in that status
         num_entries_found: number of host history entries
@@ -101,14 +125,14 @@ def host_history_intervals(t_start, t_end, hostname, size, index):
 
     """
     lock_history_recent = find_most_recent_entry_before(
-            t=t_start, type_str='lock_history', hostname=hostname,
-            fields=['time_recorded', 'locked'], index=index)
+            t=t_start, type_str=_LOCK_HISTORY_TYPE, hostname=hostname,
+            fields=['time_recorded', 'locked'])
     # I use [0] and [None] because lock_history_recent's type is list.
     t_lock = lock_history_recent.get('time_recorded', None)
     t_lock_val = lock_history_recent.get('locked', None)
     host_history_recent = find_most_recent_entry_before(
-            t=t_start, type_str='host_history', hostname=hostname,
-            fields=None, index=index)
+            t=t_start, type_str=_HOST_HISTORY_TYPE, hostname=hostname,
+            fields=None)
     t_host = host_history_recent.get('time_recorded', None)
     t_host_stat = host_history_recent.get('status', None)
     t_metadata = es_utils.get_metadata(host_history_recent,
@@ -119,35 +143,22 @@ def host_history_intervals(t_start, t_end, hostname, size, index):
 
     query_lock_history = es_utils.create_range_eq_query_multiple(
             fields_returned=['locked', 'time_recorded'],
-            equality_constraints=[('_type', 'lock_history'),
+            equality_constraints=[('_type', _LOCK_HISTORY_TYPE),
                                   ('hostname', hostname)],
             range_constraints=[('time_recorded', t, t_end)],
-            size=size,
             sort_specs=[{'time_recorded': 'asc'}])
 
-    lock_history_entries = es_utils.execute_query(
-            query_lock_history, index,
-            es_utils.METADATA_ES_SERVER, es_utils.ES_PORT)
+    lock_history_entries = es_utils.execute_query(query_lock_history)
 
     locked_intervals = lock_history_to_intervals(t_lock_val, t, t_end,
                                                  lock_history_entries)
-    query_host_history = es_utils.create_range_eq_query_multiple(
-            fields_returned=None,
-            equality_constraints=[("_type", "host_history"),
-                                  ("hostname", hostname)],
-            range_constraints=[("time_recorded", t_start, t_end)],
-            size=size,
-            sort_specs=[{"time_recorded": "asc"}])
-    host_history_entries = es_utils.execute_query(
-            query_host_history, index,
-            es_utils.METADATA_ES_SERVER, es_utils.ES_PORT)
-    num_entries_found = host_history_entries['hits']['total']
+    num_entries_found = len(intervals)
     t_prev = t_start
     status_prev = status_first
     metadata_prev = t_metadata
     intervals_of_statuses = collections.OrderedDict()
 
-    for entry in host_history_entries['hits']['hits']:
+    for entry in intervals:
         t_curr = entry['_source']['time_recorded']
         status_curr = entry['_source']['status']
         metadata = es_utils.get_metadata(entry['_source'],
@@ -241,8 +252,122 @@ def get_overall_report(label, t_start, t_end, intervals_of_statuses_list):
             label, t_start, t_end, stats_all, num_hosts)
 
 
-def get_report_for_host(t_start, t_end, hostname, size,
-                        print_each_interval, index):
+def get_intervals_for_host(t_start, t_end, hostname):
+    """Gets intervals for the given.
+
+    Query metaDB to return all intervals between given start and end time.
+    Note that intervals found in metaDB may miss the history from t_start to
+    the first interval found.
+
+    @param t_start: beginning of time period we are interested in.
+    @param t_end: end of time period we are interested in.
+    @param hosts: A list of hostnames to look for history.
+    @param board: Name of the board to look for history. Default is None.
+    @param pool: Name of the pool to look for history. Default is None.
+    @returns: A dictionary of hostname: intervals.
+    """
+    query_host_history = es_utils.create_range_eq_query_multiple(
+                fields_returned=None,
+                equality_constraints=[('_type', _HOST_HISTORY_TYPE),
+                                      ('hostname', hostname)],
+                range_constraints=[('time_recorded', t_start, t_end)],
+                sort_specs=[{'time_recorded': 'asc'}])
+    host_history_entries = es_utils.execute_query(query_host_history)
+    return host_history_entries['hits']['hits']
+
+
+def get_intervals_for_hosts(t_start, t_end, hosts=None, board=None, pool=None):
+    """Gets intervals for given hosts or board/pool.
+
+    Query metaDB to return all intervals between given start and end time.
+    If a list of hosts is provided, the board and pool constraints are ignored.
+    If hosts is set to None, and board or pool is set, this method will attempt
+    to search host history with labels for all hosts, to help the search perform
+    faster.
+    If hosts, board and pool are all set to None, return intervals for all
+    hosts.
+    Note that intervals found in metaDB may miss the history from t_start to
+    the first interval found.
+
+    @param t_start: beginning of time period we are interested in.
+    @param t_end: end of time period we are interested in.
+    @param hosts: A list of hostnames to look for history.
+    @param board: Name of the board to look for history. Default is None.
+    @param pool: Name of the pool to look for history. Default is None.
+    @returns: A dictionary of hostname: intervals.
+    """
+    hosts_intervals = {}
+    if hosts:
+        for host in hosts:
+            hosts_intervals[host] = get_intervals_for_host(t_start, t_end, host)
+    else:
+        hosts = get_matched_hosts(board, pool)
+        if not hosts:
+            raise Exception('No host is found for board:%s, pool:%s.' %
+                            (board, pool))
+        equality_constraints=[('_type', _HOST_HISTORY_TYPE),]
+        if board:
+            equality_constraints.append(('labels', 'board:'+board))
+        if pool:
+            equality_constraints.append(('labels', 'pool:'+pool))
+        query_labels =  es_utils.create_range_eq_query_multiple(
+                equality_constraints=equality_constraints,
+                range_constraints=[('time_recorded', t_start, t_end)],
+                sort_specs=[{'hostname': 'asc'}])
+        results = es_utils.execute_query(query_labels)
+        results_group_by_host = {}
+        for hostname,intervals_for_host in groupby(results['hits']['hits'],
+                                                   lambda h: h['hostname']):
+            results_group_by_host[hostname] = intervals_for_host
+        for host in hosts:
+            intervals = results_group_by_host.get(host, None)
+            # In case the host's board or pool label was modified after
+            # the last status change event was reported, we need to run a
+            # separate query to get its history. That way the host's
+            # history won't be shown as blank.
+            if not intervals:
+                intervals = get_intervals_for_host(t_start, t_end, host)
+            hosts_intervals[host] = intervals
+    return hosts_intervals
+
+
+def get_report(t_start, t_end, hosts=None, board=None, pool=None,
+                print_each_interval=False):
+    """Gets history for given hosts or board/pool
+
+    If a list of hosts is provided, the board and pool constraints are ignored.
+
+    @param t_start: beginning of time period we are interested in.
+    @param t_end: end of time period we are interested in.
+    @param hosts: A list of hostnames to look for history.
+    @param board: Name of the board to look for history. Default is None.
+    @param pool: Name of the pool to look for history. Default is None.
+    @param print_each_interval: True display all intervals, default is False.
+    @returns: stats report for this particular host. The report is a list of
+              tuples (stat_string, intervals, hostname), intervals is a sorted
+              dictionary.
+    """
+    if hosts:
+        board=None
+        pool=None
+
+    hosts_intervals = get_intervals_for_hosts(t_start, t_end, hosts, board,
+                                              pool)
+    history = {}
+    for hostname,intervals in hosts_intervals.items():
+        history[hostname] = get_host_history_intervals(t_start, t_end, hostname,
+                                                       intervals)
+    report = []
+    for hostname,intervals in history.items():
+        total_times = calculate_total_times(intervals[0])
+        stats = get_stats_string(
+                t_start, t_end, total_times, intervals[0], hostname,
+                intervals[1], print_each_interval)
+        report.append((stats, intervals[0], hostname))
+    return report
+
+
+def get_report_for_host(t_start, t_end, hostname, print_each_interval):
     """Gets stats report for a host
 
     @param t_start: beginning of time period we are interested in.
@@ -250,11 +375,15 @@ def get_report_for_host(t_start, t_end, hostname, size,
     @param hostname: hostname for the host we are interested in (string)
     @param print_each_interval: True or False, whether we want to
                                 display all intervals
-    @param index: index in elasticsearch to query data for.
     @returns: stats report for this particular host (string)
     """
-    intervals_of_statuses, num_entries_found = host_history_intervals(
-            t_start, t_end, hostname, size, index)
+    # Search for status change intervals during given time range.
+    intervals = get_intervals_for_host(t_start, t_end, hostname)
+    num_entries_found = len(intervals)
+    # Update the status change intervals with status before the first entry and
+    # host's lock history.
+    intervals_of_statuses = get_host_history_intervals(t_start, t_end, hostname,
+                                                       intervals)
     total_times = calculate_total_times(intervals_of_statuses)
     return (get_stats_string(
                     t_start, t_end, total_times, intervals_of_statuses,
@@ -290,13 +419,11 @@ def get_stats_string(t_start, t_end, total_times, intervals_of_statuses,
             t0_string = time_utils.epoch_time_to_date_string(t0)
             t1_string = time_utils.epoch_time_to_date_string(t1)
             status = status_info['status']
-            spaces = (15 - len(status)) * ' '
             delta = int(t1-t0)
-            result += '    %s  :  %s %s %s %ss\n' % (t0_string, t1_string,
-                                                    status_info['status'],
-                                                    spaces,
-                                                    delta,
-                                                    )
+            id_info = status_info['metadata'].get(
+                    'task_id', status_info['metadata'].get('job_id', ''))
+            result += ('    %s  :  %s %-15s %-10s %ss\n' %
+                       (t0_string, t1_string, status, id_info, delta))
     return result
 
 

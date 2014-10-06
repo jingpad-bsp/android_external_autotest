@@ -198,7 +198,7 @@ class ESMetadata(object):
 def create_range_eq_query_multiple(equality_constraints,
                                    fields_returned=None,
                                    range_constraints=[],
-                                   size=None,
+                                   size=1000000,
                                    sort_specs=None,
                                    regex_constraints=[]):
     """Creates a dict. representing multple range and/or equality queries.
@@ -271,7 +271,7 @@ def create_range_eq_query_multiple(equality_constraints,
         e.g. [ ('field1', 2, 10), ('field2', -1, 20) ]
         If you want one side to be unbounded, you can use None.
         e.g. [ ('field1', 2, None) ] means value of field1 >= 2.
-    @param size: max number of entries to return.
+    @param size: max number of entries to return. Default is 1000000.
     @param sort_specs: A list of fields to sort on, tiebreakers will be
         broken by the next field(s).
     @param regex_constraints: A list of regex constraints of tuples of
@@ -312,8 +312,7 @@ def create_range_eq_query_multiple(equality_constraints,
             }
     if fields_returned:
         query['fields'] = fields_returned
-    if size:
-        query['size'] = size
+    query['size'] = size
     if sort_specs:
         query['sort'] = sort_specs
     return query
@@ -388,7 +387,20 @@ def execute_query(query, index=INDEX_METADATA, host=METADATA_ES_SERVER,
     es = elasticsearch.Elasticsearch(host=host, port=port, timeout=timeout)
     if not es.indices.exists(index=index):
         return None
-    return es.search(index=index, body=query)
+    result = es.search(index=index, body=query)
+    # Check if not all matched records are returned. It could be size is set to
+    # too small. Special case for size set to 1, as that means that the query
+    # cares about the first matched entry.
+    # TODO: Use pagination in Elasticsearch. This needs major change on how
+    #       query results are iterated.
+    size = query.get('size', 1)
+    return_count = len(result['hits']['hits'])
+    total_match = result['hits']['total']
+    if total_match > return_count and size != 1:
+        logging.error('There are %d matched records, only %d entries are '
+                      'returned. Query size is set to %d.', total_match,
+                      return_count, size)
+    return result
 
 
 def convert_hit(hit):

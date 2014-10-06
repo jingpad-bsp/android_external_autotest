@@ -190,8 +190,8 @@ def create_range_eq_query(fields_returned,
     if range_key:
         range_constraints = [(range_key, range_low, range_high)]
     return es_utils.create_range_eq_query_multiple(
-        fields_returned,
         equality_constraints=equality_constraints,
+        fields_returned=fields_returned,
         range_constraints=range_constraints,
         size=size,
         sort_specs=sort_specs,
