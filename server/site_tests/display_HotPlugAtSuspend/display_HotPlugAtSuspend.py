@@ -71,8 +71,9 @@ class display_HotPlugAtSuspend(chameleon_test.ChameleonTest):
             sleep_time = (self.SUSPEND_DURATION -
                           (current_time - time_before_suspend) -
                           self.TIME_MARGIN_BEFORE_RESUME)
-            logging.info('- Sleep for %.2f seconds...', sleep_time)
-            time.sleep(sleep_time)
+            if sleep_time > 0:
+                logging.info('- Sleep for %.2f seconds...', sleep_time)
+                time.sleep(sleep_time)
             self.set_plug(plugged_before_resume)
             time.sleep(self.TIME_MARGIN_BEFORE_RESUME)
 
