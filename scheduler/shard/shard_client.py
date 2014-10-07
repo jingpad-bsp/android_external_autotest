@@ -22,7 +22,7 @@ from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.frontend.afe import models, rpc_utils
 from autotest_lib.scheduler import email_manager
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
-from autotest_lib.shard import shard_logging_config
+from autotest_lib.scheduler.shard import shard_logging_config
 
 
 
@@ -265,13 +265,13 @@ def get_shard_client():
 
 def main():
     try:
-        stats.Counter(STATS_KEY).send('starts').increment()
+        stats.Counter(STATS_KEY + 'starts').increment()
         main_without_exception_handling()
     except Exception as e:
         message = 'Uncaught exception; terminating shard_client.'
         email_manager.manager.log_stacktrace(message)
         logging.exception(message)
-        stats.Counter(STATS_KEY).send('uncaught_exceptions').increment()
+        stats.Counter(STATS_KEY + 'uncaught_exceptions').increment()
         raise
     finally:
         email_manager.manager.send_queued_emails()

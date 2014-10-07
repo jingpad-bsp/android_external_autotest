@@ -13,7 +13,7 @@ from autotest_lib.frontend.afe import models
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
-from autotest_lib.shard import shard_client
+from autotest_lib.scheduler.shard import shard_client
 
 
 class ShardClientTest(mox.MoxTestBase,
