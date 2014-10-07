@@ -11,6 +11,7 @@ class Values(object):
     chrome_ec = True
     dark_resume_capable = True
     ec_capability = ['adc_ectemp', 'battery', 'charging', 'keyboard',
-                     'lid', 'x86', 'usb', 'peci', 'smart_usb_charge']
+                     'lid', 'x86', 'usb', 'peci', 'smart_usb_charge',
+                     'usbpd_uart' ]
     wp_voltage = 'pp3300'
     spi_voltage = 'pp3300'

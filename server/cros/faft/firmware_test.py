@@ -762,10 +762,11 @@ class FirmwareTest(FAFTBase):
         self.wait_fw_screen_and_close_lid()
 
     def _setup_uart_capture(self):
-        """Setup the CPU/EC UART capture."""
+        """Setup the CPU/EC/PD UART capture."""
         self.cpu_uart_file = os.path.join(self.resultsdir, 'cpu_uart.txt')
         self.servo.set('cpu_uart_capture', 'on')
         self.ec_uart_file = None
+        self.usbpd_uart_file = None
         if self.faft_config.chrome_ec:
             try:
                 self.servo.set('ec_uart_capture', 'on')
@@ -774,25 +775,42 @@ class FirmwareTest(FAFTBase):
                 if 'No control named' in str(e):
                     logging.warn('The servod is too old that ec_uart_capture '
                                  'not supported.')
+            # Log separate PD console if supported
+            if self.check_ec_capability(['usbpd_uart'], suppress_warning=True):
+                try:
+                    self.servo.set('usbpd_uart_capture', 'on')
+                    self.usbpd_uart_file = os.path.join(self.resultsdir,
+                                                        'usbpd_uart.txt')
+                except error.TestFail as e:
+                    if 'No control named' in str(e):
+                        logging.warn('The servod is too old that '
+                                     'usbpd_uart_capture is not supported.')
         else:
             logging.info('Not a Google EC, cannot capture ec console output.')
 
     def _record_uart_capture(self):
-        """Record the CPU/EC UART output stream to files."""
+        """Record the CPU/EC/PD UART output stream to files."""
         if self.cpu_uart_file:
             with open(self.cpu_uart_file, 'a') as f:
                 f.write(ast.literal_eval(self.servo.get('cpu_uart_stream')))
         if self.ec_uart_file and self.faft_config.chrome_ec:
             with open(self.ec_uart_file, 'a') as f:
                 f.write(ast.literal_eval(self.servo.get('ec_uart_stream')))
+        if (self.usbpd_uart_file and self.faft_config.chrome_ec and
+            self.check_ec_capability(['usbpd_uart'], suppress_warning=True)):
+            with open(self.usbpd_uart_file, 'a') as f:
+                f.write(ast.literal_eval(self.servo.get('usbpd_uart_stream')))
 
     def _cleanup_uart_capture(self):
-        """Cleanup the CPU/EC UART capture."""
+        """Cleanup the CPU/EC/PD UART capture."""
         # Flush the remaining UART output.
         self._record_uart_capture()
         self.servo.set('cpu_uart_capture', 'off')
         if self.ec_uart_file and self.faft_config.chrome_ec:
             self.servo.set('ec_uart_capture', 'off')
+        if (self.usbpd_uart_file and self.faft_config.chrome_ec and
+            self.check_ec_capability(['usbpd_uart'], suppress_warning=True)):
+            self.servo.set('usbpd_uart_capture', 'off')
 
     def _fetch_servo_log(self):
         """Fetch the servo log."""
