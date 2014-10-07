@@ -10,7 +10,8 @@ This test will fail if we are unable to load the extension, if we don't
 find the expected test utilities page, or we can't cast a tab to the sonic
 device.
 """
-TIME = "SHORT"
+SUITE="cast"
+TIME = "LONG"
 TEST_CATEGORY = "General"
 TEST_CLASS = "desktopui"
 TEST_TYPE = "client"
