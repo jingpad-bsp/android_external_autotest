@@ -42,6 +42,7 @@ class FAFTBase(test.test):
         self._autotest_client = autotest.Autotest(self._client)
         self._autotest_client.install()
         self.faft_client = RPCProxy(host)
+        self.lockfile = '/var/tmp/faft/lock'
 
     def wait_for_client(self, install_deps=False, timeout=100):
         """Wait for the client to come back online.
@@ -172,6 +173,7 @@ class FirmwareTest(FAFTBase):
         self._record_system_info()
         self._setup_gbb_flags()
         self._stop_service('update-engine')
+        self._create_faft_lockfile()
         self._setup_ec_write_protect(ec_wp)
         self.fw_vboot2 = self.faft_client.system.get_fw_vboot2()
         logging.info('vboot version: %d', 2 if self.fw_vboot2 else 1)
@@ -193,6 +195,7 @@ class FirmwareTest(FAFTBase):
         self._restore_ec_write_protect()
         self._restore_gbb_flags()
         self._start_service('update-engine')
+        self._remove_faft_lockfile()
         self._record_servo_log()
         self._record_faft_client_log()
         self._cleanup_uart_capture()
@@ -443,6 +446,18 @@ class FirmwareTest(FAFTBase):
             return diff_set.pop()
         else:
             return None
+
+    def _create_faft_lockfile(self):
+        """Creates the FAFT lockfile."""
+        logging.info('Creating FAFT lockfile...')
+        command = 'touch %s' % (self.lockfile)
+        self.faft_client.system.run_shell_command(command)
+
+    def _remove_faft_lockfile(self):
+        """Removes the FAFT lockfile."""
+        logging.info('Removing FAFT lockfile...')
+        command = 'rm -f %s' % (self.lockfile)
+        self.faft_client.system.run_shell_command(command)
 
     def _stop_service(self, service):
         """Stops a upstart service on the client.
