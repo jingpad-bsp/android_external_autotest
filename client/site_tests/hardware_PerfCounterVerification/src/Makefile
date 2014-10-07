@@ -1,10 +1,13 @@
 CFLAGS=-O0 -g
 
-PROGS=noploop
+OUTPUTS=noploop noploop_branch.txt
 
-all: $(PROGS)
+all: $(OUTPUTS)
 
 noploop: noploop.c
 
+noploop_branch.txt: noploop
+	./find_loop_instructions.py $< > $@
+
 clean:
-	rm -rf $(PROGS)
+	rm -rf $(OUTPUTS)
