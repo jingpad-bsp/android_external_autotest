@@ -109,6 +109,8 @@ class OysterBayConfig(BaseLabConfig):
         @returns: hostname of the rpm that has the device.
 
         """
+        if not device_hostname.row:
+            return ''
         return 'chromeos%d-row%d-rack%d-rpm1' % (
                 device_hostname.lab, device_hostname.row,
                 device_hostname.rack)
@@ -123,6 +125,8 @@ class OysterBayConfig(BaseLabConfig):
         @returns: rpm outlet, e.g. '.A1'
 
         """
+        if not device_hostname.row:
+            return ''
         return '.A%d' % device_hostname.host
 
 
