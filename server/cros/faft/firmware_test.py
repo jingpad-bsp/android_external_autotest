@@ -1176,6 +1176,9 @@ class FirmwareTest(FAFTBase):
         @param install_deps: bool, install deps after boot.
         """
         logging.info("-[FAFT]-[ start wait_for_kernel_up ]---")
+        # Wait for the system to respond to ping before attempting ssh
+        if not self._client.ping_wait_up(90):
+            logging.warning("-[FAFT]-[ system did not respond to ping ]")
         try:
             logging.info("Installing deps after boot : %s", install_deps)
             self.wait_for_client(install_deps=install_deps)
