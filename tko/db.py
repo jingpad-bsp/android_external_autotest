@@ -77,14 +77,13 @@ class db_sql(object):
         else:
             self.password = DATABASE_SETTINGS['PASSWORD']
 
+        # grab the timeout configuration
+        self.query_timeout =(
+                DATABASE_SETTINGS.get('OPTIONS', {}).get('timeout', 3600))
+
         # Using fallback to non-global in order to work without configuration
         # overhead on non-shard instances.
         get_value = global_config.global_config.get_config_value_with_fallback
-
-        # grab the timeout configuration
-        self.query_timeout = get_value(
-                "AUTOTEST_WEB", "global_db_query_timeout", "query_timeout",
-                type=int, default=3600)
         self.min_delay = get_value("AUTOTEST_WEB", "global_db_min_retry_delay",
                                    "min_retry_delay", type=int, default=20)
         self.max_delay = get_value("AUTOTEST_WEB", "global_db_max_retry_delay",
