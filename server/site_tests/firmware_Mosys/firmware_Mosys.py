@@ -126,13 +126,21 @@ class firmware_Mosys(FirmwareTest):
                                                 output)))
 
         # d. mosys eeprom map
-        command = 'mosys eeprom map'
+        command = "mosys eeprom map|grep 'RW_SECTION_[AB]'"
         lines = self.run_cmd(command)
+        if len(lines) != 2:
+            raise error.TestFail('Expect RW_SECTION_[AB] got "%s"', lines)
+        emap = {'RW_SECTION_A': 0, 'RW_SECTION_B': 0}
         for line in lines:
             row = line.split(' | ')
-            if(row[1] in ['RW_SECTION_A', 'RW_SECTION_B'] and
-               '0x00000000' in row[2:3]):
-                raise error.TestFail('zero located in %s', line)
+            if row[1] in emap:
+                emap[row[1]] += 1
+            if row[3] != '0x000f0000':
+                raise error.TestFail('Expect 0x000f0000 but got %s instead(%s)',
+                                     row[2:3], line)
+        # Check that there are one A and one B.
+        if emap['RW_SECTION_A'] != 1 or emap['RW_SECTION_B'] != 1:
+            raise error.TestFail('Missing RW_SECTION A or B, %s', lines)
 
         # e. mosys platform vendor
         # Output will be GOOGLE until launch, see crosbug/p/29755
