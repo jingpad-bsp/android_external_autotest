@@ -209,9 +209,10 @@ class RPCHelper(object):
         # models.Host.Status.REPAIRING and REPAIR_FAILED
         # setup_django_environment can't be imported now as paygen server does
         # not have django package.
-        bad_statuses = ('Repair Failed', 'Repairing')
+        bad_statuses = ('Repair Failed', 'Repairing', 'Verifying')
         available_hosts = [host for host in hosts
-                           if not host.status in bad_statuses]
+                           if not host.status in bad_statuses and
+                           not host.locked]
         logging.debug('%d of %d DUTs are available for board %s pool %s.',
                       len(available_hosts), len(hosts), board, pool)
         if len(available_hosts) < minimum_duts:
