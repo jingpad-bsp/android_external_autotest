@@ -81,10 +81,6 @@ def _get_database_config(config_prefix=''):
         'READONLY_USER': _get_config(
                 "readonly_user", config_prefix,
                 default=_get_config("user", config_prefix)),
-        'OPTIONS': {
-            'timeout': _get_config("query_timeout", config_prefix,
-                                   type=int, default=3600)
-        }
     }
     if config['READONLY_USER'] != config['USER']:
         config['READONLY_PASSWORD'] = _get_config(
