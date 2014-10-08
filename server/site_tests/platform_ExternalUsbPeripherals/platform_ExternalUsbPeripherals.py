@@ -9,7 +9,7 @@ from autotest_lib.server.cros import stress
 from autotest_lib.client.common_lib import error, site_utils
 
 _WAIT_DELAY = 10
-_SUSPEND_RESUME_TIMEOUT = 200
+_LONG_TIMEOUT = 200
 _SUSPEND_RESUME_BOARDS = ['daisy', 'panther']
 _LOGIN_FAILED = 'DEVICE COULD NOT LOGIN!'
 _SUSPEND_FAILED = 'Failed to SUSPEND within timeout'
@@ -78,7 +78,8 @@ class platform_ExternalUsbPeripherals(test.test):
             raise error.TestFail(_LOGIN_FAILED)
 
 
-    def wait_to_disconnect(self, fail_msg, suspend_timeout):
+    def wait_to_disconnect(self, fail_msg,
+                           suspend_timeout = _LONG_TIMEOUT):
         """Wait for DUT to suspend.
 
         @param fail_msg: Failure message
@@ -136,8 +137,7 @@ class platform_ExternalUsbPeripherals(test.test):
     def action_suspend(self):
         """Suspend i.e. close lid"""
         self.host.servo.lid_close()
-        stime = self.wait_to_disconnect(_SUSPEND_FAILED,
-                                        _SUSPEND_RESUME_TIMEOUT)
+        stime = self.wait_to_disconnect(_SUSPEND_FAILED)
         self.suspend_status = True
         logging.debug('--- Suspended in %d sec' % stime)
 
@@ -146,7 +146,7 @@ class platform_ExternalUsbPeripherals(test.test):
     def action_resume(self):
         """Resume i.e. open lid"""
         self.host.servo.lid_open()
-        rtime = self.wait_to_come_up(_RESUME_FAILED, _SUSPEND_RESUME_TIMEOUT)
+        rtime = self.wait_to_come_up(_RESUME_FAILED, _LONG_TIMEOUT)
         self.suspend_status = False
         logging.debug('--- Resumed in %d sec' % rtime)
 
@@ -180,9 +180,9 @@ class platform_ExternalUsbPeripherals(test.test):
         # Suspend and wait to be suspended
         logging.info('--- SUSPENDING')
         thread = threading.Thread(target = self.powerd_suspend_with_timeout,
-                                  args = (_SUSPEND_RESUME_TIMEOUT,))
+                                  args = (_LONG_TIMEOUT,))
         thread.start()
-        self.wait_to_disconnect(_SUSPEND_RESUME_TIMEOUT)
+        self.wait_to_disconnect(_SUSPEND_FAILED)
 
         # Execute action after suspending
         do_while_suspended = re.findall(r'SUSPEND(\w*)RESUME', action)[0]
@@ -197,7 +197,7 @@ class platform_ExternalUsbPeripherals(test.test):
         # Press power key and resume ( and terminate thread)
         logging.info('--- RESUMING')
         self.host.servo.power_key(0.1)
-        self.wait_to_come_up(_RESUME_FAILED, _SUSPEND_RESUME_TIMEOUT)
+        self.wait_to_come_up(_RESUME_FAILED, _LONG_TIMEOUT)
         if thread.is_alive():
             raise error.TestFail('SUSPEND thread did not terminate!')
 
