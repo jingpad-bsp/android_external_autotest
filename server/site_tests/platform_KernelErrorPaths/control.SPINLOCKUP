@@ -21,6 +21,7 @@ Pass the kernel crashes as a comma-delimited string of crash types.
 
 def run_kernel_error_paths(machine):
     host = hosts.create_host(machine)
-    job.run_test("platform_KernelErrorPaths", kcrashes="SPINLOCKUP", host=host)
+    job.run_test("platform_KernelErrorPaths", tag="SPINLOCKUP",
+                 kcrashes="SPINLOCKUP", host=host)
 
 parallel_simple(run_kernel_error_paths, machines)
