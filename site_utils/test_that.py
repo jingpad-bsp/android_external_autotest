@@ -826,6 +826,7 @@ def _main_for_local_run(argv, arguments):
         return 1
 
     realpath = os.path.realpath(__file__)
+    site_utils_path = os.path.realpath(site_utils_path)
 
     # If we are not running the sysroot version of script, perform
     # a quickmerge if necessary and then re-execute
