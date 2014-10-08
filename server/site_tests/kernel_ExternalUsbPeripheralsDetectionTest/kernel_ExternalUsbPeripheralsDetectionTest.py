@@ -7,7 +7,7 @@ import logging, os, re, time
 from autotest_lib.server import test
 from autotest_lib.client.common_lib import error
 
-_WAIT_DELAY = 20
+_WAIT_DELAY = 25
 _USB_DIR = '/sys/bus/usb/devices'
 
 class kernel_ExternalUsbPeripheralsDetectionTest(test.test):
@@ -40,16 +40,16 @@ class kernel_ExternalUsbPeripheralsDetectionTest(test.test):
             logging.info('Running %s',  cmd)
 
             # Run the usb check command
-            cmd_out_lines = self.host.run(cmd).stdout.strip().split('\n')
+            cmd_out_lines = (self.host.run(cmd, ignore_status=True).
+                             stdout.strip().split('\n'))
             for out_match in out_match_list:
                 match_result = False
                 for cmd_out_line in cmd_out_lines:
                     match_result = (match_result or
                         re.search(out_match, cmd_out_line) != None)
                 if not match_result:
-                    logging.debug('USB CHECKS details failed at %s: %s\n'
-                                  'Should be matching %s',
-                                  (cmd, cmd_out_lines, out_match))
+                    logging.debug('USB CHECKS details failed for cmd %s:', cmd)
+                    logging.debug('with output : \n %s', '\n'.join(cmd_out_lines))
                 usb_check_result = usb_check_result and match_result
         return usb_check_result
 
@@ -126,9 +126,8 @@ class kernel_ExternalUsbPeripheralsDetectionTest(test.test):
 
         # Test 1: check USB peripherals info in detail
         if not self.check_usb_peripherals_details():
-            raise error.TestError('Basic USB peripheral detection '
-                                  'test failed')
-
+            raise error.TestError('Some of the USB peripherals were not'
+                                  ' detected : test failed')
 
         # Test 2: check USB device dir under /sys/bus/usb/devices
         vendor_ids = {}
