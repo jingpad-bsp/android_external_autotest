@@ -166,15 +166,13 @@ class ESMetadata(object):
 
 
     def post(self, type_str, metadata=None, index=INDEX_METADATA,
-             use_http=ES_USE_HTTP, log_time_recorded=True, **kwargs):
+             use_http=ES_USE_HTTP, **kwargs):
         """Wraps call of send_data, inserts entry into elasticsearch.
 
         @param type_str: sets the _type field in elasticsearch db.
         @param index: index in elasticsearch to insert data to.
         @param metadata: dictionary object containing metadata
         @param use_http: will use udp to send data when this is False.
-        @param log_time_recorded: True to automatically save the time metadata
-                                  is recorded. Default is True.
         @param kwargs: additional metadata fields
         """
         if not metadata:
@@ -187,19 +185,18 @@ class ESMetadata(object):
         if '_type' in metadata_copy:
             type_str = metadata_copy['_type']
             del metadata_copy['_type']
-        if log_time_recorded:
-            metadata_copy['time_recorded'] = time.time()
+        metadata_copy['time_recorded'] = time.time()
         try:
             self._send_data(type_str, index, metadata_copy, use_http)
         except elasticsearch.ElasticsearchException as e:
             logging.error(e)
 
 
-def create_range_eq_query_multiple(equality_constraints,
-                                   fields_returned=None,
-                                   range_constraints=[],
-                                   size=None,
-                                   sort_specs=None,
+def create_range_eq_query_multiple(fields_returned,
+                                   equality_constraints,
+                                   range_constraints,
+                                   size,
+                                   sort_specs,
                                    regex_constraints=[]):
     """Creates a dict. representing multple range and/or equality queries.
 
@@ -288,12 +285,12 @@ def create_range_eq_query_multiple(equality_constraints,
     range_list = []
     if range_constraints:
         for key, low, high in range_constraints:
-            if low is None and high is None:
+            if low == None and high == None:
                 continue
             temp_dict = {}
-            if low is not None:
+            if low != None:
                 temp_dict['gte'] = time_utils.to_epoch_time(low)
-            if high is not None:
+            if high != None:
                 temp_dict['lte'] = time_utils.to_epoch_time(high)
             range_list.append( {'range': {key: temp_dict}})
 
@@ -309,13 +306,11 @@ def create_range_eq_query_multiple(equality_constraints,
                                 'minimum_should_match': num_constraints,
                                }
                       },
+             'size': size,
+             'sort': sort_specs if sort_specs else [],
             }
     if fields_returned:
         query['fields'] = fields_returned
-    if size:
-        query['size'] = size
-    if sort_specs:
-        query['sort'] = sort_specs
     return query
 
 
@@ -412,8 +407,7 @@ def convert_hit(hit):
         return None
     cleaned_data = {}
     for field,value in hit.items():
-        cleaned_data[field] = (value[0] if isinstance(value, list) and
-                               len(value)==1 else value)
+        cleaned_data[field] = value[0] if isinstance(value, list) else value
     return cleaned_data
 
 
