@@ -46,7 +46,8 @@ class firmware_Mosys(FirmwareTest):
 
     def check_ec_version(self, exp_ec_version):
         """
-        Compare output of 'ectool version' to exp_ec_version.
+        Compare output of 'ectool version' for the current firmware
+        copy to exp_ec_version.
 
         @param exp_ec_version: The exepected EC version string.
         @returns True if EC version string match expected.
@@ -54,16 +55,24 @@ class firmware_Mosys(FirmwareTest):
 
         """
         lines = self.run_cmd('ectool version')
-        pattern = re.compile('RO version:    (.*)$')
+        fwcopy_pattern = re.compile('Firmware copy: (.*)$')
+        ver_pattern = re.compile('(R[OW]) version:    (.*)$')
+        version = {}
         for line in lines:
-            matched = pattern.match(line)
-            if matched:
-                actual_version = matched.group(1)
-                logging.info('Expected ec version %s actual_version %s',
-                             exp_ec_version, actual_version)
-                return exp_ec_version == actual_version
-        raise error.TestError('Failed to locate RO version from ectool \n%s' %
-                              '\n'.join(lines))
+            ver_matched = ver_pattern.match(line)
+            if ver_matched:
+                version[ver_matched.group(1)] = ver_matched.group(2)
+            fwcopy_matched = fwcopy_pattern.match(line)
+            if fwcopy_matched:
+                fwcopy = fwcopy_matched.group(1)
+        try:
+            actual_version = version[fwcopy]
+        except:
+            raise error.TestError('Failed to locate version from ectool:\n%s' %
+                                  '\n'.join(lines))
+        logging.info('Expected ec version %s actual_version %s',
+                     exp_ec_version, actual_version)
+        return exp_ec_version == actual_version
 
     def check_lsb_info(self, fieldname, exp_value):
         """
