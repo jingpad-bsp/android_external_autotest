@@ -181,15 +181,17 @@ class GraphicsStateChecker(test.base_test):
         self.GKM = GraphicsKernelMemory()
 
         if utils.get_cpu_arch() != 'arm':
-            cmd = 'glxinfo | grep "OpenGL renderer string"'
-            cmd = cros_ui.xcommand(cmd)
-            output = utils.run(cmd)
-            result = output.stdout.splitlines()[0]
-            logging.info('glxinfo: %s', result)
-            # TODO(ihf): Find exhaustive error conditions (especially ARM).
-            if 'llvmpipe' in result.lower() or 'soft' in result.lower():
-                raise error.TestFail('Refusing to run on SW rasterizer: ' +
-                                     result)
+            # TODO(ihf): Freonize glxinfo (crbug.com/422167).
+            if not utils.is_freon():
+                cmd = 'glxinfo | grep "OpenGL renderer string"'
+                cmd = cros_ui.xcommand(cmd)
+                output = utils.run(cmd)
+                result = output.stdout.splitlines()[0]
+                logging.info('glxinfo: %s', result)
+                # TODO(ihf): Find exhaustive error conditions (especially ARM).
+                if 'llvmpipe' in result.lower() or 'soft' in result.lower():
+                    raise error.TestFail('Refusing to run on SW rasterizer: ' +
+                                         result)
             logging.info('Initialize: Checking for old GPU hangs...')
             f = open(self._MESSAGES_FILE, 'r')
             for line in f:
@@ -219,16 +221,17 @@ class GraphicsStateChecker(test.base_test):
                             new_gpu_hang = True
             f.close()
 
-            cmd = 'glxinfo | grep "OpenGL renderer string"'
-            cmd = cros_ui.xcommand(cmd)
-            output = utils.run(cmd)
-            result = output.stdout.splitlines()[0]
-            logging.info('glxinfo: %s', result)
-            # TODO(ihf): Find exhaustive error conditions (especially ARM).
-            if 'llvmpipe' in result.lower() or 'soft' in result.lower():
-                logging.warning('Finished test on SW rasterizer.')
-                raise error.TestFail('Finished test on SW rasterizer: ' +
-                                     result)
+            if not utils.is_freon():
+                cmd = 'glxinfo | grep "OpenGL renderer string"'
+                cmd = cros_ui.xcommand(cmd)
+                output = utils.run(cmd)
+                result = output.stdout.splitlines()[0]
+                logging.info('glxinfo: %s', result)
+                # TODO(ihf): Find exhaustive error conditions (especially ARM).
+                if 'llvmpipe' in result.lower() or 'soft' in result.lower():
+                    logging.warning('Finished test on SW rasterizer.')
+                    raise error.TestFail('Finished test on SW rasterizer: ' +
+                                         result)
 
             if self._raise_error_on_hang and new_gpu_hang:
                 raise error.TestFail('Detected GPU hang during test.')
