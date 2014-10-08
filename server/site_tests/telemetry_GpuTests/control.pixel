@@ -16,7 +16,7 @@ This server control file executes the GPU telemetry test: pixel.pixel_tests.
 
 def run_test(machine):
     host = hosts.create_host(machine)
-    job.run_test('telemetry_GpuTests', host=host, test='pixel.pixel_tests')
+    job.run_test('telemetry_GpuTests', host=host, test='pixel')
 
 
 parallel_simple(run_test, machines)

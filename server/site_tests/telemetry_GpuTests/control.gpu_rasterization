@@ -18,7 +18,7 @@ gpu_rasterization.gpu_rasterization_tests
 def run_test(machine):
     host = hosts.create_host(machine)
     job.run_test('telemetry_GpuTests', host=host,
-                 test='gpu_rasterization.gpu_rasterization_tests')
+                 test='gpu_rasterization')
 
 
 parallel_simple(run_test, machines)
