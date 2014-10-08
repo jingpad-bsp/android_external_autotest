@@ -156,7 +156,7 @@ class Backlight(object):
         Args:
           level: integer of brightness to set
         """
-        self._try_bl_cmd('--set_brightness %d' % (level))
+        self._try_bl_cmd('--set_brightness=%d' % (level))
 
 
     def set_percent(self, percent):
@@ -165,7 +165,7 @@ class Backlight(object):
         Args:
           percent: float between 0 and 100
         """
-        self._try_bl_cmd('--set_brightness_percent %f' % (percent))
+        self._try_bl_cmd('--set_brightness_percent=%f' % (percent))
 
 
     def set_resume_level(self, level):
@@ -174,7 +174,7 @@ class Backlight(object):
         Args:
           level: integer of brightness to set
         """
-        self._try_bl_cmd('--set_resume_brightness %d' % (level))
+        self._try_bl_cmd('--set_resume_brightness=%d' % (level))
 
 
     def set_resume_percent(self, percent):
@@ -183,7 +183,7 @@ class Backlight(object):
         Args:
           percent: float between 0 and 100
         """
-        self._try_bl_cmd('--set_resume_brightness_percent %f' % (percent))
+        self._try_bl_cmd('--set_resume_brightness_percent=%f' % (percent))
 
 
     def set_default(self):

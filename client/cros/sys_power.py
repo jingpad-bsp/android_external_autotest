@@ -101,8 +101,8 @@ def do_suspend(suspend_seconds, delay_seconds=0):
     """
     alarm, wakeup_count = prepare_wakeup(suspend_seconds)
     upstart.ensure_running(['powerd'])
-    command = ('/usr/bin/powerd_dbus_suspend --delay %d --timeout 30 '
-               '--wakeup_count %d') % (delay_seconds, wakeup_count)
+    command = ('/usr/bin/powerd_dbus_suspend --delay=%d --timeout=30 '
+               '--wakeup_count=%d') % (delay_seconds, wakeup_count)
     logging.info("Running '%s'", command)
     os.system(command)
     check_wakeup(alarm)
@@ -178,8 +178,8 @@ def memory_suspend(seconds, size):
     # since we cannot have utils.system_output in here, we need a workaround
     output = '/tmp/memory_suspend_output'
     alarm, wakeup_count = prepare_wakeup(seconds)
-    status = os.system('/usr/bin/memory_suspend_test --wakeup_count %d '
-                       '--size %d > %s' % (wakeup_count, size, output))
+    status = os.system('/usr/bin/memory_suspend_test --wakeup_count=%d '
+                       '--size=%d > %s' % (wakeup_count, size, output))
     status = os.WEXITSTATUS(status)
     if status == 2:
         logging.error('memory_suspend_test found the following errors:')
