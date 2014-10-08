@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.common_lib import utils
+from autotest_lib.client.cros.graphics import graphics_utils
 from autotest_lib.client.cros.ui import ui_test_base
 
 
@@ -24,9 +24,9 @@ class ui_SystemTray(ui_test_base.ui_TestBase):
 
 
     def capture_screenshot(self, filepath):
-        w, h = utils.get_dut_display_resolution()
+        w, h = graphics_utils.get_display_resolution()
         box = (w - ui_SystemTray.width, h - ui_SystemTray.height, w, h)
-        utils.take_screenshot_crop(filepath, box)
+        graphics_utils.take_screenshot_crop(filepath, box)
 
 
     def run_once(self, width, height):

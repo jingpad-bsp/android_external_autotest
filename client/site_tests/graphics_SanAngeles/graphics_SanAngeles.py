@@ -6,7 +6,6 @@ import logging, os, re
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui
 from autotest_lib.client.cros.graphics import graphics_utils
 
 class graphics_SanAngeles(test.test):
@@ -48,7 +47,7 @@ class graphics_SanAngeles(test.test):
             raise error.TestFail('Failed to locate SanAngeles executable (' +
                                  cmd + '). Test setup error.')
 
-        cmd = cros_ui.xcommand(cmd)
+        cmd = graphics_utils.xcommand(cmd)
         result = utils.run(cmd,
                            stderr_is_expected = False,
                            stdout_tee = utils.TEE_TO_LOGS,

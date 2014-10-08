@@ -5,7 +5,6 @@
 import os, re
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui
 from autotest_lib.client.cros.graphics import graphics_utils
 
 
@@ -134,7 +133,7 @@ class graphics_GLAPICheck(test.test):
 
 
     def __run_x_cmd(self, cmd):
-        cmd = cros_ui.xcommand(cmd)
+        cmd = graphics_utils.xcommand(cmd)
         result = utils.system_output(cmd, retain_output=True,
                                      ignore_status=True)
         return result

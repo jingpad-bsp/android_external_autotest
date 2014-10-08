@@ -5,8 +5,10 @@
 import time
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui, power_status, power_utils
+from autotest_lib.client.cros import power_status, power_utils
 from autotest_lib.client.cros import service_stopper
+from autotest_lib.client.cros.graphics import graphics_utils
+
 
 class power_Backlight(test.test):
     version = 1
@@ -35,9 +37,7 @@ class power_Backlight(test.test):
         # and fixes all this for us.
         # TODO(davidjames): Power manager should support this feature directly
         time.sleep(5)
-        cros_ui.xsystem('LD_LIBRARY_PATH=/usr/local/lib ' + 'xset s off')
-        cros_ui.xsystem('LD_LIBRARY_PATH=/usr/local/lib ' + 'xset dpms 0 0 0')
-        cros_ui.xsystem('LD_LIBRARY_PATH=/usr/local/lib ' + 'xset -dpms')
+        graphics_utils.do_power_backlight_xset()
 
         status = power_status.get_status()
         status.assert_battery_state(5)

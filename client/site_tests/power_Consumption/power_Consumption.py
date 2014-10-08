@@ -11,11 +11,11 @@ from autotest_lib.client.bin import site_utils, test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import backchannel
-from autotest_lib.client.cros import cros_ui
 from autotest_lib.client.cros import flimflam_test_path  # Needed for flimflam
 from autotest_lib.client.cros import httpd
 from autotest_lib.client.cros import power_rapl, power_status, power_utils
 from autotest_lib.client.cros import service_stopper
+from autotest_lib.client.cros.graphics import graphics_utils
 import flimflam  # Requires flimflam_test_path to be imported first.
 
 
@@ -74,21 +74,10 @@ class power_Consumption(test.test):
         self._chrome = chrome.Chrome()
         # Wait for login to finish and any extra windows to appear.
         time.sleep(10)
-        self._do_xset()
+        graphics_utils.do_power_consumption_xset()
         # Most of the tests will be running in this tab.
         self._tab = self._chrome.browser.tabs[0]
         logging.info('initialize() finished')
-
-    def _do_xset(self):
-        XSET = 'LD_LIBRARY_PATH=/usr/local/lib xset'
-        # Disable X screen saver
-        cros_ui.xsystem('%s s 0 0' % XSET)
-        # Disable DPMS Standby/Suspend/Off
-        cros_ui.xsystem('%s dpms 0 0 0' % XSET)
-        # Force monitor on
-        cros_ui.xsystem('%s dpms force on' % XSET)
-        # Save off X settings
-        cros_ui.xsystem('%s q' % XSET)
 
 
     def _download_test_data(self):
@@ -129,7 +118,7 @@ class power_Consumption(test.test):
         # Note: full screen mode toggled with F11 is different from clicking the
         # full screen icon on video player controls. This needs improvement.
         # Bug: http://crbug.com/248939
-        cros_ui.xsystem('xdotool key F11')
+        graphics_utils.press_key('F11')
 
 
     # Below are a series of generic sub-test runners. They run a given task

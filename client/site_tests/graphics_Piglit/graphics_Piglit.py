@@ -8,7 +8,6 @@ Runs the piglit OpenGL suite of tests.
 import logging, os, re
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui
 from autotest_lib.client.cros.graphics import graphics_utils
 from optparse import OptionParser
 
@@ -72,7 +71,7 @@ class graphics_Piglit(test.test):
         cmd = 'python %s %s %s %s' % (run_path, flags, test, self.outputdir)
         # Pipe stdout and stderr into piglit-run.log for later analysis.
         cmd = cmd + ' | tee ' + log_path
-        cmd = cros_ui.xcommand(cmd)
+        cmd = graphics_utils.xcommand(cmd)
         logging.info(cmd)
         utils.run(cmd,
                   stderr_is_expected = False,

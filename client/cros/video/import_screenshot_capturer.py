@@ -4,7 +4,7 @@
 
 import os
 
-from autotest_lib.client.common_lib import utils
+from autotest_lib.client.cros.graphics import graphics_utils
 from autotest_lib.client.cros.video import method_logger
 
 
@@ -52,10 +52,10 @@ class ImportScreenShotCapturer(object):
         final_height = (self.screen_height_resolution -
                         self.top_pixels_to_crop - self.bottom_pixels_to_crop)
 
-        utils.take_screen_shot_crop_by_height(fullpath,
-                                              final_height,
-                                              0,
-                                              self.top_pixels_to_crop)
+        graphics_utils.take_screenshot_crop_by_height(fullpath,
+                                                      final_height,
+                                                      0,
+                                                      self.top_pixels_to_crop)
 
         return fullpath
 

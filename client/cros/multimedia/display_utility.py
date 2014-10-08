@@ -11,7 +11,8 @@ import time
 import telemetry
 
 from autotest_lib.client.bin import utils
-from autotest_lib.client.cros import constants, cros_ui, sys_power
+from autotest_lib.client.cros import constants, sys_power
+from autotest_lib.client.cros.graphics import graphics_utils
 
 TimeoutException = telemetry.core.util.TimeoutException
 
@@ -222,17 +223,7 @@ class DisplayUtility(object):
 
         Emulates L_Ctrl + Maximize in X server to toggle mirrored.
         """
-        self.press_key('ctrl+F4')
-        return True
-
-
-    def press_key(self, key_str):
-        """Presses the given key(s).
-
-        @param key_str: A string of the key(s), like 'ctrl+F4', 'Up'.
-        """
-        command = 'xdotool key %s' % key_str
-        cros_ui.xsystem(command)
+        graphics_utils.press_key('ctrl+F4')
         return True
 
 

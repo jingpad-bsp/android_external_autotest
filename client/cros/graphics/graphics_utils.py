@@ -2,38 +2,99 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""The functionality in this class is used whenever one of the graphics_*
-tests runs. It provides a sanity check on GPU failures and emits warnings
-on recovered GPU hangs and errors on fallback to software rasterization.
+"""
+Provides graphics related utils, like capturing screenshots or checking on
+the state of the graphics driver.
 """
 
-import glob, logging, os, sys
+import glob, logging, os, re, sys
 
 from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import error, test
-from autotest_lib.client.cros import cros_ui
+from autotest_lib.client.common_lib import error
 
-def take_screenshot(resultsdir, fname_prefix, format='png'):
+
+def xcommand(cmd, user=None):
+    """
+    Add the necessary X setup to a shell command that needs to connect to the X
+    server.
+    @param cmd: the command line string
+    @param user: if not None su command to desired user.
+    @return a modified command line string with necessary X setup
+    """
+    if utils.is_freon():
+        raise error.TestFail('freon: xcommand is deprecated') 
+    logging.warning("xcommand will be deprecated under freon!")
+    if user is None:
+        return 'DISPLAY=:0 XAUTHORITY=/home/chronos/.Xauthority ' + cmd
+    return 'DISPLAY=:0 XAUTHORITY=/home/chronos/.Xauthority su %s -c \'%s\'' % (
+                                                                      user, cmd)
+
+
+def xsystem(cmd, user=None, timeout=None, ignore_status=False):
+    """
+    Run the command cmd, using utils.system, after adding the necessary
+    setup to connect to the X server.
+    """
+    return utils.system(xcommand(cmd, user), timeout=timeout,
+                        ignore_status=ignore_status)
+
+
+def press_key(key_str):
+    """Presses the given key(s).
+    @param key_str: A string of the key(s), like 'ctrl+F4', 'Up'.
+    """
+    if utils.is_freon():
+        raise error.TestFail('freon: press_key not implemented')
+    command = 'xdotool key %s' % key_str
+    xsystem(command)
+
+
+XSET = 'LD_LIBRARY_PATH=/usr/local/lib xset'
+
+def do_power_consumption_xset():
+    """ Called from power_Consumption to immediately disable energy saving. """
+    if utils.is_freon():
+        raise error.TestFail('freon: do_power_consumption_xset not implemented')
+    # Disable X screen saver
+    xsystem(XSET + ' s 0 0')
+    # Disable DPMS Standby/Suspend/Off
+    xsystem(XSET + ' dpms 0 0 0')
+    # Force monitor on
+    xsystem(XSET + ' dpms force on')
+    # Save off X settings
+    xsystem(XSET + ' q')
+
+
+def do_power_backlight_xset():
+    """ Called from power_Backlight to disable screen blanking. """
+    if utils.is_freon():
+        raise error.TestFail('freon: do_power_backlight_xset not implemented')
+    xsystem(XSET + ' s off')
+    xsystem(XSET + ' dpms 0 0 0')
+    xsystem(XSET + ' -dpms')
+
+
+def take_screenshot(resultsdir, fname_prefix, extension='png'):
     """Take screenshot and save to a new file in the results dir.
-
     Args:
       @param resultsdir:   Directory to store the output in.
       @param fname_prefix: Prefix for the output fname.
       @param format:       String indicating file format ('png', 'jpg', etc).
-
     Returns:
       the path of the saved screenshot file
     """
+    if utils.is_freon():
+        raise error.TestFail('freon: take_screenshot not implemented')
     next_index = len(glob.glob(
-        os.path.join(resultsdir, '%s-*.%s' % (fname_prefix, format))))
+        os.path.join(resultsdir, '%s-*.%s' % (fname_prefix, extension))))
     screenshot_file = os.path.join(
-        resultsdir, '%s-%d.%s' % (fname_prefix, next_index, format))
+        resultsdir, '%s-%d.%s' % (fname_prefix, next_index, extension))
     logging.info('Saving screenshot to %s.', screenshot_file)
 
     old_exc_type = sys.exc_info()[0]
     try:
-        cros_ui.xsystem('/usr/local/bin/import -window root -depth 8 %s' %
-                        screenshot_file)
+        xsystem('/usr/local/bin/import -window root -depth 8 %s' %
+                screenshot_file)
     except Exception as err:
         # Do not raise an exception if the screenshot fails while processing
         # another exception.
@@ -42,6 +103,90 @@ def take_screenshot(resultsdir, fname_prefix, format='png'):
         logging.error(err)
 
     return screenshot_file
+
+
+def take_screenshot_crop_by_height(fullpath, final_height, x_offset_pixels,
+                                   y_offset_pixels):
+    """
+    Take a screenshot, crop to final height starting at given (x, y) coordinate.
+    Image width will be adjusted to maintain original aspect ratio).
+
+    @param fullpath: path, fullpath of the file that will become the image file.
+    @param final_height: integer, height in pixels of resulting image.
+    @param x_offset_pixels: integer, number of pixels from left margin
+                            to begin cropping.
+    @param y_offset_pixels: integer, number of pixels from top margin
+                            to begin cropping.
+    """
+    if utils.is_freon():
+        raise error.TestFail('freon: take_screenshot_crop_by_height not '
+                             'implemented')
+    params = {'height': final_height, 'x_offset': x_offset_pixels,
+              'y_offset': y_offset_pixels, 'path': fullpath}
+    import_cmd = ('/usr/local/bin/import -window root -depth 8 -crop '
+                  'x%(height)d+%(x_offset)d+%(y_offset)d %(path)s' % params)
+
+    execute_screenshot_capture(import_cmd)
+    return fullpath
+
+
+def take_screenshot_crop(fullpath, box=None):
+    """
+    Take a screenshot using import tool, crop according to dim given by the box.
+    @param fullpath: path, full path to save the image to.
+    @param box: 4-tuple giving the upper left and lower right pixel coordinates.
+    """
+    if utils.is_freon():
+        raise error.TestFail('freon: take_screenshot_crop not implemented')
+    if box:
+        upperx, uppery, lowerx, lowery = box
+        img_w = lowerx - upperx
+        img_h = lowery - uppery
+        import_cmd = ('/usr/local/bin/import -window root -depth 8 -crop '
+                      '%dx%d+%d+%d' % (img_w, img_h, upperx, uppery))
+    else:
+        import_cmd = ('/usr/local/bin/import -window root -depth 8')
+
+    execute_screenshot_capture('%s %s' % (import_cmd, fullpath))
+
+
+def get_display_resolution():
+    """
+    Parses output of xrandr to determine the display resolution of the dut.
+    @return: tuple, (w,h) resolution of device under test.
+    """
+    if utils.is_freon():
+        raise error.TestFail('freon: get_display_resolution not implemented')
+    env_vars = 'DISPLAY=:0.0 XAUTHORITY=/home/chronos/.Xauthority'
+    cmd = '%s xrandr | egrep -o "current [0-9]* x [0-9]*"' % env_vars
+    output = utils.system_output(cmd)
+    match = re.search('(\d+) x (\d+)', output)
+    if len(match.groups()) == 2:
+        return int(match.group(1)), int(match.group(2))
+    return None
+
+
+def execute_screenshot_capture(cmd):
+    """
+    Executes command to capture a screenshot.
+
+    Provides safe execution of command to capture screenshot by wrapping
+    the command around a try-catch construct.
+
+    @param import_cmd_string: string, screenshot capture command.
+    """
+    if utils.is_freon():
+        raise error.TestFail('freon: execute_screenshot_capture not '
+                             'implemented')
+    old_exc_type = sys.exc_info()[0]
+    try:
+        xsystem(cmd)
+    except Exception as err:
+        # Do not raise an exception if the screenshot fails while processing
+        # another exception.
+        if old_exc_type is None:
+            raise
+        logging.error(err)
 
 
 class GraphicsKernelMemory(object):
@@ -105,7 +250,7 @@ class GraphicsKernelMemory(object):
                 self.num_errors += 1
                 continue
 
-            parsed_results = self._parse_sysfs(field_value)
+            parsed_results = GraphicsKernelMemory._parse_sysfs(field_value)
 
             for key in parsed_results:
                 keyvals['%s_%s' % (field_name, key)] = parsed_results[key]
@@ -120,7 +265,8 @@ class GraphicsKernelMemory(object):
                                        utils.read_from_meminfo('SwapFree'))
         return keyvals
 
-    def _parse_sysfs(self, output):
+    @staticmethod
+    def _parse_sysfs(output):
         """
         Parses output of graphics memory sysfs to determine the number of
         buffer objects and bytes.
@@ -156,7 +302,7 @@ class GraphicsKernelMemory(object):
         return results
 
 
-class GraphicsStateChecker(test.base_test):
+class GraphicsStateChecker(object):
     """
     Analyzes the state of the GPU and log history. Should be instantiated at the
     beginning of each graphics_* test.
@@ -178,13 +324,13 @@ class GraphicsStateChecker(test.base_test):
         utils.set_dirty_writeback_centisecs(100)
         self._raise_error_on_hang = raise_error_on_hang
         logging.info(utils.get_board_with_frequency_and_memory())
-        self.GKM = GraphicsKernelMemory()
+        self.graphics_kernel_memory = GraphicsKernelMemory()
 
         if utils.get_cpu_arch() != 'arm':
             # TODO(ihf): Freonize glxinfo (crbug.com/422167).
             if not utils.is_freon():
                 cmd = 'glxinfo | grep "OpenGL renderer string"'
-                cmd = cros_ui.xcommand(cmd)
+                cmd = xcommand(cmd)
                 output = utils.run(cmd)
                 result = output.stdout.splitlines()[0]
                 logging.info('glxinfo: %s', result)
@@ -193,13 +339,13 @@ class GraphicsStateChecker(test.base_test):
                     raise error.TestFail('Refusing to run on SW rasterizer: ' +
                                          result)
             logging.info('Initialize: Checking for old GPU hangs...')
-            f = open(self._MESSAGES_FILE, 'r')
-            for line in f:
+            messages = open(self._MESSAGES_FILE, 'r')
+            for line in messages:
                 for hang in self._HANGCHECK:
                     if hang in line:
                         logging.info(line)
                         self.existing_hangs[line] = line
-            f.close()
+            messages.close()
 
     def finalize(self):
         """
@@ -211,19 +357,19 @@ class GraphicsStateChecker(test.base_test):
         new_gpu_hang = False
         if utils.get_cpu_arch() != 'arm':
             logging.info('Cleanup: Checking for new GPU hangs...')
-            f = open(self._MESSAGES_FILE, 'r')
-            for line in f:
+            messages = open(self._MESSAGES_FILE, 'r')
+            for line in messages:
                 for hang in self._HANGCHECK:
                     if hang in line:
                         if not line in self.existing_hangs.keys():
                             logging.info(line)
                             logging.warning('Saw GPU hang during test.')
                             new_gpu_hang = True
-            f.close()
+            messages.close()
 
             if not utils.is_freon():
                 cmd = 'glxinfo | grep "OpenGL renderer string"'
-                cmd = cros_ui.xcommand(cmd)
+                cmd = xcommand(cmd)
                 output = utils.run(cmd)
                 result = output.stdout.splitlines()[0]
                 logging.info('glxinfo: %s', result)
@@ -237,7 +383,9 @@ class GraphicsStateChecker(test.base_test):
                 raise error.TestFail('Detected GPU hang during test.')
 
     def get_memory_access_errors(self):
-        return self.GKM.num_errors
+        """ Returns the number of errors while reading memory stats. """
+        return self.graphics_kernel_memory.num_errors
 
     def get_memory_keyvals(self):
-        return self.GKM.get_memory_keyvals()
+        """ Returns memory stats. """
+        return self.graphics_kernel_memory.get_memory_keyvals()

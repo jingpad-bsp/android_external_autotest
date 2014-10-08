@@ -7,7 +7,6 @@ import os, re
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.cros.graphics import graphics_utils
-from autotest_lib.client.cros import cros_ui
 
 class graphics_Gbm(test.test):
     """
@@ -31,7 +30,7 @@ class graphics_Gbm(test.test):
 
     def run_once(self):
         cmd = os.path.join(self.srcdir, 'gbmtest')
-        cmd = cros_ui.xcommand(cmd)
+        cmd = graphics_utils.xcommand(cmd)
         result = utils.run(cmd,
                            stderr_is_expected = False,
                            stdout_tee = utils.TEE_TO_LOGS,

@@ -21,8 +21,9 @@
 import fcntl, json, os, re, sys, shutil, stat, tempfile, time, traceback
 import logging
 
-from autotest_lib.client.common_lib import error
 from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.graphics import graphics_utils
 
 
 class base_test(object):
@@ -527,7 +528,7 @@ class base_test(object):
 
                 _call_test_function(self.execute, *p_args, **p_dargs)
             except Exception:
-                utils.take_screenshot(self.debugdir,
+                graphics_utils.take_screenshot(self.debugdir,
                                       '%s-fail' % self.tagged_testname)
                 # Save the exception while we run our cleanup() before
                 # reraising it, but log it to so actual time of error is known.

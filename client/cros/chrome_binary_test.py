@@ -6,7 +6,8 @@ import os, shutil, tempfile
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import constants, cros_ui
+from autotest_lib.client.cros import constants
+from autotest_lib.client.cros.graphics import graphics_utils
 
 
 class ChromeBinaryTest(test.test):
@@ -63,9 +64,9 @@ class ChromeBinaryTest(test.test):
 
         try:
             if as_chronos:
-                cros_ui.xsystem_as(cmd, user='chronos')
+                graphics_utils.xsystem(cmd, user='chronos')
             else:
-                cros_ui.xsystem(cmd)
+                graphics_utils.xsystem(cmd)
         except error.CmdError as e:
             raise error.TestFail('%s failed! %s' % (binary_to_run, e))
 

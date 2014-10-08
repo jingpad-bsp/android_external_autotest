@@ -7,49 +7,13 @@ import common, logging, os, time
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import constants, httpd
+from autotest_lib.client.cros.graphics import graphics_utils
 
 # Log messages used to signal when we're restarting UI. Used to detect
 # crashes by cros_ui_test.UITest.
 UI_RESTART_ATTEMPT_MSG = 'cros_ui.py: Attempting StopSession...'
 UI_RESTART_COMPLETE_MSG = 'cros_ui.py: StopSession complete.'
 RESTART_UI_TIMEOUT = 90  # longer because we may be crash dumping now.
-
-def xcommand(cmd):
-    """
-    Add the necessary X setup to a shell command that needs to connect to the X
-    server.
-
-    @param cmd: the command line string
-    @return a modified command line string with necessary X setup
-    """
-    return 'DISPLAY=:0 XAUTHORITY=/home/chronos/.Xauthority ' + cmd
-
-
-def xcommand_as(cmd, user='chronos'):
-    """
-    Same as xcommand, except wrapped in a su to the desired user.
-    """
-    return xcommand('su %s -c \'%s\'' % (user, cmd))
-
-
-def xsystem(cmd, timeout=None, ignore_status=False):
-    """
-    Run the command cmd, using utils.system, after adding the necessary
-    setup to connect to the X server.
-    """
-
-    return utils.system(xcommand(cmd), timeout=timeout,
-                        ignore_status=ignore_status)
-
-
-def xsystem_as(cmd, user='chronos', timeout=None, ignore_status=False):
-    """
-    Run the command cmd as the given user, using utils.system, after adding
-    the necessary setup to connect to the X server.
-    """
-
-    return utils.system(xcommand_as(cmd, user=user), timeout=timeout,
-                        ignore_status=ignore_status)
 
 
 def get_login_prompt_state(host=None):
@@ -201,7 +165,7 @@ class ChromeSession(object):
 
         cmd = '%s --no-first-run --user-data-dir=%s %s' % (
             constants.BROWSER_EXE, constants.USER_DATA_DIR, args)
-        xsystem_as(cmd)
+        graphics_utils.xsystem(cmd, user='chronos')
 
 
 _HTML_HEADER_ = '''

@@ -2,13 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import glob
 import logging
 import os
 import re
 import signal
 import socket
-import sys
 import time
 import urllib2
 import uuid
@@ -72,7 +70,7 @@ def host_is_in_lab_zone(hostname):
         socket.gethostbyname(fqdn)
         return True
     except socket.gaierror:
-      return False
+        return False
 
 
 def get_chrome_version(job_views):
@@ -367,133 +365,6 @@ def parse_chrome_version(version_string):
     milestone = match.group(1) if match else ''
     return ver, milestone
 
-
-def take_screenshot(dest_dir, fname_prefix, format='png'):
-    """
-    Take screenshot and save to a new file in the dest_dir.
-
-    @param dest_dir: path, destination directory to save the screenshot.
-    @param fname_prefix: string, prefix for output filename.
-    @param format: string, file format ('png', 'jpg', etc) to use.
-
-    @returns complete path to saved screenshot file.
-
-    """
-    if not _is_x_running():
-        return
-
-    next_index = len(glob.glob(
-        os.path.join(dest_dir, '%s-*.%s' % (fname_prefix, format))))
-    screenshot_file = os.path.join(
-        dest_dir, '%s-%d.%s' % (fname_prefix, next_index, format))
-    logging.info('Saving screenshot to %s.', screenshot_file)
-
-    import_cmd = ('/usr/local/bin/import -window root -depth 8 %s' %
-                  screenshot_file)
-
-    _execute_screenshot_capture_command(import_cmd)
-
-    return screenshot_file
-
-
-def take_screen_shot_crop_by_height(fullpath, final_height, x_offset_pixels,
-                                    y_offset_pixels):
-    """
-    Take a screenshot, crop to final height starting at given (x, y) coordinate.
-
-    Image width will be adjusted to maintain original aspect ratio).
-
-    @param fullpath: path, fullpath of the file that will become the image file.
-    @param final_height: integer, height in pixels of resulting image.
-    @param x_offset_pixels: integer, number of pixels from left margin
-                            to begin cropping.
-    @param y_offset_pixels: integer, number of pixels from top margin
-                            to begin cropping.
-
-    """
-
-    params = {'height': final_height, 'x_offset': x_offset_pixels,
-              'y_offset': y_offset_pixels, 'path': fullpath}
-
-    import_cmd = ('/usr/local/bin/import -window root -depth 8 -crop '
-                  'x%(height)d+%(x_offset)d+%(y_offset)d %(path)s' % params)
-
-    _execute_screenshot_capture_command(import_cmd)
-
-    return fullpath
-
-
-def take_screenshot_crop(fullpath, box=None):
-    """
-    Take a screenshot using import tool, crop according to dim given by the box.
-
-    @param fullpath: path, full path to save the image to.
-    @param box: 4-tuple giving the upper left and lower right pixel coordinates.
-
-    """
-
-    if box:
-        upperx, uppery, lowerx, lowery = box
-
-        img_w = lowerx - upperx
-        img_h = lowery - uppery
-
-        import_cmd = ('/usr/local/bin/import -window root -depth 8 -crop '
-                      '%dx%d+%d+%d' % (img_w, img_h, upperx, uppery))
-    else:
-        import_cmd = ('/usr/local/bin/import -window root -depth 8')
-
-    _execute_screenshot_capture_command('%s %s' % (import_cmd, fullpath))
-
-
-def get_dut_display_resolution():
-    """
-    Parses output of xrandr to determine the display resolution of the dut.
-
-    @return: tuple, (w,h) resolution of device under test.
-    """
-
-    env_vars = 'DISPLAY=:0.0 XAUTHORITY=/home/chronos/.Xauthority'
-    cmd = '%s xrandr | egrep -o "current [0-9]* x [0-9]*"' % env_vars
-    output = base_utils.system_output(cmd)
-
-    m = re.search('(\d+) x (\d+)', output)
-
-    if len(m.groups()) == 2:
-        return int(m.group(1)), int(m.group(2))
-    else:
-        return None
-
-
-def _execute_screenshot_capture_command(import_cmd_string):
-    """
-    Executes command to capture a screenshot.
-
-    Provides safe execution of command to capture screenshot by wrapping
-    the command around a try-catch construct.
-
-    @param import_cmd_string: string, screenshot capture command.
-
-    """
-
-    old_exc_type = sys.exc_info()[0]
-    full_cmd = ('DISPLAY=:0.0 XAUTHORITY=/home/chronos/.Xauthority %s' %
-                import_cmd_string)
-    try:
-        base_utils.system(full_cmd)
-    except Exception as err:
-        # Do not raise an exception if the screenshot fails while processing
-        # another exception.
-        if old_exc_type is None:
-            raise
-        logging.error(err)
-
-
-def _is_x_running():
-    try:
-        return int(base_utils.system_output('pgrep -o ^X$')) > 0
-    except Exception:
-        return False
 
 
 def is_localhost(server):

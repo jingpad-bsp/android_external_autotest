@@ -9,6 +9,7 @@ import os
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import chameleon
+from autotest_lib.client.cros.graphics import graphics_utils
 from autotest_lib.client.cros.multimedia import display_utility
 from autotest_lib.client.cros.video import chameleon_screenshot_capturer
 from autotest_lib.client.cros.video import golden_image_downloader
@@ -181,7 +182,7 @@ class MediaTestFactory(object):
 
         """
 
-        res = utils.get_dut_display_resolution()
+        res = graphics_utils.get_display_resolution()
 
         if res is None:
             raise error.TestError('Expected a screen resolution. Got None.')
