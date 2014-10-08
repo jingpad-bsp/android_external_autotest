@@ -7,6 +7,7 @@ import os
 import re
 import tempfile
 import time
+import urllib2
 
 from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
@@ -104,7 +105,14 @@ class MoblabHost(cros_host.CrosHost):
     def reboot(self, **dargs):
         """Reboot the Moblab Host and wait for its services to restart."""
         super(MoblabHost, self).reboot(**dargs)
-        self.wait_afe_up()
+        # In general after a reboot, we want to wait till the web frontend
+        # and other Autotest services are up before executing. However should
+        # something be wrong with these services, repair needs to be able
+        # to continue and reimage the device.
+        try:
+            self.wait_afe_up()
+        except urllib2.HTTPError:
+            logging.error('DUT has rebooted but AFE has failed to load.: %s')
 
 
     def wait_afe_up(self, timeout_min=5):
@@ -116,7 +124,7 @@ class MoblabHost(cros_host.CrosHost):
         @param timeout_min: Minutes to wait for the AFE to respond. Default is
                             5 minutes.
 
-        @raises TimeoutException if AFE does not respond within the timeout.
+        @raises urllib2.HTTPError if AFE does not respond within the timeout.
         """
         # Use a new AFE object with a longer timeout to wait for the AFE to
         # load.
@@ -220,6 +228,7 @@ class MoblabHost(cros_host.CrosHost):
         # Moblab requires a reboot to initialize it's services prior to
         # verification.
         self.reboot()
+        self.wait_afe_up()
         # Stateful could have been wiped so setup an empty autotest client
         # directory.
         self.run('mkdir -p %s' % self.get_autodir(), ignore_status=True)
