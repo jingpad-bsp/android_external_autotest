@@ -219,6 +219,14 @@ def get_pretty_status(status):
     return '[ FAILED ]'
 
 
+def GetBuildbotStepLink(anchor_text, url):
+    """Generate a buildbot formatted link.
+
+    @param anchor_text    The link text.
+    @param url            The url to link to.
+    """
+    return '@@@STEP_LINK@%s@%s@@@' % (anchor_text, url)
+
 
 class LogLink(object):
     """Information needed to record a link in the logs.
@@ -294,7 +302,7 @@ class LogLink(object):
         else:
             anchor_text = self.anchor.strip()
 
-        return '@@@STEP_LINK@%s@%s@@@'% (anchor_text, url)
+        return GetBuildbotStepLink(anchor_text, url)
 
 
     def GenerateTextLink(self):
@@ -1252,11 +1260,12 @@ def main_without_exception_handling():
 
     job_timer = diagnosis_utils.JobTimer(
             time.time(), float(options.timeout_mins))
+    job_url = reporting_utils.link_job(job_id,
+                                       instance_server=instance_server)
     logging.info('%s Created suite job: %s',
                  job_timer.format_time(job_timer.job_created_time),
-                 reporting_utils.link_job(
-                        job_id, instance_server=instance_server))
-
+                 job_url)
+    logging.info(GetBuildbotStepLink('Suite created', job_url))
     TKO = frontend_wrappers.RetryingTKO(server=instance_server,
                                         timeout_min=options.afe_timeout_mins,
                                         delay_sec=options.delay_sec)
