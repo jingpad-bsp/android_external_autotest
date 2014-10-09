@@ -191,6 +191,14 @@ class ChameleonTest(test.test):
         return display_index, resolutions
 
 
+    def is_mirrored_enabled(self):
+        """Checks the mirrored state.
+
+        @return True if mirrored mode is enabled.
+        """
+        return self.display_client.is_mirrored_enabled()
+
+
     def set_mirrored(self, test_mirrored):
         """Sets the external display is in mirrored mode or extended mode
 

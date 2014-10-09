@@ -84,13 +84,19 @@ class display_HotPlugAtSuspend(chameleon_test.ChameleonTest):
             self.check_external_display_connector(expected_connector
                     if plugged_before_resume else None)
             if plugged_before_resume:
-                test_name = 'SCREEN-%dx%d-%c-S-%c-P-R' % (
-                         width, height,
-                         'P' if plugged_before_suspend else 'U',
-                         'P' if plugged_after_suspend else 'U'),
-                self.load_test_image_and_check(
-                        test_name, resolution,
-                        under_mirrored_mode=test_mirrored,
-                        error_list=errors)
+                if test_mirrored and not self.is_mirrored_enabled():
+                    error_message = 'Error: not resumed to mirrored mode'
+                    errors.append(error_message)
+                    logging.error(error_message)
+                    self.set_mirrored(True)
+                else:
+                    test_name = 'SCREEN-%dx%d-%c-S-%c-P-R' % (
+                             width, height,
+                             'P' if plugged_before_suspend else 'U',
+                             'P' if plugged_after_suspend else 'U'),
+                    self.load_test_image_and_check(
+                            test_name, resolution,
+                            under_mirrored_mode=test_mirrored,
+                            error_list=errors)
 
         self.raise_on_errors(errors)

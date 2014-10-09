@@ -144,6 +144,14 @@ class DisplayClient(object):
         return self._display_proxy.close_tab(index)
 
 
+    def is_mirrored_enabled(self):
+        """Checks the mirrored state.
+
+        @return True if mirrored mode is enabled.
+        """
+        return self._display_proxy.is_mirrored_enabled()
+
+
     def set_mirrored(self, is_mirrored):
         """Sets mirrored mode.
 

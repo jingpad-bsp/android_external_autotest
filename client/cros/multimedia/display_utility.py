@@ -236,20 +236,25 @@ class DisplayUtility(object):
         return True
 
 
+    def is_mirrored_enabled(self):
+        """Checks the mirrored state.
+
+        @return True if mirrored mode is enabled.
+        """
+        return bool(self.get_display_info()[0]['mirroringSourceId'])
+
+
     def set_mirrored(self, is_mirrored):
         """Sets mirrored mode.
 
         @param is_mirrored: True or False to indicate mirrored state.
         """
-        def _is_mirrored_enabled():
-            return bool(self.get_display_info()[0]['mirroringSourceId'])
-
         retries = 3
-        while _is_mirrored_enabled() != is_mirrored and retries > 0:
+        while self.is_mirrored_enabled() != is_mirrored and retries > 0:
             self.toggle_mirrored()
             time.sleep(3)
             retries -= 1
-        return _is_mirrored_enabled() == is_mirrored
+        return self.is_mirrored_enabled() == is_mirrored
 
 
     def suspend_resume(self, suspend_time=10):

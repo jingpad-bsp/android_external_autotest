@@ -53,12 +53,19 @@ class display_HotPlugAtBoot(chameleon_test.ChameleonTest):
             self.display_client.connect()
             self.check_external_display_connector(
                     expected_connector if plugged_after_boot else None)
+
             if plugged_after_boot:
-                test_name = 'SCREEN-%dx%d-%c-B-P' % (
-                        width, height, 'P' if plugged_before_boot else 'U')
-                self.load_test_image_and_check(
-                        test_name, resolution,
-                        under_mirrored_mode=test_mirrored,
-                        error_list=errors)
+                if test_mirrored and not self.is_mirrored_enabled():
+                    error_message = 'Error: not rebooted to mirrored mode'
+                    errors.append(error_message)
+                    logging.error(error_message)
+                    self.set_mirrored(True)
+                else:
+                    test_name = 'SCREEN-%dx%d-%c-B-P' % (
+                            width, height, 'P' if plugged_before_boot else 'U')
+                    self.load_test_image_and_check(
+                            test_name, resolution,
+                            under_mirrored_mode=test_mirrored,
+                            error_list=errors)
 
         self.raise_on_errors(errors)
