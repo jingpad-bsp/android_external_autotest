@@ -8,7 +8,7 @@ PURPOSE = "Collects system tray images as data to examine default icons"
 CRITERIA = """
 
 """
-SUITE = "ui"
+SUITE = "bvt-perbuild"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "ui"
