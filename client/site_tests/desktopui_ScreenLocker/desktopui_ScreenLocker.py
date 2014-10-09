@@ -35,10 +35,9 @@ class desktopui_ScreenLocker(test.test):
         oobe = self._chrome.browser.oobe
         return (oobe and
                 oobe.EvaluateJavaScript(
-                       "typeof Oobe == 'function'") and
-                oobe.EvaluateJavaScript(
-                       "typeof Oobe.authenticateForTesting == 'function'"))
-
+                    "(typeof Oobe == 'function') && "
+                    "(typeof Oobe.authenticateForTesting == 'function') && "
+                    "($('account-picker') != null)"))
 
     @property
     def error_bubble_visible(self):
