@@ -151,14 +151,6 @@ class platform_ExternalUsbPeripherals(test.test):
         logging.debug('--- Resumed in %d sec' % rtime)
 
 
-    def action_reboot(self):
-        """Reboot DUT"""
-        boot_id = self.host.get_boot_id()
-        self.host.reboot(wait=False)
-        self.host.test_wait_for_shutdown()
-        self.host.test_wait_for_boot(boot_id)
-
-
     def powerd_suspend_with_timeout(self, timeout):
         """Suspend the device with wakeup alarm
 
@@ -377,7 +369,7 @@ class platform_ExternalUsbPeripherals(test.test):
                             self.action_login()
                             self.login_status = True
                     elif action == 'REBOOT':
-                        self.action_reboot()
+                        self.host.reboot()
                         self.login_status = False
                     elif action == 'SUSPEND':
                         self.action_suspend()
