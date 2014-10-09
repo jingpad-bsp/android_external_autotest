@@ -5,12 +5,15 @@
 
 import argparse
 import datetime
+import os
 import re
 import sys
 import logging
 
+os.environ['DJANGO_SETTINGS_MODULE'] = 'frontend.settings'
+
 import common
-from autotest_lib.tko import db
+from django.db import connections, transaction
 
 
 # Format Appears as: [Date] [Time] - [Msg Level] - [Message]
@@ -48,7 +51,11 @@ AFE_JOB_ID = 'afe_job_id'
 JOB_ID = 'job_id'
 JOB_IDX = 'job_idx'
 TEST_IDX = 'test_idx'
-db = db.db(autocommit=True)
+
+# CAUTION: Make sure only the 'default' connection is used. Otherwise
+# db_cleanup may delete stuff from the global database, which is generally not
+# intended.
+cursor = connections['default'].cursor()
 
 STEP_SIZE = None  # Threading this through properly is disgusting.
 
@@ -182,8 +189,8 @@ def _delete_table_data_before_date(table_to_delete_from, primary_key,
         sql = SELECT_WITH_INDIRECTION_FORMAT % variables
 
     logging.debug('SQL: %s', sql)
-    db.cur.execute(sql, [])
-    rows = [x[0] for x in db.cur.fetchall()]
+    cursor.execute(sql, [])
+    rows = [x[0] for x in cursor.fetchall()]
     logging.debug(rows)
 
     if not rows or rows == [None]:
@@ -197,8 +204,8 @@ def _delete_table_data_before_date(table_to_delete_from, primary_key,
             variables['rows'] = ','.join([str(x) for x in row_keys])
             sql = DELETE_ROWS_FORMAT % variables
             logging.debug('SQL: %s', sql)
-            db.cur.execute(sql, [])
-            db.commit()
+            cursor.execute(sql, [])
+            transaction.commit_unless_managed(using='default')
             pb.update(len(row_keys))
             pb.show()
 
