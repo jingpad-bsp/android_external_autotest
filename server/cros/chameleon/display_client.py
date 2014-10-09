@@ -246,13 +246,16 @@ class DisplayClient(object):
         return self._read_root_window_rect(w, h, x, y)
 
 
-    def get_resolution(self):
-        """Gets the external resolution on framebuffer.
+    def get_resolution(self, connector=None):
+        """Gets the resolution of the specified screen.
 
+        @param connector: name of the connector of the target screen; if not
+                specified, get_external_connector_name() is used.
         @return The resolution tuple (width, height)
         """
-        output = self.get_external_connector_name()
-        width, height, _, _ = self._display_proxy.get_resolution(output)
+        if not connector:
+            connector = self.get_external_connector_name()
+        width, height, _, _ = self._display_proxy.get_resolution(connector)
         return (width, height)
 
 

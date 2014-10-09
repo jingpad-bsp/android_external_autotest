@@ -580,10 +580,13 @@ class ChameleonTest(test.test):
                 error_list.append(error_message)
             return error_message
 
-        dut_resolution = self.display_client.get_resolution()
+        connector = (self.display_client.get_internal_connector_name()
+                if under_mirrored_mode
+                else self.display_client.get_external_connector_name())
+        test_image_size = self.display_client.get_resolution(connector)
 
         try:
-            self.load_test_image(dut_resolution)
+            self.load_test_image(test_image_size)
             error_message = self.check_screen_with_chameleon(
                     tag, pixel_diff_value_margin, total_wrong_pixels_margin,
                     under_mirrored_mode)
