@@ -19,7 +19,7 @@ REPO=$(readlink -f $REPO)
 HDCTOOLS=$(readlink -f $REPO/chroot/usr/lib/python2.7/site-packages/servo)
 KEYFILE=$REPO
 KEYFILE=$KEYFILE/src/third_party/chromiumos-overlay
-KEYFILE=$KEYFILE/chromeos-base/chromeos-test-testauthkeys/files/testing_rsa
+KEYFILE=$KEYFILE/chromeos-base/chromeos-ssh-testkeys/files/testing_rsa
 
 # Need some temporary files to keep ssh happy:
 #  + Just setting StrictHostKeyChecking=no won't silence all
