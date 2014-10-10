@@ -75,6 +75,7 @@ class CellularTestEnvironment(object):
         self.flim = None  # Only use this for legacy tests.
         self.modem_manager = None
         self.modem = None
+        self.modem_path = None
 
         self._nested = None
         self._context_managers = []
@@ -138,6 +139,7 @@ class CellularTestEnvironment(object):
         self.flim = None
         self.modem_manager = None
         self.modem = None
+        self.modem_path = None
 
 
     def _get_shill_cellular_device_object(self):
@@ -212,10 +214,11 @@ class CellularTestEnvironment(object):
 
         # PickOneModem() makes sure there's a modem manager and that there is
         # one and only one modem.
-        self.modem_manager, modem_path = mm.PickOneModem('')
-        self.modem = self.modem_manager.GetModem(modem_path)
+        self.modem_manager, self.modem_path = mm.PickOneModem('')
+        self.modem = self.modem_manager.GetModem(self.modem_path)
         if self.modem is None:
-            raise error.TestError('Cannot get modem object at %s.' % modem_path)
+            raise error.TestError('Cannot get modem object at %s.' %
+                                  self.modem_path)
 
 
     def _setup_logging(self):

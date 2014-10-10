@@ -20,4 +20,7 @@ DOC = """
   race conditions in the modem manager or kernel driver.
 """
 
-job.run_test('network_3GRebootStress')
+from autotest_lib.client.cros.cellular import test_environment
+
+test_env = test_environment.CellularOTATestEnvironment()
+job.run_test('network_3GRebootStress', test_env=test_env)
