@@ -486,6 +486,11 @@ class ChameleonTest(test.test):
         if verify_mirrored:
             internal_resolution = (
                     self.display_client.get_internal_display_resolution())
+            if internal_resolution is None:
+                message = 'Failed to detect the internal screen.'
+                logging.error(message)
+                return message
+
             if 0 in internal_resolution:
                 logging.info('Failed to get the resolution of internal'
                              ' display: %r, skip the mirroring verify test.',
