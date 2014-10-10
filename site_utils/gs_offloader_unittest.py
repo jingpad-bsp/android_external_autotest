@@ -140,7 +140,7 @@ class OffloaderOptionsTests(mox.MoxTestBase):
         self.assertEqual(offloader._age_limit, 0)
 
 
-    def test_delete_only_option(self):
+    def test_days_old_option(self):
         """Test offloader handling for the --days_old option."""
         offload_func = self._mock_get_offload_func(False)
         offloader = gs_offloader.Offloader(
