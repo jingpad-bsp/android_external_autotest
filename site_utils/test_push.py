@@ -47,6 +47,7 @@ DEVSERVERS = CONFIG.get_config_value('CROS', 'dev_server', type=list,
 BUILD_REGEX = '^R[\d]+-[\d]+\.[\d]+\.[\d]+$'
 RUN_SUITE_COMMAND = 'run_suite.py'
 PUSH_TO_PROD_SUITE = 'push_to_prod'
+DUMMY_SUITE = 'dummy'
 AU_SUITE = 'paygen_au_canary'
 
 SUITE_JOB_START_INFO_REGEX = ('^.*Created suite job:.*'
@@ -67,6 +68,14 @@ EXPECTED_TEST_RESULTS = {'^SERVER_JOB$':                 'GOOD',
                          'dummy_Fail.NAError$':          'TEST_NA',
                          'dummy_Fail.Crash$':            'GOOD',
                          }
+
+EXPECTED_TEST_RESULTS_DUMMY = {'^SERVER_JOB$':       'GOOD',
+                               'dummy_Pass.*':       'GOOD',
+                               'dummy_Fail.Fail':    'FAIL',
+                               'dummy_Fail.Warn':    'WARN',
+                               'dummy_Fail.Crash':   'GOOD',
+                               'dummy_Fail.Error':   'ERROR',
+                               'dummy_Fail.NAError': 'TEST_NA',}
 
 EXPECTED_TEST_RESULTS_AU = {'SERVER_JOB$':                        'GOOD',
          'autoupdate_EndToEndTest.paygen_au_canary_test_delta.*': 'GOOD',
@@ -130,7 +139,14 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('-b', '--board', dest='board', default='stumpy',
                         help='Default is stumpy.')
+    parser.add_argument('-sb', '--shard_board', dest='shard_board',
+                        default='quawks',
+                        help='Default is quawks.')
     parser.add_argument('-i', '--build', dest='build', default=None,
+                        help='Default is the latest canary build of given '
+                             'board. Must be a canary build, otherwise AU test '
+                             'will fail.')
+    parser.add_argument('-si', '--shard_build', dest='shard_build', default=None,
                         help='Default is the latest canary build of given '
                              'board. Must be a canary build, otherwise AU test '
                              'will fail.')
@@ -153,11 +169,14 @@ def parse_arguments():
     if not arguments.build:
         arguments.build = get_default_build(arguments.devserver,
                                             arguments.board)
+    if not arguments.shard_build:
+        arguments.shard_build = get_default_build(arguments.devserver,
+                                                  arguments.shard_board)
 
     return arguments
 
 
-def do_run_suite(suite_name, arguments):
+def do_run_suite(suite_name, arguments, use_shard=False):
     """Call run_suite to run a suite job, and return the suite job id.
 
     The script waits the suite job to finish before returning the suite job id.
@@ -165,14 +184,23 @@ def do_run_suite(suite_name, arguments):
 
     @param suite_name: Name of a suite, e.g., dummy.
     @param arguments: Arguments for run_suite command.
+    @param use_shard: If true, suite is scheduled for shard board.
+
     @return: Suite job ID.
 
     """
+    if not use_shard:
+        board = arguments.board
+        build = arguments.build
+    else:
+        board = arguments.shard_board
+        build = arguments.shard_build
+
     dir = os.path.dirname(os.path.realpath(__file__))
     cmd = [os.path.join(dir, RUN_SUITE_COMMAND),
            '-s', suite_name,
-           '-b', arguments.board,
-           '-i', arguments.build,
+           '-b', board,
+           '-i', build,
            '-p', arguments.pool,
            '-u', str(arguments.num),
            '-f', arguments.file_bugs]
@@ -225,18 +253,20 @@ def check_dut_image(build, suite_job_id):
                                     (hostname, found_build, build))
 
 
-def test_suite(suite_name, expected_results, arguments):
+def test_suite(suite_name, expected_results, arguments, use_shard=False):
     """Call run_suite to start a suite job and verify results.
 
     @param suite_name: Name of a suite, e.g., dummy
     @param expected_results: A dictionary of test name to test result.
     @param arguments: Arguments for run_suite command.
-
+    @param use_shard: If true, suite is scheduled for shard board.
     """
-    suite_job_id = do_run_suite(suite_name, arguments)
+    suite_job_id = do_run_suite(suite_name, arguments, use_shard)
 
     # Confirm all DUTs used for the suite are imaged to expected build.
-    if suite_name != AU_SUITE:
+    # hqe.host_id for jobs running in shard is not synced back to master db,
+    # therefore, skip verifying dut build for jobs running in shard.
+    if suite_name != AU_SUITE and not use_shard:
         check_dut_image(arguments.build, suite_job_id)
 
     # Find all tests and their status
@@ -366,6 +396,9 @@ def main():
         old_issue_ids = close_bug()
         test_suite(PUSH_TO_PROD_SUITE, EXPECTED_TEST_RESULTS, arguments)
         check_bug_filed_and_deduped(old_issue_ids)
+
+        test_suite(DUMMY_SUITE, EXPECTED_TEST_RESULTS_DUMMY, arguments,
+                   use_shard=True)
 
         # TODO(dshi): Remove following line after crbug.com/267644 is fixed.
         # Also, merge EXPECTED_TEST_RESULTS_AU to EXPECTED_TEST_RESULTS

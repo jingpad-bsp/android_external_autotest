@@ -30,7 +30,7 @@ class TestPushUnittests(mox.MoxTestBase):
             '.*dummy_Fail.RetryFail$':       'FAIL',
             }
         test_push.EXPECTED_TEST_RESULTS_AU = test_push.EXPECTED_TEST_RESULTS
-
+        test_push.EXPECTED_TEST_RESULTS_DUMMY = test_push.EXPECTED_TEST_RESULTS
 
     def stub_out_methods(self, test_views, fail_first_run_suite=False):
         """Stub out methods in test_push module with given test results.
@@ -46,20 +46,27 @@ class TestPushUnittests(mox.MoxTestBase):
         urllib2.urlopen(mox.IgnoreArg()).AndReturn(response)
         if not fail_first_run_suite:
             urllib2.urlopen(mox.IgnoreArg()).AndReturn(response)
+            urllib2.urlopen(mox.IgnoreArg()).AndReturn(response)
 
         self.mox.StubOutWithMock(test_push, 'get_default_build')
         test_push.get_default_build(mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
                 'stumpy-release/R36-5881-0.0')
+        test_push.get_default_build(mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
+                'quawks-release/R36-5881-0.0')
 
         self.mox.StubOutWithMock(test_push, 'check_dut_image')
         test_push.check_dut_image(mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
                 None)
 
         self.mox.StubOutWithMock(test_push, 'do_run_suite')
-        test_push.do_run_suite(test_push.PUSH_TO_PROD_SUITE, mox.IgnoreArg()
+        test_push.do_run_suite(test_push.PUSH_TO_PROD_SUITE, mox.IgnoreArg(),
+                               False
                                ).AndReturn((1))
         if not fail_first_run_suite:
-            test_push.do_run_suite(test_push.AU_SUITE, mox.IgnoreArg()
+            test_push.do_run_suite(test_push.DUMMY_SUITE, mox.IgnoreArg(),
+                                   True
+                                   ).AndReturn((1))
+            test_push.do_run_suite(test_push.AU_SUITE, mox.IgnoreArg(), False
                                    ).AndReturn((1))
 
         self.mox.StubOutWithMock(site_utils, 'get_test_views_from_tko')
@@ -68,6 +75,9 @@ class TestPushUnittests(mox.MoxTestBase):
                                       delay_sec=10).AndReturn(None)
         site_utils.get_test_views_from_tko(1, None).AndReturn(test_views)
         if not fail_first_run_suite:
+            frontend_wrappers.RetryingTKO(timeout_min=0.1,
+                                          delay_sec=10).AndReturn(None)
+            site_utils.get_test_views_from_tko(1, None).AndReturn(test_views)
             frontend_wrappers.RetryingTKO(timeout_min=0.1,
                                           delay_sec=10).AndReturn(None)
             site_utils.get_test_views_from_tko(1, None).AndReturn(test_views)
