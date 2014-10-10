@@ -134,19 +134,33 @@ class MoblabHost(cros_host.CrosHost):
         afe.get_hosts()
 
 
+    def _wake_devices(self):
+        """Search the subnet and attempt to ping any available duts.
+
+        Fills up the arp table with entries about devices on the subnet.
+
+        Either uses fping or directly pings devices listed in the dhcpd lease
+        file.
+        """
+        fping_result = self.run('fping -g 192.168.231.100 192.168.231.120',
+                                ignore_status=True)
+        # If fping is not on the system, ping entries in the dhcpd lease file.
+        if fping_result.exit_status == 127:
+            leases = set(self.run('grep ^lease %s' % DHCPD_LEASE_FILE,
+                                  ignore_status=True).stdout.splitlines())
+            for lease in leases:
+                ip = re.match('lease (?P<ip>.*) {', lease).groups('ip')
+                self.run('ping %s -w 1' % ip, ignore_status=True)
+
+
     def find_and_add_duts(self):
         """Discover DUTs on the testing subnet and add them to the AFE.
 
         Runs 'arp -a' on the Moblab host and parses the output to discover DUTs
         and if they are not already in the AFE, adds them.
         """
+        self._wake_devices()
         existing_hosts = [host.hostname for host in self.afe.get_hosts()]
-        # Wake up devices listed by dhcp directly.
-        leases = set(self.run('grep ^lease %s' % DHCPD_LEASE_FILE,
-                              ignore_status=True).stdout.splitlines())
-        for lease in leases:
-            ip = re.match('lease (?P<ip>.*) {', lease).groups('ip')
-            self.run('ping %s -w 1' % ip, ignore_status=True)
         arp_command = self.run('arp -a')
         for line in arp_command.stdout.splitlines():
             match = re.match(SUBNET_DUT_SEARCH_RE, line)
@@ -170,6 +184,9 @@ class MoblabHost(cros_host.CrosHost):
          3. Ensures that both DUTs successfully run Verify.
 
         """
+        # In case cleanup or powerwash wiped the autodir, create an empty
+        # directory.
+        self.run('mkdir -p %s' % MOBLAB_AUTODIR)
         super(MoblabHost, self).verify_software()
         self._verify_moblab_services()
         self._verify_duts()
