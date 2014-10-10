@@ -182,6 +182,13 @@ class base_autoserv_parser(object):
                                dest="no_use_packaging", default=False,
                                help=("Disable install modes that use the "
                                      "packaging system."))
+        self.parser.add_option('--test_source_build', action='store',
+                               type='string', default='',
+                               dest='test_source_build',
+                               help=('Name of the build that contains the '
+                                     'test code. Default is empty, that is, '
+                                     'use the build specified in --image to '
+                                     'retrieve tests.'))
 
 
     def parse_args(self):

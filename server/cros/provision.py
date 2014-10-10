@@ -15,6 +15,7 @@ from autotest_lib.server.cros import provision_actionables as actionables
 ### Constants for label prefixes
 CROS_VERSION_PREFIX = 'cros-version'
 FW_VERSION_PREFIX = 'fw-version'
+FW_RO_VERSION_PREFIX = 'fwro-version'
 
 # Default number of provisions attempts to try if we believe the devserver is
 # flaky.

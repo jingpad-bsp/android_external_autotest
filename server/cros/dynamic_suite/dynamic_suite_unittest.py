@@ -9,10 +9,13 @@
 import mox
 import os
 import signal
+import unittest
 
 from autotest_lib.client.common_lib import base_job, error
 from autotest_lib.client.common_lib.cros import dev_server
+from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import dynamic_suite
+from autotest_lib.server.cros.dynamic_suite.suite import Suite
 
 
 class DynamicSuiteTest(mox.MoxTestBase):
@@ -22,13 +25,14 @@ class DynamicSuiteTest(mox.MoxTestBase):
     """
 
     _DEVSERVER_HOST = 'http://devserver1'
-    _BUILD = 'build'
+    _BUILDS = {provision.CROS_VERSION_PREFIX: 'build',
+               provision.FW_VERSION_PREFIX:'fw_build'}
 
     def setUp(self):
 
         super(DynamicSuiteTest, self).setUp()
         self._DARGS = {'name': 'name',
-                       'build': self._BUILD,
+                       'builds': self._BUILDS,
                        'board': 'board',
                        'job': self.mox.CreateMock(base_job.base_job),
                        'num': 1,
@@ -43,15 +47,23 @@ class DynamicSuiteTest(mox.MoxTestBase):
     def testVetRequiredReimageAndRunArgs(self):
         """Should verify only that required args are present and correct."""
         spec = dynamic_suite.SuiteSpec(**self._DARGS)
-        self.assertEquals(spec.build, self._DARGS['build'])
+        self.assertEquals(spec.builds, self._DARGS['builds'])
         self.assertEquals(spec.board, 'board:' + self._DARGS['board'])
         self.assertEquals(spec.name, self._DARGS['name'])
         self.assertEquals(spec.job, self._DARGS['job'])
 
 
     def testVetReimageAndRunBuildArgFail(self):
-        """Should fail verification because |build| arg is bad."""
+        """Should fail verification if both |builds| and |build| are not set.
+        """
         self._DARGS['build'] = None
+        self._DARGS['builds'] = None
+        self.assertRaises(error.SuiteArgumentException,
+                          dynamic_suite.SuiteSpec,
+                          **self._DARGS)
+        self._DARGS['build'] = 'build1'
+        self._DARGS['builds'] = {'cros-version': 'build2',
+                                 'firmware-version': 'build3'}
         self.assertRaises(error.SuiteArgumentException,
                           dynamic_suite.SuiteSpec,
                           **self._DARGS)
@@ -135,14 +147,19 @@ class DynamicSuiteTest(mox.MoxTestBase):
 
         signal.signal(signal.SIGTERM, handler)
         spec = self.mox.CreateMock(dynamic_suite.SuiteSpec)
-        spec.build = ''
+        spec.builds = self._BUILDS
+        spec.test_source_build = Suite.get_test_source_build(self._BUILDS)
         spec.devserver = self.mox.CreateMock(dev_server.ImageServer)
         spec.devserver.stage_artifacts(
-                spec.build, ['control_files', 'test_suites']).WithSideEffects(
-                suicide)
+                spec.builds[provision.CROS_VERSION_PREFIX],
+                ['control_files', 'test_suites']).WithSideEffects(suicide)
 
         self.mox.ReplayAll()
 
         self.assertRaises(UnhandledSIGTERM,
                           dynamic_suite._perform_reimage_and_run,
                           spec, None, None, None)
+
+
+if __name__ == '__main__':
+    unittest.main()

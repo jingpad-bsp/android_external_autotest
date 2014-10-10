@@ -23,9 +23,11 @@ from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.frontend.afe import rpc_utils
 from autotest_lib.server import utils
+from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import tools
+from autotest_lib.server.cros.dynamic_suite.suite import Suite
 from autotest_lib.server.hosts import moblab_host
 from autotest_lib.site_utils import host_history
 from autotest_lib.site_utils import job_history
@@ -122,7 +124,8 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
                      timeout_mins=None, priority=priorities.Priority.DEFAULT,
                      suite_args=None, wait_for_results=True, job_retry=False,
                      max_retries=None, max_runtime_mins=None, suite_min_duts=0,
-                     offload_failures_only=False, **kwargs):
+                     offload_failures_only=False, builds={},
+                     test_source_build=None, **kwargs):
     """
     Create a job to run a test suite on the given device with the given image.
 
@@ -133,6 +136,12 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
                  of the test suite to run, e.g. 'bvt'.
     @param board: the kind of device to run the tests on.
     @param build: unique name by which to refer to the image from now on.
+    @param builds: the builds to install e.g.
+                   {'cros-version:': 'x86-alex-release/R18-1655.0.0',
+                    'fw-version:':  'x86-alex-firmware/R36-5771.50.0',
+                    'fwro-version:':  'x86-alex-firmware/R36-5771.49.0'}
+                   If builds is given a value, it overrides argument build.
+    @param test_source_build: Build that contains the server-side test code.
     @param pool: Specify the pool of machines to use for scheduling
             purposes.
     @param check_hosts: require appropriate live hosts to exist in the lab.
@@ -175,14 +184,29 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
     if num == 0:
         logging.warning("Can't run on 0 hosts; using default.")
         num = None
-    (ds, keyvals) = _stage_build_artifacts(build)
+
+    # TODO(dshi): crbug.com/496782 Remove argument build and its reference after
+    # R45 falls out of stable channel.
+    if build and not builds:
+        builds = {provision.CROS_VERSION_PREFIX: build}
+    # TODO(dshi): crbug.com/497236 Remove this check after firmware ro provision
+    # is supported in Autotest.
+    if provision.FW_RO_VERSION_PREFIX in builds:
+        raise error.SuiteArgumentException(
+                'Updating RO firmware is not supported yet.')
+    # Default test source build to CrOS build if it's not specified.
+    test_source_build = Suite.get_test_source_build(
+            builds, test_source_build=test_source_build)
+
+    (ds, keyvals) = _stage_build_artifacts(test_source_build)
     keyvals[constants.SUITE_MIN_DUTS_KEY] = suite_min_duts
 
     if not control_file:
-      # No control file was supplied so look it up from the build artifacts.
-      suite_name = canonicalize_suite_name(name)
-      control_file = _get_control_file_contents_by_name(build, ds, suite_name)
-      name = '%s-%s' % (build, suite_name)
+        # No control file was supplied so look it up from the build artifacts.
+        suite_name = canonicalize_suite_name(name)
+        control_file = _get_control_file_contents_by_name(test_source_build,
+                                                          ds, suite_name)
+        name = '%s-%s' % (test_source_build, suite_name)
 
     timeout_mins = timeout_mins or timeout * 60
     max_runtime_mins = max_runtime_mins or timeout * 60
@@ -190,9 +214,12 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
     if not board:
         board = utils.ParseBuildName(build)[0]
 
+    # TODO(dshi): crbug.com/496782 Remove argument build and its reference after
+    # R45 falls out of stable channel.
     # Prepend build and board to the control file.
     inject_dict = {'board': board,
-                   'build': build,
+                   'build': test_source_build,
+                   'builds': builds,
                    'check_hosts': check_hosts,
                    'pool': pool,
                    'num': num,
@@ -206,7 +233,8 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
                    'job_retry': job_retry,
                    'max_retries': max_retries,
                    'max_runtime_mins': max_runtime_mins,
-                   'offload_failures_only': offload_failures_only
+                   'offload_failures_only': offload_failures_only,
+                   'test_source_build': test_source_build
                    }
 
     control_file = tools.inject_vars(inject_dict, control_file)
@@ -277,7 +305,7 @@ def update_config_handler(config_values):
 @moblab_only
 def reset_config_settings():
     with open(_CONFIG.shadow_file, 'w') as config_file:
-      pass
+        pass
     os.system('sudo reboot')
 
 

@@ -21,6 +21,7 @@ from autotest_lib.client.common_lib import base_job, control_data
 from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib import utils, error
 from autotest_lib.client.common_lib.cros import dev_server
+from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.server.cros.dynamic_suite import reporting
@@ -36,12 +37,13 @@ from autotest_lib.site_utils import phapi_lib
 class SuiteTest(mox.MoxTestBase):
     """Unit tests for dynamic_suite Suite class.
 
-    @var _BUILD: fake build
+    @var _BUILDS: fake build
     @var _TAG: fake suite tag
     """
 
     _BOARD = 'board:board'
-    _BUILD = 'build'
+    _BUILDS = {provision.CROS_VERSION_PREFIX:'build',
+               provision.FW_VERSION_PREFIX:'fw_build'}
     _TAG = 'suite_tag'
     _ATTR = {'attr:attr'}
     _DEVSERVER_HOST = 'http://dontcare:8080'
@@ -190,7 +192,7 @@ class SuiteTest(mox.MoxTestBase):
         self.expect_control_file_parsing(suite_name='ad_hoc_suite')
         self.mox.ReplayAll()
         predicate = Suite.test_name_equals_predicate('name-data_five')
-        suite = Suite.create_from_predicates([predicate], self._BUILD,
+        suite = Suite.create_from_predicates([predicate], self._BUILDS,
                                        self._BOARD, devserver=None,
                                        cf_getter=self.getter,
                                        afe=self.afe, tko=self.tko)
@@ -209,7 +211,7 @@ class SuiteTest(mox.MoxTestBase):
         """Should distinguish between experimental and stable tests."""
         self.expect_control_file_parsing()
         self.mox.ReplayAll()
-        suite = Suite.create_from_name(self._TAG, self._BUILD, self._BOARD,
+        suite = Suite.create_from_name(self._TAG, self._BUILDS, self._BOARD,
                                        devserver=None,
                                        cf_getter=self.getter,
                                        afe=self.afe, tko=self.tko)
@@ -271,14 +273,16 @@ class SuiteTest(mox.MoxTestBase):
             if suite_deps:
                 dependencies.extend(suite_deps)
             dependencies.append(self._BOARD)
+            build = self._BUILDS[provision.CROS_VERSION_PREFIX]
             job_mock = self.afe.create_job(
                 control_file=test.text,
-                name=mox.And(mox.StrContains(self._BUILD),
+                name=mox.And(mox.StrContains(build),
                              mox.StrContains(test.name)),
                 control_type=mox.IgnoreArg(),
                 meta_hosts=[self._BOARD],
                 dependencies=dependencies,
-                keyvals={'build': self._BUILD, 'suite': self._TAG,
+                keyvals={'build': build, 'suite': self._TAG,
+                         'builds': SuiteTest._BUILDS,
                          'experimental':test.experimental},
                 max_runtime_mins=24*60,
                 timeout_mins=1440,
@@ -311,7 +315,7 @@ class SuiteTest(mox.MoxTestBase):
         """Should schedule stable and experimental tests with the AFE."""
         self.mock_control_file_parsing()
         self.mox.ReplayAll()
-        suite = Suite.create_from_name(self._TAG, self._BUILD, self._BOARD,
+        suite = Suite.create_from_name(self._TAG, self._BUILDS, self._BOARD,
                                        self.devserver,
                                        afe=self.afe, tko=self.tko,
                                        results_dir=self.tmpdir)
@@ -331,7 +335,7 @@ class SuiteTest(mox.MoxTestBase):
         self.expect_job_scheduling(recorder, add_experimental=False)
 
         self.mox.ReplayAll()
-        suite = Suite.create_from_name(self._TAG, self._BUILD, self._BOARD,
+        suite = Suite.create_from_name(self._TAG, self._BUILDS, self._BOARD,
                                        self.devserver,
                                        afe=self.afe, tko=self.tko)
         suite.schedule(recorder.record_entry, add_experimental=False)
@@ -345,7 +349,7 @@ class SuiteTest(mox.MoxTestBase):
                                    ignore_deps=True)
 
         self.mox.ReplayAll()
-        suite = Suite.create_from_name(self._TAG, self._BUILD, self._BOARD,
+        suite = Suite.create_from_name(self._TAG, self._BUILDS, self._BOARD,
                                        self.devserver,
                                        afe=self.afe, tko=self.tko,
                                        ignore_deps=True)
@@ -358,7 +362,7 @@ class SuiteTest(mox.MoxTestBase):
         recorder = self.mox.CreateMock(base_job.base_job)
         self.expect_job_scheduling(recorder, add_experimental=True, raises=True)
         self.mox.ReplayAll()
-        suite = Suite.create_from_name(self._TAG, self._BUILD, self._BOARD,
+        suite = Suite.create_from_name(self._TAG, self._BUILDS, self._BOARD,
                                        self.devserver,
                                        afe=self.afe, tko=self.tko)
         suite.schedule(recorder.record_entry, add_experimental=True)
@@ -370,7 +374,7 @@ class SuiteTest(mox.MoxTestBase):
         recorder = self.mox.CreateMock(base_job.base_job)
         self.expect_job_scheduling(recorder, add_experimental=True)
         self.mox.ReplayAll()
-        suite = Suite.create_from_name(self._TAG, self._BUILD, self._BOARD,
+        suite = Suite.create_from_name(self._TAG, self._BUILDS, self._BOARD,
                                        self.devserver,
                                        afe=self.afe, tko=self.tko,
                                        job_retry=True)
@@ -395,7 +399,7 @@ class SuiteTest(mox.MoxTestBase):
         recorder = self.mox.CreateMock(base_job.base_job)
         self.expect_job_scheduling(recorder, add_experimental=True)
         self.mox.ReplayAll()
-        suite = Suite.create_from_name(self._TAG, self._BUILD, self._BOARD,
+        suite = Suite.create_from_name(self._TAG, self._BUILDS, self._BOARD,
                                        self.devserver,
                                        afe=self.afe, tko=self.tko,
                                        job_retry=True, max_retries=1)
@@ -415,7 +419,7 @@ class SuiteTest(mox.MoxTestBase):
                                    suite_deps=['extra'])
 
         self.mox.ReplayAll()
-        suite = Suite.create_from_name(self._TAG, self._BUILD, self._BOARD,
+        suite = Suite.create_from_name(self._TAG, self._BUILDS, self._BOARD,
                                        self.devserver, extra_deps=['extra'],
                                        afe=self.afe, tko=self.tko)
         suite.schedule(recorder.record_entry, add_experimental=False)
@@ -428,7 +432,7 @@ class SuiteTest(mox.MoxTestBase):
         """
         self.expect_control_file_parsing()
         self.mox.ReplayAll()
-        suite = Suite.create_from_name(self._TAG, self._BUILD, self._BOARD,
+        suite = Suite.create_from_name(self._TAG, self._BUILDS, self._BOARD,
                                        self.devserver,
                                        self.getter,
                                        afe=self.afe, tko=self.tko,
@@ -642,8 +646,9 @@ class SuiteTest(mox.MoxTestBase):
                        if 'timestamp' not in str(k))
 
         self.mox.StubOutWithMock(reporting, 'TestBug')
-        reporting.TestBug(self._BUILD, mox.IgnoreArg(),
-                              mox.IgnoreArg(), mox.Func(check_result))
+        reporting.TestBug(self._BUILDS[provision.CROS_VERSION_PREFIX],
+                          mox.IgnoreArg(), mox.IgnoreArg(),
+                          mox.Func(check_result))
 
         self.mox.StubOutClassWithMocks(phapi_lib, 'ProjectHostingApiClient')
         mock_host = phapi_lib.ProjectHostingApiClient(mox.IgnoreArg(),

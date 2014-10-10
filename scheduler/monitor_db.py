@@ -1305,13 +1305,17 @@ class QueueTask(AbstractQueueTask):
 
 
     def _command_line(self):
-         invocation = super(QueueTask, self)._command_line()
-         # Check if server-side packaging is needed.
-         if (_enable_ssp_container and
-             self.job.control_type == control_data.CONTROL_TYPE.SERVER and
-             self.job.require_ssp != False):
+        invocation = super(QueueTask, self)._command_line()
+        # Check if server-side packaging is needed.
+        if (_enable_ssp_container and
+            self.job.control_type == control_data.CONTROL_TYPE.SERVER and
+            self.job.require_ssp != False):
             invocation += ['--require-ssp']
-         return invocation + ['--verify_job_repo_url']
+            keyval_dict = self.job.keyval_dict()
+            test_source_build = keyval_dict.get('test_source_build', None)
+            if test_source_build:
+                invocation += ['--test_source_build', test_source_build]
+        return invocation + ['--verify_job_repo_url']
 
 
 class HostlessQueueTask(AbstractQueueTask):

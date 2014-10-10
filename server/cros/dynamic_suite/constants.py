@@ -7,6 +7,10 @@
 JOB_BUILD_KEY = 'build'
 JOB_SUITE_KEY = 'suite'
 
+# Job keyvals for builds to be installed in dut and source of server-side tests.
+JOB_BUILDS_KEY = 'builds'
+JOB_TEST_SOURCE_BUILD_KEY = 'test_source_build'
+
 # Job keyval indicating whether a job is for an experimental test.
 JOB_EXPERIMENTAL_KEY = 'experimental'
 RETRY_ORIGINAL_JOB_ID = 'retry_original_job_id'

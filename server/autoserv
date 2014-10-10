@@ -123,8 +123,11 @@ def _stage_ssp(parser):
     @return: url of the staged server-side package. Return None if server-
              side package is not found for the build.
     """
+    # If test_source_build is not specified, default to use server-side test
+    # code from build specified in --image.
     namespace = {'machines': _get_machines(parser),
-                 'image': parser.options.image}
+                 'image': (parser.options.test_source_build or
+                           parser.options.image),}
     script_locals = {}
     execfile(STAGE_SERVER_SIDE_PACKAGE_CONTROL_FILE, namespace, script_locals)
     return script_locals['ssp_url']

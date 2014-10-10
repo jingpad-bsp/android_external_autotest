@@ -102,7 +102,8 @@ def fetch_local_suite(autotest_path, suite_predicate, afe, test_arg, remote,
     fs_getter = suite.Suite.create_fs_getter(autotest_path)
     devserver = dev_server.ImageServer('')
     my_suite = suite.Suite.create_from_predicates([suite_predicate],
-            build, constants.BOARD_PREFIX + board,
+            {provision.CROS_VERSION_PREFIX: build},
+            constants.BOARD_PREFIX + board,
             devserver, fs_getter, afe=afe,
             ignore_deps=ignore_deps,
             results_dir=results_directory, forgiving_parser=False)

@@ -52,6 +52,7 @@ from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.server import utils
+from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import reporting_utils
@@ -100,6 +101,18 @@ def parse_options():
     parser.add_option("-i", "--build", dest="build")
     parser.add_option("-w", "--web", dest="web", default=None,
                       help="Address of a webserver to receive suite requests.")
+    parser.add_option('--firmware_build', dest='firmware_build', default=None,
+                      help='Firmware build to be installed in dut RW firmware.')
+    parser.add_option('--firmware_ro_build', dest='firmware_ro_build',
+                      default=None,
+                      help='Firmware build to be installed in dut RO firmware.')
+    parser.add_option('--test_source_build', dest='test_source_build',
+                      default=None,
+                      help=('Build that contains the test code, '
+                            'e.g., it can be the value of `--build`, '
+                            '`--firmware_build` or `--firmware_ro_build` '
+                            'arguments. Default is None, that is, use the test '
+                            'code from `--build` (CrOS image)'))
     #  This should just be a boolean flag, but the autotest "proxy" code
     #  can't handle flags that don't take arguments.
     parser.add_option("-n", "--no_wait", dest="no_wait", default="False",
@@ -222,6 +235,9 @@ def verify_options_and_args(options, args):
         return False
     if options.no_wait == 'True' and options.retry == 'True':
         print 'Test retry is not available when using --no_wait=True'
+    # Default to use the test code in CrOS build.
+    if not options.test_source_build and options.build:
+        options.test_source_build = options.build
     return True
 
 
@@ -1270,6 +1286,13 @@ def create_suite(afe, options):
 
     @return: The afe_job_id of the new suite job.
     """
+    builds = {}
+    if options.build:
+        builds[provision.CROS_VERSION_PREFIX] = options.build
+    if options.firmware_build:
+        builds[provision.FW_VERSION_PREFIX] = options.firmware_build
+    if options.firmware_ro_build:
+        builds[provision.FW_RO_VERSION_PREFIX] = options.firmware_ro_build
     wait = options.no_wait == 'False'
     file_bugs = options.file_bugs == 'True'
     retry = options.retry == 'True'
@@ -1287,6 +1310,7 @@ def create_suite(afe, options):
                  diagnosis_utils.JobTimer.format_time(datetime.now()))
     return afe.run('create_suite_job', name=options.name,
                    board=options.board, build=options.build,
+                   builds=builds, test_source_build=options.test_source_build,
                    check_hosts=wait, pool=options.pool,
                    num=options.num,
                    file_bugs=file_bugs, priority=priority,

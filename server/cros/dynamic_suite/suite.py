@@ -23,6 +23,7 @@ from autotest_lib.client.common_lib import site_utils
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib import utils
 from autotest_lib.frontend.afe.json_rpc import proxy
+from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
@@ -254,7 +255,7 @@ class Suite(object):
          ControlData representation of a control file that should be in
          this Suite.
     @var _tag: a string with which to tag jobs run in this suite.
-    @var _build: the build on which we're running this suite.
+    @var _builds: the builds on which we're running this suite.
     @var _afe: an instance of AFE as defined in server/frontend.py.
     @var _tko: an instance of TKO as defined in server/frontend.py.
     @var _jobs: currently scheduled jobs, if any.
@@ -479,7 +480,36 @@ class Suite(object):
 
 
     @staticmethod
-    def create_from_predicates(predicates, build, board, devserver,
+    def get_test_source_build(builds, **dargs):
+        """Get the build of test code.
+
+        Get the test source build from arguments. If parameter
+        `test_source_build` is set and has a value, return its value. Otherwise
+        returns the ChromeOS build name if it exists. If ChromeOS build is not
+        specified either, raise SuiteArgumentException.
+
+        @param builds: the builds on which we're running this suite. It's a
+                       dictionary of version_prefix:build.
+        @param **dargs: Any other Suite constructor parameters, as described
+                        in Suite.__init__ docstring.
+
+        @return: The build contains the test code.
+        @raise: SuiteArgumentException if both test_source_build and ChromeOS
+                build are not specified.
+
+        """
+        if dargs.get('test_source_build', None):
+            return dargs['test_source_build']
+        test_source_build = builds.get(provision.CROS_VERSION_PREFIX, None)
+        if not test_source_build:
+            raise error.SuiteArgumentException(
+                    'test_source_build must be specified if CrOS build is not '
+                    'specified.')
+        return test_source_build
+
+
+    @staticmethod
+    def create_from_predicates(predicates, builds, board, devserver,
                                cf_getter=None, name='ad_hoc_suite', **dargs):
         """
         Create a Suite using a given predicate test filters.
@@ -493,7 +523,8 @@ class Suite(object):
                            representations of control files. A test will be
                            included in suite if all callables in this list
                            return True on the given control file.
-        @param build: the build on which we're running this suite.
+        @param builds: the builds on which we're running this suite. It's a
+                       dictionary of version_prefix:build.
         @param board: the board on which we're running this suite.
         @param devserver: the devserver which contains the build.
         @param cf_getter: control_file_getter.ControlFileGetter. Defaults to
@@ -504,14 +535,15 @@ class Suite(object):
         @return a Suite instance.
         """
         if cf_getter is None:
+            build = Suite.get_test_source_build(builds, **dargs)
             cf_getter = Suite.create_ds_getter(build, devserver)
 
         return Suite(predicates,
-                     name, build, board, cf_getter, **dargs)
+                     name, builds, board, cf_getter, **dargs)
 
 
     @staticmethod
-    def create_from_name(name, build, board, devserver, cf_getter=None,
+    def create_from_name(name, builds, board, devserver, cf_getter=None,
                          **dargs):
         """
         Create a Suite using a predicate based on the SUITE control file var.
@@ -522,7 +554,8 @@ class Suite(object):
         Results will be pulled from |tko| upon completion.
 
         @param name: a value of the SUITE control file variable to search for.
-        @param build: the build on which we're running this suite.
+        @param builds: the builds on which we're running this suite. It's a
+                       dictionary of version_prefix:build.
         @param board: the board on which we're running this suite.
         @param devserver: the devserver which contains the build.
         @param cf_getter: control_file_getter.ControlFileGetter. Defaults to
@@ -532,20 +565,22 @@ class Suite(object):
         @return a Suite instance.
         """
         if cf_getter is None:
+            build = Suite.get_test_source_build(builds, **dargs)
             cf_getter = Suite.create_ds_getter(build, devserver)
 
         return Suite([Suite.name_in_tag_predicate(name)],
-                     name, build, board, cf_getter, **dargs)
+                     name, builds, board, cf_getter, **dargs)
 
 
-    def __init__(self, predicates, tag, build, board, cf_getter, afe=None,
+    def __init__(self, predicates, tag, builds, board, cf_getter, afe=None,
                  tko=None, pool=None, results_dir=None, max_runtime_mins=24*60,
                  timeout_mins=24*60, file_bugs=False,
                  file_experimental_bugs=False, suite_job_id=None,
                  ignore_deps=False, extra_deps=[],
                  priority=priorities.Priority.DEFAULT, forgiving_parser=True,
                  wait_for_results=True, job_retry=False,
-                 max_retries=sys.maxint, offload_failures_only=False):
+                 max_retries=sys.maxint, offload_failures_only=False,
+                 test_source_build=None):
         """
         Constructor
 
@@ -554,7 +589,7 @@ class Suite(object):
                            included in suite is all callables in this list
                            return True on the given control file.
         @param tag: a string with which to tag jobs run in this suite.
-        @param build: the build on which we're running this suite.
+        @param builds: the builds on which we're running this suite.
         @param board: the board on which we're running this suite.
         @param cf_getter: a control_file_getter.ControlFileGetter
         @param afe: an instance of AFE as defined in server/frontend.py.
@@ -588,6 +623,7 @@ class Suite(object):
                             Default to sys.maxint.
         @param offload_failures_only: Only enable gs_offloading for failed
                                       jobs.
+        @param test_source_build: Build that contains the server-side test code.
 
         """
         def combined_predicate(test):
@@ -596,7 +632,7 @@ class Suite(object):
         self._predicate = combined_predicate
 
         self._tag = tag
-        self._build = build
+        self._builds = builds
         self._board = board
         self._cf_getter = cf_getter
         self._results_dir = results_dir
@@ -627,6 +663,7 @@ class Suite(object):
         self._retry_handler = None
         self.wait_for_results = wait_for_results
         self._offload_failures_only = offload_failures_only
+        self._test_source_build = test_source_build
 
 
     @property
@@ -678,9 +715,27 @@ class Suite(object):
         # the afe from a suite job, as only the latter will get requeued
         # when a special task fails.
         job_deps.append(self._board)
-        keyvals={constants.JOB_BUILD_KEY: self._build,
+        # JOB_BUILD_KEY is default to use CrOS image, if it's not available,
+        # take the first build in the builds dictionary.
+        # test_source_build is saved to job_keyvals so scheduler can retrieve
+        # the build name from database when compiling autoserv commandline.
+        # This avoid a database change to add a new field in afe_jobs.
+        build = self._builds.get(provision.CROS_VERSION_PREFIX,
+                                 self._builds.values()[0])
+        keyvals={constants.JOB_BUILD_KEY: build,
                  constants.JOB_SUITE_KEY: self._tag,
-                 constants.JOB_EXPERIMENTAL_KEY: test.experimental}
+                 constants.JOB_EXPERIMENTAL_KEY: test.experimental,
+                 constants.JOB_BUILDS_KEY: self._builds}
+        # Only add `test_source_build` to job keyvals if the build is different
+        # from the CrOS build or the job uses more than one build, e.g., both
+        # firmware and CrOS will be updated in the dut.
+        # This is for backwards compatibility, so the update Autotest code can
+        # compile an autoserv command line to run in a SSP container using
+        # previous builds.
+        if (self._test_source_build and
+            (build != self._test_source_build or len(self._builds) > 1)):
+            keyvals[constants.JOB_TEST_SOURCE_BUILD_KEY] = (
+                    self._test_source_build)
         if retry_for:
             # We drop the old job's id in the new job's keyval file
             # so that later our tko parser can figure out the retring
@@ -692,7 +747,8 @@ class Suite(object):
 
         test_obj = self._afe.create_job(
             control_file=test.text,
-            name=tools.create_job_name(self._build, self._tag, test.name),
+            name=tools.create_job_name(self._test_source_build or build,
+                                       self._tag, test.name),
             control_type=test.test_type.capitalize(),
             meta_hosts=[self._board]*test.sync_count,
             dependencies=job_deps,
@@ -915,8 +971,11 @@ class Suite(object):
                 if self.should_file_bug(result):
                     job_views = self._tko.run('get_detailed_test_views',
                                               afe_job_id=result.id)
-
-                    failure = reporting.TestBug(self._build,
+                    # Use the CrOS build for bug filing. If CrOS build is not
+                    # specified, use the first build in the builds dictionary.
+                    build = self._builds.get(provision.CROS_VERSION_PREFIX,
+                                             self._builds.values()[0])
+                    failure = reporting.TestBug(build,
                             site_utils.get_chrome_version(job_views),
                             self._tag,
                             result)

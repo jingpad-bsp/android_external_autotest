@@ -231,7 +231,41 @@ class SuiteSpec(object):
                       behavior will default to creating a suite of based
                       on the SUITE field of control files.
     """
-    def __init__(self, build=None, board=None, name=None, job=None,
+
+    def _verify_builds(self, build, builds):
+        """Verify the value of build and builds passed in to create a suite.
+
+        TODO(crbug.com/496782): This method should be removed after R45 falls
+        off stable channel. Add `builds` to required_keywords in __init__, and
+        remove `build` in __init__.
+
+        @param build: the build to install e.g.
+                      x86-alex-release/R18-1655.0.0-a1-b1584.
+        @param builds: the builds to install e.g.
+                       {'cros-version:': 'x86-alex-release/R18-1655.0.0',
+                        'fw-version:':  'x86-alex-firmware/R36-5771.50.0'}
+
+        @raise: SuiteArgumentException if value for build or builds is invalid.
+
+        """
+        if not builds and not build:
+            raise error.SuiteArgumentException(
+                    'reimage_and_run() needs at least one of builds or build '
+                    'being specified.')
+        if build and builds and not build in builds.values():
+            raise error.SuiteArgumentException(
+                    'Arguments build and builds for reimage_and_run() is '
+                    'inconsistent. `build` must be one of the values of '
+                    '`builds`. build="%s". builds="%s"' % (build, builds))
+        build_arg_check = {'build': str, 'builds': dict}
+        for key, expected in build_arg_check.iteritems():
+            value = locals().get(key)
+            if value and not isinstance(value, expected):
+                raise error.SuiteArgumentException(
+                        'reimage_and_run() needs %s=<%r>' % (key, expected))
+
+
+    def __init__(self, build=None, builds=None, board=None, name=None, job=None,
                  pool=None, num=None, check_hosts=True,
                  add_experimental=True, file_bugs=False,
                  file_experimental_bugs=False, max_runtime_mins=24*60,
@@ -240,14 +274,16 @@ class SuiteSpec(object):
                  bug_template={}, devserver_url=None,
                  priority=priorities.Priority.DEFAULT, predicate=None,
                  wait_for_results=True, job_retry=False, max_retries=None,
-                 offload_failures_only=False, **dargs):
+                 offload_failures_only=False, test_source_build=None, **dargs):
         """
         Vets arguments for reimage_and_run() and populates self with supplied
         values.
 
+        TODO(dshi): crbug.com/496782 once R45 falls off stable channel, we
+        should remove option build, firmware_reimage and version_prefix, as they
+        will be all merged into option builds.
+
         Currently required args:
-        @param build: the build to install e.g.
-                      x86-alex-release/R18-1655.0.0-a1-b1584.
         @param board: which kind of devices to reimage.
         @param name: a value of the SUITE control file variable to search for.
         @param job: an instance of client.common_lib.base_job representing the
@@ -255,6 +291,15 @@ class SuiteSpec(object):
         @param devserver_url: url to the selected devserver.
 
         Currently supported optional args:
+        @param build: the build to install e.g.
+                      x86-alex-release/R18-1655.0.0-a1-b1584.
+        @param builds: the builds to install e.g.
+                       {'cros-version:': 'x86-alex-release/R18-1655.0.0',
+                        'fw-version:':  'x86-alex-firmware/R36-5771.50.0'}
+        @param test_source_build: Build that contains the server-side test code,
+                e.g., it can be the value of builds['cros-version:'] or
+                builds['fw-version:']. Default is None, that is, use
+                the server-side test code from builds['cros-version:']
         @param pool: specify the pool of machines to use for scheduling purposes
                      Default: None
         @param num: the maximum number of devices to reimage.
@@ -309,8 +354,12 @@ class SuiteSpec(object):
                         deprecate and remove arguments in ToT while not
                         breaking branch builds.
         """
-        required_keywords = {'build': str,
-                             'board': str,
+        # TODO(dshi): crbug.com/496782 Following should be added to
+        # required_keywords after R45 falls off stable channel:
+        # 'builds': dict,
+        # To allow the transition, build is removed from the list, but the code
+        # will check either build or builds should exist.
+        required_keywords = {'board': str,
                              'name': str,
                              'job': base_job.base_job,
                              'devserver_url': str}
@@ -318,10 +367,38 @@ class SuiteSpec(object):
             value = locals().get(key)
             if not value or not isinstance(value, expected):
                 raise error.SuiteArgumentException(
-                    "reimage_and_run() needs %s=<%r>" % (key, expected))
+                        'reimage_and_run() needs %s=<%r>' % (key, expected))
+        self._verify_builds(build, builds)
+
         self.board = 'board:%s' % board
         self.devserver = dev_server.ImageServer(devserver_url)
-        self.build = self.devserver.translate(build)
+
+        if builds:
+            self.builds = builds
+        else:
+            # TODO(dshi): crbug.com/496782 This warning can be removed after R45
+            # falls off stable channel.
+            logging.warning('reimage_and_run arguments firmware_reimage and '
+                            'version_prefix have been deprecated. Please use '
+                            'a dictionary builds to specify images, e.g., '
+                            '{\'cros-version:\':\'peppy-release/R38-5655.0.0\','
+                            ' \'fw-version:\':\'peppy-firmware/R36-5371.0.0\'}')
+
+            if version_prefix:
+                prefix = version_prefix
+            else:
+                prefix = (provision.FW_VERSION_PREFIX if firmware_reimage else
+                          provision.CROS_VERSION_PREFIX)
+            self.builds = {prefix: build}
+
+        if provision.CROS_VERSION_PREFIX in self.builds:
+            translated_build = self.devserver.translate(
+                    self.builds[provision.CROS_VERSION_PREFIX])
+            self.builds[provision.CROS_VERSION_PREFIX] = translated_build
+
+        self.test_source_build = Suite.get_test_source_build(
+                self.builds, test_source_build=test_source_build)
+
         self.name = name
         self.job = job
         if pool:
@@ -338,14 +415,12 @@ class SuiteSpec(object):
         self.max_runtime_mins = max_runtime_mins
         self.timeout = timeout
         self.timeout_mins = timeout_mins or timeout * 60
-        self.firmware_reimage = firmware_reimage
         if isinstance(suite_dependencies, str):
             self.suite_dependencies = [dep.strip(' ') for dep
                                        in suite_dependencies.split(',')]
         else:
             self.suite_dependencies = suite_dependencies
         self.bug_template = bug_template
-        self.version_prefix = version_prefix
         self.priority = priority
         self.predicate = predicate
         self.wait_for_results = wait_for_results
@@ -374,14 +449,17 @@ def reimage_and_run(**dargs):
     @param dargs: Dictionary containing the arguments listed below.
 
     Currently required args:
-    @param build: the build to install e.g.
-                  x86-alex-release/R18-1655.0.0-a1-b1584.
     @param board: which kind of devices to reimage.
     @param name: a value of the SUITE control file variable to search for.
     @param job: an instance of client.common_lib.base_job representing the
                 currently running suite job.
 
     Currently supported optional args:
+    @param build: the build to install e.g.
+                  x86-alex-release/R18-1655.0.0-a1-b1584.
+    @param builds: the builds to install e.g.
+                   {'cros-version:': 'x86-alex-release/R18-1655.0.0',
+                    'fw-version:':  'x86-alex-firmware/R36-5771.50.0'}
     @param pool: specify the pool of machines to use for scheduling purposes.
                  Default: None
     @param num: the maximum number of devices to reimage.
@@ -417,29 +495,23 @@ def reimage_and_run(**dargs):
     """
     suite_spec = SuiteSpec(**dargs)
 
-    # Horrible hacks to handle backwards compatibility, overall goal here is
-    # reimage_firmware == True -> Firmware
-    # reimage_firmware == False AND version_prefix == None -> OS
-    # reimage_firmware == False AND version_prefix != None -> version_prefix
-    # and once we've set version_prefix right, ignore that reimage_firmware
-    # has ever existed...
-    # Remove all this code and reimage_firmware once R31 falls off stable.
-    if suite_spec.firmware_reimage:
-        suite_spec.version_prefix = provision.FW_VERSION_PREFIX
-        logging.warning("reimage_and_run |firmware_reimage=True| argument "
-                "has been deprecated. Please use "
-                "|version_prefix=provision.FW_VERSION_PREFIX| instead.")
-    elif not suite_spec.version_prefix:
-        suite_spec.version_prefix = provision.CROS_VERSION_PREFIX
-
+    # To support provision both CrOS and firmware, option builds is added to
+    # SuiteSpec, e.g.,
+    # builds = {'cros-version:': 'x86-alex-release/R18-1655.0.0',
+    #           'fw-version:':  'x86-alex-firmware/R36-5771.50.0'}
+    # Option build, version_prefix and firmware_reimage will all be obsoleted.
+    # For backwards compatibility, these option will be default to
+    # firmware_reimage = False
+    # version_prefix = provision.CROS_VERSION_PREFIX
+    # build will be used as CrOS build
     suite_spec.firmware_reimage = False
     # </backwards_compatibility_hacks>
 
     # version_prefix+build should make it into each test as a DEPENDENCY.  The
     # easiest way to do this is to tack it onto the suite_dependencies.
-    if suite_spec.version_prefix:
-        dependency = provision.join(suite_spec.version_prefix, suite_spec.build)
-        suite_spec.suite_dependencies.append(dependency)
+    suite_spec.suite_dependencies.extend(
+            provision.join(version_prefix, build)
+            for version_prefix, build in suite_spec.builds.items())
 
     afe = frontend_wrappers.RetryingAFE(timeout_min=30, delay_sec=10,
                                         user=suite_spec.job.user, debug=False)
@@ -477,10 +549,11 @@ def _perform_reimage_and_run(spec, afe, tko, predicate, suite_job_id=None):
                          Default: None
     """
     # We can't do anything else until the devserver has finished downloading
-    # autotest.tar so that we can get the control files we should schedule.
+    # control_files and test_suites packages so that we can get the control
+    # files we should schedule.
     try:
-        spec.devserver.stage_artifacts(
-                spec.build, ['control_files', 'test_suites'])
+        spec.devserver.stage_artifacts(spec.test_source_build,
+                                       ['control_files', 'test_suites'])
     except dev_server.DevServerException as e:
         # If we can't get the control files, there's nothing to run.
         raise error.AsynchronousBuildFailure(e)
@@ -492,7 +565,7 @@ def _perform_reimage_and_run(spec, afe, tko, predicate, suite_job_id=None):
 
     suite = Suite.create_from_predicates(
         predicates=[predicate], name=spec.name,
-        build=spec.build, board=spec.board, devserver=spec.devserver,
+        builds=spec.builds, board=spec.board, devserver=spec.devserver,
         afe=afe, tko=tko, pool=spec.pool,
         results_dir=spec.job.resultdir,
         max_runtime_mins=spec.max_runtime_mins, timeout_mins=spec.timeout_mins,
@@ -501,7 +574,8 @@ def _perform_reimage_and_run(spec, afe, tko, predicate, suite_job_id=None):
         suite_job_id=suite_job_id, extra_deps=spec.suite_dependencies,
         priority=spec.priority, wait_for_results=spec.wait_for_results,
         job_retry=spec.job_retry, max_retries=spec.max_retries,
-        offload_failures_only=spec.offload_failures_only)
+        offload_failures_only=spec.offload_failures_only,
+        test_source_build=spec.test_source_build)
 
     # Now we get to asychronously schedule tests.
     suite.schedule(spec.job.record_entry, spec.add_experimental)
