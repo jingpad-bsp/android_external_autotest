@@ -7,7 +7,6 @@ import tempfile
 
 from PIL import Image
 
-from autotest_lib.client.bin import utils
 from autotest_lib.server.cros.chameleon import image_generator
 
 
@@ -171,17 +170,12 @@ class DisplayClient(object):
         return self._display_proxy.suspend_resume_bg(suspend_time)
 
 
-    def wait_for_output(self, output, expected_display_count=2):
+    def wait_for_output(self, output):
         """Waits for the specified output to be connected.
 
         @param output: The output name as a string.
-        @param expected_display_count:
-                number of displays expected to be connected.
         """
         self._display_proxy.wait_output_connected(output)
-        utils.wait_for_value(lambda: (
-                len(self._display_proxy.get_display_info())),
-                expected_value=expected_display_count)
 
 
     def hide_cursor(self):
