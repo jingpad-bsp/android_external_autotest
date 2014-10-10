@@ -270,3 +270,13 @@ class MoblabHost(cros_host.CrosHost):
         except error.AutoservRunError:
             logging.debug('Failed to retrieve dhcpd lease file from host.')
         super(MoblabHost, self).repair_full()
+
+
+    def get_platform(self):
+        """Determine the correct platform label for this host.
+
+        For Moblab devices '_moblab' is appended.
+
+        @returns a string representing this host's platform.
+        """
+        return super(MoblabHost, self).get_platform() + '_moblab'
