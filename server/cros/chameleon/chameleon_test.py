@@ -524,13 +524,14 @@ class ChameleonTest(test.test):
         finally:
             if message is None:
                 return None
+            # TODO(waihong): Save to a better lossless compression format.
             chameleon_image.save(
-                    os.path.join(self.outputdir, '%s-chameleon.png' % tag))
+                    os.path.join(self.outputdir, '%s-chameleon.bmp' % tag))
             dut_image_external.save(os.path.join(
-                    self.outputdir, '%s-dut-external.png' % tag))
+                    self.outputdir, '%s-dut-external.bmp' % tag))
             if verify_mirrored:
                 dut_image_internal.save(os.path.join(
-                        self.outputdir, '%s-dut-internal.png' % tag))
+                        self.outputdir, '%s-dut-internal.bmp' % tag))
 
 
     def load_test_image_and_check(self, tag, expected_resolution,
