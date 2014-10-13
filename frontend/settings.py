@@ -12,7 +12,6 @@ For more details on how the routing works, see db_router.py.
 import os
 import common
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.frontend import database_settings_helper
 
 c = global_config.global_config
 _section = 'AUTOTEST_WEB'
@@ -29,8 +28,74 @@ ADMINS = (
 
 MANAGERS = ADMINS
 
-AUTOTEST_DEFAULT = database_settings_helper.get_database_config()
-AUTOTEST_GLOBAL = database_settings_helper.get_database_config('global_db_')
+SHARD_HOSTNAME = c.get_config_value('SHARD', 'shard_hostname', default=None)
+
+def _get_config(config_key, prefix='',
+                default=global_config.global_config._NO_DEFAULT_SPECIFIED,
+                type=str):
+    """Retrieves a global config value for the specified key.
+
+    @param config_key: The string key associated with the desired config value.
+    @param prefix: If existing, the value with the key prefix + config_key
+                   will be returned. If it doesn't exist, the normal key
+                   is used for the lookup.
+    @param default: The default value to return if the value couldn't be looked
+                    up; neither for prefix + config_key nor config_key.
+    @param type: Expected type of the return value.
+
+    @return: The config value, as returned by
+             global_config.global_config.get_config_value().
+    """
+
+    # When running on a shard, fail loudly if the global_db_ prefixed settings
+    # aren't present.
+    if SHARD_HOSTNAME:
+        return c.get_config_value(_section, prefix + config_key,
+                                  default=default, type=type)
+
+    return c.get_config_value_with_fallback(_section, prefix + config_key,
+                                            config_key, default=default,
+                                            type=type)
+
+
+def _get_database_config(config_prefix=''):
+    """Create a configuration dictionary that can be passed to Django.
+
+    @param config_prefix: If specified, this function will try to prefix lookup
+                          keys from global_config with this. If those values
+                          don't exist, the normal key without the prefix will
+                          be used.
+
+    @return A dictionary that can be used in the Django DATABASES setting.
+    """
+    config = {
+        'ENGINE': 'autotest_lib.frontend.db.backends.afe',
+        'PORT': '',
+        'HOST': _get_config("host", config_prefix),
+        'NAME': _get_config("database", config_prefix),
+        'USER': _get_config("user", config_prefix),
+        'PASSWORD': _get_config("password", config_prefix, default=''),
+        'READONLY_HOST': _get_config(
+                "readonly_host", config_prefix,
+                default=_get_config("host", config_prefix)),
+        'READONLY_USER': _get_config(
+                "readonly_user", config_prefix,
+                default=_get_config("user", config_prefix)),
+        'OPTIONS': {
+            'timeout': _get_config("query_timeout", config_prefix,
+                                   type=int, default=3600)
+        }
+    }
+    if config['READONLY_USER'] != config['USER']:
+        config['READONLY_PASSWORD'] = _get_config(
+                'readonly_password', config_prefix, default='')
+    else:
+        config['READONLY_PASSWORD'] = config['PASSWORD']
+    return config
+
+
+AUTOTEST_DEFAULT = _get_database_config()
+AUTOTEST_GLOBAL = _get_database_config('global_db_')
 
 ALLOWED_HOSTS = '*'
 
