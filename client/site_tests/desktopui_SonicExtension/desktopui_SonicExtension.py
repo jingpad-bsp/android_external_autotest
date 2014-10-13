@@ -62,24 +62,20 @@ class desktopui_SonicExtension(test.test):
         """
         super(desktopui_SonicExtension, self).initialize()
 
-        auto_test_path = os.path.join(self.autodir, 'tests',
-                                      'desktopui_SonicExtension',)
         if not extension_dir:
-            extension_path = self._install_sonic_extension()
+            self._extension_dir = self._install_sonic_extension()
         else:
-            extension_path = os.path.join(auto_test_path, extension_dir)
-        config_file = os.path.join(auto_test_path, test_config)
-        logging.info('extension: ' + extension_path)
-        if not os.path.exists(extension_path):
+            self._extension_dir = extension_dir
+        if not os.path.exists(self._extension_dir):
             raise error.TestError('Failed to install sonic extension.')
-        self._check_manifest(extension_path)
-        self._extension_path = extension_path
+        logging.info('extension: %s', self._extension_dir)
+        self._check_manifest(self._extension_dir)
         self._test_utils_page = 'e2e_test_utils.html'
-        self._config_file = config_file
+        self._test_config = test_config
         self._sonic_hostname = sonic_hostname
         self._sonic_build = sonic_build
         self._settings = config_manager.ConfigurationManager(
-                self._config_file).get_config_settings()
+                self._test_config).get_config_settings()
         self._test_utils = test_utils.TestUtils()
 
 
@@ -117,14 +113,14 @@ class desktopui_SonicExtension(test.test):
         # test config files.
         logging.info('Starting sonic client test.')
         kwargs = {
-            'extension_paths': [self._extension_path],
+            'extension_paths': [self._extension_dir],
             'is_component': True,
             'extra_chrome_flags': [self._settings['extra_flags']],
         }
         with chromedriver.chromedriver(**kwargs) as chromedriver_instance:
             driver = chromedriver_instance.driver
             extension = chromedriver_instance.get_extension(
-                    self._extension_path)
+                    self._extension_dir)
             extension_id = extension.extension_id
             time.sleep(self.wait_time)
             self._test_utils.close_popup_tabs(driver)
@@ -145,7 +141,9 @@ class desktopui_SonicExtension(test.test):
             crash_id = self._test_utils.upload_v2_mirroring_logs(
                     driver, extension_id)
             test_info['crash_id'] = crash_id
-            self._test_utils.output_dict_to_file(
-                dictionary=test_info, path=self.resultsdir,
-                file_name='test_information.json')
+            if self._settings.get('sender_root_dir'):
+                self._test_utils.output_dict_to_file(
+                    dictionary=test_info,
+                    path=self._settings['sender_root_dir'],
+                    file_name='test_information.json')
             time.sleep(self.wait_time)
