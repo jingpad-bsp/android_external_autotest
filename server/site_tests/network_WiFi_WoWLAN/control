@@ -1,0 +1,36 @@
+# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+from autotest_lib.server import utils
+
+AUTHOR = 'ejcaruso, samueltan, snanda'
+NAME = 'network_WiFi_WoWLAN'
+TIME = 'SHORT'
+TEST_TYPE = 'Server'
+DEPENDENCIES = 'wificell, servo'
+
+DOC = """
+Wake-on-WLAN is an important building block for other features, so we'd
+like to make sure it doesn't regress on our boards.
+
+Wake-on-WLAN allows us to wake up a device with packets sent over the
+wireless LAN. This test sets up a DUT to wake given packets from the
+router, puts the DUT to sleep, and then tries to wake up by sending it
+a packet. Setting up WoWLAN is done via a dbus message sent to shill.
+
+WoWLAN can also be controlled using iw, but at suspend time shill will
+overwrite settings that were done in this fashion with the rules that
+were sent over dbus.
+"""
+
+args_dict = utils.args_to_dict(args)
+servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
+
+def run(machine):
+    host = hosts.create_host(machine, servo_args=servo_args)
+    job.run_test('network_WiFi_WoWLAN',
+                 host=host,
+                 raw_cmdline_args=args)
+
+parallel_simple(run, machines)

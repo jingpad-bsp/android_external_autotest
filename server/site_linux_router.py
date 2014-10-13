@@ -26,6 +26,9 @@ HostapdInstance = collections.namedtuple('HostapdInstance',
                                           'interface', 'config_dict',
                                           'stderr_log_file'])
 
+# Send magic packets here, so they can wake up the system but are otherwise
+# dropped.
+UDP_DISCARD_PORT = 9
 
 def build_router_hostname(client_hostname=None, router_hostname=None):
     """Build a router hostname from a client hostname.
@@ -891,3 +894,23 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.station_instances.append(
                 StationInstance(ssid=ssid, interface=interface,
                                 dev_type='managed'))
+
+
+    def send_magic_packet(self, dest_ip, dest_mac):
+        """Sends a magic packet to the NIC with the given IP and MAC addresses.
+
+        @param dest_ip the IP address of the device to send the packet to
+        @param dest_mac the hardware MAC address of the device
+
+        """
+        # magic packet is 6 0xff bytes followed by the hardware address
+        # 16 times
+        mac_bytes = ''.join([chr(int(b, 16)) for b in dest_mac.split(':')])
+        magic_packet = '\xff' * 6 + mac_bytes * 16
+
+        logging.info('Sending magic packet to %s...', dest_ip)
+        self.host.run('python -uc "import socket, sys;'
+                      's = socket.socket(socket.AF_INET, socket.SOCK_DGRAM);'
+                      's.sendto(sys.stdin.read(), (\'%s\', %d))"' %
+                      (dest_ip, UDP_DISCARD_PORT),
+                      stdin=magic_packet)

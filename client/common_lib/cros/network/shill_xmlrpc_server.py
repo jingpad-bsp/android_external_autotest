@@ -20,6 +20,34 @@ from autotest_lib.client.cros.networking import shill_proxy
 from autotest_lib.client.cros.networking import wifi_proxy
 
 
+class ShillServiceOrder:
+    """Utility class to temporarily change the service order.
+
+    Use this in a with block to change the service order for the length of
+    the block, and upon exiting the block, this class will change it back.
+
+    """
+
+    def __init__(self, proxy, requested_order):
+        self.proxy = proxy
+        self.order = requested_order
+
+
+    def __enter__(self):
+        self.saved_order = self.proxy.manager.GetServiceOrder()
+        try:
+            logging.info('Setting shill service order to "%s"', self.order)
+            self.proxy.manager.SetServiceOrder(self.order)
+        except:
+            logging.warning('Could not set shill service order')
+            self.proxy.manager.SetServiceOrder(self.saved_order)
+
+
+    def __exit__(self, exception, value, traceback):
+        logging.info('Setting shill service order back to "%s"',
+                     self.saved_order)
+        self.proxy.manager.SetServiceOrder(self.saved_order)
+
 
 class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
     """Exposes methods called remotely during WiFi autotests.
@@ -101,6 +129,44 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
         """
         self._wifi_proxy.manager.RemoveProfile(profile_name)
+        return True
+
+
+    @xmlrpc_server.dbus_safe(False)
+    def add_wake_packet_source(self, source_ip):
+        """Set up the NIC to wake on packets from the given source IP.
+
+        @param source_ip the string IP address of the packet source.
+        @return True on success, False otherwise.
+
+        """
+        with ShillServiceOrder(self._wifi_proxy, 'wifi'):
+            self._wifi_proxy.manager.AddWakeOnPacketConnection(source_ip)
+        return True
+
+
+    @xmlrpc_server.dbus_safe(False)
+    def remove_wake_packet_source(self, source_ip):
+        """Stop waking on packets from the given source IP.
+
+        @param source_ip the string IP address of the packet source.
+        @return True on success, False otherwise.
+
+        """
+        with ShillServiceOrder(self._wifi_proxy, 'wifi'):
+            self._wifi_proxy.manager.RemoveWakeOnPacketConnection(source_ip)
+        return True
+
+
+    @xmlrpc_server.dbus_safe(False)
+    def remove_all_wake_packet_sources(self):
+        """Stop waking on packets from any IP.
+
+        @return True on success, False otherwise.
+
+        """
+        with ShillServiceOrder(self._wifi_proxy, 'wifi'):
+            self._wifi_proxy.manager.RemoveAllWakeOnPacketConnections()
         return True
 
 
