@@ -64,8 +64,10 @@ class security_SandboxedServices(test.test):
         ps_fields_len = len(PS_FIELDS.split(','))
 
         output = utils.system_output(ps_cmd)
+        # crbug.com/422700: Filter out zombie processes.
         running_processes = [PsOutput(*line.split(None, ps_fields_len - 1))
-                             for line in output.splitlines()]
+                             for line in output.splitlines()
+                             if "<defunct>" not in line]
         return running_processes
 
 
