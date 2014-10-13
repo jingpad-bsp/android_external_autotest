@@ -33,6 +33,36 @@ class TestZeroconfDaemon(unittest.TestCase):
         return self._zero._process_A(q)
 
 
+    def testRegisterService(self):
+        """Tests that we get appropriate records after registering a service."""
+        SERVICE_PORT = 9
+        SERVICE_TXT_LIST = ['lies=lies']
+        self._zero.register_service('unique_prefix', '_service_type',
+                                    '_tcp', SERVICE_PORT, SERVICE_TXT_LIST)
+        name = '_service_type._tcp.local'
+        fq_name = 'unique_prefix.' + name
+        # Issue SRV, PTR, and TXT queries
+        q_srv = dpkt.dns.DNS.Q(name=fq_name, type=dpkt.dns.DNS_SRV)
+        q_txt = dpkt.dns.DNS.Q(name=fq_name, type=dpkt.dns.DNS_TXT)
+        q_ptr = dpkt.dns.DNS.Q(name=name, type=dpkt.dns.DNS_PTR)
+        ptr_responses = self._zero._process_PTR(q_ptr)
+        srv_responses = self._zero._process_SRV(q_srv)
+        txt_responses = self._zero._process_TXT(q_txt)
+        self.assertTrue(ptr_responses)
+        self.assertTrue(srv_responses)
+        self.assertTrue(txt_responses)
+        ptr_resp = ptr_responses[0]
+        srv_resp = [resp for resp in srv_responses
+                    if resp.type == dpkt.dns.DNS_SRV][0]
+        txt_resp = txt_responses[0]
+        # Check that basic things are right.
+        self.assertEqual(fq_name, ptr_resp.ptrname)
+        self.assertEqual(FAKE_HOSTNAME + '.' + self._zero.domain,
+                         srv_resp.srvname)
+        self.assertEqual(SERVICE_PORT, srv_resp.port)
+        self.assertEqual(SERVICE_TXT_LIST, txt_resp.text)
+
+
     def testProperties(self):
         """Test the initial properties set by the constructor."""
         self.assertEqual(self._zero.host, self._host)

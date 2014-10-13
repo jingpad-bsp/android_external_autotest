@@ -4,6 +4,7 @@
 
 import collections
 import dpkt
+import logging
 import socket
 import time
 
@@ -16,6 +17,13 @@ MDNS_PORT = 5353
 # Value to | to a class value to signal cache flush.
 DNS_CACHE_FLUSH = 0x8000
 
+# When considering SRV records, clients are supposed to unilaterally prefer
+# numerically lower priorities, then pick probabilistically by weight.
+# See RFC2782.
+# An arbitrary number that will fit in 16 bits.
+DEFAULT_PRIORITY = 500
+# An arbitrary number that will fit in 16 bits.
+DEFAULT_WEIGHT = 500
 
 def _RR_equals(rra, rrb):
     """Returns whether the two dpkt.dns.DNS.RR objects are equal."""
@@ -208,6 +216,7 @@ class ZeroconfDaemon(object):
         """
         if not answers:
             return
+        logging.debug('Sending response with answers: %r.', answers)
         resp_dns = dpkt.dns.DNS(
             op = dpkt.dns.DNS_AA, # Authoritative Answer.
             rcode = dpkt.dns.DNS_RCODE_NOERR,
@@ -369,6 +378,32 @@ class ZeroconfDaemon(object):
             name = q.name,
             text = text_list)
         return [answer]
+
+
+    def register_service(self, unique_prefix, service_type,
+                         protocol, port, txt_list):
+        """Register a service in the Avahi style.
+
+        Avahi exposes a convenient set of methods for manipulating "services"
+        which are a trio of PTR, SRV, and TXT records.  This is a similar
+        helper method for our daemon.
+
+        @param unique_prefix: string unique prefix of service (part of the
+                              canonical name).
+        @param service_type: string type of service (e.g. '_privet').
+        @param protocol: string protocol to use for service (e.g. '_tcp').
+        @param port: IP port of service (e.g. 53).
+        @param txt_list: list of txt records (e.g. ['vers=1.0', 'foo']).
+        """
+        service_name = '.'.join([unique_prefix, service_type])
+        fq_service_name = '.'.join([service_name, protocol, self._domain])
+        logging.debug('Registering service=%s on port=%d with txt records=%r',
+                      fq_service_name, port, txt_list)
+        self.register_SRV(
+                service_name, protocol, DEFAULT_PRIORITY, DEFAULT_WEIGHT, port)
+        self.register_PTR('.'.join([service_type, protocol, self._domain]),
+                          unique_prefix)
+        self.register_TXT(fq_service_name, txt_list)
 
 
     def cached_results(self, rrname, rrtype, timestamp=None):
