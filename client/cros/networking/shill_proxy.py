@@ -6,8 +6,9 @@ import collections
 import dbus
 import dbus.mainloop.glib
 import gobject
-import logging
 import time
+
+from autotest_lib.client.cros import dbus_util
 
 
 class ShillProxyError(Exception):
@@ -156,33 +157,7 @@ class ShillProxy(object):
         @param value: dbus object to convert to a primitive.
 
         """
-        if isinstance(value, dbus.Boolean):
-            return bool(value)
-        elif isinstance(value, int):
-            return int(value)
-        elif isinstance(value, dbus.UInt16):
-            return long(value)
-        elif isinstance(value, dbus.UInt32):
-            return long(value)
-        elif isinstance(value, dbus.UInt64):
-            return long(value)
-        elif isinstance(value, float):
-            return float(value)
-        elif isinstance(value, str):
-            return str(value)
-        elif isinstance(value, unicode):
-            return str(value)
-        elif isinstance(value, list):
-            return [cls.dbus2primitive(x) for x in value]
-        elif isinstance(value, tuple):
-            return tuple([cls.dbus2primitive(x) for x in value])
-        elif isinstance(value, dict):
-            return dict([(cls.dbus2primitive(k), cls.dbus2primitive(v))
-                         for k,v in value.items()])
-        else:
-            logging.error('Failed to convert dbus object of class: %r',
-                          value.__class__.__name__)
-            return value
+        return dbus_util.dbus2primitive(value)
 
 
     @staticmethod
