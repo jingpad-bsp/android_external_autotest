@@ -2,25 +2,39 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import collections
 import dbus
 import dbus.mainloop.glib
+import logging
 import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
+from autotest_lib.client.cros import dbus_util
 
+Service = collections.namedtuple('Service', ['service_id', 'service_info'])
+Peer = collections.namedtuple('Peer', ['uuid', 'name', 'note',
+                                       'last_seen', 'services'])
 
 # DBus constants for use with peerd.
 SERVICE_NAME = 'org.chromium.peerd'
-DBUS_PATH_MANAGER = '/org/chromium/peerd/Manager'
 DBUS_INTERFACE_MANAGER = 'org.chromium.peerd.Manager'
+DBUS_INTERFACE_PEER = 'org.chromium.peerd.Peer'
+DBUS_INTERFACE_SERVICE = 'org.chromium.peerd.Service'
+DBUS_INTERFACE_OBJECT_MANAGER = 'org.freedesktop.DBus.ObjectManager'
+DBUS_PATH_MANAGER = '/org/chromium/peerd/Manager'
+DBUS_PATH_OBJECT_MANAGER = '/org/chromium/peerd'
+PEER_PATH_PREFIX = '/org/chromium/peerd/peers/'
+PEER_PROPERTY_ID = 'UUID'
+PEER_PROPERTY_NAME = 'FriendlyName'
+PEER_PROPERTY_NOTE = 'Note'
+PEER_PROPERTY_LAST_SEEN = 'LastSeen'
+SERVICE_PROPERTY_ID = 'ServiceId'
+SERVICE_PROPERTY_INFO = 'ServiceInfo'
 
 # Possible technologies for use with PeerdHelper.start_monitoring().
-TECHNOLOGY_MDNS = 'm_dns'
-TECHNOLOGY_WIFI_SSID = 'wifi_ssid'
-TECHNOLOGY_BT_LE = 'bt_le'
-TECHNOLOGY_BT = 'bt_classic'
-TECHNOLOGY_ALL = 'all'
+TECHNOLOGY_ALL = dbus.UInt32(1 << 0)
+TECHNOLOGY_MDNS = dbus.UInt32(1 << 1)
 
 
 def make_helper(bus=None, start_instance=False, timeout_seconds=10,
@@ -72,6 +86,41 @@ class PeerdHelper(object):
                 DBUS_INTERFACE_MANAGER)
 
 
+    def _get_peers(self):
+        object_manager = dbus.Interface(
+                self._bus.get_object(SERVICE_NAME, DBUS_PATH_OBJECT_MANAGER),
+                DBUS_INTERFACE_OBJECT_MANAGER)
+        # |dbus_objects| is a map<object path,
+        #                         map<interface name,
+        #                             map<property name, value>>>
+        dbus_objects = object_manager.GetManagedObjects()
+        objects = dbus_util.dbus2primitive(dbus_objects)
+        peer_objects = [(path, interfaces)
+                        for path, interfaces in objects.iteritems()
+                        if (path.startswith(PEER_PATH_PREFIX) and
+                            DBUS_INTERFACE_PEER in interfaces)]
+        peers = []
+        for peer_path, interfaces in peer_objects:
+            service_property_sets = [
+                    interfaces[DBUS_INTERFACE_SERVICE]
+                    for path, interfaces in objects.iteritems()
+                    if (path.startswith(peer_path + '/services/') and
+                        DBUS_INTERFACE_SERVICE in interfaces)]
+            services = []
+            for service_properties in service_property_sets:
+                services.append(Service(
+                        service_id=service_properties[SERVICE_PROPERTY_ID],
+                        service_info=service_properties[SERVICE_PROPERTY_INFO]))
+            peer_properties = interfaces[DBUS_INTERFACE_PEER]
+            peer = Peer(uuid=peer_properties[PEER_PROPERTY_ID],
+                        name=peer_properties[PEER_PROPERTY_NAME],
+                        note=peer_properties[PEER_PROPERTY_NOTE],
+                        last_seen=peer_properties[PEER_PROPERTY_LAST_SEEN],
+                        services=services)
+            peers.append(peer)
+        return peers
+
+
     def close(self):
         """Clean up peerd state related to this helper.
 
@@ -95,6 +144,36 @@ class PeerdHelper(object):
 
         """
         return self._manager.StartMonitoring(technologies)
+
+
+    def has_peer(self, uuid, name=None, note=None):
+        """
+        Return a Peer instance if peerd has found a matching peer.
+
+        Optional parameters are also matched if not None.
+
+        @param uuid: string unique identifier of peer.
+        @param name: string optional friendly name of peer.
+        @param note: string optional note of peer.
+        @return Peer tuple if a matching peer exists, None otherwise.
+
+        """
+        peers = self._get_peers()
+        logging.debug('Found peers: %r.', peers)
+        for peer in peers:
+            if peer.uuid != uuid:
+                continue
+            if name is not None and name != peer.name:
+                logging.debug('Mismatched peer names; found %s, expected %s.',
+                              peer.name, name)
+                return None
+            if note is not None and note != peer.note:
+                logging.debug('Mismatched peer notes; found %s, expected %s.',
+                              peer.note, note)
+                return None
+            return peer
+        logging.debug('No peer had a matching ID.')
+        return None
 
 
     def expose_service(self, service_id, service_info):
