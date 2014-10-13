@@ -118,25 +118,6 @@ class global_config_test(unittest.TestCase):
         self.assertEquals(val, "default")
 
 
-    def test_fallback_key(self):
-        val = self.conf.get_config_value_with_fallback(
-            "SECTION_A", "value_3", "value_4", bool)
-        self.assertEquals(val, True)
-
-        val = self.conf.get_config_value_with_fallback(
-            "SECTION_A", "not_existing", "value_4", bool)
-        self.assertEquals(val, False)
-
-        val = self.conf.get_config_value_with_fallback(
-            "SECTION_A", "not_existing", "value_4",
-            fallback_section='SECTION_B')
-        self.assertEquals(val, '7')
-
-        self.assertRaises(
-            Exception, self.conf.get_config_value_with_fallback,
-            "SECTION_A", "not_existing", "also_not_existing", bool)
-
-
 # this is so the test can be run in standalone mode
 if __name__ == '__main__':
     unittest.main()

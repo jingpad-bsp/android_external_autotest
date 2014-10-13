@@ -1,12 +1,4 @@
 """Django settings for frontend project.
-
-Two databases are configured for the use with django here. One for tko tables,
-which will always be the same database for all instances (the global database),
-and one for everything else, which will be the same as the global database for
-the master, but a local database for shards.
-
-This is implemented using a Django database router.
-For more details on how the routing works, see db_router.py.
 """
 
 import os
@@ -28,89 +20,38 @@ ADMINS = (
 
 MANAGERS = ADMINS
 
-SHARD_HOSTNAME = c.get_config_value('SHARD', 'shard_hostname', default=None)
-
-def _get_config(config_key, prefix='',
-                default=global_config.global_config._NO_DEFAULT_SPECIFIED,
-                type=str):
+def _get_config(config_key, default=None):
     """Retrieves a global config value for the specified key.
 
     @param config_key: The string key associated with the desired config value.
-    @param prefix: If existing, the value with the key prefix + config_key
-                   will be returned. If it doesn't exist, the normal key
-                   is used for the lookup.
-    @param default: The default value to return if the value couldn't be looked
-                    up; neither for prefix + config_key nor config_key.
-    @param type: Expected type of the return value.
+    @param default: The default value to return if an existing one cannot be
+        found.
 
-    @return: The config value, as returned by
-             global_config.global_config.get_config_value().
+    @return The config value, as returned by
+        global_config.global_config.get_config_value().
     """
+    return c.get_config_value(_section, config_key, default=default)
 
-    # When running on a shard, fail loudly if the global_db_ prefixed settings
-    # aren't present.
-    if SHARD_HOSTNAME:
-        return c.get_config_value(_section, prefix + config_key,
-                                  default=default, type=type)
-
-    return c.get_config_value_with_fallback(_section, prefix + config_key,
-                                            config_key, default=default,
-                                            type=type)
-
-
-def _get_database_config(config_prefix=''):
-    """Create a configuration dictionary that can be passed to Django.
-
-    @param config_prefix: If specified, this function will try to prefix lookup
-                          keys from global_config with this. If those values
-                          don't exist, the normal key without the prefix will
-                          be used.
-
-    @return A dictionary that can be used in the Django DATABASES setting.
-    """
-    config = {
-        'ENGINE': 'autotest_lib.frontend.db.backends.afe',
-        'PORT': '',
-        'HOST': _get_config("host", config_prefix),
-        'NAME': _get_config("database", config_prefix),
-        'USER': _get_config("user", config_prefix),
-        'PASSWORD': _get_config("password", config_prefix, default=''),
-        'READONLY_HOST': _get_config(
-                "readonly_host", config_prefix,
-                default=_get_config("host", config_prefix)),
-        'READONLY_USER': _get_config(
-                "readonly_user", config_prefix,
-                default=_get_config("user", config_prefix)),
-        'OPTIONS': {
-            'timeout': _get_config("query_timeout", config_prefix,
-                                   type=int, default=3600)
-        }
-    }
-    if config['READONLY_USER'] != config['USER']:
-        config['READONLY_PASSWORD'] = _get_config(
-                'readonly_password', config_prefix, default='')
-    else:
-        config['READONLY_PASSWORD'] = config['PASSWORD']
-    return config
-
-
-AUTOTEST_DEFAULT = _get_database_config()
-AUTOTEST_GLOBAL = _get_database_config('global_db_')
+AUTOTEST_DEFAULT = {
+    'ENGINE': 'autotest_lib.frontend.db.backends.afe',
+    'PORT': '',
+    'HOST': _get_config("host"),
+    'NAME': _get_config("database"),
+    'USER': _get_config("user"),
+    'PASSWORD': _get_config("password", default=''),
+    'READONLY_HOST': _get_config("readonly_host", default=_get_config("host")),
+    'READONLY_USER': _get_config("readonly_user", default=_get_config("user")),
+}
 
 ALLOWED_HOSTS = '*'
 
-DATABASES = {'default': AUTOTEST_DEFAULT, 'global': AUTOTEST_GLOBAL}
+if AUTOTEST_DEFAULT['READONLY_USER'] != AUTOTEST_DEFAULT['USER']:
+    AUTOTEST_DEFAULT['READONLY_PASSWORD'] = _get_config("readonly_password",
+                                                        default='')
+else:
+    AUTOTEST_DEFAULT['READONLY_PASSWORD'] = AUTOTEST_DEFAULT['PASSWORD']
 
-# Have to set SECRET_KEY before importing connections because of this bug:
-# https://code.djangoproject.com/ticket/20704
-# TODO: Order this again after an upgrade to Django 1.6 or higher.
-# Make this unique, and don't share it with anybody.
-SECRET_KEY = 'pn-t15u(epetamdflb%dqaaxw+5u&2#0u-jah70w1l*_9*)=n7'
-
-# Do not do this here or from the router, or most unit tests will fail.
-# from django.db import connection
-
-DATABASE_ROUTERS = ['autotest_lib.frontend.db_router.Router']
+DATABASES = {'default': AUTOTEST_DEFAULT}
 
 # prefix applied to all URLs - useful if requests are coming through apache,
 # and you need this app to coexist with others
@@ -151,6 +92,9 @@ STATIC_URL = '/' + URL_PREFIX + 'admin/'
 # trailing slash.
 # Examples: "http://foo.com/media/", "/media/".
 ADMIN_MEDIA_PREFIX = '/media/'
+
+# Make this unique, and don't share it with anybody.
+SECRET_KEY = 'pn-t15u(epetamdflb%dqaaxw+5u&2#0u-jah70w1l*_9*)=n7'
 
 # List of callables that know how to import templates from various sources.
 TEMPLATE_LOADERS = (
