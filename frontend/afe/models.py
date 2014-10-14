@@ -20,6 +20,7 @@ from autotest_lib.client.common_lib import enum, error, host_protections
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import host_queue_entry_states
 from autotest_lib.client.common_lib import control_data, priorities, decorators
+from autotest_lib.client.common_lib.cros.graphite import es_utils
 
 # job options and user preferences
 DEFAULT_REBOOT_BEFORE = model_attributes.RebootBefore.IF_DIRTY
@@ -480,6 +481,24 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
         self.labels.clear()
 
 
+    def record_state(self, type_str, state, value, other_metadata=None):
+        """Record metadata in elasticsearch.
+
+        @param type_str: sets the _type field in elasticsearch db.
+        @param state: string representing what state we are recording,
+                      e.g. 'locked'
+        @param value: value of the state, e.g. True
+        @param other_metadata: Other metadata to store in metaDB.
+        """
+        metadata = {
+            state: value,
+            'hostname': self.hostname,
+        }
+        if other_metadata:
+            metadata = dict(metadata.items() + other_metadata.items())
+        es_utils.ESMetadata().post(type_str=type_str, metadata=metadata)
+
+
     def save(self, *args, **kwargs):
         # extra spaces in the hostname can be a sneaky source of errors
         self.hostname = self.hostname.strip()
@@ -487,11 +506,18 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
         first_time = (self.id is None)
         if not first_time:
             AclGroup.check_for_acl_violation_hosts([self])
+        # If locked is changed, send its status and user made the change to
+        # metaDB. Locks are important in host history because if a device is
+        # locked then we don't really care what state it is in.
         if self.locked and not self.locked_by:
             self.locked_by = User.current_user()
             self.lock_time = datetime.now()
+            self.record_state('lock_history', 'locked', self.locked,
+                              {'changed_by': self.locked_by.login})
             self.dirty = True
         elif not self.locked and self.locked_by:
+            self.record_state('lock_history', 'locked', self.locked,
+                              {'changed_by': self.locked_by.login})
             self.locked_by = None
             self.lock_time = None
         super(Host, self).save(*args, **kwargs)

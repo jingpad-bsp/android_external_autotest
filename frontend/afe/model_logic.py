@@ -9,7 +9,6 @@ from django.db import models as dbmodels, backend, connection
 from django.db.models.sql import query
 import django.db.models.sql.where
 from django.utils import datastructures
-from autotest_lib.client.common_lib.cros.graphite import es_utils
 from autotest_lib.frontend.afe import rdb_model_extensions
 from autotest_lib.frontend.afe import readonly_connection
 
@@ -728,20 +727,6 @@ class ModelExtensions(rdb_model_extensions.ModelValidators):
         obj.save()
         return obj
 
-    def record_state(self, type_str, state, value):
-        """Record metadata in elasticsearch.
-
-        @param type_str: sets the _type field in elasticsearch db.
-        @param state: string representing what state we are recording,
-                      e.g. 'locked'
-        @param value: value of the state, e.g. True
-        """
-        metadata = {
-            state: value,
-            'hostname': self.hostname,
-        }
-        es_utils.ESMetadata().post(type_str=type_str, metadata=metadata)
-
 
     def update_object(self, data={}, **kwargs):
         """\
@@ -755,12 +740,6 @@ class ModelExtensions(rdb_model_extensions.ModelValidators):
         self.convert_human_readable_values(data)
         for field_name, value in data.iteritems():
             setattr(self, field_name, value)
-            # Other fields such as label (when updated) are not sent over
-            # the es because it doesn't contribute to putting together host
-            # host history. Locks are important in host history because if
-            # a device is locked then we don't really care what state it is in.
-            if field_name == 'locked':
-                self.record_state('lock_history', 'locked', value)
         self.do_validate()
         self.save()
 
