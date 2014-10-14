@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os, os.path, time
+import os, os.path
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
@@ -22,7 +22,6 @@ class logging_CrashServices(test.test):
         '/usr/bin/shill',
         '/usr/sbin/update_engine',
         '/usr/sbin/wpa_supplicant',
-        '/usr/bin/X',
         #this will log out, so it's last
         '/sbin/session_manager'
     ]
@@ -72,6 +71,11 @@ class logging_CrashServices(test.test):
             return
 
         with chrome.Chrome():
+            if not utils.is_freon():
+                process_path = '/usr/bin/X'
+                self.job.run_test("logging_CrashServices",
+                                  process_path=process_path,
+                                  tag=os.path.basename(process_path))
             for process_path in self.process_list:
                 self.job.run_test("logging_CrashServices",
                                   process_path=process_path,
