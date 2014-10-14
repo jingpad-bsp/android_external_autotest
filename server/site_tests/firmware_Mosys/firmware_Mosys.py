@@ -111,14 +111,15 @@ class firmware_Mosys(FirmwareTest):
         self.check_state((self.checkers.crossystem_checker, {'fwid': version}))
 
         # b. mosys -k ec info
-        command = 'mosys -k ec info'
-        output = self.run_cmd(command)[0]
-        p = re.compile('vendor="[a-z]+" name="[ -~]+" fw_version="(.*)"')
-        v = p.match(output)
-        if not v:
-          raise error.TestFail('execute %s failed' % command)
-        version = v.group(1)
-        self.check_state((self.check_ec_version, version))
+        if self.faft_config.chrome_ec:
+          command = 'mosys -k ec info'
+          output = self.run_cmd(command)[0]
+          p = re.compile('vendor="[a-z]+" name="[ -~]+" fw_version="(.*)"')
+          v = p.match(output)
+          if not v:
+            raise error.TestFail('execute %s failed' % command)
+          version = v.group(1)
+          self.check_state((self.check_ec_version, version))
 
         # c. mosys platform name
         output = self.run_cmd('mosys platform name')[0]
