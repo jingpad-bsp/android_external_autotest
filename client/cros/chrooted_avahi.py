@@ -29,7 +29,7 @@ class ChrootedAvahi(object):
     # We'll drop the Avahi side into our network namespace.
     AVAHI_IF_IP = netblock.Netblock('10.9.8.2/24')
     AVAHI_IF_NAME = 'pseudoethernet0'
-    TCPDUMP_FILE_PATH = '/tmp/peerd_dump.pcap'
+    TCPDUMP_FILE_PATH = '/var/log/peerd_dump.pcap'
     AVAHI_CONFIG_FILE = 'etc/avahi/avahi-daemon.conf'
     AVAHI_CONFIGS = {
         AVAHI_CONFIG_FILE :
