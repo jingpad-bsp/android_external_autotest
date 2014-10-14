@@ -28,11 +28,15 @@ MINIJAIL_OPTS = { "mj_uid": "-u",
 
 
 class security_SandboxedServices(test.test):
+    """Enforces sandboxing restrictions on the processes running
+    on the system.
+    """
+
     version = 1
 
 
     def get_minijail_opts(self):
-        """Parses Minijail's help and generates a getopt string."
+        """Parses Minijail's help and generates a getopt string.
         """
 
         help = utils.system_output("minijail0 -h", ignore_status=True)
@@ -57,6 +61,8 @@ class security_SandboxedServices(test.test):
 
 
     def get_running_processes(self):
+        """Returns a list of running processes as PsOutput objects."""
+
         usermax = utils.system_output("cut -d: -f1 /etc/passwd | wc -L",
                                       ignore_status=True)
         usermax = max(int(usermax), 8)
@@ -92,7 +98,10 @@ class security_SandboxedServices(test.test):
 
     def minijail_ok(self, launcher, expected):
         """Checks whether the Minijail invocation
-        has the correct commandline options.
+        has the correct command-line options.
+
+        @param launcher: Minijail command line for the process.
+        @param expected: Sandboxing restrictions expected.
         """
 
         opts, args = getopt.getopt(launcher.args.split()[1:],
@@ -111,12 +120,12 @@ class security_SandboxedServices(test.test):
                     new_opts.append(check)
 
         if len(new_opts) > 0:
-            logging.error("New Minijail opts for '%s': %s" %
-                          (expected["exe"], ', '.join(new_opts)))
+            logging.error("New Minijail opts for '%s': %s",
+                          expected["exe"], ', '.join(new_opts))
 
         if len(missing_opts) > 0:
-            logging.error("Missing Minijail options for '%s': %s" %
-                          (expected["exe"], ', '.join(missing_opts)))
+            logging.error("Missing Minijail options for '%s': %s",
+                          expected["exe"], ', '.join(missing_opts))
 
         return (len(new_opts) + len(missing_opts)) == 0
 
@@ -124,6 +133,10 @@ class security_SandboxedServices(test.test):
     def dump_services(self, running_services, minijail_processes):
         """Leaves a list of running services in the results dir
         so that we can update the baseline file if necessary.
+
+        @param running_services: list of services to be logged.
+        @param minijail_processes: list of Minijail processes used to log how
+        each running service is sandboxed.
         """
 
         csv_file = csv.writer(open(os.path.join(self.resultsdir,
