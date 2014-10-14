@@ -118,6 +118,7 @@ class Driver(object):
             except board_enumerator.EnumeratorException as e:
                 logging.warning('Failed to enumerate boards: %r', e)
             mv.Update()
+            task.TotMilestoneManager().refresh()
             time.sleep(self._LOOP_INTERVAL_SECONDS)
             self.RereadAndReprocessConfig(config, mv)
 

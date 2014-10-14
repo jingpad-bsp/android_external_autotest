@@ -121,3 +121,19 @@ class tempdir(object):
                 logging.exception(msg)
             except:
                 pass
+
+
+class dummy_dir(object):
+    """A dummy object representing a directory with a name.
+
+    Only used for compat with the tmpdir, in cases where we wish to
+    reuse a dir with the same interface but not to delete it after
+    we're done using it.
+    """
+
+    def __init__(self, name):
+        """Initialize the dummy_dir object.
+
+        @param name: Path the the directory.
+        """
+        self.name = name

@@ -9,6 +9,15 @@ import driver
 from distutils import version
 from constants import Labels
 
+import common
+from autotest_lib.server.cros.dynamic_suite import constants
+from autotest_lib.scheduler import scheduler_lib
+from autotest_lib.server import site_utils
+try:
+    from chromite.lib import gs
+except ImportError:
+    gs = None
+
 
 class MalformedConfigEntry(Exception):
     """Raised to indicate a failure to parse a Task out of a config."""
@@ -28,6 +37,72 @@ def PickBranchName(type, milestone):
     if type in BARE_BRANCHES:
         return type
     return milestone
+
+
+class TotMilestoneManager(object):
+    """A class capable of converting tot string to milestone numbers.
+
+    This class is used as a cache for the tot milestone, so we don't
+    repeatedly hit google storage for all O(100) tasks in suite
+    scheduler's ini file.
+    """
+
+    __metaclass__ = scheduler_lib.Singleton
+
+    @staticmethod
+    def _tot_milestone():
+        """Get the tot milestone, eg: R40
+
+        @returns: A string representing the Tot milestone as declared by
+            the LATEST_BUILD_URL, or an empty string if LATEST_BUILD_URL
+            doesn't exist.
+        """
+        try:
+            return (gs.GSContext().Cat(constants.LATEST_BUILD_URL).split('-')[0]
+                    if gs else '')
+        except gs.GSNoSuchKey as e:
+            logging.warning('Failed to get latest build: %s', e)
+            return ''
+
+
+    def refresh(self):
+        """Refresh the tot milestone string managed by this class."""
+        self.tot = self._tot_milestone()
+
+
+    def __init__(self):
+        """Initialize a TotMilestoneManager."""
+        self.refresh()
+
+
+    def ConvertTotSpec(self, tot_spec):
+        """Converts a tot spec to the appropriate milestone.
+
+        Assume tot is R40:
+        tot   -> R40
+        tot-1 -> R39
+        tot-2 -> R38
+        tot-(any other numbers) -> R40
+
+        With the last option one assumes that a malformed configuration that has
+        'tot' in it, wants at least tot.
+
+        @param tot_spec: A string representing the tot spec.
+        @raises MalformedConfigEntry: If the tot_spec doesn't match the
+            expected format.
+        """
+        tot_spec = tot_spec.lower()
+        match = re.match('(tot)[-]?(1$|2$)?', tot_spec)
+        if not match:
+            raise MalformedConfigEntry(
+                    "%s isn't a valid branch spec." % tot_spec)
+        tot_mstone = self.tot
+        num_back = match.groups()[1]
+        if num_back:
+            tot_mstone_num = tot_mstone.lstrip('R')
+            tot_mstone = tot_mstone.replace(
+                    tot_mstone_num, str(int(tot_mstone_num)-int(num_back)))
+        return tot_mstone
 
 
 class Task(object):
@@ -123,9 +198,14 @@ class Task(object):
         for branch in branch_specs:
             if branch in BARE_BRANCHES:
                 continue
-            if ((branch.startswith('>=R') or branch.startswith('==R')) and
-                not have_seen_numeric_constraint):
-                have_seen_numeric_constraint = True
+            if not have_seen_numeric_constraint:
+                #TODO(beeps): Why was <= dropped on the floor?
+                if branch.startswith('>=R') or branch.startswith('==R'):
+                    have_seen_numeric_constraint = True
+                elif 'tot' in branch:
+                    TotMilestoneManager().ConvertTotSpec(
+                            branch[branch.index('tot'):])
+                    have_seen_numeric_constraint = True
                 continue
             raise MalformedConfigEntry("%s isn't a valid branch spec." % branch)
 
@@ -192,6 +272,11 @@ class Task(object):
         else:
             self._numeric_constraint = None
             for spec in branch_specs:
+                if 'tot' in spec.lower():
+                    tot_str = spec[spec.index('tot'):]
+                    spec = spec.replace(
+                            tot_str, TotMilestoneManager().ConvertTotSpec(
+                                tot_str))
                 if spec.startswith('>='):
                     self._numeric_constraint = version.LooseVersion(
                         spec.lstrip('>=R'))

@@ -36,3 +36,4 @@ PAYLOAD_FINISHED_TIME = 'payload_finished_time'
 # maintain backwards compatibility.
 REIMAGE_TYPE_OS = 'os'
 REIMAGE_TYPE_FIRMWARE = 'firmware'
+LATEST_BUILD_URL = 'gs://chromeos-image-archive/master-paladin/LATEST-master'

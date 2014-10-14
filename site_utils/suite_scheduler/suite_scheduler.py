@@ -166,6 +166,9 @@ def parse_options():
     parser.add_option('-l', '--list_events', dest='list',
                       action='store_true', default=False,
                       help='List supported events and exit.')
+    parser.add_option('-r', '--repo_dir', dest='tmp_repo_dir', default=None,
+                      help=('Path to a tmpdir containing manifest versions. '
+                            'This option is only used for testing.'))
     parser.add_option('-t', '--sanity', dest='sanity', action='store_true',
                       default=False,
                       help="Check the config file for any issues.")
@@ -223,7 +226,7 @@ def main():
     afe = frontend_wrappers.RetryingAFE(timeout_min=1, delay_sec=5, debug=False)
     enumerator = board_enumerator.BoardEnumerator(afe)
     scheduler = deduping_scheduler.DedupingScheduler(afe, options.file_bug)
-    mv = manifest_versions.ManifestVersions()
+    mv = manifest_versions.ManifestVersions(options.tmp_repo_dir)
     d = driver.Driver(scheduler, enumerator)
     d.SetUpEventsAndTasks(config, mv)
 
@@ -234,7 +237,8 @@ def main():
             logging.info('Forcing events: %r', keywords)
             d.ForceEventsOnceForBuild(keywords, options.build)
         else:
-            mv.Initialize()
+            if not options.tmp_repo_dir:
+                mv.Initialize()
             d.RunForever(config, mv)
     except Exception as e:
         logging.error('Fatal exception in suite_scheduler: %r\n%s', e,

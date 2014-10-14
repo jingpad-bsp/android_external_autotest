@@ -67,6 +67,10 @@ def _System(command, timeout=None):
 class ManifestVersions(object):
     """Class to allow discovery of manifests for new successful CrOS builds.
 
+    Manifest versions is a repository that contains information on which
+    builds passed/failed. This class is responsible for keeping a temp
+    copy of the repository up to date.
+
     @var _CLONE_RETRY_SECONDS: Number of seconds to wait before retrying
                                 a failed `git clone` operation.
     @var _CLONE_MAX_RETRIES: Maximum number of times to retry a failed
@@ -91,9 +95,17 @@ class ManifestVersions(object):
                                   r'(?:-group)?/pass/(\d+)/([0-9.]+)\.xml')
 
 
-    def __init__(self):
+    def __init__(self, tmp_repo_dir=None):
+        """Create a manifest versions manager.
+
+        @param tmp_repo_dir: For use in testing, if one does not wish to repeatedly
+            clone the manifest versions repo that is currently a few GB in size.
+        """
         self._git = _SystemOutput('which git')
-        self._tempdir = autotemp.tempdir(unique_id='_suite_scheduler')
+        if tmp_repo_dir:
+            self._tempdir = autotemp.dummy_dir(tmp_repo_dir)
+        else:
+            self._tempdir = autotemp.tempdir(unique_id='_suite_scheduler')
 
 
     def AnyManifestsSinceRev(self, revision):
