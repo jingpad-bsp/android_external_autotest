@@ -179,6 +179,22 @@ class ChameleonPort(object):
         return self._chameleond_proxy.GetConnectorType(self._input_id)
 
 
+    def has_audio_support(self):
+        """Returns if the input has audio support.
+
+        @return: True if the input has audio support; otherwise, False.
+        """
+        return self._chameleond_proxy.HasAudioSupport(self._input_id)
+
+
+    def has_video_support(self):
+        """Returns if the input has video support.
+
+        @return: True if the input has video support; otherwise, False.
+        """
+        return self._chameleond_proxy.HasVideoSupport(self._input_id)
+
+
     def wait_video_input_stable(self, timeout=None):
         """Waits the video input stable or timeout.
 

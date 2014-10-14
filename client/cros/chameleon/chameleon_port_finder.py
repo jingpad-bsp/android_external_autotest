@@ -27,10 +27,11 @@ class ChameleonPortFinder(object):
         self.failed = None
 
 
-    def find_all_ports(self):
+    def find_all_video_ports(self):
         """
         @returns a named tuple ChameleonPorts() containing a list of connected
-                 ports as the first element and failed ports as second element.
+                 video ports as the first element and failed ports as second
+                 element.
 
         """
 
@@ -38,6 +39,10 @@ class ChameleonPortFinder(object):
         dut_failed_ports = []
 
         for chameleon_port in self.chameleon_board.get_all_ports():
+            # Skip the non-video port.
+            if not chameleon_port.has_video_support():
+                continue
+
             connector_type = chameleon_port.get_connector_type()
             # Try to plug the port such that DUT can detect it.
             was_plugged = chameleon_port.plugged
@@ -68,13 +73,13 @@ class ChameleonPortFinder(object):
         return ChameleonPorts(connected_ports, dut_failed_ports)
 
 
-    def find_port(self, interface):
+    def find_video_port(self, interface):
         """
         @param interface: string, the interface. e.g: HDMI, DP, VGA
         @returns a ChameleonPort object if port is found, else None.
 
         """
-        connected_ports = self.find_all_ports().connected
+        connected_ports = self.find_all_video_ports().connected
 
         for port in connected_ports:
             if port.get_connector_type().lower() == interface.lower():
@@ -88,7 +93,7 @@ class ChameleonPortFinder(object):
                 '%s(%d)' % (p.get_connector_type(), p.get_connector_id())
                 for p in ports)
 
-        text = 'No port information. Did you run find_all_ports() ?'
+        text = 'No port information. Did you run find_all_video_ports() ?'
 
         if self.connected:
             text = ('Detected %d connected port(s): %s.\t'

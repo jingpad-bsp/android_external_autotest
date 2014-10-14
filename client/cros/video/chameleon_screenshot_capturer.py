@@ -69,7 +69,7 @@ class ChameleonScreenshotCapturer(object):
         self.chameleon_board.reset()
         finder = chameleon_port_finder.ChameleonPortFinder(self.chameleon_board)
 
-        connected_port = finder.find_port(self.interface)
+        connected_port = finder.find_video_port(self.interface)
 
         if connected_port is None:
             msg = 'No %s port found.\n' % self.interface

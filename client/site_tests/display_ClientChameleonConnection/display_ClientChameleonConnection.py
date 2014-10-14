@@ -28,7 +28,7 @@ class display_ClientChameleonConnection(test.test):
         self.chameleon.reset()
 
         finder = chameleon_port_finder.ChameleonPortFinder(self.chameleon)
-        ports = finder.find_all_ports()
+        ports = finder.find_all_video_ports()
 
         connected_ports = ports.connected
         dut_failed_ports = ports.failed
