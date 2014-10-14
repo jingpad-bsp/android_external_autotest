@@ -11,6 +11,7 @@ import glob, logging, os, re, sys
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.graphics import drm
 
 
 def xcommand(cmd, user=None):
@@ -34,6 +35,11 @@ def xsystem(cmd, user=None, timeout=None, ignore_status=False):
     """
     Run the command cmd, using utils.system, after adding the necessary
     setup to connect to the X server.
+
+    @param cmd: The command.
+    @param user: The user to switch to, or None for the current user.
+    @param timeout: Optional timeout.
+    @param ignore_status: Whether to check the return code of the command.
     """
     return utils.system(xcommand(cmd, user), timeout=timeout,
                         ignore_status=ignore_status)
@@ -81,7 +87,11 @@ def wakeup_screen():
 
 
 def switch_screen_on(on):
-    """Turn the touch screen on/off."""
+    """
+    Turn the touch screen on/off.
+
+    @param on: On or off.
+    """
     if on:
         xsystem(XSET + ' dpms force on')
     else:
@@ -93,16 +103,13 @@ def take_screenshot(resultsdir, fname_prefix, extension='png'):
     Args:
       @param resultsdir:   Directory to store the output in.
       @param fname_prefix: Prefix for the output fname.
-      @param format:       String indicating file format ('png', 'jpg', etc).
+      @param extension:    String indicating file format ('png', 'jpg', etc).
     Returns:
       the path of the saved screenshot file
     """
 
     old_exc_type = sys.exc_info()[0]
-    if utils.is_freon():
-        if old_exc_type is None:
-            raise error.TestFail('freon: take_screenshot not implemented')
-        return None
+
     next_index = len(glob.glob(
         os.path.join(resultsdir, '%s-*.%s' % (fname_prefix, extension))))
     screenshot_file = os.path.join(
@@ -110,8 +117,13 @@ def take_screenshot(resultsdir, fname_prefix, extension='png'):
     logging.info('Saving screenshot to %s.', screenshot_file)
 
     try:
-        xsystem('/usr/local/bin/import -window root -depth 8 %s' %
-                screenshot_file)
+        if utils.is_freon():
+            image = drm.screenshot()
+            image.save(screenshot_file)
+            return screenshot_file
+        else:
+            xsystem('/usr/local/bin/import -window root -depth 8 %s' %
+                    screenshot_file)
     except Exception as err:
         # Do not raise an exception if the screenshot fails while processing
         # another exception.
@@ -136,8 +148,17 @@ def take_screenshot_crop_by_height(fullpath, final_height, x_offset_pixels,
                             to begin cropping.
     """
     if utils.is_freon():
-        raise error.TestFail('freon: take_screenshot_crop_by_height not '
-                             'implemented')
+        image = drm.screenshot()
+        image.crop()
+        width, height = image.size
+        # Preserve aspect ratio: Wf / Wi == Hf / Hi
+        final_width = int(width * (float(final_height) / height))
+        box = (x_offset_pixels, y_offset_pixels,
+               x_offset_pixels + final_width, y_offset_pixels + final_height)
+        cropped = image.crop(box)
+        cropped.save(fullpath)
+        return fullpath
+
     params = {'height': final_height, 'x_offset': x_offset_pixels,
               'y_offset': y_offset_pixels, 'path': fullpath}
     import_cmd = ('/usr/local/bin/import -window root -depth 8 -crop '
@@ -153,8 +174,14 @@ def take_screenshot_crop(fullpath, box=None):
     @param fullpath: path, full path to save the image to.
     @param box: 4-tuple giving the upper left and lower right pixel coordinates.
     """
+
     if utils.is_freon():
-        raise error.TestFail('freon: take_screenshot_crop not implemented')
+        image = drm.screenshot()
+        if box:
+            image = image.crop(box)
+        image.save(fullpath)
+        return fullpath
+
     if box:
         upperx, uppery, lowerx, lowery = box
         img_w = lowerx - upperx
@@ -218,9 +245,11 @@ def get_display_resolution():
 def call_xrandr(args_string=''):
     """
     Calls xrandr with the args given by args_string.
-    |args_string| is a single string containing all arguments.
+
     e.g. call_xrandr('--output LVDS1 --off') will invoke:
         'xrandr --output LVDS1 --off'
+
+    @param args_string: A single string containing all arguments.
 
     Return value: Output of xrandr
     """
@@ -340,7 +369,7 @@ def execute_screenshot_capture(cmd):
     Provides safe execution of command to capture screenshot by wrapping
     the command around a try-catch construct.
 
-    @param import_cmd_string: string, screenshot capture command.
+    @param cmd: string, screenshot capture command.
     """
     if utils.is_freon():
         raise error.TestFail('freon: execute_screenshot_capture not '
