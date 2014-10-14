@@ -135,7 +135,7 @@ class autoupdate_CannedOmahaUpdate(test.test):
                                public_key)
         omaha.start()
         try:
-            utils.run('update_engine_client -omaha_url ' +
+            utils.run('update_engine_client -omaha_url=' +
                       'http://127.0.0.1:%d/update ' % omaha.get_port() +
                       '-update')
         except error.CmdError:
