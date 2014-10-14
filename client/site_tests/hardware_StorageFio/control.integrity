@@ -7,7 +7,6 @@ AUTHOR = 'jcasse, grundler'
 PURPOSE = 'Verify that data written to disk remains valid after 72 hours.'
 TIME = 'LENGTHY'
 TEST_TYPE = 'client'
-SUITE = 'storagequal'
 
 DOC = """
 This test uses FIO to spawn a number of threads to perform a particular type of
