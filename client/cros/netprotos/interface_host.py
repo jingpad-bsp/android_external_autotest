@@ -4,6 +4,7 @@
 
 import logging
 import socket
+import struct
 import time
 
 from autotest_lib.client.common_lib import error
@@ -83,16 +84,19 @@ class InterfaceDatagramSocket(object):
         """
         self._interface_ip = interface_ip
         self._recv_callback = None
-        self._sock = None
+        self._recv_sock = None
+        self._send_sock = None
 
 
     def close(self):
         """Close state associated with this object."""
-        if self._sock is None:
-            return
-        # Closing the socket drops membership groups.
-        self._sock.close()
-        self._sock = None
+        if self._recv_sock is not None:
+            # Closing the socket drops membership groups.
+            self._recv_sock.close()
+            self._recv_sock = None
+        if self._send_sock is not None:
+            self._send_sock.close()
+            self._send_sock = None
 
 
     def listen(self, ip_addr, port, recv_callback):
@@ -108,26 +112,38 @@ class InterfaceDatagramSocket(object):
         if self._recv_callback is not None:
             raise error.TestError('listen() called twice on '
                                   'InterfaceDatagramSocket.')
-        # Assume we're listening on a multicast UDP address.
-        self._listen_ip = ip_addr
-        self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self._sock.setsockopt(socket.SOL_IP, socket.IP_MULTICAST_TTL, 20)
-        self._sock.setsockopt(socket.SOL_IP, socket.IP_ADD_MEMBERSHIP,
-                              socket.inet_aton(self._listen_ip) +
-                              socket.inet_aton(self._interface_ip))
-        self._sock.settimeout(self.TIMEOUT_VALUE_SECONDS)
-        self._sock.bind(('', port))
+        # Multicast addresses are in 224.0.0.0 - 239.255.255.255 (rfc5771)
+        ip_addr_prefix = ord(socket.inet_aton(ip_addr)[0])
+        if ip_addr_prefix < 224 or ip_addr_prefix > 239:
+            raise error.TestError('Invalid multicast address.')
+
         self._recv_callback = recv_callback
+        # Set up a socket to receive just traffic from the given address.
+        self._recv_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self._recv_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self._recv_sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP,
+                                   socket.inet_aton(ip_addr) +
+                                   socket.inet_aton(self._interface_ip))
+        self._recv_sock.settimeout(self.TIMEOUT_VALUE_SECONDS)
+        self._recv_sock.bind((ip_addr, port))
+        # When we send responses, we want to send them from this particular
+        # interface.  The easiest way to do this is bind a socket directly to
+        # the IP for the interface.  We're going to ignore messages sent to this
+        # socket.
+        self._send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self._send_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self._send_sock.setsockopt(socket.SOL_IP, socket.IP_MULTICAST_TTL,
+                                   struct.pack('b', 1))
+        self._send_sock.bind((self._interface_ip, port))
 
 
     def run_once(self):
         """Receive pending frames if available, return after timeout otw."""
-        if self._sock is None:
+        if self._recv_sock is None:
             raise error.TestError('Must listen() on socket before recv\'ing.')
         BUFFER_SIZE_BYTES = 2048
         try:
-            data, sender_addr = self._sock.recvfrom(BUFFER_SIZE_BYTES)
+            data, sender_addr = self._recv_sock.recvfrom(BUFFER_SIZE_BYTES)
         except socket.timeout:
             return
         if len(sender_addr) != 2:
@@ -143,4 +159,4 @@ class InterfaceDatagramSocket(object):
         @param port: int like 50000.
 
         """
-        self._sock.sendto(data, (ip_addr, port))
+        self._send_sock.sendto(data, (ip_addr, port))
