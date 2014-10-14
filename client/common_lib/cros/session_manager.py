@@ -65,10 +65,26 @@ class SignalListener(object):
 
         @return True if both signals have been handled, False otherwise.
         """
+        self.__flush()
+        return self.all_signals_received()
+
+
+    def __flush(self):
+        """Runs the main loop until pending events are done."""
         context = self._main_loop.get_context()
         while context.iteration(False):
             pass
-        return self.all_signals_received()
+
+
+    def reset(self):
+        """Prepares the listener to receive a new signal.
+
+        This resets the signal state and flushes any pending signals in order to
+        avoid picking up stale signals still lingering in the process' input
+        queues.
+        """
+        self.__flush()
+        self.reset_signal_state()
 
 
     def reset_signal_state(self):
@@ -127,7 +143,7 @@ class OwnershipSignalListener(SignalListener):
         self.listen_to_signal(self.__handle_new_key, 'SetOwnerKeyComplete')
         self.listen_to_signal(self.__handle_new_policy,
                               'PropertyChangeComplete')
-        self.reset_signal_state()
+        self.reset()
 
 
     def listen_for_new_policy(self):
@@ -137,7 +153,7 @@ class OwnershipSignalListener(SignalListener):
         self._listen_for_new_policy = True
         self.listen_to_signal(self.__handle_new_policy,
                               'PropertyChangeComplete')
-        self.reset_signal_state()
+        self.reset()
 
 
     def reset_signal_state(self):

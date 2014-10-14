@@ -75,7 +75,6 @@ class platform_SessionManagerBlockDevmodeSetting(test.test):
 
         # Send a new policy blob to session_manager that disables block_devmode.
         listener.listen_for_new_policy()
-        listener.reset_signal_state()
         with open(os.path.join(self.bindir,
                   'policy_block_devmode_disabled')) as f:
             session_manager_proxy = session_manager.connect(self._bus_loop)
