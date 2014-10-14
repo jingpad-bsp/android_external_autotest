@@ -120,9 +120,11 @@ class ChameleonBoard(object):
 
         @return: A string of the label, like 'hdmi', 'dp_hdmi', etc.
         """
-        ports = self._chameleond_proxy.ProbeInputs()
-        connectors = [self._chameleond_proxy.GetConnectorType(port).lower()
-                      for port in ports]
+        connectors = []
+        for port in self._chameleond_proxy.ProbeInputs():
+            if self._chameleond_proxy.HasVideoSupport(port):
+                connector = self._chameleond_proxy.GetConnectorType(port).lower()
+                connectors.append(connector)
         # Eliminate duplicated ports. It simplifies the labels of dual-port
         # devices, i.e. dp_dp categorized into dp.
         return '_'.join(sorted(set(connectors)))
