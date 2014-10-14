@@ -4,7 +4,7 @@
 
 AUTHOR = "cmasone, joaodasilva"
 NAME = "login_SameSessionTwice"
-SUITE = "bvt-inline, bvt, bvt_cq, smoke"
+SUITE = "bvt-inline, smoke"
 TIME = "FAST"
 TEST_CLASS = "login"
 TEST_TYPE = "client"

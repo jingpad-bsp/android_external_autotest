@@ -15,7 +15,7 @@ TEST_CLASS = "platform"
 TEST_TYPE = "client"
 JOB_RETRIES = 1
 
-SUITE = "bvt-cq, bvt, bvt_cq"
+SUITE = "bvt-cq"
 
 DOC = """
 Exercises the debugd GetPerfData API.

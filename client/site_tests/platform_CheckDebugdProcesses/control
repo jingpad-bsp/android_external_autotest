@@ -4,7 +4,7 @@
 
 AUTHOR = 'benchan, gauravsh'
 NAME = 'platform_CheckDebugdProcesses'
-SUITE = 'bvt-cq, bvt, bvt_cq'
+SUITE = 'bvt-cq'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
 JOB_RETRIES = 1

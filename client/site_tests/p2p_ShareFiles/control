@@ -17,7 +17,7 @@ simulating a fake client on the network.
 NAME = 'p2p_ShareFiles'
 PURPOSE = 'Check that P2P daemon shares files on the network.'
 CRITERIA = "Fails if p2p-server doesn't announce its shared files via mDNS."
-SUITE = 'bvt-cq, bvt, bvt_cq'
+SUITE = 'bvt-cq'
 TEST_CLASS = 'platform'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'client'

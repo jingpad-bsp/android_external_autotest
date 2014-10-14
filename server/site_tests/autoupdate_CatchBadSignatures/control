@@ -11,7 +11,7 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "server"
 JOB_RETRIES = 1
-SUITE = "bvt-cq, bvt, bvt_cq"
+SUITE = "bvt-cq"
 BUG_TEMPLATE = {
     'cc': ['chromeos-installer-alerts@google.com'],
     'labels': ['Cr-Internals-Installer'],

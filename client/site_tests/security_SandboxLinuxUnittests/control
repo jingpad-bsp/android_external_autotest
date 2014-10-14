@@ -4,7 +4,7 @@
 
 AUTHOR = "The Chromium OS Authors"
 NAME = "security_SandboxLinuxUnittests"
-SUITE = "bvt-inline, smoke, bvt, bvt_cq"
+SUITE = "bvt-inline, smoke"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "security"

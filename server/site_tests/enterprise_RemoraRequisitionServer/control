@@ -8,7 +8,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "enterprise"
 TEST_TYPE = "server"
-SUITE="bvt-perbuild, bvt"
+SUITE="bvt-perbuild"
 
 DOC = """
 This test clears the TPM if necessary, kicks off a client side test that enrolls

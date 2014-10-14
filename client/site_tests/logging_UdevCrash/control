@@ -5,7 +5,7 @@
 AUTHOR = "Chromium OS Team"
 NAME = "logging_UdevCrash"
 PURPOSE = "Verify udev triggered crash works as expected."
-SUITE = "bvt-cq, bvt, bvt_cq"
+SUITE = "bvt-cq"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "logging"

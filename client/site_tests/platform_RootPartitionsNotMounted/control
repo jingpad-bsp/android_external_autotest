@@ -12,7 +12,7 @@ CRITERIA = """
 This test will fail if a root partition is mounted by a process other than
 update-engine.
 """
-SUITE = "bvt-cq, bvt, bvt_cq"
+SUITE = "bvt-cq"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"

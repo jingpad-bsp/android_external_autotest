@@ -4,7 +4,7 @@
 
 AUTHOR = 'drewry, gauravsh'
 NAME = 'platform_CheckTLSDateProcesses'
-SUITE = 'bvt-cq, bvt, bvt_cq'
+SUITE = 'bvt-cq'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
 JOB_RETRIES = 1

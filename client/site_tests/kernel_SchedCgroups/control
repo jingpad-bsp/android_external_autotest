@@ -9,7 +9,7 @@ CRITERIA = """
 The test will fail if scheduler cgroups do not function correctly.
 """
 TIME = "SHORT"
-SUITE = "bvt-cq, bvt, bvt_cq"
+SUITE = "bvt-cq"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "kernel"
 TEST_TYPE = "client"
