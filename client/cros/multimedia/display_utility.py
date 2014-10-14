@@ -190,6 +190,15 @@ class DisplayUtility(object):
         return (0, 0, 0, 0)
 
 
+    def take_screenshot_crop(self, path, box):
+        """Captures the DUT screenshot, use box for cropping.
+
+        @param path: path to image file.
+        @param box: 4-tuple giving the upper left and lower right coordinates.
+        """
+        graphics_utils.take_screenshot_crop(path, box)
+
+
     def take_tab_screenshot(self, url_pattern, output_suffix):
         """Takes a screenshot of the tab specified by the given url pattern.
 
