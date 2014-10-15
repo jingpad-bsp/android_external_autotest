@@ -19,12 +19,22 @@ The tester sends a Service Search Attribute Request to the DUT, searching for:
 * existing Service, non-existing Attribute
 * non-existing Service, non-existing Attribute
 * existing Service, existing Attribute
+* various specific attributes, listed in Test Specification
 
 This test covers the following Bluetooth SIG test cases:
 TP/SERVER/SSA/BV-01-C
 TP/SERVER/SSA/BV-02-C
 TP/SERVER/SSA/BV-03-C
 TP/SERVER/SSA/BV-04-C
+TP/SERVER/SSA/BV-08-C
+TP/SERVER/SSA/BV-11-C
+TP/SERVER/SSA/BV-12-C
+TP/SERVER/SSA/BV-15-C
+TP/SERVER/SSA/BV-19-C
+TP/SERVER/SSA/BV-20-C
+TP/SERVER/SSA/BV-21-C
+TP/SERVER/SSA/BV-22-C
+TP/SERVER/SSA/BV-23-C
 
 """
 
