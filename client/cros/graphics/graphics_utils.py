@@ -150,13 +150,34 @@ def take_screenshot_crop(fullpath, box=None):
     execute_screenshot_capture('%s %s' % (import_cmd, fullpath))
 
 
-def get_display_resolution():
+def _get_display_resolution_freon():
+    """
+    Parses output of modetest to determine the display resolution of the dut.
+    @return: tuple, (w,h) resolution of device under test.
+    """
+    modetest_output = utils.system_output('modetest -c')
+    modetest_connector_pattern = (r'\d+\s+\d+\s+(connected|disconnected)\s+'
+                                  r'[- 0-9a-zA-Z]+\s+\d+x\d+\s+\d+\s+\d+')
+    modetest_mode_pattern = (r'\s+.+\d+\s+(\d+)\s+\d+\s+\d+\s+\d+\s+(\d+)\s+'
+                             r'\d+\s+\d+\s+\d+\s+flags:')
+    connected = False
+    for line in modetest_output.splitlines():
+        connector_match = re.match(modetest_connector_pattern, line)
+        if connector_match is not None:
+            if connector_match.group(1) == 'connected':
+                connected = True
+        if connected:
+            mode_match = re.match(modetest_mode_pattern, line)
+            if mode_match is not None:
+                return int(mode_match.group(1)), int(mode_match.group(2))
+    return None
+
+
+def _get_display_resolution_x():
     """
     Parses output of xrandr to determine the display resolution of the dut.
     @return: tuple, (w,h) resolution of device under test.
     """
-    if utils.is_freon():
-        raise error.TestFail('freon: get_display_resolution not implemented')
     env_vars = 'DISPLAY=:0.0 XAUTHORITY=/home/chronos/.Xauthority'
     cmd = '%s xrandr | egrep -o "current [0-9]* x [0-9]*"' % env_vars
     output = utils.system_output(cmd)
@@ -164,6 +185,17 @@ def get_display_resolution():
     if len(match.groups()) == 2:
         return int(match.group(1)), int(match.group(2))
     return None
+
+
+def get_display_resolution():
+    """
+    Determines the display resolution of the dut.
+    @return: tuple, (w,h) resolution of device under test.
+    """
+    if utils.is_freon():
+        return _get_display_resolution_freon()
+    else:
+        return _get_display_resolution_x()
 
 
 def execute_screenshot_capture(cmd):
