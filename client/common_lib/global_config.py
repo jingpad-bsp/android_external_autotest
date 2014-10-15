@@ -96,6 +96,21 @@ class global_config(object):
 
     def get_config_value(self, section, key, type=str,
                          default=_NO_DEFAULT_SPECIFIED, allow_blank=False):
+        """Get a configuration value
+
+        @param section: Section the key is in.
+        @param key: The key to look up.
+        @param type: The expected type of the returned value.
+        @param default: A value to return in case the key couldn't be found.
+        @param allow_blank: If False, an empty string as a value is treated like
+                            there was no value at all. If True, empty strings
+                            will be returned like they were normal values.
+
+        @raises ConfigError: If the key could not be found and no default was
+                             specified.
+
+        @return: The obtained value or default.
+        """
         self._ensure_config_parsed()
 
         try:
@@ -107,6 +122,47 @@ class global_config(object):
             return self._handle_no_value(section, key, default)
 
         return self._convert_value(key, section, val, type)
+
+
+    # This order of parameters ensures this can be called similar to the normal
+    # get_config_value which is mostly called with (section, key, type).
+    def get_config_value_with_fallback(self, section, key, fallback_key,
+                                       type=str, fallback_section=None,
+                                       default=_NO_DEFAULT_SPECIFIED, **kwargs):
+        """Get a configuration value if it exists, otherwise use fallback.
+
+        Tries to obtain a configuration value for a given key. If this value
+        does not exist, the value looked up under a different key will be
+        returned.
+
+        @param section: Section the key is in.
+        @param key: The key to look up.
+        @param fallback_key: The key to use in case the original key wasn't
+                             found.
+        @param type: data type the value should have.
+        @param fallback_section: The section the fallback key resides in. In
+                                 case none is specified, the the same section as
+                                 for the primary key is used.
+        @param default: Value to return if values could neither be obtained for
+                        the key nor the fallback key.
+        @param **kwargs: Additional arguments that should be passed to
+                         get_config_value.
+
+        @raises ConfigError: If the fallback key doesn't exist and no default
+                             was provided.
+
+        @return: The value that was looked up for the key. If that didn't
+                 exist, the value looked up for the fallback key will be
+                 returned. If that also didn't exist, default will be returned.
+        """
+        if fallback_section is None:
+            fallback_section = section
+
+        try:
+            return self.get_config_value(section, key, type, **kwargs)
+        except ConfigError:
+            return self.get_config_value(fallback_section, fallback_key,
+                                         type, default=default, **kwargs)
 
 
     def override_config_value(self, section, key, new_value):
