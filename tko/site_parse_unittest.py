@@ -11,6 +11,7 @@ import os, shutil, tempfile, unittest
 
 import common
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.frontend import database_settings_helper
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend import setup_test_environment
 from autotest_lib.tko.site_parse import StackTrace
@@ -104,6 +105,26 @@ class stack_trace_test(unittest.TestCase):
         self.assertEqual(board, 'x86-alex')
         self.assertEqual(rev, 'r16')
         self.assertEqual(version, '1166.0.0')
+
+
+    def testRunOnShardWithoutGlobalConfigsFails(self):
+        global_config.global_config.override_config_value(
+                'SHARD', 'shard_hostname', 'host1')
+        # settings module was already loaded during the imports of this file,
+        # so before the configuration setting was made, therefore reload it:
+        reload(database_settings_helper)
+        self.assertRaises(global_config.ConfigError,
+                          database_settings_helper.get_global_db_config)
+
+
+    def testRunOnMasterWithoutGlobalConfigsWorks(self):
+        global_config.global_config.override_config_value(
+                'SHARD', 'shard_hostname', '')
+        from autotest_lib.frontend import database_settings_helper
+        # settings module was already loaded during the imports of this file,
+        # so before the configuration setting was made, therefore reload it:
+        reload(database_settings_helper)
+        database_settings_helper.get_global_db_config()
 
 
 if __name__ == "__main__":

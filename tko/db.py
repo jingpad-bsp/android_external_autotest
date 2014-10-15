@@ -1,7 +1,12 @@
+# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
 import re, os, sys, types, time, random
 
 import common
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.frontend import database_settings_helper
 from autotest_lib.tko import utils
 
 
@@ -37,37 +42,44 @@ class db_sql(object):
 
 
     def _load_config(self, host, database, user, password):
-        # grab the global config
-        get_value = global_config.global_config.get_config_value
+        """Loads configuration settings required to connect to the database.
+
+        This will try to connect to use the settings prefixed with global_db_.
+        If they do not exist, they un-prefixed settings will be used.
+
+        If parameters are supplied, these will be taken instead of the values
+        in global_config.
+
+        @param host: If set, this host will be used, if not, the host will be
+                     retrieved from global_config.
+        @param database: If set, this database will be used, if not, the
+                         database will be retrieved from global_config.
+        @param user: If set, this user will be used, if not, the
+                         user will be retrieved from global_config.
+        @param password: If set, this password will be used, if not, the
+                         password will be retrieved from global_config.
+        """
+        database_settings = database_settings_helper.get_global_db_config()
 
         # grab the host, database
-        if host:
-            self.host = host
-        else:
-            self.host = get_value("AUTOTEST_WEB", "global_db_host")
-        if database:
-            self.database = database
-        else:
-            self.database = get_value("AUTOTEST_WEB", "global_db_database")
+        self.host = host or database_settings['HOST']
+        self.database = database or database_settings['NAME']
 
         # grab the user and password
-        if user:
-            self.user = user
-        else:
-            self.user = get_value("AUTOTEST_WEB", "global_db_user")
-        if password is not None:
-            self.password = password
-        else:
-            self.password = get_value("AUTOTEST_WEB", "global_db_password")
+        self.user = user or database_settings['USER']
+        self.password = password or database_settings['PASSWORD']
 
         # grab the timeout configuration
-        self.query_timeout = get_value("AUTOTEST_WEB",
-                                       "global_db_query_timeout",
-                                       type=int, default=3600)
+        self.query_timeout =(
+                database_settings.get('OPTIONS', {}).get('timeout', 3600))
+
+        # Using fallback to non-global in order to work without configuration
+        # overhead on non-shard instances.
+        get_value = global_config.global_config.get_config_value_with_fallback
         self.min_delay = get_value("AUTOTEST_WEB", "global_db_min_retry_delay",
-                                   type=int, default=20)
+                                   "min_retry_delay", type=int, default=20)
         self.max_delay = get_value("AUTOTEST_WEB", "global_db_max_retry_delay",
-                                   type=int, default=60)
+                                   "max_retry_delay", type=int, default=60)
 
 
     def _init_db(self):
@@ -552,8 +564,9 @@ class db_sql(object):
 
 def _get_db_type():
     """Get the database type name to use from the global config."""
-    get_value = global_config.global_config.get_config_value
-    return "db_" + get_value("AUTOTEST_WEB", "global_db_type", default="mysql")
+    get_value = global_config.global_config.get_config_value_with_fallback
+    return "db_" + get_value("AUTOTEST_WEB", "global_db_type", "db_type",
+                             default="mysql")
 
 
 def _get_error_class(class_name):

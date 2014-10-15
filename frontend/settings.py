@@ -4,6 +4,7 @@
 import os
 import common
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.frontend import database_settings_helper
 
 c = global_config.global_config
 _section = 'AUTOTEST_WEB'
@@ -20,38 +21,17 @@ ADMINS = (
 
 MANAGERS = ADMINS
 
-def _get_config(config_key, default=None):
-    """Retrieves a global config value for the specified key.
-
-    @param config_key: The string key associated with the desired config value.
-    @param default: The default value to return if an existing one cannot be
-        found.
-
-    @return The config value, as returned by
-        global_config.global_config.get_config_value().
-    """
-    return c.get_config_value(_section, config_key, default=default)
-
-AUTOTEST_DEFAULT = {
-    'ENGINE': 'autotest_lib.frontend.db.backends.afe',
-    'PORT': '',
-    'HOST': _get_config("host"),
-    'NAME': _get_config("database"),
-    'USER': _get_config("user"),
-    'PASSWORD': _get_config("password", default=''),
-    'READONLY_HOST': _get_config("readonly_host", default=_get_config("host")),
-    'READONLY_USER': _get_config("readonly_user", default=_get_config("user")),
-}
+AUTOTEST_DEFAULT = database_settings_helper.get_default_db_config()
 
 ALLOWED_HOSTS = '*'
 
-if AUTOTEST_DEFAULT['READONLY_USER'] != AUTOTEST_DEFAULT['USER']:
-    AUTOTEST_DEFAULT['READONLY_PASSWORD'] = _get_config("readonly_password",
-                                                        default='')
-else:
-    AUTOTEST_DEFAULT['READONLY_PASSWORD'] = AUTOTEST_DEFAULT['PASSWORD']
+DATABASES = {'default': AUTOTEST_DEFAULT,}
 
-DATABASES = {'default': AUTOTEST_DEFAULT}
+# Have to set SECRET_KEY before importing connections because of this bug:
+# https://code.djangoproject.com/ticket/20704
+# TODO: Order this again after an upgrade to Django 1.6 or higher.
+# Make this unique, and don't share it with anybody.
+SECRET_KEY = 'pn-t15u(epetamdflb%dqaaxw+5u&2#0u-jah70w1l*_9*)=n7'
 
 # prefix applied to all URLs - useful if requests are coming through apache,
 # and you need this app to coexist with others
@@ -92,9 +72,6 @@ STATIC_URL = '/' + URL_PREFIX + 'admin/'
 # trailing slash.
 # Examples: "http://foo.com/media/", "/media/".
 ADMIN_MEDIA_PREFIX = '/media/'
-
-# Make this unique, and don't share it with anybody.
-SECRET_KEY = 'pn-t15u(epetamdflb%dqaaxw+5u&2#0u-jah70w1l*_9*)=n7'
 
 # List of callables that know how to import templates from various sources.
 TEMPLATE_LOADERS = (
