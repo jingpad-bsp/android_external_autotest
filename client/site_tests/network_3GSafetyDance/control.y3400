@@ -22,4 +22,7 @@ DOC = """
   these 3G operations must return a convincing result (EINPROGRESS or no error).
 """
 
-job.run_test('network_3GSafetyDance', tag='y3400')
+from autotest_lib.client.cros.cellular import test_environment
+
+test_env = test_environment.CellularOTATestEnvironment()
+job.run_test('network_3GSafetyDance', test_env=test_env, tag='y3400')

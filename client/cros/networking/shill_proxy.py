@@ -509,7 +509,7 @@ class ShillProxy(object):
         try:
             service.Connect()
         except dbus.exceptions.DBusException as e:
-            if e.dbus_get_name() != self.ERROR_ALREADY_CONNECTED:
+            if e.get_dbus_name() != self.ERROR_ALREADY_CONNECTED:
                 raise e
         success, _, _ = self.wait_for_property_in(
                 service, self.SERVICE_PROPERTY_STATE,
@@ -529,7 +529,7 @@ class ShillProxy(object):
         try:
             service.Disconnect()
         except dbus.exceptions.DBusException as e:
-            if e.dbus_get_name() not in [self.ERROR_IN_PROGRESS,
+            if e.get_dbus_name() not in [self.ERROR_IN_PROGRESS,
                                          self.ERROR_NOT_CONNECTED]:
                 raise e
         success, _, _ = self.wait_for_property_in(

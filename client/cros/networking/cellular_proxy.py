@@ -62,9 +62,11 @@ class CellularProxy(shill_proxy.ShillProxy):
         return self.find_object('Service', {'Type': self.TECHNOLOGY_CELLULAR})
 
 
-    def wait_for_cellular_service_object(self):
+    def wait_for_cellular_service_object(
+            self, timeout_seconds=SERVICE_REGISTRATION_TIMEOUT):
         """Waits for the cellular service object to show up.
 
+        @param timeout_seconds: Amount of time to wait for cellular service.
         @return DBus object for the first cellular service found.
         @raises ShillProxyError if no cellular service is found within the
             registration timeout period.
@@ -73,7 +75,7 @@ class CellularProxy(shill_proxy.ShillProxy):
         CellularProxy._poll_for_condition(
                 lambda: self.find_cellular_service_object() is not None,
                 'Failed to find cellular service object',
-                timeout=CellularProxy.SERVICE_REGISTRATION_TIMEOUT)
+                timeout=timeout_seconds)
         return self.find_cellular_service_object()
 
 

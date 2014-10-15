@@ -9,12 +9,10 @@ import time
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import backchannel
-from autotest_lib.client.cros.cellular import cell_tools
-from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
+from autotest_lib.client.cros.networking import cellular_proxy
+from autotest_lib.client.cros.networking import shill_context
+from autotest_lib.client.cros.networking import shill_proxy
 
-from autotest_lib.client.cros import flimflam_test_path
-import flimflam
 
 class network_3GSafetyDance(test.test):
     """
@@ -32,55 +30,68 @@ class network_3GSafetyDance(test.test):
         try:
             v = fn()
         except dbus.exceptions.DBusException, error:
-            if error._dbus_error_name in self.okerrors:
-                return v
+            if error.get_dbus_name() in self.okerrors:
+                return v, error.get_dbus_message()
             else:
                 raise error
-        return v
+        return v, ''
 
     def _enable(self):
         logging.info('Enable')
         self._filterexns(lambda:
-            self.flim.EnableTechnology('cellular'))
+            self.test_env.shill.manager.EnableTechnology('cellular'))
 
     def _disable(self):
         logging.info('Disable')
         self._filterexns(lambda:
-            self.flim.DisableTechnology('cellular'))
+            self.test_env.shill.manager.DisableTechnology('cellular'))
 
-    def _ignoring(self, status):
-        if ('AlreadyConnected' in status['reason'] or
-            'Bearer already being connected' in status['reason'] or
-            'Bearer already being disconnected' in status['reason'] or
-            'InProgress' in status['reason']):
+    def _ignoring(self, reason):
+        if ('AlreadyConnected' in reason or
+            'Not connected' in reason or
+            'Bearer already being connected' in reason or
+            'Bearer already being disconnected' in reason or
+            'InProgress' in reason):
             return True
-        if 'NotSupported' in status['reason']:
+        if 'NotSupported' in reason:
             # We should only ignore this error if we've previously disabled
             # cellular technology and the service subsequently disappeared
             # when we tried to connect again.
-            return not self.flim.FindCellularService(timeout=0)
+            return not self.test_env.shill.find_cellular_service_object()
         return False
 
     def _connect(self):
         logging.info('Connect')
-        self.service = self.flim.FindCellularService(timeout=5)
-        if self.service:
-            (success, status) = self._filterexns(lambda:
-                self.flim.ConnectService(service=self.service,
-                                         assoc_timeout=120,
-                                         config_timeout=120))
-            if not success and not self._ignoring(status):
-                raise error.TestFail('Could not connect: %s' % status)
+        try:
+            service = self.test_env.shill.wait_for_cellular_service_object(
+                    timeout_seconds=5)
+        except shill_proxy.ShillProxyError:
+            return
+
+        success, reason = self._filterexns(lambda:
+                self.test_env.shill.connect_service_synchronous(
+                        service=service,
+                        timeout_seconds=
+                        cellular_proxy.CellularProxy.SERVICE_CONNECT_TIMEOUT))
+        if not success and not self._ignoring(reason):
+            raise error.TestFail('Could not connect: %s' % reason)
 
     def _disconnect(self):
         logging.info('Disconnect')
-        self.service = self.flim.FindCellularService(timeout=5)
-        if self.service:
-            (success, status) = self._filterexns(lambda:
-                self.flim.DisconnectService(service=self.service,
-                                            wait_timeout=60))
-            if not success:
-                raise error.TestFail('Could not disconnect: %s' % status)
+        try:
+            service = self.test_env.shill.wait_for_cellular_service_object(
+                    timeout_seconds=5)
+        except shill_proxy.ShillProxyError:
+            return
+
+        success, reason = self._filterexns(lambda:
+                self.test_env.shill.disconnect_service_synchronous(
+                        service=service,
+                        timeout_seconds=
+                        cellular_proxy.CellularProxy.
+                        SERVICE_DISCONNECT_TIMEOUT))
+        if not success and not self._ignoring(reason):
+            raise error.TestFail('Could not disconnect: %s' % reason)
 
     def _op(self):
         n = random.randint(0, len(self.ops) - 1)
@@ -100,34 +111,23 @@ class network_3GSafetyDance(test.test):
                      self._disable,
                      self._connect,
                      self._disconnect ]
-        self.flim = flimflam.FlimFlam()
-        self.manager = flimflam.DeviceManager(self.flim)
-        self.device = self.flim.FindCellularDevice()
+        self.device = self.test_env.shill.find_cellular_device_object()
         if not self.device:
             raise error.TestFail('Could not find cellular device.')
 
-        self.flim.SetDebugTags(
-                'dbus+service+device+modem+cellular+portal+network+'
-                'manager+dhcp')
+        # Start in a disabled state.
+        self._disable()
+        logging.info('Seed: %d', seed)
+        random.seed(seed)
+        for _ in xrange(ops):
+            self._op()
 
-        # Ensure that auto connect is turned off so that flimflam does
-        # not interfere with running the test
-        with cell_tools.AutoConnectContext(self.device, self.flim, False):
-            # Start in a known state.
-            self._disable()
-            logging.info('Seed: %d', seed)
-            random.seed(seed)
-            for _ in xrange(ops):
-                self._op()
+    def run_once(self, test_env, ops=30, seed=None):
+        self.test_env = test_env
+        with test_env, shill_context.ServiceAutoConnectContext(
+                test_env.shill.find_cellular_service_object, False):
+            self._run_once_internal(ops, seed)
 
-    def run_once(self, ops=30, seed=None,
-                 pseudo_modem=False,
-                 pseudomodem_family='3GPP'):
-        # Use a backchannel so that flimflam will restart when the
-        # test is over.  This ensures flimflam is in a known good
-        # state even if this test fails.
-        with backchannel.Backchannel():
-            with pseudomodem_context.PseudoModemManagerContext(
-                    pseudo_modem,
-                    {'family' : pseudomodem_family}):
-                self._run_once_internal(ops, seed)
+            # Enable device to restore autoconnect settings.
+            self._enable()
+            test_env.shill.wait_for_cellular_service_object()
