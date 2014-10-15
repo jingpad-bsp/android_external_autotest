@@ -9,7 +9,7 @@ import common
 
 from autotest_lib.database import database_connection
 from autotest_lib.frontend import setup_django_environment
-from autotest_lib.frontend.afe.readonly_connection import ReadOnlyConnection
+from autotest_lib.frontend.afe import readonly_connection
 from autotest_lib.scheduler import scheduler_lib
 from django.db import utils as django_utils
 
@@ -19,13 +19,13 @@ class ConnectionManagerTests(unittest.TestCase):
 
     def setUp(self):
         self.connection_manager = None
-        ReadOnlyConnection.set_globally_disabled = mock.MagicMock()
+        readonly_connection.set_globally_disabled = mock.MagicMock()
         setup_django_environment.enable_autocommit = mock.MagicMock()
         scheduler_lib.Singleton._instances = {}
 
 
     def tearDown(self):
-        ReadOnlyConnection.set_globally_disabled.reset_mock()
+        readonly_connection.set_globally_disabled.reset_mock()
         setup_django_environment.enable_autocommit.reset_mock()
 
 
@@ -68,10 +68,10 @@ class ConnectionManagerTests(unittest.TestCase):
         """Test that the singleton works as expected."""
         # Confirm that instantiating the class applies global db settings.
         connection_manager = scheduler_lib.ConnectionManager()
-        ReadOnlyConnection.set_globally_disabled.assert_called_once_with(False)
+        readonly_connection.set_globally_disabled.assert_called_once_with(True)
         setup_django_environment.enable_autocommit.assert_called_once_with()
 
-        ReadOnlyConnection.set_globally_disabled.reset_mock()
+        readonly_connection.set_globally_disabled.reset_mock()
         setup_django_environment.enable_autocommit.reset_mock()
 
         # Confirm that instantiating another connection manager doesn't change
@@ -79,7 +79,7 @@ class ConnectionManagerTests(unittest.TestCase):
         connection_manager_2 = scheduler_lib.ConnectionManager()
         self.assertTrue(connection_manager == connection_manager_2)
         self.assertTrue(
-                ReadOnlyConnection.set_globally_disabled.call_count == 0)
+                readonly_connection.set_globally_disabled.call_count == 0)
         self.assertTrue(
                 setup_django_environment.enable_autocommit.call_count == 0)
 

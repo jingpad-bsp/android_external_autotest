@@ -22,10 +22,13 @@ ADMINS = (
 MANAGERS = ADMINS
 
 AUTOTEST_DEFAULT = database_settings_helper.get_default_db_config()
+AUTOTEST_GLOBAL = database_settings_helper.get_global_db_config()
+AUTOTEST_READONLY = database_settings_helper.get_readonly_db_config()
 
 ALLOWED_HOSTS = '*'
 
-DATABASES = {'default': AUTOTEST_DEFAULT,}
+DATABASES = {'default': AUTOTEST_DEFAULT,
+             'readonly': AUTOTEST_READONLY,}
 
 # Have to set SECRET_KEY before importing connections because of this bug:
 # https://code.djangoproject.com/ticket/20704

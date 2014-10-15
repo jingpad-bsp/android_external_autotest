@@ -69,7 +69,7 @@ class ConnectionManager(object):
         """
         self.db_connection = None
         # bypass the readonly connection
-        readonly_connection.ReadOnlyConnection.set_globally_disabled(readonly)
+        readonly_connection.set_globally_disabled(readonly)
         if autocommit:
             # ensure Django connection is in autocommit
             setup_django_environment.enable_autocommit()

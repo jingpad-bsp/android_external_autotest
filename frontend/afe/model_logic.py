@@ -5,12 +5,11 @@ Extensions to Django's model logic.
 import re
 import time
 import django.core.exceptions
-from django.db import models as dbmodels, backend, connection
+from django.db import models as dbmodels, backend, connection, connections
 from django.db.models.sql import query
 import django.db.models.sql.where
 from django.utils import datastructures
 from autotest_lib.frontend.afe import rdb_model_extensions
-from autotest_lib.frontend.afe import readonly_connection
 
 
 class ValidationError(django.core.exceptions.ValidationError):
@@ -19,77 +18,9 @@ class ValidationError(django.core.exceptions.ValidationError):
     value is a dictionary mapping field names to error strings.
     """
 
-
-def _wrap_with_readonly(method):
-    def wrapper_method(*args, **kwargs):
-        readonly_connection.connection().set_django_connection()
-        try:
-            return method(*args, **kwargs)
-        finally:
-            readonly_connection.connection().unset_django_connection()
-    wrapper_method.__name__ = method.__name__
-    return wrapper_method
-
-
 def _quote_name(name):
     """Shorthand for connection.ops.quote_name()."""
     return connection.ops.quote_name(name)
-
-
-def _wrap_generator_with_readonly(generator):
-    """
-    We have to wrap generators specially.  Assume it performs
-    the query on the first call to next().
-    """
-    def wrapper_generator(*args, **kwargs):
-        generator_obj = generator(*args, **kwargs)
-        readonly_connection.connection().set_django_connection()
-        try:
-            first_value = generator_obj.next()
-        finally:
-            readonly_connection.connection().unset_django_connection()
-        yield first_value
-
-        while True:
-            yield generator_obj.next()
-
-    wrapper_generator.__name__ = generator.__name__
-    return wrapper_generator
-
-
-def _make_queryset_readonly(queryset):
-    """
-    Wrap all methods that do database queries with a readonly connection.
-    """
-    db_query_methods = ['count', 'get', 'get_or_create', 'latest', 'in_bulk',
-                        'delete']
-    for method_name in db_query_methods:
-        method = getattr(queryset, method_name)
-        wrapped_method = _wrap_with_readonly(method)
-        setattr(queryset, method_name, wrapped_method)
-
-    queryset.iterator = _wrap_generator_with_readonly(queryset.iterator)
-
-
-class ReadonlyQuerySet(dbmodels.query.QuerySet):
-    """
-    QuerySet object that performs all database queries with the read-only
-    connection.
-    """
-    def __init__(self, model=None, *args, **kwargs):
-        super(ReadonlyQuerySet, self).__init__(model, *args, **kwargs)
-        _make_queryset_readonly(self)
-
-
-    def values(self, *fields):
-        return self._clone(klass=ReadonlyValuesQuerySet,
-                           setup=True, _fields=fields)
-
-
-class ReadonlyValuesQuerySet(dbmodels.query.ValuesQuerySet):
-    def __init__(self, model=None, *args, **kwargs):
-        super(ReadonlyValuesQuerySet, self).__init__(model, *args, **kwargs)
-        _make_queryset_readonly(self)
 
 
 class LeasedHostManager(dbmodels.Manager):
@@ -362,6 +293,13 @@ class ExtendedManager(dbmodels.Manager):
 
 
     def _custom_select_query(self, query_set, selects):
+        """Execute a custom select query.
+
+        @param query_set: query set as returned by query_objects.
+        @param selects: Tables/Columns to select, e.g. tko_test_labels_list.id.
+
+        @returns: Result of the query as returned by cursor.fetchall().
+        """
         compiler = query_set.query.get_compiler(using=query_set.db)
         sql, params = compiler.as_sql()
         from_ = sql[sql.find(' FROM'):]
@@ -372,7 +310,8 @@ class ExtendedManager(dbmodels.Manager):
             distinct = ''
 
         sql_query = ('SELECT ' + distinct + ','.join(selects) + from_)
-        cursor = readonly_connection.connection().cursor()
+        # Chose the connection that's responsible for this type of object
+        cursor = connections[query_set.db].cursor()
         cursor.execute(sql_query, params)
         return cursor.fetchall()
 
@@ -458,7 +397,7 @@ class ExtendedManager(dbmodels.Manager):
 
 
     def _query_pivot_table(self, base_objects_by_id, pivot_table,
-                           pivot_from_field, pivot_to_field):
+                           pivot_from_field, pivot_to_field, related_model):
         """
         @param id_list list of IDs of self.model objects to include
         @param pivot_table the name of the pivot table
@@ -466,6 +405,8 @@ class ExtendedManager(dbmodels.Manager):
         self.model
         @param pivot_to_field a field name on pivot_table referencing the
         related model.
+        @param related_model the related model
+
         @returns pivot list of IDs (base_id, related_id)
         """
         query = """
@@ -477,7 +418,12 @@ class ExtendedManager(dbmodels.Manager):
                    table=pivot_table,
                    id_list=','.join(str(id_) for id_
                                     in base_objects_by_id.iterkeys()))
-        cursor = readonly_connection.connection().cursor()
+
+        # Chose the connection that's responsible for this type of object
+        # The databases for related_model and the current model will always
+        # be the same, related_model is just easier to obtain here because
+        # self is only a ExtendedManager, not the object.
+        cursor = connections[related_model.objects.db].cursor()
         cursor.execute(query)
         return cursor.fetchall()
 
@@ -491,7 +437,8 @@ class ExtendedManager(dbmodels.Manager):
         @returns a pivot iterator - see _get_pivot_iterator()
         """
         id_pivot = self._query_pivot_table(base_objects_by_id, pivot_table,
-                                           pivot_from_field, pivot_to_field)
+                                           pivot_from_field, pivot_to_field,
+                                           related_model)
 
         all_related_ids = list(set(related_id for base_id, related_id
                                    in id_pivot))
@@ -826,7 +773,9 @@ class ModelExtensions(rdb_model_extensions.ModelValidators):
             extra_args.setdefault('where', []).append(extra_where)
         if extra_args:
             query = query.extra(**extra_args)
-            query = query._clone(klass=ReadonlyQuerySet)
+            # TODO: Use readonly connection for these queries.
+            # This has been disabled, because it's not used anyway, as the
+            # configured readonly user is the same as the real user anyway.
 
         if apply_presentation:
             query = cls.apply_presentation(query, filter_data)
