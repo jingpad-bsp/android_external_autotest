@@ -81,7 +81,7 @@ def GetKeysByBuildLinechartData(test_name, test_keys, chrome_versions, query,
     gviz_data_table = gviz_data_table.ToJSon(keys_in_order)
     return gviz_data_table
 
-  cursor = readonly_connection.connection().cursor()
+  cursor = readonly_connection.cursor()
   cursor.execute('%s %s' % (query, query_order))
   job_tags, build_data = AggregateBuilds(test_keys, chrome_versions,
                                          cursor.fetchall())

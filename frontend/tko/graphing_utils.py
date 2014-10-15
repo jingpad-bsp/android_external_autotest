@@ -537,7 +537,7 @@ def _create_metrics_plot_helper(plot_info, extra_text=None):
     TODO(showard): move some/all of this logic into methods on MetricsPlot
     """
     query = plot_info.query_dict['__main__']
-    cursor = readonly_connection.connection().cursor()
+    cursor = readonly_connection.cursor()
     cursor.execute(query)
 
     if not cursor.rowcount:
@@ -662,7 +662,7 @@ def _create_qual_histogram_helper(plot_info, extra_text=None):
     TODO(showard): move much or all of this into methods on
     QualificationHistogram
     """
-    cursor = readonly_connection.connection().cursor()
+    cursor = readonly_connection.cursor()
     cursor.execute(plot_info.query)
 
     if not cursor.rowcount:

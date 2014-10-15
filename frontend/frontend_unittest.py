@@ -4,7 +4,7 @@ import unittest, os
 import common
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend import setup_test_environment
-from autotest_lib.frontend.afe import test, readonly_connection
+from autotest_lib.frontend.afe import test
 from autotest_lib.client.common_lib import global_config
 
 _APP_DIR = os.path.join(os.path.dirname(__file__), 'afe')

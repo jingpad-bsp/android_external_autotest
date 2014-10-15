@@ -252,7 +252,7 @@ def GetMultiTestKeyReleaseTableData(chrome_versions, query,
     return gviz_data_table
 
   # Now massage the returned data into a gviz data table.
-  cursor = readonly_connection.connection().cursor()
+  cursor = readonly_connection.cursor()
   cursor.execute('%s %s' % (query, query_order))
   builds, build_data = AggregateBuilds(extra.get('lowhigh', None),
                                        chrome_versions,

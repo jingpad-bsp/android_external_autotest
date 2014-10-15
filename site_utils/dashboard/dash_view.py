@@ -243,7 +243,7 @@ class AutotestDashView(object):
       Uses dashboard cache files for some (crash/timing) data.
       """
       self._dash_config = None
-      self._cursor = readonly_connection.connection().cursor()
+      self._cursor = readonly_connection.cursor()
       self._common_where = (
           "WHERE job_owner = %s"
           "  AND NOT ISNULL(test_finished_time)"

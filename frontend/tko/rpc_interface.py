@@ -229,7 +229,7 @@ def get_tests_summary(job_names):
                  GROUP BY job_name, IF (status = 'GOOD', status, 'FAIL')'''
             % sql_list)
 
-    cursor = readonly_connection.connection().cursor()
+    cursor = readonly_connection.cursor()
     cursor.execute(query, job_names)
     results = rpc_utils.fetchall_as_list_of_dicts(cursor)
 
@@ -258,7 +258,7 @@ def get_tests_summary_with_wildcards(job_names):
                  GROUP BY IF (status = 'GOOD', status, 'FAIL')'''
 
     summaries = {}
-    cursor = readonly_connection.connection().cursor()
+    cursor = readonly_connection.cursor()
     for job_name in job_names:
         cursor.execute(query, job_name)
         results = rpc_utils.fetchall_as_list_of_dicts(cursor)
@@ -312,7 +312,7 @@ def create_qual_histogram(query, filter_string, interval, drilldown_callback):
 # client.  We should come up with a more opaque RPC for that place to call and
 # get rid of this.
 def execute_query_with_param(query, param):
-    cursor = readonly_connection.connection().cursor()
+    cursor = readonly_connection.cursor()
     cursor.execute(query, param)
     return cursor.fetchall()
 

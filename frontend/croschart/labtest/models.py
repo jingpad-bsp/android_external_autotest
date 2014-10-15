@@ -113,7 +113,7 @@ def GetLabTestReportData(query):
     gviz_data_table_users = gviz_data_table_users.ToJSon(keys_in_order)
     return {'jobs': gviz_data_table_jobs, 'users': gviz_data_table_users}
 
-  cursor = readonly_connection.connection().cursor()
+  cursor = readonly_connection.cursor()
   cursor.execute(query)
   test_data, user_data = AggregateTests(cursor.fetchall())
   gviz_data_table = ToGVizJsonTable(test_data, user_data)
