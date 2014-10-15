@@ -130,22 +130,6 @@ class ChameleonBoard(object):
         return '_'.join(sorted(set(connectors)))
 
 
-    def get_pixel_format(self):
-        """Gets the pixel format for the output of DumpPixels.
-
-        @return: A string of the format, like 'rgba', 'bgra', 'rgb', etc.
-        """
-        return self._chameleond_proxy.GetPixelFormat()
-
-
-    def get_pixel_length(self):
-        """Gets the length of a pixel, which is returned from DumpPixels().
-
-        @return: A number of length, in byte.
-        """
-        return len(self.get_pixel_format())
-
-
 class ChameleonPort(object):
     """ChameleonPort is an abstraction of a port of a Chameleon board.
 
@@ -285,12 +269,10 @@ class ChameleonPort(object):
 
         @return An Image object.
         """
-        image = Image.fromstring(
-                self._chameleond_proxy.GetPixelFormat().upper(),
+        return Image.fromstring(
+                'RGB',
                 self.get_resolution(),
                 self._chameleond_proxy.DumpPixels(self._input_id).data)
-
-        return image.convert('RGB')
 
 
     def get_resolution(self):
