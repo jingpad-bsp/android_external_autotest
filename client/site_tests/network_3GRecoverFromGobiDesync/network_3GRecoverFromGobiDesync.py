@@ -2,17 +2,21 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus, dbus.mainloop.glib, glib, gobject
-import logging, os, pty, re, subprocess, traceback
+import dbus
+import glib
+import gobject
+import logging
+import os
+import pty
+import re
+import subprocess
+import traceback
 
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import test
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import network
 from autotest_lib.client.cros.cellular import mm
 from autotest_lib.client.cros.cellular import modem_utils
-
-from autotest_lib.client.cros import flimflam_test_path
-import flimflam
 
 TEST_TIMEOUT = 120
 
@@ -65,9 +69,9 @@ class TestEventLoop(object):
       victim.kill()
 
 class GobiDesyncEventLoop(TestEventLoop):
-  def __init__(self, bus):
+  def __init__(self, test_env):
     super(GobiDesyncEventLoop, self).__init__()
-    self.bus = bus
+    self.test_env = test_env
     self.dbus_signal_receivers = []
 
     # Start conditions; once these have been met, call StartTest.
@@ -148,14 +152,13 @@ class GobiDesyncEventLoop(TestEventLoop):
       logging.info('Not starting until: %s' % self.remaining_start_conditions)
     else:
       logging.info('Preconditions satisfied')
-      network.ResetAllModems(flimflam.FlimFlam())
       self.StartTest()
       self.remaining_start_conditions = ['dummy entry so we do not start twice']
 
   def RegisterDbusSignal(self, *args, **kwargs):
     """Register signal receiver with dbus and our cleanup list."""
     self.dbus_signal_receivers.append(
-        self.bus.add_signal_receiver(*args, **kwargs))
+        self.test_env.bus.add_signal_receiver(*args, **kwargs))
 
   def CleanupDbusSignalReceivers(self):
     for signal_match in self.dbus_signal_receivers:
@@ -212,19 +215,12 @@ class RegularOperationTest(GobiDesyncEventLoop):
   """This covers the case where the modem makes an API call that
      returns a "we've lost sync" error that should cause a reboot."""
 
-  def __init__(self, bus):
-    super(RegularOperationTest, self).__init__(bus)
+  def __init__(self, test_env):
+    super(RegularOperationTest, self).__init__(test_env)
 
   def StartTest(self):
-    modem_manager, gobi_path = mm.PickOneModem('Gobi')
-    modem = modem_manager.GetModem(gobi_path)
-    gobi = modem.GobiModem()
-    simple = modem.SimpleModem()
-
-    modem.Enable(True)
-
-    gobi.InjectFault('SdkError', 12)
-    _ = simple.GetStatus()
+    self.test_env.modem.GobiModem().InjectFault('SdkError', 12)
+    self.test_env.modem.SimpleModem().GetStatus()
 
 
 class DataConnectTest(GobiDesyncEventLoop):
@@ -232,45 +228,33 @@ class DataConnectTest(GobiDesyncEventLoop):
      StartDataSession.  If we're not also disabling at the same time,
      this should behave the same as other desync errors."""
 
-  def __init__(self, bus):
-    super(DataConnectTest, self).__init__(bus)
+  def __init__(self, test_env):
+    super(DataConnectTest, self).__init__(test_env)
 
   def ignore(self, *args, **kwargs):
     logging.info('ignoring')
     pass
 
   def StartTest(self):
-    modem_manager, gobi_path = mm.PickOneModem('Gobi')
-    modem = modem_manager.GetModem(gobi_path)
-    gobi = modem.GobiModem()
-    simple = modem.SimpleModem()
-
-    modem.Enable(True)
-
+    gobi = self.test_env.modem.GobiModem()
     gobi.InjectFault('AsyncConnectSleepMs', 1000)
     gobi.InjectFault('ConnectFailsWithErrorSendingQmiRequest', 1)
-    simple.Connect({},
-                   reply_handler=self.ignore,
-                   error_handler=self.ignore)
+    self.test_env.modem.SimpleModem().Connect(
+            {}, reply_handler=self.ignore, error_handler=self.ignore)
 
 class ApiConnectTest(GobiDesyncEventLoop):
   """Test the special-case code on errors connecting to the API. """
-  def __init__(self, bus):
-    super(ApiConnectTest, self).__init__(bus)
+  def __init__(self, test_env):
+    super(ApiConnectTest, self).__init__(test_env)
 
   def StartTest(self):
-    modem_manager, gobi_path = mm.PickOneModem('Gobi')
-    modem = modem_manager.GetModem(gobi_path)
-    gobi = modem.GobiModem()
-    simple = modem.SimpleModem()
-
-    modem.Enable(False)
+    self.test_env.modem.Enable(False)
 
     saw_exception = False
     # Failures on API connect are a different code path
-    gobi.InjectFault('SdkError', 1)
+    self.test_env.modem.GobiModem().InjectFault('SdkError', 1)
     try:
-      modem.Enable(True)
+      self.test_env.modem.Enable(True)
     except dbus.exceptions.DBusException:
       saw_exception = True
     if not saw_exception:
@@ -278,6 +262,9 @@ class ApiConnectTest(GobiDesyncEventLoop):
 
 class EnableDisableTest():
   """Test that the Enable and Disable technology functions work."""
+
+  def __init__(self, test_env):
+    self.test_env = test_env
 
   def CompareModemPowerState(self, modem, expected_state):
     """Compare the power state of a modem to an expected state."""
@@ -287,7 +274,7 @@ class EnableDisableTest():
     return state == expected_state
 
   def CompareDevicePowerState(self, device, expected_state):
-    """Compare the flimflam device power state to an expected state."""
+    """Compare the shill device power state to an expected state."""
     device_properties = device.GetProperties(utf8_strings=True);
     state = device_properties['Powered']
     logging.info('Device Enabled = %s' % state)
@@ -296,62 +283,62 @@ class EnableDisableTest():
   def Test(self):
     """Test that the Enable and Disable technology functions work.
 
-       The expectation is that by using enable technology flimflam
+       The expectation is that by using enable technology shill
        will change the power state of the device by requesting that
        the modem manager modem be either Enabled or Disabled.  The
-       state tracked by flimflam should not change until *after* the
+       state tracked by shill should not change until *after* the
        modem state has changed.  Thus after Enabling or Disabling the
-       technology, we wait until the flimflam device state changes,
+       technology, we wait until the shill device state changes,
        and then assert that the modem state has also changed, without
        having to wait again.
 
        Raises:
-         error.TestFail - if the flimflam device or the modem manager
+         error.TestFail - if the shill device or the modem manager
            modem is not in the expected state
     """
-    flim = flimflam.FlimFlam()
-    modem_manager, gobi_path = mm.PickOneModem('Gobi')
-    modem = modem_manager.GetModem(gobi_path)
-    props = modem.GetModemProperties()
-    interface = props['Device']
-    device = flim.FindElementByPropertySubstring('Device',
-                                                 'Interface', interface)
+    device = self.test_env.shill.find_cellular_device_object()
 
     for i in range(2):
       # Enable technology, ensure that device and modem are enabled.
-      flim.EnableTechnology('cellular')
+      self.test_env.shill.manager.EnableTechnology('cellular')
       utils.poll_for_condition(
           lambda: self.CompareDevicePowerState(device, True),
           error.TestFail('Device Failed to enter state Powered=True'))
-      if not self.CompareModemPowerState(modem, True):
+      if not self.CompareModemPowerState(self.test_env.modem, True):
         raise error.TestFail('Modem Failed to enter state Enabled')
 
       # Disable technology, ensure that device and modem are disabled.
-      flim.DisableTechnology('cellular')
+      self.test_env.shill.manager.DisableTechnology('cellular')
       utils.poll_for_condition(
           lambda: self.CompareDevicePowerState(device, False),
           error.TestFail('Device Failed to enter state Powered=False'))
-      if not self.CompareModemPowerState(modem, False):
+      if not self.CompareModemPowerState(self.test_env.modem, False):
         raise error.TestFail('Modem Failed to enter state Disabled')
 
 
 class network_3GRecoverFromGobiDesync(test.test):
   version = 1
 
-  def run_once(self, cycles=1, min=1, max=20):
-    bus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-    self.bus = dbus.SystemBus(mainloop=bus_loop)
-    try:
-      logging.info('Testing failure during DataConnect')
-      DataConnectTest(self.bus).Wait(TEST_TIMEOUT)
+  def run_test(self, test_env, test):
+    with test_env:
+      try:
+        test()
+      finally:
+        modem_utils.ClearGobiModemFaultInjection()
 
-      logging.info('Testing failure while in regular operation')
-      RegularOperationTest(self.bus).Wait(TEST_TIMEOUT)
+  def run_once(self, test_env, cycles=1, min=1, max=20):
+    logging.info('Testing failure during DataConnect')
+    self.run_test(test_env,
+                  lambda: DataConnectTest(test_env).Wait(TEST_TIMEOUT))
 
-      logging.info('Testing failure during device initialization')
-      ApiConnectTest(self.bus).Wait(TEST_TIMEOUT)
+    logging.info('Testing failure while in regular operation')
+    self.run_test(test_env,
+                  lambda: RegularOperationTest(test_env).Wait(TEST_TIMEOUT))
 
-      logging.info('Testing that Enable and Disable technology still work')
-      EnableDisableTest().Test()
-    finally:
-      modem_utils.ClearGobiModemFaultInjection()
+    logging.info('Testing failure during device initialization')
+    self.run_test(test_env,
+                  lambda: ApiConnectTest(test_env).Wait(TEST_TIMEOUT))
+
+    logging.info('Testing that Enable and Disable technology still work')
+    self.run_test(test_env,
+                  lambda: EnableDisableTest(test_env).Test())

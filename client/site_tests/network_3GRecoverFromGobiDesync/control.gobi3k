@@ -21,4 +21,7 @@ DOC = """
 
  """
 
-job.run_test('network_3GRecoverFromGobiDesync', tag='gobi3k')
+from autotest_lib.client.cros.cellular import test_environment
+
+test_env = test_environment.CellularOTATestEnvironment(modem_pattern='Gobi')
+job.run_test('network_3GRecoverFromGobiDesync', test_env=test_env, tag='gobi3k')

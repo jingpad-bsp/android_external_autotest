@@ -59,12 +59,14 @@ class CellularTestEnvironment(object):
 
     """
 
-    def __init__(self, use_backchannel=True, shutdown_other_devices=True):
+    def __init__(self, use_backchannel=True, shutdown_other_devices=True,
+                 modem_pattern=''):
         """
         @param use_backchannel: Set up the backchannel that can be used to
                 communicate with the DUT.
         @param shutdown_other_devices: If True, shutdown all devices except
                 cellular.
+        @param modem_pattern: Search string used when looking for the modem.
 
         """
         # Tests should use this main loop instead of creating their own.
@@ -76,6 +78,8 @@ class CellularTestEnvironment(object):
         self.modem_manager = None
         self.modem = None
         self.modem_path = None
+
+        self._modem_pattern = modem_pattern
 
         self._nested = None
         self._context_managers = []
@@ -214,7 +218,8 @@ class CellularTestEnvironment(object):
 
         # PickOneModem() makes sure there's a modem manager and that there is
         # one and only one modem.
-        self.modem_manager, self.modem_path = mm.PickOneModem('')
+        self.modem_manager, self.modem_path = \
+                mm.PickOneModem(self._modem_pattern)
         self.modem = self.modem_manager.GetModem(self.modem_path)
         if self.modem is None:
             raise error.TestError('Cannot get modem object at %s.' %
