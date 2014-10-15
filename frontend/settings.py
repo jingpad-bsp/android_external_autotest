@@ -1,4 +1,14 @@
 """Django settings for frontend project.
+
+Two databases are configured for the use with django here. One for tko tables,
+which will always be the same database for all instances (the global database),
+and one for everything else, which will be the same as the global database for
+the master, but a local database for shards.
+Additionally there is a third database connection for read only access to the
+global database.
+
+This is implemented using a Django database router.
+For more details on how the routing works, see db_router.py.
 """
 
 import os
@@ -28,6 +38,7 @@ AUTOTEST_READONLY = database_settings_helper.get_readonly_db_config()
 ALLOWED_HOSTS = '*'
 
 DATABASES = {'default': AUTOTEST_DEFAULT,
+             'global': AUTOTEST_GLOBAL,
              'readonly': AUTOTEST_READONLY,}
 
 # Have to set SECRET_KEY before importing connections because of this bug:
@@ -35,6 +46,11 @@ DATABASES = {'default': AUTOTEST_DEFAULT,
 # TODO: Order this again after an upgrade to Django 1.6 or higher.
 # Make this unique, and don't share it with anybody.
 SECRET_KEY = 'pn-t15u(epetamdflb%dqaaxw+5u&2#0u-jah70w1l*_9*)=n7'
+
+# Do not do this here or from the router, or most unit tests will fail.
+# from django.db import connection
+
+DATABASE_ROUTERS = ['autotest_lib.frontend.db_router.Router']
 
 # prefix applied to all URLs - useful if requests are coming through apache,
 # and you need this app to coexist with others
