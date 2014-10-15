@@ -83,15 +83,18 @@ def take_screenshot(resultsdir, fname_prefix, extension='png'):
     Returns:
       the path of the saved screenshot file
     """
+
+    old_exc_type = sys.exc_info()[0]
     if utils.is_freon():
-        raise error.TestFail('freon: take_screenshot not implemented')
+        if old_exc_type is None:
+            raise error.TestFail('freon: take_screenshot not implemented')
+        return None
     next_index = len(glob.glob(
         os.path.join(resultsdir, '%s-*.%s' % (fname_prefix, extension))))
     screenshot_file = os.path.join(
         resultsdir, '%s-%d.%s' % (fname_prefix, next_index, extension))
     logging.info('Saving screenshot to %s.', screenshot_file)
 
-    old_exc_type = sys.exc_info()[0]
     try:
         xsystem('/usr/local/bin/import -window root -depth 8 %s' %
                 screenshot_file)
