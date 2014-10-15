@@ -237,7 +237,7 @@ class ChameleonTest(test.test):
            self.display_client.connect()
 
 
-    def reconnect_output(self, unplug_duration_sec=0.5):
+    def reconnect_output(self, unplug_duration_sec=5):
         """Reconnects the output with an unplug followed by a plug.
 
         @param unplug_duration_sec: duration of unplug in second.
