@@ -232,7 +232,16 @@ class DisplayUtility(object):
 
         Emulates L_Ctrl + Maximize in X server to toggle mirrored.
         """
-        graphics_utils.press_key('ctrl+F4')
+        self.press_key('ctrl+F4')
+        return True
+
+
+    def press_key(self, key_str):
+        """Presses the given key(s).
+
+        @param key_str: A string of the key(s), like 'ctrl+F4', 'Up'.
+        """
+        graphics_utils.press_key(key_str)
         return True
 
 
