@@ -2,14 +2,18 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import dbus
+import glob
 import logging
 import json
+import os
 import tempfile
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.cros_disks import CrosDisksTester
+from autotest_lib.client.cros.cros_disks import ExceptionSuppressor
 from autotest_lib.client.cros.cros_disks import VirtualFilesystemImage
 from autotest_lib.client.cros.cros_disks import DefaultFilesystemTestContent
 
@@ -62,18 +66,13 @@ class CrosDisksFilesystemTester(CrosDisksTester):
 
             actual_mount_path = result['mount_path']
 
-            # Perform read/write tests only if the mount operation succeeds.
-            if result['status'] == 0:
-                # If it is a write test, create the test content on the
-                # filesystem after it is mounted by CrosDisks.
-                if is_write_test and not test_content.create(actual_mount_path):
-                    raise error.TestFail(
-                            "Failed to create filesystem test content")
+            # If it is a write test, create the test content on the filesystem
+            # after it is mounted by CrosDisks.
+            if is_write_test and not test_content.create(actual_mount_path):
+                raise error.TestFail("Failed to create filesystem test content")
 
-                if not test_content.verify(actual_mount_path):
-                    raise error.TestFail(
-                            "Failed to verify filesystem test content")
-
+            if not test_content.verify(actual_mount_path):
+                raise error.TestFail("Failed to verify filesystem test content")
             self.cros_disks.unmount(device_file, ['force'])
 
     def test_using_virtual_filesystem_image(self):
