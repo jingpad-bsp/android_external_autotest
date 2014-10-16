@@ -7,6 +7,7 @@ import re
 from autotest_lib.client.bin import utils
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.graphics import graphics_utils
 
 
 class hardware_TouchScreenPresent(test.test):
@@ -16,9 +17,9 @@ class hardware_TouchScreenPresent(test.test):
     version = 1
 
     def run_once(self):
-        xauth_path = '/home/chronos/.Xauthority'
-        cmd = 'DISPLAY=:0.0 XAUTHORITY=%s xinput list' % xauth_path
-        xi_out = utils.system_output(cmd)
+        utils.assert_has_X_server()
+        cmd = 'xinput list'
+        xi_out = utils.system_output(graphics_utils.xcommand(cmd))
         if xi_out.find('maXTouch') == -1 :
             raise error.TestFail('No touch screen found')
         if not re.search('maXTouch.*floating slave', xi_out ):

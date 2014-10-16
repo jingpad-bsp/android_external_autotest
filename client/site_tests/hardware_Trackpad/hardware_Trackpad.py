@@ -14,7 +14,6 @@ import trackpad_summary
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui
 
 from trackpad_device import TrackpadDevice
 from trackpad_util import read_trackpad_test_conf, get_prefix, KEY_LOG, KEY_SEQ
@@ -229,6 +228,7 @@ class hardware_Trackpad(test.test):
             localhost: run locally from the client side
             regression: run by control.regression
         '''
+        utils.assert_has_X_server()
         global tdata
         tdata.file_basename = None
         tdata.chrome_request = 0

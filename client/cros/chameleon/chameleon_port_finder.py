@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.bin import utils
 from collections import namedtuple
 
+from autotest_lib.client.cros.graphics import graphics_utils
 
 ChameleonPorts = namedtuple('ChameleonPorts', 'connected failed')
 
@@ -55,7 +55,7 @@ class ChameleonPortFinder(object):
                 self._TIMEOUT_VIDEO_STABLE_PROBE)
 
             # Add the connected ports if they are detected by xrandr.
-            xrandr_output = utils.get_xrandr_output_state()
+            xrandr_output = graphics_utils.get_xrandr_output_state()
             for output in xrandr_output.iterkeys():
                 if output.startswith(connector_type):
                     connected_ports.append(chameleon_port)

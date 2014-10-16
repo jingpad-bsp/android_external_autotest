@@ -6,6 +6,7 @@ import logging, time
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import power_status, power_utils
+from autotest_lib.client.cros.graphics import graphics_utils
 
 
 def get_num_outputs_on():
@@ -15,7 +16,7 @@ def get_num_outputs_on():
     Return value: integer value of number of connected outputs that are on.
     """
 
-    xrandr_state = utils.get_xrandr_output_state()
+    xrandr_state = graphics_utils.get_xrandr_output_state()
     output_states = [xrandr_state[name] for name in xrandr_state]
     return sum([1 if is_enabled else 0 for is_enabled in output_states])
 

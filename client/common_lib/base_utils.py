@@ -377,24 +377,24 @@ def open_write_close(filename, data):
 
 
 def locate_file(path, base_dir=None):
-  """Locates a file.
+    """Locates a file.
 
-  @param path: The path of the file being located. Could be absolute or relative
-      path. For relative path, it tries to locate the file from base_dir.
-  @param base_dir (optional): Base directory of the relative path.
+    @param path: The path of the file being located. Could be absolute or relative
+        path. For relative path, it tries to locate the file from base_dir.
+    @param base_dir (optional): Base directory of the relative path.
 
-  @returns Absolute path of the file if found. None if path is None.
-  @raises error.TestFail if the file is not found.
-  """
-  if path is None:
-    return None
+    @returns Absolute path of the file if found. None if path is None.
+    @raises error.TestFail if the file is not found.
+    """
+    if path is None:
+        return None
 
-  if not os.path.isabs(path) and base_dir is not None:
-    # Assume the relative path is based in autotest directory.
-    path = os.path.join(base_dir, path)
-  if not os.path.isfile(path):
-    raise error.TestFail('ERROR: Unable to find %s' % path)
-  return path
+    if not os.path.isabs(path) and base_dir is not None:
+        # Assume the relative path is based in autotest directory.
+        path = os.path.join(base_dir, path)
+    if not os.path.isfile(path):
+        raise error.TestFail('ERROR: Unable to find %s' % path)
+    return path
 
 
 def matrix_to_string(matrix, header=None):
@@ -2041,73 +2041,6 @@ def wait_for_value(func,
         time.sleep(0.1)
 
     return value
-
-
-def call_xrandr(args_string=''):
-    """
-    Calls xrandr with the args given by args_string.
-    |args_string| is a single string containing all arguments.
-    e.g. call_xrandr('--output LVDS1 --off') will invoke:
-        'xrandr --output LVDS1 --off'
-
-    Return value: Output of xrandr
-    """
-
-    cmd = 'xrandr'
-    xauth = '/home/chronos/.Xauthority'
-    environment = 'DISPLAY=:0.0 XAUTHORITY=%s' % xauth
-    return system_output('%s %s %s' % (environment, cmd, args_string))
-
-
-def get_xrandr_output_state():
-    """
-    Retrieves output status of connected display(s) using xrandr.
-
-    When xrandr report a display is "connected", it doesn't mean the
-    display is active. For active display, it will have '*' after display mode.
-
-    Return value: dictionary of connected display states.
-                  key = output name
-                  value = True if the display is active; False otherwise.
-    """
-
-    output = call_xrandr().split('\n')
-    xrandr_outputs = {}
-    current_output_name = ''
-
-    # Parse output of xrandr, line by line.
-    for line in output:
-        if line.startswith('Screen'):
-            continue
-        # If the line contains "connected", it is a connected display, as
-        # opposed to a disconnected output.
-        if line.find(' connected') != -1:
-            current_output_name = line.split()[0]
-            # Temporarily mark it as inactive until we see a '*' afterward.
-            xrandr_outputs[current_output_name] = False
-            continue
-
-        # If "connected" was not found, this is a line that shows a display
-        # mode, e.g:    1920x1080      50.0     60.0     24.0
-        # Check if this has an asterisk indicating it's on.
-        if line.find('*') != -1 and current_output_name:
-            xrandr_outputs[current_output_name] = True
-            # Reset the output name since this should not be set more than once.
-            current_output_name = ''
-
-    return xrandr_outputs
-
-
-def set_xrandr_output(output_name, enable):
-    """
-    Sets the output given by |output_name| on or off.
-
-    Parameters:
-        output_name       name of output, e.g. 'HDMI1', 'LVDS1', 'DP1'
-        enable            True or False, indicating whether to turn on or off
-    """
-
-    call_xrandr('--output %s --%s' % (output_name, 'auto' if enable else 'off'))
 
 
 def restart_job(name):

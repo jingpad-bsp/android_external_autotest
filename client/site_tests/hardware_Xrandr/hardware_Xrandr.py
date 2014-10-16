@@ -4,8 +4,8 @@
 import logging, time
 
 from autotest_lib.client.bin import test, utils
-from autotest_lib.client.common_lib import base_utils, error
-
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.graphics import graphics_utils
 
 class hardware_Xrandr(test.test):
     version = 1
@@ -28,7 +28,7 @@ class hardware_Xrandr(test.test):
         keyvals = {}
 
         # Read the Xrandr outputs.
-        xrandr_state = base_utils.get_xrandr_output_state()
+        xrandr_state = graphics_utils.get_xrandr_output_state()
 
         # Also create lists of on/off times for each output.  Initialize them to
         # zeros to avoid the overhead of appending values.
@@ -49,10 +49,10 @@ class hardware_Xrandr(test.test):
 
                 for output_state in [not is_enabled, is_enabled]:
                     start_time = time.time()
-                    base_utils.set_xrandr_output(output, output_state)
+                    graphics_utils.set_xrandr_output(output, output_state)
                     end_time = time.time()
 
-                    new_xrandr_state = base_utils.get_xrandr_output_state()
+                    new_xrandr_state = graphics_utils.get_xrandr_output_state()
                     if new_xrandr_state[output] != output_state:
                         logging.error('Failed to turn %s %s.' %
                                       (output, 'on' if output_state else 'off'))

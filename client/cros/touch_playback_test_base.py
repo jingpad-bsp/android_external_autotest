@@ -9,6 +9,7 @@ import subprocess
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.graphics import graphics_utils
 
 
 class touch_playback_test_base(test.test):
@@ -51,9 +52,8 @@ class touch_playback_test_base(test.test):
         """
         name_cmd = '%s --names -t %s' % (self._INPUTCONTROL, '%s')
         type_cmd = name_cmd + ' | grep "%s" | cut -d : -f 1'
-        node_cmd = ('DISPLAY=:0 XAUTHORITY=/home/chronos/.Xauthority '
-                    'xinput list-props %s '
-                    '| grep dev/input | cut -d \'"\' -f 2')
+        node_cmd = graphics_utils.xcommand('xinput list-props %s '
+                                      '| grep dev/input | cut -d \'"\' -f 2')
 
         self._has_inputs = defaultdict(bool)
         self._nodes = defaultdict(str)

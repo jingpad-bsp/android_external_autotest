@@ -71,7 +71,7 @@ class hardware_VideoDecodeCapable(test.test):
         rt_format = vaapi.get_rt_format(display, profile, VAEntrypointVLD)
         logging.info('RT_Format: %s', rt_format)
         self.assertTrue(VA_RT_FORMAT_YUV420 & rt_format,
-                        'VA_RT_FORMAT_YUV420 is not supported');
+                        'VA_RT_FORMAT_YUV420 is not supported')
 
 
     def setup(self):
@@ -89,11 +89,12 @@ class hardware_VideoDecodeCapable(test.test):
         import vaapi
 
         # Set the XAUTHORITY for connecting to the X server
+        utils.assert_has_X_server()
         os.environ.setdefault('XAUTHORITY', '/home/chronos/.Xauthority')
 
         display = vaapi.create_display(':0.0')
-        supported_profiles = vaapi.query_profiles(display);
-        logging.info('Vaapi Profiles: %s', supported_profiles);
+        supported_profiles = vaapi.query_profiles(display)
+        logging.info('Vaapi Profiles: %s', supported_profiles)
 
         for profile in self.REQUESTED_VAAPI_PROFILES:
             self.assertTrue(profile in supported_profiles,
@@ -129,9 +130,9 @@ class hardware_VideoDecodeCapable(test.test):
         """
         for rules in self.REQUESTED_V4L2_FORMATS:
             formats = rules[KEY_FORMATS]
-            devices = glob.glob(rules[KEY_DEVICE]);
+            devices = glob.glob(rules[KEY_DEVICE])
             self.assertTrue(len(devices) > 0,
-                            'No matched devices: %s', rules[KEY_DEVICE]);
+                            'No matched devices: %s', rules[KEY_DEVICE])
             for device in devices:
                 missed = set(formats) - set(self._enum_formats(device))
                 self.assertTrue(not missed,

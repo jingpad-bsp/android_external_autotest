@@ -8,7 +8,7 @@ import re
 import subprocess
 import threading
 import time
-from autotest_lib.client.bin import test
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
 POSITION_X_VALUATOR = '0'
@@ -65,6 +65,7 @@ class platform_EvdevSynDropTest(test.test):
         self.stop_xi2_parser = False
         self.finger_set = {}
 
+        utils.assert_has_X_server()
         os.environ['DISPLAY'] = ':0'
         os.environ['XAUTHORITY'] = '/home/chronos/.Xauthority'
         self.data_dir = os.path.join(self.bindir, 'data')
@@ -139,8 +140,8 @@ class platform_EvdevSynDropTest(test.test):
                 time.sleep(0.001)
                 continue
             if not self.device_ready.is_set():
-                 if re.search('ChromeOS-MT-Device:\sSync_State:', line):
-                     self.device_ready.set()
+                if re.search('ChromeOS-MT-Device:\sSync_State:', line):
+                    self.device_ready.set()
             if re.match('[^\+]+\++\sSYN_DROPPED\s\++', line):
                 self.syndrop_detected = True
 

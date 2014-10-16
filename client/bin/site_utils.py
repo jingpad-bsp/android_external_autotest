@@ -993,3 +993,10 @@ def get_ui_use_flags():
 def is_freon():
     """Returns False if the system uses X, True otherwise."""
     return 'X' not in get_ui_use_flags()
+
+def assert_has_X_server():
+    """Using X is soon to be deprecated. Print warning or raise error."""
+    if is_freon():
+         # TODO(ihf): Think about if we could support X for testing for a while.
+         raise error.TestFail('freon: can\'t use X server.')
+    logging.warning('freon: Using the X server will be deprecated soon.')

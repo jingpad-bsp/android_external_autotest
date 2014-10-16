@@ -161,7 +161,8 @@ class DisplayUtility(object):
 
             end_time = time.time() + timeout
             while time.time() < end_time:
-                r = self.get_resolution(self.get_external_connector_name())
+                r = self.get_resolution(
+                             graphics_utils.get_external_connector_name())
                 if (width, height) == (r[0], r[1]):
                     return True
                 time.sleep(0.1)
@@ -183,7 +184,7 @@ class DisplayUtility(object):
         regexp = re.compile(
                 r'^([-A-Za-z0-9]+)\s+connected\s+(\d+)x(\d+)\+(\d+)\+(\d+)',
                 re.M)
-        match = regexp.findall(utils.call_xrandr())
+        match = regexp.findall(graphics_utils.call_xrandr())
         for m in match:
             if m[0] == output:
                 return (int(m[1]), int(m[2]), int(m[3]), int(m[4]))
@@ -287,28 +288,13 @@ class DisplayUtility(object):
         return True
 
 
-    def get_external_connector_name(self):
-        """Gets the name of the external output connector.
-
-        @return The external output connector name as a string, if any.
-                Otherwise, return False.
-        """
-        xrandr_output = utils.get_xrandr_output_state()
-        for output in xrandr_output.iterkeys():
-            if (output.startswith('HDMI') or
-                output.startswith('DP') or
-                output.startswith('DVI')):
-                return output
-        return False
-
-
     def get_internal_connector_name(self):
         """Gets the name of the internal output connector.
 
         @return The internal output connector name as a string, if any.
                 Otherwise, return False.
         """
-        xrandr_output = utils.get_xrandr_output_state()
+        xrandr_output = graphics_utils.get_xrandr_output_state()
         for output in xrandr_output.iterkeys():
             # reference: chromium_org/chromeos/display/output_util.cc
             if (output.startswith('eDP') or
@@ -326,7 +312,7 @@ class DisplayUtility(object):
         @return: True if output is connected; False otherwise.
         """
         def _is_connected(output):
-            xrandr_output = utils.get_xrandr_output_state()
+            xrandr_output = graphics_utils.get_xrandr_output_state()
             if output not in xrandr_output:
                 return False
             return xrandr_output[output]

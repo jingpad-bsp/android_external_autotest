@@ -9,24 +9,17 @@ import subprocess
 import tempfile
 import time
 
-from autotest_lib.client.bin import utils
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.graphics import graphics_utils
 
 
 class hardware_TouchScreenPowerCycles(test.test):
     """Check if there are any spurious contacts when power is cycled."""
     version = 1
 
-    DISPLAY = 'DISPLAY=:0'
-    XAUTHORITY = 'XAUTHORITY=/home/chronos/.Xauthority'
-    CMD_DISPLAY = 'xset dpms force'
-    CMD_SCREEN_ON = ' '.join([DISPLAY, XAUTHORITY, CMD_DISPLAY, 'on'])
-    CMD_SCREEN_OFF = ' '.join([DISPLAY, XAUTHORITY, CMD_DISPLAY, 'off'])
     SCREEN_ON = 1
     SCREEN_OFF = 0
-    CMD_MOUSEMOVE = ' '.join([DISPLAY, XAUTHORITY,
-                              'xdotool mousemove_relative 1 1'])
 
     def initialize(self):
         self.touch_screen_device = self._probe_touch_screen_device()
@@ -40,20 +33,19 @@ class hardware_TouchScreenPowerCycles(test.test):
 
     def _wakeup_screen(self):
         """Wake up the screen if it is dark."""
-        # Move the mouse a little bit to wake up the screen.
-        utils.system(self.CMD_MOUSEMOVE)
+        graphics_utils.wakeup_screen()
         time.sleep(2)
 
     def _touch_screen_on(self, interval):
         """Turn the touch screen on."""
-        utils.system(self.CMD_SCREEN_ON)
+        graphics_utils.switch_screen_on(on=1)
         self.touch_screen_status = self.SCREEN_ON
         logging.info('Touchscreen is turned on')
         time.sleep(interval)
 
     def _touch_screen_off(self, interval):
         """Turn the touch screen off."""
-        utils.system(self.CMD_SCREEN_OFF)
+        graphics_utils.switch_screen_on(on=0)
         self.touch_screen_status = self.SCREEN_OFF
         logging.info('Touchscreen is turned off')
         time.sleep(interval)
@@ -132,7 +124,7 @@ class hardware_TouchScreenPowerCycles(test.test):
         """
         count_contacts_list = []
         count_rounds = 0
-        for i in range(repeated_times):
+        for _ in range(repeated_times):
             self._begin_recording()
             self._touch_screen_off(interval)
             self._touch_screen_on(interval)

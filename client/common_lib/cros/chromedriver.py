@@ -15,7 +15,6 @@ except ImportError:
     logging.error('selenium module failed to be imported.')
     pass
 
-import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib.cros import chrome
 
@@ -130,6 +129,7 @@ class chromedriver_server(object):
 
         # Chromedriver will look for an X server running on the display
         # specified through the DISPLAY environment variable.
+        utils.assert_has_X_server()
         os.environ['DISPLAY'] = X_SERVER_DISPLAY
         os.environ['XAUTHORITY'] = X_AUTHORITY
 

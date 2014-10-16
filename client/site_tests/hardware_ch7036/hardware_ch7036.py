@@ -39,6 +39,7 @@ def check_server(server):
 
 def stress_server():
     # Make sure it responds favorably to DPMS events
+    utils.assert_has_X_server()
     for dpms_verb in _DPMS_DOWN:
         run_cmd("%s xset dpms force %s" % (_XENV, dpms_verb))
         time.sleep(5)
@@ -84,7 +85,7 @@ def check_log():
 
 
 class hardware_ch7036(test.test):
-    version=1
+    version = 1
 
 
     def run_once(self):

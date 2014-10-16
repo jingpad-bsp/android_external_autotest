@@ -74,6 +74,20 @@ def do_power_backlight_xset():
     xsystem(XSET + ' -dpms')
 
 
+def wakeup_screen():
+    """Wake up the screen if it is dark."""
+    # Move the mouse a little bit to wake up the screen.
+    xsystem('xdotool mousemove_relative 1 1')
+
+
+def switch_screen_on(on):
+    """Turn the touch screen on/off."""
+    if on:
+        xsystem(XSET + ' dpms force on')
+    else:
+        xsystem(XSET + ' dpms force off')
+
+
 def take_screenshot(resultsdir, fname_prefix, extension='png'):
     """Take screenshot and save to a new file in the results dir.
     Args:
@@ -199,6 +213,124 @@ def get_display_resolution():
         return _get_display_resolution_freon()
     else:
         return _get_display_resolution_x()
+
+
+def call_xrandr(args_string=''):
+    """
+    Calls xrandr with the args given by args_string.
+    |args_string| is a single string containing all arguments.
+    e.g. call_xrandr('--output LVDS1 --off') will invoke:
+        'xrandr --output LVDS1 --off'
+
+    Return value: Output of xrandr
+    """
+    return utils.system_output(xcommand('xrandr %s' % args_string))
+
+
+def get_xrandr_output_state():
+    """
+    Retrieves output status of connected display(s) using xrandr.
+
+    When xrandr report a display is "connected", it doesn't mean the
+    display is active. For active display, it will have '*' after display mode.
+
+    Return value: dictionary of connected display states.
+                  key = output name
+                  value = True if the display is active; False otherwise.
+    """
+    output = call_xrandr().split('\n')
+    xrandr_outputs = {}
+    current_output_name = ''
+
+    # Parse output of xrandr, line by line.
+    for line in output:
+        if line.startswith('Screen'):
+            continue
+        # If the line contains "connected", it is a connected display, as
+        # opposed to a disconnected output.
+        if line.find(' connected') != -1:
+            current_output_name = line.split()[0]
+            # Temporarily mark it as inactive until we see a '*' afterward.
+            xrandr_outputs[current_output_name] = False
+            continue
+
+        # If "connected" was not found, this is a line that shows a display
+        # mode, e.g:    1920x1080      50.0     60.0     24.0
+        # Check if this has an asterisk indicating it's on.
+        if line.find('*') != -1 and current_output_name:
+            xrandr_outputs[current_output_name] = True
+            # Reset the output name since this should not be set more than once.
+            current_output_name = ''
+
+    return xrandr_outputs
+
+
+def set_xrandr_output(output_name, enable):
+    """
+    Sets the output given by |output_name| on or off.
+
+    Parameters:
+        output_name       name of output, e.g. 'HDMI1', 'LVDS1', 'DP1'
+        enable            True or False, indicating whether to turn on or off
+    """
+    call_xrandr('--output %s --%s' % (output_name, 'auto' if enable else 'off'))
+
+
+def get_external_connector_name():
+    """Gets the name of the external output connector.
+
+    @return The external output connector name as a string, if any.
+            Otherwise, return False.
+    """
+    if utils.is_freon():
+        raise error.TestFail('freon: get_external_connector_name '
+                             'not implemented')
+    xrandr_output = get_xrandr_output_state()
+    for output in xrandr_output.iterkeys():
+        if (output.startswith('HDMI') or
+            output.startswith('DP') or
+            output.startswith('DVI')):
+            return output
+    return False
+
+
+def get_internal_connector_name():
+    """Gets the name of the internal output connector.
+
+    @return The internal output connector name as a string, if any.
+            Otherwise, return False.
+    """
+    if utils.is_freon():
+        raise error.TestFail('freon: get_internal_connector_name '
+                             'not implemented')
+    xrandr_output = get_xrandr_output_state()
+    for output in xrandr_output.iterkeys():
+        # reference: chromium_org/chromeos/display/output_util.cc
+        if (output.startswith('eDP') or
+            output.startswith('LVDS') or
+            output.startswith('DSI')):
+            return output
+        return False
+
+
+def wait_output_connected(output):
+    """Wait for output to connect.
+
+    @param output: The output name as a string.
+
+    @return: True if output is connected; False otherwise.
+    """
+    def _is_connected(output):
+        """Helper function."""
+        xrandr_output = get_xrandr_output_state()
+        if output not in xrandr_output:
+            return False
+        return xrandr_output[output]
+
+    if utils.is_freon():
+        raise error.TestFail('freon: wait_output_connected not implemented')
+    return utils.wait_for_value(lambda: _is_connected(output),
+                                expected_value=True)
 
 
 def execute_screenshot_capture(cmd):

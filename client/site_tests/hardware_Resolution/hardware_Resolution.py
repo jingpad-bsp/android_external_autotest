@@ -6,10 +6,11 @@
 
 __author__ = 'kdlucas@chromium.org (Kelly Lucas)'
 
-import os, re, logging
+import logging, re
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.graphics import graphics_utils
 
 _SUPPORTED_LVDS_RESOLUTIONS = ['1280x800', '1366x768']
 
@@ -33,26 +34,6 @@ class hardware_Resolution(test.test):
     """
     version = 1
 
-    def get_xrandr_output(self):
-        """
-        Retrieves the output of xrandr as a list of strings.
-        """
-        cmd = 'xrandr'
-        # TODO:remove oldxauth when slim is deprecated.
-        oldxauth = '/var/run/slim.auth'
-        newxauth = '/home/chronos/.Xauthority'
-        # The new login manager uses XAUTHORITY=/home/chronos/.Xauthority
-        # so we need to check which file to use.
-        if os.path.isfile(oldxauth):
-            xauth = oldxauth
-        else:
-            xauth = newxauth
-
-        environment = 'DISPLAY=:0.0 XAUTHORITY=%s' % xauth
-        output = utils.system_output('%s %s' % (environment, cmd))
-
-        return output.split('\n')
-
     def is_lvds_res(self, res, xrandr_output):
         """
         Returns True if the supplied resolution is associated with
@@ -61,7 +42,7 @@ class hardware_Resolution(test.test):
         search_str = r'LVDS\d+ connected ' + res
         for line in xrandr_output:
             if re.match(search_str, line):
-                return True;
+                return True
 
         return False
 
@@ -82,7 +63,7 @@ class hardware_Resolution(test.test):
         return None
 
     def run_x(self):
-        xrandr_output = self.get_xrandr_output()
+        xrandr_output = graphics_utils.call_xrandr().split('\n')
 
         res = self.get_current_res(xrandr_output)
         if not res or not re.match(r'\d+x\d+$', res):

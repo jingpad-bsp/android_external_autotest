@@ -9,6 +9,7 @@ import time
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.bin import test, utils
+from autotest_lib.client.cros.graphics import graphics_utils
 
 
 class power_PSROccupancyTest(test.test):
@@ -55,7 +56,8 @@ class power_PSROccupancyTest(test.test):
             raise error.TestNAError(
                     'Trying to run PSR tests on non-samus board.')
         psr_enabled = self._is_psr_enabled()
-        if not psr_enabled and utils.call_xrandr('--output eDP1 --set psr on'):
+        if (not psr_enabled and
+            graphics_utils.call_xrandr('--output eDP1 --set psr on')):
             error.TestFail('Unable to enable PSR via xrandr.')
         # Start chrome in full screen mode so that there is no blinking cursor
         # or ticking clock on the screen.
@@ -76,5 +78,5 @@ class power_PSROccupancyTest(test.test):
                         occupancy_time)
             # Disable PSR if it was not enabled to begin with.
             if (not psr_enabled and
-                utils.call_xrandr('--output eDP1 --set psr off')):
+                graphics_utils.call_xrandr('--output eDP1 --set psr off')):
                 raise error.TestWarn('Unable to disable PSR via xrandr.')

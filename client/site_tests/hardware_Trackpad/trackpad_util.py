@@ -15,6 +15,7 @@ import common_util
 import cros_gestures_lib
 import Xevent
 
+from autotest_lib.client.bin import utils
 
 record_program = 'evemu-record'
 trackpad_test_conf = 'trackpad_usability_test.conf'
@@ -76,6 +77,7 @@ class Display:
     XAUTH_STR = '/home/chronos/.Xauthority'
 
     def __init__(self):
+        utils.assert_has_X_server()
         self._setup_display()
 
     def _setup_display(self):

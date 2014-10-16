@@ -5,6 +5,7 @@
 """A semi-automated test suite for touch device firmware MTB events."""
 
 from autotest_lib.client.bin import test
+from autotest_lib.client.bin import utils
 
 
 class firmware_TouchMTB(test.test):
@@ -12,4 +13,4 @@ class firmware_TouchMTB(test.test):
     version = 1
 
     def run_once(self):
-        pass
+        utils.assert_has_X_server()

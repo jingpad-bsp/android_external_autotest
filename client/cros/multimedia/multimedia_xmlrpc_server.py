@@ -12,6 +12,7 @@ import os
 import xmlrpclib
 
 import common   # pylint: disable=W0611
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib.cros import chrome, xmlrpc_server
 from autotest_lib.client.cros import constants
 from autotest_lib.client.cros.multimedia import audio_utility
@@ -67,6 +68,7 @@ if __name__ == '__main__':
         logging.basicConfig(level=logging.DEBUG)
         logging.debug('multimedia_xmlrpc_server main...')
 
+        utils.assert_has_X_server()
         os.environ['DISPLAY'] = ':0.0'
         os.environ['XAUTHORITY'] = '/home/chronos/.Xauthority'
 

@@ -31,6 +31,7 @@ class graphics_Stress(test.test):
 
     def initialize(self):
         self.GSC = graphics_utils.GraphicsStateChecker()
+        utils.assert_has_X_server()
         os.environ['DISPLAY'] = ':0.0'
         os.environ['XAUTHORITY'] = '/home/chronos/.Xauthority'
 

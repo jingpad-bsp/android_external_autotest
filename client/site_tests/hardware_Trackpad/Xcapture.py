@@ -6,7 +6,6 @@
 
 import logging
 import os
-import re
 import subprocess
 import tempfile
 import time
@@ -15,6 +14,7 @@ import common_util
 import trackpad_util
 import Xevent
 
+from autotest_lib.client.bin import utils
 from trackpad_util import Display, read_trackpad_test_conf
 from Xevent import reset_x_input_prop, set_x_input_prop
 
@@ -70,6 +70,7 @@ class Xcapture:
     ''' A class to capture X events '''
 
     def __init__(self, error, conf_path):
+        utils.assert_has_X_server()
         # Set X display server and xauthority.
         self.display = Display()
         self.display.set_environ()
