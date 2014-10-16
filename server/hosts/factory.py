@@ -111,7 +111,6 @@ def create_host(
     @returns: A host object which is an instance of the newly created
               host class.
     """
-
     ssh_user, ssh_pass, ssh_port, ssh_verbosity_flag, ssh_options = \
             _get_host_arguments()
 

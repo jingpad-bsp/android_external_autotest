@@ -43,7 +43,7 @@ def add_missing_labels(afe, hostname):
     @return: True on success.
              False on failure to fetch labels or to add any individual label.
     """
-
+    host = None
     try:
         host = hosts.create_host(hostname)
         labels = host.get_labels()
@@ -56,7 +56,8 @@ def add_missing_labels(afe, hostname):
                          hostname)
         return False
     finally:
-        host.close()
+        if host:
+            host.close()
 
     label_matches = afe.get_labels(name__in=labels)
 
@@ -107,7 +108,6 @@ def main():
         hostnames = [m.strip() for m in options.machines.split(',')]
     else:
         hostnames = afe.get_hostnames()
-
     successes = sum(threadpool.imap_unordered(
                         lambda x: add_missing_labels(afe, x),
                         hostnames))
