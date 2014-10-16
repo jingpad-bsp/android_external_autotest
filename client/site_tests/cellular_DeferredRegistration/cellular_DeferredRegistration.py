@@ -10,8 +10,7 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 
 from autotest_lib.client.cros.cellular import mm1_constants
-from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
-from autotest_lib.client.cros.networking import cellular_proxy
+from autotest_lib.client.cros.cellular import test_environment
 from autotest_lib.client.cros.networking import pm_proxy
 
 class cellular_DeferredRegistration(test.test):
@@ -28,18 +27,11 @@ class cellular_DeferredRegistration(test.test):
     DEFERRED_REGISTRATION_TIMEOUT_SECONDS = 15
 
     def _init(self):
-        self.shill = cellular_proxy.CellularProxy.get_proxy()
-        self.shill.set_logging_for_cellular_test()
         self.pseudomm = pm_proxy.PseudoMMProxy.get_proxy()
-
-        try:
-            self.cellular_service = \
-                    self.shill.wait_for_cellular_service_object()
-            self.cellular_service.Connect()
-        except dbus.DBusException as e:
-            if (e.get_dbus_name() !=
-                cellular_proxy.CellularProxy.ERROR_ALREADY_CONNECTED):
-                raise e
+        service = self.test_env.shill.find_cellular_service_object()
+        self.test_env.shill.connect_service_synchronous(
+                service,
+                timeout_seconds=self.test_env.shill.SERVICE_CONNECT_TIMEOUT)
 
 
     def _set_modem_registration_state(self, state):
@@ -57,7 +49,7 @@ class cellular_DeferredRegistration(test.test):
         self._set_modem_registration_state(
                 mm1_constants.MM_MODEM_3GPP_REGISTRATION_STATE_HOME)
         time.sleep(self.DEFERRED_REGISTRATION_TIMEOUT_SECONDS * 2)
-        if self.shill.find_cellular_service_object() is None:
+        if self.test_env.shill.find_cellular_service_object() is None:
             raise error.TestFail('Cellular service should not have been '
                                  'destroyed after temporary registration loss.')
         logging.info('Successfully verified temporary loss of registration '
@@ -69,7 +61,7 @@ class cellular_DeferredRegistration(test.test):
         self._set_modem_registration_state(
                 mm1_constants.MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING)
         time.sleep(self.DEFERRED_REGISTRATION_TIMEOUT_SECONDS * 2)
-        if self.shill.find_cellular_service_object() is not None:
+        if self.test_env.shill.find_cellular_service_object() is not None:
             raise error.TestFail('Cellular service should have been destroyed '
                                  'after permanent registration loss.')
         logging.info('Successfully verified permanent loss of registration '
@@ -77,9 +69,10 @@ class cellular_DeferredRegistration(test.test):
 
 
     def run_once(self):
-        """Calls by autotest to run this test."""
-        with pseudomodem_context.PseudoModemManagerContext(
-                True, {'family': '3GPP'}):
+        """Called by autotest to run this test."""
+
+        with test_environment.CellularPseudoMMTestEnvironment(
+                pseudomm_args=({'family': '3GPP'},)) as self.test_env:
             self._init()
 
             tests = [self._test_temporary_registration_loss,
