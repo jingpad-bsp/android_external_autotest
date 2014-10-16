@@ -197,6 +197,7 @@ class DisplayUtility(object):
         @param box: 4-tuple giving the upper left and lower right coordinates.
         """
         graphics_utils.take_screenshot_crop(path, box)
+        return True
 
 
     def take_tab_screenshot(self, url_pattern, output_suffix):
