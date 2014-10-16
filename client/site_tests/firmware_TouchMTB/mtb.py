@@ -130,6 +130,11 @@ def create_final_state_packet(packets):
     """Given a sequence of packets, generate a packet representing
     the final state of events
     """
+    def try_to_add(packet, event):
+        """Try to add an event, if its value is not None, into the packet."""
+        _, _, _, value = event
+        if value is not None:
+            packet.append(MtbParser.make_ev_dict(event))
 
     # Put the packets through a state machine to get the
     # final state of events
@@ -150,20 +155,22 @@ def create_final_state_packet(packets):
         return final_state_packet
 
     # Extract slot data from the snapshot of the state machine.
+    syn_time = None
     for slot_data in sm.get_snapshot():
         syn_time, slot, tid, point, pressure = slot_data
-        tid_event = (syn_time, EV_ABS, ABS_MT_TRACKING_ID, tid)
-        slot_event = (syn_time, EV_ABS, ABS_MT_SLOT, slot)
-        x_event = (syn_time, EV_ABS, ABS_MT_POSITION_X, point.x)
-        y_event = (syn_time, EV_ABS, ABS_MT_POSITION_Y, point.y)
-        pressure_event = (syn_time, EV_ABS, ABS_MT_PRESSURE, pressure)
-
-        events = [slot_event, tid_event, x_event, y_event, pressure_event]
-        for event in events:
-            final_state_packet.append(MtbParser.make_ev_dict(event))
+        try_to_add(final_state_packet, (syn_time, EV_ABS, ABS_MT_SLOT, slot))
+        try_to_add(final_state_packet,
+                   (syn_time, EV_ABS, ABS_MT_TRACKING_ID, tid))
+        try_to_add(final_state_packet,
+                   (syn_time, EV_ABS, ABS_MT_POSITION_X, point.x))
+        try_to_add(final_state_packet,
+                   (syn_time, EV_ABS, ABS_MT_POSITION_Y, point.y))
+        try_to_add(final_state_packet,
+                   (syn_time, EV_ABS, ABS_MT_PRESSURE, pressure))
 
     # Add syn_report event to indicate the end of the packet
-    final_state_packet.append(MtbParser.make_syn_report_ev_dict(syn_time))
+    if syn_time:
+        final_state_packet.append(MtbParser.make_syn_report_ev_dict(syn_time))
     return final_state_packet
 
 
@@ -424,6 +431,7 @@ class MtbStateMachine:
         self.slot_to_tid[self.slot] = self.tid
         self.new_tid = True
         self.point[self.tid] = Point()
+        self.pressure[self.tid] = None
         self.number_fingers += 1
 
     def add_event(self, event):
@@ -474,7 +482,7 @@ class MtbStateMachine:
         slots_data = []
         for slot, tid in self.slot_to_tid.items():
             slot_data = [self.syn_time, slot, tid,
-                         self.point[tid], self.pressure[tid]]
+                         self.point.get(tid), self.pressure.get(tid)]
             slots_data.append(slot_data)
         return slots_data
 

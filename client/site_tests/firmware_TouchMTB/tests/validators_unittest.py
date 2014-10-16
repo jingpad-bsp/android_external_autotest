@@ -831,8 +831,7 @@ class DiscardInitialSecondsValidatorTest(unittest.TestCase):
             validator=CountTrackingIDValidator('== 1', device=link),
             device=link)
         validator.init_check(packets)
-        packets = validator._discard_initial_seconds(
-                packets, validator.initial_seconds_to_discard)
+        packets = validator._discard_initial_seconds(packets, 1)
         final_state_packet = packets[0]
 
         self.assertTrue(len(final_state_packet) == 11)
@@ -852,6 +851,28 @@ class DiscardInitialSecondsValidatorTest(unittest.TestCase):
         self.assertTrue(final_state_packet[9][MTB.EV_VALUE] == 21)
         # EVENT TIME
         self.assertTrue(final_state_packet[0][MTB.EV_TIME] == 1412021965.723953)
+
+    def test_get_snapshot_after_discarding_init_packets(self):
+        """Test that get_snapshot() handles non-ready packet properly
+        after discard_initial_seconds(). A non-ready packet is one that
+        the attributes such as X, Y, and Z are not all ready.
+        """
+        packets = parse_tests_data('non_ready_events_in_final_state_packet.dat')
+        validator = DiscardInitialSecondsValidator(
+            validator=CountTrackingIDValidator('== 1', device=link),
+            device=link)
+        validator.init_check(packets)
+        packets = validator._discard_initial_seconds(packets, 1)
+        final_state_packet = packets[0]
+
+        self.assertTrue(len(final_state_packet) == 4)
+        # Assert the correctness of the finger data in the order of
+        #     SLOT, TRACKING_ID, and POSITION_Y
+        self.assertTrue(final_state_packet[0][MTB.EV_VALUE] == 0)
+        self.assertTrue(final_state_packet[1][MTB.EV_VALUE] == 102)
+        self.assertTrue(final_state_packet[2][MTB.EV_VALUE] == 1316)
+        # EVENT TIME
+        self.assertTrue(final_state_packet[0][MTB.EV_TIME] == 1412888977.716634)
 
 
 if __name__ == '__main__':
