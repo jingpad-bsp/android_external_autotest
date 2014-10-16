@@ -31,7 +31,7 @@ BUG_TEMPLATE = {
 }
 
 DOC = """
-On bvt, bvt_cq we do not upload performance numbers to the chrome dashboard. We run
+On bvt, bvt-cq we do not upload performance numbers to the chrome dashboard. We run
 glbench with the "-hasty" option to stay well below the BVT limit of 20
 minutes. This option will run each test at 512x512 resolution only, run it
 only for a fraction of the loops we normally do, and not cool down the
