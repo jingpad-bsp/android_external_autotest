@@ -9,7 +9,8 @@ from autotest_lib.client.common_lib import error
 LIGHT_SENSOR_LOCATION = "/sys/bus/iio/devices/*/"
 LIGHT_SENSOR_FILES = [ "in_illuminance0_input",
                        "in_illuminance0_raw",
-                       "illuminance0_input"
+                       "illuminance0_input",
+                       "in_intensity_raw"
                      ]
 
 class hardware_LightSensor(test.test):
