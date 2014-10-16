@@ -49,3 +49,9 @@ ExternalSource
 monitor_db.pid
 server/cros/chaos_shadow_ap_list.conf
 server/site_tests/network_WiFiChaosPSK/control.local
+
+# These exist on the production servers.
+bug_filing_oauth_credentials.dat
+site_utils/autotest_private/
+site_utils/autotest_tools/
+site_utils/devserver/
