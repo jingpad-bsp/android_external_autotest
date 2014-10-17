@@ -75,6 +75,25 @@ def get_tpm_status():
     return status
 
 
+def get_login_status():
+    """Query the login status
+
+    Returns:
+        A login status dictionary containing:
+        { 'owner_user_exists': True|False,
+          'boot_lockbox_finalized': True|False
+        }
+    """
+    out = __run_cmd(CRYPTOHOME_CMD + ' --action=get_login_status')
+    status = {}
+    for field in ['owner_user_exists', 'boot_lockbox_finalized']:
+        match = re.search('%s: (true|false)' % field, out)
+        if not match:
+            raise ChromiumOSError('Invalid login status: "%s".' % out)
+        status[field] = match.group(1) == 'true'
+    return status
+
+
 def get_tpm_attestation_status():
     """Get the TPM attestation status.  Works similar to get_tpm_status().
     """

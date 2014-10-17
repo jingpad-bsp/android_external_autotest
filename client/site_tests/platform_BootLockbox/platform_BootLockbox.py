@@ -75,6 +75,9 @@ class platform_BootLockbox(test.test):
             # This will fire if you forget to reboot before running the test!
             raise error.TestFail('Boot lockbox could not be signed.')
 
+        if cryptohome.get_login_status()['boot_lockbox_finalized']:
+            raise error.TestFail('Boot lockbox is already finalized.')
+
         if not self._verify_lockbox():
             raise error.TestFail('Boot lockbox could not be verified.')
 
@@ -95,8 +98,16 @@ class platform_BootLockbox(test.test):
         if not self._get_boot_attribute():
             raise error.TestFail('Boot attribute was not available.')
 
+        # Check again to make sure nothing has tricked the finalize check.
+        if cryptohome.get_login_status()['boot_lockbox_finalized']:
+            raise error.TestFail('Boot lockbox prematurely finalized.')
+
         # Finalize and make sure we can verify but not sign.
         self._finalize_lockbox()
+
+        if not cryptohome.get_login_status()['boot_lockbox_finalized']:
+            raise error.TestFail('Boot lockbox finalize status did not change '
+                                 'after finalization.')
 
         if self._flush_and_sign_boot_attributes():
             raise error.TestFail('Boot attributes signed after finalization.')
