@@ -310,7 +310,7 @@ def get_internal_connector_name():
             output.startswith('LVDS') or
             output.startswith('DSI')):
             return output
-        return False
+    return False
 
 
 def wait_output_connected(output):
