@@ -61,6 +61,10 @@ class platform_MemCheck(test.test):
             freeref = 100 * 1024
         elif board.startswith('butterfly'):
             freeref = freeref - 400 * 1024
+        elif board.startswith('rambi') or board.startswith('expresso'):
+            logging.info('Skipping test on rambi and expresso, '
+                         'see crbug.com/411401')
+            return
 
         ref = {'MemTotal': memref,
                'MemFree': freeref,
