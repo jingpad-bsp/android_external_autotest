@@ -7,11 +7,10 @@ import logging
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.cellular import mm1_constants
+from autotest_lib.client.cros.cellular import test_environment
 from autotest_lib.client.cros.cellular.pseudomodem import modem_3gpp
 from autotest_lib.client.cros.cellular.pseudomodem import modem_cdma
-from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
 from autotest_lib.client.cros.cellular.pseudomodem import sim
-from autotest_lib.client.cros.networking import cellular_proxy
 
 TEST_MODEMS_MODULE_PATH = __file__
 
@@ -92,7 +91,8 @@ class cellular_ServiceName(test.test):
                 match.
 
         """
-        cellular_service = self.shill.wait_for_cellular_service_object()
+        cellular_service = \
+                self.test_env.shill.wait_for_cellular_service_object()
         service_name = cellular_service.GetProperties()['Name']
         if service_name != expected_name:
             raise error.TestFail('Expected service name: |%s|, '
@@ -109,11 +109,11 @@ class cellular_ServiceName(test.test):
 
         """
         logging.info('Testing service name for 3GPP no roaming')
-        with pseudomodem_context.PseudoModemManagerContext(
-                True,
-                {'family': '3GPP',
-                 'test-module': TEST_MODEMS_MODULE_PATH,
-                 'test-sim-class': 'TestSIM'}):
+        self.test_env = test_environment.CellularPseudoMMTestEnvironment(
+                pseudomm_args=({'family': '3GPP',
+                                'test-module': TEST_MODEMS_MODULE_PATH,
+                                'test-sim-class': 'TestSIM'},))
+        with self.test_env:
             self._verify_service_name(TEST_3GPP_HOME_CARRIER)
 
 
@@ -127,12 +127,12 @@ class cellular_ServiceName(test.test):
 
         """
         logging.info('Testing service name for 3GPP roaming')
-        with pseudomodem_context.PseudoModemManagerContext(
-                True,
-                {'family': '3GPP',
-                 'test-module': TEST_MODEMS_MODULE_PATH,
-                 'test-modem-class': 'TestModemRoaming',
-                 'test-sim-class': 'TestSIM'}):
+        self.test_env = test_environment.CellularPseudoMMTestEnvironment(
+                pseudomm_args=({'family': '3GPP',
+                                'test-module': TEST_MODEMS_MODULE_PATH,
+                                'test-modem-class': 'TestModemRoaming',
+                                'test-sim-class': 'TestSIM'},))
+        with self.test_env:
             expected_name = (TEST_3GPP_HOME_CARRIER + ' | ' +
                              TEST_3GPP_ROAMING_CARRIER)
             self._verify_service_name(expected_name)
@@ -141,18 +141,15 @@ class cellular_ServiceName(test.test):
     def _test_cdma(self):
         """ Checks the service name for a CDMA network. """
         logging.info('Testing service name for CDMA')
-        with pseudomodem_context.PseudoModemManagerContext(
-                True,
-                {'family': 'CDMA',
-                 'test-module': TEST_MODEMS_MODULE_PATH,
-                 'test-modem-class': 'TestCdmaModem'}):
+        self.test_env = test_environment.CellularPseudoMMTestEnvironment(
+                pseudomm_args=({'family': 'CDMA',
+                                'test-module': TEST_MODEMS_MODULE_PATH,
+                                'test-modem-class': 'TestCdmaModem'},))
+        with self.test_env:
             self._verify_service_name(TEST_CDMA_CARRIER)
 
 
     def run_once(self):
-        self.shill = cellular_proxy.CellularProxy.get_proxy()
-        self.shill.set_logging_for_cellular_test()
-
         tests = [self._test_3gpp_no_roaming,
                  self._test_3gpp_roaming,
                  self._test_cdma]
