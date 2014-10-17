@@ -1138,7 +1138,16 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
 
 
     def sanity_check_update_from_shard(self, shard, updated_serialized):
-        if self.shard_id != shard.id:
+        # If the job got aborted on the master after the client fetched it
+        # no shard_id will be set. The shard might still push updates though,
+        # as the job might complete before the abort bit syncs to the shard.
+        # Alternative considered: The master scheduler could be changed to not
+        # set aborted jobs to completed that are sharded out. But that would
+        # require database queries and seemed more complicated to implement.
+        # This seems safe to do, as there won't be updates pushed from the wrong
+        # shards should be powered off and wiped hen they are removed from the
+        # master.
+        if self.shard_id and self.shard_id != shard.id:
             raise error.UnallowedRecordsSentToMaster(
                 'Job id=%s is assigned to shard (%s). Cannot update it with %s '
                 'from shard %s.' % (self.id, self.shard_id, updated_serialized,

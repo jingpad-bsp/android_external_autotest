@@ -459,7 +459,7 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
 
     def _send_records_to_master_helper(
         self, jobs, hqes, shard_hostname='host1',
-        exception_to_throw=error.UnallowedRecordsSentToMaster):
+        exception_to_throw=error.UnallowedRecordsSentToMaster, aborted=False):
         job_id = rpc_interface.create_job(name='dummy', priority='Medium',
                                           control_file='foo',
                                           control_type=SERVER,
@@ -468,6 +468,12 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
         shard = models.Shard.objects.create(hostname='host1')
         job.shard = shard
         job.save()
+
+        if aborted:
+            job.hostqueueentry_set.update(aborted=True)
+            job.shard = None
+            job.save()
+
         hqe = job.hostqueueentry_set.all()[0]
         if not exception_to_throw:
             self._do_heartbeat_and_assert_response(
@@ -487,6 +493,18 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
         hqes[0]['status'] = 'Completed'
         self._send_records_to_master_helper(
             jobs=jobs, hqes=hqes, exception_to_throw=None)
+
+        # Check the entry was actually written to db
+        self.assertEqual(models.HostQueueEntry.objects.all()[0].status,
+                         'Completed')
+
+
+    def testSendingRecordsToMasterAbortedOnMaster(self):
+        """Send records to the master and ensure they are persisted."""
+        jobs, hqes = self._get_records_for_sending_to_master()
+        hqes[0]['status'] = 'Completed'
+        self._send_records_to_master_helper(
+            jobs=jobs, hqes=hqes, exception_to_throw=None, aborted=True)
 
         # Check the entry was actually written to db
         self.assertEqual(models.HostQueueEntry.objects.all()[0].status,
@@ -629,7 +647,14 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
         self._do_heartbeat_and_assert_response(
             known_jobs=[job2], known_hosts=[host1])
 
+        job2 = models.Job.objects.get(pk=job2.pk)
         job2.hostqueueentry_set.update(aborted=True)
+        # Setting a job to a complete status will set the shard_id to None in
+        # scheduler_models. We have to emulate that here, because we use Django
+        # models in tests.
+        job2.shard = None
+        job2.save()
+
         self._do_heartbeat_and_assert_response(
             known_jobs=[job2], known_hosts=[host1],
             jobs=[job2],
