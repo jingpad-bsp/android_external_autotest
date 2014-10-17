@@ -147,13 +147,15 @@ class YouTubeHelper(object):
         if not video_qualities:
             raise error.TestError(
                     'Player failed to return available video qualities.')
+        video_qualities.reverse()
         for quality in video_qualities:
             logging.info('Playing video in %s quality.', quality)
             self.set_playback_quality(quality)
             self.wait_for_player_state(PLAYER_PLAYING_STATE)
             self.wait_for_expected_resolution(quality)
             current_quality = self.get_playback_quality()
-            if quality != 'auto' and quality != current_quality:
+            if (quality not in ['auto', 'tiny', 'small'] and
+                    quality != current_quality):
                 raise error.TestError(
                         'Expected video quality: %s. Current video quality: %s'
                         % (quality, current_quality))
