@@ -15,9 +15,6 @@ function setupTest() {
     }
     var end = 3600 * 1000 / time_ratio
     setTimeout(send_status, end);
-    // Add a 5sec delay between sending the status back and closing browser
-    // so that status message can reach autotest safely
-    setTimeout(close_browser, end + 5 * 1000);
   });
 }
 
@@ -156,14 +153,6 @@ function launch_task(task) {
   }
 }
 
-function close_browser() {
-  chrome.windows.getAll(null, function(windows) {
-    for (var i = 0; i < windows.length; i++) {
-      chrome.windows.remove(windows[i].id);
-    }
-  });
-}
-
 function send_status() {
   var post = ["status=good"];
 
@@ -172,6 +161,8 @@ function send_status() {
     post.push(name + "_successful_loads=" + cycle.successful_loads);
     post.push(name + "_failed_loads=" + cycle.failed_loads);
   }
+
+  chrome.extension.onRequest.removeListener(testListener);
 
   var log_url = 'http://localhost:8001/status';
   var req = new XMLHttpRequest();
