@@ -147,7 +147,7 @@ class firmware_Mosys(FirmwareTest):
         # Output will be GOOGLE until launch, see crosbug/p/29755
         command = 'mosys platform vendor'
         output = self.run_cmd(command)[0]
-        p = re.compile('^[-\w]+$')
+        p = re.compile('^[-\w\s]+$')
         if not p.match(output):
             raise error.TestFail('output is not a string Expect GOOGLE'
                                  ' or name of maker.')
