@@ -12,7 +12,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform, kernel"
 TEST_TYPE = "server"
-SUITE = "stress"
+SUITE = "stress_experimental"
 DEPENDENCIES = "servo, kernel_usb"
 
 DOC = """
