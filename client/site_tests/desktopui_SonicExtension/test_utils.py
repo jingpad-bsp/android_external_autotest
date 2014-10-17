@@ -66,7 +66,9 @@ class TestUtils(object):
         if network_profile:
             e2e_test_utils_page.network_profile_text_box().set_value(
                     network_profile)
+        time.sleep(self.short_wait_secs)
         e2e_test_utils_page.open_then_mirror_v2_button().click()
+        time.sleep(self.short_wait_secs)
         all_handles = driver.window_handles
         video_handle = [x for x in all_handles if x not in tab_handles].pop()
         driver.switch_to_window(video_handle)
