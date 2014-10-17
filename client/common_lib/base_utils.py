@@ -1641,8 +1641,6 @@ def import_site_symbol(path, module, name, dummy=None, modulefile=None):
 
     obj = getattr(module, name, cant_import)
     if obj is cant_import:
-        logging.debug("unable to import site symbol '%s', using non-site "
-                      "implementation", name)
         return dummy
 
     return obj
