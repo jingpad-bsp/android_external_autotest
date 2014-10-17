@@ -4,6 +4,8 @@
 
 import logging
 
+from autotest_lib.client.common_lib import error
+from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros.network import wifi_cell_test_base
 
 
@@ -25,6 +27,12 @@ class network_WiFi_SimpleConnect(wifi_cell_test_base.WiFiCellTestBase):
     def run_once(self):
         """Sets up a router, connects to it, pings it, and repeats."""
         for router_conf, client_conf in self._configurations:
+            if router_conf.is_11ac:
+                router_caps = self.context.router.capabilities
+                if site_linux_system.LinuxSystem.CAPABILITY_VHT not in \
+                        router_caps:
+                    raise error.TestNAError('Router does not have AC support')
+
             self.context.configure(router_conf)
             self.context.router.start_capture(
                     router_conf.frequency,

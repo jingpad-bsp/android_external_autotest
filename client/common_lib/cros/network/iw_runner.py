@@ -46,7 +46,7 @@ IwTimedScan = collections.namedtuple('IwTimedScan', ['time', 'bss_list'])
 IwPhy = collections.namedtuple(
     'Phy', ['name', 'bands', 'modes', 'commands', 'max_scan_ssids',
             'avail_tx_antennas', 'avail_rx_antennas',
-            'supports_setting_antenna_mask'])
+            'supports_setting_antenna_mask', 'support_vht'])
 
 DEFAULT_COMMAND_IW = 'iw'
 
@@ -312,7 +312,8 @@ class IwRunner(object):
                             pending_phy_max_scan_ssids,
                             pending_phy_tx_antennas,
                             pending_phy_rx_antennas,
-                            pending_phy_tx_antennas and pending_phy_rx_antennas)
+                            pending_phy_tx_antennas and pending_phy_rx_antennas,
+                            pending_phy_support_vht)
             all_phys.append(new_phy)
 
         for line in output.splitlines():
@@ -327,6 +328,7 @@ class IwRunner(object):
                 pending_phy_max_scan_ssids = None
                 pending_phy_tx_antennas = 0
                 pending_phy_rx_antennas = 0
+                pending_phy_support_vht = False
                 continue
 
             match_section = re.match('\s*(\w.*):\s*$', line)
@@ -361,6 +363,11 @@ class IwRunner(object):
                 if command_match:
                     pending_phy_commands.append(command_match.group(1))
                     continue
+
+            if current_section.startswith('VHT Capabilities') and \
+                    pending_phy_name:
+                pending_phy_support_vht = True
+                continue
 
             match_avail_antennas = re.match('\s*Available Antennas: TX (\S+)'
                                             ' RX (\S+)', line)

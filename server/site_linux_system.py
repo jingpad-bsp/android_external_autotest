@@ -33,6 +33,7 @@ class LinuxSystem(object):
     CAPABILITY_IBSS = 'ibss_supported'
     CAPABILITY_SEND_MANAGEMENT_FRAME = 'send_management_frame'
     CAPABILITY_TDLS = 'tdls'
+    CAPABILITY_VHT = 'vht'
 
 
     @property
@@ -178,6 +179,8 @@ class LinuxSystem(object):
         for phy in self.phy_list:
             if 'tdls_mgmt' in phy.commands or 'tdls_oper' in phy.commands:
                 caps.add(self.CAPABILITY_TDLS)
+            if phy.support_vht:
+                caps.add(self.CAPABILITY_VHT)
         return caps
 
 
