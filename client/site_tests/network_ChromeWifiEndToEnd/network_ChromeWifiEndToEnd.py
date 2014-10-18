@@ -20,13 +20,14 @@ class network_ChromeWifiEndToEnd(test.test):
         1. Tests that the configured wifi networks are seen by Chrome.
         2. Tests the transitioning between various available networks.
         3. Tests that the enabling and disabling WiFi works.
+        4. Tests that the DUT autoconnects to previously connected WiFi network.
 
     """
     version = 1
 
     WIFI_NETWORK_DEVICE = 'WiFi'
 
-    SHORT_TIMEOUT = 2
+    SHORT_TIMEOUT = 3
 
 
     def _get_wifi_networks(self):
@@ -163,6 +164,24 @@ class network_ChromeWifiEndToEnd(test.test):
         time.sleep(self.SHORT_TIMEOUT)
 
 
+    def _connect_to_network(self, network):
+        """Connects to the given network using networkingPrivate API.
+
+        @param network: Namedtuple containing network attributes.
+
+        """
+        new_network_connect = self._chrome_testing.call_test_function(
+                test_utils.LONG_TIMEOUT,
+                'connectToNetwork',
+                '"' + network.guid +'"')
+        if (new_network_connect['status'] ==
+                'chrome-test-call-status-failure'):
+            raise error.TestFail(
+                    'Could not connect to %s network. Error returned by '
+                    'chrome.networkingPrivate.startConnect API: %s' %
+                    (network.name, new_network_connect['error']))
+
+
     def _find_and_transition_wifi_networks_in_range(self):
         """Verify all WiFi networks in range are displayed."""
         known_service_names_in_wifi_cell = [self.SSID_1, self.SSID_2]
@@ -211,17 +230,44 @@ class network_ChromeWifiEndToEnd(test.test):
                                  'connection/transition.')
 
         for network in known_wifi_networks:
-            new_network_connect = self._chrome_testing.call_test_function(
-                    test_utils.LONG_TIMEOUT,
-                    'connectToNetwork',
-                    '"' + network.guid +'"')
-            if (new_network_connect['status'] ==
-                    'chrome-test-call-status-failure'):
-                raise error.TestFail(
-                        'Could not connect to %s network. Error returned by '
-                        'chrome.networkingPrivate.startConnect API: %s' %
-                        (network.name, new_network_connect['error']))
+            self._connect_to_network(network)
             logging.info('Successfully transitioned to: %s', network.name)
+
+
+    def _autoconnect_wifi(self):
+        """Test and verify the device autoconnects to WiFi network.
+
+        @raises error.TestFail if device is not able to autoconnect to a
+                previously connected WiFi network.
+
+        """
+        networks = self._extract_wifi_network_info(self._get_wifi_networks())
+        logging.info('Networks found before connection: %s', networks)
+        network_to_connect = networks.pop()
+        original_network_name = network_to_connect.name
+
+        if network_to_connect.connectionState == 'NotConnected':
+            self._connect_to_network(network_to_connect)
+            logging.info('Connected to WiFi network: %s',
+                         network_to_connect.name)
+
+        self._disable_network_device(self.WIFI_NETWORK_DEVICE)
+        self._enable_network_device(self.WIFI_NETWORK_DEVICE)
+        self._scan_for_networks()
+
+        networks = self._extract_wifi_network_info(self._get_wifi_networks())
+        logging.info('Networks found after connection: %s', networks)
+        network_to_connect = networks.pop()
+
+        while network_to_connect.name != original_network_name:
+            if not networks:
+                raise error.TestFail('Previously connected WiFi network not '
+                                     'found.')
+            network_to_connect = networks.pop()
+
+        if network_to_connect.connectionState == 'NotConnected':
+            raise error.TestFail('Did not autoconnect to remembered network.')
+        logging.info('Successfully autoconnected to remembered network.')
 
 
     def run_once(self, ssid_1, ssid_2, test):
@@ -247,7 +293,10 @@ class network_ChromeWifiEndToEnd(test.test):
             if test == 'all':
                 self._find_and_transition_wifi_networks_in_range()
                 self._enable_disable_wifi()
+                self._autoconnect_wifi()
             elif test in ('findVerifyWiFiNetworks', 'transitionWiFiNetworks'):
                 self._find_and_transition_wifi_networks_in_range()
             elif test == 'enableDisableWiFi':
                 self._enable_disable_wifi()
+            elif test == 'autoconnectWiFi':
+                self._autoconnect_wifi()
