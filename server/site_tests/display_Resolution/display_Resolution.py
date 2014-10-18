@@ -6,6 +6,7 @@
 
 import logging
 import os
+import time
 
 from autotest_lib.server.cros.chameleon import chameleon_test
 
@@ -48,6 +49,10 @@ class display_Resolution(chameleon_test.ChameleonTest):
                 self.reconnect_output()
             self.set_mirrored(test_mirrored)
             if test_suspend_resume:
+                if test_mirrored:
+                    # magic sleep to make nyan_big wake up in mirrored mode
+                    # TODO: find root cause
+                    time.sleep(6)
                 self.suspend_resume()
 
             self.load_test_image_and_check(

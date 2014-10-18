@@ -7,6 +7,7 @@
 import logging
 import os
 import random
+import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.chameleon import chameleon_test
@@ -50,6 +51,10 @@ class display_SuspendStress(chameleon_test.ChameleonTest):
 
         while repeat_count > 0:
             repeat_count -= 1
+            if test_mirrored:
+                # magic sleep to make nyan_big wake up in mirrored mode
+                # TODO: find root cause
+                time.sleep(6)
             self.suspend_resume(random.randint(*suspend_time_range))
             self.check_external_display_connector(expected_connector)
             error_message = self.load_test_image_and_check(

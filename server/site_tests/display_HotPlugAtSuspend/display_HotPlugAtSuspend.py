@@ -57,6 +57,10 @@ class display_HotPlugAtSuspend(chameleon_test.ChameleonTest):
                          'plug' if plugged_before_resume else 'unplug')
             boot_id = host.get_boot_id()
             self.set_plug(plugged_before_suspend)
+            if test_mirrored:
+                # magic sleep to make nyan_big wake up in mirrored mode
+                # TODO: find root cause
+                time.sleep(6)
             logging.info('Going to suspend, for %d seconds...',
                          self.SUSPEND_DURATION)
             time_before_suspend = time.time()
