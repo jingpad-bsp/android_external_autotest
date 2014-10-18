@@ -211,11 +211,60 @@ class ChameleonTest(test.test):
         self.display_client.set_mirrored(test_mirrored)
 
 
+    def wait_for_full_wakeup(self, old_boot_id, resume_timeout):
+        """Wait for DUT to be fully awakened from sleep.
+
+        The method waits until DUT is up and the browser connection is back or
+        it raises a TestFail exception.
+
+        The `old_boot_id` parameter should be the value from `get_boot_id()`
+        obtained prior to entering sleep mode.  A `TestFail` exception is raised
+        if the boot id changes.
+
+        @param old_boot_id A boot id value obtained before the target host went
+                           to sleep.
+        @param resume_timeout time limit in seconds for the wait.
+        @exception TestFail The host did not respond within the allowed time.
+        @exception TestFail The host responded, but the boot id test indicated
+                            a reboot rather than a sleep cycle.
+        """
+        start_time = time.time()
+        # the following call raises a TestFail if boot_id's don't match or
+        # timed out
+        self.host.test_wait_for_resume(old_boot_id, resume_timeout)
+
+        if not self._wait_for_browser_connection(start_time + resume_timeout):
+            raise error.TestFail(
+                    'DUT failed to bring browser connection back after %d'
+                    ' seconds' % resume_timeout)
+
+
+    def _wait_for_browser_connection(self, time_to_give_up):
+        """Waits for the browser connection to be back.
+
+        The method probes the browser connection until it's back.
+
+        @param time_to_give_up time (in sec) to give up the probing.
+        @return True if the browser connection is back; False if no connection
+                before time_to_give_up.
+        """
+        while time.time() < time_to_give_up:
+            try:
+                if self.display_client.get_display_info():
+                    return True
+            except xmlrpclib.Fault as ignored:
+                pass
+            logging.info('.....wait for browser connection.....')
+            time.sleep(1)
+        return self.display_client.get_display_info() is not None
+
+
     def suspend_resume(self, suspend_time=10, timeout=20):
         """Suspends and resumes the DUT.
         @param suspend_time: suspend time in second, default: 10s.
         @param timeout: time to wait for DUP to fully resume (second)"""
 
+        boot_id = self.host.get_boot_id()
         start_time = time.time()
         logging.info('Suspend and resume %.2f seconds', suspend_time)
         try:
@@ -223,11 +272,9 @@ class ChameleonTest(test.test):
         except xmlrpclib.Fault as e:
             # log suspend/resume errors but continue the test
             logging.error('suspend_resume error: %s', str(e))
-        if self.host.wait_up(timeout):
-            logging.info('DUT is up within %.2f '
-                    'second(s).', time.time() - start_time)
-        else:
-            raise error.TestError('DUT is not up after resume')
+        self.wait_for_full_wakeup(boot_id, timeout)
+        logging.info('DUT is up within %.2f second(s).',
+                time.time() - start_time)
 
 
     def reboot(self, wait=True):
