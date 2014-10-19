@@ -5,6 +5,7 @@
 import logging
 import os
 import time
+import xmlrpclib
 
 from PIL import Image
 from PIL import ImageChops
@@ -217,7 +218,11 @@ class ChameleonTest(test.test):
 
         start_time = time.time()
         logging.info('Suspend and resume %.2f seconds', suspend_time)
-        self.display_client.suspend_resume(suspend_time)
+        try:
+            self.display_client.suspend_resume(suspend_time)
+        except xmlrpclib.Fault as e:
+            # log suspend/resume errors but continue the test
+            logging.error('suspend_resume error: %s', str(e))
         if self.host.wait_up(timeout):
             logging.info('DUT is up within %.2f '
                     'second(s).', time.time() - start_time)
