@@ -94,7 +94,8 @@ def get_host_labels(days_back=0, hostname=None, labels=None):
     host_labels = {}
     for hit in results['hits']['hits']:
         hit = es_utils.convert_hit(hit['fields'])
-        host_labels[hit['hostname']] = hit['labels']
+        if 'labels' in hit:
+            host_labels[hit['hostname']] = hit['labels']
 
     return host_labels
 
