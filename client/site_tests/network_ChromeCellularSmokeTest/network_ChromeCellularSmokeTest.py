@@ -2,14 +2,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus
 import logging
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.cellular import mm1_constants
+from autotest_lib.client.cros.cellular import test_environment
 from autotest_lib.client.cros.cellular.pseudomodem import pm_constants
-from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
+from autotest_lib.client.cros.networking import pm_proxy
 from autotest_lib.client.cros.networking.chrome_testing \
         import chrome_networking_test_context as cntc
 from autotest_lib.client.cros.networking.chrome_testing import test_utils
@@ -27,22 +27,13 @@ class network_ChromeCellularSmokeTest(test.test):
     CONNECT_COUNT = 5
 
     def _setup_modem_proxy(self):
-        self._bus = dbus.SystemBus()
-        manager = self._bus.get_object(mm1_constants.I_MODEM_MANAGER,
-                                       mm1_constants.MM1)
-        imanager = dbus.Interface(manager, mm1_constants.I_OBJECT_MANAGER)
-        devices = imanager.GetManagedObjects().keys()
-        if len(devices) != 1:
-            raise error.TestFail('Expected exactly one modem object, found: ' +
-                                 len(devices))
-        self._modem = self._bus.get_object(mm1_constants.I_MODEM_MANAGER,
-                                           devices[0])
+        pseudomm = pm_proxy.PseudoMMProxy.get_proxy()
+        self._modem = pseudomm.get_modem()
 
 
     def _get_modem_state(self):
-        iprops = dbus.Interface(self._modem, mm1_constants.I_PROPERTIES)
-        return iprops.Get(mm1_constants.I_MODEM,
-                          mm1_constants.MM_MODEM_PROPERTY_NAME_STATE)
+        props = self._modem.properties(mm1_constants.I_MODEM)
+        return props[mm1_constants.MM_MODEM_PROPERTY_NAME_STATE]
 
 
     def _get_cellular_network(self):
@@ -124,9 +115,9 @@ class network_ChromeCellularSmokeTest(test.test):
 
 
     def run_once(self, family):
-        with pseudomodem_context.PseudoModemManagerContext(
-                True,
-                {'family' : family}):
-            with cntc.ChromeNetworkingTestContext() as testing_context:
-                self._chrome_testing = testing_context
-                self._run_once_internal()
+        test_env = test_environment.CellularPseudoMMTestEnvironment(
+                pseudomm_args=({'family': family},))
+        testing_context = cntc.ChromeNetworkingTestContext()
+        with test_env, testing_context:
+            self._chrome_testing = testing_context
+            self._run_once_internal()
