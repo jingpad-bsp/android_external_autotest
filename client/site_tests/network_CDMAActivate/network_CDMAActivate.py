@@ -2,20 +2,16 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error
-
 import dbus
 import dbus.types
 import os
 import time
 
+from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
-from autotest_lib.client.cros import backchannel
-from autotest_lib.client.cros.cellular import cell_tools
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.cellular import mm1_constants
-from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
-from autotest_lib.client.cros.networking import cellular_proxy
+from autotest_lib.client.cros.cellular import test_environment
 from autotest_lib.client.cros.networking import pm_proxy
 
 I_ACTIVATION_TEST = 'Interface.CDMAActivationTest'
@@ -41,11 +37,8 @@ class ActivationTest(object):
         test and runs the test.
 
         """
-        with pseudomodem_context.PseudoModemManagerContext(
-                True,
-                flags_map=self._pseudomodem_flags()):
-            self.pseudomm = pm_proxy.PseudoMMProxy.get_proxy()
-            self._run_test()
+        self.pseudomm = pm_proxy.PseudoMMProxy.get_proxy()
+        self._run_test()
 
 
     def _set_modem_activation_state(self, state):
@@ -60,7 +53,7 @@ class ActivationTest(object):
         return modem.properties(mm1_constants.I_MODEM_CDMA)['ActivationState']
 
 
-    def _pseudomodem_flags(self):
+    def pseudomodem_flags(self):
         """
         Subclasses must override this method to setup the flags map passed to
         pseudomodem to suite their needs.
@@ -78,7 +71,7 @@ class ActivationStateTest(ActivationTest):
     cdma activation state exposed by ModemManager.
 
     """
-    def _pseudomodem_flags(self):
+    def pseudomodem_flags(self):
         return {'family' : 'CDMA'}
 
 
@@ -118,7 +111,7 @@ class ActivationSuccessTest(ActivationTest):
     service is told to initiate OTASP activation.
 
     """
-    def _pseudomodem_flags(self):
+    def pseudomodem_flags(self):
         return {'test-module' : TEST_MODEMS_MODULE_PATH,
                 'test-modem-class' : 'UnactivatedCdmaModem'}
 
@@ -134,7 +127,7 @@ class ActivationSuccessTest(ActivationTest):
 
         # Call 'CompleteActivation' on the service. The service should become
         # 'activating'.
-        service = self.test.shill.find_cellular_service_object()
+        service = self.test.test_env.shill.find_cellular_service_object()
         service.CompleteCellularActivation()
         self.test.check_service_activation_state('activating')
 
@@ -151,7 +144,7 @@ class ActivationFailureRetryTest(ActivationTest):
 
     """
     NUM_ACTIVATE_RETRIES = 5
-    def _pseudomodem_flags(self):
+    def pseudomodem_flags(self):
         return {'test-module' : TEST_MODEMS_MODULE_PATH,
                 'test-modem-class' : 'ActivationRetryModem',
                 'test-modem-arg' : [self.NUM_ACTIVATE_RETRIES]}
@@ -167,7 +160,7 @@ class ActivationFailureRetryTest(ActivationTest):
         self.test.check_service_activation_state('not-activated')
 
         # Call 'CompleteActivation' on the service.
-        service = self.test.shill.find_cellular_service_object()
+        service = self.test.test_env.shill.find_cellular_service_object()
         service.CompleteCellularActivation()
 
         # Wait for shill to retry the failed activations, except the last retry
@@ -223,8 +216,8 @@ class network_CDMAActivate(test.test):
                 activation state doesn't match |expected_state| within timeout.
 
         """
-        success, state, _ = self.shill.wait_for_property_in(
-                self.shill.find_cellular_service_object(),
+        success, state, _ = self.test_env.shill.wait_for_property_in(
+                self.test_env.shill.find_cellular_service_object(),
                 'Cellular.ActivationState',
                 [expected_state],
                 ACTIVATION_STATE_TIMEOUT)
@@ -239,21 +232,19 @@ class network_CDMAActivate(test.test):
         Resets the one and only modem in the DUT.
 
         """
-        modem = self.shill.find_cellular_device_object()
-        self.shill.reset_modem(modem)
+        modem = self.test_env.shill.find_cellular_device_object()
+        self.test_env.shill.reset_modem(modem)
 
 
     def run_once(self):
-        with backchannel.Backchannel():
-            self.shill = cellular_proxy.CellularProxy.get_proxy()
-            self.shill.set_logging_for_cellular_test()
+        tests = [
+            ActivationStateTest(self),
+            ActivationSuccessTest(self),
+            ActivationFailureRetryTest(self)
+        ]
 
-            tests = [
-                ActivationStateTest(self),
-                ActivationSuccessTest(self),
-                ActivationFailureRetryTest(self)
-            ]
-
-            with cell_tools.OtherDeviceShutdownContext('cellular'):
-                for test in tests:
-                    test.run()
+        for test in tests:
+            self.test_env = test_environment.CellularPseudoMMTestEnvironment(
+                    pseudomm_args=(test.pseudomodem_flags(),))
+            with self.test_env:
+                test.run()
