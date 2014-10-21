@@ -124,5 +124,6 @@ class USBMuxController(object):
         Disables all USB ports that are currently enabled.
 
         """
-        logging.info('Disable USB ports.')
-        self.host.servo.system(SET_GPIO_VALUE % (DISABLE_MUX, MUX_EN))
+        if 'gpio20' in self.host.servo.system_output(LS_GPIO_DIRECTORY):
+            logging.info('Disable USB ports.')
+            self.host.servo.system(SET_GPIO_VALUE % (DISABLE_MUX, MUX_EN))
