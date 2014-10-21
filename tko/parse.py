@@ -1,19 +1,23 @@
 #!/usr/bin/python -u
 
+import datetime
 import os, sys, optparse, fcntl, errno, traceback, socket
 
 import common
-from autotest_lib.frontend import setup_django_environment
 from autotest_lib.client.common_lib import mail, pidfile
+from autotest_lib.client.common_lib import utils
+from autotest_lib.client.common_lib.cros.graphite import es_utils
+from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.tko import models as tko_models
+from autotest_lib.server.cros.dynamic_suite import constants
+from autotest_lib.site_utils import job_overhead
 from autotest_lib.tko import db as tko_db, utils as tko_utils
 from autotest_lib.tko import models, status_lib
 from autotest_lib.tko.perf_upload import perf_uploader
-from autotest_lib.client.common_lib import utils
-from autotest_lib.server.cros.dynamic_suite import constants
 
 
 def parse_args():
+    """Parse args."""
     # build up our options parser and parse sys.argv
     parser = optparse.OptionParser()
     parser.add_option("-m", help="Send mail for FAILED tests",
@@ -39,6 +43,10 @@ def parse_args():
                       help="write pidfile (.parser_execute)",
                       dest="write_pidfile", action="store_true",
                       default=False)
+    parser.add_option("--record-duration",
+                      help="Record timing to metadata db",
+                      dest="record_duration", action="store_true",
+                      default=False)
     options, args = parser.parse_args()
 
     # we need a results directory
@@ -53,11 +61,27 @@ def parse_args():
 
 
 def format_failure_message(jobname, kernel, testname, status, reason):
+    """Format failure message with the given information.
+
+    @param jobname: String representing the job name.
+    @param kernel: String representing the kernel.
+    @param testname: String representing the test name.
+    @param status: String representing the test status.
+    @param reason: String representing the reason.
+
+    @return: Failure message as a string.
+    """
     format_string = "%-12s %-20s %-12s %-10s %s"
     return format_string % (jobname, kernel, testname, status, reason)
 
 
 def mailfailure(jobname, job, message):
+    """Send an email about the failure.
+
+    @param jobname: String representing the job name.
+    @param job: A job object.
+    @param message: The message to mail.
+    """
     message_lines = [""]
     message_lines.append("The following tests FAILED for this job")
     message_lines.append("http://%s/results/%s" %
@@ -154,8 +178,16 @@ def _invalidate_original_tests(orig_job_idx, retry_job_idx):
 
 
 def parse_one(db, jobname, path, reparse, mail_on_failure):
-    """
-    Parse a single job. Optionally send email on failure.
+    """Parse a single job. Optionally send email on failure.
+
+    @param db: database object.
+    @param jobname: the tag used to search for existing job in db,
+                    e.g. '1234-chromeos-test/host1'
+    @param path: The path to the results to be parsed.
+    @param reparse: True/False, whether this is reparsing of the job.
+    @param mail_on_failure: whether to send email on FAILED test.
+
+
     """
     tko_utils.dprint("\nScanning %s (%s)" % (jobname, path))
     old_job_idx = db.find_job(jobname)
@@ -313,6 +345,16 @@ def _get_job_subdirs(path):
 
 
 def parse_leaf_path(db, path, level, reparse, mail_on_failure):
+    """Parse a leaf path.
+
+    @param db: database handle.
+    @param path: The path to the results to be parsed.
+    @param level: Integer, level of subdirectories to include in the job name.
+    @param reparse: True/False, whether this is reparsing of the job.
+    @param mail_on_failure: whether to send email on FAILED test.
+
+    @returns: The job name of the parsed job, e.g. '123-chromeos-test/host1'
+    """
     job_elements = path.split("/")[-level:]
     jobname = "/".join(job_elements)
     try:
@@ -320,26 +362,70 @@ def parse_leaf_path(db, path, level, reparse, mail_on_failure):
                           mail_on_failure)
     except Exception:
         traceback.print_exc()
+    return jobname
 
 
 def parse_path(db, path, level, reparse, mail_on_failure):
+    """Parse a path
+
+    @param db: database handle.
+    @param path: The path to the results to be parsed.
+    @param level: Integer, level of subdirectories to include in the job name.
+    @param reparse: True/False, whether this is reparsing of the job.
+    @param mail_on_failure: whether to send email on FAILED test.
+
+    @returns: A set of job names of the parsed jobs.
+              set(['123-chromeos-test/host1', '123-chromeos-test/host2'])
+    """
+    processed_jobs = set()
     job_subdirs = _get_job_subdirs(path)
     if job_subdirs is not None:
         # parse status.log in current directory, if it exists. multi-machine
         # synchronous server side tests record output in this directory. without
         # this check, we do not parse these results.
         if os.path.exists(os.path.join(path, 'status.log')):
-            parse_leaf_path(db, path, level, reparse, mail_on_failure)
+            new_job = parse_leaf_path(db, path, level, reparse, mail_on_failure)
+            processed_jobs.add(new_job)
         # multi-machine job
         for subdir in job_subdirs:
             jobpath = os.path.join(path, subdir)
-            parse_path(db, jobpath, level + 1, reparse, mail_on_failure)
+            new_jobs = parse_path(db, jobpath, level + 1, reparse, mail_on_failure)
+            processed_jobs.update(new_jobs)
     else:
         # single machine job
-        parse_leaf_path(db, path, level, reparse, mail_on_failure)
+        new_job = parse_leaf_path(db, path, level, reparse, mail_on_failure)
+        processed_jobs.add(new_job)
+    return processed_jobs
+
+
+def record_parsing(processed_jobs, duration_secs):
+    """Record the time spent on parsing to metadata db.
+
+    @param processed_jobs: A set of job names of the parsed jobs.
+              set(['123-chromeos-test/host1', '123-chromeos-test/host2'])
+    @param duration_secs: Total time spent on parsing, in seconds.
+    """
+
+    for job_name in processed_jobs:
+        job_id, hostname = tko_utils.get_afe_job_id_and_hostname(job_name)
+        if not job_id or not hostname:
+            tko_utils.dprint('ERROR: can not parse job name %s, '
+                             'will not send duration to metadata db.'
+                             % job_name)
+            continue
+        else:
+            job_overhead.record_state_duration(
+                    job_id, hostname, job_overhead.STATUS.PARSING,
+                    duration_secs)
 
 
 def main():
+    """Main entrance."""
+    start_time = datetime.datetime.now()
+    # Record the processed jobs so that
+    # we can send the duration of parsing to metadata db.
+    processed_jobs = set()
+
     options, args = parse_args()
     results_dir = os.path.abspath(args[0])
     assert os.path.exists(results_dir)
@@ -378,8 +464,9 @@ def main():
                 else:
                     raise # something unexpected happened
             try:
-                parse_path(db, path, options.level, options.reparse,
+                new_jobs = parse_path(db, path, options.level, options.reparse,
                            options.mailit)
+                processed_jobs.update(new_jobs)
 
             finally:
                 fcntl.flock(lockfile, fcntl.LOCK_UN)
@@ -390,6 +477,9 @@ def main():
         raise
     else:
         pid_file_manager.close_file(0)
+    duration_secs = (datetime.datetime.now() - start_time).total_seconds()
+    if options.record_duration:
+        record_parsing(processed_jobs, duration_secs)
 
 
 if __name__ == "__main__":
