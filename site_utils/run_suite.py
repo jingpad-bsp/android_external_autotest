@@ -58,6 +58,8 @@ from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import reporting_utils
 from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.site_utils import diagnosis_utils
+from autotest_lib.site_utils import job_overhead
+
 
 CONFIG = global_config.global_config
 
@@ -896,6 +898,8 @@ class ResultCollector(object):
     @var _tko: The tko rpc client.
     @var _build: The build for which the suite is run,
                  e.g. 'lumpy-release/R35-5712.0.0'
+    @var _board: The target board for which the suite is run,
+                 e.g., 'lumpy', 'link'.
     @var _suite_name: The suite name, e.g. 'bvt', 'dummy'.
     @var _suite_job_id: The job id of the suite for which we are going to
                         collect results.
@@ -918,12 +922,13 @@ class ResultCollector(object):
     """
 
 
-    def __init__(self, instance_server, afe, tko, build,
+    def __init__(self, instance_server, afe, tko, build, board,
                  suite_name, suite_job_id):
         self._instance_server = instance_server
         self._afe = afe
         self._tko = tko
         self._build = build
+        self._board = board
         self._suite_name = suite_name
         self._suite_job_id = suite_job_id
         self._suite_views = []
@@ -933,6 +938,7 @@ class ResultCollector(object):
         self._web_links = []
         self._buildbot_links = []
         self._max_testname_width = 0
+        self._num_child_jobs = 0
         self.return_code = None
         self.return_message = ''
         self.is_aborted = None
@@ -1009,6 +1015,8 @@ class ResultCollector(object):
         child_views = []
         retry_counts = {}
         child_jobs = self._afe.get_jobs(parent_job_id=self._suite_job_id)
+        if child_jobs:
+            self._num_child_jobs = len(child_jobs)
         for job in child_jobs:
             views = [TestView(v, job, self._suite_name, self._build)
                      for v in self._tko.run(
@@ -1092,7 +1100,6 @@ class ResultCollector(object):
     def _compute_return_code(self):
         """Compute the exit code based on test results."""
         code = RETURN_CODES.OK
-        message = ''
         tests_passed_after_retry = False
 
         for v in self._test_views:
@@ -1203,6 +1210,19 @@ class ResultCollector(object):
         self._generate_web_and_buildbot_links()
         self._record_timings()
         self._compute_return_code()
+
+
+    def gather_timing_stats(self):
+        """Collect timing related statistics."""
+        # Send timings to statsd.
+        self.timings.SendResultsToStatsd(
+                self._suite_name, self._build, self._board)
+
+        # Record suite runtime in metadata db.
+        runtime_in_secs = (self.timings.tests_end_time -
+                self.timings.suite_start_time).total_seconds()
+        job_overhead.record_suite_runtime(self._suite_job_id, self._suite_name,
+                self._board, self._build, self._num_child_jobs, runtime_in_secs)
 
 
 @retry.retry(error.StageControlFileFailure, timeout_min=10)
@@ -1331,6 +1351,7 @@ def main_without_exception_handling():
         # Start collecting test results.
         collector = ResultCollector(instance_server=instance_server,
                                     afe=afe, tko=TKO, build=options.build,
+                                    board=options.board,
                                     suite_name=options.name,
                                     suite_job_id=job_id)
         collector.run()
@@ -1339,13 +1360,12 @@ def main_without_exception_handling():
         code = collector.return_code
         return_message = collector.return_message
         if not options.mock_job_id:
-            # Send timings to statsd. Do not record stats if the suite was
-            # aborted (either by a user or through the golo rpc).
+            # Do not record stats if the suite was aborted (either by a user
+            # or through the golo rpc).
             # Also do not record stats if is_aborted is None, indicating
             # aborting status is unknown yet.
             if collector.is_aborted == False:
-                collector.timings.SendResultsToStatsd(
-                        options.name, options.build, options.board)
+                collector.gather_timing_stats()
             if collector.is_aborted == True and is_suite_timeout:
                 # There are two possible cases when a suite times out.
                 # 1. the suite job was aborted due to timing out

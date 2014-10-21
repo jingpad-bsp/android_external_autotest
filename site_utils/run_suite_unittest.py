@@ -134,7 +134,7 @@ class ResultCollectorUnittest(unittest.TestCase):
                 [server_job_view, test_to_ignore, test_to_include])
         collector = run_suite.ResultCollector(
                 'fake_server', self.afe, self.tko,
-                build='fake/build', suite_name='dummy',
+                build='fake/build', board='fake', suite_name='dummy',
                 suite_job_id=suite_job_id)
         suite_views = collector._fetch_relevant_test_views_of_suite()
         suite_views = sorted(suite_views, key=lambda view: view['test_idx'])
@@ -149,6 +149,7 @@ class ResultCollectorUnittest(unittest.TestCase):
     def testFetchTestViewOfChildJobs(self):
         """Test that it fetches the correct child test views."""
         build = 'lumpy-release/R36-5788.0.0'
+        board = 'lumpy'
         suite_name = 'my_suite'
         suite_job_id = 100
         invalid_job_id = 101
@@ -178,7 +179,7 @@ class ResultCollectorUnittest(unittest.TestCase):
         self._mock_afe_get_jobs(suite_job_id, [good_job_id, bad_job_id])
         collector = run_suite.ResultCollector(
                 'fake_server', self.afe, self.tko,
-                build, suite_name, suite_job_id)
+                build, board, suite_name, suite_job_id)
         child_views, retry_counts = collector._fetch_test_views_of_child_jobs()
         # child_views should contain tests 21, 22, 23
         child_views = sorted(child_views, key=lambda view: view['test_idx'])
@@ -202,6 +203,7 @@ class ResultCollectorUnittest(unittest.TestCase):
         suite_job_id = 100
         suite_name = 'my_suite'
         build = 'lumpy-release/R36-5788.0.0'
+        board = 'lumpy'
         fake_job = mock.MagicMock()
         fake_job.parent = suite_job_id
         suite_job_view = run_suite.TestView(
@@ -219,7 +221,7 @@ class ResultCollectorUnittest(unittest.TestCase):
 
         collector = run_suite.ResultCollector(
                 'fake_server', self.afe, self.tko,
-                build, suite_name, suite_job_id)
+                build, board, suite_name, suite_job_id)
         collector._suite_views = [suite_job_view]
         collector._test_views = [suite_job_view, good_test, bad_test]
         collector._max_testname_width = max(
@@ -420,7 +422,7 @@ class ResultCollectorUnittest(unittest.TestCase):
         self._mock_afe_get_jobs(suite_job_id, child_jobs)
         collector = run_suite.ResultCollector(
                'fake_server', self.afe, self.tko,
-               'lumpy-release/R36-5788.0.0', 'dummy', suite_job_id)
+               'lumpy-release/R36-5788.0.0', 'lumpy', 'dummy', suite_job_id)
         collector.run()
         return collector
 

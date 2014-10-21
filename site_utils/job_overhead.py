@@ -9,12 +9,14 @@ import logging
 from autotest_lib.client.common_lib import enum
 from autotest_lib.client.common_lib import host_queue_entry_states
 from autotest_lib.client.common_lib import host_states
-from autotest_lib.client.common_lib import host_states
 from autotest_lib.client.common_lib.cros.graphite import es_utils
 
 
 # Metadata db type string for job time stats
 DEFAULT_KEY = 'job_time_breakdown'
+
+# Metadata db type string for suite time stats
+SUITE_RUNTIME_KEY = 'suite_runtime'
 
 # Job breakdown statuses
 _hs = host_states.Status
@@ -52,3 +54,27 @@ def record_state_duration(
             'duration': duration_secs}
     es_utils.ESMetadata().post(
             type_str=type_str, metadata=metadata)
+
+
+def record_suite_runtime(suite_job_id, suite_name, board, build, num_child_jobs,
+                         runtime_in_secs):
+    """Record suite runtime.
+
+    @param suite_job_id: The job id of the suite for which we are going to
+                         collect stats.
+    @param suite_name: The suite name, e.g. 'bvt', 'dummy'.
+    @param board: The target board for which the suite is run,
+                  e.g., 'lumpy', 'link'.
+    @param build: The build for which the suite is run,
+                  e.g. 'lumpy-release/R35-5712.0.0'.
+    @param num_child_jobs: Total number of child jobs of the suite.
+    @param runtime_in_secs: Duration of the suite from the start to the end.
+    """
+    metadata = {
+            'suite_job_id': suite_job_id,
+            'suite_name': suite_name,
+            'board': board,
+            'build': build,
+            'num_child_jobs': num_child_jobs,
+            'duration': runtime_in_secs}
+    es_utils.ESMetadata().post(type_str=SUITE_RUNTIME_KEY, metadata=metadata)
