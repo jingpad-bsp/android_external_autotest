@@ -250,6 +250,62 @@ class MachineKillerBug(Bug):
         return 'MachineKiller(%s)' % self._test_name
 
 
+class PoolHealthBug(Bug):
+    """Report information about a critical pool of DUTs in the lab."""
+
+    _POOL_HEALTH_LABELS = global_config.global_config.get_config_value(
+                            'BUG_REPORTING', 'pool_health_labels',
+                            type=list, default=[])
+    _CC_ADDRESS = global_config.global_config.get_config_value(
+                            'BUG_REPORTING', 'pool_health_cc',
+                            type=list, default=[])
+
+
+    def __init__(self, pool, board, dead_hostnames):
+        """Initialize a PoolHealthBug.
+
+        @param pool: The name of the pool in critical condition.
+        @param board: The board in critical condition.
+        @param dead_hostnames: A list of unusable machines with the given
+            board, in the given pool.
+        """
+        self._pool = pool
+        self._board = board
+        self._dead_hostnames = dead_hostnames
+        self.owner = ''
+        self.cc = self._CC_ADDRESS
+        self.labels = self._POOL_HEALTH_LABELS
+
+
+    def title(self):
+        return ('pool: %s, board: %s in a critical state.' %
+                (self._pool, self._board))
+
+
+    def summary(self):
+        """Combines information about this bug into a summary string."""
+
+        template = ('This bug has been automatically filed to track the '
+                    'following issue:\n'
+                    'Pool: %(pool)s.\n'
+                    'Board: %(board)s.\n'
+                    'Dead hosts: %(dead_hosts)s.\n'
+                    'Issue: The pool is in a critical condition and cannot '
+                    'complete build verification tests in a timely manner.\n'
+                    'Suggested Actions: Recover the devices ASAP.')
+        specifics = {
+            'pool': self._pool,
+            'board': self._board,
+            'dead_hosts': ','.join(self._dead_hostnames),
+        }
+        return template % specifics
+
+
+    def search_marker(self):
+        """Returns an Anchor that we can use to dedupe this bug."""
+        return 'PoolHealthBug(%s, %s)' % (self._pool, self._board)
+
+
 class Reporter(object):
     """
     Files external reports about bugs that happened inside autotest.

@@ -11,6 +11,7 @@ from datetime import datetime
 import common
 
 from autotest_lib.server import utils
+from autotest_lib.server.cros.dynamic_suite import reporting
 from autotest_lib.server.cros.dynamic_suite import reporting_utils
 
 
@@ -210,16 +211,26 @@ class RPCHelper(object):
         # setup_django_environment can't be imported now as paygen server does
         # not have django package.
         bad_statuses = ('Repair Failed', 'Repairing', 'Verifying')
-        available_hosts = [host for host in hosts
-                           if not host.status in bad_statuses and
-                           not host.locked]
+        unusable_hosts = []
+        available_hosts = []
+        for host in hosts:
+            if host.status in bad_statuses or host.locked:
+                unusable_hosts.append(host.hostname)
+            else:
+                available_hosts.append(host)
         logging.debug('%d of %d DUTs are available for board %s pool %s.',
                       len(available_hosts), len(hosts), board, pool)
         if len(available_hosts) < minimum_duts:
+            bug_id = ''
+            if unusable_hosts:
+                pool_health_bug = reporting.PoolHealthBug(
+                        pool, board, unusable_hosts)
+                bug_id = reporting.Reporter().report(pool_health_bug)[0]
             raise NotEnoughDutsError(
                     'Number of available DUTs for board %s pool %s is %d, which'
-                    ' is less than the minimum value %d.' %
-                    (board, pool, len(available_hosts), minimum_duts))
+                    ' is less than the minimum value %d. '
+                    'Filed https://crbug.com/%s' %
+                    (board, pool, len(available_hosts), minimum_duts, bug_id))
 
 
     def diagnose_job(self, job_id, instance_server):
