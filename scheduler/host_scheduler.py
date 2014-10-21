@@ -24,6 +24,7 @@ runs special tasks only after their hosts have been leased.
 
 import argparse
 import collections
+import datetime
 import logging
 import os
 import signal
@@ -33,8 +34,11 @@ import time
 import common
 from autotest_lib.frontend import setup_django_environment
 
+from autotest_lib.client.common_lib import host_queue_entry_states
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib.cros.graphite import es_utils
 from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.server import constants
 from autotest_lib.scheduler import email_manager
 from autotest_lib.scheduler import query_managers
 from autotest_lib.scheduler import rdb_lib
@@ -149,6 +153,24 @@ class HostScheduler(BaseHostScheduler):
         self.job_query_manager = query_managers.AFEJobQueryManager()
 
 
+    @classmethod
+    def _record_host_assignment(cls, host, queue_entry):
+        """Record how long it takes to assign a host to a job in metadata db.
+
+        @param host: A Host object.
+        @param queue_entry: A HostQueueEntry object.
+        """
+        secs_in_queued = (datetime.datetime.now() -
+                          queue_entry.job.created_on).total_seconds()
+        metadata = {
+                'job_id': queue_entry.job_id,
+                'hostname': host.hostname,
+                'status': host_queue_entry_states.Status.QUEUED,
+                'duration': secs_in_queued}
+        es_utils.ESMetadata().post(
+                type_str=constants.JOB_TIME_BREAKDOWN_KEY, metadata=metadata)
+
+
     @_timer.decorate
     def _schedule_jobs(self):
         """Schedule new jobs against hosts."""
@@ -163,6 +185,7 @@ class HostScheduler(BaseHostScheduler):
             return
         for acquisition in self.find_hosts_for_jobs(unverified_host_jobs):
             self.schedule_host_job(acquisition.host, acquisition.job)
+            self._record_host_assignment(acquisition.host, acquisition.job)
             new_jobs_with_hosts += 1
         stats.Gauge(key).send('new_jobs_with_hosts', new_jobs_with_hosts)
         stats.Gauge(key).send('new_jobs_without_hosts',
