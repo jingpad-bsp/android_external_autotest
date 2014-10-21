@@ -1,28 +1,31 @@
+#!/usr/bin/python
+
 # Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# This file will copy all data from one index into another index.
 
+"""This script copies all data from one index into another, and updates the
+alias to point to the new index.
 
-"""This file will copy all data from one index into another index.
-
-usage: es_reindex.py [-h] [--index_old INDEX_OLD] [--index_new INDEX_NEW]
-                     [--timeout TIMEOUT] [--size SIZE]
+usage: es_reindex.py [-h] [--host HOST] [--port PORT] [--old OLD]
+                     [--new NEW] [--alias ALIAS]
 
 optional arguments:
   -h, --help            show this help message and exit
-  --index_old INDEX_OLD
-  --index_new INDEX_NEW
-  --timeout TIMEOUT     enter timeout
-  --size SIZE           enter max entries to return
+  --host HOST           name of ES server.
+  --port PORT
+  --old OLD             Name of the old index.
+  --new NEW             Name of the new index.
+  --alias ALIAS         alias to be pointed to the new index.
 
 """
-
 
 import argparse
 
 import common
+from elasticsearch import Elasticsearch
+from elasticsearch import helpers
 from autotest_lib.client.common_lib.cros.graphite import es_utils
 
 
@@ -30,38 +33,59 @@ def main():
     """main script. """
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--index_old', type=str, dest='index_old')
-    parser.add_argument('--index_new', type=str, dest='index_new')
-    parser.add_argument('--timeout', type=int, dest='timeout',
-                        help='enter timeout', default=3)
-    parser.add_argument('--size', type=int, dest='size',
-                        help='enter max entries to return',
-                        default=10000000)
+    parser.add_argument('--host', type=str, dest='host',
+                        help='name of ES server.')
+    parser.add_argument('--port', type=str, dest='port', default=9200)
+    parser.add_argument('--old', type=str, dest='old',
+                        help='Name of the old index.')
+    parser.add_argument('--new', type=str, dest='new',
+                        help='Name of the new index.')
+    parser.add_argument('--alias', type=str, dest='alias',
+                        help='alias to be pointed to the new index.')
+
     options = parser.parse_args()
-    index_old, index_new = options.index_old, options.index_new
-    host = es_utils.METADATA_ES_SERVER
-    port = es_utils.ES_PORT
-    timeout = options.timeout
-    print 'Querying ES on %s:%s \n\n' % (host, port)
-    print 'Moving from index: %s to index: %s' % (index_old, index_new)
-    query = {
-                'query' : {
-                    'match_all' : {}
-                },
-                'size': options.size
+
+    query = {'query' : {'match_all' : {}},
+             'size': 1}
+
+    result = es_utils.execute_query(query, options.old, options.host,
+                                    options.port)
+    count = result['hits']['total']
+    print 'Total number of records in index %s: %d' % (options.old, count)
+
+    print ('Re-index: %s to index: %s for server %s:%s' %
+           (options.old, options.new, options.host, options.port))
+
+    client = Elasticsearch(hosts=[{'host': options.host, 'port': options.port}])
+    helpers.reindex(client, options.old, options.new)
+    print 'reindex completed.'
+
+    print 'Checking records in the new index...'
+    result = es_utils.execute_query(query, options.new, options.host,
+                                    options.port)
+    count_new = result['hits']['total']
+    print 'Total number of records in index %s: %d' % (options.new,
+                                                       count_new)
+
+    # count_new can be larger than count if new records are added during
+    # reindexing. This check only tries to make sure no record was lost.
+    if count > count_new:
+        print ('Error! There are %d records missing after reindexing. Alias '
+               'will not be updated to the new index. You might want to try '
+               'reindex again.' %
+               (count - count_new))
+
+    body = {'actions': [{'remove': {'alias': options.alias,
+                                    'index': options.old}},
+                        {'add': {'alias': options.alias,
+                                 'index': options.new}}
+                        ]
             }
-    host = es_utils.METADATA_ES_SERVER
-    port = es_utils.ES_PORT
-    print 'Querying ES on %s:%s \n\n' % (host, port)
-    print query, index_old, host, port, '\n\n'
-    result = es_utils.execute_query(query, index_old, host, port, timeout)
-    print result['hits']['total']
-    print 'created all the results :)'
-    es = es_utils.ESMetadata()
-    for hit in result['hits']['hits']:
-        metadata = hit['_source']
-        es.post(type_str=hit['_type'], metadata=metadata, index=index_new)
-    print 'done'
+    client.indices.update_aliases(body=body)
+    print 'alias is updated.'
+    print ('Please verify the new index is working before deleting old index '
+           'with command:\n.curl -XDELETE %s:%s/%s' %
+           (options.host, options.port, options.old))
 
 
 if __name__ == '__main__':
