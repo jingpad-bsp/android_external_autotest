@@ -93,22 +93,38 @@ class firmware_Mosys(FirmwareTest):
                 actual = matched.group(1)
                 logging.info('Expected %s %s actual %s',
                              fieldname, exp_value, actual)
-                return exp_value.lower() == actual.lower()
+                # Some board will have prefix.  Example nyan_big for big.
+                return exp_value.lower() in actual.lower()
         raise error.TestError('Failed to locate field %s from %s\n%s' %
                               fieldname, command, '\n'.join(lines))
 
     def run_once(self, dev_mode=False):
+        # Get a list of available mosys commands.
+        command = 'mosys help'
+        lines = self.run_cmd(command)[0]
+        command_list = []
+        cmdlist_start = False
+        for line in lines:
+            if cmdlist_start:
+                cmdlst = re.split('\s+', line)
+                if len(cmdlst) > 2:
+                    command_list.append(cmdlst[1])
+            elif 'Commands:' in line:
+                cmdlist_start = True
+
         # Test case: Mosys Commands
         # a. mosys -k smbios info bios
-        command = 'mosys -k smbios info bios'
-        output = self.run_cmd(command)[0]
-        p = re.compile('vendor="coreboot" version="(.*)"'
-                       ' release_date="[/0-9]+" size="[0-9]+ KB"')
-        v = p.match(output)
-        if not v:
-          raise error.TestFail('execute %s failed' % command)
-        version = v.group(1)
-        self.check_state((self.checkers.crossystem_checker, {'fwid': version}))
+        if 'smbios' in command_list:
+            command = 'mosys -k smbios info bios'
+            output = self.run_cmd(command)[0]
+            p = re.compile('vendor="coreboot" version="(.*)"'
+                           ' release_date="[/0-9]+" size="[0-9]+ KB"')
+            v = p.match(output)
+            if not v:
+              raise error.TestFail('execute %s failed' % command)
+            version = v.group(1)
+            self.check_state((self.checkers.crossystem_checker,
+                             {'fwid': version}))
 
         # b. mosys -k ec info
         if self.faft_config.chrome_ec:
@@ -127,21 +143,24 @@ class firmware_Mosys(FirmwareTest):
                                                 output)))
 
         # d. mosys eeprom map
-        command = "mosys eeprom map|grep 'RW_SECTION_[AB]'"
+        command = "mosys eeprom map|egrep 'RW_SHARED|RW_SECTION_[AB]'"
         lines = self.run_cmd(command)
-        if len(lines) != 2:
-            raise error.TestFail('Expect RW_SECTION_[AB] got "%s"', lines)
-        emap = {'RW_SECTION_A': 0, 'RW_SECTION_B': 0}
+        if len(lines) != 3:
+            raise error.TestFail('Expect RW_SHARED|RW_SECTION_[AB] got "%s"' % lines)
+        emap = {'RW_SECTION_A': 0, 'RW_SECTION_B': 0, 'RW_SHARED': 0}
         for line in lines:
             row = line.split(' | ')
             if row[1] in emap:
                 emap[row[1]] += 1
-            if row[3] != '0x000f0000':
-                raise error.TestFail('Expect 0x000f0000 but got %s instead(%s)',
-                                     row[2:3], line)
+            if row[2] == '0x00000000':
+                raise error.TestFail('Expect non zero but got %s instead(%s)' %
+                                     (row[2], line))
+            if row[3] == '0x00000000':
+                raise error.TestFail('Expect non zero but got %s instead(%s)' %
+                                     (row[3], line))
         # Check that there are one A and one B.
         if emap['RW_SECTION_A'] != 1 or emap['RW_SECTION_B'] != 1:
-            raise error.TestFail('Missing RW_SECTION A or B, %s', lines)
+            raise error.TestFail('Missing RW_SECTION A or B, %s' % lines)
 
         # e. mosys platform vendor
         # Output will be GOOGLE until launch, see crosbug/p/29755
