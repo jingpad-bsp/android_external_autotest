@@ -49,13 +49,19 @@ class display_EdidStress(chameleon_test.ChameleonTest):
             try:
                 self.reconnect_output()
 
+                framebuffer_resolution = self.display_client.get_resolution()
+                if framebuffer_resolution == (0, 0):
+                    error_message = 'EDID not supported: %s' % filename
+                    logging.error(error_message)
+                    errors.append(error_message)
+                    continue
+                logging.info('See the resolution on framebuffer: %dx%d',
+                             *framebuffer_resolution)
+
                 chameleon_resolution = self.chameleon_port.get_resolution()
                 logging.info('See the resolution on Chameleon: %dx%d',
                              *chameleon_resolution)
 
-                framebuffer_resolution = self.display_client.get_resolution()
-                logging.info('See the resolution on framebuffer: %dx%d',
-                             *framebuffer_resolution)
                 if chameleon_resolution == framebuffer_resolution:
                     logging.info('Resolutions match.')
                 else:
