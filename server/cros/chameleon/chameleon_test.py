@@ -283,6 +283,10 @@ class ChameleonTest(test.test):
         self.chameleon.reset()
         # TODO(waihong): Support multiple connectors.
         for chameleon_port in self.chameleon.get_all_ports():
+            # Skip the non-video port.
+            if not chameleon_port.has_video_support():
+                continue
+
             connector_type = chameleon_port.get_connector_type()
             # Plug to ensure the connector is plugged.
             chameleon_port.plug()
