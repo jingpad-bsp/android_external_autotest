@@ -23,7 +23,7 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.frontend.afe import models, rpc_utils
-from autotest_lib.scheduler import agent_task, drone_manager, drones
+from autotest_lib.scheduler import agent_task, drone_manager
 from autotest_lib.scheduler import email_manager, gc_stats, host_scheduler
 from autotest_lib.scheduler import monitor_db_cleanup, prejob_task
 from autotest_lib.scheduler import postjob_task
@@ -67,14 +67,6 @@ _drone_manager = None
 _inline_host_acquisition = global_config.global_config.get_config_value(
         scheduler_config.CONFIG_SECTION, 'inline_host_acquisition', type=bool,
         default=True)
-
-
-def _parser_path_default(install_dir):
-    return os.path.join(install_dir, 'tko', 'parse')
-_parser_path_func = utils.import_site_function(
-        __file__, 'autotest_lib.scheduler.site_monitor_db',
-        'parser_path', _parser_path_default)
-_parser_path = _parser_path_func(drones.AUTOTEST_INSTALL_DIR)
 
 
 def _site_init_monitor_db_dummy():

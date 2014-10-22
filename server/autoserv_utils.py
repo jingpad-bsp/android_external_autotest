@@ -8,7 +8,6 @@ import os
 import common
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib import utils
 try:
     # test that imports autoserv_utils for vm_tests
     from autotest_lib.scheduler import drone_manager
@@ -20,13 +19,6 @@ AUTOTEST_INSTALL_DIR = global_config.global_config.get_config_value('SCHEDULER',
                                                  'drone_installation_directory')
 autoserv_directory = os.path.join(AUTOTEST_INSTALL_DIR, 'server')
 autoserv_path = os.path.join(autoserv_directory, 'autoserv')
-
-def _parser_path_default(install_dir):
-    return os.path.join(install_dir, 'tko', 'parse')
-
-_parser_path_func = utils.import_site_function(
-        __file__, 'autotest_lib.scheduler.site_monitor_db',
-        'parser_path', _parser_path_default)
 
 
 def autoserv_run_job_command(autoserv_directory, machines,

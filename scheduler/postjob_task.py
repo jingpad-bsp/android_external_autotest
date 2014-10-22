@@ -18,8 +18,7 @@ from autotest_lib.scheduler import scheduler_config
 from autotest_lib.server import autoserv_utils
 
 
-_parser_path = autoserv_utils._parser_path_func(
-                autoserv_utils.AUTOTEST_INSTALL_DIR)
+_parser_path = os.path.join(drones.AUTOTEST_INSTALL_DIR, 'tko', 'parse')
 
 
 class PostJobTask(agent_task.AgentTask):
