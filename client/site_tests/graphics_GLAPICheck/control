@@ -19,7 +19,7 @@ TIME='SHORT'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = "graphics"
 TEST_TYPE = 'client'
-JOB_RETRIES = 1
+JOB_RETRIES = 2
 BUG_TEMPLATE = {
     'labels': ['Cr-OS-Kernel-Graphics'],
 }

@@ -8,7 +8,7 @@ PURPOSE = 'Verify shill returns correct errors for invalid WiFi configurations'
 SUITE = 'bvt-cq, network_nightly'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
-JOB_RETRIES = 1
+JOB_RETRIES = 2
 
 DOC = """
   Configures WiFi services with invalid parameters and expects certain types of

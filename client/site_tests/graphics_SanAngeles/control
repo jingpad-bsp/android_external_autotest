@@ -11,7 +11,7 @@ TIME='MEDIUM'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = "graphics"
 TEST_TYPE = 'client'
-JOB_RETRIES = 1
+JOB_RETRIES = 2
 # Reboot in the lab after the test ends.
 DEPENDENCIES='cleanup-reboot'
 BUG_TEMPLATE = {

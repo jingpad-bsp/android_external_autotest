@@ -13,7 +13,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
-JOB_RETRIES = 1
+JOB_RETRIES = 2
 BUG_TEMPLATE = {
     'labels': ['Cr-OS-Kernel-Video', 'OS-Chrome'],
 }

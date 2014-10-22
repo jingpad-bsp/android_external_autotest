@@ -15,7 +15,7 @@ Fail if a blacklisted cert verifies or a non-blacklisted cert fails to verify.
 TEST_CLASS = 'security'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'client'
-JOB_RETRIES = 1
+JOB_RETRIES = 2
 SUITE = 'bvt-inline, smoke'
 
 job.run_test('security_OpenSSLBlacklist', opts=args)

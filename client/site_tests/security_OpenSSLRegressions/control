@@ -16,7 +16,7 @@ patches.
 TEST_CLASS = 'security'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'client'
-JOB_RETRIES = 1
+JOB_RETRIES = 2
 SUITE = 'bvt-inline, smoke'
 
 job.run_test('security_OpenSSLRegressions', opts=args)

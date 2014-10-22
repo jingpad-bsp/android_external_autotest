@@ -14,7 +14,7 @@ SUITE = "bvt-inline, smoke"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "security"
 TEST_TYPE = "client"
-JOB_RETRIES = 1
+JOB_RETRIES = 2
 DOC = """
 Verify that the Chromium Security Module is working as expected.
 

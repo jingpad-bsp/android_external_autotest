@@ -7,7 +7,7 @@ NAME = 'network_DefaultProfileServices'
 SUITE = 'bvt-cq, network_nightly'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
-JOB_RETRIES = 1
+JOB_RETRIES = 2
 
 DOC = """
   Tests that, when shill starts, it instantiates Services for services

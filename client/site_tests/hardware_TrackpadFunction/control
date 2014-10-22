@@ -13,7 +13,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "Hardware"
 TEST_TYPE = "Client"
-JOB_RETRIES = 1
+JOB_RETRIES = 2
 
 DOC = """
 This test probes the trackpad device name and detect if CMT has been loaded

@@ -9,7 +9,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "client"
-JOB_RETRIES = 1
+JOB_RETRIES = 2
 
 DOC = """
 This test checks that cryptohome can create and mount an encrypted vault.

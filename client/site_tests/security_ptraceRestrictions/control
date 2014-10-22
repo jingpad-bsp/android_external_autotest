@@ -11,7 +11,7 @@ SUITE = "bvt-inline"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "security"
 TEST_TYPE = "client"
-JOB_RETRIES = 1
+JOB_RETRIES = 2
 
 DOC = """
     Checks that the kernel correctly restricts the use of ptrace between

@@ -9,7 +9,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"
 TEST_TYPE = "client"
-JOB_RETRIES = 1
+JOB_RETRIES = 2
 
 DOC = """
 This test stores a user policy at the session_manager over dbus, and verifies

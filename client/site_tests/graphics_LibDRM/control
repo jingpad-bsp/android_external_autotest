@@ -12,7 +12,7 @@ TIME = "FAST"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "graphics"
 TEST_TYPE = "client"
-JOB_RETRIES = 1
+JOB_RETRIES = 2
 
 SUITE = 'bvt-cq, graphics_per-day, graphics, graphics_system'
 BUG_TEMPLATE = {

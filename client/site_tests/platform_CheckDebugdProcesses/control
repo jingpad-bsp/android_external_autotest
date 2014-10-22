@@ -7,7 +7,7 @@ NAME = 'platform_CheckDebugdProcesses'
 SUITE = 'bvt-cq'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
-JOB_RETRIES = 1
+JOB_RETRIES = 2
 
 DOC = """
 This test has a static list of process names that should be running

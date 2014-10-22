@@ -7,7 +7,7 @@ NAME = 'network_CheckCriticalProcesses'
 SUITE = 'bvt-cq, network_nightly'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
-JOB_RETRIES = 1
+JOB_RETRIES = 2
 
 DOC = """
 This test has a static list of process names that should be running

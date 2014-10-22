@@ -11,7 +11,7 @@ TIME='SHORT'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = "hardware"
 TEST_TYPE = 'client'
-JOB_RETRIES = 1
+JOB_RETRIES = 2
 
 DOC = """
 This test uses AutoTest's utils.memtotal().

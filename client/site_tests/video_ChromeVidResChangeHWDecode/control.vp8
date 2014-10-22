@@ -14,7 +14,7 @@ TEST_CATEGORY = "General"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
 DEPENDENCIES = "hw_video_acc_vp8"
-JOB_RETRIES = 1
+JOB_RETRIES = 2
 BUG_TEMPLATE = {
     'labels': ['OS-Chrome', 'Cr-OS-Kernel-Video'],
 }

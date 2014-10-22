@@ -8,7 +8,7 @@ PURPOSE = 'Make sure that hardware StorageFio work'
 TIME = 'FAST'
 TEST_TYPE = 'client'
 SUITE = 'experimental'
-JOB_RETRIES = 1
+JOB_RETRIES = 2
 
 DOC = """
 This test uses FIO test to make sure that test work correctly.

@@ -16,7 +16,7 @@ SUITE = "bvt-inline, smoke"
 TEST_CLASS = "security"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"
-JOB_RETRIES = 1
+JOB_RETRIES = 2
 
 job.run_test("security_SuidBinaries", baseline='suid', tag='suid')
 job.run_test("security_SuidBinaries", baseline='sgid', tag='sgid')

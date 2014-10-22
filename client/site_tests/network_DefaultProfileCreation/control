@@ -7,7 +7,7 @@ NAME = 'network_DefaultProfileCreation'
 SUITE = 'bvt-cq, network_nightly'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
-JOB_RETRIES = 1
+JOB_RETRIES = 2
 
 DOC = """
   Tests that, when shill creats a default profile, it populates properties
