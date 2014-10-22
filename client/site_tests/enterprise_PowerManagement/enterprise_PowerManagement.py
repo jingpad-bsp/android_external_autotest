@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import json
+import os
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cryptohome
@@ -12,9 +13,17 @@ from autotest_lib.client.bin import utils
 
 class enterprise_PowerManagement(enterprise_base.EnterpriseTest):
     """Verify the power management policy setting."""
-
-
     version = 1
+
+
+    def setup(self):
+        os.chdir(self.srcdir)
+        utils.make('OUT_DIR=.')
+
+
+    def initialize(self):
+        self.import_dmserver(self.srcdir)
+        super(enterprise_PowerManagement, self).initialize()
 
 
     def _setup_lock_policy(self):
@@ -80,8 +89,6 @@ class enterprise_PowerManagement(enterprise_base.EnterpriseTest):
                 sleep_interval=1,
                 desc='Expects to find Chrome locked.')
 
-        # TODO (crbug.com/418088): Fix the below test. It could be a problem
-        # with Chrome or the test.
         self._setup_logout_policy()
         with self.create_chrome() as cr:
             utils.poll_for_condition(

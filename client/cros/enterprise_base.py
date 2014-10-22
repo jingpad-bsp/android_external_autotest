@@ -8,7 +8,6 @@ from multiprocessing import Process
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib.cros import chrome
-from autotest_lib.client.cros import policy_testserver
 
 
 class EnterpriseTest(test.test):
@@ -17,6 +16,25 @@ class EnterpriseTest(test.test):
 
     USERNAME = 'kaliamoorthi1@managedchrome.com'
     PASSWORD = 'test0000'
+
+
+    def import_dmserver(self, proto_path):
+        """Import the DM testserver from chrome source.
+
+           @param proto_path: location of proto files.
+        """
+        telemetry_src = '/usr/local/telemetry/src'
+        sys.path.append(os.path.join(telemetry_src,
+                'chrome/browser/policy/test'))
+        sys.path.append(os.path.join(telemetry_src,
+                'net/tools/testserver'))
+        sys.path.append(os.path.join(telemetry_src,
+                'third_party/protobuf/python/google'))
+        sys.path.append(os.path.join(telemetry_src,
+                'third_party/tlslite'))
+        sys.path.append(proto_path)
+        global policy_testserver
+        import policy_testserver
 
 
     def start_dmserver(self):
@@ -45,7 +63,7 @@ class EnterpriseTest(test.test):
         self.dm_server.join()
 
 
-    def setup(self):
+    def initialize(self):
         self.start_dmserver()
 
 
