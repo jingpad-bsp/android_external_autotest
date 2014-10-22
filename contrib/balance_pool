@@ -1,0 +1,166 @@
+#!/bin/bash
+
+cd $(dirname $(readlink -f $0))/..
+
+DRYRUN=echo
+NUM=
+SPARES=suites
+HELP=0
+while getopts 'hn:xs:' OPT; do
+  case $OPT in
+    n) NUM=$OPTARG ;;
+    x) DRYRUN= ;;
+    s) SPARES=$OPTARG ;;
+    \?|h) HELP=1 ;;
+  esac
+done
+shift $(( OPTIND - 1 ))
+
+if [ $HELP -ne 0 -o $# -ne 2 ]; then
+  echo "usage: $(basename $0) [options] <board> <pool>" >&2
+  echo "Options:" >&2
+  echo "    -n #: adjust pool size to #" >&2
+  echo "    -x: execute changes (default is to print changes only)" >&2
+  echo "    -s <spares>: specify pool for spares (default: suites)" >&2
+  exit 1
+fi
+
+
+# Find all DUTs in a pool
+#
+# Arguments:  The name of a pool
+# Standard output: All DUTs in the pool with the user-specified
+#   board.
+list_duts() {
+  cli/atest host list -w cautotest -b pool:$1,board:$BOARD |
+      awk '/^chromeos/ { print $1 }'
+}
+
+# Find DUTs in a pool and not shared with any other pool.
+#
+# Arguments:  The name of a pool
+# Standard output: All DUTs that are in that pool, and in no other.
+list_unshared_duts() {
+  cli/atest host list -w cautotest -b pool:$1,board:$BOARD |
+      awk '/^chromeos/ && $0 !~ /pool:.*pool:/ {print $1}'
+}
+
+
+# Find all working DUTs in a list
+#
+# Arguments:  A list of DUTs
+# Standard output:  The subset of given DUTs that are working
+filter_working() {
+  python site_utils/dut_status.py "$@" | awk '/OK/ {print $1}'
+}
+
+
+# Exchange a list of DUTs between two pools
+#
+# Arguments:
+#   1: Pool to be augmented with DUTs
+#   2: Pool from which to take the DUTs
+#   remainder are DUTs to be exchanged
+#
+# For a dry run, this function prints the exchange commands rather
+# than executing them.
+exchange() {
+  local to=$1
+  local from=$2
+  shift 2
+  [ $# -gt 0 ] || return 0
+  local list=$(echo "$@" | sed 's/ /,/g')
+  $DRYRUN cli/atest label remove -m $list pool:$from
+  $DRYRUN cli/atest label add -m $list pool:$to
+}
+
+BOARD=$1
+POOL=$2
+
+POOL_ALL=( $(list_duts $POOL) )
+POOL_WORKING=( $(filter_working "${POOL_ALL[@]}") )
+NWORKING=${#POOL_WORKING[@]}
+
+if [ -z "$NUM" ]; then
+  NUM=${#POOL_ALL[@]}
+fi
+
+REMOVE=()
+REPLACEMENTS=()
+
+
+# OK, command line parsing and setup are done.  We're operating in
+# three steps here.
+#
+# Step 1. Find all the broken devices.  These will be the first we
+# remove from $POOL.  Accumulate devices to be removed in the array
+# `REMOVE`.
+#
+widx=0
+tidx=0
+while [ $tidx -lt ${#POOL_ALL[@]} ]; do
+  if [ "${POOL_ALL[$tidx]}" != "${POOL_WORKING[$widx]}" ]; then
+    REMOVE=( "${REMOVE[@]}" ${POOL_ALL[$tidx]} )
+  else
+    widx=$(( widx + 1 ))
+  fi
+  tidx=$(( tidx + 1 ))
+done
+
+
+# Step 2. Determine whether we have enough working devices, and what
+# replacements, if any, we'll take.
+#
+if [ $NWORKING -gt $NUM ]; then
+  # Step 2a.  More working devices than we need.  Add excess devices
+  # into the `REMOVE` array.
+  COUNT=$(( $NWORKING - $NUM - 1 ))
+  for i in $(seq 0 $COUNT); do
+    REMOVE=( "${REMOVE[@]}" ${POOL_WORKING[$i]} )
+  done
+elif [ $NWORKING -lt $NUM ]; then
+  # Step 2b.  Not enough working devices; try to find spares.
+  # Accumulate available spares into the `REPLACEMENTS` array.
+  NEED=$(( NUM - NWORKING ))
+  REPLACEMENTS=( $(filter_working $(list_unshared_duts $SPARES)) )
+  if [ $NEED -gt ${#REPLACEMENTS[@]} ]; then
+    # Step 2b-1.  Not enough working spares.  Print a warning, then
+    # make sure we only remove as many broken devices as we have
+    # spares to replace them.
+    if [ ${#REPLACEMENTS[@]} -ne 0 ]; then
+      SPARE_MSG="only ${#REPLACEMENTS[@]}"
+    else
+      SPARE_MSG="no"
+    fi
+    echo "WARN: Board $BOARD, $SPARE_MSG spares for $NEED needed DUTs" >&2
+    while [ ${#REMOVE[@]} -gt ${#REPLACEMENTS[@]} ]; do
+      unset REMOVE[-1]
+    done
+  else
+    # Step 2b-2.  We have enough working spares.  Remove excess spares.
+    while [ ${#REPLACEMENTS[@]} -gt $NEED ]; do
+      unset REPLACEMENTS[-1]
+    done
+  fi
+fi
+
+
+# Step 3.  If it's a dry run, report some information.  Then,
+# execute the pool exchanges.
+#
+# Make the dry run messages look like comments so that the output of
+# this command is acceptable as input to the shell.
+#
+if [ -n "$DRYRUN" ]; then
+  echo "# targeting $NUM working DUTs in $POOL; currently have $NWORKING"
+  echo "# ${#REMOVE[@]} removals; ${#REPLACEMENTS[@]} spares"
+  for h in "${REMOVE[@]}"; do
+    echo "# remove $h"
+  done
+  for h in "${REPLACEMENTS[@]}"; do
+    echo "# spare $h"
+  done
+fi
+
+exchange $SPARES $POOL "${REMOVE[@]}"
+exchange $POOL $SPARES "${REPLACEMENTS[@]}"
