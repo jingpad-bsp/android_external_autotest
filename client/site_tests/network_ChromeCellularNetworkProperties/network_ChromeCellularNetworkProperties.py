@@ -2,15 +2,15 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus
 import dbus.types
 import logging
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.cellular import mm1_constants
+from autotest_lib.client.cros.cellular import test_environment
 from autotest_lib.client.cros.cellular.pseudomodem import pm_constants
-from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
+from autotest_lib.client.cros.networking import mm1_proxy
 from autotest_lib.client.cros.networking.chrome_testing \
         import chrome_networking_test_context as cntc
 from autotest_lib.client.cros.networking.chrome_testing import test_utils
@@ -104,20 +104,6 @@ class network_ChromeCellularNetworkProperties(test.test):
             self._dbus_type = dbus_type
 
 
-        def _get_modem_proxy(self):
-            self._bus = dbus.SystemBus()
-            manager = self._bus.get_object(mm1_constants.I_MODEM_MANAGER,
-                                           mm1_constants.MM1)
-            devices = manager.GetManagedObjects(
-                    dbus_interface=mm1_constants.I_OBJECT_MANAGER).keys()
-            if len(devices) != 1:
-                raise error.TestFail(
-                        'Expected exactly one modem object, found: '
-                        + len(devices))
-            return self._bus.get_object(mm1_constants.I_MODEM_MANAGER,
-                                        devices[0])
-
-
         def _find_cellular_network(self):
             """
             Finds the current cellular network. Asserts that it matches the fake
@@ -144,15 +130,15 @@ class network_ChromeCellularNetworkProperties(test.test):
             """
             # Get a modem proxy. This proxy should remain valid throughout the
             # test.
-            self._modem = self._get_modem_proxy()
+            self._modem = mm1_proxy.ModemManager1Proxy.get_proxy().get_modem()
 
             # Perform the initial property assignments.
             if self._initial_list:
                 for prop, value in self._initial_list:
                     logging.info('Assigning initial property (%s, %s)',
                                  prop, repr(value))
-                    self._modem.Set(self._mm_iface, prop, value,
-                                    dbus_interface=mm1_constants.I_PROPERTIES)
+                    self._modem.iface_properties.Set(self._mm_iface, prop,
+                                                     value)
 
             # Store the GUID of the fake test network.
             self._network_guid = self._find_cellular_network()['GUID']
@@ -166,8 +152,8 @@ class network_ChromeCellularNetworkProperties(test.test):
                              repr(mm_value))
                 if self._dbus_type:
                     mm_value = self._dbus_type(mm_value)
-                self._modem.Set(self._mm_iface, mm_prop, mm_value,
-                                dbus_interface=mm1_constants.I_PROPERTIES)
+                self._modem.iface_properties.Set(self._mm_iface, mm_prop,
+                                                 mm_value)
 
                 logging.info('Checking UI property: %s', ui_prop)
                 test_utils.check_ui_property(
@@ -287,10 +273,9 @@ class network_ChromeCellularNetworkProperties(test.test):
 
 
     def run_once(self, family):
-        with pseudomodem_context.PseudoModemManagerContext(
-                True,
-                {'family' : family}):
-            with cntc.ChromeNetworkingTestContext() as testing_context:
-                self._family = family
-                self._chrome_testing = testing_context
-                self._run_once_internal()
+        test_env = test_environment.CellularPseudoMMTestEnvironment(
+                pseudomm_args=({'family': family},))
+        self._chrome_testing = cntc.ChromeNetworkingTestContext()
+        with test_env, self._chrome_testing:
+            self._family = family
+            self._run_once_internal()
