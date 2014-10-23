@@ -66,11 +66,12 @@ class ui_TestBase(test.test):
         Template method to run screenshot comparison tests for ui pieces.
 
         1. Set up test dirs.
-        2. Create bp project name.
-        3. Download golden image.
-        4. Capture test image.
-        5. Compare images locally, if FAIL upload to bp for analysis later.
-        6. Clean up test dirs.
+        2. Create folder name
+        3. Create bp project name.
+        4. Download golden image.
+        5. Capture test image.
+        6. Compare images locally, if FAIL upload to bp for analysis later.
+        7. Clean up test dirs.
 
         """
 
@@ -83,7 +84,7 @@ class ui_TestBase(test.test):
         project_specs = [img_comp_factory.bp_base_projname,
                          utils.get_current_board(),
                          utils.get_chromeos_release_version().replace('.', '_'),
-                         self.test_area]
+                         self.folder_name]
 
         project_name = '.'.join(project_specs)
 
@@ -92,12 +93,12 @@ class ui_TestBase(test.test):
 
         file_utils.make_leaf_dir(golden_image_local_dir)
 
-        filename = '%s.png' % self.test_area
+        filename = '%s.png' % self.tagged_testname
 
         golden_image_remote_path = os.path.join(
                 ui_TestBase.REMOTE_DIR,
                 'ui',
-                self.test_area,
+                self.folder_name,
                 filename)
 
         golden_image_local_path = os.path.join(golden_image_local_dir, filename)
@@ -116,6 +117,24 @@ class ui_TestBase(test.test):
         verifier.verify(golden_image_local_path, test_image_filepath)
 
         file_utils.rm_dir_if_exists(ui_TestBase.WORKING_DIR)
+
+
+    @property
+    def folder_name(self):
+        """
+        Computes the folder name to look for golden images in
+        based on the current test area.
+
+        If we have tagged our testcase, it removes the tag to
+        get the base testname.
+
+        E.g if we add the tag 'guest' to the ui_SystemTray class,
+        the tagged test name will be ui_SystemTray.guest
+
+        This removes the tag if it was added
+        """
+
+        return self.tagged_testname.split('.')[0]
 
 
     @abc.abstractmethod
