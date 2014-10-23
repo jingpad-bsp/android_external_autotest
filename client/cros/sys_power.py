@@ -69,6 +69,11 @@ def prepare_wakeup(seconds):
 
     @param seconds: The number of seconds to allow the device to suspend.
     """
+    # May cause DUT not wake from sleep if the suspend time is 1 second.
+    # It happens when the current clock (floating point) is close to the
+    # next integer, as the RTC sysfs interface only accepts integers.
+    # Make sure it is larger than or equal to 2.
+    assert seconds >= 2
     wakeup_count = read_wakeup_count()
     alarm = int(rtc.get_seconds() + seconds)
     logging.debug('Suspend for %d seconds, wakealarm = %d', seconds, alarm)
