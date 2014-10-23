@@ -202,33 +202,6 @@ class network_ChromeCellularNetworkProperties(test.test):
             tests.extend([
                 self.SimplePropagationTest(
                     self._chrome_testing,
-                    { 'properties': ('OperatorName', 'Name'),
-                      'values': [(name_prefix + ' Service 1',
-                                  name_prefix + ' Service 1'),
-                                 (name_prefix + ' Service 2',
-                                  name_prefix + ' Service 2'),
-                                 (name_prefix + ' Service 3',
-                                  name_prefix + ' Service 3'),
-                                 (name_prefix + ' Service 4',
-                                  name_prefix + ' Service 4')]
-                    },
-                    mm1_constants.I_MODEM_3GPP),
-                self.SimplePropagationTest(
-                    self._chrome_testing,
-                    { 'properties': ('OperatorName',
-                                     'Cellular.ServingOperator.Name'),
-                      'values': [(name_prefix + ' Service 1',
-                                  name_prefix + ' Service 1'),
-                                 (name_prefix + ' Service 2',
-                                  name_prefix + ' Service 2'),
-                                 (name_prefix + ' Service 3',
-                                  name_prefix + ' Service 3'),
-                                 (name_prefix + ' Service 4',
-                                  name_prefix + ' Service 4')]
-                    },
-                    mm1_constants.I_MODEM_3GPP),
-                self.SimplePropagationTest(
-                    self._chrome_testing,
                     { 'properties': ('OperatorCode',
                                      'Cellular.ServingOperator.Code'),
                       'values': [('001001', '001001'),
@@ -243,10 +216,10 @@ class network_ChromeCellularNetworkProperties(test.test):
                                      'Cellular.RoamingState'),
                       'values': [(mm1_constants.
                                   MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING,
-                                  'roaming'),
+                                  'Roaming'),
                                  (mm1_constants.
                                   MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
-                                  'home')]
+                                  'Home')]
                     },
                     mm1_constants.I_MODEM_3GPP,
                     dbus.types.UInt32)
@@ -270,10 +243,10 @@ class network_ChromeCellularNetworkProperties(test.test):
                                      'Cellular.RoamingState'),
                       'values': [(mm1_constants.
                                   MM_MODEM_CDMA_REGISTRATION_STATE_ROAMING,
-                                  'roaming'),
+                                  'Roaming'),
                                  (mm1_constants.
                                   MM_MODEM_CDMA_REGISTRATION_STATE_HOME,
-                                  'home')]
+                                  'Home')]
                     },
                     mm1_constants.I_MODEM_CDMA,
                     dbus.types.UInt32,
@@ -292,10 +265,10 @@ class network_ChromeCellularNetworkProperties(test.test):
                                      'Cellular.RoamingState'),
                       'values': [(mm1_constants.
                                   MM_MODEM_CDMA_REGISTRATION_STATE_ROAMING,
-                                  'roaming'),
+                                  'Roaming'),
                                  (mm1_constants.
                                   MM_MODEM_CDMA_REGISTRATION_STATE_HOME,
-                                  'home')]
+                                  'Home')]
                     },
                     mm1_constants.I_MODEM_CDMA,
                     dbus.types.UInt32,
