@@ -85,7 +85,7 @@ class hardware_TrimIntegrity(test.test):
                         msg += ' Disk does not claim trim supported.'
                         raise error.TestNAError(msg)
                 # SSD with trim support / mmc / sd card
-                raise error.TestFailError(msg)
+                raise error.TestFail(msg)
             else:
                 raise
         finally:
