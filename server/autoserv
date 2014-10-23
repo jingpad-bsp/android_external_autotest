@@ -6,7 +6,17 @@
 Run a control file through the server side engine
 """
 
-import sys, os, re, traceback, signal, time, logging, getpass, urllib2
+import ast
+import datetime
+import getpass
+import logging
+import os
+import re
+import signal
+import sys
+import traceback
+import time
+import urllib2
 
 import common
 
@@ -41,6 +51,7 @@ from autotest_lib.server import frontend
 from autotest_lib.server import server_logging_config
 from autotest_lib.server import server_job, utils, autoserv_parser, autotest
 from autotest_lib.server import utils as server_utils
+from autotest_lib.site_utils import job_overhead
 from autotest_lib.client.common_lib import pidfile, logging_manager
 from autotest_lib.client.common_lib.cros.graphite import stats
 
@@ -222,7 +233,66 @@ def run_autoserv(pid_file_manager, results, parser):
     sys.exit(exit_code)
 
 
+def _get_job_id_or_task_id(result_dir, machine, is_special_task):
+    """Extract job id or special task id from result_dir
+
+    @param result_dir: path to the result dir.
+    @param machine: hostname of the machine.
+    @param is_special_task: True/False, whether it is a special task.
+
+    @returns: integer representing the job id or task id.
+    """
+    if not result_dir:
+        return
+    result_dir = os.path.abspath(result_dir)
+    if is_special_task:
+        # special task result dir is like
+        # /usr/local/autotest/results/hosts/chromeos1-rack5-host6/1343-cleanup
+        pattern = '.*/hosts/%s/(\d+)-[^/]+' % machine
+    else:
+        # non-special task result dir is like
+        # /usr/local/autotest/results/2032-chromeos-test/chromeos1-rack5-host6
+        pattern ='.*/(\d+)-[^/]+/%s' % machine
+    m = re.match(pattern, result_dir)
+    return int(m.group(1)) if m else None
+
+
+def record_autoserv(options, duration_secs):
+    """Record autoserv end-to-end time in metadata db.
+
+    @param options: parser options.
+    @param duration_secs: How long autoserv has taken, in secs.
+    """
+    # Get machine hostname
+    machines = options.machines.replace(
+            ',', ' ').strip().split() if options.machines else []
+    num_machines = len(machines)
+    if num_machines > 1:
+        # Skip the case where atomic group is used.
+        return
+    elif num_machines == 0:
+        machines.append('hostless')
+
+    # Determine the status that will be reported.
+    s = job_overhead.STATUS
+    task_mapping = {
+            'reset': s.RESETTING, 'verify': s.VERIFYING,
+            'provision': s.PROVISIONING, 'repair': s.REPAIRING,
+            'cleanup': s.CLEANING, 'collect_crashinfo': s.GATHERING}
+    # option_dict will be like {'reset': True, 'repair': False, ...}
+    option_dict = ast.literal_eval(str(options))
+    match = filter(lambda task: option_dict.get(task) == True, task_mapping)
+    status = task_mapping[match[0]] if match else s.RUNNING
+    is_special_task = status not in [s.RUNNING, s.GATHERING]
+    job_or_task_id = _get_job_id_or_task_id(
+            options.results, machines[0], is_special_task)
+    job_overhead.record_state_duration(
+            job_or_task_id, machines[0], status, duration_secs,
+            is_special_task=is_special_task)
+
+
 def main():
+    start_time = datetime.datetime.now()
     # White list of tests with run time measurement enabled.
     measure_run_time_tests_names = global_config.global_config.get_config_value(
                         'AUTOSERV', 'measure_run_time_tests', type=str)
@@ -348,6 +418,10 @@ def main():
             pid_file_manager.close_file(exit_code)
         if timer:
             timer.stop()
+        # Record the autoserv duration time. Must be called
+        # just before the system exits to ensure accuracy.
+        duration_secs = (datetime.datetime.now() - start_time).total_seconds()
+        record_autoserv(parser.options, duration_secs)
     sys.exit(exit_code)
 
 

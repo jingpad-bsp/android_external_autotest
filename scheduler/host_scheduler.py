@@ -34,17 +34,15 @@ import time
 import common
 from autotest_lib.frontend import setup_django_environment
 
-from autotest_lib.client.common_lib import host_queue_entry_states
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib.cros.graphite import es_utils
 from autotest_lib.client.common_lib.cros.graphite import stats
-from autotest_lib.server import constants
 from autotest_lib.scheduler import email_manager
 from autotest_lib.scheduler import query_managers
 from autotest_lib.scheduler import rdb_lib
 from autotest_lib.scheduler import rdb_utils
 from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.scheduler import scheduler_models
+from autotest_lib.site_utils import job_overhead
 
 _db_manager = None
 _shutdown = False
@@ -162,13 +160,9 @@ class HostScheduler(BaseHostScheduler):
         """
         secs_in_queued = (datetime.datetime.now() -
                           queue_entry.job.created_on).total_seconds()
-        metadata = {
-                'job_id': queue_entry.job_id,
-                'hostname': host.hostname,
-                'status': host_queue_entry_states.Status.QUEUED,
-                'duration': secs_in_queued}
-        es_utils.ESMetadata().post(
-                type_str=constants.JOB_TIME_BREAKDOWN_KEY, metadata=metadata)
+        job_overhead.record_state_duration(
+                queue_entry.job_id, host.hostname,
+                job_overhead.STATUS.QUEUED, secs_in_queued)
 
 
     @_timer.decorate

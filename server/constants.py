@@ -6,6 +6,3 @@ CRASHLOGS_HOST_ATTRIBUTE = 'need_crash_logs'
 
 # Marker file that is left when crash-logs are collected.
 CRASHLOGS_MARKER = '.crashjob'
-
-# Metadata db type string for job time stats
-JOB_TIME_BREAKDOWN_KEY = 'job_time_breakdown'

@@ -10,8 +10,8 @@ from django.core import exceptions as django_exceptions
 from django.db import models as dbmodels
 
 
-from autotest_lib.client.common_lib import enum
 from autotest_lib.client.common_lib import host_protections
+from autotest_lib.client.common_lib import host_states
 from autotest_lib.frontend import settings
 
 
@@ -180,9 +180,7 @@ class AbstractHostModel(dbmodels.Model, ModelValidators):
         lock_time: DateTime at which the host was locked
         dirty: true if the host has been used without being rebooted
     """
-    Status = enum.Enum('Verifying', 'Running', 'Ready', 'Repairing',
-                       'Repair Failed', 'Cleaning', 'Pending', 'Resetting',
-                       'Provisioning', string_values=True)
+    Status = host_states.Status
     hostname = dbmodels.CharField(max_length=255, unique=True)
     locked = dbmodels.BooleanField(default=False)
     leased = dbmodels.BooleanField(default=True)
