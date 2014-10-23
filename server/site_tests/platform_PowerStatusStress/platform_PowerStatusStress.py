@@ -3,17 +3,74 @@
 # found in the LICENSE file.
 
 import logging, re, time
-from autotest_lib.server import test
+from autotest_lib.server import autotest, test
 from autotest_lib.client.common_lib import error
 
 _CHARGING = 'CHARGING'
 _DISCHARGING = 'DISCHARGING'
 _WAIT_SECS_AFTER_SWITCH = 5
-_RESUME_TIMEOUT = 10
+_LONG_TIMEOUT = 300
+_CLIENT_LOGIN = 'desktopui_SimpleLogin'
 
 
 class platform_PowerStatusStress(test.test):
     version = 1
+
+
+    def is_logged_in(self):
+        """Checks if DUT is logged
+
+        @returns True if logged, False otherwise.
+        """
+        out = self.host.run('ls /home/chronos/user/',
+                            ignore_status=True).stdout.strip()
+        if len(re.findall('Downloads', out)) > 0:
+            return True
+        return False
+
+
+    def action_login(self):
+        """Login i.e. runs running client test
+
+        @exception TestFail failed to login within timeout.
+
+        """
+        self.autotest_client.run_test(_CLIENT_LOGIN,
+                                      exit_without_logout=True)
+        if not self.is_logged_in():
+            raise error.TestFail("Failed to login!")
+
+
+    def wait_to_suspend(self, suspend_timeout = _LONG_TIMEOUT):
+        """Wait for DUT to suspend.
+
+        @param suspend_timeout: Time in seconds to wait to disconnect
+
+        @exception TestFail if fail to suspend/disconnect in time
+        @returns time took to suspend/disconnect
+        """
+        start_time = int(time.time())
+        if not self.host.ping_wait_down(timeout=suspend_timeout):
+            raise error.TestFail("Unable to suspend in %s sec" %
+                                 suspend_timeout)
+        return int(time.time()) - start_time
+
+
+    def wait_to_come_up(self, resume_timeout):
+        """Wait for DUT to resume.
+
+        @param resume_timeout: Time in seconds to wait to come up
+
+        @exception TestFail if fail to come_up in time
+        @returns time took to come up
+        """
+        start_time = int(time.time())
+        if not self.host.wait_up(timeout=resume_timeout):
+            raise error.TestFail("Unable to resume in %s sec" %
+                                 resume_timeout)
+        return int(time.time()) - start_time
+
+
 
     def do_suspend_resume(self, suspend_time):
         """ Suspends the DUT through powerd_dbus_suspend
@@ -21,28 +78,23 @@ class platform_PowerStatusStress(test.test):
         @param suspend_time: time in sec to suspend device for
 
         """
-        logging.info('Suspending for %s sec' % suspend_time)
-        self.host.run('echo 0 > /sys/class/rtc/rtc0/wakealarm')
-        self.host.run('echo +%d > /sys/class/rtc/rtc0/wakealarm' %
-                      suspend_time)
-        self.host.run('powerd_dbus_suspend --delay=0 &')
+        #Suspend i.e. close lid
+        self.host.servo.lid_close()
+        stime = self.wait_to_suspend(_LONG_TIMEOUT)
+        logging.debug('Suspended in %d sec' % stime)
+        #Suspended for suspend_time
+        time.sleep(suspend_time)
+        #Resume i.e. open lid
+        self.host.servo.lid_open()
+        rtime = self.wait_to_come_up(_LONG_TIMEOUT)
+        logging.debug('Resumed in %d sec' % rtime)
+
 
 
     def cleanup(self):
-        """ Finish as powered on """
+        """ Finish as powered on and lid open"""
         self.host.power_on()
-
-
-    def wait_to_resume(self, resume_timeout):
-        """Wait for DUT to resume.
-
-        @param resume_timeout: Time in seconds to wait for resuming
-
-        @exception TestFail  if fail to resume in time
-        """
-        if not self.host.wait_up(timeout=resume_timeout):
-            raise error.TestFail('Failed to RESUME within timeout!')
-        logging.info('DUT resumed!')
+        self.host.servo.lid_open()
 
 
     def switch_power_and_verify(self, powered_on, expected):
@@ -80,21 +132,24 @@ class platform_PowerStatusStress(test.test):
 
     def run_once(self, host, loop_count, suspend_time):
         self.host = host
+        self.autotest_client = autotest.Autotest(self.host)
 
         # Start as powered on
         if self.host.has_power():
             self.host.power_on()
         else:
             raise error.TestFail('No RPM is setup to device')
+        #Login to device
+        if not self.is_logged_in():
+            self.action_login()
 
         pdu_connected = True
         for i in xrange(loop_count):
-            logging.info('Iteration %d' % (i + 1))
+            logging.info('--- Iteration %d' % (i + 1))
 
             # Suspend/resume
             if suspend_time > 0:
                 self.do_suspend_resume(suspend_time)
-                self.wait_to_resume(_RESUME_TIMEOUT)
 
             # Charging state - it could be any of the three below
             expected = ('yes', 'AC', '(Charging|Fully charged|Discharging)')
