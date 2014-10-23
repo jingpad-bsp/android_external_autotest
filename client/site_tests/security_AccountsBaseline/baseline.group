@@ -73,7 +73,7 @@ avfs:!:301:
 fuse-exfat:!:302:
 daemon-store:!:400:chaps
 logs-access:!:401:debugd-logs
-serial:!:402:chronos,uucp
+serial:!:402:uucp
 devbroker-access:!:403:chronos
 i2c:!:404:power
 netdev:!:408:
