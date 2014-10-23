@@ -37,25 +37,18 @@ TECHNOLOGY_ALL = dbus.UInt32(1 << 0)
 TECHNOLOGY_MDNS = dbus.UInt32(1 << 1)
 
 
-def make_helper(bus=None, start_instance=False, timeout_seconds=10,
-                verbosity_level=0):
+def make_helper(bus=None, timeout_seconds=10, verbosity_level=0):
     """Wait for peerd to come up, then return a PeerdHelper for it.
 
     @param bus: DBus bus to use, or specify None to create one internally.
-    @param start_instance: bool True if we should start a peerd instance.
     @param timeout_seconds: number of seconds to wait for peerd to come up.
     @param verbosity_level: int level of log verbosity from peerd (e.g. 0
                             will log INFO level, 3 is verbosity level 3).
     @return PeerdHelper instance if peerd comes up, None otherwise.
 
     """
-    pid_to_kill = None
-    if start_instance:
-        result = utils.run('peerd --v=%d & echo $!' % verbosity_level)
-        pid_to_kill = int(result.stdout)
-    else:
-        # TODO(wiley) Add a verbosity switch to peerd, call it here.
-        pass
+    utils.run('stop peerd')
+    utils.run('start peerd PEERD_LOG_LEVEL=%d' % verbosity_level)
     if bus is None:
         dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
         bus = dbus.SystemBus()
@@ -64,23 +57,21 @@ def make_helper(bus=None, start_instance=False, timeout_seconds=10,
     while time.time() < end_time:
         if not bus.name_has_owner(SERVICE_NAME):
             time.sleep(0.2)
-        return PeerdHelper(bus, pid_to_kill)
+        return PeerdHelper(bus)
     raise error.TestFail('peerd did not start in a timely manner.')
 
 
 class PeerdHelper(object):
     """Container for convenience methods related to peerd."""
 
-    def __init__(self, bus, peerd_pid_to_kill):
+    def __init__(self, bus):
         """Construct a PeerdHelper.
 
         @param bus: DBus bus to use, or specify None and this object will
                     create a mainloop and bus.
-        @param peerd_pid_to_kill: pid to kill on close() or None.
 
         """
         self._bus = bus
-        self._pid = peerd_pid_to_kill
         self._manager = dbus.Interface(
                 self._bus.get_object(SERVICE_NAME, DBUS_PATH_MANAGER),
                 DBUS_INTERFACE_MANAGER)
@@ -122,15 +113,9 @@ class PeerdHelper(object):
 
 
     def close(self):
-        """Clean up peerd state related to this helper.
-
-        Removes related services and monitoring requests.
-        Optionally kills the peerd instance if we created this instance.
-
-        """
-        if self._pid is not None:
-            utils.run('kill %d' % self._pid, ignore_status=True)
-            self._pid = None
+        """Clean up peerd state related to this helper."""
+        utils.run('stop peerd')
+        utils.run('start peerd')
 
 
     def start_monitoring(self, technologies):

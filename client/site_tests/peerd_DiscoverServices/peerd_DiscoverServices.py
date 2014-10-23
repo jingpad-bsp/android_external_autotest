@@ -49,8 +49,7 @@ class peerd_DiscoverServices(test.test):
         self._chrooted_avahi = chrooted_avahi.ChrootedAvahi()
         self._chrooted_avahi.start()
         # Start up a fresh copy of peerd with really verbose logging.
-        self._peerd = peerd_helper.make_helper(start_instance=True,
-                                               verbosity_level=3)
+        self._peerd = peerd_helper.make_helper(verbosity_level=3)
         # Listen on our half of the interface pair for mDNS advertisements.
         self._host = interface_host.InterfaceHost(
                 self._chrooted_avahi.unchrooted_interface_name)

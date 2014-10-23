@@ -23,7 +23,7 @@ class ChrootedAvahi(object):
 
     """
 
-    SERVICES_TO_STOP = ['p2p', 'peerd', 'avahi']
+    SERVICES_TO_STOP = ['avahi']
     # This side has to be called something special to avoid shill touching it.
     MONITOR_IF_IP = netblock.Netblock('10.9.8.1/24')
     # We'll drop the Avahi side into our network namespace.
