@@ -248,15 +248,18 @@ class ChameleonTest(test.test):
         @return True if the browser connection is back; False if no connection
                 before time_to_give_up.
         """
-        while time.time() < time_to_give_up:
+        while True:
             try:
                 if self.display_client.get_display_info():
                     return True
             except xmlrpclib.Fault as ignored:
                 pass
-            logging.info('.....wait for browser connection.....')
-            time.sleep(1)
-        return self.display_client.get_display_info() is not None
+
+            if time.time() > time_to_give_up:
+                return False
+            else:
+                logging.info('.....wait for browser connection.....')
+                time.sleep(1)
 
 
     def suspend_resume(self, suspend_time=10, timeout=20):
