@@ -125,9 +125,13 @@ class PreJobTask(agent_task.SpecialAgentTask):
                 # limit, since then we overwrite the PARSING state of the HQE.
                 self.queue_entry.requeue()
 
+            # Limit the repair on a host when a prejob task fails, e.g., reset,
+            # verify etc. The number of repair jobs is limited to the specific
+            # HQE and host.
             previous_repairs = models.SpecialTask.objects.filter(
                     task=models.SpecialTask.Task.REPAIR,
-                    queue_entry_id=self.queue_entry.id).count()
+                    queue_entry_id=self.queue_entry.id,
+                    host_id=self.queue_entry.host_id).count()
             if previous_repairs >= scheduler_config.config.max_repair_limit:
                 self.host.set_status(models.Host.Status.REPAIR_FAILED)
                 self._fail_queue_entry()
