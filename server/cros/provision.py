@@ -120,7 +120,16 @@ class Verify(_SpecialTaskAction):
 
     _actions = {
         'modem_repair': 'cellular_StaleModemReboot',
-        'rpm': 'power_RPMTest',
+        # TODO(crbug.com/404421): set rpm action to power_RPMTest after the RPM
+        # is stable in lab (destiny). The power_RPMTest failure led to reset job
+        # failure and that left dut in Repair Failed. Since the test will fail
+        # anyway due to the destiny lab issue, and test retry will retry the
+        # test in another DUT.
+        # This change temporarily disable the RPM check in reset job.
+        # Another way to do this is to remove rpm dependency from tests' control
+        # file. That will involve changes on multiple control files. This one
+        # line change here is a simple temporary fix.
+        'rpm': 'dummy_PassServer',
     }
 
     name = 'verify'
