@@ -324,67 +324,67 @@
   },
   {
     "autotest_name": "telemetry_Benchmarks.dromaeo.domcoreattr",
-    "master_name": "ChromiumPerf",
+    "master_name": "ChromeOSPerf",
     "dashboard_test_name": "dromaeo.domcoreattr"
   },
   {
     "autotest_name": "telemetry_Benchmarks.dromaeo.domcoremodify",
-    "master_name": "ChromiumPerf",
+    "master_name": "ChromeOSPerf",
     "dashboard_test_name": "dromaeo.domcoremodify"
   },
   {
     "autotest_name": "telemetry_Benchmarks.dromaeo.domcorequery",
-    "master_name": "ChromiumPerf",
+    "master_name": "ChromeOSPerf",
     "dashboard_test_name": "dromaeo.domcorequery"
   },
   {
     "autotest_name": "telemetry_Benchmarks.dromaeo.domcoretraverse",
-    "master_name": "ChromiumPerf",
+    "master_name": "ChromeOSPerf",
     "dashboard_test_name": "dromaeo.domcoretraverse"
   },
   {
     "autotest_name": "telemetry_Benchmarks.kraken",
-    "master_name": "ChromiumPerf",
+    "master_name": "ChromeOSPerf",
     "dashboard_test_name": "kraken"
   },
   {
     "autotest_name": "telemetry_Benchmarks.media.chromeOS.tough_video_cases",
-    "master_name": "ChromiumPerf",
+    "master_name": "ChromeOSPerf",
     "dashboard_test_name": "media.tough_media_cases"
   },
   {
     "autotest_name": "telemetry_Benchmarks.media.chromeOS4kOnly.tough_video_cases",
-    "master_name": "ChromiumPerf",
+    "master_name": "ChromeOSPerf",
     "dashboard_test_name": "media.tough_media_cases"
   },
   {
     "autotest_name": "telemetry_Benchmarks.memory.top_25",
-    "master_name": "ChromiumPerf",
+    "master_name": "ChromeOSPerf",
     "dashboard_test_name": "memory.top_25"
   },
   {
     "autotest_name": "telemetry_Benchmarks.octane",
-    "master_name": "ChromiumPerf",
+    "master_name": "ChromeOSPerf",
     "dashboard_test_name": "octane"
   },
   {
     "autotest_name": "telemetry_Benchmarks.page_cycler.typical_25",
-    "master_name": "ChromiumPerf",
+    "master_name": "ChromeOSPerf",
     "dashboard_test_name": "page_cycler.typical_25"
   },
   {
     "autotest_name": "telemetry_Benchmarks.robohornet_pro",
-    "master_name": "ChromiumPerf",
+    "master_name": "ChromeOSPerf",
     "dashboard_test_name": "robohornet_pro"
   },
   {
     "autotest_name": "telemetry_Benchmarks.smoothness.top_25",
-    "master_name": "ChromiumPerf",
+    "master_name": "ChromeOSPerf",
     "dashboard_test_name": "smoothness.top_25"
   },
   {
     "autotest_name": "telemetry_Benchmarks.sunspider",
-    "master_name": "ChromiumPerf",
+    "master_name": "ChromeOSPerf",
     "dashboard_test_name": "sunspider"
   },
   {

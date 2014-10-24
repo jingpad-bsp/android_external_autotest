@@ -656,7 +656,7 @@
   },
   {
     "test_name": "telemetry_ScrollingBenchmark",
-    "master": "ChromiumPerf",
+    "master": "ChromeOSPerf",
     "graphs": [
       {
         "graph_name": "name",
@@ -686,7 +686,7 @@
   },
   {
     "test_name": "telemetry_Benchmarks.dromaeo_domcoreattr",
-    "master": "ChromiumPerf",
+    "master": "ChromeOSPerf",
     "graphs": [
       {
         "graph_name": "dromaeo_domecoreattr",
@@ -701,7 +701,7 @@
   },
   {
     "test_name": "telemetry_Benchmarks.dromaeo_domcoremodify",
-    "master": "ChromiumPerf",
+    "master": "ChromeOSPerf",
     "graphs": [
       {
         "graph_name": "dromaeo_domecoremodify",
@@ -716,7 +716,7 @@
   },
   {
     "test_name": "telemetry_Benchmarks.dromaeo_domcorequery",
-    "master": "ChromiumPerf",
+    "master": "ChromeOSPerf",
     "graphs": [
       {
         "graph_name": "dromaeo_domecorequery",
@@ -731,7 +731,7 @@
   },
   {
     "test_name": "telemetry_Benchmarks.dromaeo_domcoretraverse",
-    "master": "ChromiumPerf",
+    "master": "ChromeOSPerf",
     "graphs": [
       {
         "graph_name": "dromaeo_domecoretraverse",
@@ -746,7 +746,7 @@
   },
   {
     "test_name": "telemetry_Benchmarks.kraken",
-    "master": "ChromiumPerf",
+    "master": "ChromeOSPerf",
     "graphs": [
       {
         "graph_name": "kraken",
@@ -761,7 +761,7 @@
   },
   {
     "test_name": "telemetry_Benchmarks.octane",
-    "master": "ChromiumPerf",
+    "master": "ChromeOSPerf",
     "graphs": [
       {
         "graph_name": "overall_score",
@@ -796,7 +796,7 @@
   },
   {
     "test_name": "telemetry_Benchmarks.robohornetpro",
-    "master": "ChromiumPerf",
+    "master": "ChromeOSPerf",
     "graphs": [
       {
         "graph_name": "robohornetpro",
@@ -811,7 +811,7 @@
   },
   {
     "test_name": "telemetry_Benchmarks.sunspider",
-    "master": "ChromiumPerf",
+    "master": "ChromeOSPerf",
     "graphs": [
       {
         "graph_name": "sunspider",
