@@ -40,7 +40,9 @@ class platform_ExternalUsbPeripherals(test.test):
                 unnamed_device_count += 1
             else:
                 name = ' '.join(columns[6:]).strip()
-            plugged_list.append(name)
+            #Avoid servo components
+            if not name.startswith('Standard Microsystems Corp'):
+                plugged_list.append(name)
         return plugged_list
 
 
