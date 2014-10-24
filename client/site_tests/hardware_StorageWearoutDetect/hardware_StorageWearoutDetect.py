@@ -87,12 +87,12 @@ class hardware_StorageWearoutDetect(test.test):
                 m = re.match(self.SSD_FAIL, line, re.X)
                 if m:
                     param = m.group('param')
-                    fail_msg += ' ' + param
+                    fail_msg += 'SSD failure ' + param
 
                 m = re.match(self.MMC_FAIL, line)
                 if m:
                     param = m.group('param')
-                    fail_msg += ' ' + param
+                    fail_msg += 'MMC failure ' + param
 
         if not ssd_detect and not mmc_detect:
             raise error.TestFail('Can not detect storage device.')
