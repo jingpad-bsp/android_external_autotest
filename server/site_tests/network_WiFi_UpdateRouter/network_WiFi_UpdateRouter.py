@@ -35,10 +35,10 @@ class network_WiFi_UpdateRouter(test.test):
     version = 1
 
     STABLE_VERSIONS = {
-            'stumpy': StableVersion('trybot-stumpy-test-ap/R40-6370.0.0-b10',
-                                    '6370.0.2014_10_15_1630'),
-            'panther': StableVersion('trybot-panther-test-ap/R40-6370.0.0-b10',
-                                     '6370.0.2014_10_15_1630'),
+            'stumpy': StableVersion('trybot-stumpy-test-ap/R40-6398.0.0-b14',
+                                    '6398.0.2014_10_23_1452'),
+            'panther': StableVersion('trybot-panther-test-ap/R40-6398.0.0-b14',
+                                     '6398.0.2014_10_23_1505'),
     }
 
 
