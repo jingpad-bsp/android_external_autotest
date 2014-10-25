@@ -14,6 +14,7 @@ class bluetooth_SDP_ServiceSearchAttributeRequest(bluetooth_test.BluetoothTest):
     """
     version = 1
 
+    MIN_ATTR_BYTE_CNT                = 7
     MAX_ATTR_BYTE_CNT                = 300
 
     BLUETOOTH_BASE_UUID              = 0x0000000000001000800000805F9B34FB
@@ -321,6 +322,25 @@ class bluetooth_SDP_ServiceSearchAttributeRequest(bluetooth_test.BluetoothTest):
         return True
 
 
+    def test_continuation_state(self):
+        """Implementation of test TP/SERVER/SSA/BV-06-C from SDP Specification.
+
+        @return True if test passes, False if test fails
+
+        """
+        for size in 16, 32, 128:
+            # This request should generate a long response, which will be
+            # split into 98 chunks.
+            value = self.tester.service_search_attribute_request(
+                        [self.PUBLIC_BROWSE_GROUP_CLASS_ID],
+                        self.MIN_ATTR_BYTE_CNT,
+                        [[0, 0xFFFF]], size)
+            if not isinstance(value, list) or value == []:
+                return False
+
+        return True
+
+
     def correct_request(self):
         """Run tests for Service Search Attribute request.
 
@@ -345,7 +365,8 @@ class bluetooth_SDP_ServiceSearchAttributeRequest(bluetooth_test.BluetoothTest):
                 self.test_documentation_url_attribute() and
                 self.test_client_executable_url_attribute() and
                 self.test_additional_protocol_descriptor_list_attribute() and
-                self.test_fake_attributes())
+                self.test_fake_attributes() and
+                self.test_continuation_state())
 
 
     def run_once(self):
