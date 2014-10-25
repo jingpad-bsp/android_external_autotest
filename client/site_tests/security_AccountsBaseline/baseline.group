@@ -68,6 +68,7 @@ easy-unlock:!:249:
 trunks:!:251:trunks
 volume:!:257:
 uinput:!:258:bluetooth,volume
+peerd:!:260:peerd
 ntfs-3g:!:300:
 avfs:!:301:
 fuse-exfat:!:302:
