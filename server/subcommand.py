@@ -1,8 +1,9 @@
 __author__ = """Copyright Andy Whitcroft, Martin J. Bligh - 2006, 2007"""
 
-import sys, os, subprocess, time, signal, cPickle, logging
+import sys, os, signal, time, cPickle, logging
 
 from autotest_lib.client.common_lib import error, utils
+from autotest_lib.client.common_lib.cros import retry
 
 
 # entry points that use subcommand must set this to their logging manager
@@ -248,16 +249,14 @@ class subcommand(object):
         if not timeout:
             return self.wait()
         else:
-            end_time = time.time() + timeout
-            while time.time() <= end_time:
-                returncode = self.poll()
-                if returncode is not None:
-                    return returncode
-                time.sleep(1)
+            _, result = retry.timeout(self.wait, timeout_sec=timeout)
 
-            utils.nuke_pid(self.pid)
-            print "subcommand failed pid %d" % self.pid
-            print "%s" % (self.func,)
-            print "timeout after %ds" % timeout
-            print
-            return None
+            if result is None:
+                utils.nuke_pid(self.pid)
+                print "subcommand failed pid %d" % self.pid
+                print "%s" % (self.func,)
+                print "timeout after %ds" % timeout
+                print
+                result = self.wait()
+
+            return result

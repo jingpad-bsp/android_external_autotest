@@ -1,9 +1,10 @@
 #!/usr/bin/python
 # Copyright 2009 Google Inc. Released under the GPL v2
 
-import unittest
+import time, unittest
 
 import common
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.test_utils import mock
 from autotest_lib.server import subcommand
 
@@ -208,58 +209,40 @@ class subcommand_test(unittest.TestCase):
         self.god.check_playback()
 
 
-    def _setup_fork_waitfor(self):
-        cmd = self._setup_fork_start_parent()
-        self.god.stub_function(cmd, 'wait')
-        self.god.stub_function(cmd, 'poll')
-        self.god.stub_function(subcommand.time, 'time')
-        self.god.stub_function(subcommand.time, 'sleep')
-        self.god.stub_function(subcommand.utils, 'nuke_pid')
+class real_subcommand_test(unittest.TestCase):
+    """Test actually running subcommands (without mocking)."""
 
+
+    def _setup_subcommand(self, func, *args):
+        cmd = subcommand.subcommand(func, args)
+        cmd.fork_start()
         return cmd
 
 
     def test_fork_waitfor_no_timeout(self):
-        cmd = self._setup_fork_waitfor()
-
-        cmd.wait.expect_call().and_return(0)
-
+        """Test fork_waitfor success with no timeout."""
+        cmd = self._setup_subcommand(lambda: None)
         self.assertEquals(cmd.fork_waitfor(), 0)
-        self.god.check_playback()
 
 
-    def test_fork_waitfor_success(self):
-        cmd = self._setup_fork_waitfor()
-        self.god.stub_function(cmd, 'wait')
-        timeout = 10
-
-        subcommand.time.time.expect_call().and_return(1)
-        for i in xrange(timeout):
-            subcommand.time.time.expect_call().and_return(i + 1)
-            cmd.poll.expect_call().and_return(None)
-            subcommand.time.sleep.expect_call(1)
-        subcommand.time.time.expect_call().and_return(i + 2)
-        cmd.poll.expect_call().and_return(0)
-
-        self.assertEquals(cmd.fork_waitfor(timeout=timeout), 0)
-        self.god.check_playback()
+    def test_fork_waitfor_timeout(self):
+        """Test fork_waitfor success with a timeout."""
+        cmd = self._setup_subcommand(lambda: None)
+        self.assertEquals(cmd.fork_waitfor(timeout=60), 0)
 
 
-    def test_fork_waitfor_failure(self):
-        cmd = self._setup_fork_waitfor()
-        self.god.stub_function(cmd, 'wait')
-        timeout = 10
+    def test_fork_waitfor_exception(self):
+        """Test fork_waitfor failure with an exception."""
+        cmd = self._setup_subcommand(lambda: None, 'foo')
+        with self.assertRaises(error.AutoservSubcommandError):
+          cmd.fork_waitfor(timeout=60)
 
-        subcommand.time.time.expect_call().and_return(1)
-        for i in xrange(timeout):
-            subcommand.time.time.expect_call().and_return(i + 1)
-            cmd.poll.expect_call().and_return(None)
-            subcommand.time.sleep.expect_call(1)
-        subcommand.time.time.expect_call().and_return(i + 3)
-        subcommand.utils.nuke_pid.expect_call(cmd.pid)
 
-        self.assertEquals(cmd.fork_waitfor(timeout=timeout), None)
-        self.god.check_playback()
+    def test_fork_waitfor_timeout_fail(self):
+        """Test fork_waitfor timing out."""
+        cmd = self._setup_subcommand(lambda: time.sleep(60))
+        with self.assertRaises(error.AutoservSubcommandError):
+          cmd.fork_waitfor(timeout=1)
 
 
 class parallel_test(unittest.TestCase):
