@@ -22,6 +22,8 @@ class display_EdidStress(chameleon_test.ChameleonTest):
     """
     version = 1
 
+    _EDID_TYPES = {'HDMI': {'HDMI', 'DVI', 'VGA'},
+                   'DP': {'DP'}}
 
     def initialize(self, host):
         super(display_EdidStress, self).initialize(host)
@@ -40,8 +42,21 @@ class display_EdidStress(chameleon_test.ChameleonTest):
                      self.chameleon_port.get_connector_id(),
                      self.chameleon_port.get_connector_type())
 
+        connector = self.chameleon_port.get_connector_type()
+        supported_types = self._EDID_TYPES[connector]
+
+        def _get_edid_type(s):
+            i = s.rfind('_') + 1
+            j = len(s) - len('.txt')
+            return s[i:j].upper()
+
         for filepath in glob.glob(edid_path):
             filename = os.path.basename(filepath)
+            edid_type = _get_edid_type(filename)
+            if edid_type not in supported_types:
+                logging.info('Skip EDID: %s...', filename)
+                continue
+
             logging.info('Apply EDID: %s...', filename)
             self.chameleon_port.apply_edid(
                     edid.Edid.from_file(filepath, skip_verify=True))
