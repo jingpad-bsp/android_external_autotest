@@ -70,10 +70,10 @@ def main():
     # count_new can be larger than count if new records are added during
     # reindexing. This check only tries to make sure no record was lost.
     if count > count_new:
-        print ('Error! There are %d records missing after reindexing. Alias '
-               'will not be updated to the new index. You might want to try '
-               'reindex again.' %
-               (count - count_new))
+        raise Exception('Error! There are %d records missing after reindexing. '
+                        'Alias will not be updated to the new index. You might '
+                        'want to try reindex again.' %
+                        (count - count_new))
 
     body = {'actions': [{'remove': {'alias': options.alias,
                                     'index': options.old}},
