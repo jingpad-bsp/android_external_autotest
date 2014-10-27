@@ -200,7 +200,8 @@ def create_range_eq_query_multiple(equality_constraints,
                                    range_constraints=[],
                                    size=1000000,
                                    sort_specs=None,
-                                   regex_constraints=[]):
+                                   regex_constraints=[],
+                                   batch_constraints=[]):
     """Creates a dict. representing multple range and/or equality queries.
 
     Example input:
@@ -258,14 +259,14 @@ def create_range_eq_query_multiple(equality_constraints,
         ]
     }
 
+    @param equality_constraints: list of tuples of (field, value) pairs
+        representing what each field should equal to in the query.
+        e.g. [ ('field1', 1), ('field2', 'value') ]
     @param fields_returned: list of fields that we should return when
                             the query is executed. Set it to None to return all
                             fields. Note that the key/vals will be stored in
                             _source key of the hit object, if fields_returned is
                             set to None.
-    @param equality_constraints: list of tuples of (field, value) pairs
-        representing what each field should equal to in the query.
-        e.g. [ ('field1', 1), ('field2', 'value') ]
     @param range_constraints: list of tuples of (field, low, high) pairs
         representing what each field should be between (inclusive).
         e.g. [ ('field1', 2, 10), ('field2', -1, 20) ]
@@ -276,10 +277,13 @@ def create_range_eq_query_multiple(equality_constraints,
         broken by the next field(s).
     @param regex_constraints: A list of regex constraints of tuples of
         (field, value) pairs, e.g., [('filed1', '.*value.*')].
-
-    @param returns: dictionary object that represents query to es.
-                    This will return None if there are no equality constraints
-                    and no range constraints.
+    @param batch_constraints: list of tuples of (field, list) pairs
+        representing each field should be equal to one of the values
+        in the list.
+        e.g., [ ('job_id', [10, 11, 12, 13]) ]
+    @returns: dictionary object that represents query to es.
+              This will return None if there are no equality constraints
+              and no range constraints.
     """
     if not equality_constraints and not range_constraints:
         raise EsUtilException('No range or equality constraints specified...')
@@ -299,13 +303,14 @@ def create_range_eq_query_multiple(equality_constraints,
 
     # Creates the list of term dictionaries to put in the 'should' list.
     eq_list = [{'term': {k: v}} for k, v in equality_constraints if k]
+    batch_list = [{'terms': {k: v}} for k, v in batch_constraints if k]
     regex_list = [{'regexp': {k: v}} for k, v in regex_constraints if k]
-    num_constraints = (len(equality_constraints) + len(range_constraints) +
-                       len(regex_list))
+    constraints = eq_list + batch_list + range_list + regex_list
+    num_constraints = len(constraints)
     query = {
              'query': {
                        'bool': {
-                                'should': eq_list + range_list + regex_list,
+                                'should': constraints,
                                 'minimum_should_match': num_constraints,
                                }
                       },
@@ -386,6 +391,7 @@ def execute_query(query, index=INDEX_METADATA, host=METADATA_ES_SERVER,
     """
     es = elasticsearch.Elasticsearch(host=host, port=port, timeout=timeout)
     if not es.indices.exists(index=index):
+        logging.error('Index (%s) does not exist on %s:%s', index, host, port)
         return None
     result = es.search(index=index, body=query)
     # Check if not all matched records are returned. It could be size is set to

@@ -439,46 +439,6 @@ class Timings(object):
                                            self.tests_end_time))
 
 
-    def _GetDataKeyForStatsd(self, suite, build, board):
-        """
-        Constructs the key used for logging statsd timing data.
-
-        @param suite: scheduled suite that we want to record the results of.
-        @param build: The build string. This string should have a consistent
-            format eg: x86-mario-release/R26-3570.0.0. If the format of this
-            string changes such that we can't determine build_type or branch
-            we give up and use the parametes we're sure of instead (suite,
-            board). eg:
-                1. build = x86-alex-pgo-release/R26-3570.0.0
-                   branch = 26
-                   build_type = pgo-release
-                2. build = lumpy-paladin/R28-3993.0.0-rc5
-                   branch = 28
-                   build_type = paladin
-        @param board: The board that this suite ran on.
-        @return: The key used to log timing information in statsd.
-        """
-        try:
-            _board, build_type, branch = utils.ParseBuildName(build)[:3]
-        except utils.ParseBuildNameException as e:
-            logging.error(str(e))
-            branch = 'Unknown'
-            build_type = 'Unknown'
-        else:
-            embedded_str = re.search(r'x86-\w+-(.*)', _board)
-            if embedded_str:
-                build_type = embedded_str.group(1) + '-' + build_type
-
-        data_key_dict = {
-            'board': board,
-            'branch': branch,
-            'build_type': build_type,
-            'suite': suite,
-        }
-        return ('run_suite.%(board)s.%(build_type)s.%(branch)s.%(suite)s'
-                % data_key_dict)
-
-
     def SendResultsToStatsd(self, suite, build, board):
         """
         Sends data to statsd.
@@ -498,7 +458,8 @@ class Timings(object):
                           'python 2.7 or greater.')
             return
 
-        data_key = self._GetDataKeyForStatsd(suite, build, board)
+        # Constructs the key used for logging statsd timing data.
+        data_key = utils.get_data_key('run_suite', suite, build, board)
 
         # Since we don't want to try subtracting corrupted datetime values
         # we catch TypeErrors in time_utils.time_string_to_datetime and insert

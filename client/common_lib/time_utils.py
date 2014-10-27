@@ -34,7 +34,7 @@ def time_string_to_datetime(time_string, handle_type_error=False):
 def date_string_to_epoch_time(date_string):
     """Parse a date time string into seconds since the epoch.
 
-    @param date_string A string, formatted according to `TIME_FMT`.
+    @param date_string: A string, formatted according to `TIME_FMT`.
 
     @return The number of seconds since the UNIX epoch, as a float.
 
@@ -67,8 +67,8 @@ def to_epoch_time(value):
     time value, and returns the value itself.
 
     @param value: A datetime object or a number.
-    @param returns: epoch time if value is datetime.datetime,
-                    otherwise returns the value.
+    @returns: epoch time if value is datetime.datetime,
+              otherwise returns the value.
     @raise ValueError: If value is not a datetime object or a number.
     """
     if isinstance(value, basestring):
