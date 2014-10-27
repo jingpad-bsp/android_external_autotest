@@ -206,7 +206,7 @@ def _decode_lab_status(lab_status, build):
     #    Lab is 'status' [regex ...] (comment)
     # If the build name matches any regex, it will be blocked.
     build_exceptions = re.search('\[(.*)\]', lab_status['message'])
-    if not build_exceptions:
+    if not build_exceptions or not build:
         return
     for build_pattern in build_exceptions.group(1).split():
         if re.search(build_pattern, build):

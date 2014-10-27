@@ -140,6 +140,9 @@ class RPCHelper(object):
         @param rpc_interface: An rpc object, eg: A RetryingAFE instance.
         """
         self.rpc_interface = rpc_interface
+        # Any bug filed during diagnosis. Generally these bugs are critical so
+        # there should only be one.
+        self.bug = ''
 
 
     def diagnose_pool(self, board, pool, time_delta_hours, limit=5):
@@ -221,16 +224,15 @@ class RPCHelper(object):
         logging.debug('%d of %d DUTs are available for board %s pool %s.',
                       len(available_hosts), len(hosts), board, pool)
         if len(available_hosts) < minimum_duts:
-            bug_id = ''
             if unusable_hosts:
                 pool_health_bug = reporting.PoolHealthBug(
                         pool, board, unusable_hosts)
-                bug_id = reporting.Reporter().report(pool_health_bug)[0]
+                self.bug = reporting.Reporter().report(pool_health_bug)[0]
             raise NotEnoughDutsError(
                     'Number of available DUTs for board %s pool %s is %d, which'
                     ' is less than the minimum value %d. '
                     'Filed https://crbug.com/%s' %
-                    (board, pool, len(available_hosts), minimum_duts, bug_id))
+                    (board, pool, len(available_hosts), minimum_duts, self.bug))
 
 
     def diagnose_job(self, job_id, instance_server):

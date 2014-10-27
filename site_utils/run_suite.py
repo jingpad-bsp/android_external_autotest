@@ -247,6 +247,16 @@ class LogLink(object):
                                            'log_url_pattern', type=str)
 
 
+    @classmethod
+    def get_bug_link(cls, bug_id):
+        """Generate a bug link for the given bug_id.
+
+        @param bug_id: The id of the bug.
+        @return: A link, eg: https://crbug.com/<bug_id>.
+        """
+        return '%s%s' % (cls._BUG_URL_PREFIX, bug_id)
+
+
     def __init__(self, anchor, server, job_string, bug_info=None, reason=None,
                  retry_count=0):
         """Initialize the LogLink by generating the log URL.
@@ -282,7 +292,7 @@ class LogLink(object):
             info_strings.append('retry_count: %d' % self.retry_count)
 
         if self.bug_id:
-            url = '%s%s' % (self._BUG_URL_PREFIX, self.bug_id)
+            url = self.get_bug_link(self.bug_id)
             if self.bug_count is None:
                 bug_info = 'unknown number of reports'
             elif self.bug_count == 1:
@@ -1258,8 +1268,14 @@ def main_without_exception_handling():
     logging.info('Autotest instance: %s', instance_server)
 
     rpc_helper = diagnosis_utils.RPCHelper(afe)
-    rpc_helper.check_dut_availability(options.board, options.pool,
-                                      options.minimum_duts)
+    try:
+        rpc_helper.check_dut_availability(options.board, options.pool,
+                                          options.minimum_duts)
+    except diagnosis_utils.NotEnoughDutsError:
+        logging.info(GetBuildbotStepLink(
+                'Pool Health Bug', LogLink.get_bug_link(rpc_helper.bug)))
+        raise
+
     if options.mock_job_id:
         job_id = int(options.mock_job_id)
     else:
