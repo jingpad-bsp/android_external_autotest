@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import os
+import logging
 import re
 
 from autotest_lib.client.bin import utils
@@ -26,6 +27,8 @@ class touch_WakeupSource(touch_playback_test_base.touch_playback_test_base):
     def _is_wake_source(self, input_type):
         """Return True if the given device is a wake source, else False.
 
+        Also, return false if the file does not exist.
+
         @param input_type: e.g. 'touchpad' or 'mouse'. See parent class for
                 all options.
 
@@ -37,7 +40,9 @@ class touch_WakeupSource(touch_playback_test_base.touch_playback_test_base):
 
         filename = self._NODE_FILE % node_num
         if not os.path.isfile(filename):
-            raise error.TestError('Wakeup file %s not found!' % filename)
+            logging.info('%s not found for %s', filename, input_type)
+            return False
+
         result = utils.run('cat %s' % filename).stdout.strip()
         if result == 'enabled':
             return True
