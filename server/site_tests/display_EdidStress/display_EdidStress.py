@@ -64,7 +64,8 @@ class display_EdidStress(chameleon_test.ChameleonTest):
             try:
                 self.reconnect_output()
 
-                framebuffer_resolution = self.display_client.get_resolution()
+                framebuffer_resolution = (
+                        self.display_client.get_external_resolution())
                 if framebuffer_resolution == (0, 0):
                     error_message = 'EDID not supported: %s' % filename
                     logging.error(error_message)

@@ -87,7 +87,7 @@ class display_HotPlugAtSuspend(chameleon_test.ChameleonTest):
             logging.info('Resumed back')
 
             self.check_external_display_connector(expected_connector
-                    if plugged_before_resume else None)
+                    if plugged_before_resume else False)
             if plugged_before_resume:
                 if test_mirrored and not self.is_mirrored_enabled():
                     error_message = 'Error: not resumed to mirrored mode'

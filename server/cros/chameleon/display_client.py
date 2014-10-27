@@ -45,17 +45,17 @@ class DisplayClient(object):
     def get_external_connector_name(self):
         """Gets the name of the external output connector.
 
-        @return The external output connector name as a string; None if nothing
+        @return The external output connector name as a string; False if nothing
                 is connected.
         """
-        result = self._display_proxy.get_external_connector_name()
-        return result if result else None
+        return self._display_proxy.get_external_connector_name()
 
 
     def get_internal_connector_name(self):
         """Gets the name of the internal output connector.
 
-        @return The internal output connector name as a string.
+        @return The internal output connector name as a string; False if nothing
+                is connected.
         """
         return self._display_proxy.get_internal_connector_name()
 
@@ -131,8 +131,12 @@ class DisplayClient(object):
         @param x: The x coordinate.
         @param y: The y coordinate.
 
-        @return: An Image object.
+        @return: An Image object, or None if any error.
         """
+        if 0 in (w, h):
+            # Not a valid rectangle
+            return None
+
         with tempfile.NamedTemporaryFile(suffix='.rgb') as f:
             basename = os.path.basename(f.name)
             remote_path = os.path.join('/tmp', basename)
@@ -142,28 +146,14 @@ class DisplayClient(object):
             return Image.fromstring('RGB', (w, h), open(f.name).read())
 
 
-    def get_internal_display_resolution(self):
-        """Gets the resolution of internal display on framebuffer.
-
-        @return The resolution tuple (width, height). None if any error.
-        """
-        connector = self.get_internal_connector_name()
-        if not connector:
-            return None
-        w, h, _, _ = self._display_proxy.get_resolution(connector)
-        return (w, h)
-
-
     def capture_internal_screen(self):
         """Captures the internal screen framebuffer.
 
         @return: An Image object. None if any error.
         """
-        connector = self.get_internal_connector_name()
-        if not connector:
-            return None
+        output = self.get_internal_connector_name()
         return self._read_root_window_rect(
-                *self._display_proxy.get_resolution(connector))
+                *self._display_proxy.get_output_rect(output))
 
 
     def capture_external_screen(self):
@@ -172,21 +162,24 @@ class DisplayClient(object):
         @return: An Image object.
         """
         output = self.get_external_connector_name()
-        w, h, x, y = self._display_proxy.get_resolution(output)
-        return self._read_root_window_rect(w, h, x, y)
+        return self._read_root_window_rect(
+                *self._display_proxy.get_output_rect(output))
 
 
-    def get_resolution(self, connector=None):
-        """Gets the resolution of the specified screen.
+    def get_external_resolution(self):
+        """Gets the resolution of the external screen.
 
-        @param connector: name of the connector of the target screen; if not
-                specified, get_external_connector_name() is used.
         @return The resolution tuple (width, height)
         """
-        if not connector:
-            connector = self.get_external_connector_name()
-        width, height, _, _ = self._display_proxy.get_resolution(connector)
-        return (width, height)
+        return tuple(self._display_proxy.get_external_resolution())
+
+
+    def get_internal_resolution(self):
+        """Gets the resolution of the internal screen.
+
+        @return The resolution tuple (width, height)
+        """
+        return tuple(self._display_proxy.get_internal_resolution())
 
 
     def set_resolution(self, display_index, width, height):
@@ -196,8 +189,7 @@ class DisplayClient(object):
         @param width: width of the resolution
         @param height: height of the resolution
         """
-        self._display_proxy.set_resolution(
-                display_index, width, height)
+        self._display_proxy.set_resolution(display_index, width, height)
 
 
     def get_display_info(self):

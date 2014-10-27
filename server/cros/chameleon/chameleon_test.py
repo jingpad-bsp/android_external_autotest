@@ -366,14 +366,12 @@ class ChameleonTest(test.test):
     def check_external_display_connector(self, expected_connector, timeout=5):
         """Checks the connecting status of external display on DUT.
 
-        @param expected_connector: Name of the expected connector or None
+        @param expected_connector: Name of the expected connector or False
                 if no external monitor is expected.
         @param timeout: Duration in second to retry checking the connector.
         @raise error.TestFail if the check does not pass.
         """
         current_connector = self.display_client.get_external_connector_name()
-        if not current_connector:
-            current_connector = None
         now = time.time()
         end_time = now + timeout
         while expected_connector != current_connector and now < end_time:
@@ -381,7 +379,8 @@ class ChameleonTest(test.test):
                     current_connector)
             time.sleep(0.5)
             now = time.time()
-            current_connector = self.display_client.get_external_connector_name()
+            current_connector = (
+                    self.display_client.get_external_connector_name())
 
         if expected_connector != current_connector:
             if expected_connector:
@@ -412,7 +411,7 @@ class ChameleonTest(test.test):
         # are the same as what is expected.
 
         chameleon_resolution = self.chameleon_port.get_resolution()
-        dut_resolution = self.display_client.get_resolution()
+        dut_resolution = self.display_client.get_external_resolution()
 
         logging.info('Checking resolution with Chameleon (tag: %s).', tag)
         if expected_resolution != dut_resolution or (
@@ -551,8 +550,7 @@ class ChameleonTest(test.test):
             return message
 
         if verify_mirrored:
-            internal_resolution = (
-                    self.display_client.get_internal_display_resolution())
+            internal_resolution = self.display_client.get_internal_resolution()
             if internal_resolution is None:
                 message = 'Failed to detect the internal screen.'
                 logging.error(message)
@@ -639,10 +637,10 @@ class ChameleonTest(test.test):
                 error_list.append(error_message)
             return error_message
 
-        connector = (self.display_client.get_internal_connector_name()
-                if under_mirrored_mode
-                else self.display_client.get_external_connector_name())
-        test_image_size = self.display_client.get_resolution(connector)
+        if under_mirrored_mode:
+            test_image_size =  self.display_client.get_internal_resolution()
+        else:
+            test_image_size =  self.display_client.get_external_resolution()
 
         try:
             self.load_test_image(test_image_size)

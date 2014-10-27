@@ -165,7 +165,7 @@ class DisplayUtility(object):
 
             end_time = time.time() + timeout
             while time.time() < end_time:
-                r = self.get_resolution(self.get_external_connector_name())
+                r = self.get_output_rect(self.get_external_connector_name())
                 if (width, height) == (r[0], r[1]):
                     return True
                 time.sleep(0.1)
@@ -175,15 +175,14 @@ class DisplayUtility(object):
             tab.Close()
 
 
-    def get_resolution(self, output):
-        """Gets the resolution of the specified output.
+    def get_output_rect(self, output):
+        """Gets the size and position of the given output on the screen buffer.
 
         @param output: The output name as a string.
 
-        @return The resolution of output as a tuple (width, height,
-            fb_offset_x, fb_offset_y) of ints.
+        @return A tuple of the rectangle (width, height, fb_offset_x,
+                fb_offset_y) of ints.
         """
-
         regexp = re.compile(
                 r'^([-A-Za-z0-9]+)\s+connected\s+(\d+)x(\d+)\+(\d+)\+(\d+)',
                 re.M)
@@ -192,6 +191,26 @@ class DisplayUtility(object):
             if m[0] == output:
                 return (int(m[1]), int(m[2]), int(m[3]), int(m[4]))
         return (0, 0, 0, 0)
+
+
+    def get_external_resolution(self):
+        """Gets the resolution of the external screen.
+
+        @return The resolution tuple (width, height)
+        """
+        connector = self.get_external_connector_name()
+        width, height, _, _ = self.get_output_rect(connector)
+        return (width, height)
+
+
+    def get_internal_resolution(self):
+        """Gets the resolution of the internal screen.
+
+        @return The resolution tuple (width, height)
+        """
+        connector = self.get_internal_connector_name()
+        width, height, _, _ = self.get_output_rect(connector)
+        return (width, height)
 
 
     def take_screenshot_crop(self, path, box):

@@ -52,7 +52,7 @@ class display_HotPlugAtBoot(chameleon_test.ChameleonTest):
 
             self.display_client.connect()
             self.check_external_display_connector(
-                    expected_connector if plugged_after_boot else None)
+                    expected_connector if plugged_after_boot else False)
 
             if plugged_after_boot:
                 if test_mirrored and not self.is_mirrored_enabled():

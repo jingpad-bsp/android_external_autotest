@@ -50,14 +50,14 @@ class display_HotPlugNoisy(chameleon_test.ChameleonTest):
             self.set_plug(plugged_before_noise)
 
             self.check_external_display_connector(
-                    expected_connector if plugged_before_noise else None)
+                    expected_connector if plugged_before_noise else False)
 
             self.chameleon_port.fire_mixed_hpd_pulses(
                     self.PULSES_PLUGGED if plugged_after_noise
                                         else self.PULSES_UNPLUGGED)
 
             self.check_external_display_connector(
-                    expected_connector if plugged_after_noise else None)
+                    expected_connector if plugged_after_noise else False)
 
             if plugged_after_noise:
                 test_name = 'SCREEN-%dx%d-%c-N-P' % (
