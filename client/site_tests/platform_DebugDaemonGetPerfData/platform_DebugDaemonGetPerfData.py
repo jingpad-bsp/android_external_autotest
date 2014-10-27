@@ -25,13 +25,11 @@ class platform_DebugDaemonGetPerfData(test.test):
     # seconds), plus the number of times to run perf with each duration.
     # e.g. the entry "1: 50" means to run perf for 1 second 50 times.
     _profile_duration_and_repetitions = [
-        (1, 50),
-        (2, 3),
-        (5, 1),
-        (10, 1),
+        (1, 3),
+        (5, 1)
     ]
 
-    # Commands to repeatedly run in the background when collecting perf data
+    # Commands to repeatedly run in the background when collecting perf data.
     _system_profile_commands = {
         'idle'     : 'sleep 1',
         'busy'     : 'ls',
@@ -69,10 +67,7 @@ class platform_DebugDaemonGetPerfData(test.test):
 
         @param profile_type: A label to use for storing into perf keyvals.
         """
-        bus = dbus.SystemBus()
-        proxy = bus.get_object(self._dbus_debugd_name, self._dbus_debugd_object)
-        iface = dbus.Interface(proxy, dbus_interface=self._dbus_debugd_name)
-        iface_function = getattr(iface, get_perf_method)
+        iface_function = getattr(self.dbus_iface, get_perf_method)
         result_total_size = 0
         result_zipped_total_size = 0
         for _ in range(num_reps):
@@ -101,7 +96,7 @@ class platform_DebugDaemonGetPerfData(test.test):
         keyvals = {}
         if num_reps > 0:
             keyvals[key] = result_total_size / num_reps
-            keyvals[key + '_zipped'] = len(self.gzip_string(result)) / num_reps
+            keyvals[key + '_zipped'] = result_zipped_total_size / num_reps
         self.write_perf_keyval(keyvals)
 
 
@@ -109,6 +104,11 @@ class platform_DebugDaemonGetPerfData(test.test):
         """
         Primary autotest function.
         """
+
+        bus = dbus.SystemBus()
+        proxy = bus.get_object(self._dbus_debugd_name, self._dbus_debugd_object)
+        self.dbus_iface = dbus.Interface(proxy,
+                                         dbus_interface=self._dbus_debugd_name)
 
         get_perf_methods = ['GetRichPerfData']
 
