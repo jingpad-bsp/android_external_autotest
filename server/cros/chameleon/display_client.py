@@ -8,7 +8,6 @@ import tempfile
 from PIL import Image
 
 from autotest_lib.client.cros.multimedia.display_helper import DisplayInfo
-from autotest_lib.server.cros.chameleon import image_generator
 
 
 class DisplayClient(object):
@@ -18,11 +17,6 @@ class DisplayClient(object):
     class on initialization, can be accessed from its _client property.
 
     """
-
-    DEST_TMP_DIR = '/tmp'
-    DEST_IMAGE_FILENAME = 'calibration.svg'
-
-
     def __init__(self, host, multimedia_client_connection):
         """Construct a DisplayClient.
 
@@ -31,7 +25,6 @@ class DisplayClient(object):
         """
         self._client = host
         self._connection = multimedia_client_connection
-        self._image_generator = image_generator.ImageGenerator()
 
 
     @property
@@ -72,17 +65,7 @@ class DisplayClient(object):
 
         @param resolution: A tuple (width, height) of resolution.
         """
-        with tempfile.NamedTemporaryFile() as f:
-            self._image_generator.generate_image(
-                    resolution[0], resolution[1], f.name)
-            os.chmod(f.name, 0644)
-            self._client.send_file(
-                    f.name,
-                    os.path.join(self.DEST_TMP_DIR, self.DEST_IMAGE_FILENAME))
-
-        page_url = 'file://%s/%s' % (self.DEST_TMP_DIR,
-                                     self.DEST_IMAGE_FILENAME)
-        self._display_proxy.load_url(page_url)
+        self._display_proxy.load_calibration_image(resolution)
 
 
     def close_tab(self, index=-1):

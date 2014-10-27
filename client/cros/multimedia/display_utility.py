@@ -13,6 +13,7 @@ import telemetry
 from autotest_lib.client.bin import utils
 from autotest_lib.client.cros import constants, sys_power
 from autotest_lib.client.cros.graphics import graphics_utils
+from autotest_lib.client.cros.multimedia import image_generator
 
 TimeoutException = telemetry.core.util.TimeoutException
 
@@ -20,9 +21,12 @@ TimeoutException = telemetry.core.util.TimeoutException
 class DisplayUtility(object):
     """Utility to access the display-related functionality."""
 
+    CALIBRATION_IMAGE_PATH = '/tmp/calibration.svg'
+
     def __init__(self, chrome):
         self._chrome = chrome
         self._browser = chrome.browser
+        self._image_generator = image_generator.ImageGenerator()
 
 
     def get_display_info(self):
@@ -315,7 +319,7 @@ class DisplayUtility(object):
         return graphics_utils.wait_output_connected(output)
 
 
-    def load_url(self, url):
+    def _load_url(self, url):
         """Loads the given url in a new tab.
 
         @param url: The url to load as a string.
@@ -323,6 +327,18 @@ class DisplayUtility(object):
         tab = self._browser.tabs.New()
         tab.Navigate(url)
         tab.Activate()
+        return True
+
+
+    def load_calibration_image(self, resolution):
+        """Load a full screen calibration image from the HTTP server.
+
+        @param resolution: A tuple (width, height) of resolution.
+        """
+        path = self.CALIBRATION_IMAGE_PATH
+        self._image_generator.generate_image(resolution[0], resolution[1], path)
+        os.chmod(path, 0644)
+        self._load_url('file://%s' % path)
         return True
 
 
