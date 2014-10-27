@@ -174,37 +174,47 @@ if ! sudo apt-get install -y ${PKG_LIST}; then
 fi
 echo -e "Done!\n"
 
-echo "Setting up Database: chromeos_autotest_db in MySQL..."
-if mysql -u root -e ';' 2> /dev/null ; then
-  PASSWD_STRING=
-elif mysql -u root -p"${PASSWD}" -e ';' 2> /dev/null ; then
-  PASSWD_STRING="-p${PASSWD}"
-else
-  PASSWD_STRING="-p"
-fi
+# Check if database exists, clobber existing database with user consent.
+#
+# Arguments: Name of the database
+check_database()
+{
+  local db_name=$1
+  echo "Setting up Database: $db_name in MySQL..."
+  if mysql -u root -e ';' 2> /dev/null ; then
+    PASSWD_STRING=
+  elif mysql -u root -p"${PASSWD}" -e ';' 2> /dev/null ; then
+    PASSWD_STRING="-p${PASSWD}"
+  else
+    PASSWD_STRING="-p"
+  fi
 
-if ! mysqladmin ping ; then
-  sudo service mysql start
-fi
+  if ! mysqladmin ping ; then
+    sudo service mysql start
+  fi
 
-CLOBBERDB='y'
-EXISTING_DATABASE=$(mysql -u root "${PASSWD_STRING}" -e "SELECT SCHEMA_NAME \
-FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'chromeos_autotest_db'")
+  local clobberdb='y'
+  local existing_database=$(mysql -u root "${PASSWD_STRING}" -e "SELECT \
+  SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '$db_name'")
 
-if [ -n "${EXISTING_DATABASE}" ]; then
-  get_y_or_n CLOBBERDB "Clobber existing shadow config? [Y/n]: " "n"
-fi
+  if [ -n "${existing_database}" ]; then
+    get_y_or_n clobberdb "Clobber existing MySQL database? [Y/n]: " "n"
+  fi
 
-SQL_COMMAND="drop database if exists chromeos_autotest_db; \
-create database chromeos_autotest_db; \
-grant all privileges on chromeos_autotest_db.* TO \
-'chromeosqa-admin'@'localhost' identified by '${PASSWD}'; \
-FLUSH PRIVILEGES;"
+  local sql_command="drop database if exists $db_name; \
+  create database $db_name; \
+  grant all privileges on $db_name.* TO \
+  'chromeosqa-admin'@'localhost' identified by '${PASSWD}'; \
+  FLUSH PRIVILEGES;"
 
-if [[ "${CLOBBERDB}" = 'y' ]]; then
-  mysql -u root "${PASSWD_STRING}" -e "${SQL_COMMAND}"
-fi
-echo -e "Done!\n"
+  if [[ "${clobberdb}" = 'y' ]]; then
+    mysql -u root "${PASSWD_STRING}" -e "${sql_command}"
+  fi
+  echo -e "Done!\n"
+}
+
+check_database 'chromeos_autotest_db'
+check_database 'chromeos_lab_servers'
 
 AT_DIR=/usr/local/autotest
 echo -n "Bind-mounting your autotest dir at ${AT_DIR}..."
@@ -244,6 +254,10 @@ echo "Populating autotest mysql DB..."
 # You may have to run this twice.
 "${AT_DIR}"/frontend/manage.py syncdb --noinput
 "${AT_DIR}"/utils/test_importer.py
+echo -e "Done!\n"
+
+echo "Initializing chromeos_lab_servers mysql DB..."
+"${AT_DIR}"/database/migrate.py sync -f -d AUTOTEST_SERVER_DB
 echo -e "Done!\n"
 
 echo "Configuring apache to run the autotest web interface..."

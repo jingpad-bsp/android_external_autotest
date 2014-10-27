@@ -175,23 +175,61 @@ class DatabaseConnection(object):
         self._read_options()
 
 
-    def _get_option(self, name, provided_value):
+    def _get_option(self, name, provided_value, use_afe_setting=False):
+        """Get value of given option from global config.
+
+        @param name: Name of the config.
+        @param provided_value: Value being provided to override the one from
+                               global config.
+        @param use_afe_setting: Force to use the settings in AFE, default is
+                                False.
+        """
+        # TODO(dshi): This function returns the option value depends on multiple
+        # conditions. The value of `provided_value` has highest priority, then
+        # the code checks if use_afe_setting is True, if that's the case, force
+        # to use settings in AUTOTEST_WEB. At last the value is retrieved from
+        # specified global config section.
+        # The logic is too complicated for a generic function named like
+        # _get_option. Ideally we want to make it clear from caller that it
+        # wants to get database credential from one of the 3 ways:
+        # 1. Use the credential from given config section
+        # 2. Use the credential from AUTOTEST_WEB section
+        # 3. Use the credential provided by caller.
         if provided_value is not None:
             return provided_value
-        if self.global_config_section:
+        section = ('AUTOTEST_WEB' if use_afe_setting else
+                   self.global_config_section)
+        if section:
             global_config_name = _GLOBAL_CONFIG_NAMES.get(name, name)
             return global_config.global_config.get_config_value(
-                self.global_config_section, global_config_name)
+                    section, global_config_name)
+
         return getattr(self, name, None)
 
 
     def _read_options(self, db_type=None, host=None, username=None,
                       password=None, db_name=None):
-        self.db_type = self._get_option('db_type', db_type)
-        self.host = self._get_option('host', host)
-        self.username = self._get_option('username', username)
-        self.password = self._get_option('password', password)
+        """Read database information from global config.
+
+        Unless any parameter is specified a value, the connection will use
+        database name from given configure section (self.global_config_section),
+        and database credential from AFE database settings (AUTOTEST_WEB).
+
+        @param db_type: database type, default to None.
+        @param host: database hostname, default to None.
+        @param username: user name for database connection, default to None.
+        @param password: database password, default to None.
+        @param db_name: database name, default to None.
+        """
         self.db_name = self._get_option('db_name', db_name)
+        use_afe_setting = not bool(db_type or host or username or password)
+
+        # Database credential can be provided by the caller, as passed in from
+        # function connect.
+        self.db_type = self._get_option('db_type', db_type, use_afe_setting)
+        self.host = self._get_option('host', host, use_afe_setting)
+        self.username = self._get_option('username', username, use_afe_setting)
+        self.password = self._get_option('password', password, use_afe_setting)
 
 
     def _get_backend(self, db_type):

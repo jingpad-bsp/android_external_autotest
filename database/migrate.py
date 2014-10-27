@@ -10,8 +10,10 @@ MIGRATE_TABLE = 'migrate_info'
 
 _AUTODIR = os.path.join(os.path.dirname(__file__), '..')
 _MIGRATIONS_DIRS = {
-    'AUTOTEST_WEB' : os.path.join(_AUTODIR, 'frontend', 'migrations'),
-    'TKO' : os.path.join(_AUTODIR, 'tko', 'migrations'),
+    'AUTOTEST_WEB': os.path.join(_AUTODIR, 'frontend', 'migrations'),
+    'TKO': os.path.join(_AUTODIR, 'tko', 'migrations'),
+    'AUTOTEST_SERVER_DB': os.path.join(_AUTODIR, 'database',
+                                      'server_db_migrations'),
 }
 _DEFAULT_MIGRATIONS_DIR = 'migrations' # use CWD
 
@@ -262,6 +264,8 @@ class MigrationManager(object):
 
 
     def _migrate_from_base(self):
+        """Initialize the AFE database.
+        """
         self.confirm_initialization()
 
         migration_script = utils.read_file(
