@@ -20,8 +20,6 @@ class peerd_DiscoverServices(test.test):
     TEST_TIMEOUT_SECONDS = 30
     PEER_ID = '123e4567-e89b-12d3-a456-426655440000'
     PEER_SERBUS_VERSION = '1.12'
-    PEER_NAME = 'A test device'
-    PEER_NOTE = 'I am not a real device.'
     PEER_SERVICES = {
             'test-service-0': {'some_data': 'a value',
                                'other_data': 'another value'},
@@ -32,8 +30,6 @@ class peerd_DiscoverServices(test.test):
     SERBUS_PORT = 0
     SERBUS_TXT_DICT = {'ver': PEER_SERBUS_VERSION,
                        'id': PEER_ID,
-                       'name': PEER_NAME,
-                       'note': PEER_NOTE,
                        'services': '.'.join(PEER_SERVICES.iterkeys())}
     UNIQUE_PREFIX = 'a_unique_mdns_prefix'
 
@@ -74,9 +70,7 @@ class peerd_DiscoverServices(test.test):
 
 
     def _has_expected_peer(self):
-        peer = self._peerd.has_peer(self.PEER_ID,
-                                    name=self.PEER_NAME,
-                                    note=self.PEER_NOTE)
+        peer = self._peerd.has_peer(self.PEER_ID)
         if peer is None:
             logging.debug('No peer found.')
             return False

@@ -26,8 +26,6 @@ class peerd_AdvertiseServices(test.test):
     SERBUS_SERVICE_ID = 'serbus'
     SERBUS_SERVICE_INFO = {'ver': '1.0',
                            'id': ANY_VALUE,
-                           'note': ANY_VALUE,
-                           'name': ANY_VALUE,
                            'services': TEST_SERVICE_ID}
 
 

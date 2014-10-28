@@ -13,8 +13,7 @@ from autotest_lib.client.common_lib import utils
 from autotest_lib.client.cros import dbus_util
 
 Service = collections.namedtuple('Service', ['service_id', 'service_info'])
-Peer = collections.namedtuple('Peer', ['uuid', 'name', 'note',
-                                       'last_seen', 'services'])
+Peer = collections.namedtuple('Peer', ['uuid', 'last_seen', 'services'])
 
 # DBus constants for use with peerd.
 SERVICE_NAME = 'org.chromium.peerd'
@@ -26,8 +25,6 @@ DBUS_PATH_MANAGER = '/org/chromium/peerd/Manager'
 DBUS_PATH_OBJECT_MANAGER = '/org/chromium/peerd'
 PEER_PATH_PREFIX = '/org/chromium/peerd/peers/'
 PEER_PROPERTY_ID = 'UUID'
-PEER_PROPERTY_NAME = 'FriendlyName'
-PEER_PROPERTY_NOTE = 'Note'
 PEER_PROPERTY_LAST_SEEN = 'LastSeen'
 SERVICE_PROPERTY_ID = 'ServiceId'
 SERVICE_PROPERTY_INFO = 'ServiceInfo'
@@ -104,8 +101,6 @@ class PeerdHelper(object):
                         service_info=service_properties[SERVICE_PROPERTY_INFO]))
             peer_properties = interfaces[DBUS_INTERFACE_PEER]
             peer = Peer(uuid=peer_properties[PEER_PROPERTY_ID],
-                        name=peer_properties[PEER_PROPERTY_NAME],
-                        note=peer_properties[PEER_PROPERTY_NOTE],
                         last_seen=peer_properties[PEER_PROPERTY_LAST_SEEN],
                         services=services)
             peers.append(peer)
@@ -131,15 +126,13 @@ class PeerdHelper(object):
         return self._manager.StartMonitoring(technologies)
 
 
-    def has_peer(self, uuid, name=None, note=None):
+    def has_peer(self, uuid):
         """
         Return a Peer instance if peerd has found a matching peer.
 
         Optional parameters are also matched if not None.
 
         @param uuid: string unique identifier of peer.
-        @param name: string optional friendly name of peer.
-        @param note: string optional note of peer.
         @return Peer tuple if a matching peer exists, None otherwise.
 
         """
@@ -148,14 +141,6 @@ class PeerdHelper(object):
         for peer in peers:
             if peer.uuid != uuid:
                 continue
-            if name is not None and name != peer.name:
-                logging.debug('Mismatched peer names; found %s, expected %s.',
-                              peer.name, name)
-                return None
-            if note is not None and note != peer.note:
-                logging.debug('Mismatched peer notes; found %s, expected %s.',
-                              peer.note, note)
-                return None
             return peer
         logging.debug('No peer had a matching ID.')
         return None
