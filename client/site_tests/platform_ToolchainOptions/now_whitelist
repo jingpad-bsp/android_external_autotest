@@ -60,15 +60,3 @@
 /usr/lib/xorg/modules/multimedia/tda9850_drv.so
 /usr/lib/xorg/modules/multimedia/tda9885_drv.so
 /usr/lib/xorg/modules/multimedia/uda1380_drv.so
-# crbug.com/417924
-/usr/lib/libEGL.so.1
-/usr/lib/libGLESv1_CM.so.1
-/usr/lib/libGLESv2.so.2
-/usr/lib/libnvidia-eglcore.so.19.021
-/usr/lib/libnvidia-glcore.so.19.021
-/usr/lib/libnvidia-glsi.so.19.021
-/usr/lib/libnvidia-rmapi-tegra.so.19.021
-/usr/lib/libnvidia-tls.so.19.021
-/usr/lib/xorg/modules/drivers/nvidia_drv.so
-/usr/lib/xorg/modules/extensions/libglx.so
-# end 417924
