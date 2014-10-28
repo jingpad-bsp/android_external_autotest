@@ -3,7 +3,9 @@
 # found in the LICENSE file.
 
 
-import logging, re
+import logging
+import re
+import subprocess
 import deduping_scheduler
 import driver
 from distutils import version
@@ -13,10 +15,6 @@ import common
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.server import site_utils
-try:
-    from chromite.lib import gs
-except ImportError:
-    gs = None
 
 
 class MalformedConfigEntry(Exception):
@@ -57,12 +55,14 @@ class TotMilestoneManager(object):
             the LATEST_BUILD_URL, or an empty string if LATEST_BUILD_URL
             doesn't exist.
         """
-        try:
-            return (gs.GSContext().Cat(constants.LATEST_BUILD_URL).split('-')[0]
-                    if gs else '')
-        except gs.GSNoSuchKey as e:
-            logging.warning('Failed to get latest build: %s', e)
+        cmd = ['gsutil', 'cat', constants.LATEST_BUILD_URL]
+        proc = subprocess.Popen(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = proc.communicate()
+        if proc.poll():
+            logging.warning('Failed to get latest build: %s', stderr)
             return ''
+        return stdout.split('-')[0]
 
 
     def refresh(self):
