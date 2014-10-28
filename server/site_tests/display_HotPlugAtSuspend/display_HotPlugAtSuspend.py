@@ -43,7 +43,7 @@ class display_HotPlugAtSuspend(chameleon_test.ChameleonTest):
                      self.chameleon_port.get_connector_type(),
                      width, height)
         # Keep the original connector name, for later comparison.
-        expected_connector = self.display_client.get_external_connector_name()
+        expected_connector = self.display_facade.get_external_connector_name()
         logging.info('See the display on DUT: %s', expected_connector)
 
         self.set_mirrored(test_mirrored)
@@ -64,7 +64,7 @@ class display_HotPlugAtSuspend(chameleon_test.ChameleonTest):
             logging.info('Going to suspend, for %d seconds...',
                          self.SUSPEND_DURATION)
             time_before_suspend = time.time()
-            self.display_client.suspend_resume_bg(self.SUSPEND_DURATION)
+            self.display_facade.suspend_resume_bg(self.SUSPEND_DURATION)
 
             # Confirm DUT suspended.
             logging.info('- Wait for sleep...')

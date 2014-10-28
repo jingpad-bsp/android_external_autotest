@@ -4,11 +4,11 @@
 
 """This is a display end-to-end test using the Chameleon board."""
 
-import logging, os, shutil, threading, time
+import logging, os, shutil, time
 
 from autotest_lib.client.common_lib import error
 
-from autotest_lib.server.cros.chameleon import edid, chameleon_test
+from autotest_lib.server.cros.chameleon import chameleon_test
 
 
 class display_EndToEnd(chameleon_test.ChameleonTest):
@@ -60,7 +60,7 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
         self.test_mirrored = not self.test_mirrored
         to_mode = 'MIRRORED' if self.test_mirrored else 'EXTENDED'
         self.set_mirrored(self.test_mirrored)
-        logging.debug('Switched from %s to %s mode' % (from_mode, to_mode))
+        logging.debug('Switched from %s to %s mode', from_mode, to_mode)
         time.sleep(self.WAIT_TIME)
         self.reconnect_and_get_external_resolution()
 
@@ -79,7 +79,7 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
         self.host.test_wait_for_shutdown()
         self.host.test_wait_for_boot(boot_id)
         self.set_plug(plugged_after)
-        self.display_client.connect()
+        self.display_facade.connect()
 
 
     def suspend_resume(self, plugged_before_suspend,
@@ -99,7 +99,7 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
         logging.debug('Going to suspend, for %d seconds...',
                      self.SUSPEND_DURATION)
         time_before_suspend = time.time()
-        self.display_client.suspend_resume_bg(self.SUSPEND_DURATION)
+        self.display_facade.suspend_resume_bg(self.SUSPEND_DURATION)
 
         # Confirm DUT suspended.
         self.host.test_wait_for_sleep(self.SUSPEND_TIMEOUT)
@@ -120,7 +120,7 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
     def wait_to_suspend(self, suspend_timeout):
         """Wait for DUT to suspend.
 
-        @param resume_timeout: Time in seconds to wait for suspend
+        @param suspend_timeout: Time in seconds to wait for suspend
 
         @exception TestFail: If fail to suspend in time
         """
@@ -173,10 +173,11 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
 
 
     def reconnect_and_get_external_resolution(self):
-            self.reconnect_output()
-            #Get the resolution for the edid applied
-            self.resolution = self.chameleon_port.get_resolution()
-            logging.debug('External display resolution: %s' % 
+        """Reconnect the display and get the external screen resolution."""
+        self.reconnect_output()
+        #Get the resolution for the edid applied
+        self.resolution = self.chameleon_port.get_resolution()
+        logging.debug('External display resolution: %s',
                 str(self.resolution))
 
 
@@ -218,7 +219,7 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
         if self.is_crash_data_present():
             self.remove_crash_data()
 
-        self.connector_used = self.display_client.get_external_connector_name()
+        self.connector_used = self.display_facade.get_external_connector_name()
         first_edid, second_edid = self.get_edids_filepaths()
 
         #Set first monitor/EDID and tracked resolution

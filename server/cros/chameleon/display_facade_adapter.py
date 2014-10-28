@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""An adapter to remotely access the display facade on DUT."""
+
 import os
 import tempfile
 
@@ -10,28 +12,28 @@ from PIL import Image
 from autotest_lib.client.cros.multimedia.display_helper import DisplayInfo
 
 
-class DisplayClient(object):
-    """DisplayClient is a layer to control display logic over a remote DUT.
+class DisplayFacadeRemoteAdapter(object):
+    """DisplayFacadeRemoteAdapter is an adapter to remotely control DUT display.
 
     The Autotest host object representing the remote DUT, passed to this
     class on initialization, can be accessed from its _client property.
 
     """
-    def __init__(self, host, multimedia_client_connection):
-        """Construct a DisplayClient.
+    def __init__(self, host, remote_facade_connection):
+        """Construct a DisplayFacadeRemoteAdapter.
 
         @param host: Host object representing a remote host.
-        @param multimedia_client_connection: MultimediaClientConnection object.
+        @param remote_facade_connection: RemoteFacadeConnection object.
         """
         self._client = host
-        self._connection = multimedia_client_connection
+        self._connection = remote_facade_connection
 
 
     @property
     def _display_proxy(self):
-        """Gets the proxy to DUT display utility.
+        """Gets the proxy to DUT display facade.
 
-        @return XML RPC proxy to DUT display utility.
+        @return XML RPC proxy to DUT display facade.
         """
         return self._connection.xmlrpc_proxy.display
 

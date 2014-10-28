@@ -10,7 +10,7 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import chameleon
 from autotest_lib.client.cros.graphics import graphics_utils
-from autotest_lib.client.cros.multimedia import display_utility
+from autotest_lib.client.cros.multimedia import display_facade_native
 from autotest_lib.client.cros.video import chameleon_screenshot_capturer
 from autotest_lib.client.cros.video import golden_image_downloader
 from autotest_lib.client.cros.video import import_screenshot_capturer
@@ -328,7 +328,7 @@ class MediaTestFactory(object):
         return chameleon_screenshot_capturer.ChameleonScreenshotCapturer(
                 chameleon_board,
                 self.chameleon_interface,
-                display_utility.DisplayUtility(chrome),
+                display_facade_native.DisplayFacadeNative(chrome),
                 self.test_working_dir,
                 self.timeout_video_input_s,
                 box)

@@ -20,12 +20,12 @@ class ChameleonScreenshotCapturer(object):
     """
 
 
-    def __init__(self, chameleon_board, interface, display_utility, dest_dir,
+    def __init__(self, chameleon_board, interface, display_facade, dest_dir,
                  timeout_video_input_s, box=None):
         """
         @param chameleon_board: object representing the ChameleonBoard.
         @param interface: string, display interface to use. eg.: HDMI
-        @param display_utility: DisplayUtility object to interact with DUT
+        @param display_facade: display facade object to interact with DUT
         @param dest_dir: path, full path to the dest dir to put the screenshot.
         @param timeout_video_input_s: int, max time to wait for chameleon video
                                       input to become stable.
@@ -34,7 +34,7 @@ class ChameleonScreenshotCapturer(object):
 
         """
         self.chameleon_board = chameleon_board
-        self.display_utility = display_utility
+        self.display_facade = display_facade
         self.interface = interface.lower()
         self.dest_dir = dest_dir
         self.port = None
@@ -52,7 +52,7 @@ class ChameleonScreenshotCapturer(object):
 
         self.port.wait_video_input_stable(self.timeout_video_input_s)
 
-        self.display_utility.set_mirrored(True)
+        self.display_facade.set_mirrored(True)
         time.sleep(self.timeout_video_input_s)
 
         return self

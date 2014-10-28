@@ -13,7 +13,7 @@ from PIL import ImageChops
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import edid
 from autotest_lib.server import test
-from autotest_lib.server.cros.chameleon import multimedia_client_factory
+from autotest_lib.server.cros.chameleon import remote_facade_factory
 
 def _unlevel(p):
     """Unlevel a color value from TV level back to PC level
@@ -35,7 +35,7 @@ class ChameleonTest(test.test):
     """This is the base class of Chameleon tests.
 
     This base class initializes Chameleon board and its related services,
-    like connecting Chameleond and DisplayClient. Also kills the connections
+    like connecting Chameleond and DisplayFacade. Also kills the connections
     on cleanup.
     """
 
@@ -49,9 +49,9 @@ class ChameleonTest(test.test):
 
         @param host: The Host object of DUT.
         """
-        factory = multimedia_client_factory.MultimediaClientFactory(host)
-        self.audio_client = factory.create_audio_client()
-        self.display_client = factory.create_display_client()
+        factory = remote_facade_factory.RemoteFacadeFactory(host)
+        self.audio_facade = factory.create_audio_facade()
+        self.display_facade = factory.create_display_facade()
         self.chameleon = host.chameleon
         self.host = host
         self.chameleon_port = self._get_connected_port()
@@ -126,8 +126,8 @@ class ChameleonTest(test.test):
                 bubble and the external display detecting notation to disappear.
         """
 
-        self.display_client.load_calibration_image(image_size)
-        self.display_client.hide_cursor()
+        self.display_facade.load_calibration_image(image_size)
+        self.display_facade.hide_cursor()
         logging.info('Waiting for calibration image to stabilize.')
         time.sleep(calibration_image_setup_time)
 
@@ -135,7 +135,7 @@ class ChameleonTest(test.test):
     def unload_test_image(self):
         """Close the tab in browser to unload test image"""
 
-        self.display_client.close_tab()
+        self.display_facade.close_tab()
 
 
     def set_resolution(self, display_index, width, height):
@@ -149,7 +149,7 @@ class ChameleonTest(test.test):
 
         logging.info('Display %d: Set resolution to %d x %d', display_index,
             width, height)
-        self.display_client.set_resolution(display_index, width, height)
+        self.display_facade.set_resolution(display_index, width, height)
 
 
     def get_first_external_display_resolutions(self):
@@ -159,7 +159,7 @@ class ChameleonTest(test.test):
         @raise error.TestFail if no external display is found. """
         # TODO (tingyuan): Gets complete display modes data, instead of
         # resolution, to facilitate the subsequent use. (i.e. for image size)
-        display_info = self.display_client.get_display_info()
+        display_info = self.display_facade.get_display_info()
         test_display_index = None
 
         # get first external and enabled display
@@ -181,7 +181,7 @@ class ChameleonTest(test.test):
         if test_display_index is None:
             raise error.TestFail("No external display is found.")
 
-        resolutions = self.display_client.get_available_resolutions(
+        resolutions = self.display_facade.get_available_resolutions(
                 test_display_index)
 
         logging.info('External display %d (%s)%s: %d resolutions found.',
@@ -197,7 +197,7 @@ class ChameleonTest(test.test):
 
         @return True if mirrored mode is enabled.
         """
-        return self.display_client.is_mirrored_enabled()
+        return self.display_facade.is_mirrored_enabled()
 
 
     def set_mirrored(self, test_mirrored):
@@ -208,7 +208,7 @@ class ChameleonTest(test.test):
         """
 
         logging.info('Set mirrored: %s', test_mirrored)
-        self.display_client.set_mirrored(test_mirrored)
+        self.display_facade.set_mirrored(test_mirrored)
 
 
     def wait_for_full_wakeup(self, old_boot_id, resume_timeout):
@@ -250,7 +250,7 @@ class ChameleonTest(test.test):
         """
         while True:
             try:
-                if self.display_client.get_display_info():
+                if self.display_facade.get_display_info():
                     return True
             except xmlrpclib.Fault as ignored:
                 pass
@@ -271,7 +271,7 @@ class ChameleonTest(test.test):
         start_time = time.time()
         logging.info('Suspend and resume %.2f seconds', suspend_time)
         try:
-            self.display_client.suspend_resume(suspend_time)
+            self.display_facade.suspend_resume(suspend_time)
         except xmlrpclib.Fault as e:
             # log suspend/resume errors but continue the test
             logging.error('suspend_resume error: %s', str(e))
@@ -284,12 +284,12 @@ class ChameleonTest(test.test):
         """Reboots the DUT with logging.
 
         @param wait: True if want to wait DUT up and reconnect to
-                display client"""
+                display facade"""
 
         logging.info('Reboot...')
         self.host.reboot(wait=wait)
         if wait:
-           self.display_client.connect()
+           self.display_facade.connect()
 
 
     def reconnect_output(self, unplug_duration_sec=5):
@@ -298,11 +298,11 @@ class ChameleonTest(test.test):
         @param unplug_duration_sec: duration of unplug in second.
         """
         logging.info('Reconnect output...')
-        output = self.display_client.get_external_connector_name()
+        output = self.display_facade.get_external_connector_name()
         self.chameleon_port.unplug()
         time.sleep(unplug_duration_sec)
         self.chameleon_port.plug()
-        self.display_client.wait_for_output(output)
+        self.display_facade.wait_for_output(output)
 
 
     def cleanup(self):
@@ -344,7 +344,7 @@ class ChameleonTest(test.test):
             # It will be checked on the matching of the connect names.
             chameleon_port.wait_video_input_stable(
                     self._TIMEOUT_VIDEO_STABLE_PROBE)
-            output = self.display_client.get_external_connector_name()
+            output = self.display_facade.get_external_connector_name()
 
             # TODO(waihong): Make sure eDP work in this way.
             if output and output.startswith(connector_type):
@@ -358,7 +358,7 @@ class ChameleonTest(test.test):
         """Gets the name of the connected display connector of DUT.
 
         @return: A string for the connector name."""
-        connector = self.display_client.get_external_connector_name()
+        connector = self.display_facade.get_external_connector_name()
         logging.info('See the display on DUT: %s', connector)
         return connector
 
@@ -371,7 +371,7 @@ class ChameleonTest(test.test):
         @param timeout: Duration in second to retry checking the connector.
         @raise error.TestFail if the check does not pass.
         """
-        current_connector = self.display_client.get_external_connector_name()
+        current_connector = self.display_facade.get_external_connector_name()
         now = time.time()
         end_time = now + timeout
         while expected_connector != current_connector and now < end_time:
@@ -380,7 +380,7 @@ class ChameleonTest(test.test):
             time.sleep(0.5)
             now = time.time()
             current_connector = (
-                    self.display_client.get_external_connector_name())
+                    self.display_facade.get_external_connector_name())
 
         if expected_connector != current_connector:
             if expected_connector:
@@ -411,7 +411,7 @@ class ChameleonTest(test.test):
         # are the same as what is expected.
 
         chameleon_resolution = self.chameleon_port.get_resolution()
-        dut_resolution = self.display_client.get_external_resolution()
+        dut_resolution = self.display_facade.get_external_resolution()
 
         logging.info('Checking resolution with Chameleon (tag: %s).', tag)
         if expected_resolution != dut_resolution or (
@@ -529,7 +529,7 @@ class ChameleonTest(test.test):
 
         if pixel_diff_value_margin is None:
             # Tolerate pixel errors differently for VGA.
-            if self.display_client.get_external_connector_name() == 'VGA':
+            if self.display_facade.get_external_connector_name() == 'VGA':
                 pixel_diff_value_margin = (
                         self._PIXEL_DIFF_VALUE_MARGIN_FOR_ANALOG_SIGNAL)
             else:
@@ -542,7 +542,7 @@ class ChameleonTest(test.test):
             chameleon_image = Image.eval(chameleon_image, self._unlevel_func)
 
         logging.info('Capturing framebuffer on external display of DUT...')
-        dut_image_external = self.display_client.capture_external_screen()
+        dut_image_external = self.display_facade.capture_external_screen()
 
         if dut_image_external is None:
             message = 'Failed to capture the external screen image.'
@@ -550,7 +550,7 @@ class ChameleonTest(test.test):
             return message
 
         if verify_mirrored:
-            internal_resolution = self.display_client.get_internal_resolution()
+            internal_resolution = self.display_facade.get_internal_resolution()
             if internal_resolution is None:
                 message = 'Failed to detect the internal screen.'
                 logging.error(message)
@@ -571,7 +571,7 @@ class ChameleonTest(test.test):
 
         if verify_mirrored:
             logging.info('Capturing framebuffer on internal display of DUT...')
-            dut_image_internal = self.display_client.capture_internal_screen()
+            dut_image_internal = self.display_facade.capture_internal_screen()
             if dut_image_internal is None or (
                     dut_image_internal.size != internal_resolution):
                 message = 'Failed to capture the internal screen image.'
@@ -638,9 +638,9 @@ class ChameleonTest(test.test):
             return error_message
 
         if under_mirrored_mode:
-            test_image_size =  self.display_client.get_internal_resolution()
+            test_image_size =  self.display_facade.get_internal_resolution()
         else:
-            test_image_size =  self.display_client.get_external_resolution()
+            test_image_size =  self.display_facade.get_external_resolution()
 
         try:
             self.load_test_image(test_image_size)
@@ -715,6 +715,6 @@ class ChameleonTest(test.test):
 
         """
         if host == 'DUT':
-            return self.audio_client.playback(file_name)
+            return self.audio_facade.playback(file_name)
         raise NotImplementedError(
                 'Audio recording on %s is not supported' % host)

@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Utility to access the display-related functionality."""
+"""Facade to access the display-related functionality."""
 
 import multiprocessing
 import os
@@ -18,8 +18,11 @@ from autotest_lib.client.cros.multimedia import image_generator
 TimeoutException = telemetry.core.util.TimeoutException
 
 
-class DisplayUtility(object):
-    """Utility to access the display-related functionality."""
+class DisplayFacadeNative(object):
+    """Facade to access the display-related functionality.
+
+    The methods inside this class only accept Python native types.
+    """
 
     CALIBRATION_IMAGE_PATH = '/tmp/calibration.svg'
 

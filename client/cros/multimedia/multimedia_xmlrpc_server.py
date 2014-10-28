@@ -11,40 +11,41 @@ import logging
 import os
 import xmlrpclib
 
-import common   # pylint: disable=W0611
+import common   # pylint: disable-msg=W0611
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib.cros import chrome, xmlrpc_server
 from autotest_lib.client.cros import constants
-from autotest_lib.client.cros.multimedia import audio_utility
-from autotest_lib.client.cros.multimedia import display_utility
+from autotest_lib.client.cros.multimedia import audio_facade_native
+from autotest_lib.client.cros.multimedia import display_facade_native
 
 
 class MultimediaXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
     """XML RPC delegate for multimedia testing."""
 
     def __init__(self, chrome):
-        """Initializes the utility objects."""
-        self._utilities = {
-                'audio': audio_utility.AudioUtility(chrome),
-                'display': display_utility.DisplayUtility(chrome)
+        """Initializes the facade objects."""
+        self._facades = {
+            'audio': audio_facade_native.AudioFacadeNative(chrome),
+            'display': display_facade_native.DisplayFacadeNative(chrome)
         }
 
     def _dispatch(self, method, params):
-        """Dispatches the method to the proper utility.
+        """Dispatches the method to the proper facade.
 
         We turn off allow_dotted_names option. The method handles the dot
-        and dispatches the method to the proper utility, like DisplayUtility.
+        and dispatches the method to the proper native facade, like
+        DisplayFacadeNative.
 
         """
         try:
             if '.' not in method:
                 func = getattr(self, method)
             else:
-                util_name, method_name = method.split('.', 1)
-                if util_name in self._utilities:
-                    func = getattr(self._utilities[util_name], method_name)
+                facade_name, method_name = method.split('.', 1)
+                if facade_name in self._facades:
+                    func = getattr(self._facades[facade_name], method_name)
                 else:
-                    raise Exception('unknown utility: %s' % util_name)
+                    raise Exception('unknown facade: %s' % facade_name)
         except AttributeError:
             raise Exception('method %s not supported' % method)
 

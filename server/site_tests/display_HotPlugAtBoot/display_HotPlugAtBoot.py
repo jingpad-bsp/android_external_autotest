@@ -31,7 +31,7 @@ class display_HotPlugAtBoot(chameleon_test.ChameleonTest):
                      self.chameleon_port.get_connector_type(),
                      width, height)
         # Keep the original connector name, for later comparison.
-        expected_connector = self.display_client.get_external_connector_name()
+        expected_connector = self.display_facade.get_external_connector_name()
         logging.info('See the display on DUT: %s', expected_connector)
 
         self.set_mirrored(test_mirrored)
@@ -50,7 +50,7 @@ class display_HotPlugAtBoot(chameleon_test.ChameleonTest):
             self.set_plug(plugged_after_boot)
             host.test_wait_for_boot(boot_id)
 
-            self.display_client.connect()
+            self.display_facade.connect()
             self.check_external_display_connector(
                     expected_connector if plugged_after_boot else False)
 

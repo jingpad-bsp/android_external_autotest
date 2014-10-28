@@ -37,7 +37,7 @@ class display_HotPlugNoisy(chameleon_test.ChameleonTest):
                      self.chameleon_port.get_connector_type(),
                      width, height)
         # Keep the original connector name, for later comparison.
-        expected_connector = self.display_client.get_external_connector_name()
+        expected_connector = self.display_facade.get_external_connector_name()
         logging.info('See the display on DUT: %s', expected_connector)
 
         self.set_mirrored(test_mirrored)
