@@ -67,7 +67,8 @@ class ChameleonScreenshotCapturer(object):
 
         """
         self.chameleon_board.reset()
-        finder = chameleon_port_finder.ChameleonPortFinder(self.chameleon_board)
+        finder = chameleon_port_finder.ChameleonPortFinder(
+                self.chameleon_board, self.display_facade)
 
         connected_port = finder.find_video_port(self.interface)
 

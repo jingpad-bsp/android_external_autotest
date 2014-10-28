@@ -12,6 +12,7 @@ from PIL import ImageChops
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import retry
+from autotest_lib.client.cros.chameleon import chameleon_port_finder
 from autotest_lib.client.cros.chameleon import edid
 from autotest_lib.client.cros.multimedia import image_generator
 from autotest_lib.server import test
@@ -59,9 +60,8 @@ class ChameleonTest(test.test):
         self.display_facade = factory.create_display_facade()
         self.chameleon = host.chameleon
         self.host = host
+        # TODO(waihong): Support multiple connectors.
         self.chameleon_port = self._get_connected_port()
-        if self.chameleon_port is None:
-            raise error.TestError('DUT and Chameleon board not connected')
         self._platform_prefix = host.get_platform().lower().split('_')[0]
 
 
@@ -346,30 +346,21 @@ class ChameleonTest(test.test):
     def _get_connected_port(self):
         """Gets the first connected output port between Chameleon and DUT.
 
+        This method also plugs this port at the end.
+
         @return: A ChameleonPort object.
         """
         self.chameleon.reset()
-        # TODO(waihong): Support multiple connectors.
-        for chameleon_port in self.chameleon.get_all_ports():
-            # Skip the non-video port.
-            if not chameleon_port.has_video_support():
-                continue
-
-            connector_type = chameleon_port.get_connector_type()
-            # Plug to ensure the connector is plugged.
-            chameleon_port.plug()
-            # Don't care about video input stable in the end or timeout.
-            # It will be checked on the matching of the connect names.
-            chameleon_port.wait_video_input_stable(
-                    self._TIMEOUT_VIDEO_STABLE_PROBE)
-            output = self.display_facade.get_external_connector_name()
-
-            # TODO(waihong): Make sure eDP work in this way.
-            if output and output.startswith(connector_type):
-                return chameleon_port
-            # Unplug the port if it is not the connected.
-            chameleon_port.unplug()
-        return None
+        finder = chameleon_port_finder.ChameleonPortFinder(self.chameleon,
+                                                           self.display_facade)
+        ports = finder.find_all_video_ports()
+        if len(ports.connected) == 0:
+            raise error.TestError('DUT and Chameleon board not connected')
+        # Plug the first port and return it.
+        first_port = ports.connected[0]
+        first_port.plug()
+        first_port.wait_video_input_stable(self._TIMEOUT_VIDEO_STABLE_PROBE)
+        return first_port
 
 
     @retry.retry(xmlrpclib.Fault,

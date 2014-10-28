@@ -4,8 +4,6 @@
 
 from collections import namedtuple
 
-from autotest_lib.client.cros.graphics import graphics_utils
-
 ChameleonPorts = namedtuple('ChameleonPorts', 'connected failed')
 
 
@@ -15,13 +13,16 @@ class ChameleonPortFinder(object):
 
     """
 
-    def __init__(self, chameleon_board):
+    def __init__(self, chameleon_board, display_facade):
         """
         @param chameleon_board: a ChameleonBoard object representing the Chameleon
                                 board whose ports we are interested in finding.
+        @param display_facade: a display facade object, to access the DUT display
+                               functionality, either locally or remotely.
 
         """
         self.chameleon_board = chameleon_board
+        self.display_facade = display_facade
         self._TIMEOUT_VIDEO_STABLE_PROBE = 10
         self.connected = None
         self.failed = None
@@ -54,12 +55,9 @@ class ChameleonPortFinder(object):
             chameleon_port.wait_video_input_stable(
                 self._TIMEOUT_VIDEO_STABLE_PROBE)
 
-            # Add the connected ports if they are detected by xrandr.
-            xrandr_output = graphics_utils.get_xrandr_output_state()
-            for output in xrandr_output.iterkeys():
-                if output.startswith(connector_type):
-                    connected_ports.append(chameleon_port)
-                    break
+            output = self.display_facade.get_external_connector_name()
+            if output and output.startswith(connector_type):
+                connected_ports.append(chameleon_port)
             else:
                 dut_failed_ports.append(chameleon_port)
 
