@@ -36,6 +36,11 @@ extern "C" {
 
 // #define WINDOW_BPP              16
 
+// IHF: For ChromeOS we don't really use SanAngeles as a benchmark, but as a
+// simple test to exercise the graphics pipeline. Hence we can speed up the time
+// in the test by a large factor and still get all the benefit from running it.
+#define TIME_SPEEDUP             10
+
 
 // The simple framework expects the application code to define these functions.
 extern int appInit();

@@ -360,7 +360,8 @@ int main(int argc, char *argv[])
             struct timeval timeNow, timeAfter;
 
             gettimeofday(&timeNow, NULL);
-            appRender(timeNow.tv_sec * 1000 + timeNow.tv_usec / 1000,
+            appRender(TIME_SPEEDUP * (timeNow.tv_sec * 1000 +
+                                      timeNow.tv_usec / 1000),
                       sWindowWidth, sWindowHeight);
             gettimeofday(&timeAfter, NULL);
 #ifdef SAN_ANGELES_OBSERVATION_GLES
