@@ -1,11 +1,11 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 NAME = 'graphics_GLMark2'
 AUTHOR = 'chromeos-gfx'
 PURPOSE = 'Benchmark the graphics library performance.'
-SUITE = 'graphics_per-day, graphics, graphics_system'
+SUITE = 'bvt-cq'
 TIME='MEDIUM'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = "gl"
@@ -24,4 +24,4 @@ OpenGL 2.0 API that is compatible with OpenGL ES 2.0.
 https://launchpad.net/glmark2
 """
 
-job.run_test('graphics_GLMark2')
+job.run_test('graphics_GLMark2', hasty = True)

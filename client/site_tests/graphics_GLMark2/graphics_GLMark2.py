@@ -2,9 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
-# Run the test with validation_mode=True to invoke glmark2 to do quick
-# validation that runs in a second. When glmark2 is run in normal mode, it
-# outputs a final performance score, and the test checks the performance score
+# GLMark outputs a final performance score, and it checks the performance score
 # against minimum requirement if min_score is set.
 
 import logging
@@ -44,7 +42,7 @@ class graphics_GLMark2(test.test):
 
     def cleanup(self):
         if self._services:
-          self._services.restore_services()
+            self._services.restore_services()
         if self.GSC:
             keyvals = self.GSC.get_memory_keyvals()
             for key, val in keyvals.iteritems():
@@ -53,7 +51,7 @@ class graphics_GLMark2(test.test):
             self.GSC.finalize()
             self.write_perf_keyval(keyvals)
 
-    def run_once(self, size='800x600', validation_mode=False, min_score=None):
+    def run_once(self, size='800x600', hasty=False, min_score=None):
         dep = 'glmark2'
         dep_dir = os.path.join(self.autodir, 'deps', dep)
         self.job.install_pkg(dep, 'dep', dep_dir)
@@ -67,10 +65,11 @@ class graphics_GLMark2(test.test):
         options = []
         options.append('--data-path %s' % glmark2_data)
         options.append('--size %s' % size)
-        if validation_mode:
-            options.append('--validate')
+        options.append('--annotate')
+        if hasty:
+            options.append('-b :duration=0.2')
         else:
-            options.append('--annotate')
+            options.append('-b :duration=2')
         cmd = '%s %s' % (glmark2, ' '.join(options))
 
         # If UI is running, we must stop it and restore later.
@@ -105,7 +104,9 @@ class graphics_GLMark2(test.test):
             if line.startswith('Error:'):
                 raise error.TestFail(line)
 
-        if not validation_mode:
+        # Numbers in hasty mode are not as reliable, so don't send them to
+        # the dashboard etc.
+        if not hasty:
             keyvals = {}
             score = None
             test_re = re.compile(GLMARK2_TEST_RE)
