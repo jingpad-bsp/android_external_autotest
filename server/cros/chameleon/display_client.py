@@ -73,7 +73,7 @@ class DisplayClient(object):
 
         @param index: The tab index to close. Defaults to the last tab.
         """
-        return self._display_proxy.close_tab(index)
+        self._display_proxy.close_tab(index)
 
 
     def is_mirrored_enabled(self):
@@ -98,7 +98,7 @@ class DisplayClient(object):
         @param suspend_time: Suspend time in second, default: 10s.
         """
         # TODO(waihong): Use other general API instead of this RPC.
-        return self._display_proxy.suspend_resume(suspend_time)
+        self._display_proxy.suspend_resume(suspend_time)
 
 
     def suspend_resume_bg(self, suspend_time=10):
@@ -107,7 +107,7 @@ class DisplayClient(object):
         @param suspend_time: Suspend time in second, default: 10s.
         """
         # TODO(waihong): Use other general API instead of this RPC.
-        return self._display_proxy.suspend_resume_bg(suspend_time)
+        self._display_proxy.suspend_resume_bg(suspend_time)
 
 
     def wait_for_output(self, output):
@@ -120,7 +120,7 @@ class DisplayClient(object):
 
     def hide_cursor(self):
         """Hides mouse cursor by sending a keystroke."""
-        self._display_proxy.press_key('Up')
+        self._display_proxy.hide_cursor()
 
 
     def _read_root_window_rect(self, w, h, x, y):
@@ -217,20 +217,5 @@ class DisplayClient(object):
 
         @return a list of (width, height) tuples.
         """
-        # Start from M38 (refer to http://codereview.chromium.org/417113012),
-        # a DisplayMode dict contains 'originalWidth'/'originalHeight'
-        # in addition to 'width'/'height'.
-        # OriginalWidth/originalHeight is what is supported by the display
-        # while width/height is what is shown to users in the display setting.
-        modes = self.get_display_modes(display_index)
-        if modes:
-            if 'originalWidth' in modes[0]:
-                # M38 or newer
-                # TODO(tingyuan): fix loading image for cases where original
-                #                 width/height is different from width/height.
-                return list(set([(mode['originalWidth'], mode['originalHeight'])
-                        for mode in modes]))
-
-        # pre-M38
-        return [(mode['width'], mode['height']) for mode in modes
-                if 'scale' not in mode]
+        return [tuple(r) for r in
+                self._display_proxy.get_available_resolutions(display_index)]

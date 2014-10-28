@@ -114,6 +114,30 @@ class DisplayUtility(object):
             tab.Close()
 
 
+    def get_available_resolutions(self, display_index):
+        """Gets the resolutions from the specified display.
+
+        @return a list of (width, height) tuples.
+        """
+        # Start from M38 (refer to http://codereview.chromium.org/417113012),
+        # a DisplayMode dict contains 'originalWidth'/'originalHeight'
+        # in addition to 'width'/'height'.
+        # OriginalWidth/originalHeight is what is supported by the display
+        # while width/height is what is shown to users in the display setting.
+        modes = self.get_display_modes(display_index)
+        if modes:
+            if 'originalWidth' in modes[0]:
+                # M38 or newer
+                # TODO(tingyuan): fix loading image for cases where original
+                #                 width/height is different from width/height.
+                return list(set([(mode['originalWidth'], mode['originalHeight'])
+                        for mode in modes]))
+
+        # pre-M38
+        return [(mode['width'], mode['height']) for mode in modes
+                if 'scale' not in mode]
+
+
     def set_resolution(self, display_index, width, height, timeout=3):
         """Sets the resolution of the specified display.
 
@@ -257,6 +281,13 @@ class DisplayUtility(object):
         Emulates L_Ctrl + Maximize in X server to toggle mirrored.
         """
         self.press_key('ctrl+F4')
+        return True
+
+
+    def hide_cursor(self):
+        """Hides mouse cursor."""
+        # Send a keystroke to hide the cursor.
+        self.press_key('Up')
         return True
 
 
