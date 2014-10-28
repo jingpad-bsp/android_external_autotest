@@ -3,7 +3,6 @@ bin:!:1:root,bin,daemon
 daemon:!:2:root,bin,daemon
 sys:!:3:root,bin,adm
 adm:!:4:root,adm,daemon
-tty:!:5:xorg,power,brltty
 disk:!:6:root,adm
 lp:!:7:lp
 mem:!:8:
@@ -16,7 +15,6 @@ console:!:17:
 audio:!:18:cras,chronos,volume
 cdrom:!:19:
 tape:!:26:root
-video:!:27:root,chronos,xorg
 cdrw:!:80:
 usb:!:85:mtp,brltty
 users:!:100:games
@@ -42,7 +40,6 @@ openvpn:!:217:
 bluetooth:!:218:
 wpa:!:219:root
 cras:!:220:chronos,power
-input:!:222:cras,xorg,power
 chaps:!:223:
 dhcp:!:224:
 mtp:!:226:
@@ -50,7 +47,6 @@ proxystate:!:227:
 power:!:228:
 watchdog:!:229:
 devbroker:!:230:
-xorg:!:231:
 nfqueue:!:232:
 tlsdate-dbus:!:233:
 tlsdate:!:234:

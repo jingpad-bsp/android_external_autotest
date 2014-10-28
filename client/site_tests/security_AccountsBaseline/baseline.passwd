@@ -33,7 +33,6 @@ proxystate:!:227:227::/dev/null:/bin/false
 power:!:228:228::/dev/null:/bin/false
 watchdog:!:229:229::/dev/null:/bin/false
 devbroker:!:230:230::/dev/null:/bin/false
-xorg:!:231:231::/dev/null:/bin/false
 nfqueue:!:232:232::/dev/null:/bin/false
 tlsdate-dbus:!:233:233::/dev/null:/bin/false
 tlsdate:!:234:234::/dev/null:/bin/false

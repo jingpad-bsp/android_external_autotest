@@ -6,7 +6,7 @@ import logging
 import os
 import shutil
 
-from autotest_lib.client.bin import test
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
 class security_AccountsBaseline(test.test):
@@ -60,6 +60,17 @@ class security_AccountsBaseline(test.test):
 
         expected_entries = self.load_path(
             os.path.join(self.bindir, 'baseline.%s' % basename))
+
+        # TODO(spang): Remove this once per-board baselines are supported
+        # (crbug.com/406013).
+        if utils.is_freon():
+            extra_baseline = 'baseline.%s.freon' % basename
+        else:
+            extra_baseline = 'baseline.%s.x11' % basename
+
+        expected_entries += self.load_path(
+            os.path.join(self.bindir, extra_baseline))
+
         actual_entries = self.load_path('/etc/%s' % basename)
 
         if len(actual_entries) > len(expected_entries):
