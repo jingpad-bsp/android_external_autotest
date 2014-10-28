@@ -12,7 +12,11 @@ from autotest_lib.client.cros import constants, cros_ui, login
 
 
 class security_RestartJob(test.test):
+    """Verifies that RestartJob cannot be abused to execute arbitrary processes.
+    """
     version = 1
+
+
     _FLAGFILE = '/tmp/security_RestartJob_regression'
 
 
@@ -22,9 +26,6 @@ class security_RestartJob(test.test):
 
 
     def run_once(self):
-        """Verifies that RestartJob cannot be abused to execute
-        arbitrary processes.
-        """
         login.wait_for_browser()
         bus = dbus.SystemBus()
         proxy = bus.get_object('org.chromium.SessionManager',
@@ -47,13 +48,14 @@ class security_RestartJob(test.test):
             if sessionmanager.RestartJob(pid, cmd):
                 raise error.TestFail(
                         'RestartJob regression, see crbug.com/193322')
-        except dbus.DBusException:
+        except dbus.DBusException as e:
+            logging.info(e.get_dbus_message())
             pass
 
-        testfail = os.path.exists(self._FLAGFILE)
-
-        # Clean up before we throw TestFail, since this test killed Chrome.
-        cros_ui.nuke()
-
-        if testfail:
+        if os.path.exists(self._FLAGFILE):
             raise error.TestFail('RestartJob regression, see crbug.com/189233')
+
+
+    def cleanup(self):
+        # Clean up, since this test killed Chrome.
+        cros_ui.nuke()
