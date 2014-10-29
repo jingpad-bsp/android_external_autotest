@@ -15,6 +15,7 @@ from datetime import datetime
 from datetime import timedelta
 
 import common
+from autotest_lib.client.common_lib import mail
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.site_utils import host_history
@@ -30,6 +31,7 @@ def report_stats(board, pool, start_time, end_time, span):
     @param start_time: start time to collect stats.
     @param end_time: end time to collect stats.
     @param span: Number of hours that the stats should be collected for.
+    @return: Error message collected when calculating the stats.
     """
     print '================ %-12s %-12s ================' % (board, pool)
     try:
@@ -53,10 +55,19 @@ def report_stats(board, pool, start_time, end_time, span):
         for status, interval in stats_all.iteritems():
             total += interval
         if abs(total - total_time) > 10:
-            print ('Status intervals do not add up. No stats will be collected '
-                   'for board: %s, pool: %s, diff: %s' %
-                   (board, pool, total - total_time))
-            return
+            error = ('Status intervals do not add up. No stats will be '
+                     'collected for board: %s, pool: %s, diff: %s' %
+                     (board, pool, total - total_time))
+            hosts = []
+            for history_for_host in status_intervals:
+                total = 0
+                for interval in history_for_host.keys():
+                    total += interval[1] - interval[0]
+                if total > span*3600:
+                    hosts.append(history_for_host.values()[0]['metadata']['hostname'])
+            error += ' hosts: %s' % ','.join(hosts)
+            print error
+            return error
 
         mur = host_history_utils.get_machine_utilization_rate(stats_all)
         mar = host_history_utils.get_machine_availability_rate(stats_all)
@@ -79,12 +90,13 @@ def report_stats(board, pool, start_time, end_time, span):
 def main():
     """main script. """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--span', type=int, dest='span',
+    parser.add_argument('--span', type=int, dest='span', default=1,
                         help=('Number of hours that stats should be collected. '
                               'If it is set to 24, the end time of stats being '
                               'collected will set to the mid of the night. '
-                              'Default is set to 1 hour.'),
-                        default=1)
+                              'Default is set to 1 hour.'))
+    parser.add_argument('-e', '--email', dest='email', default=None,
+                        help='Email any errors to the given email address.')
     options = parser.parse_args()
 
     boards = host_label_utils.get_all_boards()
@@ -104,9 +116,17 @@ def main():
            (time_utils.epoch_time_to_date_string(start_time),
             time_utils.epoch_time_to_date_string(end_time)))
 
+    errors = []
     for board in boards:
         for pool in pools:
-            report_stats(board, pool, start_time, end_time, options.span)
+            error = report_stats(board, pool, start_time, end_time,
+                                 options.span)
+            if error:
+                errors.append(error)
+    if options.email and errors:
+        mail.send('chromeos-test@google.com', [options.email], [],
+                  'Error occured when collecting host stats.',
+                  '\n'.join(errors))
 
 
 if __name__ == '__main__':
