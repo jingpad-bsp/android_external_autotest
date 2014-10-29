@@ -11,6 +11,7 @@ from PIL import Image
 from PIL import ImageChops
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.cros.chameleon import edid
 from autotest_lib.server import test
 from autotest_lib.server.cros.chameleon import remote_facade_factory
@@ -43,6 +44,9 @@ class ChameleonTest(test.test):
 
     _PIXEL_DIFF_VALUE_MARGIN_FOR_ANALOG_SIGNAL = 5
     _PIXEL_DIFF_VALUE_MARGIN_FOR_DIGITAL_SIGNAL = 1
+
+    _FLAKY_CALL_RETRY_TIME_OUT_SEC = 20
+    _FLAKY_CALL_RETRY_DELAY_SEC = 1
 
     def initialize(self, host):
         """Initializes.
@@ -200,6 +204,9 @@ class ChameleonTest(test.test):
         return self.display_facade.is_mirrored_enabled()
 
 
+    @retry.retry(xmlrpclib.Fault,
+                 timeout_min=_FLAKY_CALL_RETRY_TIME_OUT_SEC / 60.0,
+                 delay_sec=_FLAKY_CALL_RETRY_DELAY_SEC)
     def set_mirrored(self, test_mirrored):
         """Sets the external display is in mirrored mode or extended mode
 
@@ -292,17 +299,30 @@ class ChameleonTest(test.test):
            self.display_facade.connect()
 
 
+    @retry.retry(xmlrpclib.Fault,
+                 timeout_min=_FLAKY_CALL_RETRY_TIME_OUT_SEC / 60.0,
+                 delay_sec=_FLAKY_CALL_RETRY_DELAY_SEC)
+    def wait_for_output(self, output):
+        """Waits for the specified output to be connected.
+
+        @param output: name of the output in a string.
+        @raise error.TestFail if output fails to get connected.
+        """
+        if not self.display_facade.wait_for_output(output):
+            raise error.TestFail('Fail to get %s connected' % output)
+
+
     def reconnect_output(self, unplug_duration_sec=5):
         """Reconnects the output with an unplug followed by a plug.
 
         @param unplug_duration_sec: duration of unplug in second.
         """
         logging.info('Reconnect output...')
-        output = self.display_facade.get_external_connector_name()
+        output = self.get_dut_display_connector()
         self.chameleon_port.unplug()
         time.sleep(unplug_duration_sec)
         self.chameleon_port.plug()
-        self.display_facade.wait_for_output(output)
+        self.wait_for_output(output)
 
 
     def cleanup(self):
@@ -354,6 +374,9 @@ class ChameleonTest(test.test):
         return None
 
 
+    @retry.retry(xmlrpclib.Fault,
+                 timeout_min=_FLAKY_CALL_RETRY_TIME_OUT_SEC / 60.0,
+                 delay_sec=_FLAKY_CALL_RETRY_DELAY_SEC)
     def get_dut_display_connector(self):
         """Gets the name of the connected display connector of DUT.
 
@@ -371,7 +394,7 @@ class ChameleonTest(test.test):
         @param timeout: Duration in second to retry checking the connector.
         @raise error.TestFail if the check does not pass.
         """
-        current_connector = self.display_facade.get_external_connector_name()
+        current_connector = self.get_dut_display_connector()
         now = time.time()
         end_time = now + timeout
         while expected_connector != current_connector and now < end_time:

@@ -116,8 +116,9 @@ class DisplayFacadeRemoteAdapter(object):
         """Waits for the specified output to be connected.
 
         @param output: The output name as a string.
+        @return: True if output is connected; False otherwise.
         """
-        self._display_proxy.wait_output_connected(output)
+        return self._display_proxy.wait_output_connected(output)
 
 
     def hide_cursor(self):
