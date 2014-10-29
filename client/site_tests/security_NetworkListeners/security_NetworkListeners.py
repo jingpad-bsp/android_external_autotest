@@ -105,17 +105,18 @@ class security_NetworkListeners(test.test):
 
             # If something in the observed set is not
             # covered by the baseline...
-            diff = observed_set.difference(baseline_set)
-            if diff:
-                for daemon in diff:
+            new_listeners = observed_set.difference(baseline_set)
+            if new_listeners:
+                for daemon in new_listeners:
                     logging.error('Unexpected network listener: %s', daemon)
 
             # Or, things in baseline are missing from the system:
-            diff2 = baseline_set.difference(observed_set)
-            if diff2:
-                for daemon in diff2:
-                    logging.error('Missing expected network listener: %s',
-                                  daemon)
+            missing_listeners = baseline_set.difference(observed_set)
+            if missing_listeners:
+                for daemon in missing_listeners:
+                    logging.warning('Missing expected network listener: %s',
+                                    daemon)
 
-            if diff or diff2:
+            # Only fail if there's unexpected listeners.
+            if new_listeners:
                 raise error.TestFail('Baseline mismatch')
