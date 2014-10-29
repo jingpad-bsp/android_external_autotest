@@ -62,6 +62,9 @@ class bluetooth_SDP_ServiceSearchAttributeRequest(bluetooth_test.BluetoothTest):
                                         0x0002  # TP/SERVER/SSA/BV-18-C
                                        ]
 
+    ERROR_CODE_INVALID_SYNTAX        = 0x0003
+    ERROR_CODE_INVALID_PDU_SIZE      = 0x0004
+
 
     def build_service_record(self):
         """Build SDP record manually for the fake service.
@@ -341,6 +344,44 @@ class bluetooth_SDP_ServiceSearchAttributeRequest(bluetooth_test.BluetoothTest):
         return True
 
 
+    def test_invalid_request_syntax(self):
+        """Implementation of test TP/SERVER/SSA/BI-01-C from SDP Specification.
+
+        @return True if test passes, False if test fails
+
+        """
+        for size in 16, 32, 128:
+            value = self.tester.service_search_attribute_request(
+                        [self.SDP_SERVER_CLASS_ID],
+                        self.MAX_ATTR_BYTE_CNT,
+                        [self.SERVICE_CLASS_ID_ATTRIBUTE_ID],
+                        size,
+                        invalid_request='9875')
+            if value != self.ERROR_CODE_INVALID_SYNTAX:
+                return False
+
+        return True
+
+
+    def test_invalid_pdu_size(self):
+        """Implementation of test TP/SERVER/SSA/BI-02-C from SDP Specification.
+
+        @return True if test passes, False if test fails
+
+        """
+        for size in 16, 32, 128:
+            value = self.tester.service_search_attribute_request(
+                        [self.SDP_SERVER_CLASS_ID],
+                        self.MAX_ATTR_BYTE_CNT,
+                        [self.SERVICE_CLASS_ID_ATTRIBUTE_ID],
+                        size,
+                        forced_pdu_size=100)
+            if value != self.ERROR_CODE_INVALID_PDU_SIZE:
+                return False
+
+        return True
+
+
     def correct_request(self):
         """Run tests for Service Search Attribute request.
 
@@ -366,7 +407,9 @@ class bluetooth_SDP_ServiceSearchAttributeRequest(bluetooth_test.BluetoothTest):
                 self.test_client_executable_url_attribute() and
                 self.test_additional_protocol_descriptor_list_attribute() and
                 self.test_fake_attributes() and
-                self.test_continuation_state())
+                self.test_continuation_state() and
+                self.test_invalid_request_syntax() and
+                self.test_invalid_pdu_size())
 
 
     def run_once(self):

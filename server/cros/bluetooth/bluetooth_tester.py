@@ -169,7 +169,9 @@ class BluetoothTester(object):
 
 
     def service_search_attribute_request(self, uuids, max_attr_byte_count,
-                                         attr_ids, preferred_size=32):
+                                         attr_ids, preferred_size=32,
+                                         forced_pdu_size=None,
+                                         invalid_request=None):
         """Send a Service Search Attribute Request
 
         @param uuids: list of UUIDs (as integers) to look for.
@@ -178,6 +180,11 @@ class BluetoothTester(object):
         @param attr_ids: a list, where each element is either an attribute ID
                or a range of attribute IDs.
         @param preferred_size: Preffered size of UUIDs in bits (16, 32, or 128).
+        @param forced_pdu_size: Use certain PDU size parameter instead of
+               calculating actual length of sequence.
+        @param invalid_request: Whether to send request with intentionally
+               invalid syntax for testing purposes (string to be prepended
+               to correct request).
 
         @return list of found attributes IDs and their values or Error Code
 
@@ -185,7 +192,9 @@ class BluetoothTester(object):
         return self._proxy.service_search_attribute_request(uuids,
                                                             max_attr_byte_count,
                                                             attr_ids,
-                                                            preferred_size)
+                                                            preferred_size,
+                                                            forced_pdu_size,
+                                                            invalid_request)
 
 
 def create_host_from(device_host):

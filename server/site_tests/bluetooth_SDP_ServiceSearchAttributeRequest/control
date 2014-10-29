@@ -21,6 +21,7 @@ The tester sends a Service Search Attribute Request to the DUT, checking:
 * existing Service, existing Attribute
 * various specific attributes, listed in Test Specification
 * correctness of continuation state behavior
+* responses to invalid requests
 
 This test covers the following Bluetooth SIG test cases:
 TP/SERVER/SSA/BV-01-C
@@ -45,6 +46,8 @@ TP/SERVER/SSA/BV-20-C
 TP/SERVER/SSA/BV-21-C
 TP/SERVER/SSA/BV-22-C
 TP/SERVER/SSA/BV-23-C
+TP/SERVER/SSA/BI-01-C
+TP/SERVER/SSA/BI-02-C
 
 """
 
