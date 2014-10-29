@@ -10,8 +10,16 @@ from autotest_lib.client.common_lib import error
 
 import numpy
 
+import perf_lbr_verification
 import perf_verification
 import stats_utils
+
+
+INTEL_LBR_UARCHS = (
+    'Broadwell',
+    'Haswell',
+    'IvyBridge',
+    'SandyBridge')
 
 
 class hardware_PerfCounterVerification(test.test):
@@ -27,8 +35,9 @@ class hardware_PerfCounterVerification(test.test):
     version = 1
     preserve_srcdir = True
 
-    def initialize(self, events=('cycles', 'instructions')):
+    def initialize(self, perf_cmd='stat', events=('cycles', 'instructions')):
         self.job.require_gcc()
+        self.perf_cmd = perf_cmd
         self.events = events
 
     def setup(self):
@@ -36,17 +45,38 @@ class hardware_PerfCounterVerification(test.test):
         utils.make('clean')
         utils.make()
 
+    def warmup(self):
+        if self.perf_cmd == 'record -b':
+            uarch = utils.get_intel_cpu_uarch()
+            if uarch not in INTEL_LBR_UARCHS:
+                raise error.TestNAError('Unsupported microarchitecture.')
+
     def run_once(self, **kwargs):
         noploop = os.path.join(self.srcdir, 'noploop')
-        self.facts = perf_verification.GatherPerfStats(
-                noploop, ','.join(self.events))
+        if self.perf_cmd == 'stat':
+            self.facts = perf_verification.GatherPerfStats(
+                    noploop, ','.join(self.events))
+        elif self.perf_cmd == 'record -b':
+            branch = perf_lbr_verification.ReadBranchAddressesFile(
+                    os.path.join(self.srcdir, 'noploop_branch.txt'))
+            self.facts = perf_lbr_verification.GatherPerfBranchSamples(
+                    noploop, branch, ','.join(self.events),
+                    10000)
+        else:
+            raise error.TestError('Unrecognized perf_cmd')
+
 
     def postprocess_iteration(self):
-        dt = numpy.dtype([('loops', numpy.int)] +
-                         [(e, numpy.int) for e in self.events])
+        if self.perf_cmd == 'stat':
+            dt = numpy.dtype([('loops', numpy.int)] +
+                             [(e, numpy.int) for e in self.events])
+        elif self.perf_cmd == 'record -b':
+            dt = numpy.dtype([('loops', numpy.int),
+                              ('branch_count', numpy.int)])
         arr = stats_utils.FactsToNumpyArray(self.facts, dt)
         results = {}
-        for y_var in self.events:
+        for y_var in dt.names:
+            if y_var == 'loops': continue
             (slope, intercept), r2 = stats_utils.LinearRegression(
                     arr['loops'], arr[y_var])
             prefix = y_var + '_'
@@ -70,3 +100,6 @@ class hardware_PerfCounterVerification(test.test):
             results['instructions_r_squared'] < 0.999999):
             raise error.TestFail('Poor correlation for instructions ~ loops')
 
+        if (self.perf_cmd == 'record -b' and
+            results['branch_count_r_squared'] < 0.9999999):
+            raise error.TestFail('Poor correlation for branch_count ~ loops')

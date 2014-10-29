@@ -18,5 +18,8 @@ Arguments:
     multiplexing may occur if more than one is specified.
 """
 
-job.run_test('hardware_PerfCounterVerification',
-             events=('cycles', 'instructions'))
+job.run_test('hardware_PerfCounterVerification', tag='cycles_instructions',
+             perf_cmd='stat', events=('cycles', 'instructions'))
+
+job.run_test('hardware_PerfCounterVerification', tag='LBR',
+             perf_cmd='record -b', events=('br_inst_retired.any',))
