@@ -90,10 +90,11 @@ class graphics_GLMark2(test.test):
 
         # TODO(ihf): Switch this test to use perf.PerfControl like
         #            graphics_GLBench once it is stable. crbug.com/344766.
-        if not utils.wait_for_idle_cpu(60.0, 0.1):
-            raise error.TestFail('Could not get idle CPU.')
-        if not utils.wait_for_cool_machine():
-            raise error.TestFail('Could not get cold machine.')
+        if not hasty:
+            if not utils.wait_for_idle_cpu(60.0, 0.1):
+                raise error.TestFail('Could not get idle CPU.')
+            if not utils.wait_for_cool_machine():
+                raise error.TestFail('Could not get cold machine.')
 
         result = utils.run(cmd,
                            stderr_is_expected = False,
