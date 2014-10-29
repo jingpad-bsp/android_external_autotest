@@ -16,6 +16,9 @@ from autotest_lib.server.cros import wifi_test_utils
 from autotest_lib.server.cros.network import attenuator_controller
 from autotest_lib.server.cros.network import wifi_client
 
+from collections import namedtuple
+
+ConnectTime = namedtuple('ConnectTime', 'state, time')
 
 class WiFiTestContextManager(object):
     """A context manager for state used in WiFi autotests.
@@ -287,6 +290,7 @@ class WiFiTestContextManager(object):
         @param timeout_seconds int number of seconds to wait for
                 connection on the given frequency.
 
+        @returns a named tuple of (state, time)
         """
         POLLING_INTERVAL_SECONDS = 1.0
         start_time = time.time()
@@ -296,7 +300,7 @@ class WiFiTestContextManager(object):
             ap_num = 0
         desired_subnet = self.router.get_wifi_ip_subnet(ap_num)
         while duration() < timeout_seconds:
-            success, state, _ = self.client.wait_for_service_states(
+            success, state, conn_time  = self.client.wait_for_service_states(
                     ssid, self.CONNECTED_STATES, timeout_seconds - duration())
             if not success:
                 time.sleep(POLLING_INTERVAL_SECONDS)
@@ -319,7 +323,7 @@ class WiFiTestContextManager(object):
                 continue
 
             self.assert_ping_from_dut(ap_num=ap_num)
-            return
+            return ConnectTime(state, conn_time)
 
         freq_error_str = (' on frequency %d Mhz' % freq) if freq else ''
         raise error.TestFail(
