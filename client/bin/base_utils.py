@@ -286,6 +286,26 @@ def get_modules_dir():
     return '/lib/modules/%s/kernel' % kernel_version
 
 
+_CPUINFO_RE = re.compile(r'^(?P<key>[^\t]*)\t*: ?(?P<value>.*)$')
+
+def get_cpuinfo():
+    """Read /proc/cpuinfo and convert to a list of dicts."""
+    cpuinfo = []
+    with open('/proc/cpuinfo', 'r') as f:
+        cpu = {}
+        for line in f:
+            line = line.strip()
+            if not line:
+                cpuinfo.append(cpu)
+                cpu = {}
+                continue
+            match = _CPUINFO_RE.match(line)
+            cpu[match.group('key')] = match.group('value')
+        if cpu:
+            # cpuinfo usually ends in a blank line, so this shouldn't happen.
+            cpuinfo.append(cpu)
+    return cpuinfo
+
 def get_cpu_arch():
     """Work out which CPU architecture we're running on"""
     f = open('/proc/cpuinfo', 'r')
@@ -329,6 +349,55 @@ def get_cpu_soc_family():
     if family == 'arm':
        family = get_arm_soc_family()
     return family
+
+INTEL_UARCH_TABLE = {
+    '06_36': 'Atom',
+    '06_26': 'Atom',
+    '06_1C': 'Atom',
+    '06_3D': 'Broadwell',
+    '06_3F': 'Haswell',
+    '06_3C': 'Haswell',
+    '06_46': 'Haswell',
+    '06_45': 'Haswell',
+    '06_3E': 'IvyBridge',
+    '06_3A': 'IvyBridge',
+    '06_2D': 'SandyBridge',
+    '06_2A': 'SandyBridge',
+    '06_2F': 'Westmere',
+    '06_2C': 'Westmere',
+    '06_25': 'Westmere',
+    '06_2E': 'Nehalem',
+    '06_1F': 'Nehalem',
+    '06_1E': 'Nehalem',
+    '06_1D': 'Nehalem',
+    '06_1A': 'Nehalem',
+    '06_17': 'Nehalem',
+    '06_16': 'Merom',
+    '06_0F': 'Merom',
+    '0F_06': 'Presler',
+    '0F_04': 'Prescott',
+    '0F_03': 'Prescott',
+    '06_0D': 'Dothan',
+}
+
+def get_intel_cpu_uarch(numeric=False):
+    """Return the Intel microarchitecture we're running on, or None.
+
+    Returns None if this is not an Intel CPU. Returns the family and model as
+    underscore-separated hex (per Intel manual convention) if the uarch is not
+    known, or if numeric is True.
+    """
+    if not get_current_kernel_arch().startswith('x86'):
+        return None
+    cpuinfo = get_cpuinfo()[0]
+    if cpuinfo['vendor_id'] != 'GenuineIntel':
+        return None
+    family_model = '%02X_%02X' % (int(cpuinfo['cpu family']),
+                                  int(cpuinfo['model']))
+    if numeric:
+        return family_model
+    return INTEL_UARCH_TABLE.get(family_model, family_model)
+
 
 def get_current_kernel_arch():
     """Get the machine architecture, now just a wrap of 'uname -m'."""
