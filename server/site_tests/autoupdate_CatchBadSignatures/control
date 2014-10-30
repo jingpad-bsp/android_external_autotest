@@ -11,7 +11,8 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "server"
 JOB_RETRIES = 2
-SUITE = "bvt-cq"
+# TODO(jorgelo): move this to bvt-cq after crbug.com/427384 is fixed.
+SUITE = "bvt-perbuild"
 BUG_TEMPLATE = {
     'cc': ['chromeos-installer-alerts@google.com'],
     'labels': ['Cr-Internals-Installer'],
