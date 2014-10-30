@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import pwd
 import re
 
 from autotest_lib.client.bin import test, utils
@@ -183,6 +184,12 @@ class security_StatefulPermissions(test.test):
         # Now run the sub-tests.
         for user, mask in self._masks_byuser.items():
             cmd = self.generate_find(user, mask)
+
+            try:
+                pwd.getpwnam(user)
+            except KeyError, err:
+                logging.warning('Skipping missing user: %s', err)
+                continue
 
             # The 'EOF' below helps us distinguish 2 types of failures.
             # We have to use ignore_status=True because many of these
