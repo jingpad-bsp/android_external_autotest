@@ -34,18 +34,26 @@ TECHNOLOGY_ALL = dbus.UInt32(1 << 0)
 TECHNOLOGY_MDNS = dbus.UInt32(1 << 1)
 
 
-def make_helper(bus=None, timeout_seconds=10, verbosity_level=0):
+def make_helper(bus=None, timeout_seconds=10, verbosity_level=None,
+                mdns_prefix=None):
     """Wait for peerd to come up, then return a PeerdHelper for it.
 
     @param bus: DBus bus to use, or specify None to create one internally.
     @param timeout_seconds: number of seconds to wait for peerd to come up.
     @param verbosity_level: int level of log verbosity from peerd (e.g. 0
                             will log INFO level, 3 is verbosity level 3).
+    @param mdns_prefix: string prefix for mDNS records.  Will be ignored if
+                        using that prefix causes name conflicts.
     @return PeerdHelper instance if peerd comes up, None otherwise.
 
     """
     utils.run('stop peerd')
-    utils.run('start peerd PEERD_LOG_LEVEL=%d' % verbosity_level)
+    flags = []
+    if verbosity_level is not None:
+        flags.append(' PEERD_LOG_LEVEL=%d' % verbosity_level)
+    if mdns_prefix is not None:
+        flags.append(' PEERD_INITIAL_MDNS_PREFIX=%s' % mdns_prefix)
+    utils.run('start peerd %s' % ''.join(flags))
     if bus is None:
         dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
         bus = dbus.SystemBus()
