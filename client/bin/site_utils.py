@@ -913,6 +913,7 @@ def get_gpu_family():
         0x0a06: 'haswell',
         0x0a16: 'haswell',
         0x0f31: 'baytrail',
+        0x1606: 'broadwell',
         0x1616: 'broadwell',
     }
 
