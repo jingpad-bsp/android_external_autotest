@@ -80,6 +80,7 @@ class Chrome(object):
         b_options.clear_enterprise_policy = clear_enterprise_policy
         b_options.dont_override_profile = dont_override_profile
         b_options.disable_gaia_services = disable_gaia_services
+        b_options.disable_default_apps = False
 
         b_options.auto_login = auto_login
         b_options.gaia_login = gaia_login
