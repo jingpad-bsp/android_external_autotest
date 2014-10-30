@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import gobject
+import gobject, logging
 from dbus.exceptions import DBusException
 from dbus.mainloop.glib import DBusGMainLoop
 
@@ -50,7 +50,17 @@ class desktopui_ExitOnSupervisedUserCrash(test.test):
             # Tell session_manager that a supervised user is being set up,
             # and kill it in the middle. Session should die.
             sm.HandleSupervisedUserCreationStarting()
-            utils.nuke_process_by_name(constants.BROWSER)
+            nuke_browser_error = None
+            try:
+                utils.nuke_process_by_name(constants.BROWSER)
+            except error.AutoservPidAlreadyDeadError as e:
+                nuke_browser_error = e
+                logging.warning('Browser may have crashed untimely: ', e)
 
-        listener.wait_for_signals(desc='Session stopped.',
-                                  timeout=self._SESSION_STOP_TIMEOUT)
+        try:
+            listener.wait_for_signals(desc='Session stopped.',
+                                      timeout=self._SESSION_STOP_TIMEOUT)
+        except utils.TimeoutError as actual_problem:
+            if nuke_browser_error is not None:
+                actual_problem = nuke_browser_error
+            raise error.TestFail(actual_problem)
