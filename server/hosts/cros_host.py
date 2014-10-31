@@ -454,7 +454,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             image_name, ds.url())
 
         start_time = time.time()
-        ds.stage_artifacts(image_name, ['autotest'])
+        ds.stage_artifacts(image_name, ['autotest_packages'])
         stage_time = time.time() - start_time
 
         # Record how much of the verification time comes from a devserver

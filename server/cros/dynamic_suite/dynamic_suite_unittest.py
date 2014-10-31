@@ -138,7 +138,7 @@ class DynamicSuiteTest(mox.MoxTestBase):
         spec.build = ''
         spec.devserver = self.mox.CreateMock(dev_server.ImageServer)
         spec.devserver.stage_artifacts(
-                spec.build, ['autotest', 'test_suites']).WithSideEffects(
+                spec.build, ['control_files', 'test_suites']).WithSideEffects(
                 suicide)
 
         self.mox.ReplayAll()
