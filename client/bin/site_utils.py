@@ -545,6 +545,7 @@ def wait_for_cool_machine():
     if temperature < 65:
         return True
     logging.warning('Did not cool down (%dC), giving up.', temperature)
+    log_process_activity()
     return False
 
 
@@ -616,8 +617,8 @@ def _get_hwmon_paths(file_pattern):
     #    /sys/devices/virtual/hwmon/hwmon*/
     #    /sys/devices/platform/coretemp.0/
     if not _hwmon_paths:
-       cmd = 'find /sys/ -name "' + file_pattern + '"'
-       _hwon_paths = utils.run(cmd, verbose=False).stdout.splitlines()
+        cmd = 'find /sys/ -name "' + file_pattern + '"'
+        _hwon_paths = utils.run(cmd, verbose=False).stdout.splitlines()
     return _hwon_paths
 
 
@@ -997,6 +998,6 @@ def is_freon():
 def assert_has_X_server():
     """Using X is soon to be deprecated. Print warning or raise error."""
     if is_freon():
-         # TODO(ihf): Think about if we could support X for testing for a while.
-         raise error.TestFail('freon: can\'t use X server.')
+        # TODO(ihf): Think about if we could support X for testing for a while.
+        raise error.TestFail('freon: can\'t use X server.')
     logging.warning('freon: Using the X server will be deprecated soon.')
