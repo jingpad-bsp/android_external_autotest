@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os
+import inspect, logging, os
 
 from telemetry.core import browser_finder, browser_options, exceptions
 from telemetry.core import extension_to_load, util
@@ -92,7 +92,12 @@ class Chrome(object):
         for i in range(num_tries):
             try:
                 browser_to_create = browser_finder.FindBrowser(finder_options)
-                self._browser = browser_to_create.Create()
+                # TODO(achuith): Remove inspect and old Create call.
+                # crbug.com/428967.
+                if len(inspect.getargspec(browser_to_create.Create).args) == 1:
+                    self._browser = browser_to_create.Create()
+                else:
+                    self._browser = browser_to_create.Create(finder_options)
                 break
             except (util.TimeoutException, exceptions.LoginException) as e:
                 logging.error('Timed out logging in, tries=%d, error=%s',
