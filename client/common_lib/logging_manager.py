@@ -191,6 +191,11 @@ class LoggingFile(object):
 
 
     @do_not_report_as_logging_caller
+    def isatty(self):
+        return False
+
+
+    @do_not_report_as_logging_caller
     def fileno(self):
         # We return the read end of the pipe here becauase if we return the
         # write end, one can make the reasonable assumption that writing to the
