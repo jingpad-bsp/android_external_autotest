@@ -38,10 +38,10 @@ def __get_pkcs11_file_list(token_path):
     file_list_output = __run_cmd('find %s ' % token_path + find_args)
     return file_list_output
 
-def __get_user_pkcs11_token_slot():
+def __get_token_slot_by_path(token_path):
     token_list = __run_cmd('p11_replay --list_tokens')
     for line in token_list.split('\n'):
-        match = re.search(r'^Slot (\d+): ' + USER_TOKEN_PREFIX, line)
+        match = re.search(r'^Slot (\d+): ' + token_path, line)
         if not match:
             continue
         return match.group(1)
@@ -242,7 +242,8 @@ def __p11_replay_on_user_token(extra_args=''):
         The command output.
     """
     return __run_cmd('p11_replay --slot=%s --replay_wifi %s'
-                         % (__get_user_pkcs11_token_slot(), extra_args),
+                     % (__get_token_slot_by_path(USER_TOKEN_PREFIX),
+                        extra_args),
                      ignore_status=True)
 
 def inject_and_test_key():
