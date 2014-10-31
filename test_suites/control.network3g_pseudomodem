@@ -38,8 +38,8 @@ _BUG_TEMPLATE = {
     'status': None,
     'summary': None,
     'title': None,
-    'cc': ['armansito@chromium.org', 'benchan@chromium.org',
-           'krisr@chromium.org', 'pprabhu@chromium.org',
+    'cc': ['benchan@chromium.org', 'krisr@chromium.org',
+           'pprabhu@chromium.org', 'rpius@chromium.org',
            'thieule@chromium.org']
 }
 
