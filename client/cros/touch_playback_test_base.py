@@ -4,12 +4,13 @@
 
 from collections import defaultdict
 import logging
+import os
+import tempfile
 import subprocess
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros.graphics import graphics_utils
 
 
 class touch_playback_test_base(test.test):
@@ -18,9 +19,6 @@ class touch_playback_test_base(test.test):
 
     _PLAYBACK_COMMAND = 'evemu-play --insert-slot0 %s < %s'
     _INPUTCONTROL = '/opt/google/input/inputcontrol'
-
-    _TOUCH_TYPES = ['touchpad', 'touchscreen', 'mouse']
-
     _DEFAULT_SCROLL = 5000
 
     @property
@@ -38,11 +36,62 @@ class touch_playback_test_base(test.test):
         """True if device under test has or emulates a USB mouse; else False."""
         return self._has_inputs['mouse']
 
+    def _find_device_properties(self, device):
+        """Given device (e.g. /dev/input/event7), return a string of properties.
+
+        @return: string of properties.
+
+        """
+        temp_file = tempfile.NamedTemporaryFile()
+        filename = temp_file.name
+        evtest_process = subprocess.Popen(['evtest', device], stdout=temp_file)
+
+        def find_exit():
+            """Polling function for end of output."""
+            interrupt_cmd = 'grep "interrupt to exit" %s | wc -l' % filename
+            line_count = utils.run(interrupt_cmd).stdout.strip()
+            return line_count != '0'
+
+        utils.poll_for_condition(find_exit)
+        evtest_process.kill()
+        temp_file.seek(0)
+        props = temp_file.read()
+        temp_file.close() #deletes the temporary file
+        return props
+
+    def _determine_input_type(self, event):
+        """Find event's list of propertiles and return input type (if any)."""
+        props = self._find_device_properties(event)
+        if props.find('REL_X') >= 0 and props.find('REL_Y') >= 0:
+            if (props.find('ABS_MT_POSITION_X') >= 0 and
+                props.find('ABS_MT_POSITION_Y') >= 0):
+                return 'multitouch_mouse'
+            else:
+                return 'mouse'
+        if props.find('ABS_X') >= 0 and props.find('ABS_Y') >= 0:
+            if (props.find('BTN_STYLUS') >= 0 or
+                props.find('BTN_STYLUS2') >= 0 or
+                props.find('BTN_TOOL_PEN') >= 0):
+                return 'tablet'
+            if (props.find('ABS_PRESSURE') >= 0 or
+                props.find('BTN_TOUCH') >= 0):
+                if (props.find('BTN_LEFT') >= 0 or
+                    props.find('BTN_MIDDLE') >= 0 or
+                    props.find('BTN_RIGHT') >= 0 or
+                    props.find('BTN_TOOL_FINGER') >= 0):
+                    return 'touchpad'
+                else:
+                    return 'touchscreen'
+            if props.find('BTN_LEFT') >= 0:
+                return 'touchscreen'
+        return
+
     def warmup(self, mouse_props=None, mouse_name=''):
         """Determine the nodes of all present touch devices, if any.
 
-        Use inputcontrol command to get the touch ids and xinput to get the
-        corresponding node numbers.  These numbers are used for playback.
+        Cycle through all possible /dev/input/event* and find which ones
+        are touchpads, touchscreens, mice, etc.
+        These events can be used for playback later.
         Emulate a USB mouse if a property file is provided.
 
         @param mouse_props: property file for a mouse to emulate.  Created
@@ -50,11 +99,6 @@ class touch_playback_test_base(test.test):
         @param mouse_name: name of expected mouse.
 
         """
-        name_cmd = '%s --names -t %s' % (self._INPUTCONTROL, '%s')
-        type_cmd = name_cmd + ' | grep "%s" | cut -d : -f 1'
-        node_cmd = graphics_utils.xcommand('xinput list-props %s '
-                                      '| grep dev/input | cut -d \'"\' -f 2')
-
         self._has_inputs = defaultdict(bool)
         self._nodes = defaultdict(str)
         self._names = defaultdict(str)
@@ -66,34 +110,42 @@ class touch_playback_test_base(test.test):
             self._device_emulation_process = subprocess.Popen(
                     ['evemu-device', mouse_props], stdout=subprocess.PIPE)
             self._names['mouse'] = mouse_name
-        # Find all touch/mouse input devices.
-        for input_type in self._TOUCH_TYPES:
-            id_num = utils.run(type_cmd % (
-                    input_type, self._names[input_type])).stdout.strip()
-            if id_num:
-                self._has_inputs[input_type] = True
-                self._nodes[input_type] = utils.run(
-                        node_cmd % id_num).stdout.strip()
-                if not self._names[input_type]:
-                    self._names[input_type] = utils.run(
-                            name_cmd % input_type).stdout.strip()
-                logging.info('Found %s named %s at node %s', input_type,
-                             self._names[input_type], self._nodes[input_type])
 
-        logging.info('This DUT has the following input devices:')
-        logging.info(
-                utils.run('%s --names' % self._INPUTCONTROL).stdout.strip())
+        # Cycle through all possible input devices.
+        input_events = utils.run('ls /dev/input/event*').stdout.strip().split()
+        for event in input_events:
+            input_type = self._determine_input_type(event)
+            if input_type:
+                logging.info('Found %s at %s.', input_type, event)
+
+                class_folder = event.replace('dev', 'sys/class')
+                name_file = os.path.join(class_folder, 'device', 'name')
+                name = 'unknown'
+                if os.path.isfile(name_file):
+                    name = utils.run('cat %s' % name_file).stdout.strip()
+                # If a particular device is expected, make sure this matches.
+                if self._names[input_type]:
+                    if self._names[input_type] != name:
+                        continue
+
+                # Save this device information for later use.
+                self._has_inputs[input_type] = True
+                self._nodes[input_type] = event
+                self._names[input_type] = name
+                logging.info('%s is %s.', input_type, name)
 
 
     def _playback(self, filepath, touch_type='touchpad'):
         """Playback a given set of touch movements.
 
         @param filepath: path to the movements file on the DUT.
-        @param touch_type: name of device type; 'touchpad' by default.  String
-                           must be in self._TOUCH_TYPES list.
+        @param touch_type: name of device type; 'touchpad' by default.
+                           Types are returned by the _determine_input_type()
+                           function.
+                           self._has_inputs[touch_type] must be True.
 
         """
-        assert(touch_type in self._TOUCH_TYPES)
+        assert(self._has_inputs[touch_type])
         node = self._nodes[touch_type]
         logging.info('Playing back finger-movement on %s, file=%s.', node,
                      filepath)
