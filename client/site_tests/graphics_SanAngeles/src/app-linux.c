@@ -45,22 +45,19 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-// With regular OpenGL (instead of GLES), we use glx library functions to
-// initialize and finalyze.
-
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/time.h>
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#include <X11/keysym.h>
+#include "waffle.h"
 
 #ifdef SAN_ANGELES_OBSERVATION_GLES
+#define GL_API WAFFLE_CONTEXT_OPENGL_ES2
 #undef IMPORTGL_API
 #undef IMPORTGL_FNPTRINIT
 #include "importgl.h"
 #else  // SAN_ANGELES_OBSERVATION_GLES
-#include <GL/glx.h>
+#define GL_API WAFFLE_CONTEXT_OPENGL
 #undef IMPORTVBO_API
 #undef IMPORTVBO_FNPTRINIT
 #include "importvbo.h"
@@ -70,25 +67,18 @@
 
 
 int gAppAlive = 1;
-static Display *sDisplay;
-static Window sWindow;
+static struct waffle_display *sDisplay;
+static struct waffle_window *sWindow;
+static struct waffle_config *sConfig;
+static struct waffle_context *sContext;
 static int sWindowWidth = WINDOW_DEFAULT_WIDTH;
 static int sWindowHeight = WINDOW_DEFAULT_HEIGHT;
 #ifdef SAN_ANGELES_OBSERVATION_GLES
 static const char sAppName[] =
     "San Angeles Observation OpenGL ES version example (Linux)";
-static EGLDisplay sEglDisplay = EGL_NO_DISPLAY;
-static EGLConfig sEglConfig = 0;
-static EGLContext sEglContext = EGL_NO_CONTEXT;
-static EGLSurface sEglSurface = EGL_NO_SURFACE;
-#ifndef DISABLE_IMPORTGL
-static char *sPathLibGLES = NULL;
-static char *sPathLibEGL = NULL;
-#endif  // !DISABLE_IMPORTGL
 #else  // !SAN_ANGELES_OBSERVATION_GLES
 static const char sAppName[] =
     "San Angeles Observation OpenGL version example (Linux)";
-static GLXContext sContext;
 #endif  // SAN_ANGELES_OBSERVATION_GLES | !SAN_ANGELES_OBSERVATION_GLES
 
 static void checkGLErrors()
@@ -98,193 +88,73 @@ static void checkGLErrors()
         fprintf(stderr, "Error: GL error code 0x%04x\n", (int)error);
 }
 
-#ifdef SAN_ANGELES_OBSERVATION_GLES
-
-static void checkEGLErrors()
+static int waffleError(void)
 {
-    EGLint error = eglGetError();
-    // GLESonGL seems to be returning 0 when there is no errors?
-    if (error && error != EGL_SUCCESS)
-        fprintf(stderr, "Error: EGL error code 0x%04x\n", (int)error);
+    const struct waffle_error_info *info = waffle_error_get_info();
+    const char *code = waffle_error_to_string(info->code);
+
+    fprintf(stderr, "Error: %s", code);
+    if (info->message_length > 0)
+        fprintf(stderr, ": %s", info->message);
+    fprintf(stderr, "\n");
+    return 0;
 }
 
-// Initializes and opens both X11 display and OpenGL ES.
-static int initGraphics()
+// Initializes and opens both display and OpenGL/GLES.
+static int initGraphics(int32_t platform)
 {
-    static const EGLint configAttribs[] =
+    int32_t configAttribs[] =
     {
-        EGL_SURFACE_TYPE,     EGL_WINDOW_BIT,
-        EGL_RENDERABLE_TYPE,  EGL_OPENGL_ES2_BIT,
-        EGL_BUFFER_SIZE,      16,
-        EGL_DEPTH_SIZE,       16,
-        EGL_NONE
+        WAFFLE_CONTEXT_API,     GL_API,
+        WAFFLE_RED_SIZE,        5,
+        WAFFLE_GREEN_SIZE,      5,
+        WAFFLE_BLUE_SIZE,       5,
+        WAFFLE_ALPHA_SIZE,      0,
+        WAFFLE_DOUBLE_BUFFERED, true,
+        0
     };
-    static const EGLint contextAttribs[] =
-    {
-        EGL_CONTEXT_CLIENT_VERSION,  2,
-        EGL_NONE
-    };
-    EGLBoolean success;
-    EGLint numConfigs = 0;
-    EGLint majorVersion;
-    EGLint minorVersion;
 
+    int32_t initAttribs[] =
+    {
+        WAFFLE_PLATFORM, platform,
+        0
+    };
+
+    bool ok = waffle_init(initAttribs);
+    if (!ok)
+        return waffleError();
+
+    sDisplay = waffle_display_connect(NULL);
+    if (!sDisplay)
+        return waffleError();
+
+    sConfig = waffle_config_choose(sDisplay, configAttribs);
+    if (!sConfig)
+        return waffleError();
+
+    sContext = waffle_context_create(sConfig, NULL);
+    if (!sContext)
+        return waffleError();
+
+    sWindow = waffle_window_create(sConfig, sWindowWidth, sWindowHeight);
+    if (!sWindow)
+        return waffleError();
+
+    ok = waffle_make_current(sDisplay, sWindow, sContext);
+    if (!ok)
+        return waffleError();
+
+#ifdef SAN_ANGELES_OBSERVATION_GLES
 #ifndef DISABLE_IMPORTGL
     int importGLResult;
-    importGLResult = importGLInit(sPathLibGLES, sPathLibEGL);
+    importGLResult = importGLInit();
     if (!importGLResult)
         return 0;
 #endif  // !DISABLE_IMPORTGL
-
-    sDisplay = XOpenDisplay(NULL);
-    if (sDisplay == NULL)
-    {
-        fprintf(stderr, "Error: XOpenDisplay failed\n");
-        return 0;
-    }
-    int screen = XDefaultScreen(sDisplay);
-    Window root_window = RootWindow(sDisplay, screen);
-    int depth = DefaultDepth(sDisplay, screen);
-    XVisualInfo *vi, tmp;
-    vi = &tmp;
-    XMatchVisualInfo(sDisplay, screen, depth, TrueColor, vi);
-    if (vi == NULL)
-    {
-        fprintf(stderr, "Error: XMatchVisualInfo failed\n");
-        return 0;
-    }
-
-    XSetWindowAttributes swa;
-    swa.colormap = XCreateColormap(sDisplay, root_window, vi->visual,
-                                   AllocNone);
-    swa.event_mask = ExposureMask | StructureNotifyMask |
-                     KeyPressMask | ButtonPressMask | ButtonReleaseMask;
-    sWindow = XCreateWindow(sDisplay, root_window,
-                            0, 0, sWindowWidth, sWindowHeight,
-                            0, vi->depth, InputOutput, vi->visual,
-                            CWBorderPixel | CWColormap | CWEventMask,
-                            &swa);
-    XMapWindow(sDisplay, sWindow);
-    XSizeHints sh;
-    sh.flags = PMinSize | PMaxSize;
-    sh.min_width = sh.max_width = sWindowWidth;
-    sh.min_height = sh.max_height = sWindowHeight;
-    XSetStandardProperties(sDisplay, sWindow, sAppName, sAppName,
-                           None, (void *)0, 0, &sh);
-    XFlush(sDisplay);
-
-    sEglDisplay = eglGetDisplay(sDisplay);
-    success = eglInitialize(sEglDisplay, &majorVersion, &minorVersion);
-    if (success == EGL_FALSE)
-    {
-        fprintf(stderr, "Error: eglInitialize failed\n");
-        checkEGLErrors();
-        return 0;
-    }
-    success = eglBindAPI(EGL_OPENGL_ES_API);
-    if (success == EGL_FALSE)
-    {
-        fprintf(stderr, "Error: eglInitialize failed\n");
-        checkEGLErrors();
-        return 0;
-    }
-    success = eglChooseConfig(sEglDisplay, configAttribs,
-                              &sEglConfig, 1, &numConfigs);
-    if (success == EGL_FALSE || numConfigs != 1)
-    {
-        fprintf(stderr, "Error: eglChooseConfig failed\n");
-        checkEGLErrors();
-        return 0;
-    }
-    sEglContext = eglCreateContext(sEglDisplay, sEglConfig, NULL,
-                                   contextAttribs);
-    if (sEglContext == EGL_NO_CONTEXT)
-    {
-        fprintf(stderr, "Error: eglCreateContext failed\n");
-        checkEGLErrors();
-        return 0;
-    }
-    sEglSurface = eglCreateWindowSurface(sEglDisplay, sEglConfig,
-                                         (NativeWindowType)sWindow, NULL);
-    if (sEglSurface == EGL_NO_SURFACE)
-    {
-        fprintf(stderr, "Error: eglCreateWindowSurface failed\n");
-        checkEGLErrors();
-        return 0;
-    }
-    success = eglMakeCurrent(sEglDisplay, sEglSurface,
-                             sEglSurface, sEglContext);
-    if (success == EGL_FALSE)
-    {
-        fprintf(stderr, "Error: eglMakeCurrent failed\n");
-        checkEGLErrors();
-        return 0;
-    }
-    return 1;
-}
-
-static void deinitGraphics()
-{
-    eglMakeCurrent(sEglDisplay, NULL, NULL, NULL);
-    eglDestroyContext(sEglDisplay, sEglContext);
-    eglDestroySurface(sEglDisplay, sEglSurface);
-    eglTerminate(sEglDisplay);
-#ifndef DISABLE_IMPORTGL
-    importGLDeinit();
-#endif  // !DISABLE_IMPORTGL
-}
-
-#else  // !SAN_ANGELES_OBSERVATION_GLES
-
-// Initializes and opens both X11 display and OpenGL.
-static int initGraphics()
-{
-    sDisplay = XOpenDisplay(NULL);
-    if(sDisplay == NULL)
-    {
-        fprintf(stderr, "Error: XOpenDisplay failed\n");
-        return 0;
-    }
-    Window root_window = DefaultRootWindow(sDisplay);
-    GLint att[] = { GLX_RGBA,
-                    GLX_DEPTH_SIZE,
-                    24,
-                    GLX_DOUBLEBUFFER,
-                    None };
-    XVisualInfo *vi = glXChooseVisual(sDisplay, 0, att);
-    if (vi == NULL)
-    {
-        fprintf(stderr, "Error: glXChooseVisual failed\n");
-        return 0;
-    }
-
-    XSetWindowAttributes swa;
-    swa.colormap = XCreateColormap(sDisplay,
-                                   root_window,
-                                   vi->visual,
-                                   AllocNone);
-    XSizeHints sh;
-    sh.flags = PMinSize | PMaxSize;
-    sh.min_width = sh.max_width = sWindowWidth;
-    sh.min_height = sh.max_height = sWindowHeight;
-    swa.border_pixel = 0;
-    swa.event_mask = ExposureMask | StructureNotifyMask |
-                     KeyPressMask | ButtonPressMask | ButtonReleaseMask;
-    sWindow = XCreateWindow(sDisplay, root_window,
-                            0, 0, sWindowWidth, sWindowHeight,
-                            0, vi->depth, InputOutput, vi->visual,
-                            CWBorderPixel | CWColormap | CWEventMask,
-                            &swa);
-    XMapWindow(sDisplay, sWindow);
-    XSetStandardProperties(sDisplay, sWindow, sAppName, sAppName,
-                           None, (void *)0, 0, &sh);
-
-    sContext = glXCreateContext(sDisplay, vi, NULL, GL_TRUE);
-    glXMakeCurrent(sDisplay, sWindow, sContext);
+#endif  // SAN_ANGELES_OBSERVATION_GLES
 
     glEnable(GL_DEPTH_TEST);
 
-    XFree(vi);
     int rt = 1;
 #ifndef SAN_ANGELES_OBSERVATION_GLES
     rt = loadVBOProcs();
@@ -294,33 +164,41 @@ static int initGraphics()
 
 static void deinitGraphics()
 {
-    glXMakeCurrent(sDisplay, None, NULL);
-    glXDestroyContext(sDisplay, sContext);
-    XDestroyWindow(sDisplay, sWindow);
-    XCloseDisplay(sDisplay);
+    if (!waffle_make_current(sDisplay, NULL, NULL))
+        waffleError();
+    if (!waffle_window_destroy(sWindow))
+        waffleError();
+    if (!waffle_context_destroy(sContext))
+        waffleError();
+    if (!waffle_config_destroy(sConfig))
+        waffleError();
+    if (!waffle_display_disconnect(sDisplay))
+        waffleError();
 }
-
-#endif  // SAN_ANGELES_OBSERVATION_GLES | !SAN_ANGELES_OBSERVATION_GLES
 
 int main(int argc, char *argv[])
 {
-    // not referenced:
-    argc = argc;
-    argv = argv;
-
-#ifdef SAN_ANGELES_OBSERVATION_GLES
-#ifndef DISABLE_IMPORTGL
-    if (argc != 3)
+    int32_t platform = WAFFLE_NONE;
+    if (argc == 3)
     {
-        fprintf(stderr, "Usage: SanOGLES libGLESxx.so libEGLxx.so\n");
+        // TODO(fjhenigman): add waffle_to_string_to_enum to waffle
+        // then only pass in platform string here.
+        platform = atoi(argv[2]);
+        if (strcmp(waffle_enum_to_string(platform), argv[1]))
+        {
+            // check if waffle changed platform names/values so that
+            // they no longer match those in the test driver
+            fprintf(stderr, "Error: %s != %d\n", argv[1], platform);
+            return EXIT_FAILURE;
+        }
+    }
+    if (platform == WAFFLE_NONE )
+    {
+        fprintf(stderr, "Usage: SanOGLES <platform name> <platform value>\n");
         return EXIT_FAILURE;
     }
-    sPathLibGLES = argv[1];
-    sPathLibEGL = argv[2];
-#endif  // !DISABLE_IMPORTGL
-#endif  // SAN_ANGELES_OBSERVATION_GLES
 
-    if (!initGraphics())
+    if (!initGraphics(platform))
     {
         fprintf(stderr, "Error: Graphics initialization failed.\n");
         return EXIT_FAILURE;
@@ -335,47 +213,36 @@ int main(int argc, char *argv[])
     double total_time = 0.0;
     int num_frames = 0;
 
-    while (gAppAlive)
+    while (1)
     {
-        while (XPending(sDisplay))
-        {
-            XEvent ev;
-            XNextEvent(sDisplay, &ev);
-            switch (ev.type)
-            {
-            case KeyPress:
-                {
-                    unsigned int keycode, keysym;
-                    keycode = ((XKeyEvent *)&ev)->keycode;
-                    keysym = XKeycodeToKeysym(sDisplay, keycode, 0);
-                    if (keysym == XK_Return || keysym == XK_Escape)
-                        gAppAlive = 0;
-                }
-                break;
-            }
-        }
+        struct timeval timeNow, timeAfter;
 
-        if (gAppAlive)
-        {
-            struct timeval timeNow, timeAfter;
+        gettimeofday(&timeNow, NULL);
+        appRender(TIME_SPEEDUP * (timeNow.tv_sec * 1000 +
+                                  timeNow.tv_usec / 1000),
+                  sWindowWidth, sWindowHeight);
+        gettimeofday(&timeAfter, NULL);
+        if (num_frames == 0)
+            if (!waffle_window_show(sWindow))
+                waffleError();
 
-            gettimeofday(&timeNow, NULL);
-            appRender(TIME_SPEEDUP * (timeNow.tv_sec * 1000 +
-                                      timeNow.tv_usec / 1000),
-                      sWindowWidth, sWindowHeight);
-            gettimeofday(&timeAfter, NULL);
 #ifdef SAN_ANGELES_OBSERVATION_GLES
-            checkGLErrors();
-            eglSwapBuffers(sEglDisplay, sEglSurface);
-            checkEGLErrors();
-#else  // !SAN_ANGELES_OBSERVATION_GLES
-            glXSwapBuffers(sDisplay, sWindow);
-            checkGLErrors();
-#endif  // SAN_ANGELES_OBSERVATION_GLES | !SAN_ANGELES_OBSERVATION_GLES
-            total_time += (timeAfter.tv_sec - timeNow.tv_sec) +
-                          (timeAfter.tv_usec - timeNow.tv_usec) / 1000000.0;
-            num_frames++;
-        }
+        checkGLErrors();
+#endif
+
+        if (!gAppAlive)
+            break;
+
+        if (!waffle_window_swap_buffers(sWindow))
+            waffleError();
+
+#ifndef SAN_ANGELES_OBSERVATION_GLES
+        checkGLErrors();
+#endif
+
+        total_time += (timeAfter.tv_sec - timeNow.tv_sec) +
+                      (timeAfter.tv_usec - timeNow.tv_usec) / 1000000.0;
+        num_frames++;
     }
 
     appDeinit();

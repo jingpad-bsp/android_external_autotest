@@ -48,9 +48,12 @@ class graphics_SanAngeles(test.test):
         elif os.path.isfile(cmd_gles_s):
             cmd = cmd_gles_s
         else:
-            raise error.TestFail('Failed to locate SanAngeles executable (' +
-                                 cmd + '). Test setup error.')
+            raise error.TestFail('Failed to locate SanAngeles executable: '
+                                 '%s, %s or %s.  Test setup error.'
+                                 % (cmd_gl, cmd_gles, cmd_gles_s))
 
+        cmd += ' %s %d' % graphics_utils.waffle_platform(
+                              utils.graphics_platform())
         cmd = graphics_utils.xcommand(cmd)
         result = utils.run(cmd,
                            stderr_is_expected = False,

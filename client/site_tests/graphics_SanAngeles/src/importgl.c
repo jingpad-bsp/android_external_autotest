@@ -26,9 +26,7 @@
 
 #include <stdlib.h>
 #include <dlfcn.h>
-
-static void *sGLESSO = NULL;
-static void *sEGLSO = NULL;
+#include "waffle.h"
 
 #define IMPORTGL_NO_FNPTR_DEFS
 #define IMPORTGL_API
@@ -36,47 +34,22 @@ static void *sEGLSO = NULL;
 #include "importgl.h"
 
 
-/* Imports function pointers to selected function calls in GLES and EGL DLL
+/* Imports function pointers to selected function calls in GLES DLL
  * or shared object. The function pointers are stored as global symbols with
- * equivalent function name but prefixed with "funcPtr_". Standard gl/egl
+ * equivalent function name but prefixed with "funcPtr_". Standard gl
  * calls are redirected to the function pointers with preprocessor macros
  * (see importgl.h).
  */
-int importGLInit(char *libGLES, char *libEGL)
+int importGLInit()
 {
     int result = 1;
 
-#undef IMPORT_FUNC_EGL
 #undef IMPORT_FUNC_GL
 
-    sGLESSO = dlopen(libGLES, RTLD_LAZY);
-    sEGLSO = dlopen(libEGL, RTLD_LAZY);
-    if (sGLESSO == NULL || sEGLSO == NULL)
-        return 0;   // Cannot find GLES or EGL SO.
-
-#define IMPORT_FUNC_EGL(funcName) do { \
-        void *procAddress = (void *)dlsym(sEGLSO, #funcName); \
-        if (procAddress == NULL) result = 0; \
-        FNPTR(funcName) = (funcType_##funcName)procAddress; } while (0)
 #define IMPORT_FUNC_GL(funcName) do { \
-        void *procAddress = (void *)dlsym(sGLESSO, #funcName); \
+        void *procAddress = waffle_dl_sym(WAFFLE_DL_OPENGL_ES2, #funcName); \
         if (procAddress == NULL) result = 0; \
         FNPTR(funcName) = (funcType_##funcName)procAddress; } while (0)
-
-    IMPORT_FUNC_EGL(eglBindAPI);
-    IMPORT_FUNC_EGL(eglChooseConfig);
-    IMPORT_FUNC_EGL(eglCreateContext);
-    IMPORT_FUNC_EGL(eglCreateWindowSurface);
-    IMPORT_FUNC_EGL(eglDestroyContext);
-    IMPORT_FUNC_EGL(eglDestroySurface);
-    IMPORT_FUNC_EGL(eglGetConfigAttrib);
-    IMPORT_FUNC_EGL(eglGetConfigs);
-    IMPORT_FUNC_EGL(eglGetDisplay);
-    IMPORT_FUNC_EGL(eglGetError);
-    IMPORT_FUNC_EGL(eglInitialize);
-    IMPORT_FUNC_EGL(eglMakeCurrent);
-    IMPORT_FUNC_EGL(eglSwapBuffers);
-    IMPORT_FUNC_EGL(eglTerminate);
 
     IMPORT_FUNC_GL(glAttachShader);
     IMPORT_FUNC_GL(glBindBuffer);
@@ -114,13 +87,6 @@ int importGLInit(char *libGLES, char *libEGL)
     IMPORT_FUNC_GL(glViewport);
 
     return result;
-}
-
-
-void importGLDeinit()
-{
-    dlclose(sGLESSO);
-    dlclose(sEGLSO);
 }
 
 #endif  // !DISABLE_IMPORTGL

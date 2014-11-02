@@ -31,7 +31,6 @@ extern "C" {
 #endif
 
 #include <GLES2/gl2.h>
-#include <EGL/egl.h>
 
 /* Use DISABLE_IMPORTGL if you want to link the OpenGL ES at
  * compile/link time and not import it dynamically runtime.
@@ -39,15 +38,11 @@ extern "C" {
 #ifndef DISABLE_IMPORTGL
 
 
-/* Dynamically fetches pointers to the egl & gl functions.
+/* Dynamically fetches pointers to the gl functions.
  * Should be called once on application initialization.
  * Returns non-zero on success and 0 on failure.
  */
-extern int importGLInit(char *libGLES, char *libEGL);
-
-/* Frees the handle to egl & gl functions library.
- */
-extern void importGLDeinit();
+extern int importGLInit();
 
 
 #ifndef IMPORTGL_API
@@ -61,35 +56,6 @@ extern void importGLDeinit();
         IMPORTGL_API retType (*funcPtr_##funcName) args IMPORTGL_FNPTRINIT;\
         typedef retType (*funcType_##funcName) args
 
-
-FNDEF(EGLBoolean, eglBindAPI, (EGLenum api));
-FNDEF(EGLBoolean, eglChooseConfig, (EGLDisplay dpy,
-                                    const EGLint *attrib_list,
-                                    EGLConfig *configs,
-                                    EGLint config_size,
-                                    EGLint *num_config));
-FNDEF(EGLContext, eglCreateContext, (EGLDisplay dpy,
-                                     EGLConfig config,
-                                     EGLContext share_list,
-                                     const EGLint *attrib_list));
-FNDEF(EGLSurface, eglCreateWindowSurface, (EGLDisplay dpy,
-                                           EGLConfig config,
-                                           NativeWindowType window,
-                                           const EGLint *attrib_list));
-FNDEF(EGLBoolean, eglDestroyContext, (EGLDisplay dpy, EGLContext ctx));
-FNDEF(EGLBoolean, eglDestroySurface, (EGLDisplay dpy, EGLSurface surface));
-FNDEF(EGLBoolean, eglGetConfigAttrib, (EGLDisplay dpy, EGLConfig config,
-                                       EGLint attribute, EGLint *value));
-FNDEF(EGLBoolean, eglGetConfigs, (EGLDisplay dpy, EGLConfig *configs,
-                                  EGLint config_size, EGLint *num_config));
-FNDEF(EGLDisplay, eglGetDisplay, (NativeDisplayType display));
-FNDEF(EGLint, eglGetError, (void));
-FNDEF(EGLBoolean, eglInitialize, (EGLDisplay dpy,
-                                  EGLint *major, EGLint *minor));
-FNDEF(EGLBoolean, eglMakeCurrent, (EGLDisplay dpy, EGLSurface draw,
-                                   EGLSurface read, EGLContext ctx));
-FNDEF(EGLBoolean, eglSwapBuffers, (EGLDisplay dpy, EGLSurface draw));
-FNDEF(EGLBoolean, eglTerminate, (EGLDisplay dpy));
 
 FNDEF(void, glAttachShader, (GLuint program, GLuint shader));
 FNDEF(void, glBindBuffer, (GLenum target, GLuint buffer));
@@ -140,22 +106,7 @@ FNDEF(void, glViewport, (GLint x, GLint y, GLsizei width, GLsizei height));
 
 #ifndef IMPORTGL_NO_FNPTR_DEFS
 
-// Redirect egl* and gl* function calls to funcPtr_egl* and funcPtr_gl*.
-
-#define eglBindAPI                  FNPTR(eglBindAPI)
-#define eglChooseConfig             FNPTR(eglChooseConfig)
-#define eglCreateContext            FNPTR(eglCreateContext)
-#define eglCreateWindowSurface      FNPTR(eglCreateWindowSurface)
-#define eglDestroyContext           FNPTR(eglDestroyContext)
-#define eglDestroySurface           FNPTR(eglDestroySurface)
-#define eglGetConfigAttrib          FNPTR(eglGetConfigAttrib)
-#define eglGetConfigs               FNPTR(eglGetConfigs)
-#define eglGetDisplay               FNPTR(eglGetDisplay)
-#define eglGetError                 FNPTR(eglGetError)
-#define eglInitialize               FNPTR(eglInitialize)
-#define eglMakeCurrent              FNPTR(eglMakeCurrent)
-#define eglSwapBuffers              FNPTR(eglSwapBuffers)
-#define eglTerminate                FNPTR(eglTerminate)
+// Redirect gl* function calls to funcPtr_gl*.
 
 #define glAttachShader              FNPTR(glAttachShader)
 #define glBindBuffer                FNPTR(glBindBuffer)

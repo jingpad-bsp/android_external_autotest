@@ -13,22 +13,27 @@ TARGET_ES = SanOGLES
 TARGET_ES_S = SanOGLES_S
 
 ifeq ($(GRAPHICS_BACKEND), OPENGL)
-    LDFLAGS = -lX11 -lm -lGL
+    LDFLAGS = -lm -lGL
     SRCS = demo.c app-linux.c importvbo.c
     TARGET = $(TARGET_GL)
 else ifeq ($(GRAPHICS_BACKEND), OPENGLES)
     FLAGS += -D SAN_ANGELES_OBSERVATION_GLES
     ifeq ($(IMPORTGL), 0)
-        LDFLAGS = -lX11 -lm -lGLESv2 -lEGL
+        LDFLAGS = -lm -lGLESv2 -lEGL
         TARGET = $(TARGET_ES_S)
         FLAGS += -D DISABLE_IMPORTGL
     else
-        LDFLAGS = -lX11 -lm -ldl
+        LDFLAGS = -lm -ldl
         TARGET = $(TARGET_ES)
     endif
     SRCS = demo.c app-linux.c importgl.c matrixop.c shader.c
 else
     $(error GRAPHICS_BACKEND has to be either OPENGL or OPENGLES)
+endif
+
+ifdef PKG_CONFIG
+    FLAGS += $(shell $(PKG_CONFIG) --cflags waffle-1)
+    LDFLAGS += $(shell $(PKG_CONFIG) --libs waffle-1)
 endif
 
 all: $(TARGET)

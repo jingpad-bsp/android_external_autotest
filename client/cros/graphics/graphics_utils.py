@@ -23,6 +23,24 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.graphics import drm
 
 
+def waffle_platform(platform):
+    """ Return waffle enum string and value for the given platform. """
+    # these should match what's in waffle.h in the media-libs/waffle package
+    name, value = dict(
+        android = ("ANDROID", 0x0011),
+        cgl     = ("CGL"    , 0x0012),
+        glx     = ("GLX"    , 0x0013),
+        wayland = ("WAYLAND", 0x0014),
+        x11_egl = ("X11_EGL", 0x0015),
+        gbm     = ("GBM"    , 0x0016),
+    ).get(platform, ("", 0))
+    if name:
+        name = "WAFFLE_PLATFORM_" + name
+    else:
+        raise error.TestFail('Unknown waffle_platform "%s"' % platform)
+    return name, value
+
+
 # TODO(ihf): Remove xcommand for non-freon builds.
 def xcommand(cmd, user=None):
     """
