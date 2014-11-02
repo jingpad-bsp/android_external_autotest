@@ -32,13 +32,12 @@ def xcommand(cmd, user=None):
     @param user: if not None su command to desired user.
     @return a modified command line string with necessary X setup
     """
-    if utils.is_freon():
-        raise error.TestFail('freon: xcommand is deprecated') 
     logging.warning("xcommand will be deprecated under freon!")
-    if user is None:
-        return 'DISPLAY=:0 XAUTHORITY=/home/chronos/.Xauthority ' + cmd
-    return 'DISPLAY=:0 XAUTHORITY=/home/chronos/.Xauthority su %s -c \'%s\'' % (
-                                                                      user, cmd)
+    if user is not None:
+        cmd = 'su %s -c \'%s\'' % (user, cmd)
+    if not utils.is_freon():
+        cmd = 'DISPLAY=:0 XAUTHORITY=/home/chronos/.Xauthority ' + cmd
+    return cmd
 
 # TODO(ihf): Remove xsystem for non-freon builds.
 def xsystem(cmd, user=None):
@@ -623,6 +622,30 @@ def execute_screenshot_capture(cmd):
         logging.error(err)
 
 
+def wflinfo():
+    """
+    Return a wflinfo command appropriate to the current graphics platform/api.
+    """
+    platform = utils.graphics_platform()
+    api = utils.graphics_api()
+    if platform not in ('android', 'cgl', 'gbm', 'glx', 'wayland', 'x11_egl'):
+        raise error.TestFail('wflinfo: unknown platform')
+    if api not in ('gl', 'gles1', 'gles2', 'gles3'):
+        raise error.TestFail('wflinfo: unknown api')
+    return 'wflinfo -p %s -a %s' % (platform, api)
+
+
+def is_sw_rasterizer():
+    """Return true if OpenGL is using a software rendering."""
+    cmd = wflinfo() + ' | grep "OpenGL renderer string"'
+    cmd = xcommand(cmd)
+    output = utils.run(cmd)
+    result = output.stdout.splitlines()[0]
+    logging.info('wflinfo: %s', result)
+    # TODO(ihf): Find exhaustive error conditions (especially ARM).
+    return 'llvmpipe' in result.lower() or 'soft' in result.lower()
+
+
 class GraphicsKernelMemory(object):
     """
     Reads from sysfs to determine kernel gem objects and memory info.
@@ -765,17 +788,9 @@ class GraphicsStateChecker(object):
         self.graphics_kernel_memory = GraphicsKernelMemory()
 
         if utils.get_cpu_arch() != 'arm':
-            # TODO(ihf): Freonize glxinfo (crbug.com/422167).
-            if not utils.is_freon():
-                cmd = 'glxinfo | grep "OpenGL renderer string"'
-                cmd = xcommand(cmd)
-                output = utils.run(cmd)
-                result = output.stdout.splitlines()[0]
-                logging.info('glxinfo: %s', result)
-                # TODO(ihf): Find exhaustive error conditions (especially ARM).
-                if 'llvmpipe' in result.lower() or 'soft' in result.lower():
-                    raise error.TestFail('Refusing to run on SW rasterizer: ' +
-                                         result)
+            if is_sw_rasterizer():
+                raise error.TestFail('Refusing to run on SW rasterizer: ' +
+                                     result)
             logging.info('Initialize: Checking for old GPU hangs...')
             messages = open(self._MESSAGES_FILE, 'r')
             for line in messages:
@@ -805,17 +820,10 @@ class GraphicsStateChecker(object):
                             new_gpu_hang = True
             messages.close()
 
-            if not utils.is_freon():
-                cmd = 'glxinfo | grep "OpenGL renderer string"'
-                cmd = xcommand(cmd)
-                output = utils.run(cmd)
-                result = output.stdout.splitlines()[0]
-                logging.info('glxinfo: %s', result)
-                # TODO(ihf): Find exhaustive error conditions (especially ARM).
-                if 'llvmpipe' in result.lower() or 'soft' in result.lower():
-                    logging.warning('Finished test on SW rasterizer.')
-                    raise error.TestFail('Finished test on SW rasterizer: ' +
-                                         result)
+            if is_sw_rasterizer():
+                logging.warning('Finished test on SW rasterizer.')
+                raise error.TestFail('Finished test on SW rasterizer: ' +
+                                     result)
 
             if self._raise_error_on_hang and new_gpu_hang:
                 raise error.TestFail('Detected GPU hang during test.')

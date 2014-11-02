@@ -997,6 +997,25 @@ def is_freon():
     """Returns False if the system uses X, True otherwise."""
     return 'X' not in get_ui_use_flags()
 
+def graphics_platform():
+    """
+    Return a string identifying the graphics platform,
+    e.g. 'glx' or 'x11_egl' or 'gbm'
+    """
+    use_flags = get_ui_use_flags()
+    if 'X' not in use_flags:
+        return 'gbm'
+    elif 'opengles' in use_flags:
+        return 'x11_egl'
+    return 'glx'
+
+def graphics_api():
+    """Return a string identifying the graphics api, e.g. gl or gles2."""
+    use_flags = get_ui_use_flags()
+    if 'opengles' in use_flags:
+        return 'gles2'
+    return 'gl'
+
 def assert_has_X_server():
     """Using X is soon to be deprecated. Print warning or raise error."""
     if is_freon():
