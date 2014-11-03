@@ -20,8 +20,7 @@ from autotest_lib.server.cros.network import hostap_config
 
 
 def run(machine):
-    a_mode = hostap_config.HostapConfig.MODE_11A
-    configurations = [(hostap_config.HostapConfig(channel=64, mode=a_mode), 36)]
+    configurations = [(64, 36)]
     host = hosts.create_host(machine)
     job.run_test('network_WiFi_CSADisconnect',
                  host=host,
