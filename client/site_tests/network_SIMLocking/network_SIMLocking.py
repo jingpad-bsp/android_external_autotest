@@ -143,12 +143,20 @@ class network_SIMLocking(test.test):
                                  str(retries_left))
         return retries_left
 
+    def _reset_modem_with_sim_lock(self):
+        """ Helper method to reset the modem with the SIM locked. """
+        # When the SIM is locked, the enable operation fails and
+        # hence set expect_powered flag to False.
+        # The enable operation is deferred by Shill until the modem goes into
+        # the disabled state after the SIM is unlocked.
+        self.device, self.service = self.shill.reset_modem(self.device,
+                                                           expect_powered=False,
+                                                           expect_service=False)
 
     def _pin_lock_sim(self):
         """ Helper method to pin-lock a SIM, assuming nothing bad happens. """
         self.device.RequirePin(self.current_pin, True)
-        self.device, self.service = self.shill.reset_modem(self.device,
-                                                           expect_service=False)
+        self._reset_modem_with_sim_lock()
         if not self._is_sim_pin_locked():
             raise error.TestFail('Expected SIM to be locked after reset.')
 
@@ -206,9 +214,8 @@ class network_SIMLocking(test.test):
         if not self._is_sim_lock_enabled():
             raise error.TestFail('SIM lock was not enabled by correct PIN.')
 
+        self._reset_modem_with_sim_lock()
         # SIM lock should be enabled, and lock set after reset.
-        self.device, self.service = self.shill.reset_modem(self.device,
-                                                           expect_service=False)
         if not self._is_sim_lock_enabled() or not self._is_sim_pin_locked():
             raise error.TestFail('Cellular device not locked after reset.')
 
