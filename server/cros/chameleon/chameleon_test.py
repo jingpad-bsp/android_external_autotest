@@ -351,9 +351,9 @@ class ChameleonTest(test.test):
         @return: A ChameleonPort object.
         """
         self.chameleon.reset()
-        finder = chameleon_port_finder.ChameleonPortFinder(self.chameleon,
-                                                           self.display_facade)
-        ports = finder.find_all_video_ports()
+        finder = chameleon_port_finder.ChameleonVideoPortFinder(
+                self.chameleon, self.display_facade)
+        ports = finder.find_all_ports()
         if len(ports.connected) == 0:
             raise error.TestError('DUT and Chameleon board not connected')
         # Plug the first port and return it.
