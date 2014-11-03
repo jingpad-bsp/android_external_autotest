@@ -36,14 +36,14 @@ class platform_InstallFW(test.test):
                 host.run("sudo /bin/sh %s --mode recovery --update_main "
                          "--noupdate_ec" % fw_dst)
             else:
-                host.run("sudo /usr/sbin/flashrom -p internal:bus=spi -w %s"
+                host.run("sudo /usr/sbin/flashrom -p host -w %s"
                          % fw_dst)
         if fw_type == "ec":
             if is_shellball:
                 host.run("sudo /bin/sh %s --mode recovery --update_ec "
                          "--noupdate_main" % fw_dst)
             else:
-                host.run("sudo /usr/sbin/flashrom -p internal:bus=lpc -w %s"
+                host.run("sudo /usr/sbin/flashrom -p ec -w %s"
                          % fw_dst)
         # Reboot client after installing the binary.
         host.reboot()

@@ -231,12 +231,12 @@ class flashrom_util(object):
     def _enable_bios_access(self):
         if not self.os_if.target_hosted():
             return
-        self._target_command = '-p internal:bus=spi'
+        self._target_command = '-p host'
 
     def _enable_ec_access(self):
         if not self.os_if.target_hosted():
             return
-        self._target_command = '-p internal:bus=lpc'
+        self._target_command = '-p ec'
 
     def get_temp_filename(self, prefix):
         """ (internal) Returns name of a temporary file in self.tmp_root """

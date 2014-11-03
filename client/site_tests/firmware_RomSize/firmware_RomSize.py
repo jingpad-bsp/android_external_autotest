@@ -8,8 +8,8 @@ from autotest_lib.client.common_lib import error
 class firmware_RomSize(test.test):
     version = 3
 
-    TARGET_BIOS = '-p internal:bus=spi'
-    TARGET_EC = '-p internal:bus=lpc'
+    TARGET_BIOS = '-p host'
+    TARGET_EC = '-p ec'
 
     def get_size(self, target):
         data = utils.system_output("flashrom --get-size %s" % target)

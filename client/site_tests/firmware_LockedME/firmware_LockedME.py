@@ -19,7 +19,7 @@ class firmware_LockedME(test.test):
 
     def flashrom(self, ignore_status=False, args=()):
         """Run flashrom, expect it to work. Fail if it doesn't"""
-        extra = ['-p', 'internal:bus=spi'] + list(args)
+        extra = ['-p', 'host'] + list(args)
         return utils.run('flashrom', ignore_status=ignore_status, args=extra)
 
     def has_ME(self):
