@@ -19,6 +19,14 @@ class ImageGenerator(object):
     TEMPLATE_HEIGHT = 1052
     TEMPLATE_FILENAME = 'template-%dx%d.svg' % (TEMPLATE_WIDTH, TEMPLATE_HEIGHT)
 
+    # Note: change the coordinates if the image template changes.
+    # Normalized coordinates of a maximum (i.e., white pixel) at (150, 15)
+    MAX_X_NORM = 150.0 / TEMPLATE_WIDTH
+    MAX_Y_NORM = 15.0 / TEMPLATE_HEIGHT
+    # Normalized coordinates of a minimum (i.e., black pixel) at (80, 15)
+    MIN_X_NORM = 80.0 / TEMPLATE_WIDTH
+    MIN_Y_NORM = 15.0 / TEMPLATE_HEIGHT
+
 
     def __init__(self):
         """Construct an ImageGenerator.
@@ -42,3 +50,18 @@ class ImageGenerator(object):
             f.write(self._image_template.format(
                     scale_width=float(width)/self.TEMPLATE_WIDTH,
                     scale_height=float(height)/self.TEMPLATE_HEIGHT))
+
+    @staticmethod
+    def get_extrema(image):
+        """Returns a 2-tuple containing minimum and maximum values of the image.
+
+        @param image: the calibration image projected by DUT.
+        @return a tuple of (minimum, maximum)
+        """
+        w, h = image.size
+        max_location = (int(ImageGenerator.MAX_X_NORM * w),
+                        int(ImageGenerator.MAX_Y_NORM * h))
+        min_location = (int(ImageGenerator.MIN_X_NORM * w),
+                        int(ImageGenerator.MIN_Y_NORM * h))
+        return (image.getpixel(min_location)[0],
+                image.getpixel(max_location)[0])

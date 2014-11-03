@@ -13,6 +13,7 @@ from PIL import ImageChops
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.cros.chameleon import edid
+from autotest_lib.client.cros.multimedia import image_generator
 from autotest_lib.server import test
 from autotest_lib.server.cros.chameleon import remote_facade_factory
 
@@ -62,9 +63,6 @@ class ChameleonTest(test.test):
         if self.chameleon_port is None:
             raise error.TestError('DUT and Chameleon board not connected')
         self._platform_prefix = host.get_platform().lower().split('_')[0]
-        self._unlevel_func = None
-        if self._platform_prefix in ('snow', 'spring', 'skate', 'peach'):
-            self._unlevel_func =  _unlevel
 
 
     def is_edid_supported(self, tag, width, height):
@@ -561,8 +559,12 @@ class ChameleonTest(test.test):
 
         logging.info('Capturing framebuffer on Chameleon...')
         chameleon_image = self.chameleon_port.capture_screen()
-        if self._unlevel_func:
-            chameleon_image = Image.eval(chameleon_image, self._unlevel_func)
+
+        # unleveling from TV level [16, 235]
+        pmin, pmax = image_generator.ImageGenerator.get_extrema(chameleon_image)
+        if pmin > 10 and pmax < 240:
+            logging.info(' (TV level: %d %d)', pmin, pmax)
+            chameleon_image = Image.eval(chameleon_image, _unlevel)
 
         logging.info('Capturing framebuffer on external display of DUT...')
         dut_image_external = self.display_facade.capture_external_screen()
