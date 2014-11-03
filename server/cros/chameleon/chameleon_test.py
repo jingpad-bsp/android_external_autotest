@@ -16,7 +16,7 @@ from autotest_lib.client.cros.chameleon import chameleon_port_finder
 from autotest_lib.client.cros.chameleon import edid
 from autotest_lib.client.cros.multimedia import image_generator
 from autotest_lib.server import test
-from autotest_lib.server.cros.chameleon import remote_facade_factory
+from autotest_lib.server.cros.multimedia import remote_facade_factory
 
 def _unlevel(p):
     """Unlevel a color value from TV level back to PC level

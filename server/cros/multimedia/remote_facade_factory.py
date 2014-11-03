@@ -10,8 +10,8 @@ import xmlrpclib
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.cros import constants
 from autotest_lib.server import autotest
-from autotest_lib.server.cros.chameleon import audio_facade_adapter
-from autotest_lib.server.cros.chameleon import display_facade_adapter
+from autotest_lib.server.cros.multimedia import audio_facade_adapter
+from autotest_lib.server.cros.multimedia import display_facade_adapter
 
 
 class RemoteFacadeConnection(object):
