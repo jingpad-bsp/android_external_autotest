@@ -9,10 +9,8 @@ import random
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
+from autotest_lib.client.cros.cellular import test_environment
 from autotest_lib.client.cros.cellular.pseudomodem import sim
-
-from autotest_lib.client.cros.networking import cellular_proxy
 
 # This is a software only test. Most time delayes are only dbus update delays.
 DEFAULT_OPERATION_TIMEOUT=3
@@ -62,7 +60,7 @@ class network_SIMLocking(test.test):
             raise error.TestFail('Cellular device did not complain although '
                                  'an incorrect pin was given')
         except dbus.DBusException as e:
-            if e.get_dbus_name() == self.shill.ERROR_INCORRECT_PIN:
+            if e.get_dbus_name() == self.test_env.shill.ERROR_INCORRECT_PIN:
                 logging.info('Obtained expected result: EnterPin failed with '
                              'incorrect PIN.')
             else:
@@ -75,7 +73,7 @@ class network_SIMLocking(test.test):
             raise error.TestFail('Cellular device did not complain although '
                                  'an incorrect puk was given')
         except dbus.DBusException as e:
-            if e.get_dbus_name() == self.shill.ERROR_INCORRECT_PIN:
+            if e.get_dbus_name() == self.test_env.shill.ERROR_INCORRECT_PIN:
                 logging.info('Obtained expected result: UnblockPin failed with '
                              'incorrect PUK.')
             else:
@@ -86,18 +84,18 @@ class network_SIMLocking(test.test):
         """ Helper method to safely obtain SIM lock status. """
         properties = self.device.GetProperties(utf8_strings=True)
         sim_lock_status = properties.get(
-                self.shill.DEVICE_PROPERTY_SIM_LOCK_STATUS,
+                self.test_env.shill.DEVICE_PROPERTY_SIM_LOCK_STATUS,
                 None)
         if sim_lock_status is None:
             raise error.TestFail( 'Failed to read SIM_LOCK_STATUS.')
-        return self.shill.dbus2primitive(sim_lock_status)
+        return self.test_env.shill.dbus2primitive(sim_lock_status)
 
 
     def _is_sim_lock_enabled(self):
         """ Helper method to check if the SIM lock is enabled. """
         lock_status = self._get_sim_lock_status()
         lock_enabled = lock_status.get(
-                self.shill.PROPERTY_KEY_SIM_LOCK_ENABLED,
+                self.test_env.shill.PROPERTY_KEY_SIM_LOCK_ENABLED,
                 None)
         if lock_enabled is None:
             raise error.TestFail('Failed to find LockEnabled key in '
@@ -109,31 +107,31 @@ class network_SIMLocking(test.test):
         """ Helper method to check if the SIM has been pin-locked. """
         lock_status = self._get_sim_lock_status()
         lock_type = lock_status.get(
-                self.shill.PROPERTY_KEY_SIM_LOCK_TYPE,
+                self.test_env.shill.PROPERTY_KEY_SIM_LOCK_TYPE,
                 None)
         if lock_type is None:
             raise error.TestFail('Failed to find LockType key in the '
                                  'lock status value.')
-        return lock_type == self.shill.VALUE_SIM_LOCK_TYPE_PIN
+        return lock_type == self.test_env.shill.VALUE_SIM_LOCK_TYPE_PIN
 
 
     def _is_sim_puk_locked(self):
         """ Helper method to check if the SIM has been puk-locked. """
         lock_status = self._get_sim_lock_status()
         lock_type = lock_status.get(
-                self.shill.PROPERTY_KEY_SIM_LOCK_TYPE,
+                self.test_env.shill.PROPERTY_KEY_SIM_LOCK_TYPE,
                 None)
         if lock_type is None:
             raise error.TestFail('Failed to find LockType key in the '
                                  'lock status value.')
-        return lock_type == self.shill.VALUE_SIM_LOCK_TYPE_PUK
+        return lock_type == self.test_env.shill.VALUE_SIM_LOCK_TYPE_PUK
 
 
     def _get_retries_left(self):
         """ Helper method to get the number of unlock retries left. """
         lock_status = self._get_sim_lock_status()
         retries_left = lock_status.get(
-                self.shill.PROPERTY_KEY_SIM_LOCK_RETRIES_LEFT,
+                self.test_env.shill.PROPERTY_KEY_SIM_LOCK_RETRIES_LEFT,
                 None)
         if retries_left is None:
             raise error.TestFail('Failed to find LockRetriesLeft key '
@@ -149,9 +147,10 @@ class network_SIMLocking(test.test):
         # hence set expect_powered flag to False.
         # The enable operation is deferred by Shill until the modem goes into
         # the disabled state after the SIM is unlocked.
-        self.device, self.service = self.shill.reset_modem(self.device,
-                                                           expect_powered=False,
-                                                           expect_service=False)
+        self.device, self.service = self.test_env.shill.reset_modem(
+                self.device,
+                expect_powered=False,
+                expect_service=False)
 
     def _pin_lock_sim(self):
         """ Helper method to pin-lock a SIM, assuming nothing bad happens. """
@@ -168,7 +167,7 @@ class network_SIMLocking(test.test):
             try:
                 self._enter_incorrect_pin()
             except dbus.DBusException as e:
-                if e.get_dbus_name() != self.shill.ERROR_PIN_BLOCKED:
+                if e.get_dbus_name() != self.test_env.shill.ERROR_PIN_BLOCKED:
                     raise
         if not self._is_sim_puk_locked():
             raise error.TestFail('Expected SIM to be puk-locked.')
@@ -184,7 +183,7 @@ class network_SIMLocking(test.test):
             raise error.TestFail('Cellular device did not complain although '
                                  'an incorrect pin was given')
         except dbus.DBusException as e:
-            if e.get_dbus_name() == self.shill.ERROR_INCORRECT_PIN:
+            if e.get_dbus_name() == self.test_env.shill.ERROR_INCORRECT_PIN:
                 logging.info('Obtained expected result: pin-lock enable failed '
                              'with incorrect PIN.')
             else:
@@ -194,9 +193,11 @@ class network_SIMLocking(test.test):
             raise error.TestFail('SIM lock got enabled by incorrect PIN.')
 
         # SIM lock should not be enabled, and lock not set after reset.
-        self.device, self.service = self.shill.reset_modem(self.device)
-        self.shill.wait_for_property_in(self.service, 'state', ['online'],
-                                        DEFAULT_OPERATION_TIMEOUT)
+        self.device, self.service = self.test_env.shill.reset_modem(self.device)
+        self.test_env.shill.wait_for_property_in(self.service,
+                                                 'state',
+                                                 ['online'],
+                                                 DEFAULT_OPERATION_TIMEOUT)
         if (self._is_sim_lock_enabled() or self._is_sim_pin_locked() or
             self._is_sim_puk_locked()):
             raise error.TestFail('Cellular device locked by an incorrect pin.')
@@ -245,10 +246,12 @@ class network_SIMLocking(test.test):
         # The shill service reappears after the SIM is unlocked.
         # We need a fresh handle on the service.
         utils.poll_for_condition(
-                lambda: self.shill.get_service_for_device(self.device))
-        self.service = self.shill.get_service_for_device(self.device)
-        self.shill.wait_for_property_in(self.service, 'state', ['online'],
-                                        DEFAULT_OPERATION_TIMEOUT)
+                lambda: self.test_env.shill.get_service_for_device(self.device))
+        self.service = self.test_env.shill.get_service_for_device(self.device)
+        self.test_env.shill.wait_for_property_in(self.service,
+                                                 'state',
+                                                 ['online'],
+                                                 DEFAULT_OPERATION_TIMEOUT)
 
 
     def test_cause_sim_puk_lock(self):
@@ -277,7 +280,7 @@ class network_SIMLocking(test.test):
             self._enter_incorrect_pin()
             raise error.TestFail('Shill failed to throw PinBlocked error.')
         except dbus.DBusException as e:
-            if e.get_dbus_name() != self.shill.ERROR_PIN_BLOCKED:
+            if e.get_dbus_name() != self.test_env.shill.ERROR_PIN_BLOCKED:
                 raise
 
         # At this point, the SIM should be puk-locked.
@@ -333,7 +336,7 @@ class network_SIMLocking(test.test):
             self._enter_incorrect_puk()
             raise error.TestFail('Shill failed to throw SimFailure error.')
         except dbus.DBusException as e:
-            if e.get_dbus_name() != self.shill.ERROR_FAILURE:
+            if e.get_dbus_name() != self.test_env.shill.ERROR_FAILURE:
                 raise
 
 
@@ -353,7 +356,7 @@ class network_SIMLocking(test.test):
             raise error.TestFail('Expected ChangePin to fail when SIM lock is '
                                  'not enabled.')
         except dbus.DBusException as e:
-            if e.get_dbus_name() != self.shill.ERROR_FAILURE:
+            if e.get_dbus_name() != self.test_env.shill.ERROR_FAILURE:
                 raise
 
         self.device.RequirePin(self.current_pin, True)
@@ -363,7 +366,7 @@ class network_SIMLocking(test.test):
             raise error.TestFail('Expected ChangePin to fail with incorrect '
                                  'sim-pin.')
         except dbus.DBusException as e:
-            if e.get_dbus_name() != self.shill.ERROR_INCORRECT_PIN:
+            if e.get_dbus_name() != self.test_env.shill.ERROR_INCORRECT_PIN:
                 raise
 
         # Change sim-pin successfully.
@@ -387,7 +390,7 @@ class network_SIMLocking(test.test):
 
         # Resetting modemmanager invalidates the shill dbus object for the
         # modem.
-        self.device = self.shill.find_cellular_device_object()
+        self.device = self.test_env.shill.find_cellular_device_object()
         if not self.device:
             raise error.TestFail('Failed to find a cellular device.')
 
@@ -407,9 +410,6 @@ class network_SIMLocking(test.test):
     def run_once(self):
         """Entry function into the test."""
         random.seed()
-        self.shill = cellular_proxy.CellularProxy.get_proxy()
-        self.shill.set_logging_for_cellular_test()
-
         test_list = [self.test_unsuccessful_enable_lock,
                      self.test_cause_sim_pin_lock,
                      self.test_unlock_sim_pin_lock,
@@ -421,7 +421,7 @@ class network_SIMLocking(test.test):
         # Some of these tests render the modem unusable, so run each test
         # with a fresh pseudomodem.
         for test in test_list:
-            with pseudomodem_context.PseudoModemManagerContext(
-                    True,
-                    {'family' : '3GPP'}):
+            self.test_env = test_environment.CellularPseudoMMTestEnvironment(
+                    pseudomm_args=({'family': '3GPP'},))
+            with self.test_env:
                 self._run_internal(test)
