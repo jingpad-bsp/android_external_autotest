@@ -10,7 +10,11 @@ Example:
 run_pylint.py filename.py
 """
 
-import fnmatch, os, re, sys
+import fnmatch
+import logging
+import os
+import re
+import sys
 
 import common
 from autotest_lib.client.common_lib import autotemp, revision_control
@@ -453,4 +457,8 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except Exception as e:
+        logging.error(e)
+        sys.exit(1)

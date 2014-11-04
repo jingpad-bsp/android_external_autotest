@@ -42,16 +42,19 @@ def date_string_to_epoch_time(date_string):
     return time.mktime(time.strptime(date_string, TIME_FMT))
 
 
-def epoch_time_to_date_string(epoch_time):
+def epoch_time_to_date_string(epoch_time, fmt_string=TIME_FMT):
     """Convert epoch time (float) to a human readable date string.
 
     @param epoch_time The number of seconds since the UNIX epoch, as
                       a float.
+    @param fmt_string: A string describing the format of the datetime
+        string output.
+
     @returns: string formatted in the following way: "yyyy-mm-dd hh:mm:ss"
     """
     if epoch_time:
         return datetime.datetime.fromtimestamp(
-                int(epoch_time)).strftime(TIME_FMT)
+                int(epoch_time)).strftime(fmt_string)
     return None
 
 
