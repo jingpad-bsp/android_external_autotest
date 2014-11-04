@@ -30,8 +30,8 @@ SERVICE_PROPERTY_ID = 'ServiceId'
 SERVICE_PROPERTY_INFO = 'ServiceInfo'
 
 # Possible technologies for use with PeerdHelper.start_monitoring().
-TECHNOLOGY_ALL = dbus.UInt32(1 << 0)
-TECHNOLOGY_MDNS = dbus.UInt32(1 << 1)
+TECHNOLOGY_ALL = 'all'
+TECHNOLOGY_MDNS = 'mDNS'
 
 # We can give some options to ExposeService.
 EXPOSE_SERVICE_SECTION_MDNS = 'mdns'
@@ -134,7 +134,8 @@ class PeerdHelper(object):
         @return string monitoring_token for use with stop_monitoring().
 
         """
-        return self._manager.StartMonitoring(technologies)
+        return self._manager.StartMonitoring(technologies,
+                                             dbus.Dictionary(signature='sv'))
 
 
     def has_peer(self, uuid):
