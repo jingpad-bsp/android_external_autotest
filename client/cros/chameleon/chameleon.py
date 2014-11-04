@@ -111,7 +111,25 @@ class ChameleonBoard(object):
 
         @return: A list of ChameleonPort objects.
         """
+        ports = self._chameleond_proxy.ProbePorts()
+        return [ChameleonPort(self._chameleond_proxy, port) for port in ports]
+
+
+    def get_all_inputs(self):
+        """Gets all the input ports on Chameleon board which are connected.
+
+        @return: A list of ChameleonPort objects.
+        """
         ports = self._chameleond_proxy.ProbeInputs()
+        return [ChameleonPort(self._chameleond_proxy, port) for port in ports]
+
+
+    def get_all_outputs(self):
+        """Gets all the output ports on Chameleon board which are connected.
+
+        @return: A list of ChameleonPort objects.
+        """
+        ports = self._chameleond_proxy.ProbeOutputs()
         return [ChameleonPort(self._chameleond_proxy, port) for port in ports]
 
 
@@ -133,18 +151,18 @@ class ChameleonBoard(object):
 class ChameleonPort(object):
     """ChameleonPort is an abstraction of a port of a Chameleon board.
 
-    A Chameleond RPC proxy and an input_id are passed to the construction.
-    The input_id is the unique identity to the port.
+    A Chameleond RPC proxy and an port_id are passed to the construction.
+    The port_id is the unique identity to the port.
     """
 
-    def __init__(self, chameleond_proxy, input_id):
+    def __init__(self, chameleond_proxy, port_id):
         """Construct a ChameleonPort.
 
         @param chameleond_proxy: Chameleond RPC proxy object.
-        @param input_id: The ID of the input port.
+        @param port_id: The ID of the input port.
         """
         self._chameleond_proxy = chameleond_proxy
-        self._input_id = input_id
+        self._port_id = port_id
 
 
     def get_connector_id(self):
@@ -152,7 +170,7 @@ class ChameleonPort(object):
 
         @return: A number of connector ID.
         """
-        return self._input_id
+        return self._port_id
 
 
     def get_connector_type(self):
@@ -160,7 +178,7 @@ class ChameleonPort(object):
 
         @return: A string, like "VGA", "DVI", "HDMI", or "DP".
         """
-        return self._chameleond_proxy.GetConnectorType(self._input_id)
+        return self._chameleond_proxy.GetConnectorType(self._port_id)
 
 
     def has_audio_support(self):
@@ -168,7 +186,7 @@ class ChameleonPort(object):
 
         @return: True if the input has audio support; otherwise, False.
         """
-        return self._chameleond_proxy.HasAudioSupport(self._input_id)
+        return self._chameleond_proxy.HasAudioSupport(self._port_id)
 
 
     def has_video_support(self):
@@ -176,7 +194,7 @@ class ChameleonPort(object):
 
         @return: True if the input has video support; otherwise, False.
         """
-        return self._chameleond_proxy.HasVideoSupport(self._input_id)
+        return self._chameleond_proxy.HasVideoSupport(self._port_id)
 
 
     def wait_video_input_stable(self, timeout=None):
@@ -187,7 +205,7 @@ class ChameleonPort(object):
         @return: True if the video input becomes stable within the timeout
                  period; otherwise, False.
         """
-        return self._chameleond_proxy.WaitVideoInputStable(self._input_id,
+        return self._chameleond_proxy.WaitVideoInputStable(self._port_id,
                                                            timeout)
 
 
@@ -198,7 +216,7 @@ class ChameleonPort(object):
         """
         # Read EDID without verify. It may be made corrupted as intended
         # for the test purpose.
-        return edid.Edid(self._chameleond_proxy.ReadEdid(self._input_id).data,
+        return edid.Edid(self._chameleond_proxy.ReadEdid(self._port_id).data,
                          skip_verify=True)
 
 
@@ -208,18 +226,18 @@ class ChameleonPort(object):
         @param edid: An Edid object.
         """
         edid_id = self._chameleond_proxy.CreateEdid(xmlrpclib.Binary(edid.data))
-        self._chameleond_proxy.ApplyEdid(self._input_id, edid_id)
+        self._chameleond_proxy.ApplyEdid(self._port_id, edid_id)
         self._chameleond_proxy.DestroyEdid(edid_id)
 
 
     def plug(self):
         """Asserts HPD line to high, emulating plug."""
-        self._chameleond_proxy.Plug(self._input_id)
+        self._chameleond_proxy.Plug(self._port_id)
 
 
     def unplug(self):
         """Deasserts HPD line to low, emulating unplug."""
-        self._chameleond_proxy.Unplug(self._input_id)
+        self._chameleond_proxy.Unplug(self._port_id)
 
 
     @property
@@ -228,7 +246,7 @@ class ChameleonPort(object):
         @returns True if this port is plugged to Chameleon, False otherwise.
 
         """
-        return self._chameleond_proxy.IsPlugged(self._input_id)
+        return self._chameleond_proxy.IsPlugged(self._port_id)
 
 
     def fire_hpd_pulse(self, deassert_interval_usec, assert_interval_usec=None,
@@ -246,7 +264,7 @@ class ChameleonPort(object):
                 HIGH (plugged).
         """
         self._chameleond_proxy.FireHpdPulse(
-                self._input_id, deassert_interval_usec,
+                self._port_id, deassert_interval_usec,
                 assert_interval_usec, repeat_count, int(bool(end_level)))
 
 
@@ -261,7 +279,7 @@ class ChameleonPort(object):
 
         @param widths: list of pulse segment widths in usec.
         """
-        self._chameleond_proxy.FireMixedHpdPulses(self._input_id, widths)
+        self._chameleond_proxy.FireMixedHpdPulses(self._port_id, widths)
 
 
     def capture_screen(self):
@@ -272,7 +290,7 @@ class ChameleonPort(object):
         return Image.fromstring(
                 'RGB',
                 self.get_resolution(),
-                self._chameleond_proxy.DumpPixels(self._input_id).data)
+                self._chameleond_proxy.DumpPixels(self._port_id).data)
 
 
     def get_resolution(self):
@@ -282,12 +300,12 @@ class ChameleonPort(object):
         """
         # The return value of RPC is converted to a list. Convert it back to
         # a tuple.
-        return tuple(self._chameleond_proxy.DetectResolution(self._input_id))
+        return tuple(self._chameleond_proxy.DetectResolution(self._port_id))
 
 
     def start_capturing_audio(self):
         """Starts capturing audio."""
-        return self._chameleond_proxy.StartCapturingAudio(self._input_id)
+        return self._chameleond_proxy.StartCapturingAudio(self._port_id)
 
 
     def stop_capturing_audio(self):
@@ -304,7 +322,7 @@ class ChameleonPort(object):
             rate: sampling rate.
         """
         rpc_data, data_format = self._chameleond_proxy.StopCapturingAudio(
-            self._input_id)
+            self._port_id)
         return rpc_data.data, data_format
 
 

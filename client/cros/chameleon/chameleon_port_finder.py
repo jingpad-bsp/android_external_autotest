@@ -74,9 +74,47 @@ class ChameleonPortFinder(object):
         return text
 
 
-class ChameleonVideoPortFinder(ChameleonPortFinder):
+class ChameleonInputFinder(ChameleonPortFinder):
     """
-    Responsible for finding all video ports connected to the chameleon board.
+    Responsible for finding all input ports connected to the chameleon board.
+
+    """
+
+    def find_all_ports(self):
+        """
+        @returns a named tuple ChameleonPorts() containing a list of connected
+                 input ports as the first element and failed ports as second
+                 element.
+
+        """
+        connected_ports = self.chameleon_board.get_all_inputs()
+        dut_failed_ports = []
+
+        return ChameleonPorts(connected_ports, dut_failed_ports)
+
+
+class ChameleonOutputFinder(ChameleonPortFinder):
+    """
+    Responsible for finding all output ports connected to the chameleon board.
+
+    """
+
+    def find_all_ports(self):
+        """
+        @returns a named tuple ChameleonPorts() containing a list of connected
+                 output ports as the first element and failed ports as second
+                 element.
+
+        """
+        connected_ports = self.chameleon_board.get_all_outputs()
+        dut_failed_ports = []
+
+        return ChameleonPorts(connected_ports, dut_failed_ports)
+
+
+class ChameleonVideoInputFinder(ChameleonInputFinder):
+    """
+    Responsible for finding all video inputs connected to the chameleon board.
 
     It also verifies if these ports are connected to DUT.
 
@@ -92,7 +130,7 @@ class ChameleonVideoPortFinder(ChameleonPortFinder):
                                remotely.
 
         """
-        super(ChameleonVideoPortFinder, self).__init__(chameleon_board)
+        super(ChameleonVideoInputFinder, self).__init__(chameleon_board)
         self.display_facade = display_facade
         self._TIMEOUT_VIDEO_STABLE_PROBE = 10
 
@@ -100,14 +138,14 @@ class ChameleonVideoPortFinder(ChameleonPortFinder):
     def find_all_ports(self):
         """
         @returns a named tuple ChameleonPorts() containing a list of connected
-                 video ports as the first element and failed ports as second
+                 video inputs as the first element and failed ports as second
                  element.
 
         """
         connected_ports = []
         dut_failed_ports = []
 
-        all_ports = super(ChameleonVideoPortFinder, self).find_all_ports()
+        all_ports = super(ChameleonVideoInputFinder, self).find_all_ports()
         for port in all_ports.connected:
             # Skip the non-video port.
             if not port.has_video_support():
@@ -139,9 +177,9 @@ class ChameleonVideoPortFinder(ChameleonPortFinder):
         return ChameleonPorts(connected_ports, dut_failed_ports)
 
 
-class ChameleonAudioPortFinder(ChameleonPortFinder):
+class ChameleonAudioInputFinder(ChameleonInputFinder):
     """
-    Responsible for finding all audio ports connected to the chameleon board.
+    Responsible for finding all audio inputs connected to the chameleon board.
 
     It does not verify if these ports are connected to DUT.
 
@@ -150,11 +188,11 @@ class ChameleonAudioPortFinder(ChameleonPortFinder):
     def find_all_ports(self):
         """
         @returns a named tuple ChameleonPorts() containing a list of connected
-                 audio ports as the first element and failed ports as second
+                 audio inputs as the first element and failed ports as second
                  element.
 
         """
-        all_ports = super(ChameleonAudioPortFinder, self).find_all_ports()
+        all_ports = super(ChameleonAudioInputFinder, self).find_all_ports()
         connected_ports = [port for port in all_ports.connected
                            if port.has_audio_support()]
         dut_failed_ports = []

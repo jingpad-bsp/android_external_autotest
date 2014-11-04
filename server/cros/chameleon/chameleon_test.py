@@ -351,7 +351,7 @@ class ChameleonTest(test.test):
         @return: A ChameleonPort object.
         """
         self.chameleon.reset()
-        finder = chameleon_port_finder.ChameleonVideoPortFinder(
+        finder = chameleon_port_finder.ChameleonVideoInputFinder(
                 self.chameleon, self.display_facade)
         ports = finder.find_all_ports()
         if len(ports.connected) == 0:
