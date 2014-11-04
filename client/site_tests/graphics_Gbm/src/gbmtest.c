@@ -90,7 +90,7 @@ static int check_bo(struct gbm_bo *bo)
 	CHECK(gbm_bo_get_width(bo) >= 0);
 	CHECK(gbm_bo_get_height(bo) >= 0);
 	CHECK(gbm_bo_get_stride(bo) >= gbm_bo_get_width(bo));
-	CHECK(gbm_bo_get_fd(bo) == fd);
+	CHECK(gbm_bo_get_fd(bo) > 0);
 
 	return 1;
 }
