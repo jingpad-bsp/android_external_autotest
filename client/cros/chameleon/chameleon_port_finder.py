@@ -4,6 +4,8 @@
 
 from collections import namedtuple
 
+from autotest_lib.client.cros.chameleon import chameleon
+
 ChameleonPorts = namedtuple('ChameleonPorts', 'connected failed')
 
 
@@ -151,25 +153,26 @@ class ChameleonVideoInputFinder(ChameleonInputFinder):
             if not port.has_video_support():
                 continue
 
-            connector_type = port.get_connector_type()
+            video_port = chameleon.ChameleonVideoInput(port)
+            connector_type = video_port.get_connector_type()
             # Try to plug the port such that DUT can detect it.
-            was_plugged = port.plugged
+            was_plugged = video_port.plugged
 
             if not was_plugged:
-                port.plug()
+                video_port.plug()
             # DUT takes some time to respond. Wait until the video signal
             # to stabilize.
-            port.wait_video_input_stable(self._TIMEOUT_VIDEO_STABLE_PROBE)
+            video_port.wait_video_input_stable(self._TIMEOUT_VIDEO_STABLE_PROBE)
 
             output = self.display_facade.get_external_connector_name()
             if output and output.startswith(connector_type):
-                connected_ports.append(port)
+                connected_ports.append(video_port)
             else:
-                dut_failed_ports.append(port)
+                dut_failed_ports.append(video_port)
 
             # Unplug the port afterward if it wasn't plugged to begin with.
             if not was_plugged:
-                port.unplug()
+                video_port.unplug()
 
         self.connected = connected_ports
         self.failed = dut_failed_ports
@@ -193,7 +196,8 @@ class ChameleonAudioInputFinder(ChameleonInputFinder):
 
         """
         all_ports = super(ChameleonAudioInputFinder, self).find_all_ports()
-        connected_ports = [port for port in all_ports.connected
+        connected_ports = [chameleon.ChameleonAudioInput(port)
+                           for port in all_ports.connected
                            if port.has_audio_support()]
         dut_failed_ports = []
 
