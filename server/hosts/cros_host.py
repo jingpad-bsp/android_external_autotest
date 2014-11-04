@@ -712,7 +712,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             # TODO(sosa): Remove temporary hack to get rid of bricked machines
             # that can't update due to a corrupted policy.
             self.run('rm -rf /var/lib/whitelist')
-            self.run('touch /var/lib/whitelist')
+            self.run('mkdir /var/lib/whitelist')
             self.run('chmod -w /var/lib/whitelist')
             self.run('stop update-engine; start update-engine')
 
