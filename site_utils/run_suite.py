@@ -119,6 +119,8 @@ def parse_options():
     parser = optparse.OptionParser(usage=usage)
     parser.add_option("-b", "--board", dest="board")
     parser.add_option("-i", "--build", dest="build")
+    parser.add_option("-w", "--web", dest="web", default=None,
+                      help="Address of a webserver to receive suite requests.")
     #  This should just be a boolean flag, but the autotest "proxy" code
     #  can't handle flags that don't take arguments.
     parser.add_option("-n", "--no_wait", dest="no_wait", default="False",
@@ -1280,8 +1282,8 @@ def main_without_exception_handling():
 
     if not options.bypass_labstatus:
         utils.check_lab_status(options.build)
-
-    instance_server = instance_for_pool(options.pool)
+    instance_server = (options.web if options.web else
+                       instance_for_pool(options.pool))
     afe = frontend_wrappers.RetryingAFE(server=instance_server,
                                         timeout_min=options.afe_timeout_mins,
                                         delay_sec=options.delay_sec)
