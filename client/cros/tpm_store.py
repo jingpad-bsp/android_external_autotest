@@ -20,7 +20,7 @@ class TPMStore(object):
     OUTPUT_TYPE_CERTIFICATE = 'cert'
     OUTPUT_TYPE_PRIVATE_KEY = 'privkey'
     PIN = '11111'
-    PKCS11_REPLAY_COMMAND = 'p11_replay'
+    PKCS11_REPLAY_COMMAND = 'p11_replay --slot=1'
     TPM_GROUP = 'chronos-access'
     TPM_USER = 'chaps'
 
