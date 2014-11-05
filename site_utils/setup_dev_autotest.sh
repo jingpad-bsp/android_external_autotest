@@ -265,11 +265,11 @@ if [ ! -d /etc/apache2/run ]; then
   sudo mkdir /etc/apache2/run
 fi
 sudo ln -sf "${AT_DIR}"/apache/apache-conf \
-  /etc/apache2/sites-available/autotest-server
+  /etc/apache2/sites-available/autotest-server.conf
 # disable currently active default
 sudo a2dissite default
 # enable autotest server
-sudo a2ensite autotest-server
+sudo a2ensite autotest-server.conf
 # Enable rewrite module
 sudo a2enmod rewrite
 # Enable wsgi
