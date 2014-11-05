@@ -1,11 +1,11 @@
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 from autotest_lib.client.common_lib import utils
 
 AUTHOR = "sbasi, achuith, rohitbm"
-NAME = "telemetry_Benchmarks.page_cycler_typical_25"
+NAME = "telemetry_Benchmarks.session_restore.cold.typical_25"
 SUITE = "bvt-perbuild"
 TIME = "LONG"
 TEST_CATEGORY = "Benchmark"
@@ -13,8 +13,8 @@ TEST_CLASS = "performance"
 TEST_TYPE = "server"
 
 DOC = """
-This server side test suite executes the Telemetry Page Loading
-Benchmark.  This is part of Chrome for Chrome OS performance testing.
+This server side test suite executes the Telemetry session restore performance
+test for ChromeOS. This is part of Chrome for Chrome OS performance testing.
 
 Pass local=True to run with local telemetry and no AFE server.
 """
@@ -29,10 +29,10 @@ def run_benchmark(machine):
 
     # The benchmark doesn't need the power off to run successfully, so there
     # is no dependency on rpm, as an RPM failure could cause the job to fail
-    # before running the benchmark.
+    # before running the benchmark
     job.run_test("telemetry_Benchmarks", host=host,
-                 benchmark="page_cycler.typical_25",
-                 tag="page_cycler.typical_25",
+                 benchmark="session_restore.cold.typical_25",
+                 tag="session_restore.cold.typical_25",
                  args=utils.args_to_dict(args))
 
     job.run_test("power_RPMTest", host=host, verify=False,

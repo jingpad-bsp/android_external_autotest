@@ -5,7 +5,7 @@
 from autotest_lib.client.common_lib import utils
 
 AUTHOR = "sbasi, achuith, rohitbm"
-NAME = "telemetry_Benchmarks.smoothness_tough_scrolling_cases"
+NAME = "telemetry_Benchmarks.smoothness.tough_filters_cases"
 SUITE = "bvt-perbuild"
 TIME = "LONG"
 TEST_CATEGORY = "Benchmark"
@@ -31,8 +31,8 @@ def run_benchmark(machine):
     # is no dependency on rpm, as an RPM failure could cause the job to fail
     # before running the benchmark.
     job.run_test("telemetry_Benchmarks", host=host,
-                 benchmark="smoothness.tough_scrolling_cases",
-                 tag="smoothness.tough_scrolling_cases",
+                 benchmark="smoothness.tough_filters_cases",
+                 tag="smoothness.tough_filters_cases",
                  args=utils.args_to_dict(args))
 
     job.run_test("power_RPMTest", host=host, verify=False,

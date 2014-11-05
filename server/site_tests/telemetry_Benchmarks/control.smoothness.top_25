@@ -5,7 +5,7 @@
 from autotest_lib.client.common_lib import utils
 
 AUTHOR = "sbasi, achuith, rohitbm"
-NAME = "telemetry_Benchmarks.media_chromeOS_tough_video_cases"
+NAME = "telemetry_Benchmarks.smoothness.top_25"
 SUITE = "bvt-perbuild"
 TIME = "LONG"
 TEST_CATEGORY = "Benchmark"
@@ -13,7 +13,8 @@ TEST_CLASS = "performance"
 TEST_TYPE = "server"
 
 DOC = """
-This server side test suite executes the Telemetry Media Benchmark for ChromeOS.
+This server side test suite executes the Telemetry smoothness measurement test
+for top sites(pre-recorded) for ChromeOS.
 This is part of Chrome for Chrome OS performance testing.
 
 Pass local=True to run with local telemetry and no AFE server.
@@ -29,10 +30,9 @@ def run_benchmark(machine):
 
     # The benchmark doesn't need the power off to run successfully, so there
     # is no dependency on rpm, as an RPM failure could cause the job to fail
-    # before running the benchmark
+    # before running the benchmark.
     job.run_test("telemetry_Benchmarks", host=host,
-                 benchmark="media.chromeOS.tough_video_cases",
-                 tag="media.chromeOS.tough_video_cases",
+                 benchmark="smoothness.top_25", tag="smoothness.top_25",
                  args=utils.args_to_dict(args))
 
     job.run_test("power_RPMTest", host=host, verify=False,

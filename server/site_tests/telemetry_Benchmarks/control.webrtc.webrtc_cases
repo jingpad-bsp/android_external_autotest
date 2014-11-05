@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "chromeos-perf"
-NAME = "Telemetry WebRTC Benchmark"
+NAME = "telemetry_Benchmarks.webrtc.webrtc_cases"
 SUITE = "perf_v2"
 TIME = "LONG"
 TEST_CATEGORY = "Benchmark"
@@ -18,7 +18,7 @@ This is part of Chrome for Chrome OS performance testing.
 def run_benchmark(machine):
     host = hosts.create_host(machine)
     job.run_test("telemetry_Benchmarks", host=host,
-                 benchmark="webrtc.webrtc_cases", tag="webrtc")
+                 benchmark="webrtc.webrtc_cases", tag="webrtc.webrtc_cases")
 
 
 parallel_simple(run_benchmark, machines)

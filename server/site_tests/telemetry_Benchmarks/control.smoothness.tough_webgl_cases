@@ -1,11 +1,11 @@
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 from autotest_lib.client.common_lib import utils
 
 AUTHOR = "sbasi, achuith, rohitbm"
-NAME = "telemetry_Benchmarks.dromaeo_domcoretraverse"
+NAME = "telemetry_Benchmarks.smoothness.tough_webgl_cases"
 SUITE = "bvt-perbuild"
 TIME = "LONG"
 TEST_CATEGORY = "Benchmark"
@@ -13,8 +13,9 @@ TEST_CLASS = "performance"
 TEST_TYPE = "server"
 
 DOC = """
-This server side test suite executes the Telemetry Dromaeo Dom Core Traverse
-Benchmark.  This is part of Chrome for Chrome OS performance testing.
+This server side test suite executes the Telemetry smoothness Benchmark
+for advanced graphics(e.g. games) for ChromeOS.
+This is part of Chrome for Chrome OS performance testing.
 
 Pass local=True to run with local telemetry and no AFE server.
 """
@@ -31,8 +32,8 @@ def run_benchmark(machine):
     # is no dependency on rpm, as an RPM failure could cause the job to fail
     # before running the benchmark.
     job.run_test("telemetry_Benchmarks", host=host,
-                 benchmark="dromaeo.domcoretraverse",
-                 tag="dromaeo.domcoretraverse",
+                 benchmark="smoothness.tough_webgl_cases",
+                 tag="smoothness.tough_webgl_cases",
                  args=utils.args_to_dict(args))
 
     job.run_test("power_RPMTest", host=host, verify=False,

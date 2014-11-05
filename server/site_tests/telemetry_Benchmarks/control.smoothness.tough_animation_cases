@@ -5,7 +5,7 @@
 from autotest_lib.client.common_lib import utils
 
 AUTHOR = "sbasi, achuith, rohitbm"
-NAME = "telemetry_Benchmarks.smoothness_tough_animation_cases"
+NAME = "telemetry_Benchmarks.smoothness.tough_animation_cases"
 SUITE = "bvt-perbuild"
 TIME = "LONG"
 TEST_CATEGORY = "Benchmark"
