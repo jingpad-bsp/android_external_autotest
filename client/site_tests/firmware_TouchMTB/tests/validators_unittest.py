@@ -874,6 +874,17 @@ class DiscardInitialSecondsValidatorTest(unittest.TestCase):
         # EVENT TIME
         self.assertTrue(final_state_packet[0][MTB.EV_TIME] == 1412888977.716634)
 
+    def test_noise_line_with_all_fingers_left(self):
+        """In this test case, all fingers left. The final_state_packet is []."""
+        packets=parse_tests_data('noise_line.dat')
+        validator = DiscardInitialSecondsValidator(ReportRateValidator('>= 60'))
+        validator.init_check(packets)
+        packets = validator._discard_initial_seconds(packets, 1)
+        validator.validator.init_check(packets)
+        list_syn_time = validator.validator.packets.get_list_syn_time([])
+        self.assertEqual(len(packets), 84)
+        self.assertEqual(len(list_syn_time), 84)
+
 
 if __name__ == '__main__':
   unittest.main()

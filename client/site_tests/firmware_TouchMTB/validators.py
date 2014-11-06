@@ -355,7 +355,12 @@ class DiscardInitialSecondsValidator(BaseValidator):
         # at the end of the discarded seconds
         final_state_packet = mtb.create_final_state_packet(
             packets[:cutoff_index])
-        return [final_state_packet] + packets[cutoff_index:]
+        if final_state_packet:
+            return [final_state_packet] + packets[cutoff_index:]
+        else:
+            # If final_state_packet is [] which means all fingers have left
+            # at this time instant, just exclude this empty packet.
+            return packets[cutoff_index:]
 
     def check(self, packets, variation=None):
         self.init_check(packets)
