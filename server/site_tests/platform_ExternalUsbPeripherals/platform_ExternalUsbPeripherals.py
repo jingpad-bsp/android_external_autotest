@@ -2,11 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, re, threading, time
+import logging, re, threading, time
 
+from autotest_lib.client.cros.crash_test import CrashTest
 from autotest_lib.server import autotest, test
-from autotest_lib.server.cros import stress
-from autotest_lib.client.common_lib import error, site_utils
+from autotest_lib.client.common_lib import error
 
 _WAIT_DELAY = 10
 _LONG_TIMEOUT = 200
@@ -14,9 +14,10 @@ _SUSPEND_RESUME_BOARDS = ['daisy', 'panther']
 _LOGIN_FAILED = 'DEVICE COULD NOT LOGIN!'
 _SUSPEND_FAILED = 'Failed to SUSPEND within timeout'
 _RESUME_FAILED = 'Failed to RESUME within timeout'
-_CRASH_PATHS = ['/var/spool',
-                '/home/chronos',
-                '/home/chronos/u*']
+_CRASH_PATHS = [CrashTest._SYSTEM_CRASH_DIR.replace("/crash",""),
+                CrashTest._FALLBACK_USER_CRASH_DIR.replace("/crash",""),
+                CrashTest._USER_CRASH_DIRS.replace("/crash","")]
+
 class platform_ExternalUsbPeripherals(test.test):
     """Uses servo to repeatedly connect/remove USB devices during boot."""
     version = 1
@@ -59,15 +60,6 @@ class platform_ExternalUsbPeripherals(test.test):
         self.pluged_status = on
 
 
-    def is_logged_in(self):
-        """Checks if DUT is logged"""
-        out = self.host.run('ls /home/chronos/user/',
-                            ignore_status=True).stdout.strip()
-        if len(re.findall('Downloads', out)) > 0:
-            return True
-        return False
-
-
     def action_login(self):
         """Login i.e. runs running client test
 
@@ -76,8 +68,6 @@ class platform_ExternalUsbPeripherals(test.test):
         """
         self.autotest_client.run_test(self.client_autotest,
                                       exit_without_logout=True)
-        if not self.is_logged_in():
-            raise error.TestFail(_LOGIN_FAILED)
 
 
     def wait_to_disconnect(self, fail_msg,
@@ -85,7 +75,7 @@ class platform_ExternalUsbPeripherals(test.test):
         """Wait for DUT to suspend.
 
         @param fail_msg: Failure message
-        @param resume_timeout: Time in seconds to wait to disconnect
+        @param suspend_timeout: Time in seconds to wait to disconnect
 
         @exception TestFail  if fail to disconnect in time
         @returns time took to disconnect
@@ -141,7 +131,7 @@ class platform_ExternalUsbPeripherals(test.test):
         self.host.servo.lid_close()
         stime = self.wait_to_disconnect(_SUSPEND_FAILED)
         self.suspend_status = True
-        logging.debug('--- Suspended in %d sec' % stime)
+        logging.debug('--- Suspended in %d sec', stime)
 
 
 
@@ -150,7 +140,7 @@ class platform_ExternalUsbPeripherals(test.test):
         self.host.servo.lid_open()
         rtime = self.wait_to_come_up(_RESUME_FAILED, _LONG_TIMEOUT)
         self.suspend_status = False
-        logging.debug('--- Resumed in %d sec' % rtime)
+        logging.debug('--- Resumed in %d sec', rtime)
 
 
     def powerd_suspend_with_timeout(self, timeout):
@@ -181,7 +171,7 @@ class platform_ExternalUsbPeripherals(test.test):
         # Execute action after suspending
         do_while_suspended = re.findall(r'SUSPEND(\w*)RESUME', action)[0]
         plugged_list = self.on_list
-        logging.info('--- %s-ing' % do_while_suspended)
+        logging.info('--- %s-ing', do_while_suspended)
         if do_while_suspended =='_UNPLUG_':
             self.set_hub_power(False)
             plugged_list = self.off_list
@@ -291,6 +281,8 @@ class platform_ExternalUsbPeripherals(test.test):
         Changes suspend and resume actions done with lid_close
         to suspend_resume done with powerd_dbus_suspend
 
+        "@param actions: the sequence of accions to perform
+
         @returns The changed to suspend_resume action_sequence
         """
         susp_resumes = re.findall(r'(SUSPEND,\w*,*RESUME)',actions)
@@ -340,7 +332,7 @@ class platform_ExternalUsbPeripherals(test.test):
             raise error.TestError('No connected devices were detected. Make '
                                   'sure the devices are connected to USB_KEY '
                                   'and DUT_HUB1_USB on the servo board.')
-        logging.debug('Connected devices list: %s' % diff_list)
+        logging.debug('Connected devices list: %s', diff_list)
 
         board = host.get_board().split(':')[1]
         action_sequence = action_sequence.upper()
@@ -364,7 +356,7 @@ class platform_ExternalUsbPeripherals(test.test):
                     self.set_hub_power(True)
                 elif self.suspend_status == False:
                     if action.startswith('LOGIN'):
-                        if self.is_logged_in():
+                        if self.login_status:
                             logging.debug('Skipping login. Already logged in.')
                             continue
                         else:

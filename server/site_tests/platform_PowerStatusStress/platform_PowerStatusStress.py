@@ -14,19 +14,8 @@ _CLIENT_LOGIN = 'desktopui_SimpleLogin'
 
 
 class platform_PowerStatusStress(test.test):
+    """Uses RPM and servo to test the power_supply_info output. """
     version = 1
-
-
-    def is_logged_in(self):
-        """Checks if DUT is logged
-
-        @returns True if logged, False otherwise.
-        """
-        out = self.host.run('ls /home/chronos/user/',
-                            ignore_status=True).stdout.strip()
-        if len(re.findall('Downloads', out)) > 0:
-            return True
-        return False
 
 
     def action_login(self):
@@ -37,8 +26,6 @@ class platform_PowerStatusStress(test.test):
         """
         self.autotest_client.run_test(_CLIENT_LOGIN,
                                       exit_without_logout=True)
-        if not self.is_logged_in():
-            raise error.TestFail("Failed to login!")
 
 
     def wait_to_suspend(self, suspend_timeout = _LONG_TIMEOUT):
@@ -81,13 +68,13 @@ class platform_PowerStatusStress(test.test):
         #Suspend i.e. close lid
         self.host.servo.lid_close()
         stime = self.wait_to_suspend(_LONG_TIMEOUT)
-        logging.debug('Suspended in %d sec' % stime)
+        logging.debug('Suspended in %d sec', stime)
         #Suspended for suspend_time
         time.sleep(suspend_time)
         #Resume i.e. open lid
         self.host.servo.lid_open()
         rtime = self.wait_to_come_up(_LONG_TIMEOUT)
-        logging.debug('Resumed in %d sec' % rtime)
+        logging.debug('Resumed in %d sec', rtime)
 
 
 
@@ -106,7 +93,7 @@ class platform_PowerStatusStress(test.test):
         @exception TestFail  if line_power or battery state do not match
         """
         bat_state = _CHARGING if powered_on else _DISCHARGING,
-        logging.info('Switching status to %s ' % bat_state)
+        logging.info('Switching status to %s ', bat_state)
         if powered_on:
             self.host.power_on()
         else:
@@ -139,13 +126,12 @@ class platform_PowerStatusStress(test.test):
             self.host.power_on()
         else:
             raise error.TestFail('No RPM is setup to device')
-        #Login to device
-        if not self.is_logged_in():
-            self.action_login()
+        # Login to device
+        self.action_login()
 
         pdu_connected = True
         for i in xrange(loop_count):
-            logging.info('--- Iteration %d' % (i + 1))
+            logging.info('--- Iteration %d', (i + 1))
 
             # Suspend/resume
             if suspend_time > 0:
