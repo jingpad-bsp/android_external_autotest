@@ -74,7 +74,7 @@ class power_Consumption(test.test):
         self._chrome = chrome.Chrome()
         # Wait for login to finish and any extra windows to appear.
         time.sleep(10)
-        graphics_utils.do_power_consumption_xset()
+        graphics_utils.screen_disable_energy_saving()
         # Most of the tests will be running in this tab.
         self._tab = self._chrome.browser.tabs[0]
         logging.info('initialize() finished')
@@ -118,7 +118,7 @@ class power_Consumption(test.test):
         # Note: full screen mode toggled with F11 is different from clicking the
         # full screen icon on video player controls. This needs improvement.
         # Bug: http://crbug.com/248939
-        graphics_utils.press_key('F11')
+        graphics_utils.screen_toggle_fullscreen()
 
 
     # Below are a series of generic sub-test runners. They run a given task

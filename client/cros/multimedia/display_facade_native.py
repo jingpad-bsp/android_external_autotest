@@ -279,11 +279,8 @@ class DisplayFacadeNative(object):
 
 
     def toggle_mirrored(self):
-        """Toggles mirrored.
-
-        Emulates L_Ctrl + Maximize in X server to toggle mirrored.
-        """
-        self.press_key('ctrl+F4')
+        """Toggles mirrored."""
+        graphics_utils.screen_toggle_mirrored()
         return True
 
 
