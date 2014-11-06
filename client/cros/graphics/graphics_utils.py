@@ -241,6 +241,43 @@ def get_display_resolution():
     else:
         return _get_display_resolution_x()
 
+def _get_num_outputs_freon():
+    """
+    Parses output of modetest to determine the number of connected displays
+    @return: The number of connected displays
+    """
+    modetest_output = utils.system_output('modetest -c')
+    modetest_connector_pattern = (r'\d+\s+\d+\s+(connected|disconnected)\s+'
+                                  r'[- 0-9a-zA-Z]+\s+\d+x\d+\s+\d+\s+\d+')
+    connected = 0;
+    for line in modetest_output.splitlines():
+        connector_match = re.match(modetest_connector_pattern, line)
+        if connector_match is not None:
+            if connector_match.group(1) == 'connected':
+                connected = connected + 1;
+
+    return connected;
+
+def _get_num_outputs_x():
+    """
+    Parses the output of xrandr to determine the number of connected displays
+    @return: The number of connected displays
+    """
+    xrandr_state = get_xrandr_output_state()
+    output_states = [xrandr_state[name] for name in xrandr_state]
+    return sum([1 if is_enabled else 0 for is_enabled in output_states])
+
+def get_num_outputs_on():
+    """
+    Retrieves the number of connected outputs that are on.
+
+    Return value: integer value of number of connected outputs that are on.
+    """
+
+    if utils.is_freon():
+        return _get_num_outputs_freon();
+    else:
+        return _get_num_outputs_x();
 
 def call_xrandr(args_string=''):
     """

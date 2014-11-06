@@ -11,15 +11,11 @@ from autotest_lib.client.cros.graphics import graphics_utils
 
 def get_num_outputs_on():
     """
-    Retrieves the number of connected outputs that are on, using Xrandr.
-
-    Return value: integer value of number of connected outputs that are on.
+    Retrieves the number of connected outputs that are on.
+    @return: integer value of number of connected outputs that are on.
     """
 
-    xrandr_state = graphics_utils.get_xrandr_output_state()
-    output_states = [xrandr_state[name] for name in xrandr_state]
-    return sum([1 if is_enabled else 0 for is_enabled in output_states])
-
+    return graphics_utils.get_num_outputs_on();
 
 class power_BacklightControl(test.test):
     version = 1
