@@ -146,17 +146,22 @@ def TestUdevDeviceList(restart_fn):
   if not restart_fn():
     raise error.TestFail('Reset function failed')
 
-  # We need to wait for udev to rename (or not) the interface!
-  time.sleep(10)
+  # Debugging for crbug.com/418983,423741,424605,425066 added the loop to see
+  # if it takes more than 3 attempts for all of the interfaces to come back up.
+  for i in range(3):
+    # We need to wait for udev to rename (or not) the interface!
+    time.sleep(10)
 
-  iflist_post = GetInterfaceList()
+    iflist_post = GetInterfaceList()
 
-  if iflist_post != iflist_pre:
-    raise error.TestFail('Interfaces changed after %s (%s != %s)' %
-                         (restart_fn.__name__, str(iflist_pre),
-                          str(iflist_post)))
+    if iflist_post == iflist_pre:
+      logging.debug('Interfaces remain the same after %s; number of tries: %d',
+                    restart_fn.__name__, i)
+      return
 
-  logging.debug('Interfaces remain the same after %s', restart_fn.__name__)
+  raise error.TestFail('Interfaces changed after %s (%s != %s)' %
+                       (restart_fn.__name__, str(iflist_pre),
+                        str(iflist_post)))
 
 
 class network_UdevRename(test.test):
