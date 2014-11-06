@@ -23,10 +23,12 @@ class peerd_AdvertiseServices(test.test):
     TEST_SERVICE_ID = 'test-service-0'
     TEST_SERVICE_INFO = {'some_data': 'a value',
                           'other_data': 'another value'}
+    TEST_SERVICE_PORT = 8080
     SERBUS_SERVICE_ID = 'serbus'
     SERBUS_SERVICE_INFO = {'ver': '1.0',
                            'id': ANY_VALUE,
                            'services': TEST_SERVICE_ID}
+    SERBUS_SERVICE_PORT = 0
 
 
     def initialize(self):
@@ -106,8 +108,8 @@ class peerd_AdvertiseServices(test.test):
                                      'and unexpected value=%r.' %
                                      (record_name, record_type,
                                       found_records[0].data))
-            logging.debug('Found record with name=%s, type=%r.',
-                          record_name, record_type)
+            logging.debug('Found record with name=%s, type=%r, value=%r.',
+                          record_name, record_type, found_records[0].data)
             return found_records[0]
         logging.debug('Did not see record with name=%s and type=%r',
                       record_name, record_type)
@@ -116,7 +118,7 @@ class peerd_AdvertiseServices(test.test):
         return None
 
 
-    def _found_service_records(self, service_id, service_info):
+    def _found_service_records(self, service_id, service_info, service_port):
         PTR_name = '_%s._tcp.%s' % (service_id, self._dns_domain)
         record_PTR = self._ask_for_record(PTR_name, dpkt.dns.DNS_PTR,
                                           lambda data: True)
@@ -126,7 +128,8 @@ class peerd_AdvertiseServices(test.test):
         # TXT entries.
         TXT_name = SRV_name = record_PTR.data
         if not self._ask_for_record(SRV_name, dpkt.dns.DNS_SRV,
-                                    lambda data: data[0] == self._hostname):
+                                    lambda data: data[0] == self._hostname and
+                                                 data[3] == service_port):
             return False
         # TXT should exist.
         record_TXT = self._ask_for_record(
@@ -158,12 +161,14 @@ class peerd_AdvertiseServices(test.test):
         # If we can see Avahi publishing that it's there, check that it has
         # appropriate entries for its serbus master record.
         if not self._found_service_records(self.SERBUS_SERVICE_ID,
-                                           self.SERBUS_SERVICE_INFO):
+                                           self.SERBUS_SERVICE_INFO,
+                                           self.SERBUS_SERVICE_PORT):
             return False
         logging.debug('Found serbus records, looking for service records.')
         # We also expect the subservices we've added to exist.
         if not self._found_service_records(self.TEST_SERVICE_ID,
-                                           self.TEST_SERVICE_INFO):
+                                           self.TEST_SERVICE_INFO,
+                                           self.TEST_SERVICE_PORT):
             return False
         logging.debug('Found all desired records.')
         return True
@@ -171,8 +176,10 @@ class peerd_AdvertiseServices(test.test):
 
     def run_once(self):
         # Tell peerd about this exciting new service we have.
-        service_token = self._peerd.expose_service(self.TEST_SERVICE_ID,
-                                                   self.TEST_SERVICE_INFO)
+        service_token = self._peerd.expose_service(
+                self.TEST_SERVICE_ID,
+                self.TEST_SERVICE_INFO,
+                mdns_options={'port': self.TEST_SERVICE_PORT})
         # Wait for advertisements of that service to appear from avahi.
         logging.info('Waiting to receive mDNS advertisements of '
                      'peerd services.')

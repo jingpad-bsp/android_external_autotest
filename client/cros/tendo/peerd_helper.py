@@ -33,6 +33,9 @@ SERVICE_PROPERTY_INFO = 'ServiceInfo'
 TECHNOLOGY_ALL = dbus.UInt32(1 << 0)
 TECHNOLOGY_MDNS = dbus.UInt32(1 << 1)
 
+# We can give some options to ExposeService.
+EXPOSE_SERVICE_SECTION_MDNS = 'mdns'
+EXPOSE_SERVICE_MDNS_PORT = 'port'
 
 def make_helper(bus=None, timeout_seconds=10, verbosity_level=None,
                 mdns_prefix=None):
@@ -154,7 +157,7 @@ class PeerdHelper(object):
         return None
 
 
-    def expose_service(self, service_id, service_info):
+    def expose_service(self, service_id, service_info, mdns_options=None):
         """Expose a service via peerd.
 
         Note that peerd should watch DBus connections and remove this service
@@ -164,10 +167,20 @@ class PeerdHelper(object):
                            for limitations on this string.
         @param service_info: dict of string, string entries.  See peerd
                              documentation for relevant restrictions.
+        @param mdns_options: dict of string, <variant type>.
         @return string service token for use with remove_service().
 
         """
-        return self._manager.ExposeService(service_id, service_info)
+        options = dbus.Dictionary(signature='sv')
+        if mdns_options is not None:
+            options[EXPOSE_SERVICE_SECTION_MDNS] = dbus.Dictionary(
+                    signature='sv')
+            # We're going to do a little work here to make calling us easier.
+            for k,v in mdns_options.iteritems():
+                if k == EXPOSE_SERVICE_MDNS_PORT:
+                    v = dbus.UInt16(v)
+                options[EXPOSE_SERVICE_SECTION_MDNS][k] = v
+        return self._manager.ExposeService(service_id, service_info, options)
 
 
     def remove_service(self, service_token):
