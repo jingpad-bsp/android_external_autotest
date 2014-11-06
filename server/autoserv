@@ -22,6 +22,11 @@ import common
 
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import global_config
+try:
+    from autotest_lib.puppylab import results_mocker
+except ImportError:
+    results_mocker = None
+
 require_atfork = global_config.global_config.get_config_value(
         'AUTOSERV', 'require_atfork_module', type=bool, default=True)
 
@@ -396,12 +401,30 @@ def main():
             'AUTOSERV', 'testing_exceptions', type=list, default=[])
     test_mode = global_config.global_config.get_config_value(
             'AUTOSERV', 'testing_mode', type=bool, default=False)
-    test_mode = test_mode and not any([ex in parser.options.label
-                                       for ex in testing_exceptions])
+    test_mode = (results_mocker and test_mode and not
+                 any([ex in parser.options.label
+                      for ex in testing_exceptions]))
+    is_task = (parser.options.verify or parser.options.repair or
+               parser.options.provision or parser.options.reset or
+               parser.options.cleanup or parser.options.collect_crashinfo)
     try:
         try:
             if test_mode:
-                time.sleep(TESTING_MODE_SLEEP_SECS)
+                # The parser doesn't run on tasks anyway, so we can just return
+                # happy signals without faking results.
+                if not is_task:
+                    machine = parser.options.results.split('/')[-1]
+
+                    # TODO(beeps): The proper way to do this would be to
+                    # refactor job creation so we can invoke job.record
+                    # directly. To do that one needs to pipe the test_name
+                    # through run_autoserv and bail just before invoking
+                    # the server job. See the comment in
+                    # puppylab/results_mocker for more context.
+                    results_mocker.ResultsMocker(
+                            test_name, parser.options.results, machine
+                            ).mock_results()
+                return
             else:
                 run_autoserv(pid_file_manager, results, parser)
         except SystemExit as e:
