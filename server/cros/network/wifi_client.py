@@ -85,6 +85,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
     # DBus device properties. Wireless interfaces should support these.
     ROAM_THRESHOLD = 'RoamThreshold'
     WAKE_ON_WIFI_FEATURES = 'WakeOnWiFiFeaturesEnabled'
+    NET_DETECT_SCAN_PERIOD = 'NetDetectScanPeriodSeconds'
 
     CONNECTED_STATES = 'ready', 'portal', 'online'
 
@@ -181,7 +182,10 @@ class WiFiClient(site_linux_system.LinuxSystem):
 
     @conductive.setter
     def conductive(self, value):
-        """Set the conductive member to True or False."""
+        """Set the conductive member to True or False.
+
+        @param value: boolean value to set the conductive member to.
+        """
         self._conductive = value
 
 
@@ -737,6 +741,22 @@ class WiFiClient(site_linux_system.LinuxSystem):
                                      features)
 
 
+    def net_detect_scan_period_seconds(self, period):
+        """Sets the period between net detect scans performed by the NIC to look
+        for whitelisted SSIDs to |period|. This setting only takes effect if the
+        NIC is programmed to wake on SSID. Use as with roam_threshold.
+
+        @param period: integer number of seconds between NIC net detect scans
+
+        @return a context manager for the net detect scan period
+
+        """
+        return TemporaryDBusProperty(self._shill_proxy,
+                                     self.wifi_if,
+                                     self.NET_DETECT_SCAN_PERIOD,
+                                     period)
+
+
     def request_roam(self, bssid):
         """Request that we roam to the specified BSSID.
 
@@ -922,7 +942,11 @@ class WiFiClient(site_linux_system.LinuxSystem):
 
 
     def start_wpasupplicant(self, warn_if_not_running=False):
-        """Start wpa_supplicant if it is not running"""
+        """Start wpa_supplicant if it is not running
+
+        @param warn_if_not_running: boolean that determines whether or not to
+        log a warning when we start supplicant if it is not running.
+        """
         if (self.host.run('pgrep -l wpa_supplicant',
                           ignore_status=True).exit_status != 0):
             if warn_if_not_running:

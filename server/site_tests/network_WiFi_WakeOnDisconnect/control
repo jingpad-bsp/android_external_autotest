@@ -12,13 +12,8 @@ DEPENDENCIES = 'wificell, servo, board:samus'
 SUITE = 'wifi_matfunc, wifi_correctness_cros_core, wifi_release'
 
 DOC = """
-This tests wake-on-disconnect, which allows us to wake up and potentially
-rescan for APs when we lose our connection.
-
-Shill will program wake-on-disconnect if 'ssid' is one of the wake-on-WiFi
-features that is enabled. First, we need to tell shill that we want to
-enable this, and then shut down the AP -- the DUT should wake up in
-a short amount of time after that.
+This test verifies that the NIC wakes the DUT up in dark resume upon getting
+disconnected from an AP that the DUT was connected to when it last suspended.
 """
 
 args_dict = utils.args_to_dict(args)

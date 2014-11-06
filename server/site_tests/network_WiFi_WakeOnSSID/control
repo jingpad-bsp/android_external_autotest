@@ -1,18 +1,18 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 from autotest_lib.server import utils
 
 AUTHOR = 'ejcaruso, samueltan, snanda'
-NAME = 'network_WiFi_WoWLAN'
+NAME = 'network_WiFi_WakeOnSSID'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
 DEPENDENCIES = 'wificell, servo, board:samus'
 
 DOC = """
-This test verifies that the NIC wakes the DUT up in dark resume upon receiving
-a packet which matches a pattern registered with shill before the last suspend.
+This test verifies that the NIC wakes the DUT up in dark resume on the
+appearance of a whitelisted SSID if it previously suspended disconnected.
 """
 
 args_dict = utils.args_to_dict(args)
@@ -20,7 +20,7 @@ servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
 def run(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
-    job.run_test('network_WiFi_WoWLAN',
+    job.run_test('network_WiFi_WakeOnSSID',
                  host=host,
                  raw_cmdline_args=args)
 

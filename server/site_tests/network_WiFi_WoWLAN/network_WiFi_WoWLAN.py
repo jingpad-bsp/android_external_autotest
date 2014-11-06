@@ -12,8 +12,9 @@ from autotest_lib.server.cros.network import hostap_config
 from autotest_lib.server.cros.network import wifi_cell_test_base
 from autotest_lib.server.cros.network import wifi_client
 
-SUSPEND_WAIT_TIME=10
-RESUME_WAIT_TIME=25
+SUSPEND_WAIT_TIME_SECONDS = 10
+DARK_RESUME_WAIT_TIME_SECONDS = 25
+WAIT_UP_TIMEOUT_SECONDS = 10
 
 
 class network_WiFi_WoWLAN(wifi_cell_test_base.WiFiCellTestBase):
@@ -41,19 +42,23 @@ class network_WiFi_WoWLAN(wifi_cell_test_base.WiFiCellTestBase):
         logging.info('DUT WiFi MAC = %s, IPv4 = %s', dut_mac, dut_ip)
         logging.info('Router WiFi IPv4 = %s', router.wifi_ip)
 
-        # set up WoWLAN to wake on packets and register ip, then sleep
+        # Set up WoWLAN to wake on packets and register ip, then sleep
         with client.wake_on_wifi_features(wifi_client.WAKE_ON_WIFI_PACKET):
-            client.add_wake_packet_source(router.wifi_ip)
             logging.info('Set up WoWLAN')
+            client.add_wake_packet_source(router.wifi_ip)
 
             with self._dr_utils.suspend():
-                time.sleep(SUSPEND_WAIT_TIME)
+                time.sleep(SUSPEND_WAIT_TIME_SECONDS)
 
                 router.send_magic_packet(dut_ip, dut_mac)
 
-                # The DUT should wake up soon, but we'll give it a bit of a
-                # grace period.
-                time.sleep(RESUME_WAIT_TIME)
+                # Wait for the DUT to wake up in dark resume and suspend again.
+                time.sleep(DARK_RESUME_WAIT_TIME_SECONDS)
+
+                # Ensure that wake on packet did not trigger a full wake.
+                if client.host.wait_up(timeout=WAIT_UP_TIMEOUT_SECONDS):
+                    raise error.TestFail('Client woke up fully.')
+
                 if self._dr_utils.count_dark_resumes() < 1:
                     raise error.TestFail('Client failed to wake up.')
 
@@ -62,7 +67,7 @@ class network_WiFi_WoWLAN(wifi_cell_test_base.WiFiCellTestBase):
 
     def cleanup(self):
         self._dr_utils.teardown()
-        # clean up packet wake sources
+        # Clean up packet wake sources
         self.context.client.remove_all_wake_packet_sources()
-        # make sure we clean up everything
+        # Make sure we clean up everything
         super(network_WiFi_WoWLAN, self).cleanup()
