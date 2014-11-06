@@ -38,6 +38,10 @@ DHCPCD_KEY_SEARCH_DOMAIN_LIST = 'SearchDomains'
 # We should be able to complete a DHCP negotiation in this amount of time.
 DHCP_NEGOTIATION_TIMEOUT_SECONDS = 10
 
+# After DHCP completes, an ipconfig should appear shortly after
+IPCONFIG_POLL_COUNT = 5
+IPCONFIG_POLL_PERIOD_SECONDS = 0.5
+
 class DhcpTestBase(test.test):
     """Parent class for tests that work verify DHCP behavior."""
     version = 1
@@ -282,9 +286,13 @@ class DhcpTestBase(test.test):
         # The config is what the interface was actually configured with, as
         # opposed to dhcp_options, which is what the server expected it be
         # configured with.
-        dhcp_config = self.get_interface_ipconfig(
-                self.ethernet_pair.peer_interface_name)
-        if dhcp_config is None:
+        for attempt in range(IPCONFIG_POLL_COUNT):
+            dhcp_config = self.get_interface_ipconfig(
+                    self.ethernet_pair.peer_interface_name)
+            if dhcp_config is not None:
+                break
+            time.sleep(IPCONFIG_POLL_PERIOD_SECONDS)
+        else:
             raise error.TestFail('Failed to retrieve DHCP ipconfig object '
                                  'from shill.')
 
