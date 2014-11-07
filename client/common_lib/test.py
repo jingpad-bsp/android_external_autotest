@@ -91,7 +91,7 @@ class base_test(object):
 
 
     def output_perf_value(self, description, value, units=None,
-                          higher_is_better=True, graph=None, replacement='_'):
+                          higher_is_better=None, graph=None, replacement='_'):
         """
         Records a measured performance value in an output file.
 
@@ -112,7 +112,12 @@ class base_test(object):
         @param higher_is_better: A boolean indicating whether or not a "higher"
                 measured perf value is considered to be better. If False, it is
                 assumed that a "lower" measured value is considered to be
-                better.
+                better. This impacts dashboard plotting and email notification.
+                Pure autotests are expected to specify either True or False!
+                This value can be set to "None" to indicate that the perf
+                dashboard should apply the rules encoded via Chromium
+                unit-info.json. This is only used for tracking Chromium based
+                tests (in particular telemetry).
         @param graph: A string indicating the name of the graph on which
                 the perf value will be subsequently displayed on the chrome perf
                 dashboard. This allows multiple metrics be grouped together on
