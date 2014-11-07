@@ -81,22 +81,6 @@ class db_sql(object):
         self.max_delay = get_value("AUTOTEST_WEB", "global_db_max_retry_delay",
                                    "max_retry_delay", type=int, default=60)
 
-        # TODO(beeps): Move this to django settings once we have routers.
-        # On test instances mysql connects through a different port. No point
-        # piping this through our entire infrastructure when it is only really
-        # used for testing; Ideally we would specify this through django
-        # settings and default it to the empty string so django will figure out
-        # the default based on the database backend (eg: mysql, 3306), but until
-        # we have database routers in place any django settings will apply to
-        # both tko and afe.
-        # The intended use of this port is to allow a testing shard vm to
-        # update the master vm's database with test results. Specifying
-        # and empty string will fallback to not even specifying the port
-        # to the backend in tko/db.py. Unfortunately this means retries
-        # won't work on the test cluster till we've migrated to routers.
-        self.port = global_config.global_config.get_config_value(
-                "AUTOTEST_WEB", "global_db_port", type=str, default='')
-
 
     def _init_db(self):
         # make sure we clean up any existing connection
@@ -106,7 +90,7 @@ class db_sql(object):
 
         # create the db connection and cursor
         self.con = self.connect(self.host, self.database,
-                                self.user, self.password, self.port)
+                                self.user, self.password)
         self.cur = self.con.cursor()
 
 
