@@ -3,6 +3,69 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""Report whether DUTs are working are broken.
+
+usage: dut_status [-f] [<time options>] hostname ...
+
+By default, reports on the status of the given hosts, to say whether
+they're "working" or "broken".  For purposes of this script "broken"
+means "the DUT requires manual intervention before it can be used
+for further testing", and "working" means "not broken".  The status
+determination is based on the history of completed jobs for the
+DUT; current activities are not considered.
+
+With the -f option, reports the job history for the DUT, and whether
+the DUT was believed working or broken at the end of each job.
+
+To search the DUT's job history, the script must be given a time
+range to search over.  The range is specified with up to two of
+three options:
+  --until/-u DATE/TIME - Specifies an end time for the search
+      range.  (default: now)
+  --since/-s DATE/TIME - Specifies a start time for the search
+      range. (no default)
+  --duration/-d HOURS - Specifies the length of the search interval
+      in hours. (default: 12 hours)
+
+Any two time options completely specify the time interval.  If
+only one option is provided, these defaults are used:
+  --until - Use the given end time with the default duration.
+  --since - Use the given start time with the default end time.
+  --duration - Use the given duration with the default end time.
+
+If no time options are given, use the default end time and duration.
+
+DATE/TIME values are of the form '2014-11-06 17:21:34'.
+
+Examples:
+    $ dut_status chromeos2-row4-rack2-host12
+    hostname                     S   last checked         URL
+    chromeos2-row4-rack2-host12  NO  2014-11-06 15:25:29  http://...
+
+'NO' means the DUT is broken.  That diagnosis is based on a job
+that failed:  'last checked' is the time of the job, and the URL
+points to the job's logs.
+
+    $ dut_status.py -u '2014-11-06 15:30:00' -d 1 -f chromeos2-row4-rack2-host12
+    chromeos2-row4-rack2-host12
+        2014-11-06 15:25:29  NO http://...
+        2014-11-06 14:44:07  -- http://...
+        2014-11-06 14:42:56  OK http://...
+
+The times are the start times of the jobs; the URL points to
+the job's logs.  The status indicates the working or broken
+status after the job:
+  'NO' Indicates that the DUT was definitely broken after the job.
+  'OK' Indicates that the DUT was likely working after the job.
+  '--' Indicates that the job probably didn't change the DUT's
+       status.
+Typically, logs of the actual failure will be found at the last
+job to report 'OK', or the first job to report '--'.
+
+
+"""
+
+
 import argparse
 import sys
 import time
@@ -388,7 +451,7 @@ def _validate_command(arguments):
 def _parse_command(argv):
     parser = argparse.ArgumentParser(
             prog=argv[0],
-            description='Display DUT status and execution history',
+            description='Report DUT status and execution history',
             epilog='You can specify one or two of --since, --until, '
                    'and --duration, but not all three.\n'
                    'The date/time format is "YYYY-MM-DD HH:MM:SS".')
@@ -403,10 +466,12 @@ def _parse_command(argv):
                         metavar='HOURS',
                         help='number of hours of history to display'
                              ' (default: %d)' % _DEFAULT_DURATION)
-    parser.add_argument('-f', '--full_history', action='store_true')
+    parser.add_argument('-f', '--full_history', action='store_true',
+                        help='Display host history from most '
+                             'to least recent for each DUT')
     parser.add_argument('hostnames',
-                        nargs='*',
-                        help='host names of DUTs to display')
+                        nargs='+',
+                        help='host names of DUTs to report on')
     arguments = parser.parse_args(argv[1:])
     _validate_command(arguments)
     return arguments
