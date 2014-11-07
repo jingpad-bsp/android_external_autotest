@@ -12,7 +12,8 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.cros import dbus_util
 
-Service = collections.namedtuple('Service', ['service_id', 'service_info'])
+Service = collections.namedtuple('Service',
+                                 ['service_id', 'service_info', 'service_ips'])
 Peer = collections.namedtuple('Peer', ['uuid', 'last_seen', 'services'])
 
 # DBus constants for use with peerd.
@@ -28,6 +29,7 @@ PEER_PROPERTY_ID = 'UUID'
 PEER_PROPERTY_LAST_SEEN = 'LastSeen'
 SERVICE_PROPERTY_ID = 'ServiceId'
 SERVICE_PROPERTY_INFO = 'ServiceInfo'
+SERVICE_PROPERTY_IPS = 'IpInfos'
 
 # Possible technologies for use with PeerdHelper.start_monitoring().
 TECHNOLOGY_ALL = 'all'
@@ -107,9 +109,14 @@ class PeerdHelper(object):
                         DBUS_INTERFACE_SERVICE in interfaces)]
             services = []
             for service_properties in service_property_sets:
+                logging.debug('Found service with properties: %r',
+                              service_properties)
+                ip_addrs = [('.'.join(map(str, ip)), port) for ip, port
+                            in service_properties[SERVICE_PROPERTY_IPS]]
                 services.append(Service(
                         service_id=service_properties[SERVICE_PROPERTY_ID],
-                        service_info=service_properties[SERVICE_PROPERTY_INFO]))
+                        service_info=service_properties[SERVICE_PROPERTY_INFO],
+                        service_ips=ip_addrs))
             peer_properties = interfaces[DBUS_INTERFACE_PEER]
             peer = Peer(uuid=peer_properties[PEER_PROPERTY_ID],
                         last_seen=peer_properties[PEER_PROPERTY_LAST_SEEN],

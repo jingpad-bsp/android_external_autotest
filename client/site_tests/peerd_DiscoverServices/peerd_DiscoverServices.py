@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import collections
 import logging
 
 from autotest_lib.client.bin import test
@@ -16,21 +17,30 @@ class peerd_DiscoverServices(test.test):
     """Test that peerd can correctly discover services over mDNS."""
     version = 1
 
+    FakeService = collections.namedtuple('FakeService',
+                                         'service_id service_info port')
     FAKE_HOST_HOSTNAME = 'test-host'
     TEST_TIMEOUT_SECONDS = 30
     PEER_ID = '123e4567-e89b-12d3-a456-426655440000'
     PEER_SERBUS_VERSION = '1.12'
-    PEER_SERVICES = {
-            'test-service-0': {'some_data': 'a value',
-                               'other_data': 'another value'},
-            'test-service-1': {'again': 'so much data'},
-    }
+    PEER_SERVICES = [FakeService('test-service-0',
+                                 {'some_data': 'a value',
+                                  'other_data': 'another value',
+                                 },
+                                 8080),
+                     FakeService('test-service-1',
+                                 {'again': 'so much data',
+                                 },
+                                 8081),
+                    ]
     SERBUS_SERVICE_NAME = '_serbus'
     SERBUS_PROTOCOL = '_tcp'
     SERBUS_PORT = 0
     SERBUS_TXT_DICT = {'ver': PEER_SERBUS_VERSION,
                        'id': PEER_ID,
-                       'services': '.'.join(PEER_SERVICES.iterkeys())}
+                       'services': '.'.join([service.service_id
+                                             for service in PEER_SERVICES])
+                      }
     UNIQUE_PREFIX = 'a_unique_mdns_prefix'
 
 
@@ -79,7 +89,7 @@ class peerd_DiscoverServices(test.test):
             logging.debug('Found %d services, but expected %d.',
                           len(peer.services), len(self.PEER_SERVICES))
             return False
-        for service_id, info in self.PEER_SERVICES.iteritems():
+        for service_id, info, port in self.PEER_SERVICES:
             service = None
             for s in peer.services:
                 if s.service_id == service_id:
@@ -93,6 +103,17 @@ class peerd_DiscoverServices(test.test):
                               'expected %r but got %r.', service_id,
                               info, service.service_info)
                 return False
+            if len(service.service_ips) != 1:
+                logging.debug('Missing service IP for service %s.',
+                              service_id)
+                return False
+            # We're publishing records from a "peer" outside the chroot.
+            expected_addr = (self._chrooted_avahi.MONITOR_IF_IP.addr, port)
+            if service.service_ips[0] != expected_addr:
+                logging.debug('Expected service IP for service %s=%r '
+                              'but got %r.',
+                              service_id, expected_addr, service.service_ips[0])
+                return False
         return True
 
 
@@ -104,12 +125,12 @@ class peerd_DiscoverServices(test.test):
                 self.SERBUS_PROTOCOL,
                 self.SERBUS_PORT,
                 ['='.join(pair) for pair in self.SERBUS_TXT_DICT.iteritems()])
-        for service_id, info in self.PEER_SERVICES.iteritems():
+        for service_id, info, port in self.PEER_SERVICES:
             self._zc_listener.register_service(
                     self.UNIQUE_PREFIX,
                     '_' + service_id,
                     self.SERBUS_PROTOCOL,
-                    self.SERBUS_PORT,
+                    port,
                     ['='.join(pair) for pair in info.iteritems()])
 
         # Look for mDNS records through peerd
@@ -120,4 +141,5 @@ class peerd_DiscoverServices(test.test):
                                                  self.TEST_TIMEOUT_SECONDS)
         logging.debug('Took %f seconds to find our peer.', duration)
         if not success:
-            raise error.TestFail('Did not receive mDNS advertisements in time.')
+            raise error.TestFail('Peerd failed to publish suitable DBus '
+                                 'proxies in time.')
