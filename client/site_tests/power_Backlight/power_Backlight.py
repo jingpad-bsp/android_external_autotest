@@ -37,7 +37,7 @@ class power_Backlight(test.test):
         # and fixes all this for us.
         # TODO(davidjames): Power manager should support this feature directly
         time.sleep(5)
-        graphics_utils.do_power_backlight_xset()
+        graphics_utils.screen_disable_blanking()
 
         status = power_status.get_status()
         status.assert_battery_state(5)

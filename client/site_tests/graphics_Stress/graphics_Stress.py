@@ -6,7 +6,7 @@
 
 import logging, os, time
 
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.graphics import graphics_utils
@@ -31,9 +31,6 @@ class graphics_Stress(test.test):
 
     def initialize(self):
         self.GSC = graphics_utils.GraphicsStateChecker()
-        utils.assert_has_X_server()
-        os.environ['DISPLAY'] = ':0.0'
-        os.environ['XAUTHORITY'] = '/home/chronos/.Xauthority'
 
 
     def cleanup(self):
@@ -48,13 +45,6 @@ class graphics_Stress(test.test):
 
     def setup(self):
         self.job.setup_dep(['graphics'])
-
-
-    def xsendevt(self, event_name):
-        """Uses xsendevt to send an event.
-
-        @param event_name: name of the event. Usually a keystroke."""
-        utils.system('/usr/bin/xsendevt %s' % event_name)
 
 
     def new_chrome(self):
@@ -103,11 +93,11 @@ class graphics_Stress(test.test):
         """Performs one cycle of the maps zooming."""
         # Zoom in on purpose once more than out.
         for _ in range(1, 11):
-            self.xsendevt('-tw \'[plus]\'')
+            graphics_utils.press_keys(['KEY_KPPLUS'])
             time.sleep(0.1)
         time.sleep(0.5)
         for _ in range(1, 10):
-            self.xsendevt('-tw \'[minus]\'')
+            graphics_utils.press_keys(['KEY_KPMINUS'])
             time.sleep(0.1)
         time.sleep(0.5)
 
@@ -148,11 +138,9 @@ class graphics_Stress(test.test):
         with self.new_chrome() as cr:
             tabs = self.open_urls(cr, [GMAPS_MTV_URL])
 
-            # Click into the map area.
-            # TODO(dbehr): find a better way to focus on map.
-            self.xsendevt('-tw \'[Move(1000,700)]\'')
-            time.sleep(0.5)
-            self.xsendevt('-tw \'[Button1]\'')
+            # Click into the map area to achieve focus.
+            time.sleep(5)
+            graphics_utils.click_mouse()
 
             # Do the stress test.
             cycle = 0

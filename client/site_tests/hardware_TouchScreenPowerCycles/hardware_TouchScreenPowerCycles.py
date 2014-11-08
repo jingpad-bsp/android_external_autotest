@@ -33,7 +33,7 @@ class hardware_TouchScreenPowerCycles(test.test):
 
     def _wakeup_screen(self):
         """Wake up the screen if it is dark."""
-        graphics_utils.wakeup_screen()
+        graphics_utils.screen_wakeup()
         time.sleep(2)
 
     def _touch_screen_on(self, interval):
