@@ -7,23 +7,13 @@ Provides graphics related utils, like capturing screenshots or checking on
 the state of the graphics driver.
 """
 
-import glob
-import logging
-import os
-import re
-import sys
-import time
-# Please limit the use of the uinput library to this file. Try not to spread
-# dependencies and abstract as much as possible to make switching to a different
-# input library in the future easier.
-import uinput
+import glob, logging, os, re, sys
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.graphics import drm
 
 
-# TODO(ihf): Remove xcommand for non-freon builds.
 def xcommand(cmd, user=None):
     """
     Add the necessary X setup to a shell command that needs to connect to the X
@@ -40,8 +30,8 @@ def xcommand(cmd, user=None):
     return 'DISPLAY=:0 XAUTHORITY=/home/chronos/.Xauthority su %s -c \'%s\'' % (
                                                                       user, cmd)
 
-# TODO(ihf): Remove xsystem for non-freon builds.
-def xsystem(cmd, user=None):
+
+def xsystem(cmd, user=None, timeout=None, ignore_status=False):
     """
     Run the command cmd, using utils.system, after adding the necessary
     setup to connect to the X server.
@@ -51,22 +41,23 @@ def xsystem(cmd, user=None):
     @param timeout: Optional timeout.
     @param ignore_status: Whether to check the return code of the command.
     """
-    return utils.system(xcommand(cmd, user))
+    return utils.system(xcommand(cmd, user), timeout=timeout,
+                        ignore_status=ignore_status)
 
 
-# TODO(ihf): Remove XSET for non-freon builds.
+def press_key(key_str):
+    """Presses the given key(s).
+    @param key_str: A string of the key(s), like 'ctrl+F4', 'Up'.
+    """
+    if utils.is_freon():
+        raise error.TestFail('freon: press_key not implemented')
+    command = 'xdotool key %s' % key_str
+    xsystem(command)
+
+
 XSET = 'LD_LIBRARY_PATH=/usr/local/lib xset'
 
-def screen_disable_blanking():
-    """ Called from power_Backlight to disable screen blanking. """
-    if utils.is_freon():
-        raise error.TestFail('freon: do_power_backlight_xset not implemented')
-    xsystem(XSET + ' s off')
-    xsystem(XSET + ' dpms 0 0 0')
-    xsystem(XSET + ' -dpms')
-
-
-def screen_disable_energy_saving():
+def do_power_consumption_xset():
     """ Called from power_Consumption to immediately disable energy saving. """
     if utils.is_freon():
         raise error.TestFail('freon: do_power_consumption_xset not implemented')
@@ -75,45 +66,24 @@ def screen_disable_energy_saving():
     # Disable DPMS Standby/Suspend/Off
     xsystem(XSET + ' dpms 0 0 0')
     # Force monitor on
-    screen_switch_on(on=1)
+    xsystem(XSET + ' dpms force on')
     # Save off X settings
     xsystem(XSET + ' q')
 
 
-def screen_switch_on(on):
-    """Turn the touch screen on/off."""
-    if on:
-        xsystem(XSET + ' dpms force on')
-    else:
-        xsystem(XSET + ' dpms force off')
-
-
-def screen_toggle_fullscreen():
-    """Toggles fullscreen mode."""
-    # TODO(ihf): Does this work on freon?
+def do_power_backlight_xset():
+    """ Called from power_Backlight to disable screen blanking. """
     if utils.is_freon():
-        press_keys(['KEY_F11'])
-    else:
-        press_key_X('F11')
+        raise error.TestFail('freon: do_power_backlight_xset not implemented')
+    xsystem(XSET + ' s off')
+    xsystem(XSET + ' dpms 0 0 0')
+    xsystem(XSET + ' -dpms')
 
 
-def screen_toggle_mirrored():
-    """Toggles the mirrored screen."""
-    # TODO(ihf): Does this work on freon?
-    if utils.is_freon():
-        press_keys(['KEY_LEFTCTRL', 'KEY_F4'])
-    else:
-        press_key_X('ctrl+F4')
-
-
-def screen_wakeup():
+def wakeup_screen():
     """Wake up the screen if it is dark."""
     # Move the mouse a little bit to wake up the screen.
-    if utils.is_freon():
-        _uinput_emit("REL_X", 1)
-        _uinput_emit("REL_X", -1)
-    else:
-        xsystem('xdotool mousemove_relative 1 1')
+    xsystem('xdotool mousemove_relative 1 1')
 
 
 def switch_screen_on(on):
@@ -126,167 +96,6 @@ def switch_screen_on(on):
         xsystem(XSET + ' dpms force on')
     else:
         xsystem(XSET + ' dpms force off')
-
-
-# Don't create a device during build_packages or for tests that don't need it.
-uinput_device_keyboard = None
-uinput_device_touch = None
-uinput_device_mouse_rel = None
-
-# Don't add more events to this list than are used. For a complete list of
-# available events check python2.7/site-packages/uinput/ev.py.
-UINPUT_DEVICE_EVENTS_KEYBOARD = [
-        uinput.KEY_F4,
-        uinput.KEY_F11,
-        uinput.KEY_KPPLUS,
-        uinput.KEY_KPMINUS,
-        uinput.KEY_LEFTCTRL,
-        uinput.KEY_TAB
-    ]
-# TODO(ihf): Find an ABS sequence that actually works.
-UINPUT_DEVICE_EVENTS_TOUCH = [
-        uinput.BTN_TOUCH,
-        uinput.ABS_MT_SLOT,
-        uinput.ABS_MT_POSITION_X + (0, 2560, 0, 0),
-        uinput.ABS_MT_POSITION_Y + (0, 1700, 0, 0),
-        uinput.ABS_MT_TRACKING_ID + (0, 10, 0, 0),
-        uinput.BTN_TOUCH
-]
-UINPUT_DEVICE_EVENTS_MOUSE_REL = [
-        uinput.REL_X,
-        uinput.REL_Y,
-        uinput.BTN_MOUSE,
-        uinput.BTN_LEFT,
-        uinput.BTN_RIGHT
-    ]
-
-
-def _get_uinput_device_keyboard():
-    """
-    Lazy initialize device and return it. We don't want to create a device during
-    build_packages or for tests that don't need it, hence init is with = None.
-    """
-    global uinput_device_keyboard
-    if uinput_device_keyboard is None:
-        uinput_device_keyboard = uinput.Device(UINPUT_DEVICE_EVENTS_KEYBOARD)
-    return uinput_device_keyboard
-
-
-def _get_uinput_device_mouse_rel():
-    """
-    Lazy initialize device and return it. We don't want to create a device during
-    build_packages or for tests that don't need it, hence init is with = None.
-    """
-    global uinput_device_mouse_rel
-    if uinput_device_mouse_rel is None:
-        uinput_device_mouse_rel = uinput.Device(UINPUT_DEVICE_EVENTS_MOUSE_REL)
-    return uinput_device_mouse_rel
-
-
-def _get_uinput_device_touch():
-    """
-    Lazy initialize device and return it. We don't want to create a device during
-    build_packages or for tests that don't need it, hence init is with = None.
-    """
-    global uinput_device_touch
-    if uinput_device_touch is None:
-        uinput_device_touch = uinput.Device(UINPUT_DEVICE_EVENTS_TOUCH)
-    return uinput_device_touch
-
-
-def _uinput_translate_name(event_name):
-    """
-    Translates string |event_name| to uinput event.
-    """
-    return getattr(uinput, event_name)
-
-
-def _uinput_emit(device, event_name, value, syn=True):
-    """
-    Wrapper for uinput.emit. Emits event with value.
-    Example: ('REL_X', 20), ('BTN_RIGHT', 1)
-    """
-    event = _uinput_translate_name(event_name)
-    device.emit(event, value, syn)
-
-
-def _uinput_emit_click(device, event_name, syn=True):
-    """
-    Wrapper for uinput.emit_click. Emits click event. Only KEY and BTN events
-    are accepted, otherwise ValueError is raised. Example: 'KEY_A'
-    """
-    event = _uinput_translate_name(event_name)
-    device.emit_click(event, syn)
-
-
-def _uinput_emit_combo(device, event_names, syn=True):
-    """
-    Wrapper for uinput.emit_combo. Emits sequence of events.
-    Example: ['KEY_LEFTCTRL', 'KEY_LEFTALT', 'KEY_F5']
-    """
-    events = [_uinput_translate_name(en) for en in event_names]
-    device.emit_combo(events, syn)
-
-
-def press_keys(key_list):
-    """Presses the given keys as one combination.
-
-    Please do not leak uinput dependencies outside of the file.
-
-    @param key: A list of key strings, e.g. ['LEFTCTRL', 'F4']
-    """
-    _uinput_emit_combo(_get_uinput_device_keyboard(), key_list)
-
-
-# TODO(ihf): Remove press_key_X for non-freon builds.
-def press_key_X(key_str):
-    """Presses the given keys as one combination.
-    @param key: A string of keys, e.g. 'ctrl+F4'.
-    """
-    if utils.is_freon():
-        raise error.TestFail('freon: press_key_X not implemented')
-    command = 'xdotool key %s' % key_str
-    xsystem(command)
-
-
-def click_mouse():
-    """Just click the mouse.
-    Presumably only hacky tests use this function.
-    """
-    logging.info('click_mouse()')
-    # Move a little to make the cursor appear.
-    device = _get_uinput_device_mouse_rel()
-    _uinput_emit(device, 'REL_X', 1)
-    # Some sleeping is needed otherwise events disappear.
-    time.sleep(0.1)
-    # Move cursor back to not drift.
-    _uinput_emit(device, 'REL_X', -1)
-    time.sleep(0.1)
-    # Click down.
-    _uinput_emit(device, 'BTN_LEFT', 1)
-    time.sleep(0.2)
-    # Release click.
-    _uinput_emit(device, 'BTN_LEFT', 0)
-
-
-# TODO(ihf): this function is broken. Make it work.
-def activate_focus_at(rel_x, rel_y):
-    """Clicks with the mouse at screen position (x, y).
-
-    This is a pretty hacky method. Using this will probably lead to
-    flaky tests as page layout changes over time.
-    @param rel_x: relative horizontal position between 0 and 1.
-    @param rel_y: relattive vertical position between 0 and 1.
-    """
-    width, height = get_display_resolution()
-    device = _get_uinput_device_touch()
-    _uinput_emit(device, 'ABS_MT_SLOT', 0, syn=False)
-    _uinput_emit(device, 'ABS_MT_TRACKING_ID', 1, syn=False)
-    _uinput_emit(device, 'ABS_MT_POSITION_X', int(rel_x*width), syn=False)
-    _uinput_emit(device, 'ABS_MT_POSITION_Y', int(rel_y*height), syn=False)
-    _uinput_emit(device, 'BTN_TOUCH', 1, syn=True)
-    time.sleep(0.2)
-    _uinput_emit(device, 'BTN_TOUCH', 0, syn=True)
 
 
 def take_screenshot(resultsdir, fname_prefix, extension='png'):
@@ -440,12 +249,12 @@ def _get_num_outputs_freon():
     modetest_output = utils.system_output('modetest -c')
     modetest_connector_pattern = (r'\d+\s+\d+\s+(connected|disconnected)\s+'
                                   r'[- 0-9a-zA-Z]+\s+\d+x\d+\s+\d+\s+\d+')
-    connected = 0
+    connected = 0;
     for line in modetest_output.splitlines():
         connector_match = re.match(modetest_connector_pattern, line)
         if connector_match is not None:
             if connector_match.group(1) == 'connected':
-                connected = connected + 1
+                connected = connected + 1;
 
     return connected;
 
@@ -466,9 +275,9 @@ def get_num_outputs_on():
     """
 
     if utils.is_freon():
-        return _get_num_outputs_freon()
+        return _get_num_outputs_freon();
     else:
-        return _get_num_outputs_x()
+        return _get_num_outputs_x();
 
 def call_xrandr(args_string=''):
     """
