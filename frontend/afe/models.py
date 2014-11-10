@@ -1792,9 +1792,46 @@ class SpecialTask(dbmodels.Model, model_logic.ModelExtensions):
 
 
     def execution_path(self):
-        """@see HostQueueEntry.execution_path()"""
-        return 'hosts/%s/%s-%s' % (self.host.hostname, self.id,
-                                   self.task.lower())
+        """Get the execution path of the SpecialTask.
+
+        This method returns different paths depending on where a
+        the task ran:
+            * Master: hosts/hostname/task_id-task_type
+            * Shard: Master_path/time_created
+        This is to work around the fact that a shard can fail independent
+        of the master, and be replaced by another shard that has the same
+        hosts. Without the time_created stamp the logs of the tasks running
+        on the second shard will clobber the logs from the first in google
+        storage, because task ids are not globally unique.
+
+        @return: An execution path for the task.
+        """
+        results_path = 'hosts/%s/%s-%s' % (self.host.hostname, self.id,
+                                           self.task.lower())
+
+        # If we do this on the master it will break backward compatibility,
+        # as there are tasks that currently don't have timestamps. If a host
+        # or job has been sent to a shard, the rpc for that host/job will
+        # be redirected to the shard, so this global_config check will happen
+        # on the shard the logs are on.
+        is_shard = global_config.global_config.get_config_value(
+                'SHARD', 'shard_hostname', type=str, default='')
+        if not is_shard:
+            return results_path
+
+        # Generate a uid to disambiguate special task result directories
+        # in case this shard fails. The simplest uid is the job_id, however
+        # in rare cases tasks do not have jobs associated with them (eg:
+        # frontend verify), so just use the creation timestamp. The clocks
+        # between a shard and master should always be in sync. Any discrepancies
+        # will be brought to our attention in the form of job timeouts.
+        uid = self.time_requested.strftime('%Y%d%m%H%M%S')
+
+        # TODO: This is a hack, however it is the easiest way to achieve
+        # correctness. There is currently some debate over the future of
+        # tasks in our infrastructure and refactoring everything right
+        # now isn't worth the time.
+        return '%s/%s' % (results_path, uid)
 
 
     # property to emulate HostQueueEntry.status
