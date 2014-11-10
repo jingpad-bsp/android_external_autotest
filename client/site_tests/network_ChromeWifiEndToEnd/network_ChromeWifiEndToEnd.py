@@ -3,12 +3,13 @@
 # found in the LICENSE file.
 
 import logging
-import time
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.networking.chrome_testing \
         import chrome_networking_test_context as cntc
+from autotest_lib.client.cros.networking.chrome_testing \
+        import chrome_networking_test_api as cnta
 from autotest_lib.client.cros.networking.chrome_testing import test_utils
 from collections import namedtuple
 
@@ -24,24 +25,6 @@ class network_ChromeWifiEndToEnd(test.test):
 
     """
     version = 1
-
-    WIFI_NETWORK_DEVICE = 'WiFi'
-
-    SHORT_TIMEOUT = 3
-
-
-    def _get_wifi_networks(self):
-        """Get list of available wifi networks.
-
-        @raises error.TestFail if no wifi networks are found.
-        @return List of dictionaries containing wifi network information.
-
-        """
-        wifi_networks = self._chrome_testing.find_wifi_networks()
-        if not wifi_networks:
-            raise error.TestFail('No wifi networks found.')
-
-        return wifi_networks
 
 
     def _extract_wifi_network_info(self, networks_found):
@@ -95,73 +78,16 @@ class network_ChromeWifiEndToEnd(test.test):
         """
         # Make sure we leave the WiFi network device in enabled state before
         # ending the test.
-        self._enable_network_device(self.WIFI_NETWORK_DEVICE)
+        self.chrome_net.enable_network_device(self.chrome_net.WIFI_DEVICE)
 
-        if (self.WIFI_NETWORK_DEVICE in original_enabled_networks and
-                self.WIFI_NETWORK_DEVICE in new_enabled_networks):
+        if (self.chrome_net.WIFI_DEVICE in original_enabled_networks and
+                self.chrome_net.WIFI_DEVICE in new_enabled_networks):
             raise error.TestFail('WiFi was not disabled.')
-        if (self.WIFI_NETWORK_DEVICE not in original_enabled_networks and
-                self.WIFI_NETWORK_DEVICE not in new_enabled_networks):
+        if (self.chrome_net.WIFI_DEVICE not in original_enabled_networks
+                and self.chrome_net.WIFI_DEVICE not in
+                    new_enabled_networks):
             raise error.TestFail('WiFi was not enabled.')
         logging.info('Enabling / Disabling WiFi works!')
-
-
-    def _get_enabled_network_devices(self):
-        """Get list of enabled network devices on the device.
-
-        @return List of enabled network devices.
-
-        """
-        enabled_network_types = self._chrome_testing.call_test_function(
-                test_utils.LONG_TIMEOUT,
-                'getEnabledNetworkDevices')
-        for key, value in enabled_network_types.items():
-            if key == 'result':
-                logging.info('Enabled Network Devices: %s', value)
-                return value
-
-
-    def _enable_network_device(self, network):
-        """Enable given network device.
-
-        @param network: string name of the network device to be enabled. Options
-                include 'WiFi', 'Cellular' and 'Ethernet'.
-
-        """
-        logging.info('Enabling: %s', network)
-        enable_network_result = self._chrome_testing.call_test_function_async(
-                'enableNetworkDevice',
-                '"' + network + '"')
-        # Added delay to allow DUT enough time to fully transition into enabled
-        # state before other actions are performed.
-        time.sleep(self.SHORT_TIMEOUT)
-
-
-    def _disable_network_device(self, network):
-        """Disable given network device.
-
-        @param network: string name of the network device to be disabled.
-                Options include 'WiFi', 'Cellular' and 'Ethernet'.
-
-        """
-        # Do ChromeOS browser session teardown/setup before disabling the
-        # network device because chrome.networkingPrivate.disableNetworkType API
-        # fails to disable the network device on subsequent calls if we do not
-        # teardown and setup the browser session.
-        self._chrome_testing.teardown()
-        self._chrome_testing.setup()
-
-        logging.info('Disabling: %s', network)
-        disable_network_result = self._chrome_testing.call_test_function_async(
-                'disableNetworkDevice',
-                '"' + network + '"')
-
-
-    def _scan_for_networks(self):
-        self._chrome_testing.call_test_function_async('requestNetworkScan')
-        # Added delay to allow enough time for Chrome to scan and get all the
-        # network ssids and make them available for the test to use.
-        time.sleep(self.SHORT_TIMEOUT)
 
 
     def _connect_to_network(self, network):
@@ -170,7 +96,7 @@ class network_ChromeWifiEndToEnd(test.test):
         @param network: Namedtuple containing network attributes.
 
         """
-        new_network_connect = self._chrome_testing.call_test_function(
+        new_network_connect = self.chrome_net._chrome_testing.call_test_function(
                 test_utils.LONG_TIMEOUT,
                 'connectToNetwork',
                 '"' + network.guid +'"')
@@ -185,7 +111,7 @@ class network_ChromeWifiEndToEnd(test.test):
     def _find_and_transition_wifi_networks_in_range(self):
         """Verify all WiFi networks in range are displayed."""
         known_service_names_in_wifi_cell = [self.SSID_1, self.SSID_2]
-        networks_found_via_api = self._get_wifi_networks()
+        networks_found_via_api = self.chrome_net.get_wifi_networks()
         network_list = self._extract_wifi_network_info(networks_found_via_api)
         logging.info('Networks found via API: %s', networks_found_via_api)
 
@@ -206,12 +132,12 @@ class network_ChromeWifiEndToEnd(test.test):
 
     def _enable_disable_wifi(self):
         """Verify that the test is able to enable and disable WiFi."""
-        original_enabled_networks = self._get_enabled_network_devices()
-        if self.WIFI_NETWORK_DEVICE in original_enabled_networks:
-            self._disable_network_device(self.WIFI_NETWORK_DEVICE)
+        original_enabled_networks = self.chrome_net.get_enabled_devices()
+        if self.chrome_net.WIFI_DEVICE in original_enabled_networks:
+            self.chrome_net.disable_network_device(self.chrome_net.WIFI_DEVICE)
         else:
-            self._enable_network_device(self.WIFI_NETWORK_DEVICE)
-        new_enabled_networks = self._get_enabled_network_devices()
+            self.chrome_net.enable_network_device(self.chrome_net.WIFI_DEVICE)
+        new_enabled_networks = self.chrome_net.get_enabled_devices()
         self._enable_disable_network_check(
                 original_enabled_networks, new_enabled_networks)
 
@@ -241,7 +167,8 @@ class network_ChromeWifiEndToEnd(test.test):
                 previously connected WiFi network.
 
         """
-        networks = self._extract_wifi_network_info(self._get_wifi_networks())
+        networks = self._extract_wifi_network_info( \
+                       self.chrome_net.get_wifi_networks())
         logging.info('Networks found before connection: %s', networks)
         network_to_connect = networks.pop()
         original_network_name = network_to_connect.name
@@ -251,11 +178,12 @@ class network_ChromeWifiEndToEnd(test.test):
             logging.info('Connected to WiFi network: %s',
                          network_to_connect.name)
 
-        self._disable_network_device(self.WIFI_NETWORK_DEVICE)
-        self._enable_network_device(self.WIFI_NETWORK_DEVICE)
-        self._scan_for_networks()
+        self.chrome_net.disable_network_device(self.chrome_net.WIFI_DEVICE)
+        self.chrome_net.enable_network_device(self.chrome_net.WIFI_DEVICE)
+        self.chrome_net.scan_for_networks()
 
-        networks = self._extract_wifi_network_info(self._get_wifi_networks())
+        networks = self._extract_wifi_network_info( \
+                       self.chrome_net.get_wifi_networks())
         logging.info('Networks found after connection: %s', networks)
         network_to_connect = networks.pop()
 
@@ -284,11 +212,12 @@ class network_ChromeWifiEndToEnd(test.test):
         self.TEST = test
 
         with cntc.ChromeNetworkingTestContext() as testing_context:
-            self._chrome_testing = testing_context
-            enabled_networks_devices = self._get_enabled_network_devices()
-            if self.WIFI_NETWORK_DEVICE not in enabled_networks_devices:
-                self._enable_network_device(self.WIFI_NETWORK_DEVICE)
-            self._scan_for_networks()
+            self.chrome_net = cnta.ChromeNetworkProvider(testing_context)
+            enabled_devices = self.chrome_net.get_enabled_devices()
+            if (self.chrome_net.WIFI_DEVICE not in enabled_devices):
+                self.chrome_net.enable_network_device(
+                    self.chrome_net.WIFI_DEVICE)
+            self.chrome_net.scan_for_networks()
 
             if test == 'all':
                 self._find_and_transition_wifi_networks_in_range()
