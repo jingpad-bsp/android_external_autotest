@@ -93,11 +93,11 @@ class Verifier(object):
             # grab the parent link for comparison urls
             comparison_url = os.path.dirname(comp_res.comparison_url)
 
-            report_mes = '''
-            %d / %d test images were not golden
-            Comparison url: %s
-            %s
-            ''' % (failure_count, cnt, comparison_url, '\t'.join(log_msgs))
+            report_mes = ("%d / %d test images were not golden. Comparison "
+                          "url: %s. %s " % (failure_count,
+                                            cnt,
+                                            comparison_url,
+                                            '\t'.join(log_msgs)))
 
             raise error.TestFail(report_mes)
 
