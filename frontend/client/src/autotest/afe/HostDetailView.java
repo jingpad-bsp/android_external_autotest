@@ -273,6 +273,16 @@ public class HostDetailView extends DetailView implements DataCallback, TableAct
         showField(currentHostObject, HostDataSource.HOST_ACLS, "view_host_acls");
         showField(currentHostObject, HostDataSource.OTHER_LABELS, "view_host_labels");
         showText(lockedText, "view_host_locked");
+        String shard_url = Utils.jsonToString(currentHostObject.get("shard")).trim();
+        String host_id = Utils.jsonToString(currentHostObject.get("id")).trim();
+        if (shard_url.equals("<null>")){
+            shard_url = "";
+        } else {
+            shard_url = "http://" + shard_url;
+        }
+        shard_url = shard_url + "/afe/#tab_id=view_host&object_id=" + host_id;
+        showField(currentHostObject, "shard", "view_host_shard");
+        getElementById("view_host_shard").setAttribute("href", shard_url);
         showField(currentHostObject, "protection", "view_host_protection");
         hostname = currentHostObject.get("hostname").isString().stringValue();
         String pageTitle = "Host " + hostname;
