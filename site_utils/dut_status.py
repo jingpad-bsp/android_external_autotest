@@ -408,6 +408,7 @@ def _print_simple_status(arguments):
                 url = '---'
         else:
             datestr = '---'
+            status = _NO_STATUS
             url = '# no such host'
         print fmt % (history.hostname,
                      _DIAGNOSIS_IDS[status],
