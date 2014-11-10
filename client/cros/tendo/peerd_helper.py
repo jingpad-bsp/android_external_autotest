@@ -50,7 +50,7 @@ def make_helper(bus=None, timeout_seconds=10, verbosity_level=None,
     @return PeerdHelper instance if peerd comes up, None otherwise.
 
     """
-    utils.run('stop peerd')
+    utils.run('stop peerd', ignore_status=True)
     flags = []
     if verbosity_level is not None:
         flags.append(' PEERD_LOG_LEVEL=%d' % verbosity_level)
