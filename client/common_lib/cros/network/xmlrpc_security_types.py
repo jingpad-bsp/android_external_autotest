@@ -359,6 +359,9 @@ class EAPConfig(SecurityConfig):
         self.client_key_id = client_key_id or self.reserve_TPM_id()
         # This gets filled in at install time.
         self.pin = None
+        # The slot where the certificate/key are installed in the TPM.
+        self.client_cert_slot_id = None
+        self.client_key_slot_id = None
         self.eap_identity = eap_identity or self.DEFAULT_EAP_IDENTITY
 
 
@@ -398,9 +401,11 @@ class EAPConfig(SecurityConfig):
         """
         if self.client_cert:
             tpm_store.install_certificate(self.client_cert, self.client_cert_id)
+            self.client_cert_slot_id = tpm_store.SLOT_ID
             self.pin = tpm_store.PIN
         if self.client_key:
             tpm_store.install_private_key(self.client_key, self.client_key_id)
+            self.client_key_slot_id = tpm_store.SLOT_ID
             self.pin = tpm_store.PIN
 
 
@@ -414,9 +419,11 @@ class EAPConfig(SecurityConfig):
             # have no such tests.
             ret[self.SERVICE_PROPERTY_CA_CERT_PEM] = [self.client_ca_cert]
         if self.client_cert:
-            ret[self.SERVICE_PROPERTY_CLIENT_CERT_ID] = self.client_cert_id
+            ret[self.SERVICE_PROPERTY_CLIENT_CERT_ID] = (
+                    '%s:%s' % (self.client_cert_slot_id, self.client_cert_id))
         if self.client_key:
-            ret[self.SERVICE_PROPERTY_PRIVATE_KEY_ID] = self.client_key_id
+            ret[self.SERVICE_PROPERTY_PRIVATE_KEY_ID] = (
+                    '%s:%s' % (self.client_key_slot_id, self.client_key_id))
         if self.use_system_cas is not None:
             ret[self.SERVICE_PROPERTY_USE_SYSTEM_CAS] = self.use_system_cas
         return ret

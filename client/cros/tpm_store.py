@@ -20,7 +20,11 @@ class TPMStore(object):
     OUTPUT_TYPE_CERTIFICATE = 'cert'
     OUTPUT_TYPE_PRIVATE_KEY = 'privkey'
     PIN = '11111'
-    PKCS11_REPLAY_COMMAND = 'p11_replay --slot=1'
+    # TPM maintain two slots for certificates, slot 0 for system specific
+    # certificates, slot 1 for user specific certificates. Currently, all
+    # certificates are programmed in slot 1. So hardcode this slot ID for now.
+    SLOT_ID = '1'
+    PKCS11_REPLAY_COMMAND = 'p11_replay --slot=%s' % SLOT_ID
     TPM_GROUP = 'chronos-access'
     TPM_USER = 'chaps'
 
