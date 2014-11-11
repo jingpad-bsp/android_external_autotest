@@ -12,8 +12,8 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform, kernel"
 TEST_TYPE = "server"
-SUITE = "stress_experimental"
-DEPENDENCIES = "servo, kernel_usb"
+SUITE = "kernel_usb"
+DEPENDENCIES = "servo"
 
 DOC = """
 This test uses servo to connect USB devices.
