@@ -106,6 +106,15 @@ def screen_toggle_mirrored():
         press_key_X('ctrl+F4')
 
 
+def hide_cursor():
+    """Hides mouse cursor."""
+    # Send a keystroke to hide the cursor.
+    if utils.is_freon():
+        press_keys(['KEY_UP'])
+    else:
+        press_key_X('Up')
+
+
 def screen_wakeup():
     """Wake up the screen if it is dark."""
     # Move the mouse a little bit to wake up the screen.

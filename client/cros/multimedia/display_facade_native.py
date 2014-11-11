@@ -286,17 +286,7 @@ class DisplayFacadeNative(object):
 
     def hide_cursor(self):
         """Hides mouse cursor."""
-        # Send a keystroke to hide the cursor.
-        self.press_key('Up')
-        return True
-
-
-    def press_key(self, key_str):
-        """Presses the given key(s).
-
-        @param key_str: A string of the key(s), like 'ctrl+F4', 'Up'.
-        """
-        graphics_utils.press_key(key_str)
+        graphics_utils.hide_cursor()
         return True
 
 
