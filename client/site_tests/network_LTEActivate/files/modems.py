@@ -16,8 +16,28 @@ I_ACTIVATION_TEST = 'Interface.LTEActivationTest'
 class TestModem(modem_3gpp.Modem3gpp):
     """
     Base class for the custom 3GPP fake modems that are defined in this test.
+    This modem boots up as unprovisioned & becomes activated only if it has
+    been explicitly activated by calling CompleteCellularActivation
 
     """
+    def __init__(self,
+                 state_machine_factory=None,
+                 bus=None,
+                 device='pseudomodem0',
+                 index=0,
+                 roaming_networks=None,
+                 config=None):
+        super(TestModem, self).__init__(state_machine_factory,
+                                        bus=bus,
+                                        device=device,
+                                        roaming_networks=roaming_networks,
+                                        config=config)
+        # Update the registered susbscription state as unprovisioned
+        # for this activation test
+        self._cached_registered_subscription_state = (
+                mm1_constants.MM_MODEM_3GPP_SUBSCRIPTION_STATE_UNPROVISIONED)
+
+
     def _InitializeProperties(self):
         props = modem_3gpp.Modem3gpp._InitializeProperties(self)
         modem_props = props[mm1_constants.I_MODEM]
@@ -43,13 +63,6 @@ class TestModem(modem_3gpp.Modem3gpp):
         return props
 
 
-    def RegisterWithNetwork(
-            self, operator_id='', return_cb=None, raise_cb=None):
-        # Make this do nothing, so that we don't automatically
-        # register to a network after enable.
-        return
-
-
     @pm_utils.log_dbus_method()
     def Reset(self):
         self.Set(
@@ -57,38 +70,15 @@ class TestModem(modem_3gpp.Modem3gpp):
         modem_3gpp.Modem3gpp.Reset(self)
 
 
-class ResetRequiredForRegistrationModem(TestModem):
+class ResetRequiredForActivationModem(TestModem):
     """
-    Fake modem that only becomes registered if it has been reset at least once.
-
+    Fake modem boots up as unprovisioned & becomes activated only if it has
+    been explicitly activated by calling CompleteCellularActivation
+    and has been reset at least once after initiating activatation
     """
     def RegisterWithNetwork(
             self, operator_id='', return_cb=None, raise_cb=None):
         if self.Get(I_ACTIVATION_TEST, 'ResetCalled'):
-            modem_3gpp.Modem3gpp.RegisterWithNetwork(
-                    self, operator_id, return_cb, raise_cb)
-
-
-class RetryRegistrationModem(TestModem):
-    """
-    Fake modem that becomes registered once registration has been triggered at
-    least twice.
-
-    """
-    def __init__(self):
-        super(RetryRegistrationModem, self).__init__()
-        self.register_count = 0
-
-
-    def RegisterWithNetwork(
-            self, operator_id='', return_cb=None, raise_cb=None):
-        # Make the initial registration due triggered by Enable do
-        # nothing. We expect exactly two Enable commands:
-        #   1. Triggered by shill to enable the modem,
-        #   2. Triggered by ResetCellularDevice in
-        #      ResetAfterRegisterTest.RunTest.
-        self.register_count += 1
-        if self.register_count > 1:
             modem_3gpp.Modem3gpp.RegisterWithNetwork(
                     self, operator_id, return_cb, raise_cb)
 

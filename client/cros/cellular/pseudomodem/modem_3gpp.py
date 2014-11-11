@@ -258,19 +258,6 @@ class Modem3gpp(modem.Modem):
             registration_state ==
             mm1_constants.MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING):
             new_subscription_state = self._cached_registered_subscription_state
-            if ((new_subscription_state ==
-                 mm1_constants.MM_MODEM_3GPP_SUBSCRIPTION_STATE_UNKNOWN) or
-                (new_subscription_state ==
-                 mm1_constants.MM_MODEM_3GPP_SUBSCRIPTION_STATE_UNPROVISIONED)):
-                logging.warning(
-                        '|SubscriptionState| can not be |%s| on registered '
-                        'network. Setting it to '
-                        'MM_MODEM_3GPP_SUBSCRIPTION_STATE_PROVISIONED',
-                        mm1_constants.SubscriptionStateToString(
-                                new_subscription_state))
-                new_subscription_state = (
-                        mm1_constants.
-                        MM_MODEM_3GPP_SUBSCRIPTION_STATE_PROVISIONED)
         else:
             new_subscription_state = (
                     self._cached_unregistered_subscription_state)
