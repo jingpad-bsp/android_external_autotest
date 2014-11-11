@@ -194,7 +194,8 @@ class platform_ExternalUsbPeripherals(test.test):
         @returns True if there were not crashes; False otherwise
         """
         result = True
-        if str(self.host.run('ls %s' % crash_path)).find('crash') != -1:
+        if str(self.host.run('ls %s' % crash_path,
+                              ignore_status=True)).find('crash') != -1:
             crash_out = self.host.run('ls %s/crash/' % crash_path).stdout
             crash_files = crash_out.strip().split('\n')
             for crash_file in crash_files:
