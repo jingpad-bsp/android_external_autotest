@@ -2508,3 +2508,17 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         removable = int(self.run('cat /sys/block/%s/removable' %
                                  os.path.basename(device)).stdout.strip())
         return removable == 1
+
+
+    def read_from_meminfo(self, key):
+        """ Return the memory info from /proc/meminfo
+
+        @param key: meminfo requested
+
+        @return the memory value as a string
+
+        """
+
+        meminfo = self.run('grep %s /proc/meminfo' % key).stdout.strip()
+        logging.debug('%s', meminfo)
+        return int(re.search(r'\d+', meminfo).group(0))
