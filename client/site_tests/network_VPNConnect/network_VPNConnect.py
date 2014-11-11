@@ -135,6 +135,7 @@ class network_VPNConnect(test.test):
             return {
                 'L2TPIPsec.CACertPEM': [ site_eap_certs.ca_cert_1 ],
                 'L2TPIPsec.ClientCertID': site_eap_certs.cert_1_tpm_key_id,
+                'L2TPIPsec.ClientCertSlot': tpm.SLOT_ID,
                 'L2TPIPsec.User':vpn_server.L2TPIPSecVPNServer.CHAP_USER,
                 'L2TPIPsec.Password': vpn_server.L2TPIPSecVPNServer.CHAP_SECRET,
                 'L2TPIPsec.PIN': tpm.PIN,
