@@ -1,0 +1,2 @@
+# privetd lists for RPCs over a webserver.
+privetd *:http-alt

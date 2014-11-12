@@ -8,9 +8,11 @@ import os
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
+from autotest_lib.client.cros.tendo import privetd_helper
 
 
 class security_Firewall(test.test):
+    """Tests that rules in iptables match our expectations exactly."""
     version = 1
 
 
@@ -19,19 +21,26 @@ class security_Firewall(test.test):
         return set([line.strip() for line in ipt_rules.splitlines()])
 
 
-    def load_baseline(self):
+    def load_baseline(self, baseline_filename):
         """The baseline file lists the iptables rules that we expect.
-        """
 
-        baseline_path = os.path.join(self.bindir, 'baseline')
-        return set([line.strip() for line in open(baseline_path).readlines()])
+        @param baseline_filename: string name of file containing relevant rules.
+
+        """
+        baseline_path = os.path.join(self.bindir, baseline_filename)
+        with open(baseline_path) as f:
+            return set([line.strip() for line in f.readlines()])
 
 
     def dump_iptables_rules(self, ipt_rules):
-        """Leaves a list of iptables rules in the results dir
-        so that we can update the baseline file if necessary.
-        """
+        """Store actual rules in results/ for future use.
 
+        Leaves a list of iptables rules in the results dir
+        so that we can update the baseline file if necessary.
+
+        @param ipt_rules: list of string containing rules we found on the board.
+
+        """
         outf = open(os.path.join(self.resultsdir, "iptables_rules"), 'w')
         for rule in ipt_rules:
             outf.write(rule + "\n")
@@ -40,8 +49,14 @@ class security_Firewall(test.test):
 
 
     def log_error_rules(self, rules, message):
+        """Log a set of rules and the problem with those rules.
+
+        @param rules: list of string containing rules we have issues with.
+        @param message: string detailing what our problem with the rules is.
+
+        """
         rules_str = ", ".join(["'%s'" % rule for rule in rules])
-        logging.error("%s: %s" % (message, rules_str))
+        logging.error("%s: %s", message, rules_str)
 
 
     def run_once(self):
@@ -49,7 +64,10 @@ class security_Firewall(test.test):
         Fails both when rules are missing and when extra rules are found.
         """
 
-        baseline = self.load_baseline()
+        baseline = self.load_baseline('baseline')
+        # TODO(wiley) Remove when we get per-board baselines (crbug.com/406013)
+        if privetd_helper.privetd_is_installed():
+            baseline.update(self.load_baseline('baseline.privet'))
         current = self.get_firewall_settings()
 
         # Save to results dir

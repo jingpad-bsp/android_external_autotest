@@ -8,6 +8,7 @@ import os
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.cros.tendo import privetd_helper
 
 # Since we parse lsof output in several places, these centralize the
 # column numbering for finding things in lsof output.  For example:
@@ -31,20 +32,17 @@ class security_NetworkListeners(test.test):
     """Check the system against a whitelist of expected network-listeners."""
     version = 1
 
-    def load_baseline(self):
-        """Loads the baseline of expected listeners."""
-        # Figure out path to baseline file, by looking up our own path
-        bpath = os.path.abspath(__file__)
-        bpath = os.path.join(os.path.dirname(bpath), 'baseline')
-        bfile = open(bpath)
-        baseline_data = bfile.read()
-        baseline_set = set([])
-        for line in baseline_data.splitlines():
-            line = line.strip()
-            if len(line) != 0 and line[0] != '#': # skip comments
-                baseline_set.add(line)
-        bfile.close()
-        return baseline_set
+    def load_baseline(self, baseline_filename):
+        """Loads the baseline of expected listeners.
+
+        @param baseline_filename: string name of file containing relevant rules.
+
+        """
+        baseline_path = os.path.join(self.bindir, baseline_filename)
+        with open(baseline_path) as f:
+            lines = [line.strip() for line in f.readlines()]
+        return set([line for line in lines
+                    if line and not line.startswith('#')])
 
 
     def remove_autotest_noise(self, lsof_lines):
@@ -101,7 +99,11 @@ class security_NetworkListeners(test.test):
                 observed_set.add('%s %s' % (fields[_LSOF_COMMAND],
                                             fields[_LSOF_NAME]))
 
-            baseline_set = self.load_baseline()
+            baseline_set = self.load_baseline('baseline')
+            # TODO(wiley) Remove when we get per-board
+            #             baselines (crbug.com/406013)
+            if privetd_helper.privetd_is_installed():
+                baseline_set.update(self.load_baseline('baseline.privetd'))
 
             # If something in the observed set is not
             # covered by the baseline...
