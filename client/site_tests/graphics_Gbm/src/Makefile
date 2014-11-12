@@ -10,9 +10,9 @@ DEPS = $(SOURCES:.c=.d)
 
 PKG_CONFIG ?= pkg-config
 CCFLAGS += -g -O2 -Wall -Werror
-CCFLAGS += $(shell $(PKG_CONFIG) --cflags libgbm)
+CCFLAGS += $(shell $(PKG_CONFIG) --cflags gbm)
 LDLIBS += $(PC_LIBS)
-LDLIBS += $(shell $(PKG_CONFIG) --libs libgbm)
+LDLIBS += $(shell $(PKG_CONFIG) --libs gbm)
 
 .PHONY: all clean
 
