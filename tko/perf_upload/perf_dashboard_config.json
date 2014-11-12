@@ -343,6 +343,11 @@
     "dashboard_test_name": "dromaeo.domcoretraverse"
   },
   {
+    "autotest_name": "telemetry_Benchmarks.jetstream",
+    "master_name": "ChromeOSPerf",
+    "dashboard_test_name": "jetstream"
+  },
+  {
     "autotest_name": "telemetry_Benchmarks.kraken",
     "master_name": "ChromeOSPerf",
     "dashboard_test_name": "kraken"
@@ -416,6 +421,11 @@
     "autotest_name": "telemetry_Benchmarks.smoothness.tough_webgl_cases",
     "master_name": "ChromeOSPerf",
     "dashboard_test_name": "smoothness.tough_webgl_cases"
+  },
+  {
+    "autotest_name": "telemetry_Benchmarks.speedometer",
+    "master_name": "ChromeOSPerf",
+    "dashboard_test_name": "speedometer"
   },
   {
     "autotest_name": "telemetry_Benchmarks.startup.cold.blank_page",
