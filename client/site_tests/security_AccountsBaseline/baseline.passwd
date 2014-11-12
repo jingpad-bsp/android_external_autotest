@@ -52,6 +52,7 @@ trunks:!:251:251::/dev/null:/bin/false
 saned:!:255:255:document scanning process:/dev/null:/bin/false
 volume:!:257:257::/dev/null:/bin/false
 peerd:!:260:260::/dev/null:/bin/false
+privetd:!:262:262::/dev/null:/bin/false
 ntfs-3g:!:300:300::/dev/null:/bin/false
 avfs:!:301:301::/dev/null:/bin/false
 fuse-exfat:!:302:302::/dev/null:/bin/false

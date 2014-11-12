@@ -66,6 +66,7 @@ scanner:!:255:saned
 volume:!:257:
 uinput:!:258:bluetooth,volume
 peerd:!:260:peerd
+privetd:!:262:privetd
 ntfs-3g:!:300:
 avfs:!:301:
 fuse-exfat:!:302:
