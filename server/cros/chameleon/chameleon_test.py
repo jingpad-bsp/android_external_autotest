@@ -14,6 +14,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
 from autotest_lib.client.cros.chameleon import edid
+from autotest_lib.client.cros.chameleon import screen_utility_factory
 from autotest_lib.client.cros.multimedia import image_generator
 from autotest_lib.server import test
 from autotest_lib.server.cros.multimedia import remote_facade_factory
@@ -62,6 +63,9 @@ class ChameleonTest(test.test):
         self.host = host
         # TODO(waihong): Support multiple connectors.
         self.chameleon_port = self._get_connected_port()
+        factory = screen_utility_factory.ScreenUtilityFactory(
+                self.chameleon_port, self.display_facade)
+        self.resolution_comparer = factory.create_resolution_comparer()
         self._platform_prefix = host.get_platform().lower().split('_')[0]
 
 
@@ -405,49 +409,6 @@ class ChameleonTest(test.test):
         logging.info('External display connector: %s', current_connector)
 
 
-    def check_screen_resolution(self, expected_resolution, tag='',
-                                under_mirrored_mode=True):
-        """Checks the resolution for DUT external screen with Chameleon.
-        1. Verify that the resolutions of both DUT and Chameleon match the
-                expected one.
-        2. Verify that the resolution of DUT match that of Chameleon. If not,
-                break the test.
-        @param tag: A string of tag for the prefix of output filenames.
-        @param expected_resolution: A tuple (width, height) for the expected
-                resolution.
-        @param under_mirrored_mode: True if don't make fails error on check the
-                resolution between dut and expected.
-        @return: None if the check passes; otherwise, a string of error message.
-        """
-        # Verify the actual resolution detected by chameleon and dut
-        # are the same as what is expected.
-
-        chameleon_resolution = self.chameleon_port.get_resolution()
-        dut_resolution = self.display_facade.get_external_resolution()
-
-        logging.info('Checking resolution with Chameleon (tag: %s).', tag)
-        if expected_resolution != dut_resolution or (
-                chameleon_resolution != dut_resolution):
-            message = (
-                        'Detected a different resolution: '
-                        'dut: %r; chameleon: %r; expected %r' %
-                        (dut_resolution,
-                         chameleon_resolution,
-                         expected_resolution))
-            # Note: In mirrored mode, the device may be in hardware mirror
-            # (as opposed to software mirror). If so, the actual resolution
-            # could be different from the expected one. So we skip the check
-            # in mirrored mode. The resolution of the DUT and Chameleon
-            # should be same no matter the device in mirror mode or not.
-            if chameleon_resolution != dut_resolution or (
-                    not under_mirrored_mode):
-                logging.error(message)
-                return message
-            else:
-                logging.warn(message)
-        return None
-
-
     def raise_on_errors(self, check_results):
         """If there is any error message in check_results, raise it.
 
@@ -646,8 +607,7 @@ class ChameleonTest(test.test):
         """
         # TODO(tingyuan): Check test_image is keeping full-screen.
 
-        error_message = self.check_screen_resolution(
-                expected_resolution, tag, under_mirrored_mode)
+        error_message = self.resolution_comparer.compare(expected_resolution)
         if error_message:
             if error_list is not None:
                 error_list.append(error_message)

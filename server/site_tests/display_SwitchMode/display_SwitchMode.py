@@ -24,7 +24,7 @@ class display_SwitchMode(chameleon_test.ChameleonTest):
         @param test_mirrored: is mirrored mode active
 
         """
-        resolution = self.chameleon_port.get_resolution()
+        resolution = self.display_facade.get_external_resolution()
         test_name = '%s-%s-%s' % (self.connector_used,
             str(resolution),
             'mirrored' if test_mirrored else 'extended')
@@ -51,11 +51,9 @@ class display_SwitchMode(chameleon_test.ChameleonTest):
 
     def run_once(self, host, repeat):
         self.errors = list()
-        width, height = self.chameleon_port.get_resolution()
-        logging.debug('See the display on Chameleon: port %d (%s) %dx%d',
+        logging.debug('See the display on Chameleon: port %d (%s)',
                      self.chameleon_port.get_connector_id(),
-                     self.chameleon_port.get_connector_type(),
-                     width, height)
+                     self.chameleon_port.get_connector_type())
         # Keep the original connector name, for later comparison.
         self.connector_used = self.display_facade.get_external_connector_name()
 

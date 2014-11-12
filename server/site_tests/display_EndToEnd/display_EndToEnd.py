@@ -175,8 +175,8 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
     def reconnect_and_get_external_resolution(self):
         """Reconnect the display and get the external screen resolution."""
         self.reconnect_output()
-        #Get the resolution for the edid applied
-        self.resolution = self.chameleon_port.get_resolution()
+        # Get the resolution for the edid applied
+        self.resolution = self.display_facade.get_external_resolution()
         logging.debug('External display resolution: %s',
                 str(self.resolution))
 

@@ -75,21 +75,10 @@ class display_EdidStress(chameleon_test.ChameleonTest):
                     logging.error(error_message)
                     errors.append(error_message)
                     continue
-                logging.info('See the resolution on framebuffer: %dx%d',
-                             *framebuffer_resolution)
 
-                chameleon_resolution = self.chameleon_port.get_resolution()
-                logging.info('See the resolution on Chameleon: %dx%d',
-                             *chameleon_resolution)
-
-                if chameleon_resolution == framebuffer_resolution:
-                    logging.info('Resolutions match.')
-                else:
-                    error_message = ('Resolutions not match on EDID %s: '
-                                     '(chameleon) %dx%d != %dx%d (dut)' %
-                                     ((filename, ) + chameleon_resolution +
-                                      framebuffer_resolution))
-                    logging.error(error_message)
+                error_message = self.resolution_comparer.compare(
+                        framebuffer_resolution)
+                if error_message:
                     errors.append(error_message)
             finally:
                 self.display_facade.close_tab()
