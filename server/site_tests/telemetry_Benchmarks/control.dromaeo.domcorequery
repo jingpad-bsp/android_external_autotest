@@ -21,21 +21,9 @@ Pass local=True to run with local telemetry and no AFE server.
 
 def run_benchmark(machine):
     host = hosts.create_host(machine)
-
-    # The benchmark reports power data when the DUT is on battery power, so
-    # attempt to turn the power off for the duration.
-    job.run_test("power_RPMTest", host=host, verify=False,
-                 power_on=False, tag="off")
-
-    # The benchmark doesn't need the power off to run successfully, so there
-    # is no dependency on rpm, as an RPM failure could cause the job to fail
-    # before running the benchmark.
     job.run_test("telemetry_Benchmarks", host=host,
                  benchmark="dromaeo.domcorequery",
                  tag="dromaeo.domcorequery",
                  args=utils.args_to_dict(args))
-
-    job.run_test("power_RPMTest", host=host, verify=False,
-                 power_on=True, tag="on")
 
 parallel_simple(run_benchmark, machines)
