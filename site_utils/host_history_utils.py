@@ -437,6 +437,12 @@ def calculate_status_times(t_start, t_end, int_status, metadata,
                            locked_intervals):
     """Returns a list of intervals along w/ statuses associated with them.
 
+    If the dut is in status Ready, i.e., int_status==Ready, the lock history
+    should be applied so that the time period when dut is locked is considered
+    as not available. Any other status is considered that dut is doing something
+    and being used. `Repair Failed` and Repairing are not checked with lock
+    status, since these two statuses indicate the dut is not available any way.
+
     @param t_start: start time
     @param t_end: end time
     @param int_status: status of [t_start, t_end] if not locked
@@ -459,7 +465,7 @@ def calculate_status_times(t_start, t_end, int_status, metadata,
                    'metadata': metadata}
     locked_info = {'status': 'Locked',
                    'metadata': {}}
-    if not locked_intervals:
+    if int_status != 'Ready' or not locked_intervals:
         statuses[(t_start, t_end)] = status_info
         return statuses
     for lock_start, lock_end in locked_intervals:
@@ -469,29 +475,37 @@ def calculate_status_times(t_start, t_end, int_status, metadata,
             # Timeline of status change: t_start t_end
             # Timeline of lock action:                   lock_start lock_end
             break
-        elif lock_end < t_start:
+        elif lock_end < prev_interval_end:
             # case 1
-            #                      t_start    t_end
+            #                      prev_interval_end    t_end
             # lock_start lock_end
             continue
-        elif lock_end < t_end and lock_start > t_start:
+        elif lock_end <= t_end and lock_start >= prev_interval_end:
             # case 2
-            # t_start                       t_end
-            #          lock_start lock_end
-            statuses[(prev_interval_end, lock_start)] = status_info
-            statuses[(lock_start, lock_end)] = locked_info
-        elif lock_end > t_start and lock_start < t_start:
+            # prev_interval_end                       t_end
+            #                    lock_start lock_end
+            # Lock happened in the middle, while the host stays in the same
+            # status, consider the lock has no effect on host history.
+            statuses[(prev_interval_end, lock_end)] = locked_info
+            prev_interval_end = lock_end
+        elif lock_end > prev_interval_end and lock_start < prev_interval_end:
             # case 3
-            #             t_start          t_end
-            # lock_start          lock_end
-            statuses[(t_start, lock_end)] = locked_info
+            #             prev_interval_end          t_end
+            # lock_start                    lock_end
+            # If the host status changed in the middle of being locked, consider
+            # the new status change as part of the host history.
+            statuses[(prev_interval_end, lock_end)] = locked_info
+            prev_interval_end = lock_end
         elif lock_start < t_end and lock_end > t_end:
             # case 4
-            # t_start             t_end
-            #          lock_start        lock_end
-            statuses[(prev_interval_end, lock_start)] = status_info
+            # prev_interval_end             t_end
+            #                    lock_start        lock_end
+            # If the lock happens in the middle of host status change, consider
+            # the lock has no effect on the host history for that status.
+            statuses[(prev_interval_end, t_end)] = status_info
             statuses[(lock_start, t_end)] = locked_info
-        prev_interval_end = lock_end
+            prev_interval_end = t_end
+            break
         # Otherwise we are in the case where lock_end < t_start OR
         # lock_start > t_end, which means the lock doesn't apply.
     if t_end > prev_interval_end:
