@@ -33,6 +33,7 @@ class CommonChameleonScreenCapturer(object):
     Calling its member method capture() captures the screen.
 
     """
+    TAG = 'Chameleon'
 
     def __init__(self, chameleon_port):
         """Initializes the CommonChameleonScreenCapturer objects."""
@@ -61,6 +62,7 @@ class VgaChameleonScreenCapturer(object):
     Calling its member method capture() captures the screen.
 
     """
+    TAG = 'Chameleon'
 
     def __init__(self, chameleon_port):
         """Initializes the VgaChameleonScreenCapturer objects."""
@@ -89,6 +91,7 @@ class CrosExternalScreenCapturer(object):
     Calling its member method capture() captures the screen.
 
     """
+    TAG = 'CrOS-Ext'
 
     def __init__(self, display_facade):
         """Initializes the CrosExternalScreenCapturer objects."""
@@ -110,6 +113,7 @@ class CrosInternalScreenCapturer(object):
     Calling its member method capture() captures the screen.
 
     """
+    TAG = 'CrOS-Int'
 
     def __init__(self, display_facade):
         """Initializes the CrosInternalScreenCapturer objects."""

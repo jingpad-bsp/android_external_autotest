@@ -2,8 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from autotest_lib.client.cros.chameleon import mirror_comparison
 from autotest_lib.client.cros.chameleon import resolution_comparison
 from autotest_lib.client.cros.chameleon import screen_capture
+from autotest_lib.client.cros.chameleon import screen_comparison
 
 
 class ScreenUtilityFactory(object):
@@ -14,6 +16,13 @@ class ScreenUtilityFactory(object):
     algorithm for screen comparison.
 
     """
+
+    _PIXEL_DIFF_MARGIN_FOR_ANALOG = 30
+    _PIXEL_DIFF_MARGIN_FOR_DIGITAL = 1
+
+    _WRONG_PIXELS_MARGIN_FOR_ANALOG = 0.04  # 4%
+    _WRONG_PIXELS_MARGIN_FOR_DIGITAL = 0
+
 
     def __init__(self, chameleon_port, display_facade):
         """Initializes the ScreenUtilityFactory objects."""
@@ -54,3 +63,31 @@ class ScreenUtilityFactory(object):
         else:
             return screen_capture.CrosExternalScreenCapturer(
                     self._display_facade)
+
+
+    def create_screen_comparer(self, output_dir):
+        """Creates a screen comparer.
+
+        @param output_dir: The directory the image files output to.
+        """
+        if self._is_vga:
+            pixel_diff_margin = self._PIXEL_DIFF_MARGIN_FOR_ANALOG
+            wrong_pixels_margin = self._WRONG_PIXELS_MARGIN_FOR_ANALOG
+        else:
+            pixel_diff_margin = self._PIXEL_DIFF_MARGIN_FOR_DIGITAL
+            wrong_pixels_margin = self._WRONG_PIXELS_MARGIN_FOR_DIGITAL
+
+        capturer1 = self.create_chameleon_screen_capturer()
+        capturer2 = self.create_cros_screen_capturer()
+
+        return screen_comparison.ScreenComparer(
+                capturer1, capturer2, output_dir,
+                pixel_diff_margin, wrong_pixels_margin)
+
+
+    def create_mirror_comparer(self, output_dir):
+        """Creates a comparer for mirrored mode.
+
+        @param output_dir: The directory the image files output to.
+        """
+        return mirror_comparison.MirrorComparer(self._display_facade, output_dir)
