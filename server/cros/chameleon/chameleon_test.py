@@ -28,8 +28,11 @@ class ChameleonTest(test.test):
 
     _TIMEOUT_VIDEO_STABLE_PROBE = 10
 
-    _PIXEL_DIFF_VALUE_MARGIN_FOR_ANALOG_SIGNAL = 5
+    _PIXEL_DIFF_VALUE_MARGIN_FOR_ANALOG_SIGNAL = 30
     _PIXEL_DIFF_VALUE_MARGIN_FOR_DIGITAL_SIGNAL = 1
+
+    _TOTAL_WRONG_PIXELS_MARGIN_FOR_ANALOG_SIGNAL = 0.04  # 4%
+    _TOTAL_WRONG_PIXELS_MARGIN_FOR_DIGITAL_SIGNAL = 0
 
     _FLAKY_CALL_RETRY_TIME_OUT_SEC = 20
     _FLAKY_CALL_RETRY_DELAY_SEC = 1
@@ -427,9 +430,10 @@ class ChameleonTest(test.test):
                 if a pixel difference exceeds this margin, will treat as a wrong
                 pixel. Sets None means using default value by detecting
                 connector type.
-        @param total_wrong_pixels_margin: The margin for the number of wrong
-                pixels. If the total number of wrong pixels exceeds this margin,
-                the check fails.
+        @param total_wrong_pixels_margin: The percentage of margin for wrong
+                pixels. The value is in a closed interval [0.0, 1.0]. If the
+                total number of wrong pixels exceeds this margin, the check
+                fails.
         @return: None if the check passes; otherwise, a string of error message.
         """
 
@@ -441,6 +445,10 @@ class ChameleonTest(test.test):
             logging.error(message)
             return message
 
+        assert 0.0 <= total_wrong_pixels_margin <= 1.0
+        size = image_a.size[0] * image_a.size[1]
+        max_acceptable_wrong_pixels = int(total_wrong_pixels_margin * size)
+
         diff_image = ImageChops.difference(image_a, image_b)
         histogram = diff_image.convert('L').histogram()
 
@@ -451,12 +459,12 @@ class ChameleonTest(test.test):
             logging.debug('Histogram of difference: %r', histogram)
             message = ('Result of %s: total %d wrong pixels (diff up to %d)'
                        % (tag, total_wrong_pixels, max_diff_value))
-            if total_wrong_pixels > total_wrong_pixels_margin:
+            if total_wrong_pixels > max_acceptable_wrong_pixels:
                 logging.error(message)
                 return message
 
             message += (', within the acceptable range %d' %
-                        total_wrong_pixels_margin)
+                        max_acceptable_wrong_pixels)
             logging.warning(message)
         else:
             logging.info('Result of %s: all pixels match (within +/- %d)',
@@ -466,7 +474,7 @@ class ChameleonTest(test.test):
 
     def check_screen_with_chameleon(
             self, tag, pixel_diff_value_margin=None,
-            total_wrong_pixels_margin=0, verify_mirrored=True):
+            total_wrong_pixels_margin=None, verify_mirrored=True):
         """Checks the DUT external screen with Chameleon.
 
         1. Capture the whole screen from the display buffer of Chameleon.
@@ -478,22 +486,33 @@ class ChameleonTest(test.test):
                 if a pixel difference exceeds this margin, will treat as a wrong
                 pixel. Sets None means using default value by detecting
                 connector type.
-        @param total_wrong_pixels_margin: The margin for the number of wrong
-                pixels. If the total number of wrong pixels exceeds this margin,
-                the check fails.
+        @param total_wrong_pixels_margin: The percentage of margin for wrong
+                pixels. The value is in a closed interval [0.0, 1.0]. If the
+                total number of wrong pixels exceeds this margin, the check
+                fails.
         @param verify_mirrored: True if compare the internal screen and
                 the external screen when the resolution matches.
         @return: None if the check passes; otherwise, a string of error message.
         """
 
+        # Tolerate pixel errors differently for VGA.
+        is_vga = self.display_facade.get_external_connector_name().startswith(
+                'VGA')
         if pixel_diff_value_margin is None:
-            # Tolerate pixel errors differently for VGA.
-            if self.display_facade.get_external_connector_name() == 'VGA':
+            if is_vga:
                 pixel_diff_value_margin = (
                         self._PIXEL_DIFF_VALUE_MARGIN_FOR_ANALOG_SIGNAL)
             else:
                 pixel_diff_value_margin = (
                         self._PIXEL_DIFF_VALUE_MARGIN_FOR_DIGITAL_SIGNAL)
+
+        if total_wrong_pixels_margin is None:
+            if is_vga:
+                total_wrong_pixels_margin = (
+                        self._TOTAL_WRONG_PIXELS_MARGIN_FOR_ANALOG_SIGNAL)
+            else:
+                total_wrong_pixels_margin = (
+                        self._TOTAL_WRONG_PIXELS_MARGIN_FOR_DIGITAL_SIGNAL)
 
         chameleon_image = self.chameleon_capturer.capture()
         dut_image_external = self.external_capturer.capture()
@@ -559,7 +578,7 @@ class ChameleonTest(test.test):
 
 
     def load_test_image_and_check(self, tag, expected_resolution,
-            pixel_diff_value_margin=None, total_wrong_pixels_margin=0,
+            pixel_diff_value_margin=None, total_wrong_pixels_margin=None,
             under_mirrored_mode=True, error_list = None):
         """Loads the test image and checks the image on Chameleon.
 
@@ -573,9 +592,10 @@ class ChameleonTest(test.test):
                 if a pixel difference exceeds this margin, will treat as a wrong
                 pixel. Sets None means using default value by detecting
                 connector type.
-        @param total_wrong_pixels_margin: The margin for the number of wrong
-                pixels. If the total number of wrong pixels exceeds this margin,
-                the check fails.
+        @param total_wrong_pixels_margin: The percentage of margin for wrong
+                pixels. The value is in a closed interval [0.0, 1.0]. If the
+                total number of wrong pixels exceeds this margin, the check
+                fails.
         @param under_mirrored_mode: True if don't make fails error on check the
                 resolution between dut and expected. It will also compare the
                 internal screen and the external screen.
