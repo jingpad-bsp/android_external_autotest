@@ -29,18 +29,18 @@ class login_GaiaLogin(test.test):
             # parsing accounts.google.com.
             tab.Navigate('http://accounts.google.com')
             tab.WaitForDocumentReadyStateToBeComplete()
-            found = tab.EvaluateJavaScript('''
-                    var found = 0;
-                    var divs = document.getElementsByTagName('div');
+            res = tab.EvaluateJavaScript('''
+                    var res = '',
+                        divs = document.getElementsByTagName('div');
                     for (var i = 0; i < divs.length; i++) {
-                        if (divs[i].textContent.search('%s')) {
-                            found = 1;
+                        res = divs[i].textContent;
+                        if (res.search('%s') > 1) {
                             break;
                         }
                     }
-                    found;
+                    res;
             ''' % self._USERNAME_DISPLAY)
-            if not found:
+            if not res:
                 raise error.TestFail('No references to %s on accounts page.'
                                      % self._USERNAME_DISPLAY)
             tab.Close()
