@@ -5,7 +5,11 @@
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 
-from telemetry.unittest import run_chromeos_tests
+# TODO(achuith): Clean this up crbug.com/432228.
+try:
+    from telemetry.unittest import run_chromeos_tests
+except ImportError:
+    from telemetry.unittest_util import run_chromeos_tests
 
 
 class telemetry_UnitTests(test.test):
