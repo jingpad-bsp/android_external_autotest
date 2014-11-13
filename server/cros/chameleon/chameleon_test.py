@@ -7,7 +7,6 @@ import os
 import time
 import xmlrpclib
 
-from PIL import Image
 from PIL import ImageChops
 
 from autotest_lib.client.common_lib import error
@@ -15,24 +14,8 @@ from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
 from autotest_lib.client.cros.chameleon import edid
 from autotest_lib.client.cros.chameleon import screen_utility_factory
-from autotest_lib.client.cros.multimedia import image_generator
 from autotest_lib.server import test
 from autotest_lib.server.cros.multimedia import remote_facade_factory
-
-def _unlevel(p):
-    """Unlevel a color value from TV level back to PC level
-
-    @param p: The color value in one character byte
-
-    @return: The color value in integer in PC level
-    """
-    # TV level: 16~236; PC level: 0~255
-    p = (p - 126) * 128 / 110 + 128
-    if p < 0:
-        p = 0
-    elif p > 255:
-        p = 255
-    return p
 
 
 class ChameleonTest(test.test):
@@ -66,6 +49,9 @@ class ChameleonTest(test.test):
         factory = screen_utility_factory.ScreenUtilityFactory(
                 self.chameleon_port, self.display_facade)
         self.resolution_comparer = factory.create_resolution_comparer()
+        self.chameleon_capturer = factory.create_chameleon_screen_capturer()
+        self.external_capturer = factory.create_cros_screen_capturer(False)
+        self.internal_capturer = factory.create_cros_screen_capturer(True)
         self._platform_prefix = host.get_platform().lower().split('_')[0]
 
 
@@ -509,17 +495,8 @@ class ChameleonTest(test.test):
                 pixel_diff_value_margin = (
                         self._PIXEL_DIFF_VALUE_MARGIN_FOR_DIGITAL_SIGNAL)
 
-        logging.info('Capturing framebuffer on Chameleon...')
-        chameleon_image = self.chameleon_port.capture_screen()
-
-        # unleveling from TV level [16, 235]
-        pmin, pmax = image_generator.ImageGenerator.get_extrema(chameleon_image)
-        if pmin > 10 and pmax < 240:
-            logging.info(' (TV level: %d %d)', pmin, pmax)
-            chameleon_image = Image.eval(chameleon_image, _unlevel)
-
-        logging.info('Capturing framebuffer on external display of DUT...')
-        dut_image_external = self.display_facade.capture_external_screen()
+        chameleon_image = self.chameleon_capturer.capture()
+        dut_image_external = self.external_capturer.capture()
 
         if dut_image_external is None:
             message = 'Failed to capture the external screen image.'
@@ -548,7 +525,7 @@ class ChameleonTest(test.test):
 
         if verify_mirrored:
             logging.info('Capturing framebuffer on internal display of DUT...')
-            dut_image_internal = self.display_facade.capture_internal_screen()
+            dut_image_internal = self.internal_capturer.capture()
             if dut_image_internal is None or (
                     dut_image_internal.size != internal_resolution):
                 message = 'Failed to capture the internal screen image.'
