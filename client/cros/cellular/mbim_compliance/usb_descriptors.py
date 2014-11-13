@@ -1,4 +1,4 @@
-# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -6,6 +6,59 @@ import struct
 from collections import namedtuple
 
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_errors
+
+# All the MBIM_ONLY_* maps are filters for MBIM only function. These maps
+# specify the values of the fields which should be matched in the target
+# interface.
+MBIM_ONLY_COMMUNICATION_INTERFACE = {'bAlternateSetting': 0,
+                                     'bNumEndpoints': 1,
+                                     'bInterfaceClass': 0x02,
+                                     'bInterfaceSubClass': 0x0E,
+                                     'bInterfaceProtocol': 0x00}
+
+MBIM_ONLY_DATA_INTERFACE_NO_DATA = {'bAlternateSetting': 0,
+                                    'bNumEndpoints': 0,
+                                    'bInterfaceClass': 0x0A,
+                                    'bInterfaceSubClass': 0x00,
+                                    'bInterfaceProtocol': 0x02}
+
+MBIM_ONLY_DATA_INTERFACE_MBIM = {'bAlternateSetting': 1,
+                                 'bNumEndpoints': 2,
+                                 'bInterfaceClass': 0x0A,
+                                 'bInterfaceSubClass': 0x00,
+                                 'bInterfaceProtocol': 0x02}
+
+# All the NCM_MBIM_* maps are filters for NCM/MBIM function. These maps
+# specify the values of the fields which should be matched in the target
+# interface.
+NCM_MBIM_COMMUNICATION_INTERFACE_NCM = {'bAlternateSetting': 0,
+                                        'bNumEndpoints': 1,
+                                        'bInterfaceClass': 0x02,
+                                        'bInterfaceSubClass': 0x0D}
+
+NCM_MBIM_COMMUNICATION_INTERFACE_MBIM = {'bAlternateSetting': 1,
+                                         'bNumEndpoints': 1,
+                                         'bInterfaceClass': 0x02,
+                                         'bInterfaceSubClass': 0x0E,
+                                         'bInterfaceProtocol': 0x00}
+
+NCM_MBIM_DATA_INTERFACE_NO_DATA = {'bAlternateSetting': 0,
+                                   'bNumEndpoints': 0,
+                                   'bInterfaceClass': 0x0A,
+                                   'bInterfaceSubClass': 0x00,
+                                   'bInterfaceProtocol': 0x01}
+
+NCM_MBIM_DATA_INTERFACE_NCM = {'bAlternateSetting': 1,
+                               'bNumEndpoints': 2,
+                               'bInterfaceClass': 0x0A,
+                               'bInterfaceSubClass': 0x00,
+                               'bInterfaceProtocol': 0x01}
+
+NCM_MBIM_DATA_INTERFACE_MBIM = {'bAlternateSetting': 2,
+                                'bNumEndpoints': 2,
+                                'bInterfaceClass': 0x0A,
+                                'bInterfaceSubClass': 0x00,
+                                'bInterfaceProtocol': 0x02}
 
 
 class DescriptorMeta(type):
@@ -336,6 +389,7 @@ def filter_descriptors(descriptor_type, descriptors):
 
     @param descriptor_type: The target descriptor type.
     @param descriptors: The list of functional descriptors.
+                        Type: Array of |Descriptor| objects.
     @returns A list of target descriptors.
 
     """
@@ -350,6 +404,7 @@ def has_distinct_descriptors(descriptors):
     Check if there are distinct descriptors in the given list.
 
     @param descriptors: The list of descriptors.
+                        Type: Array of |Descriptor| objects.
     @returns True if distinct descriptor are found, False otherwise.
 
     """
@@ -363,6 +418,7 @@ def get_descriptor_bundle(descriptors, descriptor):
     endpoint descriptors.
 
     @param descriptors: A list of all descriptors.
+                        Type: Array of |Descriptor| objects.
     @param descriptor: The starting point of the bundle.
     @returns The bundle for |descriptor|.
 
@@ -372,3 +428,58 @@ def get_descriptor_bundle(descriptors, descriptor):
            type(descriptor) != type(descriptors[index])):
         index += 1
     return descriptors[descriptor.index: index]
+
+
+def filter_interface_descriptors(descriptors, interface_type):
+    """
+    Filter interface descriptors based on the values in fields.
+
+    @param descriptors: A list of interface descriptors.
+                        Type: Array of |Descriptor| objects.
+    @param interface_type: A dictionary composed of pairs(field: value) to
+                           match the target interface.
+    @returns A list of target interfaces.
+
+    """
+    def _match_all_fields(interface):
+        """
+        Match fields for a given interface descriptor.
+
+        The descriptor is matched based on the fields provided in
+        |interface_type|.
+
+        @param interface: An interface descriptor.
+                          Type: |Descriptor| object.
+        @returns True if all fields match, False otherwise.
+
+        """
+        for key, value in interface_type.iteritems():
+            if (not hasattr(interface, key) or
+                getattr(interface, key) != value):
+                return False
+        return True
+
+    return filter(lambda descriptor: _match_all_fields(descriptor),
+                  descriptors)
+
+
+def has_bulk_in_and_bulk_out(endpoints):
+    """
+    Check if there are one bulk-in endpoint and one bulk-out endpoint.
+
+    @param endpoints: A list of endpoint descriptors.
+                      Type: Array of |Descriptor| objects.
+    @returns True if there are one bulk-in and one bulk-out endpoint, False
+             otherwise.
+    """
+    bulk_in, bulk_out = False, False
+    for endpoint in endpoints:
+        if (endpoint.bLength == 7 and
+            endpoint.bEndpointAddress < 0x80 and
+            endpoint.bmAttributes == 0x02):
+            bulk_out = True
+        elif (endpoint.bLength == 7 and
+              endpoint.bEndpointAddress >= 0x80 and
+              endpoint.bmAttributes == 0x02):
+            bulk_in = True
+    return bulk_in and bulk_out

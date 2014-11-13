@@ -1,4 +1,4 @@
-# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -32,26 +32,21 @@ class MBIMOpenGenericSequence(open_sequence.OpenSequence):
     def run_internal(self):
         """ Run the MBIM Open Generic Sequence. """
         # Step 1 and 2
-        # Find communication interface and data interface for MBIM only function
-        mbim_found, ncm_mbim_found = False, False
-        if self.test_context.device_type == test_context.DEVICE_TYPE_MBIM:
-            mbim_communication_interface = (
-                    self.test_context.mbim_communication_interface)
-            no_data_data_interface = self.test_context.no_data_data_interface
-            mbim_data_interface = self.test_context.mbim_data_interface
-            mbim_found = True
-        elif self.test_context.device_type == test_context.DEVICE_TYPE_NCM_MBIM:
-            mbim_communication_interface = (
-                    self.test_context.mbim_communication_interface)
-            ncm_communication_interface = (
-                    self.test_context.ncm_communication_interface)
-            no_data_data_interface = self.test_context.no_data_data_interface
-            ncm_data_interface = self.test_context.ncm_data_interface
-            mbim_data_interface = self.test_context.mbim_data_interface
-            ncm_mbim_found = True
-        else:
-            mbim_errors.log_and_raise(mbim_errors.MBIMComplianceFrameworkError,
-                                      'No MBIM or NCM/MBIM function found.')
+        device_type = self.test_context.device_type
+        mbim_communication_interface = (
+                self.test_context.descriptor_cache.mbim_communication_interface)
+        ncm_communication_interface = (
+                self.test_context.descriptor_cache.ncm_communication_interface)
+        no_data_data_interface = (
+                self.test_context.descriptor_cache.no_data_data_interface)
+        ncm_data_interface = (
+                self.test_context.descriptor_cache.ncm_data_interface)
+        mbim_data_interface = (
+                self.test_context.descriptor_cache.mbim_data_interface)
+        mbim_functional_descriptor = (
+                self.test_context.descriptor_cache.mbim_functional)
+        interrupt_endpoint = (
+                self.test_context.descriptor_cache.interrupt_endpoint)
 
         communication_interface_number = (
                 mbim_communication_interface.bInterfaceNumber)
@@ -66,7 +61,7 @@ class MBIMOpenGenericSequence(open_sequence.OpenSequence):
         # Step 4
         # Set alternate setting to be 1 for MBIM communication interface of
         # NCM/MBIM function.
-        if ncm_mbim_found:
+        if device_type == test_context.DEVICE_TYPE_NCM_MBIM:
             self.set_alternate_setting(communication_interface_number, 1)
 
         # Step 5
@@ -93,14 +88,13 @@ class MBIMOpenGenericSequence(open_sequence.OpenSequence):
 
         # Step 9
         # Send SetMaxDatagramSize() request to communication interface.
-        mbim_functional_descriptor = self.test_context.mbim_functional
         # Bit 3 determines whether the device can process SetMaxDatagramSize()
         # and GetMaxDatagramSize() requests.
         if (mbim_functional_descriptor.bmNetworkCapabilities>>3) & 1:
             self.set_max_datagram_size(communication_interface_number)
 
         # Step 10
-        if mbim_found:
+        if device_type == test_context.DEVICE_TYPE_MBIM:
             alternate_setting = 1
         else:
             alternate_setting = 2
@@ -108,8 +102,7 @@ class MBIMOpenGenericSequence(open_sequence.OpenSequence):
 
         # Step 11 and 12
         # Send MBIM_OPEN_MSG request and receive the response.
-        interrupt_endpoint_address = (
-                self.test_context.interrupt_endpoint.bEndpointAddress)
+        interrupt_endpoint_address = interrupt_endpoint.bEndpointAddress
 
         # TODO(mcchou): For unblocking the CM_xx tests. A new version of
         #               message contructing will be presented.
