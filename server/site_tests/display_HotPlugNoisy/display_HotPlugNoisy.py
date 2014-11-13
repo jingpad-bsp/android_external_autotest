@@ -34,13 +34,15 @@ class display_HotPlugNoisy(chameleon_test.ChameleonTest):
         logging.info('See the display on Chameleon: port %d (%s)',
                      self.chameleon_port.get_connector_id(),
                      self.chameleon_port.get_connector_type())
+
+        self.set_mirrored(test_mirrored)
+
         # Keep the original connector name, for later comparison.
         expected_connector = self.display_facade.get_external_connector_name()
         resolution = self.display_facade.get_external_resolution()
         logging.info('See the display on DUT: %s (%dx%d)', expected_connector,
                      *resolution)
 
-        self.set_mirrored(test_mirrored)
         errors = []
         for (plugged_before_noise, plugged_after_noise) in self.PLUG_CONFIGS:
             logging.info('TESTING THE CASE: %s > noise > %s',
