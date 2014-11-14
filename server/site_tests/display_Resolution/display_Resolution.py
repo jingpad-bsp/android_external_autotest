@@ -55,9 +55,8 @@ class display_Resolution(chameleon_test.ChameleonTest):
                     time.sleep(6)
                 self.suspend_resume()
 
-            self.load_test_image_and_check(
-                    test_name, test_resolution,
-                    under_mirrored_mode=test_mirrored, error_list=errors)
+            self.screen_test.test_screen_with_image(
+                    test_resolution, test_mirrored, errors)
 
         self.raise_on_errors(errors)
 

@@ -77,7 +77,7 @@ class display_EdidStress(chameleon_test.ChameleonTest):
                     errors.append(error_message)
                     continue
 
-                error_message = self.resolution_comparer.compare(
+                error_message = self.screen_test.test_resolution(
                         framebuffer_resolution)
                 if error_message:
                     errors.append(error_message)

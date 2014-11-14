@@ -10,7 +10,7 @@ import xmlrpclib
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
 from autotest_lib.client.cros.chameleon import edid
-from autotest_lib.client.cros.chameleon import screen_utility_factory
+from autotest_lib.client.cros.chameleon import screen_test
 from autotest_lib.server import test
 from autotest_lib.server.cros.multimedia import remote_facade_factory
 
@@ -37,11 +37,8 @@ class ChameleonTest(test.test):
         self.host = host
         # TODO(waihong): Support multiple connectors.
         self.chameleon_port = self._get_connected_port()
-        factory = screen_utility_factory.ScreenUtilityFactory(
-                self.chameleon_port, self.display_facade)
-        self.resolution_comparer = factory.create_resolution_comparer()
-        self.screen_comparer = factory.create_screen_comparer(self.outputdir)
-        self.mirror_comparer = factory.create_mirror_comparer(self.outputdir)
+        self.screen_test = screen_test.ScreenTest(
+                self.chameleon_port, self.display_facade, self.outputdir)
         self._platform_prefix = host.get_platform().lower().split('_')[0]
 
 
@@ -98,26 +95,6 @@ class ChameleonTest(test.test):
                      self.chameleon_port.get_connector_type(),
                      filename)
         self.chameleon_port.apply_edid(edid.Edid.from_file(filename))
-
-
-    def load_test_image(self, image_size, calibration_image_setup_time=10):
-        """Load calibration image on the DUT with logging
-
-        @param image_size: A tuple (width, height) conforms the resolution.
-        @param calibration_image_setup_time: Time to wait for the full screen
-                bubble and the external display detecting notation to disappear.
-        """
-
-        self.display_facade.load_calibration_image(image_size)
-        self.display_facade.hide_cursor()
-        logging.info('Waiting for calibration image to stabilize.')
-        time.sleep(calibration_image_setup_time)
-
-
-    def unload_test_image(self):
-        """Close the tab in browser to unload test image"""
-
-        self.display_facade.close_tab()
 
 
     def set_resolution(self, display_index, width, height):
@@ -364,41 +341,6 @@ class ChameleonTest(test.test):
         else:
             self.chameleon_port.unplug()
 
-
-    def load_test_image_and_check(self, tag, expected_resolution,
-            under_mirrored_mode=True, error_list = None):
-        """Loads the test image and checks the image on Chameleon.
-
-        1. Checks resolution.
-        2. Checks screen between Chameleon and DUT.
-
-        @param tag: A string of tag for the prefix of output filenames.
-        @param expected_resolution: A tuple (width, height) for the expected
-                resolution.
-        @param under_mirrored_mode: True if don't make fails error on check the
-                resolution between dut and expected. It will also compare the
-                internal screen and the external screen.
-        @param error_list: A list to append the error message to or None.
-        @return: None if the check passes; otherwise, a string of error message.
-        """
-        # TODO(tingyuan): Check test_image is keeping full-screen.
-        if under_mirrored_mode:
-            test_image_size =  self.display_facade.get_internal_resolution()
-        else:
-            test_image_size =  self.display_facade.get_external_resolution()
-
-        try:
-            self.load_test_image(test_image_size)
-            error = self.resolution_comparer.compare(expected_resolution)
-            if not error:
-                error = self.screen_comparer.compare()
-            if not error and under_mirrored_mode:
-                error = self.mirror_comparer.compare()
-            if error:
-                error_list.append(error)
-            return error
-        finally:
-            self.unload_test_image()
 
     def audio_start_recording(self, host, port):
         """Starts recording audio on a host using a port.

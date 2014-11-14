@@ -146,17 +146,12 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
 
     def check_external_display(self):
         """Display status check"""
-        self.test_name = '%s-%s-%s' % (self.connector_used,
-            str(self.resolution),
-            'mirror' if self.test_mirrored else 'extended')
-        # Check connector
+        #Check connector
         self.check_external_display_connector(self.connector_used)
-        # Check test image
-        self.load_test_image_and_check(
-            self.test_name, self.resolution,
-            under_mirrored_mode=self.test_mirrored,
-            error_list=self.errors)
-        # Check for crashes.
+        #Check test image
+        self.screen_test.test_screen_with_image(
+                self.resolution, self.test_mirrored, self.errors)
+        #Check for crashes.
         if self.is_crash_data_present():
             self.errors.append('Crash data is detected on DUT')
         self.raise_on_errors(self.errors)

@@ -96,13 +96,7 @@ class display_HotPlugAtSuspend(chameleon_test.ChameleonTest):
                     logging.error(error_message)
                     self.set_mirrored(True)
                 else:
-                    test_name = 'SCREEN-%dx%d-%c-S-%c-P-R' % (
-                             resolution + (
-                                 'P' if plugged_before_suspend else 'U',
-                                 'P' if plugged_after_suspend else 'U')),
-                    self.load_test_image_and_check(
-                            test_name, resolution,
-                            under_mirrored_mode=test_mirrored,
-                            error_list=errors)
+                    self.screen_test.test_screen_with_image(
+                            resolution, test_mirrored, errors)
 
         self.raise_on_errors(errors)

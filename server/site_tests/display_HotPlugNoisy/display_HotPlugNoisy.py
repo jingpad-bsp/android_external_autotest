@@ -64,11 +64,8 @@ class display_HotPlugNoisy(chameleon_test.ChameleonTest):
                     expected_connector if plugged_after_noise else False)
 
             if plugged_after_noise:
-                test_name = 'SCREEN-%dx%d-%c-N-P' % (
-                        resolution + ('P' if plugged_before_noise else 'U',))
-                self.load_test_image_and_check(
-                        test_name, resolution,
-                        under_mirrored_mode=test_mirrored, error_list=errors)
+                self.screen_test.test_screen_with_image(
+                        resolution, test_mirrored, errors)
             else:
                 time.sleep(1)
 

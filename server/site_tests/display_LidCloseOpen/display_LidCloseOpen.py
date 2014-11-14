@@ -109,19 +109,14 @@ class display_LidCloseOpen(chameleon_test.ChameleonTest):
     def check_external_display(self):
         """Display status check"""
         resolution = self.chameleon_port.get_resolution()
-        test_name = '%s-%s-%s' % (self.connector_used,
-            str(resolution),
-            'mirrored' if self.test_mirrored else 'extended')
         # Check mode is same as beginning of the test
         self.check_mode()
         # Check connector
         self.check_external_display_connector(self.connector_used)
 
         # Check test image
-        self.load_test_image_and_check(
-            test_name, resolution,
-            under_mirrored_mode=self.test_mirrored,
-            error_list=self.errors)
+        self.screen_test.test_screen_with_image(
+                resolution, self.test_mirrored, self.errors)
 
 
     def run_once(self, host, test_mirrored=False):

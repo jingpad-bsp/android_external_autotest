@@ -25,16 +25,11 @@ class display_SwitchMode(chameleon_test.ChameleonTest):
 
         """
         resolution = self.display_facade.get_external_resolution()
-        test_name = '%s-%s-%s' % (self.connector_used,
-            str(resolution),
-            'mirrored' if test_mirrored else 'extended')
         # Check connector
         self.check_external_display_connector(self.connector_used)
         # Check test image
-        self.load_test_image_and_check(
-            test_name, resolution,
-            under_mirrored_mode=test_mirrored,
-            error_list=self.errors)
+        self.screen_test.test_screen_with_image(
+                resolution, test_mirrored, self.errors)
         self.raise_on_errors(self.errors)
 
 
