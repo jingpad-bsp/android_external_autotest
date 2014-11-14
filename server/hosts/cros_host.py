@@ -1315,6 +1315,75 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         super(CrosHost, self).close()
 
 
+    def get_power_supply_info(self):
+        """Get the output of power_supply_info.
+
+        power_supply_info outputs the info of each power supply, e.g.,
+        Device: Line Power
+          online:                  no
+          type:                    Mains
+          voltage (V):             0
+          current (A):             0
+        Device: Battery
+          state:                   Discharging
+          percentage:              95.9276
+          technology:              Li-ion
+
+        Above output shows two devices, Line Power and Battery, with details of
+        each device listed. This function parses the output into a dictionary,
+        with key being the device name, and value being a dictionary of details
+        of the device info.
+
+        @return: The dictionary of power_supply_info, e.g.,
+                 {'Line Power': {'online': 'yes', 'type': 'main'},
+                  'Battery': {'vendor': 'xyz', 'percentage': '100'}}
+        """
+        result = self.run('power_supply_info').stdout.strip()
+        info = {}
+        device_name = None
+        device_info = {}
+        for line in result.split('\n'):
+            pair = [v.strip() for v in line.split(':')]
+            if len(pair) != 2:
+                continue
+            if pair[0] == 'Device':
+                if device_name:
+                    info[device_name] = device_info
+                device_name = pair[1]
+                device_info = {}
+            else:
+                device_info[pair[0]] = pair[1]
+        if device_name and not device_name in info:
+            info[device_name] = device_info
+        return info
+
+
+    def get_battery_percentage(self):
+        """Get the battery percentage.
+
+        @return: The percentage of battery level, value range from 0-100. Return
+                 None if the battery info cannot be retrieved.
+        """
+        try:
+            info = self.get_power_supply_info()
+            logging.info(info)
+            return float(info['Battery']['percentage'])
+        except KeyError, ValueError:
+            return None
+
+
+    def is_ac_connected(self):
+        """Check if the dut has power adapter connected and charging.
+
+        @return: True if power adapter is connected and charging.
+        """
+        try:
+            info = self.get_power_supply_info()
+            return info['Line Power']['online'] == 'yes'
+        except KeyError:
+            return False
+
+
     def _cleanup_poweron(self):
         """Special cleanup method to make sure hosts always get power back."""
         afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
@@ -1334,7 +1403,20 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             es_utils.ESMetadata().post(
                     type_str='RPM_poweron_failure',
                     metadata={'hostname': self.hostname})
-            raise
+
+            battery_percentage = self.get_battery_percentage()
+            if not battery_percentage or battery_percentage < 50:
+                raise
+            elif self.is_ac_connected():
+                logging.info('The device has power adapter connected and '
+                             'charging. No need to try to turn RPM on '
+                             'again.')
+                afe.set_host_attribute(self._RPM_OUTLET_CHANGED, None,
+                                       hostname=self.hostname)
+            logging.info('Battery level is now at %s%%. The device may '
+                         'still have enough power to run test, so no '
+                         'exception will be raised.', battery_percentage)
+
 
     def _is_factory_image(self):
         """Checks if the image on the DUT is a factory image.
@@ -1478,6 +1560,18 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         # We have seen cases where importing cPickle fails with undefined
         # symbols in cPickle.so.
         self.run('python -c "import cPickle"')
+
+
+    def verify_hardware(self):
+        """Verify hardware system of a Chrome OS system.
+
+        Check following hardware conditions:
+        1. Battery level.
+        2. Is power adapter connected.
+        """
+        logging.info('Battery percentage: %s', self.get_battery_percentage())
+        logging.info('Device %s power adapter connected and charging.',
+                     'has' if self.is_ac_connected() else 'does not have')
 
 
     def make_ssh_command(self, user='root', port=22, opts='', hosts_file=None,
@@ -2511,14 +2605,13 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
 
     def read_from_meminfo(self, key):
-        """ Return the memory info from /proc/meminfo
+        """Return the memory info from /proc/meminfo
 
         @param key: meminfo requested
 
         @return the memory value as a string
 
         """
-
         meminfo = self.run('grep %s /proc/meminfo' % key).stdout.strip()
         logging.debug('%s', meminfo)
         return int(re.search(r'\d+', meminfo).group(0))
