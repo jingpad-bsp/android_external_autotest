@@ -280,6 +280,11 @@ class test_format_for_upload(unittest.TestCase):
 
         fail_msg = 'Unexpected result string: %s' % actual_result
         self.assertEqual(len(actual), len(expected), msg=fail_msg)
+        # Make sure the dictionaries in 'expected' are in the same order
+        # as the dictionaries in 'actual' before comparing their values.
+        actual = sorted(actual, key=lambda x: x['test'])
+        expected = sorted(expected, key=lambda x: x['test'])
+        # Now compare the results.
         for idx in xrange(len(actual)):
             keys_actual = set(actual[idx].keys())
             keys_expected = set(expected[idx].keys())
