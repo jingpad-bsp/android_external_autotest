@@ -65,6 +65,7 @@ trunks:!:251:trunks
 scanner:!:255:saned
 volume:!:257:
 uinput:!:258:bluetooth,volume
+apmanager:!:259:apmanager
 peerd:!:260:peerd
 privetd:!:262:privetd
 ntfs-3g:!:300:
