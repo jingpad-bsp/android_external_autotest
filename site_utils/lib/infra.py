@@ -2,8 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import contextlib
 import getpass
 import subprocess
+import os
 
 import common
 from autotest_lib.server.hosts import ssh_host
@@ -13,20 +15,44 @@ from autotest_lib.client.common_lib import utils
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
 
-def local_runner(cmd):
+@contextlib.contextmanager
+def chdir(dirname=None):
+    """A context manager to help change directories.
+
+    Will chdir into the provided dirname for the lifetime of the context and
+    return to cwd thereafter.
+
+    @param dirname: The dirname to chdir into.
+    """
+    curdir = os.getcwd()
+    try:
+        if dirname is not None:
+            os.chdir(dirname)
+        yield
+    finally:
+        os.chdir(curdir)
+
+
+def local_runner(cmd, stream_output=False):
     """
     Runs a command on the local system as the current user.
 
     @param cmd: The command to run.
+    @param stream_output: If True, streams the stdout of the process.
+
     @returns: The output of cmd.
     @raises CalledProcessError: If there was a non-0 return code.
     """
-    return subprocess.check_output(cmd, shell=True)
+    if not stream_output:
+        return subprocess.check_output(cmd, shell=True)
+    proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+    while proc.poll() is None:
+        print proc.stdout.readline().rstrip('\n')
 
 
 _host_objects = {}
 
-def host_object_runner(host):
+def host_object_runner(host, **kwargs):
     """
     Returns a function that returns the output of running a command via a host
     object.
@@ -60,7 +86,7 @@ def host_object_runner(host):
     return runner
 
 
-def become_runner(host):
+def become_runner(host, **kwargs):
     """
     Returns a function that return the output of running a command via shelling
     out to `become`.
@@ -82,7 +108,7 @@ def become_runner(host):
     return runner
 
 
-def execute_command(host, cmd):
+def execute_command(host, cmd, **kwargs):
     """
     Executes a command on the host `host`.  This an optimization that if
     we're already chromeos-test, we can just ssh to the machine in question.
@@ -91,6 +117,7 @@ def execute_command(host, cmd):
     @param host: The hostname to execute the command on.
     @param cmd: The command to run.  Special shell syntax (such as pipes)
                 is allowed.
+    @param kwargs: Key word arguments for the runner functions.
     @returns: The output of the command.
     """
     if utils.is_localhost(host):
@@ -100,7 +127,7 @@ def execute_command(host, cmd):
     else:
         runner = become_runner(host)
 
-    return runner(cmd)
+    return runner(cmd, **kwargs)
 
 
 def _csv_to_list(s):
