@@ -63,9 +63,10 @@ class ExternalPackage(object):
               for a version check.  Defaults to the lower case class name with
               the word Package stripped off.
       @attribute version - The desired minimum package version.
-      @attribute os_requirements - A dictionary mapping a file pathname on the
+      @attribute os_requirements - A dictionary mapping pathname tuples on the
               the OS distribution to a likely name of a package the user
               needs to install on their system in order to get this file.
+              One of the files in the tuple must exist.
       @attribute name - Read only, the printable name of the package.
       @attribute subclasses - This class attribute holds a list of all defined
               subclasses.  It is constructed dynamically using the metaclass.
@@ -177,11 +178,11 @@ class ExternalPackage(object):
         if not self.os_requirements:
             return
         failed = False
-        for file_name, package_name in self.os_requirements.iteritems():
-            if not os.path.exists(file_name):
+        for file_names, package_name in self.os_requirements.iteritems():
+            if not any(os.path.exists(file_name) for file_name in file_names):
                 failed = True
-                logging.error('File %s not found, %s needs it.',
-                              file_name, self.name)
+                logging.error('Can\'t find %s, %s probably needs it.',
+                              file_names.join(" or "), self.name)
                 logging.error('Perhaps you need to install something similar '
                               'to the %s package for OS first.', package_name)
         if failed:
@@ -633,8 +634,9 @@ class MatplotlibPackage(ExternalPackage):
     urls = ('http://downloads.sourceforge.net/project/matplotlib/matplotlib/'
             'matplotlib-%s/matplotlib-%s.tar.gz' % (short_version, version),)
     hex_sum = '2f6c894cf407192b3b60351bcc6468c0385d47b6'
-    os_requirements = {'/usr/include/ft2build.h': 'libfreetype6-dev',
-                       '/usr/include/png.h': 'libpng12-dev'}
+    os_requirements = {('/usr/include/freetype2/ft2build.h',
+                        '/usr/include/ft2build.h'): 'libfreetype6-dev',
+                       ('/usr/include/png.h'): 'libpng12-dev'}
 
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (
@@ -1049,7 +1051,7 @@ class _ExternalGitRepo(ExternalPackage):
     they see appropriate.
     """
 
-    os_requirements = {'/usr/bin/git' : 'git-core'}
+    os_requirements = {('/usr/bin/git') : 'git-core'}
 
     def is_needed(self, unused_install_dir):
         """Tell build_externals that we need to fetch."""
