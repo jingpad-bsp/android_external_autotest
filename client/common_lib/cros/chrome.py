@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import inspect, logging, os
+import logging, os
 
 from telemetry.core import browser_finder, browser_options, exceptions
 from telemetry.core import extension_to_load, util
@@ -19,7 +19,8 @@ class Chrome(object):
     def __init__(self, logged_in=True, extension_paths=[], autotest_ext=False,
                  is_component=True, num_tries=3, extra_browser_args=None,
                  clear_enterprise_policy=True, dont_override_profile=False,
-                 disable_gaia_services=True, auto_login=True, gaia_login=False,
+                 disable_gaia_services=True, disable_default_apps = True,
+                 auto_login=True, gaia_login=False,
                  username=None, password=None):
         """
         Constructor of telemetry wrapper.
@@ -40,6 +41,7 @@ class Chrome(object):
                                       option.
         @param disable_gaia_services: For enterprise autotests, this option may
                                       be used to enable policy fetch.
+        @param disable_default_apps: For tests that exercise default apps.
         @param auto_login: Does not login automatically if this is False.
                            Useful if you need to examine oobe.
         @param gaia_login: Logs in to real gaia.
@@ -80,7 +82,8 @@ class Chrome(object):
         b_options.clear_enterprise_policy = clear_enterprise_policy
         b_options.dont_override_profile = dont_override_profile
         b_options.disable_gaia_services = disable_gaia_services
-        b_options.disable_default_apps = False
+        b_options.disable_default_apps = disable_default_apps
+        b_options.disable_component_extensions_with_background_pages = disable_default_apps
 
         b_options.auto_login = auto_login
         b_options.gaia_login = gaia_login
@@ -92,12 +95,7 @@ class Chrome(object):
         for i in range(num_tries):
             try:
                 browser_to_create = browser_finder.FindBrowser(finder_options)
-                # TODO(achuith): Remove inspect and old Create call.
-                # crbug.com/428967.
-                if len(inspect.getargspec(browser_to_create.Create).args) == 1:
-                    self._browser = browser_to_create.Create()
-                else:
-                    self._browser = browser_to_create.Create(finder_options)
+                self._browser = browser_to_create.Create(finder_options)
                 break
             except (util.TimeoutException, exceptions.LoginException) as e:
                 logging.error('Timed out logging in, tries=%d, error=%s',
