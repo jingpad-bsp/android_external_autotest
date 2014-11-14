@@ -7,7 +7,7 @@ import logging
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib.cros import tpm_utils
 from telemetry.core import exceptions
-from telemetry.core.backends.chrome import cros_interface
+from telemetry.core.platform import cros_interface
 
 
 def _ExecuteOobeCmd(browser, cmd):
