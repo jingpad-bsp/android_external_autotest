@@ -107,6 +107,7 @@ class kernel_ExternalUsbPeripheralsDetectionTest(test.test):
 
         self.host.servo.switch_usbkey('dut')
         self.host.servo.set('usb_mux_sel3', 'dut_sees_usbkey')
+        time.sleep(_WAIT_DELAY)
 
         self.set_hub_power(False)
         # Collect the USB devices directories before switching on hub

@@ -316,6 +316,7 @@ class platform_ExternalUsbPeripherals(test.test):
 
         self.host.servo.switch_usbkey('dut')
         self.host.servo.set('usb_mux_sel3', 'dut_sees_usbkey')
+        time.sleep(_WAIT_DELAY)
 
         # Collect USB peripherals when unplugged
         self.set_hub_power(False)
