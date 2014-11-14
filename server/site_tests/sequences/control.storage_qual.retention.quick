@@ -11,7 +11,7 @@ TEST_CLASS = "suite"
 TEST_TYPE = "server"
 
 DOC = """
-Suite for testing the Storage Qual running from the fixed devices.
+Sequence for testing the Storage Qual running from the fixed devices.
 This tests check retentions.
 """
 HOUR_IN_SECS=60*60

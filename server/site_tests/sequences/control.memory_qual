@@ -3,37 +3,52 @@
 # found in the LICENSE file.
 
 AUTHOR = "puthik"
-NAME = "MemoryQual.quick"
-SUITE = "memory_qual_quick"
-TIME = "MEDIUM"
+NAME = "MemoryQual"
+SUITE = "memory_qual"
+TIME = "LENGTHY"
 TEST_CATEGORY = "Stress"
 TEST_CLASS = "suite"
 TEST_TYPE = "server"
 
 DOC = """
-Suite for testing the Memory Qual running from the fixed devices.
+Sequence for qualification new memory part to AVL.
 """
+
+HOUR_IN_SECS=60*60
 
 CLIENT_TESTS= [
     ('platform_MemCheck', {}),
     ('hardware_RamFio', {
         'requirements': [('ram_suite', [])]}),
     ('hardware_MemoryThroughput', {
-        'tag': 'quick', 'test': 'bcopy', 'warmup': 10, 'num_iterations': 5,
-        'parallel': 1, 'sizes' : [ 16 * 1024 * 1024]}),
+        'tag': 'memory_qual', 'test': 'bcopy', 'warmup': 100,
+        'num_iterations': 100, 'parallel': 2,
+        'sizes' : [ 1024, 2048, 4096, 8192,
+                    15360, 16384, 24576,
+                    30720, 32768, 33792,
+                    49152, 65536, 98304,
+                    130048, 131072, 256000,
+                    262144, 393216, 524288,
+                    1048576, 1468006, 1572864,
+                    1966080, 2097152, 2228224,
+                    2621440, 3072000, 3145728,
+                    3276800, 4194304, 8388608,
+                    16777216, 33554432, 67108864]}),
     ('hardware_MemoryLatency', {
         'sample_size_kb': [ int(2), int(192), int(1024)]}),
     ('hardware_Memtester', {
-        'tag' : 'quick', 'size' : 10 * 1024, 'loop' : 1}),
+        'tag' : 'memory_qual', 'loop' : 100}),
     ('hardware_SAT', {
-        'tag' : 'quick', 'seconds' : 10}),
+        'tag' : 'memory_qual', 'seconds' : 8 * HOUR_IN_SECS}),
     ('power_MemorySuspend', {
-        'tag' : 'quick', 'num_suspends' : 2}),
+        'tag' : 'memory_qual', 'num_suspends' : 10000}),
 ]
 
 SERVER_TESTS= [
     ('hardware_MemoryIntegrity', {
-        'tag' : 'quick', 'seconds' : 30, 'suspend': False}),
+        'tag' : 'idle', 'seconds' : HOUR_IN_SECS, 'suspend': False}),
+    ('hardware_MemoryIntegrity', {
+        'tag' : 'suspend', 'seconds' : HOUR_IN_SECS, 'suspend': True}),
 ]
 
 def run_client_test(machine):
