@@ -38,6 +38,16 @@ class VagrantCmdError(Exception):
 # querying the box provider. Always running the cluster from the same
 # directory simplifies vm lifecycle management.
 VAGRANT_DIR = os.path.abspath(os.path.join(__file__, os.pardir))
+VAGRANT_VERSION = '1.6.0'
+
+
+def format_msg(msg):
+    """Format the give message.
+
+    @param msg: A message to format out to stdout.
+    """
+    print '\n{:^20s}%s'.format('') % msg
+
 
 class VagrantProvisioner(object):
     """Provisiong vms with vagrant."""
@@ -72,12 +82,24 @@ class VagrantProvisioner(object):
 
         # TODO: Automate the installation of vagrant.
         try:
-            self.vagrant_cmd('--version')
+            version = int(self.vagrant_cmd('--version').rstrip('\n').rsplit(
+                    ' ')[-1].replace('.', ''))
         except VagrantCmdError:
             logging.error(
                     'Looks like you don\'t have vagrant. Please run: \n'
                     '`apt-get install virtualbox vagrant`. This assumes you '
                     'are on Trusty; There is a TODO to automate installation.')
+            sys.exit(1)
+        except TypeError as e:
+            logging.warning('The format of the vagrant version string seems to '
+                            'have changed, assuming you have a version > %s.',
+                            VAGRANT_VERSION)
+            return
+        if version < int(VAGRANT_VERSION.replace('.', '')):
+            logging.error('Please upgrade vagrant to a version > %s by '
+                          'downloading a deb file from '
+                          'https://www.vagrantup.com/downloads and installing '
+                          'it with dpkg -i file.deb', VAGRANT_VERSION)
             sys.exit(1)
 
 
@@ -182,8 +204,7 @@ class VagrantProvisioner(object):
                 self.vagrant_cmd('destroy --force', stream_output=True)
             except VagrantCmdError:
                 pass
-        logging.info('Starting vms. This should take no longer than 20 minutes '
-                     'the first time, and no longer than 5 subsequently.')
+        format_msg('Starting vms. This should take no longer than 5 minutes')
         self.vagrant_cmd('up', stream_output=True)
 
 
