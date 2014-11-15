@@ -9,6 +9,7 @@ import logging
 import common
 from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.server import frontend
+from autotest_lib.server.cros import provision_actionables as actionables
 
 
 ### Constants for label prefixes
@@ -119,7 +120,7 @@ class Verify(_SpecialTaskAction):
     """
 
     _actions = {
-        'modem_repair': 'cellular_StaleModemReboot',
+        'modem_repair': actionables.TestActionable('cellular_StaleModemReboot'),
         # TODO(crbug.com/404421): set rpm action to power_RPMTest after the RPM
         # is stable in lab (destiny). The power_RPMTest failure led to reset job
         # failure and that left dut in Repair Failed. Since the test will fail
@@ -129,7 +130,7 @@ class Verify(_SpecialTaskAction):
         # Another way to do this is to remove rpm dependency from tests' control
         # file. That will involve changes on multiple control files. This one
         # line change here is a simple temporary fix.
-        'rpm': 'dummy_PassServer',
+        'rpm': actionables.TestActionable('dummy_PassServer'),
     }
 
     name = 'verify'
@@ -145,8 +146,9 @@ class Provision(_SpecialTaskAction):
     # Create some way to discover and register provisioning tests so that we
     # don't need to hand-maintain a list of all of them.
     _actions = {
-        CROS_VERSION_PREFIX: 'provision_AutoUpdate',
-        FW_VERSION_PREFIX: 'provision_FirmwareUpdate',
+        CROS_VERSION_PREFIX: actionables.TestActionable('provision_AutoUpdate'),
+        FW_VERSION_PREFIX: actionables.TestActionable(
+                'provision_FirmwareUpdate'),
     }
 
     name = 'provision'
@@ -159,7 +161,7 @@ class Cleanup(_SpecialTaskAction):
     """
 
     _actions = {
-        'cleanup-reboot': 'generic_RebootTest',
+        'cleanup-reboot': actionables.RebootActionable(),
     }
 
     name = 'cleanup'
@@ -290,8 +292,8 @@ def run_special_task_actions(job, host, labels, task):
 
     for label in capabilities:
         if task.acts_on(label):
-            test = task.test_for(label)
-            success = job.run_test(test, host=host)
+            action_item = task.test_for(label)
+            success = action_item.execute(job=job, host=host)
             if not success:
                 raise SpecialTaskActionException()
         else:
@@ -300,8 +302,8 @@ def run_special_task_actions(job, host, labels, task):
 
     for name, value in split_labels(configuration).items():
         if task.acts_on(name):
-            test = task.test_for(name)
-            success = job.run_test(test, host=host, value=value)
+            action_item = task.test_for(name)
+            success = action_item.execute(job=job, host=host, value=value)
             if not success:
                 raise SpecialTaskActionException()
         else:
