@@ -98,6 +98,9 @@ SKIP = set((
     'full_release_test.py',
     'scheduler_lib_unittest.py',
     'webstore_test.py',
+    # crbug.com/432621 These files are not tests, and will disappear soon.
+    'des_01_test.py',
+    'des_02_test.py',
     ))
 
 LONG_TESTS = (REQUIRES_MYSQLDB |
