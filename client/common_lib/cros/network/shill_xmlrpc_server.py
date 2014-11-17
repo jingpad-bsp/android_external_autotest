@@ -20,35 +20,6 @@ from autotest_lib.client.cros.networking import shill_proxy
 from autotest_lib.client.cros.networking import wifi_proxy
 
 
-class ShillServiceOrder:
-    """Utility class to temporarily change the service order.
-
-    Use this in a with block to change the service order for the length of
-    the block, and upon exiting the block, this class will change it back.
-
-    """
-
-    def __init__(self, proxy, requested_order):
-        self.proxy = proxy
-        self.order = requested_order
-
-
-    def __enter__(self):
-        self.saved_order = self.proxy.manager.GetServiceOrder()
-        try:
-            logging.info('Setting shill service order to "%s"', self.order)
-            self.proxy.manager.SetServiceOrder(self.order)
-        except:
-            logging.warning('Could not set shill service order')
-            self.proxy.manager.SetServiceOrder(self.saved_order)
-
-
-    def __exit__(self, exception, value, traceback):
-        logging.info('Setting shill service order back to "%s"',
-                     self.saved_order)
-        self.proxy.manager.SetServiceOrder(self.saved_order)
-
-
 class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
     """Exposes methods called remotely during WiFi autotests.
 
@@ -61,6 +32,7 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
     DEFAULT_TEST_PROFILE_NAME = 'test'
     ROAM_THRESHOLD = 'RoamThreshold'
+    WAKE_ON_WIFI_FEATURES = 'WakeOnWiFiFeaturesEnabled'
     DBUS_DEVICE = 'Device'
 
     def __init__(self):
@@ -129,44 +101,6 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
         """
         self._wifi_proxy.manager.RemoveProfile(profile_name)
-        return True
-
-
-    @xmlrpc_server.dbus_safe(False)
-    def add_wake_packet_source(self, source_ip):
-        """Set up the NIC to wake on packets from the given source IP.
-
-        @param source_ip the string IP address of the packet source.
-        @return True on success, False otherwise.
-
-        """
-        with ShillServiceOrder(self._wifi_proxy, 'wifi'):
-            self._wifi_proxy.manager.AddWakeOnPacketConnection(source_ip)
-        return True
-
-
-    @xmlrpc_server.dbus_safe(False)
-    def remove_wake_packet_source(self, source_ip):
-        """Stop waking on packets from the given source IP.
-
-        @param source_ip the string IP address of the packet source.
-        @return True on success, False otherwise.
-
-        """
-        with ShillServiceOrder(self._wifi_proxy, 'wifi'):
-            self._wifi_proxy.manager.RemoveWakeOnPacketConnection(source_ip)
-        return True
-
-
-    @xmlrpc_server.dbus_safe(False)
-    def remove_all_wake_packet_sources(self):
-        """Stop waking on packets from any IP.
-
-        @return True on success, False otherwise.
-
-        """
-        with ShillServiceOrder(self._wifi_proxy, 'wifi'):
-            self._wifi_proxy.manager.RemoveAllWakeOnPacketConnections()
         return True
 
 
@@ -551,6 +485,95 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             return None
         return self._wifi_proxy.dbus2primitive(
                 device_object.PerformTDLSOperation('Status', peer_mac_address))
+
+
+    @xmlrpc_server.dbus_safe(False)
+    def add_wake_packet_source(self, wifi_interface, source_ip):
+        """Set up the NIC to wake on packets from the given source IP.
+
+        @param wifi_interface: string name of interface to establish WoWLAN on.
+        @param source_ip: string IP address of packet source, i.e. "127.0.0.1"
+
+        @return True on success, False otherwise.
+
+        """
+        device_object = self._wifi_proxy.find_object(
+                self.DBUS_DEVICE, {'Name': wifi_interface})
+        if device_object is None:
+            return False
+        device_object.AddWakeOnPacketConnection(source_ip)
+        return True
+
+
+    @xmlrpc_server.dbus_safe(False)
+    def remove_wake_packet_source(self, wifi_interface, source_ip):
+        """Stop waking on packets from the given source IP.
+
+        @param wifi_interface: string name of interface to establish WoWLAN on.
+        @param source_ip: string IP address of packet source, i.e. "127.0.0.1"
+
+        @return True on success, False otherwise.
+
+        """
+        device_object = self._wifi_proxy.find_object(
+                self.DBUS_DEVICE, {'Name': wifi_interface})
+        if device_object is None:
+            return False
+        device_object.RemoveWakeOnPacketConnection(source_ip)
+        return True
+
+
+    @xmlrpc_server.dbus_safe(False)
+    def remove_all_wake_packet_sources(self, wifi_interface):
+        """Stop waking on packets from any IP.
+
+        @param wifi_interface: string name of interface to establish WoWLAN on.
+
+        @return True on success, False otherwise.
+
+        """
+        device_object = self._wifi_proxy.find_object(
+                self.DBUS_DEVICE, {'Name': wifi_interface})
+        if device_object is None:
+            return False
+        device_object.RemoveAllWakeOnPacketConnections()
+        return True
+
+
+    def get_wake_on_wifi_features(self, wifi_interface):
+        """Get the current wake-on-WiFi setting.
+
+        @return string representing the enabled wake-on-WiFi features.
+
+        """
+        device_object = self._wifi_proxy.find_object(
+                self.DBUS_DEVICE, {'Name': wifi_interface})
+        if device_object is None:
+            return False
+
+        object_properties = device_object.GetProperties(utf8_strings=True)
+        if self.WAKE_ON_WIFI_FEATURES not in object_properties:
+            return False
+
+        return self._wifi_proxy.dbus2primitive(
+                object_properties[self.WAKE_ON_WIFI_FEATURES])
+
+
+    def set_wake_on_wifi_features(self, wifi_interface, features):
+        """Set the current wake-on-WiFi setting.
+
+        @param features: string representing the wake-on-WiFi features.
+
+        """
+        device_object = self._wifi_proxy.find_object(
+                self.DBUS_DEVICE, {'Name': wifi_interface})
+        if device_object is None:
+            return False
+
+        shill_proxy.ShillProxy.set_dbus_property(device_object,
+                                                 self.WAKE_ON_WIFI_FEATURES,
+                                                 features)
+        return True
 
 
 if __name__ == '__main__':

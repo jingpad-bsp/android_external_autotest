@@ -17,6 +17,12 @@ from autotest_lib.server.cros import wifi_test_utils
 from autotest_lib.server.cros.network import wpa_cli_proxy
 from autotest_lib.server.hosts import adb_host
 
+# wake-on-WiFi feature strings
+WAKE_ON_WIFI_NONE = 'none'
+WAKE_ON_WIFI_PACKET = 'packet'
+WAKE_ON_WIFI_SSID = 'ssid'
+WAKE_ON_WIFI_PACKET_SSID = 'packet_and_ssid'
+
 
 class WiFiClient(site_linux_system.LinuxSystem):
     """WiFiClient is a thin layer of logic over a remote DUT in wifitests."""
@@ -649,6 +655,63 @@ class WiFiClient(site_linux_system.LinuxSystem):
         return self._shill_proxy.query_tdls_link(self.wifi_if, mac_address)
 
 
+    def add_wake_packet_source(self, source_ip):
+        """Add |source_ip| as a source that can wake us up with packets.
+
+        @param source_ip: IP address from which to wake upon receipt of packets
+
+        @return True if successful, False otherwise.
+
+        """
+        return self._shill_proxy.add_wake_packet_source(
+            self.wifi_if, source_ip)
+
+
+    def remove_wake_packet_source(self, source_ip):
+        """Remove |source_ip| as a source that can wake us up with packets.
+
+        @param source_ip: IP address to stop waking on packets from
+
+        @return True if successful, False otherwise.
+
+        """
+        return self._shill_proxy.remove_wake_packet_source(
+            self.wifi_if, source_ip)
+
+
+    def remove_all_wake_packet_sources(self):
+        """Remove all IPs as sources that can wake us up with packets.
+
+        @return True if successful, False otherwise.
+
+        """
+        return self._shill_proxy.remove_all_wake_packet_sources(self.wifi_if)
+
+
+    def wake_on_wifi_features(self, features):
+        """Shill supports programming the NIC to wake on special kinds of
+        incoming packets, or on changes to the available APs (disconnect,
+        coming in range of a known SSID). This method allows you to configure
+        what wake-on-WiFi mechanisms are active. It returns a context manager,
+        because this is a system-wide setting and we don't want it to persist
+        across different tests.
+
+        If you enable wake-on-packet, then the IPs registered by
+        add_wake_packet_source will be able to wake the system from suspend.
+
+        The correct way to use this method is:
+
+        with client.wake_on_wifi_features(WAKE_ON_WIFI_SSID):
+            ...
+
+        @param features: string from the WAKE_ON_WIFI constants above.
+
+        @return a context manager for the features.
+
+        """
+        return WakeOnWiFiFeatures(self._shill_proxy, self.wifi_if, features)
+
+
     def request_roam(self, bssid):
         """Request that we roam to the specified BSSID.
 
@@ -743,3 +806,37 @@ class WiFiClient(site_linux_system.LinuxSystem):
                 raise error.TestFail(
                         'Failed to reassociate within given timeout')
             logging.info('Reassociate time: %.2f seconds', reassociate_time)
+
+
+class WakeOnWiFiFeatures:
+    """Utility class to temporarily change the active wake-on-WiFi feature set.
+
+    Since wake-on-WiFi features are a global and persistent setting, we want
+    to make sure that we change them back to what they were before the test
+    started.
+
+    """
+
+    def __init__(self, shill_proxy, interface, features):
+        """Construct a WakeOnWiFiFeatures context manager.
+
+        @param shill_proxy the Shill proxy to use to set wake-on-WiFi up
+        @param interface the name of the device we are setting wake-on-WiFi for
+        @param features the feature set we want to enable, from the
+            WAKE_ON_WIFI constants at the top
+
+        """
+        self.shill = shill_proxy
+        self.interface = interface
+        self.features = features
+
+
+    def __enter__(self):
+        self.saved_features = self.shill.get_wake_on_wifi_features(
+                self.interface)
+        self.shill.set_wake_on_wifi_features(self.interface, self.features)
+
+
+    def __exit__(self, exception, value, traceback):
+        self.shill.set_wake_on_wifi_features(self.interface,
+                                             self.saved_features)
