@@ -6,6 +6,7 @@ AUTHOR = 'wiley, avakulenko, keybuk'
 NAME = 'peerd_DiscoverServices'
 TIME = 'FAST'
 TEST_TYPE = 'client'
+SUITE = 'tendo_experimental'
 
 DOC = """
 This test starts up Avahi inside a network chroot, then watches for
