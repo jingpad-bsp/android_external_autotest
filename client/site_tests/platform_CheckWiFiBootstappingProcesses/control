@@ -14,8 +14,7 @@ It fails if any of these are not running at the time of the test.
 """
 
 WIFI_BOOTSTRAPPING_PROCESSES = [
-    # TODO(wiley) crbug.com/432656
-    # 'avahi-daemon',
+    'avahi-daemon',
     'dbus-daemon',
     'peerd',
     'privetd',
