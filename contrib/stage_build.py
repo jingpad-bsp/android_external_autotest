@@ -37,8 +37,8 @@ def main():
     ds = dev_server.ImageServer.resolve(options.build)
 
   print "Downloading %s..." % options.build
-  ds.stage_artifacts(options.build, ['full_payload', 'stateful',
-                                     'control_files', 'autotest_packages'])
+  ds.stage_artifacts(options.build, ['full_payload', 'stateful', 'autotest'])
+
   if options.host:
     print "Poking job_repo_url on %s..." % options.host
     repo_url = tools.get_package_url(ds.url(), options.build)

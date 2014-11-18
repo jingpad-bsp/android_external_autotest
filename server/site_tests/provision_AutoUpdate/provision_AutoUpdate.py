@@ -59,8 +59,7 @@ class provision_AutoUpdate(test.test):
         # reimaging finishes or at some other point in the provisioning.
         try:
             ds = dev_server.ImageServer.resolve(image)
-            ds.stage_artifacts(image, ['full_payload', 'stateful',
-                                       'autotest_packages'])
+            ds.stage_artifacts(image, ['full_payload', 'stateful', 'autotest'])
         except dev_server.DevServerException as e:
             raise error.TestFail(str(e))
 

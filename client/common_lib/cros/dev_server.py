@@ -40,12 +40,7 @@ _ARTIFACTS_TO_BE_STAGED_FOR_IMAGE = 'full_payload,test_suites,stateful'
 # Artifacts that should be staged when client calls devserver RPC to stage an
 # image with autotest artifact.
 _ARTIFACTS_TO_BE_STAGED_FOR_IMAGE_WITH_AUTOTEST = ('full_payload,test_suites,'
-                                                   'control_files,stateful,'
-                                                   'autotest_packages')
-# This dictionary translates newer smaller artifacts to their old compatible
-# artifact. This allows us to continue to support old builds.
-_COMPATIBLE_ARTIFACTS = {'control_files': 'autotest',
-                         'autotest_packages' : 'autotest'}
+                                                   'autotest,stateful')
 
 
 class MarkupStripper(HTMLParser.HTMLParser):
@@ -129,50 +124,6 @@ def remote_devserver_call(timeout_min=30):
                 except UnicodeDecodeError:
                     strip.feed(error_markup)
                 raise DevServerException(strip.get_data())
-
-        return wrapper
-
-    return inner_decorator
-
-
-# TODO (sbasi) crbug.com/433436 - Remove this decorator once we no longer care
-# about old builds that have the old autotest artifact.
-def compatible_artifacts():
-    """A decorator to use with the stage_artifact call.
-
-    Over time some artifacts may be replaced with other compatible artifacts.
-    This decorator retries calls involving such artifacts with the
-    compatible artifact instead.
-    """
-    #pylint: disable=C0111
-    def inner_decorator(method):
-        def wrapper(ds, image, artifacts=None, files=None, archive_url=None):
-            """
-            @param ds: DevServer instance.
-            @param image: image we require artifacts for.
-            @param artifacts: List of artifacts we want to stage.
-            @param **kwargs: remaining args passed to decorated method.
-            @param files: A list of files to stage.
-            @param archive_url: Optional parameter that has the archive_url to
-                   stage this artifact from. Default is specified in autotest
-                   config + image.
-
-            @raise DevServerException should there not be comparable artifacts.
-            """
-            try:
-                method(ds, image, artifacts=artifacts, files=files,
-                       archive_url=archive_url)
-            except DevServerException as e:
-                if not artifacts or not set.intersection(
-                        set(artifacts), set(_COMPATIBLE_ARTIFACTS.keys())):
-                    raise e
-                logging.debug('Failed to stage %s for %s: %s', artifacts,
-                              image, e)
-                artifacts = [_COMPATIBLE_ARTIFACTS.get(x,x) for x in artifacts]
-                logging.debug('Trying to stage compatible artifacts: %s',
-                              artifacts)
-                method(ds, image, artifacts=artifacts, files=files,
-                       archive_url=archive_url)
 
         return wrapper
 
@@ -570,13 +521,12 @@ class ImageServer(DevServer):
         return metadata
 
 
-    @compatible_artifacts()
     @remote_devserver_call()
     def stage_artifacts(self, image, artifacts=None, files=None,
                         archive_url=None):
         """Tell the devserver to download and stage |artifacts| from |image|.
 
-         This is the main call point for staging any specific artifacts for a
+        This is the main call point for staging any specific artifacts for a
         given build. To see the list of artifacts one can stage see:
 
         ~src/platfrom/dev/artifact_info.py.
