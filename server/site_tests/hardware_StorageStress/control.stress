@@ -5,7 +5,7 @@
 NAME = 'hardware_StorageStress.stress'
 AUTHOR = 'mohsinally'
 PURPOSE = 'Run various storage stress tests'
-SUITE = "stress_experimental"
+SUITE = "stress"
 TIME = 'LONG'
 TEST_CLASS = 'stress'
 TEST_TYPE = 'server'
