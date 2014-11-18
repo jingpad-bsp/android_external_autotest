@@ -11,8 +11,8 @@ By default, reports on the status of the given hosts, to say whether
 they're "working" or "broken".  For purposes of this script "broken"
 means "the DUT requires manual intervention before it can be used
 for further testing", and "working" means "not broken".  The status
-determination is based on the history of completed jobs for the
-DUT; current activities are not considered.
+determination is based on the history of completed jobs for the DUT;
+current activities are not considered.
 
 With the -f option, reports the job history for the DUT, and whether
 the DUT was believed working or broken at the end of each job.
@@ -27,8 +27,8 @@ three options:
   --duration/-d HOURS - Specifies the length of the search interval
       in hours. (default: 12 hours)
 
-Any two time options completely specify the time interval.  If
-only one option is provided, these defaults are used:
+Any two time options completely specify the time interval.  If only
+one option is provided, these defaults are used:
   --until - Use the given end time with the default duration.
   --since - Use the given start time with the default end time.
   --duration - Use the given duration with the default end time.
@@ -42,8 +42,8 @@ Examples:
     hostname                     S   last checked         URL
     chromeos2-row4-rack2-host12  NO  2014-11-06 15:25:29  http://...
 
-'NO' means the DUT is broken.  That diagnosis is based on a job
-that failed:  'last checked' is the time of the job, and the URL
+'NO' means the DUT is broken.  That diagnosis is based on a job that
+failed:  'last checked' is the time of the failed job, and the URL
 points to the job's logs.
 
     $ dut_status.py -u '2014-11-06 15:30:00' -d 1 -f chromeos2-row4-rack2-host12
@@ -52,16 +52,15 @@ points to the job's logs.
         2014-11-06 14:44:07  -- http://...
         2014-11-06 14:42:56  OK http://...
 
-The times are the start times of the jobs; the URL points to
-the job's logs.  The status indicates the working or broken
-status after the job:
+The times are the start times of the jobs; the URL points to the
+job's logs.  The status indicates the working or broken status after
+the job:
   'NO' Indicates that the DUT was definitely broken after the job.
   'OK' Indicates that the DUT was likely working after the job.
   '--' Indicates that the job probably didn't change the DUT's
        status.
-Typically, logs of the actual failure will be found at the last
-job to report 'OK', or the first job to report '--'.
-
+Typically, logs of the actual failure will be found at the last job
+to report 'OK', or the first job to report '--'.
 
 """
 
@@ -328,17 +327,18 @@ class HostJobHistory(object):
 
     """
 
-    def __init__(self, hostname, start_time, end_time):
-        self.hostname = hostname
+    @classmethod
+    def get_history_by_host(cls, hostname, start_time, end_time):
+        afehost = afe_models.Host.objects.get(hostname=hostname)
+        return cls(afehost, start_time, end_time)
+
+
+    def __init__(self, afehost, start_time, end_time):
+        self.hostname = afehost.hostname
         self.start_time = start_time
         self.end_time = end_time
-        self._host = None
-        self._history = None
-        hostlist = afe_models.Host.objects.filter(hostname=hostname)
-        if hostlist:
-            assert len(hostlist) == 1
-            self._host = hostlist[0]
-            self._history = self._get_history(start_time, end_time)
+        self._host = afehost
+        self._history = self._get_history(start_time, end_time)
 
 
     def __iter__(self):
@@ -353,11 +353,6 @@ class HostJobHistory(object):
         newhistory = newtasks + newhqes
         newhistory.sort(reverse=True)
         return newhistory
-
-
-    def is_valid(self):
-        """Return whether the host was found in the database."""
-        return self._host is not None
 
 
     def last_diagnosis(self):
@@ -391,36 +386,27 @@ class HostJobHistory(object):
         return _UNKNOWN, None
 
 
-def _print_simple_status(arguments):
+def _print_simple_status(history_list):
     fmt = '%-28s %-2s  %-19s  %s'
     print fmt % ('hostname', 'S', 'last checked', 'URL')
-    for hostname in arguments.hostnames:
-        history = HostJobHistory(hostname,
-                                 arguments.since, arguments.until)
-        if history.is_valid():
-            status, event = history.last_diagnosis()
-            if event is not None:
-                datestr = time_utils.epoch_time_to_date_string(
-                        event.start_time)
-                url = event.job_url
-            else:
-                datestr = '---'
-                url = '---'
+    for history in history_list:
+        status, event = history.last_diagnosis()
+        if event is not None:
+            datestr = time_utils.epoch_time_to_date_string(
+                    event.start_time)
+            url = event.job_url
         else:
             datestr = '---'
-            status = _NO_STATUS
-            url = '# no such host'
+            url = '---'
         print fmt % (history.hostname,
                      _DIAGNOSIS_IDS[status],
                      datestr,
                      url)
 
 
-def _print_host_history(arguments):
-    for hostname in arguments.hostnames:
-        print hostname
-        history = HostJobHistory(hostname,
-                                 arguments.since, arguments.until)
+def _print_host_history(history_list):
+    for history in history_list:
+        print history.hostname
         for event in history:
             start_time = time_utils.epoch_time_to_date_string(
                     event.start_time)
@@ -430,10 +416,24 @@ def _print_host_history(arguments):
                     event.job_url)
 
 
-def _validate_command(arguments):
+def _validate_time_range(arguments):
+    """Validate the time range requested on the command line.
+
+    Enforces the rules for the --until, --since, and --duration
+    options are followed, and calculates defaults:
+      * It isn't allowed to supply all three options.
+      * If only two options are supplied, they completely determine
+        the time interval.
+      * If only one option is supplied, or no options, then apply
+        specified defaults to the arguments object.
+
+    @param arguments Parsed arguments object as returned by
+                     ArgumentParser.parse_args().
+
+    """
     if (arguments.duration is not None and
             arguments.since is not None and arguments.until is not None):
-        print >>sys.stderr, ('Can specify at most two of '
+        print >>sys.stderr, ('FATAL: Can specify at most two of '
                              '--since, --until, and --duration')
         sys.exit(1)
     if (arguments.until is None and (arguments.since is None or
@@ -449,7 +449,75 @@ def _validate_command(arguments):
                            arguments.duration * 60 * 60)
 
 
+def _validate_host_list(arguments):
+    """Validate hostname arguments from the command line.
+
+    Checks that the hosts specified on the command line are valid.
+    Invalid hosts generate a warning message, and are omitted from
+    futher processing.
+
+    The return value is a list of HostJobHistory objects for to the
+    requested valid hostnames, using the time range supplied on the
+    command line.
+
+    @param arguments Parsed arguments object as returned by
+                     ArgumentParser.parse_args().
+    @return List of HostJobHistory objects for the hosts requested
+            on the command line.
+
+    """
+    histories = []
+    saw_error = False
+    for hostname in arguments.hostnames:
+        try:
+            h = HostJobHistory.get_history_by_host(
+                    hostname, arguments.since, arguments.until)
+            histories.append(h)
+        except:
+            print >>sys.stderr, ('WARNING: Ignoring unknown host %s' %
+                                  hostname)
+            saw_error = True
+    if saw_error:
+        # Create separation from the output that follows
+        print >>sys.stderr
+    return histories
+
+
+def _validate_command(arguments):
+    """Check that the command's arguments are valid.
+
+    This performs command line checking to enforce command line
+    rules that ArgumentParser can't handle.  Additionally, this
+    handles calculation of default arguments/options when a simple
+    constant default won't do.
+
+    Areas checked:
+      * Check that a valid time range was provided, supplying
+        defaults as necessary.
+      * Identify invalid host names.
+
+    @param arguments Parsed arguments object as returned by
+                     ArgumentParser.parse_args().
+    @return List of HostJobHistory objects for the hosts requested
+            on the command line.
+
+    """
+    _validate_time_range(arguments)
+    return _validate_host_list(arguments)
+
+
 def _parse_command(argv):
+    """Parse the command line arguments.
+
+    Create an argument parser for this command's syntax, parse the
+    command line, and return the result of the ArgumentParser
+    parse_args() method.
+
+    @param argv Standard command line argument vector; argv[0] is
+                assumed to be the command name.
+    @return Result returned by ArgumentParser.parse_args().
+
+    """
     parser = argparse.ArgumentParser(
             prog=argv[0],
             description='Report DUT status and execution history',
@@ -474,7 +542,6 @@ def _parse_command(argv):
                         nargs='+',
                         help='host names of DUTs to report on')
     arguments = parser.parse_args(argv[1:])
-    _validate_command(arguments)
     return arguments
 
 
@@ -485,10 +552,11 @@ def main(argv):
 
     """
     arguments = _parse_command(argv)
+    history_list = _validate_command(arguments)
     if arguments.full_history:
-        _print_host_history(arguments)
+        _print_host_history(history_list)
     else:
-        _print_simple_status(arguments)
+        _print_simple_status(history_list)
 
 
 if __name__ == '__main__':
