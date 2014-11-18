@@ -3,16 +3,22 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Report whether DUTs are working are broken.
+"""Report whether DUTs are working or broken.
 
-usage: dut_status [-f] [<time options>] hostname ...
+usage: dut_status [-f] [<time options>] [<host options>] [hostname ...]
 
 By default, reports on the status of the given hosts, to say whether
 they're "working" or "broken".  For purposes of this script "broken"
 means "the DUT requires manual intervention before it can be used
 for further testing", and "working" means "not broken".  The status
 determination is based on the history of completed jobs for the DUT;
-current activities are not considered.
+currently running jobs are not considered.
+
+DUTs may be specified either by name or by using these options:
+  --board/-b BOARD - Only include hosts with the given board.
+  --pool/-p POOL - Only include hosts in the given pool.
+
+By default, the command prints a one-line summary for each DUT.
 
 With the -f option, reports the job history for the DUT, and whether
 the DUT was believed working or broken at the end of each job.
@@ -55,8 +61,8 @@ points to the job's logs.
 The times are the start times of the jobs; the URL points to the
 job's logs.  The status indicates the working or broken status after
 the job:
-  'NO' Indicates that the DUT was definitely broken after the job.
-  'OK' Indicates that the DUT was likely working after the job.
+  'NO' Indicates that the DUT was believed broken after the job.
+  'OK' Indicates that the DUT was believed working after the job.
   '--' Indicates that the job probably didn't change the DUT's
        status.
 Typically, logs of the actual failure will be found at the last job
@@ -75,6 +81,7 @@ from autotest_lib.frontend import setup_django_environment
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.frontend.afe import models as afe_models
+from autotest_lib.site_utils.suite_scheduler import constants
 
 
 # Values used to describe the diagnosis of a DUT.  These values are
@@ -328,9 +335,59 @@ class HostJobHistory(object):
     """
 
     @classmethod
-    def get_history_by_host(cls, hostname, start_time, end_time):
+    def get_host_history(cls, hostname, start_time, end_time):
+        """Create a HostJobHistory instance for a single host.
+
+        Simple factory method to construct host history from a
+        hostname.  Simply looks up the host in the AFE database, and
+        passes it to the class constructor.
+
+        @param hostname    Name of the host.
+        @param start_time  Start time for the history's time
+                           interval.
+        @param end_time    End time for the history's time interval.
+
+        @return A new HostJobHistory instance.
+
+        """
         afehost = afe_models.Host.objects.get(hostname=hostname)
         return cls(afehost, start_time, end_time)
+
+
+    @classmethod
+    def get_multiple_histories(cls, start_time, end_time,
+                               board=None, pool=None):
+        """Create HostJobHistory instances for a set of hosts.
+
+        The set of hosts can be specified as "all hosts of a given
+        board type", "all hosts in a given pool", or "all hosts
+        of a given board and pool".
+
+        @param board       All hosts must have this board type; if
+                           `None`, all boards are allowed.
+        @param pool        All hosts must be in this pool; if
+                           `None`, all pools are allowed.
+        @param start_time  Start time for the history's time
+                           interval.
+        @param end_time    End time for the history's time interval.
+
+        @return A list of new HostJobHistory instances.
+
+        """
+        # If `board` or `pool` are both `None`, we could search the
+        # entire database, which is more expensive than we want.
+        # Our caller currently won't (can't) do this, but assert to
+        # be safe.
+        assert board is not None or pool is not None
+        filtered_set = afe_models.Host.objects
+        if board is not None:
+            label_name = constants.Labels.BOARD_PREFIX + board
+            filtered_set = filtered_set.filter(labels__name=label_name)
+        if pool is not None:
+            label_name = constants.Labels.POOL_PREFIX + pool
+            filtered_set = filtered_set.filter(labels__name=label_name)
+        return [cls(afehost, start_time, end_time)
+                    for afehost in filtered_set]
 
 
     def __init__(self, afehost, start_time, end_time):
@@ -449,15 +506,15 @@ def _validate_time_range(arguments):
                            arguments.duration * 60 * 60)
 
 
-def _validate_host_list(arguments):
-    """Validate hostname arguments from the command line.
+def _get_host_histories(arguments):
+    """Return HostJobHistory objects for the requested hosts.
 
-    Checks that the hosts specified on the command line are valid.
-    Invalid hosts generate a warning message, and are omitted from
-    futher processing.
+    Checks that individual hosts specified on the command line are
+    valid.  Invalid hosts generate a warning message, and are
+    omitted from futher processing.
 
-    The return value is a list of HostJobHistory objects for to the
-    requested valid hostnames, using the time range supplied on the
+    The return value is a list of HostJobHistory objects for the
+    valid requested hostnames, using the time range supplied on the
     command line.
 
     @param arguments Parsed arguments object as returned by
@@ -470,7 +527,7 @@ def _validate_host_list(arguments):
     saw_error = False
     for hostname in arguments.hostnames:
         try:
-            h = HostJobHistory.get_history_by_host(
+            h = HostJobHistory.get_host_history(
                     hostname, arguments.since, arguments.until)
             histories.append(h)
         except:
@@ -480,6 +537,42 @@ def _validate_host_list(arguments):
     if saw_error:
         # Create separation from the output that follows
         print >>sys.stderr
+    return histories
+
+
+def _validate_host_list(arguments):
+    """Validate the user-specified list of hosts.
+
+    Hosts may be specified implicitly with --board or --pool, or
+    explictly as command line arguments.  This enforces these
+    rules:
+      * If --board or --pool, or both are specified, individual
+        hosts may not be specified.
+      * However specified, there must be at least one host.
+
+    The return value is a list of HostJobHistory objects for the
+    requested hosts, using the time range supplied on the command
+    line.
+
+    @param arguments Parsed arguments object as returned by
+                     ArgumentParser.parse_args().
+    @return List of HostJobHistory objects for the hosts requested
+            on the command line.
+
+    """
+    if arguments.board or arguments.pool:
+        if arguments.hostnames:
+            print >>sys.stderr, ('FATAL: Hostname arguments provided '
+                                 'with --board or --pool')
+            sys.exit(1)
+        histories = HostJobHistory.get_multiple_histories(
+                arguments.since, arguments.until,
+                board=arguments.board, pool=arguments.pool)
+    else:
+        histories = _get_host_histories(arguments)
+    if not histories:
+        print >>sys.stderr, 'FATAL: no valid hosts found'
+        sys.exit(1)
     return histories
 
 
@@ -539,8 +632,14 @@ def _parse_command(argv):
                         help='Display host history from most '
                              'to least recent for each DUT')
     parser.add_argument('hostnames',
-                        nargs='+',
+                        nargs='*',
                         help='host names of DUTs to report on')
+    parser.add_argument('-b', '--board',
+                        help='Display history for all DUTs '
+                             'of the given board')
+    parser.add_argument('-p', '--pool',
+                        help='Display history for all DUTs '
+                             'in the given pool')
     arguments = parser.parse_args(argv[1:])
     return arguments
 
