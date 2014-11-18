@@ -17,6 +17,9 @@ from autotest_lib.client.common_lib import control_data
 from autotest_lib.server.cros.dynamic_suite import reporting_utils
 
 
+SUITES_NEED_RETRY = set(['bvt-cq', 'bvt-inline'])
+
+
 class ControlFileCheckerError(Exception):
     """Raised when a necessary condition of this checker isn't satisfied."""
 
@@ -103,6 +106,24 @@ def CheckSuites(ctrl_data, test_name):
         raise ControlFileCheckerError('No ebuild entry for %s' % test_name)
 
 
+def CheckRetry(ctrl_data, test_name):
+    """
+    Check that any test in SUITES_NEED_RETRY has turned on retry.
+
+    @param ctrl_data: The control_data object for a test.
+    @param test_name: A string with the name of the test.
+
+    @raises: ControlFileCheckerError if check fails.
+    """
+    if hasattr(ctrl_data, 'suite') and ctrl_data.suite:
+        suites = set(x.strip() for x in ctrl_data.suite.split(',') if x.strip())
+        if ctrl_data.job_retries < 2 and SUITES_NEED_RETRY.intersection(suites):
+            raise ControlFileCheckerError(
+                'Setting JOB_RETRIES to 2 or greater for test in '
+                'bvt-cq or bvt-inline is recommended. Please '
+                'set it in the control file for %s.' % test_name)
+
+
 def main():
     """
     Checks if all control files that are a part of this commit conform to the
@@ -127,6 +148,7 @@ def main():
                 pass
 
             CheckSuites(ctrl_data, test_name)
+            CheckRetry(ctrl_data, test_name)
 
 
 if __name__ == '__main__':
