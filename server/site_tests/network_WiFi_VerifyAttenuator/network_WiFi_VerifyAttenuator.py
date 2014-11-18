@@ -22,6 +22,24 @@ class network_WiFi_VerifyAttenuator(wifi_cell_test_base.WiFiCellTestBase):
     version = 1
 
 
+    def _refresh_ap_ssids(self, frequency):
+        """Start up new APs, with unique SSIDs.
+
+        Doing this before each connection attempt in the test prevents
+        spillover from previous connection attempts interfering with
+        our intentions.
+
+        @param frequency: int WiFi frequency to configure the APs on.
+
+        """
+        ap_config = hostap_config.HostapConfig(
+                frequency=frequency,
+                mode=hostap_config.HostapConfig.MODE_11N_PURE)
+        self.context.router.deconfig_aps()
+        for _ in range(self.num_phys):
+            self.context.configure(ap_config, multi_interface=True)
+
+
     def _get_phy_num_for_instance(self, instance):
         """Get the phy number corresponding to a hostapd instance.
 
@@ -47,15 +65,18 @@ class network_WiFi_VerifyAttenuator(wifi_cell_test_base.WiFiCellTestBase):
         @return bool: True iff the test passes.
 
         """
+        logging.info('Verifying attenuator functionality')
         # Remove knowledge of previous networks from shill.
         self.context.client.shill.init_test_network_state()
         # Isolate the client entirely.
         self.context.attenuator.set_variable_attenuation(
                 attenuator_controller.MAX_VARIABLE_ATTENUATION)
+        logging.info('Removing variable attenuation for attenuator=%d',
+                     attenuator_num)
         # But allow one antenna on this phy.
         self.context.attenuator.set_variable_attenuation(
                 0, attenuator_num=attenuator_num)
-        # Leave a little time for client state to settle down.
+        logging.info('Waiting for client signal levels to settle.')
         time.sleep(5)
         client_conf = xmlrpc_datatypes.AssociationParameters(
                 ssid=self.context.router.get_ssid(instance=ap_num))
@@ -90,6 +111,7 @@ class network_WiFi_VerifyAttenuator(wifi_cell_test_base.WiFiCellTestBase):
                 a particular 2 attenuators.
 
         """
+        logging.info('Verifying attenuator correspondence')
         # Turn up all attenuation.
         self.context.attenuator.set_variable_attenuation(
                 attenuator_controller.MAX_VARIABLE_ATTENUATION)
@@ -123,22 +145,18 @@ class network_WiFi_VerifyAttenuator(wifi_cell_test_base.WiFiCellTestBase):
         self.num_phys = len(self.context.router.iw_runner.list_phys())
         any_failed = False
         # Pick channels other than the calibrated ones.
-        for channel in (8, 132):
-            ap_config = hostap_config.HostapConfig(
-                    channel=channel,
-                    mode=hostap_config.HostapConfig.MODE_11N_PURE)
-            self.context.router.deconfig_aps()
-            for _ in range(self.num_phys):
-                self.context.configure(ap_config, multi_interface=True)
+        for frequency in (2447, 5660):
             for instance in range(self.num_phys):
                 if self.num_phys > 1:
+                    self._refresh_ap_ssids(frequency)
                     self._verify_phy_attenuator_correspondence(instance)
                 phy_num = self._get_phy_num_for_instance(instance)
                 for attenuator_offset in range(ATTENUATORS_PER_PHY):
                     attenuator_num = (phy_num * ATTENUATORS_PER_PHY +
                                       attenuator_offset)
+                    self._refresh_ap_ssids(frequency)
                     if not self._verify_attenuator(
-                            instance, ap_config.frequency, attenuator_num):
+                            instance, frequency, attenuator_num):
                         any_failed = True
         if any_failed:
             raise error.TestFail('One or more attenuators are broken!')
