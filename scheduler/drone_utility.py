@@ -226,12 +226,11 @@ class BaseDroneUtility(object):
         kill_proc_key = 'kill_processes'
         stats.Gauge(_STATS_KEY).send('%s.%s' % (kill_proc_key, 'net'),
                                      len(process_list))
-        signal_queue = (signal.SIGCONT, signal.SIGTERM, signal.SIGKILL)
         try:
             logging.info('List of process to be killed: %s', process_list)
             sig_counts = utils.nuke_pids(
-                            [process.pid for process in process_list],
-                            signal_queue=signal_queue)
+                            [-process.pid for process in process_list],
+                            signal_queue=(signal.SIGKILL,))
             for name, count in sig_counts.iteritems():
                 stats.Gauge(_STATS_KEY).send('%s.%s' % (kill_proc_key, name),
                                              count)

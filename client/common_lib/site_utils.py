@@ -290,13 +290,13 @@ def nuke_pids(pid_list, signal_queue=[signal.SIGTERM, signal.SIGKILL]):
                 # The process may have died from a previous signal before we
                 # could kill it.
                 pass
+        if sig == signal.SIGKILL:
+            return sig_count
         pid_list = [pid for pid in pid_list if base_utils.pid_is_alive(pid)]
         if not pid_list:
             break
         time.sleep(CHECK_PID_IS_ALIVE_TIMEOUT)
     failed_list = []
-    if signal.SIGKILL in signal_queue:
-        return sig_count
     for pid in pid_list:
         if base_utils.pid_is_alive(pid):
             failed_list.append('Could not kill %d for process name: %s.' % pid,
