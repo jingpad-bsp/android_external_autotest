@@ -40,6 +40,32 @@ class network_EthernetStressPlug(test.test):
     def initialize(self):
         """ Determines and defines the bus information and interface info. """
 
+        def get_ethernet_interface():
+            """ Gets the correct interface based on link and duplex status."""
+            avail_eth_interfaces =[x for x in os.listdir("/sys/class/net/")
+                                   if x.startswith("eth")]
+
+            for interface in avail_eth_interfaces:
+                try:
+                    link_file = open("/sys/class/net/" + interface +
+                                     "/operstate")
+                    link_status = link_file.readline().strip()
+                    link_file.close()
+                except:
+                    pass
+
+                try:
+                    duplex_file = open("/sys/class/net/" + interface +
+                                       "/duplex")
+                    duplex_status = duplex_file.readline().strip()
+                    duplex_file.close()
+                except:
+                    pass
+
+                if link_status == 'up' and duplex_status == 'full':
+                    return interface
+            return 'eth0'
+
         def get_net_device_path(device='eth0'):
             """ Uses udev to get the path of the desired internet device. """
             net_list = pyudev.Context().list_devices(subsystem='net')
@@ -70,7 +96,7 @@ class network_EthernetStressPlug(test.test):
             raise error.TestError('%s was not found or could not be '
                                   'for this test.' % device)
 
-        self.interface = 'eth0'
+        self.interface = get_ethernet_interface()
         self.eth_syspath = get_net_device_path(self.interface)
 
         # Stores the status of the most recently run iteration.
