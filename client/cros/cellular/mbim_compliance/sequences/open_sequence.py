@@ -68,8 +68,8 @@ class OpenSequence(sequence.Sequence):
         @param alternate_setting: expected value of alternate setting
 
         """
-        logging.debug('Send SetInterface() request to interface-%d.',
-                      interface_number)
+        logging.debug('Send SetInterface() request: %d to interface-%d.',
+                      alternate_setting, interface_number)
         response = control.set_interface(self.device_context.device,
                                          interface_number,
                                          alternate_setting)
@@ -122,8 +122,8 @@ class OpenSequence(sequence.Sequence):
         @param ntb_format: The NTB format should be either |NTB_16| or |NTB_32|.
 
         """
-        logging.debug('Send a SetNtbFormat() request to interface-%d.',
-                      interface_number)
+        logging.debug('Send a SetNtbFormat() request: %d to interface-%d.',
+                      ntb_format, interface_number)
         response = self.device_context.device.ctrl_transfer(
                            bmRequestType=0b00100001,
                            bRequest=0x84,
@@ -141,8 +141,8 @@ class OpenSequence(sequence.Sequence):
         @param dw_ntb_in_max_size: The maxinum NTB size to set.
 
         """
-        logging.debug('Send a SetNtbInputSize() request to interface-%d.',
-                      interface_number)
+        logging.debug('Send a SetNtbInputSize() request: %d to interface-%d.',
+                      dw_ntb_in_max_size, interface_number)
         data = struct.pack('<I', dw_ntb_in_max_size)
         response = self.device_context.device.ctrl_transfer(
                            bmRequestType=0b00100001,
@@ -159,8 +159,8 @@ class OpenSequence(sequence.Sequence):
         @param interface_number: the index of target interface
 
         """
-        logging.debug('Send a SetMaxDatagramSize() request to interface-%d.',
-                      interface_number)
+        logging.debug('Send a SetMaxDatagramSize() request: %d to '
+                      'interface-%d.', MAX_DATAGRAM_SIZE, interface_number)
         data = struct.pack('<H', MAX_DATAGRAM_SIZE)
         response = self.device_context.device.ctrl_transfer(
                            bmRequestType=0b00100001,

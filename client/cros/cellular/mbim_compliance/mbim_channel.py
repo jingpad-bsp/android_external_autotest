@@ -57,15 +57,13 @@ class MBIMChannel(object):
             0x80000007]  # MBIM_INDICATE_STATUS
 
     def __init__(self,
-                 device_filter,
+                 device,
                  interface_number,
                  interrupt_endpoint_address,
                  in_buffer_size,
                  process_class=None):
         """
-        @param device_filter: A filter to find the device we want to communicate
-                with. It is a map to be passed |usb.core.find| as the keyword
-                arguments.
+        @param device: Device handle returned by PyUSB for the modem to test.
         @param interface_number: |bInterfaceNumber| of the MBIM interface.
         @param interrupt_endpoint_address: |bEndpointAddress| for the usb
                 INTERRUPT IN endpoint for notifications.
@@ -86,7 +84,7 @@ class MBIMChannel(object):
             process_class = multiprocessing.Process
         self._endpoint_process = process_class(
                 target=mbim_channel_endpoint.MBIMChannelEndpoint,
-                args=(device_filter,
+                args=(device,
                       interface_number,
                       interrupt_endpoint_address,
                       in_buffer_size,

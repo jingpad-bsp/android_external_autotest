@@ -19,9 +19,7 @@ class MBIMChannelTestCase(unittest.TestCase):
 
     def setUp(self):
         # Arguments passed to MBIMChannel. Irrelevant for these tests, mostly.
-        # Keep this filter nonsensical. This ensures that if we try to create a
-        # real endpoint, the test will fail, because it will find no device.
-        self._device_filter = {'NoSuchField': 'HasNoSuchValue'}
+        self._device = None
         self._interface_number = 0
         self._interrupt_endpoint_address = 0x01
         self._in_buffer_size = 100
@@ -77,7 +75,7 @@ class MBIMChannelTestCase(unittest.TestCase):
 
         self._subprocess_mox.ReplayAll()
         self._channel = mbim_channel.MBIMChannel(
-                self._device_filter,
+                self._device,
                 self._interface_number,
                 self._interrupt_endpoint_address,
                 self._in_buffer_size,

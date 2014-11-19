@@ -9,8 +9,6 @@ Reference:
     [1] Universal Serial Bus Communication Class MBIM Compliance Testing: 19
         http://www.usb.org/developers/docs/devclass_docs/MBIM-Compliance-1.0.pdf
 """
-from usb import core
-
 import common
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_channel
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_constants
@@ -113,26 +111,13 @@ class MBIMOpenGenericSequence(open_sequence.OpenSequence):
         open_message = mbim_control.MBIMOpenMessage(
                 max_control_transfer=max_control_message)
         packets = open_message.generate_packets()
-        device_filter = {'idVendor': self.test_context.id_vendor,
-                         'idProduct': self.test_context.id_product}
-
-        # TODO(mcchou): Come up with a way to release the device.
-        #device_copy = self.test_context.device
-        del self.test_context._device
-
         channel = mbim_channel.MBIMChannel(
-                device_filter,
+                self.device_context._device,
                 communication_interface_number,
                 interrupt_endpoint_address,
                 mbim_functional_descriptor.wMaxControlMessage)
-
         response_packets = channel.bidirectional_transaction(*packets)
         channel.close()
-
-        # TODO(mcchou): Remove the code after we hava a better solution.
-        self.test_context._device = core.find(
-                idVendor=self.test_context.id_vendor,
-                idProduct=self.test_context.id_product)
 
         # Step 13
         # Verify if MBIM_OPEN_MSG request succeeds.

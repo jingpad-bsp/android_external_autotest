@@ -46,7 +46,7 @@ class MBIMChannelEndpoint(object):
             'wValue' : 0x0000}
 
     def __init__(self,
-                 device_filter,
+                 device,
                  interface_number,
                  interrupt_endpoint_address,
                  in_buffer_size,
@@ -55,9 +55,7 @@ class MBIMChannelEndpoint(object):
                  stop_request_event,
                  strict=True):
         """
-        @param device_filter: A filter to find the device we want to communicate
-                with. It is a map to be passed |usb.core.find| as the keyword
-                arguments.
+        @param device: Device handle returned by PyUSB for the modem to test.
         @param interface_number: |bInterfaceNumber| of the MBIM interface.
         @param interrupt_endpoint_address: |bEndpointAddress| for the usb
                 INTERRUPT IN endpoint for notifications.
@@ -71,19 +69,7 @@ class MBIMChannelEndpoint(object):
                 abort. Otherwise, we merely warn.
 
         """
-        devices = core.find(find_all=True, **device_filter)
-        if devices is None:
-            mbim_errors.log_and_raise(
-                    mbim_errors.MBIMComplianceFrameworkError,
-                    'Could not find device with filter |%s|' % device_filter)
-
-        if len(devices) != 1:
-            mbim_errors.log_and_raise(
-                    mbim_errors.MBIMComplianceFrameworkError,
-                    'Found %d devices, when expecting 1 with filter |%s|' %
-                    (len(devices), device_filter))
-
-        self._device = devices[0]
+        self._device = device
         self._interface_number = interface_number
         self._interrupt_endpoint_address = interrupt_endpoint_address
         self._in_buffer_size = in_buffer_size
@@ -180,6 +166,8 @@ class MBIMChannelEndpoint(object):
                     'Received unexpected notification (%s).' % in_data)
 
         self._num_outstanding_responses += 1
+        logging.debug('Found a response. Outstanding responses: %d',
+                      self._num_outstanding_responses)
 
 
     def _get_response(self):
@@ -216,8 +204,8 @@ class MBIMChannelEndpoint(object):
                 data_or_wLength=payload,
                 timeout=self.SEND_ENCAPSULATED_REQUEST_TIMEOUT_MS,
                 **self.SEND_ENCAPSULATED_COMMAND_ARGS)
-        logging.debug('Sent %d bytes out of %d bytes requested.',
-                      actual_written, len(payload))
+        logging.debug('Sent %d bytes out of %d bytes requested. Payload: %s',
+                      actual_written, len(payload), payload)
         if actual_written < len(payload):
             mbim_errors.log_and_raise(
                     mbim_errors.MBIMComplianceGenericError,
