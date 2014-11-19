@@ -222,6 +222,8 @@ sudo mkdir -p "${AT_DIR}"
 sudo mount --bind "${AUTOTEST_DIR}" "${AT_DIR}"
 echo -e "Done!\n"
 
+sudo chown -R "$(whoami)" "${AT_DIR}"
+
 EXISTING_MOUNT=$(egrep "/.+[[:space:]]${AT_DIR}" /etc/fstab || /bin/true)
 if [ -n "${EXISTING_MOUNT}" ]; then
   echo "${EXISTING_MOUNT}" | awk '{print $1 " already automounting at " $2}'
