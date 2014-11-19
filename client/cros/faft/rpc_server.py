@@ -8,6 +8,7 @@
 It launches a XMLRPC server and exposes the functions in RPCFunctions().
 """
 
+from datetime import datetime
 from optparse import OptionParser
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 
@@ -22,12 +23,15 @@ def main():
                       help='port number of XMLRPC server')
     (options, _) = parser.parse_args()
 
+    print '[%s] XMLRPC Server: Spinning up FAFT server' % str(datetime.now())
     # Launch the XMLRPC server to provide FAFTClient commands.
     server = SimpleXMLRPCServer(('localhost', options.port), allow_none=True,
                                 logRequests=True)
     server.register_introspection_functions()
     server.register_instance(RPCFunctions())
-    print 'XMLRPC Server: Serving FAFT functions on port %s' % options.port
+    print '[%s] XMLRPC Server: Serving FAFT functions on port %s' % (
+        str(datetime.now()), options.port)
+
     server.serve_forever()
 
 
