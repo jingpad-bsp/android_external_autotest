@@ -6,7 +6,7 @@ AUTHOR = 'wiley, pstew, quiche'
 NAME = 'network_WiFi_SimpleConnect.wifi_check1x_TTLS'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
-SUITE = 'wifi_matfunc, wifi_release'
+SUITE = 'wifi_matfunc, wifi_matfunc_preflight, wifi_release'
 DEPENDENCIES = 'wificell'
 
 DOC = """

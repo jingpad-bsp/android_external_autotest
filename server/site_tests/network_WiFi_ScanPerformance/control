@@ -6,7 +6,7 @@ AUTHOR = 'zqiu, wiley, pstew, quiche'
 NAME = 'network_WiFi_ScanPerformance'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
-SUITE = 'wifi_matfunc'
+SUITE = 'wifi_matfunc, wifi_matfunc_preflight'
 DEPENDENCIES = 'wificell'
 
 DOC = """
