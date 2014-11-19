@@ -19,6 +19,22 @@ def get_display_name():
     return ':0'
 
 
+def get_screen_size():
+    """Get the screen size using xwininfo."""
+    cmd = 'DISPLAY=:0 xwininfo -root'
+    wininfo = common_util.simple_system_output(cmd)
+    # the geometry string looks like:
+    #     "  -geometry 3840x1200+0+0"
+    geometry_pattern = re.compile('\s*-geometry\s*(\d+)x(\d+)+.*', re.I)
+    for line in wininfo.splitlines():
+        result = geometry_pattern.search(line)
+        if result:
+            width = int(result.group(1))
+            height = int(result.group(2))
+            return (width, height)
+    return None
+
+
 def get_current_time_str():
     """Get the string of current time."""
     time_format = '%Y%m%d_%H%M%S'
@@ -135,12 +151,7 @@ def get_fw_and_date(filename):
 
 
 def create_log_dir(firmware_version, mode):
-    """
-    Create a directory to save the report and device event files.
-
-    @param firmware_version: The firmware version.
-    @param mode: The mode with which to create the directory.
-    """
+    """Create a directory to save the report and device event files."""
     dir_basename = conf.filename.sep.join([get_current_time_str(),
                                            conf.fw_prefix + firmware_version,
                                            mode])
@@ -232,33 +243,18 @@ class Output:
         return self.prefix_space
 
     def print_report_line(self, msg):
-        """
-        Print the line with proper indentation.
-
-        @param msg: The line to print.
-        """
-
+        """Print the line with proper indentation."""
         self.report.write(self.prefix_space + str(msg) + os.linesep)
 
     def print_window(self, msg):
-        """
-        Print the message to the result window.
-
-        @param msg: The line to print.
-        """
-
+        """Print the message to the result window."""
         if type(msg) is list:
             msg = os.linesep.join(msg)
         self.win.set_result(msg)
         print msg
 
     def _print_report(self, msg):
-        """
-        Print the message to the report.
-
-        @param msg: The line to print.
-        """
-
+        """Print the message to the report."""
         if type(msg) is list:
             for line in msg:
                 self.print_report_line(line)
@@ -271,10 +267,7 @@ class Output:
         Usage of the method: the validator test result of a gesture may
         be discarded because the user chooses to re-perform the gesture
         again. So it should be able to over-write the message.
-
-        @param msg: The line to print.
         """
-
         self.msg = msg
 
     def flush_report(self):
@@ -284,29 +277,18 @@ class Output:
             self.msg = None
 
     def print_report(self, msg):
-        """
-        Print the message to the report.
-
-        @param msg: The line to print.
-        """
-
+        """Print the message to the report."""
         # Print any buffered message first.
         self.flush_report()
         # Print this incoming message
         self._print_report(msg)
 
     def print_all(self, msg):
-        """
-        Print the message to both report and to the window.
-
-        @param msg: The line to print.
-        """
-
+        """Print the message to both report and to the window."""
         self.print_window(msg)
         self.buffer_report(msg)
 
 
-#TODO: This class is not Freon-ready!
 class ScreenShot:
     """Handle screen shot."""
 
@@ -321,12 +303,7 @@ class ScreenShot:
         self.get_id_cmd = 'DISPLAY=:0 xwininfo -root -tree'
 
     def dump_window(self, filename):
-        """
-        Dump the screenshot of a window to the specified file name.
-
-        @param filename: The filename to save the screenshot as.
-        """
-
+        """Dump the screenshot of a window to the specified file name."""
         win_id = self._get_win_id()
         if win_id:
             dump_cmd = self.dump_window_format % (win_id, filename)
@@ -335,12 +312,7 @@ class ScreenShot:
             print 'Warning: cannot get the window id.'
 
     def dump_root(self, filename):
-        """
-        Dump the screenshot of root to the specified file name.
-
-        @param filename: The filename to save the screenshot as.
-        """
-
+        """Dump the screenshot of root to the specified file name."""
         dump_cmd = self.dump_root_format % (self.geometry_str, filename)
         common_util.simple_system(dump_cmd)
 

@@ -11,8 +11,6 @@ import logging
 import os
 import sys
 
-from client.cros.graphics import graphics_utils
-
 import common
 import cros_gs
 import firmware_utils
@@ -257,7 +255,7 @@ class firmware_TouchMTB:
 
     def _get_screen_size(self):
         """Get the screen size."""
-        self.screen_size = graphics_utils.get_screen_resolution()
+        self.screen_size = firmware_utils.get_screen_size()
 
     def _get_touch_device_window_geometry(self):
         """Get the preferred window geometry to display mtplot."""
