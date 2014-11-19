@@ -16,7 +16,8 @@ from autotest_lib.client.cros.cellular.mbim_compliance import mbim_channel
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_constants
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_control
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_errors
-from autotest_lib.client.cros.cellular.mbim_compliance import test_context
+from autotest_lib.client.cros.cellular.mbim_compliance \
+        import mbim_device_context
 from autotest_lib.client.cros.cellular.mbim_compliance.sequences \
         import open_sequence
 
@@ -32,21 +33,22 @@ class MBIMOpenGenericSequence(open_sequence.OpenSequence):
     def run_internal(self):
         """ Run the MBIM Open Generic Sequence. """
         # Step 1 and 2
-        device_type = self.test_context.device_type
+        device_context = self.device_context
+        device_type = device_context.device_type
         mbim_communication_interface = (
-                self.test_context.descriptor_cache.mbim_communication_interface)
+                device_context.descriptor_cache.mbim_communication_interface)
         ncm_communication_interface = (
-                self.test_context.descriptor_cache.ncm_communication_interface)
+                device_context.descriptor_cache.ncm_communication_interface)
         no_data_data_interface = (
-                self.test_context.descriptor_cache.no_data_data_interface)
+                device_context.descriptor_cache.no_data_data_interface)
         ncm_data_interface = (
-                self.test_context.descriptor_cache.ncm_data_interface)
+                device_context.descriptor_cache.ncm_data_interface)
         mbim_data_interface = (
-                self.test_context.descriptor_cache.mbim_data_interface)
+                device_context.descriptor_cache.mbim_data_interface)
         mbim_functional_descriptor = (
-                self.test_context.descriptor_cache.mbim_functional)
+                device_context.descriptor_cache.mbim_functional)
         interrupt_endpoint = (
-                self.test_context.descriptor_cache.interrupt_endpoint)
+                device_context.descriptor_cache.interrupt_endpoint)
 
         communication_interface_number = (
                 mbim_communication_interface.bInterfaceNumber)
@@ -61,7 +63,7 @@ class MBIMOpenGenericSequence(open_sequence.OpenSequence):
         # Step 4
         # Set alternate setting to be 1 for MBIM communication interface of
         # NCM/MBIM function.
-        if device_type == test_context.DEVICE_TYPE_NCM_MBIM:
+        if device_type == mbim_device_context.DEVICE_TYPE_NCM_MBIM:
             self.set_alternate_setting(communication_interface_number, 1)
 
         # Step 5
@@ -94,7 +96,7 @@ class MBIMOpenGenericSequence(open_sequence.OpenSequence):
             self.set_max_datagram_size(communication_interface_number)
 
         # Step 10
-        if device_type == test_context.DEVICE_TYPE_MBIM:
+        if device_type == mbim_device_context.DEVICE_TYPE_MBIM:
             alternate_setting = 1
         else:
             alternate_setting = 2

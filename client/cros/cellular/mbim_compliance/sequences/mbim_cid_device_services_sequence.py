@@ -33,12 +33,12 @@ class MBIMCIDDeviceServicesSequence(sequence.Sequence):
                 command_type=mbim_control.COMMAND_TYPE_QUERY,
                 information_buffer_length=0)
         packets = command_message.generate_packets()
+        device_context = self.device_context
         channel = mbim_channel.MBIMChannel(
-                {'idVendor': self.test_context.id_vendor,
-                 'idProduct': self.test_context.id_product},
-                self.test_context.mbim_communication_interface.bInterfaceNumber,
-                self.test_context.interrupt_endpoint.bEndpointAddress,
-                self.test_context.mbim_functional.wMaxControlMessage)
+                device_context._device,
+                device_context.mbim_communication_interface.bInterfaceNumber,
+                device_context.interrupt_endpoint.bEndpointAddress,
+                device_context.mbim_functional.wMaxControlMessage)
         response_packets = channel.bidirectional_transaction(*packets)
         channel.close()
 

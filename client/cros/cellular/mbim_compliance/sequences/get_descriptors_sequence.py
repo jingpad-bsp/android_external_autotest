@@ -34,15 +34,15 @@ class GetDescriptorsSequence(sequence.Sequence):
         @returns a list of descriptor objects.
 
         """
-        if self.test_context is None:
+        if self.device_context is None:
             mbim_errors.log_and_raise(mbim_errors.MBIMComplianceFrameworkError,
                                       'Test context not found')
-        device = self.test_context.device
+        device = self.device_context.device
         if device is None:
             mbim_errors.log_and_raise(mbim_errors.MBIMComplianceFrameworkError,
                                       'Device %04X:%04X not found' %
-                                      (self.test_context.id_vendor,
-                                       self.test_context.id_product))
+                                      (self.device_context.id_vendor,
+                                       self.device_context.id_product))
 
         configuration = device.get_active_configuration()
 

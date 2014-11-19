@@ -70,7 +70,7 @@ class OpenSequence(sequence.Sequence):
         """
         logging.debug('Send SetInterface() request to interface-%d.',
                       interface_number)
-        response = control.set_interface(self.test_context.device,
+        response = control.set_interface(self.device_context.device,
                                          interface_number,
                                          alternate_setting)
         logging.debug('Response: %s', response)
@@ -85,11 +85,11 @@ class OpenSequence(sequence.Sequence):
         """
         logging.debug('Send a ResetFunction() request to interface-%d.',
                       interface_number)
-        self.test_context.device.ctrl_transfer(bmRequestType=0b00100001,
-                                               bRequest=0x05,
-                                               wValue=0,
-                                               wIndex=interface_number,
-                                               data_or_wLength=None)
+        self.device_context.device.ctrl_transfer(bmRequestType=0b00100001,
+                                                 bRequest=0x05,
+                                                 wValue=0,
+                                                 wIndex=interface_number,
+                                                 data_or_wLength=None)
 
 
     def get_ntb_parameters(self, interface_number):
@@ -102,7 +102,7 @@ class OpenSequence(sequence.Sequence):
         """
         logging.debug('Send a GetNtbParameters() request to interface-%d.',
                       interface_number)
-        ntb_parameters = self.test_context.device.ctrl_transfer(
+        ntb_parameters = self.device_context.device.ctrl_transfer(
                                  bmRequestType=0b10100001,
                                  bRequest=0x80,
                                  wValue=0,
@@ -124,7 +124,7 @@ class OpenSequence(sequence.Sequence):
         """
         logging.debug('Send a SetNtbFormat() request to interface-%d.',
                       interface_number)
-        response = self.test_context.device.ctrl_transfer(
+        response = self.device_context.device.ctrl_transfer(
                            bmRequestType=0b00100001,
                            bRequest=0x84,
                            wValue=ntb_format,
@@ -144,7 +144,7 @@ class OpenSequence(sequence.Sequence):
         logging.debug('Send a SetNtbInputSize() request to interface-%d.',
                       interface_number)
         data = struct.pack('<I', dw_ntb_in_max_size)
-        response = self.test_context.device.ctrl_transfer(
+        response = self.device_context.device.ctrl_transfer(
                            bmRequestType=0b00100001,
                            bRequest=0x86,
                            wIndex=interface_number,
@@ -162,7 +162,7 @@ class OpenSequence(sequence.Sequence):
         logging.debug('Send a SetMaxDatagramSize() request to interface-%d.',
                       interface_number)
         data = struct.pack('<H', MAX_DATAGRAM_SIZE)
-        response = self.test_context.device.ctrl_transfer(
+        response = self.device_context.device.ctrl_transfer(
                            bmRequestType=0b00100001,
                            bRequest=0x88,
                            wIndex=interface_number,

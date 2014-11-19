@@ -19,7 +19,7 @@ INTERFACE_MBIM_SUBCLASS = 0x0E
 INTERFACE_MBIM_PROTOCOL = 0x00
 
 
-class TestContext:
+class MbimDeviceContext:
     """ Context of device under test. """
 
     def __init__(self, id_vendor=None, id_product=None):
@@ -32,6 +32,8 @@ class TestContext:
         """
         # Find the device to be tested
         self._device = self._find_device(id_vendor, id_product)
+        # Reset the device before every test
+        self._device.reset()
         # Set the device vendor/product ID in the test context
         self._id_vendor = self._device.idVendor
         self._id_product = self._device.idProduct
@@ -159,7 +161,7 @@ class TestContext:
         return False
 
 
-    def fetch_descriptor_cache(self, descriptors):
+    def update_descriptor_cache(self, descriptors):
         """
         Fetch and store the MBIM descriptor cache into the test context.
 

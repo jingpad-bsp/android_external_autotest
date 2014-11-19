@@ -48,5 +48,5 @@ class Sequence(entity.Entity):
                 under check.
 
         """
-        if self.test_context.device.is_kernel_driver_active(interface_number):
-            self.test_context.device.detach_kernel_driver(interface_number)
+        if self.device_context.device.is_kernel_driver_active(interface_number):
+            self.device_context.device.detach_kernel_driver(interface_number)

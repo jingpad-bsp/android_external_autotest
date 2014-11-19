@@ -33,12 +33,12 @@ class MBIMCloseSequence(sequence.Sequence):
         # Send MBIM_CLOSE_MSG to the device.
         close_message = mbim_control.MBIMCloseMessage()
         packets = close_message.generate_packets()
+        device_context = self.device_context
         channel = mbim_channel.MBIMChannel(
-                {'idVendor': self.test_context.id_vendor,
-                 'idProduct': self.test_context.id_product},
-                self.test_context.mbim_communication_interface.bInterfaceNumber,
-                self.test_context.interrupt_endpoint.bEndpointAddress,
-                self.test_context.mbim_functional.wMaxControlMessage)
+                device_context._device,
+                device_context.mbim_communication_interface.bInterfaceNumber,
+                device_context.interrupt_endpoint.bEndpointAddress,
+                device_context.mbim_functional.wMaxControlMessage)
 
         # Step 2
         response_packets = channel.bidirectional_transaction(*packets)

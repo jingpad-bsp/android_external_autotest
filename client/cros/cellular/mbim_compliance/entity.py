@@ -1,10 +1,10 @@
-# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 class Entity(object):
     """
-    A common base class for tests / sequences / assertions.
+    A common base class for sequences / assertions.
 
     This class serves as a common base class for all entities in the test. This
     allows us to filter out objects that are part of the tests easily. All
@@ -12,9 +12,9 @@ class Entity(object):
     likely do so by defining their own base class that inherits from this.
 
     """
-    def __init__(self, test_context):
+    def __init__(self, device_context):
         """
-        @param test_context: An object that wraps information about the device
+        @param device_context: An object that wraps information about the device
                 under test.
         """
-        self.test_context = test_context
+        self.device_context = device_context
