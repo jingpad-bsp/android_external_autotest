@@ -22,17 +22,20 @@ import common
 
 from autotest_lib.client.common_lib import global_config
 
+# How long after restarting a service do we watch it to see if it's stable.
+SERVICE_STABILITY_TIMER = 60
+
 
 class DirtyTreeException(Exception):
-  """Raised when the tree has been modified in an unexpected way."""
+    """Raised when the tree has been modified in an unexpected way."""
 
 
 class UnknownCommandException(Exception):
-  """Raised when we try to run a command name with no associated command."""
+    """Raised when we try to run a command name with no associated command."""
 
 
 class UnstableServices(Exception):
-  """Raised if a service appears unstable after restart."""
+    """Raised if a service appears unstable after restart."""
 
 
 def verify_repo_clean():
@@ -43,14 +46,9 @@ def verify_repo_clean():
     """
     CLEAN_STATUS_OUTPUT = 'nothing to commit (working directory clean)'
 
-    print('Checking tree status:')
     out = subprocess.check_output(['repo', 'status'], stderr=subprocess.STDOUT)
-
     if out.strip() != CLEAN_STATUS_OUTPUT:
-        print('Dirty.')
         raise DirtyTreeException(out)
-
-    print('Clean.')
 
 
 def repo_versions():
@@ -59,7 +57,6 @@ def repo_versions():
     @returns A string the describes HEAD of all git repos.
     @raises subprocess.CalledProcessError on a repo command failure.
     """
-    print('Checking repository versions.')
     cmd = ['repo', 'forall', '-p', '-c', 'git', 'log', '-1', '--oneline']
     return subprocess.check_output(cmd)
 
@@ -69,113 +66,172 @@ def repo_sync():
 
     @raises subprocess.CalledProcessError on a repo command failure.
     """
-    print('Updating Repo.')
-    subprocess.check_output(['repo', 'sync'], stderr=subprocess.STDOUT)
+    subprocess.check_output(['repo', 'sync'])
 
 
-def restart_services():
-    """Restart services as needed for the current server type.
+def discover_update_commands():
+    """Lookup the commands to run on this server.
 
-    This checks the shadow_config.ini to see what should be restarted.
+    These commonly come from shadow_config.ini, since they vary by server type.
 
-    @raises UnknownCommandException If shadow_config uses an unknown command.
-    @raises subprocess.CalledProcessError on a command failure.
+    @returns List of command names in string format.
     """
-    global_config.global_config.parse_config_file()
-
-    cmd_names = ''
-    service_names = ''
-
     try:
-        # Lookup the list of commands to consider. They are intended to be
-        # in global_config.ini so that they can be shared everywhere.
-        cmds = dict(global_config.global_config.config.items(
-            'UPDATE_COMMANDS'))
-
-        # Lookup which commands to run. These commonly come from
-        # shadow_config.ini, since they vary by server type.
-        cmd_names = global_config.global_config.get_config_value(
+        return global_config.global_config.get_config_value(
                 'UPDATE', 'commands', type=list)
 
     except (ConfigParser.NoSectionError, global_config.ConfigError):
-        pass
+        return []
 
+
+def discover_restart_services():
+    """Find the services that need restarting on the current server.
+
+    These commonly come from shadow_config.ini, since they vary by server type.
+
+    @returns List of service names in string format.
+    """
     try:
         # From shadow_config.ini, lookup which services to restart.
-        service_names = global_config.global_config.get_config_value(
+        return global_config.global_config.get_config_value(
                 'UPDATE', 'services', type=list)
 
     except (ConfigParser.NoSectionError, global_config.ConfigError):
-        pass
+        return []
 
-    if cmd_names:
-        print('Running update commands....')
-        for name in cmd_names:
-            if name not in cmds:
-                raise UnknownCommandException(name, cmds)
 
-            expanded_command = cmds[name]
-            expanded_command.replace('AUTOTEST_REPO', common.autotest_dir)
+def update_command(cmd_tag):
+    """Restart a command.
 
-            print('Updating %s with: %s' % (name, expanded_command))
-            subprocess.check_call(expanded_command, shell=True)
+    The command name is looked up in global_config.ini to find the full command
+    to run, then it's executed.
 
-    if service_names:
-        service_status = {}
+    @param cmd_tag: Which command to restart.
 
-        print('Restarting Services....')
-        for name in service_names:
-            print('Updating %s with: %s' % (name, expanded_command))
-            subprocess.check_call(['sudo', 'service', name, 'restart'])
+    @raises UnknownCommandException If cmd_tag can't be looked up.
+    @raises subprocess.CalledProcessError on a command failure.
+    """
+    # Lookup the list of commands to consider. They are intended to be
+    # in global_config.ini so that they can be shared everywhere.
+    cmds = dict(global_config.global_config.config.items(
+        'UPDATE_COMMANDS'))
 
-        def status(name):
-            return subprocess.check_output(['sudo', 'status', name])
+    if cmd_tag not in cmds:
+        raise UnknownCommandException(cmd_tag, cmds)
 
-        # Record the status of each service (including pid).
-        service_status = {n: status(n) for n in service_names}
+    expanded_command = cmds[cmd_tag].replace('AUTOTEST_REPO',
+                                              common.autotest_dir)
 
-        time.sleep(60)
+    print('Updating %s with: %s' % (cmd_tag, expanded_command))
+    subprocess.check_call(expanded_command, shell=True)
 
-        # Look for any services that changed status.
-        unstable_services = [n for n in service_names
-                             if status(n) != service_status[n]]
 
-        # Report any services having issues.
-        if unstable_names:
-            raise UnstableServices(unstable_services)
+def restart_service(service_name):
+    """Restart a service.
+
+    Restarts the standard service with "service <name> restart".
+
+    @param service_name: The name of the service to restart.
+
+    @raises subprocess.CalledProcessError on a command failure.
+    """
+    print('Restarting: %s' % service_name)
+    subprocess.check_call(['sudo', 'service', service_name, 'restart'])
+
+
+def service_status(service_name):
+    """Return the results "status <name>" for a given service.
+
+    This string is expected to contain the pid, and so to change is the service
+    is shutdown or restarted for any reason.
+
+    @param service_name: The name of the service to check on.
+    @returns The output of the external command.
+             Ex: autofs start/running, process 1931
+
+    @raises subprocess.CalledProcessError on a command failure.
+    """
+    return subprocess.check_output(['sudo', 'status', service_name])
+
+
+def restart_services(service_names):
+    """Restart services as needed for the current server type.
+
+    Restart the listed set of services, and watch to see if they are stable for
+    at least SERVICE_STABILITY_TIMER. It restarts all services quickly,
+    waits for that delay, then verifies the status of all of them.
+
+    @param service_names: The list of service to restart and monitor.
+
+    @raises subprocess.CalledProcessError on a command failure.
+    """
+    service_statuses = {}
+
+    # Restart each, and record the status (including pid).
+    for name in service_names:
+        restart_service(name)
+        service_statuses[name] = service_status(name)
+
+    # Wait for a while to let the services settle.
+    time.sleep(SERVICE_STABILITY_TIMER)
+
+    # Look for any services that changed status.
+    unstable_services = [n for n in service_names
+                         if service_status(n) != service_statuses[n]]
+
+    # Report any services having issues.
+    if unstable_services:
+        raise UnstableServices(unstable_services)
 
 
 def main():
     """Main method."""
     os.chdir(common.autotest_dir)
+    global_config.global_config.parse_config_file()
 
     try:
+        print('Checking tree status:')
         verify_repo_clean()
+        print('Clean.')
     except DirtyTreeException as e:
         print('Local tree is dirty, can\'t perform update safely.')
         print()
         print('repo status:')
         print(e.args[0])
-        sys.exit(1)
+        return 1
 
+    print('Checking repository versions.')
     versions_before = repo_versions()
+
+    print('Updating Repo.')
     repo_sync()
+
+    print('Checking repository versions after update.')
     versions_after = repo_versions()
 
     if versions_before == versions_after:
         print('No change found.')
         return
 
-    try:
-        restart_services()
-    except UnstableServices as e:
-        print('The following services were not stable after the update:')
-        print(e.args[0])
-        sys.exit(1)
+    cmds = discover_update_commands()
+    if cmds:
+        print('Running update commands:', ', '.join(cmds))
+        for cmd in cmds:
+            update_command(cmd)
+
+    services = discover_restart_services()
+    if services:
+        try:
+            print('Restarting Services:', ', '.join(services))
+            restart_services(services)
+        except UnstableServices as e:
+            print('The following services were not stable after the update:')
+            print(e.args[0])
+            return 1
 
     print('Current production versions:')
     print(versions_after)
 
 
 if __name__ == '__main__':
-  main()
+    sys.exit(main())
