@@ -302,6 +302,10 @@ class test_format_for_upload(unittest.TestCase):
                     expected[idx]['supplemental_columns']['r_chrome_version'],
                     msg=fail_msg)
             self.assertEqual(
+                    actual[idx]['supplemental_columns']['a_hardware_identifier'],
+                    expected[idx]['supplemental_columns']['a_hardware_identifier'],
+                    msg=fail_msg)
+            self.assertEqual(
                     actual[idx]['bot'], expected[idx]['bot'], msg=fail_msg)
             self.assertAlmostEqual(
                     actual[idx]['value'], expected[idx]['value'], 4,
@@ -324,15 +328,17 @@ class test_format_for_upload(unittest.TestCase):
     def test_format_for_upload(self):
         """Verifies format_for_upload generates correct json data."""
         result = perf_uploader._format_for_upload(
-                'platform', '1200.0.0', '25.10.0.0',
+                'platform', '1200.0.0', '25.10.0.0', 'WINKY E2A-F2K-Q35',
                 self._perf_data, self._PRESENT_INFO)
         expected_result_string = (
                 '[{"supplemental_columns": {"r_cros_version": "1200.0.0", '
+                '"a_hardware_identifier" : "WINKY E2A-F2K-Q35",'
                 '"r_chrome_version": "25.10.0.0"}, "bot": "cros-platform", '
                 '"higher_is_better": false, "value": 2.7, '
                 '"units": "msec", "master": "new_master_name", '
                 '"error": 0.2, "test": "new_test_name/graph_name/metric1"}, '
                 '{"supplemental_columns": {"r_cros_version": "1200.0.0", '
+                '"a_hardware_identifier" : "WINKY E2A-F2K-Q35",'
                 '"r_chrome_version": "25.10.0.0"}, "bot": "cros-platform", '
                 '"higher_is_better": true, "value": 101.35, '
                 '"units": "frames_per_sec", "master": "new_master_name", '
