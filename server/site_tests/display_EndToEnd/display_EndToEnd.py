@@ -82,8 +82,8 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
         self.display_facade.connect()
 
 
-    def suspend_resume(self, plugged_before_suspend,
-                          plugged_after_suspend, plugged_after_resume):
+    def test_suspend_resume(self, plugged_before_suspend,
+                            plugged_after_suspend, plugged_after_resume):
         """Suspends and resumes the DUT with different connections status
         before suspend, after suspend, and after resume
 
@@ -246,9 +246,9 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
         self.suspend_resume()
 
         #Unplug-Suspend-Plug-Resume
-        self.suspend_resume(plugged_before_suspend=False,
-                               plugged_after_suspend=True,
-                               plugged_after_resume=True)
+        self.test_suspend_resume(plugged_before_suspend=False,
+                                 plugged_after_suspend=True,
+                                 plugged_after_resume=True)
         #Check status
         self.check_external_display()
 
@@ -258,9 +258,9 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
         self.switch_display_mode()
 
         #Suspens-Unplug-Resume-Plug
-        self.suspend_resume(plugged_before_suspend=True,
-                               plugged_after_suspend=False,
-                               plugged_after_resume=True)
+        self.test_suspend_resume(plugged_before_suspend=True,
+                                 plugged_after_suspend=False,
+                                 plugged_after_resume=True)
         #Check status
         self.check_external_display()
 
