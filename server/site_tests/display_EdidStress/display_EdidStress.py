@@ -22,8 +22,9 @@ class display_EdidStress(chameleon_test.ChameleonTest):
     """
     version = 1
 
-    _EDID_TYPES = {'HDMI': {'HDMI', 'DVI', 'VGA'},
-                   'DP': {'DP'}}
+    _EDID_TYPES = {'HDMI': {'HDMI', 'DVI'},
+                   'DP': {'DP'},
+                   'VGA': {'VGA'}}
 
     def initialize(self, host):
         super(display_EdidStress, self).initialize(host)
