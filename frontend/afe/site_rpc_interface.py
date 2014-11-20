@@ -60,9 +60,14 @@ def _get_control_file_contents_by_name(build, ds, suite_name):
     @return the contents of the desired control file.
     """
     getter = control_file_getter.DevServerGetter.create(build, ds)
+    timer = stats.Timer('control_files.parse.%s.%s' %
+                        (ds.get_server_name(ds.url()).replace('.', '_'),
+                            suite_name.rsplit('.')[-1]))
     # Get the control file for the suite.
     try:
-        control_file_in = getter.get_control_file_contents_by_name(suite_name)
+        with timer:
+            control_file_in = getter.get_control_file_contents_by_name(
+                    suite_name)
     except error.CrosDynamicSuiteException as e:
         raise type(e)("%s while testing %s." % (e, build))
     if not control_file_in:
@@ -95,8 +100,11 @@ def _stage_build_artifacts(build):
     # components to be downloaded in the background.
     ds = dev_server.ImageServer.resolve(build)
     timings[constants.DOWNLOAD_STARTED_TIME] = formatted_now()
+    timer = stats.Timer('control_files.stage.%s' % (
+                    ds.get_server_name(ds.url()).replace('.', '_')))
     try:
-        ds.stage_artifacts(build, ['test_suites'])
+        with timer:
+            ds.stage_artifacts(build, ['test_suites'])
     except dev_server.DevServerException as e:
         raise error.StageControlFileFailure(
                 "Failed to stage %s: %s" % (build, e))
