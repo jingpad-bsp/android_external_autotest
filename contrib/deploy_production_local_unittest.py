@@ -151,6 +151,39 @@ class TestDeployProductionLocal(unittest.TestCase):
             self._test_restart_services(triple_unstable)
         self.assertEqual(unstable.exception.args[0], ['bar', 'joe'])
 
+    def test_parse_arguments(self):
+        """Test deploy_production_local.parse_arguments."""
+        # No arguments.
+        results = dpl.parse_arguments([])
+        self.assertEqual(
+                vars(results),
+                {'verify': True, 'update': True, 'actions': True,
+                 'report': True, 'dryrun': False})
+
+        # Dryrun.
+        results = dpl.parse_arguments(['--dryrun'])
+        self.assertEqual(
+                vars(results),
+                {'verify': False, 'update': False, 'actions': True,
+                 'report': True, 'dryrun': True})
+
+        # All skip arguments.
+        results = dpl.parse_arguments(['--skip-verify', '--skip-update',
+                                       '--skip-actions', '--skip-report'])
+        self.assertEqual(
+                vars(results),
+                {'verify': False, 'update': False, 'actions': False,
+                 'report': False, 'dryrun': False})
+
+        # All arguments.
+        results = dpl.parse_arguments(['--skip-verify', '--skip-update',
+                                       '--skip-actions', '--skip-report',
+                                       '--dryrun'])
+        self.assertEqual(
+                vars(results),
+                {'verify': False, 'update': False, 'actions': False,
+                 'report': False, 'dryrun': True})
+
 
 if __name__ == '__main__':
     unittest.main()

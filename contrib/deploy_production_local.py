@@ -13,6 +13,7 @@ repos.
 from __future__ import print_function
 
 import ConfigParser
+import argparse
 import os
 import subprocess
 import sys
@@ -100,13 +101,14 @@ def discover_restart_services():
         return []
 
 
-def update_command(cmd_tag):
+def update_command(cmd_tag, dryrun=False):
     """Restart a command.
 
     The command name is looked up in global_config.ini to find the full command
     to run, then it's executed.
 
     @param cmd_tag: Which command to restart.
+    @param dryrun: If true print the command that would have been run.
 
     @raises UnknownCommandException If cmd_tag can't be looked up.
     @raises subprocess.CalledProcessError on a command failure.
@@ -122,21 +124,30 @@ def update_command(cmd_tag):
     expanded_command = cmds[cmd_tag].replace('AUTOTEST_REPO',
                                               common.autotest_dir)
 
-    print('Updating %s with: %s' % (cmd_tag, expanded_command))
-    subprocess.check_call(expanded_command, shell=True)
+    if dryrun:
+        print('Would have updated %s via "%s"' % (cmd_tag, expanded_command))
+    else:
+        print('Updating %s with: %s' % (cmd_tag, expanded_command))
+        subprocess.check_call(expanded_command, shell=True)
 
 
-def restart_service(service_name):
+def restart_service(service_name, dryrun=False):
     """Restart a service.
 
     Restarts the standard service with "service <name> restart".
 
     @param service_name: The name of the service to restart.
+    @param dryrun: Don't really run anything, just print out the command.
 
     @raises subprocess.CalledProcessError on a command failure.
     """
-    print('Restarting: %s' % service_name)
-    subprocess.check_call(['sudo', 'service', service_name, 'restart'])
+    cmd = ['sudo', 'service', service_name, 'restart']
+    if dryrun:
+        print('Would have restarted %s via "%s"' %
+              (service_name, ' '.join(cmd)))
+    else:
+        print('Restarting: %s' % service_name)
+        subprocess.check_call(cmd)
 
 
 def service_status(service_name):
@@ -146,6 +157,7 @@ def service_status(service_name):
     is shutdown or restarted for any reason.
 
     @param service_name: The name of the service to check on.
+
     @returns The output of the external command.
              Ex: autofs start/running, process 1931
 
@@ -154,7 +166,7 @@ def service_status(service_name):
     return subprocess.check_output(['sudo', 'status', service_name])
 
 
-def restart_services(service_names):
+def restart_services(service_names, dryrun=False):
     """Restart services as needed for the current server type.
 
     Restart the listed set of services, and watch to see if they are stable for
@@ -162,10 +174,17 @@ def restart_services(service_names):
     waits for that delay, then verifies the status of all of them.
 
     @param service_names: The list of service to restart and monitor.
+    @param dryrun: Don't really restart the service, just print out the command.
 
     @raises subprocess.CalledProcessError on a command failure.
+    @raises UnstableServices if any services are unstable after restart.
     """
     service_statuses = {}
+
+    if dryrun:
+        for name in service_names:
+            restart_service(name, dryrun=True)
+        return
 
     # Restart each, and record the status (including pid).
     for name in service_names:
@@ -184,54 +203,104 @@ def restart_services(service_names):
         raise UnstableServices(unstable_services)
 
 
-def main():
-    """Main method."""
-    os.chdir(common.autotest_dir)
-    global_config.global_config.parse_config_file()
+def run_deploy_actions(dryrun=False):
+    """
 
-    try:
-        print('Checking tree status:')
-        verify_repo_clean()
-        print('Clean.')
-    except DirtyTreeException as e:
-        print('Local tree is dirty, can\'t perform update safely.')
-        print()
-        print('repo status:')
-        print(e.args[0])
-        return 1
+    @param dryrun: Don't really restart the service, just print out the command.
 
-    print('Checking repository versions.')
-    versions_before = repo_versions()
-
-    print('Updating Repo.')
-    repo_sync()
-
-    print('Checking repository versions after update.')
-    versions_after = repo_versions()
-
-    if versions_before == versions_after:
-        print('No change found.')
-        return
-
+    @raises subprocess.CalledProcessError on a command failure.
+    @raises UnstableServices if any services are unstable after restart.
+    """
     cmds = discover_update_commands()
     if cmds:
         print('Running update commands:', ', '.join(cmds))
         for cmd in cmds:
-            update_command(cmd)
+            update_command(cmd, dryrun=dryrun)
 
     services = discover_restart_services()
     if services:
+        print('Restarting Services:', ', '.join(services))
+        restart_services(services, dryrun=dryrun)
+
+
+def parse_arguments(args):
+    """Parse command line arguments.
+
+    @param args: The command line arguments to parse. (ususally sys.argsv[1:])
+
+    @returns A Behaviors named tuple that defines what actions we should run.
+    """
+    parser = argparse.ArgumentParser(
+            description='Command to update an autotest server.')
+    parser.add_argument('--skip-verify', action='store_false',
+                        dest='verify', default=True,
+                        help='Disable verification of a clean repository.')
+    parser.add_argument('--skip-update', action='store_false',
+                        dest='update', default=True,
+                        help='Skip the repository source code update.')
+    parser.add_argument('--skip-actions', action='store_false',
+                        dest='actions', default=True,
+                        help='Skip the post update actions.')
+    parser.add_argument('--skip-report', action='store_false',
+                        dest='report', default=True,
+                        help='Skip the git version report.')
+    parser.add_argument('--dryrun', action='store_true',
+                        help='Don\'t actually run any commands, just log.')
+
+    results = parser.parse_args(args)
+
+    # TODO(dgarrett): Make these behaviors support dryrun.
+    if results.dryrun:
+        results.verify = False
+        results.update = False
+
+    return results
+
+
+def main(args):
+    """Main method."""
+    os.chdir(common.autotest_dir)
+    global_config.global_config.parse_config_file()
+
+    behaviors = parse_arguments(args)
+
+    if behaviors.verify:
         try:
-            print('Restarting Services:', ', '.join(services))
-            restart_services(services)
-        except UnstableServices as e:
-            print('The following services were not stable after the update:')
+            print('Checking tree status:')
+            verify_repo_clean()
+            print('Clean.')
+        except DirtyTreeException as e:
+            print('Local tree is dirty, can\'t perform update safely.')
+            print()
+            print('repo status:')
             print(e.args[0])
             return 1
 
-    print('Current production versions:')
-    print(versions_after)
+    if behaviors.update:
+        print('Checking repository versions.')
+        versions_before = repo_versions()
+
+        print('Updating Repo.')
+        repo_sync()
+
+        print('Checking repository versions after update.')
+        if versions_before == repo_versions():
+            print('No change found.')
+            return
+
+    if behaviors.actions:
+        try:
+            run_deploy_actions(dryrun=behaviors.dryrun)
+        except UnstableServices as e:
+            print('The following services were not stable after '
+                  'the update:')
+            print(e.args[0])
+            return 1
+
+    if behaviors.report:
+        print('Current production versions:')
+        print(repo_versions())
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    sys.exit(main(sys.argv[1:]))
