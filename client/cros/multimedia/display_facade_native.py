@@ -11,11 +11,27 @@ import time
 import telemetry
 
 from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.cros import constants, sys_power
 from autotest_lib.client.cros.graphics import graphics_utils
 from autotest_lib.client.cros.multimedia import image_generator
 
 TimeoutException = telemetry.core.util.TimeoutException
+
+
+_FLAKY_CALL_RETRY_TIMEOUT_SEC = 60
+_FLAKY_CALL_RETRY_DELAY_SEC = 1
+
+_retry_chrome_call = retry.retry(
+        telemetry.core.exceptions.BrowserConnectionGoneException,
+        timeout_min=_FLAKY_CALL_RETRY_TIMEOUT_SEC / 60.0,
+        delay_sec=_FLAKY_CALL_RETRY_DELAY_SEC)
+
+_retry_display_call = retry.retry(
+        (KeyError, error.CmdError),
+        timeout_min=_FLAKY_CALL_RETRY_TIMEOUT_SEC / 60.0,
+        delay_sec=_FLAKY_CALL_RETRY_DELAY_SEC)
 
 
 class DisplayFacadeNative(object):
@@ -32,6 +48,7 @@ class DisplayFacadeNative(object):
         self._image_generator = image_generator.ImageGenerator()
 
 
+    @_retry_chrome_call
     def get_display_info(self):
         """Gets the display info from Chrome.system.display API.
 
@@ -331,6 +348,7 @@ class DisplayFacadeNative(object):
         return True
 
 
+    @_retry_display_call
     def get_external_connector_name(self):
         """Gets the name of the external output connector.
 
@@ -349,6 +367,7 @@ class DisplayFacadeNative(object):
         return graphics_utils.get_internal_connector_name()
 
 
+    @_retry_display_call
     def wait_output_connected(self, output):
         """Wait for output to connect.
 

@@ -10,7 +10,6 @@ import xmlrpclib
 from PIL import ImageChops
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
 from autotest_lib.client.cros.chameleon import edid
 from autotest_lib.client.cros.chameleon import screen_utility_factory
@@ -33,9 +32,6 @@ class ChameleonTest(test.test):
 
     _TOTAL_WRONG_PIXELS_MARGIN_FOR_ANALOG_SIGNAL = 0.04  # 4%
     _TOTAL_WRONG_PIXELS_MARGIN_FOR_DIGITAL_SIGNAL = 0
-
-    _FLAKY_CALL_RETRY_TIME_OUT_SEC = 60
-    _FLAKY_CALL_RETRY_DELAY_SEC = 1
 
     def initialize(self, host):
         """Initializes.
@@ -195,9 +191,6 @@ class ChameleonTest(test.test):
         return self.display_facade.is_mirrored_enabled()
 
 
-    @retry.retry(xmlrpclib.Fault,
-                 timeout_min=_FLAKY_CALL_RETRY_TIME_OUT_SEC / 60.0,
-                 delay_sec=_FLAKY_CALL_RETRY_DELAY_SEC)
     def set_mirrored(self, test_mirrored):
         """Sets the external display is in mirrored mode or extended mode
 
@@ -290,9 +283,6 @@ class ChameleonTest(test.test):
            self.display_facade.connect()
 
 
-    @retry.retry(xmlrpclib.Fault,
-                 timeout_min=_FLAKY_CALL_RETRY_TIME_OUT_SEC / 60.0,
-                 delay_sec=_FLAKY_CALL_RETRY_DELAY_SEC)
     def wait_for_output(self, output):
         """Waits for the specified output to be connected.
 
@@ -356,9 +346,6 @@ class ChameleonTest(test.test):
         return first_port
 
 
-    @retry.retry(xmlrpclib.Fault,
-                 timeout_min=_FLAKY_CALL_RETRY_TIME_OUT_SEC / 60.0,
-                 delay_sec=_FLAKY_CALL_RETRY_DELAY_SEC)
     def get_dut_display_connector(self):
         """Gets the name of the connected display connector of DUT.
 
