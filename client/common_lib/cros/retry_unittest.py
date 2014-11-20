@@ -1,18 +1,20 @@
+#!/usr/bin/env python
+
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 """Unit tests for client/common_lib/cros/retry.py."""
 
-import logging
 import mox
 import time
 import unittest
 import signal
 
+import common
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.common_lib import error
-from autotest_lib.frontend.afe.json_rpc import proxy
+
 
 class RetryTest(mox.MoxTestBase):
     """Unit tests for retry decorators.
@@ -78,19 +80,6 @@ class RetryTest(mox.MoxTestBase):
         self.assertRaises(error.ControlFileNotFound, fail)
 
 
-    def testRetryDecoratorRaisesValidationError(self):
-        """Tests that ValidationError raises immediately, no retrying."""
-        @retry.retry(Exception)
-        def fail():
-            raise proxy.ValidationError({'message': 'Exception',
-                                         'traceback': 'foo'},
-                                        'scary validation message')
-
-        self.mox.StubOutWithMock(time, 'sleep')
-        self.mox.ReplayAll()
-        self.assertRaises(proxy.ValidationError, fail)
-
-
     def testRetryDecoratorFailsWithTimeout(self):
         """Tests that a wrapped function retries til the timeout, then fails."""
         @retry.retry(Exception, timeout_min=0.02, delay_sec=0.1)
@@ -101,6 +90,7 @@ class RetryTest(mox.MoxTestBase):
         self.mox.ReplayAll()
         #self.assertEquals(None, fail())
         self.assertRaises(error.TimeoutException, fail)
+
 
     def testRetryDecoratorSucceedsBeforeTimeout(self):
         """Tests that a wrapped function succeeds before the timeout."""
@@ -171,3 +161,7 @@ class RetryTest(mox.MoxTestBase):
 
         self.mox.ReplayAll()
         self.assertFalse(testFunc())
+
+
+if __name__ == '__main__':
+    unittest.main()

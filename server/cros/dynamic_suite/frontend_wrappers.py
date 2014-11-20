@@ -5,6 +5,7 @@
 import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import retry
+from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.server import frontend
 
 
@@ -27,7 +28,8 @@ class RetryingAFE(frontend.AFE):
     def run(self, call, **dargs):
         @retry.retry(Exception, timeout_min=self.timeout_min,
                      delay_sec=self.delay_sec,
-                     blacklist=[ImportError, error.RPCException])
+                     blacklist=[ImportError, error.RPCException,
+                                proxy.ValidationError])
         def _run(self, call, **dargs):
             return super(RetryingAFE, self).run(call, **dargs)
         return _run(self, call, **dargs)
@@ -52,7 +54,8 @@ class RetryingTKO(frontend.TKO):
     def run(self, call, **dargs):
         @retry.retry(Exception, timeout_min=self.timeout_min,
                      delay_sec=self.delay_sec,
-                     blacklist=[ImportError, error.RPCException])
+                     blacklist=[ImportError, error.RPCException,
+                                proxy.ValidationError])
         def _run(self, call, **dargs):
             return super(RetryingTKO, self).run(call, **dargs)
         return _run(self, call, **dargs)

@@ -5,7 +5,6 @@
 import logging, random, signal, sys, time
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.frontend.afe.json_rpc import proxy
 
 
 def handler(signum, frame):
@@ -160,8 +159,7 @@ def retry(ExceptionToCheck, timeout_min=1.0, delay_sec=3, blacklist=None):
                         return result
                 except exception_tuple:
                     raise
-                except (error.CrosDynamicSuiteException,
-                        proxy.ValidationError):
+                except error.CrosDynamicSuiteException:
                     raise
                 except ExceptionToCheck as e:
                     logging.warning('%s(%s)', e.__class__, e)
