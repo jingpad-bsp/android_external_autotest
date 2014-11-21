@@ -66,12 +66,11 @@ class firmware_CorruptFwBodyA(FirmwareTest):
                                   'tried_fwb': '0',
                                   }))
             self.faft_client.bios.restore_body('a')
-            if self.fw_vboot2:
-                self.faft_client.system.set_fw_try_next('A')
             self.reboot_warm()
 
-            logging.info("Expected firmware A boot, done.")
+            expected_slot = 'B' if self.fw_vboot2 else 'A'
+            logging.info("Expected firmware " + expected_slot + " boot, done.")
             self.check_state((self.checkers.crossystem_checker, {
-                                  'mainfw_act': 'A',
+                                  'mainfw_act': expected_slot,
                                   'tried_fwb': '0',
                                   }))
