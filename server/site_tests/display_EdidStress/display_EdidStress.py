@@ -22,7 +22,7 @@ class display_EdidStress(chameleon_test.ChameleonTest):
     """
     version = 1
 
-    _EDID_TYPES = {'HDMI': {'HDMI', 'DVI'},
+    _EDID_TYPES = {'HDMI': {'HDMI', 'MHL', 'DVI'},
                    'DP': {'DP'},
                    'VGA': {'VGA'}}
 
