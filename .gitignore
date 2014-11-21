@@ -55,3 +55,8 @@ bug_filing_oauth_credentials.dat
 site_utils/autotest_private/
 site_utils/autotest_tools/
 site_utils/devserver/
+
+# Pupplylab files
+puppylab/Vagrantfile
+puppylab/chromeos_lab_core_cluster.box
+puppylab/.vagrant
