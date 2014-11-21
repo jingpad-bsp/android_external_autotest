@@ -26,14 +26,14 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
     SUSPEND_TIMEOUT = 7
     # Allowed timeout for the transition of resume.
     RESUME_TIMEOUT = 20
-    #Default waiting time in sec
+    # Default waiting time in sec
     WAIT_TIME = 5
-    #Crash paths to check for crash meta data
+    # Crash paths to check for crash meta data
     CRASH_PATHS = ['/var/spool/crash',
                    '/chronos/home/crash'
                    '/home/chronos/user/crash'
                   ]
-    #EDID data files names for different ports
+    # EDID data files names for different ports
     EDID_FILE_NAMES = [('DELL_U3011T_HDMI.txt', 'ASUS_VE258_HDMI.txt'),
                        ('DELL_U3011T_DP.txt', 'ASUS_VE258_DP.txt')]
     NO_LID_BOARDS = ['stumpy', 'panther', 'zako', 'tricky', 'mccloud']
@@ -93,7 +93,7 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
 
         """
         boot_id = self.host.get_boot_id()
-        #Plug before suspend
+        # Plug before suspend
         self.set_plug(plugged_before_suspend)
         time.sleep(self.WAIT_TIME)
         logging.debug('Going to suspend, for %d seconds...',
@@ -149,14 +149,14 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
         self.test_name = '%s-%s-%s' % (self.connector_used,
             str(self.resolution),
             'mirror' if self.test_mirrored else 'extended')
-        #Check connector
+        # Check connector
         self.check_external_display_connector(self.connector_used)
-        #Check test image
+        # Check test image
         self.load_test_image_and_check(
             self.test_name, self.resolution,
             under_mirrored_mode=self.test_mirrored,
             error_list=self.errors)
-        #Check for crashes.
+        # Check for crashes.
         if self.is_crash_data_present():
             self.errors.append('Crash data is detected on DUT')
         self.raise_on_errors(self.errors)
@@ -189,7 +189,7 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
 
         """
         self.apply_edid_file(edid_file)
-        #reconnect for the new edid if not suspended
+        # Reconnect for the new edid if not suspended
         if not suspended:
             self.reconnect_and_get_external_resolution()
 
@@ -215,82 +215,86 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
         self.test_mirrored = test_mirrored
         self.errors = []
 
-        #Remove any crash data before test procedure
+        # Check the servo object
+        if self.host.servo is None:
+            raise error.TestError('Invalid servo object found on the host.')
+
+        # Remove any crash data before test procedure
         if self.is_crash_data_present():
             self.remove_crash_data()
 
         self.connector_used = self.display_facade.get_external_connector_name()
         first_edid, second_edid = self.get_edids_filepaths()
 
-        #Set first monitor/EDID and tracked resolution
+        # Set first monitor/EDID and tracked resolution
         self.apply_edid_and_reconnect(first_edid)
-        #Set main display mode for the test
+        # Set main display mode for the test
         self.set_mirrored(self.test_mirrored)
 
-        #Reboot the device as connected and login
+        # Reboot the device as connected and login
         self.reboot_device(plugged_before=True, plugged_after=True)
-        #Check status
+        # Check status
         self.check_external_display()
 
-        #Dock and undock (close lid and open lid)
+        # Dock and undock (close lid and open lid)
         if self.dock_dut():
             self.undock_dut();
 
-        #Switch mode
+        # Switch mode
         self.switch_display_mode()
-        #Switch mode back
+        # Switch mode back
         self.switch_display_mode()
         self.check_external_display()
 
-        #Suspend and resume as currently plugged
+        # Suspend and resume as currently plugged
         self.suspend_resume()
 
-        #Unplug-Suspend-Plug-Resume
+        # Unplug-Suspend-Plug-Resume
         self.test_suspend_resume(plugged_before_suspend=False,
                                  plugged_after_suspend=True,
                                  plugged_after_resume=True)
-        #Check status
+        # Check status
         self.check_external_display()
 
-        #Switch mode
+        # Switch mode
         self.switch_display_mode()
-        #Switch mode back
+        # Switch mode back
         self.switch_display_mode()
 
-        #Suspens-Unplug-Resume-Plug
+        # Suspens-Unplug-Resume-Plug
         self.test_suspend_resume(plugged_before_suspend=True,
                                  plugged_after_suspend=False,
                                  plugged_after_resume=True)
-        #Check status
+        # Check status
         self.check_external_display()
 
-        #Docked mode(close lid)
+        # Docked mode(close lid)
         if self.dock_dut():
             logging.debug('Unplug display')
-            #Unplug, thus DUT should suspend
+            # Unplug, thus DUT should suspend
             self.set_plug(False)
             self.wait_to_suspend(self.SUSPEND_TIMEOUT)
             logging.debug('DUT is suspended')
 
-        #Plug the second monitor while suspended
+        # Plug the second monitor while suspended
         self.apply_edid_and_reconnect(second_edid, suspended=True)
-        #Plug back
+        # Plug back
         self.set_plug(True)
 
-        #Resume(open lid), doesn't hurt if DUT is not docked
+        # Resume(open lid), doesn't hurt if DUT is not docked
         self.undock_dut()
         self.wait_to_resume(self.RESUME_TIMEOUT)
 
         self.reconnect_and_get_external_resolution()
-        #Check status
+        # Check status
         self.check_external_display()
 
-        #Switch mode
+        # Switch mode
         self.switch_display_mode()
-        #Switch mode back
+        # Switch mode back
         self.switch_display_mode()
 
-        #Unplug and plug the original monitor
+        # Unplug and plug the original monitor
         self.set_plug(False)
         self.apply_edid_and_reconnect(first_edid)
         self.set_plug(True)
