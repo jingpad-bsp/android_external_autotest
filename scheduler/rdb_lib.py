@@ -15,8 +15,15 @@ from autotest_lib.server.cros import provision
 # format more ameanable to the rdb/rdb request managers.
 class JobQueryManager(object):
     """A caching query manager for all job related information."""
-    def __init__(self, queue_entries):
+    def __init__(self, queue_entries, suite_min_duts=None):
+        """Initialize.
 
+        @param queue_entries: A list of HostQueueEntry objects.
+        @param suite_min_duts: A dictionary where the key is suite job id,
+                and the value is the value of 'suite_min_dut' in the suite's
+                job keyvals. It should cover all the suite jobs which
+                the jobs (associated with the queue_entries) belong to.
+        """
         # TODO(beeps): Break this dependency on the host_query_manager,
         # crbug.com/336934.
         from autotest_lib.scheduler import query_managers
@@ -25,6 +32,7 @@ class JobQueryManager(object):
         self._job_acls = self.query_manager._get_job_acl_groups(jobs)
         self._job_deps = self.query_manager._get_job_dependencies(jobs)
         self._labels = self.query_manager._get_labels(self._job_deps)
+        self._suite_min_duts = suite_min_duts or {}
 
 
     def get_job_info(self, queue_entry):
@@ -39,26 +47,31 @@ class JobQueryManager(object):
         job_deps = [dep for dep in job_deps
                 if not provision.is_for_special_action(self._labels[dep].name)]
         job_acls = self._job_acls.get(job_id, [])
+        parent_id = queue_entry.job.parent_job_id
+        min_duts = self._suite_min_duts.get(parent_id, 0) if parent_id else 0
 
         return {'deps': job_deps, 'acls': job_acls,
                 'host_id': queue_entry.host_id,
                 'parent_job_id': queue_entry.job.parent_job_id,
-                'priority': queue_entry.job.priority}
+                'priority': queue_entry.job.priority,
+                'suite_min_duts': min_duts}
 
 
-def acquire_hosts(queue_entries):
+def acquire_hosts(queue_entries, suite_min_duts=None):
     """Acquire hosts for the list of queue_entries.
 
     The act of acquisition involves leasing a host from the rdb.
 
     @param queue_entries: A list of queue_entries that need hosts.
+    @param suite_min_duts: A dictionary that maps suite job id to the minimum
+                           number of duts required.
 
     @yield: An rdb_hosts.RDBClientHostWrapper for each host acquired on behalf
         of a queue_entry, or None if a host wasn't found.
 
     @raises RDBException: If something goes wrong making the request.
     """
-    job_query_manager = JobQueryManager(queue_entries)
+    job_query_manager = JobQueryManager(queue_entries, suite_min_duts)
     request_manager = rdb_requests.BaseHostRequestManager(
             rdb_requests.AcquireHostRequest, rdb.rdb_host_request_dispatcher)
     for entry in queue_entries:

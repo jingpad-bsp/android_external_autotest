@@ -489,3 +489,110 @@ class BaseRDBTest(rdb_testing_utils.AbstractBaseRDBTester, unittest.TestCase):
         queue_entries = self._dispatcher._refresh_pending_queue_entries()
         matching_host = rdb_lib.acquire_hosts(queue_entries).next()
         self.assert_(matching_host.id == db_host.id)
+
+
+class RDBMinDutTest(
+        rdb_testing_utils.AbstractBaseRDBTester, unittest.TestCase):
+    """Test AvailableHostRequestHandler"""
+
+    _config_section = 'AUTOTEST_WEB'
+
+
+    def min_dut_test_helper(self, num_hosts, suite_settings):
+        """A helper function to test min_dut logic.
+
+        @param num_hosts: Total number of hosts to create.
+        @param suite_settings: A dictionary specify how suites would be created
+                               and verified.
+                E.g.  {'priority': 10, 'num_jobs': 3,
+                       'min_duts':2, 'expected_aquired': 1}
+                       With this setting, will create a suite that has 3
+                       child jobs, with priority 10 and min_duts 2.
+                       The suite is expected to get 1 dut.
+        """
+        acls = set(['fake_acl'])
+        hosts = []
+        for i in range (0, num_hosts):
+            hosts.append(self.db_helper.create_host(
+                'h%d' % i, deps=set(['board:lumpy']), acls=acls))
+        suites = {}
+        suite_min_duts = {}
+        for setting in suite_settings:
+            s = self.create_suite(num=setting['num_jobs'],
+                                  priority=setting['priority'],
+                                  board='board:lumpy', acls=acls)
+            # Empty list will be used to store acquired hosts.
+            suites[s['parent_job'].id] = (setting, [])
+            suite_min_duts[s['parent_job'].id] = setting['min_duts']
+        queue_entries = self._dispatcher._refresh_pending_queue_entries()
+        matching_hosts = rdb_lib.acquire_hosts(queue_entries, suite_min_duts)
+        for host, queue_entry in zip(matching_hosts, queue_entries):
+            if host:
+                suites[queue_entry.job.parent_job_id][1].append(host)
+
+        for setting, hosts in suites.itervalues():
+            self.assertEqual(len(hosts),setting['expected_aquired'])
+
+
+    def testHighPriorityTakeAll(self):
+        """Min duts not satisfied."""
+        num_hosts = 1
+        suite1 = {'priority':20, 'num_jobs': 3, 'min_duts': 2,
+                  'expected_aquired': 1}
+        suite2 = {'priority':10, 'num_jobs': 7, 'min_duts': 5,
+                  'expected_aquired': 0}
+        self.min_dut_test_helper(num_hosts, [suite1, suite2])
+
+
+    def testHighPriorityMinSatisfied(self):
+        """High priority min duts satisfied."""
+        num_hosts = 4
+        suite1 = {'priority':20, 'num_jobs': 4, 'min_duts': 2,
+                  'expected_aquired': 2}
+        suite2 = {'priority':10, 'num_jobs': 7, 'min_duts': 5,
+                  'expected_aquired': 2}
+        self.min_dut_test_helper(num_hosts, [suite1, suite2])
+
+
+    def testAllPrioritiesMinSatisfied(self):
+        """Min duts satisfied."""
+        num_hosts = 7
+        suite1 = {'priority':20, 'num_jobs': 4, 'min_duts': 2,
+                  'expected_aquired': 2}
+        suite2 = {'priority':10, 'num_jobs': 7, 'min_duts': 5,
+                  'expected_aquired': 5}
+        self.min_dut_test_helper(num_hosts, [suite1, suite2])
+
+
+    def testHighPrioritySatisfied(self):
+        """Min duts satisfied, high priority suite satisfied."""
+        num_hosts = 10
+        suite1 = {'priority':20, 'num_jobs': 4, 'min_duts': 2,
+                  'expected_aquired': 4}
+        suite2 = {'priority':10, 'num_jobs': 7, 'min_duts': 5,
+                  'expected_aquired': 6}
+        self.min_dut_test_helper(num_hosts, [suite1, suite2])
+
+
+    def testEqualPriorityFirstSuiteMinSatisfied(self):
+        """Equal priority, earlier suite got min duts."""
+        num_hosts = 4
+        suite1 = {'priority':20, 'num_jobs': 4, 'min_duts': 2,
+                  'expected_aquired': 2}
+        suite2 = {'priority':20, 'num_jobs': 7, 'min_duts': 5,
+                  'expected_aquired': 2}
+        self.min_dut_test_helper(num_hosts, [suite1, suite2])
+
+
+    def testEqualPriorityAllSuitesMinSatisfied(self):
+        """Equal priority, all suites got min duts."""
+        num_hosts = 7
+        suite1 = {'priority':20, 'num_jobs': 4, 'min_duts': 2,
+                  'expected_aquired': 2}
+        suite2 = {'priority':20, 'num_jobs': 7, 'min_duts': 5,
+                  'expected_aquired': 5}
+        self.min_dut_test_helper(num_hosts, [suite1, suite2])
+
+
+if __name__ == '__main__':
+    unittest.main()

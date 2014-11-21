@@ -442,7 +442,7 @@ class AbstractBaseRDBTester(frontend_test_utils.FrontendTestMixin):
 
 
     def create_suite(self, user='autotest_system', num=2, priority=0,
-                     board='z', build='x'):
+                     board='z', build='x', acls=set()):
         """Create num jobs with the same parent_job_id, board, build, priority.
 
         @return: A dictionary with the parent job object keyed as 'parent_job'
@@ -457,6 +457,7 @@ class AbstractBaseRDBTester(frontend_test_utils.FrontendTestMixin):
         for job_index in range(0, num):
             jobs[job_index] = self.create_job(user=user, priority=priority,
                                               deps=set([board, build]),
+                                              acls=acls,
                                               parent_job_id=parent_job.id)
         return jobs
 

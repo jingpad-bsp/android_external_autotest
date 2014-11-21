@@ -5,7 +5,6 @@
 """Rdb server module.
 """
 
-import collections
 import logging
 
 import common
@@ -94,7 +93,7 @@ class BaseHostRequestHandler(object):
         self.response_map = {}
 
 
-    def update_response_map(self, request, response):
+    def update_response_map(self, request, response, append=False):
         """Record a response for a request.
 
         The response_map only contains requests that were either satisfied, or
@@ -104,6 +103,10 @@ class BaseHostRequestHandler(object):
 
         @param response: A response for the request.
         @param request: The request that has reserved these hosts.
+        @param append: Boolean, whether to append new hosts in
+                       |response| for existing request.
+                       Will not append if existing response is
+                       a list of exceptions.
 
         @raises RDBException: If an empty values is added to the map.
         """
@@ -111,12 +114,17 @@ class BaseHostRequestHandler(object):
             raise rdb_utils.RDBException('response_map dict can only contain '
                     'valid responses. Request %s, response %s is invalid.' %
                      (request, response))
-        if self.response_map.get(request):
+        exist_response = self.response_map.setdefault(request, [])
+        if exist_response and not append:
             raise rdb_utils.RDBException('Request %s already has response %s '
                                          'the rdb cannot return multiple '
                                          'responses for the same request.' %
                                          (request, response))
-        self.response_map[request] = response
+        if exist_response and append and not isinstance(
+                exist_response[0], rdb_hosts.RDBHost):
+            # Do not append if existing response contains exception.
+            return
+        exist_response.extend(response)
 
 
     def _check_response_map(self):
@@ -234,6 +242,7 @@ class AvailableHostRequestHandler(BaseHostRequestHandler):
         self.response_map = {}
         self.unsatisfied_requests = 0
         self.leased_hosts_count = 0
+        self.request_accountant = None
 
 
     @_timer.decorate
@@ -286,25 +295,9 @@ class AvailableHostRequestHandler(BaseHostRequestHandler):
         return acl_match and label_match
 
 
-    @classmethod
-    def batch_requests(cls, requests):
-        """ Group similar requests, sort by priority and parent_job_id.
-
-        @param requests: A list or unsorted, unordered requests.
-
-        @return: A list of tuples of the form (request, number of occurances)
-            formed by counting the number of requests with the same acls/deps/
-            priority in the input list of requests, and sorting by priority.
-            The order of this list ensures against priority inversion.
-        """
-        sort_function = lambda request: (request[0].priority,
-                                         -request[0].parent_job_id)
-        return sorted(collections.Counter(requests).items(), key=sort_function,
-                      reverse=True)
-
-
     @rdb_cache_manager.memoize_hosts
-    def _acquire_hosts(self, request, hosts_required, **kwargs):
+    def _acquire_hosts(self, request, hosts_required, is_acquire_min_duts=False,
+                       **kwargs):
         """Acquire hosts for a group of similar requests.
 
         Find and acquire hosts that can satisfy a group of requests.
@@ -316,6 +309,9 @@ class AvailableHostRequestHandler(BaseHostRequestHandler):
 
         @param hosts_required: Number of hosts required to satisfy request.
         @param request: The request for hosts.
+        @param is_acquire_min_duts: Boolean. Indicate whether this is to
+                                    acquire minimum required duts, only used
+                                    for stats purpose.
 
         @return: The list of excess matching hosts.
         """
@@ -332,7 +328,7 @@ class AvailableHostRequestHandler(BaseHostRequestHandler):
         if attempt_lease_hosts:
             leased_hosts = self.lease_hosts(hosts[:attempt_lease_hosts])
             if leased_hosts:
-                self.update_response_map(request, leased_hosts)
+                self.update_response_map(request, leased_hosts, append=True)
 
             # [:attempt_leased_hosts] - leased_hosts will include hosts that
             # failed leasing, most likely because they're already leased, so
@@ -348,6 +344,9 @@ class AvailableHostRequestHandler(BaseHostRequestHandler):
                 self.cache.stale_entries.append(
                         (float(failed_leasing)/line_length) * 100)
             self.leased_hosts_count += leased_host_count
+        if is_acquire_min_duts:
+            self.request_accountant.record_acquire_min_duts(
+                    request, hosts_required, leased_host_count)
         self.unsatisfied_requests += max(hosts_required - leased_host_count, 0)
         # Cache the unleased matching hosts against the request.
         return hosts[attempt_lease_hosts:]
@@ -367,9 +366,22 @@ class AvailableHostRequestHandler(BaseHostRequestHandler):
 
         logging.debug('Processing %s host acquisition requests',
                       len(host_requests))
-        for request, count in self.batch_requests(host_requests):
-            self._acquire_hosts(request, count)
+
+        self.request_accountant = rdb_utils.RequestAccountant(host_requests)
+        # First pass tries to satisfy min_duts for each suite.
+        for request in self.request_accountant.requests:
+            to_acquire = self.request_accountant.get_min_duts(request)
+            if to_acquire > 0:
+                self._acquire_hosts(request, to_acquire,
+                                    is_acquire_min_duts=True)
             distinct_requests += 1
+
+        # Second pass tries to allocate duts to the rest unsatisfied requests.
+        for request in self.request_accountant.requests:
+            to_acquire = self.request_accountant.get_duts(request)
+            if to_acquire > 0:
+                self._acquire_hosts(request, to_acquire,
+                                    is_acquire_min_duts=False)
 
         self.cache.record_stats()
         logging.debug('Host acquisition stats: distinct requests: %s, leased '

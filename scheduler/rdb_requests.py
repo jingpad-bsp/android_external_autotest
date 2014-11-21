@@ -192,7 +192,8 @@ class AcquireHostRequest(HostRequest):
     """
     # TODO(beeps): Priority and parent_job_id shouldn't be a part of the
     # core request.
-    _request_args = set(['priority', 'deps', 'acls', 'parent_job_id'])
+    _request_args = set(['priority', 'deps', 'acls', 'parent_job_id',
+                         'suite_min_duts'])
 
 
     def __init__(self, **kwargs):
