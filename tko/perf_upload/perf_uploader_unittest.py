@@ -324,34 +324,20 @@ class test_format_for_upload(unittest.TestCase):
     def test_format_for_upload(self):
         """Verifies format_for_upload generates correct json data."""
         result = perf_uploader._format_for_upload(
-            'platform', '41.6463.0.0', '41.0.2216.1',
-            self._perf_data, self._PRESENT_INFO)
+                'platform', '1200.0.0', '25.10.0.0',
+                self._perf_data, self._PRESENT_INFO)
         expected_result_string = (
-            '[{"supplemental_columns": {"r_cros_version": "41.6463.0.0", '
-            '"r_chrome_version": "41.0.2216.1"}, "bot": "cros-platform", '
-            '"higher_is_better": false, "value": 2.7, '
-            '"units": "msec", "master": "new_master_name", '
-            '"error": 0.2, "test": "new_test_name/graph_name/metric1"}, '
-            '{"supplemental_columns": {"r_cros_version": "41.6463.0.0", '
-            '"r_chrome_version": "41.0.2216.1"}, "bot": "cros-platform", '
-            '"higher_is_better": true, "value": 101.35, '
-            '"units": "frames_per_sec", "master": "new_master_name", '
-            '"error": 5.78, "test": "new_test_name/metric2"}]')
+                '[{"supplemental_columns": {"r_cros_version": "1200.0.0", '
+                '"r_chrome_version": "25.10.0.0"}, "bot": "cros-platform", '
+                '"higher_is_better": false, "value": 2.7, '
+                '"units": "msec", "master": "new_master_name", '
+                '"error": 0.2, "test": "new_test_name/graph_name/metric1"}, '
+                '{"supplemental_columns": {"r_cros_version": "1200.0.0", '
+                '"r_chrome_version": "25.10.0.0"}, "bot": "cros-platform", '
+                '"higher_is_better": true, "value": 101.35, '
+                '"units": "frames_per_sec", "master": "new_master_name", '
+                '"error": 5.78, "test": "new_test_name/metric2"}]')
         self._verify_result_string(result['data'], expected_result_string)
-
-
-    def test_is_chromeos_master(self):
-        """Verifies that we recognize ChromeOS master/ToT builds."""
-        # Standard ChromeOS version on master.
-        self.assertTrue(perf_uploader._is_chromeos_master('6463.0.0'))
-        # Modified ChromeOS version as uploaded to dashboard.
-        self.assertTrue(perf_uploader._is_chromeos_master('41.6463.0.0'))
-        # Non-master ChromeOS version.
-        self.assertFalse(perf_uploader._is_chromeos_master('41.6463.1.0'))
-        # Developer built ChromeOS version.
-        self.assertFalse(perf_uploader._is_chromeos_master('6463.0.2014_11_14_1539'))
-        # CQ/PFQ version number is not master either.
-        self.assertFalse(perf_uploader._is_chromeos_master('34.5454.0.0-rc4'))
 
 
 if __name__ == '__main__':

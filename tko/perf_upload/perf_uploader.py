@@ -179,7 +179,7 @@ def _format_for_upload(platform_name, cros_version, chrome_version, perf_data,
 
     """
     dash_entries = []
-    for (desc, _), data in perf_data.iteritems():
+    for (desc, graph), data in perf_data.iteritems():
         # Each perf metric is named by a path that encodes the test name,
         # a graph name (if specified), and a description.  This must be defined
         # according to rules set by the Chrome team, as implemented in:
@@ -239,17 +239,6 @@ def _send_to_dashboard(data_obj):
                 'HTTPException for JSON %s\n' % data_obj['data'])
 
 
-def _is_chromeos_master(version):
-    """Tests if the version string represents a master/ToT build.
-
-    @param version: A ChromeOS release version string.
-
-    @return True if on master/ToT and False otherwise.
-
-    """
-    return version.endswith('.0.0')
-
-
 def upload_test(job, test):
     """Uploads any perf data associated with a test to the perf dashboard.
 
@@ -261,18 +250,6 @@ def upload_test(job, test):
     """
     if not test.perf_values:
         return
-
-    cros_version = test.attributes.get('CHROMEOS_RELEASE_VERSION', '')
-    # Do not send data from ChromeOS branches to the dashboard, as it will plot
-    # it incorrectly (crbug.com/365051). Chromium minibranches are ok though.
-    if not _is_chromeos_master(cros_version):
-        return
-
-    chrome_version = test.attributes.get('CHROME_VERSION', '')
-    # Prefix the chromeOS version number with the chrome milestone.
-    # TODO(dennisjeffrey): Modify the dashboard to accept the chromeOS version
-    # number *without* the milestone attached.
-    cros_version = chrome_version[:chrome_version.find('.') + 1] + cros_version
 
     # Aggregate values from multiple iterations together.
     perf_data = _aggregate_iterations(test.perf_values)
@@ -286,6 +263,12 @@ def upload_test(job, test):
     # Format the perf data for the upload, then upload it.
     test_name = test.testname
     platform_name = job.machine_group
+    cros_version = test.attributes.get('CHROMEOS_RELEASE_VERSION', '')
+    chrome_version = test.attributes.get('CHROME_VERSION', '')
+    # Prefix the chromeOS version number with the chrome milestone.
+    # TODO(dennisjeffrey): Modify the dashboard to accept the chromeOS version
+    # number *without* the milestone attached.
+    cros_version = chrome_version[:chrome_version.find('.') + 1] + cros_version
     config_data = _parse_config_file()
     try:
         presentation_info = _gather_presentation_info(config_data, test_name)
