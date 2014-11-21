@@ -26,8 +26,10 @@ class display_HotPlugNoisy(chameleon_test.ChameleonTest):
         (True, True),
     ]
 
-    PULSES_PLUGGED = [1, 2, 16, 32, 256, 512, 4096, 8192, (1<<16), (1<<17), (1<<20)]
-    PULSES_UNPLUGGED = PULSES_PLUGGED + [1<<21]
+    # pulse segments in msec that end with plugged state
+    PULSES_PLUGGED = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
+    # pulse segments in msec that end with unplugged state
+    PULSES_UNPLUGGED = PULSES_PLUGGED + [2048]
 
 
     def run_once(self, host, test_mirrored=False):
