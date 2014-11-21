@@ -149,6 +149,10 @@ class graphics_GLAPICheck(test.test):
 
 
     def run_once(self):
+        # TODO(ihf): Remove this once verifying the api works on freon.
+        if utils.is_freon():
+            return
+
         test_done = False
         cmd_gl = os.path.join(self.bindir, 'gl_APICheck')
         cmd_gles = os.path.join(self.bindir, 'gles_APICheck')

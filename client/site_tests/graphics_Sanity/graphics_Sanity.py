@@ -47,6 +47,10 @@ class graphics_Sanity(test.test):
         Draws a texture with a soft ellipse twice and captures each image.
         Compares the output fuzzily against reference images.
         """
+        # TODO(ihf): Remove this once GLBench works on freon.
+        if utils.is_freon():
+            return
+
         dep = 'glbench'
         dep_dir = os.path.join(self.autodir, 'deps', dep)
         self.job.install_pkg(dep, 'dep', dep_dir)

@@ -91,6 +91,10 @@ class graphics_GLBench(test.test):
     return False
 
   def run_once(self, options='', hasty=False):
+    # TODO(ihf): Remove this once GLBench works on freon.
+    if utils.is_freon():
+      return
+
     dep = 'glbench'
     dep_dir = os.path.join(self.autodir, 'deps', dep)
     self.job.install_pkg(dep, 'dep', dep_dir)

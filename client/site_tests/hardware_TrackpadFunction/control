@@ -20,7 +20,4 @@ This test probes the trackpad device name and detect if CMT has been loaded
 correctly for it.
 """
 
-from autotest_lib.client.bin import utils
-# TODO(ihf): Delete this test once all boards use Freon.
-if not utils.is_freon():
-    job.run_test('hardware_TrackpadFunction')
+job.run_test('hardware_TrackpadFunction')

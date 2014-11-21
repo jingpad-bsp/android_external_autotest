@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 from autotest_lib.client.bin import test
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.video import histogram_parser
@@ -22,6 +23,10 @@ class video_ChromeHWDecodeUsed(test.test):
 
         @param video_file: Sample video file to be loaded in Chrome.
         """
+        # TODO(ihf): Remove this once hw decode works on freon.
+        if utils.is_freon():
+            return
+
         with chrome.Chrome() as cr:
             tab1 = cr.browser.tabs[0]
             tab1.Navigate(video_file)

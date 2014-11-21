@@ -34,6 +34,10 @@ class graphics_SanAngeles(test.test):
             self.write_perf_keyval(keyvals)
 
     def run_once(self):
+        # TODO(ihf): Remove this once SanAngeles works on freon.
+        if utils.is_freon():
+            return
+
         cmd_gl = os.path.join(self.srcdir, 'SanOGL')
         cmd_gles = os.path.join(self.srcdir, 'SanOGLES')
         cmd_gles_s = os.path.join(self.srcdir, 'SanOGLES_S')

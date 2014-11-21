@@ -30,6 +30,10 @@ class graphics_PiglitBVT(test.test):
             self.write_perf_keyval(keyvals)
 
     def run_once(self, test_slice):
+        # TODO(ihf): Remove this once Piglit works on freon.
+        if utils.is_freon():
+            return
+
         gpu_family = utils.get_gpu_family()
         family = gpu_family
         logging.info('Detected gpu family %s.', gpu_family)

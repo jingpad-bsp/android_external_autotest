@@ -10,6 +10,7 @@ import re
 from subprocess import Popen, PIPE
 
 from autotest_lib.client.bin import test
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 
 # Keys for udev db
@@ -54,6 +55,10 @@ class hardware_TrackpadFunction(test.test):
     def run_once(self):
         """Test if cmt driver is loaded correctly.
         """
+        # TODO(ihf): Delete this test once all boards run freon.
+        if utils.is_freon():
+            return
+
         devices = self._udevadm_export_db()
         named_devices = [dev for dev in devices if KEY_NAME in dev]
 

@@ -52,6 +52,10 @@ class graphics_GLMark2(test.test):
             self.write_perf_keyval(keyvals)
 
     def run_once(self, size='800x600', hasty=False, min_score=None):
+        # TODO(ihf): Remove this once GLMark works on freon.
+        if utils.is_freon():
+	    return
+
         dep = 'glmark2'
         dep_dir = os.path.join(self.autodir, 'deps', dep)
         self.job.install_pkg(dep, 'dep', dep_dir)
