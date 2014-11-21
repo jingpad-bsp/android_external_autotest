@@ -43,6 +43,37 @@ class AudioTestData(object):
         self.data_format = data_format
 
 
+    @property
+    def path(self):
+        """The path to this test data.
+
+        This test data can be on server and/or on DUT. Client side and server
+        side test can use this property to access the path to the file.
+
+        @returns: The path to the file on server or on DUT, depending on which
+                  path exists.
+
+        @raises: IOError if path does not exist.
+
+        """
+        if os.path.exists(self.path_on_server):
+            return self.path_on_server
+        if os.path.exists(self.path_on_dut):
+            return self.path_on_dut
+        raise IOError('Can not find path %s nor %s' %
+                      (self.path_on_server, self.path_on_dut))
+
+    def get_binary(self):
+        """The binary of test data.
+
+        @returns: The binary of test data.
+
+        """
+        with open(self.path, 'rb') as f:
+            return f.read()
+
+
+
 AUDIO_PATH = os.path.join(os.path.dirname(__file__))
 
 """
