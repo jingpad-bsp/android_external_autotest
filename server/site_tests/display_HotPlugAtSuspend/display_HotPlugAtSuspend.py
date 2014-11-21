@@ -83,7 +83,7 @@ class display_HotPlugAtSuspend(chameleon_test.ChameleonTest):
             time.sleep(self.TIME_MARGIN_BEFORE_RESUME)
 
             logging.info('- Wait for resume...')
-            self.wait_for_full_wakeup(boot_id, self.RESUME_TIMEOUT)
+            self.host.test_wait_for_resume(boot_id, self.RESUME_TIMEOUT)
 
             logging.info('Resumed back')
 
