@@ -15,6 +15,7 @@ import common
 from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import models
+from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.scheduler import scheduler_models
 from autotest_lib.scheduler import scheduler_lib
 
@@ -168,6 +169,45 @@ class AFEJobQueryManager(object):
         return list(models.HostQueueEntry.objects.filter(
                 host_id__in=multiple_hosts, active=True).values(
                         'id', 'job_id', 'host_id'))
+
+
+    @_job_timer.decorate
+    def get_suite_host_assignment(self):
+        """A helper method to get how many hosts each suite is holding.
+
+        @return: Two dictionaries (suite_host_num, hosts_to_suites)
+                 suite_host_num maps suite job id to number of hosts
+                 holding by its child jobs.
+                 hosts_to_suites contains current hosts held by
+                 any suites, and maps the host id to its parent_job_id.
+        """
+        query = models.HostQueueEntry.objects.filter(
+                host_id__isnull=False, complete=0, active=1,
+                job__parent_job_id__isnull=False)
+        suite_host_num = {}
+        hosts_to_suites = {}
+        for hqe in query:
+            host_id = hqe.host_id
+            parent_job_id = hqe.job.parent_job_id
+            count = suite_host_num.get(parent_job_id, 0)
+            suite_host_num[parent_job_id] = count + 1
+            hosts_to_suites[host_id] = parent_job_id
+        return suite_host_num, hosts_to_suites
+
+
+    @_job_timer.decorate
+    def get_min_duts_of_suites(self, suite_job_ids):
+        """Load suite_min_duts job keyval for a set of suites.
+
+        @param suite_job_ids: A set of suite job ids.
+
+        @return: A dictionary where the key is a suite job id,
+                 the value is the value of 'suite_min_duts'.
+        """
+        query = models.JobKeyval.objects.filter(
+                job_id__in=suite_job_ids,
+                key=constants.SUITE_MIN_DUTS_KEY, value__isnull=False)
+        return dict((keyval.job_id, int(keyval.value)) for keyval in query)
 
 
 _host_timer = stats.Timer('scheduler.host_query_manager')

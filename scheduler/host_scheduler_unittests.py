@@ -13,12 +13,14 @@ from autotest_lib.client.common_lib.test_utils import unittest
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import frontend_test_utils
 from autotest_lib.frontend.afe import models
+from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.scheduler import email_manager
 from autotest_lib.scheduler import host_scheduler
 from autotest_lib.scheduler import monitor_db
 from autotest_lib.scheduler import rdb
 from autotest_lib.scheduler import rdb_lib
 from autotest_lib.scheduler import rdb_testing_utils
+from autotest_lib.scheduler import scheduler_models
 
 
 class QueryManagerTests(rdb_testing_utils.AbstractBaseRDBTester,
@@ -286,4 +288,129 @@ class HostSchedulerTests(rdb_testing_utils.AbstractBaseRDBTester,
         self.host_scheduler._release_hosts()
         host = self.db_helper.get_host(hostname='h1')[0]
         self.assertTrue(host.leased == True)
+
+
+class SuiteRecorderTest(rdb_testing_utils.AbstractBaseRDBTester,
+                        unittest.TestCase):
+    """Test the functionality of SuiteRecorder"""
+
+    _config_section = 'AUTOTEST_WEB'
+
+    def testGetSuiteHostAssignment(self):
+        """Test the initialization of SuiteRecord."""
+        hosts = []
+        num = 4
+        for i in range (0, num):
+            hosts.append(self.db_helper.create_host(
+                'h%d' % i, deps=set(['board:lumpy'])))
+        single_job =  self.create_job(deps=set(['a']))
+        jobs_1 = self.create_suite(num=2, board='board:lumpy')
+        jobs_2 = self.create_suite(num=2, board='board:lumpy')
+        # We have 4 hosts, 5 jobs, one job in the second suite won't
+        # get a host.
+        all_jobs = ([single_job] +
+                    [jobs_1[k] for k in jobs_1 if k !='parent_job'] +
+                    [jobs_2[k] for k in jobs_2 if k !='parent_job'])
+        for i in range(0, num):
+            self.db_helper.add_host_to_job(hosts[i], all_jobs[i].id,
+                                           activate=True)
+        r = host_scheduler.SuiteRecorder(self.job_query_manager)
+        self.assertEqual(r.suite_host_num,
+                         {jobs_1['parent_job'].id:2,
+                          jobs_2['parent_job'].id:1})
+        self.assertEqual(r.hosts_to_suites,
+                         {hosts[1].id: jobs_1['parent_job'].id,
+                          hosts[2].id: jobs_1['parent_job'].id,
+                          hosts[3].id: jobs_2['parent_job'].id})
+
+
+    def verify_state(self, recorder, suite_host_num, hosts_to_suites):
+        """Verify the suite, host information held by SuiteRecorder.
+
+        @param recorder: A SuiteRecorder object.
+        @param suite_host_num: a dict, expected value of suite_host_num.
+        @param hosts_to_suites: a dict, expected value of hosts_to_suites.
+        """
+        self.assertEqual(recorder.suite_host_num, suite_host_num)
+        self.assertEqual(recorder.hosts_to_suites, hosts_to_suites)
+
+
+    def assign_host_to_job(self, host, job, recorder=None):
+        """A helper function that adds a host to a job and record it.
+
+        @param host: A Host object.
+        @param job: A Job object.
+        @param recorder: A SuiteRecorder object to record the assignment.
+
+        @return a HostQueueEntry object that binds the host and job together.
+        """
+        self.db_helper.add_host_to_job(host, job)
+        hqe = scheduler_models.HostQueueEntry.fetch(where='job_id=%s',
+                                                     params=(job.id,))[0]
+        if recorder:
+            recorder.record_assignment(hqe)
+        return hqe
+
+
+    def testRecordAssignmentAndRelease(self):
+        """Test when a host is assigned to suite"""
+        r = host_scheduler.SuiteRecorder(self.job_query_manager)
+        self.verify_state(r, {}, {})
+        host1 = self.db_helper.create_host('h1')
+        host2 = self.db_helper.create_host('h2')
+        jobs = self.create_suite(num=2)
+        hqe = scheduler_models.HostQueueEntry.fetch(where='job_id=%s',
+                                                     params=(jobs[0].id,))[0]
+        # HQE got a host.
+        hqe = self.assign_host_to_job(host1, jobs[0], r)
+        self.verify_state(r, {jobs['parent_job'].id:1},
+                          {host1.id: jobs['parent_job'].id})
+        # Tried to call record_assignment again, nothing should happen.
+        r.record_assignment(hqe)
+        self.verify_state(r, {jobs['parent_job'].id:1},
+                          {host1.id: jobs['parent_job'].id})
+        # Second hqe got a host
+        self.assign_host_to_job(host2, jobs[1], r)
+        self.verify_state(r, {jobs['parent_job'].id:2},
+                          {host1.id: jobs['parent_job'].id,
+                           host2.id: jobs['parent_job'].id})
+        # Release host1
+        r.record_release([host1])
+        self.verify_state(r, {jobs['parent_job'].id:1},
+                          {host2.id: jobs['parent_job'].id})
+        # Release host2
+        r.record_release([host2])
+        self.verify_state(r, {}, {})
+
+
+    def testGetMinDuts(self):
+        """Test get min dut for suite."""
+        host1 = self.db_helper.create_host('h1')
+        host2 = self.db_helper.create_host('h2')
+        host3 = self.db_helper.create_host('h3')
+        jobs = self.create_suite(num=3)
+        pid = jobs['parent_job'].id
+        # Set min_dut=1 for the suite as a job keyval.
+        keyval = models.JobKeyval(
+                job_id=pid, key=constants.SUITE_MIN_DUTS_KEY, value=2)
+        keyval.save()
+        r = host_scheduler.SuiteRecorder(self.job_query_manager)
+        # Not job has got any host, min dut to request should equal to what's
+        # specified in the job keyval.
+        self.assertEqual(r.get_min_duts([pid]), {pid: 2})
+        self.assign_host_to_job(host1, jobs[0], r)
+        self.assertEqual(r.get_min_duts([pid]), {pid: 1})
+        self.assign_host_to_job(host2, jobs[1], r)
+        self.assertEqual(r.get_min_duts([pid]), {pid: 0})
+        self.assign_host_to_job(host3, jobs[2], r)
+        self.assertEqual(r.get_min_duts([pid]), {pid: 0})
+        r.record_release([host1])
+        self.assertEqual(r.get_min_duts([pid]), {pid: 0})
+        r.record_release([host2])
+        self.assertEqual(r.get_min_duts([pid]), {pid: 1})
+        r.record_release([host3])
+        self.assertEqual(r.get_min_duts([pid]), {pid: 2})
+
+if __name__ == '__main__':
+    unittest.main()
 

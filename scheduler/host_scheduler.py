@@ -20,6 +20,34 @@ active hqes/special tasks are assigned the same host, and sets the leased bit
 for hosts needed by frontend special tasks. The need for the latter is only
 apparent when viewed in the context of the job-scheduler (monitor_db), which
 runs special tasks only after their hosts have been leased.
+
+** Suport minimum duts requirement for suites (non-inline mode) **
+
+Each suite can specify the minimum number of duts it requires by
+dropping a 'suite_min_duts' job keyval which defaults to 0.
+
+When suites are competing for duts, if any suite has not got minimum duts
+it requires, the host scheduler will try to meet the requirement first,
+even if other suite may have higher priority or earlier timestamp. Once
+all suites' minimum duts requirement have been fullfilled, the host
+scheduler will allocate the rest of duts based on job priority and suite job id.
+This is to prevent low priority suites from starving when sharing pool with
+high-priority suites.
+
+Note:
+    1. Prevent potential starvation:
+       We need to carefully choose |suite_min_duts| for both low and high
+       priority suites. If a high priority suite didn't specify it but a low
+       priority one does, the high priority suite can be starved!
+    2. Restart requirement:
+       Restart host scheduler if you manually released a host by setting
+       leased=0 in db. This is needed because host scheduler maintains internal
+       state of host assignment for suites.
+    3. Exchanging duts triggers provisioning:
+       TODO(fdeng): There is a chance two suites can exchange duts,
+       if the two suites are for different builds, the exchange
+       will trigger provisioning. This can be optimized by preferring getting
+       hosts with the same build.
 """
 
 import argparse
@@ -52,6 +80,104 @@ _monitor_db_host_acquisition = global_config.global_config.get_config_value(
         'SCHEDULER', 'inline_host_acquisition', type=bool, default=True)
 
 
+class SuiteRecorder(object):
+    """Recording the host assignment for suites.
+
+    The recorder holds two things:
+        * suite_host_num, records how many duts a suite is holding,
+          which is a map <suite_job_id -> num_of_hosts>
+        * hosts_to_suites, records which host is assigned to which
+          suite, it is a map <host_id -> suite_job_id>
+    The two datastructure got updated when a host is assigned to or released
+    by a job.
+
+    The reason to maintain hosts_to_suites is that, when a host is released,
+    we need to know which suite it was leased to. Querying the db for the
+    latest completed job that has run on a host is slow.  Therefore, we go with
+    an alternative: keeping a <host id, suite job id> map
+    in memory (for 10K hosts, the map should take less than 1M memory on
+    64-bit machine with python 2.7)
+
+    """
+
+
+    _timer = stats.Timer('suite_recorder')
+
+
+    def __init__(self, job_query_manager):
+        """Initialize.
+
+        @param job_queue_manager: A JobQueueryManager object.
+        """
+        self.job_query_manager = job_query_manager
+        self.suite_host_num, self.hosts_to_suites = (
+                self.job_query_manager.get_suite_host_assignment())
+
+
+    def record_assignment(self, queue_entry):
+        """Record that the hqe has got a host.
+
+        @param queue_entry: A scheduler_models.HostQueueEntry object which has
+                            got a host.
+        """
+        parent_id = queue_entry.job.parent_job_id
+        if not parent_id:
+            return
+        if self.hosts_to_suites.get(queue_entry.host_id, None) == parent_id:
+            logging.error('HQE (id: %d, parent_job_id: %d, host: %s) '
+                          'seems already recorded', queue_entry.id,
+                          parent_id, queue_entry.host.hostname)
+            return
+        num_hosts = self.suite_host_num.get(parent_id, 0)
+        self.suite_host_num[parent_id] = num_hosts + 1
+        self.hosts_to_suites[queue_entry.host_id] = parent_id
+        logging.debug('Suite %d got host %s, currently holding %d hosts',
+                      parent_id, queue_entry.host.hostname,
+                      self.suite_host_num[parent_id])
+
+
+    def record_release(self, hosts):
+        """Update the record with host releasing event.
+
+        @param hosts: A list of scheduler_models.Host objects.
+        """
+        for host in hosts:
+            if host.id in self.hosts_to_suites:
+                parent_job_id = self.hosts_to_suites.pop(host.id)
+                count = self.suite_host_num[parent_job_id] - 1
+                if count == 0:
+                    del self.suite_host_num[parent_job_id]
+                else:
+                    self.suite_host_num[parent_job_id] = count
+                logging.debug(
+                        'Suite %d releases host %s, currently holding %d hosts',
+                        parent_job_id, host.hostname, count)
+
+
+    def get_min_duts(self, suite_job_ids):
+        """Figure out min duts to request.
+
+        Given a set ids of suite jobs, figure out minimum duts to request for
+        each suite. It is determined by two factors: min_duts specified
+        for each suite in its job keyvals, and how many duts a suite is
+        currently holding.
+
+        @param suite_job_ids: A set of suite job ids.
+
+        @returns: A dictionary, the key is suite_job_id, the value
+                  is the minimum number of duts to request.
+        """
+        suite_min_duts = self.job_query_manager.get_min_duts_of_suites(
+                suite_job_ids)
+        for parent_id in suite_job_ids:
+            min_duts = suite_min_duts.get(parent_id, 0)
+            cur_duts = self.suite_host_num.get(parent_id, 0)
+            suite_min_duts[parent_id] = max(0, min_duts - cur_duts)
+        logging.debug('Minimum duts to get for suites (suite_id: min_duts): %s',
+                      suite_min_duts)
+        return suite_min_duts
+
+
 class BaseHostScheduler(object):
     """Base class containing host acquisition logic.
 
@@ -76,12 +202,15 @@ class BaseHostScheduler(object):
 
         Release all hosts that are ready and are currently not being used by an
         active hqe, and don't have a new special task scheduled against them.
+
+        @return a list of hosts that are released.
         """
-        release_hostnames = [host.hostname for host in
-                             self.host_query_manager.find_unused_healty_hosts()]
+        release_hosts = self.host_query_manager.find_unused_healty_hosts()
+        release_hostnames = [host.hostname for host in release_hosts]
         if release_hostnames:
             self.host_query_manager.set_leased(
                     False, hostname__in=release_hostnames)
+        return release_hosts
 
 
     @classmethod
@@ -117,8 +246,24 @@ class BaseHostScheduler(object):
         queue_entry.schedule_pre_job_tasks()
 
 
-    @classmethod
-    def find_hosts_for_jobs(cls, host_jobs):
+    def acquire_hosts(self, host_jobs):
+        """Accquire hosts for given jobs.
+
+        This method sends jobs that need hosts to rdb.
+        Child class can override this method to pipe more args
+        to rdb.
+
+        @param host_jobs: A list of queue entries that either require hosts,
+            or require host assignment validation through the rdb.
+
+        @param return: A generator that yields an rdb_hosts.RDBClientHostWrapper
+                       for each host acquired on behalf of a queue_entry,
+                       or None if a host wasn't found.
+        """
+        return rdb_lib.acquire_hosts(host_jobs)
+
+
+    def find_hosts_for_jobs(self, host_jobs):
         """Find and verify hosts for a list of jobs.
 
         @param host_jobs: A list of queue entries that either require hosts,
@@ -127,10 +272,10 @@ class BaseHostScheduler(object):
             valid host-queue_entry assignment.
         """
         jobs_with_hosts = []
-        hosts = rdb_lib.acquire_hosts(host_jobs)
+        hosts = self.acquire_hosts(host_jobs)
         for host, job in zip(hosts, host_jobs):
             if host:
-                jobs_with_hosts.append(cls.host_assignment(host, job))
+                jobs_with_hosts.append(self.host_assignment(host, job))
         return jobs_with_hosts
 
 
@@ -149,11 +294,17 @@ class HostScheduler(BaseHostScheduler):
     def __init__(self):
         super(HostScheduler, self).__init__()
         self.job_query_manager = query_managers.AFEJobQueryManager()
+        # Keeping track on how many hosts each suite is holding
+        # {suite_job_id: num_hosts}
+        self._suite_recorder = SuiteRecorder(self.job_query_manager)
 
 
-    @classmethod
-    def _record_host_assignment(cls, host, queue_entry):
-        """Record how long it takes to assign a host to a job in metadata db.
+    def _record_host_assignment(self, host, queue_entry):
+        """Record that |host| is assigned to |queue_entry|.
+
+        Record:
+            1. How long it takes to assign a host to a job in metadata db.
+            2. Record host assignment of a suite.
 
         @param host: A Host object.
         @param queue_entry: A HostQueueEntry object.
@@ -163,6 +314,7 @@ class HostScheduler(BaseHostScheduler):
         job_overhead.record_state_duration(
                 queue_entry.job_id, host.hostname,
                 job_overhead.STATUS.QUEUED, secs_in_queued)
+        self._suite_recorder.record_assignment(queue_entry)
 
 
     @_timer.decorate
@@ -226,6 +378,21 @@ class HostScheduler(BaseHostScheduler):
             email_manager.manager.enqueue_notify_email(subject, message)
 
 
+    def acquire_hosts(self, host_jobs):
+        """Override acquire_hosts.
+
+        This method overrides the method in parent class.
+        It figures out a set of suites that |host_jobs| belong to;
+        and get min_duts requirement for each suite.
+        It pipes min_duts for each suite to rdb.
+
+        """
+        parent_job_ids = set([q.job.parent_job_id
+                              for q in host_jobs if q.job.parent_job_id])
+        suite_min_duts = self._suite_recorder.get_min_duts(parent_job_ids)
+        return rdb_lib.acquire_hosts(host_jobs, suite_min_duts)
+
+
     @_timer.decorate
     def tick(self):
         logging.info('Calling new tick.')
@@ -234,7 +401,9 @@ class HostScheduler(BaseHostScheduler):
         logging.info('Finding hosts for new jobs.')
         self._schedule_jobs()
         logging.info('Releasing unused hosts.')
-        self._release_hosts()
+        released_hosts = self._release_hosts()
+        logging.info('Updating suite assignment with released hosts')
+        self._suite_recorder.record_release(released_hosts)
         logging.info('Checking host assignments.')
         self._check_host_assignments()
         logging.info('Calling email_manager.')
