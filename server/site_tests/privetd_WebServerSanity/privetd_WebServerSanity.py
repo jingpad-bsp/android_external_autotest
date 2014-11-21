@@ -14,6 +14,7 @@ class privetd_WebServerSanity(test.test):
     from a simple GET request."""
     version = 1
     HTTP_PORT = 8080
+    HTTPS_PORT = 8081
 
     def fetch_url_with_retries(self, url, retry_count, delay):
         """Sends a GET request to a web server at the given |url|.
@@ -39,17 +40,28 @@ class privetd_WebServerSanity(test.test):
                 logging.warn('Failed to connect to host. Retrying...')
                 time.sleep(delay)
 
+    def ping_server(self, proto, hostname, port):
+        """Tests an instance of a web server on particular port.
+
+        @param proto: protocol to use (http/https).
+        @param hostname: host name/IP address.
+        @param port: TCP port to use.
+        """
+        url = '%s://%s:%s/privet/ping' % (proto, hostname, port)
+        content = self.fetch_url_with_retries(url, 5, 0.1)
+        if content != 'Hello, world!':
+            raise error.TestFail('Unexpected response from web server.')
+
     def warmup(self, host):
         host.run('stop privetd', ignore_status=True)
-        host.run('start privetd PRIVETD_LOG_LEVEL=3 PRIVETD_PORT=%s '
-                 'PRIVETD_ENABLE_PING=true' % self.HTTP_PORT)
+        host.run('start privetd PRIVETD_LOG_LEVEL=3 '
+                 'PRIVETD_HTTP_PORT=%s PRIVETD_HTTPS_PORT=%s '
+                 'PRIVETD_ENABLE_PING=true' % (self.HTTP_PORT, self.HTTPS_PORT))
 
     def cleanup(self, host):
         host.run('stop privetd')
         host.run('start privetd')
 
     def run_once(self, host):
-        url = 'http://%s:%s/privet/ping' % (host.hostname, self.HTTP_PORT)
-        content = self.fetch_url_with_retries(url, 5, 0.1)
-        if content != 'Hello, world!':
-            raise error.TestFail('Unexpected response from web server.')
+        self.ping_server("http", host.hostname, self.HTTP_PORT)
+        self.ping_server("https", host.hostname, self.HTTPS_PORT)

@@ -1,2 +1,5 @@
-# privetd lists for RPCs over a webserver.
+# privetd's webserver listens for RPCs over both HTTP and HTTPS.
+# http-alt = 8080 (http)
 privetd *:http-alt
+# sunproxyadmin = 8081 (https)
+privetd *:sunproxyadmin
