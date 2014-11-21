@@ -171,12 +171,17 @@ class FirmwareTest(FAFTBase):
         self._setup_uart_capture()
         self._setup_servo_log()
         self._record_system_info()
+        self.fw_vboot2 = self.faft_client.system.get_fw_vboot2()
+        logging.info('vboot version: %d', 2 if self.fw_vboot2 else 1)
+        if self.fw_vboot2:
+            self.faft_client.system.set_fw_try_next('A')
+            if self.faft_client.system.get_crossystem_value('mainfw_act') == 'B':
+                logging.info('mainfw_act is B. rebooting to set it A')
+                self.reboot_warm()
         self._setup_gbb_flags()
         self._stop_service('update-engine')
         self._create_faft_lockfile()
         self._setup_ec_write_protect(ec_wp)
-        self.fw_vboot2 = self.faft_client.system.get_fw_vboot2()
-        logging.info('vboot version: %d', 2 if self.fw_vboot2 else 1)
         # See chromium:239034 regarding needing this sync.
         self.blocking_sync()
         logging.info('FirmwareTest initialize done (id=%s)', self.run_id)
