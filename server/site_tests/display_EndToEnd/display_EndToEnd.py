@@ -74,11 +74,11 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
         """
 
         boot_id = self.host.get_boot_id()
-        self.set_plug(plugged_before)
+        self.chameleon_port.set_plug(plugged_before)
         self.reboot(wait=False)
         self.host.test_wait_for_shutdown()
         self.host.test_wait_for_boot(boot_id)
-        self.set_plug(plugged_after)
+        self.chameleon_port.set_plug(plugged_after)
         self.display_facade.connect()
 
 
@@ -94,7 +94,7 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
         """
         boot_id = self.host.get_boot_id()
         # Plug before suspend
-        self.set_plug(plugged_before_suspend)
+        self.chameleon_port.set_plug(plugged_before_suspend)
         time.sleep(self.WAIT_TIME)
         logging.debug('Going to suspend, for %d seconds...',
                      self.SUSPEND_DURATION)
@@ -103,7 +103,7 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
 
         # Confirm DUT suspended.
         self.host.test_wait_for_sleep(self.SUSPEND_TIMEOUT)
-        self.set_plug(plugged_after_suspend)
+        self.chameleon_port.set_plug(plugged_after_suspend)
 
         current_time = time.time()
         sleep_time = (self.SUSPEND_DURATION -
@@ -114,7 +114,7 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
         self.host.test_wait_for_resume(boot_id, self.RESUME_TIMEOUT)
         logging.debug('Resumed ')
 
-        self.set_plug(plugged_after_resume)
+        self.chameleon_port.set_plug(plugged_after_resume)
 
 
     def wait_to_suspend(self, suspend_timeout):
@@ -146,12 +146,12 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
 
     def check_external_display(self):
         """Display status check"""
-        #Check connector
+        # Check connector
         self.check_external_display_connector(self.connector_used)
-        #Check test image
+        # Check test image
         self.screen_test.test_screen_with_image(
                 self.resolution, self.test_mirrored, self.errors)
-        #Check for crashes.
+        # Check for crashes.
         if self.is_crash_data_present():
             self.errors.append('Crash data is detected on DUT')
         self.raise_on_errors(self.errors)
@@ -267,14 +267,14 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
         if self.dock_dut():
             logging.debug('Unplug display')
             # Unplug, thus DUT should suspend
-            self.set_plug(False)
+            self.chameleon_port.set_plug(False)
             self.wait_to_suspend(self.SUSPEND_TIMEOUT)
             logging.debug('DUT is suspended')
 
         # Plug the second monitor while suspended
         self.apply_edid_and_reconnect(second_edid, suspended=True)
         # Plug back
-        self.set_plug(True)
+        self.chameleon_port.set_plug(True)
 
         # Resume(open lid), doesn't hurt if DUT is not docked
         self.undock_dut()
@@ -290,8 +290,8 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
         self.switch_display_mode()
 
         # Unplug and plug the original monitor
-        self.set_plug(False)
+        self.chameleon_port.set_plug(False)
         self.apply_edid_and_reconnect(first_edid)
-        self.set_plug(True)
+        self.chameleon_port.set_plug(True)
         self.check_external_display()
 

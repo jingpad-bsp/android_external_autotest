@@ -51,7 +51,7 @@ class display_HotPlugNoisy(chameleon_test.ChameleonTest):
                          'plug' if plugged_before_noise else 'unplug',
                          'plug' if plugged_after_noise else 'unplug')
 
-            self.set_plug(plugged_before_noise)
+            self.chameleon_port.set_plug(plugged_before_noise)
 
             self.check_external_display_connector(
                     expected_connector if plugged_before_noise else False)

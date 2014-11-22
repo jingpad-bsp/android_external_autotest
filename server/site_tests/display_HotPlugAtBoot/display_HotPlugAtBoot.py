@@ -43,13 +43,13 @@ class display_HotPlugAtBoot(chameleon_test.ChameleonTest):
                          'plug' if plugged_before_boot else 'unplug',
                          'plug' if plugged_after_boot else 'unplug')
             boot_id = host.get_boot_id()
-            self.set_plug(plugged_before_boot)
+            self.chameleon_port.set_plug(plugged_before_boot)
 
             # Don't wait DUT up. Do plug/unplug while booting.
             self.reboot(wait=False)
 
             host.test_wait_for_shutdown()
-            self.set_plug(plugged_after_boot)
+            self.chameleon_port.set_plug(plugged_after_boot)
             host.test_wait_for_boot(boot_id)
 
             self.display_facade.connect()

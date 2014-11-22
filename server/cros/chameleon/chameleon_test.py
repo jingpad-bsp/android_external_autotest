@@ -277,17 +277,6 @@ class ChameleonTest(test.test):
             raise error.TestFail('; '.join(set(check_results)))
 
 
-    def set_plug(self, plug_status):
-        """Sets plug/unplug by plug_status.
-
-        @param plug_status: True for plug"""
-        logging.info('Set plug: %s', plug_status)
-        if plug_status:
-            self.chameleon_port.plug()
-        else:
-            self.chameleon_port.unplug()
-
-
     def audio_start_recording(self, host, port):
         """Starts recording audio on a host using a port.
 

@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import httplib
+import logging
 import socket
 import time
 import xmlrpclib
@@ -201,12 +202,25 @@ class ChameleonPort(object):
 
     def plug(self):
         """Asserts HPD line to high, emulating plug."""
+        logging.info('Plug Chameleon port %d', self.port_id)
         self.chameleond_proxy.Plug(self.port_id)
 
 
     def unplug(self):
         """Deasserts HPD line to low, emulating unplug."""
+        logging.info('Unplug Chameleon port %d', self.port_id)
         self.chameleond_proxy.Unplug(self.port_id)
+
+
+    def set_plug(self, plug_status):
+        """Sets plug/unplug by plug_status.
+
+        @param plug_status: True to plug; False to unplug.
+        """
+        if plug_status:
+            self.plug()
+        else:
+            self.unplug()
 
 
     @property

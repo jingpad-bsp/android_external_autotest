@@ -57,7 +57,7 @@ class display_HotPlugAtSuspend(chameleon_test.ChameleonTest):
                          'plug' if plugged_after_suspend else 'unplug',
                          'plug' if plugged_before_resume else 'unplug')
             boot_id = host.get_boot_id()
-            self.set_plug(plugged_before_suspend)
+            self.chameleon_port.set_plug(plugged_before_suspend)
             if test_mirrored:
                 # magic sleep to make nyan_big wake up in mirrored mode
                 # TODO: find root cause
@@ -70,7 +70,7 @@ class display_HotPlugAtSuspend(chameleon_test.ChameleonTest):
             # Confirm DUT suspended.
             logging.info('- Wait for sleep...')
             host.test_wait_for_sleep(self.SUSPEND_TIMEOUT)
-            self.set_plug(plugged_after_suspend)
+            self.chameleon_port.set_plug(plugged_after_suspend)
 
             current_time = time.time()
             sleep_time = (self.SUSPEND_DURATION -
@@ -79,7 +79,7 @@ class display_HotPlugAtSuspend(chameleon_test.ChameleonTest):
             if sleep_time > 0:
                 logging.info('- Sleep for %.2f seconds...', sleep_time)
                 time.sleep(sleep_time)
-            self.set_plug(plugged_before_resume)
+            self.chameleon_port.set_plug(plugged_before_resume)
             time.sleep(self.TIME_MARGIN_BEFORE_RESUME)
 
             logging.info('- Wait for resume...')
