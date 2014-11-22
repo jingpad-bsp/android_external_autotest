@@ -36,15 +36,22 @@ class display_ResolutionList(chameleon_test.ChameleonTest):
 
         self.reconnect_output()
 
-        display_index, resolution_list = (
-                self.get_first_external_display_resolutions())
+        display_index = self.display_facade.get_first_external_display_index()
+        if not display_index:
+            raise error.TestFail("No external display is found.")
+
+        resolution_list = (
+                self.display_facade.get_available_resolutions(display_index))
+        logging.info('External display %d: %d resolutions found.',
+                     display_index, len(resolution_list))
         random.shuffle(resolution_list)
 
         self.set_mirrored(test_mirrored)
 
         errors = []
         for r in resolution_list:
-            self.set_resolution(display_index, *r)
+            logging.info('Set resolution to %dx%d', *r)
+            self.display_facade.set_resolution(display_index, *r)
             self.screen_test.test_screen_with_image(r, test_mirrored, errors)
 
         self.raise_on_errors(errors)

@@ -158,6 +158,18 @@ class DisplayFacadeNative(object):
                 if 'scale' not in mode]
 
 
+    def get_first_external_display_index(self):
+        """Gets the first external display index.
+
+        @return the index of the first external display; False if not found.
+        """
+        # Get the first external and enabled display
+        for index, display in enumerate(self.get_display_info()):
+            if display['isEnabled'] and not display['isInternal']:
+                return index
+        return False
+
+
     def set_resolution(self, display_index, width, height, timeout=3):
         """Sets the resolution of the specified display.
 

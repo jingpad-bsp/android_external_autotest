@@ -97,60 +97,6 @@ class ChameleonTest(test.test):
         self.chameleon_port.apply_edid(edid.Edid.from_file(filename))
 
 
-    def set_resolution(self, display_index, width, height):
-        """Sets the resolution on the specified display.
-
-        @param display_index: index of the display to set resolutions for; 0 is
-                the internal one for chromebooks.
-        @param width: width of the resolution
-        @param height: height of the resolution
-        """
-
-        logging.info('Display %d: Set resolution to %d x %d', display_index,
-            width, height)
-        self.display_facade.set_resolution(display_index, width, height)
-
-
-    def get_first_external_display_resolutions(self):
-        """Gets the first external display and its resolutions.
-
-        @return a tuple (display_index, available resolutions).
-        @raise error.TestFail if no external display is found. """
-        # TODO (tingyuan): Gets complete display modes data, instead of
-        # resolution, to facilitate the subsequent use. (i.e. for image size)
-        display_info = self.display_facade.get_display_info()
-        test_display_index = None
-
-        # get first external and enabled display
-        for display_index in xrange(len(display_info)):
-            current_display = display_info[display_index]
-            if current_display.is_internal or (
-                    not current_display.is_enabled):
-                logging.info('Display %d (%s): %s%sdisplay, '
-                        'skipped.' , display_index,
-                        current_display.display_id,
-                        "Internal " if current_display.is_internal else "",
-                        "Disabled " if not current_display.is_enabled else
-                        "")
-                continue
-
-            test_display_index = display_index
-            break
-
-        if test_display_index is None:
-            raise error.TestFail("No external display is found.")
-
-        resolutions = self.display_facade.get_available_resolutions(
-                test_display_index)
-
-        logging.info('External display %d (%s)%s: %d resolutions found.',
-                test_display_index, current_display.display_id,
-                " (Primary)" if current_display.is_primary else "",
-                len(resolutions))
-
-        return display_index, resolutions
-
-
     def is_display_primary(self, internal=True):
         """Checks if internal screen is primary display.
 

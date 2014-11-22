@@ -222,3 +222,11 @@ class DisplayFacadeRemoteAdapter(object):
         """
         return [tuple(r) for r in
                 self._display_proxy.get_available_resolutions(display_index)]
+
+
+    def get_first_external_display_index(self):
+        """Gets the first external display index.
+
+        @return the index of the first external display; False if not found.
+        """
+        return self._display_proxy.get_first_external_display_index()
