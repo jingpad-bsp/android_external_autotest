@@ -113,25 +113,6 @@ class ChameleonTest(test.test):
         return False
 
 
-    def is_mirrored_enabled(self):
-        """Checks the mirrored state.
-
-        @return True if mirrored mode is enabled.
-        """
-        return self.display_facade.is_mirrored_enabled()
-
-
-    def set_mirrored(self, test_mirrored):
-        """Sets the external display is in mirrored mode or extended mode
-
-        @param test_mirrored: True if in mirrored mode, otherwise in
-                extended mode.
-        """
-
-        logging.info('Set mirrored: %s', test_mirrored)
-        self.display_facade.set_mirrored(test_mirrored)
-
-
     def suspend_resume(self, suspend_time=10, timeout=20):
         """Suspends and resumes the DUT.
 
@@ -181,7 +162,7 @@ class ChameleonTest(test.test):
         @param unplug_duration_sec: duration of unplug in second.
         """
         logging.info('Reconnect output...')
-        output = self.get_dut_display_connector()
+        output = self.display_facade.get_external_connector_name()
         self.chameleon_port.unplug()
         time.sleep(unplug_duration_sec)
         self.chameleon_port.plug()
@@ -228,15 +209,6 @@ class ChameleonTest(test.test):
         return first_port
 
 
-    def get_dut_display_connector(self):
-        """Gets the name of the connected display connector of DUT.
-
-        @return: A string for the connector name."""
-        connector = self.display_facade.get_external_connector_name()
-        logging.info('See the display on DUT: %s', connector)
-        return connector
-
-
     def check_external_display_connector(self, expected_connector, timeout=5):
         """Checks the connecting status of external display on DUT.
 
@@ -245,7 +217,7 @@ class ChameleonTest(test.test):
         @param timeout: Duration in second to retry checking the connector.
         @raise error.TestFail if the check does not pass.
         """
-        current_connector = self.get_dut_display_connector()
+        current_connector = self.display_facade.get_external_connector_name()
         now = time.time()
         end_time = now + timeout
         while expected_connector != current_connector and now < end_time:

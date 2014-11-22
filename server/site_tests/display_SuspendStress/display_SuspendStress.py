@@ -40,13 +40,16 @@ class display_SuspendStress(chameleon_test.ChameleonTest):
                 self.bindir, 'test_data', 'edids', test_name))
 
         # Keep the original connector name, for later comparison.
-        expected_connector = self.get_dut_display_connector()
+        expected_connector = self.display_facade.get_external_connector_name()
+        logging.info('See the display on DUT: %s', expected_connector)
+
         if not expected_connector:
             raise error.TestFail('Error: Failed to see external display'
                     ' (chameleon) from DUT: %s', test_name)
 
         self.reconnect_output()
-        self.set_mirrored(test_mirrored)
+        logging.info('Set mirrored: %s', test_mirrored)
+        self.display_facade.set_mirrored(test_mirrored)
         logging.info('Repeat %d times Suspend and resume', repeat_count)
 
         while repeat_count > 0:

@@ -46,7 +46,8 @@ class display_ResolutionList(chameleon_test.ChameleonTest):
                      display_index, len(resolution_list))
         random.shuffle(resolution_list)
 
-        self.set_mirrored(test_mirrored)
+        logging.info('Set mirrored: %s', test_mirrored)
+        self.display_facade.set_mirrored(test_mirrored)
 
         errors = []
         for r in resolution_list:

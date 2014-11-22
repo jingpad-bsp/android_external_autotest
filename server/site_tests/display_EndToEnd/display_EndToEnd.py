@@ -59,7 +59,8 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
         from_mode = 'MIRRORED' if self.test_mirrored else 'EXTENDED'
         self.test_mirrored = not self.test_mirrored
         to_mode = 'MIRRORED' if self.test_mirrored else 'EXTENDED'
-        self.set_mirrored(self.test_mirrored)
+        logging.debug('Set mirrored: %s', self.test_mirrored)
+        self.display_facade.set_mirrored(self.test_mirrored)
         logging.debug('Switched from %s to %s mode', from_mode, to_mode)
         time.sleep(self.WAIT_TIME)
         self.reconnect_and_get_external_resolution()
@@ -224,7 +225,8 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
         # Set first monitor/EDID and tracked resolution
         self.apply_edid_and_reconnect(first_edid)
         # Set main display mode for the test
-        self.set_mirrored(self.test_mirrored)
+        logging.debug('Set mirrored: %s', self.test_mirrored)
+        self.display_facade.set_mirrored(self.test_mirrored)
 
         # Reboot the device as connected and login
         self.reboot_device(plugged_before=True, plugged_after=True)

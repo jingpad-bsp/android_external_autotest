@@ -41,7 +41,8 @@ class display_HotPlugAtSuspend(chameleon_test.ChameleonTest):
                      self.chameleon_port.get_connector_id(),
                      self.chameleon_port.get_connector_type())
 
-        self.set_mirrored(test_mirrored)
+        logging.info('Set mirrored: %s', test_mirrored)
+        self.display_facade.set_mirrored(test_mirrored)
 
         # Keep the original connector name, for later comparison.
         expected_connector = self.display_facade.get_external_connector_name()
@@ -90,11 +91,13 @@ class display_HotPlugAtSuspend(chameleon_test.ChameleonTest):
             self.check_external_display_connector(expected_connector
                     if plugged_before_resume else False)
             if plugged_before_resume:
-                if test_mirrored and not self.is_mirrored_enabled():
+                if test_mirrored and (
+                        not self.display_facade.is_mirrored_enabled()):
                     error_message = 'Error: not resumed to mirrored mode'
                     errors.append(error_message)
                     logging.error(error_message)
-                    self.set_mirrored(True)
+                    logging.info('Set mirrored: %s', True)
+                    self.display_facade.set_mirrored(True)
                 else:
                     self.screen_test.test_screen_with_image(
                             resolution, test_mirrored, errors)

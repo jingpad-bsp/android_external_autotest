@@ -39,7 +39,8 @@ class display_SwitchMode(chameleon_test.ChameleonTest):
         @param test_mirrored: is mirrored mode active
 
         """
-        self.set_mirrored(test_mirrored)
+        logging.info('Set mirrored: %s', test_mirrored)
+        self.display_facade.set_mirrored(test_mirrored)
         time.sleep(self.WAIT_AFTER_SWITCH)
         self.check_external_display(test_mirrored)
 

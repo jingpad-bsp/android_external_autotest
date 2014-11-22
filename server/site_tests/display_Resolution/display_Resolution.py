@@ -47,7 +47,9 @@ class display_Resolution(chameleon_test.ChameleonTest):
                 self.reboot()
             else:
                 self.reconnect_output()
-            self.set_mirrored(test_mirrored)
+
+            logging.info('Set mirrored: %s', test_mirrored)
+            self.display_facade.set_mirrored(test_mirrored)
             if test_suspend_resume:
                 if test_mirrored:
                     # magic sleep to make nyan_big wake up in mirrored mode
