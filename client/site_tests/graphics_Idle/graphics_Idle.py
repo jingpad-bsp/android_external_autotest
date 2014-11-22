@@ -7,19 +7,20 @@ import logging, os, re, time
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_logging
 from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.cros import cros_logging
 
 
 class graphics_Idle(test.test):
     """Class for graphics_Idle.  See 'control' for details."""
     version = 1
+    _gpu_type = None
 
 
     def run_once(self):
         # Try to protect against runaway previous tests.
-        if not utils.wait_for_idle_cpu(60.0, 0.1):
-            raise error.TestFail('Could not get idle CPU.')
+        if not utils.wait_for_idle_cpu(20.0, 0.1):
+            logging.warning('Could not get idle CPU before running tests.')
         # We use kiosk mode to make sure Chrome is idle.
         with chrome.Chrome(logged_in=False, extra_browser_args=['--kiosk']):
             self._gpu_type = utils.get_gpu_family()
