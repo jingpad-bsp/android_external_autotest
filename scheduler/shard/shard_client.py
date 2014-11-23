@@ -17,13 +17,11 @@ import common
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib import logging_manager
 from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.frontend.afe import models, rpc_utils
 from autotest_lib.scheduler import email_manager
+from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
-from autotest_lib.scheduler.shard import shard_logging_config
-
 
 
 """
@@ -197,7 +195,8 @@ class ShardClient(object):
         """
         job_ids = list(models.Job.objects.filter(
             hostqueueentry__complete=False).values_list('id', flat=True))
-        host_ids = list(models.Host.objects.values_list('id', flat=True))
+        host_ids = list(models.Host.objects.filter(
+                invalid=0).values_list('id', flat=True))
         return job_ids, host_ids
 
 
@@ -313,8 +312,9 @@ def main_without_exception_handling():
     parser = argparse.ArgumentParser(description='Shard client.')
     options = parser.parse_args()
 
-    logging_manager.configure_logging(
-        shard_logging_config.ShardLoggingConfig())
+    scheduler_lib.setup_logging(
+            os.environ.get('AUTOTEST_SCHEDULER_LOG_DIR', None),
+            None, timestamped_logfile_prefix='shard_client')
 
     logging.info("Setting signal handler.")
     signal.signal(signal.SIGINT, handle_signal)

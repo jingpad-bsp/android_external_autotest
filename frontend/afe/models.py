@@ -382,6 +382,7 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
                                          'hostattribute_set',
                                          'labels',
                                          'shard'])
+    SERIALIZATION_LOCAL_LINKS_TO_UPDATE = set(['invalid'])
 
 
     def custom_deserialize_relation(self, link, data):

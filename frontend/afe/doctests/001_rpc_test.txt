@@ -278,8 +278,8 @@ u'label2'
 
 # Other interface for new CLI
 # add hosts to labels
->>> rpc_interface.label_add_hosts('label1', ['host1'])
->>> rpc_interface.label_add_hosts('label2', ['host1', 'host2'])
+>>> rpc_interface.label_add_hosts(id='label1', hosts=['host1'])
+>>> rpc_interface.label_add_hosts(id='label2', hosts=['host1', 'host2'])
 
 # check labels for hosts
 >>> data = rpc_interface.get_hosts(hostname='host1')
@@ -301,7 +301,7 @@ u'label2'
 [u'host1', u'host2']
 
 # remove a host from a label
->>> rpc_interface.label_remove_hosts('label2', ['host2'])
+>>> rpc_interface.label_remove_hosts(id='label2', hosts=['host2'])
 >>> data = rpc_interface.get_hosts(hostname='host1')
 >>> data[0]['labels']
 [u'label1', u'label2']
@@ -310,11 +310,11 @@ u'label2'
 [u'host1']
 
 # Remove multiple hosts from a label
->>> rpc_interface.label_add_hosts('label2', ['host2'])
+>>> rpc_interface.label_add_hosts(id='label2', hosts=['host2'])
 >>> data = rpc_interface.get_hosts(labels__name='label2')
 >>> [host['hostname'] for host in data]
 [u'host1', u'host2']
->>> rpc_interface.label_remove_hosts('label2', ['host2', 'host1'])
+>>> rpc_interface.label_remove_hosts(id='label2', hosts=['host2', 'host1'])
 >>> rpc_interface.get_hosts(labels__name='label2')
 []
 
@@ -749,11 +749,11 @@ True
 >>> unused = rpc_interface.add_host(hostname='ah3-blue')
 >>> unused = rpc_interface.add_host(hostname='ah4-blue')
 >>> two_id = rpc_interface.add_label(name='two-label')
->>> rpc_interface.label_add_hosts(two_id, ['ahost1', 'ahost2',
-...                                        'ah3-blue', 'ah4-blue'])
+>>> rpc_interface.label_add_hosts(
+...        id=two_id, hosts=['ahost1', 'ahost2', 'ah3-blue', 'ah4-blue'])
 >>> unused = rpc_interface.add_label(name='red-label')
 >>> blue_id = rpc_interface.add_label(name='blue-label')
->>> rpc_interface.label_add_hosts(blue_id, ['ah3-blue', 'ah4-blue'])
+>>> rpc_interface.label_add_hosts(id=blue_id, hosts=['ah3-blue', 'ah4-blue'])
 
 >>> rpc_interface.atomic_group_add_labels(mini_rack_group_id,
 ...                                       ['one-label', 'two-label',

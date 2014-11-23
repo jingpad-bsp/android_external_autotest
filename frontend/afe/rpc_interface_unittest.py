@@ -51,8 +51,8 @@ class RpcInterfaceTest(unittest.TestCase,
     def test_multiple_platforms(self):
         platform2 = models.Label.objects.create(name='platform2', platform=True)
         self.assertRaises(model_logic.ValidationError,
-                          rpc_interface. label_add_hosts, 'platform2',
-                          ['host1', 'host2'])
+                          rpc_interface. label_add_hosts, id='platform2',
+                          hosts=['host1', 'host2'])
         self.assertRaises(model_logic.ValidationError,
                           rpc_interface.host_add_labels, 'host1', ['platform2'])
         # make sure the platform didn't get added

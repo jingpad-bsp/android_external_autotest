@@ -66,15 +66,39 @@ def modify_label(id, **data):
 def delete_label(id):
     models.Label.smart_get(id).delete()
 
-
+@rpc_utils.forward_multi_host_rpc_to_shards
 def label_add_hosts(id, hosts):
+    """Add the label with the given id to the list of hosts.
+
+    The given label will be created if it doesn't exist, provided the `id`
+    supplied is a label name not an int/long id.
+
+    @param id: An id or label name. More often a label name.
+    @param hosts: A list of hostnames or ids. More often hostnames.
+
+    @raises models.Label.DoesNotExist: If the id specified is an int/long
+        and a label with that id doesn't exist.
+    """
     host_objs = models.Host.smart_get_bulk(hosts)
-    label = models.Label.smart_get(id)
+    try:
+        # In the rare event that we're given an id and not a label name,
+        # it should already exist.
+        label = models.Label.smart_get(id)
+    except models.Label.DoesNotExist:
+        # This matches the type checks in smart_get, which is a hack
+        # in and off itself. The aim here is to create any non-existent
+        # label, which we cannot do if the 'id' specified isn't a label name.
+        if isinstance(id, basestring):
+            label = models.Label.smart_get(add_label(id))
+        else:
+            raise
+
     if label.platform:
         models.Host.check_no_platform(host_objs)
     label.host_set.add(*host_objs)
 
 
+@rpc_utils.forward_multi_host_rpc_to_shards
 def label_remove_hosts(id, hosts):
     host_objs = models.Host.smart_get_bulk(hosts)
     models.Label.smart_get(id).host_set.remove(*host_objs)
