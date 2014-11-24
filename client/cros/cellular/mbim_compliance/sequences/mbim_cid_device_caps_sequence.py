@@ -9,10 +9,14 @@ Reference:
         http://www.usb.org/developers/docs/devclass_docs/MBIM-Compliance-1.0.pdf
 """
 import common
+
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_channel
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_constants
-from autotest_lib.client.cros.cellular.mbim_compliance import mbim_control
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_errors
+from autotest_lib.client.cros.cellular.mbim_compliance \
+        import mbim_message_request
+from autotest_lib.client.cros.cellular.mbim_compliance \
+        import mbim_message_response
 from autotest_lib.client.cros.cellular.mbim_compliance.sequences \
         import sequence
 
@@ -29,23 +33,27 @@ class MBIMCIDDeviceCapsSequence(sequence.Sequence):
         """ Run the MBIM_CID_DEVICE_CAPS Sequence. """
         # Step 1
         # Send MBIM_COMMAND_MSG.
-        command_message = mbim_control.MBIMCommandMessage(
+        device_context = self.device_context
+        descriptor_cache = device_context.descriptor_cache
+        command_message = mbim_message_request.MBIMCommand(
                 device_service_id=mbim_constants.UUID_BASIC_CONNECT.bytes,
                 cid=mbim_constants.MBIM_CID_DEVICE_CAPS,
                 command_type=mbim_constants.COMMAND_TYPE_QUERY,
                 information_buffer_length=0)
-        packets = command_message.generate_packets()
-        device_context = self.device_context
+        packets = mbim_message_request.generate_request_packets(
+                command_message,
+                descriptor_cache.mbim_functional.wMaxControlMessage)
         channel = mbim_channel.MBIMChannel(
                 device_context._device,
-                device_context.mbim_communication_interface.bInterfaceNumber,
-                device_context.interrupt_endpoint.bEndpointAddress,
-                device_context.mbim_functional.wMaxControlMessage)
+                descriptor_cache.mbim_communication_interface.bInterfaceNumber,
+                descriptor_cache.interrupt_endpoint.bEndpointAddress,
+                descriptor_cache.mbim_functional.wMaxControlMessage)
         response_packets = channel.bidirectional_transaction(*packets)
         channel.close()
 
         # Step 2
-        response_message = mbim_control.parse_response_packets(response_packets)
+        response_message = mbim_message_response.parse_response_packets(
+                response_packets)
 
         # Step 3
         if (response_message.message_type != mbim_constants.MBIM_COMMAND_DONE or

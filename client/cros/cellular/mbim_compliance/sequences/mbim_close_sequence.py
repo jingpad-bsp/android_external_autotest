@@ -11,10 +11,14 @@ Reference:
 
 """
 import common
+
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_channel
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_constants
-from autotest_lib.client.cros.cellular.mbim_compliance import mbim_control
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_errors
+from autotest_lib.client.cros.cellular.mbim_compliance \
+        import mbim_message_request
+from autotest_lib.client.cros.cellular.mbim_compliance \
+        import mbim_message_response
 from autotest_lib.client.cros.cellular.mbim_compliance.sequences \
         import sequence
 
@@ -31,19 +35,23 @@ class MBIMCloseSequence(sequence.Sequence):
         """ Run the MBIM Close Sequence. """
         # Step 1
         # Send MBIM_CLOSE_MSG to the device.
-        close_message = mbim_control.MBIMCloseMessage()
-        packets = close_message.generate_packets()
+        close_message = mbim_message_request.MBIMClose()
         device_context = self.device_context
+        descriptor_cache = device_context.descriptor_cache
+        packets = mbim_message_request.generate_request_packets(
+                close_message,
+                descriptor_cache.mbim_functional.wMaxControlMessage)
         channel = mbim_channel.MBIMChannel(
                 device_context._device,
-                device_context.mbim_communication_interface.bInterfaceNumber,
-                device_context.interrupt_endpoint.bEndpointAddress,
-                device_context.mbim_functional.wMaxControlMessage)
+                descriptor_cache.mbim_communication_interface.bInterfaceNumber,
+                descriptor_cache.interrupt_endpoint.bEndpointAddress,
+                descriptor_cache.mbim_functional.wMaxControlMessage)
 
         # Step 2
         response_packets = channel.bidirectional_transaction(*packets)
         channel.close()
-        response_message = mbim_control.parse_response_packets(response_packets)
+        response_message = mbim_message_response.parse_response_packets(
+                response_packets)
 
         # Step 3
         if response_message.transaction_id != close_message.transaction_id:

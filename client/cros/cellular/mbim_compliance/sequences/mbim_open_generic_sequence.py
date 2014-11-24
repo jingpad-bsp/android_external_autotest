@@ -10,12 +10,16 @@ Reference:
         http://www.usb.org/developers/docs/devclass_docs/MBIM-Compliance-1.0.pdf
 """
 import common
+
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_channel
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_constants
-from autotest_lib.client.cros.cellular.mbim_compliance import mbim_control
-from autotest_lib.client.cros.cellular.mbim_compliance import mbim_errors
 from autotest_lib.client.cros.cellular.mbim_compliance \
         import mbim_device_context
+from autotest_lib.client.cros.cellular.mbim_compliance import mbim_errors
+from autotest_lib.client.cros.cellular.mbim_compliance \
+        import mbim_message_request
+from autotest_lib.client.cros.cellular.mbim_compliance \
+        import mbim_message_response
 from autotest_lib.client.cros.cellular.mbim_compliance.sequences \
         import open_sequence
 
@@ -47,6 +51,7 @@ class MBIMOpenGenericSequence(open_sequence.OpenSequence):
                 device_context.descriptor_cache.mbim_functional)
         interrupt_endpoint = (
                 device_context.descriptor_cache.interrupt_endpoint)
+        descriptor_cache = device_context.descriptor_cache
 
         communication_interface_number = (
                 mbim_communication_interface.bInterfaceNumber)
@@ -108,9 +113,11 @@ class MBIMOpenGenericSequence(open_sequence.OpenSequence):
         #               message contructing will be presented.
         max_control_message = (
                 mbim_functional_descriptor.wMaxControlMessage)
-        open_message = mbim_control.MBIMOpenMessage(
+        open_message = mbim_message_request.MBIMOpen(
                 max_control_transfer=max_control_message)
-        packets = open_message.generate_packets()
+        packets = mbim_message_request.generate_request_packets(
+                open_message,
+                mbim_functional_descriptor.wMaxControlMessage)
         channel = mbim_channel.MBIMChannel(
                 self.device_context._device,
                 communication_interface_number,
@@ -121,7 +128,8 @@ class MBIMOpenGenericSequence(open_sequence.OpenSequence):
 
         # Step 13
         # Verify if MBIM_OPEN_MSG request succeeds.
-        response_message = mbim_control.parse_response_packets(response_packets)
+        response_message = mbim_message_response.parse_response_packets(
+                response_packets)
 
         if response_message.transaction_id != open_message.transaction_id:
             mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
