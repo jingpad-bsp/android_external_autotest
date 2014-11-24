@@ -34,7 +34,7 @@ class kernel_ExternalUsbPeripheralsDetectionTest(test.test):
 
         @returns True if command line output is matched successfuly; Else False
         """
-        usb_check_result = True
+        failed = list()
         for cmd in self.usb_checks.keys():
             out_match_list = self.usb_checks.get(cmd)
             logging.info('Running %s',  cmd)
@@ -48,10 +48,8 @@ class kernel_ExternalUsbPeripheralsDetectionTest(test.test):
                     match_result = (match_result or
                         re.search(out_match, cmd_out_line) != None)
                 if not match_result:
-                    logging.debug('USB CHECKS details failed for cmd %s:', cmd)
-                    logging.debug('with output : \n %s', '\n'.join(cmd_out_lines))
-                usb_check_result = usb_check_result and match_result
-        return usb_check_result
+                    failed.append((cmd,out_match))
+        return failed
 
 
     def get_usb_device_dirs(self):
@@ -126,9 +124,9 @@ class kernel_ExternalUsbPeripheralsDetectionTest(test.test):
         logging.debug('Connected devices list: %s', diff_list)
 
         # Test 1: check USB peripherals info in detail
-        if not self.check_usb_peripherals_details():
-            raise error.TestError('Some of the USB peripherals were not'
-                                  ' detected : test failed')
+        failed = self.check_usb_peripherals_details()
+        if len(failed)> 0:
+            raise error.TestError('USB device not detected %s', str(failed))
 
         # Test 2: check USB device dir under /sys/bus/usb/devices
         vendor_ids = {}
@@ -162,4 +160,4 @@ class kernel_ExternalUsbPeripheralsDetectionTest(test.test):
                                               .stdout.strip())
                         logging.info('%s', link)
                 if not flag:
-                    raise error.TestFail('Drivers are not loaded')
+                    raise error.TestFail('Drivers are not loaded - %s', driver_path)
