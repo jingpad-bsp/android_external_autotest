@@ -43,7 +43,7 @@ servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 def run(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
 
-    repeat = int(args_dict.get("repeat", 2))
+    repeat = int(args_dict.get("repeat", 1))
 
     default_actions = str("reboot,unplug,plug,login,unplug,plug,"
                           "suspend,resume,unplug,suspend,plug,resume,"

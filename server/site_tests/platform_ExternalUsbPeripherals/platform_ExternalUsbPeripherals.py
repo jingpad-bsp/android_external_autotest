@@ -325,7 +325,7 @@ class platform_ExternalUsbPeripherals(test.test):
 
         # Collect USB peripherals when plugged
         self.set_hub_power(True)
-        time.sleep(_WAIT_DELAY*2)
+        time.sleep(_WAIT_DELAY * 2)
         self.on_list = self.getPluggedUsbDevices()
 
         diff_list = set(self.on_list).difference(set(self.off_list))
@@ -366,6 +366,7 @@ class platform_ExternalUsbPeripherals(test.test):
                             self.login_status = True
                     elif action == 'REBOOT':
                         self.host.reboot()
+                        time.sleep(_WAIT_DELAY * 3)
                         self.login_status = False
                     elif action == 'SUSPEND':
                         self.action_suspend()
