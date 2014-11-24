@@ -7,19 +7,13 @@ import common
 # django.conf.settings.LazySettings is buggy and requires us to get something
 # from it before we set stuff on it.
 getattr(settings, 'DATABASES')
-settings.DATABASES['default']['ENGINE'] = (
-    'autotest_lib.frontend.db.backends.afe_sqlite')
-settings.DATABASES['default']['NAME'] = ':memory:'
+for name in ['default', 'global', 'readonly', 'server']:
+    if name not in settings.DATABASES:
+        settings.DATABASES[name] = {}
+    settings.DATABASES[name]['ENGINE'] = (
+            'autotest_lib.frontend.db.backends.afe_sqlite')
+    settings.DATABASES[name]['NAME'] = ':memory:'
 
-settings.DATABASES['global'] = {}
-settings.DATABASES['global']['ENGINE'] = (
-    'autotest_lib.frontend.db.backends.afe_sqlite')
-settings.DATABASES['global']['NAME'] = ':memory:'
-
-settings.DATABASES['readonly'] = {}
-settings.DATABASES['readonly']['ENGINE'] = (
-    'autotest_lib.frontend.db.backends.afe_sqlite')
-settings.DATABASES['readonly']['NAME'] = ':memory:'
 
 from django.db import connections
 from autotest_lib.frontend.afe import readonly_connection
@@ -27,6 +21,7 @@ from autotest_lib.frontend.afe import readonly_connection
 connection = connections['default']
 connection_readonly = connections['readonly']
 connection_global = connections['global']
+connection_server = connections['server']
 
 def run_syncdb(verbosity=0):
     """Call syncdb command to make sure database schema is uptodate.
@@ -38,6 +33,8 @@ def run_syncdb(verbosity=0):
                              database='readonly')
     management.call_command('syncdb', verbosity=verbosity, interactive=False,
                              database='global')
+    management.call_command('syncdb', verbosity=verbosity, interactive=False,
+                             database='server')
 
 
 def destroy_test_database():
@@ -46,12 +43,14 @@ def destroy_test_database():
     connection.close()
     connection_readonly.close()
     connection_global.close()
+    connection_server.close()
     # Django brilliantly ignores close() requests on in-memory DBs to keep us
     # naive users from accidentally destroying data.  So reach in and close
     # the real connection ourselves.
     # Note this depends on Django internals and will likely need to be changed
     # when we upgrade Django.
-    for con in [connection, connection_global, connection_readonly]:
+    for con in [connection, connection_global, connection_readonly,
+                connection_server]:
         real_connection = con.connection
         if real_connection is not None:
             real_connection.close()

@@ -20,4 +20,5 @@ def enable_autocommit():
     """
     _enable_autocommit_by_name('default')
     _enable_autocommit_by_name('global')
+    _enable_autocommit_by_name('server')
 

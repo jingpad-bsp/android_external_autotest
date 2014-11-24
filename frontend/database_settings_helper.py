@@ -6,9 +6,9 @@
 
 """Helpers to load database settings.
 
-Three databases are used with django (a default and one for tko tables,
-which always must be the global database, plus a readonly connection to the
-global database).
+Four databases are used with django (a default and one for tko tables,
+which always must be the global database, a readonly connection to the
+global database, and a connection to server database).
 
 In order to save configuration overhead, settings that aren't set for the
 desired database type, should be obtained from the setting with the next lower
@@ -16,6 +16,9 @@ priority. The order is:
 readonly -> global -> local.
 I.e. this means if `readonly_host` is not set, `global_db_host` will be used. If
 that is also not set, `host` (the local one) will be used.
+
+server database setting falls back to local database setting. That is, if
+`server_db_host` is not set, `host`(the local one) will be used.
 
 In case an instance is running on a shard, a global database must explicitly
 be set. Instead of failing over from global to local, an exception will be
@@ -36,20 +39,23 @@ SHARD_HOSTNAME = config.get_config_value('SHARD', 'shard_hostname',
                                          default=None)
 
 
-def _get_config(config_key, **kwargs):
+def _get_config(config_key, section='AUTOTEST_WEB', **kwargs):
     """Retrieves a config value for the specified key.
 
     @param config_key: The string key associated with the desired config value.
+    @param section: Section of global config to read config. Default is set to
+                    AUTOTEST_WEB.
     @param **kwargs: Additional arguments to be passed to
                      global_config.get_config_value.
 
     @return: The config value, as returned by
              global_config.global_config.get_config_value().
     """
-    return config.get_config_value('AUTOTEST_WEB', config_key, **kwargs)
+    return config.get_config_value(section, config_key, **kwargs)
 
 
-def _get_global_config(config_key, default=config._NO_DEFAULT_SPECIFIED, **kwargs):
+def _get_global_config(config_key, default=config._NO_DEFAULT_SPECIFIED,
+                       **kwargs):
     """Retrieves a global config value for the specified key.
 
     If the value can't be found, this will happen:
@@ -99,13 +105,34 @@ def _get_readonly_config(config_key, default=config._NO_DEFAULT_SPECIFIED,
         return _get_global_config(config_key, default=default, **kwargs)
 
 
+def _get_server_db_config(config_key, default=config._NO_DEFAULT_SPECIFIED,
+                          **kwargs):
+    """Retrieves a config value for the specified key for server database.
+
+    If the value can't be found in AUTOTEST_SEVER_DB section, default will be
+    used. If default value is not specified, the local setting in section
+    AUTOTEST_WEB will be used.
+
+    @param config_key: The string key associated with the desired config value.
+    @param default: The default value to return if the value couldn't be looked
+                    up; neither with global_db_ nor no prefix.
+    @param **kwargs: Additional arguments to be passed to
+                     global_config.get_config_value.
+
+    @return: The config value, as returned by
+             global_config.global_config.get_config_value().
+    """
+    try:
+        return _get_config(config_key, section='AUTOTEST_SERVER_DB',
+                           default=default, **kwargs)
+    except global_config.ConfigError:
+        return _get_config(config_key, default=default, **kwargs)
+
+
 def _get_database_config(getter):
     """Create a configuration dictionary that can be passed to Django.
 
-    @param config_prefix: If specified, this function will try to prefix lookup
-                          keys from global_config with this. If those values
-                          don't exist, the normal key without the prefix will
-                          be used.
+    @param getter: A function to call to get configuration values.
 
     @return A dictionary that can be used in the Django DATABASES setting.
     """
@@ -148,3 +175,11 @@ def get_readonly_db_config():
     @return: A dictionary that can be used in the Django DATABASES setting.
     """
     return _get_database_config(getter=_get_readonly_config)
+
+
+def get_server_db_config():
+    """Returns settings for the server database as required by django.
+
+    @return: A dictionary that can be used in the Django DATABASES setting.
+    """
+    return _get_database_config(getter=_get_server_db_config)

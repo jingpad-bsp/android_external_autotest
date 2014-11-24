@@ -649,6 +649,12 @@ class UnallowedRecordsSentToMaster(Exception):
     pass
 
 
+class InvalidDataError(Exception):
+    """Exception raised when invalid data provided for database operation.
+    """
+    pass
+
+
 # This MUST remain at the end of the file.
 # Limit 'from error import *' to only import the exception instances.
 for _name, _thing in locals().items():
