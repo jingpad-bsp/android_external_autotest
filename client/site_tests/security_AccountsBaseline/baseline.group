@@ -68,10 +68,10 @@ uinput:!:258:bluetooth,volume
 apmanager:!:259:apmanager
 peerd:!:260:peerd
 privetd:!:262:privetd
+buffet:!:264:buffet,privetd
 ntfs-3g:!:300:
 avfs:!:301:
 fuse-exfat:!:302:
-buffet:!:307:buffet,privetd
 daemon-store:!:400:chaps
 logs-access:!:401:debugd-logs
 serial:!:402:uucp
