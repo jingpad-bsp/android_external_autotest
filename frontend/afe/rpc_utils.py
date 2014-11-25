@@ -734,6 +734,25 @@ def interleave_entries(queue_entries, special_tasks):
     return interleaved_entries
 
 
+def bucket_hosts_by_shard(host_objs, rpc_hostnames=False):
+    """Figure out which hosts are on which shards.
+
+    @param host_objs: A list of host objects.
+    @param rpc_hostnames: If True, the rpc_hostnames of a shard are returned
+        instead of the 'real' shard hostnames. This only matters for testing
+        environments.
+
+    @return: A map of shard hostname: list of hosts on the shard.
+    """
+    shard_host_map = {}
+    for host in host_objs:
+        if host.shard:
+            shard_name = (host.shard.rpc_hostname() if rpc_hostnames
+                          else host.shard.hostname)
+            shard_host_map.setdefault(shard_name, []).append(host.hostname)
+    return shard_host_map
+
+
 def get_create_job_common_args(local_args):
     """
     Returns a dict containing only the args that apply for create_job_common
@@ -799,6 +818,16 @@ def create_job_common(name, priority, control_type, control_file=None,
 
     # convert hostnames & meta hosts to host/label objects
     host_objects = models.Host.smart_get_bulk(hosts)
+    # Don't ever create jobs against hosts on shards. Though we have a hook
+    # in host scheduler that will prevent these jobs from even starting,
+    # a perpetually queued job will lead to a lot of confusion.
+    if not is_shard():
+        shard_host_map = bucket_hosts_by_shard(host_objects)
+        if shard_host_map:
+            raise ValueError('The following hosts are on shards, please '
+                             'follow the link to the shards and create jobs '
+                             'there instead. %s.' % shard_host_map)
+
     metahost_objects = []
     meta_host_labels_by_name = {label.name: label for label in label_objects}
     for label_name in meta_hosts or []:
@@ -1081,11 +1110,9 @@ def forward_multi_host_rpc_to_shards(func):
         if not is_shard():
 
             # Figure out which hosts are on which shards.
-            shard_host_map = {}
-            for host in models.Host.smart_get_bulk(kwargs['hosts']):
-                if host.shard:
-                    shard_host_map.setdefault(
-                            host.shard.hostname, []).append(host.hostname)
+            shard_host_map = bucket_hosts_by_shard(
+                    models.Host.smart_get_bulk(kwargs['hosts']),
+                    rpc_hostnames=True)
 
             # Execute the rpc against the appropriate shards.
             for shard, hostnames in shard_host_map.iteritems():

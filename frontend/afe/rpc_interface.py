@@ -734,6 +734,11 @@ def _call_special_tasks_on_hosts(task, hosts):
     @returns A list of hostnames that a special task was created for.
     """
     models.AclGroup.check_for_acl_violation_hosts(hosts)
+    shard_host_map = rpc_utils.bucket_hosts_by_shard(hosts)
+    if shard_host_map:
+        raise ValueError('The following hosts are on shards, please '
+                         'follow the link to the shards and create jobs '
+                         'there instead. %s.' % shard_host_map)
     for host in hosts:
         models.SpecialTask.schedule_special_task(host, task)
     return list(sorted(host.hostname for host in hosts))

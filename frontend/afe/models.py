@@ -20,6 +20,7 @@ from autotest_lib.client.common_lib import enum, error, host_protections
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import host_queue_entry_states
 from autotest_lib.client.common_lib import control_data, priorities, decorators
+from autotest_lib.client.common_lib import site_utils
 from autotest_lib.client.common_lib.cros.graphite import es_utils
 
 # job options and user preferences
@@ -155,6 +156,26 @@ class Shard(dbmodels.Model, model_logic.ModelExtensions):
     class Meta:
         """Metadata for class ParameterizedJob."""
         db_table = 'afe_shards'
+
+
+    def rpc_hostname(self):
+        """Get the rpc hostname of the shard.
+
+        @return: Just the shard hostname for all non-testing environments.
+                 The address of the default gateway for vm testing environments.
+        """
+        # TODO: Figure out a better solution for testing. Since no 2 shards
+        # can run on the same host, if the shard hostname is localhost we
+        # conclude that it must be a vm in a test cluster. In such situations
+        # a name of localhost:<port> is necessary to achieve the correct
+        # afe links/redirection from the frontend (this happens through the
+        # host), but for rpcs that are performed *on* the shard, they need to
+        # use the address of the gateway.
+        hostname = self.hostname.split(':')[0]
+        if site_utils.is_localhost(hostname):
+            return self.hostname.replace(
+                    hostname, site_utils.DEFAULT_VM_GATEWAY)
+        return self.hostname
 
 
 class Drone(dbmodels.Model, model_logic.ModelExtensions):

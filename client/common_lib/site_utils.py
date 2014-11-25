@@ -20,6 +20,9 @@ CHECK_PID_IS_ALIVE_TIMEOUT = 6
 
 _LOCAL_HOST_LIST = ('localhost', '127.0.0.1')
 
+# The default address of a vm gateway.
+DEFAULT_VM_GATEWAY = '10.0.2.2'
+
 # Google Storage bucket URI to store results in.
 DEFAULT_OFFLOAD_GSURI = global_config.global_config.get_config_value(
         'CROS', 'results_storage_server', default=None)
