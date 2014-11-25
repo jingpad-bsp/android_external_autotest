@@ -111,7 +111,7 @@ def _get_database_config(getter):
     """
     config = {
         'ENGINE': 'autotest_lib.frontend.db.backends.afe',
-        'PORT': '',
+        'PORT': getter('port', default=''),
         'HOST': getter('host'),
         'NAME': getter('database'),
         'USER': getter('user'),
