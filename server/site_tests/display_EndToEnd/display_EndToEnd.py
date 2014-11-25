@@ -21,11 +21,11 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
     version = 1
 
     # Duration of suspend, in second.
-    SUSPEND_DURATION = 15
+    SUSPEND_DURATION = 30
     # Allowed timeout for the transition of suspend.
-    SUSPEND_TIMEOUT = 7
+    SUSPEND_TIMEOUT = 15
     # Allowed timeout for the transition of resume.
-    RESUME_TIMEOUT = 20
+    RESUME_TIMEOUT = 30
     # Default waiting time in sec
     WAIT_TIME = 5
     # Crash paths to check for crash meta data
@@ -77,6 +77,7 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
         boot_id = self.host.get_boot_id()
         self.chameleon_port.set_plug(plugged_before)
         self.reboot(wait=False)
+        time.sleep(self.WAIT_TIME)
         self.host.test_wait_for_shutdown()
         self.host.test_wait_for_boot(boot_id)
         self.chameleon_port.set_plug(plugged_after)
