@@ -219,6 +219,7 @@ class DisplayFacadeNative(object):
             tab.Close()
 
 
+    @_retry_display_call
     def get_output_rect(self, output):
         """Gets the size and position of the given output on the screen buffer.
 
