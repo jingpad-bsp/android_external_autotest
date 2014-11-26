@@ -5,7 +5,6 @@
 import httplib
 import logging
 import socket
-import time
 import xmlrpclib
 
 from PIL import Image
@@ -87,24 +86,6 @@ class ChameleonBoard(object):
     def reset(self):
         """Resets Chameleon board."""
         self._chameleond_proxy.Reset()
-
-
-    def is_healthy(self):
-        """Returns if the Chameleon is healthy or any repair is needed.
-
-        @return: True if the Chameleon is healthy;
-                 otherwise, False, need to repair.
-        """
-        return self._chameleond_proxy.IsHealthy()
-
-
-    def repair(self):
-        """Repairs the Chameleon.
-
-        It is a synchronous call. It returns after repairs.
-        """
-        repair_time = self._chameleond_proxy.Repair()
-        time.sleep(repair_time)
 
 
     def get_all_ports(self):
