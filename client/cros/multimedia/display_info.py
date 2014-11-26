@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Helper related to display."""
+"""Module for display info."""
 
 class DisplayInfo(object):
     """The class match displayInfo object from chrome.system.display API.

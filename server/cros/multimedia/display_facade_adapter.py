@@ -9,7 +9,7 @@ import tempfile
 
 from PIL import Image
 
-from autotest_lib.client.cros.multimedia.display_helper import DisplayInfo
+from autotest_lib.client.cros.multimedia.display_info import DisplayInfo
 
 
 class DisplayFacadeRemoteAdapter(object):

@@ -8,7 +8,7 @@ import tempfile
 from PIL import Image
 
 from autotest_lib.client.cros.multimedia import display_facade_native
-from autotest_lib.client.cros.multimedia.display_helper import DisplayInfo
+from autotest_lib.client.cros.multimedia.display_info import DisplayInfo
 
 
 class DisplayFacadeLocalAdapter(display_facade_native.DisplayFacadeNative):
