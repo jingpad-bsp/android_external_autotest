@@ -55,5 +55,5 @@ class display_ResolutionList(chameleon_test.ChameleonTest):
             self.display_facade.set_resolution(display_index, *r)
             self.screen_test.test_screen_with_image(r, test_mirrored, errors)
 
-        self.raise_on_errors(errors)
-
+        if errors:
+            raise error.TestFail('; '.join(set(errors)))

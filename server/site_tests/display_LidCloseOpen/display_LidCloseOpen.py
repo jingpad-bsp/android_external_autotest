@@ -182,4 +182,5 @@ class display_LidCloseOpen(chameleon_test.ChameleonTest):
             # Check status
             if plugged_before_open:
                 self.check_external_display()
-            self.raise_on_errors(self.errors)
+            if self.errors:
+                raise error.TestFail('; '.join(set(self.errors)))

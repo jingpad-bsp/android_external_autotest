@@ -8,6 +8,7 @@ import logging
 import os
 import time
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.chameleon import chameleon_test
 
 
@@ -60,5 +61,5 @@ class display_Resolution(chameleon_test.ChameleonTest):
             self.screen_test.test_screen_with_image(
                     test_resolution, test_mirrored, errors)
 
-        self.raise_on_errors(errors)
-
+        if errors:
+            raise error.TestFail('; '.join(set(errors)))

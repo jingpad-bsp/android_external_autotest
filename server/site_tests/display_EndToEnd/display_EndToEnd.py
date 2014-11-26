@@ -156,7 +156,9 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
         # Check for crashes.
         if self.is_crash_data_present():
             self.errors.append('Crash data is detected on DUT')
-        self.raise_on_errors(self.errors)
+        if self.errors:
+            raise error.TestFail('; '.join(set(self.errors)))
+
 
     def get_edids_filepaths(self):
         """Gets the EDID data files for the connector type used"""

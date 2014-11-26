@@ -7,6 +7,8 @@ display in extended mode using the Chameleon board."""
 
 import logging
 import time
+
+from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.chameleon import chameleon_test
 
 
@@ -70,4 +72,5 @@ class display_HotPlugNoisy(chameleon_test.ChameleonTest):
             else:
                 time.sleep(1)
 
-        self.raise_on_errors(errors)
+        if errors:
+            raise error.TestFail('; '.join(set(errors)))

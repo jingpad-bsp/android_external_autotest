@@ -227,16 +227,6 @@ class ChameleonTest(test.test):
         logging.info('External display connector: %s', current_connector)
 
 
-    def raise_on_errors(self, check_results):
-        """If there is any error message in check_results, raise it.
-
-        @param check_results: A list of check results."""
-
-        check_results = [x for x in check_results if x is not None]
-        if check_results:
-            raise error.TestFail('; '.join(set(check_results)))
-
-
     def audio_start_recording(self, host, port):
         """Starts recording audio on a host using a port.
 

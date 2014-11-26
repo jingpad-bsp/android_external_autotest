@@ -6,6 +6,7 @@
 
 import logging, time
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.chameleon import chameleon_test
 
 
@@ -30,7 +31,8 @@ class display_SwitchMode(chameleon_test.ChameleonTest):
         # Check test image
         self.screen_test.test_screen_with_image(
                 resolution, test_mirrored, self.errors)
-        self.raise_on_errors(self.errors)
+        if self.errors:
+            raise error.TestFail('; '.join(set(self.errors)))
 
 
     def set_mode_and_check(self, test_mirrored):
