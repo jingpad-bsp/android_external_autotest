@@ -4,11 +4,12 @@
 
 AUTHOR = "cmasone, antrim"
 NAME = "desktopui_ExitOnSupervisedUserCrash"
-SUITE = "experimental"
+SUITE = "bvt-cq"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "desktopui"
 TEST_TYPE = "client"
+JOB_RETRIES = 2
 
 DOC = """
 This test synthetically informs the session_manager that a supervised user
