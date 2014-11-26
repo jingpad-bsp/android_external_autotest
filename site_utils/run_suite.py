@@ -40,7 +40,7 @@ This script exits with one of the following codes:
 
 
 import datetime as datetime_base
-import getpass, logging, optparse, os, re, sys, time
+import getpass, logging, optparse, os, sys, time
 from datetime import datetime
 
 import common
@@ -155,10 +155,16 @@ def parse_options():
                       'Must pass "True" or "False" if used.')
     parser.add_option('--minimum_duts', dest='minimum_duts', type=int,
                       default=0, action='store',
-                      help='Minimum Number of available machines required to '
-                      'run the suite. Default is set to 0, which means do not '
-                      'force the check of available machines before running '
-                      'the suite.')
+                      help='Check that the pool has at least such many '
+                           'healthy machines, otherwise suite will not run. '
+                           'Default to 0.')
+    parser.add_option('--suite_min_duts', dest='suite_min_duts', type=int,
+                      default=0, action='store',
+                      help='Preferred minimum number of machines. Scheduler '
+                           'will prioritize on getting such many machines for '
+                           'the suite when it is competing with another suite '
+                           'that has a higher priority but already got minimum '
+                           'machines it needs. Default to 0.')
     parser.add_option("--suite_args", dest="suite_args",
                       default=None, action="store",
                       help="Argument string for suite control file.")
@@ -1219,7 +1225,7 @@ def create_suite(afe, options):
                    suite_args=options.suite_args,
                    wait_for_results=wait,
                    timeout_mins=options.timeout_mins,
-                   job_retry=retry)
+                   job_retry=retry, suite_min_duts=options.suite_min_duts)
 
 
 def main_without_exception_handling():

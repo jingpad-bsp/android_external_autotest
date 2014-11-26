@@ -116,7 +116,7 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
                      check_hosts=True, num=None, file_bugs=False, timeout=24,
                      timeout_mins=None, priority=priorities.Priority.DEFAULT,
                      suite_args=None, wait_for_results=True, job_retry=False,
-                     max_runtime_mins=None, **kwargs):
+                     max_runtime_mins=None, suite_min_duts=0, **kwargs):
     """
     Create a job to run a test suite on the given device with the given image.
 
@@ -145,6 +145,10 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
     @param job_retry: Set to True to enable job-level retry. Default is False.
     @param max_runtime_mins: Maximum amount of time a job can be running in
                              minutes.
+    @param suite_min_duts: Integer. Scheduler will prioritize getting the
+                           minimum number of machines for the suite when it is
+                           competing with another suite that has a higher
+                           priority but already got minimum machines it needs.
     @param kwargs: extra keyword args. NOT USED.
 
     @raises ControlFileNotFound: if a unique suite control file doesn't exist.
@@ -162,7 +166,8 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
     if num == 0:
         logging.warning("Can't run on 0 hosts; using default.")
         num = None
-    (ds, timings) = _stage_build_artifacts(build)
+    (ds, keyvals) = _stage_build_artifacts(build)
+    keyvals[constants.SUITE_MIN_DUTS_KEY] = suite_min_duts
 
     if not control_file:
       # No control file was supplied so look it up from the build artifacts.
@@ -190,7 +195,7 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
                    'suite_args' : suite_args,
                    'wait_for_results': wait_for_results,
                    'job_retry': job_retry,
-                   'max_runtime_mins': max_runtime_mins
+                   'max_runtime_mins': max_runtime_mins,
                    }
 
     control_file = tools.inject_vars(inject_dict, control_file)
@@ -202,7 +207,7 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
                                        control_type='Server',
                                        control_file=control_file,
                                        hostless=True,
-                                       keyvals=timings)
+                                       keyvals=keyvals)
 
 
 # TODO: hide the following rpcs under is_moblab

@@ -10,6 +10,8 @@ JOB_SUITE_KEY = 'suite'
 # Job keyval indicating whether a job is for an experimental test.
 JOB_EXPERIMENTAL_KEY = 'experimental'
 RETRY_ORIGINAL_JOB_ID = 'retry_original_job_id'
+# Job keyval indicating the minimum duts required by the suite
+SUITE_MIN_DUTS_KEY = 'suite_min_duts'
 
 # Job attribute and label names
 EXPERIMENTAL_PREFIX = 'experimental_'
