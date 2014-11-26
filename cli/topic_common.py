@@ -55,10 +55,15 @@ High Level Algorithm:
    atest.print_*() methods.
 """
 
-import getpass, optparse, os, pwd, re, socket, sys, textwrap, traceback
-import socket, string, urllib2
+import optparse
+import os
+import re
+import sys
+import textwrap
+import traceback
+import urllib2
+
 from autotest_lib.cli import rpc
-from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.client.common_lib.test_utils import mock
 
 
@@ -154,10 +159,15 @@ def _get_item_key(item, key):
 
 
 class CliError(Exception):
+    """Error raised by cli calls.
+    """
     pass
 
 
 class item_parse_info(object):
+    """Object keeping track of the parsing options.
+    """
+
     def __init__(self, attribute_name, inline_option='',
                  filename_option='', use_leftover=False):
         """Object keeping track of the parsing options that will
@@ -241,11 +251,16 @@ class atest(object):
     Should only be instantiated by itself for usage
     references, otherwise, the <topic> objects should
     be used."""
-    msg_topic = "[acl|host|job|label|shard|atomicgroup|test|user]"
+    msg_topic = "[acl|host|job|label|shard|atomicgroup|test|user|server]"
     usage_action = "[action]"
     msg_items = ''
 
     def invalid_arg(self, header, follow_up=''):
+        """Fail the command with error that command line has invalid argument.
+
+        @param header: Header of the error message.
+        @param follow_up: Extra error message, default to empty string.
+        """
         twrap = textwrap.TextWrapper(initial_indent='        ',
                                      subsequent_indent='       ')
         rest = twrap.fill(follow_up)
@@ -257,6 +272,10 @@ class atest(object):
 
 
     def invalid_syntax(self, msg):
+        """Fail the command with error that the command line syntax is wrong.
+
+        @param msg: Error message.
+        """
         print
         print >> sys.stderr, msg
         print
@@ -267,6 +286,10 @@ class atest(object):
 
 
     def generic_error(self, msg):
+        """Fail the command with a generic error.
+
+        @param msg: Error message.
+        """
         if self.debug:
             traceback.print_exc()
         print >> sys.stderr, msg
@@ -278,7 +301,10 @@ class atest(object):
         items and returns them
         This is very kludgy for the moment, but we would need
         to refactor the exceptions sent from the front end
-        to make this better"""
+        to make this better.
+
+        @param full_error: The complete error message.
+        """
         errmsg = str(full_error).split('Traceback')[0].rstrip('\n')
         parts = errmsg.split(':')
         # Kludge: If there are 2 colons the last parts contains
@@ -291,7 +317,13 @@ class atest(object):
     def failure(self, full_error, item=None, what_failed='', fatal=False):
         """If kill_on_failure, print this error and die,
         otherwise, queue the error and accumulate all the items
-        that triggered the same error."""
+        that triggered the same error.
+
+        @param full_error: The complete error message.
+        @param item: Name of the actionable item, e.g., hostname.
+        @param what_failed: Name of the failed item.
+        @param fatal: True to exit the program with failure.
+        """
 
         if self.debug:
             errmsg = str(full_error)
@@ -319,6 +351,8 @@ class atest(object):
 
 
     def show_all_failures(self):
+        """Print all failure information.
+        """
         if not self.failed:
             return 0
         for what_failed in self.failed.keys():
@@ -388,16 +422,25 @@ class atest(object):
 
 
     def backward_compatibility(self, action, argv):
-        """To be overidden by subclass if their syntax changed"""
+        """To be overidden by subclass if their syntax changed.
+
+        @param action: Name of the action.
+        @param argv: A list of arguments.
+        """
         return action
 
 
     def parse(self, parse_info=[], req_items=None):
-        """parse_info is a list of item_parse_info objects
+        """Parse command arguments.
 
+        parse_info is a list of item_parse_info objects.
         There should only be one use_leftover set to True in the list.
 
-        Also check that the req_items is not empty after parsing."""
+        Also check that the req_items is not empty after parsing.
+
+        @param parse_info: A list of item_parse_info objects.
+        @param req_items: A list of required items.
+        """
         (options, leftover) = self.parse_global()
 
         all_parse_info = parse_info[:]
@@ -457,7 +500,14 @@ class atest(object):
 
     def check_and_create_items(self, op_get, op_create,
                                 items, **data_create):
-        """Create the items if they don't exist already"""
+        """Create the items if they don't exist already.
+
+        @param op_get: Name of `get` RPC.
+        @param op_create: Name of `create` RPC.
+        @param items: Actionable items specified in CLI command, e.g., hostname,
+                      to be passed to each RPC.
+        @param data_create: Data to be passed to `create` RPC.
+        """
         for item in items:
             ret = self.execute_rpc(op_get, name=item)
 
@@ -470,6 +520,12 @@ class atest(object):
 
 
     def execute_rpc(self, op, item='', **data):
+        """Execute RPC.
+
+        @param op: Name of the RPC.
+        @param item: Actionable item specified in CLI command.
+        @param data: Data to be passed to RPC.
+        """
         retry = 2
         while retry:
             try:
@@ -512,6 +568,12 @@ class atest(object):
     # but here are some helper functions to be used by its
     # children
     def print_wrapped(self, msg, values):
+        """Print given message and values in wrapped lines unless
+        AUTOTEST_CLI_NO_WRAP is specified in environment variables.
+
+        @param msg: Message to print.
+        @param values: A list of values to print.
+        """
         if len(values) == 0:
             return
         elif len(values) == 1:
@@ -538,7 +600,12 @@ class atest(object):
 
 
     def print_fields_std(self, items, keys, title=None):
-        """Print the keys in each item, one on each line"""
+        """Print the keys in each item, one on each line.
+
+        @param items: Items to print.
+        @param keys: Name of the keys to look up each item in items.
+        @param title: Title of the output, default to None.
+        """
         if not items:
             return
         if title:
@@ -551,8 +618,12 @@ class atest(object):
 
 
     def print_fields_parse(self, items, keys, title=None):
-        """Print the keys in each item as comma
-        separated name=value"""
+        """Print the keys in each item as comma separated name=value
+
+        @param items: Items to print.
+        @param keys: Name of the keys to look up each item in items.
+        @param title: Title of the output, default to None.
+        """
         for item in items:
             values = ['%s=%s' % (KEYS_TO_NAMES_EN[key],
                                   self.__conv_value(key,
@@ -564,7 +635,11 @@ class atest(object):
 
 
     def __find_justified_fmt(self, items, keys):
-        """Find the max length for each field."""
+        """Find the max length for each field.
+
+        @param items: Items to lookup for.
+        @param keys: Name of the keys to look up each item in items.
+        """
         lens = {}
         # Don't justify the last field, otherwise we have blank
         # lines when the max is overlaps but the current values
@@ -583,9 +658,14 @@ class atest(object):
 
 
     def print_table_std(self, items, keys_header, sublist_keys=()):
-        """Print a mix of header and lists in a user readable
-        format
-        The headers are justified, the sublist_keys are wrapped."""
+        """Print a mix of header and lists in a user readable format.
+
+        The headers are justified, the sublist_keys are wrapped.
+
+        @param items: Items to print.
+        @param keys_header: Header of the keys, use to look up in items.
+        @param sublist_keys: Keys for sublist in each item.
+        """
         if not items:
             return
         fmt = self.__find_justified_fmt(items, keys_header)
@@ -604,8 +684,12 @@ class atest(object):
 
 
     def print_table_parse(self, items, keys_header, sublist_keys=()):
-        """Print a mix of header and lists in a user readable
-        format"""
+        """Print a mix of header and lists in a user readable format.
+
+        @param items: Items to print.
+        @param keys_header: Header of the keys, use to look up in items.
+        @param sublist_keys: Keys for sublist in each item.
+        """
         for item in items:
             values = ['%s=%s' % (KEYS_TO_NAMES_EN[key],
                                  self.__conv_value(key, _get_item_key(item, key)))
@@ -623,7 +707,13 @@ class atest(object):
 
 
     def print_by_ids_std(self, items, title=None, line_before=False):
-        """Prints ID & names of items in a user readable form"""
+        """Prints ID & names of items in a user readable form.
+
+        @param items: Items to print.
+        @param title: Title of the output, default to None.
+        @param line_before: True to print an empty line before the output,
+                            default to False.
+        """
         if not items:
             return
         if line_before:
@@ -634,9 +724,17 @@ class atest(object):
 
 
     def print_by_ids_parse(self, items, title=None, line_before=False):
-        """Prints ID & names of items in a parseable format"""
+        """Prints ID & names of items in a parseable format.
+
+        @param items: Items to print.
+        @param title: Title of the output, default to None.
+        @param line_before: True to print an empty line before the output,
+                            default to False.
+        """
         if not items:
             return
+        if line_before:
+            print
         if title:
             print title + '=',
         values = []
@@ -651,14 +749,24 @@ class atest(object):
 
 
     def print_list_std(self, items, key):
-        """Print a wrapped list of results"""
+        """Print a wrapped list of results
+
+        @param items: Items to to lookup for given key, could be a nested
+                      dictionary.
+        @param key: Name of the key to look up for value.
+        """
         if not items:
             return
         print ' '.join(_get_item_key(item, key) for item in items)
 
 
     def print_list_parse(self, items, key):
-        """Print a wrapped list of results"""
+        """Print a wrapped list of results.
+
+        @param items: Items to to lookup for given key, could be a nested
+                      dictionary.
+        @param key: Name of the key to look up for value.
+        """
         if not items:
             return
         print '%s=%s' % (KEYS_TO_NAMES_EN[key],
