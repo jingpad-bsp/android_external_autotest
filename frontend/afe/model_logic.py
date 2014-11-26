@@ -5,7 +5,11 @@ Extensions to Django's model logic.
 import re
 import time
 import django.core.exceptions
-from django.db import models as dbmodels, backend, connection, connections
+from django.db import backend
+from django.db import connection
+from django.db import connections
+from django.db import models as dbmodels
+from django.db import transaction
 from django.db.models.sql import query
 import django.db.models.sql.where
 from django.utils import datastructures
@@ -1093,6 +1097,7 @@ class ModelExtensions(rdb_model_extensions.ModelValidators):
             'for type %s' % type(self))
 
 
+    @transaction.commit_on_success
     def update_from_serialized(self, serialized):
         """Updates local fields of an existing object from a serialized form.
 

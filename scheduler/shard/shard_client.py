@@ -22,7 +22,7 @@ from autotest_lib.frontend.afe import models, rpc_utils
 from autotest_lib.scheduler import email_manager
 from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
-
+from django.db import transaction
 
 """
 Autotest shard client
@@ -126,11 +126,12 @@ class ShardClient(object):
         stats.Gauge(STATS_KEY).send(
             'jobs_received', len(jobs_serialized))
 
-        # Persisting is automatically done inside deserialize
         for host in hosts_serialized:
-            models.Host.deserialize(host)
+            with transaction.commit_on_success():
+                models.Host.deserialize(host)
         for job in jobs_serialized:
-            models.Job.deserialize(job)
+            with transaction.commit_on_success():
+                models.Job.deserialize(job)
 
 
     @property
