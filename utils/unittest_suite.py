@@ -48,6 +48,7 @@ REQUIRES_DJANGO = set((
         'host_scheduler_unittests.py',
         'site_parse_unittest.py',
         'shard_client_integration_tests.py',
+        'server_manager_unittest.py',
         ))
 
 REQUIRES_MYSQLDB = set((
