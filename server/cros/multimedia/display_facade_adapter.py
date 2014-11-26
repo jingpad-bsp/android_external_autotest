@@ -126,13 +126,14 @@ class DisplayFacadeRemoteAdapter(object):
         self._display_proxy.suspend_resume_bg(suspend_time)
 
 
-    def wait_for_output(self, output):
-        """Waits for the specified output to be connected.
+    def wait_external_display_connected(self, display):
+        """Waits for the specified display to be connected.
 
-        @param output: The output name as a string.
-        @return: True if output is connected; False otherwise.
+        @param display: The display name as a string, like 'HDMI1', or
+                        False if no external display is expected.
+        @return: True if display is connected; False otherwise.
         """
-        return self._display_proxy.wait_output_connected(output)
+        return self._display_proxy.wait_external_display_connected(display)
 
 
     def hide_cursor(self):

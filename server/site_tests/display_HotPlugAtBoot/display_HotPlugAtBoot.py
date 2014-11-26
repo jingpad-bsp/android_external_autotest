@@ -55,7 +55,7 @@ class display_HotPlugAtBoot(chameleon_test.ChameleonTest):
             host.test_wait_for_boot(boot_id)
 
             self.display_facade.connect()
-            self.check_external_display_connector(
+            self.check_external_display_connected(
                     expected_connector if plugged_after_boot else False)
 
             if plugged_after_boot:

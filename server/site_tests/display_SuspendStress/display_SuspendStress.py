@@ -63,7 +63,7 @@ class display_SuspendStress(chameleon_test.ChameleonTest):
             self.display_facade.suspend_resume(suspend_time)
             logging.info('Resumed back')
 
-            self.check_external_display_connector(expected_connector)
+            self.check_external_display_connected(expected_connector)
             error_message = self.screen_test.test_screen_with_image(
                     test_resolution, test_mirrored)
             if error_message:

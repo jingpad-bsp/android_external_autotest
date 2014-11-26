@@ -149,7 +149,7 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
     def check_external_display(self):
         """Display status check"""
         # Check connector
-        self.check_external_display_connector(self.connector_used)
+        self.check_external_display_connected(self.connector_used)
         # Check test image
         self.screen_test.test_screen_with_image(
                 self.resolution, self.test_mirrored, self.errors)

@@ -108,16 +108,6 @@ class ChameleonTest(test.test):
            self.display_facade.connect()
 
 
-    def wait_for_output(self, output):
-        """Waits for the specified output to be connected.
-
-        @param output: name of the output in a string.
-        @raise error.TestFail if output fails to get connected.
-        """
-        if not self.display_facade.wait_for_output(output):
-            raise error.TestFail('Fail to get %s connected' % output)
-
-
     def reconnect_output(self, unplug_duration_sec=5):
         """Reconnects the output with an unplug followed by a plug.
 
@@ -128,7 +118,8 @@ class ChameleonTest(test.test):
         self.chameleon_port.unplug()
         time.sleep(unplug_duration_sec)
         self.chameleon_port.plug()
-        self.wait_for_output(output)
+        if not self.display_facade.wait_external_display_connected(output):
+            raise error.TestFail('Fail to get %s connected' % output)
 
 
     def cleanup(self):
@@ -159,34 +150,17 @@ class ChameleonTest(test.test):
         return first_port
 
 
-    def check_external_display_connector(self, expected_connector, timeout=5):
-        """Checks the connecting status of external display on DUT.
+    def check_external_display_connected(self, expected_display):
+        """Checks the given external display connected.
 
-        @param expected_connector: Name of the expected connector or False
-                if no external monitor is expected.
-        @param timeout: Duration in second to retry checking the connector.
+        @param expected_display: Name of the expected display or False
+                if no external display is expected.
         @raise error.TestFail if the check does not pass.
         """
-        current_connector = self.display_facade.get_external_connector_name()
-        now = time.time()
-        end_time = now + timeout
-        while expected_connector != current_connector and now < end_time:
-            logging.info('Expect to see %s but got %s', expected_connector,
-                    current_connector)
-            time.sleep(0.5)
-            now = time.time()
-            current_connector = (
-                    self.display_facade.get_external_connector_name())
-
-        if expected_connector != current_connector:
-            if expected_connector:
-                error_message = 'Expect to see %s but got %s' % (
-                        expected_connector, current_connector)
-            else:
-                error_message = ('Do not expect to see external monitor '
-                        'but got %s' % (current_connector))
-            raise error.TestFail(error_message)
-        logging.info('External display connector: %s', current_connector)
+        if not self.display_facade.wait_external_display_connected(
+                expected_display):
+            raise error.TestFail('Waited for display %s but timed out' %
+                                 expected_display)
 
 
     def audio_start_recording(self, host, port):

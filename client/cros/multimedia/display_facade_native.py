@@ -392,15 +392,16 @@ class DisplayFacadeNative(object):
         return graphics_utils.get_internal_connector_name()
 
 
-    @_retry_display_call
-    def wait_output_connected(self, output):
-        """Wait for output to connect.
+    def wait_external_display_connected(self, display):
+        """Waits for the specified external display to be connected.
 
-        @param output: The output name as a string.
-
-        @return: True if output is connected; False otherwise.
+        @param display: The display name as a string, like 'HDMI1', or
+                        False if no external display is expected.
+        @return: True if display is connected; False otherwise.
         """
-        return graphics_utils.wait_output_connected(output)
+        result = utils.wait_for_value(self.get_external_connector_name,
+                                      expected_value=display)
+        return result == display
 
 
     def _load_url(self, url):

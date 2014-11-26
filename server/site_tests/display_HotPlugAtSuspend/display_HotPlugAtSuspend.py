@@ -89,7 +89,7 @@ class display_HotPlugAtSuspend(chameleon_test.ChameleonTest):
 
             logging.info('Resumed back')
 
-            self.check_external_display_connector(expected_connector
+            self.check_external_display_connected(expected_connector
                     if plugged_before_resume else False)
             if plugged_before_resume:
                 if test_mirrored and (
