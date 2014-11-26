@@ -68,9 +68,9 @@ class ScreenTest(object):
                 bubble and the external display detecting notation to disappear.
         """
         self._display_facade.load_calibration_image(image_size)
-        self._display_facade.hide_cursor()
         logging.info('Waiting for calibration image to stabilize...')
         time.sleep(calibration_image_setup_time)
+        self._display_facade.hide_cursor()
 
 
     def unload_test_image(self):
