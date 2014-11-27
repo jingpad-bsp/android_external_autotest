@@ -4,9 +4,11 @@
 
 """An adapter to access the local display facade."""
 
+import logging
 import tempfile
 from PIL import Image
 
+from autotest_lib.client.cros import sys_power
 from autotest_lib.client.cros.multimedia import display_facade_native
 from autotest_lib.client.cros.multimedia.display_info import DisplayInfo
 
@@ -63,3 +65,15 @@ class DisplayFacadeLocalAdapter(display_facade_native.DisplayFacadeNative):
         @return: list of object DisplayInfo for display informtion
         """
         return map(DisplayInfo, self._display_proxy.get_display_info())
+
+
+    def suspend_resume(self, suspend_time=10):
+        """Suspends the DUT for a given time in second.
+
+        @param suspend_time: Suspend time in second.
+        """
+        try:
+            super(DisplayFacadeLocalAdapter, self).suspend_resume(suspend_time)
+        except sys_power.SpuriousWakeupError as e:
+            # Log suspend/resume errors but continue the test.
+            logging.error('suspend_resume error: %s', str(e))

@@ -247,7 +247,9 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
         self.check_external_display()
 
         # Suspend and resume as currently plugged
-        self.suspend_resume()
+        self.test_suspend_resume(plugged_before_suspend=True,
+                                 plugged_after_suspend=True,
+                                 plugged_after_resume=True)
 
         # Unplug-Suspend-Plug-Resume
         self.test_suspend_resume(plugged_before_suspend=False,

@@ -58,7 +58,11 @@ class display_SuspendStress(chameleon_test.ChameleonTest):
                 # magic sleep to make nyan_big wake up in mirrored mode
                 # TODO: find root cause
                 time.sleep(6)
-            self.suspend_resume(random.randint(*suspend_time_range))
+            suspend_time = random.randint(*suspend_time_range)
+            logging.info('Going to suspend, for %d seconds...', suspend_time)
+            self.display_facade.suspend_resume(suspend_time)
+            logging.info('Resumed back')
+
             self.check_external_display_connector(expected_connector)
             error_message = self.screen_test.test_screen_with_image(
                     test_resolution, test_mirrored)

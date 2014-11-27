@@ -4,8 +4,10 @@
 
 """An adapter to remotely access the display facade on DUT."""
 
+import logging
 import os
 import tempfile
+import xmlrpclib
 
 from PIL import Image
 
@@ -108,8 +110,11 @@ class DisplayFacadeRemoteAdapter(object):
 
         @param suspend_time: Suspend time in second, default: 10s.
         """
-        # TODO(waihong): Use other general API instead of this RPC.
-        self._display_proxy.suspend_resume(suspend_time)
+        try:
+            self._display_proxy.suspend_resume(suspend_time)
+        except xmlrpclib.Fault as e:
+            # Log suspend/resume errors but continue the test.
+            logging.error('suspend_resume error: %s', str(e))
 
 
     def suspend_resume_bg(self, suspend_time=10):

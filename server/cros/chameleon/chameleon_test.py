@@ -5,7 +5,6 @@
 import logging
 import os
 import time
-import xmlrpclib
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
@@ -95,27 +94,6 @@ class ChameleonTest(test.test):
                      self.chameleon_port.get_connector_type(),
                      filename)
         self.chameleon_port.apply_edid(edid.Edid.from_file(filename))
-
-
-    def suspend_resume(self, suspend_time=10, timeout=20):
-        """Suspends and resumes the DUT.
-
-        @param suspend_time: suspend time in second, default: 10s.
-        @param timeout: time to wait for DUP to fully resume (second).
-        """
-
-        start_time = time.time()
-        boot_id = self.host.get_boot_id()
-        logging.info('Suspend and resume %.2f seconds', suspend_time)
-        try:
-            self.display_facade.suspend_resume(suspend_time)
-        except xmlrpclib.Fault as e:
-            # Log suspend/resume errors but continue the test.
-            logging.error('suspend_resume error: %s', str(e))
-        # The following call raises a TestFail if boot_id's don't match or
-        # timed out.
-        self.host.test_wait_for_resume(boot_id, timeout)
-        logging.info('DUT is up within %.2f seconds', time.time() - start_time)
 
 
     def reboot(self, wait=True):

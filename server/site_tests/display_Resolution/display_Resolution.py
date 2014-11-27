@@ -56,7 +56,9 @@ class display_Resolution(chameleon_test.ChameleonTest):
                     # magic sleep to make nyan_big wake up in mirrored mode
                     # TODO: find root cause
                     time.sleep(6)
-                self.suspend_resume()
+                logging.info('Going to suspend...')
+                self.display_facade.suspend_resume()
+                logging.info('Resumed back')
 
             self.screen_test.test_screen_with_image(
                     test_resolution, test_mirrored, errors)
