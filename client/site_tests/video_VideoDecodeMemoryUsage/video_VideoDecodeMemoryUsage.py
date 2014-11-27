@@ -24,13 +24,13 @@ KEY_RSS = 'WorkingSetSize'
 # The number of iterations to be run before measuring the memory usage.
 # Just ensure we have fill up the caches/buffers so that we can get
 # a more stable/correct result.
-WARMUP_COUNT = 10
+WARMUP_COUNT = 50
 
 # Number of iterations per measurement.
-EVALUATION_COUNT = 50
+EVALUATION_COUNT = 70
 
 # The minimal number of samples for memory-leak test.
-MIN_SAMPLE_SIZE = 10
+MEMORY_LEAK_CHECK_MIN_COUNT = 20
 
 # The approximate values of the student's t-distribution at 95% confidence.
 # See http://en.wikipedia.org/wiki/Student's_t-distribution
@@ -66,6 +66,8 @@ MEMINFO_PATH = '/proc/meminfo'
 # the kernel memory usage.
 KERNEL_MEMORY_ENTRIES = ['Slab', 'Shmem', 'KernelStack', 'PageTables']
 
+MEM_TOTAL_ENTRY = 'MemTotal'
+
 # Paths of files to read graphics memory usage from
 X86_GEM_OBJECTS_PATH = '/sys/kernel/debug/dri/0/i915_gem_objects'
 ARM_GEM_OBJECTS_PATH = '/sys/kernel/debug/dri/0/exynos_gem_objects'
@@ -81,18 +83,17 @@ GEM_OBJECTS_RE = re.compile('(\d+)\s+objects,\s+(\d+)\s+bytes')
 # The default sleep time, in seconds.
 SLEEP_TIME = 1.5
 
-def _get_kernel_memory_usage():
-    """Gets the kernel memory usage."""
-    with file(MEMINFO_PATH) as f:
-        m = {x.group(1): int(x.group(2))
-                   for x in MEMINFO_RE.finditer(f.read())}
 
-    # Sum up the usage and convert from kB to bytes
-    return sum(m[key] for key in KERNEL_MEMORY_ENTRIES) * 1024
+def _get_kernel_memory_usage():
+    with file(MEMINFO_PATH) as f:
+        mem_info = {x.group(1): int(x.group(2))
+                   for x in MEMINFO_RE.finditer(f.read())}
+    # Sum up the kernel memory usage (in KB) in mem_info
+    return sum(map(mem_info.get, KERNEL_MEMORY_ENTRIES))
 
 
 def _get_graphics_memory_usage():
-    """Get the memory usage of the graphics module."""
+    """Get the memory usage (in KB) of the graphics module."""
     arch = utils.get_cpu_arch()
     try:
         path = GEM_OBJECTS_PATH[arch]
@@ -103,7 +104,7 @@ def _get_graphics_memory_usage():
         for line in input:
             result = GEM_OBJECTS_RE.match(line)
             if result:
-                return int(result.group(2))
+                return int(result.group(2)) / 1024 # in KB
     raise error.TestError('Cannot parse the content')
 
 
@@ -128,7 +129,7 @@ def _get_linear_regression_slope(x, y):
                beta * beta * (n * sxx - sx * sx)) / (n * (n - 2))
     std_beta = sqrt((n * stderr2) / (n * sxx - sx * sx))
     t_095 = T_095[n - 2]
-    delta_beta = t_095 * std_beta;
+    delta_beta = t_095 * std_beta
     return (beta, t_095 * std_beta)
 
 
@@ -139,8 +140,13 @@ def _assert_no_memory_leak(name, mem_usage, threshold = MEMORY_LEAK_THRESHOLD):
     logging.info('confidence interval: %s - %s, %s',
                  name, slope - delta, slope + delta)
     if (slope - delta > threshold):
-        logging.debug('memory usage for %s - %s', name, mem_usage);
+        logging.debug('memory usage for %s - %s', name, mem_usage)
         raise error.TestError('leak detected: %s - %s' % (name, slope - delta))
+
+
+def _output_entries(out, entries):
+    out.write(' '.join(str(x) for x in entries) + '\n')
+    out.flush()
 
 
 class MemoryTest(object):
@@ -152,6 +158,7 @@ class MemoryTest(object):
 
     def _open_new_tab(self, page_to_open):
         tab = self.browser.tabs.New()
+        tab.Activate()
         tab.Navigate(self.browser.http_server.UrlOf(
                 os.path.join(self._bindir, page_to_open)))
         tab.WaitForDocumentReadyStateToBeComplete()
@@ -161,14 +168,20 @@ class MemoryTest(object):
     def _get_memory_usage(self):
         """Helper function to get the memory usage.
 
-        It returns a tuple of five elements:
+        It returns a tuple of six elements:
             (browser_usage, renderer_usage, gpu_usage, kernel_usage,
-             graphics_usage)
+             total_usage, graphics_usage)
+        All are expected in the unit of KB.
 
         browser_usage: the RSS of the browser process
         rednerers_usage: the total RSS of all renderer processes
         rednerers_usage: the total RSS of all gpu processes
         kernel_usage: the memory used in kernel
+        total_usage: the sum of the above memory usages. The graphics_usage is
+                     not included because the composition of the graphics
+                     memory is much more complicated (could be from video card,
+                     user space, or kenerl space). It doesn't make so much
+                     sense to sum it up with others.
         graphics_usage: the memory usage reported by the graphics driver
         """
         # Force to collect garbage before measuring memory
@@ -179,15 +192,15 @@ class MemoryTest(object):
 
         m = self.browser.memory_stats
 
-        result = (m[KEY_BROWSER][KEY_RSS],
-                  m[KEY_RENDERER][KEY_RSS],
-                  m[KEY_GPU][KEY_RSS],
-                  _get_kernel_memory_usage(),
-                  _get_graphics_memory_usage())
+        result = (m[KEY_BROWSER][KEY_RSS] / 1024,
+                  m[KEY_RENDERER][KEY_RSS] / 1024,
+                  m[KEY_GPU][KEY_RSS] / 1024,
+                  _get_kernel_memory_usage())
 
-        # TODO(owenlin): Uncomment the following line once
-        #                http://crbug.com/241749 is resolved
-        # assert all(x > 0 for x in result) # Make sure we read values back
+        # total = browser + renderer + gpu + kernal
+        result += (sum(result), _get_graphics_memory_usage())
+
+        assert all(x > 0 for x in result) # Make sure we read values back
         return result
 
 
@@ -225,28 +238,44 @@ class MemoryTest(object):
         self.videos = videos
         self.name = name
 
+        names = ['browser', 'renderers', 'gpu', 'kernel', 'total', 'graphics']
+        result_log = open(os.path.join(test.resultsdir, '%s.log' % name), 'wt')
+        _output_entries(result_log, names)
+
         self.initialize()
         try:
             for i in xrange(warmup_count):
                 self.loop()
+                _output_entries(result_log, self._get_memory_usage())
 
-            names = ['browser', 'renderers', 'gpu', 'kernel', 'graphics']
-            metrics = [[] for n in names]
+            metrics = []
             for i in xrange(eval_count):
                 self.loop()
-                result = self._get_memory_usage()
-                for n, m, r in zip(names, metrics, result):
-                    m.append(r)
-                    if len(m) >= MIN_SAMPLE_SIZE:
-                        _assert_no_memory_leak(n, m)
+                results = self._get_memory_usage()
+                _output_entries(result_log, results)
+                metrics.append(results)
 
-            for n, m in zip(names, metrics):
-                logging.info('memory usage for %s.%s - %s', self.name, n, m)
-                test.output_perf_value(
-                        description='%s.%s' % (self.name, n),
-                        value=m,
-                        units='bytes',
-                        higher_is_better=False)
+                # Check memory leak when we have enough samples
+                if len(metrics) >= MEMORY_LEAK_CHECK_MIN_COUNT:
+                    # Assert no leak in the 'total' and 'graphics' usages
+                    for index in map(names.index, ('total', 'graphics')):
+                        _assert_no_memory_leak(
+                            self.name, [m[index] for m in metrics])
+
+            indices = range(len(metrics))
+
+            # Prefix the test name to each metric's name
+            fullnames = ['%s.%s' % (name, n) for n in names]
+
+            # Transpose metrics, and iterate each type of memory usage
+            for name, metric in zip(fullnames, zip(*metrics)):
+                memory_increase_per_run, _ = _get_linear_regression_slope(
+                    indices, metric)
+                logging.info('memory increment for %s - %s',
+                    name, memory_increase_per_run)
+                test.output_perf_value(description=name,
+                        value=memory_increase_per_run,
+                        units='KB', higher_is_better=False)
         finally:
             self.cleanup()
 
@@ -277,7 +306,7 @@ class OpenTabPlayVideo(MemoryTest):
     def loop(self):
         tab = self._open_new_tab(TEST_PAGE)
         _change_source_and_play(tab, self.videos[0])
-        _assert_video_is_playing(tab);
+        _assert_video_is_playing(tab)
         time.sleep(SLEEP_TIME)
         tab.Close()
 
@@ -296,7 +325,7 @@ class PlayVideo(MemoryTest):
 
     def loop(self):
         time.sleep(SLEEP_TIME)
-        _assert_video_is_playing(self.activeTab);
+        _assert_video_is_playing(self.activeTab)
 
 
     def cleanup(self):
@@ -314,9 +343,9 @@ class ChangeVideoSource(MemoryTest):
 
     def loop(self):
         for video in self.videos:
-            _change_source_and_play(self.activeTab, video);
+            _change_source_and_play(self.activeTab, video)
             time.sleep(SLEEP_TIME)
-            _assert_video_is_playing(self.activeTab);
+            _assert_video_is_playing(self.activeTab)
 
 
     def cleanup(self):
