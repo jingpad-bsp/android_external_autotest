@@ -48,13 +48,13 @@ class display_HotPlugAtBoot(chameleon_test.ChameleonTest):
             self.chameleon_port.set_plug(plugged_before_boot)
 
             # Don't wait DUT up. Do plug/unplug while booting.
-            self.reboot(wait=False)
+            logging.info('Reboot...')
+            host.reboot(wait=False)
 
             host.test_wait_for_shutdown()
             self.chameleon_port.set_plug(plugged_after_boot)
             host.test_wait_for_boot(boot_id)
 
-            self.display_facade.connect()
             if self.screen_test.check_external_display_connected(
                     expected_connector if plugged_after_boot else False,
                     errors):

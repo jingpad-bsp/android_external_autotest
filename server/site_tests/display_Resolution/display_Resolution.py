@@ -45,7 +45,8 @@ class display_Resolution(chameleon_test.ChameleonTest):
                     self.bindir, 'test_data', 'edids', test_name))
 
             if test_reboot:
-                self.reboot()
+                logging.info('Reboot...')
+                host.reboot()
             else:
                 self.reconnect_output()
 

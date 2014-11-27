@@ -96,18 +96,6 @@ class ChameleonTest(test.test):
         self.chameleon_port.apply_edid(edid.Edid.from_file(filename))
 
 
-    def reboot(self, wait=True):
-        """Reboots the DUT with logging.
-
-        @param wait: True if want to wait DUT up and reconnect to
-                display facade"""
-
-        logging.info('Reboot...')
-        self.host.reboot(wait=wait)
-        if wait:
-           self.display_facade.connect()
-
-
     def reconnect_output(self, unplug_duration_sec=5):
         """Reconnects the output with an unplug followed by a plug.
 

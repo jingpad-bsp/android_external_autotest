@@ -76,12 +76,12 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
 
         boot_id = self.host.get_boot_id()
         self.chameleon_port.set_plug(plugged_before)
-        self.reboot(wait=False)
+        logging.info('Reboot...')
+        self.host.reboot(wait=False)
         time.sleep(self.WAIT_TIME)
         self.host.test_wait_for_shutdown()
         self.host.test_wait_for_boot(boot_id)
         self.chameleon_port.set_plug(plugged_after)
-        self.display_facade.connect()
 
 
     def test_suspend_resume(self, plugged_before_suspend,

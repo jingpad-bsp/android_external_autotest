@@ -14,12 +14,34 @@ from autotest_lib.server.cros.multimedia import audio_facade_adapter
 from autotest_lib.server.cros.multimedia import display_facade_adapter
 
 
-class RemoteFacadeConnection(object):
-    """An abstraction of XML RPC connection to the DUT multimedia server.
+class _Method:
+    """Class to save the name of the RPC method instead of the real object.
+
+    It keeps the name of the RPC method locally first such that the RPC method
+    can be evalulated to a real object while it is called. Its purpose is to
+    refer to the latest RPC proxy as the original previous-saved RPC proxy may
+    be lost due to reboot.
+
+    The call_method is the method which does refer to the latest RPC proxy.
+    """
+    def __init__(self, call_method, name):
+        self.__call_method = call_method
+        self.__name = name
+
+    def __getattr__(self, name):
+        # Support a nested method.
+        return _Method(self.__call_method, "%s.%s" % (self.__name, name))
+
+    def __call__(self, *args, **dargs):
+        return self.__call_method(self.__name, *args, **dargs)
+
+
+class RemoteFacadeProxy(object):
+    """An abstraction of XML RPC proxy to the DUT multimedia server.
 
     The traditional XML RPC server proxy is static. It is lost when DUT
-    reboots. This class keeps track on this connection and returns the
-    up-to-date XML RPC server proxy once DUT reboots.
+    reboots. This class reconnects the server again when it finds the
+    connection is lost.
 
     """
 
@@ -28,13 +50,39 @@ class RemoteFacadeConnection(object):
     XMLRPC_RETRY_DELAY = 10
 
     def __init__(self, host):
-        """Construct a RemoteFacadeConnection.
+        """Construct a RemoteFacadeProxy.
 
         @param host: Host object representing a remote host.
         """
         self._client = host
         self._xmlrpc_proxy = None
-        self.connect()
+
+
+    def __getattr__(self, name):
+        """Return a _Method object only, not its real object."""
+        return _Method(self.__call_proxy, name)
+
+
+    def __call_proxy(self, name, *args, **dargs):
+        """Make the call on the latest RPC proxy object.
+
+        This method gets the internal method of the RPC proxy and calls it.
+
+        @param name: Name of the RPC method, a nested method supported.
+        @param args: The rest of arguments.
+        @param dargs: The rest of dict-type arguments.
+        @return: The return value of the RPC method.
+        """
+        try:
+            return getattr(self._xmlrpc_proxy, name)(*args, **dargs)
+        except (AttributeError,  # _xmlrpc_proxy not initialized, still None
+                socket.error,
+                xmlrpclib.ProtocolError,
+                httplib.BadStatusLine):
+            # Reconnect the RPC server in case connection lost, e.g. reboot.
+            self.connect()
+            # Try again.
+            return getattr(self._xmlrpc_proxy, name)(*args, **dargs)
 
 
     def connect(self):
@@ -58,15 +106,6 @@ class RemoteFacadeConnection(object):
 
         logging.info('Setup the connection to RPC server, with retries...')
         connect_with_retries()
-
-
-    @property
-    def xmlrpc_proxy(self):
-        """Gets the XML RPC server proxy object.
-
-        @return XML RPC proxy to DUT multimedia server.
-        """
-        return self._xmlrpc_proxy
 
 
     def __del__(self):
@@ -93,17 +132,17 @@ class RemoteFacadeFactory(object):
         # is there when we try to call it.
         client_at = autotest.Autotest(self._client)
         client_at.install()
-        self._connection = RemoteFacadeConnection(self._client)
+        self._proxy = RemoteFacadeProxy(self._client)
 
 
     def create_audio_facade(self):
         """Creates an audio facade object."""
         # TODO(cychiang): pass _client to AudioFacadeRemoteAdapter if needed.
         return audio_facade_adapter.AudioFacadeRemoteAdapter(
-                self._connection)
+                self._proxy)
 
 
     def create_display_facade(self):
         """Creates a display facade object."""
         return display_facade_adapter.DisplayFacadeRemoteAdapter(
-                self._client, self._connection)
+                self._client, self._proxy)

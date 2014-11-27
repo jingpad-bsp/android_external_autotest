@@ -6,12 +6,12 @@
 
 class AudioFacadeRemoteAdapter(object):
     """AudioFacadeRemoteAdapter is an adapter to remotely control DUT audio."""
-    def __init__(self, remote_facade_connection):
+    def __init__(self, remote_facade_proxy):
         """Construct an AudioFacadeRemoteAdapter.
 
-        @param remote_facade_connection: RemoteFacadeConnection object.
+        @param remote_facade_proxy: RemoteFacadeProxy object.
         """
-        self._connection = remote_facade_connection
+        self._proxy = remote_facade_proxy
 
     @property
     def _audio_proxy(self):
@@ -19,7 +19,7 @@ class AudioFacadeRemoteAdapter(object):
 
         @return XML RPC proxy to DUT audio facade.
         """
-        return self._connection.xmlrpc_proxy.audio
+        return self._proxy.audio
 
     def playback(self, file_path):
         """Playback an audio file on DUT.

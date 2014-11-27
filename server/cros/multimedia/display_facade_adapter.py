@@ -21,14 +21,14 @@ class DisplayFacadeRemoteAdapter(object):
     class on initialization, can be accessed from its _client property.
 
     """
-    def __init__(self, host, remote_facade_connection):
+    def __init__(self, host, remote_facade_proxy):
         """Construct a DisplayFacadeRemoteAdapter.
 
         @param host: Host object representing a remote host.
-        @param remote_facade_connection: RemoteFacadeConnection object.
+        @param remote_facade_proxy: RemoteFacadeProxy object.
         """
         self._client = host
-        self._connection = remote_facade_connection
+        self._proxy = remote_facade_proxy
 
 
     @property
@@ -37,13 +37,7 @@ class DisplayFacadeRemoteAdapter(object):
 
         @return XML RPC proxy to DUT display facade.
         """
-        return self._connection.xmlrpc_proxy.display
-
-
-    def connect(self):
-        """Connects the XML-RPC proxy on the client again."""
-        # TODO(waihong): Move this method to a better place.
-        self._connection.connect()
+        return self._proxy.display
 
 
     def get_external_connector_name(self):
