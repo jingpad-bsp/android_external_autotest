@@ -36,6 +36,9 @@ class GitRepoManager(object):
                                       master_repo.repodir,
                                       abs_work_tree=self.repodir)
             self.git_repo_manager.clone()
+        # Set user and email for the test git checkout.
+        self.git_repo_manager.gitcmd('config user.name Unittests')
+        self.git_repo_manager.gitcmd('config user.email utests@chromium.org')
 
 
     def _edit(self, filename='foo', msg='bar'):
