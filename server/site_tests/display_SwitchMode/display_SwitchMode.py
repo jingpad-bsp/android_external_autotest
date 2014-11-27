@@ -27,10 +27,11 @@ class display_SwitchMode(chameleon_test.ChameleonTest):
         """
         resolution = self.display_facade.get_external_resolution()
         # Check connector
-        self.check_external_display_connected(self.connector_used)
-        # Check test image
-        self.screen_test.test_screen_with_image(
-                resolution, test_mirrored, self.errors)
+        if self.screen_test.check_external_display_connected(
+                self.connector_used, self.errors) is None:
+            # Check test image
+            self.screen_test.test_screen_with_image(
+                    resolution, test_mirrored, self.errors)
         if self.errors:
             raise error.TestFail('; '.join(set(self.errors)))
 

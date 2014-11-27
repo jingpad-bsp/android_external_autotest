@@ -89,8 +89,12 @@ class display_HotPlugAtSuspend(chameleon_test.ChameleonTest):
 
             logging.info('Resumed back')
 
-            self.check_external_display_connected(expected_connector
-                    if plugged_before_resume else False)
+            if self.screen_test.check_external_display_connected(
+                    expected_connector if plugged_before_resume else False,
+                    errors):
+                # Skip the following test if an unexpected display detected.
+                continue
+
             if plugged_before_resume:
                 if test_mirrored and (
                         not self.display_facade.is_mirrored_enabled()):

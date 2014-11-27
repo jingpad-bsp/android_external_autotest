@@ -150,19 +150,6 @@ class ChameleonTest(test.test):
         return first_port
 
 
-    def check_external_display_connected(self, expected_display):
-        """Checks the given external display connected.
-
-        @param expected_display: Name of the expected display or False
-                if no external display is expected.
-        @raise error.TestFail if the check does not pass.
-        """
-        if not self.display_facade.wait_external_display_connected(
-                expected_display):
-            raise error.TestFail('Waited for display %s but timed out' %
-                                 expected_display)
-
-
     def audio_start_recording(self, host, port):
         """Starts recording audio on a host using a port.
 

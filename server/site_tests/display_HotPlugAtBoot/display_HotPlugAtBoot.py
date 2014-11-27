@@ -55,8 +55,11 @@ class display_HotPlugAtBoot(chameleon_test.ChameleonTest):
             host.test_wait_for_boot(boot_id)
 
             self.display_facade.connect()
-            self.check_external_display_connected(
-                    expected_connector if plugged_after_boot else False)
+            if self.screen_test.check_external_display_connected(
+                    expected_connector if plugged_after_boot else False,
+                    errors):
+                # Skip the following test if an unexpected display detected.
+                continue
 
             if plugged_after_boot:
                 if test_mirrored and (

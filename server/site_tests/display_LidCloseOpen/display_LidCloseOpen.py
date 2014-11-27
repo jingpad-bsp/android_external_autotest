@@ -112,11 +112,11 @@ class display_LidCloseOpen(chameleon_test.ChameleonTest):
         # Check mode is same as beginning of the test
         self.check_mode()
         # Check connector
-        self.check_external_display_connected(self.connector_used)
-
-        # Check test image
-        self.screen_test.test_screen_with_image(
-                resolution, self.test_mirrored, self.errors)
+        if self.screen_test.check_external_display_connected(
+                self.connector_used, self.errors) is None:
+            # Check test image
+            self.screen_test.test_screen_with_image(
+                    resolution, self.test_mirrored, self.errors)
 
 
     def run_once(self, host, test_mirrored=False):

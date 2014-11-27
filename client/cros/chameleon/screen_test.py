@@ -105,3 +105,23 @@ class ScreenTest(object):
                     expected_resolution, test_mirrored, error_list)
         finally:
             self.unload_test_image()
+
+
+    def check_external_display_connected(self, expected_display,
+                                         error_list=None):
+        """Checks the given external display connected.
+
+        @param expected_display: Name of the expected display or False
+                if no external display is expected.
+        @param error_list: A list to append the error message to or None.
+        @return: None if the check passes; otherwise, a string of error message.
+        """
+        error = None
+        if not self._display_facade.wait_external_display_connected(
+                expected_display):
+            error = 'Waited for display %s but timed out' % expected_display
+
+        if error and error_list is not None:
+            logging.error(error)
+            error_list.append(error)
+        return error
