@@ -341,6 +341,18 @@ class DisplayFacadeNative(object):
         return self.is_mirrored_enabled() == is_mirrored
 
 
+    def is_display_primary(self, internal=True):
+        """Checks if internal screen is primary display.
+
+        @param internal: is internal/external screen primary status requested
+        @return boolean True if internal display is primary.
+        """
+        for info in self.get_display_info():
+            if info.is_internal == internal and info.is_primary:
+                return True
+        return False
+
+
     def suspend_resume(self, suspend_time=10):
         """Suspends the DUT for a given time in second.
 

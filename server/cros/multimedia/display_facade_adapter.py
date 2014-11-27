@@ -94,6 +94,15 @@ class DisplayFacadeRemoteAdapter(object):
         return self._display_proxy.set_mirrored(is_mirrored)
 
 
+    def is_display_primary(self, internal=True):
+        """Checks if internal screen is primary display.
+
+        @param internal: is internal/external screen primary status requested
+        @return boolean True if internal display is primary.
+        """
+        return self._display_proxy.is_display_primary(internal)
+
+
     def suspend_resume(self, suspend_time=10):
         """Suspends the DUT for a given time in second.
 

@@ -97,22 +97,6 @@ class ChameleonTest(test.test):
         self.chameleon_port.apply_edid(edid.Edid.from_file(filename))
 
 
-    def is_display_primary(self, internal=True):
-        """Checks if internal screen is primary display.
-
-        @param internal: is internal/external screen primary status requested
-
-        @return boolean True if internal display is primary."""
-
-        display_info = self.display_facade.get_display_info()
-
-        for display_index in xrange(len(display_info)):
-            current_display = display_info[display_index]
-            if current_display.is_internal is internal and current_display.is_primary:
-                return True
-        return False
-
-
     def suspend_resume(self, suspend_time=10, timeout=20):
         """Suspends and resumes the DUT.
 

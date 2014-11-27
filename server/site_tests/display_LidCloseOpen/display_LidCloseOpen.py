@@ -69,13 +69,13 @@ class display_LidCloseOpen(chameleon_test.ChameleonTest):
 
     def check_primary_display_on_internal_screen(self):
         """Checks primary display is on onboard/internal screen"""
-        if not self.is_display_primary(internal=True):
+        if not self.display_facade.is_display_primary(internal=True):
             self.errors.append('Primary display is not on internal screen')
 
 
     def check_primary_display_on_external_screen(self):
         """Checks primary display is on external screen"""
-        if not self.is_display_primary(internal=False):
+        if not self.display_facade.is_display_primary(internal=False):
             self.errors.append('Primary display is not on external screen')
 
 
