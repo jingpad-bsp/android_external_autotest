@@ -54,9 +54,87 @@ class AudioPort(object):
         return '( %s | %s | %s )' % (self.host, self.interface, self.direction)
 
 
-class AudioWidgetFactoryError(Exception):
-    """Error in AudioWidgetFactory."""
+class AudioLinkFactoryError(Exception):
+    """Error in AudioLinkFactory."""
     pass
+
+
+class AudioLinkFactory(object):
+    """
+    This class provides method to create link that connects widgets.
+    This is used by AudioWidgetFactory when user wants to create binder for
+    widgets.
+
+    Properties:
+        _audio_buses: A dict containing mapping from index number
+                      to object of AudioBusLink's subclass.
+
+    """
+
+    # Maps pair of widgets to widget link of different type.
+    LINK_TABLE = {
+        (ids.CrosIds.HDMI, ids.ChameleonIds.HDMI):
+                audio_widget_link.HDMIWidgetLink,
+        (ids.CrosIds.HEADPHONE, ids.ChameleonIds.LINEIN):
+                audio_widget_link.AudioBusToChameleonLink,
+        # TODO(cychiang): Add link for other widget pairs.
+    }
+
+    def __init__(self):
+        # There are two audio buses on audio board. Initializes them to
+        # None. They may be changed to objects of AudioBusLink's subclass.
+        self._audio_buses = {0: None, 1: None}
+
+
+    def _acquire_audio_bus_index(self):
+        """Acquires an available audio bus index that is not occupied yet.
+
+        @returns: A number.
+
+        @raises: AudioLinkFactoryError if there is no available
+                 audio bus.
+        """
+        for index, bus in self._audio_buses.iteritems():
+            if not (bus and bus.occupied):
+                return index
+
+        raise AudioLinkFactoryError('No available audio bus')
+
+
+    def create_link(self, source, sink):
+        """Creates a widget link for two audio widgets.
+
+        @param source: An AudioWidget.
+        @param sink: An AudioWidget.
+
+        @returns: An object of WidgetLink's subclass.
+
+        @raises: AudioLinkFactoryError if there is no link between
+            source and sink.
+
+        """
+        # Finds the available link types from LINK_TABLE.
+        link_type = self.LINK_TABLE.get((source.port_id, sink.port_id), None)
+        if not link_type:
+            raise AudioLinkFactoryError(
+                    'No supported link between %s and %s' % (
+                            source.pord_id, sink.port_id))
+
+        # There is only one dedicated HDMI cable, just use it.
+        if link_type == audio_widget_link.HDMIWidgetLink:
+            link = audio_widget_link.HDMIWidgetLink()
+
+        # Acquires audio bus if there is available bus.
+        # Creates a bus of AudioBusLink's subclass that is more
+        # specific than AudioBusLink.
+        elif issubclass(link_type, audio_widget_link.AudioBusLink):
+            bus_index = self._acquire_audio_bus_index()
+            link = link_type(bus_index)
+            self._audio_buses[bus_index] = link
+        else:
+            raise NotImplementedError('Link %s is not implemented' % link_type)
+
+        return link
 
 
 class AudioWidgetFactory(object):
@@ -71,20 +149,9 @@ class AudioWidgetFactory(object):
                        'factory' argument passed to the constructor.
         _chameleon_board: A ChameleonBoard object to access Chameleon
                           functionality.
-
-        _audio_buses: A dict containing mapping from index number
-                      to AudioBoardBusWidgetLink object.
+        _link_factory: An AudioLinkFactory that creates link for widgets.
 
     """
-    # Maps pair of widgets to WidgetLink.
-    LINK_TABLE = {
-        (ids.CrosIds.HDMI, ids.ChameleonIds.HDMI):
-                audio_widget_link.HDMIWidgetLink,
-        (ids.CrosIds.HEADPHONE, ids.ChameleonIds.LINEIN):
-                audio_widget_link.AudioBoardBusWidgetLink,
-        # TODO(cychiang): Add link for other widget pairs.
-    }
-
     def __init__(self, chameleon_board, factory):
         """Initializes a AudioWidgetFactory
 
@@ -98,25 +165,7 @@ class AudioWidgetFactory(object):
         """
         self._audio_facade = factory.create_audio_facade()
         self._chameleon_board = chameleon_board
-        # There are two audio buses on audio board.
-        self._audio_buses = {
-                0: audio_widget_link.AudioBoardBusWidgetLink(0),
-                1: audio_widget_link.AudioBoardBusWidgetLink(1)}
-
-
-    def _acquire_audio_bus(self):
-        """Acquires an available audio bus that is not occupied yet.
-
-        @returns: An AudioBoardBusWidgetLink object.
-
-        @raises: AudioWidgetFactoryError if there is no available
-                 audio bus.
-        """
-        for bus in self._audio_buses.values():
-            if not bus.occupied:
-                return bus
-
-        raise AudioWidgetFactoryError('No available audio bus')
+        self._link_factory = AudioLinkFactory()
 
 
     def create_widget(self, port_id):
@@ -198,28 +247,12 @@ class AudioWidgetFactory(object):
 
         @returns: A WidgetBinder object.
 
-        @raises: AudioWidgetFactoryError  if there is no link between
-            source and sink.
         """
-        # Finds the available link types from LINK_TABLE.
-        link_type = self.LINK_TABLE.get((source.port_id, sink.port_id), None)
-        if not link_type:
-            raise AudioWidgetFactoryError(
-                    'No supported link between %s and %s' % (
-                            source.pord_id, sink.port_id))
-        # There is only one dedicated HDMI cable, just use it.
-        if link_type == audio_widget_link.HDMIWidgetLink:
-            link = audio_widget_link.HDMIWidgetLink()
-        elif link_type == audio_widget_link.AudioBoardBusWidgetLink:
-            link = self._acquire_audio_bus()
-        else:
-            raise NotImplementedError('Link %s is not implemented' % link_type)
-
-        # TODO(cychiang): Handle other link types.
-        return audio_widget_link.WidgetBinder(source, link, sink)
+        return audio_widget_link.WidgetBinder(
+                source, self._link_factory.create_link(source, sink), sink)
 
 
-def compare_recorded_result(golden_file, recorder):
+def compare_recorded_result(golden_file, recorder, method):
     """Check recoded audio in a AudioInputWidget against a golden file.
 
     Compares recorded data with golden data by cross correlation method.
@@ -227,6 +260,8 @@ def compare_recorded_result(golden_file, recorder):
 
     @param golden_file: An AudioTestData object that serves as golden data.
     @param recorder: An AudioInputWidget that has recorded some audio data.
+    @param method: The method to compare recorded result. Currently,
+                   'correlation' and 'frequency' are supported.
 
     @returns: True if the recorded data and golden data are similar enough.
 
@@ -236,7 +271,7 @@ def compare_recorded_result(golden_file, recorder):
     return audio_helper.compare_data(
             golden_file.get_binary(), golden_file.data_format,
             recorder.get_binary(), recorder.data_format, recorder.channel_map,
-            'correlation')
+            method)
 
 
 @contextmanager

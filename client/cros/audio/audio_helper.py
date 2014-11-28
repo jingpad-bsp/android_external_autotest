@@ -57,6 +57,10 @@ TEST_TONES_PATH = 'test_tones'
 
 _MINIMUM_NORM = 0.001
 _CORRELATION_INDEX_THRESHOLD = 0.999
+# The minimum difference of estimated frequencies between two sine waves.
+_FREQUENCY_DIFF_THRESHOLD = 10
+# The minimum RMS value of meaningful audio data.
+_MEANINGFUL_RMS_THRESHOLD = 0.001
 
 def set_mixer_controls(mixer_settings={}, card='0'):
     '''
@@ -652,7 +656,7 @@ def trim_data(data, threshold=0):
     if not indice_valid:
         logging.warning(
                 'There is no element with absolute value greater '
-                'than threshold %f' % threshold)
+                'than threshold %f', threshold)
         return [], None
     logging.debug('Start and end of indice_valid: %d, %d',
                   indice_valid[0], indice_valid[-1])
@@ -721,11 +725,78 @@ def compare_one_channel_correlation(test_data, golden_data):
     return result_dict
 
 
-def compare_one_channel_data(test_data, golden_data, method):
+def get_one_channel_stat(data, data_format):
+    """Gets statistic information of data.
+
+    @param data: A list containing one channel data.
+    @param data_format: A dict containing data format of data.
+
+    @return: The sox stat parsed result. An object containing
+             sameple_count: An int. Samples read.
+             length: A float. Length in seconds.
+             rms: A float. RMS amplitude.
+             rough_frequency: A float. Rough frequency.
+    """
+    if not data:
+        raise ValueError('Data is empty. Can not get stat')
+    raw_data = audio_data.AudioRawData(
+            binary=None, channel=1,
+            sample_format=data_format['sample_format'])
+    raw_data.copy_channel_data([data])
+    raw_data_path = '/tmp/one_channel.raw'
+    raw_data.write_to_file(raw_data_path)
+
+    bits = 8 * (audio_data.SAMPLE_FORMATS[
+                data_format['sample_format']]['size_bytes'])
+    stat = sox_utils.get_stat(raw_data_path, channels=1, bits=bits,
+                              rate=data_format['rate'])
+    os.unlink(raw_data_path)
+    return stat
+
+
+def compare_one_channel_frequency(test_data, test_data_format,
+                                  golden_data, golden_data_format):
+    """Compares two one-channel data by frequency.
+
+    @param test_data: A list containing the data to compare against golden data.
+    @param test_data_format: A dict containing data format of test data.
+    @param golden_data: A list containing the golden data.
+    @param golden_data_format: A dict containing data format of golden data.
+
+    @returns: A dict containing:
+              test_data_frequency: test data frequency.
+              golden_data_frequency: golden data frequency.
+              equal: A bool containing comparing result.
+
+    """
+    result_dict = dict()
+    golden_data_stat = get_one_channel_stat(golden_data, golden_data_format)
+    logging.info('Get golden data one channel stat: %s', golden_data_stat)
+    test_data_stat = get_one_channel_stat(test_data, test_data_format)
+    logging.info('Get test data one channel stat: %s', test_data_stat)
+
+    result_dict['golden_data_frequency'] = golden_data_stat.rough_frequency
+    result_dict['test_data_frequency'] = test_data_stat.rough_frequency
+    result_dict['equal'] = True if (
+            abs(result_dict['test_data_frequency'] -
+                result_dict['golden_data_frequency']) < _FREQUENCY_DIFF_THRESHOLD
+            ) else False
+    if test_data_stat.rms < _MEANINGFUL_RMS_THRESHOLD:
+        logging.error('Recorded RMS %f is too small to be meaningful.',
+                      test_data_stat.rms)
+        result_dict['equal'] = False
+    logging.debug('result_dict: %r', result_dict)
+    return result_dict
+
+
+def compare_one_channel_data(test_data, test_data_format,
+                             golden_data, golden_data_format, method):
     """Compares two one-channel data.
 
     @param test_data: A list containing the data to compare against golden data.
+    @param test_data_format: The data format of test data.
     @param golden_data: A list containing the golden data.
+    @param golden_data_format: The data format of golden data.
     @param method: The comparing method. Currently only 'correlation' is
                    supported.
 
@@ -740,6 +811,9 @@ def compare_one_channel_data(test_data, golden_data, method):
     """
     if method == 'correlation':
         return compare_one_channel_correlation(test_data, golden_data)
+    if method == 'frequency':
+        return compare_one_channel_frequency(
+                test_data, test_data_format, golden_data, golden_data_format)
     raise NotImplementedError('method %s is not implemented' % method)
 
 
@@ -758,17 +832,21 @@ def compare_data(golden_data_binary, golden_data_format,
                         golden data. Channel 1 of test data should map to
                         channel 0 of golden data. Channel 2 to 7 of test data
                         should be skipped.
-    @param method: The method to compare data. Currently only correlation is
-                   implemented.
+    @param method: The method to compare data. Use 'correlation' to compare
+                   general data. Use 'frequency' to compare data containing
+                   sine wave.
 
-    @returns: A boolean contains compare result.
+    @returns: A boolean for compare result.
 
     @raises: NotImplementedError if file type is not raw.
-             NotImplementedError if method is not correlation.
+             NotImplementedError if sampling rates of two data are not the same.
     """
     if (golden_data_format['file_type'] != 'raw' or
         test_data_format['file_type'] != 'raw'):
         raise NotImplementedError('Only support raw data in compare_data.')
+    if (golden_data_format['rate'] != test_data_format['rate']):
+        raise NotImplementedError(
+                'Only support comparing data with the same sampling rate')
     golden_data = audio_data.AudioRawData(
             binary=golden_data_binary,
             channel=golden_data_format['channel'],
@@ -788,7 +866,8 @@ def compare_data(golden_data_binary, golden_data_format,
                            golden_channel=golden_channel)
         result_dict.update(
                 compare_one_channel_data(
-                        test_data_one_channel, golden_data_one_channel, method))
+                        test_data_one_channel, test_data_format,
+                        golden_data_one_channel, golden_data_format, method))
         compare_results.append(result_dict)
     logging.info('compare_results: %r', compare_results)
     return_value = False if not compare_results else True

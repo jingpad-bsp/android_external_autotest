@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -87,6 +87,20 @@ each sample being a signed 16-bit integer in little-endian with sampling rate
 SWEEP_TEST_FILE = AudioTestData(
         path_on_dut='/usr/local/autotest/cros/audio/pad_sweep_pad_16.raw',
         path_on_server=os.path.join(AUDIO_PATH, 'pad_sweep_pad_16.raw'),
+        data_format=dict(file_type='raw',
+                         sample_format='S16_LE',
+                         channel=2,
+                         rate=48000))
+
+"""
+This test data contains fixed frequency sine wave in two channels.
+Left channel is 2KHz, while right channel is 1KHz. The duration is 6 seconds.
+The file format is two-channel raw data with each sample being a signed
+16-bit integer in little-endian with sampling rate 48000 samples/sec.
+"""
+FREQUENCY_TEST_FILE = AudioTestData(
+        path_on_dut='/usr/local/autotest/cros/audio/fix_2k_1k_16.raw',
+        path_on_server=os.path.join(AUDIO_PATH, 'fix_2k_1k_16.raw'),
         data_format=dict(file_type='raw',
                          sample_format='S16_LE',
                          channel=2,

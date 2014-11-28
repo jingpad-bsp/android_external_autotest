@@ -1,11 +1,12 @@
 #!/usr/bin/env python
-# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 """This module provides abstraction of audio data."""
 
 import contextlib
+import copy
 import struct
 import StringIO
 
@@ -29,6 +30,11 @@ SAMPLE_FORMATS = dict(
                 size_bytes=2))
 
 
+class AudioRawDataError(Exception):
+    """Error in AudioRawData."""
+    pass
+
+
 class AudioRawData(object):
     """The abstraction of audio raw data.
 
@@ -42,14 +48,17 @@ class AudioRawData(object):
     def __init__(self, binary, channel, sample_format):
         """Initializes an AudioRawData.
 
-        @param binary: A string containing binary data.
+        @param binary: A string containing binary data. If binary is not None,
+                       The samples in binary will be parsed and be filled into
+                       channel_data.
         @param channel: The number of channels.
         @param sample_format: One of the keys in audio_data.SAMPLE_FORMATS.
         """
         self.channel = channel
         self.channel_data = [[] for _ in xrange(self.channel)]
         self.sample_format = sample_format
-        self.read_binary(binary)
+        if binary:
+            self.read_binary(binary)
 
 
     def read_one_sample(self, handle):
@@ -83,3 +92,38 @@ class AudioRawData(object):
                 self.channel_data[channel_index].append(number)
                 channel_index = (channel_index + 1) % self.channel
                 number = self.read_one_sample(f)
+
+
+    def copy_channel_data(self, channel_data):
+        """Copies channel data and updates channel number.
+
+        @param channel_data: A list of list. The channel data to be copied.
+
+        """
+        self.channel_data = copy.deepcopy(channel_data)
+        self.channel = len(self.channel_data)
+
+
+    def write_to_file(self, file_path):
+        """Writes channel data to file.
+
+        Writes samples in each channel into file in index-first sequence.
+        E.g. (index_0, ch_0), (index_0, ch_1), ... ,(index_0, ch_N),
+             (index_1, ch_0), (index_1, ch_1), ... ,(index_1, ch_N).
+
+        @param file_path: The path to the file.
+
+        """
+        lengths = [len(self.channel_data[ch])
+                   for ch in xrange(self.channel)]
+        if len(set(lengths)) != 1:
+            raise AudioRawDataError(
+                    'Channel lengths are not the same: %r' % lengths)
+        length = lengths[0]
+
+        with open(file_path, 'wb') as f:
+            for index in xrange(length):
+                for ch in xrange(self.channel):
+                    f.write(struct.pack(
+                            SAMPLE_FORMATS[self.sample_format]['struct_format'],
+                            self.channel_data[ch][index]))

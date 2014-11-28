@@ -36,7 +36,11 @@ class WidgetBinder(object):
         """Initializes a WidgetBinder.
 
         After initialization, the binder is not connected, but the link
-        is occupied.
+        is occupied until it is released.
+        After connection, the channel map of link will be set to the sink
+        widget, and it will remains the same until the sink widget is connected
+        to a different link. This is to make sure sink widget knows the channel
+        map of recorded data even after link is disconnected or released.
 
         @param source: An AudioWidget object for audio source.
         @param link: A WidgetLink object to connect source and sink.
@@ -60,6 +64,9 @@ class WidgetBinder(object):
         self._link.plug_input(self._source)
         self._link.plug_output(self._sink)
         self._connected = True
+        # Sets channel map of link to the sink widget so
+        # sink widget knows the channel map of recorded data.
+        self._sink.channel_map = self._link.channel_map
 
 
     def disconnect(self):
@@ -97,12 +104,15 @@ class WidgetLink(object):
     Properties:
         name: A string. The link name.
         occupied: True if this widget is occupied by a widget binder.
+        channel_map: A list containing current channel map. Checks docstring
+                     of channel_map method of AudioInputWidget for details.
     """
     __metaclass__ = abc.ABCMeta
 
     def __init__(self):
         self.name = 'Unknown'
         self.occupied = False
+        self.channel_map = None
 
 
     def _check_widget_id(self, port_id, widget):
@@ -173,19 +183,18 @@ class WidgetLink(object):
         pass
 
 
-class AudioBoardBusWidgetLink(WidgetLink):
+class AudioBusLink(WidgetLink):
     """The abstraction for bus on audio board.
 
     Properties:
         bus_index: The bus index on audio board.
     """
     def __init__(self, bus_index):
-        super(AudioBoardBusWidgetLink, self).__init__()
-        self.name = 'Audio board bus %s' % bus_index
+        super(AudioBusLink, self).__init__()
         self.bus_index = bus_index
         logging.debug(
-                'Create an AudioBoardBusWidgetLink with bus '
-                'index %s', bus_index)
+                'Create an AudioBusLink with bus '
+                'index %d', bus_index)
 
 
     def plug_input(self, widget):
@@ -276,11 +285,33 @@ class AudioBoardBusWidgetLink(WidgetLink):
                 self.bus_index, widget.audio_port)
 
 
+class AudioBusToChameleonLink(AudioBusLink):
+    """The abstraction for bus on audio board that is connected to Chameleon."""
+    # This is the default channel map for 2-channel data recorded on
+    # Chameleon through audio board.
+    _DEFAULT_CHANNEL_MAP = [0, 1, None, None, None, None, None, None]
+
+    def __init__(self, *args, **kwargs):
+        super(AudioBusToChameleonLink, self).__init__(
+            *args, **kwargs)
+        self.name = 'Audio board bus %s to Chameleon' % self.bus_index
+        self.channel_map = self._DEFAULT_CHANNEL_MAP
+        logging.debug(
+                'Create an AudioBusToChameleonLink named %s with '
+                'channel map %r', self.name, self.channel_map)
+
+
 class HDMIWidgetLink(WidgetLink):
     """The abstraction for HDMI cable."""
+
+    # This is the default channel map for 2-channel data recorded on
+    # Chameleon through HDMI cable.
+    _DEFAULT_CHANNEL_MAP = [1, 0, None, None, None, None, None, None]
+
     def __init__(self):
         super(HDMIWidgetLink, self).__init__()
         self.name = 'HDMI cable'
+        self.channel_map = self._DEFAULT_CHANNEL_MAP
         logging.debug(
                 'Create an HDMIWidgetLink. Do nothing because HDMI cable'
                 ' is dedicated')

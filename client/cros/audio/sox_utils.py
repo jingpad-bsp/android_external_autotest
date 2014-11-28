@@ -7,7 +7,7 @@ import re
 
 from autotest_lib.client.cros.audio import cmd_utils
 
-SOX_PATH = '/usr/local/bin/sox'
+SOX_PATH = 'sox'
 
 def _raw_format_args(channels, bits, rate):
     args = ['-t', 'raw', '-e', 'signed']

@@ -10,20 +10,26 @@ class AudioFacadeRemoteAdapter(object):
         """Construct an AudioFacadeRemoteAdapter.
 
         @param remote_facade_proxy: RemoteFacadeProxy object.
+
         """
         self._proxy = remote_facade_proxy
+
 
     @property
     def _audio_proxy(self):
         """Gets the proxy to DUT audio facade.
 
         @return XML RPC proxy to DUT audio facade.
+
         """
         return self._proxy.audio
 
-    def playback(self, file_path):
+
+    def playback(self, file_path, blocking=False):
         """Playback an audio file on DUT.
 
         @param file_path: The path to the file on DUT.
+        @param blocking: Blocks this call until playback finishes.
+
         """
-        self._audio_proxy.playback(file_path)
+        self._audio_proxy.playback(file_path, blocking)

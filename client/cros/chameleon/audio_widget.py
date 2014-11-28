@@ -5,6 +5,7 @@
 """This module provides the audio widgets used in audio tests."""
 
 import abc
+import copy
 import logging
 
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
@@ -58,12 +59,16 @@ class AudioInputWidget(AudioWidget):
                      channel: channel number.
                      rate: sampling rate.
 
+        _channel_map: A list containing current channel map. Checks docstring
+                      of channel_map method for details.
+
     """
     def __init__(self, *args, **kwargs):
         """Initializes an AudioInputWidget."""
         super(AudioInputWidget, self).__init__(*args, **kwargs)
         self._rec_binary = None
         self._rec_format = None
+        self._channel_map = None
 
 
     def start_recording(self):
@@ -120,7 +125,17 @@ class AudioInputWidget(AudioWidget):
                   Channel 2 to 7 of recorded data should be ignored.
 
         """
-        return self.handler.channel_map
+        return self._channel_map
+
+
+    @channel_map.setter
+    def channel_map(self, new_channel_map):
+        """Sets channel map.
+
+        @param new_channel_map: A list containing new channel map.
+
+        """
+        self._channel_map = copy.deepcopy(new_channel_map)
 
 
 class AudioOutputWidget(AudioWidget):
@@ -129,12 +144,13 @@ class AudioOutputWidget(AudioWidget):
     action that is available on an output audio port.
 
     """
-    def start_playback(self, file_path):
+    def start_playback(self, file_path, blocking=False):
         """Starts playing audio.
 
         @param file_path: Path to the file to play.
+        @param blocking: Blocks this call until playback finishes.
         """
-        self.handler.start_playback(file_path)
+        self.handler.start_playback(file_path, blocking)
 
 
     def stop_playback(self):
@@ -202,10 +218,6 @@ class ChameleonInputWidgetHandler(ChameleonWidgetHandler):
     This class abstracts a Chameleon audio input widget handler.
 
     """
-    # This is the default channel map for 2-channel data recorded on
-    # Chameleon.
-    _DEFAULT_CHANNEL_MAP = [1, 0, None, None, None, None, None, None]
-
     def start_recording(self):
         """Starts recording."""
         self._port.start_capturing_audio()
@@ -240,27 +252,17 @@ class ChameleonInputWidgetHandler(ChameleonWidgetHandler):
         return chameleon_port
 
 
-    @property
-    def channel_map(self):
-        """Returns the channel map used by this handler.
-
-        @returns: The default channel map.
-
-        """
-        # TODO(cychiang): Support multi-channel channel map.
-        return self._DEFAULT_CHANNEL_MAP
-
-
 class ChameleonOutputWidgetHandler(ChameleonWidgetHandler):
     """
     This class abstracts a Chameleon audio output widget handler.
 
     """
     # TODO(cychiang): Add Chameleon audio output port.
-    def start_playback(self, file_path):
+    def start_playback(self, file_path, blocking=False):
         """Starts playback.
 
         @param file_path: Path to the file to play.
+        @param blocking: Blocks this call until playback finishes.
 
         """
         raise NotImplementedError
@@ -338,13 +340,14 @@ class CrosOutputWidgetHandler(CrosWidgetHandler):
     This class abstracts a Cros device audio output widget handler.
 
     """
-    def start_playback(self, file_path):
+    def start_playback(self, file_path, blocking=False):
         """Starts playing audio.
 
         @param file_path: Path to the file to play.
+        @param blocking: Blocks this call until playback finishes.
 
         """
-        return self._audio_facade.playback(file_path)
+        return self._audio_facade.playback(file_path, blocking)
 
 
     def stop_playback(self):
