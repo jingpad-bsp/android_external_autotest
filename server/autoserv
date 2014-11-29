@@ -422,7 +422,8 @@ def main():
                     # the server job. See the comment in
                     # puppylab/results_mocker for more context.
                     results_mocker.ResultsMocker(
-                            test_name, parser.options.results, machine
+                            test_name if test_name else 'unknown-test',
+                            parser.options.results, machine
                             ).mock_results()
                 return
             else:

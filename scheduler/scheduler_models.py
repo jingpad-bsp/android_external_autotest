@@ -629,14 +629,25 @@ class HostQueueEntry(DBObject):
         assert not (active and complete)
 
         self.update_field('active', active)
-        self.update_field('complete', complete)
 
+        # The ordering of these operations is important. Once we set the
+        # complete bit this job will become indistinguishable from all
+        # the other complete jobs, unless we first set shard_id to NULL
+        # to signal to the shard_client that we need to upload it. However,
+        # we can only set both these after we've updated finished_on etc
+        # within _on_complete or the job will get synced in an intermediate
+        # state. This means that if someone sigkills the scheduler between
+        # setting finished_on and complete, we will have inconsistent jobs.
+        # This should be fine, because nothing critical checks finished_on,
+        # and the scheduler should never be killed mid-tick.
         if complete:
             self._on_complete(status)
             if self.job.shard_id is not None:
                 # If shard_id is None, the job will be synced back to the master
                 self.job.update_field('shard_id', None)
             self._email_on_job_complete()
+
+        self.update_field('complete', complete)
 
         should_email_status = (status.lower() in _notify_email_statuses or
                                'all' in _notify_email_statuses)

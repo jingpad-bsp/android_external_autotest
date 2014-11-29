@@ -99,6 +99,11 @@ class DBHelper(object):
 
 
     @classmethod
+    def get_shard(cls, **kwargs):
+        return models.Shard.objects.filter(**kwargs)
+
+
+    @classmethod
     def create_label(cls, name, **kwargs):
         label = cls.get_labels(name=name, **kwargs)
         return (models.Label.add_object(name=name, **kwargs)
@@ -130,6 +135,17 @@ class DBHelper(object):
 
 
     @classmethod
+    def create_shard(cls, shard_hostname):
+        """Create a shard with the given hostname if one doesn't already exist.
+
+        @param shard_hostname: The hostname of the shard.
+        """
+        shard = cls.get_shard(hostname=shard_hostname)
+        return (models.Shard.objects.create(hostname=shard_hostname)
+                if not shard else shard[0])
+
+
+    @classmethod
     def add_labels_to_host(cls, host, label_names=set([])):
         label_objects = set([])
         for label in label_names:
@@ -150,6 +166,22 @@ class DBHelper(object):
         for label in dep_names:
             label_objects.add(cls.create_label(label))
         job.dependency_labels.add(*label_objects)
+
+
+    @classmethod
+    def assign_job_to_shard(cls, job_id, shard_hostname):
+        """Assign a job to a shard.
+
+        @param job: A job object without a shard.
+        @param shard_hostname: The hostname of a shard to assign the job.
+
+        @raises ValueError: If the job already has a shard.
+        """
+        job_filter = models.Job.objects.filter(id=job_id, shard__isnull=True)
+        if len(job_filter) != 1:
+            raise ValueError('Failed to assign job %s to shard %s' %
+                             job_filter, shard_hostname)
+        job_filter.update(shard=cls.create_shard(shard_hostname))
 
 
     @classmethod
@@ -345,7 +377,7 @@ class AbstractBaseRDBTester(frontend_test_utils.FrontendTestMixin):
 
     def create_job(self, user='autotest_system',
                    deps=set([]), acls=set([]), hostless_job=False,
-                   priority=0, parent_job_id=None):
+                   priority=0, parent_job_id=None, shard_hostname=None):
         """Create a job owned by user, with the deps and acls specified.
 
         This method is a wrapper around frontend_test_utils.create_job, that
@@ -373,6 +405,8 @@ class AbstractBaseRDBTester(frontend_test_utils.FrontendTestMixin):
 
         self.db_helper.add_deps_to_job(job, dep_names=list(deps)[1:])
         self.db_helper.add_user_to_aclgroups(user, aclgroup_names=acls)
+        if shard_hostname:
+            self.db_helper.assign_job_to_shard(job.id, shard_hostname)
         return models.Job.objects.filter(id=job.id)[0]
 
 

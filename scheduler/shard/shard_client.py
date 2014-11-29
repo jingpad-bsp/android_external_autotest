@@ -6,7 +6,6 @@
 # found in the LICENSE file.
 
 import argparse
-import datetime
 import logging
 import os
 import signal
@@ -18,7 +17,7 @@ from autotest_lib.frontend import setup_django_environment
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros.graphite import stats
-from autotest_lib.frontend.afe import models, rpc_utils
+from autotest_lib.frontend.afe import models
 from autotest_lib.scheduler import email_manager
 from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
@@ -88,6 +87,7 @@ RPC_DELAY_SEC = 5
 
 STATS_KEY = 'shard_client.%s' % socket.gethostname()
 timer = stats.Timer(STATS_KEY)
+_heartbeat_client = None
 
 
 class ShardClient(object):
@@ -133,6 +133,18 @@ class ShardClient(object):
             with transaction.commit_on_success():
                 models.Job.deserialize(job)
 
+        job_ids = [j['id'] for j in jobs_serialized]
+        logging.info('Heartbeat response contains jobs %s', job_ids)
+
+        # If the master has just sent any jobs that we think have completed,
+        # re-sync them with the master. This is especially useful when a
+        # heartbeat or job is silently dropped, as the next heartbeat will
+        # have a disagreement. Updating the shard_id to NULL will mark these
+        # jobs for upload on the next heartbeat.
+        models.Job.objects.filter(
+                id__in=job_ids,
+                hostqueueentry__complete=True).update(shard=None)
+
 
     @property
     def shard(self):
@@ -157,17 +169,19 @@ class ShardClient(object):
         jobs = []
         # The scheduler sets shard to None upon completion of the job.
         # For more information on the shard field's semantic see
-        # models.Job.shard.
+        # models.Job.shard. We need to be careful to wait for both the
+        # shard_id and the complete bit here, or we will end up syncing
+        # the job without ever setting the complete bit.
         job_ids = list(models.Job.objects.filter(
-            shard=None).values_list('pk', flat=True))
+            shard=None,
+            hostqueueentry__complete=True).values_list('pk', flat=True))
 
         for job_to_upload in models.Job.objects.filter(pk__in=job_ids).all():
             jobs.append(job_to_upload)
         return jobs
 
 
-    def _mark_jobs_as_uploaded(self, jobs):
-        job_ids = [job.id for job in jobs]
+    def _mark_jobs_as_uploaded(self, job_ids):
         # self.shard might be None if no jobs were downloaded yet.
         # But then job_ids is empty, so this is harmless.
         # Even if there were jobs we'd in the worst case upload them twice.
@@ -201,6 +215,28 @@ class ShardClient(object):
         return job_ids, host_ids
 
 
+    def _heartbeat_packet(self):
+        """Construct the heartbeat packet.
+
+        See site_rpc_interface for a more detailed description of the heartbeat.
+
+        @return: A heartbeat packet.
+        """
+        known_job_ids, known_host_ids = self._get_known_ids()
+        logging.info('Known jobs: %s', known_job_ids)
+
+        job_objs = self._get_jobs_to_upload()
+        hqes = [hqe.serialize(include_dependencies=False)
+                for hqe in self._get_hqes_for_jobs(job_objs)]
+        jobs = [job.serialize(include_dependencies=False) for job in job_objs]
+        logging.info('Uploading jobs %s', [j['id'] for j in jobs])
+
+        return {'shard_hostname': self.hostname,
+                'known_job_ids': known_job_ids,
+                'known_host_ids': known_host_ids,
+                'jobs': jobs, 'hqes': hqes}
+
+
     @timer.decorate
     def do_heartbeat(self):
         """Perform a heartbeat: Retreive new jobs.
@@ -211,20 +247,14 @@ class ShardClient(object):
         """
         logging.info("Performing heartbeat.")
 
-        known_job_ids, known_host_ids = self._get_known_ids()
+        packet = self._heartbeat_packet()
+        stats.Gauge(STATS_KEY).send(
+                'heartbeat.request_size', len(str(packet)))
+        response = self.afe.run(HEARTBEAT_AFE_ENDPOINT, **packet)
+        stats.Gauge(STATS_KEY).send(
+                'heartbeat.response_size', len(str(response)))
 
-        jobs = self._get_jobs_to_upload()
-        hqes = self._get_hqes_for_jobs(jobs)
-
-        # See site_rpc_interface.shard_heartbeat for explanations on the params.
-        response = self.afe.run(
-            HEARTBEAT_AFE_ENDPOINT, shard_hostname=self.hostname,
-            known_job_ids=known_job_ids,
-            known_host_ids=known_host_ids,
-            jobs=[job.serialize(include_dependencies=False) for job in jobs],
-            hqes=[hqe.serialize(include_dependencies=False) for hqe in hqes])
-
-        self._mark_jobs_as_uploaded(jobs)
+        self._mark_jobs_as_uploaded([job['id'] for job in packet['jobs']])
         self.process_heartbeat_response(response)
         logging.info("Heartbeat completed.")
 
@@ -249,7 +279,6 @@ class ShardClient(object):
 
 def handle_signal(signum, frame):
     """Sigint handler so we don't crash mid-tick."""
-    global handle_signal
     _heartbeat_client.shutdown()
 
 
