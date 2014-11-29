@@ -109,9 +109,10 @@ def _get_server_db_config(config_key, default=config._NO_DEFAULT_SPECIFIED,
                           **kwargs):
     """Retrieves a config value for the specified key for server database.
 
-    If the value can't be found in AUTOTEST_SEVER_DB section, default will be
-    used. If default value is not specified, the local setting in section
-    AUTOTEST_WEB will be used.
+    The order of searching for the specified config_key is:
+        section: AUTOTEST_SERVER_DB
+        section: AUTOTEST_WEB
+        supplied default
 
     @param config_key: The string key associated with the desired config value.
     @param default: The default value to return if the value couldn't be looked
@@ -123,8 +124,7 @@ def _get_server_db_config(config_key, default=config._NO_DEFAULT_SPECIFIED,
              global_config.global_config.get_config_value().
     """
     try:
-        return _get_config(config_key, section='AUTOTEST_SERVER_DB',
-                           default=default, **kwargs)
+        return _get_config(config_key, section='AUTOTEST_SERVER_DB', **kwargs)
     except global_config.ConfigError:
         return _get_config(config_key, default=default, **kwargs)
 
