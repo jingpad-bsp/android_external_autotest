@@ -131,7 +131,7 @@ class display_LidCloseOpen(chameleon_test.ChameleonTest):
         # Get connector type used (HDMI,DP,...)
         self.connector_used = self.display_facade.get_external_connector_name()
         # Set main display mode for the test
-        self.set_mirrored(self.test_mirrored)
+        self.display_facade.set_mirrored(self.test_mirrored)
 
         for (plugged_before_close,
              plugged_after_close,
