@@ -57,6 +57,7 @@ class ScreenComparer(object):
             return message
 
         message = None
+        time_str = time.strftime('%H%M%S')
         try:
             # The size property is the resolution of the image.
             if images[0].size != images[1].size:
@@ -78,8 +79,10 @@ class ScreenComparer(object):
                     lambda x: histogram[x], xrange(len(histogram))))
             if num_wrong_pixels > 0:
                 logging.debug('Histogram of difference: %r', histogram)
-                message = ('Result: total %d wrong pixels (diff up to %d)'
-                           % (num_wrong_pixels, max_diff_value))
+                prefix_str = '%s-%dx%d' % ((time_str,) + images[0].size)
+                message = ('Result of %s: total %d wrong pixels '
+                           '(diff up to %d)' % (
+                           prefix_str, num_wrong_pixels, max_diff_value))
                 if num_wrong_pixels > max_acceptable_wrong_pixels:
                     logging.error(message)
                     return message
@@ -93,13 +96,12 @@ class ScreenComparer(object):
             return None
         finally:
             if message is not None:
-                # Use time and image size as the filename prefix.
-                time_str = time.strftime('%H%M%S')
                 for i in (0, 1):
-                    size_str = '%dx%d' % images[i].size
+                    # Use time and image size as the filename prefix.
+                    prefix_str = '%s-%dx%d' % ((time_str,) + images[i].size)
                     # TODO(waihong): Save to a better lossless format.
                     file_path = os.path.join(
                             self._output_dir,
-                            '%s-%s-%s.bmp' % (time_str, size_str, tags[i]))
+                            '%s-%s.bmp' % (prefix_str, tags[i]))
                     logging.info('Output the image to %s', file_path)
                     images[i].save(file_path)
