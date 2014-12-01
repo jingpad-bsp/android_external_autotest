@@ -170,11 +170,9 @@ class platform_ExternalUsbPeripherals(test.test):
 
         # Execute action after suspending
         do_while_suspended = re.findall(r'SUSPEND(\w*)RESUME', action)[0]
-        plugged_list = self.on_list
         logging.info('--- %s-ing', do_while_suspended)
         if do_while_suspended =='_UNPLUG_':
             self.set_hub_power(False)
-            plugged_list = self.off_list
         elif do_while_suspended =='_PLUG_':
             self.set_hub_power(True)
 
@@ -220,17 +218,20 @@ class platform_ExternalUsbPeripherals(test.test):
                     'lsusb', usb_name, _WAIT_DELAY * 3,
                     'Not detecting %s' % usb_name)
                 result = result and found
-        if self.pluged_status:
-            dev_list = self.on_list
-        else:
-            dev_list = self.off_list
         time.sleep(_WAIT_DELAY)
         on_now = self.getPluggedUsbDevices()
-        if not len(set(dev_list).difference(set(on_now))) == 0:
-            self.fail_reasons.append('The list of connected peripherals '
-                                     'is wrong. --- Now: %s --- Should be: '
-                                     '%s' % (on_now, dev_list))
-            result = False
+        if self.pluged_status:
+            if not self.diff_list.issubset(on_now):
+                missing = str(self.diff_list.difference(on_now))
+                self.fail_reasons.append('Missing connected peripheral(s) '
+                                         'when plugged: %s ' % missing)
+                result = False
+        else:
+            present = self.diff_list.intersection(on_now)
+            if len(present) > 0:
+                self.fail_reasons.append('Still presented peripheral(s) '
+                                         'when unplugged: %s ' % str(present))
+                result = False
         return result
 
 
@@ -321,20 +322,20 @@ class platform_ExternalUsbPeripherals(test.test):
         # Collect USB peripherals when unplugged
         self.set_hub_power(False)
         time.sleep(_WAIT_DELAY)
-        self.off_list = self.getPluggedUsbDevices()
+        off_list = self.getPluggedUsbDevices()
 
         # Collect USB peripherals when plugged
         self.set_hub_power(True)
         time.sleep(_WAIT_DELAY * 2)
-        self.on_list = self.getPluggedUsbDevices()
+        on_list = self.getPluggedUsbDevices()
 
-        diff_list = set(self.on_list).difference(set(self.off_list))
-        if len(diff_list) == 0:
+        self.diff_list = set(on_list).difference(set(off_list))
+        if len(self.diff_list) == 0:
             # Fail if no devices detected after
             raise error.TestError('No connected devices were detected. Make '
                                   'sure the devices are connected to USB_KEY '
                                   'and DUT_HUB1_USB on the servo board.')
-        logging.debug('Connected devices list: %s', diff_list)
+        logging.debug('Connected devices list: %s', self.diff_list)
 
         board = host.get_board().split(':')[1]
         action_sequence = action_sequence.upper()
