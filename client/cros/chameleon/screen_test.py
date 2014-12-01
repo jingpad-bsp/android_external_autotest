@@ -55,7 +55,7 @@ class ScreenTest(object):
             error = self._screen_comparer.compare()
         if not error and test_mirrored:
             error = self._mirror_comparer.compare()
-        if error:
+        if error and error_list is not None:
             error_list.append(error)
         return error
 
