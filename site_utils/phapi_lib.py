@@ -7,6 +7,7 @@ import logging
 
 import common
 
+import httplib
 import httplib2
 from autotest_lib.server.cros.dynamic_suite import constants
 from chromite.lib import gdata_lib
@@ -115,7 +116,8 @@ class ProjectHostingApiClient():
         """
         try:
             return request.execute()
-        except (apiclient_errors.Error, httplib2.HttpLib2Error) as e:
+        except (apiclient_errors.Error, httplib2.HttpLib2Error,
+                httplib.BadStatusLine) as e:
             msg = 'Unable to execute your request: %s'
             raise ProjectHostingApiException(msg % e)
 
