@@ -277,12 +277,11 @@ class BluetoothSocket(btsocket.socket):
         while True:
             (event, index, data) = self.recv_event()
 
-            if index != cmd_index:
-                raise BluetoothInvalidPacketError(
-                        ('Response for wrong controller index received: ' +
-                         '0x%04d (expected 0x%04d)' % (index, cmd_index)))
-
             if event == MGMT_EV_CMD_COMPLETE:
+                if index != cmd_index:
+                    raise BluetoothInvalidPacketError(
+                            ('Response for wrong controller index received: ' +
+                             '0x%04d (expected 0x%04d)' % (index, cmd_index)))
                 if len(data) < 3:
                     raise BluetoothInvalidPacketError(
                             ('Incorrect command complete event data length: ' +
@@ -308,6 +307,10 @@ class BluetoothSocket(btsocket.socket):
                 return (status, data[3:])
 
             elif event == MGMT_EV_CMD_STATUS:
+                if index != cmd_index:
+                    raise BluetoothInvalidPacketError(
+                            ('Response for wrong controller index received: ' +
+                             '0x%04d (expected 0x%04d)' % (index, cmd_index)))
                 if len(data) != 3:
                     raise BluetoothInvalidPacketError(
                             ('Incorrect command status event data length: ' +
