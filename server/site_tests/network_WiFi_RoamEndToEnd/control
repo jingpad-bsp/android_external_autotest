@@ -6,6 +6,7 @@ AUTHOR = 'bmahadev, harpreet, krisr'
 TIME = 'SHORT'
 NAME = 'network_WiFi_RoamEndToEnd'
 TEST_TYPE = 'Server'
+SUITE = 'wifi_matfunc, wifi_release'
 DEPENDENCIES = 'wificell'
 
 DOC = """
