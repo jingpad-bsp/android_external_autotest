@@ -109,7 +109,7 @@ class BluetoothDevice(object):
     def read_version(self):
         """Read the version of the management interface from the Kernel.
 
-        @return the information as a JSON-encoded tuple of:
+        @return the version as a tuple of:
           ( version, revision )
 
         """
@@ -119,7 +119,7 @@ class BluetoothDevice(object):
     def read_supported_commands(self):
         """Read the set of supported commands from the Kernel.
 
-        @return the information as a JSON-encoded tuple of:
+        @return set of supported commands as arrays in a tuple of:
           ( commands, events )
 
         """
@@ -129,7 +129,7 @@ class BluetoothDevice(object):
     def read_index_list(self):
         """Read the list of currently known controllers from the Kernel.
 
-        @return the information as a JSON-encoded array of controller indexes.
+        @return array of controller indexes.
 
         """
         return json.loads(self._proxy.read_index_list())
@@ -150,7 +150,7 @@ class BluetoothDevice(object):
     def get_devices(self):
         """Read information about remote devices known to the adapter.
 
-        @return the properties of each device as a JSON-encoded array of
+        @return the properties of each device as an array of
             dictionaries on success, the value False otherwise.
 
         """
