@@ -289,6 +289,35 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         return json.dumps(adapter)
 
 
+    def read_version(self):
+        """Read the version of the management interface from the Kernel.
+
+        @return the information as a JSON-encoded tuple of:
+          ( version, revision )
+
+        """
+        return json.dumps(self._control.read_version())
+
+
+    def read_supported_commands(self):
+        """Read the set of supported commands from the Kernel.
+
+        @return the information as a JSON-encoded tuple of:
+          ( commands, events )
+
+        """
+        return json.dumps(self._control.read_supported_commands())
+
+
+    def read_index_list(self):
+        """Read the list of currently known controllers from the Kernel.
+
+        @return the information as a JSON-encoded array of controller indexes.
+
+        """
+        return json.dumps(self._control.read_index_list())
+
+
     def read_info(self):
         """Read the adapter information from the Kernel.
 
