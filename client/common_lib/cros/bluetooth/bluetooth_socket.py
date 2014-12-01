@@ -997,3 +997,52 @@ class BluetoothControlSocket(BluetoothSocket):
 
 
         return devices
+
+
+    def add_device(self, index, address, address_type, action):
+        """Add a device to the action list.
+
+        @param index: Controller index.
+        @param address: Address of the device to add.
+        @param address_type: Type of device in @address.
+        @param action: Action to take.
+
+        @return Tuple of ( address, address_type ) on success,
+                None on failure.
+
+        """
+        msg_data = struct.pack('<6sBB', address, address_type, action)
+        (status, data) = self.send_command_and_wait(
+                MGMT_OP_ADD_DEVICE,
+                index,
+                msg_data,
+                expected_length=7)
+        if status != MGMT_STATUS_SUCCESS:
+            return None
+
+        (address, address_type,) = struct.unpack_from('<6sB', buffer(data))
+        return (address, address_type)
+
+
+    def remove_device(self, index, address, address_type):
+        """Remove a device from the action list.
+
+        @param index: Controller index.
+        @param address: Address of the device to remove.
+        @param address_type: Type of device in @address.
+
+        @return Tuple of ( address, address_type ) on success,
+                None on failure.
+
+        """
+        msg_data = struct.pack('<6sB', address, address_type)
+        (status, data) = self.send_command_and_wait(
+                MGMT_OP_REMOVE_DEVICE,
+                index,
+                msg_data,
+                expected_length=7)
+        if status != MGMT_STATUS_SUCCESS:
+            return None
+
+        (address, address_type,) = struct.unpack_from('<6sB', buffer(data))
+        return (address, address_type)

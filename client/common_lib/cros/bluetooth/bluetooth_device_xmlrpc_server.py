@@ -330,6 +330,35 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         return json.dumps(self._control.read_info(0))
 
 
+    def add_device(self, address, address_type, action):
+        """Add a device to the Kernel action list.
+
+        @param address: Address of the device to add.
+        @param address_type: Type of device in @address.
+        @param action: Action to take.
+
+        @return on success, a JSON-encoded typle of:
+          ( address, address_type ), None on failure.
+
+        """
+        return json.dumps(self._control.add_device(
+                0, address, address_type, action))
+
+
+    def remove_device(self, address, address_type):
+        """Remove a device from the Kernel action list.
+
+        @param address: Address of the device to remove.
+        @param address_type: Type of device in @address.
+
+        @return on success, a JSON-encoded typle of:
+          ( address, address_type ), None on failure.
+
+        """
+        return json.dumps(self._control.remove_device(
+                0, address, address_type))
+
+
     @xmlrpc_server.dbus_safe(False)
     def get_devices(self):
         """Read information about remote devices known to the adapter.

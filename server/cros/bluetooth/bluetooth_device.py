@@ -147,6 +147,33 @@ class BluetoothDevice(object):
         return json.loads(self._proxy.read_info())
 
 
+    def add_device(self, address, address_type, action):
+        """Add a device to the Kernel action list.
+
+        @param address: Address of the device to add.
+        @param address_type: Type of device in @address.
+        @param action: Action to take.
+
+        @return tuple of ( address, address_type ) on success,
+          None on failure.
+
+        """
+        return json.loads(self._proxy.add_device(address, address_type, action))
+
+
+    def remove_device(self, address, address_type):
+        """Remove a device from the Kernel action list.
+
+        @param address: Address of the device to remove.
+        @param address_type: Type of device in @address.
+
+        @return tuple of ( address, address_type ) on success,
+          None on failure.
+
+        """
+        return json.loads(self._proxy.remove_device(address, address_type))
+
+
     def get_devices(self):
         """Read information about remote devices known to the adapter.
 
