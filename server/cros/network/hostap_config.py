@@ -424,6 +424,12 @@ class HostapConfig(object):
         return self._hide_ssid
 
 
+    @property
+    def beacon_footer(self):
+        """@return bool _beacon_footer value."""
+        return self._beacon_footer
+
+
     def __init__(self, mode=MODE_11B, channel=None, frequency=None,
                  n_capabilities=[], hide_ssid=None, beacon_interval=None,
                  dtim_period=None, frag_threshold=None, ssid=None, bssid=None,
@@ -432,7 +438,8 @@ class HostapConfig(object):
                  obss_interval=None,
                  vht_channel_width=None,
                  vht_center_channel=None,
-                 ac_capabilities=[]):
+                 ac_capabilities=[],
+                 beacon_footer=''):
         """Construct a HostapConfig.
 
         You may specify channel or frequency, but not both.  Both options
@@ -459,6 +466,8 @@ class HostapConfig(object):
         @param vht_channel_width object channel width
         @param vht_center_channel int center channel of segment 0.
         @param ac_capabilities list of AC_CAPABILITY_x defined above.
+        @param beacon_footer string containing (unvalidated) IE data to be
+            placed at the end of the beacon.
 
         """
         super(HostapConfig, self).__init__()
@@ -524,6 +533,7 @@ class HostapConfig(object):
         # and operating channel.
         self._vht_oper_centr_freq_seg0_idx = vht_center_channel
         self._ac_capabilities = set(ac_capabilities)
+        self._beacon_footer = beacon_footer
 
 
     def __repr__(self):

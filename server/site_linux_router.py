@@ -393,6 +393,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.start_hostapd(configuration)
         interface = self.hostapd_instances[-1].interface
         self.iw_runner.set_tx_power(interface, 'auto')
+        self.set_beacon_footer(interface, configuration.beacon_footer)
         self.start_local_server(interface)
         logging.info('AP configured.')
 
@@ -912,3 +913,19 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                       's.sendto(sys.stdin.read(), (\'%s\', %d))"' %
                       (dest_ip, UDP_DISCARD_PORT),
                       stdin=magic_packet)
+
+
+    def set_beacon_footer(self, interface, footer=''):
+        """Sets the beacon footer (appended IE information) for this interface.
+
+        @param interface string interface to set the footer on.
+        @param footer string footer to be set on the interface.
+
+        """
+        footer_file = ('/sys/kernel/debug/ieee80211/%s/beacon_footer' %
+                       self.iw_runner.get_interface(interface).phy)
+        if self.router.run('test -e %s' % footer_file,
+                           ignore_status=True).exit_status != 0:
+            logging.info('Beacon footer file does not exist.  Ignoring.')
+            return
+        self.host.run('echo -ne %s > %s' % ('%r' % footer, footer_file))
