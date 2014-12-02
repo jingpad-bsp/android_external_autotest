@@ -94,6 +94,11 @@ class BluetoothTesterXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             logging.warning('Controller does not support requested settings')
             return False
 
+        # Intel-based controllers cannot have High-Speed disabled, so add it
+        # to the profile settings if it's on in the current settings.
+        profile_settings |= \
+                current_settings & bluetooth_socket.MGMT_SETTING_HS
+
         # Send the individual commands to set up the adapter. There is no
         # command to set the BR/EDR flag, that's something that's either on
         # or off in the chip. We do, of course, want to check for it later.
