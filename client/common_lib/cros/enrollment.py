@@ -28,7 +28,7 @@ def SwitchToRemora(browser):
         # This will restart the browser.
         _ExecuteOobeCmd(browser, 'Oobe.remoraRequisitionForTesting();')
     except (exceptions.BrowserConnectionGoneException,
-            exceptions.TabCrashException):
+            exceptions.DevtoolsTargetCrashException):
         pass
     utils.poll_for_condition(lambda: pid != _cri.GetChromePid(), timeout=60)
     utils.poll_for_condition(lambda: browser.oobe_exists, timeout=30)
