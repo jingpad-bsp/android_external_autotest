@@ -2,7 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import array
 import btsocket
+import fcntl
 import logging
 import socket
 import struct
@@ -168,6 +170,21 @@ EIR_DEVICE_ID                  = 0x10
 EIR_GAP_APPEARANCE             = 0x19
 
 
+# Derived from lib/hci.h
+HCIGETDEVLIST                  = 0x800448d2
+HCIGETDEVINFO                  = 0x800448d3
+
+HCI_UP                         = 1 << 0
+HCI_INIT                       = 1 << 1
+HCI_RUNNING                    = 1 << 2
+HCI_PSCAN                      = 1 << 3
+HCI_ISCAN                      = 1 << 4
+HCI_AUTH                       = 1 << 5
+HCI_ENCRYPT                    = 1 << 6
+HCI_INQUIRY                    = 1 << 7
+HCI_RAW                        = 1 << 8
+
+
 def parse_eir(eirdata):
     """Parse Bluetooth Extended Inquiry Result (EIR) data structuree.
 
@@ -222,7 +239,7 @@ class BluetoothSocket(btsocket.socket):
     for the HCI Control and Monitor protocols (aka mgmt_ops) of the
     Linux Kernel.
 
-    Instantiate either BluetoothControlSocket or BluetoothMonitorSocket rather
+    Instantiate either BluetoothControlSocket or BluetoothRawSocket rather
     than this class directly.
 
     See bluez/doc/mgmt_api.txt for details.
@@ -1046,3 +1063,67 @@ class BluetoothControlSocket(BluetoothSocket):
 
         (address, address_type,) = struct.unpack_from('<6sB', buffer(data))
         return (address, address_type)
+
+
+class BluetoothRawSocket(BluetoothSocket):
+    """Bluetooth Raw HCI Socket.
+
+    BluetoothRawSocket is a subclass of BluetoothSocket representing raw access
+    to the HCI controller and providing commands corresponding to ioctls that
+    can be made on that kind of socket.
+
+    """
+
+    def get_dev_info(self, index):
+        """Read HCI device information.
+
+        This method uses the same underlying ioctl as the hciconfig tool.
+
+        Address is returned as a string in upper-case hex to match the
+        BlueZ property.
+
+        @param index: Device index.
+
+        @return tuple (index, name, address, flags, device_type, bus_type,
+                       features, pkt_type, link_policy, link_mode,
+                       acl_mtu, acl_pkts, sco_mtu, sco_pkts,
+                       err_rx, err_tx, cmd_tx, evt_rx, acl_tx, acl_rx,
+                       sco_tx, sco_rx, byte_rx, byte_tx) on success,
+                None on failure.
+
+        """
+        buf = array.array('B', [0] * 96)
+        fcntl.ioctl(self.fileno(), HCIGETDEVINFO, buf, 1)
+
+        ( dev_id, name, address, flags, dev_type, features, pkt_type,
+          link_policy, link_mode, acl_mtu, acl_pkts, sco_mtu, sco_pkts,
+          err_rx, err_tx, cmd_tx, evt_rx, acl_tx, acl_rx, sco_tx, sco_rx,
+          byte_rx, byte_tx ) = struct.unpack_from(
+                '@H8s6sIBQIIIHHHHIIIIIIIIII', buf)
+
+        return (
+                dev_id,
+                name.rstrip('\0'),
+                ':'.join('%02X' % x
+                         for x in reversed(struct.unpack('6B', address))),
+                flags,
+                (dev_type & 0x30) >> 4,
+                dev_type & 0x0f,
+                features,
+                pkt_type,
+                link_policy,
+                link_mode,
+                acl_mtu,
+                acl_pkts,
+                sco_mtu,
+                sco_pkts,
+                err_rx,
+                err_tx,
+                cmd_tx,
+                evt_rx,
+                acl_tx,
+                acl_rx,
+                sco_tx,
+                sco_rx,
+                byte_rx,
+                byte_tx)

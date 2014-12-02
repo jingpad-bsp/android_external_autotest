@@ -56,6 +56,10 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
     def __init__(self):
         super(BluetoothDeviceXmlRpcDelegate, self).__init__()
 
+        # Open the Bluetooth Raw socket to the kernel which provides us direct,
+        # raw, access to the HCI controller.
+        self._raw = bluetooth_socket.BluetoothRawSocket()
+
         # Open the Bluetooth Control socket to the kernel which provides us
         # raw management access to the Bluetooth Host Subsystem. Read the list
         # of adapter indexes to determine whether or not this device has a
@@ -399,6 +403,21 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         """
         self._adapter.StopDiscovery(dbus_interface=self.BLUEZ_ADAPTER_IFACE)
         return True
+
+
+    def get_dev_info(self):
+        """Read raw HCI device information.
+
+        @return JSON-encoded tuple of:
+                (index, name, address, flags, device_type, bus_type,
+                       features, pkt_type, link_policy, link_mode,
+                       acl_mtu, acl_pkts, sco_mtu, sco_pkts,
+                       err_rx, err_tx, cmd_tx, evt_rx, acl_tx, acl_rx,
+                       sco_tx, sco_rx, byte_rx, byte_tx) on success,
+                None on failure.
+
+        """
+        return json.dumps(self._raw.get_dev_info(0))
 
 
     @xmlrpc_server.dbus_safe(False)

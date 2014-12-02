@@ -205,6 +205,20 @@ class BluetoothDevice(object):
         return self._proxy.stop_discovery()
 
 
+    def get_dev_info(self):
+        """Read raw HCI device information.
+
+        @return tuple of (index, name, address, flags, device_type, bus_type,
+                       features, pkt_type, link_policy, link_mode,
+                       acl_mtu, acl_pkts, sco_mtu, sco_pkts,
+                       err_rx, err_tx, cmd_tx, evt_rx, acl_tx, acl_rx,
+                       sco_tx, sco_rx, byte_rx, byte_tx) on success,
+                None on failure.
+
+        """
+        return json.loads(self._proxy.get_dev_info())
+
+
     def register_profile(self, path, uuid, options):
         """Register new profile (service).
 
