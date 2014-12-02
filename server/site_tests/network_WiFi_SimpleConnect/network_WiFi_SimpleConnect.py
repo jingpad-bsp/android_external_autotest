@@ -26,6 +26,7 @@ class network_WiFi_SimpleConnect(wifi_cell_test_base.WiFiCellTestBase):
 
     def run_once(self):
         """Sets up a router, connects to it, pings it, and repeats."""
+        client_mac = self.context.client.wifi_mac
         for router_conf, client_conf in self._configurations:
             if router_conf.is_11ac:
                 router_caps = self.context.router.capabilities
@@ -44,6 +45,9 @@ class network_WiFi_SimpleConnect(wifi_cell_test_base.WiFiCellTestBase):
                              'attempt to fail.')
             else:
                 self.context.assert_ping_from_dut()
+                if self.context.router.detect_client_deauth(client_mac):
+                    raise error.TestFail(
+                        'Client de-authenticated during the test')
                 self.context.client.shill.disconnect(client_conf.ssid)
                 times_dict = {
                     'Discovery': assoc_result.discovery_time,
@@ -56,6 +60,7 @@ class network_WiFi_SimpleConnect(wifi_cell_test_base.WiFiCellTestBase):
                         units='seconds',
                         higher_is_better=False,
                         graph=router_conf.perf_loggable_description)
+
             self.context.client.shill.delete_entries_for_ssid(client_conf.ssid)
             self.context.router.deconfig()
             self.context.router.stop_capture()
