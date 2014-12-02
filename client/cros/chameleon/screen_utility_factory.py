@@ -28,8 +28,7 @@ class ScreenUtilityFactory(object):
         """Initializes the ScreenUtilityFactory objects."""
         self._chameleon_port = chameleon_port
         self._display_facade = display_facade
-        external_connector = display_facade.get_external_connector_name()
-        self._is_vga = external_connector.startswith('VGA')
+        self._is_vga = chameleon_port.get_connector_type() == 'VGA'
 
 
     def create_resolution_comparer(self):
