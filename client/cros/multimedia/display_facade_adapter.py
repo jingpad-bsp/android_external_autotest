@@ -20,6 +20,15 @@ class DisplayFacadeLocalAdapter(display_facade_native.DisplayFacadeNative):
     conversion; otherwise, go to the DisplayFacadeNative class.
     """
 
+    @property
+    def _display_native(self):
+        """Gets its super class, the native display facade.
+
+        @return the native display facade.
+        """
+        return super(DisplayFacadeLocalAdapter, self)
+
+
     def _read_root_window_rect(self, w, h, x, y):
         """Reads the given rectangle from frame buffer.
 
@@ -36,7 +45,7 @@ class DisplayFacadeLocalAdapter(display_facade_native.DisplayFacadeNative):
 
         with tempfile.NamedTemporaryFile(suffix='.rgb') as f:
             box = (x, y, x + w, y + h)
-            self._display_proxy.take_screenshot_crop(f.name, box)
+            self._display_native.take_screenshot_crop(f.name, box)
             return Image.fromstring('RGB', (w, h), open(f.name).read())
 
 
@@ -45,8 +54,9 @@ class DisplayFacadeLocalAdapter(display_facade_native.DisplayFacadeNative):
 
         @return: An Image object. None if any error.
         """
-        output = self.get_internal_connector_name()
-        return self._read_root_window_rect(*self.get_output_rect(output))
+        output = self._display_native.get_internal_connector_name()
+        return self._read_root_window_rect(
+                *self._display_native.get_output_rect(output))
 
 
     def capture_external_screen(self):
@@ -54,8 +64,9 @@ class DisplayFacadeLocalAdapter(display_facade_native.DisplayFacadeNative):
 
         @return: An Image object.
         """
-        output = self.get_external_connector_name()
-        return self._read_root_window_rect(*self.get_output_rect(output))
+        output = self._display_native.get_external_connector_name()
+        return self._read_root_window_rect(
+                *self._display_native.get_output_rect(output))
 
 
     def get_display_info(self):
@@ -64,7 +75,7 @@ class DisplayFacadeLocalAdapter(display_facade_native.DisplayFacadeNative):
 
         @return: list of object DisplayInfo for display informtion
         """
-        return map(DisplayInfo, self._display_proxy.get_display_info())
+        return map(DisplayInfo, self._display_native.get_display_info())
 
 
     def suspend_resume(self, suspend_time=10):
@@ -73,7 +84,7 @@ class DisplayFacadeLocalAdapter(display_facade_native.DisplayFacadeNative):
         @param suspend_time: Suspend time in second.
         """
         try:
-            super(DisplayFacadeLocalAdapter, self).suspend_resume(suspend_time)
+            self._display_native.suspend_resume(suspend_time)
         except sys_power.SpuriousWakeupError as e:
             # Log suspend/resume errors but continue the test.
             logging.error('suspend_resume error: %s', str(e))
