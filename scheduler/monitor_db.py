@@ -33,6 +33,7 @@ from autotest_lib.scheduler import scheduler_models
 from autotest_lib.scheduler import status_server, scheduler_config
 from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.server import autoserv_utils
+from autotest_lib.site_utils import server_manager_utils
 
 BABYSITTER_PID_FILE_PREFIX = 'monitor_db_babysitter'
 PID_FILE_PREFIX = 'monitor_db'
@@ -196,6 +197,13 @@ def initialize():
             scheduler_lib.DB_CONFIG_SECTION, 'database',
             'stresstest_autotest_web')
 
+    # If server database is enabled, check if the server has role `scheduler`.
+    # If the server does not have scheduler role, exception will be raised and
+    # scheduler will not continue to run.
+    if server_manager_utils.use_server_db():
+        server_manager_utils.confirm_server_has_role(hostname='localhost',
+                                                     role='scheduler')
+
     os.environ['PATH'] = AUTOTEST_SERVER_DIR + ':' + os.environ['PATH']
     global _db_manager
     _db_manager = scheduler_lib.ConnectionManager()
@@ -208,9 +216,12 @@ def initialize():
     initialize_globals()
     scheduler_models.initialize()
 
-    drones = global_config.global_config.get_config_value(
-        scheduler_config.CONFIG_SECTION, 'drones', default='localhost')
-    drone_list = [hostname.strip() for hostname in drones.split(',')]
+    if server_manager_utils.use_server_db():
+        drone_list = server_manager_utils.get_drones()
+    else:
+        drones = global_config.global_config.get_config_value(
+                scheduler_config.CONFIG_SECTION, 'drones', default='localhost')
+        drone_list = [hostname.strip() for hostname in drones.split(',')]
     results_host = global_config.global_config.get_config_value(
         scheduler_config.CONFIG_SECTION, 'results_host', default='localhost')
     _drone_manager.initialize(RESULTS_DIR, drone_list, results_host)

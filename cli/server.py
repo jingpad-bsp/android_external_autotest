@@ -23,6 +23,8 @@ import common
 from autotest_lib.cli import action_common
 from autotest_lib.cli import topic_common
 from autotest_lib.client.common_lib import error
+# The django setup is moved here as test_that uses sqlite setup. If this line
+# is in server_manager, test_that unittest will fail.
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.site_utils import server_manager
 from autotest_lib.site_utils import server_manager_utils

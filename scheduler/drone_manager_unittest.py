@@ -7,6 +7,7 @@ from autotest_lib.client.bin import local_host
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.test_utils import mock
+from autotest_lib.frontend import setup_django_lite_environment
 from autotest_lib.scheduler import drone_manager, drone_utility, drones
 from autotest_lib.scheduler import scheduler_config, site_drone_manager
 from autotest_lib.scheduler import thread_lib

@@ -71,6 +71,7 @@ from autotest_lib.scheduler import rdb_utils
 from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.scheduler import scheduler_models
 from autotest_lib.site_utils import job_overhead
+from autotest_lib.site_utils import server_manager_utils
 
 _db_manager = None
 _shutdown = False
@@ -462,6 +463,13 @@ def main():
     try:
         options = parse_arguments(sys.argv[1:])
         scheduler_lib.check_production_settings(options)
+
+        # If server database is enabled, check if the server has role
+        # `host_scheduler`. If the server does not have host_scheduler role,
+        # exception will be raised and host scheduler will not continue to run.
+        if server_manager_utils.use_server_db():
+            server_manager_utils.confirm_server_has_role(hostname='localhost',
+                                                         role='host_scheduler')
 
         initialize(options.testing)
 

@@ -7,12 +7,14 @@ database (defined in global config section AUTOTEST_SERVER_DB).
 
 """
 
+import socket
 import subprocess
 import sys
 
 import common
 
 import django.core.exceptions
+from autotest_lib.client.common_lib import base_utils as utils
 from autotest_lib.client.common_lib.global_config import global_config
 from autotest_lib.frontend.server import models as server_models
 from autotest_lib.site_utils.lib import infra
@@ -269,3 +271,33 @@ def change_attribute(server, attribute, value):
                 server=server, attribute=attribute, value=value)
         print ('Attribute `%s` of server %s is set to %s.' %
                (attribute, server.hostname, value))
+
+
+def get_drones():
+    """Get a list of drones in status primary.
+
+    @return: A list of drones in status primary.
+    """
+    servers = get_servers(role=server_models.ServerRole.ROLE.DRONE,
+                          status=server_models.Server.STATUS.PRIMARY)
+    return [s.hostname for s in servers]
+
+
+def confirm_server_has_role(hostname, role):
+    """Confirm a given server has the given role, and its status is primary.
+
+    @param hostname: hostname of the server.
+    @param role: Name of the role to be checked.
+    @raise ServerActionError: If localhost does not have given role or it's
+                              not in primary status.
+    """
+    if hostname.lower() in ['localhost', '127.0.0.1']:
+        hostname = socket.gethostname()
+    hostname = utils.normalize_hostname(hostname)
+
+    servers = get_servers(role=role, status=server_models.Server.STATUS.PRIMARY)
+    for server in servers:
+        if hostname == utils.normalize_hostname(server.hostname):
+            return True
+    raise ServerActionError('Server %s does not have role of %s running in '
+                            'status primary.' % (hostname, role))

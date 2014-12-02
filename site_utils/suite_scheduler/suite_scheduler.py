@@ -42,6 +42,7 @@ import manifest_versions, sanity
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import logging_config, logging_manager
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
+from autotest_lib.site_utils import server_manager_utils
 
 
 CONFIG_SECTION = 'SCHEDULER'
@@ -222,6 +223,13 @@ def main():
                                       log_dir=options.log_dir)
     if not options.log_dir:
         logging.info('Not logging to a file, as --log_dir was not passed.')
+
+    # If server database is enabled, check if the server has role
+    # `suite_scheduler`. If the server does not have suite_scheduler role,
+    # exception will be raised and suite scheduler will not continue to run.
+    if server_manager_utils.use_server_db():
+        server_manager_utils.confirm_server_has_role(hostname='localhost',
+                                                     role='suite_scheduler')
 
     afe = frontend_wrappers.RetryingAFE(timeout_min=1, delay_sec=5, debug=False)
     enumerator = board_enumerator.BoardEnumerator(afe)

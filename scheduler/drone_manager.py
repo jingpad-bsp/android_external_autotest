@@ -249,23 +249,50 @@ class BaseDroneManager(object):
         """
         Reread global config options for all drones.
         """
+        # Import server_manager_utils is delayed rather than at the beginning of
+        # this module. The reason is that test_that imports drone_manager when
+        # importing autoserv_utils. The import is done before test_that setup
+        # django (test_that only setup django in setup_local_afe, since it's
+        # not needed when test_that runs the test in a lab duts through :lab:
+        # option. Therefore, if server_manager_utils is imported at the
+        # beginning of this module, test_that will fail since django is not
+        # setup yet.
+        from autotest_lib.site_utils import server_manager_utils
         config = global_config.global_config
         section = scheduler_config.CONFIG_SECTION
         config.parse_config_file()
         for hostname, drone in self._drones.iteritems():
-            disabled = config.get_config_value(
-                    section, '%s_disabled' % hostname, default='')
-            drone.enabled = not bool(disabled)
+            if server_manager_utils.use_server_db():
+                server = server_manager_utils.get_servers(hostname=hostname)[0]
+                attributes = dict([(a.attribute, a.value)
+                                   for a in server.attributes.all()])
+                drone.enabled = (
+                        int(attributes.get('disabled', 0)) == 0)
+                drone.max_processes = int(
+                        attributes.get(
+                            'max_processes',
+                            scheduler_config.config.max_processes_per_drone))
+                allowed_users = attributes.get('users', None)
+            else:
+                disabled = config.get_config_value(
+                        section, '%s_disabled' % hostname, default='')
+                drone.enabled = not bool(disabled)
 
-            drone.max_processes = config.get_config_value(
-                    section, '%s_max_processes' % hostname, type=int,
-                    default=scheduler_config.config.max_processes_per_drone)
+                drone.max_processes = config.get_config_value(
+                        section, '%s_max_processes' % hostname, type=int,
+                        default=scheduler_config.config.max_processes_per_drone)
 
-            allowed_users = config.get_config_value(
-                    section, '%s_users' % hostname, default=None)
-            if allowed_users is not None:
-                allowed_users = set(allowed_users.split())
-            drone.allowed_users = allowed_users
+                allowed_users = config.get_config_value(
+                        section, '%s_users' % hostname, default=None)
+            if allowed_users:
+                drone.allowed_users = set(allowed_users.split())
+            else:
+                drone.allowed_users = None
+            logging.info('Drone %s.max_processes: %s', hostname,
+                         drone.max_processes)
+            logging.info('Drone %s.enabled: %s', hostname, drone.enabled)
+            logging.info('Drone %s.allowed_users: %s', hostname,
+                         drone.allowed_users)
 
         self._reorder_drone_queue() # max_processes may have changed
         # Clear notification record about reaching max_processes limit.
