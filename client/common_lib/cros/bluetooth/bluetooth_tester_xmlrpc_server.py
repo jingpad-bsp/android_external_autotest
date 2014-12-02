@@ -94,49 +94,27 @@ class BluetoothTesterXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             logging.warning('Controller does not support requested settings')
             return False
 
-        # Intel-based controllers cannot have High-Speed disabled, so add it
-        # to the profile settings if it's on in the current settings.
-        profile_settings |= \
-                current_settings & bluetooth_socket.MGMT_SETTING_HS
+        # Before beginning, force the adapter power off, even if it's already
+        # off; this is enough to persuade an AP-mode Intel chip to accept
+        # settings.
+        if not self._control.set_powered(self.index, False):
+            logging.warning('Failed to power off adapter to accept settings')
+            return False
 
         # Send the individual commands to set up the adapter. There is no
         # command to set the BR/EDR flag, that's something that's either on
         # or off in the chip. We do, of course, want to check for it later.
-        if not self._control.set_powered(
-                self.index,
-                profile_settings & bluetooth_socket.MGMT_SETTING_POWERED):
-            logging.warning('Failed to set powered setting')
-            return False
-        if (self._control.set_connectable(
-                self.index,
-                profile_settings & bluetooth_socket.MGMT_SETTING_CONNECTABLE)
-                    is None):
-            logging.warning('Failed to set connectable setting')
-            return False
-        if (self._control.set_fast_connectable(
-                self.index,
-                profile_settings &
-                bluetooth_socket.MGMT_SETTING_FAST_CONNECTABLE)
-                    is None):
-            logging.warning('Failed to set fast connectable setting')
-            return False
-        if (self._control.set_pairable(
-                self.index,
-                profile_settings & bluetooth_socket.MGMT_SETTING_PAIRABLE)
-                    is None):
-            logging.warning('Failed to set pairable setting')
-            return False
-        if (self._control.set_link_security(
-                self.index,
-                profile_settings & bluetooth_socket.MGMT_SETTING_LINK_SECURITY)
-                    is None):
-            logging.warning('Failed to set link security setting')
-            return False
         if (self._control.set_ssp(
                 self.index,
                 profile_settings & bluetooth_socket.MGMT_SETTING_SSP)
                     is None):
             logging.warning('Failed to set SSP setting')
+            return False
+        if (self._control.set_le(
+                self.index,
+                profile_settings & bluetooth_socket.MGMT_SETTING_LE)
+                    is None):
+            logging.warning('Failed to set Low Energy setting')
             return False
         if (self._control.set_hs(
                 self.index,
@@ -144,11 +122,39 @@ class BluetoothTesterXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
                     is None):
             logging.warning('Failed to set High Speed setting')
             return False
-        if (self._control.set_le(
+        if (self._control.set_link_security(
                 self.index,
-                profile_settings & bluetooth_socket.MGMT_SETTING_LE)
+                profile_settings & bluetooth_socket.MGMT_SETTING_LINK_SECURITY)
                     is None):
-            logging.warning('Failed to set Low Energy setting')
+            logging.warning('Failed to set link security setting')
+            return False
+        if (self._control.set_connectable(
+                self.index,
+                profile_settings & bluetooth_socket.MGMT_SETTING_CONNECTABLE)
+                    is None):
+            logging.warning('Failed to set connectable setting')
+            return False
+        if (self._control.set_pairable(
+                self.index,
+                profile_settings & bluetooth_socket.MGMT_SETTING_PAIRABLE)
+                    is None):
+            logging.warning('Failed to set pairable setting')
+            return False
+
+        # Now the settings have been set, power up the adapter.
+        if not self._control.set_powered(
+                self.index,
+                profile_settings & bluetooth_socket.MGMT_SETTING_POWERED):
+            logging.warning('Failed to set powered setting')
+            return False
+
+        # Fast connectable can only be set once the controller is powered.
+        if (self._control.set_fast_connectable(
+                self.index,
+                profile_settings &
+                bluetooth_socket.MGMT_SETTING_FAST_CONNECTABLE)
+                    is None):
+            logging.warning('Failed to set fast connectable setting')
             return False
 
         # Fetch the settings again and make sure they're all set correctly,
