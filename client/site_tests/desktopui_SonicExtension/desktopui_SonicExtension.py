@@ -136,14 +136,21 @@ class desktopui_SonicExtension(test.test):
                     self._settings['full_screen'] == 'on')
             self._test_utils.set_focus_tab(driver, current_tab_handle)
             driver.switch_to_window(current_tab_handle)
-            time.sleep(int(self._settings['mirror_duration']))
+            cpu_usage = self._test_utils.cpu_usage_interval(
+                    int(self._settings['mirror_duration']))
             self._test_utils.stop_v2_mirroring_test_utils(driver, extension_id)
             crash_id = self._test_utils.upload_v2_mirroring_logs(
                     driver, extension_id)
             test_info['crash_id'] = crash_id
             if self._settings.get('sender_root_dir'):
-                self._test_utils.output_dict_to_file(
-                    dictionary=test_info,
-                    path=self._settings['sender_root_dir'],
-                    file_name='test_information.json')
+                cpu_bound = self._test_utils.compute_cpu_utilization(cpu_usage)
+                info_json_file = os.path.join(self._settings['sender_root_dir'],
+                                              'test_information.json')
+                cpu_json_file = os.path.join(
+                        self._settings['sender_root_dir'], 'cpu_data.json')
+                cpu_bound_json_file = os.path.join(
+                        self._settings['sender_root_dir'], 'cpu_bound.json')
+                json.dump(test_info, open(info_json_file, 'wb'))
+                json.dump(cpu_usage, open(cpu_json_file, 'wb'))
+                json.dump(cpu_bound, open(cpu_bound_json_file, 'wb'))
             time.sleep(self.wait_time)

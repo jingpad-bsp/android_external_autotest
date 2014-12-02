@@ -9,6 +9,7 @@ import time
 
 import selenium
 
+from autotest_lib.client.bin import utils
 from extension_pages import e2e_test_utils
 from extension_pages import options
 
@@ -18,6 +19,9 @@ class TestUtils(object):
 
     short_wait_secs = 3
     step_timeout_secs = 60
+    cpu_fields = ['user', 'nice', 'system', 'idle', 'iowait', 'irq',
+                  'softirq', 'steal', 'guest', 'guest_nice']
+    cpu_idle_fields = ['idle', 'iowait']
 
     def __init__(self):
         """Constructor"""
@@ -141,7 +145,7 @@ class TestUtils(object):
 
 
     def upload_v2_mirroring_logs(self, driver, extension_id):
-        """Uploads v2 mirroring logs for the latest mirroring session.
+        """Upload v2 mirroring logs for the latest mirroring session.
 
         @param driver: The chromedriver instance of the browser
         @param extension_id: The extension ID of the Cast extension
@@ -188,7 +192,7 @@ class TestUtils(object):
 
 
     def get_extension_id_from_flag(self, extra_flags):
-        """Get the extension ID based on the whitelisted extension id flag.
+        """Gets the extension ID based on the whitelisted extension id flag.
 
         @param extra_flags: A string which contains all the extra chrome flags
         @return The ID of the extension. Return None if nothing is found.
@@ -215,7 +219,7 @@ class TestUtils(object):
 
 
     def request_full_screen(self, driver):
-        """Requests full screen.
+        """Request full screen.
 
         @param driver: The chromedriver instance
         """
@@ -224,25 +228,6 @@ class TestUtils(object):
             driver.find_element_by_id('fsbutton').click()
         except selenium.common.exceptions.NoSuchElementException as error_message:
             print 'Full screen button is not found. ' + str(error_message)
-
-
-    def _wait_for_result(self, get_result, error_message):
-        """Waits for the result.
-
-        @param get_result: the function to get result.
-        @param error_message: the error message in the exception
-            if it is failed to get result.
-        @return The result.
-        @raises RuntimeError if it is failed to get result within
-            self.step_timeout_secs.
-        """
-        start = time.time()
-        while (((time.time() - start) < self.step_timeout_secs)
-               and not get_result()):
-            time.sleep(self.step_timeout_secs/10.0)
-        if not get_result():
-            raise RuntimeError(error_message)
-        return get_result()
 
 
     def set_focus_tab(self, driver, tab_handle):
@@ -288,6 +273,7 @@ class TestUtils(object):
         for handle in driver.window_handles:
             if current_tab_handle != handle:
                 try:
+                    time.sleep(self.short_wait_secs)
                     driver.switch_to_window(handle)
                     driver.close()
                 except:
@@ -296,8 +282,8 @@ class TestUtils(object):
 
 
     def output_dict_to_file(self, dictionary, file_name,
-                               path=None, sort_keys=False):
-        """Ouput a dictionary into a file.
+                            path=None, sort_keys=False):
+        """Output a dictionary into a file.
 
         @param dictionary: The dictionary to be output as JSON
         @param file_name: The name of the file that is being output
@@ -315,3 +301,86 @@ class TestUtils(object):
         output_json = json.dumps(dictionary, sort_keys=sort_keys)
         with open(json_file, 'w') as file_handler:
             file_handler.write(output_json)
+
+
+    def compute_cpu_utilization(self, cpu_dict):
+        """Generate the upper/lower bound and the average CPU consumption.
+
+        @param cpu_dict: The dictionary that contains CPU usage every sec.
+        @returns A dict that contains upper/lower bound and average cpu usage.
+        """
+        cpu_bound = {}
+        cpu_usage = sorted(cpu_dict.values())
+        cpu_bound['lower_bound'] = (
+                '%.2f' % cpu_usage[int(len(cpu_usage) * 10.0 / 100.0)])
+        cpu_bound['upper_bound'] = (
+                '%.2f' % cpu_usage[int(len(cpu_usage) * 90.0 / 100.0)])
+        cpu_bound['average'] = '%.2f' % (sum(cpu_usage) / float(len(cpu_usage)))
+        return cpu_bound
+
+
+    def cpu_usage_interval(self, duration, interval=1):
+        """Get the CPU usage over a period of time based on interval.
+
+        @param duration: The duration of getting the CPU usage.
+        @param interval: The interval to check the CPU usage. Default is 1 sec.
+        @return A dict that contains CPU usage over different time intervals.
+        """
+        current_time = 0
+        cpu_usage = {}
+        while current_time < duration:
+            pre_times = self._get_system_times()
+            time.sleep(interval)
+            post_times = self._get_system_times()
+            cpu_usage[current_time] = self._get_avg_cpu_usage(
+                    pre_times, post_times)
+            current_time += interval
+        return cpu_usage
+
+
+    def _get_avg_cpu_usage(self, pre_times, post_times):
+        """Calculate the average CPU usage of two different periods of time.
+
+        @param pre_times: The CPU usage information of the start point.
+        @param post_times: The CPU usage information of the end point.
+        @return Average CPU usage over a time period.
+        """
+        diff_times = {}
+        for field in self.cpu_fields:
+            diff_times[field] = post_times[field] - pre_times[field]
+
+        idle_time = sum(diff_times[field] for field in self.cpu_idle_fields)
+        total_time = sum(diff_times[field] for field in self.cpu_fields)
+        return float(total_time - idle_time) / total_time * 100.0
+
+
+    def _get_system_times(self):
+        """Get the CPU information from the system times.
+
+        @return An list with CPU usage of different processes.
+        """
+        proc_stat = utils.read_file('/proc/stat')
+        for line in proc_stat.split('\n'):
+            if line.startswith('cpu '):
+                times = line[4:].strip().split(' ')
+                times = [int(jiffies) for jiffies in times]
+                return dict(zip(self.cpu_fields, times))
+
+
+    def _wait_for_result(self, get_result, error_message):
+        """Wait for the result.
+
+        @param get_result: the function to get result.
+        @param error_message: the error message in the exception
+            if it is failed to get result.
+        @return The result.
+        @raises RuntimeError if it is failed to get result within
+            self.step_timeout_secs.
+        """
+        start = time.time()
+        while (((time.time() - start) < self.step_timeout_secs)
+               and not get_result()):
+            time.sleep(self.step_timeout_secs/10.0)
+        if not get_result():
+            raise RuntimeError(error_message)
+        return get_result()
