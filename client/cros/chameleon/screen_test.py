@@ -52,6 +52,7 @@ class ScreenTest(object):
 
         error = self._resolution_comparer.compare(expected_resolution)
         if not error:
+            self._display_facade.hide_cursor()
             error = self._screen_comparer.compare()
         if not error and test_mirrored:
             error = self._mirror_comparer.compare()
@@ -70,7 +71,6 @@ class ScreenTest(object):
         self._display_facade.load_calibration_image(image_size)
         logging.info('Waiting for calibration image to stabilize...')
         time.sleep(calibration_image_setup_time)
-        self._display_facade.hide_cursor()
 
 
     def unload_test_image(self):
