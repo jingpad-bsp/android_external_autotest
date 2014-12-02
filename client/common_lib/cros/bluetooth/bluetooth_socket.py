@@ -462,6 +462,12 @@ class BluetoothControlSocket(BluetoothSocket):
         self.bind((btsocket.HCI_DEV_NONE, btsocket.HCI_CHANNEL_CONTROL))
         self.settimeout(self.DEFAULT_TIMEOUT)
 
+        # Certain features will depend on the management version and revision,
+        # so check those now.
+        (version, revision) = self.read_version()
+        logging.debug('MGMT API %d.%d', version, revision)
+        self._kernel_confirms_name = (
+                (version > 1) or ((version == 1) and (revision >= 5)))
 
     def read_version(self):
         """Read the version of the management interface.
@@ -1002,15 +1008,20 @@ class BluetoothControlSocket(BluetoothSocket):
                 # The kernel might want us to confirm whether or not we
                 # know the name of the device. We don't really care whether
                 # or not this works, we just have to do it to get the EIR
-                # Request - what's more, despite the documentation, this never
-                # returns a CMD_COMPLETE.
+                # Request.
                 if flags & MGMT_DEV_FOUND_CONFIRM_NAME:
                     msg_data = struct.pack('<6sBB',
                                            address, address_type, False)
-                    self.send_command(
-                            MGMT_OP_CONFIRM_NAME,
-                            index,
-                            msg_data)
+                    if self._kernel_confirms_name:
+                        self.send_command_and_wait(
+                                MGMT_OP_CONFIRM_NAME,
+                                index,
+                                msg_data)
+                    else:
+                        self.send_command(
+                                MGMT_OP_CONFIRM_NAME,
+                                index,
+                                msg_data)
 
 
         return devices
