@@ -107,7 +107,10 @@ class ChameleonTest(test.test):
         time.sleep(unplug_duration_sec)
         self.chameleon_port.plug()
         if not self.display_facade.wait_external_display_connected(output):
-            raise error.TestFail('Fail to get %s connected' % output)
+            raise error.TestFail('DUT failed to get %s connected' % output)
+        if not self.chameleon_port.wait_video_input_stable(
+                self._TIMEOUT_VIDEO_STABLE_PROBE):
+            raise error.TestFail('Chameleon failed to wait video input stable')
 
 
     def cleanup(self):
