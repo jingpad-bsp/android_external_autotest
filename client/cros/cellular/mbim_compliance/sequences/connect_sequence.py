@@ -27,18 +27,20 @@ from autotest_lib.client.cros.cellular.mbim_compliance.sequences \
 class ConnectSequence(sequence.Sequence):
     """ Implement the Connect Sequence. """
 
-    def run_internal(self):
+    def run_internal(self, raise_exception_on_failure=True):
         """
         Run the Connect Sequence.
 
         Once the command message is sent, there should be at least one
         notification received apart from the command done message.
 
-        @returns command_message: The command message sent to device.
+        @param raise_exception_on_failure: Whether to raise an exception or not.
+        @returns tuple of (command_message, response_message, notifications):
+                command_message: The command message sent to device.
                 |command_message| is a MBIMCommandMessage object.
-        @returns response_message: The response to the |command_message|.
+                response_message: The response to the |command_message|.
                 |response_message| is a MBIMCommandDoneMessage object.
-        @returns notifications: The list of notifications message sent from the
+                notifications: The list of notifications message sent from the
                 modem to the host. |notifications| is a list of
                 |MBIMIndicateStatusMessage| objects.
         """
@@ -51,7 +53,6 @@ class ConnectSequence(sequence.Sequence):
         information_buffer_length += len(data_buffer)
         device_context = self.device_context
         descriptor_cache = device_context.descriptor_cache
-
         command_message = (
                 mbim_command_message.MBIMSetConnect(session_id=0,
                         activation_command=1,
@@ -91,7 +92,9 @@ class ConnectSequence(sequence.Sequence):
         # Step 3
         if (response_message.message_type != mbim_constants.MBIM_COMMAND_DONE or
             response_message.status_codes != mbim_constants.MBIM_STATUS_SUCCESS):
-            mbim_errors.log_and_raise(mbim_errors.MBIMComplianceSequenceError,
-                                      'Connect sequence failed.')
+            if raise_exception_on_failure:
+                mbim_errors.log_and_raise(
+                        mbim_errors.MBIMComplianceSequenceError,
+                        'Connect sequence failed.')
 
         return command_message, response_message, notifications

@@ -12,7 +12,7 @@ from autotest_lib.client.cros.cellular.mbim_compliance import mbim_errors
 class Sequence(entity.Entity):
     """ Base class for all sequences. """
 
-    def run(self):
+    def run(self, **kwargs):
         """
         Run the sequence.
 
@@ -21,7 +21,7 @@ class Sequence(entity.Entity):
 
         """
         logging.info('---- Sequence (%s) begin ----', self.name())
-        result = self.run_internal()
+        result = self.run_internal(**kwargs)
         logging.info('---- Sequence (%s) end ----', self.name())
         return result
 

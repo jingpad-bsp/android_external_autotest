@@ -1,4 +1,4 @@
-# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -211,6 +211,9 @@ class MBIMComplianceAssertionError(MBIMComplianceError):
                                'exception and that is MBIM_ERROR_NOT_OPENED.',
             'mbim1.0:9.3.2#3': 'On MBIM_CLOSE_MSG, any active context between '
                                'the function and the host shall be terminated ',
+            'mbim1.0:9.3.4#2': 'An MBIM_FUNCTION_ERROR_MSG shall not make use '
+                               'of a DataBuffer, so it cannot send any data '
+                               'payload.',
             'mbim1.0:9.4.1#1': 'The function shall respond to the '
                                'MBIM_OPEN_MSG message with an MBIM_OPEN_DONE '
                                'message in which the TransactionId must match '
