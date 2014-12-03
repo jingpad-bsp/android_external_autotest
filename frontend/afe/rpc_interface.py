@@ -32,14 +32,20 @@ See doctests/001_rpc_test.txt for (lots) more examples.
 __author__ = 'showard@google.com (Steve Howard)'
 
 import datetime
+from django.db.models import Count
 import common
 from autotest_lib.client.common_lib import priorities
+from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.frontend.afe import models, model_logic, model_attributes
 from autotest_lib.frontend.afe import control_file, rpc_utils
 from autotest_lib.frontend.afe import site_rpc_interface
+from autotest_lib.frontend.tko import models as tko_models
 from autotest_lib.frontend.tko import rpc_interface as tko_rpc_interface
 from autotest_lib.server import utils
 from autotest_lib.server.cros.dynamic_suite import tools
+
+
+_timer = stats.Timer('rpc_interface')
 
 def get_parameterized_autoupdate_image_url(job):
     """Get the parameterized autoupdate image url from a parameterized job."""
@@ -351,6 +357,39 @@ def delete_test(id):
 def get_tests(**filter_data):
     return rpc_utils.prepare_for_serialization(
         models.Test.list_objects(filter_data))
+
+
+@_timer.decorate
+def get_tests_status_counts_by_job_name_label(job_name_prefix, label_name):
+    """Gets the counts of all passed and failed tests from the matching jobs.
+
+    @param job_name_prefix: Name prefix of the jobs to get the summary from, e.g.,
+            'butterfly-release/R40-6457.21.0/bvt-cq/'.
+    @param label_name: Label that must be set in the jobs, e.g.,
+            'cros-version:butterfly-release/R40-6457.21.0'.
+
+    @returns A summary of the counts of all the passed and failed tests.
+    """
+    job_ids = list(models.Job.objects.filter(
+            name__startswith=job_name_prefix,
+            dependency_labels__name=label_name).values_list(
+                'pk', flat=True))
+    summary = {'passed': 0, 'failed': 0}
+    if not job_ids:
+        return summary
+
+    counts = (tko_models.TestView.objects.filter(
+            afe_job_id__in=job_ids).exclude(
+                test_name='SERVER_JOB').exclude(
+                    test_name__startswith='CLIENT_JOB').values(
+                        'status').annotate(
+                            count=Count('status')))
+    for status in counts:
+        if status['status'] == 'GOOD':
+            summary['passed'] += status['count']
+        else:
+            summary['failed'] += status['count']
+    return summary
 
 
 # profilers
