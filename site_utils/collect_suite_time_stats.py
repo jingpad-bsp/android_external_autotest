@@ -403,11 +403,11 @@ def analyze_suites(start_time, end_time):
             print_suite_stats(suite_stats)
 
             if _options.cron_mode:
-                key = utils._get_data_key(
+                key = utils.get_data_key(
                         'suite_time_stats', suite_name, hit['build'],
                         hit['board'])
                 stats.Timer(key).send('suite_runtime', suite_runtime)
-                for stat, val in suite_stats:
+                for stat, val in suite_stats.iteritems():
                     stats.Timer(key).send(stat, val)
         except Exception as e:
             print('ERROR: Exception is raised while processing suite %s' % (
