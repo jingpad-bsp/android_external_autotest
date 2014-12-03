@@ -1,0 +1,38 @@
+#!/bin/bash
+
+if [ $# -gt 1 ]
+then
+    echo "usage: $(basename $0) [ pool ]" >&2
+    exit 1
+fi
+
+POOL=${1:-bvt}
+cd $(dirname $(readlink -f $0))/..
+BOARD_BLACKLIST=(
+    stout32
+)
+
+getboards() {
+    (
+    cli/atest host list -w cautotest -b pool:$POOL |
+        sed '
+            /board:/ !d
+            s/^.*board:\([^,]*\).*$/\1/
+    ' | sort -u
+    for b in "${BOARD_BLACKLIST[@]}"
+    do
+        echo $b
+        echo $b
+    done
+    ) | sort | uniq -u
+}
+echo "pool $POOL"
+NL=""
+for b in $(getboards)
+do
+    echo -n "$NL"
+    echo "board $b"
+    python site_utils/dut_status.py -d 24 --pool="$POOL" --board="$b"
+    NL="
+"
+done

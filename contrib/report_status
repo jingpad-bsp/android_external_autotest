@@ -1,0 +1,36 @@
+#!/bin/bash
+
+if [ $# -ne 1 ]
+then
+    echo "usage: $(basename $0) file" >&2
+    exit 1
+fi
+
+REPORT=$1
+
+POOL=$(sed -e 's/^pool //' -e q $REPORT)
+cat <<END
+Status of pool:$POOL inventory, by board:
+
+END
+
+FMT="%-15s %7s  %7s\n"
+printf "$FMT" "BOARD" "WORKING" "TOTAL"
+awk '
+    /^board / {
+      board = $2
+      total[board] = working[board] = 0
+    }
+    /^chrome/ {
+        total[board]++
+    }
+    /^chrome.*OK/ {
+        working[board]++
+    }
+    { next }
+    END {
+        for (board in total) {
+            printf "'"$FMT"'", board, working[board], total[board]
+        }
+    }
+' $REPORT | sort -nk 2
