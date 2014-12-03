@@ -101,7 +101,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
     SLEEP_TIMEOUT = 2
     RESUME_TIMEOUT = 10
-    SHUTDOWN_TIMEOUT = 5
+    SHUTDOWN_TIMEOUT = 10
     BOOT_TIMEOUT = 60
     USB_BOOT_TIMEOUT = 150
     INSTALL_TIMEOUT = 480
@@ -2018,7 +2018,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                         % (old_boot_id, new_boot_id))
 
 
-    def test_wait_for_shutdown(self):
+    def test_wait_for_shutdown(self, shutdown_timeout=None):
         """Wait for the client to shut down.
 
         The test for "has shut down" can't distinguish a system that
@@ -2036,13 +2036,17 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             host.test_wait_for_boot(boot_id)
         ~~~~~~~~
 
+        @param shutdown_timeout time limit in seconds to allow the host down.
         @exception TestFail The host did not shut down within the
                             allowed time.
         """
-        if not self.ping_wait_down(timeout=self.SHUTDOWN_TIMEOUT):
+        if shutdown_timeout is None:
+            shutdown_timeout = self.SHUTDOWN_TIMEOUT
+
+        if not self.ping_wait_down(timeout=shutdown_timeout):
             raise error.TestFail(
                 'client failed to shut down after %d seconds' %
-                    self.SHUTDOWN_TIMEOUT)
+                    shutdown_timeout)
 
 
     def test_wait_for_boot(self, old_boot_id=None):
