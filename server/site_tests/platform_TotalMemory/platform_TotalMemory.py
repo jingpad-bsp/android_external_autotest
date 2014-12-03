@@ -10,7 +10,7 @@ from autotest_lib.client.common_lib import error
 
 class platform_TotalMemory(test.test):
     version = 1
-
+    ALLOWED_VARIANCE = 4
 
     def action_login(self):
         """Login i.e. runs running client test"""
@@ -51,11 +51,10 @@ class platform_TotalMemory(test.test):
             logging.info('MemFreeSize %d', mem_free_size)
 
         errors = list()
-        mem_total_list_size = len(set(mem_total_list))
-        if mem_total_list_size > 1:
-            errors.append('%d values of memtotal returned. MemoryTotal is not '
-                          'consistent - %s' % (mem_total_list_size,
-                                               str(set(mem_free_list))))
+        mem_total_diff = max(mem_total_list) - min(mem_total_list)    
+        if mem_total_diff > self.ALLOWED_VARIANCE:
+            errors.append('MemoryTotal is not consistent. variance=%dKB' %
+                          mem_total_diff)
 
         mem_free_diff = max(mem_free_list) - min(mem_free_list)
         quarter_mem_total = max(mem_total_list) / 4
