@@ -368,6 +368,49 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         return wifi_proxy.WifiProxy.clear_supplicant_blacklist()
 
 
+    @xmlrpc_server.dbus_safe(None)
+    def get_dbus_property_on_device(self, wifi_interface, prop_name):
+        """Get a property for the given WiFi device.
+
+        @param wifi_interface: string name of interface being queried.
+        @param prop_name: the name of the property.
+        @return the current value of the property.
+
+        """
+        dbus_object = self._wifi_proxy.find_object(
+                self.DBUS_DEVICE, {'Name': wifi_interface})
+        if dbus_object is None:
+            return None
+
+        object_properties = dbus_object.GetProperties(utf8_strings=True)
+        if prop_name not in object_properties:
+            return None
+
+        return self._wifi_proxy.dbus2primitive(
+                object_properties[prop_name])
+
+
+    @xmlrpc_server.dbus_safe(False)
+    def set_dbus_property_on_device(self, wifi_interface, prop_name, value):
+        """Set a property on the given WiFi device.
+
+        @param wifi_interface: the device to set a property for.
+        @param prop_name: the name of the property.
+        @param value: the desired value of the property.
+        @return True if successful, False otherwise.
+
+        """
+        device_object = self._wifi_proxy.find_object(
+                self.DBUS_DEVICE, {'Name': wifi_interface})
+        if device_object is None:
+            return False
+
+        shill_proxy.ShillProxy.set_dbus_property(device_object,
+                                                 prop_name,
+                                                 value)
+        return True
+
+
     @xmlrpc_server.dbus_safe(False)
     def get_roam_threshold(self, wifi_interface):
         """Get roam threshold for a specified wifi interface.
@@ -376,18 +419,8 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         @return integer value of the roam threshold.
 
         """
-        interface = {'Name': wifi_interface}
-        dbus_object = self._wifi_proxy.find_object(self.DBUS_DEVICE,
-                                                   interface)
-        if dbus_object is None:
-            return False
-
-        object_properties = dbus_object.GetProperties(utf8_strings=True)
-        if self.ROAM_THRESHOLD not in object_properties:
-            return False
-
-        return self._wifi_proxy.dbus2primitive(
-                object_properties[self.ROAM_THRESHOLD])
+        return self.get_dbus_property_on_device(wifi_interface,
+                                                self.ROAM_THRESHOLD)
 
 
     def request_roam(self, bssid):
@@ -417,16 +450,9 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
         @return True if it worked; false, otherwise
         """
-        interface = {'Name': wifi_interface}
-        dbus_object = self._wifi_proxy.find_object(self.DBUS_DEVICE,
-                                                   interface)
-        if dbus_object is None:
-            return False
-
-        shill_proxy.ShillProxy.set_dbus_property(dbus_object,
-                                                 self.ROAM_THRESHOLD,
-                                                 value)
-        return True
+        return self.set_dbus_property_on_device(wifi_interface,
+                                                self.ROAM_THRESHOLD,
+                                                value)
 
 
     @xmlrpc_server.dbus_safe(False)
@@ -540,40 +566,29 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         return True
 
 
+    @xmlrpc_server.dbus_safe(False)
     def get_wake_on_wifi_features(self, wifi_interface):
         """Get the current wake-on-WiFi setting.
 
         @return string representing the enabled wake-on-WiFi features.
 
         """
-        device_object = self._wifi_proxy.find_object(
-                self.DBUS_DEVICE, {'Name': wifi_interface})
-        if device_object is None:
-            return False
-
-        object_properties = device_object.GetProperties(utf8_strings=True)
-        if self.WAKE_ON_WIFI_FEATURES not in object_properties:
-            return False
-
-        return self._wifi_proxy.dbus2primitive(
-                object_properties[self.WAKE_ON_WIFI_FEATURES])
+        return self.get_dbus_property_on_device(wifi_interface,
+                                                self.WAKE_ON_WIFI_FEATURES)
 
 
+    @xmlrpc_server.dbus_safe(False)
     def set_wake_on_wifi_features(self, wifi_interface, features):
         """Set the current wake-on-WiFi setting.
 
+        @param wifi_interface: the device to set wake-on-WiFi features for.
         @param features: string representing the wake-on-WiFi features.
 
         """
-        device_object = self._wifi_proxy.find_object(
-                self.DBUS_DEVICE, {'Name': wifi_interface})
-        if device_object is None:
-            return False
+        return self.set_dbus_property_on_device(wifi_interface,
+                                                self.WAKE_ON_WIFI_FEATURES,
+                                                features)
 
-        shill_proxy.ShillProxy.set_dbus_property(device_object,
-                                                 self.WAKE_ON_WIFI_FEATURES,
-                                                 features)
-        return True
 
 
 if __name__ == '__main__':

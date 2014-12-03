@@ -37,7 +37,8 @@ class XmlRpcServer(threading.Thread):
         """
         super(XmlRpcServer, self).__init__()
         logging.info('Binding server to %s:%d', host, port)
-        self._server = SimpleXMLRPCServer.SimpleXMLRPCServer((host, port))
+        self._server = SimpleXMLRPCServer.SimpleXMLRPCServer((host, port),
+                                                             allow_none=True)
         self._server.register_introspection_functions()
         self._keep_running = True
         self._delegates = []
