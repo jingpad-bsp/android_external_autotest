@@ -413,14 +413,26 @@ class AutoservSshPingHostError(AutoservHostError):
 
 class AutoservDiskFullHostError(AutoservHostError):
     """Not enough free disk space on host"""
-    def __init__(self, path, want_gb, free_space_gb):
-        AutoservHostError.__init__(self,
-            'Not enough free space on %s - %.3fGB free, want %.3fGB' %
-            (path, free_space_gb, want_gb))
 
+    def __init__(self, path, want_gb, free_space_gb):
+        super(AutoservDiskFullHostError, self).__init__(
+            'Not enough free space on %s - %.3fGB free, want %.3fGB' %
+                    (path, free_space_gb, want_gb))
         self.path = path
         self.want_gb = want_gb
         self.free_space_gb = free_space_gb
+
+
+class AutoservNoFreeInodesError(AutoservHostError):
+    """Not enough free i-nodes on host"""
+
+    def __init__(self, path, want_inodes, free_inodes):
+        super(AutoservNoFreeInodesError, self).__init__(
+            'Not enough free inodes on %s - %d free, want %d' %
+                    (path, free_inodes, want_inodes))
+        self.path = path
+        self.want_inodes = want_inodes
+        self.free_inodes = free_inodes
 
 
 class AutoservHardwareHostError(AutoservHostError):

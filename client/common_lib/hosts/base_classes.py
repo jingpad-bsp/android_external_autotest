@@ -291,6 +291,30 @@ class Host(object):
                 free_space_gb, gb, path, self.hostname)
 
 
+    def check_inodes(self, path, min_kilo_inodes):
+        """Raises an error if a file system is short on i-nodes.
+
+        @param path The path to check for free i-nodes.
+        @param min_kilo_inodes Minimum number of i-nodes required,
+                               in units of 1000 i-nodes.
+
+        @raises AutoservNoFreeInodesError If the minimum required
+                                  i-node count isn't available.
+        """
+        min_inodes = 1000 * min_kilo_inodes
+        logging.info('Checking for >= %d i-nodes under %s '
+                     'on machine %s', min_inodes, path, self.hostname)
+        df = self.run('df -Pi %s | tail -1' % path).stdout.split()
+        free_inodes = int(df[3])
+        if free_inodes < min_inodes:
+            raise error.AutoservNoFreeInodesError(path, min_inodes,
+                                                  free_inodes)
+        else:
+            logging.info('Found %d >= %d i-nodes under %s on '
+                         'machine %s', free_inodes, min_inodes,
+                         path, self.hostname)
+
+
     def get_open_func(self, use_cache=True):
         """
         Defines and returns a function that may be used instead of built-in

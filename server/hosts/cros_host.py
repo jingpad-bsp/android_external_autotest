@@ -1532,6 +1532,11 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                     'Need to collect crash-logs before verification')
 
         super(CrosHost, self).verify_software()
+        self.check_inodes(
+            '/mnt/stateful_partition',
+            global_config.global_config.get_config_value(
+                'SERVER', 'kilo_inodes_required', type=int,
+                default=100))
         self.check_diskspace(
             '/mnt/stateful_partition',
             global_config.global_config.get_config_value(
