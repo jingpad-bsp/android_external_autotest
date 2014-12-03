@@ -132,9 +132,11 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     _LAB_MACHINE_FILE = '/mnt/stateful_partition/.labmachine'
     _RPM_HOSTNAME_REGEX = ('chromeos(\d+)(-row(\d+))?-rack(\d+[a-z]*)'
                            '-host(\d+)')
-    _LIGHTSENSOR_FILES = ['in_illuminance0_input',
-                          'in_illuminance0_raw',
-                          'illuminance0_input']
+    _LIGHT_SENSOR_FILES = [ "in_illuminance0_input",
+                            "in_illuminance_input",
+                            "in_illuminance0_raw",
+                            "in_illuminance_raw",
+                            "illuminance0_input"]
     _LIGHTSENSOR_SEARCH_DIR = '/sys/bus/iio/devices'
     _LABEL_FUNCTIONS = []
     _DETECTABLE_LABELS = []

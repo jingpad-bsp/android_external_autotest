@@ -7,10 +7,13 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
 LIGHT_SENSOR_LOCATION = "/sys/bus/iio/devices/*/"
+# Match sensors files from
+# src/platform2/power_manager/powerd/system/ambient_light_sensor.cc
 LIGHT_SENSOR_FILES = [ "in_illuminance0_input",
+                       "in_illuminance_input",
                        "in_illuminance0_raw",
+                       "in_illuminance_raw",
                        "illuminance0_input",
-                       "in_intensity_raw"
                      ]
 
 class hardware_LightSensor(test.test):
