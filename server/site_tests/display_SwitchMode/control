@@ -13,7 +13,7 @@ TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "display"
 TEST_TYPE = "server"
-DEPENDENCIES = 'chameleon,servo'
+DEPENDENCIES = 'chameleon'
 
 DOC = """
 This test switches display modes (extended and mirrored).
