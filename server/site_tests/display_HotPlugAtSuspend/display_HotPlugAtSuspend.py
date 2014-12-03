@@ -28,11 +28,11 @@ class display_HotPlugAtSuspend(chameleon_test.ChameleonTest):
         (False, True, False),
     ]
     # Duration of suspend, in second.
-    SUSPEND_DURATION = 15
+    SUSPEND_DURATION = 30
     # Allowed timeout for the transition of suspend.
-    SUSPEND_TIMEOUT = 10
+    SUSPEND_TIMEOUT = 20
     # Allowed timeout for the transition of resume.
-    RESUME_TIMEOUT = 20
+    RESUME_TIMEOUT = 30
     # Time margin to do plug/unplug before resume.
     TIME_MARGIN_BEFORE_RESUME = 5
 
