@@ -119,7 +119,7 @@ class MBIMOpenGenericSequence(open_sequence.OpenSequence):
                 open_message,
                 mbim_functional_descriptor.wMaxControlMessage)
         channel = mbim_channel.MBIMChannel(
-                self.device_context._device,
+                device_context._device,
                 communication_interface_number,
                 interrupt_endpoint_address,
                 mbim_functional_descriptor.wMaxControlMessage)

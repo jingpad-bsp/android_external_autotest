@@ -23,9 +23,8 @@ class MBIMControlMessageRequest(mbim_message.MBIMControlMessage):
     """ MBIMMessage Request Message base class. """
     MESSAGE_TYPE = mbim_message.MESSAGE_TYPE_REQUEST
     _FIELDS = (('I', 'message_type', mbim_message.FIELD_TYPE_PAYLOAD_ID),
-               ('I', 'message_length', ''),
-               ('I', 'transaction_id', ''))
-    _DEFAULTS = {'message_length': 0, 'transaction_id': 0}
+               ('I', 'message_length', mbim_message.FIELD_TYPE_TOTAL_LEN),
+               ('I', 'transaction_id', mbim_message.FIELD_TYPE_TRANSACTION_ID))
 
 
 class MBIMOpen(MBIMControlMessageRequest):
@@ -44,19 +43,20 @@ class MBIMClose(MBIMControlMessageRequest):
 class MBIMCommandSecondary(MBIMControlMessageRequest):
     """ The class for MBIM_COMMAND_MSG. """
 
-    _FIELDS = (('I', 'total_fragments', ''),
+    _FIELDS = (('I', 'total_fragments', mbim_message.FIELD_TYPE_NUM_FRAGMENTS),
                ('I', 'current_fragment', ''))
 
 
 class MBIMCommand(MBIMControlMessageRequest):
     """ The class for MBIM_COMMAND_MSG. """
 
-    _FIELDS = (('I', 'total_fragments', ''),
+    _FIELDS = (('I', 'total_fragments', mbim_message.FIELD_TYPE_NUM_FRAGMENTS),
                ('I', 'current_fragment', ''),
                ('16s', 'device_service_id', mbim_message.FIELD_TYPE_PAYLOAD_ID),
                ('I', 'cid', mbim_message.FIELD_TYPE_PAYLOAD_ID),
                ('I', 'command_type', ''),
-               ('I', 'information_buffer_length', ''))
+               ('I', 'information_buffer_length',
+                mbim_message.FIELD_TYPE_PAYLOAD_LEN))
     _DEFAULTS = {'message_type': mbim_constants.MBIM_COMMAND_MSG,
                  'total_fragments': 0x00000001,
                  'current_fragment': 0x00000000,
@@ -85,6 +85,9 @@ def fragment_request_packets(message, max_fragment_length):
     @returns List of fragmented packets.
 
     """
+    packets = []
+    # We may need to go up the message heirarchy level before fragmenting. So,
+    # we need to recreate the primary fragment using the parent class.
     primary_frag_class = message.__class__.find_primary_parent_fragment()
     secondary_frag_class = primary_frag_class.get_secondary_fragment()
     if not secondary_frag_class:
@@ -93,40 +96,44 @@ def fragment_request_packets(message, max_fragment_length):
                 'No secondary fragment class defined')
     # Let's recreate the primary frag object from the raw data of the
     # initial message.
-    raw_data = message.create_raw_data(payload_buffer=message.payload_buffer)
+    raw_data = message.create_raw_data()
     message = primary_frag_class(raw_data=raw_data)
 
+    # Calculate the number of fragments we need. We divide the |payload_bufer|
+    # between 1 primary and |num_fragments| secondary fragments.
     primary_struct_len = primary_frag_class.get_struct_len(get_all=True)
     secondary_struct_len = secondary_frag_class.get_struct_len(get_all=True)
-    total_length = message.message_length
-    total_payload_length = total_length - primary_struct_len
+    total_length = message.get_total_len()
+    total_payload_length = message.get_payload_len()
+    num_fragments = 1
     remaining_payload_length = total_payload_length
     remaining_payload_buffer = message.payload_buffer
+
     primary_frag_length = max_fragment_length
     primary_payload_length =  primary_frag_length - primary_struct_len
     remaining_payload_length -= primary_payload_length
-    num_fragments = 1
     num_fragments += int(
             math.ceil(remaining_payload_length /
                       float(max_fragment_length - secondary_struct_len)))
 
-    packets = []
-    message_field_names = message.__class__.get_field_names(get_all=True)
-    message_field_values = [getattr(message, field_name)
-                            for field_name in message_field_names]
-    args_list = dict(zip(message_field_names, message_field_values))
-    args_list['current_fragment'] = 1
-    args_list['total_fragments'] = num_fragments
-    args_list['message_length'] = primary_frag_length
-    primary_message = primary_frag_class(**args_list)
-
-    primary_message.print_all_fields()
-    packet = primary_message.create_raw_data(
-            payload_buffer=remaining_payload_buffer[:primary_payload_length])
+    # Truncate the payload of the primary message
+    primary_message = message.copy(
+            current_fragment=0,
+            total_fragments=num_fragments,
+            message_length=primary_frag_length)
+    primary_message.payload_buffer = (
+            remaining_payload_buffer[:primary_payload_length])
+    packet = primary_message.create_raw_data()
     remaining_payload_buffer = (
             remaining_payload_buffer[primary_payload_length:])
     packets.append(packet)
 
+    # Field values for secondary fragments are taken from the primary fragment
+    # field values.
+    args_list = {name : getattr(primary_message, name)
+                 for name in secondary_frag_class.get_field_names(get_all=True)}
+    del args_list['message_length']
+    args_list['total_fragments'] = num_fragments
     for fragment_num in range(1, num_fragments):
         secondary_frag_length = min(
                 max_fragment_length,
@@ -134,18 +141,16 @@ def fragment_request_packets(message, max_fragment_length):
         secondary_payload_length = secondary_frag_length - secondary_struct_len
         remaining_payload_length -= secondary_payload_length
         args_list['current_fragment'] = fragment_num
-        args_list['total_fragments'] = num_fragments
-        args_list['message_length'] = secondary_frag_length
+        args_list['payload_buffer'] = (
+                remaining_payload_buffer[:secondary_payload_length])
         secondary_message = secondary_frag_class(**args_list)
-        secondary_message.print_all_fields()
-        packet = secondary_message.create_raw_data(
-                payload_buffer=remaining_payload_buffer[:secondary_payload_length])
+        packet = secondary_message.create_raw_data()
         remaining_payload_buffer = (
                 remaining_payload_buffer[secondary_payload_length:])
         packets.append(packet)
-
-    logging.debug('Request Num Fragments: %d, Total len: %d, Max Frag len: %d',
-                  num_fragments, total_length, max_fragment_length)
+    logging.debug('Fragmented request-> Fragments: %d, Total len: %d, '
+                  'Max Frag length: %d', num_fragments, total_length,
+                  max_fragment_length)
     return packets
 
 
@@ -155,7 +160,8 @@ def generate_request_packets(message, max_fragment_length):
 
     @param message: One of the defined MBIM request messages.
     @param max_fragment_length: Max length of each fragment expected by device.
-    @returns List of raw byte array packets.
+    @returns Tuple of (packets, message),
+            packets: List of raw byte array packets.
 
     """
     if message.MESSAGE_TYPE != mbim_message.MESSAGE_TYPE_REQUEST:
@@ -163,15 +169,9 @@ def generate_request_packets(message, max_fragment_length):
                 mbim_errors.MBIMComplianceControlMessageError,
                 'Not a valid request message (%s)' % message.__name__)
     message_class = message.__class__
-    message_class.transaction_id = message.get_transaction_id()
-    message_class.message_length = message_class.get_struct_len(get_all=True)
-    if message.payload_buffer:
-        message_class.message_length += len(message.payload_buffer)
-
     if message.message_length < max_fragment_length:
-        packet = message.create_raw_data(payload_buffer=message.payload_buffer)
+        packet = message.create_raw_data()
         packets = [packet]
     else:
         packets = fragment_request_packets(message, max_fragment_length)
-
     return packets

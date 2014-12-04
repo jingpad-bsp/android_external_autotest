@@ -14,15 +14,18 @@ Reference:
 import logging
 
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_constants
+from autotest_lib.client.cros.cellular.mbim_compliance import mbim_errors
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_message
 
 
 class MBIMControlMessageResponse(mbim_message.MBIMControlMessage):
     """ MBIMMessage Response Message base class. """
+
     MESSAGE_TYPE = mbim_message.MESSAGE_TYPE_RESPONSE
     _FIELDS = (('I', 'message_type', mbim_message.FIELD_TYPE_PAYLOAD_ID),
-               ('I', 'message_length', ''),
+               ('I', 'message_length', mbim_message.FIELD_TYPE_TOTAL_LEN),
                ('I', 'transaction_id', ''))
+
 
 class MBIMOpenDone(MBIMControlMessageResponse):
     """ The class for MBIM_OPEN_DONE. """
@@ -41,19 +44,20 @@ class MBIMCloseDone(MBIMControlMessageResponse):
 class MBIMCommandDoneSecondary(MBIMControlMessageResponse):
     """ The class for MBIM_COMMAND_DONE. """
 
-    _FIELDS = (('I', 'total_fragments', ''),
+    _FIELDS = (('I', 'total_fragments', mbim_message.FIELD_TYPE_NUM_FRAGMENTS),
                ('I', 'current_fragment', ''))
 
 
 class MBIMCommandDone(MBIMControlMessageResponse):
     """ The class for MBIM_COMMAND_DONE. """
 
-    _FIELDS = (('I', 'total_fragments', ''),
+    _FIELDS = (('I', 'total_fragments', mbim_message.FIELD_TYPE_NUM_FRAGMENTS),
                ('I', 'current_fragment', ''),
                ('16s', 'device_service_id', mbim_message.FIELD_TYPE_PAYLOAD_ID),
                ('I', 'cid', mbim_message.FIELD_TYPE_PAYLOAD_ID),
                ('I', 'status_codes', ''),
-               ('I', 'information_buffer_length', ''))
+               ('I', 'information_buffer_length',
+                mbim_message.FIELD_TYPE_PAYLOAD_LEN))
     _IDENTIFIERS = {'message_type': mbim_constants.MBIM_COMMAND_DONE}
     _SECONDARY_FRAGMENT = MBIMCommandDoneSecondary
 
@@ -61,18 +65,19 @@ class MBIMCommandDone(MBIMControlMessageResponse):
 class MBIMIndicateStatusSecondary(MBIMControlMessageResponse):
     """ The class for MBIM_INDICATE_STATUS_MSG. """
 
-    _FIELDS = (('I', 'total_fragments', ''),
+    _FIELDS = (('I', 'total_fragments', mbim_message.FIELD_TYPE_NUM_FRAGMENTS),
                ('I', 'current_fragment', ''))
 
 
 class MBIMIndicateStatus(MBIMControlMessageResponse):
     """ The class for MBIM_INDICATE_STATUS_MSG. """
 
-    _FIELDS = (('I', 'total_fragments', ''),
+    _FIELDS = (('I', 'total_fragments', mbim_message.FIELD_TYPE_NUM_FRAGMENTS),
                ('I', 'current_fragment', ''),
                ('16s', 'device_service_id', mbim_message.FIELD_TYPE_PAYLOAD_ID),
                ('I', 'cid', mbim_message.FIELD_TYPE_PAYLOAD_ID),
-               ('I', 'information_buffer_length', ''))
+               ('I', 'information_buffer_length',
+                mbim_message.FIELD_TYPE_PAYLOAD_LEN))
     _IDENTIFIERS = {'message_type': mbim_constants.MBIM_INDICATE_STATUS_MSG}
     _SECONDARY_FRAGMENT = MBIMIndicateStatusSecondary
 
@@ -98,13 +103,27 @@ def reassemble_response_packets(primary_fragment, secondary_packets):
 
     """
     secondary_frag_class = primary_fragment.get_secondary_fragment()
+    # Check if we can reassemble at this tree level or not. If there is
+    # no associated _SECONDARY_FRAG_CLASS, we need to go down the tree further
+    # to reassemble.
     if not secondary_frag_class:
-        return
+        return None
 
     for packet in secondary_packets:
         secondary_fragment = secondary_frag_class(raw_data=packet)
         primary_fragment.payload_buffer.extend(
             secondary_fragment.payload_buffer)
+
+    payload_len = primary_fragment.get_payload_len()
+    num_fragments = primary_fragment.get_num_fragments()
+    if ((num_fragments != len(secondary_packets) + 1) or
+        (payload_len != len(primary_fragment.payload_buffer))):
+        mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
+                                  'mbim1.0:9.2')
+    total_length = primary_fragment.calculate_total_len()
+    primary_fragment =  primary_fragment.copy(message_length=total_length)
+    logging.debug('Reassembled response-> Fragments: %d, Payload length: %d',
+                  num_fragments, payload_len)
     return primary_fragment
 
 
@@ -124,15 +143,21 @@ def parse_response_packets(packets):
     """
     # Start with the root class for all responses and then go down the tree.
     message_class = MBIMControlMessageResponse
-    messages = []
-    packet = packets[0]
+    parse_packets = packets
+
     while message_class is not None:
-        message = message_class(raw_data=packet)
+        first_packet = parse_packets[0]
+        message = message_class(raw_data=first_packet)
         # If there are secondary fragments expected at this level,
         # let's reassemble the payload together before traversing down the
         # message heirarchy.
-        if len(packets) > 1:
-            message = reassemble_response_packets(message, packets[1:])
+        if len(parse_packets) > 1:
+            reassembled_message = reassemble_response_packets(message,
+                                                              parse_packets[1:])
+            if reassembled_message is not None:
+                message = reassembled_message
+                reassembled_packet = message.create_raw_data()
+                parse_packets = [reassembled_packet]
         message_class = message.find_payload_class()
-    logging.debug("Response Message parsed: %s", message.__class__.__name__)
+    logging.debug("Response Message parsed: %s", message)
     return message

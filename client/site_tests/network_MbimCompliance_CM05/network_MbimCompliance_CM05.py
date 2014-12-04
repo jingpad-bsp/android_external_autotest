@@ -116,7 +116,7 @@ class network_MbimCompliance_CM05(mbim_test_base.MbimTestBase):
             if message_response.transaction_id == self.caps_transaction_id:
                 self.caps_response = message_response
             elif message_response.transaction_id == self.services_transaction_id:
-                self.services_response = packet
+                self.services_response = message_response
             if self.caps_response and self.services_response:
                 return True
         return False

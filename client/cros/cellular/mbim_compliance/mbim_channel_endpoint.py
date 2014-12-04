@@ -7,6 +7,7 @@ import Queue
 import signal
 import struct
 import time
+import numpy
 
 from collections import namedtuple
 from usb import core
@@ -166,8 +167,6 @@ class MBIMChannelEndpoint(object):
                     'Received unexpected notification (%s).' % in_data)
 
         self._num_outstanding_responses += 1
-        logging.debug('Found a response. Outstanding responses: %d',
-                      self._num_outstanding_responses)
 
 
     def _get_response(self):
@@ -187,7 +186,10 @@ class MBIMChannelEndpoint(object):
                 data_or_wLength=self._in_buffer_size,
                 timeout=self.GET_ENCAPSULATED_RESPONSE_TIMEOUT_MS,
                 **self.GET_ENCAPSULATED_RESPONSE_ARGS)
-        logging.debug('Received %d bytes of MBIM response', len(response))
+        numpy.set_printoptions(formatter={'int':lambda x:hex(int(x))},
+                               linewidth=1000)
+        logging.debug('Received %d bytes response. Payload: %s',
+                      len(response), numpy.array(response))
         return response
 
 
@@ -204,8 +206,10 @@ class MBIMChannelEndpoint(object):
                 data_or_wLength=payload,
                 timeout=self.SEND_ENCAPSULATED_REQUEST_TIMEOUT_MS,
                 **self.SEND_ENCAPSULATED_COMMAND_ARGS)
+        numpy.set_printoptions(formatter={'int':lambda x:hex(int(x))},
+                               linewidth=1000)
         logging.debug('Sent %d bytes out of %d bytes requested. Payload: %s',
-                      actual_written, len(payload), payload)
+                      actual_written, len(payload), numpy.array(payload))
         if actual_written < len(payload):
             mbim_errors.log_and_raise(
                     mbim_errors.MBIMComplianceGenericError,

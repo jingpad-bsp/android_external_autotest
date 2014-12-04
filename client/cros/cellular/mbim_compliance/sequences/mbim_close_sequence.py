@@ -50,6 +50,7 @@ class MBIMCloseSequence(sequence.Sequence):
         # Step 2
         response_packets = channel.bidirectional_transaction(*packets)
         channel.close()
+
         response_message = mbim_message_response.parse_response_packets(
                 response_packets)
 
