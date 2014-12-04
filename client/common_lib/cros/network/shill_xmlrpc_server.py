@@ -31,8 +31,6 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
     """
 
     DEFAULT_TEST_PROFILE_NAME = 'test'
-    ROAM_THRESHOLD = 'RoamThreshold'
-    WAKE_ON_WIFI_FEATURES = 'WakeOnWiFiFeaturesEnabled'
     DBUS_DEVICE = 'Device'
 
     def __init__(self):
@@ -411,18 +409,6 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         return True
 
 
-    @xmlrpc_server.dbus_safe(False)
-    def get_roam_threshold(self, wifi_interface):
-        """Get roam threshold for a specified wifi interface.
-
-        @param wifi_interface: string name of interface being queried.
-        @return integer value of the roam threshold.
-
-        """
-        return self.get_dbus_property_on_device(wifi_interface,
-                                                self.ROAM_THRESHOLD)
-
-
     def request_roam(self, bssid):
         """Request that we roam to the specified BSSID.
 
@@ -439,20 +425,6 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         """
         utils.run('su wpa -s /usr/bin/wpa_cli roam %s' % bssid)
         return True
-
-
-    @xmlrpc_server.dbus_safe(False)
-    def set_roam_threshold(self, wifi_interface, value):
-        """Set roam threshold for a specified wifi interface.
-
-        @param wifi_interface: string name of interface being modified
-        @param value: integer value of the roam threshold
-
-        @return True if it worked; false, otherwise
-        """
-        return self.set_dbus_property_on_device(wifi_interface,
-                                                self.ROAM_THRESHOLD,
-                                                value)
 
 
     @xmlrpc_server.dbus_safe(False)
@@ -564,30 +536,6 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             return False
         device_object.RemoveAllWakeOnPacketConnections()
         return True
-
-
-    @xmlrpc_server.dbus_safe(False)
-    def get_wake_on_wifi_features(self, wifi_interface):
-        """Get the current wake-on-WiFi setting.
-
-        @return string representing the enabled wake-on-WiFi features.
-
-        """
-        return self.get_dbus_property_on_device(wifi_interface,
-                                                self.WAKE_ON_WIFI_FEATURES)
-
-
-    @xmlrpc_server.dbus_safe(False)
-    def set_wake_on_wifi_features(self, wifi_interface, features):
-        """Set the current wake-on-WiFi setting.
-
-        @param wifi_interface: the device to set wake-on-WiFi features for.
-        @param features: string representing the wake-on-WiFi features.
-
-        """
-        return self.set_dbus_property_on_device(wifi_interface,
-                                                self.WAKE_ON_WIFI_FEATURES,
-                                                features)
 
 
 

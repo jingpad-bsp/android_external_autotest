@@ -181,55 +181,6 @@ class LaunchIwEvent(object):
         return True
 
 
-class ModifiedRoamThreshold(object):
-    """Context manager manages wpa_supplicant's roam_threshold"""
-
-    def __init__(self, client, roam_threshold):
-        """Saves parameters for __enter__.
-
-        @param client: WiFiClient
-        @param roam_threshold: integer: supplicant's new value for roam
-               threshold.
-
-        """
-        self._client = client
-        self._original_threshold = None
-        self._roam_threshold = roam_threshold
-
-
-    def __enter__(self):
-        """Saves current roam threshold, sets a new one."""
-        logging.info('- Setting supplicant\'s roam threshold')
-        self._original_threshold = self._client.get_roam_threshold(
-                self._client.wifi_if)
-
-        if self._original_threshold is None:
-            raise error.TestFail('Device (%s) or property not found.' %
-                                 self._client.wifi_if)
-        if not self._client.set_roam_threshold(self._client.wifi_if,
-                                               self._roam_threshold):
-            raise error.TestFail('Could not set roam threshold')
-
-        logging.info('changed roam threshold from %r to %r',
-                     self._original_threshold,
-                     self._client.get_roam_threshold(self._client.wifi_if))
-
-
-    def __exit__(self, type, value, traceback):
-        """Reinstates the previous roam threshold.
-
-        @param type: exception type - unused
-        @param value: exception value - unused
-        @param traceback: exception traceback - unused
-
-        """
-        logging.info('- Resetting supplicant\'s roam threshold to %d',
-                     self._original_threshold)
-        if not self._client.set_roam_threshold(self._client.wifi_if,
-                                               self._original_threshold):
-            raise error.TestFail('Could not reset roam threshold')
-
-
 class network_WiFi_RoamOnLowPower(rvr_test_base.RvRTestBase):
     """Tests roaming to an AP when the old one's signal is too weak.
 
@@ -300,8 +251,8 @@ class network_WiFi_RoamOnLowPower(rvr_test_base.RvRTestBase):
         """Test body."""
         self.context.client.clear_supplicant_blacklist()
 
-        with ModifiedRoamThreshold(self.context.client,
-                                   self.ABSOLUTE_ROAM_THRESHOLD_DB):
+        with self.context.client.roam_threshold(
+                self.ABSOLUTE_ROAM_THRESHOLD_DB):
             logging.info('- Configure first AP & connect')
             self.context.configure(hostap_config.HostapConfig(
                     frequency=self.FREQUENCY_0,

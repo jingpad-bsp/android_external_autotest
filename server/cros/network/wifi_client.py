@@ -40,6 +40,9 @@ class WiFiClient(site_linux_system.LinuxSystem):
 
     UNKNOWN_BOARD_TYPE = 'unknown'
 
+    # DBus device properties. Wireless interfaces should support these.
+    ROAM_THRESHOLD = 'RoamThreshold'
+    WAKE_ON_WIFI_FEATURES = 'WakeOnWiFiFeaturesEnabled'
 
     @property
     def board(self):
@@ -583,28 +586,27 @@ class WiFiClient(site_linux_system.LinuxSystem):
         return self._shill_proxy.get_active_wifi_SSIDs()
 
 
-    def get_roam_threshold(self, wifi_interace):
-        """Get wpa_supplicant's roaming theshold for the specified interface.
+    def roam_threshold(self, value):
+        """Get a context manager to temporarily change wpa_supplicant's
+        roaming threshold for the specified interface.
 
-        @param wifi_interface: string name of the wifi_interface.
-        @return integer roam threshold or False if something went wrong.
+        The correct way to use this method is:
 
-        """
-        return self._shill_proxy.get_roam_threshold(wifi_interace)
+        with client.roam_threshold(40):
+            ...
 
+        @param value: the desired roam threshold for the test.
 
-    def set_roam_threshold(self, wifi_interace, value):
-        """Set wpa_supplicant's roaming theshold for the specified interface.
-
-        @param wifi_interace: string name of the wifi_interface.
-        @param value: integer to which to set the roam_threshold
-        @return True if it worked; False, otherwise
+        @return a context manager for the threshold.
 
         """
-        return self._shill_proxy.set_roam_threshold(wifi_interace, value)
+        return TemporaryDBusProperty(self._shill_proxy,
+                                     self.wifi_if,
+                                     self.ROAM_THRESHOLD,
+                                     value)
 
 
-    def set_device_enabled(self, wifi_interace, value,
+    def set_device_enabled(self, wifi_interface, value,
                            fail_on_unsupported=False):
         """Enable or disable the WiFi device.
 
@@ -618,7 +620,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
             self._assert_method_supported('set_device_enabled')
         elif not self._supports_method('set_device_enabled'):
             return False
-        return self._shill_proxy.set_device_enabled(wifi_interace, value)
+        return self._shill_proxy.set_device_enabled(wifi_interface, value)
 
 
     def add_arp_entry(self, ip_address, mac_address):
@@ -709,7 +711,10 @@ class WiFiClient(site_linux_system.LinuxSystem):
         @return a context manager for the features.
 
         """
-        return WakeOnWiFiFeatures(self._shill_proxy, self.wifi_if, features)
+        return TemporaryDBusProperty(self._shill_proxy,
+                                     self.wifi_if,
+                                     self.WAKE_ON_WIFI_FEATURES,
+                                     features)
 
 
     def request_roam(self, bssid):
@@ -808,35 +813,53 @@ class WiFiClient(site_linux_system.LinuxSystem):
             logging.info('Reassociate time: %.2f seconds', reassociate_time)
 
 
-class WakeOnWiFiFeatures:
-    """Utility class to temporarily change the active wake-on-WiFi feature set.
+class TemporaryDBusProperty:
+    """Utility class to temporarily change a dbus property for the WiFi device.
 
-    Since wake-on-WiFi features are a global and persistent setting, we want
+    Since dbus properties are global and persistent settings, we want
     to make sure that we change them back to what they were before the test
     started.
 
     """
 
-    def __init__(self, shill_proxy, interface, features):
-        """Construct a WakeOnWiFiFeatures context manager.
+    def __init__(self, shill_proxy, interface, prop_name, value):
+        """Construct a TemporaryDBusProperty context manager.
 
-        @param shill_proxy the Shill proxy to use to set wake-on-WiFi up
-        @param interface the name of the device we are setting wake-on-WiFi for
-        @param features the feature set we want to enable, from the
-            WAKE_ON_WIFI constants at the top
+        @param shill_proxy: the shill proxy to use to communicate via dbus
+        @param interface: the name of the interface we are setting the property for
+        @param prop_name: the name of the property we want to set
+        @param value: the desired value of the property
 
         """
-        self.shill = shill_proxy
-        self.interface = interface
-        self.features = features
+        self._shill = shill_proxy
+        self._interface = interface
+        self._prop_name = prop_name
+        self._value = value
+        self._saved_value = None
 
 
     def __enter__(self):
-        self.saved_features = self.shill.get_wake_on_wifi_features(
-                self.interface)
-        self.shill.set_wake_on_wifi_features(self.interface, self.features)
+        logging.info('- Setting property %s on device %s',
+                self._prop_name, self._interface)
+
+        self._saved_value = self._shill.get_dbus_property_on_device(
+                self._interface, self._prop_name)
+        if self._saved_value is None:
+            raise error.TestFail('Device or property not found.')
+        if not self._shill.set_dbus_property_on_device(self._interface,
+                                                       self._prop_name,
+                                                       self._value):
+            raise error.TestFail('Could not set property')
+
+        logging.info('- Changed value from %s to %s',
+                     self._saved_value,
+                     self._value)
 
 
     def __exit__(self, exception, value, traceback):
-        self.shill.set_wake_on_wifi_features(self.interface,
-                                             self.saved_features)
+        logging.info('- Resetting property %s', self._prop_name)
+
+        if not self._shill.set_dbus_property_on_device(self._interface,
+                                                       self._prop_name,
+                                                       self._saved_value):
+            raise error.TestFail('Could not reset property')
