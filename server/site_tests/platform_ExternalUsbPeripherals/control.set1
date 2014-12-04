@@ -41,6 +41,7 @@ def run(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
 
     repeat = int(args_dict.get("repeat", 2))
+    crash_check = args_dict.get("crash_check", "true").upper() == "TRUE"
 
     default_actions = str("reboot,unplug,plug,login,unplug,plug,"
                           "suspend,resume,unplug,suspend,plug,resume,"
@@ -76,6 +77,7 @@ def run(machine):
     job.run_test("platform_ExternalUsbPeripherals", host=host,
                  disable_sysinfo=True, client_autotest="desktopui_SimpleLogin",
                  action_sequence=action_sequence, repeat=repeat,
-                 usb_list = usb_list, usb_checks=usb_checks)
+                 usb_list = usb_list, usb_checks=usb_checks,
+                 crash_check=crash_check)
 
 parallel_simple(run, machines)

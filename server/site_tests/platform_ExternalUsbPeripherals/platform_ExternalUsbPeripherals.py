@@ -119,8 +119,7 @@ class platform_ExternalUsbPeripherals(test.test):
                 break
             time_delta = int(time.time()) - start_time
             if time_delta > timeout:
-                 self.fail_reasons.append('%s - %d sec'
-                                          % (timeout_msg, timeout))
+                 self.add_failure('%s - %d sec' % (timeout_msg, timeout))
                  return False
             time.sleep(0.5)
         return True
@@ -199,8 +198,8 @@ class platform_ExternalUsbPeripherals(test.test):
             for crash_file in crash_files:
                 if crash_file.find('.meta') != -1 and \
                     crash_file.find('kernel_warning') == -1:
-                    self.fail_reasons.append('CRASH DETECTED in %s/crash: %s' %
-                                             (crash_path, crash_file))
+                    self.add_failure('CRASH DETECTED in %s/crash: %s' %
+                                     (crash_path, crash_file))
                     result = False
         return result
 
@@ -223,14 +222,14 @@ class platform_ExternalUsbPeripherals(test.test):
         if self.pluged_status:
             if not self.diff_list.issubset(on_now):
                 missing = str(self.diff_list.difference(on_now))
-                self.fail_reasons.append('Missing connected peripheral(s) '
-                                         'when plugged: %s ' % missing)
+                self.add_failure('Missing connected peripheral(s) '
+                                 'when plugged: %s ' % missing)
                 result = False
         else:
             present = self.diff_list.intersection(on_now)
             if len(present) > 0:
-                self.fail_reasons.append('Still presented peripheral(s) '
-                                         'when unplugged: %s ' % str(present))
+                self.add_failure('Still presented peripheral(s) '
+                                 'when unplugged: %s ' % str(present))
                 result = False
         return result
 
@@ -269,8 +268,9 @@ class platform_ExternalUsbPeripherals(test.test):
             # Detect the USB peripherals
             result = self.check_plugged_usb_devices()
             # Check for crash files
-            for crash_path in _CRASH_PATHS:
-                result = result and self.crash_not_detected(crash_path)
+            if self.crash_check:
+                for crash_path in _CRASH_PATHS:
+                    result = result and self.crash_not_detected(crash_path)
             if self.pluged_status and (self.usb_checks != None):
                 # Check for plugged USB devices details
                 result = result and self.check_usb_peripherals_details()
@@ -283,7 +283,7 @@ class platform_ExternalUsbPeripherals(test.test):
         Changes suspend and resume actions done with lid_close
         to suspend_resume done with powerd_dbus_suspend
 
-        "@param actions: the sequence of accions to perform
+        @param actions: the sequence of accions to perform
 
         @returns The changed to suspend_resume action_sequence
         """
@@ -302,18 +302,29 @@ class platform_ExternalUsbPeripherals(test.test):
                               ignore_status=True)
 
 
+    def add_failure(self, reason):
+        """ Adds a failure reason to list of failures to be reported at end
+
+        @param reason: failure reason to record
+
+        """
+        self.fail_reasons.append('%s FAILS - %s' %
+                                 (self.action_step, reason))
+
+
     def run_once(self, host, client_autotest, action_sequence, repeat,
-                 usb_list=None, usb_checks=None):
+                 usb_list=None, usb_checks=None, crash_check=True):
         self.client_autotest = client_autotest
         self.host = host
         self.autotest_client = autotest.Autotest(self.host)
         self.usb_list = usb_list
         self.usb_checks = usb_checks
+        self.crash_check = crash_check
 
         self.suspend_status = False
         self.login_status = False
-        self.exit_without_logout = False
-        self.fail_reasons = []
+        self.fail_reasons = list()
+        self.action_step = None
 
         self.host.servo.switch_usbkey('dut')
         self.host.servo.set('usb_mux_sel3', 'dut_sees_usbkey')
@@ -348,8 +359,8 @@ class platform_ExternalUsbPeripherals(test.test):
             for action in actions:
                 step += 1
                 action = action.strip()
-                action_step = '--- %d.%d. %s---' % (iteration, step, action)
-                logging.info(action_step)
+                self.action_step = '--- %d.%d. %s---' % (iteration, step, action)
+                logging.info(self.action_step)
 
                 if action == 'RESUME':
                     self.action_resume()
@@ -374,9 +385,10 @@ class platform_ExternalUsbPeripherals(test.test):
                     elif re.match(r'SUSPEND\w*RESUME',action) is not None:
                         self.suspend_action_resume(action)
                 else:
-                    raise error.TestError('--- WRONG ACTION: %s ---.' %
-                                          action_step)
+                    logging.info('WRONG ACTION: %s .', self.action_step)
 
-                if not self.check_status():
-                    raise error.TestFail('Step %s failed with: %s' %
-                                         (action_step, str(self.fail_reasons)))
+                self.check_status()
+
+            if self.fail_reasons:
+                raise error.TestFail('Failures reported: %s' %
+                                     str(self.fail_reasons))
