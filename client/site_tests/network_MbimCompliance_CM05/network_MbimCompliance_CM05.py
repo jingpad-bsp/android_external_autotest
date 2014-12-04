@@ -47,7 +47,7 @@ class network_MbimCompliance_CM05(mbim_test_base.MbimTestBase):
                 device_context._device,
                 descriptor_cache.mbim_communication_interface.bInterfaceNumber,
                 descriptor_cache.interrupt_endpoint.bEndpointAddress,
-                descriptor_cache.mbim_functional.wMaxControlMessage)
+                device_context.max_control_transfer_size)
 
         # Step 1
         caps_command_message = mbim_message_request.MBIMCommand(
@@ -57,7 +57,7 @@ class network_MbimCompliance_CM05(mbim_test_base.MbimTestBase):
                 information_buffer_length=0)
         caps_packets = mbim_message_request.generate_request_packets(
                 caps_command_message,
-                descriptor_cache.mbim_functional.wMaxControlMessage)
+                device_context.max_control_transfer_size)
         self.caps_transaction_id = caps_command_message.transaction_id
         self.channel.unidirectional_transaction(*caps_packets)
 
@@ -69,7 +69,7 @@ class network_MbimCompliance_CM05(mbim_test_base.MbimTestBase):
                 information_buffer_length=0)
         services_packets = mbim_message_request.generate_request_packets(
                 services_command_message,
-                descriptor_cache.mbim_functional.wMaxControlMessage)
+                device_context.max_control_transfer_size)
         self.services_transaction_id = services_command_message.transaction_id
         self.channel.unidirectional_transaction(*services_packets)
 

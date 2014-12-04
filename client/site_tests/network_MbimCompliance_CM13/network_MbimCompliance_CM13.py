@@ -63,12 +63,12 @@ class network_MbimCompliance_CM13(mbim_test_base.MbimTestBase):
                 information_buffer_length=information_buffer_length)
         packets = mbim_message_request.generate_request_packets(
                 command_message,
-                descriptor_cache.mbim_functional.wMaxControlMessage)
+                device_context.max_control_transfer_size)
         channel = mbim_channel.MBIMChannel(
                 device_context._device,
                 descriptor_cache.mbim_communication_interface.bInterfaceNumber,
                 descriptor_cache.interrupt_endpoint.bEndpointAddress,
-                descriptor_cache.mbim_functional.wMaxControlMessage)
+                device_context.max_control_transfer_size)
         response_packets = channel.bidirectional_transaction(*packets)
         channel.close()
 

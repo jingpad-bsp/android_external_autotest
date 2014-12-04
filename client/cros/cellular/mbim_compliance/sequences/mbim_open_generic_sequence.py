@@ -32,8 +32,19 @@ class MBIMOpenGenericSequence(open_sequence.OpenSequence):
     the response to |MBIM_OPEN_MSG|.
     """
 
-    def run_internal(self):
-        """ Run the MBIM Open Generic Sequence. """
+    def run_internal(self, max_control_transfer_size=None):
+        """
+        Run the MBIM Open Generic Sequence.
+
+        @param max_control_transfer_size: Sets the max_control_transfer
+                parameter in the open message sent to the device and the size
+                of control buffers sent to the device.
+        @returns tuple of (command_message, response_message):
+                command_message: The command message sent to device.
+                |command_message| is a MBIMCommandMessage object.
+                response_message: The response to the |command_message|.
+                |response_message| is a MBIMCommandDoneMessage object.
+        """
         # Step 1 and 2
         device_context = self.device_context
         device_type = device_context.device_type
@@ -109,20 +120,26 @@ class MBIMOpenGenericSequence(open_sequence.OpenSequence):
         # Send MBIM_OPEN_MSG request and receive the response.
         interrupt_endpoint_address = interrupt_endpoint.bEndpointAddress
 
-        # TODO(mcchou): For unblocking the CM_xx tests. A new version of
-        #               message contructing will be presented.
-        max_control_message = (
-                mbim_functional_descriptor.wMaxControlMessage)
+        # If |max_control_transfer_size| is not explicitly set by the test,
+        # we'll revert to using the |wMaxControlMessage| advertized by the
+        # device in the MBIM functional descriptor.
+        if not max_control_transfer_size:
+            max_control_transfer_size = (
+                    mbim_functional_descriptor.wMaxControlMessage)
+        # Store the |max_control_transfer_size| in the device context so that
+        # it can be used in any further control transfers.
+        device_context.max_control_transfer_size =  max_control_transfer_size
+
         open_message = mbim_message_request.MBIMOpen(
-                max_control_transfer=max_control_message)
+                max_control_transfer=max_control_transfer_size)
         packets = mbim_message_request.generate_request_packets(
                 open_message,
-                mbim_functional_descriptor.wMaxControlMessage)
+                device_context.max_control_transfer_size)
         channel = mbim_channel.MBIMChannel(
                 device_context._device,
                 communication_interface_number,
                 interrupt_endpoint_address,
-                mbim_functional_descriptor.wMaxControlMessage)
+                device_context.max_control_transfer_size)
         response_packets = channel.bidirectional_transaction(*packets)
         channel.close()
 

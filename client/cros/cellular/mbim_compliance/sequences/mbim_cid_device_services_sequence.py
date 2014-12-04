@@ -38,7 +38,7 @@ class MBIMCIDDeviceServicesSequence(sequence.Sequence):
                 device_context._device,
                 device_context.mbim_communication_interface.bInterfaceNumber,
                 device_context.interrupt_endpoint.bEndpointAddress,
-                device_context.mbim_functional.wMaxControlMessage)
+                device_context.max_control_transfer_size)
         response_packets = channel.bidirectional_transaction(*packets)
         channel.close()
 

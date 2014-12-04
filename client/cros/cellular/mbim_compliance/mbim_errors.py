@@ -177,14 +177,20 @@ class MBIMComplianceAssertionError(MBIMComplianceError):
 
             # Assertion Groups: 8.x.x#x
             'mbim1.0:8.1.2#2': 'The function must use a separate '
-                                'GET_ENCAPSULATED_RESPONSE transfer for each '
-                                'control message it has to send to the host.',
+                               'GET_ENCAPSULATED_RESPONSE transfer for each '
+                               'control message it has to send to the host.',
+            'mbim1.0:8.1.2#3': 'The function must send a RESPONSE_AVAILABLE '
+                               'notification for each available fragment of '
+                               'ENCAPSULATED_RESPONSE to be read from the '
+                               'default pipe.',
 
             # Assertion Groups: 9.x#x, 9.x.x and 9.x.x#x
-            'mbim1.0:9.1#1': 'For notifications, the TransactionId must be set '
-                             'to 0 by the function.',
-            'mbim1.0:9.1#2': 'MessageLength in MBIM_MESSAGE_HEADER must be >= '
-                             '0x0C.',
+            'mbim1.0:9.1#1':   'For notifications, the TransactionId must be '
+                               'set to 0 by the function.',
+            'mbim1.0:9.1#2':   'MessageLength in MBIM_MESSAGE_HEADER must be >='
+                               ' 0x0C.',
+            'mbim1.0:9.2':     'Function should fragment responses based on '
+                               'MaxControlTransfer value from MBIM_OPEN_MSG.',
             'mbim1.0:9.3.1#1': 'In case MBIM_OPEN_MSG message is sent to a '
                                'function that is already opened, the function '
                                'shall interpret this as that the host and the '
