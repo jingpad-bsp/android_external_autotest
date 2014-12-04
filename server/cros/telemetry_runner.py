@@ -238,6 +238,7 @@ class TelemetryRunner(object):
         logging.debug('Setting up telemetry for build: %s', build)
 
         self._devserver = dev_server.ImageServer.resolve(build)
+        self._devserver.stage_artifacts(build, ['autotest_packages'])
         self._telemetry_path = self._devserver.setup_telemetry(build=build)
 
 
