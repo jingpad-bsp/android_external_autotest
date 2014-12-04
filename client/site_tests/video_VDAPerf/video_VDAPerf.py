@@ -34,6 +34,8 @@ TIME_LOG = 'time.log'
 TIME_BINARY = '/usr/local/bin/time'
 MICROSECONDS_PER_SECOND = 1000000
 
+RENDERING_WARM_UP_ITERS = 30
+
 # These strings should match chromium/src/tools/perf/unit-info.json.
 UNIT_MILLISECOND = 'milliseconds'
 UNIT_MICROSECOND = 'us'
@@ -246,6 +248,7 @@ class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
         time_log_file = self._results_file(name, 'with_rendering', TIME_LOG)
         cmd_line = ('--test_video_data="%s" ' % test_video_data +
                     '--gtest_filter=DecodeVariations/*/0 ' +
+                    '--rendering_warm_up=%d ' % RENDERING_WARM_UP_ITERS +
                     ('--rendering_fps=%s ' % rendering_fps) +
                     '--output_log="%s"' % test_log_file)
         time_cmd = ('%s -f "%s" -o "%s" ' %
