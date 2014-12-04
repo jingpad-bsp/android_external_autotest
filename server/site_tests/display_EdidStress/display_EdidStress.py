@@ -37,7 +37,6 @@ class display_EdidStress(chameleon_test.ChameleonTest):
 
 
     def run_once(self, host):
-        errors = []
         edid_path = os.path.join(self.bindir, 'test_data', 'edids', '*')
         logging.info('See the display on Chameleon: port %d (%s)',
                      self.chameleon_port.get_connector_id(),
@@ -51,6 +50,7 @@ class display_EdidStress(chameleon_test.ChameleonTest):
             j = len(s) - len('.txt')
             return s[i:j].upper()
 
+        failed_edids = []
         for filepath in glob.glob(edid_path):
             filename = os.path.basename(filepath)
             edid_type = _get_edid_type(filename)
@@ -72,17 +72,18 @@ class display_EdidStress(chameleon_test.ChameleonTest):
                     logging.warning(e)
 
                 if framebuffer_resolution == (0, 0):
-                    error_message = 'EDID not supported: %s' % filename
-                    logging.error(error_message)
-                    errors.append(error_message)
+                    logging.error('EDID not supported: %s', filename)
+                    failed_edids.append(filename)
                     continue
 
-                error_message = self.screen_test.test_resolution(
-                        framebuffer_resolution)
-                if error_message:
-                    errors.append(error_message)
+                if self.screen_test.test_resolution(framebuffer_resolution):
+                    logging.error('EDID not supported: %s', filename)
+                    failed_edids.append(filename)
             finally:
                 self.display_facade.close_tab()
 
-        if errors:
-            raise error.TestFail('; '.join(errors))
+        if failed_edids:
+            message = ('Total %d EDIDs not supported: ' % len(failed_edids) +
+                       ', '.join(failed_edids))
+            logging.error(message)
+            raise error.TestFail(message)
