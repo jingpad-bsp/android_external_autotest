@@ -58,7 +58,7 @@ class video_ChromeRTCHWDecodeUsed(test.test):
                 or buckets[RTC_VIDEO_DECODE_BUCKET].percent < 100.0):
 
             raise error.TestError('%s not found or not at 100 percent. %s'
-                                  % RTC_VIDEO_DECODE, str(parser))
+                                  % (RTC_VIDEO_DECODE, str(parser)))
 
 
     def run_once(self):

@@ -43,7 +43,7 @@ class video_ChromeVidResChangeHWDecode(test.test):
                     or buckets[MEDIA_GVD_BUCKET].percent < 100.0):
 
                 raise error.TestError('%s not found or not at 100 percent. %s'
-                                      % MEDIA_GVD_BUCKET, str(parser))
+                                      % (MEDIA_GVD_BUCKET, str(parser)))
 
             # Verify the video playback.
             for i in range(1, video_len/2):
