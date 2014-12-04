@@ -12,6 +12,7 @@ Upon successful copy, the local results directory is deleted.
 
 import datetime
 import logging
+import logging.handlers
 import os
 import shutil
 import signal
@@ -407,6 +408,9 @@ def parse_options():
   parser.add_option('-d', '--days_old', dest='days_old',
                     help='Minimum job age in days before a result can be '
                     'offloaded.', type='int', default=0)
+  parser.add_option('-l', '--log_size', dest='log_size',
+                    help='Limit the offloader logs to a specified number of '
+                         'Mega Bytes.', type='int', default=0)
   options = parser.parse_args()[0]
   if options.process_all and options.process_hosts_only:
     parser.print_help()
@@ -428,10 +432,20 @@ def main():
     offloader_type = 'jobs'
 
   log_timestamp = time.strftime(LOG_TIMESTAMP_FORMAT)
+  if options.log_size > 0:
+    log_timestamp = ''
   log_filename = os.path.join(LOG_LOCATION,
           LOG_FILENAME_FORMAT % (offloader_type, log_timestamp))
-  logging.basicConfig(filename=log_filename, level=logging.DEBUG,
-                      format=LOGGING_FORMAT)
+  log_formatter = logging.Formatter(LOGGING_FORMAT)
+  # Replace the default logging handler with a RotatingFileHandler. If
+  # options.log_size is 0, the file size will not be limited. Keeps one backup
+  # just in case.
+  handler = logging.handlers.RotatingFileHandler(
+      log_filename, maxBytes=1024*options.log_size, backupCount=1)
+  handler.setFormatter(log_formatter)
+  logger = logging.getLogger()
+  logger.setLevel(logging.DEBUG)
+  logger.addHandler(handler)
 
   # Nice our process (carried to subprocesses) so we don't overload
   # the system.
