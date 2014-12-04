@@ -12,6 +12,8 @@ from autotest_lib.client.common_lib import base_utils as utils
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.server import models as server_models
 from autotest_lib.site_utils import server_manager
+from autotest_lib.site_utils import server_manager_utils
+from autotest_lib.site_utils.lib import infra
 
 
 class QueriableList(list):
@@ -20,6 +22,12 @@ class QueriableList(list):
 
     def filter(self, **kwargs):
         """Mock the filter call in django model.
+        """
+        raise NotImplementedError()
+
+
+    def get(self, **kwargs):
+        """Mock the get call in django model.
         """
         raise NotImplementedError()
 
@@ -75,16 +83,21 @@ class ServerManagerUnittests(mox.MoxTestBase):
                        'roles': QueriableList([self.SCHEDULER_ROLE]),
                        'attributes': QueriableList([])})
 
-        self.mox.StubOutWithMock(server_manager, 'use_server_db')
+        self.mox.StubOutWithMock(server_manager_utils, 'check_server')
+        self.mox.StubOutWithMock(server_manager_utils, 'warn_missing_role')
+        self.mox.StubOutWithMock(server_manager_utils, 'use_server_db')
+        self.mox.StubOutWithMock(server_models.Server, 'get_role_names')
         self.mox.StubOutWithMock(server_models.Server.objects, 'create')
         self.mox.StubOutWithMock(server_models.Server.objects, 'filter')
         self.mox.StubOutWithMock(server_models.Server.objects, 'get')
+        self.mox.StubOutWithMock(server_models.ServerRole, 'delete')
         self.mox.StubOutWithMock(server_models.ServerRole.objects, 'create')
         self.mox.StubOutWithMock(server_models.ServerRole.objects, 'filter')
         self.mox.StubOutWithMock(server_models.ServerAttribute.objects,
                                  'create')
         self.mox.StubOutWithMock(server_models.ServerAttribute.objects,
                                  'filter')
+        self.mox.StubOutWithMock(infra, 'execute_command')
         self.mox.StubOutWithMock(utils, 'normalize_hostname')
 
 
@@ -114,16 +127,21 @@ class ServerManagerUnittests(mox.MoxTestBase):
         restart scheduler to activate a new devserver.
         """
         server_models.validate(role=server_models.ServerRole.ROLE.DEVSERVER)
-        server_models.ServerRole.objects.filter(
-                server=self.BACKUP_DRONE,
-                role=server_models.ServerRole.ROLE.DEVSERVER).AndReturn(None)
+        server_manager_utils.check_server(mox.IgnoreArg(),
+                                          mox.IgnoreArg()).AndReturn(True)
+        server_manager_utils.use_server_db().MultipleTimes(
+                ).AndReturn(True)
+        self.mox.StubOutWithMock(self.BACKUP_DRONE, 'get_role_names')
+        self.BACKUP_DRONE.get_role_names().AndReturn(
+                [server_models.ServerRole.ROLE.DRONE])
         server_models.ServerRole.objects.create(
                 server=mox.IgnoreArg(),
                 role=server_models.ServerRole.ROLE.DEVSERVER
                 ).AndReturn(self.DRONE_ROLE)
         self.mox.ReplayAll()
         server_manager._add_role(server=self.BACKUP_DRONE,
-                                 role=server_models.ServerRole.ROLE.DEVSERVER)
+                                 role=server_models.ServerRole.ROLE.DEVSERVER,
+                                 action=True)
 
 
     def testAddRoleToBackupFail_RoleAlreadyExists(self):
@@ -131,15 +149,15 @@ class ServerManagerUnittests(mox.MoxTestBase):
         has the given role.
         """
         server_models.validate(role=server_models.ServerRole.ROLE.DRONE)
-        server_models.ServerRole.objects.filter(
-                server=self.BACKUP_DRONE,
-                role=server_models.ServerRole.ROLE.DRONE
-                ).AndReturn([self.DRONE_ROLE])
+        self.mox.StubOutWithMock(self.BACKUP_DRONE, 'get_role_names')
+        self.BACKUP_DRONE.get_role_names().AndReturn(
+                [server_models.ServerRole.ROLE.DRONE])
         self.mox.ReplayAll()
-        self.assertRaises(server_manager.ServerActionError,
+        self.assertRaises(server_manager_utils.ServerActionError,
                           server_manager._add_role,
                           server=self.BACKUP_DRONE,
-                          role=server_models.ServerRole.ROLE.DRONE)
+                          role=server_models.ServerRole.ROLE.DRONE,
+                          action=True)
 
 
     def testDeleteRoleFromBackupSuccess(self):
@@ -149,13 +167,19 @@ class ServerManagerUnittests(mox.MoxTestBase):
         restart scheduler to delete an existing devserver.
         """
         server_models.validate(role=server_models.ServerRole.ROLE.DRONE)
-        server_models.ServerRole.objects.filter(
-                server=self.BACKUP_DRONE,
+        server_manager_utils.use_server_db().MultipleTimes(
+                ).AndReturn(True)
+        self.mox.StubOutWithMock(self.BACKUP_DRONE, 'get_role_names')
+        self.BACKUP_DRONE.get_role_names().MultipleTimes().AndReturn(
+                [server_models.ServerRole.ROLE.DRONE])
+        self.mox.StubOutWithMock(self.BACKUP_DRONE.roles, 'get')
+        self.BACKUP_DRONE.roles.get(
                 role=server_models.ServerRole.ROLE.DRONE
-                ).AndReturn([self.DRONE_ROLE])
+                ).AndReturn(self.DRONE_ROLE)
         self.mox.ReplayAll()
         server_manager._delete_role(server=self.BACKUP_DRONE,
-                                    role=server_models.ServerRole.ROLE.DRONE)
+                                    role=server_models.ServerRole.ROLE.DRONE,
+                                    action=True)
 
 
     def testDeleteRoleFromBackupFail_RoleNotExist(self):
@@ -163,31 +187,39 @@ class ServerManagerUnittests(mox.MoxTestBase):
         server does not have the given role.
         """
         server_models.validate(role=server_models.ServerRole.ROLE.DEVSERVER)
-        server_models.ServerRole.objects.filter(
-                server=self.BACKUP_DRONE,
-                role=server_models.ServerRole.ROLE.DEVSERVER
-                ).AndReturn(None)
+        self.mox.StubOutWithMock(self.BACKUP_DRONE, 'get_role_names')
+        self.BACKUP_DRONE.get_role_names().AndReturn(
+                [server_models.ServerRole.ROLE.DRONE])
         self.mox.ReplayAll()
-        self.assertRaises(server_manager.ServerActionError,
+        self.assertRaises(server_manager_utils.ServerActionError,
                           server_manager._delete_role, server=self.BACKUP_DRONE,
-                          role=server_models.ServerRole.ROLE.DEVSERVER)
+                          role=server_models.ServerRole.ROLE.DEVSERVER,
+                          action=True)
 
 
     def testChangeStatusSuccess_BackupToPrimary(self):
         """Test manager can change the status of a backup server to primary.
         """
-        # TODO(dshi): After _apply_action is implemented, this unittest needs
-        # to be updated to verify various actions being taken to put a server
-        # in primary status, e.g., start scheduler for scheduler server.
         server_models.validate(status=server_models.Server.STATUS.PRIMARY)
+        server_manager_utils.use_server_db().MultipleTimes(
+                ).AndReturn(True)
+        self.mox.StubOutWithMock(self.BACKUP_DRONE, 'get_role_names')
+        self.BACKUP_DRONE.get_role_names().MultipleTimes().AndReturn(
+                [server_models.ServerRole.ROLE.DRONE])
         self.mox.StubOutWithMock(self.BACKUP_DRONE.roles, 'filter')
         self.BACKUP_DRONE.roles.filter(
                 role__in=server_models.ServerRole.ROLES_REQUIRE_UNIQUE_INSTANCE
                 ).AndReturn(None)
+        server_models.Server.objects.filter(
+                roles__role=server_models.ServerRole.ROLE.SCHEDULER,
+                status=server_models.Server.STATUS.PRIMARY
+                ).AndReturn([self.PRIMARY_SCHEDULER])
+        infra.execute_command(mox.IgnoreArg(), mox.IgnoreArg())
         self.mox.ReplayAll()
         server_manager._change_status(
                 server=self.BACKUP_DRONE,
-                status=server_models.Server.STATUS.PRIMARY)
+                status=server_models.Server.STATUS.PRIMARY,
+                action=True)
 
 
     def testChangeStatusSuccess_PrimaryToBackup(self):
@@ -195,13 +227,25 @@ class ServerManagerUnittests(mox.MoxTestBase):
         """
         server_models.validate(status=server_models.Server.STATUS.BACKUP)
         self.mox.StubOutWithMock(self.PRIMARY_DRONE.roles, 'filter')
+        self.mox.StubOutWithMock(self.PRIMARY_DRONE, 'get_role_names')
+        self.PRIMARY_DRONE.get_role_names().MultipleTimes().AndReturn(
+                [server_models.ServerRole.ROLE.DRONE])
         self.PRIMARY_DRONE.roles.filter(
                 role__in=server_models.ServerRole.ROLES_REQUIRE_UNIQUE_INSTANCE
                 ).AndReturn(None)
+        server_manager_utils.use_server_db().MultipleTimes().AndReturn(True)
+        server_manager_utils.warn_missing_role(
+                server_models.ServerRole.ROLE.DRONE, self.PRIMARY_DRONE)
+        server_models.Server.objects.filter(
+                roles__role=server_models.ServerRole.ROLE.SCHEDULER,
+                status=server_models.Server.STATUS.PRIMARY
+                ).AndReturn([self.PRIMARY_SCHEDULER])
+        infra.execute_command(mox.IgnoreArg(), mox.IgnoreArg())
         self.mox.ReplayAll()
         server_manager._change_status(
                 server=self.PRIMARY_DRONE,
-                status=server_models.Server.STATUS.BACKUP)
+                status=server_models.Server.STATUS.BACKUP,
+                action=True)
 
 
     def testChangeStatusFail_StatusNoChange(self):
@@ -210,10 +254,11 @@ class ServerManagerUnittests(mox.MoxTestBase):
         """
         server_models.validate(status=server_models.Server.STATUS.BACKUP)
         self.mox.ReplayAll()
-        self.assertRaises(server_manager.ServerActionError,
+        self.assertRaises(server_manager_utils.ServerActionError,
                           server_manager._change_status,
                           server=self.BACKUP_DRONE,
-                          status=server_models.Server.STATUS.BACKUP)
+                          status=server_models.Server.STATUS.BACKUP,
+                          action=True)
 
 
     def testChangeStatusFail_UniqueInstance(self):
@@ -231,10 +276,111 @@ class ServerManagerUnittests(mox.MoxTestBase):
                 status=server_models.Server.STATUS.PRIMARY
                 ).AndReturn(QueriableList([self.PRIMARY_SCHEDULER]))
         self.mox.ReplayAll()
-        self.assertRaises(server_manager.ServerActionError,
+        self.assertRaises(server_manager_utils.ServerActionError,
                           server_manager._change_status,
                           server=self.BACKUP_SCHEDULER,
-                          status=server_models.Server.STATUS.PRIMARY)
+                          status=server_models.Server.STATUS.PRIMARY,
+                          action=True)
+
+
+    def testAddRoleToBackupFail_CheckServerFail(self):
+        """Test manager fails to add a role to a backup server if check_server
+        is failed.
+        """
+        server_manager_utils.check_server(mox.IgnoreArg(),
+                                          mox.IgnoreArg()).AndReturn(False)
+        server_models.validate(role=server_models.ServerRole.ROLE.DRONE)
+        self.mox.StubOutWithMock(self.BACKUP_DRONE, 'get_role_names')
+        self.BACKUP_DRONE.get_role_names().MultipleTimes().AndReturn(
+                [server_models.ServerRole.ROLE.DRONE])
+        self.mox.ReplayAll()
+        self.assertRaises(server_manager_utils.ServerActionError,
+                          server_manager._add_role, server=self.BACKUP_DRONE,
+                          role=server_models.ServerRole.ROLE.SCHEDULER,
+                          action=True)
+
+
+    def testAddRoleToPrimarySuccess(self):
+        """Test manager can add a role to a primary server successfully.
+
+        Confirm that actions needs to be taken, e.g., restart scheduler for
+        new drone to be added.
+        """
+        server_models.validate(role=server_models.ServerRole.ROLE.DRONE)
+        server_manager_utils.check_server(mox.IgnoreArg(),
+                                          mox.IgnoreArg()).AndReturn(True)
+        server_manager_utils.use_server_db().MultipleTimes().AndReturn(True)
+        self.mox.StubOutWithMock(self.PRIMARY_SCHEDULER, 'get_role_names')
+        self.PRIMARY_SCHEDULER.get_role_names().AndReturn(
+                [server_models.ServerRole.ROLE.SCHEDULER])
+        server_models.ServerRole.objects.create(
+                server=self.PRIMARY_SCHEDULER,
+                role=server_models.ServerRole.ROLE.DRONE
+                ).AndReturn(self.DRONE_ROLE)
+        server_models.Server.objects.filter(
+                roles__role=server_models.ServerRole.ROLE.SCHEDULER,
+                status=server_models.Server.STATUS.PRIMARY
+                ).AndReturn([self.PRIMARY_SCHEDULER])
+        infra.execute_command(mox.IgnoreArg(), mox.IgnoreArg())
+        self.mox.ReplayAll()
+        server_manager._add_role(self.PRIMARY_SCHEDULER,
+                                 server_models.ServerRole.ROLE.DRONE,
+                                 action=True)
+
+
+    def testDeleteRoleFromPrimarySuccess(self):
+        """Test manager can delete a role from a primary server successfully.
+
+        Confirm that database call is made, and actions are taken, e.g.,
+        restart scheduler to delete an existing drone.
+        """
+        server_manager_utils.use_server_db().MultipleTimes().AndReturn(True)
+        server_models.validate(role=server_models.ServerRole.ROLE.DRONE)
+        self.mox.StubOutWithMock(self.PRIMARY_DRONE, 'get_role_names')
+        self.PRIMARY_DRONE.get_role_names().MultipleTimes().AndReturn(
+                [server_models.ServerRole.ROLE.DRONE])
+
+        self.mox.StubOutWithMock(self.PRIMARY_DRONE.roles, 'get')
+        self.PRIMARY_DRONE.roles.get(
+                role=server_models.ServerRole.ROLE.DRONE
+                ).AndReturn(self.DRONE_ROLE)
+
+        server_models.Server.objects.filter(
+                roles__role=server_models.ServerRole.ROLE.SCHEDULER,
+                status=server_models.Server.STATUS.PRIMARY
+                ).AndReturn([self.PRIMARY_SCHEDULER])
+        server_manager.server_manager_utils.warn_missing_role(
+                server_models.ServerRole.ROLE.DRONE, self.PRIMARY_DRONE)
+        infra.execute_command(mox.IgnoreArg(), mox.IgnoreArg())
+        self.mox.ReplayAll()
+        server_manager._delete_role(self.PRIMARY_DRONE,
+                                    server_models.ServerRole.ROLE.DRONE,
+                                    action=True)
+
+
+    def testDeleteRoleFromPrimarySuccess_NoAction(self):
+        """Test manager can delete a role from a primary server successfully.
+
+        Confirm that database call is made, and no action is taken as action
+        is set to False.
+        """
+        server_manager_utils.use_server_db().MultipleTimes().AndReturn(True)
+        server_models.validate(role=server_models.ServerRole.ROLE.DRONE)
+        self.mox.StubOutWithMock(self.PRIMARY_DRONE, 'get_role_names')
+        self.PRIMARY_DRONE.get_role_names().MultipleTimes().AndReturn(
+                [server_models.ServerRole.ROLE.DRONE])
+
+        self.mox.StubOutWithMock(self.PRIMARY_DRONE.roles, 'get')
+        self.PRIMARY_DRONE.roles.get(
+                role=server_models.ServerRole.ROLE.DRONE
+                ).AndReturn(self.DRONE_ROLE)
+
+        server_manager.server_manager_utils.warn_missing_role(
+                server_models.ServerRole.ROLE.DRONE, self.PRIMARY_DRONE)
+        self.mox.ReplayAll()
+        server_manager._delete_role(self.PRIMARY_DRONE,
+                                    server_models.ServerRole.ROLE.DRONE,
+                                    action=False)
 
 
 if '__main__':

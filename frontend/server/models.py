@@ -59,6 +59,14 @@ class Server(dbmodels.Model, model_logic.ModelExtensions):
                                   'note': self.note}
 
 
+    def get_role_names(self):
+        """Get a list of role names of the server.
+
+        @return: A list of role names of the server.
+        """
+        return [r.role for r in self.roles.all()]
+
+
 class ServerRole(dbmodels.Model, model_logic.ModelExtensions):
     """Role associated with hosts."""
     # Valid roles for a server.

@@ -23,7 +23,9 @@ import common
 from autotest_lib.cli import action_common
 from autotest_lib.cli import topic_common
 from autotest_lib.client.common_lib import error
+from autotest_lib.frontend import setup_django_environment
 from autotest_lib.site_utils import server_manager
+from autotest_lib.site_utils import server_manager_utils
 
 
 class server(topic_common.atest):
@@ -48,6 +50,13 @@ class server(topic_common.atest):
                                type='string',
                                default=None,
                                metavar='ROLE')
+        self.parser.add_option('-x', '--action',
+                               help=('Set to True to apply actions when role '
+                                     'or status is changed, e.g., restart '
+                                     'scheduler when a drone is removed.'),
+                               action='store_true',
+                               default=False,
+                               metavar='ACTION')
 
         self.topic_parse_info = topic_common.item_parse_info(
                 attribute_name='hostname', use_leftover=True)
@@ -147,10 +156,10 @@ class server_list(action_common.atest_list, server):
         @return: A list of servers matched given hostname and role.
         """
         try:
-            return server_manager.get_servers(hostname=self.hostname,
-                                              role=self.role,
-                                              status=self.status)
-        except (server_manager.ServerActionError,
+            return server_manager_utils.get_servers(hostname=self.hostname,
+                                                    role=self.role,
+                                                    status=self.status)
+        except (server_manager_utils.ServerActionError,
                 error.InvalidDataError) as e:
             self.failure(e, what_failed='Failed to find servers',
                          item=self.hostname, fatal=True)
@@ -167,8 +176,8 @@ class server_list(action_common.atest_list, server):
                          what_failed='Failed to find servers',
                          item=self.hostname, fatal=True)
         else:
-            print server_manager.get_server_details(results, self.table,
-                                                    self.summary)
+            print server_manager_utils.get_server_details(results, self.table,
+                                                          self.summary)
 
 
 class server_create(server):
@@ -206,7 +215,7 @@ class server_create(server):
         try:
             return server_manager.create(hostname=self.hostname, role=self.role,
                                          note=self.note)
-        except (server_manager.ServerActionError,
+        except (server_manager_utils.ServerActionError,
                 error.InvalidDataError) as e:
             self.failure(e, what_failed='Failed to create server',
                          item=self.hostname, fatal=True)
@@ -234,7 +243,7 @@ class server_delete(server):
         try:
             server_manager.delete(hostname=self.hostname)
             return True
-        except (server_manager.ServerActionError,
+        except (server_manager_utils.ServerActionError,
                 error.InvalidDataError) as e:
             self.failure(e, what_failed='Failed to delete server',
                          item=self.hostname, fatal=True)
@@ -299,6 +308,7 @@ class server_modify(server):
         self.delete = options.delete
         self.attribute = options.attribute
         self.value = options.value
+        self.action = options.action
 
         # modify supports various options. However, it's safer to limit one
         # option at a time so no complicated role-dependent logic is needed
@@ -337,8 +347,8 @@ class server_modify(server):
                                          status=self.status, delete=self.delete,
                                          note=self.note,
                                          attribute=self.attribute,
-                                         value=self.value)
-        except (server_manager.ServerActionError,
+                                         value=self.value, action=self.action)
+        except (server_manager_utils.ServerActionError,
                 error.InvalidDataError) as e:
             self.failure(e, what_failed='Failed to modify server',
                          item=self.hostname, fatal=True)
