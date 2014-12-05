@@ -1405,7 +1405,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                     metadata={'hostname': self.hostname})
 
             battery_percentage = self.get_battery_percentage()
-            if not battery_percentage or battery_percentage < 50:
+            if battery_percentage and battery_percentage < 50:
                 raise
             elif self.is_ac_connected():
                 logging.info('The device has power adapter connected and '
