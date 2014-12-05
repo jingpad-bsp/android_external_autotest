@@ -24,11 +24,14 @@ TP/SERVER/BRW/BV-02-C
 """
 
 from autotest_lib.server.cros.bluetooth import bluetooth_tester
+from autotest_lib.server import utils
 
+
+args_dict = utils.args_to_dict(args)
 
 def run(machine):
     device_host = hosts.create_host(machine)
-    tester_host = bluetooth_tester.create_host_from(device_host)
+    tester_host = bluetooth_tester.create_host_from(device_host, args=args_dict)
     job.run_test('bluetooth_SDP_ServiceBrowse',
                  device_host=device_host,
                  tester_host=tester_host,

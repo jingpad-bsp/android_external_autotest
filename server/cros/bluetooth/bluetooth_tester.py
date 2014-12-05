@@ -4,7 +4,9 @@
 
 import base64
 import json
+import socket
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import constants
 from autotest_lib.server import autotest, hosts
 
@@ -197,21 +199,40 @@ class BluetoothTester(object):
                                                             invalid_request)
 
 
-def create_host_from(device_host):
+def create_host_from(device_host, args=None):
     """Creates a host object for the Tester associated with a DUT.
 
-    Will raise an exception if there isn't a tester for the DUT.
+    The IP address or the hostname can be specified in the 'tester' member of
+    the argument dictionary. When not present it is derived from the hostname
+    of the DUT by appending '-router' to the first part.
+
+    Will raise an exception if there isn't a tester for the DUT, or if the DUT
+    is specified as an IP address and thus the hostname cannot be derived.
 
     @param device_host: Autotest host object for the DUT.
+    @param args: Dictionary of arguments passed to the test.
 
     @return Autotest host object for the Tester.
 
     """
 
-    device_hostname = device_host.hostname
+    def is_ip_address(hostname):
+        try:
+            socket.inet_aton(hostname)
+            return True
+        except socket.error:
+            return False
 
-    parts = device_hostname.split('.')
-    parts[0] = parts[0] + '-router'
-    tester_hostname = '.'.join(parts)
+    try:
+        tester_hostname = args['tester']
+    except KeyError:
+        device_hostname = device_host.hostname
+        if is_ip_address(device_hostname):
+            raise error.TestError("Remote host cannot be an IP address unless "
+                                  "tester specified with --args tester=IP")
+
+        parts = device_hostname.split('.')
+        parts[0] = parts[0] + '-router'
+        tester_hostname = '.'.join(parts)
 
     return hosts.create_host(tester_hostname)
