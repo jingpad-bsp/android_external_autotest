@@ -62,25 +62,22 @@ class display_EdidStress(chameleon_test.ChameleonTest):
             self.chameleon_port.apply_edid(
                     edid.Edid.from_file(filepath, skip_verify=True))
 
+            framebuffer_resolution = (0, 0)
             try:
-                framebuffer_resolution = (0, 0)
-                try:
-                    self.reconnect_output()
-                    framebuffer_resolution = (
-                            self.display_facade.get_external_resolution())
-                except error.TestFail as e:
-                    logging.warning(e)
+                self.reconnect_output()
+                framebuffer_resolution = (
+                        self.display_facade.get_external_resolution())
+            except error.TestFail as e:
+                logging.warning(e)
 
-                if framebuffer_resolution == (0, 0):
-                    logging.error('EDID not supported: %s', filename)
-                    failed_edids.append(filename)
-                    continue
+            if framebuffer_resolution == (0, 0):
+                logging.error('EDID not supported: %s', filename)
+                failed_edids.append(filename)
+                continue
 
-                if self.screen_test.test_resolution(framebuffer_resolution):
-                    logging.error('EDID not supported: %s', filename)
-                    failed_edids.append(filename)
-            finally:
-                self.display_facade.close_tab()
+            if self.screen_test.test_resolution(framebuffer_resolution):
+                logging.error('EDID not supported: %s', filename)
+                failed_edids.append(filename)
 
         if failed_edids:
             message = ('Total %d EDIDs not supported: ' % len(failed_edids) +
