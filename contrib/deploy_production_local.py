@@ -244,10 +244,17 @@ def parse_arguments(args):
     parser.add_argument('--skip-report', action='store_false',
                         dest='report', default=True,
                         help='Skip the git version report.')
+    parser.add_argument('--actions-only', action='store_true',
+                        help='Run the post update actions (restart services).')
     parser.add_argument('--dryrun', action='store_true',
                         help='Don\'t actually run any commands, just log.')
 
     results = parser.parse_args(args)
+
+    if results.actions_only:
+        results.verify = False
+        results.update = False
+        results.report = False
 
     # TODO(dgarrett): Make these behaviors support dryrun.
     if results.dryrun:

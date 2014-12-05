@@ -155,34 +155,41 @@ class TestDeployProductionLocal(unittest.TestCase):
         """Test deploy_production_local.parse_arguments."""
         # No arguments.
         results = dpl.parse_arguments([])
-        self.assertEqual(
-                vars(results),
+        self.assertDictContainsSubset(
                 {'verify': True, 'update': True, 'actions': True,
-                 'report': True, 'dryrun': False})
+                 'report': True, 'dryrun': False},
+                vars(results))
 
         # Dryrun.
         results = dpl.parse_arguments(['--dryrun'])
-        self.assertEqual(
-                vars(results),
+        self.assertDictContainsSubset(
                 {'verify': False, 'update': False, 'actions': True,
-                 'report': True, 'dryrun': True})
+                 'report': True, 'dryrun': True},
+                vars(results))
+
+        # Restart only.
+        results = dpl.parse_arguments(['--actions-only'])
+        self.assertDictContainsSubset(
+                {'verify': False, 'update': False, 'actions': True,
+                 'report': False, 'dryrun': False},
+                vars(results))
 
         # All skip arguments.
         results = dpl.parse_arguments(['--skip-verify', '--skip-update',
                                        '--skip-actions', '--skip-report'])
-        self.assertEqual(
-                vars(results),
+        self.assertDictContainsSubset(
                 {'verify': False, 'update': False, 'actions': False,
-                 'report': False, 'dryrun': False})
+                 'report': False, 'dryrun': False},
+                vars(results))
 
         # All arguments.
         results = dpl.parse_arguments(['--skip-verify', '--skip-update',
                                        '--skip-actions', '--skip-report',
-                                       '--dryrun'])
-        self.assertEqual(
-                vars(results),
+                                       '--actions-only', '--dryrun'])
+        self.assertDictContainsSubset(
                 {'verify': False, 'update': False, 'actions': False,
-                 'report': False, 'dryrun': True})
+                 'report': False, 'dryrun': True},
+                vars(results))
 
 
 if __name__ == '__main__':
