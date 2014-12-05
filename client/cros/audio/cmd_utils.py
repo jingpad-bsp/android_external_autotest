@@ -161,7 +161,7 @@ def execute(args, stdin=None, stdout=TEE_TO_LOGS, stderr=TEE_TO_LOGS):
     return out
 
 
-def popen(args, stdin=None, stdout=TEE_TO_LOGS, stderr=TEE_TO_LOGS):
+def popen(args, stdin=None, stdout=TEE_TO_LOGS, stderr=TEE_TO_LOGS, env=None):
     '''Returns a Popen object just as subprocess.Popen does but with the
     executed command stored in Popen.command.
     '''
@@ -178,7 +178,8 @@ def popen(args, stdin=None, stdout=TEE_TO_LOGS, stderr=TEE_TO_LOGS):
 
     # The lock is required for http://crbug.com/323843.
     with _popen_lock:
-        ps = subprocess.Popen(args, stdin=stdin, stdout=stdout, stderr=stderr)
+        ps = subprocess.Popen(args, stdin=stdin, stdout=stdout, stderr=stderr,
+            env=env)
     logging.info('%spid is %d', prefix, ps.pid)
     ps.command_id = command_id
     ps.command = command
