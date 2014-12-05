@@ -198,6 +198,18 @@ public class JobDetailView extends DetailView implements TableWidgetFactory {
                 showText(countString, "view_status");
                 abortButton.setVisible(isAnyEntryAbortable(counts));
 
+                String shard_url = Utils.jsonToString(jobObject.get("shard")).trim();
+                String job_id = Utils.jsonToString(jobObject.get("id")).trim();
+                if (shard_url.equals("<null>")){
+                    shard_url = "";
+                } else {
+                    shard_url = "http://" + shard_url;
+                }
+                shard_url = shard_url + "/afe/#tab_id=view_job&object_id=" + job_id;
+                showField(jobObject, "shard", "view_job_on_shard");
+                getElementById("view_job_on_shard").setAttribute("href", shard_url);
+                getElementById("view_job_on_shard").setInnerHTML(shard_url);
+
                 String jobTag = AfeUtils.getJobTag(jobObject);
                 pointToResults(getResultsURL(jobId), getLogsURL(jobTag),
                                getOldResultsUrl(jobId), getTriageUrl(jobId),
