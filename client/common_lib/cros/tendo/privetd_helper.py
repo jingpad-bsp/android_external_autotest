@@ -95,6 +95,6 @@ class PrivetdHelper(object):
         if self._host is not None:
             hostname = self._host.hostname
         url = '%s://%s:%s/privet/ping' % (protocol, hostname, port)
-        content = self._fetch_url_with_retries(url, 5, 0.1)
+        content = self._fetch_url_with_retries(url, 5, 0.3)
         if content != 'Hello, world!':
             raise error.TestFail('Unexpected response from web server.')
