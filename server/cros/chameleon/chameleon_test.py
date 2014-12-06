@@ -2,13 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
-import os
-import time
-
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
-from autotest_lib.client.cros.chameleon import edid
 from autotest_lib.client.cros.chameleon import screen_test
 from autotest_lib.server import test
 from autotest_lib.server.cros.multimedia import remote_facade_factory
@@ -60,65 +55,11 @@ class ChameleonTest(test.test):
         return True
 
 
-    def backup_edid(self):
-        """Backups the original EDID."""
-        logging.info('Backups the original EDID...')
-        self._original_edid = self.chameleon_port.read_edid()
-        self._original_edid_path = os.path.join(self.outputdir, 'original_edid')
-        self._original_edid.to_file(self._original_edid_path)
-
-
-    def restore_edid(self):
-        """Restores the original EDID, if any."""
-        if (hasattr(self, 'chameleon_port') and self.chameleon_port and
-                hasattr(self, '_original_edid') and self._original_edid):
-            current_edid = self.chameleon_port.read_edid()
-            if self._original_edid.data != current_edid.data:
-                logging.info('Restore the original EDID...')
-                self.chameleon_port.apply_edid(self._original_edid)
-                # Remove the original EDID file after restore.
-                os.remove(self._original_edid_path)
-                self._original_edid = None
-
-
-    def apply_edid_file(self, filename):
-        """Load the EDID file onto Chameleon with logging.
-
-        @param filename: the path of edid file.
-        """
-
-        if not hasattr(self, '_original_edid') or not self._original_edid:
-            self.backup_edid()
-        logging.info('Apple EDID on port %d (%s): %s',
-                     self.chameleon_port.get_connector_id(),
-                     self.chameleon_port.get_connector_type(),
-                     filename)
-        self.chameleon_port.apply_edid(edid.Edid.from_file(filename))
-
-
-    def reconnect_output(self, unplug_duration_sec=5):
-        """Reconnects the output with an unplug followed by a plug.
-
-        @param unplug_duration_sec: duration of unplug in second.
-        """
-        logging.info('Reconnect output...')
-        output = self.display_facade.get_external_connector_name()
-        self.chameleon_port.unplug()
-        time.sleep(unplug_duration_sec)
-        self.chameleon_port.plug()
-        if not self.display_facade.wait_external_display_connected(output):
-            raise error.TestFail('DUT failed to get %s connected' % output)
-        if not self.chameleon_port.wait_video_input_stable(
-                self._TIMEOUT_VIDEO_STABLE_PROBE):
-            raise error.TestFail('Chameleon failed to wait video input stable')
-
-
     def cleanup(self):
         """Cleans up."""
         # Unplug the Chameleon port, not to affect other test cases.
         if hasattr(self, 'chameleon_port') and self.chameleon_port:
             self.chameleon_port.unplug()
-        self.restore_edid()
 
 
     def _get_connected_port(self):

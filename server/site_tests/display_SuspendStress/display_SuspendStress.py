@@ -36,37 +36,39 @@ class display_SuspendStress(chameleon_test.ChameleonTest):
         if not self.is_edid_supported(*testcase_spec):
             raise error.TestFail('Error: EDID is not supported by the platform'
                     ': %s', test_name)
-        self.apply_edid_file(os.path.join(
-                self.bindir, 'test_data', 'edids', test_name))
 
-        # Keep the original connector name, for later comparison.
-        expected_connector = self.display_facade.get_external_connector_name()
-        logging.info('See the display on DUT: %s', expected_connector)
+        path = os.path.join(self.bindir, 'test_data', 'edids', test_name)
+        logging.info('Use EDID: %s', path)
+        with self.chameleon_port.use_edid_file(path):
+            # Keep the original connector name, for later comparison.
+            expected_connector = (
+                    self.display_facade.get_external_connector_name())
+            logging.info('See the display on DUT: %s', expected_connector)
 
-        if not expected_connector:
-            raise error.TestFail('Error: Failed to see external display'
-                    ' (chameleon) from DUT: %s', test_name)
+            if not expected_connector:
+                raise error.TestFail('Error: Failed to see external display'
+                        ' (chameleon) from DUT: %s', test_name)
 
-        self.reconnect_output()
-        logging.info('Set mirrored: %s', test_mirrored)
-        self.display_facade.set_mirrored(test_mirrored)
-        logging.info('Repeat %d times Suspend and resume', repeat_count)
+            logging.info('Set mirrored: %s', test_mirrored)
+            self.display_facade.set_mirrored(test_mirrored)
+            logging.info('Repeat %d times Suspend and resume', repeat_count)
 
-        while repeat_count > 0:
-            repeat_count -= 1
-            if test_mirrored:
-                # magic sleep to make nyan_big wake up in mirrored mode
-                # TODO: find root cause
-                time.sleep(6)
-            suspend_time = random.randint(*suspend_time_range)
-            logging.info('Going to suspend, for %d seconds...', suspend_time)
-            self.display_facade.suspend_resume(suspend_time)
-            logging.info('Resumed back')
+            while repeat_count > 0:
+                repeat_count -= 1
+                if test_mirrored:
+                    # magic sleep to make nyan_big wake up in mirrored mode
+                    # TODO: find root cause
+                    time.sleep(6)
+                suspend_time = random.randint(*suspend_time_range)
+                logging.info('Going to suspend, for %d seconds...',
+                             suspend_time)
+                self.display_facade.suspend_resume(suspend_time)
+                logging.info('Resumed back')
 
-            error_message = self.screen_test.check_external_display_connected(
-                    expected_connector)
-            if not error_message:
-                error_message = self.screen_test.test_screen_with_image(
-                        test_resolution, test_mirrored)
-            if error_message:
-                raise error.TestFail(error_message)
+                message = self.screen_test.check_external_display_connected(
+                        expected_connector)
+                if not message:
+                    message = self.screen_test.test_screen_with_image(
+                            test_resolution, test_mirrored)
+                if message:
+                    raise error.TestFail(message)

@@ -7,7 +7,7 @@
 import logging, os, shutil, time
 
 from autotest_lib.client.common_lib import error
-
+from autotest_lib.client.cros.chameleon import edid
 from autotest_lib.server.cros.chameleon import chameleon_test
 
 
@@ -63,7 +63,7 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
         self.display_facade.set_mirrored(self.test_mirrored)
         logging.debug('Switched from %s to %s mode', from_mode, to_mode)
         time.sleep(self.WAIT_TIME)
-        self.reconnect_and_get_external_resolution()
+        self.check_external_resolution()
 
 
     def reboot_device(self, plugged_before, plugged_after):
@@ -132,6 +132,7 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
 
         logging.debug('Dut is suspended.')
 
+
     def wait_to_resume(self, resume_timeout):
         """Wait for DUT to resume.
 
@@ -172,26 +173,22 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
         return (first_edid, second_edid)
 
 
-    def reconnect_and_get_external_resolution(self):
-        """Reconnect the display and get the external screen resolution."""
-        self.reconnect_output()
+    def check_external_resolution(self):
+        """Checks the external screen resolution."""
         # Get the resolution for the edid applied
         self.resolution = self.display_facade.get_external_resolution()
         logging.debug('External display resolution: %s',
                 str(self.resolution))
 
 
-    def apply_edid_and_reconnect(self, edid_file, suspended=False):
+    def apply_edid(self, edid_file):
         """Apply EDID from a file
 
         @param edid_file: file path to edid data
-        @param suspended: a boolean, to not reconnect ouptut when suspended
 
         """
-        self.apply_edid_file(edid_file)
-        # Reconnect for the new edid if not suspended
-        if not suspended:
-            self.reconnect_and_get_external_resolution()
+        self.display_facade.apply_edid(edid.Edid.from_file(edid_file))
+
 
     def dock_dut(self):
         """Close lid(assumes device is connected to chameleon)"""
@@ -205,10 +202,12 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
             logging.debug('DUT does not dock!')
             return False
 
+
     def undock_dut(self):
         """Open the lid"""
         self.host.servo.lid_open()
         time.sleep(self.WAIT_TIME)
+
 
     def run_once(self, host, test_mirrored=False):
         self.host = host
@@ -227,79 +226,79 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
         first_edid, second_edid = self.get_edids_filepaths()
 
         # Set first monitor/EDID and tracked resolution
-        self.apply_edid_and_reconnect(first_edid)
-        # Set main display mode for the test
-        logging.debug('Set mirrored: %s', self.test_mirrored)
-        self.display_facade.set_mirrored(self.test_mirrored)
+        with self.chameleon_port.use_edid_file(first_edid):
+            self.check_external_resolution()
+            # Set main display mode for the test
+            logging.debug('Set mirrored: %s', self.test_mirrored)
+            self.display_facade.set_mirrored(self.test_mirrored)
 
-        # Reboot the device as connected and login
-        self.reboot_device(plugged_before=True, plugged_after=True)
-        # Check status
-        self.check_external_display()
+            # Reboot the device as connected and login
+            self.reboot_device(plugged_before=True, plugged_after=True)
+            # Check status
+            self.check_external_display()
 
-        # Dock and undock (close lid and open lid)
-        if self.dock_dut():
-            self.undock_dut();
+            # Dock and undock (close lid and open lid)
+            if self.dock_dut():
+                self.undock_dut();
 
-        # Switch mode
-        self.switch_display_mode()
-        # Switch mode back
-        self.switch_display_mode()
-        self.check_external_display()
+            # Switch mode
+            self.switch_display_mode()
+            # Switch mode back
+            self.switch_display_mode()
+            self.check_external_display()
 
-        # Suspend and resume as currently plugged
-        self.test_suspend_resume(plugged_before_suspend=True,
-                                 plugged_after_suspend=True,
-                                 plugged_after_resume=True)
+            # Suspend and resume as currently plugged
+            self.test_suspend_resume(plugged_before_suspend=True,
+                                     plugged_after_suspend=True,
+                                     plugged_after_resume=True)
 
-        # Unplug-Suspend-Plug-Resume
-        self.test_suspend_resume(plugged_before_suspend=False,
-                                 plugged_after_suspend=True,
-                                 plugged_after_resume=True)
-        # Check status
-        self.check_external_display()
+            # Unplug-Suspend-Plug-Resume
+            self.test_suspend_resume(plugged_before_suspend=False,
+                                     plugged_after_suspend=True,
+                                     plugged_after_resume=True)
+            # Check status
+            self.check_external_display()
 
-        # Switch mode
-        self.switch_display_mode()
-        # Switch mode back
-        self.switch_display_mode()
+            # Switch mode
+            self.switch_display_mode()
+            # Switch mode back
+            self.switch_display_mode()
 
-        # Suspens-Unplug-Resume-Plug
-        self.test_suspend_resume(plugged_before_suspend=True,
-                                 plugged_after_suspend=False,
-                                 plugged_after_resume=True)
-        # Check status
-        self.check_external_display()
+            # Suspens-Unplug-Resume-Plug
+            self.test_suspend_resume(plugged_before_suspend=True,
+                                     plugged_after_suspend=False,
+                                     plugged_after_resume=True)
+            # Check status
+            self.check_external_display()
 
-        # Docked mode(close lid)
-        if self.dock_dut():
-            logging.debug('Unplug display')
-            # Unplug, thus DUT should suspend
-            self.chameleon_port.set_plug(False)
-            self.wait_to_suspend(self.SUSPEND_TIMEOUT)
-            logging.debug('DUT is suspended')
+            # Docked mode(close lid)
+            if self.dock_dut():
+                logging.debug('Unplug display')
+                # Unplug, thus DUT should suspend
+                self.chameleon_port.set_plug(False)
+                self.wait_to_suspend(self.SUSPEND_TIMEOUT)
+                logging.debug('DUT is suspended')
 
         # Plug the second monitor while suspended
-        self.apply_edid_and_reconnect(second_edid, suspended=True)
-        # Plug back
-        self.chameleon_port.set_plug(True)
+        with self.chameleon_port.use_edid_file(second_edid):
+            # Plug back
+            self.chameleon_port.set_plug(True)
 
-        # Resume(open lid), doesn't hurt if DUT is not docked
-        self.undock_dut()
-        self.wait_to_resume(self.RESUME_TIMEOUT)
+            # Resume(open lid), doesn't hurt if DUT is not docked
+            self.undock_dut()
+            self.wait_to_resume(self.RESUME_TIMEOUT)
 
-        self.reconnect_and_get_external_resolution()
-        # Check status
-        self.check_external_display()
+            # Check status
+            self.check_external_display()
 
-        # Switch mode
-        self.switch_display_mode()
-        # Switch mode back
-        self.switch_display_mode()
+            # Switch mode
+            self.switch_display_mode()
+            # Switch mode back
+            self.switch_display_mode()
 
-        # Unplug and plug the original monitor
-        self.chameleon_port.set_plug(False)
-        self.apply_edid_and_reconnect(first_edid)
-        self.chameleon_port.set_plug(True)
-        self.check_external_display()
+            # Unplug and plug the original monitor
+            self.chameleon_port.set_plug(False)
 
+        with self.chameleon_port.use_edid_file(first_edid):
+            self.chameleon_port.set_plug(True)
+            self.check_external_display()

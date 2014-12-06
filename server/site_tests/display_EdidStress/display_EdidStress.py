@@ -26,16 +26,6 @@ class display_EdidStress(chameleon_test.ChameleonTest):
                    'DP': {'DP'},
                    'VGA': {'VGA'}}
 
-    def initialize(self, host):
-        super(display_EdidStress, self).initialize(host)
-        self.backup_edid()
-
-
-    def cleanup(self):
-        super(display_EdidStress, self).cleanup()
-        self.restore_edid()
-
-
     def run_once(self, host):
         edid_path = os.path.join(self.bindir, 'test_data', 'edids', '*')
         logging.info('See the display on Chameleon: port %d (%s)',
@@ -58,24 +48,20 @@ class display_EdidStress(chameleon_test.ChameleonTest):
                 logging.info('Skip EDID: %s...', filename)
                 continue
 
-            logging.info('Apply EDID: %s...', filename)
-            self.chameleon_port.apply_edid(
-                    edid.Edid.from_file(filepath, skip_verify=True))
-
-            framebuffer_resolution = (0, 0)
+            logging.info('Use EDID: %s...', filename)
+            resolution = (0, 0)
             try:
-                self.reconnect_output()
-                framebuffer_resolution = (
-                        self.display_facade.get_external_resolution())
+                with self.chameleon_port.use_edid(
+                        edid.Edid.from_file(filepath, skip_verify=True)):
+                    if not self.chameleon_port.wait_video_input_stable():
+                        raise error.TestFail('Failed to wait source stable')
+                    resolution = self.display_facade.get_external_resolution()
+                    if resolution == (0, 0):
+                        raise error.TestFail('Detected resolution 0x0')
+                    if self.screen_test.test_resolution(resolution):
+                        raise error.TestFail('Resolution test failed')
             except error.TestFail as e:
                 logging.warning(e)
-
-            if framebuffer_resolution == (0, 0):
-                logging.error('EDID not supported: %s', filename)
-                failed_edids.append(filename)
-                continue
-
-            if self.screen_test.test_resolution(framebuffer_resolution):
                 logging.error('EDID not supported: %s', filename)
                 failed_edids.append(filename)
 

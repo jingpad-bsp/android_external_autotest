@@ -5,7 +5,9 @@
 import httplib
 import logging
 import socket
+import time
 import xmlrpclib
+from contextlib import contextmanager
 
 from PIL import Image
 
@@ -219,6 +221,9 @@ class ChameleonVideoInput(ChameleonPort):
     It contains some special methods to control a video input.
     """
 
+    _DURATION_UNPLUG_FOR_EDID = 5
+    _TIMEOUT_VIDEO_STABLE_PROBE = 10
+
     def __init__(self, chameleon_port):
         """Construct a ChameleonVideoInput.
 
@@ -259,6 +264,58 @@ class ChameleonVideoInput(ChameleonPort):
         edid_id = self.chameleond_proxy.CreateEdid(xmlrpclib.Binary(edid.data))
         self.chameleond_proxy.ApplyEdid(self.port_id, edid_id)
         self.chameleond_proxy.DestroyEdid(edid_id)
+
+
+    @contextmanager
+    def use_edid(self, edid):
+        """Uses the given EDID in a with statement.
+
+        It sets the EDID up in the beginning and restores to the original
+        EDID in the end. This function is expected to be used in a with
+        statement, like the following:
+
+            with chameleon_port.use_edid(edid):
+                do_some_test_on(chameleon_port)
+
+        @param edid: An EDID object.
+        """
+        # Set the EDID up in the beginning.
+        plugged = self.plugged
+        if plugged:
+            self.unplug()
+
+        original_edid = self.read_edid()
+        logging.info('Apply EDID on port %d', self.port_id)
+        self.apply_edid(edid)
+
+        if plugged:
+            time.sleep(self._DURATION_UNPLUG_FOR_EDID)
+            self.plug()
+            self.wait_video_input_stable(self._TIMEOUT_VIDEO_STABLE_PROBE)
+
+        # Yeild to execute the with statement.
+        yield
+
+        # Restore the original EDID in the end.
+        current_edid = self.read_edid()
+        if original_edid.data != current_edid.data:
+            logging.info('Restore the original EDID.')
+            self.apply_edid(original_edid)
+
+
+    def use_edid_file(self, filename):
+        """Uses the given EDID file in a with statement.
+
+        It sets the EDID up in the beginning and restores to the original
+        EDID in the end. This function is expected to be used in a with
+        statement, like the following:
+
+            with chameleon_port.use_edid_file(filename):
+                do_some_test_on(chameleon_port)
+
+        @param filename: A path to the EDID file.
+        """
+        return self.use_edid(edid.Edid.from_file(filename))
 
 
     def fire_hpd_pulse(self, deassert_interval_usec, assert_interval_usec=None,

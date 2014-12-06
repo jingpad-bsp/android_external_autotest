@@ -41,28 +41,31 @@ class display_Resolution(chameleon_test.ChameleonTest):
                 logging.info('skip unsupported EDID: %s', test_name)
                 continue
 
-            self.apply_edid_file(os.path.join(
-                    self.bindir, 'test_data', 'edids', test_name))
-
             if test_reboot:
                 logging.info('Reboot...')
-                host.reboot()
-            else:
-                self.reconnect_output()
+                boot_id = host.get_boot_id()
+                host.reboot(wait=False)
+                host.test_wait_for_shutdown()
 
-            logging.info('Set mirrored: %s', test_mirrored)
-            self.display_facade.set_mirrored(test_mirrored)
-            if test_suspend_resume:
-                if test_mirrored:
-                    # magic sleep to make nyan_big wake up in mirrored mode
-                    # TODO: find root cause
-                    time.sleep(6)
-                logging.info('Going to suspend...')
-                self.display_facade.suspend_resume()
-                logging.info('Resumed back')
+            path = os.path.join(self.bindir, 'test_data', 'edids', test_name)
+            logging.info('Use EDID: %s', test_name)
+            with self.chameleon_port.use_edid_file(path):
+                if test_reboot:
+                    host.test_wait_for_boot(boot_id)
 
-            self.screen_test.test_screen_with_image(
-                    test_resolution, test_mirrored, errors)
+                logging.info('Set mirrored: %s', test_mirrored)
+                self.display_facade.set_mirrored(test_mirrored)
+                if test_suspend_resume:
+                    if test_mirrored:
+                        # magic sleep to make nyan_big wake up in mirrored mode
+                        # TODO: find root cause
+                        time.sleep(6)
+                    logging.info('Going to suspend...')
+                    self.display_facade.suspend_resume()
+                    logging.info('Resumed back')
+
+                self.screen_test.test_screen_with_image(
+                        test_resolution, test_mirrored, errors)
 
         if errors:
             raise error.TestFail('; '.join(set(errors)))
