@@ -33,16 +33,25 @@ class BluetoothTesterXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             bluetooth_socket.MGMT_SETTING_BREDR |
             bluetooth_socket.MGMT_SETTING_LE)
 
+    LE_PROFILE = (
+            bluetooth_socket.MGMT_SETTING_POWERED |
+            bluetooth_socket.MGMT_SETTING_CONNECTABLE |
+            bluetooth_socket.MGMT_SETTING_PAIRABLE |
+            bluetooth_socket.MGMT_SETTING_LE)
+
     PROFILE_SETTINGS = {
         'computer': BR_EDR_LE_PROFILE,
+        'peripheral': LE_PROFILE
     }
 
     PROFILE_CLASS = {
         'computer': 0x000104,
+        'peripheral': None
     }
 
     PROFILE_NAMES = {
         'computer': ('ChromeOS Bluetooth Tester', 'Tester'),
+        'peripheral': ('ChromeOS Bluetooth Tester', 'Tester')
     }
 
 
@@ -101,33 +110,56 @@ class BluetoothTesterXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             logging.warning('Failed to power off adapter to accept settings')
             return False
 
-        # Send the individual commands to set up the adapter. There is no
-        # command to set the BR/EDR flag, that's something that's either on
-        # or off in the chip. We do, of course, want to check for it later.
-        if (self._control.set_ssp(
-                self.index,
-                profile_settings & bluetooth_socket.MGMT_SETTING_SSP)
-                    is None):
-            logging.warning('Failed to set SSP setting')
-            return False
-        if (self._control.set_le(
-                self.index,
-                profile_settings & bluetooth_socket.MGMT_SETTING_LE)
-                    is None):
-            logging.warning('Failed to set Low Energy setting')
-            return False
-        if (self._control.set_hs(
-                self.index,
-                profile_settings & bluetooth_socket.MGMT_SETTING_HS)
-                    is None):
-            logging.warning('Failed to set High Speed setting')
-            return False
-        if (self._control.set_link_security(
-                self.index,
-                profile_settings & bluetooth_socket.MGMT_SETTING_LINK_SECURITY)
-                    is None):
-            logging.warning('Failed to set link security setting')
-            return False
+        # Set the controller up as either BR/EDR only, LE only or Dual Mode.
+        # This is a bit tricky because it rejects commands outright unless
+        # it's in dual mode, so we actually have to figure out what changes
+        # we have to make, and we have to turn things on before we turn them
+        # off.
+        turn_on = (current_settings ^ profile_settings) & profile_settings
+        if turn_on & bluetooth_socket.MGMT_SETTING_BREDR:
+            if self._control.set_bredr(self.index, True) is None:
+                logging.warning('Failed to enable BR/EDR')
+                return False
+        if turn_on & bluetooth_socket.MGMT_SETTING_LE:
+            if self._control.set_le(self.index, True) is None:
+                logging.warning('Failed to enable LE')
+                return False
+
+        turn_off = (current_settings ^ profile_settings) & current_settings
+        if turn_off & bluetooth_socket.MGMT_SETTING_BREDR:
+            if self._control.set_bredr(self.index, False) is None:
+                logging.warning('Failed to disable BR/EDR')
+                return False
+        if turn_off & bluetooth_socket.MGMT_SETTING_LE:
+            if self._control.set_le(self.index, False) is None:
+                logging.warning('Failed to disable LE')
+                return False
+
+        # Adjust settings that are BR/EDR specific that we need to set before
+        # powering on the adapter, and would be rejected otherwise.
+        if profile_settings & bluetooth_socket.MGMT_SETTING_BREDR:
+            if (self._control.set_link_security(
+                    self.index,
+                    (profile_settings &
+                            bluetooth_socket.MGMT_SETTING_LINK_SECURITY))
+                        is None):
+                logging.warning('Failed to set link security setting')
+                return False
+            if (self._control.set_ssp(
+                    self.index,
+                    profile_settings & bluetooth_socket.MGMT_SETTING_SSP)
+                        is None):
+                logging.warning('Failed to set SSP setting')
+                return False
+            if (self._control.set_hs(
+                    self.index,
+                    profile_settings & bluetooth_socket.MGMT_SETTING_HS)
+                        is None):
+                logging.warning('Failed to set High Speed setting')
+                return False
+
+        # Setup generic settings that apply to either BR/EDR, LE or dual-mode
+        # that still require the power to be off.
         if (self._control.set_connectable(
                 self.index,
                 profile_settings & bluetooth_socket.MGMT_SETTING_CONNECTABLE)
@@ -148,14 +180,16 @@ class BluetoothTesterXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             logging.warning('Failed to set powered setting')
             return False
 
-        # Fast connectable can only be set once the controller is powered.
-        if (self._control.set_fast_connectable(
-                self.index,
-                profile_settings &
-                bluetooth_socket.MGMT_SETTING_FAST_CONNECTABLE)
-                    is None):
-            logging.warning('Failed to set fast connectable setting')
-            return False
+        # Fast connectable can only be set once the controller is powered,
+        # and only when BR/EDR is enabled.
+        if profile_settings & bluetooth_socket.MGMT_SETTING_BREDR:
+            if (self._control.set_fast_connectable(
+                    self.index,
+                    profile_settings &
+                    bluetooth_socket.MGMT_SETTING_FAST_CONNECTABLE)
+                        is None):
+                logging.warning('Failed to set fast connectable setting')
+                return False
 
         # Fetch the settings again and make sure they're all set correctly,
         # including the BR/EDR flag.
@@ -179,6 +213,9 @@ class BluetoothTesterXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
         """
         profile_class = self.PROFILE_CLASS[profile]
+        if profile_class is None:
+            return True
+
         # Split our the major and minor class; it's listed as a kernel bug that
         # we supply these to the kernel without shifting the bits over to take
         # out the CoD format field, so this might have to change one day.
