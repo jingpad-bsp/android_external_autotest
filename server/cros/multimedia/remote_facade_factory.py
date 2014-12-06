@@ -56,6 +56,7 @@ class RemoteFacadeProxy(object):
         """
         self._client = host
         self._xmlrpc_proxy = None
+        self.connect()
 
 
     def __getattr__(self, name):
@@ -75,8 +76,7 @@ class RemoteFacadeProxy(object):
         """
         try:
             return getattr(self._xmlrpc_proxy, name)(*args, **dargs)
-        except (AttributeError,  # _xmlrpc_proxy not initialized, still None
-                socket.error,
+        except (socket.error,
                 xmlrpclib.ProtocolError,
                 httplib.BadStatusLine):
             # Reconnect the RPC server in case connection lost, e.g. reboot.
