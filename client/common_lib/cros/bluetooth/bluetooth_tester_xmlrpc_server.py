@@ -300,6 +300,18 @@ class BluetoothTesterXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         return json.dumps(self._control.read_info(self.index))
 
 
+    def set_advertising(self, advertising):
+        """Set the whether the controller is advertising via LE.
+
+        @param advertising: Whether controller should advertise via LE.
+
+        @return True on success, False otherwise.
+
+        """
+        settings = self._control.set_advertising(self.index, advertising)
+        return settings & bluetooth_socket.MGMT_SETTING_ADVERTISING
+
+
     def discover_devices(self, br_edr=True, le_public=True, le_random=True):
         """Discover remote devices.
 

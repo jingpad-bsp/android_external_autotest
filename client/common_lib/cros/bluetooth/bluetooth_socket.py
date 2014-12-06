@@ -1032,6 +1032,56 @@ class BluetoothControlSocket(BluetoothSocket):
         return devices
 
 
+    def set_advertising(self, index, advertising):
+        """Set the whether a controller is advertising via LE.
+
+        @param index: Controller index.
+        @param advertising: Whether controller should advertise via LE.
+
+        @return New controller settings on success, 0 if the feature is not
+                supported and the parameter was False, None otherwise.
+
+        """
+        msg_data = struct.pack('<B', bool(advertising))
+        (status, data) = self.send_command_and_wait(
+                MGMT_OP_SET_ADVERTISING,
+                index,
+                msg_data,
+                expected_length=4)
+        if status == MGMT_STATUS_NOT_SUPPORTED and not advertising:
+            return 0
+        elif status != MGMT_STATUS_SUCCESS:
+            return None
+
+        (current_settings, ) = struct.unpack_from('<L', buffer(data))
+        return current_settings
+
+
+    def set_bredr(self, index, bredr):
+        """Set the whether a controller supports Bluetooth BR/EDR (classic).
+
+        @param index: Controller index.
+        @param bredr: Whether controller should support BR/EDR.
+
+        @return New controller settings on success, 0 if the feature is not
+                supported and the parameter was False, None otherwise.
+
+        """
+        msg_data = struct.pack('<B', bool(bredr))
+        (status, data) = self.send_command_and_wait(
+                MGMT_OP_SET_BREDR,
+                index,
+                msg_data,
+                expected_length=4)
+        if status == MGMT_STATUS_NOT_SUPPORTED and not bredr:
+            return 0
+        elif status != MGMT_STATUS_SUCCESS:
+            return None
+
+        (current_settings, ) = struct.unpack_from('<L', buffer(data))
+        return current_settings
+
+
     def add_device(self, index, address, address_type, action):
         """Add a device to the action list.
 

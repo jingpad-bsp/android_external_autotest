@@ -82,6 +82,17 @@ class BluetoothTester(object):
         return json.loads(self._proxy.read_info())
 
 
+    def set_advertising(self, advertising):
+        """Set the whether the controller is advertising via LE.
+
+        @param advertising: Whether controller should advertise via LE.
+
+        @return True on success, False otherwise.
+
+        """
+        return self._proxy.set_advertising(advertising)
+
+
     def discover_devices(self, br_edr=True, le_public=True, le_random=True):
         """Discover remote devices.
 
