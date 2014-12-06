@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
 from collections import namedtuple
 
 from autotest_lib.client.cros.chameleon import chameleon
@@ -162,17 +163,35 @@ class ChameleonVideoInputFinder(ChameleonInputFinder):
                 video_port.plug()
             # DUT takes some time to respond. Wait until the video signal
             # to stabilize.
-            video_port.wait_video_input_stable(self._TIMEOUT_VIDEO_STABLE_PROBE)
+            video_stable = video_port.wait_video_input_stable(
+                    self._TIMEOUT_VIDEO_STABLE_PROBE)
+            logging.info('Chameleon detected video input stable: %r',
+                         video_stable)
 
             output = self.display_facade.get_external_connector_name()
-            if output and output.startswith(connector_type):
+            logging.info('CrOS detected external connector: %r', output)
+
+            if video_stable and output and output.startswith(connector_type):
                 connected_ports.append(video_port)
             else:
                 dut_failed_ports.append(video_port)
+                if video_stable:
+                    if output:
+                        logging.error('Unexpected display on CrOS: %s', output)
+                    else:
+                        logging.error('Display detection seems broken')
+                else:
+                    if output:
+                        logging.error('Chameleon timed out waiting CrOS video')
+                    else:
+                        logging.error('CrOS failed to see any external display')
 
             # Unplug the port afterward if it wasn't plugged to begin with.
             if not was_plugged:
                 video_port.unplug()
+
+        if not connected_ports and not dut_failed_ports:
+            logging.error('No video input port detected by Chameleon')
 
         self.connected = connected_ports
         self.failed = dut_failed_ports
