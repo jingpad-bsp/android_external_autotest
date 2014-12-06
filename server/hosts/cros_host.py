@@ -932,8 +932,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 image. Factory images need a longer install_timeout.
 
         @raises AutoservError if the image fails to boot.
-        """
 
+        """
         usb_boot_timer_key = ('servo_install.usb_boot_timeout_%s'
                               % usb_boot_timeout)
         logging.info('Downloading image to USB, then booting from it. Usb boot '
@@ -955,13 +955,20 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         self.run('chromeos-install --yes --lab_preserve_logs=%s' %
                  self._LOGS_TO_COLLECT_FILE,
                  timeout=install_timeout)
+        self.run('halt')
         timer.stop()
 
         logging.info('Power cycling DUT through servo.')
-        self.servo.power_long_press()
+        self.servo.get_power_state_controller().power_off()
         self.servo.switch_usbkey('off')
-        # We *must* use power_on() here; on Parrot it's how we get
-        # out of recovery mode.
+        # N.B. The Servo API requires that we use power_on() here
+        # for two reasons:
+        #  1) After turning on a DUT in recovery mode, you must turn
+        #     it off and then on with power_on() once more to
+        #     disable recovery mode (this is a Parrot specific
+        #     requirement).
+        #  2) After power_off(), the only way to turn on is with
+        #     power_on() (this is a Storm specific requirement).
         self.servo.get_power_state_controller().power_on()
 
         logging.info('Waiting for DUT to come back up.')
