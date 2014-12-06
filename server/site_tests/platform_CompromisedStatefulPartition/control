@@ -24,7 +24,7 @@ This test:
 The test fails if
 -Did not get OOBE after rebooting the device with corrupted stateful partition.
 Example usage:
-test_that  -b <board>  <ip> platform_CompromisedStatefulPartition
+test_that -b <board> --args "servo_host=<servo_ip>" <dut_ip> platform_CompromisedStatefulPartition
 """
 
 def run(machine):

@@ -4,14 +4,16 @@
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import autotest, test
+import time
 
 class platform_CompromisedStatefulPartition(test.test):
     """Tests how the system recovers with the corrupted stateful partition.
     """
-    version = 1
+    version = 2
 
     CMD_CORRUPT = 'rm -fr /mnt/stateful_partition/*.*'
     OOBE_FILE = '/home/chronos/.oobe_completed'
+    _WAIT_DELAY = 2
     FILES_LIST = [
         '/mnt/stateful_partition/dev_image',
         '/mnt/stateful_partition/encrypted.key',
@@ -33,7 +35,11 @@ class platform_CompromisedStatefulPartition(test.test):
         if not host.run(self.CMD_CORRUPT,
                         ignore_status=True).exit_status == 0:
              raise error.TestFail('Unable to corrupt stateful partition')
+        host.run('sync', ignore_status=True)
+        time.sleep(self._WAIT_DELAY)
         host.reboot()
+        host.run('sync', ignore_status=True)
+        time.sleep(self._WAIT_DELAY)
         if host.path_exists(self.OOBE_FILE):
             raise error.TestFail('Did not get OOBE screen after '
                                  'rebooting the device with '
