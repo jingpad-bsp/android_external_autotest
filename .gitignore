@@ -55,6 +55,7 @@ bug_filing_oauth_credentials.dat
 site_utils/autotest_private/
 site_utils/autotest_tools/
 site_utils/devserver/
+site_utils/buildbot_src/
 
 # Pupplylab files
 puppylab/Vagrantfile
