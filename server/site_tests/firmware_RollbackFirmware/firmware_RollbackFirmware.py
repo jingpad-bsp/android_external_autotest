@@ -68,10 +68,9 @@ class firmware_RollbackFirmware(FirmwareTest):
         self.faft_client.bios.move_version_forward(('a', 'b'))
         self.reboot_warm()
 
-        expected_slot = 'B' if self.fw_vboot2 else 'A'
-        logging.info("Expected firmware " + expected_slot + " boot, done.")
+        logging.info("Expected firmware A boot, done.")
         self.check_state((self.checkers.crossystem_checker, {
-                           'mainfw_act': expected_slot,
+                           'mainfw_act': 'A',
                            'mainfw_type': 'developer' if dev_mode else 'normal',
                            'tried_fwb': '0',
                            }))
