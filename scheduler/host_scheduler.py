@@ -362,22 +362,6 @@ class HostScheduler(BaseHostScheduler):
                     True, hostname__in=lease_hostnames)
 
 
-    @_timer.decorate
-    def _check_host_assignments(self):
-        """Sanity check the current host assignments."""
-        # Move this into a periodic cleanup if pressed for performance.
-        message = ''
-        subject = 'Unexpected host assignments'
-        for offending_job in self.job_query_manager.get_overlapping_jobs():
-            # TODO: crbug.com/375551
-            message += ('HQE %s is using a host in use by another job. This '
-                        'could be because of a frontend special task, in which '
-                        'case they will only use the host sequentially. ' %
-                        offending_job)
-        if message:
-            email_manager.manager.enqueue_notify_email(subject, message)
-
-
     def acquire_hosts(self, host_jobs):
         """Override acquire_hosts.
 
@@ -404,8 +388,6 @@ class HostScheduler(BaseHostScheduler):
         released_hosts = self._release_hosts()
         logging.info('Updating suite assignment with released hosts')
         self._suite_recorder.record_release(released_hosts)
-        logging.info('Checking host assignments.')
-        self._check_host_assignments()
         logging.info('Calling email_manager.')
         email_manager.manager.send_queued_emails()
 

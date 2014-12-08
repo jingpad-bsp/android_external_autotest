@@ -14,7 +14,6 @@ from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import frontend_test_utils
 from autotest_lib.frontend.afe import models
 from autotest_lib.server.cros.dynamic_suite import constants
-from autotest_lib.scheduler import email_manager
 from autotest_lib.scheduler import host_scheduler
 from autotest_lib.scheduler import monitor_db
 from autotest_lib.scheduler import rdb
@@ -203,22 +202,6 @@ class HostSchedulerTests(rdb_testing_utils.AbstractBaseRDBTester,
                         hqe.status == models.HostQueueEntry.Status.QUEUED)
         task = self.db_helper.get_tasks(queue_entry_id=hqe.id)[0]
         self.assertTrue(task.is_active == 0 and task.host_id == host.id)
-
-
-    def testOverlappingJobs(self):
-        """Check that we catch all cases of an overlapping job."""
-        job_1 =  self.create_job(deps=set(['a']))
-        job_2 =  self.create_job(deps=set(['a']))
-        host = self.db_helper.create_host('h1', deps=set(['a']))
-        self.db_helper.add_host_to_job(host, job_1.id, activate=True)
-        self.db_helper.add_host_to_job(host, job_2.id, activate=True)
-        jobs = (self.host_scheduler.job_query_manager.get_overlapping_jobs())
-        self.assertTrue(len(jobs) == 2 and
-                        jobs[0]['host_id'] == jobs[1]['host_id'])
-        email_manager.manager.enqueue_notify_email = mock.MagicMock()
-        self.host_scheduler._check_host_assignments()
-        self.assertTrue(
-                email_manager.manager.enqueue_notify_email.call_count == 1)
 
 
     def _check_agent_invariants(self, host, agent):
