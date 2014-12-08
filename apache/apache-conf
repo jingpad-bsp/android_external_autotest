@@ -10,11 +10,18 @@
    </Location>
 </IfVersion>
 
-<Location /server-status>
-    SetHandler server-status
-    Order deny,allow
-    Deny from all
-    Allow from 172.22.64.0/24
-</Location>
+<IfVersion >= 2.4>
+   <Location /server-status>
+      Require ip 172.22.64.0/24
+   </Location>
+</IfVersion>
+<IfVersion < 2.2.99>
+   <Location /server-status>
+      SetHandler server-status
+      Order deny,allow
+      Deny from all
+      Allow from 172.22.64.0/24
+   </Location>
+</IfVersion>
 
 Include "/usr/local/autotest/apache/conf/all-directives"
