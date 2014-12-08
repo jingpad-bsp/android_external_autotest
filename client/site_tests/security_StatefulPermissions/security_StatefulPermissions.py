@@ -75,6 +75,39 @@ class security_StatefulPermissions(test.test):
                               "/encrypted/var/log/Xorg.0.log"]
                     }
 
+
+    def systemwide_exclusions(self):
+        """Returns a list of paths that are only present on test images
+        and therefore should be excluded from all 'find' commands.
+        """
+        paths = []
+
+        # 'preserve/log' is test-only.
+        paths.append("/unencrypted/preserve/log")
+
+        # Cover up Portage noise.
+        paths.append("/encrypted/var/cache/edb")
+        paths.append("/encrypted/var/lib/gentoo")
+        paths.append("/encrypted/var/log/portage")
+
+        # Cover up Autotest noise.
+        paths.append("/dev_image")
+        paths.append("/var_overlay")
+
+        return paths
+
+
+    def generate_prune_arguments(self, prunelist):
+        """Returns a command-line fragment to make 'find' exclude the entries
+        in |prunelist|.
+
+        @param prunelist: list of paths to ignore
+        """
+        fragment = "-path STATEFUL_ROOT%s -prune -o"
+        fragments = [fragment % path for path in prunelist]
+        return " ".join(fragments)
+
+
     def generate_find(self, user, prunelist):
         """
         Generates the "find" command that spits out all files in stateful
@@ -92,21 +125,11 @@ class security_StatefulPermissions(test.test):
         # '/run/lock' is world-writeable.
         prunelist.append("/encrypted/var/lock")
 
-        # 'preserve/log' is test-only.
-        prunelist.append("/unencrypted/preserve/log")
+        # Add system-wide exclusions.
+        prunelist.extend(self.systemwide_exclusions())
 
-        # Cover up Portage noise.
-        prunelist.append("/encrypted/var/cache/edb")
-        prunelist.append("/encrypted/var/lib/gentoo")
-        prunelist.append("/encrypted/var/log/portage")
-
-        # Cover up Autotest noise.
-        prunelist.append("/dev_image")
-        prunelist.append("/var_overlay")
-
-        cmd = "find STATEFUL_ROOT"
-        for p in prunelist:
-            cmd += " -path STATEFUL_ROOT%s -prune -o " % p
+        cmd = "find STATEFUL_ROOT "
+        cmd += self.generate_prune_arguments(prunelist)
         # Note that we don't "prune" all of /var/tmp's contents, just mask
         # the dir itself. Any contents are still interesting.
         cmd += " -path STATEFUL_ROOT/encrypted/var/tmp -o "
@@ -124,13 +147,14 @@ class security_StatefulPermissions(test.test):
 
     def observed_owners(self):
         """Returns the set of file/directory owners present in stateful."""
-        cmd = ("find STATEFUL_ROOT "
-               "-path STATEFUL_ROOT/dev_image -prune -o "
-               "-printf '%u\\n' | sort -u")
+
+        cmd = "find STATEFUL_ROOT "
+        cmd += self.generate_prune_arguments(self.systemwide_exclusions())
+        cmd += " -printf '%u\\n' | sort -u"
         return set(self.subst_run(cmd).splitlines())
 
 
-    def owners_lacking_testcoverage(self):
+    def owners_lacking_coverage(self):
         """
         Determines the set of owners not covered by any of the
         per-owner tests implemented in this class. Returns
@@ -144,7 +168,7 @@ class security_StatefulPermissions(test.test):
         Sends information about all files in the stateful partition
         owned by a given owner to the standard logging facility.
 
-        @param owner: paths owned by this user will be report
+        @param owner: paths owned by this user will be reported
         """
         cmd = "find STATEFUL_ROOT -user %s -ls" % owner
         cmd_output = self.subst_run(cmd)
@@ -169,13 +193,13 @@ class security_StatefulPermissions(test.test):
         be obtained by each of the privilege levels (usernames)
         used in CrOS.
 
-        The autotest passes if each of the owner-specific sub-tests pass,
-        and, if there are no files unaccounted for (ie, no unexpected
+        The test passes if each of the owner-specific sub-tests pass,
+        and if there are no files unaccounted for (i.e., no unexpected
         file-owners for which we have no tests.)
         """
         testfail = False
 
-        unexpected_owners = self.owners_lacking_testcoverage()
+        unexpected_owners = self.owners_lacking_coverage()
         if unexpected_owners:
             testfail = True
             for o in unexpected_owners:
