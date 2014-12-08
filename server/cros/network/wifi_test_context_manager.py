@@ -3,11 +3,9 @@
 # found in the LICENSE file.
 
 import logging
-import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
-from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server import hosts
@@ -15,10 +13,6 @@ from autotest_lib.server import site_linux_router
 from autotest_lib.server.cros import wifi_test_utils
 from autotest_lib.server.cros.network import attenuator_controller
 from autotest_lib.server.cros.network import wifi_client
-
-from collections import namedtuple
-
-ConnectTime = namedtuple('ConnectTime', 'state, time')
 
 class WiFiTestContextManager(object):
     """A context manager for state used in WiFi autotests.
@@ -35,7 +29,6 @@ class WiFiTestContextManager(object):
     CMDLINE_PACKET_CAPTURE_SNAPLEN = 'capture_snaplen'
     CMDLINE_ROUTER_ADDR = 'router_addr'
     CMDLINE_ROUTER_PACKET_CAPTURES = 'router_capture'
-    CONNECTED_STATES = 'ready', 'portal', 'online'
 
 
     @property
@@ -292,40 +285,10 @@ class WiFiTestContextManager(object):
 
         @returns a named tuple of (state, time)
         """
-        POLLING_INTERVAL_SECONDS = 1.0
-        start_time = time.time()
-        duration = lambda: time.time() - start_time
-        success = False
         if ap_num is None:
             ap_num = 0
         desired_subnet = self.router.get_wifi_ip_subnet(ap_num)
-        while duration() < timeout_seconds:
-            success, state, conn_time  = self.client.wait_for_service_states(
-                    ssid, self.CONNECTED_STATES, timeout_seconds - duration())
-            if not success:
-                time.sleep(POLLING_INTERVAL_SECONDS)
-                continue
-
-            if freq:
-                actual_freq = self.client.get_iw_link_value(
-                        iw_runner.IW_LINK_KEY_FREQUENCY)
-                if str(freq) != actual_freq:
-                    logging.debug('Waiting for desired frequency %s (got %s).',
-                                  freq, actual_freq)
-                    time.sleep(POLLING_INTERVAL_SECONDS)
-                    continue
-
-            actual_subnet = self.client.wifi_ip_subnet
-            if actual_subnet != desired_subnet:
-                logging.debug('Waiting for desired subnet %s (got %s).',
-                              desired_subnet, actual_subnet)
-                time.sleep(POLLING_INTERVAL_SECONDS)
-                continue
-
-            self.assert_ping_from_dut(ap_num=ap_num)
-            return ConnectTime(state, conn_time)
-
-        freq_error_str = (' on frequency %d Mhz' % freq) if freq else ''
-        raise error.TestFail(
-                'Failed to connect to "%s"%s in %f seconds (state=%s)' %
-                (ssid, freq_error_str, duration(), state))
+        wifi_ip = self.router.get_wifi_ip(ap_num)
+        return self.client.wait_for_connection(
+                ssid, timeout_seconds=timeout_seconds, freq=freq,
+                ping_ip=wifi_ip, desired_subnet=desired_subnet)

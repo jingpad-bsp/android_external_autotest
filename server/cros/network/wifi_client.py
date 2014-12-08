@@ -7,8 +7,12 @@ import re
 import signal
 import time
 
+from collections import namedtuple
+
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import interface
+from autotest_lib.client.common_lib.cros.network import iw_runner
+from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.cros import constants
 from autotest_lib.server import autotest
 from autotest_lib.server import site_linux_system
@@ -23,6 +27,7 @@ WAKE_ON_WIFI_PACKET = 'packet'
 WAKE_ON_WIFI_SSID = 'ssid'
 WAKE_ON_WIFI_PACKET_SSID = 'packet_and_ssid'
 
+ConnectTime = namedtuple('ConnectTime', 'state, time')
 
 class WiFiClient(site_linux_system.LinuxSystem):
     """WiFiClient is a thin layer of logic over a remote DUT in wifitests."""
@@ -43,6 +48,8 @@ class WiFiClient(site_linux_system.LinuxSystem):
     # DBus device properties. Wireless interfaces should support these.
     ROAM_THRESHOLD = 'RoamThreshold'
     WAKE_ON_WIFI_FEATURES = 'WakeOnWiFiFeaturesEnabled'
+
+    CONNECTED_STATES = 'ready', 'portal', 'online'
 
     @property
     def board(self):
@@ -811,6 +818,61 @@ class WiFiClient(site_linux_system.LinuxSystem):
                 raise error.TestFail(
                         'Failed to reassociate within given timeout')
             logging.info('Reassociate time: %.2f seconds', reassociate_time)
+
+
+    def wait_for_connection(self, ssid, timeout_seconds=30, freq=None,
+                            ping_ip=None, desired_subnet=None):
+        """Verifies a connection to network ssid, optionally verifying
+        frequency, ping connectivity and subnet.
+
+        @param ssid string ssid of the network to check.
+        @param timeout_seconds int number of seconds to wait for
+                connection on the given frequency.
+        @param freq int frequency of network to check.
+        @param ping_ip string ip address to ping for verification.
+        @param desired_subnet string expected subnet in which client
+                ip address should reside.
+
+        @returns a named tuple of (state, time)
+        """
+        POLLING_INTERVAL_SECONDS = 1.0
+        start_time = time.time()
+        duration = lambda: time.time() - start_time
+        success = False
+        while duration() < timeout_seconds:
+            success, state, conn_time  = self.wait_for_service_states(
+                    ssid, self.CONNECTED_STATES, timeout_seconds - duration())
+            if not success:
+                time.sleep(POLLING_INTERVAL_SECONDS)
+                continue
+
+            if freq:
+                actual_freq = self.get_iw_link_value(
+                        iw_runner.IW_LINK_KEY_FREQUENCY)
+                if str(freq) != actual_freq:
+                    logging.debug('Waiting for desired frequency %s (got %s).',
+                                  freq, actual_freq)
+                    time.sleep(POLLING_INTERVAL_SECONDS)
+                    continue
+
+            if desired_subnet:
+                actual_subnet = self.wifi_ip_subnet
+                if actual_subnet != desired_subnet:
+                    logging.debug('Waiting for desired subnet %s (got %s).',
+                                  desired_subnet, actual_subnet)
+                    time.sleep(POLLING_INTERVAL_SECONDS)
+                    continue
+
+            if ping_ip:
+                ping_config = ping_runner.PingConfig(ping_ip)
+                self.ping(ping_config)
+
+            return ConnectTime(state, conn_time)
+
+        freq_error_str = (' on frequency %d Mhz' % freq) if freq else ''
+        raise error.TestFail(
+                'Failed to connect to "%s"%s in %f seconds (state=%s)' %
+                (ssid, freq_error_str, duration(), state))
 
 
 class TemporaryDBusProperty:
