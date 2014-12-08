@@ -139,7 +139,7 @@ class display_LidCloseOpen(chameleon_test.ChameleonTest):
             is_suspended = False
 
             # Plug before close
-            self.set_plug(plugged_before_close)
+            self.chameleon_port.set_plug(plugged_before_close)
             time.sleep(self.WAIT_TIME_PLUG_TRANSITION)
 
             # Close lid and check
@@ -152,7 +152,7 @@ class display_LidCloseOpen(chameleon_test.ChameleonTest):
 
             # Plug after close and check
             if plugged_after_close is not plugged_before_close:
-                self.set_plug(plugged_after_close)
+                self.chameleon_port.set_plug(plugged_after_close)
                 time.sleep(self.WAIT_TIME_PLUG_TRANSITION)
                 if not plugged_before_close:
                     self.check_still_suspended()
@@ -162,7 +162,7 @@ class display_LidCloseOpen(chameleon_test.ChameleonTest):
 
             # Plug before open and check
             if plugged_before_open is not plugged_after_close:
-                self.set_plug(plugged_before_open)
+                self.chameleon_port.set_plug(plugged_before_open)
                 time.sleep(self.WAIT_TIME_PLUG_TRANSITION)
                 if not plugged_before_close or not plugged_after_close:
                     self.check_still_suspended()
