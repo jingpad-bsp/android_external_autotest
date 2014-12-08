@@ -1,0 +1,21 @@
+# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = 'avakulenko, wiley, keybuk'
+NAME = 'privetd_PrivetSetupFlow'
+TIME = 'FAST'
+TEST_TYPE = 'Server'
+SUITE='tendo_experimental'
+
+DOC = """
+This test validates the privet pairing/authentication/setup flow.
+
+"""
+
+def run(machine):
+    job.run_test('privetd_PrivetSetupFlow',
+                 host=hosts.create_host(machine))
+
+
+parallel_simple(run, machines)
