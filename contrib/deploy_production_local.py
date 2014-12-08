@@ -46,9 +46,10 @@ def verify_repo_clean():
     @raises subprocess.CalledProcessError on a repo command failure.
     """
     CLEAN_STATUS_OUTPUT = 'nothing to commit (working directory clean)'
+    PROD_BRANCH = 'project autotest/                               branch prod'
 
     out = subprocess.check_output(['repo', 'status'], stderr=subprocess.STDOUT)
-    if out.strip() != CLEAN_STATUS_OUTPUT:
+    if out.strip() not in (CLEAN_STATUS_OUTPUT, PROD_BRANCH):
         raise DirtyTreeException(out)
 
 
@@ -228,7 +229,7 @@ def parse_arguments(args):
 
     @param args: The command line arguments to parse. (ususally sys.argsv[1:])
 
-    @returns A Behaviors named tuple that defines what actions we should run.
+    @returns An argparse.Namespace populated with argument values.
     """
     parser = argparse.ArgumentParser(
             description='Command to update an autotest server.')
