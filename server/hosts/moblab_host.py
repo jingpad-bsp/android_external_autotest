@@ -111,8 +111,9 @@ class MoblabHost(cros_host.CrosHost):
         # to continue and reimage the device.
         try:
             self.wait_afe_up()
-        except urllib2.HTTPError:
-            logging.error('DUT has rebooted but AFE has failed to load.: %s')
+        except (urllib2.HTTPError, urllib2.URLError) as e:
+            logging.error('DUT has rebooted but AFE has failed to load.: %s',
+                          e)
 
 
     def wait_afe_up(self, timeout_min=5):
