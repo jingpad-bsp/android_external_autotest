@@ -7,11 +7,14 @@
 import logging, os, shutil, time
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.chameleon import chameleon_port_finder
+from autotest_lib.client.cros.chameleon import chameleon_screen_test
 from autotest_lib.client.cros.chameleon import edid
-from autotest_lib.server.cros.chameleon import chameleon_test
+from autotest_lib.server import test
+from autotest_lib.server.cros.multimedia import remote_facade_factory
 
 
-class display_EndToEnd(chameleon_test.ChameleonTest):
+class display_EndToEnd(test.test):
     """External Display end-toend test.
 
     This test talks to a Chameleon board and a DUT to set up, run, and verify
@@ -221,6 +224,28 @@ class display_EndToEnd(chameleon_test.ChameleonTest):
         # Remove any crash data before test procedure
         if self.is_crash_data_present():
             self.remove_crash_data()
+
+        factory = remote_facade_factory.RemoteFacadeFactory(host)
+        display_facade = factory.create_display_facade()
+        chameleon_board = host.chameleon
+
+        chameleon_board.reset()
+        finder = chameleon_port_finder.ChameleonVideoInputFinder(
+                chameleon_board, display_facade)
+        for chameleon_port in finder.iterate_all_ports():
+            self.run_test_on_port(chameleon_port, display_facade)
+
+
+    def run_test_on_port(self, chameleon_port, display_facade):
+        """Run the test on the given Chameleon port.
+
+        @param chameleon_port: a ChameleonPorts object.
+        @param display_facade: a display facade object.
+        """
+        self.chameleon_port = chameleon_port
+        self.display_facade = display_facade
+        self.screen_test = chameleon_screen_test.ChameleonScreenTest(
+                chameleon_port, display_facade, self.outputdir)
 
         self.connector_used = self.display_facade.get_external_connector_name()
         first_edid, second_edid = self.get_edids_filepaths()

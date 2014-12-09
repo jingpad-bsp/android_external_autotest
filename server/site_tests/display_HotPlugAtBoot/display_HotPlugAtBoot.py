@@ -7,10 +7,13 @@
 import logging
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.chameleon import chameleon_test
+from autotest_lib.client.cros.chameleon import chameleon_port_finder
+from autotest_lib.client.cros.chameleon import chameleon_screen_test
+from autotest_lib.server import test
+from autotest_lib.server.cros.multimedia import remote_facade_factory
 
 
-class display_HotPlugAtBoot(chameleon_test.ChameleonTest):
+class display_HotPlugAtBoot(test.test):
     """Display hot-plug and reboot test.
 
     This test talks to a Chameleon board and a DUT to set up, run, and verify
@@ -26,52 +29,64 @@ class display_HotPlugAtBoot(chameleon_test.ChameleonTest):
 
 
     def run_once(self, host, test_mirrored=False):
-        logging.info('See the display on Chameleon: port %d (%s)',
-                     self.chameleon_port.get_connector_id(),
-                     self.chameleon_port.get_connector_type())
+        factory = remote_facade_factory.RemoteFacadeFactory(host)
+        display_facade = factory.create_display_facade()
+        chameleon_board = host.chameleon
 
-        logging.info('Set mirrored: %s', test_mirrored)
-        self.display_facade.set_mirrored(test_mirrored)
-
-        # Keep the original connector name, for later comparison.
-        expected_connector = self.display_facade.get_external_connector_name()
-        resolution = self.display_facade.get_external_resolution()
-        logging.info('See the display on DUT: %s (%dx%d)', expected_connector,
-                     *resolution)
+        chameleon_board.reset()
+        finder = chameleon_port_finder.ChameleonVideoInputFinder(
+                chameleon_board, display_facade)
 
         errors = []
-        for plugged_before_boot, plugged_after_boot in self.PLUG_CONFIGS:
-            logging.info('TESTING THE CASE: %s > reboot > %s',
-                         'plug' if plugged_before_boot else 'unplug',
-                         'plug' if plugged_after_boot else 'unplug')
-            boot_id = host.get_boot_id()
-            self.chameleon_port.set_plug(plugged_before_boot)
+        for chameleon_port in finder.iterate_all_ports():
+            screen_test = chameleon_screen_test.ChameleonScreenTest(
+                    chameleon_port, display_facade, self.outputdir)
 
-            # Don't wait DUT up. Do plug/unplug while booting.
-            logging.info('Reboot...')
-            host.reboot(wait=False)
+            logging.info('See the display on Chameleon: port %d (%s)',
+                         chameleon_port.get_connector_id(),
+                         chameleon_port.get_connector_type())
 
-            host.test_wait_for_shutdown()
-            self.chameleon_port.set_plug(plugged_after_boot)
-            host.test_wait_for_boot(boot_id)
+            logging.info('Set mirrored: %s', test_mirrored)
+            display_facade.set_mirrored(test_mirrored)
 
-            if self.screen_test.check_external_display_connected(
-                    expected_connector if plugged_after_boot else False,
-                    errors):
-                # Skip the following test if an unexpected display detected.
-                continue
+            # Keep the original connector name, for later comparison.
+            expected_connector = display_facade.get_external_connector_name()
+            resolution = display_facade.get_external_resolution()
+            logging.info('See the display on DUT: %s (%dx%d)', expected_connector,
+                         *resolution)
 
-            if plugged_after_boot:
-                if test_mirrored and (
-                        not self.display_facade.is_mirrored_enabled()):
-                    error_message = 'Error: not rebooted to mirrored mode'
-                    errors.append(error_message)
-                    logging.error(error_message)
-                    logging.info('Set mirrored: %s', True)
-                    self.display_facade.set_mirrored(True)
-                else:
-                    self.screen_test.test_screen_with_image(
-                            resolution, test_mirrored, errors)
+            for plugged_before_boot, plugged_after_boot in self.PLUG_CONFIGS:
+                logging.info('TESTING THE CASE: %s > reboot > %s',
+                             'plug' if plugged_before_boot else 'unplug',
+                             'plug' if plugged_after_boot else 'unplug')
+                boot_id = host.get_boot_id()
+                chameleon_port.set_plug(plugged_before_boot)
+
+                # Don't wait DUT up. Do plug/unplug while booting.
+                logging.info('Reboot...')
+                host.reboot(wait=False)
+
+                host.test_wait_for_shutdown()
+                chameleon_port.set_plug(plugged_after_boot)
+                host.test_wait_for_boot(boot_id)
+
+                if screen_test.check_external_display_connected(
+                        expected_connector if plugged_after_boot else False,
+                        errors):
+                    # Skip the following test if an unexpected display detected.
+                    continue
+
+                if plugged_after_boot:
+                    if test_mirrored and (
+                            not display_facade.is_mirrored_enabled()):
+                        error_message = 'Error: not rebooted to mirrored mode'
+                        errors.append(error_message)
+                        logging.error(error_message)
+                        logging.info('Set mirrored: %s', True)
+                        display_facade.set_mirrored(True)
+                    else:
+                        screen_test.test_screen_with_image(
+                                resolution, test_mirrored, errors)
 
         if errors:
             raise error.TestFail('; '.join(set(errors)))

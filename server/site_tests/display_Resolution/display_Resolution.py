@@ -9,11 +9,14 @@ import os
 import time
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.chameleon import chameleon_port_finder
+from autotest_lib.client.cros.chameleon import chameleon_screen_test
 from autotest_lib.client.cros.chameleon import edid
-from autotest_lib.server.cros.chameleon import chameleon_test
+from autotest_lib.server import test
+from autotest_lib.server.cros.multimedia import remote_facade_factory
 
 
-class display_Resolution(chameleon_test.ChameleonTest):
+class display_Resolution(test.test):
     """Server side external display test.
 
     This test talks to a Chameleon board and a DUT to set up, run, and verify
@@ -33,40 +36,53 @@ class display_Resolution(chameleon_test.ChameleonTest):
 
     def run_once(self, host, test_mirrored=False, test_suspend_resume=False,
                  test_reboot=False):
+        factory = remote_facade_factory.RemoteFacadeFactory(host)
+        display_facade = factory.create_display_facade()
+        chameleon_board = host.chameleon
+
+        chameleon_board.reset()
+        finder = chameleon_port_finder.ChameleonVideoInputFinder(
+                chameleon_board, display_facade)
+
         errors = []
-        for interface, width, height in self.RESOLUTION_TEST_LIST:
-            test_resolution = (width, height)
-            test_name = "%s_%dx%d" % ((interface,) + test_resolution)
+        for chameleon_port in finder.iterate_all_ports():
+            screen_test = chameleon_screen_test.ChameleonScreenTest(
+                    chameleon_port, display_facade, self.outputdir)
 
-            if not edid.is_edid_supported(host, interface, width, height):
-                logging.info('skip unsupported EDID: %s', test_name)
-                continue
+            for interface, width, height in self.RESOLUTION_TEST_LIST:
+                test_resolution = (width, height)
+                test_name = "%s_%dx%d" % ((interface,) + test_resolution)
 
-            if test_reboot:
-                logging.info('Reboot...')
-                boot_id = host.get_boot_id()
-                host.reboot(wait=False)
-                host.test_wait_for_shutdown()
+                if not edid.is_edid_supported(host, interface, width, height):
+                    logging.info('skip unsupported EDID: %s', test_name)
+                    continue
 
-            path = os.path.join(self.bindir, 'test_data', 'edids', test_name)
-            logging.info('Use EDID: %s', test_name)
-            with self.chameleon_port.use_edid_file(path):
                 if test_reboot:
-                    host.test_wait_for_boot(boot_id)
+                    logging.info('Reboot...')
+                    boot_id = host.get_boot_id()
+                    host.reboot(wait=False)
+                    host.test_wait_for_shutdown()
 
-                logging.info('Set mirrored: %s', test_mirrored)
-                self.display_facade.set_mirrored(test_mirrored)
-                if test_suspend_resume:
-                    if test_mirrored:
-                        # magic sleep to make nyan_big wake up in mirrored mode
-                        # TODO: find root cause
-                        time.sleep(6)
-                    logging.info('Going to suspend...')
-                    self.display_facade.suspend_resume()
-                    logging.info('Resumed back')
+                path = os.path.join(self.bindir, 'test_data', 'edids',
+                                    test_name)
+                logging.info('Use EDID: %s', test_name)
+                with chameleon_port.use_edid_file(path):
+                    if test_reboot:
+                        host.test_wait_for_boot(boot_id)
 
-                self.screen_test.test_screen_with_image(
-                        test_resolution, test_mirrored, errors)
+                    logging.info('Set mirrored: %s', test_mirrored)
+                    display_facade.set_mirrored(test_mirrored)
+                    if test_suspend_resume:
+                        if test_mirrored:
+                            # magic sleep to wake up nyan_big in mirrored mode
+                            # TODO: find root cause
+                            time.sleep(6)
+                        logging.info('Going to suspend...')
+                        display_facade.suspend_resume()
+                        logging.info('Resumed back')
+
+                    screen_test.test_screen_with_image(
+                            test_resolution, test_mirrored, errors)
 
         if errors:
             raise error.TestFail('; '.join(set(errors)))

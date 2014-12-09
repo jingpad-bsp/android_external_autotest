@@ -7,10 +7,13 @@
 import logging, time
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.chameleon import chameleon_test
+from autotest_lib.client.cros.chameleon import chameleon_port_finder
+from autotest_lib.client.cros.chameleon import chameleon_screen_test
+from autotest_lib.server import test
+from autotest_lib.server.cros.multimedia import remote_facade_factory
 
 
-class display_SwitchMode(chameleon_test.ChameleonTest):
+class display_SwitchMode(test.test):
     """External Display switch between extended and mirrored modes.
 
     This test switches the external display mode between extended
@@ -49,14 +52,28 @@ class display_SwitchMode(chameleon_test.ChameleonTest):
 
 
     def run_once(self, host, repeat):
-        self.errors = list()
-        logging.debug('See the display on Chameleon: port %d (%s)',
-                     self.chameleon_port.get_connector_id(),
-                     self.chameleon_port.get_connector_type())
-        # Keep the original connector name, for later comparison.
-        self.connector_used = self.display_facade.get_external_connector_name()
+        factory = remote_facade_factory.RemoteFacadeFactory(host)
+        self.display_facade = factory.create_display_facade()
+        chameleon_board = host.chameleon
 
-        for i in xrange(repeat):
-            logging.info("Iteration %d", (i + 1))
-            self.set_mode_and_check(False)
-            self.set_mode_and_check(True)
+        chameleon_board.reset()
+        finder = chameleon_port_finder.ChameleonVideoInputFinder(
+                chameleon_board, self.display_facade)
+
+        self.errors = []
+        for chameleon_port in finder.iterate_all_ports():
+            self.chameleon_port = chameleon_port
+            self.screen_test = chameleon_screen_test.ChameleonScreenTest(
+                    chameleon_port, self.display_facade, self.outputdir)
+
+            logging.debug('See the display on Chameleon: port %d (%s)',
+                         self.chameleon_port.get_connector_id(),
+                         self.chameleon_port.get_connector_type())
+            # Keep the original connector name, for later comparison.
+            self.connector_used = (
+                    self.display_facade.get_external_connector_name())
+
+            for i in xrange(repeat):
+                logging.info("Iteration %d", (i + 1))
+                self.set_mode_and_check(False)
+                self.set_mode_and_check(True)

@@ -9,10 +9,13 @@ import logging
 import time
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.chameleon import chameleon_test
+from autotest_lib.client.cros.chameleon import chameleon_port_finder
+from autotest_lib.client.cros.chameleon import chameleon_screen_test
+from autotest_lib.server import test
+from autotest_lib.server.cros.multimedia import remote_facade_factory
 
 
-class display_HotPlugNoisy(chameleon_test.ChameleonTest):
+class display_HotPlugNoisy(test.test):
     """Noisy display HPD test.
 
     This test talks to a Chameleon board and a DUT to set up, run, and verify
@@ -35,48 +38,61 @@ class display_HotPlugNoisy(chameleon_test.ChameleonTest):
 
 
     def run_once(self, host, test_mirrored=False):
-        logging.info('See the display on Chameleon: port %d (%s)',
-                     self.chameleon_port.get_connector_id(),
-                     self.chameleon_port.get_connector_type())
+        factory = remote_facade_factory.RemoteFacadeFactory(host)
+        display_facade = factory.create_display_facade()
+        chameleon_board = host.chameleon
 
-        logging.info('Set mirrored: %s', test_mirrored)
-        self.display_facade.set_mirrored(test_mirrored)
-
-        # Keep the original connector name, for later comparison.
-        expected_connector = self.display_facade.get_external_connector_name()
-        resolution = self.display_facade.get_external_resolution()
-        logging.info('See the display on DUT: %s (%dx%d)', expected_connector,
-                     *resolution)
+        chameleon_board.reset()
+        finder = chameleon_port_finder.ChameleonVideoInputFinder(
+                chameleon_board, display_facade)
 
         errors = []
-        for (plugged_before_noise, plugged_after_noise) in self.PLUG_CONFIGS:
-            logging.info('TESTING THE CASE: %s > noise > %s',
-                         'plug' if plugged_before_noise else 'unplug',
-                         'plug' if plugged_after_noise else 'unplug')
+        for chameleon_port in finder.iterate_all_ports():
+            screen_test = chameleon_screen_test.ChameleonScreenTest(
+                    chameleon_port, display_facade, self.outputdir)
 
-            self.chameleon_port.set_plug(plugged_before_noise)
+            logging.info('See the display on Chameleon: port %d (%s)',
+                         chameleon_port.get_connector_id(),
+                         chameleon_port.get_connector_type())
 
-            if self.screen_test.check_external_display_connected(
-                    expected_connector if plugged_before_noise else False,
-                    errors):
-                # Skip the following test if an unexpected display detected.
-                continue
+            logging.info('Set mirrored: %s', test_mirrored)
+            display_facade.set_mirrored(test_mirrored)
 
-            self.chameleon_port.fire_mixed_hpd_pulses(
-                    self.PULSES_PLUGGED if plugged_after_noise
-                                        else self.PULSES_UNPLUGGED)
+            # Keep the original connector name, for later comparison.
+            expected_connector = display_facade.get_external_connector_name()
+            resolution = display_facade.get_external_resolution()
+            logging.info('See the display on DUT: %s (%dx%d)',
+                         expected_connector, *resolution)
 
-            if self.screen_test.check_external_display_connected(
-                    expected_connector if plugged_after_noise else False,
-                    errors):
-                # Skip the following test if an unexpected display detected.
-                continue
+            for (plugged_before_noise,
+                 plugged_after_noise) in self.PLUG_CONFIGS:
+                logging.info('TESTING THE CASE: %s > noise > %s',
+                             'plug' if plugged_before_noise else 'unplug',
+                             'plug' if plugged_after_noise else 'unplug')
 
-            if plugged_after_noise:
-                self.screen_test.test_screen_with_image(
-                        resolution, test_mirrored, errors)
-            else:
-                time.sleep(1)
+                chameleon_port.set_plug(plugged_before_noise)
+
+                if screen_test.check_external_display_connected(
+                        expected_connector if plugged_before_noise else False,
+                        errors):
+                    # Skip the following test if an unexpected display detected.
+                    continue
+
+                chameleon_port.fire_mixed_hpd_pulses(
+                        self.PULSES_PLUGGED if plugged_after_noise
+                                            else self.PULSES_UNPLUGGED)
+
+                if screen_test.check_external_display_connected(
+                        expected_connector if plugged_after_noise else False,
+                        errors):
+                    # Skip the following test if an unexpected display detected.
+                    continue
+
+                if plugged_after_noise:
+                    screen_test.test_screen_with_image(
+                            resolution, test_mirrored, errors)
+                else:
+                    time.sleep(1)
 
         if errors:
             raise error.TestFail('; '.join(set(errors)))

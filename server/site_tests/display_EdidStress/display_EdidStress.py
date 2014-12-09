@@ -9,11 +9,14 @@ import logging
 import os
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.chameleon import chameleon_port_finder
+from autotest_lib.client.cros.chameleon import chameleon_screen_test
 from autotest_lib.client.cros.chameleon import edid
-from autotest_lib.server.cros.chameleon import chameleon_test
+from autotest_lib.server import test
+from autotest_lib.server.cros.multimedia import remote_facade_factory
 
 
-class display_EdidStress(chameleon_test.ChameleonTest):
+class display_EdidStress(test.test):
     """Server side external display test.
 
     This test switches Chameleon EDID from among a large pool of EDIDs, tests
@@ -27,46 +30,59 @@ class display_EdidStress(chameleon_test.ChameleonTest):
                    'VGA': {'VGA'}}
 
     def run_once(self, host):
-        edid_path = os.path.join(self.bindir, 'test_data', 'edids', '*')
-        logging.info('See the display on Chameleon: port %d (%s)',
-                     self.chameleon_port.get_connector_id(),
-                     self.chameleon_port.get_connector_type())
-
-        connector = self.chameleon_port.get_connector_type()
-        supported_types = self._EDID_TYPES[connector]
 
         def _get_edid_type(s):
             i = s.rfind('_') + 1
             j = len(s) - len('.txt')
             return s[i:j].upper()
 
-        failed_edids = []
-        for filepath in glob.glob(edid_path):
-            filename = os.path.basename(filepath)
-            edid_type = _get_edid_type(filename)
-            if edid_type not in supported_types:
-                logging.info('Skip EDID: %s...', filename)
-                continue
+        edid_path = os.path.join(self.bindir, 'test_data', 'edids', '*')
 
-            logging.info('Use EDID: %s...', filename)
-            resolution = (0, 0)
-            try:
-                with self.chameleon_port.use_edid(
-                        edid.Edid.from_file(filepath, skip_verify=True)):
-                    if not self.chameleon_port.wait_video_input_stable():
-                        raise error.TestFail('Failed to wait source stable')
-                    resolution = self.display_facade.get_external_resolution()
-                    if resolution == (0, 0):
-                        raise error.TestFail('Detected resolution 0x0')
-                    if self.screen_test.test_resolution(resolution):
-                        raise error.TestFail('Resolution test failed')
-            except error.TestFail as e:
-                logging.warning(e)
-                logging.error('EDID not supported: %s', filename)
-                failed_edids.append(filename)
+        factory = remote_facade_factory.RemoteFacadeFactory(host)
+        display_facade = factory.create_display_facade()
+        chameleon_board = host.chameleon
 
-        if failed_edids:
-            message = ('Total %d EDIDs not supported: ' % len(failed_edids) +
-                       ', '.join(failed_edids))
-            logging.error(message)
-            raise error.TestFail(message)
+        chameleon_board.reset()
+        finder = chameleon_port_finder.ChameleonVideoInputFinder(
+                chameleon_board, display_facade)
+        for chameleon_port in finder.iterate_all_ports():
+            screen_test = chameleon_screen_test.ChameleonScreenTest(
+                chameleon_port, display_facade, self.outputdir)
+
+            logging.info('See the display on Chameleon: port %d (%s)',
+                         chameleon_port.get_connector_id(),
+                         chameleon_port.get_connector_type())
+
+            connector = chameleon_port.get_connector_type()
+            supported_types = self._EDID_TYPES[connector]
+
+            failed_edids = []
+            for filepath in glob.glob(edid_path):
+                filename = os.path.basename(filepath)
+                edid_type = _get_edid_type(filename)
+                if edid_type not in supported_types:
+                    logging.info('Skip EDID: %s...', filename)
+                    continue
+
+                logging.info('Use EDID: %s...', filename)
+                resolution = (0, 0)
+                try:
+                    with chameleon_port.use_edid(
+                            edid.Edid.from_file(filepath, skip_verify=True)):
+                        if not chameleon_port.wait_video_input_stable():
+                            raise error.TestFail('Failed to wait source stable')
+                        resolution = display_facade.get_external_resolution()
+                        if resolution == (0, 0):
+                            raise error.TestFail('Detected resolution 0x0')
+                        if screen_test.test_resolution(resolution):
+                            raise error.TestFail('Resolution test failed')
+                except error.TestFail as e:
+                    logging.warning(e)
+                    logging.error('EDID not supported: %s', filename)
+                    failed_edids.append(filename)
+
+            if failed_edids:
+                message = ('Total %d EDIDs not supported: ' % len(failed_edids)
+                           + ', '.join(failed_edids))
+                logging.error(message)
+                raise error.TestFail(message)

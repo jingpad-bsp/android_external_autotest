@@ -8,10 +8,13 @@ import logging
 import time
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.chameleon import chameleon_test
+from autotest_lib.client.cros.chameleon import chameleon_port_finder
+from autotest_lib.client.cros.chameleon import chameleon_screen_test
+from autotest_lib.server import test
+from autotest_lib.server.cros.multimedia import remote_facade_factory
 
 
-class display_HotPlugAtSuspend(chameleon_test.ChameleonTest):
+class display_HotPlugAtSuspend(test.test):
     """Display hot-plug and suspend test.
 
     This test talks to a Chameleon board and a DUT to set up, run, and verify
@@ -38,74 +41,86 @@ class display_HotPlugAtSuspend(chameleon_test.ChameleonTest):
 
 
     def run_once(self, host, test_mirrored=False):
-        logging.info('See the display on Chameleon: port %d (%s)',
-                     self.chameleon_port.get_connector_id(),
-                     self.chameleon_port.get_connector_type())
+        factory = remote_facade_factory.RemoteFacadeFactory(host)
+        display_facade = factory.create_display_facade()
+        chameleon_board = host.chameleon
 
-        logging.info('Set mirrored: %s', test_mirrored)
-        self.display_facade.set_mirrored(test_mirrored)
-
-        # Keep the original connector name, for later comparison.
-        expected_connector = self.display_facade.get_external_connector_name()
-        resolution = self.display_facade.get_external_resolution()
-        logging.info('See the display on DUT: %s (%dx%d)', expected_connector,
-                     *resolution)
+        chameleon_board.reset()
+        finder = chameleon_port_finder.ChameleonVideoInputFinder(
+                chameleon_board, display_facade)
 
         errors = []
-        for (plugged_before_suspend, plugged_after_suspend,
-             plugged_before_resume) in self.PLUG_CONFIGS:
-            logging.info('TESTING THE CASE: %s > suspend > %s > %s > resume',
-                         'plug' if plugged_before_suspend else 'unplug',
-                         'plug' if plugged_after_suspend else 'unplug',
-                         'plug' if plugged_before_resume else 'unplug')
-            boot_id = host.get_boot_id()
-            self.chameleon_port.set_plug(plugged_before_suspend)
-            if test_mirrored:
-                # magic sleep to make nyan_big wake up in mirrored mode
-                # TODO: find root cause
-                time.sleep(6)
-            logging.info('Going to suspend, for %d seconds...',
-                         self.SUSPEND_DURATION)
-            time_before_suspend = time.time()
-            self.display_facade.suspend_resume_bg(self.SUSPEND_DURATION)
+        for chameleon_port in finder.iterate_all_ports():
+            screen_test = chameleon_screen_test.ChameleonScreenTest(
+                    chameleon_port, display_facade, self.outputdir)
 
-            # Confirm DUT suspended.
-            logging.info('- Wait for sleep...')
-            host.test_wait_for_sleep(self.SUSPEND_TIMEOUT)
-            self.chameleon_port.set_plug(plugged_after_suspend)
+            logging.info('See the display on Chameleon: port %d (%s)',
+                         chameleon_port.get_connector_id(),
+                         chameleon_port.get_connector_type())
 
-            current_time = time.time()
-            sleep_time = (self.SUSPEND_DURATION -
-                          (current_time - time_before_suspend) -
-                          self.TIME_MARGIN_BEFORE_RESUME)
-            if sleep_time > 0:
-                logging.info('- Sleep for %.2f seconds...', sleep_time)
-                time.sleep(sleep_time)
-            self.chameleon_port.set_plug(plugged_before_resume)
-            time.sleep(self.TIME_MARGIN_BEFORE_RESUME)
+            logging.info('Set mirrored: %s', test_mirrored)
+            display_facade.set_mirrored(test_mirrored)
 
-            logging.info('- Wait for resume...')
-            self.host.test_wait_for_resume(boot_id, self.RESUME_TIMEOUT)
+            # Keep the original connector name, for later comparison.
+            expected_connector = display_facade.get_external_connector_name()
+            resolution = display_facade.get_external_resolution()
+            logging.info('See the display on DUT: %s (%dx%d)',
+                         expected_connector, *resolution)
 
-            logging.info('Resumed back')
+            for (plugged_before_suspend, plugged_after_suspend,
+                 plugged_before_resume) in self.PLUG_CONFIGS:
+                logging.info('TEST CASE: %s > suspend > %s > %s > resume',
+                             'plug' if plugged_before_suspend else 'unplug',
+                             'plug' if plugged_after_suspend else 'unplug',
+                             'plug' if plugged_before_resume else 'unplug')
+                boot_id = host.get_boot_id()
+                chameleon_port.set_plug(plugged_before_suspend)
+                if test_mirrored:
+                    # magic sleep to make nyan_big wake up in mirrored mode
+                    # TODO: find root cause
+                    time.sleep(6)
+                logging.info('Going to suspend, for %d seconds...',
+                             self.SUSPEND_DURATION)
+                time_before_suspend = time.time()
+                display_facade.suspend_resume_bg(self.SUSPEND_DURATION)
 
-            if self.screen_test.check_external_display_connected(
-                    expected_connector if plugged_before_resume else False,
-                    errors):
-                # Skip the following test if an unexpected display detected.
-                continue
+                # Confirm DUT suspended.
+                logging.info('- Wait for sleep...')
+                host.test_wait_for_sleep(self.SUSPEND_TIMEOUT)
+                chameleon_port.set_plug(plugged_after_suspend)
 
-            if plugged_before_resume:
-                if test_mirrored and (
-                        not self.display_facade.is_mirrored_enabled()):
-                    error_message = 'Error: not resumed to mirrored mode'
-                    errors.append(error_message)
-                    logging.error(error_message)
-                    logging.info('Set mirrored: %s', True)
-                    self.display_facade.set_mirrored(True)
-                else:
-                    self.screen_test.test_screen_with_image(
-                            resolution, test_mirrored, errors)
+                current_time = time.time()
+                sleep_time = (self.SUSPEND_DURATION -
+                              (current_time - time_before_suspend) -
+                              self.TIME_MARGIN_BEFORE_RESUME)
+                if sleep_time > 0:
+                    logging.info('- Sleep for %.2f seconds...', sleep_time)
+                    time.sleep(sleep_time)
+                chameleon_port.set_plug(plugged_before_resume)
+                time.sleep(self.TIME_MARGIN_BEFORE_RESUME)
+
+                logging.info('- Wait for resume...')
+                host.test_wait_for_resume(boot_id, self.RESUME_TIMEOUT)
+
+                logging.info('Resumed back')
+
+                if screen_test.check_external_display_connected(
+                        expected_connector if plugged_before_resume else False,
+                        errors):
+                    # Skip the following test if an unexpected display detected.
+                    continue
+
+                if plugged_before_resume:
+                    if test_mirrored and (
+                            not display_facade.is_mirrored_enabled()):
+                        error_message = 'Error: not resumed to mirrored mode'
+                        errors.append(error_message)
+                        logging.error(error_message)
+                        logging.info('Set mirrored: %s', True)
+                        display_facade.set_mirrored(True)
+                    else:
+                        screen_test.test_screen_with_image(
+                                resolution, test_mirrored, errors)
 
         if errors:
             raise error.TestFail('; '.join(set(errors)))

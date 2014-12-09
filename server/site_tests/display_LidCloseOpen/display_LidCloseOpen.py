@@ -7,10 +7,12 @@
 import logging, time
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.chameleon import chameleon_port_finder
+from autotest_lib.client.cros.chameleon import chameleon_screen_test
+from autotest_lib.server import test
+from autotest_lib.server.cros.multimedia import remote_facade_factory
 
-from autotest_lib.server.cros.chameleon import chameleon_test
-
-class display_LidCloseOpen(chameleon_test.ChameleonTest):
+class display_LidCloseOpen(test.test):
     """External Display Lid Close/Open test. """
     version = 1
 
@@ -127,6 +129,28 @@ class display_LidCloseOpen(chameleon_test.ChameleonTest):
         # Check the servo object
         if self.host.servo is None:
             raise error.TestError('Invalid servo object found on the host.')
+
+        factory = remote_facade_factory.RemoteFacadeFactory(host)
+        display_facade = factory.create_display_facade()
+        chameleon_board = host.chameleon
+
+        chameleon_board.reset()
+        finder = chameleon_port_finder.ChameleonVideoInputFinder(
+                chameleon_board, display_facade)
+        for chameleon_port in finder.iterate_all_ports():
+            self.run_test_on_port(chameleon_port, display_facade)
+
+
+    def run_test_on_port(self, chameleon_port, display_facade):
+        """Run the test on the given Chameleon port.
+
+        @param chameleon_port: a ChameleonPorts object.
+        @param display_facade: a display facade object.
+        """
+        self.chameleon_port = chameleon_port
+        self.display_facade = display_facade
+        self.screen_test = chameleon_screen_test.ChameleonScreenTest(
+                chameleon_port, display_facade, self.outputdir)
 
         # Get connector type used (HDMI,DP,...)
         self.connector_used = self.display_facade.get_external_connector_name()
