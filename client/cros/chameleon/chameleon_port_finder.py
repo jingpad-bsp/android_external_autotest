@@ -36,10 +36,10 @@ class ChameleonPortFinder(object):
                  ports as the first element and failed ports as second element.
 
         """
-        connected_ports = self.chameleon_board.get_all_ports()
-        dut_failed_ports = []
+        self.connected = self.chameleon_board.get_all_ports()
+        self.failed = []
 
-        return ChameleonPorts(connected_ports, dut_failed_ports)
+        return ChameleonPorts(self.connected, self.failed)
 
 
     def find_port(self, interface):
@@ -90,10 +90,10 @@ class ChameleonInputFinder(ChameleonPortFinder):
                  element.
 
         """
-        connected_ports = self.chameleon_board.get_all_inputs()
-        dut_failed_ports = []
+        self.connected = self.chameleon_board.get_all_inputs()
+        self.failed = []
 
-        return ChameleonPorts(connected_ports, dut_failed_ports)
+        return ChameleonPorts(self.connected, self.failed)
 
 
 class ChameleonOutputFinder(ChameleonPortFinder):
@@ -109,10 +109,10 @@ class ChameleonOutputFinder(ChameleonPortFinder):
                  element.
 
         """
-        connected_ports = self.chameleon_board.get_all_outputs()
-        dut_failed_ports = []
+        self.connected = self.chameleon_board.get_all_outputs()
+        self.failed = []
 
-        return ChameleonPorts(connected_ports, dut_failed_ports)
+        return ChameleonPorts(self.connected, self.failed)
 
 
 class ChameleonVideoInputFinder(ChameleonInputFinder):
@@ -215,9 +215,9 @@ class ChameleonAudioInputFinder(ChameleonInputFinder):
 
         """
         all_ports = super(ChameleonAudioInputFinder, self).find_all_ports()
-        connected_ports = [chameleon.ChameleonAudioInput(port)
-                           for port in all_ports.connected
-                           if port.has_audio_support()]
-        dut_failed_ports = []
+        self.connected = [chameleon.ChameleonAudioInput(port)
+                          for port in all_ports.connected
+                          if port.has_audio_support()]
+        self.failed = []
 
-        return ChameleonPorts(connected_ports, dut_failed_ports)
+        return ChameleonPorts(self.connected, self.failed)
