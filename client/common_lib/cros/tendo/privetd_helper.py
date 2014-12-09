@@ -17,11 +17,14 @@ URL_PAIRING_START = 'v3/pairing/start'
 URL_SETUP_START = 'v3/setup/start'
 URL_SETUP_STATUS = 'v3/setup/status'
 
+SETUP_START_RESPONSE_WIFI_SECTION = 'wifi'
+
 
 class PrivetdHelper(object):
     """Delegate class containing logic useful with privetd."""
     DEFAULT_HTTP_PORT = 8080
     DEFAULT_HTTPS_PORT = 8081
+
 
     def __init__(self, host=None):
         self._host = None
@@ -90,19 +93,26 @@ class PrivetdHelper(object):
         while retry_count >= 0:
             result = self._run('curl %s' % url, args=args,
                                ignore_status=True)
-            if result.exit_status == 0 and result.stdout != '404':
-                return self._run('cat %s' % output_file).stdout
             retry_count -= 1
+            raw_response = ''
+            success = result.exit_status == 0
+            http_code = result.stdout
+            if success:
+                raw_response = self._run('cat %s' % output_file).stdout
+                logging.debug('Got raw response: %s', raw_response)
+            if success and http_code == '200':
+                return raw_response
             if retry_count < 0:
-                raise error.TestFail('Unable to complete request to %s' %
-                                     url)
+                raise error.TestFail('Failed requesting %s (code=%s)' %
+                                     (url, http_code))
             logging.warn('Failed to connect to host. Retrying...')
             time.sleep(retry_delay)
 
 
     def restart_privetd(self, log_verbosity=0, enable_ping=False,
                         http_port=DEFAULT_HTTP_PORT,
-                        https_port=DEFAULT_HTTPS_PORT):
+                        https_port=DEFAULT_HTTPS_PORT,
+                        disable_security=False):
         """Restart privetd in various configurations.
 
         @param log_verbosity: integer verbosity level of log messages.
@@ -110,6 +120,7 @@ class PrivetdHelper(object):
                 on the privetd web server.
         @param http_port: integer port number for the privetd HTTP server.
         @param https_port: integer port number for the privetd HTTPS server.
+        @param disable_security: bool True to disable pairing security
 
         """
         self._http_port = http_port
@@ -120,15 +131,16 @@ class PrivetdHelper(object):
         flag_list.append('PRIVETD_HTTPS_PORT=%d' % self._https_port)
         if enable_ping:
             flag_list.append('PRIVETD_ENABLE_PING=true')
+        if disable_security:
+            flag_list.append('PRIVETD_DISABLE_SECURITY=true')
         self._run('stop privetd', ignore_status=True)
         self._run('start privetd %s' % ' '.join(flag_list))
         # TODO(wiley) Ping some DBus API that will let us know when the daemon
         #             reaches steady state.
 
 
-
     def send_privet_request(self, path_fragment, request_data=None,
-                            auth_token='anonymous'):
+                            auth_token='Privet anonymous'):
         """Sends a privet request over HTTPS.
 
         @param path_fragment: URL path fragment to be appended to /privet/ URL.
@@ -138,13 +150,18 @@ class PrivetdHelper(object):
                            http header using 'Privet' as the auth realm.
 
         """
-        headers = {'Authorization': 'Privet %s' % auth_token}
+        if isinstance(request_data, dict):
+                request_data = json.dumps(request_data)
+        headers = {'Authorization': auth_token}
         url = self._build_privet_url(path_fragment, use_https=True)
         data = self._http_request(url, request_data=request_data,
                                   headers=headers)
-        json_data = json.loads(data)
-        logging.info('Received /privet/%s response JSON: %s',
-                     path_fragment, json.dumps(json_data))
+        try:
+            json_data = json.loads(data)
+            data = json.dumps(json_data)  # Drop newlines, pretty format.
+        finally:
+            logging.info('Received /privet/%s response: %s',
+                         path_fragment, data)
         return json_data
 
 
@@ -160,4 +177,55 @@ class PrivetdHelper(object):
         url = self._build_privet_url(URL_PING, use_https=use_https);
         content = self._http_request(url, retry_count=5)
         if content != 'Hello, world!':
-            raise error.TestFail('Unexpected response from web server.')
+            raise error.TestFail('Unexpected response from web server: %s.' %
+                                 content)
+
+
+    def privet_auth(self):
+        """Go through pairing and insecure auth.
+
+        @return resulting auth token.
+
+        """
+        data = {'pairing': 'embeddedCode', 'crypto': 'none'}
+        pairing = self.send_privet_request(URL_PAIRING_START, request_data=data)
+
+        data = {'sessionId': pairing['sessionId'],
+                'clientCommitment': pairing['deviceCommitment']
+        }
+        self.send_privet_request(URL_PAIRING_CONFIRM, request_data=data)
+
+        data = {'authCode': pairing['deviceCommitment'],
+                'mode': 'pairing',
+                'requestedScope': 'owner'
+        }
+        auth = self.send_privet_request(URL_AUTH, request_data=data)
+        auth_token = '%s %s' % (auth['tokenType'], auth['accessToken'])
+        return auth_token
+
+
+    def setup_add_wifi_credentials(self, ssid, passphrase, data={}):
+        """Add WiFi credentials to the data provided to setup_start().
+
+        @param ssid: string ssid of network to connect to.
+        @param passphrase: string passphrase for network.
+        @param data: optional dict of information to append to.
+
+        """
+        data['wifi'] = {'ssid': ssid, 'passphrase': passphrase}
+        return data
+
+
+    def setup_start(self, data, auth_token):
+        """Provide privetd with credentials for various services.
+
+        @param data: dict of information to give to privetd.  Should be
+                formed by one or more calls to setup_add_*() above.
+        @param auth_token: string auth token returned from privet_auth()
+                above.
+        @return dict containing the parsed JSON response.
+
+        """
+        response = self.send_privet_request(URL_SETUP_START, request_data=data,
+                                            auth_token=auth_token)
+        return response
