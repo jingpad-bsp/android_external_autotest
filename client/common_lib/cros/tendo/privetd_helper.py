@@ -5,7 +5,6 @@
 import json
 import logging
 import time
-import urllib2
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
@@ -49,8 +48,6 @@ class PrivetdHelper(object):
             protocol = 'https'
             port = self._https_port
         hostname = '127.0.0.1'
-        if self._host is not None:
-            hostname = self._host.hostname
         url = '%s://%s:%s/privet/%s' % (protocol, hostname, port, path_fragment)
         return url
 
@@ -58,6 +55,7 @@ class PrivetdHelper(object):
     def _http_request(self, url, request_data=None, retry_count=0,
                       retry_delay=0.3, headers={}):
         """Sends a GET/POST request to a web server at the given |url|.
+
         If the request fails due to error 111:Connection refused, try it again
         after |retry_delay| seconds and repeat this to a max |retry_count|.
         This is needed to make sure peerd has a chance to start up and start
@@ -73,21 +71,33 @@ class PrivetdHelper(object):
 
         """
         logging.debug('Requesting %s', url)
+        args = []
+        if request_data is not None:
+            headers['Content-Type'] = 'application/json; charset=utf8'
+            args.append('--data')
+            args.append(request_data)
+        for header in headers.iteritems():
+            args.append('--header')
+            args.append(': '.join(header))
+        # TODO(wiley do cert checking
+        args.append('--insecure')
+        # Write the HTTP code to stdout
+        args.append('-w')
+        args.append('%{http_code}')
+        output_file = '/tmp/privetd_http_output'
+        args.append('-o')
+        args.append(output_file)
         while retry_count >= 0:
-            try:
-                logging.info('Connecting to host: %s', url)
-                request = urllib2.Request(url, request_data, headers)
-                if request_data is not None:
-                    request.add_header('Content-Type',
-                                       'application/json; charset=utf8')
-                return urllib2.urlopen(request, timeout=5).read()
-            except urllib2.URLError, err:
-                retry_count -= 1
-                if (not str(err.reason).endswith('Connection refused') or
-                        retry_count < 0):
-                    raise
-                logging.warn('Failed to connect to host. Retrying...')
-                time.sleep(retry_delay)
+            result = self._run('curl %s' % url, args=args,
+                               ignore_status=True)
+            if result.exit_status == 0 and result.stdout != '404':
+                return self._run('cat %s' % output_file).stdout
+            retry_count -= 1
+            if retry_count < 0:
+                raise error.TestFail('Unable to complete request to %s' %
+                                     url)
+            logging.warn('Failed to connect to host. Retrying...')
+            time.sleep(retry_delay)
 
 
     def restart_privetd(self, log_verbosity=0, enable_ping=False,
@@ -112,6 +122,9 @@ class PrivetdHelper(object):
             flag_list.append('PRIVETD_ENABLE_PING=true')
         self._run('stop privetd', ignore_status=True)
         self._run('start privetd %s' % ' '.join(flag_list))
+        # TODO(wiley) Ping some DBus API that will let us know when the daemon
+        #             reaches steady state.
+
 
 
     def send_privet_request(self, path_fragment, request_data=None,
@@ -126,7 +139,7 @@ class PrivetdHelper(object):
 
         """
         headers = {'Authorization': 'Privet %s' % auth_token}
-        url = self._build_privet_url(path_fragment, True)
+        url = self._build_privet_url(path_fragment, use_https=True)
         data = self._http_request(url, request_data=request_data,
                                   headers=headers)
         json_data = json.loads(data)
