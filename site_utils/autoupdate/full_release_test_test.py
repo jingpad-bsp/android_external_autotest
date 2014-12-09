@@ -165,7 +165,8 @@ class FullReleaseTestTests(mox.MoxTestBase):
     def testIntegrationNpoAllBoards(self):
         """Tests that we successfully generate a npo control file 4 all boards.
         """
-        boards = full_release_test.get_boards_from_chromite()
+        boards = full_release_test.get_boards_from_chromite(
+            hwtest_enabled_only=True)
         branch = '24'
         target = '3000.0.0'
         src = '3000.0.0'
@@ -301,6 +302,9 @@ class FullReleaseTestTests(mox.MoxTestBase):
         self.assertTrue('x86-mario' in all_boards)
         self.assertTrue('lumpy' in all_boards)
         self.assertTrue('stumpy' in all_boards)
+        self.assertTrue('gizmo' in all_boards)
+        self.assertTrue('storm' in all_boards)
+        self.assertFalse('NonSensicalBoardWeWillNeverHave' in all_boards)
 
 
 if __name__ == '__main__':

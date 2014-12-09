@@ -521,12 +521,19 @@ def get_job_url(server, job_id):
             _autotest_url_format % dict(host=server, job=job_id))
 
 
-def get_boards_from_chromite():
-    """Returns the list of boards from cbuildbot_config."""
+def get_boards_from_chromite(hwtest_enabled_only=False):
+    """Returns the list of boards from cbuildbot_config.
+
+    @param hwtest_enabled_only: Whether to only return boards with hw_tests
+                                enabled.
+
+    @return list of boards name strings.
+    """
     boards = set()
     for config in cbuildbot_config.config.itervalues():
-        if config.get('hw_tests'):
-            boards.update(config.get('boards'))
+        if hwtest_enabled_only and not config.get('hw_tests'):
+            continue
+        boards.update(config.get('boards'))
 
     return list(boards)
 
@@ -587,11 +594,12 @@ def parse_args(argv):
         parser.error('--all_boards should not be used with individual board '
                      'arguments".')
 
-    all_boards = get_boards_from_chromite()
     if opts.all_boards:
-        opts.tested_board_list = all_boards
+        opts.tested_board_list = get_boards_from_chromite(
+            hwtest_enabled_only=True)
     else:
         # Sanity check board.
+        all_boards = get_boards_from_chromite()
         for board in opts.tested_board_list:
             if board not in all_boards:
                 parser.error('unknown board (%s)' % board)
