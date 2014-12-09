@@ -93,6 +93,7 @@ class touch_playback_test_base(test.test):
         are touchpads, touchscreens, mice, etc.
         These events can be used for playback later.
         Emulate a USB mouse if a property file is provided.
+        Check if the inputcontrol script is avaiable on the disk.
 
         @param mouse_props: property file for a mouse to emulate.  Created
                             using 'evemu-describe /dev/input/X'.
@@ -103,6 +104,8 @@ class touch_playback_test_base(test.test):
         self._nodes = defaultdict(str)
         self._names = defaultdict(str)
         self._device_emulation_process = None
+        self._autotest_ext = None
+        self._has_inputcontrol = os.path.isfile(self._INPUTCONTROL)
 
         # Emulate mouse if property file was provided.
         if mouse_props:
@@ -151,8 +154,8 @@ class touch_playback_test_base(test.test):
                      filepath)
         utils.run(self._PLAYBACK_COMMAND % (node, filepath))
 
-    def _set_touch_setting(self, setting, value):
-        """Set a given touch setting the given value.
+    def _set_touch_setting_by_inputcontrol(self, setting, value):
+        """Set a given touch setting the given value by inputcontrol.
 
         @param setting: Name of touch setting, e.g. 'tapclick'.
         @param value: True for enabled, False for disabled.
@@ -162,13 +165,34 @@ class touch_playback_test_base(test.test):
         utils.run('%s --%s %d' % (self._INPUTCONTROL, setting, cmd_value))
         logging.info('%s turned %s.', setting, 'on' if value else 'off')
 
+    def _set_touch_setting(self, inputcontrol_setting, autotest_ext_setting,
+                           value):
+        """Set a given touch setting the given value.
+
+        @param inputcontrol_setting: Name of touch setting for the inputcontrol
+                                     script, e.g. 'tapclick'.
+        @param autotest_ext_setting: Name of touch setting for the autotest
+                                     extension, e.g. 'TapToClick'.
+        @param value: True for enabled, False for disabled.
+
+        """
+        if self._has_inputcontrol:
+          self._set_touch_setting_by_inputcontrol(inputcontrol_setting, value)
+        elif self._autotest_ext is not None:
+          self._autotest_ext.EvaluateJavaScript(
+                  'chrome.autotestPrivate.set%s(%s);'
+                  % (autotest_ext_setting, ("%s" % value).lower()))
+        else:
+          raise error.TestFail('Both the inputcontrol and the autotest '
+                               'extension are not availble')
+
     def _set_australian_scrolling(self, value):
         """Set australian scrolling to the given value.
 
         @param value: True for enabled, False for disabled.
 
         """
-        self._set_touch_setting('australian_scrolling', value)
+        self._set_touch_setting('australian_scrolling', 'NaturalScroll', value)
 
     def _set_tap_to_click(self, value):
         """Set tap-to-click to the given value.
@@ -176,7 +200,7 @@ class touch_playback_test_base(test.test):
         @param value: True for enabled, False for disabled.
 
         """
-        self._set_touch_setting('tapclick', value)
+        self._set_touch_setting('tapclick', 'TapToClick', value)
 
     def _set_tap_dragging(self, value):
         """Set tap dragging to the given value.
@@ -184,7 +208,7 @@ class touch_playback_test_base(test.test):
         @param value: True for enabled, False for disabled.
 
         """
-        self._set_touch_setting('tapdrag', value)
+        self._set_touch_setting('tapdrag', 'TapDragging', value)
 
     def cleanup(self):
         if self._device_emulation_process:
@@ -198,6 +222,13 @@ class touch_playback_test_base(test.test):
         """
         self._tab.Navigate(self._tab.url)
         self._tab.WaitForDocumentReadyStateToBeComplete()
+
+    def _set_autotest_ext(self, ext):
+        """Set the autotest extension.
+
+        @ext: the autotest extension object.
+        """
+        self._autotest_ext = ext
 
     def _get_scroll_position(self):
         """Return current scroll position of page.  Presuposes self._tab."""

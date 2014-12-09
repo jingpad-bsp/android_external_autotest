@@ -70,7 +70,10 @@ class touch_ScrollDirection(touch_playback_test_base.touch_playback_test_base):
             raise error.TestFail('No touchpad found on this %d' % device)
 
         # Log in and start test.
-        with chrome.Chrome() as cr:
+        with chrome.Chrome(autotest_ext=True) as cr:
+            # Pass in the autotest extension.
+            self._set_autotest_ext(cr.autotest_ext)
+
             # Open test page.
             cr.browser.SetHTTPServerDirectories(self.bindir)
             self._tab = cr.browser.tabs[0]
