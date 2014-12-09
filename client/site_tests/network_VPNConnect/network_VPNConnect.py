@@ -2,7 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.bin import test
+
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import site_utils
 from autotest_lib.client.common_lib.cros import site_eap_certs
@@ -210,6 +211,13 @@ class network_VPNConnect(test.test):
 
     def run_once(self, vpn_types=[]):
         """Test main loop."""
+        # Check if the TPM is in defend mode.
+        cmd = ('cryptohome --action=tpm_more_status | '
+               'grep dictionary_attack_counter')
+        result = utils.run(cmd, ignore_status=True)
+        if int(result.stdout.split(':')[-1].strip()) > 0:
+            raise error.TestError('TPM is in defend mode, exiting.')
+
         self._shill_proxy = shill_proxy.ShillProxy()
         for vpn_type in vpn_types:
             self.run_vpn_test(vpn_type)
