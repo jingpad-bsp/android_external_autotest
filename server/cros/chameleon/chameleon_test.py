@@ -4,7 +4,7 @@
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
-from autotest_lib.client.cros.chameleon import screen_test
+from autotest_lib.client.cros.chameleon import chameleon_screen_test
 from autotest_lib.server import test
 from autotest_lib.server.cros.multimedia import remote_facade_factory
 
@@ -31,7 +31,7 @@ class ChameleonTest(test.test):
         self.host = host
         # TODO(waihong): Support multiple connectors.
         self.chameleon_port = self._get_connected_port()
-        self.screen_test = screen_test.ScreenTest(
+        self.screen_test = chameleon_screen_test.ChameleonScreenTest(
                 self.chameleon_port, self.display_facade, self.outputdir)
 
 

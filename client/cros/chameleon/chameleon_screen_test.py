@@ -8,7 +8,7 @@ import time
 from autotest_lib.client.cros.chameleon import screen_utility_factory
 
 
-class ScreenTest(object):
+class ChameleonScreenTest(object):
     """Utility to test the screen between Chameleon and CrOS.
 
     This class contains the screen-related testing operations.
