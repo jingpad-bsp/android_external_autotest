@@ -7,6 +7,29 @@ import operator
 import os
 
 
+# TODO: This is a quick workaround; some of our arm devices so far only
+# support the HDMI EDIDs and the DP one at 1680x1050. A more proper
+# solution is to build a database of supported resolutions and pixel
+# clocks for each model and check if the EDID is in the supported list.
+def is_edid_supported(host, interface, width, height):
+    """Check whether the EDID is supported by DUT
+
+    @param host: A CrosHost object.
+    @param interface: The display interface, like 'HDMI'.
+    @param width: The screen width
+    @param height: The screen height
+
+    @return: True if the check passes; False otherwise.
+    """
+    # TODO: Support client test that the host is not a CrosHost.
+    platform = host.get_platform()
+    prefix = platform.lower().split('_')[0]
+    if prefix in ('snow', 'spring', 'skate', 'peach'):
+        if interface == 'DP':
+            return width == 1680 and height == 1050
+    return True
+
+
 class Edid(object):
     """Edid is an abstraction of EDID (Extended Display Identification Data).
 

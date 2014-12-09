@@ -10,6 +10,7 @@ import random
 import time
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.chameleon import edid
 from autotest_lib.server.cros.chameleon import chameleon_test
 
 
@@ -33,7 +34,7 @@ class display_SuspendStress(chameleon_test.ChameleonTest):
         _, width, height = testcase_spec
         test_resolution = (width, height)
 
-        if not self.is_edid_supported(*testcase_spec):
+        if not edid.is_edid_supported(host, *testcase_spec):
             raise error.TestFail('Error: EDID is not supported by the platform'
                     ': %s', test_name)
 

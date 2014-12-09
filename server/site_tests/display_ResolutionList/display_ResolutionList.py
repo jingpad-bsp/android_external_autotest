@@ -9,6 +9,7 @@ import os
 import random
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.chameleon import edid
 from autotest_lib.server.cros.chameleon import chameleon_test
 
 
@@ -28,7 +29,7 @@ class display_ResolutionList(chameleon_test.ChameleonTest):
             testcase_spec = self.DEFAULT_TESTCASE_SPEC
         test_name = "%s_%dx%d" % testcase_spec
 
-        if not self.is_edid_supported(*testcase_spec):
+        if not edid.is_edid_supported(host, *testcase_spec):
             raise error.TestFail('Error: unsupported EDID: %s', test_name)
 
         path = os.path.join(self.bindir, 'test_data', 'edids', test_name)

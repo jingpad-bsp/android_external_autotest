@@ -33,26 +33,6 @@ class ChameleonTest(test.test):
         self.chameleon_port = self._get_connected_port()
         self.screen_test = screen_test.ScreenTest(
                 self.chameleon_port, self.display_facade, self.outputdir)
-        self._platform_prefix = host.get_platform().lower().split('_')[0]
-
-
-    def is_edid_supported(self, tag, width, height):
-        """Check whether the EDID is supported by DUT
-
-        @param tag: The tag of the EDID file; 'HDMI' or 'DP'
-        @param width: The screen width
-        @param height: The screen height
-
-        @return: True if the check passes; False otherwise.
-        """
-        # TODO: This is a quick workaround; some of our arm devices so far only
-        # support the HDMI EDIDs and the DP one at 1680x1050. A more proper
-        # solution is to build a database of supported resolutions and pixel
-        # clocks for each model and check if the EDID is in the supported list.
-        if self._platform_prefix in ('snow', 'spring', 'skate', 'peach'):
-            if tag == 'DP':
-                return width == 1680 and height == 1050
-        return True
 
 
     def cleanup(self):

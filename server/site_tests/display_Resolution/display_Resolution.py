@@ -9,6 +9,7 @@ import os
 import time
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.chameleon import edid
 from autotest_lib.server.cros.chameleon import chameleon_test
 
 
@@ -33,11 +34,11 @@ class display_Resolution(chameleon_test.ChameleonTest):
     def run_once(self, host, test_mirrored=False, test_suspend_resume=False,
                  test_reboot=False):
         errors = []
-        for tag, width, height in self.RESOLUTION_TEST_LIST:
+        for interface, width, height in self.RESOLUTION_TEST_LIST:
             test_resolution = (width, height)
-            test_name = "%s_%dx%d" % ((tag,) + test_resolution)
+            test_name = "%s_%dx%d" % ((interface,) + test_resolution)
 
-            if not self.is_edid_supported(tag, width, height):
+            if not edid.is_edid_supported(host, interface, width, height):
                 logging.info('skip unsupported EDID: %s', test_name)
                 continue
 
