@@ -10,9 +10,13 @@ import subprocess
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import utils
 
 class security_OpenFDs(test.test):
     version = 1
+
+    _ASAN_SYMBOL = "__asan_init"
+
 
     def _S_ISANONFD(self, statbits):
         """
@@ -25,6 +29,22 @@ class security_OpenFDs(test.test):
         and returns bool.
         """
         return 0 == (statbits & 0770000)
+
+
+    # TODO(jorgelo): move this to common utils.
+    def running_on_asan(self):
+        """Returns whether we're running on ASan."""
+        # -q, --quiet         * Only output 'bad' things
+        # -F, --format <arg>  * Use specified format for output
+        # -g, --gmatch        * Use regex rather than string compare (with -s)
+        # -s, --symbol <arg>  * Find a specified symbol
+        scanelf_command = "scanelf -qF'%s#F'"
+        scanelf_command += " -gs %s `which debugd`" % self._ASAN_SYMBOL
+        symbol = utils.system_output(scanelf_command)
+        logging.debug("running_on_asan(): symbol: '%s', _ASAN_SYMBOL: '%s'",
+                      symbol, self._ASAN_SYMBOL)
+        return symbol != ""
+
 
     def get_fds(self, pid, typechecker):
         """
@@ -157,6 +177,12 @@ class security_OpenFDs(test.test):
                                              stat.S_ISSOCK(x) or
                                              stat.S_ISFIFO(x) or
                                              self._S_ISANONFD(x))
+
+        if self.running_on_asan():
+            # On ASan, allow all fd types and opening /proc
+            logging.info("Running on ASan, allowing /proc")
+            permitted_fd_type_check = lambda x: True
+            filters.append(r'0500 /proc')
 
         passes.append(self.check_process('chrome', 'type=plugin', filters,
                                          permitted_fd_type_check))
