@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import re, os, sys, types, time, random
+import re, os, sys, time, random
 
 import common
 from autotest_lib.client.common_lib import global_config
@@ -440,7 +440,13 @@ class db_sql(object):
                 data['value'] = perf_dict['value']
                 data['stddev'] = perf_dict['stddev']
                 data['units'] = perf_dict['units']
-                data['higher_is_better'] = perf_dict['higher_is_better']
+                # TODO(fdeng): In db, higher_is_better doesn't allow null,
+                # This is a workaround to avoid altering the
+                # table (very expensive) while still allows test to send
+                # higher_is_better=None. Ideally, the table should be
+                # altered to allow this.
+                if perf_dict['higher_is_better'] is not None:
+                    data['higher_is_better'] = perf_dict['higher_is_better']
                 data['graph'] = perf_dict['graph']
                 self.insert('tko_iteration_perf_value', data, commit=commit)
 
