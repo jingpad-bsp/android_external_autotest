@@ -5,9 +5,10 @@
 from autotest_lib.server import utils
 
 AUTHOR = "chromeos-chameleon"
-NAME = "display_ChameleonSetup"
-PURPOSE = "Chameleon hardware/software setup test."
-CRITERIA = "This test will fail if DUT and Chameleon are not set up correctly."
+NAME = "display_ServerChameleonConnection"
+PURPOSE = "Chameleon connection test from server-side."
+CRITERIA = 'This test fails if DUT and Chameleon are not connected properly.'
+SUITE = 'chameleon_dp,chameleon_hdmi,chameleon_vga'
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "display"
@@ -15,7 +16,7 @@ TEST_TYPE = "server"
 DEPENDENCIES = 'chameleon'
 
 DOC = """
-This test check the hardware/software setup between Chameleon and DUT.
+This test checks the connection between DUT and Chameleon.
 """
 
 args_dict = utils.args_to_dict(args)
@@ -23,6 +24,6 @@ chameleon_args = hosts.CrosHost.get_chameleon_arguments(args_dict)
 
 def run(machine):
     host = hosts.create_host(machine, chameleon_args=chameleon_args)
-    job.run_test("display_ChameleonSetup", host=host)
+    job.run_test("display_ServerChameleonConnection", host=host)
 
 parallel_simple(run, machines)
