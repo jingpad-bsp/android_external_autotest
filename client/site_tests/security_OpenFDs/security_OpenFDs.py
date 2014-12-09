@@ -10,47 +10,34 @@ import subprocess
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import utils
+from autotest_lib.client.cros import asan
 
 class security_OpenFDs(test.test):
+    """Checks a number of sensitive processes on Chrome OS for unexpected open
+    file descriptors.
+    """
+
     version = 1
 
-    _ASAN_SYMBOL = "__asan_init"
-
-
-    def _S_ISANONFD(self, statbits):
+    @staticmethod
+    def _S_ISANONFD(mode):
         """
-        Implements the equivalent interface to stat.S_ISREG(x) (and
-        family), for one particular type of file descriptor where no
-        type-checking macro is exposed by python, the "anonymous
-        inode" fd. So, we have to look at the stat bits ourself.
+        Returns whether |mode| represents an "anonymous inode" file descriptor.
+        Python does not expose a type-checking macro for anonymous inode fds.
+        Implements the same interface as stat.S_ISREG(x).
 
-        Takes the stat bits like you'd get from stat(path).st_mode,
-        and returns bool.
+        @param mode: mode bits, usually from 'stat(path).st_mode'
         """
-        return 0 == (statbits & 0770000)
-
-
-    # TODO(jorgelo): move this to common utils.
-    def running_on_asan(self):
-        """Returns whether we're running on ASan."""
-        # -q, --quiet         * Only output 'bad' things
-        # -F, --format <arg>  * Use specified format for output
-        # -g, --gmatch        * Use regex rather than string compare (with -s)
-        # -s, --symbol <arg>  * Find a specified symbol
-        scanelf_command = "scanelf -qF'%s#F'"
-        scanelf_command += " -gs %s `which debugd`" % self._ASAN_SYMBOL
-        symbol = utils.system_output(scanelf_command)
-        logging.debug("running_on_asan(): symbol: '%s', _ASAN_SYMBOL: '%s'",
-                      symbol, self._ASAN_SYMBOL)
-        return symbol != ""
+        return 0 == (mode & 0770000)
 
 
     def get_fds(self, pid, typechecker):
         """
-        Given a pid, return the set of open fds for that pid.
-        Each open fd is represented as 'mode path' e.g.
-        '0500 /dev/random'.
+        Returns the set of open file descriptors for |pid|.
+        Each open fd is represented as 'mode path', e.g.: '0500 /dev/random'.
+
+        @param pid: pid of process
+        @param typechecker: callback restricting allowed fd types
         """
         proc_fd_dir = os.path.join('/proc/', pid, 'fd')
         fd_perms = set([])
@@ -87,12 +74,12 @@ class security_OpenFDs(test.test):
 
     def apply_filters(self, fds, filters):
         """
-        Given a set of strings ('fds'), and a list of regexes ('filters'),
-        use the list of regexes as a series of exclusions to apply to the set.
-        (Remove every item matching any of the filters, from the set.)
-
+        Removes every item in |fds| matching any of the regexes in |filters|.
         This modifies the set in-place, and returns a list containing
         any regexes which did not match anything.
+
+        @param fds: set of 'mode path' strings representing open fds
+        @param filters: list of regexes to filter open fds with
         """
         failed_filters = set()
         for filter_re in filters:
@@ -106,13 +93,16 @@ class security_OpenFDs(test.test):
 
     def find_pids(self, process, arg_regex):
         """
-        Find all pids for a given process name whose command line
-        arguments match the specified arg_regex. Returns a list of pids.
+        Finds all pids for |process| whose command line arguments
+        match |arg_regex|. Returns a list of pids.
+
+        @param process: process name
+        @param arg_regex: regex to match command line arguments
         """
         p1 = subprocess.Popen(['ps', '-C', process, '-o', 'pid,command'],
                               stdout=subprocess.PIPE)
         # We're adding '--ignored= --type=renderer' to the GPU process cmdline
-        # to fix http://code.google.com/p/chromium/issues/detail?id=129884.
+        # to fix crbug.com/129884.
         # This process has different characteristics, so we need to avoid
         # finding it when we find --type=renderer tests processes.
         p2 = subprocess.Popen(['grep', '-v', '--',
@@ -128,13 +118,19 @@ class security_OpenFDs(test.test):
 
     def check_process(self, process, args, filters, typechecker):
         """
-        Perform a complete check for a given process/args:
-        * Identify all instances (pids) of that process
-        * Identify all fds open by those pids
-        * Report any fds not accounted-for by the specified filter list
-        * Report any filters which fail to match any open fds.
-        If there were any un-accounted-for fds, or failed filters,
-        mark the test failed. Returns True if test passed, False otherwise.
+        Checks a process for unexpected open file descriptors:
+        * Identifies all instances (pids) of |process|.
+        * Identifies all file descriptors open by those pids.
+        * Reports any fds not accounted for by regexes in |filters|.
+        * Reports any filters which fail to match any open fds.
+
+        If there were any fds unaccounted for, or failed filters,
+        mark the test failed.
+
+        @param process: process name
+        @param args: regex to match command line arguments
+        @param filters: list of regexes to filter open fds with
+        @param typechecker: callback restricting allowed fd types
         """
         logging.debug('Checking %s %s', process, args)
         test_pass = True
@@ -142,10 +138,10 @@ class security_OpenFDs(test.test):
             logging.debug('Found pid %s for %s', pid, process)
             fds = self.get_fds(pid, typechecker)
             failed_filters = self.apply_filters(fds, filters)
+            # Log failed filters to allow pruning the list.
             if failed_filters:
                 logging.error('Some filter(s) failed to match any fds: %s',
                               repr(failed_filters))
-                test_pass = False
             if fds:
                 logging.error('Found unexpected fds in %s %s: %s',
                               process, args, repr(fds))
@@ -155,11 +151,11 @@ class security_OpenFDs(test.test):
 
     def run_once(self):
         """
-        Check a number of important processes on Chrome OS for
-        unexpected open file descriptors. Will raise a TestFail
-        exception in the event of a failure.
+        Checks a number of sensitive processes on Chrome OS for
+        unexpected open file descriptors.
         """
         self.snapshot_system()
+
         passes = []
         filters = [r'0700 anon_inode:\[event.*\]',
                    r'0[35]00 pipe:.*',
@@ -172,27 +168,28 @@ class security_OpenFDs(test.test):
 
         # Whitelist fd-type check, suitable for Chrome processes.
         # Notably, this omits S_ISDIR.
-        permitted_fd_type_check = lambda x: (stat.S_ISREG(x) or
-                                             stat.S_ISCHR(x) or
-                                             stat.S_ISSOCK(x) or
-                                             stat.S_ISFIFO(x) or
-                                             self._S_ISANONFD(x))
+        allowed_fd_type_check = lambda x: (stat.S_ISREG(x) or
+                                           stat.S_ISCHR(x) or
+                                           stat.S_ISSOCK(x) or
+                                           stat.S_ISFIFO(x) or
+                                           security_OpenFDs._S_ISANONFD(x))
 
-        if self.running_on_asan():
+        # TODO(jorgelo): revisit this and potentially remove.
+        if asan.running_on_asan():
             # On ASan, allow all fd types and opening /proc
             logging.info("Running on ASan, allowing /proc")
-            permitted_fd_type_check = lambda x: True
+            allowed_fd_type_check = lambda x: True
             filters.append(r'0500 /proc')
 
         passes.append(self.check_process('chrome', 'type=plugin', filters,
-                                         permitted_fd_type_check))
+                                         allowed_fd_type_check))
 
         filters.extend([r'0[57]00 /dev/shm/..*',
                         r'0500 /opt/google/chrome/.*.pak',
                         r'0500 /opt/google/chrome/icudtl.dat',
                        ])
         passes.append(self.check_process('chrome', 'type=renderer', filters,
-                                         permitted_fd_type_check))
+                                         allowed_fd_type_check))
 
         if False in passes:
-            raise error.TestFail("Unexpected changes to open fds.")
+            raise error.TestFail("Unexpected open file descriptors.")
