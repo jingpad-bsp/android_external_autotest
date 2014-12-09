@@ -5,6 +5,7 @@
 import logging
 from collections import namedtuple
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import chameleon
 
 ChameleonPorts = namedtuple('ChameleonPorts', 'connected failed')
@@ -138,16 +139,19 @@ class ChameleonVideoInputFinder(ChameleonInputFinder):
         self._TIMEOUT_VIDEO_STABLE_PROBE = 10
 
 
-    def find_all_ports(self):
+    def _yield_all_ports(self, failed_ports=None, raise_error=False):
         """
-        @returns a named tuple ChameleonPorts() containing a list of connected
-                 video inputs as the first element and failed ports as second
-                 element.
+        Yields all connected video ports and ensures every of them plugged.
+
+        @param failed_ports: A list to append the failed port or None.
+        @param raise_error: True to raise TestFail if no connected video port.
+        @yields every connected ChameleonVideoInput which is ensured plugged
+                before yielding.
+
+        @raises TestFail if raise_error is True and no connected video port.
 
         """
-        connected_ports = []
-        dut_failed_ports = []
-
+        yielded = False
         all_ports = super(ChameleonVideoInputFinder, self).find_all_ports()
         for port in all_ports.connected:
             # Skip the non-video port.
@@ -172,9 +176,12 @@ class ChameleonVideoInputFinder(ChameleonInputFinder):
             logging.info('CrOS detected external connector: %r', output)
 
             if video_stable and output and output.startswith(connector_type):
-                connected_ports.append(video_port)
+                yield video_port
+                yielded = True
             else:
-                dut_failed_ports.append(video_port)
+                if failed_ports is not None:
+                    failed_ports.append(video_port)
+                # Show the failure why.
                 if video_stable:
                     if output:
                         logging.error('Unexpected display on CrOS: %s', output)
@@ -190,9 +197,41 @@ class ChameleonVideoInputFinder(ChameleonInputFinder):
             if not was_plugged:
                 video_port.unplug()
 
-        if not connected_ports and not dut_failed_ports:
-            logging.error('No video input port detected by Chameleon')
+        if raise_error and not yielded:
+            raise error.TestFail('No connected video port found between CrOS '
+                                 'and Chameleon.')
 
+
+    def iterate_all_ports(self):
+        """
+        Iterates all connected video ports and ensures every of them plugged.
+
+        It is used via a for statement, like the following:
+
+            finder = ChameleonVideoInputFinder(chameleon_board, display_facade)
+            for chameleon_port in finder.iterate_all_ports()
+                # chameleon_port is automatically plugged before this line.
+                do_some_test_on(chameleon_port)
+                # chameleon_port is automatically unplugged after this line.
+
+        @yields every connected ChameleonVideoInput which is ensured plugged
+                before yeilding.
+
+        @raises TestFail if no connected video port.
+
+        """
+        return self._yield_all_ports(raise_error=True)
+
+
+    def find_all_ports(self):
+        """
+        @returns a named tuple ChameleonPorts() containing a list of connected
+                 video inputs as the first element and failed ports as second
+                 element.
+
+        """
+        dut_failed_ports = []
+        connected_ports = list(self._yield_all_ports(dut_failed_ports))
         self.connected = connected_ports
         self.failed = dut_failed_ports
 
