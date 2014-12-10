@@ -44,7 +44,6 @@ import getpass, logging, optparse, os, sys, time
 from datetime import datetime
 
 import common
-
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config, enum
 from autotest_lib.client.common_lib import priorities
@@ -88,29 +87,6 @@ def get_worse_code(code1, code2):
 
     """
     return code1 if SEVERITY[code1] >= SEVERITY[code2] else code2
-
-
-def setup_logging(logfile=None):
-    """Setup basic logging with all logging info stripped.
-
-    Calls to logging will only show the message. No severity is logged.
-
-    @param logfile: If specified dump output to a file as well.
-    """
-    # Remove all existing handlers. client/common_lib/logging_config adds
-    # a StreamHandler to logger when modules are imported, e.g.,
-    # autotest_lib.client.bin.utils. A new StreamHandler will be added here to
-    # log only messages, not severity.
-    logging.getLogger().handlers = []
-
-    screen_handler = logging.StreamHandler()
-    screen_handler.setFormatter(logging.Formatter('%(message)s'))
-    logging.getLogger().addHandler(screen_handler)
-    logging.getLogger().setLevel(logging.INFO)
-    if logfile:
-        file_handler = logging.FileHandler(logfile)
-        file_handler.setLevel(logging.DEBUG)
-        logging.getLogger().addHandler(file_handler)
 
 
 def parse_options():
@@ -1245,7 +1221,7 @@ def main_without_exception_handling():
         if os.path.exists(log_dir):
             log_name = os.path.join(log_dir, log_name)
 
-    setup_logging(logfile=log_name)
+    utils.setup_logging(logfile=log_name)
 
     if not options.bypass_labstatus:
         utils.check_lab_status(options.build)
