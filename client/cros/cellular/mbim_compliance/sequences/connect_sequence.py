@@ -27,13 +27,22 @@ from autotest_lib.client.cros.cellular.mbim_compliance.sequences \
 class ConnectSequence(sequence.Sequence):
     """ Implement the Connect Sequence. """
 
-    def run_internal(self, raise_exception_on_failure=True):
+    def run_internal(self,
+                     introduce_error_in_access_offset=False,
+                     introduce_error_in_packets_order=None,
+                     raise_exception_on_failure=True):
         """
         Run the Connect Sequence.
 
         Once the command message is sent, there should be at least one
         notification received apart from the command done message.
 
+        @param introduce_error_in_access_offset: Whether to introduce an
+                error in the access_string offset or not.
+        @param introduce_error_in_packets_order: Whether to introduce an
+                error in the order of packets sent or not. It's a user provided
+                list of packet sequence numbers to reorder, repeat or remove
+                packets generated for connect before sending it to the device.
         @param raise_exception_on_failure: Whether to raise an exception or not.
         @returns tuple of (command_message, response_message, notifications):
                 command_message: The command message sent to device.
@@ -53,10 +62,14 @@ class ConnectSequence(sequence.Sequence):
         information_buffer_length += len(data_buffer)
         device_context = self.device_context
         descriptor_cache = device_context.descriptor_cache
+        if introduce_error_in_access_offset:
+            access_string_offset = 0
+        else:
+            access_string_offset = 60
         command_message = (
                 mbim_command_message.MBIMSetConnect(session_id=0,
                         activation_command=1,
-                        access_string_offset=60,
+                        access_string_offset=access_string_offset,
                         access_string_size=16,
                         user_name_offset=0,
                         user_name_size=0,
@@ -76,6 +89,8 @@ class ConnectSequence(sequence.Sequence):
                 descriptor_cache.mbim_communication_interface.bInterfaceNumber,
                 descriptor_cache.interrupt_endpoint.bEndpointAddress,
                 device_context.max_control_transfer_size)
+        if introduce_error_in_packets_order is not None:
+            packets = [packets[i] for i in introduce_error_in_packets_order]
         response_packets = channel.bidirectional_transaction(*packets)
         notifications_packets = channel.get_outstanding_packets();
         channel.close()

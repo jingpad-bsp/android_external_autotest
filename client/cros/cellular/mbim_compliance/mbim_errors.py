@@ -220,6 +220,21 @@ class MBIMComplianceAssertionError(MBIMComplianceError):
             'mbim1.0:9.3.4#2': 'An MBIM_FUNCTION_ERROR_MSG shall not make use '
                                'of a DataBuffer, so it cannot send any data '
                                'payload.',
+            'mbim1.0:9.3.4#3': 'MBIM_ERROR_FRAGMENT_OUT_OF_SEQUENCE shall be '
+                               'sent by the function if it detects a fragmented'
+                               ' message out of sequence.',
+            'mbim1.0:9.3.4.2#2': 'For MBIM_ERROR_FRAGMENT_OUT_OF_SEQUENCE, the'
+                               ' TransactionId of the responding message must '
+                               'match the TransactionId in the faulty '
+                               'fragmented sequence.',
+            'mbim1.0:9.3.4.2#3': 'In case of an out of a sequence error, the '
+                               'function shall discard all the packets with '
+                               'the same TransactionId as the faulty message '
+                               'sequence.',
+            'mbim1.0:9.3.4.2#4': 'If the function gets one more message that '
+                               'is out of order for the same TransactionId, it '
+                               'shall send a new error message with the same '
+                               'TransactionId once more.',
             'mbim1.0:9.4.1#1': 'The function shall respond to the '
                                'MBIM_OPEN_MSG message with an MBIM_OPEN_DONE '
                                'message in which the TransactionId must match '
@@ -251,7 +266,12 @@ class MBIMComplianceAssertionError(MBIMComplianceError):
                                'indicating an empty InformationBuffer except '
                                'the following CIDs: MBIM_CID_REGISTER_STATE, '
                                'MBIM_CID_PACKET_SERVICE, MBIM_CID_CONNECT, '
-                               'MBIM_CID_SERVICE_ACTIVATION.'
+                               'MBIM_CID_SERVICE_ACTIVATION.',
+            'mbim1.0:10.3#2':  'The function shall reject incoming messages '
+                               'that dont follow the rules for variable-length'
+                               ' encoding by setting '
+                               'MBIM_STATUS_INVALID_PARAMETERS as the status '
+                               'code in the MBIM_COMMAND_DONE message.'
     }
 
     def __init__(self, assertion_id, error_string=None):
