@@ -22,7 +22,7 @@ TESTS = [
     'page_cycler.typical_25',
     'robohornet_pro',
     'session_restore.cold.typical_25',
-    'smoothness.top_25',
+    'smoothness.top_25_smooth',
     'smoothness.tough_animation_cases',
     'smoothness.tough_canvas_cases',
     'smoothness.tough_filters_cases',
