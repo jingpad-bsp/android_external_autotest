@@ -24,7 +24,7 @@ def is_edid_supported(host, interface, width, height):
     # TODO: Support client test that the host is not a CrosHost.
     platform = host.get_platform()
     prefix = platform.lower().split('_')[0]
-    if prefix in ('snow', 'spring', 'skate', 'peach'):
+    if prefix in ('snow', 'spring', 'skate', 'peach', 'veyron'):
         if interface == 'DP':
             return width == 1680 and height == 1050
     return True
