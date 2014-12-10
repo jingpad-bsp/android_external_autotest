@@ -17,7 +17,7 @@ TESTS = [
     'kraken',
     'media.chromeOS4kOnly.tough_video_cases',
     'media.chromeOS.tough_video_cases',
-    'memory.top_25',
+    'memory.top_7_stress',
     'octane',
     'page_cycler.typical_25',
     'robohornet_pro',

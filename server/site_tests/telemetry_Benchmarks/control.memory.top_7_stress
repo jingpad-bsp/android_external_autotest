@@ -7,7 +7,7 @@
 from autotest_lib.client.common_lib import utils
 
 AUTHOR = 'sbasi, achuith, rohitbm'
-NAME = 'telemetry_Benchmarks.memory.top_25'
+NAME = 'telemetry_Benchmarks.memory.top_7_stress'
 SUITE = 'bvt-perbuild'
 TIME = 'LONG'
 TEST_CATEGORY = 'Benchmark'
@@ -16,7 +16,7 @@ TEST_TYPE = 'server'
 
 DOC = '''
 This server side test suite executes the Telemetry Benchmark:
-memory.top_25
+memory.top_7_stress
 This is part of Chrome for Chrome OS performance testing.
 
 Pass local=True to run with local telemetry and no AFE server.
@@ -25,8 +25,8 @@ Pass local=True to run with local telemetry and no AFE server.
 def run_benchmark(machine):
     host = hosts.create_host(machine)
     job.run_test('telemetry_Benchmarks', host=host,
-                 benchmark='memory.top_25',
-                 tag='memory.top_25',
+                 benchmark='memory.top_7_stress',
+                 tag='memory.top_7_stress',
                  args=utils.args_to_dict(args))
 
 parallel_simple(run_benchmark, machines)
