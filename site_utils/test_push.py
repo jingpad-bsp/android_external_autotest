@@ -56,7 +56,7 @@ SUITE_JOB_START_INFO_REGEX = ('^.*Created suite job:.*'
 EXPECTED_TEST_RESULTS = {'^SERVER_JOB$':                 'GOOD',
                          # This is related to dummy_Fail/control.dependency.
                          'dummy_Fail.dependency$':       'TEST_NA',
-                         'telemetry_CrosTests.*':        'GOOD',
+                         'login_LoginSuccess.*':         'GOOD',
                          'platform_InstallTestImage_SERVER_JOB$': 'GOOD',
                          'dummy_Pass.*':                 'GOOD',
                          'dummy_Fail.Fail$':             'FAIL',
@@ -78,6 +78,17 @@ BUG_ANCHOR = 'TestFailure(push_to_prod,dummy_Fail.Fail,always fail)'
 
 URL_HOST = CONFIG.get_config_value('SERVER', 'hostname', type=str)
 URL_PATTERN = CONFIG.get_config_value('CROS', 'log_url_pattern', type=str)
+
+# Some test could be missing from the test results for various reasons. Add
+# such test in this list and explain the reason.
+IGNORE_MISSING_TESTS = [
+    # For latest build, npo_test_delta does not exist.
+    'autoupdate_EndToEndTest.npo_test_delta.*',
+    # For trybot build, nmo_test_delta does not exist.
+    'autoupdate_EndToEndTest.nmo_test_delta.*',
+    # Older build does not have login_LoginSuccess test in push_to_prod suite.
+    # TODO(dshi): Remove following lines after R41 is stable.
+    'login_LoginSuccess']
 
 # Save all run_suite command output.
 run_suite_output = []
@@ -248,10 +259,6 @@ def test_suite(suite_name, expected_results, arguments):
                 # added to a host accessible by cbf server (crbug.com/277109).
                 if key == 'platform_InstallTestImage_SERVER_JOB$':
                     continue
-                # TODO(dshi): result for this test is ignored until the bug is
-                # fixed in Telemetry (crbug.com/369671).
-                if key == 'telemetry_CrosTests.*':
-                    continue
                 if val != test_status:
                     error = ('%s Expected: [%s], Actual: [%s]' %
                              (test_name, val, test_status))
@@ -260,12 +267,12 @@ def test_suite(suite_name, expected_results, arguments):
             extra_test_errors.append(test_name)
 
     missing_test_errors = set(expected_results.keys()) - found_keys
-    # For latest build, npo_test_delta does not exist.
-    if missing_test_errors == set(['autoupdate_EndToEndTest.npo_test_delta.*']):
-        missing_test_errors = set([])
-    # For trybot build, nmo_test_delta does not exist.
-    if missing_test_errors == set(['autoupdate_EndToEndTest.nmo_test_delta.*']):
-        missing_test_errors = set([])
+    for exception in IGNORE_MISSING_TESTS:
+        try:
+            missing_test_errors.remove(exception)
+        except KeyError:
+            pass
+
     summary = []
     if mismatch_errors:
         summary.append(('Results of %d test(s) do not match expected '
