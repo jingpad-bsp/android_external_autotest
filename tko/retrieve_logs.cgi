@@ -51,14 +51,21 @@ def find_repository_host(job_path):
 
     config = global_config.global_config
     drones = config.get_config_value('SCHEDULER', 'drones')
+
+    # TODO: This won't scale as we add more shards. Ideally the frontend would
+    # pipe the shard_hostname with the job_id but there are helper scripts like
+    # dut_history that hit the main cautotest frontend for logs. For these, it
+    # is easier to handle the shard translation internally just like we do with
+    # drones.
+    shards = config.get_config_value('SERVER', 'shards', default='')
     results_host = config.get_config_value('SCHEDULER', 'results_host')
     archive_host = config.get_config_value('SCHEDULER', 'archive_host',
                                             default='')
     results_repos = [results_host]
-    for drone in drones.split(','):
-        drone = drone.strip()
-        if drone not in results_repos:
-            results_repos.append(drone)
+    for host in drones.split(',') + shards.split(','):
+        host = host.strip()
+        if host and host not in results_repos:
+            results_repos.append(host)
 
     if archive_host and archive_host not in results_repos:
         results_repos.append(archive_host)
@@ -69,7 +76,16 @@ def find_repository_host(job_path):
         http_path = 'http://%s%s' % (drone, job_path)
         try:
             utils.urlopen(http_path)
-            return 'http', utils.normalize_hostname(drone), job_path
+
+            # On Vms the shard name is set to the default gateway but the
+            # browser used to navigate frontends (that runs on the host of
+            # the vms) is immune to the same NAT routing the vms have, so we
+            # need to replace the gateway with 'localhost'.
+            if utils.DEFAULT_VM_GATEWAY in drone:
+                drone = drone.replace(utils.DEFAULT_VM_GATEWAY, 'localhost')
+            else:
+                drone = utils.normalize_hostname(drone)
+            return 'http', drone, job_path
         except urllib2.URLError:
             pass
 
