@@ -348,7 +348,7 @@ class DisplayFacadeNative(object):
         @return boolean True if internal display is primary.
         """
         for info in self.get_display_info():
-            if info.is_internal == internal and info.is_primary:
+            if info['isInternal'] == internal and info['isPrimary']:
                 return True
         return False
 
