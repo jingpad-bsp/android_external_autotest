@@ -12,17 +12,15 @@ CHECK_BOX_LIST = {'send_usage': 'sendUsage'}
 TEXT_BOX_LIST = {'min_video_bitrate': 'minVideoBitrate',
                  'max_tab_frame_rate': 'maxFrameRate',
                  'add_debug_dongle_ip': 'newReceiverIp'}
-RADIO_BUTTON_LIST = {'highest_tab_projection_quality': 'ql-highest',
-                     'high_tab_projection_quality': 'ql-high',
-                     'low_tab_projection_quality': 'ql-low',
-                     'enable_zoom_mode': 'zoomMode-on',
-                     'disable_zoom_mode': 'zoomMode-off',
-                     'resolution_640_360': '640x360',
-                     'resolution_854_480': '854x480',
-                     'resolution_1280_720': '1280x720',
-                     'resolution_1920_1080': '1920x1080',
-                     'cast_streaming_off': 'useCastStreaming-off',
-                     'cast_streaming_on': 'useCastStreaming-on'}
+RADIO_BUTTON_LIST = {'tab_casting_quality':
+                         {'extreme': 'ql-highest',
+                          'high': 'ql-high',
+                          'standard': 'ql-low'},
+                     'resolution':
+                         {'854x480': '854x480',
+                          '1280x720': '1280x720',
+                          '1920x1080': '1920x1080'}
+                    }
 BUTTON_LIST = {'reload': 'reload'}
 
 
@@ -48,7 +46,8 @@ class OptionsPage(ExtensionPages):
             text_box = self._get_text_box(TEXT_BOX_LIST[field], field)
             text_box.set_value(value)
         elif field in RADIO_BUTTON_LIST.keys():
-            radio_button = self._get_radio_button(value, field)
+            radio_button = self._get_radio_button(
+                RADIO_BUTTON_LIST[field][value], field)
             radio_button.click()
 
 
