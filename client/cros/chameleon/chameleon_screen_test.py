@@ -52,8 +52,14 @@ class ChameleonScreenTest(object):
 
         error = self._resolution_comparer.compare(expected_resolution)
         if not error:
-            self._display_facade.hide_cursor()
+            # Do two screen comparisons with and without hiding cursor, to
+            # work-around some devices still showing cursor on CrOS FB.
+            # TODO: Remove this work-around once crosbug/p/34524 got fixed.
             error = self._screen_comparer.compare()
+            if error:
+                logging.info('Hide cursor and do screen comparison again...')
+                self._display_facade.hide_cursor()
+                error = self._screen_comparer.compare()
         if not error and test_mirrored:
             error = self._mirror_comparer.compare()
         if error and error_list is not None:
