@@ -364,8 +364,9 @@ class IwRunner(object):
                     pending_phy_commands.append(command_match.group(1))
                     continue
 
-            if current_section.startswith('VHT Capabilities') and \
-                    pending_phy_name:
+            if (current_section is not None and
+                current_section.startswith('VHT Capabilities') and
+                pending_phy_name):
                 pending_phy_support_vht = True
                 continue
 
