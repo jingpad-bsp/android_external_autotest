@@ -5,7 +5,8 @@
 import tempfile
 
 from autotest_lib.client.bin import utils
-
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import cryptohome
 
 class TPMStore(object):
     """Context enclosing the use of the TPM."""
@@ -30,6 +31,10 @@ class TPMStore(object):
 
 
     def __enter__(self):
+        if cryptohome.is_tpm_lockout_in_effect():
+            raise error.TestError('The TPM is in dictonary defend mode. '
+                                  'The TPMStore may behave in unexpected '
+                                  'ways, exiting.')
         self.setup()
         return self
 

@@ -8,7 +8,6 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import site_utils
 from autotest_lib.client.common_lib.cros import site_eap_certs
 from autotest_lib.client.cros import certificate_util
-from autotest_lib.client.cros import cryptohome
 from autotest_lib.client.cros import shill_temporary_profile
 from autotest_lib.client.cros import tpm_store
 from autotest_lib.client.cros import virtual_ethernet_pair
@@ -212,9 +211,6 @@ class network_VPNConnect(test.test):
 
     def run_once(self, vpn_types=[]):
         """Test main loop."""
-        if cryptohome.is_tpm_lockout_in_effect():
-            raise error.TestError('TPM is in dictonary defend mode, exiting.')
-
         self._shill_proxy = shill_proxy.ShillProxy()
         for vpn_type in vpn_types:
             self.run_vpn_test(vpn_type)
