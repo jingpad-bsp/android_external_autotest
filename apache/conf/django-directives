@@ -123,7 +123,7 @@ RewriteRule ^/afe/server/admin/afe/(aclgroup|atomicgroup|host|label|profiler|tes
     </LocationMatch>
 
     WSGISocketPrefix /var/run/wsgi
-    WSGIDaemonProcess autotestapache processes=20 threads=1
+    WSGIDaemonProcess autotestapache processes=30 threads=1
     WSGIProcessGroup autotestapache
     WSGIPassAuthorization On
 </IfModule>
