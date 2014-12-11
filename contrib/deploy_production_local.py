@@ -65,11 +65,40 @@ def verify_repo_clean():
 def repo_versions():
     """This function collects the versions of all git repos in the general repo.
 
-    @returns A string the describes HEAD of all git repos.
+    @returns A dictionary mapping project names to git hashes for HEAD.
     @raises subprocess.CalledProcessError on a repo command failure.
     """
-    cmd = ['repo', 'forall', '-p', '-c', 'git', 'log', '-1', '--oneline']
-    return subprocess.check_output(cmd)
+    cmd = ['repo', 'forall', '-p', '-c', 'pwd && git log -1 --format=%h']
+    output = subprocess.check_output(cmd)
+
+    # The expected output format is:
+
+    # project chrome_build/
+    # /dir/holding/chrome_build
+    # 73dee9d
+    #
+    # project chrome_release/
+    # /dir/holding/chrome_release
+    # 9f3a5d8
+
+    lines = output.splitlines()
+
+    PROJECT_PREFIX = 'project '
+
+    project_heads = {}
+    for n in range(0, len(lines), 4):
+        project_line = lines[n]
+        project_dir = lines[n+1]
+        project_hash = lines[n+2]
+        # lines[n+3] is a blank line, but doesn't exist for the final block.
+
+        # Convert 'project chrome_build/' -> 'chrome_build'
+        assert project_line.startswith(PROJECT_PREFIX)
+        name = project_line[len(PROJECT_PREFIX):].rstrip('/')
+
+        project_heads[name] = (project_dir, project_hash)
+
+    return project_heads
 
 
 def repo_sync():
@@ -213,7 +242,7 @@ def restart_services(service_names, dryrun=False):
 
 
 def run_deploy_actions(dryrun=False):
-    """
+    """Run arbitrary update commands specified in global.ini.
 
     @param dryrun: Don't really restart the service, just print out the command.
 
@@ -230,6 +259,43 @@ def run_deploy_actions(dryrun=False):
     if services:
         print('Restarting Services:', ', '.join(services))
         restart_services(services, dryrun=dryrun)
+
+
+def report_changes(versions_before, versions_after):
+    """Produce a report describing what changed in all repos.
+
+    @param versions_before: Results of repo_versions() from before the update.
+    @param versions_after: Results of repo_versions() from after the update.
+
+    @returns string containing a human friendly changes report.
+    """
+    result = []
+
+    for project in sorted(set(versions_before.keys() + versions_after.keys())):
+        result.append('%s:' % project)
+
+        _, before_hash = versions_before.get(project, (None, None))
+        after_dir, after_hash = versions_after.get(project, (None, None))
+
+        if project not in versions_before:
+            result.append('Added.')
+
+        elif project not in versions_after:
+            result.append('Removed.')
+
+        elif before_hash == after_hash:
+            result.append('No Change.')
+
+        else:
+            hashes = '%s..%s' % (before_hash, after_hash)
+            cmd = ['git', 'log', hashes, '--oneline']
+            out = subprocess.check_output(cmd, cwd=after_dir,
+                                          stderr=subprocess.STDOUT)
+            result.append(out.strip())
+
+        result.append('')
+
+    return '\n'.join(result)
 
 
 def parse_arguments(args):
@@ -292,6 +358,8 @@ def main(args):
             print(e.args[0])
             return 1
 
+    versions_before = versions_after = {}
+
     if behaviors.update:
         print('Checking repository versions.')
         versions_before = repo_versions()
@@ -300,7 +368,8 @@ def main(args):
         repo_sync()
 
         print('Checking repository versions after update.')
-        if versions_before == repo_versions():
+        versions_after = repo_versions()
+        if versions_before == versions_after:
             print('No change found.')
             return
 
@@ -313,9 +382,9 @@ def main(args):
             print(e.args[0])
             return 1
 
-    if behaviors.report:
-        print('Current production versions:')
-        print(repo_versions())
+    if behaviors.report and versions_before and versions_after:
+        print('Changes:')
+        print(report_changes(versions_before, versions_after))
 
 
 if __name__ == '__main__':

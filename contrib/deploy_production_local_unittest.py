@@ -8,6 +8,7 @@
 from __future__ import print_function
 
 import mock
+import subprocess
 import unittest
 
 import deploy_production_local as dpl
@@ -60,14 +61,35 @@ class TestDeployProductionLocal(unittest.TestCase):
 
         @param run_cmd: Mock of subprocess call used.
         """
-        expected = 'expected return'
+        output = """project autotest/
+/usr/local/autotest
+5897108
 
-        run_cmd.return_value = expected
+project autotest/site_utils/autotest_private/
+/usr/local/autotest/site_utils/autotest_private
+78b9626
+
+project autotest/site_utils/autotest_tools/
+/usr/local/autotest/site_utils/autotest_tools
+a1598f7
+"""
+
+        expected = {
+            'autotest':
+            ('/usr/local/autotest', '5897108'),
+            'autotest/site_utils/autotest_private':
+            ('/usr/local/autotest/site_utils/autotest_private', '78b9626'),
+            'autotest/site_utils/autotest_tools':
+            ('/usr/local/autotest/site_utils/autotest_tools', 'a1598f7'),
+        }
+
+        run_cmd.return_value = output
         result = dpl.repo_versions()
         self.assertEquals(result, expected)
 
         run_cmd.assert_called_with(
-                ['repo', 'forall', '-p', '-c', 'git', 'log', '-1', '--oneline'])
+                ['repo', 'forall', '-p', '-c',
+                 'pwd && git log -1 --format=%h'])
 
     @mock.patch('subprocess.check_output', autospec=True)
     def test_repo_sync(self, run_cmd):
@@ -164,6 +186,47 @@ class TestDeployProductionLocal(unittest.TestCase):
         with self.assertRaises(dpl.UnstableServices) as unstable:
             self._test_restart_services(triple_unstable)
         self.assertEqual(unstable.exception.args[0], ['bar', 'joe'])
+
+    @mock.patch('subprocess.check_output', autospec=True)
+    def test_report_changes(self, run_cmd):
+        """Test deploy_production_local.report_changes.
+
+        @param run_cmd: Mock of subprocess call used.
+        """
+
+        before = {
+            'autotest': ('/usr/local/autotest', 'auto_before'),
+            'autotest_private': ('/dir/autotest_private', '78b9626'),
+            'other': ('/fake/unchanged', 'constant_hash'),
+        }
+
+        after = {
+            'autotest': ('/usr/local/autotest', 'auto_after'),
+            'autotest_tools': ('/dir/autotest_tools', 'a1598f7'),
+            'other': ('/fake/unchanged', 'constant_hash'),
+        }
+
+        run_cmd.return_value = 'hash1 Fix change.\nhash2 Bad change.\n'
+
+        result = dpl.report_changes(before, after)
+
+        self.assertEqual(result, """autotest:
+hash1 Fix change.
+hash2 Bad change.
+
+autotest_private:
+Removed.
+
+autotest_tools:
+Added.
+
+other:
+No Change.
+""")
+
+        run_cmd.assert_called_with(
+                ['git', 'log', 'auto_before..auto_after', '--oneline'],
+                cwd='/usr/local/autotest', stderr=subprocess.STDOUT)
 
     def test_parse_arguments(self):
         """Test deploy_production_local.parse_arguments."""
