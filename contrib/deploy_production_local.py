@@ -15,6 +15,7 @@ from __future__ import print_function
 import ConfigParser
 import argparse
 import os
+import re
 import subprocess
 import sys
 import time
@@ -45,12 +46,20 @@ def verify_repo_clean():
     @raises DirtyTreeException if the repo is not clean.
     @raises subprocess.CalledProcessError on a repo command failure.
     """
-    CLEAN_STATUS_OUTPUT = 'nothing to commit (working directory clean)'
-    PROD_BRANCH = 'project autotest/                               branch prod'
-
     out = subprocess.check_output(['repo', 'status'], stderr=subprocess.STDOUT)
-    if out.strip() not in (CLEAN_STATUS_OUTPUT, PROD_BRANCH):
-        raise DirtyTreeException(out)
+    out = out.strip()
+
+    # We're clean, with no branches.
+    CLEAN_STATUS_OUTPUT = 'nothing to commit (working directory clean)'
+    if out == CLEAN_STATUS_OUTPUT:
+        return
+
+    # We're clean, but the branch 'prod' exists in the project autotest.
+    # We use wildcards to skip over the text format characters repo uses.
+    if re.match(r'^.*project autotest/.*branch prod.*$\Z', out):
+        return
+
+    raise DirtyTreeException(out)
 
 
 def repo_versions():
@@ -125,10 +134,10 @@ def update_command(cmd_tag, dryrun=False):
     expanded_command = cmds[cmd_tag].replace('AUTOTEST_REPO',
                                               common.autotest_dir)
 
+    print('Running: %s: %s' % (cmd_tag, expanded_command))
     if dryrun:
-        print('Would have updated %s via "%s"' % (cmd_tag, expanded_command))
+        print('Skip: %s' % expanded_command)
     else:
-        print('Updating %s with: %s' % (cmd_tag, expanded_command))
         subprocess.check_call(expanded_command, shell=True)
 
 
@@ -143,11 +152,10 @@ def restart_service(service_name, dryrun=False):
     @raises subprocess.CalledProcessError on a command failure.
     """
     cmd = ['sudo', 'service', service_name, 'restart']
+    print('Restarting: %s' % service_name)
     if dryrun:
-        print('Would have restarted %s via "%s"' %
-              (service_name, ' '.join(cmd)))
+        print('Skip: %s' % ' '.join(cmd))
     else:
-        print('Restarting: %s' % service_name)
         subprocess.check_call(cmd)
 
 

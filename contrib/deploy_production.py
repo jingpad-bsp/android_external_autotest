@@ -82,7 +82,8 @@ def main(args):
         print('%s: %s' % (server, cmd))
         if not options.dryrun:
             try:
-                infra.execute_command(server, cmd)
+                out = infra.execute_command(server, cmd)
+                print(out)
                 print('Success')
                 print()
             except subprocess.CalledProcessError as e:

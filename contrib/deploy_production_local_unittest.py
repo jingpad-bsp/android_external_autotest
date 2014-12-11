@@ -32,11 +32,25 @@ class TestDeployProductionLocal(unittest.TestCase):
         @param run_cmd: Mock of subprocess call used.
         """
         # If repo returns what we expect, exit cleanly.
-        run_cmd.return_value = 'nothing to commit (working directory clean)'
+        run_cmd.return_value = 'nothing to commit (working directory clean)\n'
+        dpl.verify_repo_clean()
+
+        PROD_BRANCH = (
+                '^[[1mproject autotest/                '
+                '               ^[[m^[[1mbranch prod^[[m\n')
+
+        # We allow a single branch named 'prod' in the autotest directory.
+        # repo uses bold highlights when reporting it.
+        run_cmd.return_value = PROD_BRANCH
         dpl.verify_repo_clean()
 
         # If repo doesn't return what we expect, raise.
         run_cmd.return_value = "That's a very dirty repo you've got."
+        with self.assertRaises(dpl.DirtyTreeException):
+            dpl.verify_repo_clean()
+
+        # Dirty tree with 'prod' branch.
+        run_cmd.return_value = PROD_BRANCH + 'other stuff is dirty.\n'
         with self.assertRaises(dpl.DirtyTreeException):
             dpl.verify_repo_clean()
 
