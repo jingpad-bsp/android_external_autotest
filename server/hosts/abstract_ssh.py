@@ -23,7 +23,9 @@ class AbstractSSHHost(remote.RemoteHost):
                     *args, **dargs):
         super(AbstractSSHHost, self)._initialize(hostname=hostname,
                                                  *args, **dargs)
-        self.ip = socket.getaddrinfo(self.hostname, None)[0][4][0]
+        # IP address is retrieved only on demand. Otherwise the host
+        # initialization will fail for host is not online.
+        self._ip = None
         self.user = user
         self.port = port
         self.password = password
@@ -38,6 +40,15 @@ class AbstractSSHHost(remote.RemoteHost):
         self.master_ssh_job = None
         self.master_ssh_tempdir = None
         self.master_ssh_option = ''
+
+
+    @property
+    def ip(self):
+        """@return IP address of the host.
+        """
+        if not self._ip:
+            self._ip = socket.getaddrinfo(self.hostname, None)[0][4][0]
+        return self._ip
 
 
     def make_ssh_command(self, user="root", port=22, opts='',
