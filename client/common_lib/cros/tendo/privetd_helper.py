@@ -229,3 +229,20 @@ class PrivetdHelper(object):
         response = self.send_privet_request(URL_SETUP_START, request_data=data,
                                             auth_token=auth_token)
         return response
+
+
+    def wifi_setup_was_successful(self, ssid, auth_token):
+        """Detect whether privetd thinks bootstrapping has succeeded.
+
+        @param ssid: string network we expect to connect to.
+        @param auth_token: string auth token returned from prviet_auth()
+                above.
+        @return True iff setup/status reports success in connecting to
+                the given network.
+
+        """
+        response = self.send_privet_request(URL_SETUP_STATUS,
+                                            auth_token=auth_token)
+        return (response['wifi']['status'] == 'success' and
+                response['wifi']['ssid'] == ssid)
+

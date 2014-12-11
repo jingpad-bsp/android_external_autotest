@@ -2,6 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
+import time
+
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
 from autotest_lib.client.common_lib.cros.tendo import privetd_helper
 from autotest_lib.server.cros.network import hostap_config
@@ -12,6 +16,7 @@ class privetd_CanConnectToWiFi(wifi_cell_test_base.WiFiCellTestBase):
     """Tests that privetd can take WiFi credentials and give them to shill."""
     version = 1
 
+    CONNECT_TIMEOUT_SECONDS = 45
     PASSPHRASE = 'chromeos'
 
     def run_once(self):
@@ -40,9 +45,18 @@ class privetd_CanConnectToWiFi(wifi_cell_test_base.WiFiCellTestBase):
         helper.ping_server(use_https=False)
         helper.ping_server(use_https=True)
         auth_token = helper.privet_auth()
-        data = helper.setup_add_wifi_credentials(self.context.router.get_ssid(),
-                                                 self.PASSPHRASE)
+        ssid = self.context.router.get_ssid()
+        data = helper.setup_add_wifi_credentials(ssid, self.PASSPHRASE)
         helper.setup_start(data, auth_token)
+        logging.info('Waiting for privetd to report connect successful.')
+        start_time = time.time()
+        while time.time() - start_time < self.CONNECT_TIMEOUT_SECONDS:
+            if helper.wifi_setup_was_successful(ssid, auth_token):
+                break
+            time.sleep(0.5)
+        else:
+            raise error.TestFail('Timed out waiting for privetd to report '
+                                 'connect success.')
         self.context.assert_ping_from_dut()
         # TODO(wiley) Check privetd's understanding of whether or not the setup
         #             was successful.
