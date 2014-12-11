@@ -267,6 +267,9 @@ class MBIMComplianceAssertionError(MBIMComplianceError):
                                'the following CIDs: MBIM_CID_REGISTER_STATE, '
                                'MBIM_CID_PACKET_SERVICE, MBIM_CID_CONNECT, '
                                'MBIM_CID_SERVICE_ACTIVATION.',
+            'mbim1.0:9.5#1':   'Function should transmit fragmented message to '
+                               'host without intermixing fragments from other '
+                               'messages.',
             'mbim1.0:10.3#2':  'The function shall reject incoming messages '
                                'that dont follow the rules for variable-length'
                                ' encoding by setting '
