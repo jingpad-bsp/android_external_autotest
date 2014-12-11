@@ -53,12 +53,29 @@ class hardware_Backlight(test.test):
 
         self._backlight = power_utils.Backlight()
         backlight_errs = 0
-        for i in xrange(self._backlight.get_max_level() + 1):
+        backlight_max = self._backlight.get_max_level()
+        for i in xrange(backlight_max + 1):
             self._backlight.set_level(i)
             result = self._backlight.get_level()
             if i != result:
-                backlight_errs += 1
-                logging.error('backlight set %d != %d get', i, result)
+                # The kernel Documentation/ABI/stable/sysfs-class-backlight
+                # states that the requested brightness may not be the
+                # actual_brightness.
+                # Although not specified in the docs, let's allow the difference
+                # between requested brightness and actual_brightness percent be
+                # within a tolerance of 1 of each other.
+                actual_percent = self._backlight.get_percent()
+                expected_percent = float(i) / float(backlight_max) * 100.0
+                diff_percent = abs(actual_percent - expected_percent)
+                log_level_func = logging.warn
+                if diff_percent > 1:
+                    backlight_errs += 1
+                    log_level_func = logging.error
+                    log_level_func('backlight expected vs. actual exceeds error'
+                                   'tolerance')
+                log_level_func('backlight set %d != %d get', i, result)
+                log_level_func('backlight percent difference is %f%%',
+                               diff_percent)
 
         if backlight_errs:
             raise error.TestFail("%d errors testing backlight." % \
