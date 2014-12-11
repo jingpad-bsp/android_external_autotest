@@ -2,7 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import json
 import logging
+import math
 import os
 import pprint
 import re
@@ -24,11 +26,15 @@ WARNING_STATUS = 'WARNING'
 FAILED_STATUS = 'FAILED'
 
 # Regex for the RESULT output lines understood by chrome buildbot.
-# Keep in sync with chromium/tools/build/scripts/slave/process_log_utils.py.
+# Keep in sync with
+# chromium/tools/build/scripts/slave/performance_log_processor.py.
 RESULTS_REGEX = re.compile(r'(?P<IMPORTANT>\*)?RESULT '
-                             '(?P<GRAPH>[^:]*): (?P<TRACE>[^=]*)= '
-                             '(?P<VALUE>[\{\[]?[-\d\., ]+[\}\]]?)('
-                             ' ?(?P<UNITS>.+))?')
+                           r'(?P<GRAPH>[^:]*): (?P<TRACE>[^=]*)= '
+                           r'(?P<VALUE>[\{\[]?[-\d\., ]+[\}\]]?)('
+                           r' ?(?P<UNITS>.+))?')
+HISTOGRAM_REGEX = re.compile(r'(?P<IMPORTANT>\*)?HISTOGRAM '
+                             r'(?P<GRAPH>[^:]*): (?P<TRACE>[^=]*)= '
+                             r'(?P<VALUE_JSON>{.*})(?P<UNITS>.+)?')
 
 
 class TelemetryResult(object):
@@ -148,36 +154,11 @@ class TelemetryResult(object):
         stdout_lines = self._stdout.splitlines()
         for line in stdout_lines:
             results_match = RESULTS_REGEX.search(line)
-            if not results_match:
-                continue
-
-            match_dict = results_match.groupdict()
-            graph_name = self._cleanup_perf_string(match_dict['GRAPH'].strip())
-            trace_name = self._cleanup_perf_string(match_dict['TRACE'].strip())
-            units = self._cleanup_units_string(
-                    (match_dict['UNITS'] or 'units').strip())
-            value = match_dict['VALUE'].strip()
-            unused_important = match_dict['IMPORTANT'] or False  # Unused now.
-
-            if value.startswith('['):
-                # A list of values, e.g., "[12,15,8,7,16]".  Extract just the
-                # numbers, compute the average and use that.  In this example,
-                # we'd get 12+15+8+7+16 / 5 --> 11.6.
-                value_list = [float(x) for x in value.strip('[],').split(',')]
-                value = float(sum(value_list)) / len(value_list)
-            elif value.startswith('{'):
-                # A single value along with a standard deviation, e.g.,
-                # "{34.2,2.15}".  Extract just the value itself and use that.
-                # In this example, we'd get 34.2.
-                value_list = [float(x) for x in value.strip('{},').split(',')]
-                value = value_list[0]  # Position 0 is the value.
-            elif re.search('^\d+$', value):
-                value = int(value)
-            else:
-                value = float(value)
-
-            self.perf_data.append({'graph':graph_name, 'trace': trace_name,
-                                   'units': units, 'value': value})
+            histogram_match = HISTOGRAM_REGEX.search(line)
+            if results_match:
+                self._process_results_line(results_match)
+            elif histogram_match:
+                self._process_histogram_line(histogram_match)
 
         pp = pprint.PrettyPrinter(indent=2)
         logging.debug('Perf values: %s', pp.pformat(self.perf_data))
@@ -192,6 +173,68 @@ class TelemetryResult(object):
             if line.startswith('Traceback'):
                 self.status = FAILED_STATUS
 
+    def _process_results_line(self, line_match):
+        """Processes a line that matches the standard RESULT line format.
+
+        Args:
+          line_match: A MatchObject as returned by re.search.
+        """
+        match_dict = line_match.groupdict()
+        graph_name = self._cleanup_perf_string(match_dict['GRAPH'].strip())
+        trace_name = self._cleanup_perf_string(match_dict['TRACE'].strip())
+        units = self._cleanup_units_string(
+                (match_dict['UNITS'] or 'units').strip())
+        value = match_dict['VALUE'].strip()
+        unused_important = match_dict['IMPORTANT'] or False  # Unused now.
+
+        if value.startswith('['):
+            # A list of values, e.g., "[12,15,8,7,16]".  Extract just the
+            # numbers, compute the average and use that.  In this example,
+            # we'd get 12+15+8+7+16 / 5 --> 11.6.
+            value_list = [float(x) for x in value.strip('[],').split(',')]
+            value = float(sum(value_list)) / len(value_list)
+        elif value.startswith('{'):
+            # A single value along with a standard deviation, e.g.,
+            # "{34.2,2.15}".  Extract just the value itself and use that.
+            # In this example, we'd get 34.2.
+            value_list = [float(x) for x in value.strip('{},').split(',')]
+            value = value_list[0]  # Position 0 is the value.
+        elif re.search('^\d+$', value):
+            value = int(value)
+        else:
+            value = float(value)
+
+        self.perf_data.append({'graph':graph_name, 'trace': trace_name,
+                               'units': units, 'value': value})
+
+    def _process_histogram_line(self, line_match):
+        """Processes a line that matches the HISTOGRAM line format.
+
+        Args:
+          line_match: A MatchObject as returned by re.search.
+        """
+        match_dict = line_match.groupdict()
+        graph_name = self._cleanup_perf_string(match_dict['GRAPH'].strip())
+        trace_name = self._cleanup_perf_string(match_dict['TRACE'].strip())
+        units = self._cleanup_units_string(
+                (match_dict['UNITS'] or 'units').strip())
+        histogram_json = match_dict['VALUE_JSON'].strip()
+        unused_important = match_dict['IMPORTANT'] or False  # Unused now.
+        histogram_data = json.loads(histogram_json)
+
+        # Compute geometric mean
+        count = 0
+        sum_of_logs = 0
+        for bucket in histogram_data['buckets']:
+            mean = (bucket['low'] + bucket['high']) / 2.0
+            if mean > 0:
+                sum_of_logs += math.log(mean) * bucket['count']
+                count += bucket['count']
+
+        value = math.exp(sum_of_logs / count) if count > 0 else 0.0
+
+        self.perf_data.append({'graph':graph_name, 'trace': trace_name,
+                               'units': units, 'value': value})
 
 class TelemetryRunner(object):
     """Class responsible for telemetry for a given build.
