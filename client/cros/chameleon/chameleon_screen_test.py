@@ -85,7 +85,7 @@ class ChameleonScreenTest(object):
 
 
     def test_screen_with_image(self, expected_resolution, test_mirrored=None,
-                               error_list=None):
+                               error_list=None, retry_count=2):
         """Tests the screen with image loaded.
 
         @param expected_resolution: A tuple (width, height) for the expected
@@ -94,6 +94,7 @@ class ChameleonScreenTest(object):
                               to test mirrored mode iff the current mode is
                               mirrored.
         @param error_list: A list to append the error message to or None.
+        @param retry_count: A count to retry the screen test.
         @return: None if the check passes; otherwise, a string of error message.
         """
         if test_mirrored is None:
@@ -105,12 +106,20 @@ class ChameleonScreenTest(object):
         else:
             test_image_size = self._display_facade.get_external_resolution()
 
-        try:
-            self.load_test_image(test_image_size)
-            return self.test_screen(
-                    expected_resolution, test_mirrored, error_list)
-        finally:
-            self.unload_test_image()
+        while retry_count:
+            retry_count = retry_count - 1
+            try:
+                self.load_test_image(test_image_size)
+                error = self.test_screen(expected_resolution, test_mirrored)
+                if error is None:
+                    return error
+                elif retry_count == 0:
+                    error_list.append(error)
+                    return error
+                else:
+                    logging.info('Retry screen comparison again...')
+            finally:
+                self.unload_test_image()
 
 
     def check_external_display_connected(self, expected_display,
