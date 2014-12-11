@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os, re
+import logging, os, re
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.graphics import graphics_utils
@@ -102,7 +102,7 @@ class graphics_GLAPICheck(test.test):
                             (version_major, version_minor))
             if version_major < 2:
                 self.error_message = version_info
-                return False;
+                return False
             # EGL version has to be 1.3 or above.
             version = re.findall(r"EGL_VERSION = ([0-9]+).([0-9]+)", result)
             if version:
@@ -139,6 +139,52 @@ class graphics_GLAPICheck(test.test):
         return result
 
 
+    def __check_wflinfo(self):
+        # TODO(ihf): Extend this function once gl(es)_APICheck code has
+        # been upstreamed to waffle.
+        cmd = 'wflinfo -p gbm -a gles2 -v'
+        wflinfo = utils.system_output(cmd, retain_output=True,
+                                      ignore_status=False)
+        # OpenGL version string: OpenGL ES 3.0 Mesa 10.5.0-devel
+        version = re.findall(r'OpenGL version string: '
+                             r'OpenGL ES ([0-9]+).([0-9]+).+', wflinfo)
+        if version:
+            # GLES version has to be 2.0 or above.
+            version_major = int(version[0][0])
+            version_minor = int(version[0][1])
+            version_info = ("GLES_VERSION = %d.%d" %
+                            (version_major, version_minor))
+            logging.info(version_info)
+            if version_major < 2:
+                self.error_message = " %s" % version_info
+                return False
+            cmd = 'eglinfo'
+            eglinfo = utils.system_output(cmd, retain_output=True,
+                                          ignore_status=False)
+            # EGL version string: 1.4 (DRI2)
+            version = re.findall(r'EGL version string: ([0-9]+).([0-9]+).+',
+                                 eglinfo)
+            # EGL version has to be 1.3 or above.
+            if version:
+                version_major = int(version[0][0])
+                version_minor = int(version[0][1])
+                version_info = ("EGL_VERSION = %d.%d" %
+                                (version_major, version_minor))
+                logging.info(version_info)
+                if (version_major == 1 and version_minor >= 3 or
+                    version_major > 1):
+                    return self.__check_gles_extensions(wflinfo + eglinfo)
+                else:
+                    self.error_message = version_info
+                    return False
+            # No EGL version info found.
+            self.error_message = " missing EGL version info"
+            return False
+        # No GLES version info found.
+        self.error_message = " missing GLES version info"
+        return False
+
+
     def initialize(self):
         self.GSC = graphics_utils.GraphicsStateChecker()
 
@@ -149,11 +195,13 @@ class graphics_GLAPICheck(test.test):
 
 
     def run_once(self):
-        # TODO(ihf): Remove this once verifying the api works on freon.
         if utils.is_freon():
+            if not self.__check_wflinfo():
+                raise error.TestFail('GLES API insufficient:' +
+                                     self.error_message)
             return
 
-        test_done = False
+        # TODO(ihf): Remove this once all boards are switched to freon.
         cmd_gl = os.path.join(self.bindir, 'gl_APICheck')
         cmd_gles = os.path.join(self.bindir, 'gles_APICheck')
         exist_gl = os.path.isfile(cmd_gl)
