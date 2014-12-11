@@ -75,6 +75,45 @@ def get_tpm_status():
     return status
 
 
+def get_tpm_more_status():
+    """Get more of the TPM status.
+
+    Returns:
+        A TPM more status dictionary, for example:
+        { 'dictionary_attack_lockout_in_effect': False,
+          'attestation_prepared': False,
+          'boot_lockbox_finalized': False,
+          'enabled': True,
+          'owned': True,
+          'dictionary_attack_counter': 0,
+          'dictionary_attack_lockout_seconds_remaining': 0,
+          'dictionary_attack_threshold': 10,
+          'attestation_enrolled': False,
+          'initialized': True,
+          'verified_boot_measured': False,
+          'install_lockbox_finalized': True
+        }
+    """
+    out = __run_cmd(CRYPTOHOME_CMD + ' --action=tpm_more_status | grep :')
+    status = {}
+    for line in out.splitlines():
+        items = line.strip().split(':')
+        if items[1].strip() == 'false':
+            value = False
+        elif items[1].strip() == 'true':
+            value = True
+        else:
+            value = int(items[1].strip())
+        status[items[0]] = value
+    return status
+
+
+def is_tpm_lockout_in_effect():
+    """Returns true if the TPM lockout is in effect; false otherwise."""
+    status = get_tpm_more_status()
+    return status['dictionary_attack_lockout_in_effect']
+
+
 def get_login_status():
     """Query the login status
 
