@@ -21,11 +21,14 @@ class provision_AutoUpdate(test.test):
     """A test that can provision a machine to the correct ChromeOS version."""
     version = 1
 
-    def run_once(self, host, value):
+    def run_once(self, host, value, force=False):
         """The method called by the control file to start the test.
 
         @param host: The host object to update to |value|.
         @param value: The build type and version to install on the host.
+        @param force: If False, will only provision the host if it is not
+                      already running the build. If True, force the
+                      provisioning regardless.
 
         """
         logging.debug('Start provisioning %s to %s', host, value)
@@ -37,7 +40,7 @@ class provision_AutoUpdate(test.test):
         # We could just not pass |force_update=True| to |machine_install|,
         # but I'd like the semantics that a provision test 'returns' TestNA
         # if the machine is already properly provisioned.
-        if host.get_build() == value:
+        if not force and host.get_build() == value:
             # We can't raise a TestNA, as would make sense, as that makes
             # job.run_test return False as if the job failed.  However, it'd
             # still be nice to get this into the status.log, so we manually
