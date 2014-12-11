@@ -359,7 +359,7 @@ class platform_ExternalUsbPeripherals(test.test):
             for action in actions:
                 step += 1
                 action = action.strip()
-                self.action_step = '--- %d.%d. %s---' % (iteration, step, action)
+                self.action_step = 'STEP %d.%d. %s' % (iteration, step, action)
                 logging.info(self.action_step)
 
                 if action == 'RESUME':

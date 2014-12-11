@@ -12,7 +12,7 @@ TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "server"
-SUITE = ""
+SUITE = "kernel_usb_set1"
 DEPENDENCIES = "servo"
 
 DOC = """
@@ -54,10 +54,6 @@ def run(machine):
                 "Kingston Technology Company Inc.",
                ]
     usb_checks = {
-        # Audio thread - active USB audio
-        str("loggedin:cras_test_client --dump_audio_thread | "
-            "awk '/devices/,/stream_dump/'") :
-            ["output dev.*USB Audio", "input dev.*USB Audio"],
         # USB Audio Output devices
         str("cras_test_client --dump_server_info | "
             "awk '/Output Devices:/,/Output Nodes:/'") :
