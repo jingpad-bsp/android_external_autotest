@@ -196,6 +196,9 @@ class power_LoadTest(test.test):
     def run_once(self):
         t0 = time.time()
 
+        # record the PSR counter
+        psr_t0 = self._get_psr_counter()
+
         try:
             kblight = power_utils.KbdBacklight()
             kblight.set(self._kblight_percent)
@@ -249,6 +252,9 @@ class power_LoadTest(test.test):
 
         t1 = time.time()
         self._tmp_keyvals['minutes_battery_life_tested'] = (t1 - t0) / 60
+        if psr_t0:
+            self._tmp_keyvals['psr_residency'] = \
+                (self._get_psr_counter() - psr_t0) / (10 * (t1 - t0))
 
 
     def postprocess_iteration(self):
@@ -470,3 +476,19 @@ class power_LoadTest(test.test):
             raise error.TestError("Low battery percent and seconds " +
                                   "are non-zero.")
         return (percent, secs)
+
+    def _get_psr_counter(self):
+        """Get the current value of the system PSR counter.
+        This counts the number of milliseconds the system has resided in PSR.
+
+        Returns:
+          count: amount of time PSR has been active since boot in ms, or
+              None if the performance counter can't be read
+
+        """
+        psr_status_file = '/sys/kernel/debug/dri/0/i915_edp_psr_status'
+        count = utils.get_field(utils.read_file(psr_status_file),
+                                0,
+                                linestart='Performance_Counter:')
+        logging.debug("PSR performance counter: %s", count)
+        return int(count) if count else None
