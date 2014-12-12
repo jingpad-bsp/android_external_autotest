@@ -7,7 +7,8 @@ NAME = 'network_WiFi_UpdateRouter'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
 DEPENDENCIES = 'wificell'
-SUITE = 'wifi_matfunc, wifi_matfunc_preflight, wifi_release, wifi_perf'
+SUITE = ('wifi_matfunc, wifi_matfunc_bcm4356, wifi_matfunc_marvell8897,'
+         'wifi_release, wifi_perf')
 
 DOC = """
 This test updates the router in a WiFi cell to the latest stable version.

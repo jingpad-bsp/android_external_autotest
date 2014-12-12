@@ -6,7 +6,8 @@ AUTHOR = 'harpreet, krisr, wiley'
 TIME = 'SHORT'
 NAME = 'network_WiFi_ChromeEndToEnd.findVerifyWiFiNetworks'
 TEST_TYPE = 'Server'
-SUITE = 'wifi_matfunc, wifi_matfunc_preflight, wifi_release'
+SUITE = ('wifi_matfunc, wifi_matfunc_bcm4356, wifi_matfunc_marvell8897,'
+         'wifi_release')
 DEPENDENCIES = 'wificell'
 
 DOC = """

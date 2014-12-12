@@ -6,7 +6,8 @@ AUTHOR = 'zqiu, wiley, pstew, quiche'
 NAME = 'network_WiFi_SimpleConnect.wifi_check5VHT80'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
-SUITE = 'wifi_matfunc, wifi_matfunc_preflight, wifi_correctness_cros_core, wifi_release'
+SUITE = ('wifi_matfunc, wifi_matfunc_bcm4356, wifi_matfunc_marvell8897,'
+         'wifi_correctness_cros_core, wifi_release')
 DEPENDENCIES = 'wificell'
 
 DOC = """

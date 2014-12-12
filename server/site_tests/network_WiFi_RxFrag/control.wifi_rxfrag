@@ -6,7 +6,7 @@ AUTHOR = 'wiley, pstew, quiche'
 NAME = 'network_WiFi_RxFrag.wifi_rxfrag'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
-SUITE = 'wifi_matfunc, wifi_matfunc_preflight'
+SUITE = 'wifi_matfunc, wifi_matfunc_bcm4356, wifi_matfunc_marvell8897'
 DEPENDENCIES = 'wificell'
 
 DOC = """
