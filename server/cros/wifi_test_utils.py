@@ -83,8 +83,10 @@ def get_install_path(host, filename):
              '/usr/sbin',
              '/usr/local/bin',
              '/usr/local/sbin']
+    glob_list = [os.path.join(path, filename) for path in PATHS]
     # Some hosts have poor support for which.  Sometimes none.
-    result = host.run('ls {%s}/%s 2> /dev/null' % (','.join(PATHS), filename),
+    # Others have shells that can't perform advanced globbing.
+    result = host.run('ls %s 2> /dev/null' % ' '.join(glob_list),
                       ignore_status=True)
     found_path = result.stdout.split('\n')[0].strip()
     return found_path or None
