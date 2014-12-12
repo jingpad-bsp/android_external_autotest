@@ -395,21 +395,24 @@ class HostJobHistory(object):
         self.start_time = start_time
         self.end_time = end_time
         self._host = afehost
-        self._history = self._get_history(start_time, end_time)
+        # Don't spend time filling in the history until it's needed.
+        self._history = None
 
 
     def __iter__(self):
         return self._history.__iter__()
 
 
-    def _get_history(self, start_time, end_time):
+    def _get_history(self):
+        if self._history is not None:
+            return
         newtasks = SpecialTaskEvent.get_tasks(
-                self._host.id, start_time, end_time)
+                self._host.id, self.start_time, self.end_time)
         newhqes = TestJobEvent.get_hqes(
-                self._host.id, start_time, end_time)
+                self._host.id, self.start_time, self.end_time)
         newhistory = newtasks + newhqes
         newhistory.sort(reverse=True)
-        return newhistory
+        self._history = newhistory
 
 
     def last_diagnosis(self):
@@ -434,6 +437,7 @@ class HostJobHistory(object):
                 determined it.
 
         """
+        self._get_history()
         if not self._history:
             return _NO_STATUS, None
         for job in self:
