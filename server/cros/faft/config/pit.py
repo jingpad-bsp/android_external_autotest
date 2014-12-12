@@ -9,3 +9,4 @@ class Values(object):
     """FAFT config values for Pit."""
     chrome_ec = True
     ec_capability = (['battery', 'keyboard', 'arm', 'lid'])
+    has_eventlog = False        # No RTC support in firmware

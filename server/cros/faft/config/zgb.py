@@ -9,3 +9,4 @@ class Values(object):
     """FAFT config values for ZGB."""
     keyboard_dev = False
     gbb_version = 1.0
+    has_eventlog = False

@@ -14,3 +14,4 @@ class Values(object):
     dev_screen = 4
     firmware_screen = 4
     wp_voltage = 'off'
+    has_eventlog = False        # Shipped without RTC support in firmware

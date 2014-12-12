@@ -43,6 +43,10 @@ class Values(object):
                           [0x61, 'press'],
                           [0x61, 'release']]
 
+    # Has eventlog support including proper timestamps. (Only for old boards!
+    # Never disable this "temporarily, until we get around to implementing it"!)
+    has_eventlog = True
+
     # Delay between power-on and firmware screen
     firmware_screen = 10
 

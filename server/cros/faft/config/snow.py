@@ -11,3 +11,4 @@ class Values(object):
     ec_capability = (['battery', 'keyboard', 'arm'])
     ec_boot_to_console = 0.4
     use_u_boot = True
+    has_eventlog = False

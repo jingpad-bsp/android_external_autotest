@@ -8,3 +8,4 @@
 class Values(object):
     """FAFT config values for Lumpy."""
     keyboard_dev = False
+    has_eventlog = False
