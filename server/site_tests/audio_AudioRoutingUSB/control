@@ -5,7 +5,7 @@
 from autotest_lib.server import utils
 
 AUTHOR = 'The Chromium OS Authors'
-NAME = 'audiovideo_AudioRoutingUSB'
+NAME = 'audio_AudioRoutingUSB'
 PURPOSE = 'Verify audio is routed to USB headset correctly.'
 CRITERIA = """
 After a USB headset is plugged in, CRAS should route the audio
@@ -15,7 +15,7 @@ correct device file (/dev/snd/pcmCXDY) is opened in each case.
 """
 TIME='FAST'
 TEST_CATEGORY = 'Functional'
-TEST_CLASS = "audiovideo"
+TEST_CLASS = "audio"
 TEST_TYPE = 'server'
 
 DOC = """
@@ -29,6 +29,6 @@ servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
 def run(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
-    job.run_test("audiovideo_AudioRoutingUSB", host=host)
+    job.run_test("audio_AudioRoutingUSB", host=host)
 
 parallel_simple(run, machines)

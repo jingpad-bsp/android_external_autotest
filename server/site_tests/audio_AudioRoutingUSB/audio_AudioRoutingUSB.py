@@ -11,7 +11,7 @@ from autotest_lib.client.common_lib import error
 # to be discovered, and CRAS to switch the output device.
 SWITCH_DELAY = 7
 
-class audiovideo_AudioRoutingUSB(test.test):
+class audio_AudioRoutingUSB(test.test):
     version = 1
 
     def get_opened_device(self, host):
