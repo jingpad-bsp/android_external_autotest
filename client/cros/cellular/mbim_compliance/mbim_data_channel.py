@@ -24,11 +24,12 @@ class MBIMDataChannel(object):
     the device.
 
     """
-    _READ_TIMEOUT_S = 10
-    _WRITE_TIMEOUT_S = 10
+    _READ_TIMEOUT_MS = 10000
+    _WRITE_TIMEOUT_MS = 10000
 
     def __init__(self,
                  device,
+                 data_interface_number,
                  bulk_in_endpoint_address,
                  bulk_out_endpoint_address,
                  max_in_buffer_size):
@@ -43,6 +44,7 @@ class MBIMDataChannel(object):
 
         """
         self._device = device
+        self._data_interface_number = data_interface_number
         self._bulk_in_endpoint_address = bulk_in_endpoint_address
         self._bulk_out_endpoint_address = bulk_out_endpoint_address
         self._max_in_buffer_size = max_in_buffer_size
@@ -61,11 +63,11 @@ class MBIMDataChannel(object):
         ntb_length = len(ntb)
         written = self._device.write(endpoint=self._bulk_out_endpoint_address,
                                      data=ntb,
-                                     timeout=self._WRITE_TIMEOUT_S)
-
+                                     timeout=self._WRITE_TIMEOUT_MS,
+                                     interface=self._data_interface_number)
         numpy.set_printoptions(formatter={'int':lambda x: hex(int(x))},
                                linewidth=1000)
-        logging.debug('DATA Channel: Sent %d bytes out of %d bytes requested. '
+        logging.debug('Data Channel: Sent %d bytes out of %d bytes requested. '
                       'Payload: %s',
                        written, ntb_length, numpy.array(ntb))
         if written < ntb_length:
@@ -89,11 +91,12 @@ class MBIMDataChannel(object):
 
         """
         ntb = self._device.read(endpoint=self._bulk_in_endpoint_address,
-                                size_or_buffer=self._max_in_buffer_size,
-                                timeout=self._READ_TIMEOUT_S)
+                                size=self._max_in_buffer_size,
+                                timeout=self._READ_TIMEOUT_MS,
+                                interface=self._data_interface_number)
         ntb_length = len(ntb)
         numpy.set_printoptions(formatter={'int':lambda x: hex(int(x))},
                                linewidth=1000)
-        logging.debug('DATA Channel: Received %d bytes response. Payload: %s',
+        logging.debug('Data Channel: Received %d bytes response. Payload: %s',
                        ntb_length, numpy.array(ntb))
         return ntb

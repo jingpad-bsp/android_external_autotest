@@ -3,7 +3,8 @@
 # found in the LICENSE file.
 
 """
-This module defines the constants which are used in different control messages.
+This module defines the constants which are used in different components
+within the MBIM compliance suite.
 All the constants should match the values and names specified in MBIM
 Specification[1].
 
@@ -73,3 +74,7 @@ UUID_BASIC_CONNECT = uuid.UUID('A289CC33-BCBB-8B4F-B6B0-133EC2AAE6DF')
 # used in the |context_type| field of information structures.
 MBIM_CONTEXT_TYPE_NONE = uuid.UUID('B43F758C-A560-4B46-B35E-C5869641FB54')
 MBIM_CONTEXT_TYPE_INTERNET = uuid.UUID('7E5E2A7E-4E6F-7272-736B-656E7E5E2A7E')
+
+# NTB formats
+NTB_FORMAT_16 = 0
+NTB_FORMAT_32 = 1

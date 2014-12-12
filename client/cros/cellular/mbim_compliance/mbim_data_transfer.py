@@ -11,19 +11,19 @@ import struct
 import sys
 from collections import namedtuple
 
+from autotest_lib.client.cros.cellular.mbim_compliance import mbim_constants
 from autotest_lib.client.cros.cellular.mbim_compliance \
         import mbim_data_channel
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_errors
 
 
-# Type of NTB: 16 bit vs 32 bit
-NTB_TYPE_16 = 0
-NTB_TYPE_32 = 1
+NTH_SIGNATURE_32 = 0x686D636E  # "ncmh"
+NDP_SIGNATURE_IPS_32 = 0x30737069  # "ips0"
+NDP_SIGNATURE_DSS_32 = 0x30737364  # "dss0"
 
-NTH_SIGNATURE = 0x686D636E  # "NCMH"
-NDP_SIGNATURE_IPS = 0x30737069  # "IPS0"
-NDP_SIGNATURE_DSS = 0x30737364  # "DSS0"
-
+NTH_SIGNATURE_16 = 0x484D434E  # "NCMH"
+NDP_SIGNATURE_IPS_16 = 0x30535049  # "IPS0"
+NDP_SIGNATURE_DSS_16 = 0x30535344  # "DSS0"
 
 class MBIMDataTransfer(object):
     """
@@ -50,27 +50,30 @@ class MBIMDataTransfer(object):
                 descriptors, NTB params and USB handle to the device.
         """
         self._device_context = device_context
+        mbim_data_interface = (
+                device_context.descriptor_cache.mbim_data_interface)
         bulk_in_endpoint = (
                 device_context.descriptor_cache.bulk_in_endpoint)
         bulk_out_endpoint = (
-                device_context.descriptor_cache.bulk_in_endpoint)
+                device_context.descriptor_cache.bulk_out_endpoint)
         self._data_channel = mbim_data_channel.MBIMDataChannel(
                 device=device_context.device,
+                data_interface_number=mbim_data_interface.bInterfaceNumber,
                 bulk_in_endpoint_address=bulk_in_endpoint.bEndpointAddress,
                 bulk_out_endpoint_address=bulk_out_endpoint.bEndpointAddress,
                 max_in_buffer_size=device_context.max_in_data_transfer_size)
 
 
-    def send_data_packets(self, ntb_type, data_packets):
+    def send_data_packets(self, ntb_format, data_packets):
         """
         Creates an MBIM frame for the payload provided and sends it out to the
         device using bulk out pipe.
 
-        @param ntb_type: Whether to send an NTB16 or NTB32 frame.
+        @param ntb_format: Whether to send an NTB16 or NTB32 frame.
         @param data_packets: Array of data packets. Each packet is a byte array
                 corresponding to the IP packet or any other payload to be sent.
         """
-        ntb_object = MBIMNtb(ntb_type)
+        ntb_object = MBIMNtb(ntb_format)
         ntb_frame = ntb_object.generate_ntb(
                 data_packets,
                 self._device_context.max_out_data_transfer_size,
@@ -79,14 +82,14 @@ class MBIMDataTransfer(object):
         self._data_channel.send_ntb(ntb_frame)
 
 
-    def receive_data_packets(self, ntb_type):
+    def receive_data_packets(self, ntb_format):
         """
         Receives an MBIM frame from the device using the bulk in pipe,
         deaggregates the payload from the frame and returns it to the caller.
 
         Will return an empty tuple, if no frame is received from the device.
 
-        @param ntb_type: Whether to receive an NTB16 or NTB32 frame.
+        @param ntb_format: Whether to receive an NTB16 or NTB32 frame.
         @returns tuple of (nth, ndp, ndp_entries, payload) where,
                 nth - NTH header object received.
                 ndp - NDP header object received.
@@ -97,7 +100,7 @@ class MBIMDataTransfer(object):
         ntb_frame = self._data_channel.receive_ntb()
         if not ntb_frame:
             return ()
-        ntb_object = MBIMNtb(ntb_type)
+        ntb_object = MBIMNtb(ntb_format)
         return ntb_object.parse_ntb(ntb_frame)
 
 
@@ -115,26 +118,30 @@ class MBIMNtb(object):
     """
     _NEXT_SEQUENCE_NUMBER = 0
 
-    def __init__(self, ntb_type):
+    def __init__(self, ntb_format):
         """
         Initialization of the NTB object.
 
         We assign the appropriate header classes required based on whether
         we are going to work with NTB16 or NTB32 data frames.
 
-        @param ntb_type: Type of NTB: 16 vs 32
+        @param ntb_format: Type of NTB: 16 vs 32
 
         """
-        self._ntb_type = ntb_type
+        self._ntb_format = ntb_format
         # Defining the tuples to be used for the headers.
-        if ntb_type == NTB_TYPE_16:
+        if ntb_format == mbim_constants.NTB_FORMAT_16:
             self._nth_class = Nth16
             self._ndp_class = Ndp16
             self._ndp_entry_class = NdpEntry16
+            self._nth_signature = NTH_SIGNATURE_16
+            self._ndp_signature = NDP_SIGNATURE_IPS_16
         else:
             self._nth_class = Nth32
             self._ndp_class = Ndp32
             self._ndp_entry_class = NdpEntry32
+            self._nth_signature = NTH_SIGNATURE_32
+            self._ndp_signature = NDP_SIGNATURE_IPS_32
 
 
     @classmethod
@@ -207,7 +214,7 @@ class MBIMNtb(object):
         # Create the NDP header and an NDP_ENTRY header for each packet.
         # We can create the NTH header only after we calculate the total length.
         self.ndp = self._ndp_class(
-                signature=NDP_SIGNATURE_IPS,
+                signature=self._ndp_signature,
                 length=ndp_length+ndp_entries_length,
                 next_ndp_index=0)
         self.ndp_entries = []
@@ -245,7 +252,7 @@ class MBIMNtb(object):
                     ntb_curr_offset, max_ntb_size)
         # Now create the NTH header
         self.nth = self._nth_class(
-                signature=NTH_SIGNATURE,
+                signature=self._nth_signature,
                 header_length=nth_length,
                 sequence_number=cls.get_next_sequence_number(),
                 block_length=ntb_curr_offset,
@@ -487,7 +494,6 @@ class Ndp16(MBIMNtbHeaders):
     """ The class for MBIM NDP16 objects. """
     _FIELDS = (('I', 'signature'),
                ('H', 'length'),
-               ('H', 'reserved_6'),
                ('H', 'next_ndp_index'))
 
 

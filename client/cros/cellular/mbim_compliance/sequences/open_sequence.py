@@ -11,13 +11,11 @@ from autotest_lib.client.cros.cellular.mbim_compliance import mbim_errors
 from autotest_lib.client.cros.cellular.mbim_compliance.sequences \
         import sequence
 
-# NTB formats
-NTB_16 = 0
-NTB_32 = 1
 # The maximun datagram size used in SetMaxDatagramSize request.
 MAX_DATAGRAM_SIZE = 1514
 
 
+#TODO(rpius): Move to a more appropriate location. Maybe a utility file?
 class NtbParameters(object):
     """ The class for NTB Parameter Structure. """
 

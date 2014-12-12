@@ -9,8 +9,8 @@ Reference:
     [1] Universal Serial Bus Communication Class MBIM Compliance Testing: 19
         http://www.usb.org/developers/docs/devclass_docs/MBIM-Compliance-1.0.pdf
 """
-import common
 
+import common
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_channel
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_constants
 from autotest_lib.client.cros.cellular.mbim_compliance \
@@ -32,13 +32,17 @@ class MBIMOpenGenericSequence(open_sequence.OpenSequence):
     the response to |MBIM_OPEN_MSG|.
     """
 
-    def run_internal(self, max_control_transfer_size=None):
+    def run_internal(self,
+                     max_control_transfer_size=None,
+                     ntb_format=mbim_constants.NTB_FORMAT_32):
         """
         Run the MBIM Open Generic Sequence.
 
         @param max_control_transfer_size: Sets the max_control_transfer
                 parameter in the open message sent to the device and the size
                 of control buffers sent to the device.
+        @param ntb_format: Sets the NTB type to 16 bit vs 32 bit. This will only
+                be set on devices which support both 32 bit NTB and 16 bit NTB.
         @returns tuple of (command_message, response_message):
                 command_message: The command message sent to device.
                 |command_message| is a MBIMCommandMessage object.
@@ -91,11 +95,15 @@ class MBIMOpenGenericSequence(open_sequence.OpenSequence):
 
         # Step 7
         # Send SetNtbFormat() request to communication interface.
-        # Bit 1 of |bmNtbForatsSupported| indicates whether the device uses
-        # 16-bit or 32-bit NTBs
-        if (ntb_parameters.bmNtbFormatsSupported>>1) & 1:
-            self.set_ntb_format(communication_interface_number,
-                                open_sequence.NTB_32)
+        # Bit 1 of |bmNtbForatsSupported| indicates whether the device
+        # supports 32-bit NTBs.
+        if (ntb_parameters.bmNtbFormatsSupported >> 1) & 1:
+            self.set_ntb_format(communication_interface_number, ntb_format)
+        else:
+            if ntb_format == mbim_constants.NTB_FORMAT_32:
+                mbim_errors.log_and_raise(
+                        mbim_errors.MBIMComplianceFrameworkError,
+                        'Device does not support NTB 32 format. ')
 
         # Step 8
         # Send SetNtbInputSize() request to communication interface.
@@ -155,6 +163,7 @@ class MBIMOpenGenericSequence(open_sequence.OpenSequence):
         # Store data/control transfer parameters in the device context so that
         # it can be used in any further control/data transfers.
         device_context.max_control_transfer_size = max_control_transfer_size
+        device_context.ntb_format = ntb_format
         device_context.max_in_data_transfer_size = (
                 ntb_parameters.dwNtbInMaxSize)
         device_context.max_out_data_transfer_size = (
