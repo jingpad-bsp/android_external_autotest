@@ -120,18 +120,15 @@ class DisplayFacadeNative(object):
 
         @raise TimeoutException when the operation is timed out.
         """
-
-        tab = self._browser.tabs.New()
         try:
-            tab.Navigate('chrome://settings-frame/display')
-            tab.Activate()
+            tab = self._load_url('chrome://settings-frame/display')
             self._wait_for_display_options_to_appear(tab, display_index)
             return tab.EvaluateJavaScript(
                     "options.DisplayOptions.instance_"
                     "         .displays_[%(index)d].resolutions"
                     % {'index': display_index})
         finally:
-            tab.Close()
+            self.close_tab()
 
 
     def get_available_resolutions(self, display_index):
@@ -181,10 +178,8 @@ class DisplayFacadeNative(object):
         @raise TimeoutException when the operation is timed out.
         """
 
-        tab = self._browser.tabs.New()
         try:
-            tab.Navigate('chrome://settings-frame/display')
-            tab.Activate()
+            tab = self._load_url('chrome://settings-frame/display')
             self._wait_for_display_options_to_appear(tab, display_index)
 
             tab.ExecuteJavaScript(
@@ -228,7 +223,7 @@ class DisplayFacadeNative(object):
             raise TimeoutException("Failed to change resolution to %r (%r"
                     " detected)" % ((width, height), r))
         finally:
-            tab.Close()
+            self.close_tab()
 
 
     @_retry_display_call
@@ -404,15 +399,17 @@ class DisplayFacadeNative(object):
         return result == display
 
 
+    @_retry_chrome_call
     def _load_url(self, url):
         """Loads the given url in a new tab.
 
         @param url: The url to load as a string.
+        @return: A new tab object.
         """
         tab = self._browser.tabs.New()
         tab.Navigate(url)
         tab.Activate()
-        return True
+        return tab
 
 
     def load_calibration_image(self, resolution):
@@ -427,6 +424,7 @@ class DisplayFacadeNative(object):
         return True
 
 
+    @_retry_chrome_call
     def close_tab(self, index=-1):
         """Closes the tab of the given index.
 
