@@ -35,8 +35,6 @@ class ExactMatchResolutionComparer(object):
                                     resolution.
         @return: None if the check passes; otherwise, a string of error message.
         """
-        under_mirrored_mode = self._display_facade.is_mirrored_enabled()
-
         chameleon_resolution = self._chameleon_port.get_resolution()
         cros_resolution = self._display_facade.get_external_resolution()
 
@@ -53,7 +51,7 @@ class ExactMatchResolutionComparer(object):
             # in mirrored mode. The resolution of the CrOS and Chameleon
             # should be same no matter the device in mirror mode or not.
             if chameleon_resolution != cros_resolution or (
-                    not under_mirrored_mode):
+                    not self._display_facade.is_mirrored_enabled()):
                 logging.error(message)
                 return message
             else:
