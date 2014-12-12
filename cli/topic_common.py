@@ -108,6 +108,7 @@ KEYS_TO_NAMES_EN = {'hostname': 'Host',
                     'max_number_of_machines': 'Max. hosts to use',
                     'parse_failed_repair': 'Include failed repair results',
                     'atomic_group.name': 'Atomic Group Name',
+                    'shard': 'Shard',
                     }
 
 # In the failure, tag that will replace the item.
@@ -138,7 +139,8 @@ KEYS_CONVERT = {'locked': _int_2_bool_string,
                 'invalid': lambda flag: str(bool(not flag)),
                 'only_if_needed': _int_2_bool_string,
                 'platform': __convert_platform,
-                'labels': lambda labels: ', '.join(labels)}
+                'labels': lambda labels: ', '.join(labels),
+                'shards': lambda shard: shard.hostname if shard else ''}
 
 
 def _get_item_key(item, key):

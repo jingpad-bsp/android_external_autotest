@@ -194,8 +194,9 @@ class host_list(action_common.atest_list, host):
         if self.hostnames_only:
             self.print_list(results, key='hostname')
         else:
-            super(host_list, self).output(results, keys=['hostname', 'status',
-                                          'locked', 'platform', 'labels'])
+            keys = ['hostname', 'status',
+                    'shard', 'locked', 'platform', 'labels']
+            super(host_list, self).output(results, keys=keys)
 
 
 class host_stat(host):

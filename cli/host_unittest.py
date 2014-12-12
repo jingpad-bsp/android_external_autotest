@@ -127,6 +127,7 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'invalid': False,
                               u'synch_id': None,
                               u'platform': None,
+                              u'shard': None,
                               u'id': 1},
                              {u'status': u'Ready',
                               u'hostname': u'host1',
@@ -137,9 +138,10 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'invalid': False,
                               u'synch_id': None,
                               u'platform': u'plat1',
+                              u'shard': None,
                               u'id': 2}])],
                      out_words_ok=['host0', 'host1', 'Ready',
-                                   'plat1', 'False', 'True'])
+                                   'plat1', 'False', 'True', 'None'])
 
 
     def test_execute_list_all_with_labels(self):
@@ -155,6 +157,7 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'invalid': False,
                               u'synch_id': None,
                               u'platform': None,
+                              u'shard': None,
                               u'id': 1},
                              {u'status': u'Ready',
                               u'hostname': u'host1',
@@ -164,11 +167,12 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'labels': [u'label2', u'label3', u'plat1'],
                               u'invalid': False,
                               u'synch_id': None,
+                              u'shard': None,
                               u'platform': u'plat1',
                               u'id': 2}])],
                      out_words_ok=['host0', 'host1', 'Ready', 'plat1',
                                    'label0', 'label1', 'label2', 'label3',
-                                   'False', 'True'])
+                                   'False', 'True', 'None'])
 
 
     def test_execute_list_filter_one_host(self):
@@ -185,9 +189,10 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'invalid': False,
                               u'synch_id': None,
                               u'platform': u'plat1',
+                              u'shard': None,
                               u'id': 2}])],
                      out_words_ok=['host1', 'Ready', 'plat1',
-                                   'label2', 'label3', 'True'],
+                                   'label2', 'label3', 'True', 'None'],
                      out_words_no=['host0', 'host2',
                                    'label1', 'label4', 'False'])
 
@@ -208,6 +213,7 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'invalid': False,
                               u'synch_id': None,
                               u'platform': u'plat1',
+                              u'shard': None,
                               u'id': 2},
                              {u'status': u'Ready',
                               u'hostname': u'host2',
@@ -217,11 +223,12 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'labels': [u'label3', u'label4', u'plat1'],
                               u'invalid': False,
                               u'synch_id': None,
+                              u'shard': None,
                               u'platform': u'plat1',
                               u'id': 3}])],
                      out_words_ok=['host1', 'Ready', 'plat1',
                                    'label2', 'label3', 'True',
-                                   'host2', 'label4'],
+                                   'host2', 'label4', 'None'],
                      out_words_no=['host0', 'label1', 'False'])
         mfile.clean()
 
@@ -241,10 +248,11 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'labels': [u'label3', u'label4', u'plat1'],
                               u'invalid': False,
                               u'synch_id': None,
+                              u'shard': None,
                               u'platform': u'plat1',
                               u'id': 3}])],
                      out_words_ok=['Ready', 'plat1',
-                                   'label3', 'label4', 'True'],
+                                   'label3', 'label4', 'True', 'None'],
                      out_words_no=['host1', 'False'],
                      err_words_ok=['host1'])
         mfile.clean()
@@ -276,6 +284,7 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'invalid': False,
                               u'synch_id': None,
                               u'platform': u'plat1',
+                              u'shard': None,
                               u'id': 2},
                              {u'status': u'Ready',
                               u'hostname': u'host2',
@@ -284,12 +293,13 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'lock_time': u'2008-07-23 12:54:15',
                               u'labels': [u'label3', u'label4', u'plat1'],
                               u'invalid': False,
+                              u'shard': None,
                               u'synch_id': None,
                               u'platform': u'plat1',
                               u'id': 3}])],
                      out_words_ok=['host1', 'Ready', 'plat1',
                                    'label2', 'label3', 'True',
-                                   'host2', 'label4'],
+                                   'host2', 'label4', 'None'],
                      out_words_no=['host0', 'label1', 'False'])
 
 
@@ -307,6 +317,7 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'labels': [u'label2', u'label3', u'plat0'],
                               u'invalid': False,
                               u'synch_id': None,
+                              u'shard': None,
                               u'platform': u'plat0',
                               u'id': 2},
                              {u'status': u'Ready',
@@ -317,10 +328,11 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'labels': [u'label3', u'label2', u'plat2'],
                               u'invalid': False,
                               u'synch_id': None,
+                              u'shard': None,
                               u'platform': u'plat2',
                               u'id': 4}])],
                      out_words_ok=['host1', 'host3', 'Ready', 'plat0',
-                                   'label2', 'label3', 'plat2'],
+                                   'label2', 'label3', 'plat2', 'None'],
                      out_words_no=['host2', 'label4', 'False', 'plat1'])
 
 
@@ -342,9 +354,10 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'invalid': False,
                               u'synch_id': None,
                               u'platform': u'plat1',
+                              u'shard': None,
                               u'id': 3}])],
                      out_words_ok=['host2', 'plat1',
-                                   'label2', 'label3', 'label4'],
+                                   'label2', 'label3', 'label4', 'None'],
                      out_words_no=['host1', 'host3'])
 
 
@@ -358,6 +371,7 @@ class host_list_unittest(cli_mock.cli_unittest):
                             [{u'status': u'Ready',
                               u'hostname': u'host2',
                               u'locked': 1,
+                              u'shard': None,
                               u'locked_by': 'user0',
                               u'lock_time': u'2008-07-23 12:54:15',
                               u'labels': [u'label3', u'label2', u'label4',
@@ -367,7 +381,7 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'platform': u'plat1',
                               u'id': 3}])],
                      out_words_ok=['host2', 'plat1',
-                                   'label2', 'label3', 'label4'],
+                                   'label2', 'label3', 'label4', 'None'],
                      out_words_no=['host1', 'host3'])
 
 
@@ -398,6 +412,7 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'invalid': False,
                               u'synch_id': None,
                               u'platform': u'plat1',
+                              u'shard': None,
                               u'id': 2},
                              {u'status': u'Ready',
                               u'hostname': u'host2',
@@ -407,11 +422,12 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'labels': [u'label3', u'label4', u'plat1'],
                               u'invalid': False,
                               u'synch_id': None,
+                              u'shard': None,
                               u'platform': u'plat1',
                               u'id': 3}])],
                      out_words_ok=['host1', 'Ready', 'plat1',
                                    'label2', 'label3', 'True',
-                                   'host2', 'label4'],
+                                   'host2', 'label4', 'None'],
                      out_words_no=['host0', 'label1', 'False'])
 
 
@@ -441,6 +457,7 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'invalid': False,
                               u'synch_id': None,
                               u'platform': u'plat1',
+                              u'shard': None,
                               u'id': 2},
                              {u'status': u'Ready',
                               u'hostname': u'host2',
@@ -450,11 +467,12 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'labels': [u'label3', u'label4', u'plat1'],
                               u'invalid': False,
                               u'synch_id': None,
+                              u'shard': None,
                               u'platform': u'plat1',
                               u'id': 3}])],
                      out_words_ok=['host1', 'Ready', 'plat1',
                                    'label2', 'label3', 'True',
-                                   'host2', 'label4'],
+                                   'host2', 'label4', 'None'],
                      out_words_no=['host0', 'label1', 'False'])
 
 
@@ -474,6 +492,7 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'invalid': False,
                               u'synch_id': None,
                               u'platform': u'plat1',
+                              u'shard': None,
                               u'id': 2},
                              {u'status': u'Ready',
                               u'hostname': u'host2',
@@ -483,11 +502,12 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'labels': [u'label3', u'label4', u'plat1'],
                               u'invalid': False,
                               u'synch_id': None,
+                              u'shard': None,
                               u'platform': u'plat1',
                               u'id': 3}])],
                      out_words_ok=['host1', 'Ready', 'plat1',
                                    'label2', 'label3', 'True',
-                                   'host2', 'label4'],
+                                   'host2', 'label4', 'None'],
                      out_words_no=['host0', 'label1', 'False'])
 
 
@@ -532,6 +552,7 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'invalid': False,
                               u'synch_id': None,
                               u'platform': u'plat1',
+                              u'shard': None,
                               u'id': 2},
                              {u'status': u'Ready',
                               u'hostname': u'host2',
@@ -541,11 +562,12 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'labels': [u'label3', u'label4', u'plat1'],
                               u'invalid': False,
                               u'synch_id': None,
+                              u'shard': None,
                               u'platform': u'plat1',
                               u'id': 3}])],
                      out_words_ok=['host1', 'Ready', 'plat1',
                                    'label2', 'label3', 'True',
-                                   'host2', 'label4'],
+                                   'host2', 'label4', 'None'],
                      out_words_no=['host0', 'label1', 'False'])
 
 
@@ -562,6 +584,7 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'labels': [u'label2', u'label3', u'plat1'],
                               u'invalid': False,
                               u'synch_id': None,
+                              u'shard': None,
                               u'platform': u'plat1',
                               u'id': 2},
                              {u'status': u'Ready',
@@ -571,12 +594,13 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'lock_time': u'2008-07-23 12:54:15',
                               u'labels': [u'label3', u'label4', u'plat1'],
                               u'invalid': False,
+                              u'shard': None,
                               u'synch_id': None,
                               u'platform': u'plat1',
                               u'id': 3}])],
                      out_words_ok=['host1', 'Ready', 'plat1',
                                    'label2', 'label3', 'False',
-                                   'host2', 'label4'],
+                                   'host2', 'label4', 'None'],
                      out_words_no=['host0', 'label1', 'True'])
 
 
@@ -596,6 +620,7 @@ class host_stat_unittest(cli_mock.cli_unittest):
                               u'labels': [u'label3', u'label4', u'plat1'],
                               u'invalid': False,
                               u'synch_id': None,
+                              u'shard': None,
                               u'platform': u'plat1',
                               u'id': 3}]),
                            ('get_hosts', {'hostname': 'host0'},
@@ -608,6 +633,7 @@ class host_stat_unittest(cli_mock.cli_unittest):
                               u'protection': u'No protection',
                               u'labels': [u'label0', u'plat0'],
                               u'invalid': False,
+                              u'shard': None,
                               u'synch_id': None,
                               u'platform': u'plat0',
                               u'id': 2}]),
