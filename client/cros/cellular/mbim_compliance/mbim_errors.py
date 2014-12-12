@@ -35,6 +35,16 @@ class MBIMComplianceControlMessageError(MBIMComplianceError):
     pass
 
 
+class MBIMComplianceDataTransferError(MBIMComplianceError):
+    """ Errors raised in the MBIM data transfer module. """
+    pass
+
+
+class MBIMComplianceNtbError(MBIMComplianceError):
+    """ Errors raised in the MBIM NTB module. """
+    pass
+
+
 class MBIMComplianceTestError(MBIMComplianceError):
     """ Errors raised by compliance suite tests. """
     pass

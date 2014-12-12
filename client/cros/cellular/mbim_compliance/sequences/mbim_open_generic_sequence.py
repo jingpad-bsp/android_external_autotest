@@ -126,20 +126,16 @@ class MBIMOpenGenericSequence(open_sequence.OpenSequence):
         if not max_control_transfer_size:
             max_control_transfer_size = (
                     mbim_functional_descriptor.wMaxControlMessage)
-        # Store the |max_control_transfer_size| in the device context so that
-        # it can be used in any further control transfers.
-        device_context.max_control_transfer_size =  max_control_transfer_size
-
         open_message = mbim_message_request.MBIMOpen(
                 max_control_transfer=max_control_transfer_size)
         packets = mbim_message_request.generate_request_packets(
                 open_message,
-                device_context.max_control_transfer_size)
+                max_control_transfer_size)
         channel = mbim_channel.MBIMChannel(
                 device_context._device,
                 communication_interface_number,
                 interrupt_endpoint_address,
-                device_context.max_control_transfer_size)
+                max_control_transfer_size)
         response_packets = channel.bidirectional_transaction(*packets)
         channel.close()
 
@@ -155,5 +151,17 @@ class MBIMOpenGenericSequence(open_sequence.OpenSequence):
         if response_message.status_codes != mbim_constants.MBIM_STATUS_SUCCESS:
             mbim_errors.log_and_raise(mbim_errors.MBIMComplianceSequenceError,
                                       'mbim1.0:9.4.1#2')
+
+        # Store data/control transfer parameters in the device context so that
+        # it can be used in any further control/data transfers.
+        device_context.max_control_transfer_size = max_control_transfer_size
+        device_context.max_in_data_transfer_size = (
+                ntb_parameters.dwNtbInMaxSize)
+        device_context.max_out_data_transfer_size = (
+                ntb_parameters.dwNtbOutMaxSize)
+        device_context.out_data_transfer_divisor = (
+                ntb_parameters.wNdpOutDivisor)
+        device_context.out_data_transfer_payload_remainder = (
+                ntb_parameters.wNdpOutPayloadRemainder)
 
         return open_message, response_message

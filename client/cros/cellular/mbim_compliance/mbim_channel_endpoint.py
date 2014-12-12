@@ -1,4 +1,4 @@
-# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -186,9 +186,9 @@ class MBIMChannelEndpoint(object):
                 data_or_wLength=self._in_buffer_size,
                 timeout=self.GET_ENCAPSULATED_RESPONSE_TIMEOUT_MS,
                 **self.GET_ENCAPSULATED_RESPONSE_ARGS)
-        numpy.set_printoptions(formatter={'int':lambda x:hex(int(x))},
+        numpy.set_printoptions(formatter={'int':lambda x: hex(int(x))},
                                linewidth=1000)
-        logging.debug('Received %d bytes response. Payload: %s',
+        logging.debug('Control Channel: Received %d bytes response. Payload:%s',
                       len(response), numpy.array(response))
         return response
 
@@ -206,9 +206,10 @@ class MBIMChannelEndpoint(object):
                 data_or_wLength=payload,
                 timeout=self.SEND_ENCAPSULATED_REQUEST_TIMEOUT_MS,
                 **self.SEND_ENCAPSULATED_COMMAND_ARGS)
-        numpy.set_printoptions(formatter={'int':lambda x:hex(int(x))},
+        numpy.set_printoptions(formatter={'int':lambda x: hex(int(x))},
                                linewidth=1000)
-        logging.debug('Sent %d bytes out of %d bytes requested. Payload: %s',
+        logging.debug('Control Channel: Sent %d bytes out of %d bytes '
+                      'requested. Payload:%s',
                       actual_written, len(payload), numpy.array(payload))
         if actual_written < len(payload):
             mbim_errors.log_and_raise(
