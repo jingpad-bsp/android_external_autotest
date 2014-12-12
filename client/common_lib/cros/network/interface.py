@@ -17,6 +17,7 @@ DeviceDescription = collections.namedtuple('DeviceDescription',
                                            ['name', 'kernel_module'])
 
 NAME_MARVELL_88W8797_SDIO = 'Marvell 88W8797 SDIO'
+NAME_MARVELL_88W8887_SDIO = 'Marvell 88W8887 SDIO'
 NAME_MARVELL_88W8897_SDIO = 'Marvell 88W8897 SDIO'
 NAME_MARVELL_88W8897_PCIE = 'Marvell 88W8897 PCIE'
 NAME_ATHEROS_AR9280 = 'Atheros AR9280'
@@ -32,6 +33,7 @@ DeviceInfo = collections.namedtuple('DeviceInfo', ['vendor', 'device'])
 DEVICE_NAME_LOOKUP = {
     DeviceInfo('0x02df', '0x9129'): NAME_MARVELL_88W8797_SDIO,
     DeviceInfo('0x02df', '0x912d'): NAME_MARVELL_88W8897_SDIO,
+    DeviceInfo('0x02df', '0x9135'): NAME_MARVELL_88W8887_SDIO,
     DeviceInfo('0x11ab', '0x2b38'): NAME_MARVELL_88W8897_PCIE,
     DeviceInfo('0x168c', '0x002a'): NAME_ATHEROS_AR9280,
     DeviceInfo('0x168c', '0x0030'): NAME_ATHEROS_AR9382,
