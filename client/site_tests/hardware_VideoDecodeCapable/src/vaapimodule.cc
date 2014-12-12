@@ -3,27 +3,45 @@
 // found in the LICENSE file.
 
 #include <Python.h>
+
+#if !defined(USE_DRM)
 #include <X11/Xlib.h>
 #include <va/va.h>
 #include <va/va_x11.h>
+#else
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <va/va.h>
+#include <va/va_drm.h>
+#endif
 
 static PyObject *VaapiError;
 
 namespace {
 
 struct DisplayBundle {
+#if !defined(USE_DRM)
   Display *x11_display;
+#else
+  int drm_fd;
+#endif
   VADisplay va_display;
 };
 
 static void destroy_display_bundle(PyObject* object) {
   DisplayBundle* bundle = (DisplayBundle*) PyCapsule_GetPointer(object, NULL);
   vaTerminate(bundle->va_display);
+#if !defined(USE_DRM)
   XCloseDisplay(bundle->x11_display);
+#else
+  close(bundle->drm_fd);
+#endif
   delete bundle;
 }
 
 static PyObject* va_create_display(PyObject* self, PyObject* args) {
+#if !defined(USE_DRM)
   const char* display_name;
   if (!PyArg_ParseTuple(args, "s", &display_name))
     return NULL;
@@ -36,6 +54,19 @@ static PyObject* va_create_display(PyObject* self, PyObject* args) {
   }
 
   VADisplay va_display = vaGetDisplay(x11_display);
+#else
+  const char* drm_card_path;
+  if (!PyArg_ParseTuple(args, "s", &drm_card_path))
+    return NULL;
+
+  int drm_fd = open(drm_card_path, O_RDWR);
+  if (drm_fd < 0) {
+    PyErr_SetString(VaapiError, "Cannot open drm card path");
+    return NULL;
+  }
+
+  VADisplay va_display = vaGetDisplayDRM(drm_fd);
+#endif
   if (!vaDisplayIsValid(va_display)) {
     PyErr_SetString(VaapiError, "Cannot get a valid display");
     return NULL;
@@ -50,7 +81,11 @@ static PyObject* va_create_display(PyObject* self, PyObject* args) {
   }
 
   DisplayBundle* bundle = new DisplayBundle();
+#if !defined(USE_DRM)
   bundle->x11_display = x11_display;
+#else
+  bundle->drm_fd = drm_fd;
+#endif
   bundle->va_display = va_display;
 
   return PyCapsule_New(bundle, NULL, destroy_display_bundle);

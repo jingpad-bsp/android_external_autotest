@@ -82,17 +82,22 @@ class hardware_VideoDecodeCapable(test.test):
         # we will test with the v4l2 module.
         utils.make('v4l2', ignore_status = True)
         utils.make('vaapi', ignore_status = True)
+        utils.make('vaapi_drm', ignore_status = True)
 
 
     def run_once_vaapi(self):
         sys.path.append(self.bindir)
         import vaapi
 
-        # Set the XAUTHORITY for connecting to the X server
-        utils.assert_has_X_server()
-        os.environ.setdefault('XAUTHORITY', '/home/chronos/.Xauthority')
+        if not utils.is_freon():
+            # Set the XAUTHORITY for connecting to the X server
+            utils.assert_has_X_server()
+            os.environ.setdefault('XAUTHORITY', '/home/chronos/.Xauthority')
 
-        display = vaapi.create_display(':0.0')
+            display = vaapi.create_display(':0.0')
+        else:
+            display = vaapi.create_display('/dev/dri/card0')
+
         supported_profiles = vaapi.query_profiles(display)
         logging.info('Vaapi Profiles: %s', supported_profiles)
 
