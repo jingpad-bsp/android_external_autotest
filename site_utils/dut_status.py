@@ -5,27 +5,21 @@
 
 """Report whether DUTs are working or broken.
 
-usage: dut_status [-f] [<time options>] [<host options>] [hostname ...]
+usage: dut_status [ <options> ] [hostname ...]
 
-By default, reports on the status of the given hosts, to say whether
-they're "working" or "broken".  For purposes of this script "broken"
-means "the DUT requires manual intervention before it can be used
-for further testing", and "working" means "not broken".  The status
-determination is based on the history of completed jobs for the DUT;
-currently running jobs are not considered.
+Reports on the history and status of selected DUT hosts, to
+determine whether they're "working" or "broken".  For purposes of
+the script, "broken" means "the DUT requires manual intervention
+before it can be used for further testing", and "working" means "not
+broken".  The status determination is based on the history of
+completed jobs for the DUT in a given time interval; still-running
+jobs are not considered.
 
-DUTs may be specified either by name or by using these options:
-  --board/-b BOARD - Only include hosts with the given board.
-  --pool/-p POOL - Only include hosts in the given pool.
-
-By default, the command prints a one-line summary for each DUT.
-
-With the -f option, reports the job history for the DUT, and whether
-the DUT was believed working or broken at the end of each job.
-
-To search the DUT's job history, the script must be given a time
-range to search over.  The range is specified with up to two of
-three options:
+Time Interval Selection
+~~~~~~~~~~~~~~~~~~~~~~~
+A DUT's reported status is based on the DUT's job history in a time
+interval determined by command line options.  The interval is
+specified with up to two of three options:
   --until/-u DATE/TIME - Specifies an end time for the search
       range.  (default: now)
   --since/-s DATE/TIME - Specifies a start time for the search
@@ -43,7 +37,41 @@ If no time options are given, use the default end time and duration.
 
 DATE/TIME values are of the form '2014-11-06 17:21:34'.
 
-Examples:
+DUT Selection
+~~~~~~~~~~~~~
+By default, information is reported for DUTs named as command-line
+arguments.  Options are also available for selecting groups of
+hosts:
+  --board/-b BOARD - Only include hosts with the given board.
+  --pool/-p POOL - Only include hosts in the given pool.
+
+The selected hosts may also be filtered based on status:
+  -w/--working - Only include hosts in a working state.
+  -n/--broken - Only include hosts in a non-working state.  Hosts
+      with no job history are considered non-working.
+
+Output Formats
+~~~~~~~~~~~~~~
+There are three available output formats:
+  * A simple list of host names.
+  * A status summary showing one line per host.
+  * A detailed job history for all selected DUTs, sorted by
+    time of execution.
+
+The default format depends on whether hosts are filtered by
+status:
+  * With the --working or --broken options, the list of host names
+    is the default format.
+  * Without those options, the default format is the one-line status
+    summary.
+
+These options override the default formats:
+  -o/--oneline - Use the one-line summary with the --working or
+      --broken options.
+  -f/--full_history - Print detailed per-host job history.
+
+Examples
+~~~~~~~~
     $ dut_status chromeos2-row4-rack2-host12
     hostname                     S   last checked         URL
     chromeos2-row4-rack2-host12  NO  2014-11-06 15:25:29  http://...
@@ -448,11 +476,43 @@ class HostJobHistory(object):
         return _UNKNOWN, None
 
 
-def _print_simple_status(history_list):
+def _include_status(status, arguments):
+    """Determine whether the given status should be filtered.
+
+    Checks the given `status` against the command line options in
+    `arguments`.  Return whether a host with that status should be
+    printed based on the options.
+
+    @param status Status of a host to be printed or skipped.
+    @param arguments Parsed arguments object as returned by
+                     ArgumentParser.parse_args().
+
+    @return Returns `True` if the command-line options call for
+            printing hosts with the status, or `False` otherwise.
+
+    """
+    if status == _WORKING:
+        return arguments.working
+    else:
+        return arguments.broken
+
+
+def _print_host_summaries(history_list, arguments):
+    """Print one-line summaries of host history.
+
+    This function handles the output format of the --oneline option.
+
+    @param history_list A list of HostHistory objects to be printed.
+    @param arguments    Parsed arguments object as returned by
+                        ArgumentParser.parse_args().
+
+    """
     fmt = '%-28s %-2s  %-19s  %s'
     print fmt % ('hostname', 'S', 'last checked', 'URL')
     for history in history_list:
         status, event = history.last_diagnosis()
+        if not _include_status(status, arguments):
+            continue
         if event is not None:
             datestr = time_utils.epoch_time_to_date_string(
                     event.start_time)
@@ -466,9 +526,26 @@ def _print_simple_status(history_list):
                      url)
 
 
-def _print_host_history(history_list):
+def _print_hosts(history_list, arguments):
+    """Print hosts, optionally with their job history.
+
+    This function handles both the default format for --working
+    and --broken options, as well as the output for the
+    --full_history option.  The `arguments` parameter determines the
+    format to use.
+
+    @param history_list A list of HostHistory objects to be printed.
+    @param arguments    Parsed arguments object as returned by
+                        ArgumentParser.parse_args().
+
+    """
     for history in history_list:
+        status, _ = history.last_diagnosis()
+        if not _include_status(status, arguments):
+            continue
         print history.hostname
+        if not arguments.full_history:
+            continue
         for event in history:
             start_time = time_utils.epoch_time_to_date_string(
                     event.start_time)
@@ -581,6 +658,27 @@ def _validate_host_list(arguments):
     return histories
 
 
+def _validate_format_options(arguments):
+    """Check the options for what output format to use.
+
+    Enforce these rules:
+      * If neither --broken nor --working was used, then --oneline
+        becomes the selected format.
+      * If neither --broken nor --working was used, included both
+        working and broken DUTs.
+
+    @param arguments Parsed arguments object as returned by
+                     ArgumentParser.parse_args().
+
+    """
+    if not arguments.oneline and not arguments.full_history:
+        arguments.oneline = (not arguments.working and
+                             not arguments.broken)
+    if not arguments.working and not arguments.broken:
+        arguments.working = True
+        arguments.broken = True
+
+
 def _validate_command(arguments):
     """Check that the command's arguments are valid.
 
@@ -601,6 +699,7 @@ def _validate_command(arguments):
 
     """
     _validate_time_range(arguments)
+    _validate_format_options(arguments)
     return _validate_host_list(arguments)
 
 
@@ -633,18 +732,32 @@ def _parse_command(argv):
                         metavar='HOURS',
                         help='number of hours of history to display'
                              ' (default: %d)' % _DEFAULT_DURATION)
-    parser.add_argument('-f', '--full_history', action='store_true',
-                        help='Display host history from most '
-                             'to least recent for each DUT')
-    parser.add_argument('hostnames',
-                        nargs='*',
-                        help='host names of DUTs to report on')
+
+    format_group = parser.add_mutually_exclusive_group()
+    format_group.add_argument('-f', '--full_history',
+                              action='store_true',
+                              help='Display host history from most '
+                                   'to least recent for each DUT')
+    format_group.add_argument('-o', '--oneline', action='store_true',
+                              default=False,
+                              help='Display host status summary')
+
+    parser.add_argument('-w', '--working', action='store_true',
+                        default=False,
+                        help='List working devices by name only')
+    parser.add_argument('-n', '--broken', action='store_true',
+                        default=False,
+                        help='List non-working devices by name only')
+
     parser.add_argument('-b', '--board',
                         help='Display history for all DUTs '
                              'of the given board')
     parser.add_argument('-p', '--pool',
                         help='Display history for all DUTs '
                              'in the given pool')
+    parser.add_argument('hostnames',
+                        nargs='*',
+                        help='host names of DUTs to report on')
     arguments = parser.parse_args(argv[1:])
     return arguments
 
@@ -657,10 +770,10 @@ def main(argv):
     """
     arguments = _parse_command(argv)
     history_list = _validate_command(arguments)
-    if arguments.full_history:
-        _print_host_history(history_list)
+    if arguments.oneline:
+        _print_host_summaries(history_list, arguments)
     else:
-        _print_simple_status(history_list)
+        _print_hosts(history_list, arguments)
 
 
 if __name__ == '__main__':
