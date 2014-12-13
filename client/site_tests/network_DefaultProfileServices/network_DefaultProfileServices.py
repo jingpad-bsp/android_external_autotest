@@ -39,7 +39,7 @@ class network_DefaultProfileServices(test.test):
                 shill.SERVICE_PROPERTY_MODE: 'managed',
                 shill.SERVICE_PROPERTY_SSID: self.OUR_SSID,
                 shill.SERVICE_PROPERTY_HIDDEN: True,
-                shill.SERVICE_PROPERTY_SECURITY: 'none',
+                shill.SERVICE_PROPERTY_SECURITY_CLASS: 'none',
                 })
 
         utils.run('stop shill')

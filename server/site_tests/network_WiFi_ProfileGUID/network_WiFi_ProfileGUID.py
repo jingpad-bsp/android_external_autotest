@@ -37,8 +37,6 @@ class network_WiFi_ProfileGUID(wifi_cell_test_base.WiFiCellTestBase):
         success, state, time = result
         if not success:
             logging.error('ERROR!')
-            from time import sleep
-            sleep(60)
             raise error.TestFail('Failed to connect to %s in %f seconds (%r).' %
                                  (ssid, time, state))
 

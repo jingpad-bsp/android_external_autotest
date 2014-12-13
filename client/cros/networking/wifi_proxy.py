@@ -77,7 +77,7 @@ class WifiProxy(shill_proxy.ShillProxy):
         config_params = {self.SERVICE_PROPERTY_TYPE: 'wifi',
                          self.SERVICE_PROPERTY_HIDDEN: hidden_network,
                          self.SERVICE_PROPERTY_SSID: ssid,
-                         self.SERVICE_PROPERTY_SECURITY: security,
+                         self.SERVICE_PROPERTY_SECURITY_CLASS: security,
                          self.SERVICE_PROPERTY_MODE: mode}
         if autoconnect is not None:
             config_params[self.SERVICE_PROPERTY_AUTOCONNECT] = autoconnect
@@ -166,7 +166,7 @@ class WifiProxy(shill_proxy.ShillProxy):
         logging.info('Discovering...')
         discovery_params = {self.SERVICE_PROPERTY_TYPE: 'wifi',
                             self.SERVICE_PROPERTY_NAME: ssid,
-                            self.SERVICE_PROPERTY_SECURITY: security,
+                            self.SERVICE_PROPERTY_SECURITY_CLASS: security,
                             self.SERVICE_PROPERTY_MODE: mode}
         while time.time() - start_time < discovery_timeout_seconds:
             discovery_time = time.time() - start_time

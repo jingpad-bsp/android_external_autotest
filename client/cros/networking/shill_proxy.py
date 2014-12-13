@@ -72,7 +72,10 @@ class ShillProxy(object):
     SERVICE_PROPERTY_PASSPHRASE = 'Passphrase'
     SERVICE_PROPERTY_PROFILE = 'Profile'
     SERVICE_PROPERTY_SAVE_CREDENTIALS = 'SaveCredentials'
-    SERVICE_PROPERTY_SECURITY = 'Security'
+    # Unless you really care whether a network is WPA (TSN) vs. WPA-2
+    # (RSN), you should use SERVICE_PROPERTY_SECURITY_CLASS.
+    SERVICE_PROPERTY_SECURITY_RAW = 'Security'
+    SERVICE_PROPERTY_SECURITY_CLASS = 'SecurityClass'
     SERVICE_PROPERTY_SSID = 'SSID'
     SERVICE_PROPERTY_STRENGTH = 'Strength'
     SERVICE_PROPERTY_STATE = 'State'

@@ -48,7 +48,7 @@ class network_WiFiInvalidParameters(test.test):
         for ssid in bad_ssids:
             config_params = {shill.SERVICE_PROPERTY_TYPE: 'wifi',
                              shill.SERVICE_PROPERTY_SSID: ssid,
-                             shill.SERVICE_PROPERTY_SECURITY: 'none'}
+                             shill.SERVICE_PROPERTY_SECURITY_CLASS: 'none'}
             try:
                 accepted = True
                 shill.manager.ConfigureService(config_params)
@@ -101,7 +101,7 @@ class network_WiFiInvalidParameters(test.test):
             config_params = {shill.SERVICE_PROPERTY_TYPE: 'wifi',
                              shill.SERVICE_PROPERTY_SSID: self.get_ssid(),
                              shill.SERVICE_PROPERTY_PASSPHRASE: key,
-                             shill.SERVICE_PROPERTY_SECURITY: 'wep'}
+                             shill.SERVICE_PROPERTY_SECURITY_CLASS: 'wep'}
             try:
                 accepted = True
                 shill.manager.ConfigureService(config_params)
@@ -122,7 +122,7 @@ class network_WiFiInvalidParameters(test.test):
             config_params = {shill.SERVICE_PROPERTY_TYPE: 'wifi',
                              shill.SERVICE_PROPERTY_SSID: self.get_ssid(),
                              shill.SERVICE_PROPERTY_PASSPHRASE: key,
-                             shill.SERVICE_PROPERTY_SECURITY: 'wep'}
+                             shill.SERVICE_PROPERTY_SECURITY_CLASS: 'wep'}
             try:
                 shill.manager.ConfigureService(config_params)
             except:
@@ -142,10 +142,11 @@ class network_WiFiInvalidParameters(test.test):
                            self.WPA_PMK_TOO_LONG]
         for psk in bad_passphrases:
             for security in ('rsn', 'wpa', 'psk'):
-                config_params = {shill.SERVICE_PROPERTY_TYPE: 'wifi',
-                                 shill.SERVICE_PROPERTY_SSID: self.get_ssid(),
-                                 shill.SERVICE_PROPERTY_PASSPHRASE: psk,
-                                 shill.SERVICE_PROPERTY_SECURITY: security}
+                config_params = {
+                    shill.SERVICE_PROPERTY_TYPE: 'wifi',
+                    shill.SERVICE_PROPERTY_SSID: self.get_ssid(),
+                    shill.SERVICE_PROPERTY_PASSPHRASE: psk,
+                    shill.SERVICE_PROPERTY_SECURITY_RAW: security}
                 try:
                     accepted = True
                     shill.manager.ConfigureService(config_params)
