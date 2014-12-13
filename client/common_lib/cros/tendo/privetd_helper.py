@@ -112,6 +112,7 @@ class PrivetdHelper(object):
     def restart_privetd(self, log_verbosity=0, enable_ping=False,
                         http_port=DEFAULT_HTTP_PORT,
                         https_port=DEFAULT_HTTPS_PORT,
+                        device_whitelist=None,
                         disable_security=False):
         """Restart privetd in various configurations.
 
@@ -120,6 +121,9 @@ class PrivetdHelper(object):
                 on the privetd web server.
         @param http_port: integer port number for the privetd HTTP server.
         @param https_port: integer port number for the privetd HTTPS server.
+        @param device_whitelist: list of string network interface names to
+                consider exclusively for connectivity monitoring (e.g.
+                ['eth0', 'wlan0']).
         @param disable_security: bool True to disable pairing security
 
         """
@@ -133,6 +137,9 @@ class PrivetdHelper(object):
             flag_list.append('PRIVETD_ENABLE_PING=true')
         if disable_security:
             flag_list.append('PRIVETD_DISABLE_SECURITY=true')
+        if device_whitelist:
+            flag_list.append('PRIVETD_DEVICE_WHITELIST=%s' %
+                             ','.join(device_whitelist))
         self._run('stop privetd', ignore_status=True)
         self._run('start privetd %s' % ' '.join(flag_list))
         # TODO(wiley) Ping some DBus API that will let us know when the daemon

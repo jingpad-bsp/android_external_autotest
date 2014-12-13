@@ -19,6 +19,21 @@ class privetd_CanConnectToWiFi(wifi_cell_test_base.WiFiCellTestBase):
     CONNECT_TIMEOUT_SECONDS = 45
     PASSPHRASE = 'chromeos'
 
+    def is_wifi_online(self, helper):
+        """Return whether or not the test device reports WiFi is online.
+
+        @param helper: PrivetdHelper object.
+        @return True iff the /info API indicates WiFi is online.
+
+        """
+        response = helper.send_privet_request(privetd_helper.URL_INFO)
+        if 'wifi' not in response:
+            raise error.TestFail('Missing WiFi block from /info')
+        if 'status' not in response['wifi']:
+            raise error.TestFail('Missing WiFi status from /info')
+        return response['wifi']['status'] == 'online'
+
+
     def run_once(self):
         """This test asserts that privetd can cause us to connect to an AP.
 
@@ -41,9 +56,13 @@ class privetd_CanConnectToWiFi(wifi_cell_test_base.WiFiCellTestBase):
         ssid = self.context.router.get_ssid()
         helper = privetd_helper.PrivetdHelper(host=self.context.client.host)
         helper.restart_privetd(log_verbosity=3, enable_ping=True,
+                               device_whitelist=[self.context.client.wifi_if],
                                disable_security=True)
         helper.ping_server(use_https=False)
         helper.ping_server(use_https=True)
+        if self.is_wifi_online(helper):
+            raise error.TestFail('Device claims to be online, but is not.')
+
         auth_token = helper.privet_auth()
         ssid = self.context.router.get_ssid()
         data = helper.setup_add_wifi_credentials(ssid, self.PASSPHRASE)
@@ -57,10 +76,13 @@ class privetd_CanConnectToWiFi(wifi_cell_test_base.WiFiCellTestBase):
         else:
             raise error.TestFail('Timed out waiting for privetd to report '
                                  'connect success.')
+        if not self.is_wifi_online(helper):
+            raise error.TestFail('Device claims to be offline, but is online.')
         self.context.assert_ping_from_dut()
-        # TODO(wiley) Check privetd's understanding of whether or not the setup
-        #             was successful.
-        self.context.client.shill.disconnect(self.context.router.get_ssid())
+        self.context.router.deconfig()
+        if self.is_wifi_online(helper):
+            raise error.TestFail(
+                    'Device claims to be online after router deconfig.')
 
 
     def cleanup(self):
