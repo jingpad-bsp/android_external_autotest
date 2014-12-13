@@ -30,11 +30,15 @@ class ShardClientIntegrationTest(rdb_testing_utils.AbstractBaseRDBTester,
                 'SHARD', 'shard_hostname', 'host1')
 
 
+    def initialize_shard_client(self):
+        self.setup_global_config()
+        return shard_client.get_shard_client()
+
+
     def testCompleteStatusBasic(self):
         """Test that complete jobs are uploaded properly."""
 
-        self.setup_global_config()
-        client = shard_client.get_shard_client()
+        client = self.initialize_shard_client()
         job = self.create_job(deps=set(['a']), shard_hostname=client.hostname)
         scheduler_models.initialize()
         hqe = scheduler_models.HostQueueEntry.fetch(
@@ -56,8 +60,7 @@ class ShardClientIntegrationTest(rdb_testing_utils.AbstractBaseRDBTester,
     def testOnlyShardId(self):
         """Test that setting only the shardid prevents the job from upload."""
 
-        self.setup_global_config()
-        client = shard_client.get_shard_client()
+        client = self.initialize_shard_client()
         job = self.create_job(deps=set(['a']), shard_hostname=client.hostname)
         scheduler_models.initialize()
         hqe = scheduler_models.HostQueueEntry.fetch(
@@ -93,5 +96,39 @@ class ShardClientIntegrationTest(rdb_testing_utils.AbstractBaseRDBTester,
         # in uploaded jobs.
         jobs = client._get_jobs_to_upload()
         assert(jobs == [])
+
+
+    def testHostSerialization(self):
+        """Test simple host serialization."""
+        client = self.initialize_shard_client()
+        host = self.db_helper.create_host(name='test_host')
+        serialized_host = host.serialize()
+        models.Host.objects.all().delete()
+        models.Host.deserialize(serialized_host)
+        models.Host.objects.get(hostname='test_host')
+
+
+    def testUserExists(self):
+        """Test user related race conditions."""
+        client = self.initialize_shard_client()
+        user = self.db_helper.create_user(name='test_user')
+        serialized_user = user.serialize()
+
+        # Master sends a user with the same login but different id
+        serialized_user['id'] = '3'
+        models.User.deserialize(serialized_user)
+        models.User.objects.get(id=3, login='test_user')
+
+        # Master sends a user with the same id, different login
+        serialized_user['login'] = 'fake_user'
+        models.User.deserialize(serialized_user)
+        models.User.objects.get(id=3, login='fake_user')
+
+        # Master sends a new user
+        user = self.db_helper.create_user(name='new_user')
+        serialized_user = user.serialize()
+        models.User.objects.all().delete()
+        models.User.deserialize(serialized_user)
+        models.User.objects.get(login='new_user')
 
 

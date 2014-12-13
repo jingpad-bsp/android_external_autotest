@@ -370,6 +370,47 @@ class User(dbmodels.Model, model_logic.ModelExtensions):
         return user
 
 
+    @classmethod
+    def get_record(cls, data):
+        """Check the database for an identical record.
+
+        Check for a record with matching id and login. If one exists,
+        return it. If one does not exist there is a possibility that
+        the following cases have happened:
+        1. Same id, different login
+            We received: "1 chromeos-test"
+            And we have: "1 debug-user"
+        In this case we need to delete "1 debug_user" and insert
+        "1 chromeos-test".
+
+        2. Same login, different id:
+            We received: "1 chromeos-test"
+            And we have: "2 chromeos-test"
+        In this case we need to delete "2 chromeos-test" and insert
+        "1 chromeos-test".
+
+        As long as this method deletes bad records and raises the
+        DoesNotExist exception the caller will handle creating the
+        new record.
+
+        @raises: DoesNotExist, if a record with the matching login and id
+                does not exist.
+        """
+
+        # Both the id and login should be uniqe but there are cases when
+        # we might already have a user with the same login/id because
+        # current_user will proactively create a user record if it doesn't
+        # exist. Since we want to avoid conflict between the master and
+        # shard, just delete any existing user records that don't match
+        # what we're about to deserialize from the master.
+        try:
+            return cls.objects.get(login=data['login'], id=data['id'])
+        except cls.DoesNotExist:
+            cls.delete_matching_record(login=data['login'])
+            cls.delete_matching_record(id=data['id'])
+            raise
+
+
     class Meta:
         """Metadata for class User."""
         db_table = 'afe_users'

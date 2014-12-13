@@ -1014,12 +1014,29 @@ class ModelExtensions(rdb_model_extensions.ModelValidators):
                 if pair[0] in cls.SERIALIZATION_LOCAL_LINKS_TO_UPDATE]
 
 
+    @classmethod
+    def delete_matching_record(cls, **filter_args):
+        """Delete records matching the filter.
+
+        @param filter_args: Arguments for the django filter
+                used to locate the record to delete.
+        """
+        try:
+            existing_record = cls.objects.get(**filter_args)
+        except cls.DoesNotExist:
+            return
+        existing_record.delete()
+
+
     def _deserialize_local(self, data):
         """Set local attributes from a list of tuples.
 
         @param data: List of tuples like returned by
                      _split_local_from_foreign_values.
         """
+        if not data:
+            return
+
         for link, value in data:
             setattr(self, link, value)
         # Overwridden save() methods are prone to errors, so don't execute them.
@@ -1044,6 +1061,21 @@ class ModelExtensions(rdb_model_extensions.ModelValidators):
             self._deserialize_relation(link, value)
         # See comment in _deserialize_local
         super(type(self), self).save()
+
+
+    @classmethod
+    def get_record(cls, data):
+        """Retrieve a record with the data in the given input arg.
+
+        @param data: A dictionary containing the information to use in a query
+                for data. If child models have different constraints of
+                uniqueness they should override this model.
+
+        @return: An object with matching data.
+
+        @raises DoesNotExist: If a record with the given data doesn't exist.
+        """
+        return cls.objects.get(id=data['id'])
 
 
     @classmethod
@@ -1072,9 +1104,8 @@ class ModelExtensions(rdb_model_extensions.ModelValidators):
             return None
 
         local, related = cls._split_local_from_foreign_values(data)
-
         try:
-            instance = cls.objects.get(id=data['id'])
+            instance = cls.get_record(data)
             local = cls._filter_update_allowed_fields(local)
         except cls.DoesNotExist:
             instance = cls()
