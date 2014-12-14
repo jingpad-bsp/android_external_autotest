@@ -111,7 +111,7 @@ def get_tpm_more_status():
 def is_tpm_lockout_in_effect():
     """Returns true if the TPM lockout is in effect; false otherwise."""
     status = get_tpm_more_status()
-    return status['dictionary_attack_lockout_in_effect']
+    return status.get('dictionary_attack_lockout_in_effect', None)
 
 
 def get_login_status():
