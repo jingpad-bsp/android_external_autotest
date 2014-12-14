@@ -4,11 +4,11 @@
 
 import base64
 import json
-import socket
 
-from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import constants
-from autotest_lib.server import autotest, hosts
+from autotest_lib.server import autotest
+from autotest_lib.server import hosts
+from autotest_lib.server.cros import dnsname_mangler
 
 
 class BluetoothTester(object):
@@ -226,24 +226,8 @@ def create_host_from(device_host, args=None):
     @return Autotest host object for the Tester.
 
     """
-
-    def is_ip_address(hostname):
-        try:
-            socket.inet_aton(hostname)
-            return True
-        except socket.error:
-            return False
-
-    try:
-        tester_hostname = args['tester']
-    except KeyError:
-        device_hostname = device_host.hostname
-        if is_ip_address(device_hostname):
-            raise error.TestError("Remote host cannot be an IP address unless "
-                                  "tester specified with --args tester=IP")
-
-        parts = device_hostname.split('.')
-        parts[0] = parts[0] + '-router'
-        tester_hostname = '.'.join(parts)
-
-    return hosts.create_host(tester_hostname)
+    cmdline_override = args.get('tester', None)
+    hostname = dnsname_mangler.get_tester_addr(
+            device_host.hostname,
+            cmdline_override=cmdline_override)
+    return hosts.create_host(hostname)

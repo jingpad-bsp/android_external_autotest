@@ -9,12 +9,12 @@ import string
 import time
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros.network import interface
 from autotest_lib.client.common_lib.cros.network import netblock
 from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.server import hosts
 from autotest_lib.server import site_linux_system
+from autotest_lib.server.cros import dnsname_mangler
 from autotest_lib.server.cros import wifi_test_utils
 from autotest_lib.server.cros.network import hostap_config
 
@@ -43,15 +43,8 @@ def build_router_hostname(client_hostname=None, router_hostname=None):
         raise error.TestError('Either client_hostname or router_hostname must '
                               'be specified to build_router_hostname.')
 
-    if router_hostname:
-        return router_hostname
-
-    if utils.host_is_in_lab_zone(client_hostname):
-        # Lab naming convention in: go/chromeos-lab-hostname-convention
-        return wifi_test_utils.get_router_addr_in_lab(client_hostname)
-
-    raise error.TestError('Could not infer router hostname from client '
-                          'hostname: %s.' % client_hostname)
+    return dnsname_mangler.get_router_addr(client_hostname,
+                                           cmdline_override=router_hostname)
 
 
 def build_router_proxy(test_name='', client_hostname=None, router_addr=None):

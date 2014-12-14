@@ -5,12 +5,11 @@
 import logging
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server import hosts
 from autotest_lib.server import site_linux_router
-from autotest_lib.server.cros import wifi_test_utils
+from autotest_lib.server.cros import dnsname_mangler
 from autotest_lib.server.cros.network import attenuator_controller
 from autotest_lib.server.cros.network import wifi_client
 
@@ -29,22 +28,6 @@ class WiFiTestContextManager(object):
     CMDLINE_PACKET_CAPTURE_SNAPLEN = 'capture_snaplen'
     CMDLINE_ROUTER_ADDR = 'router_addr'
     CMDLINE_ROUTER_PACKET_CAPTURES = 'router_capture'
-
-
-    @property
-    def _attenuator_address(self):
-        """@return string address of WiFi attenuator host in test."""
-        hostname = self.client.host.hostname
-        if utils.host_is_in_lab_zone(hostname):
-            return wifi_test_utils.get_attenuator_addr_in_lab(hostname)
-
-        elif self.CMDLINE_ATTEN_ADDR in self._cmdline_args:
-            return self._cmdline_args[self.CMDLINE_ATTEN_ADDR]
-
-        # Unlike routers, attenuators are optional.
-        logging.debug('Test not running in lab zone and no '
-                      'attenuator address given')
-        return None
 
 
     @property
@@ -170,11 +153,14 @@ class WiFiTestContextManager(object):
         # antennas on the router.  Most setups don't have this capability
         # and most tests do not require it.  We use this for RvR
         # (network_WiFi_AttenuatedPerf) and some roaming tests.
-        attenuator_addr = self._attenuator_address
+        attenuator_addr = dnsname_mangler.get_attenuator_addr(
+                self.client.host.hostname,
+                cmdline_override=self._cmdline_args.get(
+                        self.CMDLINE_ATTEN_ADDR, None))
         ping_helper = ping_runner.PingRunner()
         if attenuator_addr and ping_helper.simple_ping(attenuator_addr):
             self._attenuator = attenuator_controller.AttenuatorController(
-                    hosts.SSHHost(self._attenuator_address, port=22))
+                    hosts.SSHHost(attenuator_addr, port=22))
         # Set up a clean context to conduct WiFi tests in.
         self.client.shill.init_test_network_state()
         if self.CMDLINE_CLIENT_PACKET_CAPTURES in self._cmdline_args:
