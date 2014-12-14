@@ -5,7 +5,7 @@
 import re
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros import wifi_test_utils
+from autotest_lib.client.common_lib.cros import path_utils
 
 
 class ArpingRunner(object):
@@ -17,8 +17,8 @@ class ArpingRunner(object):
 
     def __init__(self, host, ping_interface):
         self._host = host
-        self._arping_command = wifi_test_utils.must_be_installed(
-                host, '/usr/bin/arping')
+        self._arping_command = path_utils.must_be_installed(
+                '/usr/bin/arping', host=host)
         self._ping_interface = ping_interface
 
 

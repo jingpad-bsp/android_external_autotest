@@ -8,7 +8,7 @@ import os.path
 import uuid
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros import wifi_test_utils
+from autotest_lib.client.common_lib.cros import path_utils
 
 
 class PacketCapturesDisabledError(Exception):
@@ -31,14 +31,12 @@ SNAPLEN_WIFI_PROBE_REQUEST = 600
 def get_packet_capturer(host, host_description=None, cmd_ifconfig=None,
                         cmd_ip=None, cmd_iw=None, cmd_netdump=None,
                         ignore_failures=False):
-    cmd_ifconfig = cmd_ifconfig or wifi_test_utils.get_install_path(
-            host, 'ifconfig')
-    cmd_iw = cmd_iw or wifi_test_utils.get_install_path(
-            host, 'iw')
-    cmd_ip = cmd_ip or wifi_test_utils.get_install_path(
-            host, 'ip')
-    cmd_netdump = cmd_netdump or wifi_test_utils.get_install_path(
-            host, 'tcpdump')
+    cmd_ifconfig = (cmd_ifconfig or
+                    path_utils.get_install_path('ifconfig', host=host))
+    cmd_iw = cmd_iw or path_utils.get_install_path('iw', host=host)
+    cmd_ip = cmd_ip or path_utils.get_install_path('ip', host=host)
+    cmd_netdump = (cmd_netdump or
+                   path_utils.get_install_path('tcpdump', host=host))
     host_description = host_description or 'cap_%s' % uuid.uuid4().hex
     if None in [cmd_ifconfig, cmd_iw, cmd_ip, cmd_netdump, host_description]:
         if ignore_failures:

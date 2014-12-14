@@ -9,13 +9,13 @@ import string
 import time
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros import path_utils
 from autotest_lib.client.common_lib.cros.network import interface
 from autotest_lib.client.common_lib.cros.network import netblock
 from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.server import hosts
 from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros import dnsname_mangler
-from autotest_lib.server.cros import wifi_test_utils
 from autotest_lib.server.cros.network import hostap_config
 
 
@@ -104,8 +104,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         """@return iterable object of AP capabilities for this system."""
         caps = set([self.CAPABILITY_IBSS])
         try:
-            self.cmd_send_management_frame = wifi_test_utils.must_be_installed(
-                    self.host, '/usr/bin/send_management_frame')
+            self.cmd_send_management_frame = path_utils.must_be_installed(
+                    '/usr/bin/send_management_frame', host=self.host)
             caps.add(self.CAPABILITY_SEND_MANAGEMENT_FRAME)
         except error.TestFail:
             pass
@@ -145,12 +145,12 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         super(LinuxRouter, self).__init__(host, 'router')
 
         self.cmd_dhcpd = '/usr/sbin/dhcpd'
-        self.cmd_hostapd = wifi_test_utils.must_be_installed(
-                host, '/usr/sbin/hostapd')
-        self.cmd_hostapd_cli = wifi_test_utils.must_be_installed(
-                host, '/usr/sbin/hostapd_cli')
-        self.cmd_wpa_supplicant = wifi_test_utils.must_be_installed(
-                host, '/usr/sbin/wpa_supplicant')
+        self.cmd_hostapd = path_utils.must_be_installed(
+                '/usr/sbin/hostapd', host=host)
+        self.cmd_hostapd_cli = path_utils.must_be_installed(
+                '/usr/sbin/hostapd_cli', host=host)
+        self.cmd_wpa_supplicant = path_utils.must_be_installed(
+                '/usr/sbin/wpa_supplicant', host=host)
         self.dhcpd_conf = '/tmp/dhcpd.%s.conf'
         self.dhcpd_leases = '/tmp/dhcpd.leases'
 
