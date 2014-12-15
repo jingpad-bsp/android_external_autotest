@@ -487,8 +487,13 @@ class power_LoadTest(test.test):
 
         """
         psr_status_file = '/sys/kernel/debug/dri/0/i915_edp_psr_status'
-        count = utils.get_field(utils.read_file(psr_status_file),
-                                0,
-                                linestart='Performance_Counter:')
+        try:
+            count = utils.get_field(utils.read_file(psr_status_file),
+                                    0,
+                                    linestart='Performance_Counter:')
+        except IOError:
+            logging.info("Can't find or read PSR status file")
+            return None
+
         logging.debug("PSR performance counter: %s", count)
         return int(count) if count else None
