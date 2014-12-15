@@ -20,6 +20,7 @@ class firmware_Mosys(FirmwareTest):
     c. mosys platform name
     d. mosys eeprom map
     e. mosys platform vendor
+    f. mosys -k pd info
 
     """
     version = 1
@@ -80,13 +81,43 @@ class firmware_Mosys(FirmwareTest):
                 fwcopy = fwcopy_matched.group(1)
         if fwcopy in version:
             actual_version = version[fwcopy]
+            logging.info('Expected ec version %s actual_version %s',
+                         exp_ec_version, actual_version)
+            if exp_ec_version != actual_version:
+               self._tag_failure(command)
         else:
             self._tag_failure(command)
             logging.error('Failed to locate version from ectool')
-        logging.info('Expected ec version %s actual_version %s',
-                     exp_ec_version, actual_version)
-        if exp_ec_version != actual_version:
-          self._tag_failure(command)
+
+    def check_pd_version(self, command, exp_pd_version):
+        """
+        Compare output of 'ectool --dev 1 version' for the current PD firmware
+        copy to exp_pd_version.
+
+        @param command: command string
+        @param exp_pd_version: The exepected PD version string.
+
+        """
+        lines = self.run_cmd('ectool --dev 1 version')
+        fwcopy_pattern = re.compile('Firmware copy: (.*)$')
+        ver_pattern = re.compile('(R[OW]) version:    (.*)$')
+        version = {}
+        for line in lines:
+            ver_matched = ver_pattern.match(line)
+            if ver_matched:
+                version[ver_matched.group(1)] = ver_matched.group(2)
+            fwcopy_matched = fwcopy_pattern.match(line)
+            if fwcopy_matched:
+                fwcopy = fwcopy_matched.group(1)
+        if fwcopy in version:
+            actual_version = version[fwcopy]
+            logging.info('Expected pd version %s actual_version %s',
+                         exp_pd_version, actual_version)
+            if exp_pd_version != actual_version:
+               self._tag_failure(command)
+        else:
+            self._tag_failure(command)
+            logging.error('Failed to locate version from ectool')
 
     def check_lsb_info(self, command, fieldname, exp_value):
         """
@@ -137,10 +168,11 @@ class firmware_Mosys(FirmwareTest):
           output = self.run_cmd(command)[0]
           p = re.compile('vendor="[a-z]+" name="[ -~]+" fw_version="(.*)"')
           v = p.match(output)
-          if not v:
+          if v:
+             version = v.group(1)
+             self.check_ec_version(command, version)
+          else:
             self._tag_failure(command)
-          version = v.group(1)
-          self.check_ec_version(command, version)
         else:
           logging.info('Skip "%s", command not available.', command)
 
@@ -189,3 +221,18 @@ class firmware_Mosys(FirmwareTest):
                                'Failed commands are "%s"' %
                                (len(self.failed_command),
                                ','.join(self.failed_command)))
+
+        # f. mosys -k pd info
+        command = 'mosys -k pd info'
+        if 'pd' in self.command_list:
+          output = self.run_cmd(command)[0]
+          p = re.compile('vendor="[a-z]+" name="[ -~]+" fw_version="(.*)"')
+          v = p.match(output)
+          if v:
+             version = v.group(1)
+             self.check_pd_version(command, version)
+          else:
+             self._tag_failure(command)
+        else:
+          logging.info('Skip "%s", command not available.', command)
+
