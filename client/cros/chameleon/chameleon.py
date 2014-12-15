@@ -61,7 +61,7 @@ class ChameleonConnection(object):
         chameleond_proxy = xmlrpclib.ServerProxy(remote, allow_none=True)
         # Call a RPC to test.
         try:
-            chameleond_proxy.ProbeInputs()
+            chameleond_proxy.GetSupportedPorts()
         except (socket.error,
                 xmlrpclib.ProtocolError,
                 httplib.BadStatusLine) as e:
