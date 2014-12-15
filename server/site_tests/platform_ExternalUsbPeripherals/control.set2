@@ -58,16 +58,12 @@ def run(machine):
                 "Realtek Semiconductor Corp.",
                 "LG Electronics, Inc.",]
     usb_checks = {
-        # Audio thread - active USB audio
-        str("loggedin:cras_test_client --dump_audio_thread | "
-            "awk '/devices/,/stream_dump/'") :
-            ["output dev.*USB Audio", "input dev.*USB Audio"],
         # USB Audio Output devices
         str("cras_test_client --dump_server_info | "
             "awk '/Output Devices:/,/Output Nodes:/'") :
             ["Microsoft LifeChat LX-3000: USB Audio" ],
         # USB Audio Input devices
-        str("cras_test_client --dump_server_info | "
+        str("loggedin:cras_test_client --dump_server_info | "
             "awk '/Input Devices:/,/Input Nodes:/'") :
             ["TeckNet: USB Audio",
              "Microsoft LifeChat LX-3000: USB Audio"],

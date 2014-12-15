@@ -59,7 +59,7 @@ def run(machine):
             "awk '/Output Devices:/,/Output Nodes:/'") :
             ["USB Headphone Set: USB Audio" ],
         # USB Audio Input devices
-        str("cras_test_client --dump_server_info | "
+        str("loggedin:cras_test_client --dump_server_info | "
             "awk '/Input Devices:/,/Input Nodes:/'") :
             ["USB Headphone Set: USB Audio", "HD Pro Webcam C920: USB Audio"],
         # USB stick four partitions volumes

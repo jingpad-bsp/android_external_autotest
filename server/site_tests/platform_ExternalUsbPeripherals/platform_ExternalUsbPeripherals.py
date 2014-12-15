@@ -214,7 +214,7 @@ class platform_ExternalUsbPeripherals(test.test):
             # Check for mandatory USb devices passed by usb_list flag
             for usb_name in self.usb_list:
                 found = self.wait_for_cmd_output(
-                    'lsusb', usb_name, _WAIT_DELAY * 3,
+                    'lsusb', usb_name, _WAIT_DELAY * 4,
                     'Not detecting %s' % usb_name)
                 result = result and found
         time.sleep(_WAIT_DELAY)
@@ -249,7 +249,7 @@ class platform_ExternalUsbPeripherals(test.test):
             # Run the usb check command
             for out_match in out_match_list:
                 match_result = self.wait_for_cmd_output(
-                    cmd, out_match, _WAIT_DELAY * 3,
+                    cmd, out_match, _WAIT_DELAY * 4,
                     'USB CHECKS DETAILS failed at %s:' % cmd)
                 usb_check_result = usb_check_result and match_result
         return usb_check_result
@@ -294,12 +294,14 @@ class platform_ExternalUsbPeripherals(test.test):
         return actions
 
 
-    def remove_crash_data(self):
+    def crash_data_removed(self):
         """Delete crash meta files"""
         for crash_path in _CRASH_PATHS:
             if not self.crash_not_detected(crash_path):
                 self.host.run('rm -rf %s/crash' % crash_path,
                               ignore_status=True)
+                return True
+        return False
 
 
     def add_failure(self, reason):
@@ -353,7 +355,9 @@ class platform_ExternalUsbPeripherals(test.test):
         if board in _SUSPEND_RESUME_BOARDS:
             action_sequence = self.change_suspend_resume(action_sequence)
         actions = action_sequence.split(',')
-        self.remove_crash_data()
+        if self.crash_data_removed():
+            self.fail_reasons = []
+
         for iteration in xrange(1, repeat + 1):
             step = 0
             for action in actions:
