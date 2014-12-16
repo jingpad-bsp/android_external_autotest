@@ -104,7 +104,10 @@ class ServiceHandler(object):
             raise BadServiceRequest(request)
 
         stats.Counter('rpc').increment(methName)
-        timer = stats.Timer('rpc')
+
+        metadata = request.copy()
+        metadata['_type'] = 'rpc'
+        timer = stats.Timer('rpc', metadata=metadata)
 
         try:
             timer.start()
