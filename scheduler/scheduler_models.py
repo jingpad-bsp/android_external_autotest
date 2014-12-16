@@ -1371,7 +1371,11 @@ class Job(DBObject):
         task_queued = False
         hqe_model = models.HostQueueEntry.objects.get(id=queue_entry.id)
 
-        if self._should_run_reset(queue_entry):
+        if self._should_run_provision(queue_entry):
+            self._queue_special_task(hqe_model,
+                                     models.SpecialTask.Task.PROVISION)
+            task_queued = True
+        elif self._should_run_reset(queue_entry):
             self._queue_special_task(hqe_model, models.SpecialTask.Task.RESET)
             task_queued = True
         else:
@@ -1383,11 +1387,6 @@ class Job(DBObject):
                 self._queue_special_task(hqe_model,
                                          models.SpecialTask.Task.VERIFY)
                 task_queued = True
-
-        if self._should_run_provision(queue_entry):
-            self._queue_special_task(hqe_model,
-                                     models.SpecialTask.Task.PROVISION)
-            task_queued = True
 
         if not task_queued:
             queue_entry.on_pending()
