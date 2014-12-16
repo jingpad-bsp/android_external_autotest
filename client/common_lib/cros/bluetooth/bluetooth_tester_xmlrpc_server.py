@@ -77,24 +77,10 @@ class BluetoothTesterXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         @return True on success, False otherwise.
 
         """
-        if not (self._setup_profile_settings(profile) and
-                self._setup_profile_class(profile) and
-                self._setup_profile_names(profile)):
-            return False
-
-        logging.info('Tester setup with profile: %s', profile)
-        return True
-
-
-    def _setup_profile_settings(self, profile):
-        """Set up the controller with settings from the given profile.
-
-        @param profile: profile to use, see setup().
-
-        @return True on success, False otherwise.
-
-        """
         profile_settings = self.PROFILE_SETTINGS[profile]
+        profile_class = self.PROFILE_CLASS[profile]
+        (profile_name, profile_short_name) = self.PROFILE_NAMES[profile]
+
         # Make sure all of the settings are supported by the controller.
         ( address, bluetooth_version, manufacturer_id,
           supported_settings, current_settings, class_of_device,
@@ -158,6 +144,18 @@ class BluetoothTesterXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
                 logging.warning('Failed to set High Speed setting')
                 return False
 
+            # Split our the major and minor class; it's listed as a kernel bug
+            # that we supply these to the kernel without shifting the bits over
+            # to take out the CoD format field, so this might have to change
+            # one day.
+            major_class = (profile_class & 0x00ff00) >> 8
+            minor_class = profile_class & 0x0000ff
+            if (self._control.set_device_class(
+                    self.index, major_class, minor_class)
+                        is None):
+                logging.warning('Failed to set device class')
+                return False
+
         # Setup generic settings that apply to either BR/EDR, LE or dual-mode
         # that still require the power to be off.
         if (self._control.set_connectable(
@@ -173,6 +171,12 @@ class BluetoothTesterXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             logging.warning('Failed to set pairable setting')
             return False
 
+        if (self._control.set_local_name(
+                    self.index, profile_name, profile_short_name)
+                    is None):
+            logging.warning('Failed to set local name')
+            return False
+
         # Now the settings have been set, power up the adapter.
         if not self._control.set_powered(
                 self.index,
@@ -183,6 +187,13 @@ class BluetoothTesterXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         # Fast connectable can only be set once the controller is powered,
         # and only when BR/EDR is enabled.
         if profile_settings & bluetooth_socket.MGMT_SETTING_BREDR:
+            # Wait for the device class set event, this happens after the
+            # power up "command complete" event when we've pre-set the class
+            # even though it's a side-effect of doing that.
+            self._control.wait_for_events(
+                    self.index,
+                    ( bluetooth_socket.MGMT_EV_CLASS_OF_DEV_CHANGED, ))
+
             if (self._control.set_fast_connectable(
                     self.index,
                     profile_settings &
@@ -200,36 +211,6 @@ class BluetoothTesterXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             logging.warning('Controller settings did not match those set: '
                             '%x != %x', current_settings, profile_settings)
             return False
-
-        return True
-
-
-    def _setup_profile_class(self, profile):
-        """Set up the controller with device class from the given profile.
-
-        @param profile: profile to use, see setup().
-
-        @return True on success, False otherwise.
-
-        """
-        profile_class = self.PROFILE_CLASS[profile]
-        if profile_class is None:
-            return True
-
-        # Split our the major and minor class; it's listed as a kernel bug that
-        # we supply these to the kernel without shifting the bits over to take
-        # out the CoD format field, so this might have to change one day.
-        major_class = (profile_class & 0x00ff00) >> 8
-        minor_class = profile_class & 0x0000ff
-        class_of_device = self._control.set_device_class(
-                self.index, major_class, minor_class)
-        if class_of_device is None:
-            logging.warning('Failed to set device class')
-            return False
-
-        # Verify that the device class was set correctly, including the Service
-        # Class fields; warn about those separately since the fix is probably
-        # "reboot the tester".
         if class_of_device != profile_class:
             if class_of_device & 0x00ffff == profile_class & 0x00ffff:
                 logging.warning('Class of device matched that set, but '
@@ -240,33 +221,13 @@ class BluetoothTesterXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
                 logging.warning('Class of device did not match that set: '
                                 '%x != %x', class_of_device, profile_class)
             return False
-
-        return True
-
-
-    def _setup_profile_names(self, profile):
-        """Set up the controller with names from the given profile.
-
-        @param profile: profile to use, see setup().
-
-        @return True on success, False otherwise.
-
-        """
-        (name, short_name) = self.PROFILE_NAMES[profile]
-        names = self._control.set_local_name(self.index, name, short_name)
-        if names is None:
-            logging.warning('Failed to set local name')
-            return False
-
-        # Verify they matched what we set, and were not mangled or truncated.
-        (set_name, set_short_name) = names
-        if set_name != name:
+        if name != profile_name:
             logging.warning('Local name did not match that set: "%s" != "%s"',
-                            set_name, name)
+                            name, profile_name)
             return False
-        elif set_short_name != short_name:
+        elif short_name != profile_short_name:
             logging.warning('Short name did not match that set: "%s" != "%s"',
-                            set_short_name, short_name)
+                            short_name, profile_short_name)
             return False
 
         return True
