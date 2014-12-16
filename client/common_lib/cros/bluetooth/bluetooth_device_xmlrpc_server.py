@@ -198,6 +198,15 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             if e.get_dbus_name() != self.UPSTART_ERROR_UNKNOWNINSTANCE:
                 raise
 
+        def bluez_stopped():
+            return not self._update_bluez()
+
+        logging.debug('waiting for bluez stop')
+        utils.poll_for_condition(
+                condition=bluez_stopped,
+                desc='Bluetooth Daemon has stopped.',
+                timeout=self.ADAPTER_TIMEOUT)
+
         for subdir in os.listdir(self.BLUETOOTH_LIBDIR):
             shutil.rmtree(os.path.join(self.BLUETOOTH_LIBDIR, subdir))
 
