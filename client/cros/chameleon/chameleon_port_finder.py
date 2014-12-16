@@ -163,39 +163,45 @@ class ChameleonVideoInputFinder(ChameleonInputFinder):
             # Try to plug the port such that DUT can detect it.
             was_plugged = video_port.plugged
 
+            logging.debug('Plug state before yeilding: %r', was_plugged)
             if not was_plugged:
                 video_port.plug()
-            # DUT takes some time to respond. Wait until the video signal
-            # to stabilize.
-            video_stable = video_port.wait_video_input_stable(
-                    self._TIMEOUT_VIDEO_STABLE_PROBE)
-            logging.info('Chameleon detected video input stable: %r',
-                         video_stable)
 
-            output = self.display_facade.get_external_connector_name()
-            logging.info('CrOS detected external connector: %r', output)
+            try:
+                # DUT takes some time to respond. Wait until the video signal
+                # to stabilize.
+                video_stable = video_port.wait_video_input_stable(
+                        self._TIMEOUT_VIDEO_STABLE_PROBE)
+                logging.info('Chameleon detected video input stable: %r',
+                             video_stable)
 
-            if video_stable and output and output.startswith(connector_type):
-                yield video_port
-                yielded = True
-            else:
-                if failed_ports is not None:
-                    failed_ports.append(video_port)
-                # Show the failure why.
-                if video_stable:
-                    if output:
-                        logging.error('Unexpected display on CrOS: %s', output)
-                    else:
-                        logging.error('Display detection seems broken')
+                output = self.display_facade.get_external_connector_name()
+                logging.info('CrOS detected external connector: %r', output)
+
+                if (video_stable and output and
+                        output.startswith(connector_type)):
+                    yield video_port
+                    yielded = True
                 else:
-                    if output:
+                    if failed_ports is not None:
+                       failed_ports.append(video_port)
+                    # Show the failure why.
+                    if video_stable:
+                        if output:
+                            logging.error('Unexpected display on CrOS: %s',
+                                          output)
+                        else:
+                            logging.error('Display detection seems broken')
+                    elif output:
                         logging.error('Chameleon timed out waiting CrOS video')
                     else:
                         logging.error('CrOS failed to see any external display')
-
-            # Unplug the port afterward if it wasn't plugged to begin with.
-            if not was_plugged:
-                video_port.unplug()
+            finally:
+                logging.debug('Restore the original plug state: %r', was_plugged)
+                if not was_plugged:
+                    video_port.unplug()
+                else:
+                    video_port.plug()
 
         if raise_error and not yielded:
             raise error.TestFail('No connected video port found between CrOS '
