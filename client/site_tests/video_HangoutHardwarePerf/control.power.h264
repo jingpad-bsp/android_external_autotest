@@ -1,0 +1,54 @@
+# Copyright 2014 The Chromium Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = 'Chrome OS Team, chromeos-video@google.com'
+NAME = 'video_HangoutHardwarePerf.power.h264'
+PURPOSE = """
+Monitor the performance of running VDA and VEA concurrently in a Hangout
+like scenario.
+"""
+CRITERIA = """
+The test fails if the vda_unittest or the vea_unittest fails or crashes.
+"""
+TIME = 'SHORT'
+TEST_CATEGORY = 'Performance'
+TEST_CLASS = 'video'
+TEST_TYPE = 'client'
+# Reboot in the lab after the test ends.
+DEPENDENCIES = 'cleanup-reboot, hw_video_acc_h264, hw_video_acc_enc_h264'
+BUG_TEMPLATE = {
+    'labels': ['OS-Chrome', 'Cr-OS-Kernel-Video'],
+}
+
+DOC = """
+This test utilizes the vda_unittest and vea_unittest to measure the
+performance of using the hardware Video Decode/Encode Accelerator
+concurrently.
+"""
+
+# Used resources. They will be downloaded in the beginning of the test.
+resources = [
+    'crowd/crowd720-8f5d51b87ca7942133b76c9132438883.h264',
+    'crowd/crowd180-cc5181cfd20ad29a91c2406366c16eb8.h264',
+    'crowd/crowd720-3cfe7b096f765742b4aa79e55fe7c994.yuv',
+    'crowd/crowd360-e84aac15c05b9b19250f3fc97722e0f6.yuv',
+    'crowd/crowd180-6d71fa96da062037482619df31830a97.yuv']
+
+# The videos to be decoded. Each entry consists of the following parts:
+#   [vidoe_name, width, height, frame_num, fragment_num, profile]
+decode_videos  = [['crowd720.h264', 1280, 720, 500, 502, 1]]
+decode_videos += [['crowd180.h264', 320, 180, 500, 502, 1]] * 4
+
+# The videos to be encoded.
+#   [video_name, width, height, profile, bit_rate]
+encode_videos = [
+    ['crowd720.yuv', 1280, 720, 1, 1200000],
+    ['crowd360.yuv', 640, 360, 1, 500000],
+    ['crowd180.yuv', 320, 180, 1, 100000]]
+
+job.run_test('video_HangoutHardwarePerf',
+    resources=resources,
+    decode_videos=decode_videos,
+    encode_videos=encode_videos,
+    measurement='power')

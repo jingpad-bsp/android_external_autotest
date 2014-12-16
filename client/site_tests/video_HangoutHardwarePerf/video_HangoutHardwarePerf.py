@@ -7,6 +7,7 @@ import contextlib, hashlib, logging, os, pipes, re, sys, time, tempfile, urllib2
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import chrome_binary_test
+from autotest_lib.client.cros import power_status, power_utils
 from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.audio import cmd_utils
 
@@ -28,6 +29,7 @@ RENDERING_FPS = 30
 
 # The unit(s) should match chromium/src/tools/perf/unit-info.json.
 UNIT_PERCENT = '%'
+UNIT_WATT = 'W'
 
 # The regex of the versioning file.
 # e.g., crowd720-3cfe7b096f765742b4aa79e55fe7c994.yuv
@@ -56,6 +58,10 @@ RENDERING_WARM_UP = 15
 # A big number, used to keep the [vda|vea]_unittest running during the
 # measurement.
 MAX_INT = 2 ** 31 - 1
+
+# Minimum battery charge percentage to run the test
+BATTERY_INITIAL_CHARGED_MIN = 10
+
 
 class CpuUsageMeasurer(object):
     """ Class used to measure the CPU usage."""
@@ -94,6 +100,46 @@ class CpuUsageMeasurer(object):
         if self._original_governors:
             utils.restore_scaling_governor_states(self._original_governors)
             self._original_governors = None
+
+
+class PowerMeasurer(object):
+    """ Class used to measure the power consumption."""
+
+    def __init__(self):
+        self._backlight = None
+        self._service_stopper = None
+
+    def __enter__(self):
+        self._backlight = power_utils.Backlight()
+        self._backlight.set_default()
+
+        self._service_stopper = service_stopper.ServiceStopper(
+                service_stopper.ServiceStopper.POWER_DRAW_SERVICES)
+        self._service_stopper.stop_services()
+
+        status = power_status.get_status()
+
+        # Verify that we are running on battery and the battery is sufficiently
+        # charged.
+        status.assert_battery_state(BATTERY_INITIAL_CHARGED_MIN)
+        self._system_power = power_status.SystemPower(status.battery_path)
+        self._power_logger = power_status.PowerLogger([self._system_power])
+        return self
+
+    def start(self):
+        self._power_logger.start()
+
+    def stop(self):
+        self._power_logger.checkpoint('result')
+        keyval = self._power_logger.calc()
+        logging.info(keyval)
+        return keyval['result_' + self._system_power.domain + '_pwr']
+
+    def __exit__(self, type, value, tb):
+        if self._backlight:
+            self._backlight.restore()
+        if self._service_stopper:
+            self._service_stopper.restore_services()
 
 
 class DownloadManager(object):
@@ -181,7 +227,7 @@ class video_HangoutHardwarePerf(chrome_binary_test.ChromeBinaryTest):
                 '--run_at_fps',
                 '--num_frames_to_encode=%d' % MAX_INT]
 
-    def run_in_parallel(self, commands):
+    def run_in_parallel(self, *commands):
         env = os.environ.copy()
 
         # To clear the temparory files created by vea_unittest.
@@ -191,33 +237,44 @@ class video_HangoutHardwarePerf(chrome_binary_test.ChromeBinaryTest):
             env['XAUTHORITY'] = '/home/chronos/.Xauthority'
         return map(lambda c: cmd_utils.popen(c, env=env), commands)
 
-    def measure_cpu_usage(self, decode_videos, encode_videos):
-        commands = [
+    def simulate_hangout(self, decode_videos, encode_videos, measurer):
+        popens = self.run_in_parallel(
             self.get_vda_unittest_cmd_line(decode_videos),
-            self.get_vea_unittest_cmd_line(encode_videos)]
-        with CpuUsageMeasurer() as cpu_usage_measurer:
-            popens = self.run_in_parallel(commands)
-            try:
-                time.sleep(STABILIZATION_DURATION)
-                cpu_usage_measurer.start()
-                time.sleep(MEASUREMENT_DURATION)
-                cpu_usage = cpu_usage_measurer.stop()
+            self.get_vea_unittest_cmd_line(encode_videos))
+        try:
+            time.sleep(STABILIZATION_DURATION)
+            measurer.start()
+            time.sleep(MEASUREMENT_DURATION)
+            measurement = measurer.stop()
 
-                # Ensure both encoding and decoding are still alive
-                if any(p.poll() is not None for p in popens):
-                    raise error.TestError('vea/vda_unittest failed')
+            # Ensure both encoding and decoding are still alive
+            if any(p.poll() is not None for p in popens):
+                raise error.TestError('vea/vda_unittest failed')
 
-                self.output_perf_value(
-                    description='cpu_usage', value=cpu_usage * 100,
-                    units=UNIT_PERCENT, higher_is_better=False)
-            finally:
-                cmd_utils.kill_or_log_returncode(*popens)
+            return measurement
+        finally:
+            cmd_utils.kill_or_log_returncode(*popens)
 
     @chrome_binary_test.nuke_chrome
-    def run_once(self, resources, decode_videos, encode_videos):
+    def run_once(self, resources, decode_videos, encode_videos, measurement):
         self._downloads = DownloadManager(tmpdir = self.tmpdir)
         try:
             self._downloads.download_all(resources)
-            self.measure_cpu_usage(decode_videos, encode_videos)
+            if measurement == 'cpu':
+                with CpuUsageMeasurer() as measurer:
+                    value = self.simulate_hangout(
+                            decode_videos, encode_videos, measurer)
+                    self.output_perf_value(
+                            description='cpu_usage', value=value * 100,
+                            units=UNIT_PERCENT, higher_is_better=False)
+            elif measurement == 'power':
+                with PowerMeasurer() as measurer:
+                    value = self.simulate_hangout(
+                            decode_videos, encode_videos, measurer)
+                    self.output_perf_value(
+                            description='power_usage', value=value,
+                            units=UNIT_WATT, higher_is_better=False)
+            else:
+                raise error.TestError('Unknown measurement: ' + measurement)
         finally:
             self._downloads.clear()
