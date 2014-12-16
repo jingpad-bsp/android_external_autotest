@@ -34,6 +34,13 @@ DISK_FW_PACKAGES = {
         'invalid_firmware_liteon': [5, False], # package with invalid fw image.
         'invalid_revision_liteon': [121, True], # with wrong target revision.
     },
+    # eMMC device in hexa:
+    # MAG2GC:      4d4147324743
+    # HBG4e\05:    484247346505
+    # DS2016:      445332303136
+    r'(4d4147324743|484247346505|445332303136)' : {
+        'test_firmware' : [0, True], # revert to previous firmware
+    },
     r'.*' : {
         'missing_rules': [120, False], # rule file is missing.
     }

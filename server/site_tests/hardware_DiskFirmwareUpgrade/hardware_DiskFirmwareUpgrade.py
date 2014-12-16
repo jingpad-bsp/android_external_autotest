@@ -14,6 +14,8 @@ class hardware_DiskFirmwareUpgrade(test.test):
 
     TEST_NAME='hardware_DiskFirmwareUpgrade'
     TEST_SCRIPT='/usr/sbin/chromeos-disk-firmware-update.sh'
+    DEFAULT_LOCATION='/opt/google/disk/firmware'
+
     _client_install_path = None
 
 
@@ -22,8 +24,14 @@ class hardware_DiskFirmwareUpgrade(test.test):
                                ignore_status=True).exit_status == 0
 
     def _get_model_name(self):
+        """ Return the name of an ATA/SCSI device. """
         return self._client.run(
             'cat /sys/block/$(basename $(rootdev -s -d))/device/model').stdout
+
+    def _get_device_name(self):
+        """ Return the name of an eMMC device, using cid data."""
+        return self._client.run(
+            'cat /sys/block/$(basename $(rootdev -s -d))/device/cid | cut -c 7-18').stdout
 
     def run_once(self, host, disk_fw_packages):
         """
@@ -47,8 +55,10 @@ class hardware_DiskFirmwareUpgrade(test.test):
             raise error.TestNAError('Firmware upgrade not supported')
 
         # Retrieve model name.
-        # TODO(gwendal): Only SATA device supported for now.
-        model = self._get_model_name()
+        try:
+            model = self._get_model_name()
+        except error.AutoservRunError:
+            model = self._get_device_name()
 
         i = 0
         for model_re, package_desc in disk_fw_packages.iteritems():
@@ -56,19 +66,29 @@ class hardware_DiskFirmwareUpgrade(test.test):
                 continue
             for p, results in package_desc.iteritems():
                 result_dir = '-'.join([self.TEST_NAME, str(i), p])
-                self._tmpdir = self._client.get_tmp_dir()
-                self._client.send_file(os.path.join(self.bindir, p),
-                                       self._tmpdir)
-                self._client_at.run_test(
-                        self.TEST_NAME,
-                        results_dir=result_dir,
-                        disk_firmware_package=os.path.join(self._tmpdir, p),
-                        expected_result=results[0],
-                        upgrade_required=results[1])
+                if p.startswith('test_'):
+                    self._client_at.run_test(
+                            self.TEST_NAME,
+                            results_dir=result_dir,
+                            disk_firmware_package=self.DEFAULT_LOCATION + '-test',
+                            expected_result=results[0],
+                            upgrade_required=results[1])
+                else:
+                    # We are not expecting downloads.
+                    self._tmpdir = self._client.get_tmp_dir()
+                    self._client.send_file(os.path.join(self.bindir, p),
+                                           self._tmpdir)
+                    self._client_at.run_test(
+                            self.TEST_NAME,
+                            results_dir=result_dir,
+                            disk_firmware_package=os.path.join(self._tmpdir, p),
+                            expected_result=results[0],
+                            upgrade_required=results[1])
                 result_dir = '-'.join([self.TEST_NAME, str(i), '~base'])
                 self._client_at.run_test(
                         self.TEST_NAME,
                         results_dir=result_dir,
+                        disk_firmware_package=self.DEFAULT_LOCATION,
                         upgrade_required=results[1])
                 i += 1
 
