@@ -46,6 +46,32 @@ def _DoesControlFileHaveSourceTarget(control_file_path, src, target):
     return True
 
 
+class ParseVersionsTests(unittest.TestCase):
+    """Tests various version parsing functions."""
+
+    def setUp(self):
+        self.config_gen = full_release_test.TestConfigGenerator
+
+    def testParseBuildVersion(self):
+        """Tests for _parse_build_version."""
+        build_version = 'R27-3905.0.0'
+        self.assertEquals(('R27', '3905.0.0'),
+                          self.config_gen._parse_build_version(build_version))
+        build_version = 'R41-6588.0.2014_12_16_1130-a1'
+        self.assertEquals(('R41', '6588.0.2014_12_16_1130-a1'),
+                          self.config_gen._parse_build_version(build_version))
+
+    def testParseDeltaFilename(self):
+        """"Tests for _parse_delta_filename."""
+        delta_filename = 'chromeos_R27-390.0.0_R29-395.0.0_stumpy_delta_dev.bin'
+        self.assertEquals(('R27-390.0.0', 'R29-395.0.0'),
+                          self.config_gen._parse_delta_filename(delta_filename))
+
+        # On non-release builds, delta filenames have a date portion as well.
+        delta_filename = 'chromeos_R41-6588.0.2014_12_16_1130-a1_R41-6588.0.2014_12_16_1130-a1_stumpy_delta_dev.bin'
+        self.assertEquals(('R41-6588.0.2014_12_16_1130-a1', 'R41-6588.0.2014_12_16_1130-a1'),
+                          self.config_gen._parse_delta_filename(delta_filename))
+
 class FullReleaseTestTests(mox.MoxTestBase):
     """Tests for the full_release_test.py test harness."""
 
