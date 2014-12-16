@@ -774,7 +774,7 @@ def _call_special_tasks_on_hosts(task, hosts):
     """
     models.AclGroup.check_for_acl_violation_hosts(hosts)
     shard_host_map = rpc_utils.bucket_hosts_by_shard(hosts)
-    if shard_host_map:
+    if shard_host_map and not rpc_utils.is_shard():
         raise ValueError('The following hosts are on shards, please '
                          'follow the link to the shards and create jobs '
                          'there instead. %s.' % shard_host_map)
