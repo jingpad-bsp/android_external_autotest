@@ -293,14 +293,15 @@ class ChameleonVideoInput(ChameleonPort):
             self.plug()
             self.wait_video_input_stable(self._TIMEOUT_VIDEO_STABLE_PROBE)
 
-        # Yeild to execute the with statement.
-        yield
-
-        # Restore the original EDID in the end.
-        current_edid = self.read_edid()
-        if original_edid.data != current_edid.data:
-            logging.info('Restore the original EDID.')
-            self.apply_edid(original_edid)
+        try:
+            # Yeild to execute the with statement.
+            yield
+        finally:
+            # Restore the original EDID in the end.
+            current_edid = self.read_edid()
+            if original_edid.data != current_edid.data:
+                logging.info('Restore the original EDID.')
+                self.apply_edid(original_edid)
 
 
     def use_edid_file(self, filename):
