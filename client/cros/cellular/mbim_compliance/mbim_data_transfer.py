@@ -78,7 +78,8 @@ class MBIMDataTransfer(object):
                 data_packets,
                 self._device_context.max_out_data_transfer_size,
                 self._device_context.out_data_transfer_divisor,
-                self._device_context.out_data_transfer_payload_remainder)
+                self._device_context.out_data_transfer_payload_remainder,
+                self._device_context.out_data_transfer_ndp_alignment)
         self._data_channel.send_ntb(ntb_frame)
 
 
@@ -147,15 +148,27 @@ class MBIMNtb(object):
     @classmethod
     def get_next_sequence_number(cls):
         """
-        Returns incrementing sequence numbers on successive calls.
+        Returns incrementing sequence numbers on successive calls. We start
+        the sequence numbering at 0.
 
         @returns The sequence number for data transfers.
 
         """
         if cls._NEXT_SEQUENCE_NUMBER > (sys.maxint - 2):
             cls._NEXT_SEQUENCE_NUMBER = 0x00000000
+        sequence_number = cls._NEXT_SEQUENCE_NUMBER
         cls._NEXT_SEQUENCE_NUMBER += 1
-        return cls._NEXT_SEQUENCE_NUMBER
+        return sequence_number
+
+
+    @classmethod
+    def reset_sequence_number(cls):
+        """
+        Resets the sequence number to be used for NTB's sent from host. This
+        has to be done every time the device is reset.
+
+        """
+        cls._NEXT_SEQUENCE_NUMBER = 0x00000000
 
 
     def get_next_payload_offset(self,
@@ -184,7 +197,8 @@ class MBIMNtb(object):
                      payload,
                      max_ntb_size,
                      ntb_divisor,
-                     ntb_payload_remainder):
+                     ntb_payload_remainder,
+                     ntb_ndp_alignment):
         """
         This function generates an NTB frame out of the payload provided.
 
@@ -193,6 +207,8 @@ class MBIMNtb(object):
         @param max_ntb_size: Max size of NTB frame supported by the device.
         @param ntb_divisor: Used for payload alignment within the frame.
         @param ntb_payload_remainder: Used for payload alignment within the
+                frame.
+        @param ntb_ndp_alignment : Used for NDP header alignment within the
                 frame.
         @raises MBIMComplianceNtbError if the complete |ntb| can not fit into
                 |max_ntb_size|.
@@ -227,21 +243,25 @@ class MBIMNtb(object):
                     ntb_curr_offset, ntb_divisor, ntb_payload_remainder)
             align_length = offset - ntb_curr_offset
             length = len(packet)
-            # 4 byte alignment between payloads is mandated
-            pad_length = length & 0x3
             # Add align zeroes, then payload, then pad zeroes
             raw_ntb_frame_payload += array.array('B', [0] * align_length)
             raw_ntb_frame_payload += packet
-            raw_ntb_frame_payload += array.array('B', [0] * pad_length)
             self.ndp_entries.append(self._ndp_entry_class(
                     datagram_index=offset, datagram_length=length))
-            ntb_curr_offset = offset + length + pad_length
+            ntb_curr_offset = offset + length
 
         # Add the ZLP entry
         self.ndp_entries.append(self._ndp_entry_class(
                 datagram_index=0, datagram_length=0))
 
         # Store the NDP offset to be used in creating NTH header.
+        # NDP alignment is specified by the device with a minimum of 4 and it
+        # always a multiple of 2.
+        ndp_align_mask = ntb_ndp_alignment - 1
+        if ntb_curr_offset & ndp_align_mask:
+            pad_length = ntb_ndp_alignment - (ntb_curr_offset & ndp_align_mask)
+            raw_ntb_frame_payload += array.array('B', [0] * pad_length)
+            ntb_curr_offset += pad_length
         ndp_offset = ntb_curr_offset
         ntb_curr_offset += ndp_length
         ntb_curr_offset += ndp_entries_length

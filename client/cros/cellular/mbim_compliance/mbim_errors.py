@@ -284,7 +284,30 @@ class MBIMComplianceAssertionError(MBIMComplianceError):
                                'that dont follow the rules for variable-length'
                                ' encoding by setting '
                                'MBIM_STATUS_INVALID_PARAMETERS as the status '
-                               'code in the MBIM_COMMAND_DONE message.'
+                               'code in the MBIM_COMMAND_DONE message.',
+            # NCM Assertion group: 3.x.x#x
+            'ncm1.0:3.2.1#1':  'The first four bytes in NTH16 shall be '
+                               '0x484D434E in little-endian format ("NCMH").',
+            'ncm1.0:3.2.1#2':  'wHeaderLength value in NTH16 shall be 0x000C.',
+            'ncm1.0:3.2.1#3':  'wSequence in NTH16 shall be set to zero by the '
+                               'function in the first NTB transferred after '
+                               'every "function reset" event.',
+            'ncm1.0:3.2.1#4':  'wSequence value in NTH16 shall be incremented '
+                               'for every NTB subsequent transfer.',
+            'ncm1.0:3.2.1#5':  'NTB size (IN) shall not exceed dwNtbInMaxSize.',
+            'ncm1.0:3.2.1#6':  'wNdpIndex value in NTH16 must be a multiple of '
+                               '4, and must be >= 0x000C, in little endian.',
+            'ncm1.0:3.2.2#1':  'The first four bytes in NTH32 shall be '
+                               '0x686D636E in little-endian format ("ncmh").',
+            'ncm1.0:3.2.2#2':  'wHeaderLength value in NTH32 shall be 0x0010.',
+            'ncm1.0:3.2.2#3':  'wSequence in NTH32 shall be set to zero by the '
+                               'function in the first NTB transferred after '
+                               'every "function reset" event.',
+            'ncm1.0:3.2.2#4':  'wSequence value in NTH32 shall be incremented '
+                               'for every NTB subsequent transfer.',
+            'ncm1.0:3.2.2#5':  'NTB size (IN) shall not exceed dwNtbInMaxSize.',
+            'ncm1.0:3.2.2#6':  'dwNdpIndex value in NTH32 must be a multiple of'
+                               ' 4, and must be >= 0x0010, in little endian.',
     }
 
     def __init__(self, assertion_id, error_string=None):

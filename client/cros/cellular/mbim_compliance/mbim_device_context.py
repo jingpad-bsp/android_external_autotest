@@ -32,8 +32,6 @@ class MbimDeviceContext:
         """
         # Find the device to be tested
         self._device = self._find_device(id_vendor, id_product)
-        # Reset the device before every test
-        self._device.reset()
         # Set the device vendor/product ID in the test context
         self._id_vendor = self._device.idVendor
         self._id_product = self._device.idProduct

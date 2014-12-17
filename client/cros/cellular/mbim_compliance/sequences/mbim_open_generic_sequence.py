@@ -172,5 +172,7 @@ class MBIMOpenGenericSequence(open_sequence.OpenSequence):
                 ntb_parameters.wNdpOutDivisor)
         device_context.out_data_transfer_payload_remainder = (
                 ntb_parameters.wNdpOutPayloadRemainder)
+        device_context.out_data_transfer_ndp_alignment = (
+                ntb_parameters.wNdpOutAlignment)
 
         return open_message, response_message

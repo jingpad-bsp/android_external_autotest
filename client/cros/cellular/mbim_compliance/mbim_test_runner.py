@@ -43,7 +43,7 @@ class MbimTestRunner(test.test):
             test_module = imp.load_source(subtest_name, module_name)
         except ImportError:
             mbim_errors.log_and_raise(mbim_errors.MBIMComplianceFrameworkError,
-                                      'Test module %s not found', subtest_name)
+                                      'Test module %s not found', module_name)
         try:
             test_class = getattr(test_module, subtest_name)
         except AttributeError:
