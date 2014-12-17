@@ -75,10 +75,13 @@ class display_HotPlugAtSuspend(test.test):
                              'plug' if plugged_before_resume else 'unplug')
                 boot_id = host.get_boot_id()
                 chameleon_port.set_plug(plugged_before_suspend)
-                if test_mirrored:
-                    # magic sleep to make nyan_big wake up in mirrored mode
-                    # TODO: find root cause
-                    time.sleep(6)
+
+                if screen_test.check_external_display_connected(
+                        expected_connector if plugged_before_suspend else False,
+                        errors):
+                    # Skip the following test if an unexpected display detected.
+                    continue
+
                 logging.info('Going to suspend, for %d seconds...',
                              self.SUSPEND_DURATION)
                 time_before_suspend = time.time()
