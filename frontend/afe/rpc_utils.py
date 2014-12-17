@@ -986,12 +986,15 @@ def find_records_for_shard(shard, known_job_ids, known_host_ids):
     @param known_job_ids: List of ids of jobs the shard already has.
     @param known_host_ids: List of ids of hosts the shard already has.
 
-    @returns: Tuple of two lists for hosts and jobs: (hosts, jobs).
+    @returns: Tuple of three lists for hosts, jobs, and suite job keyvals:
+              (hosts, jobs, suite_job_keyvals).
     """
     hosts = models.Host.assign_to_shard(shard, known_host_ids)
     jobs = models.Job.assign_to_shard(shard, known_job_ids)
-
-    return hosts, jobs
+    parent_job_ids = [job.parent_job_id for job in jobs]
+    suite_job_keyvals = models.JobKeyval.objects.filter(
+        job_id__in=parent_job_ids)
+    return hosts, jobs, suite_job_keyvals
 
 
 def _persist_records_with_type_sent_from_shard(

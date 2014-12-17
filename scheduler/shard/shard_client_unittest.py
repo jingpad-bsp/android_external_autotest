@@ -4,6 +4,7 @@
 
 import datetime
 import mox
+import unittest
 
 import common
 
@@ -50,7 +51,8 @@ class ShardClientTest(mox.MoxTestBase,
     def expect_heartbeat(self, shard_hostname='host1',
                          known_job_ids=[], known_host_ids=[],
                          hqes=[], jobs=[],
-                         side_effect=None, return_hosts=[], return_jobs=[]):
+                         side_effect=None, return_hosts=[], return_jobs=[],
+                         return_suite_keyvals=[]):
         call = self.afe.run(
             'shard_heartbeat', shard_hostname=shard_hostname,
             hqes=hqes, jobs=jobs,
@@ -63,6 +65,7 @@ class ShardClientTest(mox.MoxTestBase,
         call.AndReturn({
                 'hosts': return_hosts,
                 'jobs': return_jobs,
+                'suite_keyvals': return_suite_keyvals,
             })
 
 
@@ -124,6 +127,7 @@ class ShardClientTest(mox.MoxTestBase,
                 'owner': u'autotest_system',
                 'parse_failed_repair': True,
                 'priority': 40,
+                'parent_job_id': 0,
                 'reboot_after': 0,
                 'reboot_before': 1,
                 'run_reset': True,
@@ -135,6 +139,13 @@ class ShardClientTest(mox.MoxTestBase,
                 'timeout_mins': 1440}
 
 
+    def _get_sample_serialized_suite_keyvals(self):
+        return {'id': 1,
+                'job_id': 0,
+                'key': 'test_key',
+                'value': 'test_value'}
+
+
     def testHeartbeat(self):
         """Trigger heartbeat, verify RPCs and persisting of the responses."""
         self.setup_mocks()
@@ -142,8 +153,11 @@ class ShardClientTest(mox.MoxTestBase,
         global_config.global_config.override_config_value(
                 'SHARD', 'shard_hostname', 'host1')
 
-        self.expect_heartbeat(return_hosts=[self._get_sample_serialized_host()],
-                              return_jobs=[self._get_sample_serialized_job()])
+        self.expect_heartbeat(
+                return_hosts=[self._get_sample_serialized_host()],
+                return_jobs=[self._get_sample_serialized_job()],
+                return_suite_keyvals=[
+                        self._get_sample_serialized_suite_keyvals()])
 
         modified_sample_host = self._get_sample_serialized_host()
         modified_sample_host['hostname'] = 'host2'
@@ -174,6 +188,10 @@ class ShardClientTest(mox.MoxTestBase,
         # Check if dummy object was saved to DB
         host = models.Host.objects.get(id=2)
         self.assertEqual(host.hostname, 'host1')
+
+        # Check if suite keyval  was saved to DB
+        suite_keyval = models.JobKeyval.objects.filter(job_id=0)[0]
+        self.assertEqual(suite_keyval.key, 'test_key')
 
         sut.do_heartbeat()
 
@@ -296,3 +314,7 @@ class ShardClientTest(mox.MoxTestBase,
         sut.loop()
 
         self.mox.VerifyAll()
+
+
+if __name__ == '__main__':
+    unittest.main()

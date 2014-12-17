@@ -339,8 +339,8 @@ def shard_heartbeat(shard_hostname, jobs=(), hqes=(),
     @param known_job_ids: List of ids of jobs the shard already has.
     @param known_host_ids: List of ids of hosts the shard already has.
 
-    @returns: Serialized representations of hosts, jobs and their dependencies
-              to be inserted into a shard's database.
+    @returns: Serialized representations of hosts, jobs, suite job keyvals
+              and their dependencies to be inserted into a shard's database.
     """
     # The following alternatives to sending host and job ids in every heartbeat
     # have been considered:
@@ -378,12 +378,13 @@ def shard_heartbeat(shard_hostname, jobs=(), hqes=(),
     with timer:
         shard_obj = rpc_utils.retrieve_shard(shard_hostname=shard_hostname)
         rpc_utils.persist_records_sent_from_shard(shard_obj, jobs, hqes)
-        hosts, jobs = rpc_utils.find_records_for_shard(
+        hosts, jobs, suite_keyvals = rpc_utils.find_records_for_shard(
             shard_obj,
             known_job_ids=known_job_ids, known_host_ids=known_host_ids)
         return {
             'hosts': [host.serialize() for host in hosts],
             'jobs': [job.serialize() for job in jobs],
+            'suite_keyvals': [kv.serialize() for kv in suite_keyvals],
         }
 
 

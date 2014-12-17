@@ -121,11 +121,14 @@ class ShardClient(object):
         """
         hosts_serialized = heartbeat_response['hosts']
         jobs_serialized = heartbeat_response['jobs']
+        suite_keyvals_serialized = heartbeat_response['suite_keyvals']
 
         autotest_stats.Gauge(STATS_KEY).send(
             'hosts_received', len(hosts_serialized))
         autotest_stats.Gauge(STATS_KEY).send(
             'jobs_received', len(jobs_serialized))
+        autotest_stats.Gauge(STATS_KEY).send(
+            'suite_keyvals_received', len(suite_keyvals_serialized))
 
         for host in hosts_serialized:
             with transaction.commit_on_success():
@@ -133,11 +136,18 @@ class ShardClient(object):
         for job in jobs_serialized:
             with transaction.commit_on_success():
                 models.Job.deserialize(job)
+        for keyval in suite_keyvals_serialized:
+            with transaction.commit_on_success():
+                models.JobKeyval.deserialize(keyval)
 
         host_ids = [h['id'] for h in hosts_serialized]
         logging.info('Heartbeat response contains hosts %s', host_ids)
         job_ids = [j['id'] for j in jobs_serialized]
         logging.info('Heartbeat response contains jobs %s', job_ids)
+        parent_jobs_with_keyval = set([kv['job_id']
+                                       for kv in suite_keyvals_serialized])
+        logging.info('Heartbeat response contains suite_keyvals_for jobs %s',
+                     parent_jobs_with_keyval)
 
         # If the master has just sent any jobs that we think have completed,
         # re-sync them with the master. This is especially useful when a
