@@ -83,6 +83,10 @@ class network_ShillInitScripts(test.test):
 
     def start_test(self):
         """ Setup the start of the test.  Stop shill and create test harness."""
+        # Stop a system process on test duts for keeping connectivity up.
+        ret = utils.system('stop recover_duts', ignore_status=True)
+        self.recover_duts_stopped = (ret == 0);
+
         self.stop_shill()
 
         # Deduce the root cryptohome directory name for our fake user.
@@ -153,7 +157,14 @@ class network_ShillInitScripts(test.test):
         self.erase_state()
         utils.system('tar zxvf %s --directory /' % self.saved_config)
         utils.system('rm -f %s' % self.saved_config)
-        self.start_shill()
+        self.restart_system_processes()
+
+
+    def restart_system_processes(self):
+        """ Restart vital system services at the end of the test. """
+        utils.system('start shill', ignore_status=True)
+        if self.recover_duts_stopped:
+            utils.system('start recover_duts', ignore_status=True)
 
 
     def assure(self, must_be_true, assertion_name):
@@ -337,7 +348,12 @@ class network_ShillInitScripts(test.test):
 
     def run_once(self):
         """ Main test loop. """
-        self.start_test()
+        try:
+            self.start_test()
+        except:
+            self.restart_system_processes()
+            raise
+
         try:
             self.run_tests([
                 self.test_start_shill,
