@@ -185,6 +185,22 @@ class MBIMComplianceAssertionError(MBIMComplianceError):
                              'bInterfaceProtocol == 02h. Refer to Table 6.4 of '
                              '[USBMBIM10].',
 
+            # Assertion Groups: 7.x.x#x
+            'mbim1.0:7#1':   'To distinguish among the data streams, the last '
+                             'character of the dwSignature in the NDP16 header '
+                             'shall be coded with the index SessionId specified'
+                             ' by the host in the MBIM_CID_CONNECT. The first '
+                             'three symbols are encoded as ASCII characters in '
+                             'little-endian form plus a last byte in HEX '
+                             '(binary) format: "IPS"<SessionId>.',
+            'mbim1.0:7#3':   'To distinguish among the data streams, the last '
+                             'character of the dwSignature in the NDP32 header '
+                             'shall be coded with the index SessionId specified'
+                             ' by the host in the MBIM_CID_CONNECT. The first '
+                             'three symbols are encoded as ASCII characters in '
+                             'little-endian form plus a last byte in HEX '
+                             '(binary) format: "ips"<SessionId>.',
+
             # Assertion Groups: 8.x.x#x
             'mbim1.0:8.1.2#2': 'The function must use a separate '
                                'GET_ENCAPSULATED_RESPONSE transfer for each '
@@ -285,6 +301,7 @@ class MBIMComplianceAssertionError(MBIMComplianceError):
                                ' encoding by setting '
                                'MBIM_STATUS_INVALID_PARAMETERS as the status '
                                'code in the MBIM_COMMAND_DONE message.',
+
             # NCM Assertion group: 3.x.x#x
             'ncm1.0:3.2.1#1':  'The first four bytes in NTH16 shall be '
                                '0x484D434E in little-endian format ("NCMH").',
@@ -308,6 +325,28 @@ class MBIMComplianceAssertionError(MBIMComplianceError):
             'ncm1.0:3.2.2#5':  'NTB size (IN) shall not exceed dwNtbInMaxSize.',
             'ncm1.0:3.2.2#6':  'dwNdpIndex value in NTH32 must be a multiple of'
                                ' 4, and must be >= 0x0010, in little endian.',
+            'ncm1.0:3.3.1#1':  'wLength value in the NDP16 must be a multiple '
+                               'of 4, and must be at least 16d (0x0010).',
+            'ncm1.0:3.3.1#2':  'wDatagramIndex[0] value in NDP16 must be >= '
+                               '0x000C (because it must point past the NTH16).',
+            'ncm1.0:3.3.1#3':  'wDatagramLength[0] value in NDP16 must be >= '
+                               '20d if datagram payload is IPv4 and >= 40d if '
+                               'datagram payload is IPv6.',
+            'ncm1.0:3.3.1#4':  'wDatagramIndex[(wLength-8)/4 - 1] value in '
+                               'NDP16 must be zero.',
+            'ncm1.0:3.3.1#5':  'wDatagramLength[(wLength-8)/4 - 1] value in '
+                               'NDP16 must be zero.',
+            'ncm1.0:3.3.2#1':  'wLength value in the NDP32 must be a multiple '
+                               'of 8, and must be at least 16d (0x0020).',
+            'ncm1.0:3.3.2#2':  'dwDatagramIndex[0] value in NDP32 must be >= '
+                               '0x0010 (because it must point past the NTH32).',
+            'ncm1.0:3.3.2#3':  'dwDatagramLength[0] value in NDP32 must be >= '
+                               '20d if datagram payload is IPv4 and >= 40d if '
+                               'datagram payload is IPv6.',
+            'ncm1.0:3.3.2#4':  'dwDatagramIndex[(wLength-8)/4 - 1] value in '
+                               'NDP32 must be zero.',
+            'ncm1.0:3.3.2#5':  'dwDatagramLength[(wLength-8)/4 - 1] value in '
+                               'NDP32 must be zero.',
     }
 
     def __init__(self, assertion_id, error_string=None):
