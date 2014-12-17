@@ -706,10 +706,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         inactive_kernel = None
         # Do a full update if stateful update is not applicable or failed.
         if not updated:
-            # In case the system is in a bad state, we always reboot the
-            # machine before machine_install.
-            self.reboot(timeout=self.REBOOT_TIMEOUT, wait=True)
-
             # TODO(sosa): Remove temporary hack to get rid of bricked machines
             # that can't update due to a corrupted policy.
             self.run('rm -rf /var/lib/whitelist')
@@ -732,8 +728,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
                 # Updater has returned successfully; reboot the host.
                 self.reboot(timeout=self.REBOOT_TIMEOUT, wait=True)
-
-        if updated:
+        else:
             self._post_update_processing(updater, inactive_kernel)
             image_name = autoupdater.url_to_image_name(update_url)
             self.add_cros_version_labels_and_job_repo_url(image_name)
