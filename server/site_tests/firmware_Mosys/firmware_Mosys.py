@@ -215,13 +215,6 @@ class firmware_Mosys(FirmwareTest):
                           'or name of maker.')
             self._tag_failure(command)
 
-        # empty failed_command indicate all passed.
-        if self.failed_command:
-          raise error.TestFail('%d commands failed, detail above.  '
-                               'Failed commands are "%s"' %
-                               (len(self.failed_command),
-                               ','.join(self.failed_command)))
-
         # f. mosys -k pd info
         command = 'mosys -k pd info'
         if 'pd' in self.command_list:
@@ -236,3 +229,10 @@ class firmware_Mosys(FirmwareTest):
         else:
           logging.info('Skip "%s", command not available.', command)
 
+        # Add any other mosys commands or tests before this section.
+        # empty failed_command indicate all passed.
+        if self.failed_command:
+          raise error.TestFail('%d commands failed, detail above.  '
+                               'Failed commands are "%s"' %
+                               (len(self.failed_command),
+                               ','.join(self.failed_command)))
