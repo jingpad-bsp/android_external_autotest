@@ -789,8 +789,40 @@ def reverify_hosts(**filter_data):
 
     @returns A list of hostnames that a verify task was created for.
     """
-    return _call_special_tasks_on_hosts(models.SpecialTask.Task.VERIFY,
-            models.Host.query_objects(filter_data))
+    hosts = models.Host.query_objects(filter_data)
+    shard_host_map = rpc_utils.bucket_hosts_by_shard(hosts, rpc_hostnames=True)
+
+    # Filter out hosts on a shard from those on the master, forward
+    # rpcs to the shard with an additional hostname__in filter, and
+    # create a local SpecialTask for each remaining host.
+    if shard_host_map and not rpc_utils.is_shard():
+        hosts = [h for h in hosts if h.shard is None]
+        for shard, hostnames in shard_host_map.iteritems():
+
+            # The main client of this module is the frontend website, and
+            # it invokes it with an 'id' or an 'id__in' filter. Regardless,
+            # the 'hostname' filter should narrow down the list of hosts on
+            # each shard even though we supply all the ids in filter_data.
+            # This method uses hostname instead of id because it fits better
+            # with the overall architecture of redirection functions in rpc_utils.
+            shard_filter = filter_data.copy()
+            shard_filter['hostname__in'] = hostnames
+            rpc_utils.run_rpc_on_multiple_hostnames(
+                    'reverify_hosts', [shard], **shard_filter)
+
+    # There is a race condition here if someone assigns a shard to one of these
+    # hosts before we create the task. The host will stay on the master if:
+    # 1. The host is not Ready
+    # 2. The host is Ready but has a task
+    # But if the host is Ready and doesn't have a task yet, it will get sent
+    # to the shard as we're creating a task here.
+
+    # Given that we only rarely verify Ready hosts it isn't worth putting this
+    # entire method in a transaction. The worst case scenario is that we have
+    # a verify running on a Ready host while the shard is using it, if the verify
+    # fails no subsequent tasks will be created against the host on the master,
+    # and verifies are safe enough that this is OK.
+    return _call_special_tasks_on_hosts(models.SpecialTask.Task.VERIFY, hosts)
 
 
 def repair_hosts(**filter_data):
