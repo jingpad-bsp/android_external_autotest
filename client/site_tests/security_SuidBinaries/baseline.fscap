@@ -1,0 +1,3 @@
+/bin/ping = cap_net_raw+ep
+/usr/sbin/hostapd = cap_net_admin,cap_net_raw+ei
+/usr/sbin/dnsmasq = cap_net_bind_service,cap_net_admin,cap_net_raw+ei
