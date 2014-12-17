@@ -3,14 +3,14 @@
 # found in the LICENSE file.
 
 import logging
+
 import common
-from autotest_lib.client.bin import test
 from autotest_lib.client.cros.cellular.mbim_compliance \
         import mbim_device_context
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_errors
 
 
-class MbimTestBase(test.test):
+class MbimTestBase(object):
     """
     Base class for all MBIM Compliance Suite tests.
     This class contains boilerplate code and utility functions for MBIM
@@ -21,19 +21,24 @@ class MbimTestBase(test.test):
     Utility functions: None yet.
     """
 
-    def run_once(self, **kwargs):
+    def run_test(self, id_vendor=None, id_product=None, **kwargs):
         """
         Run the test.
-        @param kwargs: Optional parameters passed to device context to test
-                       a specific device based on VID/PID.
-                       Add id_vendor=xxxx, id_product=xxxx to the control file.
+
+        To test a specific device based on VID/PID, add id_vendor=0xHHHH,
+        id_product=0xHHHH to the control file invocation of tests.
+
+        @param id_vendor: Specific vendor ID for the modem to be tested.
+        @param id_product: Specific product ID for the modem to be tested.
+        @param kwargs: Optional parameters passed to tests.
 
         """
-        self.device_context = mbim_device_context.MbimDeviceContext(**kwargs)
+        self.device_context = mbim_device_context.MbimDeviceContext(
+                id_vendor=id_vendor, id_product=id_product)
         logging.info('Running test on modem with VID: %04X, PID: %04X',
                      self.device_context.id_vendor,
                      self.device_context.id_product)
-        self.run_internal()
+        self.run_internal(**kwargs)
 
 
     def run_internal(self):
