@@ -19,7 +19,7 @@ do
 done >$RUNFILE
 
 INTEREST=(
-	chromeos-lab-infrastructure@google.com
+	chromeos-lab-alerts@google.com
 	skc-fireteam@google.com
 	jrbarnette@google.com
 	preeyanka@google.com
