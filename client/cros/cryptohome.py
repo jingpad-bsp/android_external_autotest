@@ -86,6 +86,7 @@ def get_tpm_more_status():
           'boot_lockbox_finalized': False,
           'enabled': True,
           'owned': True,
+          'owner_password': ''
           'dictionary_attack_counter': 0,
           'dictionary_attack_lockout_seconds_remaining': 0,
           'dictionary_attack_threshold': 10,
@@ -108,8 +109,10 @@ def get_tpm_more_status():
             value = False
         elif items[1].strip() == 'true':
             value = True
-        else:
+        elif items[1].strip().isdigit():
             value = int(items[1].strip())
+        else:
+            value = items[1].strip(' "')
         status[items[0]] = value
     return status
 
