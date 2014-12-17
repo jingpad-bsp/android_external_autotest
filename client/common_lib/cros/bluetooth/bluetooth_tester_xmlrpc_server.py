@@ -207,19 +207,11 @@ class BluetoothTesterXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         ( address, bluetooth_version, manufacturer_id,
           supported_settings, current_settings, class_of_device,
           name, short_name ) = self._control.read_info(self.index)
+
+        # Check generic settings.
         if profile_settings != current_settings:
             logging.warning('Controller settings did not match those set: '
                             '%x != %x', current_settings, profile_settings)
-            return False
-        if class_of_device != profile_class:
-            if class_of_device & 0x00ffff == profile_class & 0x00ffff:
-                logging.warning('Class of device matched that set, but '
-                                'Service Class field did not: %x != %x '
-                                'Reboot Tester? ',
-                                class_of_device, profile_class)
-            else:
-                logging.warning('Class of device did not match that set: '
-                                '%x != %x', class_of_device, profile_class)
             return False
         if name != profile_name:
             logging.warning('Local name did not match that set: "%s" != "%s"',
@@ -229,6 +221,19 @@ class BluetoothTesterXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             logging.warning('Short name did not match that set: "%s" != "%s"',
                             short_name, profile_short_name)
             return False
+
+        # Check BR/EDR specific settings.
+        if profile_settings & bluetooth_socket.MGMT_SETTING_BREDR:
+            if class_of_device != profile_class:
+                if class_of_device & 0x00ffff == profile_class & 0x00ffff:
+                    logging.warning('Class of device matched that set, but '
+                                    'Service Class field did not: %x != %x '
+                                    'Reboot Tester? ',
+                                    class_of_device, profile_class)
+                else:
+                    logging.warning('Class of device did not match that set: '
+                                    '%x != %x', class_of_device, profile_class)
+                return False
 
         return True
 
