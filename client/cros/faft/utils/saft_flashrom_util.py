@@ -79,7 +79,7 @@ class LayoutScraper(object):
         "<name>"="value" pairs, all this output is passed to the caller.
         """
 
-        mosys_cmd = 'mosys -f -k eeprom map %s' % file_name
+        mosys_cmd = 'mosys -k eeprom map %s' % file_name
         return self.os_if.run_shell_command_get_output(mosys_cmd)
 
     def _line_to_dictionary(self, line):
