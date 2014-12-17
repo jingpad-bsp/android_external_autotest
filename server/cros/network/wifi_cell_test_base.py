@@ -2,10 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.server.cros.network import wifi_test_base
+import logging
+
+from autotest_lib.client.common_lib import utils
+from autotest_lib.server import test
 from autotest_lib.server.cros.network import wifi_test_context_manager
 
-class WiFiCellTestBase(wifi_test_base.WiFiTestBase):
+class WiFiCellTestBase(test.test):
     """An abstract base class for autotests in WiFi cells.
 
     WiFiCell tests refer to participants in the test as client, router, and
@@ -23,17 +26,51 @@ class WiFiCellTestBase(wifi_test_base.WiFiTestBase):
 
     """
 
-    def get_context(self, host, cmdline_args, additional_params):
-        """Get the context object we should run this test in the context of.
+    @property
+    def context(self):
+        """@return the WiFi context for this test."""
+        return self._wifi_context
 
-        @param host Host object representing the DUT.
-        @param cmdline_args dictionary of commandline args for the test.
-        @param additional_params object passed in from the control file.
-        @return WiFi test context object for use with the test.
+
+    def parse_additional_arguments(self, commandline_args, additional_params):
+        """Parse additional arguments for use in test.
+
+        Subclasses should override this method do any other commandline parsing
+        and setting grabbing that they need to do.  For test clarity, do not
+        parse additional settings in the body of run_once.
+
+        @param commandline_args dict of argument key, value pairs.
+        @param additional_params object defined by test control file.
 
         """
-        return wifi_test_context_manager.WiFiTestContextManager(
+        pass
+
+
+    def warmup(self, host, raw_cmdline_args, additional_params=None):
+        """
+        Use the additional_params argument to pass in custom test data from
+        control file to reuse test logic.  This object will be passed down via
+        parse_additional_arguments.
+
+        @param host host object representing the client DUT.
+        @param raw_cmdline_args raw input from autotest.
+        @param additional_params object passed in from control file.
+
+        """
+        cmdline_args = utils.args_to_dict(raw_cmdline_args)
+        logging.info('Running wifi test with commandline arguments: %r',
+                     cmdline_args)
+        self._wifi_context = wifi_test_context_manager.WiFiTestContextManager(
                 self.__class__.__name__,
                 host,
                 cmdline_args,
                 self.debugdir)
+
+        self._wifi_context.setup()
+        self.parse_additional_arguments(cmdline_args, additional_params)
+
+
+    def cleanup(self):
+        # If we fail during initialization, we might not have a context.
+        if hasattr(self, '_wifi_context'):
+            self._wifi_context.teardown()
