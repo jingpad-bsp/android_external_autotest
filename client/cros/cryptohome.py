@@ -12,6 +12,7 @@ from autotest_lib.client.cros.cros_disks import DBusClient
 
 CRYPTOHOME_CMD = '/usr/sbin/cryptohome'
 GUEST_USER_NAME = '$guest'
+UNAVAILABLE_ACTION = 'Unknown action or no action given.'
 
 class ChromiumOSError(error.TestError):
     """Generic error for ChromiumOS-specific exceptions."""
@@ -93,9 +94,14 @@ def get_tpm_more_status():
           'verified_boot_measured': False,
           'install_lockbox_finalized': True
         }
+        An empty dictionary is returned if the command is not supported.
     """
-    out = __run_cmd(CRYPTOHOME_CMD + ' --action=tpm_more_status | grep :')
     status = {}
+    out = __run_cmd(CRYPTOHOME_CMD + ' --action=tpm_more_status | grep :')
+    if out.startswith(UNAVAILABLE_ACTION):
+        # --action=tpm_more_status only exists >= 41.
+        logging.info('Method not supported!')
+        return status
     for line in out.splitlines():
         items = line.strip().split(':')
         if items[1].strip() == 'false':
