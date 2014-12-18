@@ -4,7 +4,6 @@
 
 import logging
 import re
-import signal
 import time
 
 from collections import namedtuple
@@ -16,8 +15,6 @@ from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.cros import constants
 from autotest_lib.server import autotest
 from autotest_lib.server import site_linux_system
-from autotest_lib.server.cros import remote_command
-from autotest_lib.server.cros import wifi_test_utils
 from autotest_lib.server.cros.network import wpa_cli_proxy
 from autotest_lib.server.hosts import adb_host
 
@@ -207,7 +204,6 @@ class WiFiClient(site_linux_system.LinuxSystem):
         self._command_ping6 = 'ping6'
         self._command_wpa_cli = 'wpa_cli'
         self._machine_id = None
-        self._ping_thread = None
         self._result_dir = result_dir
         if isinstance(self.host, adb_host.ADBHost):
             # Look up the WiFi device (and its MAC) on the client.
@@ -299,47 +295,10 @@ class WiFiClient(site_linux_system.LinuxSystem):
 
     def close(self):
         """Tear down state associated with the client."""
-        if self._ping_thread is not None:
-            self.ping_bg_stop()
         self.stop_capture()
         self.powersave_switch(False)
         self.shill.clean_profiles()
         super(WiFiClient, self).close()
-
-
-    def ping_bg(self, ping_ip, ping_args):
-        """Ping an address from the client in the background.
-
-        Only one instance of a background ping is supported at a time.
-
-        @param ping_ip string IPv4 address for the client to ping.
-        @param ping_args dict of parameters understood by
-                wifi_test_utils.ping_args().
-
-        """
-        if self._ping_thread is not None:
-            raise error.TestFail('Tried to start a background ping without '
-                                 'stopping an earlier ping.')
-        cmd = '%s %s %s' % (self.COMMAND_PING,
-                            wifi_test_utils.ping_args(ping_args),
-                            ping_ip)
-        self._ping_thread = remote_command.Command(
-                self.host, cmd, pkill_argument=self.COMMAND_PING)
-
-
-    def ping_bg_stop(self):
-        """Stop pinging an address from the client in the background.
-
-        Clean up state from a previous call to ping_bg.  If requested,
-        statistics from the background ping run may be saved.
-
-        """
-        if self._ping_thread is None:
-            logging.info('Tried to stop a bg ping, but none was started')
-            return
-        # Sending SIGINT gives us stats at the end, how nice.
-        self._ping_thread.join(signal.SIGINT)
-        self._ping_thread = None
 
 
     def firewall_open(self, proto, src):
