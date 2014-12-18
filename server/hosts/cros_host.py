@@ -326,14 +326,13 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         @returns a str of $board-version/$BUILD.
 
         """
-        stable_version = global_config.global_config.get_config_value(
-                'CROS', 'stable_cros_version')
-        build_pattern = global_config.global_config.get_config_value(
-                'CROS', 'stable_build_pattern')
         board = self._get_board_from_afe()
         if board is None:
             raise error.AutoservError('DUT has no board attribute, '
                                       'cannot be repaired.')
+        stable_version = self._AFE.run('get_stable_version', board=board)
+        build_pattern = global_config.global_config.get_config_value(
+                'CROS', 'stable_build_pattern')
         return build_pattern % (board, stable_version)
 
 
@@ -641,8 +640,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         @param update_url: The url to use for the update
                 pattern: http://$devserver:###/update/$build
                 If update_url is None and repair is True we will install the
-                stable image listed in global_config under
-                CROS.stable_cros_version.
+                stable image listed in afe_stable_versions table. If the table
+                is not setup, global_config value under CROS.stable_cros_version
+                will be used instead.
         @param force_update: Force an update even if the version installed
                 is the same. Default:False
         @param local_devserver: Used by run_remote_test to allow people to
@@ -863,8 +863,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         """Attempt to repair this host using upate-engine.
 
         If the host is up, try installing the DUT with a stable
-        "repair" version of Chrome OS as defined in the global_config
-        under CROS.stable_cros_version.
+        "repair" version of Chrome OS as defined in afe_stable_versions table.
+        If the table is not setup, global_config value under
+        CROS.stable_cros_version will be used instead.
 
         @raises AutoservRepairMethodNA if the DUT is not reachable.
         @raises ChromiumOSError if the install failed for some reason.

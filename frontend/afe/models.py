@@ -1985,3 +1985,13 @@ class SpecialTask(dbmodels.Model, model_logic.ModelExtensions):
             result += u' (active)'
 
         return result
+
+
+class StableVersion(dbmodels.Model, model_logic.ModelExtensions):
+
+    board = dbmodels.CharField(max_length=255, unique=True)
+    version = dbmodels.CharField(max_length=255)
+
+    class Meta:
+        """Metadata for class StableVersion."""
+        db_table = 'afe_stable_versions'

@@ -30,9 +30,8 @@ class moblab_RunSuite(moblab_test.MoblabTest):
         # only be one type.
         board = host.afe.get_hosts()[0].platform
         # TODO (crbug.com/399132) sbasi - Replace repair version with actual
-        # stable_version.
-        stable_version = global_config.global_config.get_config_value(
-                'CROS', 'stable_cros_version')
+        # stable_version for the given board.
+        stable_version = host.afe.run('get_stable_version', board=board)
         build_pattern = global_config.global_config.get_config_value(
                 'CROS', 'stable_build_pattern')
         build = build_pattern % (board, stable_version)

@@ -27,6 +27,7 @@ from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.server.hosts import moblab_host
 from autotest_lib.site_utils import host_history
 from autotest_lib.site_utils import job_history
+from autotest_lib.site_utils import stable_version_utils
 
 
 _CONFIG = global_config.global_config
@@ -455,3 +456,14 @@ def delete_shard(hostname):
     shard.labels.clear()
 
     shard.delete()
+
+
+def get_stable_version(board=stable_version_utils.DEFAULT):
+    """Get stable version for the given board.
+
+    @param board: Name of the board.
+    @return: Stable version of the given board. Return global configure value
+             of CROS.stable_cros_version if stable_versinos table does not have
+             entry of board DEFAULT.
+    """
+    return stable_version_utils.get_version(board)
