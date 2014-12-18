@@ -7,6 +7,7 @@ import time
 
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.common_lib import error
+from autotest_lib.server.cros import dark_resume_utils
 from autotest_lib.server.cros.network import hostap_config
 from autotest_lib.server.cros.network import wifi_cell_test_base
 from autotest_lib.server.cros.network import wifi_client
@@ -19,6 +20,11 @@ class network_WiFi_WakeOnDisconnect(wifi_cell_test_base.WiFiCellTestBase):
     """Test that WiFi disconnect wakes up the system."""
 
     version = 1
+
+    def initialize(self, host):
+        """Set up for dark resume."""
+        dark_resume_utils.dark_resume_setup(host)
+
 
     def run_once(self):
         """Body of the test."""
@@ -51,5 +57,7 @@ class network_WiFi_WakeOnDisconnect(wifi_cell_test_base.WiFiCellTestBase):
     def cleanup(self):
         # make sure the DUT is up on the way out
         self.context.client.host.servo.ctrl_key()
+
+        dark_resume_utils.dark_resume_teardown(self.context.client.host)
         # make sure we clean up everything
         super(network_WiFi_WakeOnDisconnect, self).cleanup()
