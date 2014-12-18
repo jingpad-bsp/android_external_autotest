@@ -301,7 +301,7 @@ class MBIMMessageTestCase(unittest.TestCase):
         packets = mbim_message_request.generate_request_packets(message, 64)
         self.assertEqual(packets, [array.array('B', [0x01, 0x00, 0x00, 0x00,
                                                      0x10, 0x00, 0x00, 0x00,
-                                                     0x01, 0x00, 0x00, 0x00,
+                                                     0x02, 0x00, 0x00, 0x00,
                                                      0x28, 0x00, 0x00, 0x00])])
 
 

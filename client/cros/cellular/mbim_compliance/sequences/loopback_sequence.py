@@ -1,4 +1,4 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 """
@@ -12,7 +12,6 @@ import array
 
 import common
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_data_transfer
-from autotest_lib.client.cros.cellular.mbim_compliance import mbim_errors
 from autotest_lib.client.cros.cellular.mbim_compliance.sequences \
         import sequence
 
@@ -56,9 +55,9 @@ class LoopbackSequence(sequence.Sequence):
         # Step 1 is to run |connect| sequence which is expected to be run
         # before calling this to avoid calling sequences within another
         # sequence.
-        data_transfer = mbim_data_transfer.MBIMDataTransfer(self.device_context)
 
         # Step 2
+        data_transfer = mbim_data_transfer.MBIMDataTransfer(self.device_context)
         data_transfer.send_data_packets(ntb_format, self.DATA_PAYLOAD)
 
         # Step 3

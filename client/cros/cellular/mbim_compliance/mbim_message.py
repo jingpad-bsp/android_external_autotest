@@ -1,4 +1,4 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 """
@@ -22,7 +22,7 @@ MBIMControlMessage|         (mbim_message_request.py)
                                               |>MBIMOpenDone
                                               |>MBIMCloseDone
                                               |>MBIMCommandDone|
-                                              |                |>MBIMGetConnect
+                                              |                |>MBIMConnectInfo
                                               |                |>...
                                               |
                                               |>MBIMHostError
@@ -389,10 +389,10 @@ class MBIMControlMessage(object):
         @returns The tracsaction id for control message delivery.
 
         """
-        if cls._NEXT_TRANSACTION_ID > (sys.maxint - 2):
-            cls._NEXT_TRANSACTION_ID = 0x00000000
-        cls._NEXT_TRANSACTION_ID += 1
-        return cls._NEXT_TRANSACTION_ID
+        if MBIMControlMessage._NEXT_TRANSACTION_ID > (sys.maxint - 2):
+            MBIMControlMessage._NEXT_TRANSACTION_ID = 0x00000000
+        MBIMControlMessage._NEXT_TRANSACTION_ID += 1
+        return MBIMControlMessage._NEXT_TRANSACTION_ID
 
 
     def _get_fields_of_type(self, field_type, get_all=False):
@@ -541,7 +541,7 @@ class MBIMControlMessage(object):
         message_class = message.__class__
         format_string = message_class.get_field_format_string()
         field_names = message_class.get_field_names()
-        packet = message.pack(format_string, message_class.get_field_names())
+        packet = message.pack(format_string, field_names)
         if self.payload_buffer:
             packet.extend(self.payload_buffer)
         return packet

@@ -8,7 +8,6 @@ from  IP packets and for extracting IP packets from received MBIM NTB frames.
 """
 import array
 import struct
-import sys
 from collections import namedtuple
 
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_constants
@@ -48,6 +47,7 @@ class MBIMDataTransfer(object):
 
         @params device_context: The device context which contains all the USB
                 descriptors, NTB params and USB handle to the device.
+
         """
         self._device_context = device_context
         mbim_data_interface = (
@@ -72,6 +72,7 @@ class MBIMDataTransfer(object):
         @param ntb_format: Whether to send an NTB16 or NTB32 frame.
         @param data_packets: Array of data packets. Each packet is a byte array
                 corresponding to the IP packet or any other payload to be sent.
+
         """
         ntb_object = MBIMNtb(ntb_format)
         ntb_frame = ntb_object.generate_ntb(
@@ -154,10 +155,11 @@ class MBIMNtb(object):
         @returns The sequence number for data transfers.
 
         """
-        if cls._NEXT_SEQUENCE_NUMBER > (sys.maxint - 2):
-            cls._NEXT_SEQUENCE_NUMBER = 0x00000000
-        sequence_number = cls._NEXT_SEQUENCE_NUMBER
-        cls._NEXT_SEQUENCE_NUMBER += 1
+        # Make sure to rollover the 16 bit sequence number.
+        if MBIMNtb._NEXT_SEQUENCE_NUMBER > (0xFFFF - 2):
+            MBIMNtb._NEXT_SEQUENCE_NUMBER = 0x0000
+        sequence_number = MBIMNtb._NEXT_SEQUENCE_NUMBER
+        MBIMNtb._NEXT_SEQUENCE_NUMBER += 1
         return sequence_number
 
 
@@ -186,6 +188,7 @@ class MBIMNtb(object):
         @param ntb_payload_remainder: Used for payload alignment within the
                 frame.
         @returns offset to place the next payload at.
+
         """
         next_payload_offset = (
                 (((current_offset + (ntb_divisor - 1)) / ntb_divisor) *

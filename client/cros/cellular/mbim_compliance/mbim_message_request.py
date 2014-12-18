@@ -1,4 +1,4 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 """
@@ -174,4 +174,5 @@ def generate_request_packets(message, max_fragment_length):
         packets = [packet]
     else:
         packets = fragment_request_packets(message, max_fragment_length)
+    logging.debug("Request Message generated: %s", message)
     return packets

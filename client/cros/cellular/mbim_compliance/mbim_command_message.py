@@ -1,4 +1,4 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -55,7 +55,7 @@ class MBIMConnectQuery(mbim_message_request.MBIMCommand):
                  'activation_state' : 0,
                  'voice_call_state' : 0,
                  'ip_type' : 0,
-                 'context_type' : 0,
+                 'context_type' : mbim_constants.MBIM_CONTEXT_TYPE_NONE.bytes,
                  'nw_error' : 0}
 
 
@@ -135,6 +135,44 @@ class MBIMRadioStateInfo(mbim_message_response.MBIMCommandDone):
                ('I', 'sw_radio_state', ''))
 
 
+class MBIMIPConfigurationQuery(mbim_message_request.MBIMCommand):
+    """ The class for MBIM_IP_CONFIGURATION_INFO structure. """
+
+    _FIELDS = (('I', 'session_id', ''),
+               ('I', 'ipv4_configuration_available', ''),
+               ('I', 'ipv6_configuration_available', ''),
+               ('I', 'ipv4_address_count', ''),
+               ('I', 'ipv4_address_offset', ''),
+               ('I', 'ipv6_address_count', ''),
+               ('I', 'ipv6_address_offset', ''),
+               ('I', 'ipv4_gateway_offset', ''),
+               ('I', 'ipv6_gateway_offset', ''),
+               ('I', 'ipv4_dns_server_count', ''),
+               ('I', 'ipv4_dns_server_offset', ''),
+               ('I', 'ipv6_dns_server_count', ''),
+               ('I', 'ipv6_dns_server_offset', ''),
+               ('I', 'ipv4_mtu', ''),
+               ('I', 'ipv6_mtu', ''))
+    _DEFAULTS = {'device_service_id' : mbim_constants.UUID_BASIC_CONNECT.bytes,
+                 'cid' : mbim_constants.MBIM_CID_IP_CONFIGURATION,
+                 'command_type' : mbim_constants.COMMAND_TYPE_QUERY,
+                 'information_buffer_length' : 60,
+                 'ipv4_configuration_available' : 0,
+                 'ipv6_configuration_available' : 0,
+                 'ipv4_address_count' : 0,
+                 'ipv4_address_offset' : 0,
+                 'ipv6_address_count' : 0,
+                 'ipv6_address_offset' : 0,
+                 'ipv4_gateway_offset' : 0,
+                 'ipv6_gateway_offset' : 0,
+                 'ipv4_dns_server_count' : 0,
+                 'ipv4_dns_server_offset' : 0,
+                 'ipv6_dns_server_count' : 0,
+                 'ipv6_dns_server_offset' : 0,
+                 'ipv4_mtu' : 0,
+                 'ipv6_mtu' : 0}
+
+
 class MBIMIPConfigurationInfo(mbim_message_response.MBIMCommandDone):
     """ The class for MBIM_IP_CONFIGURATION_INFO structure. """
 
@@ -153,3 +191,6 @@ class MBIMIPConfigurationInfo(mbim_message_response.MBIMCommandDone):
                ('I', 'ipv6_dns_server_offset', ''),
                ('I', 'ipv4_mtu', ''),
                ('I', 'ipv6_mtu', ''))
+    _IDENTIFIERS = {
+            'device_service_id' : mbim_constants.UUID_BASIC_CONNECT.bytes,
+            'cid' : mbim_constants.MBIM_CID_IP_CONFIGURATION}

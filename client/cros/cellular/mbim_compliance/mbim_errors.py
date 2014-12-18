@@ -1,4 +1,4 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -301,6 +301,11 @@ class MBIMComplianceAssertionError(MBIMComplianceError):
                                ' encoding by setting '
                                'MBIM_STATUS_INVALID_PARAMETERS as the status '
                                'code in the MBIM_COMMAND_DONE message.',
+            'mbim1.0:10.5.1.3#1': 'Functions that support CDMA must specify '
+                               'MBIMCtrlCapsCdmaMobileIP or '
+                               'MBIMCtrlCapsCdmaSimpleIP or both flags to '
+                               'inform the host about the type of IP that the '
+                               'function supports.',
 
             # NCM Assertion group: 3.x.x#x
             'ncm1.0:3.2.1#1':  'The first four bytes in NTH16 shall be '

@@ -1,4 +1,4 @@
-# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -78,3 +78,15 @@ MBIM_CONTEXT_TYPE_INTERNET = uuid.UUID('7E5E2A7E-4E6F-7272-736B-656E7E5E2A7E')
 # NTB formats
 NTB_FORMAT_16 = 0
 NTB_FORMAT_32 = 1
+
+# MBIM Device Caps Cellular classes
+CELLULAR_CLASS_MASK_GSM = 0x01
+CELLULAR_CLASS_MASK_CDMA = 0x02
+
+# MBIM CTRL Caps
+CTRL_CAPS_MASK_NONE = 0x0000
+CTRL_CAPS_MASK_REG_MANUAL = 0x0001
+CTRL_CAPS_MASK_HW_RADIO_SWITCH = 0x0002
+CTRL_CAPS_MASK_CDMA_MOBILE_IP = 0x0004
+CTRL_CAPS_MASK_CDMA_SIMPLE_IP = 0x0008
+CTRL_CAPS_MASK_MULTI_CARRIER = 0x0010
