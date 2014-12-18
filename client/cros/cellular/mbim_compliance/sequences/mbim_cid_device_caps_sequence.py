@@ -1,4 +1,4 @@
-# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 """
@@ -11,6 +11,8 @@ Reference:
 import common
 
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_channel
+from autotest_lib.client.cros.cellular.mbim_compliance \
+        import mbim_command_message
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_constants
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_errors
 from autotest_lib.client.cros.cellular.mbim_compliance \
@@ -35,11 +37,7 @@ class MBIMCIDDeviceCapsSequence(sequence.Sequence):
         # Send MBIM_COMMAND_MSG.
         device_context = self.device_context
         descriptor_cache = device_context.descriptor_cache
-        command_message = mbim_message_request.MBIMCommand(
-                device_service_id=mbim_constants.UUID_BASIC_CONNECT.bytes,
-                cid=mbim_constants.MBIM_CID_DEVICE_CAPS,
-                command_type=mbim_constants.COMMAND_TYPE_QUERY,
-                information_buffer_length=0)
+        command_message = mbim_command_message.MBIMDeviceCapsQuery()
         packets = mbim_message_request.generate_request_packets(
                 command_message,
                 device_context.max_control_transfer_size)
@@ -56,8 +54,14 @@ class MBIMCIDDeviceCapsSequence(sequence.Sequence):
                 response_packets)
 
         # Step 3
-        if (response_message.message_type != mbim_constants.MBIM_COMMAND_DONE or
-            response_message.status_codes != mbim_constants.MBIM_STATUS_SUCCESS):
+        is_message_valid = isinstance(
+                response_message,
+                mbim_command_message.MBIMDeviceCapsInfo)
+        if ((not is_message_valid) or
+            (response_message.message_type !=
+             mbim_constants.MBIM_COMMAND_DONE) or
+            (response_message.status_codes !=
+             mbim_constants.MBIM_STATUS_SUCCESS)):
             mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
                                       'mbim1.0:9.4.3')
 

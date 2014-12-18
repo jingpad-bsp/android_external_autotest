@@ -1,4 +1,4 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -44,6 +44,6 @@ class cellular_MbimComplianceCM15(mbim_test_base.MbimTestBase):
                 self.device_context)
         _, response_message = caps_sequence.run()
         if not isinstance(response_message,
-                          mbim_command_message.MBIMGetDeviceCaps):
+                          mbim_command_message.MBIMDeviceCapsInfo):
             mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,
                                       'mbim1.0:9.2')

@@ -1,4 +1,4 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -52,18 +52,9 @@ class cellular_MbimComplianceCM13(mbim_test_base.MbimTestBase):
                 self.device_context).run()
 
         # Step 1
-        information_buffer_length = (
-                mbim_command_message.MBIMGetConnect.get_struct_len())
         device_context = self.device_context
         descriptor_cache = device_context.descriptor_cache
-        command_message = mbim_command_message.MBIMGetConnect(
-                session_id=0,
-                activation_state=0,
-                voice_call_state=0,
-                ip_type=0,
-                context_type=mbim_constants.MBIM_CONTEXT_TYPE_NONE.bytes,
-                nw_error=0,
-                information_buffer_length=information_buffer_length)
+        command_message = mbim_command_message.MBIMConnectQuery(session_id=0)
         packets = mbim_message_request.generate_request_packets(
                 command_message,
                 device_context.max_control_transfer_size)

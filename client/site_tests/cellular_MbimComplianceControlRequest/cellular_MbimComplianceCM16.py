@@ -1,4 +1,4 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -9,7 +9,6 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_channel
 from autotest_lib.client.cros.cellular.mbim_compliance \
         import mbim_command_message
-from autotest_lib.client.cros.cellular.mbim_compliance import mbim_constants
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_errors
 from autotest_lib.client.cros.cellular.mbim_compliance \
         import mbim_message_request
@@ -58,22 +57,15 @@ class cellular_MbimComplianceCM16(mbim_test_base.MbimTestBase):
                 device_context.max_control_transfer_size)
 
         # Step 1
-        caps_command_message = mbim_message_request.MBIMCommand(
-                device_service_id=mbim_constants.UUID_BASIC_CONNECT.bytes,
-                cid=mbim_constants.MBIM_CID_DEVICE_CAPS,
-                command_type=mbim_constants.COMMAND_TYPE_QUERY,
-                information_buffer_length=0)
+        caps_command_message = mbim_command_message.MBIMDeviceCapsQuery()
         caps_packets = mbim_message_request.generate_request_packets(
                 caps_command_message,
                 device_context.max_control_transfer_size)
         self.caps_transaction_id = caps_command_message.transaction_id
 
         # Step 2
-        services_command_message = mbim_message_request.MBIMCommand(
-                device_service_id=mbim_constants.UUID_BASIC_CONNECT.bytes,
-                cid=mbim_constants.MBIM_CID_DEVICE_SERVICES,
-                command_type=mbim_constants.COMMAND_TYPE_QUERY,
-                information_buffer_length=0)
+        services_command_message = (
+                mbim_command_message.MBIMDeviceServicesQuery())
         services_packets = mbim_message_request.generate_request_packets(
                 services_command_message,
                 device_context.max_control_transfer_size)
@@ -96,10 +88,10 @@ class cellular_MbimComplianceCM16(mbim_test_base.MbimTestBase):
         services_response_message = self.services_response
         is_caps_message_valid = isinstance(
                 caps_response_message,
-                mbim_command_message.MBIMGetDeviceCaps)
+                mbim_command_message.MBIMDeviceCapsInfo)
         is_services_message_valid = isinstance(
                 services_response_message,
-                mbim_command_message.MBIMGetDeviceServices)
+                mbim_command_message.MBIMDeviceServicesInfo)
         if not ((is_caps_message_valid and is_services_message_valid) and
                 (caps_response_message.transaction_id ==
                  caps_command_message.transaction_id) and

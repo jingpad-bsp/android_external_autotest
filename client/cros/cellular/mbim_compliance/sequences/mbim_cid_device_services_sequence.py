@@ -1,4 +1,4 @@
-# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 """
@@ -10,6 +10,8 @@ Reference:
 """
 import common
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_channel
+from autotest_lib.client.cros.cellular.mbim_compliance \
+        import mbim_command_message
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_constants
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_control
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_errors
@@ -27,11 +29,7 @@ class MBIMCIDDeviceServicesSequence(sequence.Sequence):
     def run_internal(self):
         """ Run the MBIM_CID_DEVICE_SERVICES Sequence. """
         # Step 1
-        command_message = mbim_control.MBIMCommandMessage(
-                device_service_id=mbim_control.UUID_BASIC_CONNECT.bytes,
-                cid=mbim_constants.MBIM_CID_DEVICE_SERVICES,
-                command_type=mbim_control.COMMAND_TYPE_QUERY,
-                information_buffer_length=0)
+        command_message = mbim_command_message.MBIMDeviceServicesQuery()
         packets = command_message.generate_packets()
         device_context = self.device_context
         channel = mbim_channel.MBIMChannel(
@@ -46,8 +44,12 @@ class MBIMCIDDeviceServicesSequence(sequence.Sequence):
         response_message = mbim_control.parse_response_packets(response_packets)
 
         # Step 3
-        if ((response_message.message_type ==
-             mbim_constants.MBIM_COMMAND_DONE) and
+        is_message_valid = isinstance(
+                response_message,
+                mbim_command_message.MBIMDeviceServicesInfo)
+        if ((not is_message_valid) or
+            (response_message.message_type !=
+             mbim_constants.MBIM_COMMAND_DONE) or
             (response_message.status_codes !=
              mbim_constants.MBIM_STATUS_SUCCESS)):
             mbim_errors.log_and_raise(mbim_errors.MBIMComplianceAssertionError,

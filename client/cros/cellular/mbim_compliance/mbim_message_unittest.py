@@ -261,7 +261,7 @@ class MBIMMessageTestCase(unittest.TestCase):
                                      0x4D, 0x00, 0x00, 0x00])]
         message = mbim_message_response.parse_response_packets(packets)
         is_instance = isinstance(message,
-                                 mbim_command_message.MBIMGetDeviceCaps)
+                                 mbim_command_message.MBIMDeviceCapsInfo)
         self.assertEqual(is_instance, True)
         self.assertEqual(message.message_type, mbim_constants.MBIM_COMMAND_DONE)
         self.assertEqual(message.message_length, 208)

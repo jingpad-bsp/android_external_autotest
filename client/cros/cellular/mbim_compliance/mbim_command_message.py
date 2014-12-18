@@ -39,8 +39,8 @@ class MBIMSetConnect(mbim_message_request.MBIMCommand):
                  'command_type' : mbim_constants.COMMAND_TYPE_SET}
 
 
-class MBIMGetConnect(mbim_message_response.MBIMCommandDone):
-    """ The class for MBIM_CONNECT_INFO structure. """
+class MBIMConnectQuery(mbim_message_request.MBIMCommand):
+    """ The class for MBIM_CONNECT_QUERY structure. """
 
     _FIELDS = (('I', 'session_id', ''),
                ('I', 'activation_state', ''),
@@ -50,13 +50,39 @@ class MBIMGetConnect(mbim_message_response.MBIMCommandDone):
                ('I', 'nw_error', ''))
     _DEFAULTS = {'device_service_id' : mbim_constants.UUID_BASIC_CONNECT.bytes,
                  'cid' : mbim_constants.MBIM_CID_CONNECT,
-                 'command_type' : mbim_constants.COMMAND_TYPE_QUERY}
+                 'command_type' : mbim_constants.COMMAND_TYPE_QUERY,
+                 'information_buffer_length' : 36,
+                 'activation_state' : 0,
+                 'voice_call_state' : 0,
+                 'ip_type' : 0,
+                 'context_type' : 0,
+                 'nw_error' : 0}
+
+
+class MBIMConnectInfo(mbim_message_response.MBIMCommandDone):
+    """ The class for MBIM_CONNECT_INFO structure. """
+
+    _FIELDS = (('I', 'session_id', ''),
+               ('I', 'activation_state', ''),
+               ('I', 'voice_call_state', ''),
+               ('I', 'ip_type', ''),
+               ('16s', 'context_type', ''),
+               ('I', 'nw_error', ''))
     _IDENTIFIERS = {
             'device_service_id' : mbim_constants.UUID_BASIC_CONNECT.bytes,
             'cid' : mbim_constants.MBIM_CID_CONNECT}
 
 
-class MBIMGetDeviceCaps(mbim_message_response.MBIMCommandDone):
+class MBIMDeviceCapsQuery(mbim_message_request.MBIMCommand):
+    """ The class for MBIM_DEVICE_CAPS_QUERY structure. """
+
+    _DEFAULTS = {'device_service_id' : mbim_constants.UUID_BASIC_CONNECT.bytes,
+                 'cid' : mbim_constants.MBIM_CID_DEVICE_CAPS,
+                 'command_type' : mbim_constants.COMMAND_TYPE_QUERY,
+                 'information_buffer_length' : 0}
+
+
+class MBIMDeviceCapsInfo(mbim_message_response.MBIMCommandDone):
     """ The class for MBIM_DEVICE_CAPS_INFO structure. """
 
     _FIELDS = (('I', 'device_type', ''),
@@ -75,15 +101,21 @@ class MBIMGetDeviceCaps(mbim_message_response.MBIMCommandDone):
                ('I', 'firmware_info_size', ''),
                ('I', 'hardware_info_offset', ''),
                ('I', 'hardware_info_size', ''))
-    _DEFAULTS = {'device_service_id' : mbim_constants.UUID_BASIC_CONNECT.bytes,
-                 'cid' : mbim_constants.MBIM_CID_DEVICE_CAPS,
-                 'command_type' : mbim_constants.COMMAND_TYPE_QUERY}
     _IDENTIFIERS = {
             'device_service_id' : mbim_constants.UUID_BASIC_CONNECT.bytes,
             'cid' : mbim_constants.MBIM_CID_DEVICE_CAPS}
 
 
-class MBIMGetDeviceServices(mbim_message_response.MBIMCommandDone):
+class MBIMDeviceServicesQuery(mbim_message_request.MBIMCommand):
+    """ The class for MBIM_DEVICE_SERVICES_QUERY structure. """
+
+    _DEFAULTS = {'device_service_id' : mbim_constants.UUID_BASIC_CONNECT.bytes,
+                 'cid' : mbim_constants.MBIM_CID_DEVICE_SERVICES,
+                 'command_type' : mbim_constants.COMMAND_TYPE_QUERY,
+                 'information_buffer_length' : 0}
+
+
+class MBIMDeviceServicesInfo(mbim_message_response.MBIMCommandDone):
     """ The class for MBIM_DEVICE_SERVICES_INFO structure. """
 
     # The length of |device_services_ref_list| depends on the value of
@@ -91,22 +123,19 @@ class MBIMGetDeviceServices(mbim_message_response.MBIMCommandDone):
     _FIELDS = (('I', 'device_services_count', ''),
                ('I', 'max_dss_sessions', ''))
                #('Q', 'device_services_ref_list', ''))
-    _DEFAULTS = {'device_service_id' : mbim_constants.UUID_BASIC_CONNECT.bytes,
-                 'cid' : mbim_constants.MBIM_CID_DEVICE_SERVICES,
-                 'command_type' : mbim_constants.COMMAND_TYPE_QUERY}
     _IDENTIFIERS = {
             'device_service_id' : mbim_constants.UUID_BASIC_CONNECT.bytes,
             'cid' : mbim_constants.MBIM_CID_DEVICE_SERVICES}
 
 
-class MBIMGetRadioState(mbim_message_response.MBIMCommandDone):
+class MBIMRadioStateInfo(mbim_message_response.MBIMCommandDone):
     """ The class for MBIM_RADIO_STATE_INFO structure. """
 
     _FIELDS = (('I', 'hw_radio_state', ''),
                ('I', 'sw_radio_state', ''))
 
 
-class MBIMGetIPConfiguration(mbim_message_response.MBIMCommandDone):
+class MBIMIPConfigurationInfo(mbim_message_response.MBIMCommandDone):
     """ The class for MBIM_IP_CONFIGURATION_INFO structure. """
 
     _FIELDS = (('I', 'session_id', ''),
