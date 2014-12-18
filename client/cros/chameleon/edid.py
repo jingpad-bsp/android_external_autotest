@@ -104,3 +104,7 @@ class Edid(object):
         """
         with open(filename, 'w+') as f:
             f.write(self.data)
+
+
+# A constant object to represent no EDID.
+NO_EDID = Edid('', skip_verify=True)

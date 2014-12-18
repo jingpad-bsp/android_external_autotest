@@ -13,7 +13,7 @@ from PIL import Image
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros.chameleon import edid
+from autotest_lib.client.cros.chameleon import edid as edid_lib
 
 
 CHAMELEON_PORT = 9992
@@ -223,6 +223,7 @@ class ChameleonVideoInput(ChameleonPort):
 
     _DURATION_UNPLUG_FOR_EDID = 5
     _TIMEOUT_VIDEO_STABLE_PROBE = 10
+    _EDID_ID_DISABLE = -1
 
     def __init__(self, chameleon_port):
         """Construct a ChameleonVideoInput.
@@ -248,22 +249,28 @@ class ChameleonVideoInput(ChameleonPort):
     def read_edid(self):
         """Reads the EDID.
 
-        @return: An Edid object.
+        @return: An Edid object or NO_EDID.
         """
+        edid_binary = self.chameleond_proxy.ReadEdid(self.port_id)
+        if edid_binary is None:
+            return edid_lib.NO_EDID
         # Read EDID without verify. It may be made corrupted as intended
         # for the test purpose.
-        return edid.Edid(self.chameleond_proxy.ReadEdid(self.port_id).data,
-                         skip_verify=True)
+        return edid_lib.Edid(edid_binary.data, skip_verify=True)
 
 
     def apply_edid(self, edid):
         """Applies the given EDID.
 
-        @param edid: An Edid object.
+        @param edid: An Edid object or NO_EDID.
         """
-        edid_id = self.chameleond_proxy.CreateEdid(xmlrpclib.Binary(edid.data))
-        self.chameleond_proxy.ApplyEdid(self.port_id, edid_id)
-        self.chameleond_proxy.DestroyEdid(edid_id)
+        if edid is edid_lib.NO_EDID:
+          self.chameleond_proxy.ApplyEdid(self.port_id, self._EDID_ID_DISABLE)
+        else:
+          edid_binary = xmlrpclib.Binary(edid.data)
+          edid_id = self.chameleond_proxy.CreateEdid(edid_binary)
+          self.chameleond_proxy.ApplyEdid(self.port_id, edid_id)
+          self.chameleond_proxy.DestroyEdid(edid_id)
 
 
     @contextmanager
@@ -316,7 +323,7 @@ class ChameleonVideoInput(ChameleonPort):
 
         @param filename: A path to the EDID file.
         """
-        return self.use_edid(edid.Edid.from_file(filename))
+        return self.use_edid(edid_lib.Edid.from_file(filename))
 
 
     def fire_hpd_pulse(self, deassert_interval_usec, assert_interval_usec=None,
