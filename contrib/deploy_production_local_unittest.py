@@ -19,12 +19,71 @@ class TestDeployProductionLocal(unittest.TestCase):
 
     orig_timer = dpl.SERVICE_STABILITY_TIMER
 
+    PROD_STATUS = ('\x1b[1mproject autotest/                             '
+                   '  \x1b[m\x1b[1mbranch prod\x1b[m\n')
+
+    PROD_VERSIONS = '''\x1b[1mproject autotest/\x1b[m
+/usr/local/autotest
+ebb2182
+
+\x1b[1mproject autotest/site_utils/autotest_private/\x1b[m
+/usr/local/autotest/site_utils/autotest_private
+78b9626
+
+\x1b[1mproject autotest/site_utils/autotest_tools/\x1b[m
+/usr/local/autotest/site_utils/autotest_tools
+a1598f7
+'''
+
+
     def setUp(self):
         dpl.SERVICE_STABILITY_TIMER = 0.01
 
     def tearDown(self):
         dpl.SERVICE_STABILITY_TIMER = self.orig_timer
 
+    def test_strip_terminal_codes(self):
+        """Test deploy_production_local.strip_terminal_codes."""
+        # Leave format free lines alone.
+        result = dpl.strip_terminal_codes('')
+        self.assertEqual(result, '')
+
+        result = dpl.strip_terminal_codes('This is normal text.')
+        self.assertEqual(result, 'This is normal text.')
+
+        result = dpl.strip_terminal_codes('Line1\nLine2\n')
+        self.assertEqual(result, 'Line1\nLine2\n')
+
+        result = dpl.strip_terminal_codes('Line1\nLine2\n')
+        self.assertEqual(result, 'Line1\nLine2\n')
+
+        # Test cleaning lines with formatting.
+        result = dpl.strip_terminal_codes('\x1b[1m')
+        self.assertEqual(result, '')
+
+        result = dpl.strip_terminal_codes('\x1b[m')
+        self.assertEqual(result, '')
+
+        result = dpl.strip_terminal_codes('\x1b[1mm')
+        self.assertEqual(result, 'm')
+
+        result = dpl.strip_terminal_codes(self.PROD_STATUS)
+        self.assertEqual(result,
+                'project autotest/                               branch prod\n')
+
+        result = dpl.strip_terminal_codes(self.PROD_VERSIONS)
+        self.assertEqual(result, '''project autotest/
+/usr/local/autotest
+ebb2182
+
+project autotest/site_utils/autotest_private/
+/usr/local/autotest/site_utils/autotest_private
+78b9626
+
+project autotest/site_utils/autotest_tools/
+/usr/local/autotest/site_utils/autotest_tools
+a1598f7
+''')
 
     @mock.patch('subprocess.check_output', autospec=True)
     def test_verify_repo_clean(self, run_cmd):
@@ -36,13 +95,9 @@ class TestDeployProductionLocal(unittest.TestCase):
         run_cmd.return_value = 'nothing to commit (working directory clean)\n'
         dpl.verify_repo_clean()
 
-        PROD_BRANCH = (
-                '^[[1mproject autotest/                '
-                '               ^[[m^[[1mbranch prod^[[m\n')
-
         # We allow a single branch named 'prod' in the autotest directory.
         # repo uses bold highlights when reporting it.
-        run_cmd.return_value = PROD_BRANCH
+        run_cmd.return_value = self.PROD_STATUS
         dpl.verify_repo_clean()
 
         # If repo doesn't return what we expect, raise.
@@ -51,7 +106,7 @@ class TestDeployProductionLocal(unittest.TestCase):
             dpl.verify_repo_clean()
 
         # Dirty tree with 'prod' branch.
-        run_cmd.return_value = PROD_BRANCH + 'other stuff is dirty.\n'
+        run_cmd.return_value = self.PROD_STATUS + 'other stuff is dirty.\n'
         with self.assertRaises(dpl.DirtyTreeException):
             dpl.verify_repo_clean()
 
@@ -61,29 +116,16 @@ class TestDeployProductionLocal(unittest.TestCase):
 
         @param run_cmd: Mock of subprocess call used.
         """
-        output = """project autotest/
-/usr/local/autotest
-5897108
-
-project autotest/site_utils/autotest_private/
-/usr/local/autotest/site_utils/autotest_private
-78b9626
-
-project autotest/site_utils/autotest_tools/
-/usr/local/autotest/site_utils/autotest_tools
-a1598f7
-"""
-
         expected = {
             'autotest':
-            ('/usr/local/autotest', '5897108'),
+            ('/usr/local/autotest', 'ebb2182'),
             'autotest/site_utils/autotest_private':
             ('/usr/local/autotest/site_utils/autotest_private', '78b9626'),
             'autotest/site_utils/autotest_tools':
             ('/usr/local/autotest/site_utils/autotest_tools', 'a1598f7'),
         }
 
-        run_cmd.return_value = output
+        run_cmd.return_value = self.PROD_VERSIONS
         result = dpl.repo_versions()
         self.assertEquals(result, expected)
 
@@ -188,7 +230,31 @@ a1598f7
         self.assertEqual(unstable.exception.args[0], ['bar', 'joe'])
 
     @mock.patch('subprocess.check_output', autospec=True)
-    def test_report_changes(self, run_cmd):
+    def test_report_changes_no_update(self, run_cmd):
+        """Test deploy_production_local.report_changes.
+
+        @param run_cmd: Mock of subprocess call used.
+        """
+
+        before = {
+            'autotest': ('/usr/local/autotest', 'auto_before'),
+            'autotest_private': ('/dir/autotest_private', '78b9626'),
+            'other': ('/fake/unchanged', 'constant_hash'),
+        }
+
+        run_cmd.return_value = 'hash1 Fix change.\nhash2 Bad change.\n'
+
+        result = dpl.report_changes(before, None)
+
+        self.assertEqual(result, """autotest: auto_before
+autotest_private: 78b9626
+other: constant_hash
+""")
+
+        self.assertFalse(run_cmd.called)
+
+    @mock.patch('subprocess.check_output', autospec=True)
+    def test_report_changes_diff(self, run_cmd):
         """Test deploy_production_local.report_changes.
 
         @param run_cmd: Mock of subprocess call used.

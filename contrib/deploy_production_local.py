@@ -40,6 +40,16 @@ class UnstableServices(Exception):
     """Raised if a service appears unstable after restart."""
 
 
+def strip_terminal_codes(text):
+    """This function removes all terminal formatting codes from a string.
+
+    @param text: String of text to cleanup.
+    @returns String with format codes removed.
+    """
+    ESC = '\x1b'
+    return re.sub(ESC+r'\[[^m]*m', '', text)
+
+
 def verify_repo_clean():
     """This function verifies that the current repo is valid, and clean.
 
@@ -47,16 +57,16 @@ def verify_repo_clean():
     @raises subprocess.CalledProcessError on a repo command failure.
     """
     out = subprocess.check_output(['repo', 'status'], stderr=subprocess.STDOUT)
-    out = out.strip()
+    out = strip_terminal_codes(out).strip()
 
-    # We're clean, with no branches.
     CLEAN_STATUS_OUTPUT = 'nothing to commit (working directory clean)'
-    if out == CLEAN_STATUS_OUTPUT:
-        return
+    PROD_BRANCH_OUTPUT = ('project autotest/                            '
+                          '   branch prod')
 
-    # We're clean, but the branch 'prod' exists in the project autotest.
-    # We use wildcards to skip over the text format characters repo uses.
-    if re.match(r'^.*project autotest/.*branch prod.*$\Z', out):
+    # We're clean, if there are no branches and we are clean, or
+    # if a local prod branch exists. We wouldn't allow the branch if it wasn't
+    # required for a local commit on cautotest (ugly).
+    if out in (CLEAN_STATUS_OUTPUT, PROD_BRANCH_OUTPUT):
         return
 
     raise DirtyTreeException(out)
@@ -69,7 +79,7 @@ def repo_versions():
     @raises subprocess.CalledProcessError on a repo command failure.
     """
     cmd = ['repo', 'forall', '-p', '-c', 'pwd && git log -1 --format=%h']
-    output = subprocess.check_output(cmd)
+    output = strip_terminal_codes(subprocess.check_output(cmd))
 
     # The expected output format is:
 
@@ -271,28 +281,34 @@ def report_changes(versions_before, versions_after):
     """
     result = []
 
-    for project in sorted(set(versions_before.keys() + versions_after.keys())):
-        result.append('%s:' % project)
+    if versions_after:
+        for project in sorted(set(versions_before.keys() + versions_after.keys())):
+            result.append('%s:' % project)
 
-        _, before_hash = versions_before.get(project, (None, None))
-        after_dir, after_hash = versions_after.get(project, (None, None))
+            _, before_hash = versions_before.get(project, (None, None))
+            after_dir, after_hash = versions_after.get(project, (None, None))
 
-        if project not in versions_before:
-            result.append('Added.')
+            if project not in versions_before:
+                result.append('Added.')
 
-        elif project not in versions_after:
-            result.append('Removed.')
+            elif project not in versions_after:
+                result.append('Removed.')
 
-        elif before_hash == after_hash:
-            result.append('No Change.')
+            elif before_hash == after_hash:
+                result.append('No Change.')
 
-        else:
-            hashes = '%s..%s' % (before_hash, after_hash)
-            cmd = ['git', 'log', hashes, '--oneline']
-            out = subprocess.check_output(cmd, cwd=after_dir,
-                                          stderr=subprocess.STDOUT)
-            result.append(out.strip())
+            else:
+                hashes = '%s..%s' % (before_hash, after_hash)
+                cmd = ['git', 'log', hashes, '--oneline']
+                out = subprocess.check_output(cmd, cwd=after_dir,
+                                              stderr=subprocess.STDOUT)
+                result.append(out.strip())
 
+            result.append('')
+    else:
+        for project in sorted(versions_before.keys()):
+            _, before_hash = versions_before[project]
+            result.append('%s: %s' % (project, before_hash))
         result.append('')
 
     return '\n'.join(result)
@@ -358,16 +374,13 @@ def main(args):
             print(e.args[0])
             return 1
 
-    versions_before = versions_after = {}
+    versions_before = repo_versions()
+    versions_after = {}
 
     if behaviors.update:
-        print('Checking repository versions.')
-        versions_before = repo_versions()
-
         print('Updating Repo.')
         repo_sync()
 
-        print('Checking repository versions after update.')
         versions_after = repo_versions()
         if versions_before == versions_after:
             print('No change found.')
@@ -382,7 +395,7 @@ def main(args):
             print(e.args[0])
             return 1
 
-    if behaviors.report and versions_before and versions_after:
+    if behaviors.report:
         print('Changes:')
         print(report_changes(versions_before, versions_after))
 
