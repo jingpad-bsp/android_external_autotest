@@ -45,7 +45,7 @@ class privetd_PrivetInfo(test.test):
         @param auth: the authentication dict from JSON.
 
         """
-        expected = {'crypto': ['p256_spake2'],
+        expected = {'crypto': ['p224_spake2'],
                     'mode': ['anonymous', 'pairing'],
                     'pairing': ['embeddedCode']};
         if auth != expected:
