@@ -49,7 +49,7 @@ class BaseLabConfig(object):
     def get_rpm_hostname(cls, device_hostname):
         """Get rpm hostname given a device.
 
-        @param device_hostname: A DeviceHostname namedtuple.
+        @param device_hostname: A DeviceHostname named tuple.
 
         @returns: the rpm hostname, default to empty string.
 
@@ -61,7 +61,7 @@ class BaseLabConfig(object):
     def get_rpm_outlet(cls, device_hostname):
         """Get rpm outlet given a device.
 
-        @param device_hostname: A DeviceHostname namedtuple.
+        @param device_hostname: A DeviceHostname named tuple.
 
         @returns: the rpm outlet, default to empty string.
 
@@ -73,7 +73,7 @@ class BaseLabConfig(object):
     def get_hydra_hostname(cls, device_hostname):
         """Get hydra hostname given a device.
 
-        @param device_hostname: A DeviceHostname namedtuple.
+        @param device_hostname: A DeviceHostname named tuple.
 
         @returns: the hydra hostname, default to empty string.
 
@@ -85,7 +85,7 @@ class BaseLabConfig(object):
     def is_device_in_the_lab(cls, device_hostname):
         """Check whether a dut belongs to the lab.
 
-        @param device_hostname: A DeviceHostname namedtuple.
+        @param device_hostname: A DeviceHostname named tuple.
 
         @returns: True if the dut belongs to the lab,
                   False otherwise.
@@ -104,7 +104,7 @@ class OysterBayConfig(BaseLabConfig):
     def get_rpm_hostname(cls, device_hostname):
         """Get rpm hostname.
 
-        @param device_hostname: A DeviceHostname namedtuple.
+        @param device_hostname: A DeviceHostname named tuple.
 
         @returns: hostname of the rpm that has the device.
 
@@ -120,7 +120,7 @@ class OysterBayConfig(BaseLabConfig):
     def get_rpm_outlet(cls, device_hostname):
         """Get rpm outlet.
 
-        @param device_hostname: A DeviceHostname namedtuple.
+        @param device_hostname: A DeviceHostname named tuple.
 
         @returns: rpm outlet, e.g. '.A1'
 
@@ -153,7 +153,7 @@ class AtlantisConfig(BaseLabConfig):
     def get_rpm_hostname(cls, device_hostname):
         """Get rpm hostname.
 
-        @param device_hostname: A DeviceHostname namedtuple.
+        @param device_hostname: A DeviceHostname named tuple.
 
         @returns: hostname of the rpm that has the device.
 
@@ -167,7 +167,7 @@ class AtlantisConfig(BaseLabConfig):
     def get_rpm_outlet(cls, device_hostname):
         """Get rpm outlet.
 
-        @param device_hostname: A DeviceHostname namedtuple.
+        @param device_hostname: A DeviceHostname named tuple.
 
         @returns: rpm outlet, e.g. '.A1'
 
@@ -179,7 +179,7 @@ class AtlantisConfig(BaseLabConfig):
     def get_hydra_hostname(cls, device_hostname):
         """Get hydra hostname.
 
-        @param device_hostname: A DeviceHostname namedtuple.
+        @param device_hostname: A DeviceHostname named tuple.
 
         @returns: hydra hostname
 
@@ -206,7 +206,7 @@ class ChaosConfig(BaseLabConfig):
     def get_rpm_hostname(cls, device_hostname):
         """Get rpm hostname.
 
-        @param device_hostname: A DeviceHostname namedtuple.
+        @param device_hostname: A DeviceHostname named tuple.
 
         @returns: hostname of the rpm that has the device.
 
@@ -220,7 +220,7 @@ class ChaosConfig(BaseLabConfig):
     def get_rpm_outlet(cls, device_hostname):
         """Get rpm outlet.
 
-        @param device_hostname: A DeviceHostname namedtuple.
+        @param device_hostname: A DeviceHostname named tuple.
 
         @returns: rpm outlet, e.g. '.A1'
 
@@ -232,7 +232,8 @@ class DestinyConfig(BaseLabConfig):
     """Configuration for Desitny lab."""
 
     LAB_NUMBER = CHROMEOS_LABS.DESTINY
-    # chromeos4 # (rowX % 2, hostY) -> outlet
+    # None-densified rack: one host per shelf
+    # (rowX % 2, hostY) -> outlet
     RPM_OUTLET_MAP = {
             (1, 1): 1,
             (0, 1): 2,
@@ -245,42 +246,98 @@ class DestinyConfig(BaseLabConfig):
             (1, 5): 12,
             (0, 5): 13,
             (1, 6): 15,
-            (0, 6): 16}
+            (0, 6): 16,
+    }
+
+    # Densified rack: one shelf can have two chromeboxes or one notebook.
+    # (rowX % 2, hostY) -> outlet
+    DENSIFIED_RPM_OUTLET_MAP = {
+            (1, 2):  1,  (1, 1): 1,
+            (0, 1):  2,  (0, 2): 2,
+            (1, 4):  3,  (1, 3): 3,
+            (0, 3):  4,  (0, 4): 4,
+            (1, 6):  5,  (1, 5): 5,
+            (0, 5):  6,  (0, 6): 6,
+            (1, 8):  7,  (1, 7): 7,
+            (0, 7):  8,  (0, 8): 8,
+            # outlet 9, 10 are not used
+            (1, 10): 11, (1, 9): 11,
+            (0, 9):  12, (0, 10): 12,
+            (1, 12): 13, (1, 11): 13,
+            (0, 11): 14, (0, 12): 14,
+            (1, 14): 15, (1, 13): 15,
+            (0, 13): 16, (0, 14): 16,
+            (1, 16): 17, (1, 15): 17,
+            (0, 15): 18, (0, 16): 18,
+            (1, 18): 19, (1, 17): 19,
+            (0, 17): 20, (0, 18): 20,
+            (1, 20): 21, (1, 19): 21,
+            (0, 19): 22, (0, 20): 22,
+            (1, 22): 23, (1, 21): 23,
+            (0, 21): 24, (0, 22): 24,
+    }
+
+
+    @classmethod
+    def is_densified(cls, device_hostname):
+        """Whether the host is on a densified rack.
+
+        @param device_hostname: A DeviceHostname named tuple.
+
+        @returns: True if on a densified rack, False otherwise.
+        """
+        return device_hostname.rack in (0, 12, 13)
 
 
     @classmethod
     def get_rpm_hostname(cls, device_hostname):
         """Get rpm hostname.
 
-        @param device_hostname: A DeviceHostname namedtuple.
+        @param device_hostname: A DeviceHostname named tuple.
 
         @returns: hostname of the rpm that has the device.
 
         """
         row = device_hostname.row
-        if row % 2 == 0:
-            # Even # row
-            rpm_row = '%d_%d' % (row - 1, row)
+        if row == 13:
+            logging.warn('Rule not implemented for row 13 in chromeos4')
+            return ''
+
+        # rpm row is like chromeos4-row1_2-rackX-rpmY
+        rpm_row = ('%d_%d' % (row - 1, row) if row % 2 == 0 else
+                   '%d_%d' % (row, row + 1))
+
+        if cls.is_densified(device_hostname):
+            # Densified rack has two rpms, decide which one the host belongs to
+            # Rule:
+            #     odd row number,  even host number -> rpm1
+            #     odd row number,  odd host number  -> rpm2
+            #     even row number, odd host number  -> rpm1
+            #     even row number, even host number -> rpm2
+            rpm_number = 1 if (row + device_hostname.host) % 2 == 1 else 2
         else:
-            # Odd # row
-            rpm_row = '%d_%d' % (row, row + 1)
-        return 'chromeos%d-row%s-rack%d-rpm1' % (
+            # Non-densified rack only has one rpm
+            rpm_number = 1
+        return 'chromeos%d-row%s-rack%d-rpm%d' % (
                 device_hostname.lab,
-                rpm_row, device_hostname.rack)
+                rpm_row, device_hostname.rack, rpm_number)
 
 
     @classmethod
     def get_rpm_outlet(cls, device_hostname):
         """Get rpm outlet.
 
-        @param device_hostname: A DeviceHostname namedtuple.
+        @param device_hostname: A DeviceHostname named tuple.
 
         @returns: rpm outlet, e.g. '.A1'
 
         """
         try:
-            outlet_number = cls.RPM_OUTLET_MAP[
-                    (device_hostname.row % 2, device_hostname.host)]
+            outlet_map = (cls.DENSIFIED_RPM_OUTLET_MAP
+                          if cls.is_densified(device_hostname) else
+                          cls.RPM_OUTLET_MAP)
+            outlet_number = outlet_map[(device_hostname.row % 2,
+                                        device_hostname.host)]
             return '.A%d' % outlet_number
         except KeyError:
             logging.error('Could not determine outlet for device %s',
@@ -292,7 +349,7 @@ class DestinyConfig(BaseLabConfig):
     def get_hydra_hostname(cls, device_hostname):
         """Get hydra hostname.
 
-        @param device_hostname: A DeviceHostname namedtuple.
+        @param device_hostname: A DeviceHostname named tuple.
 
         @returns: hydra hostname
 
@@ -320,7 +377,7 @@ def parse_device_hostname(device_hostname):
 
     @param device_hostname: A string, e.g. 'chromeos2-row2-rack4-host3'
 
-    @returns: A DeviceHostname namedtuple or None if the
+    @returns: A DeviceHostname named tuple or None if the
               the hostname doesn't follow the pattern
               defined in HOST_REGX.
 
