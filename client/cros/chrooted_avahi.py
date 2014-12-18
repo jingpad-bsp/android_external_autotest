@@ -25,9 +25,9 @@ class ChrootedAvahi(object):
 
     SERVICES_TO_STOP = ['avahi']
     # This side has to be called something special to avoid shill touching it.
-    MONITOR_IF_IP = netblock.Netblock('10.9.8.1/24')
+    MONITOR_IF_IP = netblock.from_addr('10.9.8.1/24')
     # We'll drop the Avahi side into our network namespace.
-    AVAHI_IF_IP = netblock.Netblock('10.9.8.2/24')
+    AVAHI_IF_IP = netblock.from_addr('10.9.8.2/24')
     AVAHI_IF_NAME = 'pseudoethernet0'
     TCPDUMP_FILE_PATH = '/var/log/peerd_dump.pcap'
     AVAHI_CONFIG_FILE = 'etc/avahi/avahi-daemon.conf'

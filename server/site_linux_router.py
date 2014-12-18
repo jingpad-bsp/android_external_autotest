@@ -464,7 +464,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         if len(self.local_servers) >= 256:
             raise error.TestFail('Exhausted available local servers')
 
-        server_addr = netblock.Netblock.from_addr(
+        server_addr = netblock.from_addr(
                 self.local_server_address(len(self.local_servers)),
                 prefix_len=24)
 

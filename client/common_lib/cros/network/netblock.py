@@ -2,6 +2,49 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
+
+from autotest_lib.client.common_lib import error
+
+def from_addr(addr, prefix_len=None):
+    """Build a Netblock object.
+
+    @param addr: string IP address with optional prefix length
+            (e.g. '192.168.1.1' or '192.168.1.1/24'). If |addr| has no
+            prefix length, then use the |prefix_len| parameter.
+    @param prefix_len: int number of bits forming the IP subnet prefix for
+            |addr|. This value will be preferred to the parsed value if
+            |addr| has a prefix length as well. If |addr|
+            has no prefix length and |prefix_len| is None, then an error
+            will be thrown.
+
+    """
+    prefix_sep_count = addr.count('/')
+    if prefix_sep_count > 1:
+        raise error.TestError('Invalid IP address found: "%s".' % addr)
+
+    if prefix_sep_count == 1:
+        addr_str, prefix_len_str = addr.split('/')
+    else:
+        # No prefix separator.  Assume addr looks like '192.168.1.1'
+        addr_str = addr
+        # Rely on passed in |prefix_len|
+        prefix_len_str = None
+
+    if prefix_len is not None and prefix_len_str is not None:
+        logging.warning('Ignoring parsed prefix length of %s in favor of '
+                        'passed in value %d', prefix_len_str, prefix_len)
+    elif prefix_len is not None and prefix_len_str is None:
+        pass
+    elif prefix_len is None and prefix_len_str is not None:
+        prefix_len = int(prefix_len_str)
+    else:
+        raise error.TestError('Cannot construct netblock without knowing '
+                              'prefix length for addr: "%s".' % addr)
+
+    return Netblock(addr_str, prefix_len)
+
+
 class Netblock(object):
     """Utility class for transforming netblock address to related strings."""
 
@@ -25,18 +68,6 @@ class Netblock(object):
 
         """
         return [(num >> s) & 0xff for s in (24, 16, 8, 0)]
-
-
-    @staticmethod
-    def from_addr(addr, prefix_len=32):
-        """Construct a netblock address from a normal IP address.
-
-        @param addr: string IP address (e.g. '192.168.0.1').
-        @param prefix_len int length of IP address prefix.
-        @return Netblock object.
-
-        """
-        return Netblock('/'.join([addr, str(prefix_len)]))
 
 
     @property
@@ -79,13 +110,17 @@ class Netblock(object):
         return self._octets_to_addr(self._octets)
 
 
-    def __init__(self, netblock_str):
-        addr_str, bits_str = netblock_str.split('/')
+    def __init__(self, addr_str, prefix_len):
+        """Construct a Netblock.
+
+        @param addr_str: string IP address (e.g. '192.168.1.1').
+        @param prefix_len: int length of subnet prefix (e.g. 24).
+
+        """
         self._octets = map(int, addr_str.split('.'))
-        bits = int(bits_str)
-        mask_bits = (-1 << (32 - bits)) & 0xffffffff
+        mask_bits = (-1 << (32 - prefix_len)) & 0xffffffff
         self._mask_octets = self._int_to_octets(mask_bits)
-        self._prefix_len = bits
+        self._prefix_len = prefix_len
 
 
     def get_addr_in_block(self, offset):

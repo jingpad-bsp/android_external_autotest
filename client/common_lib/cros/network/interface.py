@@ -234,7 +234,7 @@ class Interface:
 
         """
         netblock_str = self.ipv4_address_and_prefix
-        return netblock.Netblock(netblock_str) if netblock_str else None
+        return netblock.from_addr(netblock_str)
 
 
     @property
