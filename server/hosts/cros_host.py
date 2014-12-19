@@ -728,7 +728,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
                 # Updater has returned successfully; reboot the host.
                 self.reboot(timeout=self.REBOOT_TIMEOUT, wait=True)
-        else:
+
+        if updated:
             self._post_update_processing(updater, inactive_kernel)
             image_name = autoupdater.url_to_image_name(update_url)
             self.add_cros_version_labels_and_job_repo_url(image_name)
