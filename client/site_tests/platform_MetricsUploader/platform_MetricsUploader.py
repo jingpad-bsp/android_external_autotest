@@ -13,6 +13,9 @@ from autotest_lib.client.common_lib import autotemp, error, file_utils, utils
 from autotest_lib.client.cros import httpd, service_stopper
 
 
+SERVER_PORT=51793
+SERVER_ADDRESS = "http://localhost:%s/uma/v2" % SERVER_PORT
+
 class FakeHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     """
     Fake Uma handler.
@@ -51,7 +54,7 @@ class FakeServer(httpd.ThreadedHTTPServer):
     """
 
     def __init__(self):
-        httpd.ThreadedHTTPServer.__init__(self, ('', 8080), FakeHandler)
+        httpd.ThreadedHTTPServer.__init__(self, ('', SERVER_PORT), FakeHandler)
         self.messages = []
 
 
@@ -105,7 +108,7 @@ class platform_MetricsUploader(test.test):
         self.server.Start()
 
         utils.system_output('metrics_daemon -uploader_test '
-                            '-server="http://localhost:8080/uma/v2"',
+                            '-server="%s"' % SERVER_ADDRESS,
                             timeout=10, retain_output=True)
 
         self.server.Stop()
@@ -151,8 +154,9 @@ class platform_MetricsUploader(test.test):
                              str(EXPECTED_PRODUCT_ID))
 
         utils.system_output('metrics_daemon -uploader_test '
-                            '-server="http://localhost:8080/uma/v2" '
-                            '-config_root="%s"' % self._tempdir.name,
+                            '-server="%s" '
+                            '-config_root="%s"' % (SERVER_ADDRESS,
+                                                   self._tempdir.name),
                             retain_output=True)
 
         self.server.Stop()
