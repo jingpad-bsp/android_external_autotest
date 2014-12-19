@@ -178,6 +178,8 @@ class display_EndToEnd(test.test):
 
     def check_external_resolution(self):
         """Checks the external screen resolution."""
+        # Wait video stable, making sure CrOS switches to a proper resolution.
+        self.chameleon_port.wait_video_input_stable()
         # Get the resolution for the edid applied
         self.resolution = self.display_facade.get_external_resolution()
         logging.debug('External display resolution: %s',
@@ -313,6 +315,9 @@ class display_EndToEnd(test.test):
             self.undock_dut()
             self.wait_to_resume(self.RESUME_TIMEOUT)
 
+            # Update the resolution
+            self.check_external_resolution()
+
             # Check status
             self.check_external_display()
 
@@ -326,4 +331,9 @@ class display_EndToEnd(test.test):
 
         with self.chameleon_port.use_edid_file(first_edid):
             self.chameleon_port.set_plug(True)
+
+            # Update the resolution
+            self.check_external_resolution()
+
+            # Check status
             self.check_external_display()
