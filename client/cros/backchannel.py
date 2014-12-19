@@ -7,6 +7,7 @@ import os
 import re
 import time
 
+from autotest_lib.client.bin import local_host
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 
@@ -14,6 +15,8 @@ from autotest_lib.client.common_lib import error
 BACKCHANNEL_FILE = '/mnt/stateful_partition/etc/enable_backchannel_network'
 # Backchannel interface name.
 BACKCHANNEL_IFACE_NAME = 'eth_test'
+# Script that handles backchannel heavy lifting.
+BACKCHANNEL_SCRIPT = '/usr/local/lib/flimflam/test/backchannel'
 
 
 class Backchannel(object):
@@ -25,11 +28,16 @@ class Backchannel(object):
     The backchannel will be torn down whether or not 'block' throws.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, host=None, *args, **kwargs):
         self.args = args
         self.kwargs = kwargs
         self.gateway = None
         self.interface = None
+        if host is not None:
+            self.host = host
+        else:
+            self.host = local_host.LocalHost()
+        self._run = self.host.run
 
     def __enter__(self):
         self.setup(*self.args, **self.kwargs)
@@ -53,7 +61,7 @@ class Backchannel(object):
 
         # If the backchannel interface is already up there's nothing
         # for us to do.
-        if is_network_iface_running(BACKCHANNEL_IFACE_NAME):
+        if self._is_test_iface_running():
             return True
 
         # Retrieve the gateway for the default route.
@@ -61,38 +69,40 @@ class Backchannel(object):
             # Poll here until we have route information.
             # If shill was recently started, it will take some time before
             # DHCP gives us an address.
-            utils.poll_for_condition(
-                    lambda: _get_route_information(),
+            line = utils.poll_for_condition(
+                    lambda: self._get_default_route(),
                     exception=utils.TimeoutError(
                             'Timed out waiting for route information'),
                     timeout=30)
-            line = _get_route_information()
             self.gateway, self.interface = line.strip().split(' ')
 
             # Retrieve list of open ssh sessions so we can reopen
             # routes afterward.
             if create_ssh_routes:
-                out = utils.system_output(
+                out = self._run(
                         "netstat -tanp | grep :22 | "
-                        "grep ESTABLISHED | awk '{print $5}'")
-
+                        "grep ESTABLISHED | awk '{print $5}'").stdout
                 # Extract IP from IP:PORT listing. Uses set to remove
                 # duplicates.
                 open_ssh = list(set(item.strip().split(':')[0] for item in
                                     out.split('\n') if item.strip()))
 
-            backchannel('setup %s' % self.interface)
-
-            # Create routes so existing SSH sessions will stay open.
+            # Build a command that will set up the test interface and add
+            # ssh routes in one shot. This is necessary since we'll lose
+            # connectivity to a remote host between these steps.
+            cmd = '%s setup %s' % (BACKCHANNEL_SCRIPT, self.interface)
             if create_ssh_routes:
                 for ip in open_ssh:
                     # Add route using the pre-backchannel gateway.
-                    backchannel('reach %s %s' % (ip, self.gateway))
+                    cmd += '&& %s reach %s %s' % (BACKCHANNEL_SCRIPT, ip,
+                            self.gateway)
+
+            self._run(cmd)
 
             # Make sure we have a route to the gateway before continuing.
             logging.info('Waiting for route to gateway %s', self.gateway)
             utils.poll_for_condition(
-                    lambda: _is_route_ready(self.gateway),
+                    lambda: self._is_route_ready(),
                     exception=utils.TimeoutError('Timed out waiting for route'),
                     timeout=30)
         except Exception, e:
@@ -109,7 +119,7 @@ class Backchannel(object):
     def teardown(self):
         """Tears down the backchannel."""
         if self.interface:
-            backchannel('teardown %s' % self.interface)
+            self._run('%s teardown %s' % (BACKCHANNEL_SCRIPT, self.interface))
 
         # Hack around broken Asix network adaptors that may flake out when we
         # bring them up and down (crbug.com/349264).
@@ -120,12 +130,29 @@ class Backchannel(object):
                 logging.info('Waiting for route restore to gateway %s',
                              self.gateway)
                 utils.poll_for_condition(
-                        lambda: _is_route_ready(self.gateway),
+                        lambda: self._is_route_ready(),
                         exception=utils.TimeoutError(
                                 'Timed out waiting for route'),
                         timeout=30)
         except utils.TimeoutError:
-            self._reset_usb_ethernet_device()
+            if self.host is None:
+                self._reset_usb_ethernet_device()
+
+
+    def is_using_ethernet(self):
+        """
+        Checks to see if the backchannel is using an ethernet device.
+
+        @returns True if the backchannel is using an ethernet device.
+
+        """
+        result = self._run(
+                'ethtool %s' % BACKCHANNEL_IFACE_NAME, ignore_status=True)
+        if result.exit_status:
+            return False
+        match = re.search('Port: (.+)', result.stdout)
+        return match and _is_ethernet_port(match.group(1))
+
 
     def _reset_usb_ethernet_device(self):
         try:
@@ -142,11 +169,30 @@ class Backchannel(object):
             pass
 
 
-def backchannel(args):
-    """Launches the backchannel script that does the heavy lifting."""
-    # TODO(pprabhu): Switch to use python version of backchannel
-    # (crbug.com/259539).
-    utils.system('/usr/local/lib/flimflam/test/backchannel %s' % args)
+    def _get_default_route(self):
+        """Retrieves default route information."""
+        cmd = "route -n | awk '/^0.0.0.0/ { print $2, $8 }'"
+        return self._run(cmd).stdout.split('\n')[0]
+
+
+    def _is_test_iface_running(self):
+        """Checks whether the test interface is running."""
+        command = 'ip link show %s' % BACKCHANNEL_IFACE_NAME
+        result = self._run(command, ignore_status=True)
+        if result.exit_status:
+            return False
+        return result.stdout.find('state UP') >= 0
+
+
+    def _is_route_ready(self):
+        """Checks for a route to the specified destination."""
+        dest = self.gateway
+        result = self._run('ping -c 1 %s' % dest, ignore_status=True)
+        if result.exit_status:
+            logging.warning('Route to %s is not ready.', dest)
+            return False
+        logging.info('Route to %s is ready.', dest)
+        return True
 
 
 def is_network_iface_running(name):
@@ -166,37 +212,6 @@ def is_network_iface_running(name):
         return False
 
     return out.find('RUNNING') >= 0
-
-
-def _get_route_information():
-    """
-    Retrieves the default route information.
-
-    @returns a string that contains the gateway address and the interface.
-            If no route information is available, returns an empty string.
-
-    """
-    return utils.system_output(
-            "route -n | awk '/^0.0.0.0/ { print $2, $8 }'").split('\n')[0]
-
-
-def _is_route_ready(dest):
-    """
-    Checks to see if there is a route to the specified destination.
-
-    @param dest: IP address of the destination to check.
-
-    @returns True if there is a route to |dest|.
-
-    """
-    try:
-        utils.system_output('ping -c 1 %s' % dest)
-        logging.info('Route to %s is ready.', dest)
-    except error.CmdError, e:
-        logging.warning('Route to %s is not ready.', dest)
-        return False
-
-    return True
 
 
 def _is_ethernet_port(port):
