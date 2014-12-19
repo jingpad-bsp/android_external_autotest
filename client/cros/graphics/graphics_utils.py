@@ -618,6 +618,51 @@ def wait_output_connected(output):
                                 expected_value=True)
 
 
+def set_content_protection(output_name, state):
+    """
+    Sets the content protection to the given state.
+
+    @param output_name: The output name as a string.
+    @param state: One of the states 'Undesired', 'Desired', or 'Enabled'
+
+    """
+    if utils.is_freon():
+        raise error.TestFail('freon: set_content_protection not implemented')
+    call_xrandr('--output %s --set "Content Protection" %s' %
+                (output_name, state))
+
+
+def get_content_protection(output_name):
+    """
+    Gets the state of the content protection.
+
+    @param output_name: The output name as a string.
+    @return: A string of the state, like 'Undesired', 'Desired', or 'Enabled'.
+             False if not supported.
+
+    """
+    if utils.is_freon():
+        raise error.TestFail('freon: get_content_protection not implemented')
+
+    output = call_xrandr('--verbose').split('\n')
+    current_output_name = ''
+
+    # Parse output of xrandr, line by line.
+    for line in output:
+        # If the line contains 'connected', it is a connected display.
+        if line.find(' connected') != -1:
+            current_output_name = line.split()[0]
+            continue
+        if current_output_name != output_name:
+            continue
+        # Search the line like: 'Content Protection:     Undesired'
+        match = re.search(r'Content Protection:\t(\w+)', line)
+        if match:
+            return match.group(1)
+
+    return False
+
+
 def execute_screenshot_capture(cmd):
     """
     Executes command to capture a screenshot.

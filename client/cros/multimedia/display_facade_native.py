@@ -265,6 +265,26 @@ class DisplayFacadeNative(object):
         return (width, height)
 
 
+    def set_content_protection(self, state):
+        """Sets the content protection of the external screen.
+
+        @param state: One of the states 'Undesired', 'Desired', or 'Enabled'
+        """
+        connector = self.get_external_connector_name()
+        graphics_utils.set_content_protection(connector, state)
+
+
+    def get_content_protection(self):
+        """Gets the state of the content protection.
+
+        @param output: The output name as a string.
+        @return: A string of the state, like 'Undesired', 'Desired', or 'Enabled'.
+                 False if not supported.
+        """
+        connector = self.get_external_connector_name()
+        return graphics_utils.get_content_protection(connector)
+
+
     def take_screenshot_crop(self, path, box):
         """Captures the DUT screenshot, use box for cropping.
 

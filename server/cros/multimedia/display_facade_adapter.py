@@ -135,6 +135,24 @@ class DisplayFacadeRemoteAdapter(object):
         self._display_proxy.hide_cursor()
 
 
+    def set_content_protection(self, state):
+        """Sets the content protection of the external screen.
+
+        @param state: One of the states 'Undesired', 'Desired', or 'Enabled'
+        """
+        self._display_proxy.set_content_protection(state)
+
+
+    def get_content_protection(self):
+        """Gets the state of the content protection.
+
+        @param output: The output name as a string.
+        @return: A string of the state, like 'Undesired', 'Desired', or 'Enabled'.
+                 False if not supported.
+        """
+        return self._display_proxy.get_content_protection()
+
+
     def _read_root_window_rect(self, w, h, x, y):
         """Reads the given rectangle from the X root window.
 
