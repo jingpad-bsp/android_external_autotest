@@ -222,7 +222,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         control_interface = self.HOSTAPD_CONTROL_INTERFACE_PATTERN % interface
         hostapd_conf_dict = configuration.generate_dict(
                 interface, control_interface,
-                self._build_unique_ssid(configuration.ssid_suffix))
+                self.build_unique_ssid(suffix=configuration.ssid_suffix))
         logging.debug('hostapd parameters: %r', hostapd_conf_dict)
 
         # Generate hostapd.conf.
@@ -350,7 +350,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             raise error.TestError('Timed out killing hostapd.')
 
 
-    def _build_unique_ssid(self, suffix):
+    def build_unique_ssid(self, suffix=''):
         """ Build our unique token by base-<len(self.SUFFIX_LETTERS)> encoding
         the number of APs we've constructed already.
 
@@ -403,7 +403,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         if self.station_instances or self.hostapd_instances:
             self.deconfig()
         interface = self.get_wlanif(config.frequency, 'ibss')
-        ssid = (config.ssid or self._build_unique_ssid(config.ssid_suffix))
+        ssid = (config.ssid or
+                self.build_unique_ssid(suffix=config.ssid_suffix))
         # Connect the station
         self.router.run('%s link set %s up' % (self.cmd_ip, interface))
         self.iw_runner.ibss_join(interface, ssid, config.frequency)
