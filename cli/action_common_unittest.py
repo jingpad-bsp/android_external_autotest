@@ -1,14 +1,14 @@
+# pylint: disable-msg=C0111
 #!/usr/bin/python
 #
 # Copyright 2008 Google Inc. All Rights Reserved.
 
 """Tests for action_common."""
 
-import unittest, os, sys, StringIO, copy
+import unittest, sys, copy
 
 import common
-from autotest_lib.cli import cli_mock, topic_common, action_common, rpc
-from autotest_lib.frontend.afe.json_rpc import proxy
+from autotest_lib.cli import cli_mock, action_common, rpc
 
 #
 # List action
@@ -189,6 +189,7 @@ class atest_create_or_delete_unittest(cli_mock.cli_unittest):
         crdel.get_items = _items
         crdel.data['platform'] = False
         crdel.data_item_key = 'name'
+        crdel.no_confirmation = True
         return crdel
 
 

@@ -253,8 +253,9 @@ class atest(object):
     Should only be instantiated by itself for usage
     references, otherwise, the <topic> objects should
     be used."""
-    msg_topic = "[acl|host|job|label|shard|atomicgroup|test|user|server]"
-    usage_action = "[action]"
+    msg_topic = ('[acl|host|job|label|shard|atomicgroup|test|user|server|'
+                 'stable_version]')
+    usage_action = '[action]'
     msg_items = ''
 
     def invalid_arg(self, header, follow_up=''):
@@ -392,6 +393,7 @@ class atest(object):
         self.kill_on_failure = False
         self.web_server = ''
         self.verbose = False
+        self.no_confirmation = False
         self.topic_parse_info = item_parse_info(attribute_name='not_used')
 
         self.parser = optparse.OptionParser(self._get_usage())
@@ -408,6 +410,10 @@ class atest(object):
         self.parser.add_option('--parse-delim',
                                help='Delimiter to use to separate the '
                                'key=value fields', default='|')
+        self.parser.add_option('--no-confirmation',
+                               help=('Skip all confirmation in when function '
+                                     'require_confirmation is called.'),
+                               action='store_true', default=False)
         self.parser.add_option('-v', '--verbose',
                                action='store_true', default=False)
         self.parser.add_option('-w', '--web',
@@ -491,6 +497,7 @@ class atest(object):
         self.parse_delim = options.parse_delim
 
         self.verbose = options.verbose
+        self.no_confirmation = options.no_confirmation
         self.web_server = options.web_server
         try:
             self.afe = rpc.afe_comm(self.web_server)
@@ -773,3 +780,56 @@ class atest(object):
             return
         print '%s=%s' % (KEYS_TO_NAMES_EN[key],
                          ','.join(_get_item_key(item, key) for item in items))
+
+
+    @staticmethod
+    def prompt_confirmation(message=None):
+        """Prompt a question for user to confirm the action before proceeding.
+
+        @param message: A detailed message to explain possible impact of the
+                        action.
+
+        @return: True to proceed or False to abort.
+        """
+        if message:
+            print message
+        sys.stdout.write('Continue? [y/N] ')
+        read = raw_input().lower()
+        if read == 'y':
+            return True
+        else:
+            print 'User did not confirm. Aborting...'
+            return False
+
+
+    @staticmethod
+    def require_confirmation(message=None):
+        """Decorator to prompt a question for user to confirm action before
+        proceeding.
+
+        If user chooses not to proceed, do not call the function.
+
+        @param message: A detailed message to explain possible impact of the
+                        action.
+
+        @return: A decorator wrapper for calling the actual function.
+        """
+        def deco_require_confirmation(func):
+            """Wrapper for the decorator.
+
+            @param func: Function to be called.
+
+            @return: the actual decorator to call the function.
+            """
+            def func_require_confirmation(*args, **kwargs):
+                """Decorator to prompt a question for user to confirm.
+
+                @param message: A detailed message to explain possible impact of
+                                the action.
+                """
+                if (args[0].no_confirmation or
+                    atest.prompt_confirmation(message)):
+                    func(*args, **kwargs)
+
+            return func_require_confirmation
+        return deco_require_confirmation

@@ -490,4 +490,32 @@ def get_stable_version(board=stable_version_utils.DEFAULT):
              of CROS.stable_cros_version if stable_versinos table does not have
              entry of board DEFAULT.
     """
-    return stable_version_utils.get_version(board)
+    return stable_version_utils.get(board)
+
+
+def get_all_stable_versions():
+    """Get stable versions for all boards.
+
+    @return: A dictionary of board:version.
+    """
+    return stable_version_utils.get_all()
+
+
+def set_stable_version(version, board=stable_version_utils.DEFAULT):
+    """Modify stable version for the given board.
+
+    @param version: The new value of stable version for given board.
+    @param board: Name of the board, default to value `DEFAULT`.
+    """
+    stable_version_utils.set(version=version, board=board)
+
+
+def delete_stable_version(board):
+    """Modify stable version for the given board.
+
+    Delete a stable version entry in afe_stable_versions table for a given
+    board, so default stable version will be used.
+
+    @param board: Name of the board.
+    """
+    stable_version_utils.delete(board=board)

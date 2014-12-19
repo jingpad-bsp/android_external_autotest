@@ -1,3 +1,4 @@
+# pylint: disable-msg=C0111
 #!/usr/bin/python
 #
 # Copyright 2008 Google Inc. All Rights Reserved.
@@ -7,7 +8,7 @@
 import unittest, sys
 
 import common
-from autotest_lib.cli import topic_common, action_common, acl, cli_mock
+from autotest_lib.cli import acl, cli_mock
 
 
 class acl_list_unittest(cli_mock.cli_unittest):
@@ -202,13 +203,15 @@ class acl_create_unittest(cli_mock.cli_unittest):
 
 class acl_delete_unittest(cli_mock.cli_unittest):
     def test_acl_delete_acl_ok(self):
-        self.run_cmd(argv=['atest', 'acl', 'delete', 'acl0'],
+        self.run_cmd(argv=['atest', 'acl', 'delete', 'acl0',
+                           '--no-confirmation'],
                      rpcs=[('delete_acl_group', {'id': 'acl0'}, True, None)],
                      out_words_ok=['acl0'])
 
 
     def test_acl_delete_acl_does_not_exist(self):
-        self.run_cmd(argv=['atest', 'acl', 'delete', 'acl0'],
+        self.run_cmd(argv=['atest', 'acl', 'delete', 'acl0',
+                           '--no-confirmation'],
                      rpcs=[('delete_acl_group', {'id': 'acl0'},
                             False,
                             'DoesNotExist: acl_group matching '
@@ -219,7 +222,8 @@ class acl_delete_unittest(cli_mock.cli_unittest):
     def test_acl_delete_multiple_acl_ok(self):
         alist = cli_mock.create_file('acl2\nacl1')
         self.run_cmd(argv=['atest', 'acl', 'delete',
-                           'acl0', 'acl1', '--alist', alist.name],
+                           'acl0', 'acl1', '--no-confirmation',
+                           '--alist', alist.name],
                      rpcs=[('delete_acl_group',
                            {'id': 'acl0'},
                            True,
@@ -239,7 +243,8 @@ class acl_delete_unittest(cli_mock.cli_unittest):
     def test_acl_delete_multiple_acl_bad(self):
         alist = cli_mock.create_file('acl2\nacl1')
         self.run_cmd(argv=['atest', 'acl', 'delete',
-                           'acl0', 'acl1', '--alist', alist.name],
+                           'acl0', 'acl1', '--no-confirmation',
+                           '--alist', alist.name],
                      rpcs=[('delete_acl_group',
                            {'id': 'acl0'},
                            True,

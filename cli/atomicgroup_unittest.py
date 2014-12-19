@@ -1,3 +1,4 @@
+# pylint: disable-msg=C0111
 #!/usr/bin/python -u
 
 """Tests for atomicgroup."""
@@ -5,7 +6,7 @@
 import unittest
 
 import common
-from autotest_lib.cli import cli_mock, topic_common, atomicgroup
+from autotest_lib.cli import cli_mock
 
 
 class atomicgroup_unittest(cli_mock.cli_unittest):
@@ -74,7 +75,7 @@ class atomicgroup_unittest(cli_mock.cli_unittest):
 
 
     def test_atomicgroup_delete(self):
-        self.run_cmd(argv=['delete', 'ag-name'],
+        self.run_cmd(argv=['delete', 'ag-name', '--no-confirmation'],
                      rpcs=[('delete_atomic_group', dict(id='ag-name'),
                             True, None)],
                      out_words_ok=['Deleted', 'atomicgroup', 'ag-name'],

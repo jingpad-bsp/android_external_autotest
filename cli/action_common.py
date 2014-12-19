@@ -1,3 +1,4 @@
+# pylint: disable-msg=C0111
 #
 # Copyright 2008 Google Inc. All Rights Reserved.
 
@@ -40,7 +41,7 @@ For 'atest label add':
 
 """
 
-import re, socket, types
+import types
 from autotest_lib.cli import topic_common
 
 
@@ -145,6 +146,10 @@ class atest_create_or_delete(topic_common.atest):
     """
     def execute(self):
         handled = []
+
+        if (self.op_action == 'delete' and not self.no_confirmation and
+            not self.prompt_confirmation()):
+            return
 
         # Create or Delete the <topic> altogether
         op = '%s_%s' % (self.op_action, self.topic)

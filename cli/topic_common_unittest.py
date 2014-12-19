@@ -1,14 +1,14 @@
+# pylint: disable-msg=C0111
 #!/usr/bin/python
 #
 # Copyright 2008 Google Inc. All Rights Reserved.
 
 """Test for atest."""
 
-import unittest, os, sys, StringIO, urllib2
+import unittest, os, sys, urllib2
 
 import common
 from autotest_lib.cli import cli_mock, topic_common, rpc
-from autotest_lib.frontend.afe.json_rpc import proxy
 
 
 class topic_common_misc_tests(unittest.TestCase):
@@ -470,6 +470,7 @@ class atest_unittest(cli_mock.cli_unittest):
                           'parse_delim': '|',
                           'kill_on_failure': True,
                           'verbose': False,
+                          'no_confirmation': False,
                           'debug': False}, options)
         self.assertEqual(leftover, [])
         flist.clean()
@@ -492,6 +493,7 @@ class atest_unittest(cli_mock.cli_unittest):
                           'parse_delim': '|',
                           'kill_on_failure': True,
                           'verbose': False,
+                          'no_confirmation': False,
                           'debug': True}, options)
         self.assertEqual(leftover, ['left1', 'left2'])
         flist.clean()
@@ -528,6 +530,7 @@ class atest_unittest(cli_mock.cli_unittest):
                           'parse_delim': '|',
                           'kill_on_failure': True,
                           'verbose': False,
+                          'no_confirmation': False,
                           'debug': True}, options)
         self.assertEqual(leftover, [])
         flist.clean()
@@ -565,6 +568,7 @@ class atest_unittest(cli_mock.cli_unittest):
                           'parse_delim': '|',
                           'kill_on_failure': True,
                           'verbose': False,
+                          'no_confirmation': False,
                           'debug': True}, options)
         self.assertEqual(leftover, [])
         flist.clean()
@@ -601,6 +605,7 @@ class atest_unittest(cli_mock.cli_unittest):
                           'parse_delim': '|',
                           'kill_on_failure': True,
                           'verbose': False,
+                          'no_confirmation': False,
                           'debug': True}, options)
         self.assertEqual(leftover, [])
         flist.clean()
@@ -635,6 +640,7 @@ class atest_unittest(cli_mock.cli_unittest):
                           'parse_delim': '|',
                           'kill_on_failure': True,
                           'verbose': False,
+                          'no_confirmation': False,
                           'debug': False}, options)
         self.assertEqual(leftover, [])
         flist.clean()
@@ -665,6 +671,7 @@ class atest_unittest(cli_mock.cli_unittest):
                           'parse_delim': '|',
                           'kill_on_failure': True,
                           'verbose': False,
+                          'no_confirmation': False,
                           'debug': True}, options)
         self.assertEqual(leftover, [])
 
@@ -691,6 +698,7 @@ class atest_unittest(cli_mock.cli_unittest):
                           'parse_delim': '|',
                           'kill_on_failure': True,
                           'verbose': False,
+                          'no_confirmation': False,
                           'debug': False}, options)
         self.assertEqual(leftover, [])
 
@@ -711,6 +719,7 @@ class atest_unittest(cli_mock.cli_unittest):
                           'parse_delim': '|',
                           'kill_on_failure': False,
                           'verbose': False,
+                          'no_confirmation': False,
                           'debug': False}, options)
         self.assertEqual(leftover, [])
 
@@ -754,6 +763,7 @@ class atest_unittest(cli_mock.cli_unittest):
                           'parse_delim': '?',
                           'kill_on_failure': True,
                           'verbose': True,
+                          'no_confirmation': False,
                           'debug': True}, options)
         self.assertEqual(leftover, ['left1', 'left2'])
 

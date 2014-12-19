@@ -9,6 +9,8 @@ import unittest
 import common
 from autotest_lib.cli import cli_mock
 
+ATEST_USAGE_STRING = ('atest [acl|host|job|label|shard|atomicgroup|test|user|'
+                      'server|stable_version] [action] [options]')
 
 class main_unittest(cli_mock.cli_unittest):
     """Unittest for atest command.
@@ -35,9 +37,7 @@ class main_unittest(cli_mock.cli_unittest):
     def test_main_help(self):
         """Main help level"""
         self._test_help(argv=['atest'],
-                        out_words_ok=['atest [acl|host|job|label|shard'
-                                      '|atomicgroup|test|user|server] '
-                                      '[action] [options]'],
+                        out_words_ok=[ATEST_USAGE_STRING],
                         err_words_ok=[])
 
 
@@ -60,17 +60,14 @@ class main_unittest(cli_mock.cli_unittest):
     def test_main_no_topic(self):
         """Test output when no topic is specified."""
         self.run_cmd(['atest'], exit_code=1,
-                     out_words_ok=['atest '
-                                   '[acl|host|job|label|shard|atomicgroup|test'
-                                   '|user|server] [action] [options]'],
+                     out_words_ok=[ATEST_USAGE_STRING],
                      err_words_ok=['No topic argument'])
 
 
     def test_main_bad_topic(self):
         """Test output when an invalid topic is specified."""
         self.run_cmd(['atest', 'bad_topic'], exit_code=1,
-                     out_words_ok=['atest [acl|host|job|label|shard|atomicgroup'
-                                   '|test|user|server] [action] [options]'],
+                     out_words_ok=[ATEST_USAGE_STRING],
                      err_words_ok=['Invalid topic bad_topic\n'])
 
 

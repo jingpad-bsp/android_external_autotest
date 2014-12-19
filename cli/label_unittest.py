@@ -1,13 +1,14 @@
+# pylint: disable-msg=C0111
 #!/usr/bin/python
 #
 # Copyright 2008 Google Inc. All Rights Reserved.
 
 """Tests for label."""
 
-import unittest, sys, os
+import unittest
 
 import common
-from autotest_lib.cli import cli_mock, topic_common
+from autotest_lib.cli import cli_mock
 
 
 class label_list_unittest(cli_mock.cli_unittest):
@@ -120,7 +121,7 @@ class label_create_unittest(cli_mock.cli_unittest):
 class label_delete_unittest(cli_mock.cli_unittest):
     def test_execute_delete_labels(self):
         self.run_cmd(argv=['atest', 'label', 'delete', 'label0', 'label1',
-                           '--ignore_site_file'],
+                           '--ignore_site_file', '--no-confirmation'],
                      rpcs=[('delete_label', {'id': 'label0'}, True, None),
                            ('delete_label', {'id': 'label1'}, True, None)],
                      out_words_ok=['Deleted', 'label0', 'label1'])

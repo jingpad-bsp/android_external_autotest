@@ -1,13 +1,14 @@
+# pylint: disable-msg=C0111
 #!/usr/bin/python
 #
 # Copyright 2008 Google Inc. All Rights Reserved.
 
 """Tests for shard."""
 
-import unittest, sys, os
+import unittest
 
 import common
-from autotest_lib.cli import cli_mock, topic_common
+from autotest_lib.cli import cli_mock
 
 
 class shard_list_unittest(cli_mock.cli_unittest):
@@ -49,12 +50,11 @@ class shard_create_unittest(cli_mock.cli_unittest):
 class shard_delete_unittest(cli_mock.cli_unittest):
     def test_execute_delete_shards(self):
         self.run_cmd(argv=['atest', 'shard', 'delete',
-                           'shard0', 'shard1', '--yes'],
+                           'shard0', 'shard1', '--no-confirmation'],
                      rpcs=[('delete_shard', {'hostname': 'shard0'}, True, None),
                            ('delete_shard', {'hostname': 'shard1'}, True, None)
                            ],
                      out_words_ok=['Deleted', 'shard0', 'shard1'])
-
 
 
 if __name__ == '__main__':

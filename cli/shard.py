@@ -13,7 +13,7 @@ list:        lists shards with label
 See topic_common.py for a High Level Design and Algorithm.
 """
 
-import os, sys
+import sys
 from autotest_lib.cli import topic_common, action_common
 
 
@@ -107,34 +107,15 @@ class shard_create(action_common.atest_create, shard):
 
 class shard_delete(action_common.atest_delete, shard):
     """Class for running atest shard delete <shards>"""
-    def __init__(self):
-        super(shard_delete, self).__init__()
-        self.parser.add_option('-y', '--yes',
-                               help=('Answer all questions with yes.'),
-                               action='store_true',
-                               metavar='LABEL')
-
 
     def parse(self):
         (options, leftover) = super(shard_delete, self).parse()
-        self.yes = options.yes
         self.data_item_key = 'hostname'
         return (options, leftover)
 
 
     def execute(self, *args, **kwargs):
-        if self.yes or self._prompt_confirmation():
-            return super(shard_delete, self).execute(*args, **kwargs)
-        print 'Aborting.'
-        return []
-
-
-    def _prompt_confirmation(self):
         print 'Please ensure the shard host is powered off.'
         print ('Otherwise DUTs might be used by multiple shards at the same '
                'time, which will lead to serious correctness problems.')
-        sys.stdout.write('Continue? [y/N] ')
-        read = raw_input().lower()
-        if read == 'y':
-            return True
-        return False
+        return super(shard_delete, self).execute(*args, **kwargs)
