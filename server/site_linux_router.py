@@ -383,6 +383,11 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         if multi_interface is None and (self.hostapd_instances or
                                         self.station_instances):
             self.deconfig()
+        if configuration.is_11ac:
+            router_caps = self.get_capabilities()
+            if site_linux_system.LinuxSystem.CAPABILITY_VHT not in router_caps:
+                raise error.TestNAError('Router does not have AC support')
+
         self.start_hostapd(configuration)
         interface = self.hostapd_instances[-1].interface
         self.iw_runner.set_tx_power(interface, 'auto')

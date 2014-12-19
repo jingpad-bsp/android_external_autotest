@@ -268,6 +268,11 @@ class WiFiClient(site_linux_system.LinuxSystem):
         self.host.run('ff_debug +wifi')
 
 
+    def vht_supported(self):
+        """Returns True if VHT supported; False otherwise"""
+        return self.iw_runner.vht_supported()
+
+
     def _supports_method(self, method_name):
         """Checks if |method_name| is supported on the remote XMLRPC proxy.
 

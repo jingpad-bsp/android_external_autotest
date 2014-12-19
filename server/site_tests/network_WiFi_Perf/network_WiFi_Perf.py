@@ -5,6 +5,7 @@
 import logging
 import time
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server.cros.network import netperf_runner
 from autotest_lib.server.cros.network import netperf_session
@@ -49,6 +50,8 @@ class network_WiFi_Perf(wifi_cell_test_base.WiFiCellTestBase):
         for ap_config in self._ap_configs:
             # Set up the router and associate the client with it.
             self.context.configure(ap_config)
+            if ap_config.is_11ac and not self.context.client.vht_supported():
+                raise error.TestNAError('Client does not have AC support')
             assoc_params = xmlrpc_datatypes.AssociationParameters(
                     ssid=self.context.router.get_ssid(),
                     security_config=ap_config.security_config)

@@ -644,3 +644,11 @@ class IwRunner(object):
         self._log_id += 1
         return iw_event_logger.IwEventLogger(self._host, self._command_iw,
                                              local_file)
+
+
+    def vht_supported(self):
+        """Returns True if VHT is supported; False otherwise."""
+        result = self._run('%s list' % self._command_iw).stdout
+        if 'VHT Capabilities' in result:
+            return True
+        return False
