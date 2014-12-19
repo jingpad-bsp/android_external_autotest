@@ -169,6 +169,13 @@ MULTIMEDIA_XMLRPC_SERVER_READY_METHOD = 'ready'
 MULTIMEDIA_TEST_EXTENSION = (
         '/usr/local/autotest/cros/multimedia/multimedia_test_extension')
 
+APMANAGER_XMLRPC_SERVER_PORT = 9992
+APMANAGER_XMLRPC_SERVER_COMMAND = (
+        'cd /usr/local/autotest/common_lib/cros/network; '
+        './apmanager_xmlrpc_server.py')
+APMANAGER_XMLRPC_SERVER_CLEANUP_PATTERN = 'apmanager_xmlrpc_server'
+APMANAGER_XMLRPC_SERVER_READY_METHOD = 'ready'
+
 # Bug filing
 CHROME_VERSION = 'CHROME_VERSION'
 
