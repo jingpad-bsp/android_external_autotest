@@ -2,8 +2,6 @@
 Extensions to Django's model logic.
 """
 
-import re
-import time
 import django.core.exceptions
 from django.db import backend
 from django.db import connection
@@ -531,6 +529,14 @@ class ModelExtensions(rdb_model_extensions.ModelValidators):
     """
 
 
+    SERIALIZATION_LINKS_TO_KEEP = set()
+    """This set stores foreign keys which we don't want to follow, but
+    still want to include in the serialized dictionary. For
+    example, we follow the relationship `Host.hostattribute_set`,
+    but we do not want to follow `HostAttributes.host_id` back to
+    to Host, which would otherwise lead to a circle. However, we still
+    like to serialize HostAttribute.`host_id`."""
+
     SERIALIZATION_LOCAL_LINKS_TO_UPDATE = set()
     """
     On deserializion, if the object to persist already exists, local fields
@@ -938,6 +944,12 @@ class ModelExtensions(rdb_model_extensions.ModelValidators):
         for field in self._meta.concrete_model._meta.local_fields:
             if field.rel is None:
                 serialized[field.name] = field._get_val_from_obj(self)
+            elif (include_dependencies and
+                  field.name in self.SERIALIZATION_LINKS_TO_KEEP):
+                # attname will contain "_id" suffix for foreign keys,
+                # e.g. HostAttribute.host will be serialized as 'host_id'.
+                # Use it for easy deserialization.
+                serialized[field.attname] = field._get_val_from_obj(self)
 
         if include_dependencies:
             for link in self.SERIALIZATION_LINKS_TO_FOLLOW:
@@ -984,7 +996,8 @@ class ModelExtensions(rdb_model_extensions.ModelValidators):
                 # It's a foreign key
                 links_to_related_values.append((link, value))
             else:
-                # It's a local attribute
+                # It's a local attribute or a foreign key
+                # we don't want to follow.
                 links_to_local_values.append((link, value))
         return links_to_local_values, links_to_related_values
 

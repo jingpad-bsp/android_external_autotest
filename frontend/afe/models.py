@@ -696,6 +696,8 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
 
 class HostAttribute(dbmodels.Model, model_logic.ModelExtensions):
     """Arbitrary keyvals associated with hosts."""
+
+    SERIALIZATION_LINKS_TO_KEEP = set(['host'])
     host = dbmodels.ForeignKey(Host)
     attribute = dbmodels.CharField(max_length=90)
     value = dbmodels.CharField(max_length=300)
