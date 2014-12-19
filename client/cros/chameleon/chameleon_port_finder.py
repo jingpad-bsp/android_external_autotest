@@ -160,13 +160,8 @@ class ChameleonVideoInputFinder(ChameleonInputFinder):
 
             video_port = chameleon.ChameleonVideoInput(port)
             connector_type = video_port.get_connector_type()
-            # Try to plug the port such that DUT can detect it.
-            was_plugged = video_port.plugged
-
-            logging.debug('Plug state before yeilding: %r', was_plugged)
-            if not was_plugged:
-                video_port.plug()
-
+            # Plug the port to make it visible.
+            video_port.plug()
             try:
                 # DUT takes some time to respond. Wait until the video signal
                 # to stabilize.
@@ -197,11 +192,8 @@ class ChameleonVideoInputFinder(ChameleonInputFinder):
                     else:
                         logging.error('CrOS failed to see any external display')
             finally:
-                logging.debug('Restore the original plug state: %r', was_plugged)
-                if not was_plugged:
-                    video_port.unplug()
-                else:
-                    video_port.plug()
+                # Unplug the port not to interfere with other tests.
+                video_port.unplug()
 
         if raise_error and not yielded:
             raise error.TestFail('No connected video port found between CrOS '
