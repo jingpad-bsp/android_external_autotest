@@ -742,6 +742,9 @@ def create_job(name, priority, control_file, control_type,
 def abort_host_queue_entries(**filter_data):
     """\
     Abort a set of host queue entries.
+
+    @return: A list of dictionaries, each contains information
+             about an aborted HQE.
     """
     query = models.HostQueueEntry.query_objects(filter_data)
 
@@ -754,6 +757,9 @@ def abort_host_queue_entries(**filter_data):
     rpc_utils.check_abort_synchronous_jobs(host_queue_entries)
 
     models.HostQueueEntry.abort_host_queue_entries(host_queue_entries)
+    hqe_info = [{'HostQueueEntry': hqe.id, 'Job': hqe.job_id,
+                 'Job name': hqe.job.name} for hqe in host_queue_entries]
+    return hqe_info
 
 
 def abort_special_tasks(**filter_data):

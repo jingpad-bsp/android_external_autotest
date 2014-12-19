@@ -16,43 +16,25 @@ One can also pass just the build version to -i, to abort all boards running the
 suite against that version. ie. |./abort_suite.py -i R28-3993.0.0 -s dummy|
 would abort all boards running dummy on R28-3993.0.0.
 
+To achieve better performance, this script aborts suite jobs and relies on
+autotest scheduler to aborts its subjobs instead of directly aborting subjobs.
+So only synchronous suites is supported.
+
 """
 
 
 import argparse
 import getpass
+import logging
 import sys
 
 import common
+from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.server import frontend
 
 
 SUITE_JOB_NAME_TEMPLATE = '%s-test_suites/control.%s'
-
-
-def find_jobs_by_name(afe, substring):
-    """
-    Contact the AFE to find unfinished jobs whose name contain the argument.
-
-    @param afe An instance of frontend.AFE to make RPCs with.
-    @param substring The substring to search for in the job name.
-    @return List of matching job IDs.
-
-    """
-    # We need to avoid pulling back finished jobs, in case an overly general
-    # name to match against was passed in.  Unfortunately, we can't pass
-    # `not_yet_run` and `running` at the same time, so we do it as two calls.
-    # These two calls need to be in this order in case a suite goes from queued
-    # to running in between the two calls.
-    queued_jobs = afe.run('get_jobs', not_yet_run=True,
-                          name__contains=substring, owner=getpass.getuser())
-    running_jobs = afe.run('get_jobs', running=True,
-                           name__contains=substring, owner=getpass.getuser())
-    # If a job does go from queued to running, we'll get it twice, so we need
-    # to remove duplicates.  The RPC interface only accepts a list, so it is
-    # easiest if we return a list from this function.
-    job_ids = [int(job['id']) for job in queued_jobs + running_jobs]
-    return list(set(job_ids))
+_timer = stats.Timer('abort_suites')
 
 
 def parse_args():
@@ -68,16 +50,28 @@ def parse_args():
     return parser.parse_args()
 
 
-def abort_jobs(afe, job_ids):
+@_timer.decorate
+def abort_suites(afe, substring):
     """
-    Abort all of the HQEs associated with the given jobs.
+    Abort the suite.
 
-    @param afe An instance of frontend.AFE to make RPCs with.
-    @param job_ids A list of ints that are the job id's to abort.
-    @return None
+    This method aborts the suite jobs whose name contains |substring|.
+    Aborting a suite job will lead to all its child jobs to be aborted
+    by autotest scheduler.
+
+    @param afe: An instance of frontend.AFE to make RPCs with.
+    @param substring: A string used to search for the jobs.
 
     """
-    afe.run('abort_host_queue_entries', job_id__in=job_ids)
+    hqe_info = afe.run('abort_host_queue_entries',
+            job__name__contains=substring, job__owner=getpass.getuser(),
+            job__parent_job__isnull=True)
+    if hqe_info:
+        logging.info('The following suites have been aborted:\n%s', hqe_info)
+    else:
+        logging.info('No suites have been aborted. The suite jobs may have '
+                     'already been aborted/completed? Note this script does '
+                     'not support asynchronus suites.')
 
 
 def main():
@@ -85,9 +79,7 @@ def main():
     afe = frontend.AFE()
     args = parse_args()
     name = SUITE_JOB_NAME_TEMPLATE % (args.build, args.name)
-    job_ids = find_jobs_by_name(afe, name)
-    print "Aborting jobs %s" % ', '.join([str(x) for x in job_ids])
-    abort_jobs(afe, job_ids)
+    abort_suites(afe, name)
     return 0
 
 
