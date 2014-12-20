@@ -645,26 +645,7 @@ class AbstractSSHHost(remote.RemoteHost):
         if self.master_ssh_job is not None:
             socket_path = os.path.join(self.master_ssh_tempdir.name, 'socket')
             if (not os.path.exists(socket_path) or
-                self.master_ssh_job.sp.poll() is not None):
-                if self.master_ssh_job.sp.poll() is None:
-                    logging.warning('Master ssh connection socket file '
-                                    'was missing while its subprocess was '
-                                    'still running.')
-                    if os.path.exists(self.master_ssh_tempdir.name):
-                        logging.warning('However, the socket file temporary '
-                                        'directory still exists.')
-
-                    logging.warning('Info on defunct master ssh ps below.')
-                    master_pid = str(self.master_ssh_job.sp.pid)
-                    ps_output = utils.run(['ps', '-Fww', master_pid],
-                                          ignore_status=True).stdout
-                    logging.warning('Master ssh connection ps info: %s',
-                                    ps_output)
-                    lsof_output = utils.run(['lsof', '-p', master_pid],
-                                            ignore_status=True).stdout
-                    logging.warning('Master ssh connection lsof info: %s',
-                                    lsof_output)
-
+                    self.master_ssh_job.sp.poll() is not None):
                 logging.info("Master ssh connection to %s is down.",
                              self.hostname)
                 self._cleanup_master_ssh()
@@ -678,7 +659,6 @@ class AbstractSSHHost(remote.RemoteHost):
 
             # Start the master SSH connection in the background.
             master_cmd = self.ssh_command(options="-N -o ControlMaster=yes")
-            logging.debug("System load: %s",  utils.run(['uptime']).stdout)
             logging.info("Starting master ssh connection '%s'", master_cmd)
             self.master_ssh_job = utils.BgJob(master_cmd,
                                               nickname='master-ssh',
@@ -694,7 +674,7 @@ class AbstractSSHHost(remote.RemoteHost):
                     break
                 time.sleep(.2)
             else:
-                logging.warning('Timed out waiting for master-ssh connection '
+                logging.info('Timed out waiting for master-ssh connection '
                              'to be established.')
 
 
