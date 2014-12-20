@@ -136,8 +136,9 @@ def screen_wakeup():
     """Wake up the screen if it is dark."""
     # Move the mouse a little bit to wake up the screen.
     if utils.is_freon():
-        _uinput_emit("REL_X", 1)
-        _uinput_emit("REL_X", -1)
+        device = _get_uinput_device_mouse_rel()
+        _uinput_emit(device, "REL_X", 1)
+        _uinput_emit(device, "REL_X", -1)
     else:
         xsystem('xdotool mousemove_relative 1 1')
 
@@ -189,8 +190,8 @@ UINPUT_DEVICE_EVENTS_MOUSE_REL = [
 
 def _get_uinput_device_keyboard():
     """
-    Lazy initialize device and return it. We don't want to create a device during
-    build_packages or for tests that don't need it, hence init is with = None.
+    Lazy initialize device and return it. We don't want to create a device
+    during build_packages or for tests that don't need it, hence init with None.
     """
     global uinput_device_keyboard
     if uinput_device_keyboard is None:
@@ -200,8 +201,8 @@ def _get_uinput_device_keyboard():
 
 def _get_uinput_device_mouse_rel():
     """
-    Lazy initialize device and return it. We don't want to create a device during
-    build_packages or for tests that don't need it, hence init is with = None.
+    Lazy initialize device and return it. We don't want to create a device
+    during build_packages or for tests that don't need it, hence init with None.
     """
     global uinput_device_mouse_rel
     if uinput_device_mouse_rel is None:
@@ -211,8 +212,8 @@ def _get_uinput_device_mouse_rel():
 
 def _get_uinput_device_touch():
     """
-    Lazy initialize device and return it. We don't want to create a device during
-    build_packages or for tests that don't need it, hence init is with = None.
+    Lazy initialize device and return it. We don't want to create a device
+    during build_packages or for tests that don't need it, hence init with None.
     """
     global uinput_device_touch
     if uinput_device_touch is None:
@@ -807,8 +808,7 @@ class GraphicsStateChecker(object):
 
         if utils.get_cpu_arch() != 'arm':
             if is_sw_rasterizer():
-                raise error.TestFail('Refusing to run on SW rasterizer: ' +
-                                     result)
+                raise error.TestFail('Refusing to run on SW rasterizer.')
             logging.info('Initialize: Checking for old GPU hangs...')
             messages = open(self._MESSAGES_FILE, 'r')
             for line in messages:
@@ -840,8 +840,7 @@ class GraphicsStateChecker(object):
 
             if is_sw_rasterizer():
                 logging.warning('Finished test on SW rasterizer.')
-                raise error.TestFail('Finished test on SW rasterizer: ' +
-                                     result)
+                raise error.TestFail('Finished test on SW rasterizer.')
 
             if self._raise_error_on_hang and new_gpu_hang:
                 raise error.TestFail('Detected GPU hang during test.')
