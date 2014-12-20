@@ -400,6 +400,7 @@ class HostJobHistory(object):
 
 
     def __iter__(self):
+        self._get_history()
         return self._history.__iter__()
 
 
