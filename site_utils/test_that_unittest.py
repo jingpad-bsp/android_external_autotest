@@ -172,6 +172,7 @@ class TestThatUnittests(unittest.TestCase):
         afe = test_that.setup_local_afe()
         autotest_path = 'ottotest_path'
         suite_name = 'sweet_name'
+        test_arg = 'suite:' + suite_name
         remote = 'remoat'
         build = 'bild'
         board = 'bored'
@@ -199,7 +200,7 @@ class TestThatUnittests(unittest.TestCase):
 
         self.mox.StubOutWithMock(test_that, 'fetch_local_suite')
         test_that.fetch_local_suite(autotest_path, mox.IgnoreArg(),
-                afe, remote=remote, build=build,
+                afe, test_arg=test_arg, remote=remote, build=build,
                 board=board, results_directory=results_dir,
                 no_experimental=False,
                 ignore_deps=ignore_deps

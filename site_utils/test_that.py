@@ -68,10 +68,10 @@ class TestThatProvisioningError(Exception):
     """Raised when it fails to provision the DUT to the requested build."""
 
 
-def fetch_local_suite(autotest_path, suite_predicate, afe, remote,
-                         build=_NO_BUILD, board=_NO_BOARD,
-                         results_directory=None, no_experimental=False,
-                         ignore_deps=True):
+def fetch_local_suite(autotest_path, suite_predicate, afe, test_arg, remote,
+                      build=_NO_BUILD, board=_NO_BOARD,
+                      results_directory=None, no_experimental=False,
+                      ignore_deps=True):
     """Create a suite from the given suite predicate.
 
     Satisfaction of dependencies is enforced by Suite.schedule() if
@@ -86,6 +86,8 @@ def fetch_local_suite(autotest_path, suite_predicate, afe, remote,
     @param suite_predicate: callable that takes ControlData objects, and
                             returns True on those that should be in suite
     @param afe: afe object to schedule against (typically a directAFE)
+    @param test_arg: String. An individual TEST command line argument, e.g.
+                     'login_CryptohomeMounted' or 'suite:smoke'.
     @param remote: String representing the IP of the remote host.
     @param build: Build to schedule suite for.
     @param board: Board to schedule suite for.
@@ -105,8 +107,15 @@ def fetch_local_suite(autotest_path, suite_predicate, afe, remote,
             ignore_deps=ignore_deps,
             results_dir=results_directory, forgiving_parser=False)
     if len(my_suite.tests) == 0:
+        (similarity_predicate, similarity_description) = (
+                get_predicate_for_possible_test_arg(test_arg))
+        logging.error('No test found, searching for possible tests with %s',
+                      similarity_description)
+        possible_tests = suite.Suite.find_possible_tests(fs_getter,
+                                                         similarity_predicate)
         raise ValueError('Found no tests. Check your suite name, test name, '
-                         'or test matching wildcard.')
+                         'or test matching wildcard.\nDid you mean any of '
+                         'following tests?\n  %s' % '\n  '.join(possible_tests))
 
     if not ignore_deps:
         # Log tests whose dependencies can't be satisfied.
@@ -121,6 +130,7 @@ def fetch_local_suite(autotest_path, suite_predicate, afe, remote,
                              'test dependencies: %s', test.name,
                              unsatisfiable_deps)
     return my_suite
+
 
 def _run_autoserv(command, pretend=False):
     """Run autoserv command.
@@ -292,6 +302,36 @@ def get_predicate_for_test_arg(test):
             'job named %s' % test)
 
 
+def get_predicate_for_possible_test_arg(test):
+    """
+    Gets a suite predicte function to calculate the similarity of given test
+    and possible tests.
+
+    @param test: String. An individual TEST command line argument, e.g.
+                         'login_CryptohomeMounted' or 'suite:smoke'
+    @returns: A (predicate, string) tuple with the necessary suite
+              predicate, and a description string of the suite that
+              this predicate will produce.
+    """
+    suitematch = re.match(_SUITE_REGEX, test)
+    name_pattern_match = re.match(r'e:(.*)', test)
+    file_pattern_match = re.match(r'f:(.*)', test)
+    if suitematch:
+        suitename = suitematch.group(1)
+        return (suite.Suite.name_in_tag_similarity_predicate(suitename),
+                'suite name similar to %s' % suitename)
+    if name_pattern_match:
+        pattern = '^%s$' % name_pattern_match.group(1)
+        return (suite.Suite.test_name_similarity_predicate(pattern),
+                'job name similar to %s' % pattern)
+    if file_pattern_match:
+        pattern = '^%s$' % file_pattern_match.group(1)
+        return (suite.Suite.test_file_similarity_predicate(pattern),
+                'suite to match file name similar to %s' % pattern)
+    return (suite.Suite.test_name_similarity_predicate(test),
+            'job name similar to %s' % test)
+
+
 def _add_ssh_identity(temp_directory):
     """Add an ssh identity to the agent.
 
@@ -395,7 +435,6 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
     @param autoserv_verbose: If true, pass the --verbose flag to autoserv.
     @param iterations: int number of times to schedule tests.
     """
-
     # Create host in afe, add board and build labels.
     cros_version_label = provision.cros_version_to_label(build)
     build_label = afe.create_label(cros_version_label)
@@ -424,7 +463,7 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
     for test in tests:
         (predicate, description) = get_predicate_for_test_arg(test)
         logging.info('Fetching suite for %s...', description)
-        suite = fetch_local_suite(autotest_path, predicate, afe,
+        suite = fetch_local_suite(autotest_path, predicate, afe, test_arg=test,
                                   remote=remote,
                                   build=build, board=board,
                                   results_directory=results_directory,

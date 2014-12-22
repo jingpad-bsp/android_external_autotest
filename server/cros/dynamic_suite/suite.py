@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import datetime, hashlib, logging, os, re, traceback
+import datetime, difflib, hashlib, logging, operator, os, re, traceback
 
 import common
 
@@ -279,8 +279,30 @@ class Suite(object):
         @return a callable that takes a ControlData and looks for |name| in that
                 ControlData object's suite member.
         """
-        return lambda t: hasattr(t, 'suite') and \
-                         name in Suite.parse_tag(t.suite)
+        return lambda t: (hasattr(t, 'suite') and
+                          name in Suite.parse_tag(t.suite))
+
+
+    @staticmethod
+    def name_in_tag_similarity_predicate(name):
+        """Returns predicate that takes a control file and gets the similarity
+        of the suites in the control file and the given name.
+
+        Builds a predicate that takes in a parsed control file (a ControlData)
+        and returns a list of tuples of (suite name, ratio), where suite name
+        is each suite listed in the control file, and ratio is the similarity
+        between each suite and the given name.
+
+        @param name: the suite name to base the predicate on.
+        @return a callable that takes a ControlData and returns a list of tuples
+                of (suite name, ratio), where suite name is each suite listed in
+                the control file, and ratio is the similarity between each suite
+                and the given name.
+        """
+        return lambda t: ((None, 0) if not hasattr(t, 'suite') else
+                          [(suite,
+                            difflib.SequenceMatcher(a=suite, b=name).ratio())
+                           for suite in Suite.parse_tag(t.suite)])
 
 
     @staticmethod
@@ -343,6 +365,44 @@ class Suite(object):
         """
         return lambda t: hasattr(t, 'path') and re.match(test_file_pattern,
                                                          t.path)
+
+
+    @staticmethod
+    def test_name_similarity_predicate(test_name):
+        """Returns predicate that matched based on a test's name.
+
+        Builds a predicate that takes in a parsed control file (a ControlData)
+        and returns a tuple of (test name, ratio), where ratio is the similarity
+        between the test name and the given test_name.
+
+        @param test_name: the test name to base the predicate on.
+        @return a callable that takes a ControlData and returns a tuple of
+                (test name, ratio), where ratio is the similarity between the
+                test name and the given test_name.
+        """
+        return lambda t: ((None, 0) if not hasattr(t, 'name') else
+                (t.name,
+                 difflib.SequenceMatcher(a=t.name, b=test_name).ratio()))
+
+
+    @staticmethod
+    def test_file_similarity_predicate(test_file_pattern):
+        """Returns predicate that gets the similarity based on a test's file
+        name pattern.
+
+        Builds a predicate that takes in a parsed control file (a ControlData)
+        and returns a tuple of (file path, ratio), where ratio is the
+        similarity between the test file name and the given test_file_pattern.
+
+        @param test_file_pattern: regular expression (string) to match against
+                                  control file names.
+        @return a callable that takes a ControlData and and returns a tuple of
+                (file path, ratio), where ratio is the similarity between the
+                test file name and the given test_file_pattern.
+        """
+        return lambda t: ((None, 0) if not hasattr(t, 'path') else
+                (t.path, difflib.SequenceMatcher(a=t.path,
+                                                 b=test_file_pattern).ratio()))
 
 
     @staticmethod
@@ -874,10 +934,10 @@ class Suite(object):
 
 
     @staticmethod
-    def find_and_parse_tests(cf_getter, predicate, suite_name='',
-                             add_experimental=False, forgiving_parser=True):
+    def find_all_tests(cf_getter, suite_name='', add_experimental=False,
+                       forgiving_parser=True):
         """
-        Function to scan through all tests and find eligible tests.
+        Function to scan through all tests and find all tests.
 
         Looks at control files returned by _cf_getter.get_control_file_list()
         for tests that pass self._predicate(). When this method is called
@@ -888,6 +948,59 @@ class Suite(object):
         generated at build time, and parses the relevant control files alone.
         This lookup happens on the devserver, so as far as this method is
         concerned, both cases are equivalent.
+
+        @param cf_getter: a control_file_getter.ControlFileGetter used to list
+               and fetch the content of control files
+        @param suite_name: If specified, this method will attempt to restrain
+                           the search space to just this suite's control files.
+        @param add_experimental: add tests with experimental attribute set.
+        @param forgiving_parser: If False, will raise ControlVariableExceptions
+                                 if any are encountered when parsing control
+                                 files. Note that this can raise an exception
+                                 for syntax errors in unrelated files, because
+                                 we parse them before applying the predicate.
+
+        @raises ControlVariableException: If forgiving_parser is False and there
+                                          is a syntax error in a control file.
+
+        @returns a dictionary of ControlData objects that based on given
+                 parameters.
+        """
+        logging.debug('Getting control file list for suite: %s', suite_name)
+        tests = {}
+        files = cf_getter.get_control_file_list(suite_name=suite_name)
+
+        logging.debug('Parsing control files ...')
+        matcher = re.compile(r'[^/]+/(deps|profilers)/.+')
+        for file in filter(lambda f: not matcher.match(f), files):
+            text = cf_getter.get_control_file_contents(file)
+            try:
+                found_test = control_data.parse_control_string(
+                        text, raise_warnings=True)
+                if not add_experimental and found_test.experimental:
+                    continue
+                found_test.text = text
+                found_test.path = file
+                tests[file] = found_test
+            except control_data.ControlVariableException, e:
+                if not forgiving_parser:
+                    msg = "Failed parsing %s\n%s" % (file, e)
+                    raise control_data.ControlVariableException(msg)
+                logging.warning("Skipping %s\n%s", file, e)
+            except Exception, e:
+                logging.error("Bad %s\n%s", file, e)
+        return tests
+
+
+    @staticmethod
+    def find_and_parse_tests(cf_getter, predicate, suite_name='',
+                             add_experimental=False, forgiving_parser=True):
+        """
+        Function to scan through all tests and find eligible tests.
+
+        Search through all tests based on given cf_getter, suite_name,
+        add_experimental and forgiving_parser, return the tests that match
+        given predicate.
 
         @param cf_getter: a control_file_getter.ControlFileGetter used to list
                and fetch the content of control files
@@ -910,34 +1023,52 @@ class Suite(object):
                 file text added in |text| attribute. Results are sorted based
                 on the TIME setting in control file, slowest test comes first.
         """
-        logging.debug('Getting control file list for suite: %s', suite_name)
-        tests = {}
-        files = cf_getter.get_control_file_list(suite_name=suite_name)
-
-        logging.debug('Parsing control files ...')
-        matcher = re.compile(r'[^/]+/(deps|profilers)/.+')
-        parsed_count = 0
-        for file in filter(lambda f: not matcher.match(f), files):
-            text = cf_getter.get_control_file_contents(file)
-            try:
-                found_test = control_data.parse_control_string(
-                        text, raise_warnings=True)
-                parsed_count += 1
-                if not add_experimental and found_test.experimental:
-                    continue
-                found_test.text = text
-                found_test.path = file
-                tests[file] = found_test
-            except control_data.ControlVariableException, e:
-                if not forgiving_parser:
-                    msg = "Failed parsing %s\n%s" % (file, e)
-                    raise control_data.ControlVariableException(msg)
-                logging.warning("Skipping %s\n%s", file, e)
-            except Exception, e:
-                logging.error("Bad %s\n%s", file, e)
-        logging.debug('Parsed %s control files.', parsed_count)
+        tests = Suite.find_all_tests(cf_getter, suite_name, add_experimental,
+                                     forgiving_parser)
+        logging.debug('Parsed %s control files.', len(tests))
         tests = [test for test in tests.itervalues() if predicate(test)]
         tests.sort(key=lambda t:
                    control_data.ControlData.get_test_time_index(t.time),
                    reverse=True)
         return tests
+
+
+    @staticmethod
+    def find_possible_tests(cf_getter, predicate, suite_name='', count=10):
+        """
+        Function to scan through all tests and find possible tests.
+
+        Search through all tests based on given cf_getter, suite_name,
+        add_experimental and forgiving_parser. Use the given predicate to
+        calculate the similarity and return the top 10 matches.
+
+        @param cf_getter: a control_file_getter.ControlFileGetter used to list
+               and fetch the content of control files
+        @param predicate: a function that should return a tuple of (name, ratio)
+               when run over a ControlData representation of a control file that
+               should be in this Suite. `name` is the key to be compared, e.g.,
+               a suite name or test name. `ratio` is a value between [0,1]
+               indicating the similarity of `name` and the value to be compared.
+        @param suite_name: If specified, this method will attempt to restrain
+                           the search space to just this suite's control files.
+        @param count: Number of suggestions to return, default to 10.
+
+        @return list of top names that similar to the given test, sorted by
+                match ratio.
+        """
+        tests = Suite.find_all_tests(cf_getter, suite_name,
+                                     add_experimental=True,
+                                     forgiving_parser=True)
+        logging.debug('Parsed %s control files.', len(tests))
+        similarities = {}
+        for test in tests.itervalues():
+            ratios = predicate(test)
+            # Some predicates may return a list of tuples, e.g.,
+            # name_in_tag_similarity_predicate. Convert all returns to a list.
+            if not isinstance(ratios, list):
+                ratios = [ratios]
+            for name, ratio in ratios:
+                similarities[name] = ratio
+        return [s[0] for s in
+                sorted(similarities.items(), key=operator.itemgetter(1),
+                       reverse=True)][:count]
