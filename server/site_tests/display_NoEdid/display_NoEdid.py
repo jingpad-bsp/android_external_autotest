@@ -22,7 +22,7 @@ class display_NoEdid(test.test):
     """
     version = 1
 
-    STANDARD_MODE_RESOLUTION = (1024, 768)
+    STANDARD_MODE_RESOLUTIONS = [(1024, 768), (1024, 720), (800, 600)]
 
     def run_once(self, host, test_mirrored=False):
         factory = remote_facade_factory.RemoteFacadeFactory(host)
@@ -39,11 +39,25 @@ class display_NoEdid(test.test):
                     chameleon_port, display_facade, self.outputdir)
 
             with chameleon_port.use_edid(edid.NO_EDID):
+                if not display_facade.get_external_connector_name():
+                    error_message = 'Failed to detect display without an EDID'
+                    logging.error(error_message)
+                    errors.append(error_message)
+                    continue
+
                 logging.info('Set mirrored: %s', test_mirrored)
                 display_facade.set_mirrored(test_mirrored)
 
+                resolution = display_facade.get_external_resolution()
+                if resolution not in self.STANDARD_MODE_RESOLUTIONS:
+                    error_message = ('Switched to a non-standard mode: %dx%d' %
+                                     resolution)
+                    logging.error(error_message)
+                    errors.append(error_message)
+                    continue
+
                 screen_test.test_screen_with_image(
-                        self.STANDARD_MODE_RESOLUTION, test_mirrored, errors)
+                        resolution, test_mirrored, errors)
 
         if errors:
             raise error.TestFail('; '.join(set(errors)))
