@@ -21,6 +21,13 @@ class provision_AutoUpdate(test.test):
     """A test that can provision a machine to the correct ChromeOS version."""
     version = 1
 
+    def initialize(self, host, value, force=False):
+        """Initialize."""
+        # We check value in initialize so that it fails faster.
+        if not value:
+            raise error.TestFail('No build version specified.')
+
+
     def run_once(self, host, value, force=False):
         """The method called by the control file to start the test.
 
@@ -28,7 +35,7 @@ class provision_AutoUpdate(test.test):
         @param value: The build type and version to install on the host.
         @param force: If False, will only provision the host if it is not
                       already running the build. If True, force the
-                      provisioning regardless.
+                      provisioning regardless, and force a full-reimage.
 
         """
         logging.debug('Start provisioning %s to %s', host, value)
@@ -78,8 +85,14 @@ class provision_AutoUpdate(test.test):
         provision.ensure_label_exists(provision.cros_version_to_label(image))
         logging.debug('Installing image')
         try:
-            host.machine_install(force_update=True, update_url=url)
+            host.machine_install(force_update=True, update_url=url,
+                                 force_full_update=force)
         except error.InstallError as e:
             logging.error(e)
             raise error.TestFail(str(e))
+        build = host.get_build()
+        if build != value:
+            raise error.TestFail(
+                    'Expected cros-version label of %s in AFE, but found %s' %
+                    (value, build))
         logging.debug('Finished provisioning %s to %s', host, value)

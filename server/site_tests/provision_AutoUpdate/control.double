@@ -10,6 +10,7 @@ TIME = 'MEDIUM'
 TEST_CATEGORY = 'System'
 TEST_CLASS = 'provision'
 TEST_TYPE = 'Server'
+SUITE = 'push_to_prod, bvt-inline'
 # This test is expensive, just retry once
 JOB_RETRIES = 1
 SUITE = "push_to_prod"

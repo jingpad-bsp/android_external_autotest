@@ -625,7 +625,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
 
     def machine_install(self, update_url=None, force_update=False,
-                        local_devserver=False, repair=False):
+                        local_devserver=False, repair=False,
+                        force_full_update=False):
         """Install the DUT.
 
         Use stateful update if the DUT is already running the same build.
@@ -652,6 +653,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 cases for repairing a machine like starting update_engine.
                 Setting repair to True sets force_update to True as well.
                 default: False
+        @param force_full_update: If True, do not attempt to run stateful
+                update, force a full reimage. If False, try stateful update
+                first when the dut is already installed with the same version.
         @raises autoupdater.ChromiumOSError
 
         """
@@ -695,14 +699,15 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         # If the DUT is already running the same build, try stateful update
         # first. Stateful update does not update kernel and tends to run much
         # faster than a full reimage.
-        try:
-            updated = self._try_stateful_update(
-                    update_url, force_update, updater)
-            if updated:
-                logging.info('DUT is updated with stateful update.')
-        except Exception as e:
-            logging.exception(e)
-            logging.warning('Failed to stateful update DUT, force to update.')
+        if not force_full_update:
+            try:
+                updated = self._try_stateful_update(
+                        update_url, force_update, updater)
+                if updated:
+                    logging.info('DUT is updated with stateful update.')
+            except Exception as e:
+                logging.exception(e)
+                logging.warning('Failed to stateful update DUT, force to update.')
 
         inactive_kernel = None
         # Do a full update if stateful update is not applicable or failed.
