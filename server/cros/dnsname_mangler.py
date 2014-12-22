@@ -39,7 +39,8 @@ def _is_ip_address(hostname):
 def get_companion_device_addr(client_hostname,
                               suffix,
                               cmdline_override=None,
-                              not_dnsname_msg=DEFAULT_FAILURE_MESSAGE):
+                              not_dnsname_msg=DEFAULT_FAILURE_MESSAGE,
+                              allow_failure=False):
     """Build a usable hostname for a test companion device from the client name.
 
     Optionally, override the generated name with a commandline provided version.
@@ -51,13 +52,18 @@ def get_companion_device_addr(client_hostname,
     @param not_dnsname_msg: string message to include in the exception raised
             if the client hostname is found to be an IP address rather than a
             DNS name.
-    @return string DNS name of companion device.
+    @param allow_failure: boolean True iff we should return None on failure to
+            infer a DNS name.
+    @return string DNS name of companion device or None if |allow_failure|
+            is True and no DNS name can be inferred.
 
     """
     if cmdline_override is not None:
         return cmdline_override
     if _is_ip_address(client_hostname):
         logging.error('%r looks like an IP address?', client_hostname)
+        if allow_failure:
+            return None
         raise error.TestError(not_dnsname_msg)
     parts = client_hostname.split('.', 1)
     parts[0] = parts[0] + suffix
@@ -82,7 +88,9 @@ def get_router_addr(client_hostname, cmdline_override=None):
             not_dnsname_msg=ROUTER_FAILURE_MESSAGE)
 
 
-def get_attenuator_addr(client_hostname, cmdline_override=None):
+def get_attenuator_addr(client_hostname,
+                        cmdline_override=None,
+                        allow_failure=False):
     """Build a hostname for a WiFi variable attenuator from the client hostname.
 
     Optionally override that hostname with the provided command line hostname.
@@ -90,6 +98,8 @@ def get_attenuator_addr(client_hostname, cmdline_override=None):
     @param client_hostname: string DNS name of the client.
     @param cmdline_override: string DNS name of the variable attenuator
             controller provided via commandline arguments.
+    @param allow_failure: boolean True iff we should return None on failure to
+            infer a DNS name.
     @return usable DNS name for attenuator controller.
 
     """
@@ -97,7 +107,8 @@ def get_attenuator_addr(client_hostname, cmdline_override=None):
             client_hostname,
             '-attenuator',
             cmdline_override=cmdline_override,
-            not_dnsname_msg=ATTENUATOR_FAILURE_MESSAGE)
+            not_dnsname_msg=ATTENUATOR_FAILURE_MESSAGE,
+            allow_failure=allow_failure)
 
 
 def get_tester_addr(client_hostname, cmdline_override=None):

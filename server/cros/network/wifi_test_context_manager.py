@@ -156,7 +156,8 @@ class WiFiTestContextManager(object):
         attenuator_addr = dnsname_mangler.get_attenuator_addr(
                 self.client.host.hostname,
                 cmdline_override=self._cmdline_args.get(
-                        self.CMDLINE_ATTEN_ADDR, None))
+                        self.CMDLINE_ATTEN_ADDR, None),
+                allow_failure=True)
         ping_helper = ping_runner.PingRunner()
         if attenuator_addr and ping_helper.simple_ping(attenuator_addr):
             self._attenuator = attenuator_controller.AttenuatorController(
