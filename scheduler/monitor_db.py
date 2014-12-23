@@ -858,6 +858,14 @@ class BaseDispatcher(object):
         jobs_to_stop = set()
         for entry in scheduler_models.HostQueueEntry.fetch(
                 where='aborted=1 and complete=0'):
+
+            # If the job is running on a shard, let the shard handle aborting
+            # it and sync back the right status.
+            if entry.job.shard_id is not None and not rpc_utils.is_shard():
+                logging.info('Waiting for shard %s to abort hqe %s',
+                        entry.job.shard_id, entry)
+                continue
+
             logging.info('Aborting %s', entry)
 
             # The task would have started off with both is_complete and
