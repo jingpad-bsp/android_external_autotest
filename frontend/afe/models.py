@@ -1401,6 +1401,33 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
 
 
     @classmethod
+    def _add_filters_for_shard_assignment(cls, query, known_ids):
+        """Exclude jobs that should be not sent to shard.
+
+        This is a helper that filters out the following jobs:
+          - Non-aborted jobs known to shard as specified in |known_ids|.
+            Note for jobs aborted on master, even if already known to shard,
+            will be sent to shard again so that shard can abort them.
+          - Completed jobs
+          - Active jobs
+        @param query: A query that finds jobs for shards, to which the 'exclude'
+                      filters will be applied.
+        @param known_ids: List of all ids of incomplete jobs, the shard already
+                          knows about.
+
+        @returns: A django QuerySet after filtering out unnecessary jobs.
+
+        """
+        return query.exclude(
+                id__in=known_ids,
+                hostqueueentry__aborted=False
+                ).exclude(
+                hostqueueentry__complete=True
+                ).exclude(
+                hostqueueentry__active=True)
+
+
+    @classmethod
     def assign_to_shard(cls, shard, known_ids):
         """Assigns unassigned jobs to a shard.
 
@@ -1428,16 +1455,18 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
         # If this changes or they are triggered manually, this applies:
         # Jobs may be returned more than once by concurrent calls of this
         # function, as there is a race condition between SELECT and UPDATE.
-        job_ids = list(Job.objects.filter(
-            dependency_labels=shard.labels.all()
-            ).exclude(
-            id__in=known_ids,
-            hostqueueentry__aborted=False
-            ).exclude(
-            hostqueueentry__complete=True
-            ).exclude(
-            hostqueueentry__active=True
-            ).distinct().values_list('pk', flat=True))
+        query = Job.objects.filter(dependency_labels=shard.labels.all())
+        query = cls._add_filters_for_shard_assignment(query, known_ids)
+        job_ids = set(query.distinct().values_list('pk', flat=True))
+
+        # Combine frontend jobs in the heartbeat.
+        query = Job.objects.filter(
+                hostqueueentry__meta_host__isnull=True,
+                hostqueueentry__host__isnull=False,
+                hostqueueentry__host__labels=shard.labels.all()
+                )
+        query = cls._add_filters_for_shard_assignment(query, known_ids)
+        job_ids |= set(query.distinct().values_list('pk', flat=True))
         if job_ids:
             Job.objects.filter(pk__in=job_ids).update(shard=shard)
             return list(Job.objects.filter(pk__in=job_ids).all())
@@ -1557,6 +1586,7 @@ class HostQueueEntry(dbmodels.Model, model_logic.ModelExtensions):
     """Represents a host queue entry."""
 
     SERIALIZATION_LINKS_TO_FOLLOW = set(['meta_host'])
+    SERIALIZATION_LINKS_TO_KEEP = set(['host'])
     SERIALIZATION_LOCAL_LINKS_TO_UPDATE = set(['aborted'])
 
 

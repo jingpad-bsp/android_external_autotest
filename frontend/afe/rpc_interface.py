@@ -210,10 +210,10 @@ def modify_hosts(host_filter_data, update_data):
     for host in hosts:
         rpc_utils.check_modify_host_locking(host, update_data)
         if host.shard:
-            affected_shard_hostnames.add(host.shard.hostname)
+            affected_shard_hostnames.add(host.shard.rpc_hostname())
             affected_host_ids.append(host.id)
 
-    if not rpc_utils.is_shard():
+    if not utils.is_shard():
         # Caution: Changing the filter from the original here. See docstring.
         rpc_utils.run_rpc_on_multiple_hostnames(
             'modify_hosts', affected_shard_hostnames,
@@ -780,7 +780,7 @@ def _call_special_tasks_on_hosts(task, hosts):
     """
     models.AclGroup.check_for_acl_violation_hosts(hosts)
     shard_host_map = rpc_utils.bucket_hosts_by_shard(hosts)
-    if shard_host_map and not rpc_utils.is_shard():
+    if shard_host_map and not utils.is_shard():
         raise ValueError('The following hosts are on shards, please '
                          'follow the link to the shards and create jobs '
                          'there instead. %s.' % shard_host_map)
@@ -801,7 +801,7 @@ def reverify_hosts(**filter_data):
     # Filter out hosts on a shard from those on the master, forward
     # rpcs to the shard with an additional hostname__in filter, and
     # create a local SpecialTask for each remaining host.
-    if shard_host_map and not rpc_utils.is_shard():
+    if shard_host_map and not utils.is_shard():
         hosts = [h for h in hosts if h.shard is None]
         for shard, hostnames in shard_host_map.iteritems():
 

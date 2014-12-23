@@ -424,3 +424,15 @@ def setup_logging(logfile=None, prefix=False):
         file_handler.setFormatter(logging.Formatter(log_format))
         file_handler.setLevel(logging.DEBUG)
         logging.getLogger().addHandler(file_handler)
+
+
+def is_shard():
+    """Determines if this instance is running as a shard.
+
+    Reads the global_config value shard_hostname in the section SHARD.
+
+    @return True, if shard_hostname is set, False otherwise.
+    """
+    hostname = global_config.global_config.get_config_value(
+            'SHARD', 'shard_hostname', default=None)
+    return bool(hostname)

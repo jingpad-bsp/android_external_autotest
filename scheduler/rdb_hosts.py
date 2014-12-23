@@ -106,6 +106,7 @@ class RDBServerHostWrapper(RDBHost):
         # Platform needs to be a method, not an attribute, for
         # backwards compatibility with the rest of the host model.
         self.platform_name = platform.name if platform else None
+        self.shard_id = host.shard_id
 
 
     def refresh(self, fields=None):

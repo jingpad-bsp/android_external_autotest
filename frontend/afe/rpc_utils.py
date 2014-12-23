@@ -13,6 +13,7 @@ from autotest_lib.client.common_lib import control_data, error
 from autotest_lib.client.common_lib import global_config, priorities
 from autotest_lib.server.cros import provision
 from autotest_lib.server import frontend
+from autotest_lib.server import utils as server_utils
 
 NULL_DATETIME = datetime.datetime.max
 NULL_DATE = datetime.date.max
@@ -815,19 +816,22 @@ def create_job_common(name, priority, control_type, control_file=None,
             if label and label.atomic_group:
                 atomic_group_name = label.atomic_group.name
                 break
-
     # convert hostnames & meta hosts to host/label objects
     host_objects = models.Host.smart_get_bulk(hosts)
-    # Don't ever create jobs against hosts on shards. Though we have a hook
-    # in host scheduler that will prevent these jobs from even starting,
-    # a perpetually queued job will lead to a lot of confusion.
-    if not is_shard():
+    if not server_utils.is_shard():
         shard_host_map = bucket_hosts_by_shard(host_objects)
-        if shard_host_map:
-            raise ValueError('The following hosts are on shards, please '
-                             'follow the link to the shards and create jobs '
-                             'there instead. %s.' % shard_host_map)
-
+        num_shards = len(shard_host_map)
+        if (num_shards > 1 or (num_shards == 1 and
+                len(shard_host_map.values()[0]) != len(host_objects))):
+            # We disallow the following jobs on master:
+            #   num_shards > 1: this is a job spanning across multiple shards.
+            #   num_shards == 1 but number of hosts on shard is less
+            #   than total number of hosts: this is a job that spans across
+            #   one shard and the master.
+            raise ValueError(
+                    'The following hosts are on shard(s), please create '
+                    'seperate jobs for hosts on each shard: %s ' %
+                    shard_host_map)
     metahost_objects = []
     meta_host_labels_by_name = {label.name: label for label in label_objects}
     for label_name in meta_hosts or []:
@@ -1048,18 +1052,6 @@ def persist_records_sent_from_shard(shard, jobs, hqes):
         shard, hqes, models.HostQueueEntry, job_ids_sent=job_ids_sent)
 
 
-def is_shard():
-    """Determines if this instance is running as a shard.
-
-    Reads the global_config value shard_hostname in the section SHARD.
-
-    @return True, if shard_hostname is set, False otherwise.
-    """
-    hostname = global_config.global_config.get_config_value(
-            'SHARD', 'shard_hostname', default=None)
-    return bool(hostname)
-
-
 def forward_single_host_rpc_to_shard(func):
     """This decorator forwards rpc calls that modify a host to a shard.
 
@@ -1077,7 +1069,7 @@ def forward_single_host_rpc_to_shard(func):
         # names to send the rpc. serviceHandler always provides arguments with
         # their keywords, so this is not a problem.
         host = models.Host.smart_get(kwargs['id'])
-        if host.shard and not is_shard():
+        if host.shard and not server_utils.is_shard():
             run_rpc_on_multiple_hostnames(func.func_name, [host.shard.hostname],
                                           **kwargs)
         return func(**kwargs)
@@ -1107,7 +1099,7 @@ def forward_multi_host_rpc_to_shards(func):
     @returns: The function to replace func with.
     """
     def replacement(**kwargs):
-        if not is_shard():
+        if not server_utils.is_shard():
 
             # Figure out which hosts are on which shards.
             shard_host_map = bucket_hosts_by_shard(

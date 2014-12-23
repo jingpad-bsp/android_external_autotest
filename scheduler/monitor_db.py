@@ -33,6 +33,7 @@ from autotest_lib.scheduler import scheduler_models
 from autotest_lib.scheduler import status_server, scheduler_config
 from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.server import autoserv_utils
+from autotest_lib.server import utils as server_utils
 from autotest_lib.site_utils import server_manager_utils
 
 BABYSITTER_PID_FILE_PREFIX = 'monitor_db_babysitter'
@@ -861,7 +862,7 @@ class BaseDispatcher(object):
 
             # If the job is running on a shard, let the shard handle aborting
             # it and sync back the right status.
-            if entry.job.shard_id is not None and not rpc_utils.is_shard():
+            if entry.job.shard_id is not None and not server_utils.is_shard():
                 logging.info('Waiting for shard %s to abort hqe %s',
                         entry.job.shard_id, entry)
                 continue

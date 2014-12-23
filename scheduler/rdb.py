@@ -18,9 +18,11 @@ from autotest_lib.scheduler import rdb_cache_manager
 from autotest_lib.scheduler import rdb_hosts
 from autotest_lib.scheduler import rdb_requests
 from autotest_lib.scheduler import rdb_utils
+from autotest_lib.server import utils
 
 
 _timer = stats.Timer(rdb_utils.RDB_STATS_KEY)
+_is_master = not utils.is_shard()
 
 
 # Qeury managers: Provide a layer of abstraction over the database by
@@ -428,8 +430,18 @@ class AvailableHostRequestHandler(BaseHostRequestHandler):
             if len(hosts) > 1:
                 raise rdb_utils.RDBException('Got multiple hosts for a single '
                         'request. Hosts: %s, request %s.' % (hosts, request))
-            if (self.valid_host_assignment(request, hosts[0]) and
-                    self.lease_hosts(hosts)):
+            # Job-shard is 1:1 mapping. Because a job can only belongs
+            # to one shard, or belongs to master, we disallow frontend job
+            # that spans hosts on and off shards or across multiple shards,
+            # which would otherwise break the 1:1 mapping.
+            # As such, on master, if a request asks for multiple hosts and
+            # if any host is found on shard, we assume other requested hosts
+            # would also be on the same shard.  We can safely drop this request.
+            ignore_request = _is_master and any(
+                    [host.shard_id for host in hosts])
+            if (not ignore_request and
+                    (self.valid_host_assignment(request, hosts[0]) and
+                        self.lease_hosts(hosts))):
                 continue
             del self.response_map[request]
             logging.warning('Request %s was not able to lease host %s',
