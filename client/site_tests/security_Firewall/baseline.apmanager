@@ -1,2 +1,0 @@
--A INPUT -i lo -p udp -m udp --dport 67 -j REJECT --reject-with icmp-port-unreachable
--A INPUT -p udp -m udp --dport 67 -j ACCEPT
