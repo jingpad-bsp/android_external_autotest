@@ -2,7 +2,28 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-SOURCES_COMMON = xlib_window.cc utils.cc
+# TODO: delete teartest, it appears to be unused
+# TODO: delete synccontroltest when we no longer have any X platforms
+# TODO: when teartest and synccontroltest are gone, simplify this makefile,
+#       specifically the *_PORTABLE and *_X_ONLY bits
+
+USE_X = $(filter X, $(USE))
+ifeq ($(GRAPHICS_BACKEND),OPENGLES)
+    USE_GLES = y
+else
+    USE_GLES = $(filter opengles, $(USE))
+endif
+
+ifneq ($(USE_X),)
+    ifneq ($(USE_GLES),)
+        PLATFORM = X11_EGL
+    else
+        PLATFORM = GLX
+    endif
+else
+    PLATFORM = GBM
+endif
+
 SOURCES_GL_BENCH = main.cc yuvtest.cc testbase.cc
 SOURCES_GL_BENCH += glinterfacetest.cc contexttest.cc swaptest.cc
 SOURCES_GL_BENCH += readpixeltest.cc
@@ -10,22 +31,11 @@ SOURCES_GL_BENCH += attributefetchtest.cc varyingsandddxytest.cc cleartest.cc
 SOURCES_GL_BENCH += texturetest.cc texturereusetest.cc textureupdatetest.cc
 SOURCES_GL_BENCH += textureuploadtest.cc trianglesetuptest.cc fillratetest.cc
 SOURCES_GL_BENCH += windowmanagercompositingtest.cc
-SOURCES_GL_BENCH += md5.cc png_helper.cc
+SOURCES_GL_BENCH += md5.cc png_helper.cc utils.cc waffle_stuff.cc
 
-# work around USE="opengles" ./run_remote_tests.sh bug and directly parse $USE
-ifneq (,$(findstring opengles, $(USE)))
-GRAPHICS_BACKEND ?= OPENGLES
-endif
-GRAPHICS_BACKEND ?= OPENGL
-
-SOURCES_SYNCCONTROLTEST = synccontroltest.cc
-SOURCES_TEARTEST = teartest.cc
-SOURCES_WINDOWMANAGERTEST = windowmanagertest.cc
-SOURCES_ALL = $(SOURCES_COMMON) \
-              $(SOURCES_GL_BENCH) \
-              $(SOURCES_SYNCCONTROLTEST) \
-              $(SOURCES_TEARTEST) \
-              $(SOURCES_WINDOWMANAGERTEST)
+SOURCES_SYNCCONTROLTEST = synccontroltest.cc utils.cc xlib_window.cc
+SOURCES_TEARTEST = teartest.cc utils.cc xlib_window.cc
+SOURCES_WINDOWMANAGERTEST = windowmanagertest.cc utils.cc waffle_stuff.cc
 
 PKG_CONFIG ?= pkg-config
 BASE_VER ?= 307740
@@ -36,7 +46,7 @@ PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 CXXFLAGS = -g -Wall -Werror -std=gnu++11
 CPPFLAGS += $(PC_CFLAGS)
 LDLIBS = $(PC_LIBS) -lgflags
-# To compile outside of chroot or with newest libchome, use the following two lines:
+# To compile outside of chroot or with newest libchrome, use the following two lines:
 #CPPFLAGS += -I$(HOME)/chromium/src -DWORKAROUND_CROSBUG14304
 #LDLIBS += -lbase_static -L$(HOME)/chromium/src/out/Release/obj.target/base
 
@@ -45,21 +55,31 @@ SYNCCONTROLTEST = ../synccontroltest
 TEARTEST = ../teartest
 WINDOWMANAGERTEST = ../windowmanagertest
 
-ifeq ($(GRAPHICS_BACKEND),OPENGLES)
+PLATFORM_PKGS = waffle-1
+ifeq ($(PLATFORM),GBM)
+    PLATFORM_PKGS += libdrm gbm
+endif
+PLATFORM_CFLAGS = -DPLATFORM=$(PLATFORM)
+PLATFORM_CFLAGS += $(shell $(PKG_CONFIG) --cflags $(PLATFORM_PKGS))
+PLATFORM_LIBS = $(shell $(PKG_CONFIG) --libs $(PLATFORM_PKGS))
+
+ifneq ($(USE_GLES),)
 CPPFLAGS += -DUSE_OPENGLES
-SOURCES_COMMON += egl_stuff.cc
-SOURCES_SYNCCONTROLTEST += synccontroltest_egl.cc
-SOURCES_TEARTEST += teartest_egl.cc
-LDLIBS += -lGLESv2 -lX11 -lEGL -lrt
-else ifeq ($(GRAPHICS_BACKEND),OPENGL)
+SOURCES_SYNCCONTROLTEST += synccontroltest_egl.cc egl_stuff.cc
+SOURCES_TEARTEST += teartest_egl.cc egl_stuff.cc
+LDLIBS += -lGLESv2 -lEGL
+else
 CPPFLAGS += -DUSE_OPENGL
-SOURCES_COMMON += glx_stuff.cc
-SOURCES_SYNCCONTROLTEST += synccontroltest_glx.cc
-SOURCES_TEARTEST += teartest_glx.cc
-LDLIBS += -lGL -lX11 -lrt
+SOURCES_SYNCCONTROLTEST += synccontroltest_glx.cc glx_stuff.cc
+SOURCES_TEARTEST += teartest_glx.cc glx_stuff.cc
+LDLIBS += -lGL
 endif
 
-OBJS_COMMON = $(SOURCES_COMMON:.cc=.o)
+SOURCES_ALL = $(sort $(SOURCES_GL_BENCH) \
+                     $(SOURCES_SYNCCONTROLTEST) \
+                     $(SOURCES_TEARTEST) \
+                     $(SOURCES_WINDOWMANAGERTEST))
+
 OBJS_GL_BENCH = $(SOURCES_GL_BENCH:.cc=.o)
 OBJS_SYNCCONTROLTEST = $(SOURCES_SYNCCONTROLTEST:.cc=.o)
 OBJS_TEARTEST = $(SOURCES_TEARTEST:.cc=.o)
@@ -69,22 +89,36 @@ DEPS_ALL = $(SOURCES_ALL:.cc=.d)
 
 .PHONY: all clean
 
-all: $(GL_BENCH) $(SYNCCONTROLTEST) $(TEARTEST) $(WINDOWMANAGERTEST)
+EXE_PORTABLE = $(GL_BENCH) $(WINDOWMANAGERTEST)
+OBJ_PORTABLE = $(sort $(OBJS_GL_BENCH) $(OBJS_WINDOWMANAGERTEST))
+EXE_X_ONLY = $(SYNCCONTROLTEST) $(TEARTEST)
+OBJ_X_ONLY := $(sort $(OBJS_SYNCCONTROLTEST) $(OBJS_TEARTEST))
 
-$(SYNCCONTROLTEST): $(OBJS_COMMON) $(OBJS_SYNCCONTROLTEST)
-$(TEARTEST): $(OBJS_COMMON) $(OBJS_TEARTEST)
-$(GL_BENCH): $(OBJS_COMMON) $(OBJS_GL_BENCH)
-$(WINDOWMANAGERTEST): $(OBJS_COMMON) $(OBJS_WINDOWMANAGERTEST)
+all:: $(EXE_PORTABLE)
+ifneq ($(USE_X),)
+all:: $(EXE_X_ONLY)
+endif
+
+$(SYNCCONTROLTEST): $(OBJS_SYNCCONTROLTEST)
+$(TEARTEST): $(OBJS_TEARTEST)
+$(GL_BENCH): $(OBJS_GL_BENCH)
+$(WINDOWMANAGERTEST): $(OBJS_WINDOWMANAGERTEST)
 
 clean:
 	$(RM) $(GL_BENCH) $(SYNCCONTROLTEST) $(TEARTEST) $(WINDOWMANAGERTEST)
 	$(RM) $(OBJS_ALL) $(DEPS_ALL)
 	$(RM) *.o *.d .version
 
-$(GL_BENCH) $(SYNCCONTROLTEST) $(TEARTEST) $(WINDOWMANAGERTEST):
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@ $(LDLIBS)
+$(EXE_PORTABLE):
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@ $(LDLIBS) $(PLATFORM_LIBS)
 
-$(OBJS_ALL): %.o: %.cc
+$(EXE_X_ONLY):
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@ $(LDLIBS) -lX11 -lrt
+
+$(OBJ_PORTABLE): %.o: %.cc
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(PLATFORM_CFLAGS) -c $< -o $@ -MMD
+
+$(OBJS_X_ONLY): %.o: %.cc
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@ -MMD
 
 -include $(DEPS_ALL)
