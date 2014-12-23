@@ -380,6 +380,30 @@ class ChameleonVideoInput(ChameleonPort):
         return tuple(self.chameleond_proxy.DetectResolution(self.port_id))
 
 
+    def set_content_protection(self, enable):
+        """Sets the content protection state on the port.
+
+        @param enable: True to enable; False to disable.
+        """
+        self.chameleond_proxy.SetContentProtection(self.port_id, enable)
+
+
+    def is_content_protection_enabled(self):
+        """Returns True if the content protection is enabled on the port.
+
+        @return: True if the content protection is enabled; otherwise, False.
+        """
+        return self.chameleond_proxy.IsContentProtectionEnabled(self.port_id)
+
+
+    def is_video_input_encrypted(self):
+        """Returns True if the video input on the port is encrypted.
+
+        @return: True if the video input is encrypted; otherwise, False.
+        """
+        return self.chameleond_proxy.IsVideoInputEncrypted(self.port_id)
+
+
 class ChameleonAudioInput(ChameleonPort):
     """ChameleonAudioInput is an abstraction of an audio input port.
 

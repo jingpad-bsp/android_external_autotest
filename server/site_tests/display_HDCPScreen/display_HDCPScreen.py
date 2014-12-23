@@ -5,6 +5,7 @@
 """This is a server side to enable HDCP and verify screen."""
 
 import logging
+import time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -21,6 +22,18 @@ class display_HDCPScreen(test.test):
     and Chameleon.
     """
     version = 1
+
+    TEST_CONFIGS = [
+        # (enable_chameleon, request_cros, expected_cros_state,
+        #  expected_chameleon_state)
+        (True, 'Desired', 'Enabled', True),
+        (False, 'Desired', 'Desired', False),
+        (True, 'Undesired', 'Undesired', False),
+        (False, 'Undesired', 'Undesired', False),
+    ]
+
+    DURATION_UNPLUG_FOR_HDCP = 1
+    TIMEOUT_HDCP_SWITCH = 5
 
     def run_once(self, host, test_mirrored=False):
         if host.get_architecture() != 'arm':
@@ -49,29 +62,52 @@ class display_HDCPScreen(test.test):
             resolution = display_facade.get_external_resolution()
             logging.info('Detected resolution on CrOS: %dx%d', *resolution)
 
-            display_facade.set_content_protection('Desired')
+            original_cros_state = display_facade.get_content_protection()
+            was_chameleon_enabled = (
+                    chameleon_port.is_content_protection_enabled())
             try:
-                state = utils.wait_for_value(
-                        display_facade.get_content_protection, 'Enabled')
-                if state != 'Enabled':
-                    error_message = 'Failed to enable HDCP, state: %r' % state
-                    logging.error(error_message)
-                    errors.append(error_message)
-                    continue
+                for (enable_chameleon, request_cros, expected_cros_state,
+                     expected_chameleon_state) in self.TEST_CONFIGS:
+                    # Do unplug and plug to emulate switching to a different
+                    # display with a different content protection state.
+                    chameleon_port.unplug()
+                    logging.info('Set Chameleon HDCP: %r', enable_chameleon)
+                    chameleon_port.set_content_protection(enable_chameleon)
+                    time.sleep(self.DURATION_UNPLUG_FOR_HDCP)
+                    chameleon_port.plug()
+                    chameleon_port.wait_video_input_stable()
 
-                logging.info('Test screen under HDCP enabled...')
-                screen_test.test_screen_with_image(
-                        resolution, test_mirrored, errors)
+                    logging.info('Request CrOS HDCP: %s', request_cros)
+                    display_facade.set_content_protection(request_cros)
+
+                    state = utils.wait_for_value(
+                            display_facade.get_content_protection, 'Enabled',
+                            timeout_sec=self.TIMEOUT_HDCP_SWITCH)
+                    logging.info('Got CrOS state: %s', state)
+                    if state != expected_cros_state:
+                        error_message = ('Failed to enable HDCP, state: %r' %
+                                         state)
+                        logging.error(error_message)
+                        errors.append(error_message)
+                        continue
+
+                    encrypted = chameleon_port.is_video_input_encrypted()
+                    logging.info('Got Chameleon state: %r', encrypted)
+                    if encrypted != expected_chameleon_state:
+                        error_message = ('Chameleon found HDCP in wrong state: '
+                                         'expected %r but got %r' %
+                                         (expected_chameleon_state, encrypted))
+                        logging.error(error_message)
+                        errors.append(error_message)
+                        continue
+
+                    logging.info('Test screen under HDCP %s...',
+                                 'enabled' if encrypted else 'disabled')
+                    screen_test.test_screen_with_image(
+                            resolution, test_mirrored, errors)
             finally:
-                display_facade.set_content_protection('Undesired')
-
-            state = utils.wait_for_value(
-                    display_facade.get_content_protection, 'Undesired')
-            assert state == 'Undesired'
-
-            logging.info('Test screen under HDCP disabled...')
-            screen_test.test_screen_with_image(
-                    resolution, test_mirrored, errors)
+                display_facade.set_content_protection(original_cros_state)
+                chameleon_port.set_content_protection(was_chameleon_enabled)
 
         if errors:
             raise error.TestFail('; '.join(set(errors)))
