@@ -150,3 +150,62 @@ def set_capture_mute(is_mute):
     """
     args = [_CRAS_TEST_CLIENT, '--capture_mute', '1' if is_mute else '0']
     cmd_utils.execute(args)
+
+
+def node_type_is_plugged(node_type, server_info=None):
+    """Determine if there is any node of node_type plugged.
+
+    Parses server info to get the plugged state of certain node type.
+    The server info of interest is in this format:
+
+    ...(other info)...
+
+     ID   Vol   Plugged  L/R swapped Time      Type       Name
+    3:0    75   yes     no     1419323058   HEADPHONE  *Headphone
+    4:0     0   yes     no     1419323059   MIC        *Mic Jack
+
+    ...(other info)...
+
+
+    @param node_type: A str representing node type. e.g. 'HEADPHONE' or
+                      'MIC'.
+    @param server_info: A str containing server info. None to call
+                        dump_server_info in this function.
+
+    @returns: True if there is any node of node_type plugged. False otherwise.
+
+    @raises: ValueError: if cras server info format is not as expected.
+    """
+    # The label line
+    # ID   Vol   Plugged  L/R swapped Time      Type       Name
+    _MIN_LEN_LABELS = 8
+    _INDEX_LABEL_PLUGGED = 2
+    _INDEX_LABEL_TYPE = 6
+
+    # The value line
+    # 3:0    75   yes     no     1419323058   HEADPHONE  *Headphone
+    _MIN_LEN_VALUES = 7
+    _INDEX_VALUE_PLUGGED = 2
+    _INDEX_VALUE_TYPE = 5
+
+    if not server_info:
+        server_info = dump_server_info()
+    state = False
+    for line in server_info.splitlines():
+        line_split = line.split()
+        # Checks if a label line follows format.
+        if 'Plugged' in line_split and 'Type' in line_split:
+            if (len(line_split) < _MIN_LEN_LABELS or
+                line_split[_INDEX_LABEL_PLUGGED] != 'Plugged' or
+                line_split[_INDEX_LABEL_TYPE] != 'Type'):
+                raise ValueError('cras server info format is not as '
+                                 'expected')
+        if len(line_split) < _MIN_LEN_VALUES:
+            continue
+        # Checks a value line of interest.
+        # There might be other nodes of node_type, so keep searching if
+        # this node is not plugged.
+        if (line_split[_INDEX_VALUE_TYPE] == node_type and
+            line_split[_INDEX_VALUE_PLUGGED] == 'yes'):
+            state = True
+    return state

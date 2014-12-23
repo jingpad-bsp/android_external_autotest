@@ -25,6 +25,7 @@ from autotest_lib.client.common_lib.cros.graphite import es_utils
 from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.client.cros import constants as client_constants
 from autotest_lib.client.cros import cros_ui
+from autotest_lib.client.cros.audio import cras_utils
 from autotest_lib.server import autoserv_parser
 from autotest_lib.server import autotest
 from autotest_lib.server import constants
@@ -2424,6 +2425,24 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             return ['chameleon', 'chameleon:' + self.chameleon.get_label()]
         else:
             return None
+
+
+    @label_decorator('audio_loopback_dongle')
+    def has_loopback_dongle(self):
+        """Determine if an audio loopback dongle is plugged to this host.
+
+        @returns 'audio_loopback_dongle' when there is an audio loopback dongle
+                                         plugged to this host.
+                 None                    when there is no audio loopback dongle
+                                         plugged to this host.
+        """
+        server_info = self.run(command='cras_test_client --dump_s',
+                               ignore_status=True).stdout
+        if (cras_utils.node_type_is_plugged('HEADPHONE', server_info) and
+            cras_utils.node_type_is_plugged('MIC', server_info)):
+                return 'audio_loopback_dongle'
+        else:
+                return None
 
 
     @label_decorator('power_supply')
