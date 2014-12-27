@@ -571,7 +571,8 @@ def get_external_connector_name():
                              'not implemented')
     xrandr_output = get_xrandr_output_state()
     for output in xrandr_output.iterkeys():
-        if (output.startswith('HDMI') or
+        if xrandr_output[output] and (
+            output.startswith('HDMI') or
             output.startswith('DP') or
             output.startswith('DVI') or
             output.startswith('VGA')):
