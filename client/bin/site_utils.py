@@ -140,7 +140,7 @@ def get_process_list(name, command_line=None):
     name = '\'%s.*%s\'' % (name, command_line) if command_line else name
     str_pid = utils.system_output(
             'pgrep %s %s' % (flag, name), ignore_status=True).rstrip()
-    return str_pid
+    return str_pid.split()
 
 
 def nuke_process_by_name(name, with_prejudice=False):
