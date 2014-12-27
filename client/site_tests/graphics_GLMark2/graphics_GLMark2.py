@@ -28,6 +28,7 @@ description_table = string.maketrans(":,=;", ".-__")
 description_delete = "<>"
 
 class graphics_GLMark2(test.test):
+    """Runs glmark2, which benchmarks only calls compatible with OpenGL ES 2.0"""
     version = 1
     preserve_srcdir = True
     _services = None
@@ -37,8 +38,10 @@ class graphics_GLMark2(test.test):
         self.job.setup_dep(['glmark2'])
 
     def initialize(self):
-        self._services = service_stopper.ServiceStopper(['ui'])
         self.GSC = graphics_utils.GraphicsStateChecker()
+        # If UI is running, we must stop it and restore later.
+        self._services = service_stopper.ServiceStopper(['ui'])
+        self._services.stop_services()
 
     def cleanup(self):
         if self._services:
@@ -74,18 +77,8 @@ class graphics_GLMark2(test.test):
             options.append('-b :duration=0.2')
         else:
             options.append('-b :duration=2')
-        cmd = '%s %s' % (glmark2, ' '.join(options))
-
-        # If UI is running, we must stop it and restore later.
-        self._services.stop_services()
-
-        # Just sending SIGTERM to X is not enough; we must wait for it to
-        # really die before we start a new X server (ie start ui).
-        # The term_process function of /sbin/killers makes sure that all X
-        # process are really dead before returning; this is what stop ui uses.
-        kill_cmd = '. /sbin/killers; term_process "^X$"'
-        cmd = 'X :1 vt1 & sleep 1; chvt 1 && DISPLAY=:1 %s; %s' % (cmd,
-                                                                   kill_cmd)
+        cmd = 'X :1 vt1 & sleep 1; chvt 1 && DISPLAY=:1 %s %s' % (
+          glmark2, ' '.join(options))
 
         if os.environ.get('CROS_FACTORY'):
             from autotest_lib.client.cros import factory_setup_modules
@@ -100,10 +93,16 @@ class graphics_GLMark2(test.test):
             if not utils.wait_for_cool_machine():
                 raise error.TestFail('Could not get cold machine.')
 
-        result = utils.run(cmd,
-                           stderr_is_expected = False,
-                           stdout_tee = utils.TEE_TO_LOGS,
-                           stderr_tee = utils.TEE_TO_LOGS)
+        try:
+            result = utils.run(cmd,
+                               stderr_is_expected = False,
+                               stdout_tee = utils.TEE_TO_LOGS,
+                               stderr_tee = utils.TEE_TO_LOGS)
+        finally:
+            # Just sending SIGTERM to X is not enough; we must wait for it to
+            # really die before we start a new X server (ie start ui).
+            utils.ensure_processes_are_dead_by_name('^X$')
+
         logging.info(result)
         for line in result.stderr.splitlines():
             if line.startswith('Error:'):

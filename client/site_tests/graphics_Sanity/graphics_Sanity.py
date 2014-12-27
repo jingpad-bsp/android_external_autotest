@@ -34,12 +34,14 @@ class graphics_Sanity(test.test):
 
 
     def initialize(self):
+        # If UI is running, we must stop it and restore later.
         self._services = service_stopper.ServiceStopper(['ui'])
+        self._services.stop_services()
 
 
     def cleanup(self):
         if self._services:
-            self._services.restore_services()
+          self._services.restore_services()
 
 
     def run_once(self):
@@ -49,24 +51,24 @@ class graphics_Sanity(test.test):
         """
         # TODO(ihf): Remove this once GLBench works on freon.
         if utils.is_freon():
-            return
+          return
 
         dep = 'glbench'
         dep_dir = os.path.join(self.autodir, 'deps', dep)
         self.job.install_pkg(dep, 'dep', dep_dir)
 
         screenshot1_reference = os.path.join(self.bindir,
-                                            "screenshot1_reference.png")
+                                             "screenshot1_reference.png")
         screenshot1_generated = os.path.join(self.resultsdir,
-                                            "screenshot1_generated.png")
+                                             "screenshot1_generated.png")
         screenshot1_resized = os.path.join(self.resultsdir,
-                                            "screenshot1_generated_resized.png")
+                                           "screenshot1_generated_resized.png")
         screenshot2_reference = os.path.join(self.bindir,
-                                            "screenshot2_reference.png")
+                                             "screenshot2_reference.png")
         screenshot2_generated = os.path.join(self.resultsdir,
-                                            "screenshot2_generated.png")
+                                             "screenshot2_generated.png")
         screenshot2_resized = os.path.join(self.resultsdir,
-                                            "screenshot2_generated_resized.png")
+                                           "screenshot2_generated_resized.png")
 
         exefile = os.path.join(self.autodir, 'deps/glbench/windowmanagertest')
 
@@ -82,21 +84,16 @@ class graphics_Sanity(test.test):
         options += ' -colorspace RGB -depth 8 -window root'
         options += ' %s"' % screenshot2_generated
 
-        cmd = "%s %s" % (exefile, options)
-        # Just sending SIGTERM to X is not enough; we must wait for it to
-        # really die before we start a new X server (ie start ui).
-        # The term_process function of /sbin/killers makes sure that all X
-        # process are really dead before returning; this is what stop ui uses.
-        kill_cmd = '. /sbin/killers; term_process "^X$"'
-        cmd = 'X :1 vt1 & sleep 1; chvt 1 && DISPLAY=:1 %s; %s' % (cmd,
-                                                                   kill_cmd)
-
-        # If UI is running, we must stop it and restore later.
-        self._services.stop_services()
-
-        utils.run(cmd,
-                  stdout_tee=utils.TEE_TO_LOGS,
-                  stderr_tee=utils.TEE_TO_LOGS)
+        cmd = 'X :1 vt1 & sleep 1; chvt 1 && DISPLAY=:1 %s %s' % (exefile,
+                                                                  options)
+        try:
+          utils.run(cmd,
+                    stdout_tee=utils.TEE_TO_LOGS,
+                    stderr_tee=utils.TEE_TO_LOGS)
+        finally:
+          # Just sending SIGTERM to X is not enough; we must wait for it to
+          # really die before we start a new X server (ie start ui).
+          utils.ensure_processes_are_dead_by_name('^X$')
 
         # convert -resize -depth 8 does not work. But resize honors previously
         # chosen bit depth.

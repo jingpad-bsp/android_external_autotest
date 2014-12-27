@@ -20,6 +20,7 @@ from autotest_lib.client.cros.graphics import graphics_utils
 
 
 class graphics_GLBench(test.test):
+  """Run glbench, a benchmark that times graphics intensive activities."""
   version = 1
   preserve_srcdir = True
 
@@ -58,8 +59,10 @@ class graphics_GLBench(test.test):
     self.job.setup_dep(['glbench'])
 
   def initialize(self):
-    self._services = service_stopper.ServiceStopper(['ui'])
     self.GSC = graphics_utils.GraphicsStateChecker()
+    # If UI is running, we must stop it and restore later.
+    self._services = service_stopper.ServiceStopper(['ui'])
+    self._services.stop_services()
 
   def cleanup(self):
     if self._services:
@@ -73,18 +76,30 @@ class graphics_GLBench(test.test):
       self.write_perf_keyval(keyvals)
 
   def report_temperature(self, keyname):
+    """Report current max observed temperature with given keyname.
+
+    @param keyname: key to be used when reporting perf value.
+    """
     temperature = utils.get_temperature_input_max()
     logging.info('%s = %f degree Celsius', keyname, temperature)
     self.output_perf_value(description=keyname, value=temperature,
                            units='Celsius', higher_is_better=False)
 
   def report_temperature_critical(self, keyname):
+    """Report temperature at which we will see throttling with given keyname.
+
+    @param keyname: key to be used when reporting perf value.
+    """
     temperature = utils.get_temperature_critical()
     logging.info('%s = %f degree Celsius', keyname, temperature)
     self.output_perf_value(description=keyname, value=temperature,
                            units='Celsius', higher_is_better=False)
 
   def is_no_checksum_test(self, testname):
+    """Check if given test requires no screenshot checksum.
+
+    @param testname: name of test to check.
+    """
     for prefix in self.no_checksum_tests:
       if testname.startswith(prefix):
         return True
@@ -112,42 +127,38 @@ class graphics_GLBench(test.test):
     # for thermals to normalize. Test should complete in 15-20 seconds.
     if hasty:
       options += ' -hasty'
-    cmd = '%s %s' % (exefile, options)
 
-    # If UI is running, we must stop it and restore later.
-    self._services.stop_services()
-
-    # Just sending SIGTERM to X is not enough; we must wait for it to
-    # really die before we start a new X server (ie start ui).
-    # The term_process function of /sbin/killers makes sure that all X
-    # process are really dead before returning; this is what stop ui uses.
-    kill_cmd = '. /sbin/killers; term_process "^X$"'
-    cmd = 'X :1 vt1 & sleep 1; chvt 1 && DISPLAY=:1 %s; %s' % (cmd, kill_cmd)
+    cmd = 'X :1 vt1 & sleep 1; chvt 1 && DISPLAY=:1 %s %s' % (exefile, options)
     summary = None
-    if hasty:
-      # On BVT the test will not monitor thermals so we will not verify its
-      # correct status using PerControl
-      summary = utils.run(cmd,
-                          stderr_is_expected = False,
-                          stdout_tee = utils.TEE_TO_LOGS,
-                          stderr_tee = utils.TEE_TO_LOGS).stdout
-    else:
-      self.report_temperature_critical('temperature_critical')
-      self.report_temperature('temperature_1_start')
-      # Wrap the test run inside of a PerfControl instance to make machine
-      # behavior more consistent.
-      with perf.PerfControl() as pc:
-        if not pc.verify_is_valid():
-          raise error.TestError(pc.get_error_reason())
-        self.report_temperature('temperature_2_before_test')
-
-        # Run the test. If it gets the CPU too hot pc should notice.
+    try:
+      if hasty:
+        # On BVT the test will not monitor thermals so we will not verify its
+        # correct status using PerfControl
         summary = utils.run(cmd,
                             stderr_is_expected = False,
                             stdout_tee = utils.TEE_TO_LOGS,
                             stderr_tee = utils.TEE_TO_LOGS).stdout
-        if not pc.verify_is_valid():
-          raise error.TestError(pc.get_error_reason())
+      else:
+        self.report_temperature_critical('temperature_critical')
+        self.report_temperature('temperature_1_start')
+        # Wrap the test run inside of a PerfControl instance to make machine
+        # behavior more consistent.
+        with perf.PerfControl() as pc:
+          if not pc.verify_is_valid():
+            raise error.TestError(pc.get_error_reason())
+          self.report_temperature('temperature_2_before_test')
+
+          # Run the test. If it gets the CPU too hot pc should notice.
+          summary = utils.run(cmd,
+                              stderr_is_expected = False,
+                              stdout_tee = utils.TEE_TO_LOGS,
+                              stderr_tee = utils.TEE_TO_LOGS).stdout
+          if not pc.verify_is_valid():
+            raise error.TestError(pc.get_error_reason())
+    finally:
+      # Just sending SIGTERM to X is not enough; we must wait for it to
+      # really die before we start a new X server (ie start ui).
+      utils.ensure_processes_are_dead_by_name('^X$')
 
     # Write a copy of stdout to help debug failures.
     results_path = os.path.join(self.outputdir, 'summary.txt')

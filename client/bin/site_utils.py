@@ -1,4 +1,4 @@
-#pylint: disable-msg=C0111
+#pylint: disable=C0111
 
 # Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -144,6 +144,15 @@ def get_process_list(name, command_line=None):
 
 
 def nuke_process_by_name(name, with_prejudice=False):
+    """Tell the oldest process specified by name to exit.
+
+    Arguments:
+      name: process name specifier, as understood by pgrep.
+      with_prejudice: if True, don't allow for graceful exit.
+
+    Raises:
+      error.AutoservPidAlreadyDeadError: no existing process matches name.
+    """
     try:
         pid = get_oldest_pid_by_name(name)
     except Exception as e:
@@ -156,6 +165,30 @@ def nuke_process_by_name(name, with_prejudice=False):
         utils.nuke_pid(pid, [signal.SIGKILL])
     else:
         utils.nuke_pid(pid)
+
+
+def ensure_processes_are_dead_by_name(name, timeout_sec=10):
+    """Terminate all processes specified by name and ensure they're gone.
+
+    Arguments:
+      name: process name specifier, as understood by pgrep.
+      timeout_sec: maximum number of seconds to wait for processes to die.
+
+    Raises:
+      error.AutoservPidAlreadyDeadError: no existing process matches name.
+      site_utils.TimeoutError: if processes still exist after timeout_sec.
+    """
+    def list_and_kill_processes(name):
+        process_list = get_process_list(name)
+        try:
+            for pid in [int(str_pid) for str_pid in process_list]:
+                utils.nuke_pid(pid)
+        except error.AutoservPidAlreadyDeadError:
+            pass
+        return process_list
+
+    poll_for_condition(lambda: list_and_kill_processes(name) == [],
+                       timeout=timeout_sec)
 
 
 def poll_for_condition(
@@ -173,7 +206,7 @@ def poll_for_condition(
       The true value that caused the poll loop to terminate.
 
     Raises:
-        'exception' arg if supplied; site_utils.TimeoutError otherwise
+      'exception' arg if supplied; site_utils.TimeoutError otherwise
     """
     start_time = time.time()
     while True:
