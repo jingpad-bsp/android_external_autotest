@@ -2,17 +2,18 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "Chrome OS Project"
-NAME = "video_VideoSanity"
-PURPOSE = "Verify that Chrome media and video works"
+AUTHOR = 'Chrome OS Project, chromeos-video@google.com'
+NAME = 'video_VideoSanity'
+PURPOSE = 'Verify that Chrome media and video works'
 CRITERIA = """
 This test will fail if Chrome media is not enable or video doesn't play.
 """
-SUITE = "experimental"
-TIME = "SHORT"
-TEST_CATEGORY = "General"
-TEST_CLASS = "video"
-TEST_TYPE = "client"
+SUITE = 'bvt-cq'
+TIME = 'SHORT'
+TEST_CATEGORY = 'General'
+TEST_CLASS = 'video'
+TEST_TYPE = 'client'
+JOB_RETRIES = 2
 BUG_TEMPLATE = {
     'labels': ['OS-Chrome', 'Cr-OS-Kernel-Video'],
 }

@@ -2,19 +2,20 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "Chrome OS Team"
-NAME = "desktopui_FlashSanityCheck"
-PURPOSE = "Basic sanity check of Flash suppport in Chrome."
-CRITERIA = "This test will fail if flash causes a segfault."
-SUITE = "experimental"
-TIME = "SHORT"
-TEST_CATEGORY = "Functional"
-TEST_CLASS = "desktopui"
-TEST_TYPE = "client"
+AUTHOR = 'Chrome OS Project, rohitbm@chromium.org'
+NAME = 'desktopui_FlashSanityCheck'
+PURPOSE = 'Basic sanity check of Flash suppport in Chrome.'
+CRITERIA = 'This test will fail if flash causes a segfault.'
+SUITE = 'bvt-cq'
+TIME = 'SHORT'
+TEST_CATEGORY = 'Functional'
+TEST_CLASS = 'desktopui'
+TEST_TYPE = 'client'
+JOB_RETRIES = 2
 
 DOC = """
 This test logs in, opens a new window, and navigates to a .swf file on a
 locally-running webserver to validate that flash doesn't crash the browser.
 """
 
-job.run_test("desktopui_FlashSanityCheck")
+job.run_test('desktopui_FlashSanityCheck')
