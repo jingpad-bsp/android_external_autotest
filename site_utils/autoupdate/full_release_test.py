@@ -39,6 +39,7 @@ except ImportError:
 # Autotest pylint is more restrictive than it should with args.
 #pylint: disable=C0111
 
+
 # Global reference objects.
 _release_info = release_util.ReleaseInfo()
 
@@ -50,7 +51,20 @@ _autotest_url_format = r'http://%(host)s/afe/#tab_id=view_job&object_id=%(job)s'
 _default_dump_dir = os.path.realpath(
         os.path.join(os.path.dirname(__file__), '..', '..', 'server',
                      'site_tests', test_control.get_test_name()))
+# Matches delta format name and returns groups for branches and release numbers.
+_delta_re = re.compile(
+        'chromeos_'
+        '(?P<s_version>R[0-9]+-[0-9a-z.\-]+)_'
+        '(?P<t_version>R[0-9]+-[0-9a-z.\-]+)_[\w.]+')
+
+_build_version_re = re.compile(
+        '(?P<branch>R[0-9]+)-(?P<release>[0-9a-z.\-]+)')
 _build_version = '%(branch)s-%(release)s'
+
+
+# Extracts just the main version from a version that may contain attempts or
+# a release candidate suffix i.e. 3928.0.0-a2 -> base_version=3928.0.0.
+_version_re = re.compile('(?P<base_version>[0-9.]+)(?:\-[a-z]+[0-9]+])*')
 
 
 class FullReleaseTestError(BaseException):
@@ -183,12 +197,6 @@ class TestConfigGenerator(object):
         @param source_uri:  URI of the source image/payload.
 
         """
-        # Extracts just the main version from a version that may contain
-        # attempts or a release candidate suffix i.e. 3928.0.0-a2 ->
-        # base_version=3928.0.0.
-        _version_re = re.compile(
-            '(?P<base_version>[0-9.]+)(?:\-[a-z]+[0-9]+])*')
-
         # Pass only the base versions without any build specific suffixes.
         source_version = _version_re.match(source_release).group('base_version')
         target_version = _version_re.match(self.tested_release).group(
@@ -203,19 +211,13 @@ class TestConfigGenerator(object):
         """Returns a branch, release tuple from a full build_version.
 
         Args:
-            build_version: build version to parse e.g. 'R27-3905.0.0'
+            build_version: Delta filename to parse e.g.
+                      'chromeos_R27-3905.0.0_R27-3905.0.0_stumpy_delta_dev.bin'
         """
-        version = r'[0-9a-z.\-]+'
-        # The date portion only appears in non-release builds.
-        date = r'([0-9]+_[0-9]+_[0-9]+_[0-9]+)*'
-        # Returns groups for branches and release numbers from build version.
-        _build_version_re = re.compile(
-            '(?P<branch>R[0-9]+)-(?P<release>' + version + date + version + ')')
-
         match = _build_version_re.match(build_version)
         if not match:
             logging.warning('version %s did not match version format',
-                            build_version)
+                         build_version)
             return None
 
         return match.group('branch'), match.group('release')
@@ -231,17 +233,6 @@ class TestConfigGenerator(object):
 
         Returns: tuple with source_version, and target_version.
         """
-        version = r'[0-9a-z.\-]+'
-        # The date portion only appears in non-release builds.
-        date = r'([0-9]+_[0-9]+_[0-9]+_[0-9]+)*'
-        # Matches delta format name and returns groups for source and target
-        # versions.
-        _delta_re = re.compile(
-            'chromeos_'
-            '(?P<s_version>R[0-9]+-' + version + date + version + ')'
-            '_'
-            '(?P<t_version>R[0-9]+-' + version + date + version + ')'
-            '_[\w.]+')
         match = _delta_re.match(filename)
         if not match:
             logging.warning('filename %s did not match delta format', filename)
@@ -280,12 +271,13 @@ class TestConfigGenerator(object):
                     self._parse_delta_filename(file_name))
             _, source_release = self._parse_build_version(source_version)
 
-            if target_version == source_version:
-                source_uri = self.archive_url
-            else:
-                source_uri = self._get_source_uri_from_build_version(
-                        source_version)
-
+            # The target version should contain the tested release otherwise
+            # this is a malformed delta i.e. 940.0.1 in R28-940.0.1-a1.
+            if self.tested_release not in target_version:
+                raise FullReleaseTestError(
+                        'delta target release %s does not contain %s (%s)',
+                        target_version, self.tested_release, self.board)
+            source_uri = self._get_source_uri_from_build_version(source_version)
             if not source_uri:
                 logging.warning('cannot find source for %s, %s', self.board,
                                 source_version)
