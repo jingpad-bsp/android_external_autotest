@@ -114,7 +114,8 @@ class ChameleonScreenTest(object):
                 if error is None:
                     return error
                 elif retry_count == 0:
-                    error_list.append(error)
+                    if error_list is not None:
+                        error_list.append(error)
                     return error
                 else:
                     logging.info('Retry screen comparison again...')
