@@ -31,7 +31,7 @@ three options:
   --since/-s DATE/TIME - Specifies a start time for the search
       range. (no default)
   --duration/-d HOURS - Specifies the length of the search interval
-      in hours. (default: 12 hours)
+      in hours. (default: 24 hours)
 
 Any two time options completely specify the time interval.  If only
 one option is provided, these defaults are used:
@@ -112,7 +112,7 @@ _DIAGNOSIS_IDS = ['??', '--', 'OK', 'NO']
 
 # Default time interval for the --duration option when a value isn't
 # specified on the command line.
-_DEFAULT_DURATION = 12
+_DEFAULT_DURATION = 24
 
 
 def _parse_time(time_string):
