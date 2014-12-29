@@ -36,6 +36,8 @@ class display_HotPlugNoisy(test.test):
     # pulse segments in msec that end with unplugged state
     PULSES_UNPLUGGED = PULSES_PLUGGED + [2048]
 
+    REPLUG_DELAY_SEC = 1
+
 
     def run_once(self, host, test_mirrored=False):
         factory = remote_facade_factory.RemoteFacadeFactory(host)
@@ -89,8 +91,26 @@ class display_HotPlugNoisy(test.test):
                     continue
 
                 if plugged_after_noise:
-                    screen_test.test_screen_with_image(
-                            resolution, test_mirrored, errors)
+                    err_on_1st_trial = None
+                    if chameleon_port.wait_video_input_stable():
+                        err_on_1st_trial = screen_test.test_screen_with_image(
+                                resolution, test_mirrored)
+                    else:
+                        err_on_1st_trial = 'video input not stable'
+                    if err_on_1st_trial:
+                        # When something goes wrong after the noise, a normal
+                        # user would try to re-plug the cable to recover.
+                        # We emulate this behavior below and report error if
+                        # the problem persists.
+                        logging.error('Error possibly flaky: %s',
+                                err_on_1st_trial)
+                        logging.info('Replug and retry the screen test...')
+                        chameleon_port.unplug()
+                        time.sleep(self.REPLUG_DELAY_SEC)
+                        chameleon_port.plug()
+                        chameleon_port.wait_video_input_stable()
+                        screen_test.test_screen_with_image(
+                                resolution, test_mirrored, errors)
                 else:
                     time.sleep(1)
 
