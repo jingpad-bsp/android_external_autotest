@@ -34,36 +34,23 @@ class firmware_CorruptFwBodyB(FirmwareTest):
         RO_enabled = (self.faft_client.bios.get_preamble_flags('b') &
                       vboot.PREAMBLE_USE_RO_NORMAL)
         logging.info("Corrupt firmware body B.")
-        self.check_state((self.checkers.crossystem_checker, {
-                              'mainfw_act': 'A',
-                              'tried_fwb': '0',
-                              }))
+        self.check_state((self.checkers.fw_tries_checker, 'A'))
         self.faft_client.bios.corrupt_body('b')
         self.reboot_warm()
 
         logging.info("Expected firmware A boot and set try_fwb flag.")
-        self.check_state((self.checkers.crossystem_checker, {
-                              'mainfw_act': 'A',
-                              'tried_fwb': '0',
-                              }))
-        if self.fw_vboot2:
-            self.faft_client.system.set_fw_try_next('B')
-        else:
-            self.faft_client.system.set_try_fw_b()
+        self.check_state((self.checkers.fw_tries_checker, 'A'))
+        self.try_fwb(1)
         self.reboot_warm()
 
         logging.info("If RO enabled, expected firmware B boot; otherwise, "
                      "still A boot since B is corrupted. Restore B later.")
-        expected_slot = 'B' if RO_enabled else 'A'
-        self.check_state((self.checkers.crossystem_checker, {
-                              'mainfw_act': expected_slot,
-                              'tried_fwb': '0' if self.fw_vboot2 else '1',
-                              }))
+        if RO_enabled:
+            self.check_state((self.checkers.fw_tries_checker, 'B'))
+        else:
+            self.check_state((self.checkers.fw_tries_checker, ('A', False)))
         self.faft_client.bios.restore_body('b')
         self.reboot_warm()
 
         logging.info("Final check and done.")
-        self.check_state((self.checkers.crossystem_checker, {
-                         'mainfw_act': expected_slot if self.fw_vboot2 else 'A',
-                         'tried_fwb': '0',
-                         }))
+        self.check_state((self.checkers.fw_tries_checker, 'A'))

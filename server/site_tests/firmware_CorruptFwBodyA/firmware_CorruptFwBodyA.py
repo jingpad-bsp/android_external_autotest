@@ -37,40 +37,25 @@ class firmware_CorruptFwBodyA(FirmwareTest):
             # hurt the booting results.
             logging.info('The firmware USE_RO_NORMAL flag is enabled.')
             logging.info("Corrupt firmware body A.")
-            self.check_state((self.checkers.crossystem_checker, {
-                                  'mainfw_act': 'A',
-                                  'tried_fwb': '0',
-                                  }))
+            self.check_state((self.checkers.fw_tries_checker, 'A'))
             self.faft_client.bios.corrupt_body('a')
             self.reboot_warm()
 
             logging.info("Still expected firmware A boot and restore.")
-            self.check_state((self.checkers.crossystem_checker, {
-                                  'mainfw_act': 'A',
-                                  'tried_fwb': '0',
-                                  }))
+            self.check_state((self.checkers.fw_tries_checker, 'A'))
             self.faft_client.bios.restore_body('a')
         else:
             logging.info('The firmware USE_RO_NORMAL flag is disabled.')
             logging.info("Corrupt firmware body A.")
-            self.check_state((self.checkers.crossystem_checker, {
-                                  'mainfw_act': 'A',
-                                  'tried_fwb': '0',
-                                  }))
+            self.check_state((self.checkers.fw_tries_checker, 'A'))
             self.faft_client.bios.corrupt_body('a')
             self.reboot_warm()
 
             logging.info("Expected firmware B boot and restore firmware A.")
-            self.check_state((self.checkers.crossystem_checker, {
-                                  'mainfw_act': 'B',
-                                  'tried_fwb': '0',
-                                  }))
+            self.check_state((self.checkers.fw_tries_checker, ('B', False)))
             self.faft_client.bios.restore_body('a')
             self.reboot_warm()
 
             expected_slot = 'B' if self.fw_vboot2 else 'A'
             logging.info("Expected firmware " + expected_slot + " boot, done.")
-            self.check_state((self.checkers.crossystem_checker, {
-                                  'mainfw_act': expected_slot,
-                                  'tried_fwb': '0',
-                                  }))
+            self.check_state((self.checkers.fw_tries_checker, expected_slot))

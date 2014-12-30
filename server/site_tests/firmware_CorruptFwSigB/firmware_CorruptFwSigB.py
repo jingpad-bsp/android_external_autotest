@@ -26,34 +26,19 @@ class firmware_CorruptFwSigB(FirmwareTest):
     def run_once(self):
         logging.info("Expected firmware A boot and corrupt "
                      "firmware signature B.")
-        self.check_state((self.checkers.crossystem_checker, {
-                              'mainfw_act': 'A',
-                              'tried_fwb': '0',
-                              }))
+        self.check_state((self.checkers.fw_tries_checker, 'A'))
         self.faft_client.bios.corrupt_sig('b')
         self.reboot_warm()
 
         logging.info("Expected firmware A boot and set try_fwb flag.")
-        self.check_state((self.checkers.crossystem_checker, {
-                              'mainfw_act': 'A',
-                              'tried_fwb': '0',
-                              }))
-        if self.fw_vboot2:
-            self.faft_client.system.set_fw_try_next('B')
-        else:
-            self.faft_client.system.set_try_fw_b()
+        self.check_state((self.checkers.fw_tries_checker, 'A'))
+        self.try_fwb()
         self.reboot_warm()
 
         logging.info("Expected firmware A boot and restore firmware B.")
-        self.check_state((self.checkers.crossystem_checker, {
-                              'mainfw_act': 'A',
-                              'tried_fwb': '0' if self.fw_vboot2 else '1',
-                              }))
+        self.check_state((self.checkers.fw_tries_checker, ('A', False)))
         self.faft_client.bios.restore_sig('b')
         self.reboot_warm()
 
         logging.info("Final check and done.")
-        self.check_state((self.checkers.crossystem_checker, {
-                              'mainfw_act': 'A',
-                              'tried_fwb': '0',
-                              }))
+        self.check_state((self.checkers.fw_tries_checker, 'A'))

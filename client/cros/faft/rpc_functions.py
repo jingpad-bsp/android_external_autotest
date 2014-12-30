@@ -251,13 +251,22 @@ class RPCFunctions(object):
         """
         return self._chromeos_interface.get_root_part()
 
-    def _system_set_try_fw_b(self):
-        """Set 'Try Frimware B' flag in crossystem."""
-        self._chromeos_interface.cs.fwb_tries = 1
+    def _system_set_try_fw_b(self, count=1):
+        """Set 'Try Frimware B' flag in crossystem.
 
-    def _system_set_fw_try_next(self, next):
-        """Set fw_try_next to A or B"""
+        @param count: # times to try booting into FW B
+        """
+        self._chromeos_interface.cs.fwb_tries = count
+
+    def _system_set_fw_try_next(self, next, count=0):
+        """Set fw_try_next to A or B
+
+        @param next: Next FW to reboot to (A or B)
+        @param count: # of times to try booting into FW <next>
+        """
         self._chromeos_interface.cs.fw_try_next = next
+        if count:
+            self._chromeos_interface.cs.fw_try_count = count
 
     def _system_get_fw_vboot2(self):
         """Get fw_vboot2"""

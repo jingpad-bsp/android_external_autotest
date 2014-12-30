@@ -1663,3 +1663,21 @@ class FirmwareTest(FAFTBase):
         self.wait_for_client()
 
         logging.info('Successfully restored CGPT table.')
+
+    def try_fwb(self, count=0):
+        """set to try booting FWB count # times
+
+        Wrapper to set fwb_tries for vboot1 and fw_try_count,fw_try_next for
+        vboot2
+
+        @param count: an integer specifying value to program into
+                      fwb_tries(vb1)/fw_try_next(vb2)
+        """
+        if self.fw_vboot2:
+            self.faft_client.system.set_fw_try_next('B', count)
+        else:
+            # vboot1: we need to boot into fwb at least once
+            if not count:
+                count = count + 1
+            self.faft_client.system.set_try_fw_b(count)
+

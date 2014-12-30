@@ -91,25 +91,20 @@ class firmware_UpdateKernelSubkeyVersion(FirmwareTest):
     def run_once(self):
         logging.info("Update firmware with new kernel subkey version.")
         self.check_state((self.checkers.crossystem_checker, {
-                          'mainfw_act': 'A',
-                          'tried_fwb': '0',
                           'fwid': self._fwid
                           }))
+        self.check_state((self.checkers.fw_tries_checker, 'A'))
         self.faft_client.updater.run_autoupdate('test')
         self.reboot_warm()
 
         logging.info("Check firmware data key version and Rollback.")
-        self.check_state((self.checkers.crossystem_checker, {
-                          'mainfw_act': 'B',
-                          'tried_fwb': '1'
-                          }))
+        self.check_state((self.checkers.fw_tries_checker, 'B'))
         self.run_bootok_and_recovery()
         self.reboot_warm()
 
         logging.info("Check Rollback version.")
         self.check_state((self.checkers.crossystem_checker, {
-                          'mainfw_act': 'A',
-                          'tried_fwb': '0',
                           'fwid': self._fwid
                           }))
+        self.check_state((self.checkers.fw_tries_checker, 'A'))
         self.check_kernel_subkey_version(self._update_version - 1)

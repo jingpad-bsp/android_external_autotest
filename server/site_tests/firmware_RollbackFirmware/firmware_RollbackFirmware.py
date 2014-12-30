@@ -40,20 +40,12 @@ class firmware_RollbackFirmware(FirmwareTest):
             recovery_reason = vboot.RECOVERY_REASON['RW_FW_ROLLBACK']
 
         logging.info("Rollback firmware A.")
-        self.check_state((self.checkers.crossystem_checker, {
-                           'mainfw_act': 'A',
-                           'mainfw_type': 'developer' if dev_mode else 'normal',
-                           'tried_fwb': '0',
-                           }))
+        self.check_state((self.checkers.fw_tries_checker, 'A'))
         self.faft_client.bios.move_version_backward('a')
         self.reboot_warm()
 
         logging.info("Expected firmware B boot and rollback firmware B.")
-        self.check_state((self.checkers.crossystem_checker, {
-                           'mainfw_act': 'B',
-                           'mainfw_type': ('normal', 'developer'),
-                           'tried_fwb': '0',
-                           }))
+        self.check_state((self.checkers.fw_tries_checker, ('B', False)))
         self.faft_client.bios.move_version_backward('b')
         self.reboot_warm(wait_for_dut_up=False)
         if not dev_mode:
@@ -70,8 +62,4 @@ class firmware_RollbackFirmware(FirmwareTest):
 
         expected_slot = 'B' if self.fw_vboot2 else 'A'
         logging.info("Expected firmware " + expected_slot + " boot, done.")
-        self.check_state((self.checkers.crossystem_checker, {
-                           'mainfw_act': expected_slot,
-                           'mainfw_type': 'developer' if dev_mode else 'normal',
-                           'tried_fwb': '0',
-                           }))
+        self.check_state((self.checkers.fw_tries_checker, expected_slot))

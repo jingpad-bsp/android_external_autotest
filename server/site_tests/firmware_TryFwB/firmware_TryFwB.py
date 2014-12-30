@@ -25,26 +25,14 @@ class firmware_TryFwB(FirmwareTest):
 
     def run_once(self):
         logging.info("Set fwb_tries flag")
-        self.check_state((self.checkers.crossystem_checker, {
-                          'mainfw_act': 'A',
-                          'tried_fwb': '0',
-                          }))
-        if self.fw_vboot2:
-            self.faft_client.system.set_fw_try_next('B')
-        else:
-            self.faft_client.system.set_try_fw_b()
+        self.check_state((self.checkers.fw_tries_checker, 'A'))
+        self.try_fwb()
         self.reboot_warm()
 
         logging.info("Expected firmware B boot, reboot")
-        self.check_state((self.checkers.crossystem_checker, {
-                          'mainfw_act': 'B',
-                          'tried_fwb': '0' if self.fw_vboot2 else '1',
-                          }))
+        self.check_state((self.checkers.fw_tries_checker, 'B'))
         self.reboot_warm()
 
         expected_slot = 'B' if self.fw_vboot2 else 'A'
         logging.info("Expected firmware " + expected_slot + " boot, done.")
-        self.check_state((self.checkers.crossystem_checker, {
-                          'mainfw_act': expected_slot,
-                          'tried_fwb': '0',
-                          }))
+        self.check_state((self.checkers.fw_tries_checker, expected_slot))

@@ -96,35 +96,26 @@ class firmware_UpdateFirmwareDataKeyVersion(FirmwareTest):
     def run_once(self):
         logging.info("Update firmware with new datakey version.")
         self.check_state((self.checkers.crossystem_checker, {
-                          'mainfw_act': 'A',
-                          'tried_fwb': '0',
-                          'mainfw_type': 'normal',
                           'fwid': self._fwid
                           }))
+        self.check_state((self.checkers.fw_tries_checker, 'A'))
         self.faft_client.updater.run_autoupdate('test')
         self.reboot_warm()
 
         logging.info("Check firmware data key version and Rollback.")
-        self.check_state((self.checkers.crossystem_checker, {
-                          'mainfw_act': 'B',
-                          'tried_fwb': '1'
-                          }))
+        self.check_state((self.checkers.fw_tries_checker, 'B'))
         self.faft_client.updater.run_bootok('test')
         self.reboot_warm()
 
         logging.info("Check firmware and TPM version, then recovery.")
-        self.check_state((self.checkers.crossystem_checker, {
-                          'mainfw_act': 'A',
-                          'tried_fwb': '0'
-                           }))
+        self.check_state((self.checkers.fw_tries_checker, 'A'))
         self.check_version_and_run_recovery()
         self.do_reboot_action(self.reboot_with_factory_install_shim)
         self.wait_for_kernel_up()
 
         logging.info("Check Rollback version.")
         self.check_state((self.checkers.crossystem_checker, {
-                          'mainfw_act': 'A',
-                          'tried_fwb': '0',
                           'fwid': self._fwid
                           }))
+        self.check_state((self.checkers.fw_tries_checker, 'A'))
         self.check_firmware_datakey_version(self._update_version - 1)
