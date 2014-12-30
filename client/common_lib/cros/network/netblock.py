@@ -19,6 +19,10 @@ def from_addr(addr, prefix_len=None):
             will be thrown.
 
     """
+    if addr is None:
+        raise error.TestError('netblock.from_addr() expects non-None addr '
+                              'parameter.')
+
     prefix_sep_count = addr.count('/')
     if prefix_sep_count > 1:
         raise error.TestError('Invalid IP address found: "%s".' % addr)
