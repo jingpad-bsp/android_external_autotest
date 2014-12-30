@@ -106,21 +106,23 @@ class ChameleonScreenTest(object):
         else:
             test_image_size = self._display_facade.get_external_resolution()
 
-        while retry_count:
-            retry_count = retry_count - 1
-            try:
-                self.load_test_image(test_image_size)
-                error = self.test_screen(expected_resolution, test_mirrored)
-                if error is None:
-                    return error
-                elif retry_count == 0:
-                    if error_list is not None:
-                        error_list.append(error)
-                    return error
-                else:
-                    logging.info('Retry screen comparison again...')
-            finally:
-                self.unload_test_image()
+        error = self._resolution_comparer.compare(expected_resolution)
+        if not error:
+            while retry_count:
+                retry_count = retry_count - 1
+                try:
+                    self.load_test_image(test_image_size)
+                    error = self.test_screen(expected_resolution, test_mirrored)
+                    if error is None:
+                        return error
+                    elif retry_count > 0:
+                        logging.info('Retry screen comparison again...')
+                finally:
+                    self.unload_test_image()
+
+        if error and error_list is not None:
+            error_list.append(error)
+        return error
 
 
     def check_external_display_connected(self, expected_display,
