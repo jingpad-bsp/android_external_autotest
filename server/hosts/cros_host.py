@@ -1347,6 +1347,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         @return: The dictionary of power_supply_info, e.g.,
                  {'Line Power': {'online': 'yes', 'type': 'main'},
                   'Battery': {'vendor': 'xyz', 'percentage': '100'}}
+        @raise error.AutoservRunError if power_supply_info tool is not found in
+               the DUT. Caller should handle this error to avoid false failure
+               on verification.
         """
         result = self.run('power_supply_info').stdout.strip()
         info = {}
@@ -1378,7 +1381,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             info = self.get_power_supply_info()
             logging.info(info)
             return float(info['Battery']['percentage'])
-        except KeyError, ValueError:
+        except (KeyError, ValueError, error.AutoservRunError):
             return None
 
 
@@ -1390,8 +1393,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         try:
             info = self.get_power_supply_info()
             return info['Line Power']['online'] == 'yes'
-        except KeyError:
-            return False
+        except (KeyError, error.AutoservRunError):
+            return None
 
 
     def _cleanup_poweron(self):
@@ -1585,8 +1588,12 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         2. Is power adapter connected.
         """
         logging.info('Battery percentage: %s', self.get_battery_percentage())
-        logging.info('Device %s power adapter connected and charging.',
-                     'has' if self.is_ac_connected() else 'does not have')
+        if self.is_ac_connected() is None:
+            logging.info('Can not determine if the device has power adapter '
+                         'connected.')
+        else:
+            logging.info('Device %s power adapter connected and charging.',
+                         'has' if self.is_ac_connected() else 'does not have')
 
 
     def make_ssh_command(self, user='root', port=22, opts='', hosts_file=None,
