@@ -41,7 +41,7 @@ class video_YouTubeHTML5(test.test):
         @param browser: The Browser object to run the test with.
 
         """
-        tab = browser.tabs.New()
+        tab = browser.tabs[0]
         tab.Navigate('http://localhost:8000/youtube5.html')
         yh = youtube_helper.YouTubeHelper(tab)
         # Waiting for test video to load.
@@ -51,7 +51,8 @@ class video_YouTubeHTML5(test.test):
         # Verify that YouTube is running in html5 mode.
         prc = utils.get_process_list('chrome', '--type=ppapi')
         if prc:
-            raise error.TestFail('Running YouTube in Flash mode.')
+            raise error.TestFail('Running YouTube in Flash mode. '
+                                 'Process list: %s.' % prc)
 
         tab.ExecuteJavaScript('player.mute()')
         yh.verify_video_playback()

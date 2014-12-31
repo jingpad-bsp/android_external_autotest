@@ -102,7 +102,7 @@ class YouTubeHelper(object):
                and playback < PLAYBACK_TEST_TIME_S):
             time.sleep(1)
             if self.video_current_time() <= prev_playback:
-                if (count < 2):
+                if count < 2:
                     logging.info('Retrying to video playback test.')
                     self._tab.ExecuteJavaScript(
                             'player.seekTo(%d, true)'
@@ -112,7 +112,7 @@ class YouTubeHelper(object):
                 else:
                     player_status = self.get_player_status()
                     raise error.TestError(
-                            'Video is not playing. Player status: %s.',
+                            'Video is not playing. Player status: %s.' %
                             player_status)
             prev_playback = self.video_current_time()
             playback = playback + 1

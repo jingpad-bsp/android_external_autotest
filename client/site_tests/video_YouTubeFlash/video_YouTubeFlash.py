@@ -44,7 +44,7 @@ class video_YouTubeFlash(test.test):
         @param browser: The Browser object to run the test with.
 
         """
-        tab = browser.tabs.New()
+        tab = browser.tabs[0]
         tab.Navigate('http://localhost:8000/youtube.html')
         yh = youtube_helper.YouTubeHelper(tab)
         # Waiting for test video to load.
