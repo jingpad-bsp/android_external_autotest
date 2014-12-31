@@ -607,20 +607,27 @@ class ServoHost(ssh_host.SSHHost):
         return self._servo
 
 
-def create_servo_host(dut, servo_args):
+def create_servo_host(dut, servo_args, try_lab_servo=False):
     """Create a ServoHost object.
 
-    There three possible cases:
-    1) If the DUT is in Cros Lab and has a beaglebone and a servo, then
-       create a ServoHost object pointing to the beaglebone. servo_args
-       is ignored.
-    2) If not case 1) and servo_args is neither None nor empty, then
-       create a ServoHost object using servo_args.
-    3) If neither case 1) or 2) applies, return None.
-    When the servo_args is not None, we assume the servo is required by the
-    test. If servo failed to be verified, we will attempt to repair it. If servo
-    is not required, we will initialize ServoHost without initializing a servo
-    object.
+    The `servo_args` parameter is a dictionary specifying optional
+    Servo client parameter overrides (i.e. a specific host or port).
+    When specified, the caller requires that an exception be raised
+    unless both the ServoHost and the Servo are successfully
+    created.
+
+    There are three possible cases:
+    1. If the DUT is in the Cros test lab then the ServoHost object
+       is only created for the host in the lab.  Alternate host or
+       port settings in `servo_host` will be ignored.
+    2. When not case 1., but `servo_args` is not `None`, then create
+       a ServoHost object using `servo_args`.
+    3. Otherwise, return `None`.
+
+    When the `try_lab_servo` parameter is false, it indicates that a
+    ServoHost should not be created for a device in the Cros test
+    lab.  The setting of `servo_args` takes precedence over the
+    setting of `try_lab_servo`.
 
     @param dut: host name of the host that servo connects. It can be used to
                 lookup the servo in test lab using naming convention.
@@ -629,6 +636,8 @@ def create_servo_host(dut, servo_args):
                        e.g. {'servo_host': '172.11.11.111',
                              'servo_port': 9999}.
                        See comments above.
+    @param try_lab_servo: Boolean. Whether to create ServoHost for a device
+                          in test lab. See above.
 
     @returns: A ServoHost object or None. See comments above.
 
@@ -636,7 +645,11 @@ def create_servo_host(dut, servo_args):
     lab_servo_hostname = make_servo_hostname(dut)
     is_in_lab = utils.host_is_in_lab_zone(lab_servo_hostname)
 
-    if is_in_lab:
+    if not is_in_lab:
+        if servo_args is None:
+            return None
+        return ServoHost(required_by_test=True, is_in_lab=False, **servo_args)
+    elif servo_args is not None or try_lab_servo:
         # Technically, this duplicates the SSH ping done early in the servo
         # proxy initialization code.  However, this ping ends in a couple
         # seconds when if fails, rather than the 60 seconds it takes to decide
@@ -653,7 +666,5 @@ def create_servo_host(dut, servo_args):
         if host_is_up:
             return ServoHost(servo_host=lab_servo_hostname, is_in_lab=is_in_lab,
                              required_by_test=(servo_args is not None))
-    elif servo_args is not None:
-        return ServoHost(required_by_test=True, is_in_lab=False, **servo_args)
     else:
         return None

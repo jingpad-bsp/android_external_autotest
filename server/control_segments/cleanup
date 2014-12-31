@@ -15,7 +15,8 @@ def cleanup(machine):
     timer = None
     try:
         job.record('START', None, 'cleanup')
-        host = hosts.create_host(machine, initialize=False, auto_monitor=False)
+        host = hosts.create_host(machine, initialize=False, auto_monitor=False,
+                                 try_lab_servo=True)
         timer = stats.Timer('cleanup_time')
         timer.start()
 

@@ -12,7 +12,10 @@ def verify(machine):
     timer = None
     try:
         job.record('START', None, 'verify')
-        host = hosts.create_host(machine, initialize=False, auto_monitor=False)
+        # We set try_lab_servo to True to trigger servo verify and
+        # servo update if needed.
+        host = hosts.create_host(machine, initialize=False, auto_monitor=False,
+                                 try_lab_servo=True)
         timer = stats.Timer('verify_time')
         timer.start()
 

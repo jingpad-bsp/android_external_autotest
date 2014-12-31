@@ -28,7 +28,7 @@ Test and diagnose the status of a servo attached to a given host.
 # servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
 def run(machine):
-    host = hosts.create_host(machine)
+    host = hosts.create_host(machine, try_lab_servo=True)
     job.run_test("infra_ServoDiagnosis", host=host)
 
 parallel_simple(run, machines)

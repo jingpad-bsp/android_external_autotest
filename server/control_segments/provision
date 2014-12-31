@@ -18,7 +18,7 @@ def provision_machine(machine):
     Run the appropriate provisioning tests to make the machine's labels match
     those given in job_labels.
     """
-    host = hosts.create_host(machine)
+    host = hosts.create_host(machine, try_lab_servo=True)
 
     fixed, provisionable = provision.filter_labels(labels_list)
 

@@ -272,24 +272,27 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
 
     def _initialize(self, hostname, chameleon_args=None, servo_args=None,
-                    ssh_verbosity_flag='', ssh_options='',
+                    try_lab_servo=False, ssh_verbosity_flag='', ssh_options='',
                     *args, **dargs):
         """Initialize superclasses, |self.chameleon|, and |self.servo|.
 
-        This method checks whether a chameleon/servo (aka
-        test-assistant objects) is required by checking whether
-        chameleon_args/servo_args is None. This method will only
-        attempt to create the test-assistant object when it is
-        required by the test.
+        This method will attempt to create the test-assistant object
+        (chameleon/servo) when it is needed by the test. Check
+        the docstring of chameleon_host.create_chameleon_host and
+        servo_host.create_servo_host for how this is determined.
 
-        For creating the test-assistant object, there are three
-        possibilities: First, if the host is a lab system known to have
-        a test-assistant board, we connect to that board unconditionally.
-        Second, if we're called from a control file that requires
-        test-assistant features for testing, it will pass settings from
-        the arguments, like `servo_host`, `servo_port`. If neither of
-        these cases apply, the test-assistant object will be `None`.
-
+        @param hostname: Hostname of the dut.
+        @param chameleon_args: A dictionary that contains args for creating
+                               a ChameleonHost. See chameleon_host for details.
+        @param servo_args: A dictionary that contains args for creating
+                           a ServoHost object. See servo_host for details.
+        @param try_lab_servo: Boolean, False indicates that ServoHost should
+                              not be created for a device in Cros test lab.
+                              See servo_host for details.
+        @param ssh_verbosity_flag: String, to pass to the ssh command to control
+                                   verbosity.
+        @param ssh_options: String, other ssh options to pass to the ssh
+                            command.
         """
         super(CrosHost, self)._initialize(hostname=hostname,
                                           *args, **dargs)
@@ -304,8 +307,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         # TODO(fdeng): We need to simplify the
         # process of servo and servo_host initialization.
         # crbug.com/298432
-        self._servo_host = servo_host.create_servo_host(dut=self.hostname,
-                                                        servo_args=servo_args)
+        self._servo_host =  servo_host.create_servo_host(
+                dut=self.hostname, servo_args=servo_args,
+                try_lab_servo=try_lab_servo)
         # TODO(waihong): Do the simplication on Chameleon too.
         self._chameleon_host = chameleon_host.create_chameleon_host(
                 dut=self.hostname, chameleon_args=chameleon_args)
