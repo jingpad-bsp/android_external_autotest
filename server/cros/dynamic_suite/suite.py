@@ -2,7 +2,15 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import datetime, difflib, hashlib, logging, operator, os, re, traceback
+import datetime
+import difflib
+import hashlib
+import logging
+import operator
+import os
+import re
+import traceback
+import sys
 
 import common
 
@@ -55,12 +63,17 @@ class RetryHandler(object):
                 that have occurred.
     @var _retry_level: A retry might be triggered only if the result
             is worse than the level.
+    @var _max_retries: Maximum retry limit at suite level.
+                     Regardless how many times each individual test
+                     has been retried, the total number of retries happening in
+                     the suite can't exceed _max_retries.
     """
 
     States = enum.Enum('NOT_ATTEMPTED', 'ATTEMPTED', 'RETRIED',
                        start_value=1, step=1)
 
-    def __init__(self, initial_jobs_to_tests, retry_level='WARN'):
+    def __init__(self, initial_jobs_to_tests, retry_level='WARN',
+                 max_retries=None):
         """Initialize RetryHandler.
 
         @param initial_jobs_to_tests: A dictionary that maps a job id to
@@ -68,10 +81,13 @@ class RetryHandler(object):
                 jobs that are originally scheduled by the suite.
         @param retry_level: A retry might be triggered only if the result is
                 worse than the level.
-
+        @param max_retries: Integer, maxmium total retries allowed
+                                  for the suite. Default to None, no max.
         """
         self._retry_map = {}
         self._retry_level = retry_level
+        self._max_retries = (max_retries
+                             if max_retries is not None else sys.maxint)
         for job_id, test in initial_jobs_to_tests.items():
             if test.job_retries > 0:
                 self.add_job(new_job_id=job_id,
@@ -96,6 +112,11 @@ class RetryHandler(object):
                 'retry_max': retry_max}
 
 
+    def suite_max_reached(self):
+        """Return whether maximum retry limit for a suite has been reached."""
+        return self._max_retries == 0
+
+
     def should_retry(self, result):
         """Check whether we should retry a job based on its result.
 
@@ -118,7 +139,7 @@ class RetryHandler(object):
         @returns: True if we should retry the job.
 
         """
-        if (not result.test_executed or
+        if (self.suite_max_reached() or not result.test_executed or
             not result.is_worse_than(
                 job_status.Status(self._retry_level, '', 'reason'))):
             return False
@@ -150,6 +171,7 @@ class RetryHandler(object):
         old_record['state'] = self.States.RETRIED
         self.add_job(new_job_id=new_job_id,
                      retry_max=old_record['retry_max'] - 1)
+        self._max_retries -= 1
 
 
     def set_attempted(self, job_id):
@@ -495,7 +517,8 @@ class Suite(object):
                  file_experimental_bugs=False, suite_job_id=None,
                  ignore_deps=False, extra_deps=[],
                  priority=priorities.Priority.DEFAULT, forgiving_parser=True,
-                 wait_for_results=True, job_retry=False):
+                 wait_for_results=True, job_retry=False,
+                 max_retries=sys.maxint):
         """
         Constructor
 
@@ -531,7 +554,11 @@ class Suite(object):
                           on failure. If True, the field 'JOB_RETRIES' in
                           control files will be respected. If False, do not
                           retry.
-
+        @param max_retries: Maximum retry limit at suite level.
+                            Regardless how many times each individual test
+                            has been retried, the total number of retries
+                            happening in the suite can't exceed _max_retries.
+                            Default to sys.maxint.
         """
         def combined_predicate(test):
             #pylint: disable-msg=C0111
@@ -565,6 +592,7 @@ class Suite(object):
         self._extra_deps = extra_deps
         self._priority = priority
         self._job_retry=job_retry
+        self._max_retries = max_retries
         # RetryHandler to be initialized in schedule()
         self._retry_handler = None
         self.wait_for_results = wait_for_results
@@ -783,7 +811,8 @@ class Suite(object):
 
         if self._job_retry:
             self._retry_handler = RetryHandler(
-                    initial_jobs_to_tests=self._jobs_to_tests)
+                    initial_jobs_to_tests=self._jobs_to_tests,
+                    max_retries=self._max_retries)
         return n_scheduled
 
 

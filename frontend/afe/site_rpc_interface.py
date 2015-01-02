@@ -117,7 +117,8 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
                      check_hosts=True, num=None, file_bugs=False, timeout=24,
                      timeout_mins=None, priority=priorities.Priority.DEFAULT,
                      suite_args=None, wait_for_results=True, job_retry=False,
-                     max_runtime_mins=None, suite_min_duts=0, **kwargs):
+                     max_retries=None, max_runtime_mins=None, suite_min_duts=0,
+                     **kwargs):
     """
     Create a job to run a test suite on the given device with the given image.
 
@@ -144,6 +145,8 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
     @param wait_for_results: Set to False to run the suite job without waiting
                              for test jobs to finish. Default is True.
     @param job_retry: Set to True to enable job-level retry. Default is False.
+    @param max_retries: Integer, maximum job retries allowed at suite level.
+                        None for no max.
     @param max_runtime_mins: Maximum amount of time a job can be running in
                              minutes.
     @param suite_min_duts: Integer. Scheduler will prioritize getting the
@@ -196,6 +199,7 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
                    'suite_args' : suite_args,
                    'wait_for_results': wait_for_results,
                    'job_retry': job_retry,
+                   'max_retries': max_retries,
                    'max_runtime_mins': max_runtime_mins,
                    }
 

@@ -365,6 +365,23 @@ class SuiteTest(mox.MoxTestBase):
         self.assertEqual(expected_retry_map, suite._retry_handler._retry_map)
 
 
+    def testSuiteMaxRetries(self):
+        self.mock_control_file_parsing()
+        recorder = self.mox.CreateMock(base_job.base_job)
+        self.expect_job_scheduling(recorder, add_experimental=True)
+        self.mox.ReplayAll()
+        suite = Suite.create_from_name(self._TAG, self._BUILD, self._BOARD,
+                                       self.devserver,
+                                       afe=self.afe, tko=self.tko,
+                                       job_retry=True, max_retries=1)
+        suite.schedule(recorder.record_entry, add_experimental=True)
+        self.assertEqual(suite._retry_handler._max_retries, 1)
+        # Find the job_id of the test that allows retry
+        job_id = suite._retry_handler._retry_map.iterkeys().next()
+        suite._retry_handler.add_retry(old_job_id=job_id, new_job_id=10)
+        self.assertEqual(suite._retry_handler._max_retries, 0)
+
+
     def testSuiteDependencies(self):
         """Should add suite dependencies to tests scheduled."""
         self.mock_control_file_parsing()

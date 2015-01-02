@@ -129,6 +129,9 @@ def parse_options():
     parser.add_option('--retry', dest='retry', default='False',
                       action='store', help='Enable test retry. '
                       'Must pass "True" or "False" if used.')
+    parser.add_option('--max_retries', dest='max_retries', default=None,
+                      type='int', action='store', help='Maximum retries'
+                      'allowed at suite level. No limit if not specified.')
     parser.add_option('--minimum_duts', dest='minimum_duts', type=int,
                       default=0, action='store',
                       help='Check that the pool has at least such many '
@@ -182,6 +185,9 @@ def verify_options_and_args(options, args):
         return False
     if options.retry != 'True' and options.retry != 'False':
         print 'Please specify "True" or "False" for --retry'
+        return False
+    if options.retry == 'False' and options.max_retries is not None:
+        print 'max_retries can only be used with --retry=True'
         return False
     if options.no_wait == 'True' and options.retry == 'True':
         print 'Test retry is not available when using --no_wait=True'
@@ -1201,7 +1207,8 @@ def create_suite(afe, options):
                    suite_args=options.suite_args,
                    wait_for_results=wait,
                    timeout_mins=options.timeout_mins,
-                   job_retry=retry, suite_min_duts=options.suite_min_duts)
+                   job_retry=retry, max_retries=options.max_retries,
+                   suite_min_duts=options.suite_min_duts)
 
 
 def main_without_exception_handling():
