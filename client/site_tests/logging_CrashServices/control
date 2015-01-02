@@ -9,8 +9,8 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "logging"
 TEST_TYPE = "client"
-JOB_RETRIES = 2
-SUITE = "bvt-cq"
+JOB_RETRIES = 0
+SUITE = "jailed_build"
 
 DOC = """
 Crash all valid Chrome OS processes from a whitelist, and confirm
