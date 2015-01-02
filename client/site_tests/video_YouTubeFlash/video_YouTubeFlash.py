@@ -52,7 +52,7 @@ class video_YouTubeFlash(test.test):
         yh.set_video_duration()
 
         # Verify that YouTube is running in Flash mode.
-        prc = utils.get_process_list('chrome', '--type=ppapi')
+        prc = utils.get_process_list('chrome', '--type=ppapi( |$)')
         if not prc:
             raise error.TestFail('No Flash process is running.')
 
