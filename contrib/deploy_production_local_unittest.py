@@ -153,7 +153,7 @@ a1598f7
         result = dpl.discover_restart_services()
         self.assertIsInstance(result, list)
 
-    @mock.patch('subprocess.check_call', autospec=True)
+    @mock.patch('subprocess.check_output', autospec=True)
     def test_update_command(self, run_cmd):
         """Test deploy_production_local.update_command.
 
@@ -166,12 +166,21 @@ a1598f7
 
         # Call with a valid command name.
         dpl.update_command('apache')
-        run_cmd.assert_called_with('sudo service apache2 reload', shell=True)
+        run_cmd.assert_called_with('sudo service apache2 reload', shell=True,
+                                   stderr=subprocess.STDOUT)
 
         # Call with a valid command name that uses AUTOTEST_REPO expansion.
         dpl.update_command('build_externals')
         expanded_cmd = dpl.common.autotest_dir+'/utils/build_externals.py'
-        run_cmd.assert_called_with(expanded_cmd, shell=True)
+        run_cmd.assert_called_with(expanded_cmd, shell=True,
+                                   stderr=subprocess.STDOUT)
+
+        # Test a failed command.
+        failure = subprocess.CalledProcessError(10, expanded_cmd, 'output')
+
+        run_cmd.side_effect = failure
+        with self.assertRaises(subprocess.CalledProcessError) as unstable:
+            dpl.update_command('build_externals')
 
     @mock.patch('subprocess.check_call', autospec=True)
     def test_restart_service(self, run_cmd):

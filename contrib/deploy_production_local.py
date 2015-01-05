@@ -177,7 +177,13 @@ def update_command(cmd_tag, dryrun=False):
     if dryrun:
         print('Skip: %s' % expanded_command)
     else:
-        subprocess.check_call(expanded_command, shell=True)
+        try:
+            subprocess.check_output(expanded_command, shell=True,
+                                    stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError as e:
+            print('FAILED:')
+            print(e.output)
+            raise
 
 
 def restart_service(service_name, dryrun=False):
