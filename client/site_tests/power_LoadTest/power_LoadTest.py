@@ -150,8 +150,7 @@ class power_LoadTest(test.test):
                     and nic.find('eth') != -1) ]
             logging.debug(str(ifaces))
             for iface in ifaces:
-                if check_network and \
-                        backchannel.is_network_iface_running(iface):
+                if check_network and self._is_network_iface_running(iface):
                     raise error.TestError('Ethernet interface is active. ' +
                                           'Please remove Ethernet cable')
 
@@ -477,6 +476,7 @@ class power_LoadTest(test.test):
                                   "are non-zero.")
         return (percent, secs)
 
+
     def _get_psr_counter(self):
         """Get the current value of the system PSR counter.
         This counts the number of milliseconds the system has resided in PSR.
@@ -497,3 +497,24 @@ class power_LoadTest(test.test):
 
         logging.debug("PSR performance counter: %s", count)
         return int(count) if count else None
+
+
+    def _is_network_iface_running(self, name):
+        """
+        Checks to see if the interface is running.
+
+        Args:
+          name: name of the interface to check.
+
+        Returns:
+          True if the interface is running.
+
+        """
+        try:
+            # TODO: Switch to 'ip' (crbug.com/410601).
+            out = utils.system_output('ifconfig %s' % name)
+        except error.CmdError, e:
+            logging.info(e)
+            return False
+
+        return out.find('RUNNING') >= 0
