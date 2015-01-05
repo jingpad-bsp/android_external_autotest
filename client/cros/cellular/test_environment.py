@@ -78,13 +78,15 @@ class CellularTestEnvironment(object):
         self.modem_manager = None
         self.modem = None
         self.modem_path = None
+        self._backchannel = None
 
         self._modem_pattern = modem_pattern
 
         self._nested = None
         self._context_managers = []
         if use_backchannel:
-            self._context_managers.append(backchannel.Backchannel())
+            self._backchannel = backchannel.Backchannel()
+            self._context_managers.append(self._backchannel)
         if shutdown_other_devices:
             self._context_managers.append(
                     cell_tools.OtherDeviceShutdownContext('cellular'))
@@ -276,7 +278,9 @@ class CellularTestEnvironment(object):
         @raise error.TestError if backchannel is not on an ethernet device.
 
         """
-        if not backchannel.is_backchannel_using_ethernet():
+        if self._backchannel is None:
+            raise error.TestError('Backchannel was not instantiated.')
+        if not self._backchannel.is_using_ethernet():
             raise error.TestError('An ethernet connection is required between '
                                   'the test server and the device under test.')
 
