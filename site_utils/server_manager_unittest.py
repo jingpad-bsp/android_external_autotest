@@ -8,7 +8,7 @@ import unittest
 import common
 
 import django.core.exceptions
-from autotest_lib.client.common_lib import base_utils as utils
+from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.server import models as server_models
 from autotest_lib.site_utils import server_manager
@@ -98,13 +98,14 @@ class ServerManagerUnittests(mox.MoxTestBase):
         self.mox.StubOutWithMock(server_models.ServerAttribute.objects,
                                  'filter')
         self.mox.StubOutWithMock(infra, 'execute_command')
-        self.mox.StubOutWithMock(utils, 'normalize_hostname')
+        self.mox.StubOutWithMock(ping_runner.PingRunner, 'simple_ping')
 
 
     def testCreateServerSuccess(self):
         """Test create method can create a server successfully.
         """
-        utils.normalize_hostname(self.BACKUP_DRONE.hostname)
+        ping_runner.PingRunner().simple_ping(self.BACKUP_DRONE.hostname
+                                             ).AndReturn(True)
         server_models.Server.objects.get(
                 hostname=self.BACKUP_DRONE.hostname
                 ).AndRaise(django.core.exceptions.ObjectDoesNotExist)

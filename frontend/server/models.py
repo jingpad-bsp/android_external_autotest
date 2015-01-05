@@ -5,13 +5,12 @@
 """Django model for server database.
 """
 
-import socket
 from django.db import models as dbmodels
 
 import common
-from autotest_lib.client.common_lib import base_utils as utils
 from autotest_lib.client.common_lib import enum
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.frontend.afe import model_logic
 
 
@@ -139,8 +138,6 @@ def validate(**kwargs):
                     (key, value,
                      ', '.join(RANGE_LIMITS[key])))
         elif key == 'hostname':
-            try:
-                utils.normalize_hostname(value)
-            except socket.error:
-                raise error.InvalidDataError('Can not resolve hostname "%s".' %
-                                             value)
+            if not ping_runner.PingRunner().simple_ping(value):
+                raise error.InvalidDataError('Can not reach server with '
+                                             'hostname "%s".' % value)
