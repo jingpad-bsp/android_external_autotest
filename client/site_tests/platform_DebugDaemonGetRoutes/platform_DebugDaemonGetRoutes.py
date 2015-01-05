@@ -3,11 +3,12 @@
 # found in the LICENSE file.
 
 import dbus
+import logging
 
 from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error
 
 class platform_DebugDaemonGetRoutes(test.test):
+    """Checks that the debugd GetRoutes function is working."""
     version = 1
 
     def run_once(self, *args, **kwargs):
@@ -15,7 +16,7 @@ class platform_DebugDaemonGetRoutes(test.test):
         proxy = bus.get_object('org.chromium.debugd', '/org/chromium/debugd')
         self.iface = dbus.Interface(proxy,
                                     dbus_interface='org.chromium.debugd')
-        routes = self.iface.GetRoutes({})
-        print 'Routes: %s' % routes
-        if 'Kernel IP routing table' not in routes:
-            raise error.TestFail("Expected header missing.")
+        ip4_routes = self.iface.GetRoutes({})
+        logging.debug('IP4 Routes: %s', ip4_routes)
+        ip6_routes = self.iface.GetRoutes({'v6': True})
+        logging.debug('IP6 Routes: %s', ip6_routes)
