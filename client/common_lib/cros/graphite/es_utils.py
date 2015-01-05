@@ -75,7 +75,6 @@ except ImportError:
     import elasticsearch_mock as elasticsearch
 
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib import time_utils
 
 
 # Server and ports for elasticsearch (for metadata use only)
@@ -296,9 +295,9 @@ def create_range_eq_query_multiple(equality_constraints,
                 continue
             temp_dict = {}
             if low is not None:
-                temp_dict['gte'] = time_utils.to_epoch_time(low)
+                temp_dict['gte'] = low
             if high is not None:
-                temp_dict['lte'] = time_utils.to_epoch_time(high)
+                temp_dict['lte'] = high
             range_list.append( {'range': {key: temp_dict}})
 
     # Creates the list of term dictionaries to put in the 'should' list.

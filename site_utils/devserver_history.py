@@ -98,10 +98,13 @@ def get_calls(time_start, time_end, artifact_filters=None,
     if artifact_filters:
         for artifact in artifact_filters:
             eqs.append(('artifacts', artifact))
+    time_start_epoch = time_utils.to_epoch_time(time_start)
+    time_end_epoch = time_utils.to_epoch_time(time_end)
     query = es_utils.create_range_eq_query_multiple(
             fields_returned=None,
             equality_constraints=eqs,
-            range_constraints=[('time_recorded', time_start, time_end)],
+            range_constraints=[('time_recorded', time_start_epoch,
+                                time_end_epoch)],
             size=size,
             sort_specs=[{'time_recorded': 'desc'}],
             regex_constraints=regex_constraints)

@@ -56,12 +56,16 @@ def get_entries(time_start, time_end, gte, lte, size, index, hostname):
     @param hostname: string representing hostname to query for
     @returns: Entries from esdb.
     """
+    time_start_epoch = time_utils.to_epoch_time(time_start)
+    time_end_epoch = time_utils.to_epoch_time(time_end)
+    gte_epoch = time_utils.to_epoch_time(gte)
+    lte_epoch = time_utils.to_epoch_time(lte)
     query = es_utils.create_range_eq_query_multiple(
         fields_returned=['hostname', 'time_recorded', 'value'],
         equality_constraints=[('_type', 'reboot_total'),
                               ('hostname', hostname)],
-        range_constraints=[('time_recorded', time_start, time_end),
-                           ('value', gte, lte)],
+        range_constraints=[('time_recorded', time_start_epoch, time_end_epoch),
+                           ('value', gte_epoch, lte_epoch)],
         size=size,
         sort_specs=[{'hostname': 'asc'}, {'value': 'desc'}])
     results = es_utils.execute_query(query, index=index,

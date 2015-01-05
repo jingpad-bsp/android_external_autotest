@@ -154,11 +154,12 @@ def get_tasks_runtime(task_list, dut, t_start, job_id, job_info_dict):
     @param job_info_dict: Dictionary that has information for jobs.
     @return: Sum of durations of the tasks.
     """
+    t_start_epoch = time_utils.to_epoch_time(t_start)
     query = es_utils.create_range_eq_query_multiple(
             fields_returned=['status', 'task_id', 'duration'],
             equality_constraints=[('_type', 'job_time_breakdown'),
                                   ('hostname', dut)],
-            range_constraints=[('time_recorded', t_start, None)],
+            range_constraints=[('time_recorded', t_start_epoch, None)],
             batch_constraints=[('task_id', task_list)])
     results = es_utils.execute_query(query)
     sum = 0
@@ -374,11 +375,14 @@ def analyze_suites(start_time, end_time):
     else:
         batch_constraints = []
 
+    start_time_epoch = time_utils.to_epoch_time(start_time)
+    end_time_epoch = time_utils.to_epoch_time(end_time)
     query = es_utils.create_range_eq_query_multiple(
             fields_returned=['suite_name', 'suite_job_id', 'board', 'build',
                              'num_child_jobs', 'duration'],
             equality_constraints=[('_type', job_overhead.SUITE_RUNTIME_KEY),],
-            range_constraints=[('time_recorded', start_time, end_time)],
+            range_constraints=[('time_recorded', start_time_epoch,
+                                end_time_epoch)],
             sort_specs=[{'time_recorded': 'asc'}],
             batch_constraints=batch_constraints)
     results = es_utils.execute_query(query)

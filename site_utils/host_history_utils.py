@@ -95,11 +95,12 @@ def find_most_recent_entry_before(t, type_str, hostname, fields):
     @param fields: list of fields we are interested in
     @returns: time, field_value of the latest entry.
     """
+    t_epoch = time_utils.to_epoch_time(t)
     query = es_utils.create_range_eq_query_multiple(
             fields_returned=fields,
             equality_constraints=[('_type', type_str),
                                   ('hostname', hostname)],
-            range_constraints=[('time_recorded', None, t)],
+            range_constraints=[('time_recorded', None, t_epoch)],
             size=1,
             sort_specs=[{'time_recorded': 'desc'}])
     result = es_utils.execute_query(query)
@@ -147,11 +148,13 @@ def get_host_history_intervals(t_start, t_end, hostname, intervals):
     status_first = t_host_stat if t_host else 'Ready'
     t = min([t for t in [t_lock, t_host, t_start] if t])
 
+    t_epoch = time_utils.to_epoch_time(t)
+    t_end_epoch = time_utils.to_epoch_time(t_end)
     query_lock_history = es_utils.create_range_eq_query_multiple(
             fields_returned=['locked', 'time_recorded'],
             equality_constraints=[('_type', _LOCK_HISTORY_TYPE),
                                   ('hostname', hostname)],
-            range_constraints=[('time_recorded', t, t_end)],
+            range_constraints=[('time_recorded', t_epoch, t_end_epoch)],
             sort_specs=[{'time_recorded': 'asc'}])
 
     lock_history_entries = es_utils.execute_query(query_lock_history)
@@ -272,11 +275,14 @@ def get_intervals_for_host(t_start, t_end, hostname):
     @param pool: Name of the pool to look for history. Default is None.
     @returns: A dictionary of hostname: intervals.
     """
+    t_start_epoch = time_utils.to_epoch_time(t_start)
+    t_end_epoch = time_utils.to_epoch_time(t_end)
     query_host_history = es_utils.create_range_eq_query_multiple(
                 fields_returned=None,
                 equality_constraints=[('_type', _HOST_HISTORY_TYPE),
                                       ('hostname', hostname)],
-                range_constraints=[('time_recorded', t_start, t_end)],
+                range_constraints=[('time_recorded', t_start_epoch,
+                                    t_end_epoch)],
                 sort_specs=[{'time_recorded': 'asc'}])
     host_history_entries = es_utils.execute_query(query_host_history)
     return host_history_entries['hits']['hits']
@@ -316,9 +322,12 @@ def get_intervals_for_hosts(t_start, t_end, hosts=None, board=None, pool=None):
             equality_constraints.append(('labels', 'board:'+board))
         if pool:
             equality_constraints.append(('labels', 'pool:'+pool))
+        t_start_epoch = time_utils.to_epoch_time(t_start)
+        t_end_epoch = time_utils.to_epoch_time(t_end)
         query_labels =  es_utils.create_range_eq_query_multiple(
                 equality_constraints=equality_constraints,
-                range_constraints=[('time_recorded', t_start, t_end)],
+                range_constraints=[('time_recorded', t_start_epoch,
+                                    t_end_epoch)],
                 sort_specs=[{'hostname': 'asc'}])
         results = es_utils.execute_query(query_labels)
         results_group_by_host = {}
