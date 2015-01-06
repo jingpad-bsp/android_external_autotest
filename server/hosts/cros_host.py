@@ -2036,10 +2036,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         else:
             new_boot_id = self.get_boot_id()
             if new_boot_id != old_boot_id:
+                logging.error('client rebooted (old boot %s, new boot %s)',
+                              old_boot_id, new_boot_id)
                 raise error.TestFail(
-                    'client rebooted, but sleep was expected'
-                    ' (old boot %s, new boot %s)'
-                        % (old_boot_id, new_boot_id))
+                    'client rebooted, but sleep was expected')
 
 
     def test_wait_for_shutdown(self, shutdown_timeout=None):
@@ -2099,9 +2099,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                     self.REBOOT_TIMEOUT)
         elif old_boot_id:
             if self.get_boot_id() == old_boot_id:
+                logging.error('client not rebooted (boot %s)',
+                              old_boot_id)
                 raise error.TestFail(
-                    'client is back up, but did not reboot'
-                    ' (boot %s)' % old_boot_id)
+                    'client is back up, but did not reboot')
 
 
     @staticmethod
