@@ -81,6 +81,11 @@ class BluetoothTesterXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         profile_class = self.PROFILE_CLASS[profile]
         (profile_name, profile_short_name) = self.PROFILE_NAMES[profile]
 
+        # Make sure the controller actually exists.
+        if self.index not in self._control.read_index_list():
+            logging.warning('Bluetooth Controller missing on tester')
+            return False
+
         # Make sure all of the settings are supported by the controller.
         ( address, bluetooth_version, manufacturer_id,
           supported_settings, current_settings, class_of_device,
