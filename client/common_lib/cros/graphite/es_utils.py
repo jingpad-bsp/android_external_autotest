@@ -84,8 +84,6 @@ ES_PORT = global_config.global_config.get_config_value(
         'CROS', 'ES_PORT', type=int, default=9200)
 ES_UDP_PORT = global_config.global_config.get_config_value(
         'CROS', 'ES_UDP_PORT', type=int, default=9700)
-ES_DEFAULT_INDEX = global_config.global_config.get_config_value(
-        'CROS', 'ES_DEFAULT_INDEX', default='default')
 ES_USE_HTTP = global_config.global_config.get_config_value(
         'CROS', 'ES_USE_HTTP', type=bool, default=False)
 
