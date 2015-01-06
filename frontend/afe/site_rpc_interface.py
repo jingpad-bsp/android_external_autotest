@@ -27,6 +27,7 @@ from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.server.hosts import moblab_host
 from autotest_lib.site_utils import host_history
 from autotest_lib.site_utils import job_history
+from autotest_lib.site_utils import server_manager_utils
 from autotest_lib.site_utils import stable_version_utils
 
 
@@ -460,6 +461,25 @@ def delete_shard(hostname):
     shard.labels.clear()
 
     shard.delete()
+
+
+def get_servers(role=None, status=None):
+    """Get a list of servers with matching role and status.
+
+    @param role: Name of the server role, e.g., drone, scheduler. Default to
+                 None to match any role.
+    @param status: Status of the server, e.g., primary, backup, repair_required.
+                   Default to None to match any server status.
+
+    @raises error.RPCException: If server database is not used.
+    @return: A list of server names for servers with matching role and status.
+    """
+    if not server_manager_utils.use_server_db():
+        raise error.RPCException('Server database is not enabled. Please try '
+                                 'retrieve servers from global config.')
+    servers = server_manager_utils.get_servers(hostname=None, role=role,
+                                               status=status)
+    return [s.get_details() for s in servers]
 
 
 def get_stable_version(board=stable_version_utils.DEFAULT):

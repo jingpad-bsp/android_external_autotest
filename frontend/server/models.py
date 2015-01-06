@@ -66,6 +66,32 @@ class Server(dbmodels.Model, model_logic.ModelExtensions):
         return [r.role for r in self.roles.all()]
 
 
+    def get_details(self):
+        """Get a dictionary with all server details.
+
+        For example:
+        {
+            'hostname': 'server1',
+            'status': 'backup',
+            'roles': ['drone', 'scheduler'],
+            'attributes': {'max_processes': 300}
+        }
+
+        @return: A dictionary with all server details.
+        """
+        details = {}
+        details['hostname'] = self.hostname
+        details['status'] = self.status
+        details['roles'] = self.get_role_names()
+        attributes = dict([(a.attribute, a.value)
+                           for a in self.attributes.all()])
+        details['attributes'] = attributes
+        details['date_created'] = self.date_created
+        details['date_modified'] = self.date_modified
+        details['note'] = self.note
+        return details
+
+
 class ServerRole(dbmodels.Model, model_logic.ModelExtensions):
     """Role associated with hosts."""
     # Valid roles for a server.
