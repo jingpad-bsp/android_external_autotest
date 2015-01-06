@@ -11,4 +11,4 @@ class Values(object):
     chrome_ec = True
     ec_capability = ['battery', 'charging', 'keyboard', 'arm', 'lid']
     ec_boot_to_console = 1.1
-    wp_voltage = 'off'
+    wp_voltage = 'pp3300'
