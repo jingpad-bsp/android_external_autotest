@@ -2115,25 +2115,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 for RPM powered DUT's in the lab. If it does follow the format,
                 it returns a regular expression MatchObject instead.
         """
-        m = re.match(CrosHost._RPM_HOSTNAME_REGEX, hostname)
-        if not m:
-            return None
-        try:
-            lab = int(m.group(1))
-            row = int(m.group(3))
-            rack = int(m.group(4))
-        except (TypeError, ValueError) as e:
-            return m
-        if lab == 2 and row>= 1 and row<= 5 and rack>= 1 and rack<= 7:
-            # TODO(fdeng): temporarily disable support for duts
-            # behined hydra2 in chromeos2, remove once
-            # b/17612645 is fixed.
-            return None
-        if lab == 4 and (rack == 0 or row == 13):
-            # TODO(fdeng): disable support for duts behind hydra3
-            # for chromeos4, remove once b/15410667 is fixed
-            return None
-        return m
+        return re.match(CrosHost._RPM_HOSTNAME_REGEX, hostname)
 
 
     def has_power(self):
