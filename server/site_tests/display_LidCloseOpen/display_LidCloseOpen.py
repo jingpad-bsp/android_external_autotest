@@ -110,13 +110,13 @@ class display_LidCloseOpen(test.test):
 
     def check_external_display(self):
         """Display status check"""
-        resolution = self.chameleon_port.get_resolution()
-        # Check mode is same as beginning of the test
-        self.check_mode()
         # Check connector
         if self.screen_test.check_external_display_connected(
                 self.connector_used, self.errors) is None:
+            # Check mode is same as beginning of the test
+            self.check_mode()
             # Check test image
+            resolution = self.chameleon_port.get_resolution()
             self.screen_test.test_screen_with_image(
                     resolution, self.test_mirrored, self.errors)
 
@@ -164,7 +164,8 @@ class display_LidCloseOpen(test.test):
 
             # Plug before close
             self.chameleon_port.set_plug(plugged_before_close)
-            time.sleep(self.WAIT_TIME_PLUG_TRANSITION)
+            self.chameleon_port.wait_video_input_stable(
+                    timeout=self.WAIT_TIME_PLUG_TRANSITION)
 
             # Close lid and check
             self.close_lid()
@@ -177,7 +178,8 @@ class display_LidCloseOpen(test.test):
             # Plug after close and check
             if plugged_after_close is not plugged_before_close:
                 self.chameleon_port.set_plug(plugged_after_close)
-                time.sleep(self.WAIT_TIME_PLUG_TRANSITION)
+                self.chameleon_port.wait_video_input_stable(
+                        timeout=self.WAIT_TIME_PLUG_TRANSITION)
                 if not plugged_before_close:
                     self.check_still_suspended()
                 else:
@@ -187,7 +189,8 @@ class display_LidCloseOpen(test.test):
             # Plug before open and check
             if plugged_before_open is not plugged_after_close:
                 self.chameleon_port.set_plug(plugged_before_open)
-                time.sleep(self.WAIT_TIME_PLUG_TRANSITION)
+                self.chameleon_port.wait_video_input_stable(
+                        timeout=self.WAIT_TIME_PLUG_TRANSITION)
                 if not plugged_before_close or not plugged_after_close:
                     self.check_still_suspended()
                 else:
