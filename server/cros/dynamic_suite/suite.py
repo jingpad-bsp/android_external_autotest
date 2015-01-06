@@ -114,7 +114,7 @@ class RetryHandler(object):
 
     def suite_max_reached(self):
         """Return whether maximum retry limit for a suite has been reached."""
-        return self._max_retries == 0
+        return self._max_retries <= 0
 
 
     def should_retry(self, result):
