@@ -6,6 +6,7 @@ import logging
 import re
 import time
 
+from contextlib import contextmanager
 from collections import namedtuple
 
 from autotest_lib.client.common_lib import error
@@ -837,6 +838,31 @@ class WiFiClient(site_linux_system.LinuxSystem):
         raise error.TestFail(
                 'Failed to connect to "%s"%s in %f seconds (state=%s)' %
                 (ssid, freq_error_str, duration(), state))
+
+
+    @contextmanager
+    def assert_disconnect_count(self, count):
+        """Context asserting |count| disconnects for the context lifetime.
+
+        Creates an iw logger during the lifetime of the context and asserts
+        that the client disconnects exactly |count| times.
+
+        @param count int the expected number of disconnections.
+
+        """
+        with self.iw_runner.get_event_logger() as logger:
+            logger.start()
+            yield
+            logger.stop()
+            if logger.get_disconnect_count() != count:
+                raise error.TestFail(
+                    'Client disconnected %d times; expected %d' %
+                    (logger.get_disconnect_count(), count))
+
+
+    def assert_no_disconnects(self):
+        """Context asserting no disconnects for the context lifetime."""
+        return self.assert_disconnect_count(0)
 
 
 class TemporaryDBusProperty:

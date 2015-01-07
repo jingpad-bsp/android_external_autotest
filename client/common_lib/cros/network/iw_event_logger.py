@@ -2,10 +2,15 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import collections
 import logging
 import re
 
 IW_REMOTE_EVENT_LOG_FILE = '/tmp/iw_event.log'
+
+LogEntry = collections.namedtuple('LogEntry', ['timestamp',
+                                               'interface',
+                                               'message'])
 
 class IwEventLogger(object):
     """Context enclosing the use of iw event logger."""
@@ -59,14 +64,35 @@ class IwEventLogger(object):
         logging.info('iw event log saved to %s', self._local_file)
 
 
-    def get_association_time(self):
-        """Parse local log file and return association time.
+    def get_log_entries(self):
+        """Parse local log file and yield LogEntry named tuples.
 
-        This function will parse the iw event log to determine the time it
-        takes from start of scan to being connected.
+        This function will parse the iw event log and return individual
+        LogEntry tuples for each parsed line.
         Here are example of lines to be parsed:
             1393961008.058711: wlan0 (phy #0): scan started
             1393961019.758599: wlan0 (phy #0): connected to 04:f0:21:03:7d:bd
+
+        @yields LogEntry tuples for each log entry.
+
+        """
+        with open(self._local_file, 'r') as file:
+            for line in file.readlines():
+                parse_line = re.match('\s*(\d+).(\d+): (\w.*): (\w.*)', line)
+                if parse_line:
+                    time_integer = parse_line.group(1)
+                    time_decimal = parse_line.group(2)
+                    timestamp = float('%s.%s' % (time_integer, time_decimal))
+                    yield LogEntry(timestamp=timestamp,
+                                   interface=parse_line.group(3),
+                                   message=parse_line.group(4))
+
+
+    def get_association_time(self):
+        """Return association time.
+
+        This function will search the iw event log to determine the time it
+        takes from start of scan to being connected.
 
         @returns float number of seconds it take from start of scan to
                 connected. Return None if unable to determine the time based on
@@ -75,24 +101,30 @@ class IwEventLogger(object):
         """
         start_time = None
         end_time = None
-        # Parse file to figure out the time when scanning started and the time
-        # when client is connected.
-        with open(self._local_file, 'r') as file:
-            for line in file.readlines():
-                parse_line = re.match('\s*(\d+).(\d+): (\w.*): (\w.*)', line)
-                if parse_line:
-                    time_integer = parse_line.group(1)
-                    time_decimal = parse_line.group(2)
-                    message = parse_line.group(4)
-                    time_stamp = float('%s.%s' % (time_integer, time_decimal))
-                    if (message.startswith('scan started') and
-                            start_time is None):
-                        start_time = time_stamp
-                    if message.startswith('connected'):
-                        if start_time is None:
-                            return None
-                        end_time = time_stamp
-                        break;
-            else:
-                return None
+        # Figure out the time when scanning started and the time when client
+        # is connected.
+        for entry in self.get_log_entries():
+            if (entry.message.startswith('scan started') and
+                    start_time is None):
+                start_time = entry.timestamp
+            if entry.message.startswith('connected'):
+                if start_time is None:
+                    return None
+                end_time = entry.timestamp
+                break;
+        else:
+            return None
         return end_time - start_time
+
+
+    def get_disconnect_count(self):
+        """Return number of times the system disconnected during the log.
+
+        This function will search the iw event log to determine how many
+        times the "disconnect" message appears.
+
+        @returns int number of times the system disconnected in the logs.
+
+        """
+        return [entry.message.startswith('disconnected')
+                for entry in self.get_log_entries()].count(True)

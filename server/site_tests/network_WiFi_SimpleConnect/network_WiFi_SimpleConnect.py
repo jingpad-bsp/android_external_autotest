@@ -44,7 +44,8 @@ class network_WiFi_SimpleConnect(wifi_cell_test_base.WiFiCellTestBase):
                 logging.info('Skipping ping because we expected this '
                              'attempt to fail.')
             else:
-                self.context.assert_ping_from_dut()
+                with self.context.client.assert_no_disconnects():
+                    self.context.assert_ping_from_dut()
                 if self.context.router.detect_client_deauth(client_mac):
                     raise error.TestFail(
                         'Client de-authenticated during the test')
