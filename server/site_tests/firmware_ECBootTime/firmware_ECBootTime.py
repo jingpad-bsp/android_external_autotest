@@ -72,3 +72,7 @@ class firmware_ECBootTime(FirmwareTest):
         if dev_mode:
             self.wait_fw_screen_and_ctrl_d()
         self.reboot_warm()
+
+    def cleanup(self):
+        # Restore the ec_uart_regexp to None
+        self.ec.set_uart_regexp('None')
