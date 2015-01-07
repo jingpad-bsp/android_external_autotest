@@ -395,12 +395,14 @@ def get_data_key(prefix, suite, build, board):
             % data_key_dict)
 
 
-def setup_logging(logfile=None):
+def setup_logging(logfile=None, prefix=False):
     """Setup basic logging with all logging info stripped.
 
     Calls to logging will only show the message. No severity is logged.
 
     @param logfile: If specified dump output to a file as well.
+    @param prefix: Flag for log prefix. Set to True to add prefix to log
+        entries to include timestamp and log level. Default is False.
     """
     # Remove all existing handlers. client/common_lib/logging_config adds
     # a StreamHandler to logger when modules are imported, e.g.,
@@ -408,14 +410,17 @@ def setup_logging(logfile=None):
     # log only messages, not severity.
     logging.getLogger().handlers = []
 
+    if prefix:
+        log_format = '%(asctime)s %(levelname)-5s| %(message)s'
+    else:
+        log_format = '%(message)s'
+
     screen_handler = logging.StreamHandler()
-    screen_handler.setFormatter(logging.Formatter('%(asctime)s '
-            '%(levelname)-5s| %(message)s'))
+    screen_handler.setFormatter(logging.Formatter(log_format))
     logging.getLogger().addHandler(screen_handler)
     logging.getLogger().setLevel(logging.INFO)
     if logfile:
         file_handler = logging.FileHandler(logfile)
-        file_handler.setFormatter(logging.Formatter('%(asctime)s '
-                '%(levelname)-5s| %(message)s'))
+        file_handler.setFormatter(logging.Formatter(log_format))
         file_handler.setLevel(logging.DEBUG)
         logging.getLogger().addHandler(file_handler)

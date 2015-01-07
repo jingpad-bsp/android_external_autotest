@@ -88,7 +88,7 @@ def main():
     log_name = LOG_NAME_TEMPLATE % args.build.replace('/', '_')
     log_name = os.path.join(log_dir, log_name)
 
-    utils.setup_logging(logfile=log_name)
+    utils.setup_logging(logfile=log_name, prefix=True)
 
     afe = frontend.AFE()
     name = SUITE_JOB_NAME_TEMPLATE % (args.build, args.name)
