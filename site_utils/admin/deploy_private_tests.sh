@@ -49,18 +49,24 @@ fi
 
 PUBLIC_SERVER_TESTS_DIR="${AUTOTEST_ROOT}/server/site_tests"
 PUBLIC_SERVER_SUITES_DIR="${PUBLIC_SERVER_TESTS_DIR}/suites"
+PUBLIC_CLIENT_TESTS_DIR="${AUTOTEST_ROOT}/client/site_tests"
 
 PRIVATE_SERVER_TESTS_DIR="${PRIVATE_AUTOTEST_ROOT}/server/site_tests"
 PRIVATE_SERVER_SUITES_DIR="${PRIVATE_SERVER_TESTS_DIR}/suites"
+PRIVATE_CLIENT_TESTS_DIR="${PRIVATE_AUTOTEST_ROOT}/client/site_tests"
 
-
-echo "Removing existing symbolic links in ${PUBLIC_SERVER_TESTS_DIR} \
-and ${PUBLIC_SERVER_SUITES_DIR}"
+echo "Removing existing symbolic links in ${PUBLIC_SERVER_TESTS_DIR}, \
+${PUBLIC_CLIENT_TESTS_DIR} and ${PUBLIC_SERVER_SUITES_DIR}"
 find ${PUBLIC_SERVER_TESTS_DIR} -type l -exec rm -v {} \;
+find ${PUBLIC_CLIENT_TESTS_DIR} -type l -exec rm -v {} \;
+find ${PUBLIC_SERVER_SUITES_DIR} -type l -exec rm -v {} \;
 echo "Creating links for tests..."
 find ${PRIVATE_SERVER_TESTS_DIR} -mindepth 1 -maxdepth 1 \
      -type d ! -path ${PRIVATE_SERVER_SUITES_DIR} \
      -exec ln -v -s {} ${PUBLIC_SERVER_TESTS_DIR} \;
+find ${PRIVATE_CLIENT_TESTS_DIR} -mindepth 1 -maxdepth 1 \
+     -type d ! -path ${PRIVATE_SERVER_SUITES_DIR} \
+     -exec ln -v -s {} ${PUBLIC_CLIENT_TESTS_DIR} \;
 echo "Creating links for suites..."
 find ${PRIVATE_SERVER_SUITES_DIR} -mindepth 1 -maxdepth 1 -type f \
      -exec ln -v -s {} ${PUBLIC_SERVER_SUITES_DIR} \;
