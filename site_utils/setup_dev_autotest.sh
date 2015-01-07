@@ -189,7 +189,7 @@ check_database()
     PASSWD_STRING="-p"
   fi
 
-  if ! mysqladmin ping ; then
+  if ! mysqladmin -u root "${PASSWD_STRING}" ping ; then
     sudo service mysql start
   fi
 
