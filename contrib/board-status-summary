@@ -1,0 +1,59 @@
+#!/bin/bash
+cd $(dirname $(readlink -f $0))/..
+
+BOARD_BLACKLIST=(
+    stout32
+)
+
+getboards() {
+    (
+    for p in bvt cq pfq
+    do
+        cli/atest host list -w cautotest -b pool:$p
+    done | sed '
+        /board:/ !d
+        s/^.*board:\([^,]*\).*$/\1/
+    ' | sort -u
+    for b in "${BOARD_BLACKLIST[@]}"
+    do
+        echo $b
+    done
+    ) | sort | uniq -u
+}
+
+if [ $# -eq 0 ]
+then
+    set -- $(getboards)
+fi
+
+list_duts() {
+    cli/atest host list -w cautotest -b $1 | sed '
+        1 d
+        /^chromeos[135]-/ d
+        /pool:wificell/ d
+        /pool:faft-/ d
+        /board:.*board:/ d
+        s/ .*$//
+    '
+}
+
+
+printf "%-19s %6s %6s %6s %6s %6s\n" "Board" "Avail" "Bad" "Good" "Spare" "Total"
+for BOARD in "$@"
+do
+    SUITES=$(list_duts board:$BOARD,pool:suites | wc -l)
+    if [ $SUITES -eq 0 ]; then
+        continue
+    fi
+    HOSTLIST=( $(list_duts board:$BOARD) )
+    HOSTS=${#HOSTLIST[@]}
+    BVT=6
+    CQ=$(list_duts board:$BOARD,pool:cq | wc -l)
+    PFQ=$(list_duts board:$BOARD,pool:pfq | wc -l)
+    WORKING=$(site_utils/dut_status.py -d 72 "${HOSTLIST[@]}" |
+                        grep OK | wc -l)
+    BROKEN=$(( HOSTS - WORKING ))
+    SPARE=$(( HOSTS - BVT - CQ - PFQ ))
+    AVAIL=$(( SPARE - BROKEN ))
+    printf "%-19s %6d %6d %6d %6d %6d\n" "$BOARD" "$AVAIL" "$BROKEN" "$WORKING" "$SPARE" "$HOSTS"
+done | sort -k 2n -k 3rn

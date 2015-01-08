@@ -1,0 +1,19 @@
+#!/bin/bash
+
+SCRIPT_DIR=$(dirname $(readlink -f $0))
+RUNDATE=$(date +%Y-%m-%d.%H)
+RUNFILE=$SCRIPT_DIR/../logs/dut-data/boards-$RUNDATE.txt
+
+cd $SCRIPT_DIR
+./board-status-summary >$RUNFILE
+
+INTEREST=(
+	chromeos-lab-alerts@google.com
+	skc-fireteam@google.com
+	jrbarnette@google.com
+	preeyanka@google.com
+	skc-fireteam@google.com
+	sosa@google.com
+)
+
+mailx -s "DUT board inventories $RUNDATE" "${INTEREST[@]}" <$RUNFILE
