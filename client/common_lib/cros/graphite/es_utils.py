@@ -84,19 +84,22 @@ ES_PORT = global_config.global_config.get_config_value(
         'CROS', 'ES_PORT', type=int, default=9200)
 ES_UDP_PORT = global_config.global_config.get_config_value(
         'CROS', 'ES_UDP_PORT', type=int, default=9700)
+# Whether to use http. udp is very little overhead (around 3 ms) compared to
+# using http (tcp) takes ~ 500 ms for the first connection and 50-100ms for
+# subsequent connections.
 ES_USE_HTTP = global_config.global_config.get_config_value(
         'CROS', 'ES_USE_HTTP', type=bool, default=False)
 
-# 3 Seconds before connection to esdb timeout.
-DEFAULT_TIMEOUT = 3
-
-# If CLIENT/metadata_index is not set, INDEX_METADATA falls back to autotest
-# instance name (SERVER/hostname).
+# If CLIENT/metadata_index is not set, INDEX_METADATA falls back to
+# autotest instance name (SERVER/hostname).
 INDEX_METADATA = global_config.global_config.get_config_value(
         'CLIENT', 'metadata_index', type=str, default=None)
 if not INDEX_METADATA:
     INDEX_METADATA = global_config.global_config.get_config_value(
             'SERVER', 'hostname', type=str, default='localhost')
+
+# 3 Seconds before connection to esdb timeout.
+DEFAULT_TIMEOUT = 3
 
 
 class EsUtilException(Exception):
@@ -125,7 +128,7 @@ class ESMetadata(object):
     """Class handling es connection for posting metadata. """
 
     def __init__(self, host=METADATA_ES_SERVER, port=ES_PORT,
-                 timeout=DEFAULT_TIMEOUT):
+                 timeout=DEFAULT_TIMEOUT, index=INDEX_METADATA):
         """Initialize ESMetadata object.
 
         @param host: elasticsearch host
@@ -135,19 +138,17 @@ class ESMetadata(object):
         self.host = host
         self.port = port
         self.timeout = timeout
+        self.index = index
 
 
-    def _send_data(self, type_str, index, metadata, use_http):
+    def _send_data(self, type_str, index, metadata):
         """Sends data to insert into elasticsearch.
 
         @param type_str: sets the _type field in elasticsearch db.
         @param index: index in elasticsearch to insert data to.
         @param metadata: dictionary object containing metadata
-        @param use_http: whether to use http. udp is very little overhead
-          (around 3 ms) compared to using http (tcp) takes ~ 500 ms
-          for the first connection and 50-100ms for subsequent connections.
         """
-        if not use_http:
+        if not ES_USE_HTTP:
             try:
                 message = create_udp_message_from_metadata(index, type_str,
                                                            metadata)
@@ -162,14 +163,11 @@ class ESMetadata(object):
             self.es.index(index=index, doc_type=type_str, body=metadata)
 
 
-    def post(self, type_str, metadata=None, index=INDEX_METADATA,
-             use_http=ES_USE_HTTP, log_time_recorded=True, **kwargs):
+    def post(self, type_str, metadata=None, log_time_recorded=True, **kwargs):
         """Wraps call of send_data, inserts entry into elasticsearch.
 
         @param type_str: sets the _type field in elasticsearch db.
-        @param index: index in elasticsearch to insert data to.
         @param metadata: dictionary object containing metadata
-        @param use_http: will use udp to send data when this is False.
         @param log_time_recorded: True to automatically save the time metadata
                                   is recorded. Default is True.
         @param kwargs: additional metadata fields
@@ -187,7 +185,7 @@ class ESMetadata(object):
         if log_time_recorded:
             metadata_copy['time_recorded'] = time.time()
         try:
-            self._send_data(type_str, index, metadata_copy, use_http)
+            self._send_data(type_str, self.index, metadata_copy)
         except elasticsearch.ElasticsearchException as e:
             logging.error(e)
 
