@@ -150,10 +150,11 @@ class BluetoothTester(object):
         @return list of found services' service record handles or Error Code
 
         """
-        return self._proxy.service_search_request(uuids, max_rec_cnt,
-                                                  preferred_size,
-                                                  forced_pdu_size,
-                                                  invalid_request)
+        return json.loads(
+                self._proxy.service_search_request(
+                 uuids, max_rec_cnt, preferred_size, forced_pdu_size,
+                 invalid_request)
+        )
 
 
     def service_attribute_request(self, handle, max_attr_byte_count, attr_ids,
@@ -174,11 +175,11 @@ class BluetoothTester(object):
         @return list of found attributes IDs and their values or Error Code
 
         """
-        return self._proxy.service_attribute_request(handle,
-                                                     max_attr_byte_count,
-                                                     attr_ids,
-                                                     forced_pdu_size,
-                                                     invalid_request)
+        return json.loads(
+                self._proxy.service_attribute_request(
+                 handle, max_attr_byte_count, attr_ids, forced_pdu_size,
+                 invalid_request)
+        )
 
 
     def service_search_attribute_request(self, uuids, max_attr_byte_count,
@@ -202,12 +203,11 @@ class BluetoothTester(object):
         @return list of found attributes IDs and their values or Error Code
 
         """
-        return self._proxy.service_search_attribute_request(uuids,
-                                                            max_attr_byte_count,
-                                                            attr_ids,
-                                                            preferred_size,
-                                                            forced_pdu_size,
-                                                            invalid_request)
+        return json.loads(
+                self._proxy.service_search_attribute_request(
+                 uuids, max_attr_byte_count, attr_ids, preferred_size,
+                 forced_pdu_size, invalid_request)
+        )
 
 
 def create_host_from(device_host, args=None):
