@@ -3,11 +3,11 @@
 from __future__ import print_function
 
 import argparse
-import itertools
 import subprocess
 import sys
 
 import common
+from autotest_lib.server import frontend
 from autotest_lib.site_utils.lib import infra
 
 
@@ -16,17 +16,37 @@ def discover_servers():
 
     @returns A list of server host-names, in order for updates.
     """
-    shards = infra.shard_servers()
-    sams = infra.sam_servers()
-    drones = infra.drone_servers()
-    databases = infra.database_servers()
-    extras = infra.extra_servers()
+    # Example server details....
+    # {
+    #     'hostname': 'server1',
+    #     'status': 'backup',
+    #     'roles': ['drone', 'scheduler'],
+    #     'attributes': {'max_processes': 300}
+    # }
+    rpc = frontend.AFE()
+    servers = rpc.run('get_servers')
 
-    # We don't manage devservers (yet).
-    # devservers = infra.devserver_servers()
+    # Do not update servers that need repair.
+    servers = [s for s in servers if s['status'] != 'repair_required']
 
-    # This line controls the order in which we update servers.
-    return list(itertools.chain(shards, sams, drones, extras, databases))
+    # Do not update devservers (not YET supported).
+    servers = [s for s in servers if 'devserver' not in s['roles']]
+
+    def update_order(s):
+        """Sort order for updating servers (lower first).
+
+        @param s: Server details for a single server.
+        """
+        if 'database' in s['roles']:
+            return 0
+        if 'scheduler' in s['roles']:
+            return 1
+        return 2
+
+    # Order in which servers are updated.
+    servers.sort(key=update_order)
+
+    return [s['hostname'] for s in servers]
 
 
 def parse_arguments(args):
