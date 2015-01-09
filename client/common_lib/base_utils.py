@@ -2041,6 +2041,38 @@ def wait_for_value(func,
     return value
 
 
+def wait_for_value_changed(func,
+                           old_value=None,
+                           timeout_sec=10):
+    """
+    Returns the value of func().
+
+    The function polls the return value until it is different from |old_value|,
+    and returns that value.
+
+    Polling will stop after |timeout_sec|.
+
+    @param func: function whose return value is to be waited on.
+    @param old_value: wait for func to return a value different from this.
+    @param timeout_sec: Number of seconds to wait before giving up and
+                        returning whatever value func() last returned.
+
+    @returns The most recent return value of func().
+    """
+    value = None
+    start_time_sec = time.time()
+    while True:
+        value = func()
+        if value != old_value:
+            break
+
+        if time.time() - start_time_sec >= timeout_sec:
+            break
+        time.sleep(0.1)
+
+    return value
+
+
 def restart_job(name):
     """
     Restarts an upstart job if it's running.

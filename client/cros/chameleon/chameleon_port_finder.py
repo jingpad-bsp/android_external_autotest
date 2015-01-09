@@ -5,6 +5,7 @@
 import logging
 from collections import namedtuple
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import chameleon
 
@@ -164,33 +165,30 @@ class ChameleonVideoInputFinder(ChameleonInputFinder):
             video_port.plug()
             try:
                 # DUT takes some time to respond. Wait until the video signal
-                # to stabilize.
+                # to stabilize and wait for the connector change.
                 video_stable = video_port.wait_video_input_stable(
                         self._TIMEOUT_VIDEO_STABLE_PROBE)
                 logging.info('Chameleon detected video input stable: %r',
                              video_stable)
 
-                output = self.display_facade.get_external_connector_name()
+                output = utils.wait_for_value_changed(
+                        self.display_facade.get_external_connector_name,
+                        old_value=False)
                 logging.info('CrOS detected external connector: %r', output)
 
-                if (video_stable and output and
-                        output.startswith(connector_type)):
+                if output and output.startswith(connector_type):
                     yield video_port
                     yielded = True
                 else:
                     if failed_ports is not None:
                        failed_ports.append(video_port)
                     # Show the failure why.
-                    if video_stable:
-                        if output:
-                            logging.error('Unexpected display on CrOS: %s',
-                                          output)
-                        else:
-                            logging.error('Display detection seems broken')
-                    elif output:
-                        logging.error('Chameleon timed out waiting CrOS video')
+                    if output:
+                        logging.error('Unexpected display on CrOS: %s', output)
                     else:
                         logging.error('CrOS failed to see any external display')
+                    if not video_stable:
+                        logging.warn('Chameleon timed out waiting CrOS video')
             finally:
                 # Unplug the port not to interfere with other tests.
                 video_port.unplug()
