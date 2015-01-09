@@ -61,5 +61,5 @@ def must_be_installed(cmd, host=None):
 
     error_msg = 'Unable to find %s' % cmd
     if host is not None:
-        error_msg += 'on %s' % host.hostname
+        error_msg += ' on %s' % host.hostname
     raise error.TestError(error_msg)
