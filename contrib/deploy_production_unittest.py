@@ -20,37 +20,44 @@ class TestDeployProduction(unittest.TestCase):
         # No arguments.
         results = deploy_production.parse_arguments([])
         self.assertEqual(
-                {'servers': [], 'args': [],
+                {'afe': 'cautotest', 'servers': [], 'args': [],
                  'cont': False, 'dryrun': False},
                 vars(results))
 
         # Dryrun, continue
         results = deploy_production.parse_arguments(['--dryrun', '--continue'])
         self.assertDictContainsSubset(
-                {'servers': [], 'args': [],
+                {'afe': 'cautotest', 'servers': [], 'args': [],
                  'cont': True, 'dryrun': True},
+                vars(results))
+
+        # List custom AFE server.
+        results = deploy_production.parse_arguments(['--afe', 'foo'])
+        self.assertDictContainsSubset(
+                {'afe': 'foo', 'servers': [], 'args': [],
+                 'cont': False, 'dryrun': False},
                 vars(results))
 
         # List some servers
         results = deploy_production.parse_arguments(['foo', 'bar'])
         self.assertDictContainsSubset(
-                {'servers': ['foo', 'bar'], 'args': [],
+                {'afe': 'cautotest', 'servers': ['foo', 'bar'], 'args': [],
                  'cont': False, 'dryrun': False},
                 vars(results))
 
         # List some local args
         results = deploy_production.parse_arguments(['--', 'foo', 'bar'])
         self.assertDictContainsSubset(
-                {'servers': [], 'args': ['foo', 'bar'],
+                {'afe': 'cautotest', 'servers': [], 'args': ['foo', 'bar'],
                  'cont': False, 'dryrun': False},
                 vars(results))
 
         # List everything.
         results = deploy_production.parse_arguments(
-                ['--continue', '--dryrun', 'foo', 'bar', '--',
-                 '--actions-only', '--dryrun'])
+                ['--continue', '--afe', 'foo', '--dryrun', 'foo', 'bar',
+                 '--', '--actions-only', '--dryrun'])
         self.assertDictContainsSubset(
-                {'servers': ['foo', 'bar'],
+                {'afe': 'foo', 'servers': ['foo', 'bar'],
                  'args': ['--actions-only', '--dryrun'],
                  'cont': True, 'dryrun': True},
                 vars(results))

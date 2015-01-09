@@ -11,8 +11,10 @@ from autotest_lib.server import frontend
 from autotest_lib.site_utils.lib import infra
 
 
-def discover_servers():
+def discover_servers(afe):
     """Discover the in-production servers to update.
+
+    @param afe: Server to contact with RPC requests.
 
     @returns A list of server host-names, in order for updates.
     """
@@ -23,7 +25,7 @@ def discover_servers():
     #     'roles': ['drone', 'scheduler'],
     #     'attributes': {'max_processes': 300}
     # }
-    rpc = frontend.AFE()
+    rpc = frontend.AFE(server=afe)
     servers = rpc.run('get_servers')
 
     # Do not update servers that need repair.
@@ -73,11 +75,13 @@ def parse_arguments(args):
                     ' --skip-update\n'))
 
     parser.add_argument('--continue', action='store_true', dest='cont',
-                        help='Continue to the next server on failure.')
+            help='Continue to the next server on failure.')
+    parser.add_argument('--afe', default='cautotest',
+            help='What is the main server for this installation? (cautotest).')
     parser.add_argument('--dryrun', action='store_true',
-                        help='Don\'t actually run remote commands.')
+            help='Don\'t actually run remote commands.')
     parser.add_argument('args', nargs=argparse.REMAINDER,
-                        help=('<server>, <server> ... -- <remote_arg>, <remote_arg> ...'))
+            help=('<server>, <server> ... -- <remote_arg>, <remote_arg> ...'))
 
     results = parser.parse_args(args)
 
@@ -116,7 +120,7 @@ def main(args):
 
     if not options.servers:
         print('Discover servers...')
-        options.servers = discover_servers()
+        options.servers = discover_servers(options.afe)
         print()
 
     # Display what we plan to update.
