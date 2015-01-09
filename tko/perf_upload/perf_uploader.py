@@ -156,7 +156,8 @@ def _gather_presentation_info(config_data, test_name):
 
 
 def _format_for_upload(platform_name, cros_version, chrome_version,
-                       hardware_id, perf_data, presentation_info):
+                       hardware_id, hardware_hostname, perf_data,
+                       presentation_info):
     """Formats perf data suitably to upload to the perf dashboard.
 
     The perf dashboard expects perf data to be uploaded as a
@@ -171,6 +172,8 @@ def _format_for_upload(platform_name, cros_version, chrome_version,
     @param chrome_version: The string chrome version number.
     @param hardware_id: String that identifies the type of hardware the test was
         executed on.
+    @param hardware_hostname: String that identifies the name of the device the
+        test was executed on.
     @param perf_data: A dictionary of measured perf data as computed by
         _compute_avg_stddev().
     @param presentation_info: A dictionary of dashboard presentation info for
@@ -208,6 +211,7 @@ def _format_for_upload(platform_name, cros_version, chrome_version,
                 'r_cros_version': cros_version,
                 'r_chrome_version': chrome_version,
                 'a_hardware_identifier': hardware_id,
+                'a_hardware_hostname': hardware_hostname,
             }
         }
 
@@ -269,6 +273,7 @@ def upload_test(job, test):
     cros_version = test.attributes.get('CHROMEOS_RELEASE_VERSION', '')
     chrome_version = test.attributes.get('CHROME_VERSION', '')
     hardware_id = test.attributes.get('hwid', '')
+    hardware_hostname = test.machine
     # Prefix the chromeOS version number with the chrome milestone.
     # TODO(dennisjeffrey): Modify the dashboard to accept the chromeOS version
     # number *without* the milestone attached.
@@ -278,7 +283,7 @@ def upload_test(job, test):
         presentation_info = _gather_presentation_info(config_data, test_name)
         formatted_data = _format_for_upload(
                 platform_name, cros_version, chrome_version, hardware_id,
-                perf_data, presentation_info)
+                hardware_hostname, perf_data, presentation_info)
         _send_to_dashboard(formatted_data)
     except PerfUploadingError as e:
         tko_utils.dprint('Error when uploading perf data to the perf '
