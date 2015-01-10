@@ -1111,10 +1111,17 @@ class FirmwareTest(FAFTBase):
         self.faft_client.system.run_shell_command('sync')
 
         # sync only sends SYNCHRONIZE_CACHE but doesn't
-        # check the status. hdparm sends TUR to check if
+        # check the status. For mmc devices, use `mmc
+        # status get` command to send an empty command to
+        # wait for the disk to be available again.  For
+        # other devices, hdparm sends TUR to check if
         # a device is ready for transfer operation.
         root_dev = self.faft_client.system.get_root_dev()
-        self.faft_client.system.run_shell_command('hdparm -f %s' % root_dev)
+        if 'mmcblk' in root_dev:
+            self.faft_client.system.run_shell_command('mmc status get %s' %
+                                                      root_dev)
+        else:
+            self.faft_client.system.run_shell_command('hdparm -f %s' % root_dev)
 
     ################################################
     # Reboot APIs
