@@ -184,3 +184,30 @@ def parse_stat_output(stat_output):
         raise RuntimeError('missing entries: ' + str(stat))
 
     return stat
+
+
+def convert_format(path_src, channels_src, bits_src, rate_src,
+                   path_dst, channels_dst, bits_dst, rate_dst,
+                   volume_scale):
+    """Converts a raw file to a new format.
+
+    @param path_src: The path to the source file.
+    @param channels_src: The channel number of the source file.
+    @param bits_src: The size of sample in bits of the source file.
+    @param rate_src: The sampling rate of the source file.
+    @param path_dst: The path to the destination file.
+    @param channels_dst: The channel number of the destination file.
+    @param bits_dst: The size of sample in bits of the destination file.
+    @param rate_dst: The sampling rate of the destination file.
+    @param volume_scale: A float for volume scale used in sox command.
+                         E.g. 1.0 is the same. 0.5 to scale volume by
+                         half. -1.0 to invert the data.
+
+    """
+    sox_cmd = [SOX_PATH]
+    sox_cmd += _raw_format_args(channels_src, bits_src, rate_src)
+    sox_cmd += ['-v', '%f' % volume_scale]
+    sox_cmd += [path_src]
+    sox_cmd += _raw_format_args(channels_dst, bits_dst, rate_dst)
+    sox_cmd += [path_dst]
+    cmd_utils.execute(sox_cmd)
