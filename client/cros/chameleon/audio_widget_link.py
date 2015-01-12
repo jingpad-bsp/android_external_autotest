@@ -289,7 +289,7 @@ class AudioBusToChameleonLink(AudioBusLink):
     """The abstraction for bus on audio board that is connected to Chameleon."""
     # This is the default channel map for 2-channel data recorded on
     # Chameleon through audio board.
-    _DEFAULT_CHANNEL_MAP = [0, 1, None, None, None, None, None, None]
+    _DEFAULT_CHANNEL_MAP = [1, 0, None, None, None, None, None, None]
 
     def __init__(self, *args, **kwargs):
         super(AudioBusToChameleonLink, self).__init__(
