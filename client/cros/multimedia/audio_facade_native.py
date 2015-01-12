@@ -69,7 +69,7 @@ class AudioFacadeNative(object):
             _playback()
         else:
             p = multiprocessing.Process(target=_playback)
-            p.daemon=True
+            p.daemon = True
             p.start()
 
         return True

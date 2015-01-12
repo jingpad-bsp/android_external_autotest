@@ -113,6 +113,7 @@ class WidgetLink(object):
         occupied: True if this widget is occupied by a widget binder.
         channel_map: A list containing current channel map. Checks docstring
                      of channel_map method of AudioInputWidget for details.
+
     """
     __metaclass__ = abc.ABCMeta
 

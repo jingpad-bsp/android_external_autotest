@@ -107,8 +107,8 @@ class ChameleonOutputFinder(ChameleonPortFinder):
     def find_all_ports(self):
         """
         @returns a named tuple ChameleonPorts() containing a list of connected
-                 output ports as the first element and failed ports as second
-                 element.
+                 output ports as the first element and failed ports as the
+                 second element.
 
         """
         self.connected = self.chameleon_board.get_all_outputs()
