@@ -25,7 +25,7 @@ class firmware_DevScreenTimeout(FirmwareTest):
     """
     version = 1
 
-    CTRL_D_REPEAT_COUNT = 10
+    CTRL_D_REPEAT_COUNT = 20
     CTRL_D_REPEAT_DELAY = 0.5
 
     # We accept 5s timeout margin as we need 5s to ensure client is offline.
