@@ -81,3 +81,35 @@ class AudioFacadeRemoteAdapter(object):
         """
         return os.path.join(
                 '/tmp', 'audio_%s.%s' % (str(uuid.uuid4()), ext))
+
+
+    def start_recording(self, data_format):
+        """Starts recording an audio file on DUT.
+
+        @param data_format: A dict containing:
+                            file_type: 'raw'.
+                            sample_format: 'S16_LE' for 16-bit signed integer in
+                                           little-endian.
+                            channel: channel number.
+                            rate: sampling rate.
+
+        @returns: True
+
+        """
+        self._audio_proxy.start_recording(data_format)
+        return True
+
+
+    def stop_recording(self, file_path):
+        """Stops recording on DUT.
+
+        @param file_path: The path to save the content.
+
+        @returns: True
+
+        """
+        remote_path = self._generate_client_temp_file_path('raw')
+        self._audio_proxy.stop_recording(remote_path)
+        self._client.get_file(remote_path, file_path)
+
+        return True

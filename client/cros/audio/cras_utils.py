@@ -47,14 +47,17 @@ def capture_cmd(
 
     @param capture_file: the name of file the audio to be stored in.
     @param block_size: the number of frames per callback(dictates latency).
-    @param duration: seconds to record.
+    @param duration: seconds to record. If it is None, duration is not set,
+                     and command will keep capturing audio until it is
+                     terminated.
     @param rate: the sampling rate.
     """
     args = [_CRAS_TEST_CLIENT]
     args += ['--capture_file', capture_file]
     if block_size is not None:
         args += ['--block_size', str(block_size)]
-    args += ['--duration', str(duration)]
+    if duration is not None:
+        args += ['--duration', str(duration)]
     args += ['--num_channels', str(channels)]
     args += ['--rate', str(rate)]
     return args
