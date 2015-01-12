@@ -4,7 +4,7 @@
 
 AUTHOR = "dkrahn"
 NAME = "platform_Pkcs11LoadPerf"
-SUITE = "bvt-perbuild"
+SUITE = "performance"
 TIME = "SHORT"
 TEST_CATEGORY = "Performance"
 TEST_CLASS = "platform"
