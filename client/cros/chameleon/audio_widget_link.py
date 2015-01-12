@@ -308,6 +308,22 @@ class AudioBusToChameleonLink(AudioBusLink):
                 'channel map %r', self.name, self.channel_map)
 
 
+class AudioBusToCrosLink(AudioBusLink):
+    """The abstraction for audio bus that is connected to Cros device."""
+    # This is the default channel map for 1-channel data recorded on
+    # Cros device.
+    _DEFAULT_CHANNEL_MAP = [0]
+
+    def __init__(self, *args, **kwargs):
+        super(AudioBusToCrosLink, self).__init__(
+            *args, **kwargs)
+        self.name = 'Audio board bus %s to Cros' % self.bus_index
+        self.channel_map = self._DEFAULT_CHANNEL_MAP
+        logging.debug(
+                'Create an AudioBusToCrosLink named %s with '
+                'channel map %r', self.name, self.channel_map)
+
+
 class HDMIWidgetLink(WidgetLink):
     """The abstraction for HDMI cable."""
 

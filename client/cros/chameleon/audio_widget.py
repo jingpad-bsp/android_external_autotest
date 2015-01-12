@@ -357,14 +357,33 @@ class CrosInputWidgetHandler(CrosWidgetHandler):
     This class abstracts a Cros device audio input widget handler.
 
     """
+    _DEFAULT_DATA_FORMAT = dict(file_type='raw',
+                                sample_format='S16_LE',
+                                channel=1,
+                                rate=48000)
+
     def start_recording(self):
         """Starts recording audio."""
-        raise NotImplementedError
+        self._audio_facade.start_recording(self._DEFAULT_DATA_FORMAT)
 
 
     def stop_recording(self):
-        """Stops recording audio."""
-        raise NotImplementedError
+        """Stops recording audio.
+
+        @returns:
+            A tuple (data, format).
+                data: The recorded binary data.
+                format: A dict containing:
+                    file_type: 'raw'.
+                    sample_format: 'S16_LE' for 16-bit signed integer in
+                                   little-endian.
+                    channel: channel number.
+                    rate: sampling rate.
+
+        """
+        with tempfile.NamedTemporaryFile(prefix='recorded_', delete=False) as f:
+            self._audio_facade.stop_recording(f.name)
+            return open(f.name).read(), self._DEFAULT_DATA_FORMAT
 
 
 class CrosOutputWidgetHandlerError(Exception):
