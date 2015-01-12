@@ -268,7 +268,11 @@ class ChameleonOutputWidgetHandler(ChameleonWidgetHandler):
     This class abstracts a Chameleon audio output widget handler.
 
     """
-    # TODO(cychiang): Add Chameleon audio output port.
+    _DEFAULT_DATA_FORMAT = dict(file_type='raw',
+                                sample_format='S32_LE',
+                                channel=8,
+                                rate=48000)
+
     def start_playback(self, test_data, blocking=False):
         """Starts playback.
 
@@ -276,12 +280,23 @@ class ChameleonOutputWidgetHandler(ChameleonWidgetHandler):
         @param blocking: Blocks this call until playback finishes.
 
         """
-        raise NotImplementedError
+        if blocking:
+            raise NotImplementedError(
+                    'Blocking playback on chameleon is not supported')
+
+        converted_audio_test_data = test_data.convert(
+                self._DEFAULT_DATA_FORMAT, self.scale)
+
+        self._port.start_playing_audio(
+                converted_audio_test_data.get_binary(),
+                self._DEFAULT_DATA_FORMAT)
+
+        converted_audio_test_data.delete()
 
 
     def stop_playback(self):
         """Stops playback."""
-        raise NotImplementedError
+        self._port.stop_playing_audio()
 
 
     def _find_port(self, interface):
