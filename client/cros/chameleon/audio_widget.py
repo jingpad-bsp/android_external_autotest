@@ -294,7 +294,13 @@ class ChameleonOutputWidgetHandler(ChameleonWidgetHandler):
         @raises: ValueError if port is not connected.
 
         """
-        raise NotImplementedError
+        finder = chameleon_port_finder.ChameleonAudioOutputFinder(
+                self._chameleon_board)
+        chameleon_port = finder.find_port(interface)
+        if not chameleon_port:
+            raise ValueError(
+                    'Port %s is not connected to Chameleon' % interface)
+        return chameleon_port
 
 
 class CrosWidgetHandler(WidgetHandler):

@@ -442,6 +442,40 @@ class ChameleonAudioInput(ChameleonPort):
         return rpc_data.data, data_format
 
 
+class ChameleonAudioOutput(ChameleonPort):
+    """ChameleonAudioOutput is an abstraction of an audio output port.
+
+    It contains some special methods to control an audio output.
+    """
+
+    def __init__(self, chameleon_port):
+        """Construct a ChameleonAudioOutput.
+
+        @param chameleon_port: A general ChameleonPort object.
+        """
+        self.chameleond_proxy = chameleon_port.chameleond_proxy
+        self.port_id = chameleon_port.port_id
+
+
+    def start_playing_audio(self, data, data_format):
+        """Starts playing audio.
+
+        @param data: The audio data to play.
+        @param data_format: A dict containing data format. Currently Chameleon
+                            only accepts data format:
+                            dict(file_type='raw', sample_format='S32_LE',
+                                 channel=8, rate=48000).
+
+        """
+        return self.chameleond_proxy.StartPlayingAudio(
+                self.port_id, xmlrpclib.Binary(data), data_format)
+
+
+    def stop_playing_audio(self):
+        """Stops capturing audio."""
+        self.chameleond_proxy.StopPlayingAudio(self.port_id)
+
+
 def make_chameleon_hostname(dut_hostname):
     """Given a DUT's hostname, returns the hostname of its Chameleon.
 

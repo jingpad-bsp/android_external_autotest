@@ -256,3 +256,27 @@ class ChameleonAudioInputFinder(ChameleonInputFinder):
         self.failed = []
 
         return ChameleonPorts(self.connected, self.failed)
+
+
+class ChameleonAudioOutputFinder(ChameleonOutputFinder):
+    """
+    Responsible for finding all audio outputs connected to the chameleon board.
+
+    It does not verify if these ports are connected to DUT.
+
+    """
+
+    def find_all_ports(self):
+        """
+        @returns a named tuple ChameleonPorts() containing a list of connected
+                 audio outputs as the first element and failed ports as second
+                 element.
+
+        """
+        all_ports = super(ChameleonAudioOutputFinder, self).find_all_ports()
+        self.connected = [chameleon.ChameleonAudioOutput(port)
+                          for port in all_ports.connected
+                          if port.has_audio_support()]
+        self.failed = []
+
+        return ChameleonPorts(self.connected, self.failed)
