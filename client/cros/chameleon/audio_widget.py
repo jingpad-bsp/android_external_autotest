@@ -181,8 +181,11 @@ class ChameleonWidgetHandler(WidgetHandler):
     Properties:
         interface: A string that represents the interface name on
                    Chameleon, e.g. 'HDMI', 'LineIn', 'LineOut'.
+        scale: The scale is the scaling factor to be applied on the data of the
+               widget before playing or after recording.
         _chameleon_board: A ChameleonBoard object to control Chameleon.
         _port: A ChameleonPort object to control port on Chameleon.
+
     """
     def __init__(self, chameleon_board, interface):
         """Initializes a ChameleonWidgetHandler.
@@ -195,6 +198,7 @@ class ChameleonWidgetHandler(WidgetHandler):
         self.interface = interface
         self._chameleon_board = chameleon_board
         self._port = self._find_port(interface)
+        self.scale = None
 
 
     @abc.abstractmethod
@@ -223,13 +227,20 @@ class ChameleonInputWidgetHandler(ChameleonWidgetHandler):
         self._port.start_capturing_audio()
 
 
+    # TODO(cychiang): Handle recorded data scaling when recording
+    # from peripheral mic.
     def stop_recording(self):
         """Stops recording.
 
         @returns: A tuple (data_binary, data_format) for recorded data.
                   Refer to stop_capturing_audio call of ChameleonAudioInput.
 
+
+        @raises: NotImplementedError: If scale is not None.
         """
+        if self.scale:
+            raise NotImplementedError(
+                    'Scale on ChameleonInputWidgetHandler is not implemented')
         return self._port.stop_capturing_audio()
 
 

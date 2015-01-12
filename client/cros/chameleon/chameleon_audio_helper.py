@@ -51,7 +51,8 @@ class AudioPort(object):
                   host, interface, and direction.
 
         """
-        return '( %s | %s | %s )' % (self.host, self.interface, self.direction)
+        return '( %s | %s | %s )' % (
+                self.host, self.interface, self.direction)
 
 
 class AudioLinkFactoryError(Exception):

@@ -7,6 +7,7 @@
 import abc
 import logging
 
+from autotest_lib.client.cros.chameleon import audio_level
 from autotest_lib.client.cros.chameleon import chameleon_audio_ids as ids
 
 
@@ -31,6 +32,8 @@ class WidgetBinder(object):
                  input widget.
         _link: An WidgetLink object to link source and sink.
         _connected: True if this binder is connected.
+        _level_controller: A LevelController to set scale and balance levels of
+                           source and sink.
     """
     def __init__(self, source, link, sink):
         """Initializes a WidgetBinder.
@@ -52,6 +55,8 @@ class WidgetBinder(object):
         self._sink = sink
         self._connected = False
         self._link.occupied = True
+        self._level_controller = audio_level.LevelController(
+                self._source, self._sink)
 
 
     def connect(self):
@@ -67,6 +72,7 @@ class WidgetBinder(object):
         # Sets channel map of link to the sink widget so
         # sink widget knows the channel map of recorded data.
         self._sink.channel_map = self._link.channel_map
+        self._level_controller.set_scale()
 
 
     def disconnect(self):
@@ -79,6 +85,7 @@ class WidgetBinder(object):
         self._link.unplug_input(self._source)
         self._link.unplug_output(self._sink)
         self._connected = False
+        self._level_controller.reset()
 
 
     def release(self):
