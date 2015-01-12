@@ -211,3 +211,26 @@ def convert_format(path_src, channels_src, bits_src, rate_src,
     sox_cmd += _raw_format_args(channels_dst, bits_dst, rate_dst)
     sox_cmd += [path_dst]
     cmd_utils.execute(sox_cmd)
+
+
+def lowpass_filter(path_src, channels_src, bits_src, rate_src,
+                   path_dst, frequency):
+    """Passes a raw file to a lowpass filter.
+
+    @param path_src: The path to the source file.
+    @param channels_src: The channel number of the source file.
+    @param bits_src: The size of sample in bits of the source file.
+    @param rate_src: The sampling rate of the source file.
+    @param path_dst: The path to the destination file.
+    @param frequency: A float for frequency used in sox command. The 3dB
+                      frequency of the lowpass filter. Checks manual of sox
+                      command for detail.
+
+    """
+    sox_cmd = [SOX_PATH]
+    sox_cmd += _raw_format_args(channels_src, bits_src, rate_src)
+    sox_cmd += [path_src]
+    sox_cmd += _raw_format_args(channels_src, bits_src, rate_src)
+    sox_cmd += [path_dst]
+    sox_cmd += ['lowpass', '-2', str(frequency)]
+    cmd_utils.execute(sox_cmd)

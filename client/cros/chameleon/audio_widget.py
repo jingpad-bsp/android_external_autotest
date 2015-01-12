@@ -7,7 +7,10 @@
 import abc
 import copy
 import logging
+import tempfile
 
+from autotest_lib.client.cros.audio import audio_data
+from autotest_lib.client.cros.audio import sox_utils
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
 
 
@@ -136,6 +139,64 @@ class AudioInputWidget(AudioWidget):
 
         """
         self._channel_map = copy.deepcopy(new_channel_map)
+
+
+    @property
+    def _sample_size_bytes(self):
+        """Gets sample size in bytes of recorded data."""
+        return audio_data.SAMPLE_FORMATS[
+                self._rec_format['sample_format']]['size_bytes']
+
+
+    @property
+    def _sample_size_bits(self):
+        """Gets sample size in bits of recorded data."""
+        return self._sample_size_bytes * 8
+
+
+    @property
+    def _channel(self):
+        """Gets number of channels of recorded data."""
+        return self._rec_format['channel']
+
+
+    @property
+    def _sampling_rate(self):
+        """Gets sampling rate of recorded data."""
+        return self._rec_format['rate']
+
+
+    def remove_head(self, duration_secs):
+        """Removes a duration of recorded data from head.
+
+        @param duration_secs: The duration in seconds to be removed from head.
+
+        """
+        offset = int(self._sampling_rate * duration_secs *
+                     self._sample_size_bytes * self._channel)
+        self._rec_binary = self._rec_binary[offset:]
+
+
+    def lowpass_filter(self, frequency):
+        """Passes the recorded data to a lowpass filter.
+
+        @param frequency: The 3dB frequency of lowpass filter.
+
+        """
+        with tempfile.NamedTemporaryFile(
+                prefix='original_') as original_file:
+            with tempfile.NamedTemporaryFile(
+                    prefix='filtered_') as filtered_file:
+
+                original_file.write(self._rec_binary)
+                original_file.flush()
+
+                sox_utils.lowpass_filter(
+                        original_file.name, self._channel,
+                        self._sample_size_bits, self._sampling_rate,
+                        filtered_file.name, frequency)
+
+                self._rec_binary = filtered_file.read()
 
 
 class AudioOutputWidget(AudioWidget):
