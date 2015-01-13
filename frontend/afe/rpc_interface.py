@@ -59,12 +59,6 @@ def get_parameterized_autoupdate_image_url(job):
 
 # labels
 
-def add_label(name, kernel_config=None, platform=None, only_if_needed=None):
-    return models.Label.add_object(
-            name=name, kernel_config=kernel_config, platform=platform,
-            only_if_needed=only_if_needed).id
-
-
 def modify_label(id, **data):
     models.Label.smart_get(id).update_object(data)
 
@@ -72,23 +66,71 @@ def modify_label(id, **data):
 def delete_label(id):
     models.Label.smart_get(id).delete()
 
-@rpc_utils.forward_multi_host_rpc_to_shards
-def label_add_hosts(id, hosts):
-    """Add the label with the given id to the list of hosts.
 
+def add_label(name, ignore_exception_if_exists=False, **kwargs):
+    """Add a new label with a given name.
+
+    @param name: label name.
+    @param ignore_exception_if_exists: If True and the exception was
+        thrown due to the duplicated label name when adding a label,
+        then suppress the exception. Default is False.
+    @param kwargs: keyword args that store more info about a label
+        other than the name.
+    @return: int/long id of a new label.
+    """
+    # models.Label.add_object() throws model_logic.ValidationError
+    # when it is given a label name that already exists.
+    # However, ValidationError can be thrown with different errors,
+    # and those errors should be thrown up to the call chain.
+    try:
+        label = models.Label.add_object(name=name, **kwargs)
+    except:
+        if ignore_exception_if_exists:
+            label = rpc_utils.get_label(name)
+            # If the exception is raised not because of duplicated
+            # "name", then raise the original exception.
+            if label is None:
+                raise
+        else:
+            raise
+    return label.id
+
+
+def add_label_to_hosts(id, hosts):
+    """Add a label with the given id to the given hosts only in local DB.
+
+    @param id: id or name of a label. More often a label name.
+    @param hosts: The hostnames of hosts that need the label.
+
+    @raises models.Label.DoesNotExist: If the label with id doesn't exist.
+    """
+    label = models.Label.smart_get(id)
+    host_objs = models.Host.smart_get_bulk(hosts)
+    if label.platform:
+        models.Host.check_no_platform(host_objs)
+    label.host_set.add(*host_objs)
+
+
+def label_add_hosts(id, hosts):
+    """Add a label with the given id to the given hosts.
+
+    This method should be run only on master not shards.
     The given label will be created if it doesn't exist, provided the `id`
     supplied is a label name not an int/long id.
 
-    @param id: An id or label name. More often a label name.
+    @param id: id or name of a label. More often a label name.
     @param hosts: A list of hostnames or ids. More often hostnames.
 
-    @raises models.Label.DoesNotExist: If the id specified is an int/long
-        and a label with that id doesn't exist.
+    @raises Exception: If this RPC is called other than master.
+    @raises ValueError: If the id specified is an int/long (label id)
+                        while the label does not exist.
     """
+    # This RPC call should be accepted only by master.
+    if utils.is_shard():
+        raise Exception('RPC label_add_hosts should be called only on matser')
+
     host_objs = models.Host.smart_get_bulk(hosts)
     try:
-        # In the rare event that we're given an id and not a label name,
-        # it should already exist.
         label = models.Label.smart_get(id)
     except models.Label.DoesNotExist:
         # This matches the type checks in smart_get, which is a hack
@@ -97,11 +139,18 @@ def label_add_hosts(id, hosts):
         if isinstance(id, basestring):
             label = models.Label.smart_get(add_label(id))
         else:
-            raise
-
-    if label.platform:
-        models.Host.check_no_platform(host_objs)
-    label.host_set.add(*host_objs)
+            raise ValueError('Label id (%s) does not exist. Please specify '
+                             'the argument, id, as a string (label name).'
+                             % id)
+    add_label_to_hosts(id, hosts)
+    # Make sure the label exists on the shard with the same id
+    # as it is on the master.
+    # It is possible that the label is already in a shard.
+    # We ignore exception in such a case.
+    rpc_utils.fanout_rpc(
+            host_objs, 'add_label', name=label.name, id=label.id,
+            include_hostnames=False, ignore_exception_if_exists=True)
+    rpc_utils.fanout_rpc(host_objs, 'add_label_to_hosts', id=id)
 
 
 @rpc_utils.forward_multi_host_rpc_to_shards
