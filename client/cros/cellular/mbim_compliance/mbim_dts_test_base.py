@@ -1,8 +1,10 @@
-# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 import common
+from autotest_lib.client.cros.cellular.mbim_compliance import mbim_constants
+from autotest_lib.client.cros.cellular.mbim_compliance import mbim_errors
 from autotest_lib.client.cros.cellular.mbim_compliance import mbim_test_base
 from autotest_lib.client.cros.cellular.mbim_compliance.sequences \
         import connect_sequence
@@ -36,5 +38,13 @@ class MbimDtsTestBase(mbim_test_base.MbimTestBase):
         open_sequence.run(ntb_format=ntb_format)
         connect_seq = connect_sequence.ConnectSequence(self.device_context)
         connect_seq.run()
+
+        # Devices may not support SetNtbFormat(), so fail the NTB32 tests on
+        # such devices.
+        if ((ntb_format == mbim_constants.NTB_FORMAT_32) and
+            (self.device_context.current_ntb_format != ntb_format)):
+            mbim_errors.log_and_raise(
+                    mbim_errors.MBIMComplianceFrameworkError,
+                    'Device does not support NTB 32 format.')
 
         return (desc_sequence, open_sequence, connect_seq)

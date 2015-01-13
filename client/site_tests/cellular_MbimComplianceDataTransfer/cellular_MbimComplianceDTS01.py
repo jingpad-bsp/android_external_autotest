@@ -31,8 +31,7 @@ class cellular_MbimComplianceDTS01(mbim_dts_test_base.MbimDtsTestBase):
 
         # Step 1
         loopback = loopback_sequence.LoopbackSequence(self.device_context)
-        _, _, _, payload = loopback.run(
-                ntb_format=self.device_context.ntb_format)
+        _, _, _, payload = loopback.run(ntb_format=mbim_constants.NTB_FORMAT_16)
 
         # Step 2
         # Let's check the first byte of the first received payload to verify

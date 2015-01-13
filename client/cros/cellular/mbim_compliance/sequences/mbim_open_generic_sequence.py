@@ -1,4 +1,4 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -99,11 +99,6 @@ class MBIMOpenGenericSequence(open_sequence.OpenSequence):
         # supports 32-bit NTBs.
         if (ntb_parameters.bmNtbFormatsSupported >> 1) & 1:
             self.set_ntb_format(communication_interface_number, ntb_format)
-        else:
-            if ntb_format == mbim_constants.NTB_FORMAT_32:
-                mbim_errors.log_and_raise(
-                        mbim_errors.MBIMComplianceFrameworkError,
-                        'Device does not support NTB 32 format. ')
 
         # Step 8
         # Send SetNtbInputSize() request to communication interface.
@@ -163,7 +158,8 @@ class MBIMOpenGenericSequence(open_sequence.OpenSequence):
         # Store data/control transfer parameters in the device context so that
         # it can be used in any further control/data transfers.
         device_context.max_control_transfer_size = max_control_transfer_size
-        device_context.ntb_format = ntb_format
+        device_context.current_ntb_format = self.get_ntb_format(
+                communication_interface_number)
         device_context.max_in_data_transfer_size = (
                 ntb_parameters.dwNtbInMaxSize)
         device_context.max_out_data_transfer_size = (

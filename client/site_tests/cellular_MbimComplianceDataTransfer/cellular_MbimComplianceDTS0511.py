@@ -43,12 +43,12 @@ class cellular_MbimComplianceDTS0511(mbim_dts_test_base.MbimDtsTestBase):
 
         # Step 3
         if ntb_format == mbim_constants.NTB_FORMAT_16:
-            if (nth_1.sequence_number != 0) or (nth_2.sequence_number != 1):
+            if nth_2.sequence_number != nth_1.sequence_number + 1:
                 mbim_errors.log_and_raise(
                         mbim_errors.MBIMComplianceAssertionError,
                         'ncm1.0:3.2.1#4')
         else:
-            if (nth_1.sequence_number != 0) or (nth_2.sequence_number != 1):
+            if nth_2.sequence_number != nth_1.sequence_number + 1:
                 mbim_errors.log_and_raise(
                         mbim_errors.MBIMComplianceAssertionError,
                         'ncm1.0:3.2.2#4')

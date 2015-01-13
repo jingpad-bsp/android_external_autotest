@@ -1,4 +1,4 @@
-# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -100,11 +100,11 @@ class OpenSequence(sequence.Sequence):
         logging.debug('GetNtbParameters request to interface-%d.',
                       interface_number)
         ntb_parameters = self.device_context.device.ctrl_transfer(
-                                 bmRequestType=0b10100001,
-                                 bRequest=0x80,
-                                 wValue=0,
-                                 wIndex=interface_number,
-                                 data_or_wLength=28)
+                bmRequestType=0b10100001,
+                bRequest=0x80,
+                wValue=0,
+                wIndex=interface_number,
+                data_or_wLength=28)
         logging.debug('Response: %s', ntb_parameters)
         format_string = NtbParameters.get_format_string()
         return NtbParameters(
@@ -122,12 +122,32 @@ class OpenSequence(sequence.Sequence):
         logging.debug('SetNtbFormat request: %d to interface-%d.',
                       ntb_format, interface_number)
         response = self.device_context.device.ctrl_transfer(
-                           bmRequestType=0b00100001,
-                           bRequest=0x84,
-                           wValue=ntb_format,
-                           wIndex=interface_number,
-                           data_or_wLength=None)
+                bmRequestType=0b00100001,
+                bRequest=0x84,
+                wValue=ntb_format,
+                wIndex=interface_number,
+                data_or_wLength=None)
         logging.debug('Response: %s', response)
+
+
+    def get_ntb_format(self, interface_number):
+        """
+        Send GetNtbFormat() request to the target interface.
+
+        @param interface_number: the index of target interface
+        @returns ntb_format: The NTB format currently set.
+
+        """
+        logging.debug('GetNtbFormat request to interface-%d.',
+                      interface_number)
+        response = self.device_context.device.ctrl_transfer(
+                bmRequestType=0b10100001,
+                bRequest=0x83,
+                wValue=0,
+                wIndex=interface_number,
+                data_or_wLength=2)
+        logging.debug('Response: %s', response)
+        return response
 
 
     def set_ntb_input_size(self, interface_number, dw_ntb_in_max_size):
@@ -142,10 +162,10 @@ class OpenSequence(sequence.Sequence):
                       dw_ntb_in_max_size, interface_number)
         data = struct.pack('<I', dw_ntb_in_max_size)
         response = self.device_context.device.ctrl_transfer(
-                           bmRequestType=0b00100001,
-                           bRequest=0x86,
-                           wIndex=interface_number,
-                           data_or_wLength=data)
+                bmRequestType=0b00100001,
+                bRequest=0x86,
+                wIndex=interface_number,
+                data_or_wLength=data)
         logging.debug('Response: %s', response)
 
 
@@ -160,8 +180,8 @@ class OpenSequence(sequence.Sequence):
                       MAX_DATAGRAM_SIZE, interface_number)
         data = struct.pack('<H', MAX_DATAGRAM_SIZE)
         response = self.device_context.device.ctrl_transfer(
-                           bmRequestType=0b00100001,
-                           bRequest=0x88,
-                           wIndex=interface_number,
-                           data_or_wLength=data)
+                bmRequestType=0b00100001,
+                bRequest=0x88,
+                wIndex=interface_number,
+                data_or_wLength=data)
         logging.debug('Response: %s', response)

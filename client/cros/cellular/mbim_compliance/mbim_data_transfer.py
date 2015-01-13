@@ -1,4 +1,4 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 """
@@ -17,12 +17,12 @@ from autotest_lib.client.cros.cellular.mbim_compliance import mbim_errors
 
 
 NTH_SIGNATURE_32 = 0x686D636E  # "ncmh"
-NDP_SIGNATURE_IPS_32 = 0x30737069  # "ips0"
-NDP_SIGNATURE_DSS_32 = 0x30737364  # "dss0"
+NDP_SIGNATURE_IPS_32 = 0x00737069  # "ips0"
+NDP_SIGNATURE_DSS_32 = 0x00737364  # "dss0"
 
 NTH_SIGNATURE_16 = 0x484D434E  # "NCMH"
-NDP_SIGNATURE_IPS_16 = 0x30535049  # "IPS0"
-NDP_SIGNATURE_DSS_16 = 0x30535344  # "DSS0"
+NDP_SIGNATURE_IPS_16 = 0x00535049  # "IPS0"
+NDP_SIGNATURE_DSS_16 = 0x00535344  # "DSS0"
 
 class MBIMDataTransfer(object):
     """
@@ -318,8 +318,8 @@ class MBIMNtb(object):
         if len(raw_ntb_frame) != self.nth.block_length:
             mbim_errors.log_and_raise(
                     mbim_errors.MBIMComplianceNtbError,
-                    'NTB size mismatch Total length: %d Reported: %d bytes' %
-                    len(raw_ntb_frame), self.nth.block_length)
+                    'NTB size mismatch Total length: %x Reported: %x bytes' % (
+                            len(raw_ntb_frame), self.nth.block_length))
 
         # Read the NDP header to find the number of packets in the entry
         self.ndp = self._ndp_class(raw_data=raw_ntb_frame[ndp_offset:])

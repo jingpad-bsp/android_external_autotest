@@ -27,4 +27,4 @@ from autotest_lib.client.cros.cellular.mbim_compliance import mbim_constants
 
 job.run_test('cellular_MbimComplianceDataTransfer',
              subtest_name='cellular_MbimComplianceDTS0309',
-             ntb_format=mbim_constants.NTB_FORMAT_16)
+             ntb_format=mbim_constants.NTB_FORMAT_32)
