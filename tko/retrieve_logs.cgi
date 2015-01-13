@@ -2,9 +2,12 @@
 
 import cgi, os, sys, urllib2
 import common
+from autotest_lib.frontend import setup_django_environment
+
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.bin import utils
 from autotest_lib.frontend.afe.json_rpc import serviceHandler
+from autotest_lib.site_utils import server_manager_utils
 
 _PAGE = """\
 Status: 302 Found
@@ -50,7 +53,10 @@ def find_repository_host(job_path):
         return site_repo_info
 
     config = global_config.global_config
-    drones = config.get_config_value('SCHEDULER', 'drones')
+    if server_manager_utils.use_server_db():
+        drones = server_manager_utils.get_drones()
+    else:
+        drones = config.get_config_value('SCHEDULER', 'drones').split(',')
 
     # TODO: This won't scale as we add more shards. Ideally the frontend would
     # pipe the shard_hostname with the job_id but there are helper scripts like
@@ -62,7 +68,7 @@ def find_repository_host(job_path):
     archive_host = config.get_config_value('SCHEDULER', 'archive_host',
                                             default='')
     results_repos = [results_host]
-    for host in drones.split(',') + shards.split(','):
+    for host in drones + shards.split(','):
         host = host.strip()
         if host and host not in results_repos:
             results_repos.append(host)
