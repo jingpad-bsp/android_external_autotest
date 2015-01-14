@@ -33,7 +33,7 @@ class display_HDCPScreen(test.test):
     ]
 
     DURATION_UNPLUG_FOR_HDCP = 1
-    TIMEOUT_HDCP_SWITCH = 5
+    TIMEOUT_HDCP_SWITCH = 10
 
     def run_once(self, host, test_mirrored=False):
         if host.get_architecture() != 'arm':
