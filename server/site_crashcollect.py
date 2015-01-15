@@ -262,5 +262,6 @@ def report_bug_from_crash(host, minidump_path):
                     if not package:
                         package = '<unknown package>'
                     logging.info('Would report crash on %s.', package)
+                    break
     except Exception as e:
         logging.warning('Crash detection failed with: %s', e)
