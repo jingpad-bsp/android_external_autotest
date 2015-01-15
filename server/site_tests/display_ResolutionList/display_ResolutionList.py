@@ -6,7 +6,6 @@
 
 import logging
 import os
-import random
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
@@ -60,7 +59,6 @@ class display_ResolutionList(test.test):
                         display_facade.get_available_resolutions(index))
                 logging.info('External display %d: %d resolutions found.',
                              index, len(resolution_list))
-                random.shuffle(resolution_list)
 
                 logging.info('Set mirrored: %s', test_mirrored)
                 display_facade.set_mirrored(test_mirrored)
