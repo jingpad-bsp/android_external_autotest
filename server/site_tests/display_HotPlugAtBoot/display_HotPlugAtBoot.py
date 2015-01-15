@@ -26,7 +26,8 @@ class display_HotPlugAtBoot(test.test):
         (True, True),
         (True, False),
     ]
-
+    # Allowed timeout for reboot.
+    REBOOT_TIMEOUT = 20
 
     def run_once(self, host, test_mirrored=False):
         factory = remote_facade_factory.RemoteFacadeFactory(host)
@@ -66,7 +67,8 @@ class display_HotPlugAtBoot(test.test):
                 logging.info('Reboot...')
                 host.reboot(wait=False)
 
-                host.test_wait_for_shutdown()
+                host.test_wait_for_shutdown(
+                        shutdown_timeout=self.REBOOT_TIMEOUT)
                 chameleon_port.set_plug(plugged_after_boot)
                 host.test_wait_for_boot(boot_id)
 
