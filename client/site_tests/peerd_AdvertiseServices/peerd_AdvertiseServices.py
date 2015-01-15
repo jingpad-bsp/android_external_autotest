@@ -4,6 +4,7 @@
 
 import dpkt
 import logging
+import re
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
@@ -25,9 +26,11 @@ class peerd_AdvertiseServices(test.test):
                           'other_data': 'another value'}
     TEST_SERVICE_PORT = 8080
     SERBUS_SERVICE_ID = 'serbus'
-    SERBUS_SERVICE_INFO = {'ver': '1.0',
-                           'id': ANY_VALUE,
-                           'services': TEST_SERVICE_ID}
+    SERBUS_SERVICE_INFO = {
+            'ver': '1.0',
+            'id': ANY_VALUE,
+            'services': r'(.+\.)?' + TEST_SERVICE_ID + r'(\..+)?',
+    }
     SERBUS_SERVICE_PORT = 0
 
 
@@ -76,9 +79,9 @@ class peerd_AdvertiseServices(test.test):
             if k not in expected_entries:
                 raise error.TestFail('Unexpected TXT entry key: %s' % k)
             if (expected_entries[k] != self.ANY_VALUE and
-                    expected_entries[k] != v):
-                raise error.TestFail('Expected TXT value=%s for entry=%s '
-                                     'but got value=%r instead.' %
+                    not re.match(expected_entries[k], v)):
+                raise error.TestFail('Expected TXT value to match %s for '
+                                     'entry=%s but got value=%r instead.' %
                                      (expected_entries[k], k, v))
             expected_entries.pop(k)
         if expected_entries:
