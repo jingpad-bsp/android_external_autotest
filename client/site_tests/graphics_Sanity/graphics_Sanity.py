@@ -3,20 +3,21 @@
 # found in the LICENSE file.
 
 import os
+import logging
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.cros import service_stopper
+from autotest_lib.client.cros.graphics import graphics_utils
 
 # to run this test manually on a test target
 # ssh root@machine
 # cd /usr/local/autotest/deps/glbench
 # stop ui
-# X :0 & sleep 1; DISPLAY=:0 ./windowmanagertest --screenshot1_sec 2 \
-#    --screenshot2_sec 1  --cooldown_sec 1 \
-#    --screenshot1_cmd "DISPLAY=:0 import -channel RGB -colorspace RGB \
-#        -depth 8 -window root screenshot1_generated.png" \
-#    --screenshot2_cmd "DISPLAY=:0 import -channel RGB -colorspace RGB \
-#        -depth 8 -window root screenshot2_generated.png"
+# ./windowmanagertest --screenshot1_sec 2 --screenshot2_sec 1 --cooldown_sec 1 \
+#    --screenshot1_cmd \
+#        "/usr/local/autotest/bin/screenshot.py screenshot1_generated.png" \
+#    --screenshot2_cmd \
+#        "/usr/local/autotest/bin/screenshot.py screenshot2_generated.png"
 # start ui
 
 class graphics_Sanity(test.test):
@@ -49,9 +50,9 @@ class graphics_Sanity(test.test):
         Draws a texture with a soft ellipse twice and captures each image.
         Compares the output fuzzily against reference images.
         """
-        # TODO(ihf): Remove this once GLBench works on freon.
-        if utils.is_freon():
-          return
+        if graphics_utils.get_internal_crtc() == -1:
+            logging.warning('Skipping test because there is no screen')
+            return
 
         dep = 'glbench'
         dep_dir = os.path.join(self.autodir, 'deps', dep)
@@ -77,34 +78,33 @@ class graphics_Sanity(test.test):
         options += ' --screenshot2_sec 1'
         options += ' --cooldown_sec 1'
         # perceptualdiff can handle only 8 bit images.
-        options += ' --screenshot1_cmd "DISPLAY=:1 import -channel RGB'
-        options += ' -colorspace RGB -depth 8 -window root'
-        options += ' %s"' % screenshot1_generated
-        options += ' --screenshot2_cmd "DISPLAY=:1 import -channel RGB'
-        options += ' -colorspace RGB -depth 8 -window root'
-        options += ' %s"' % screenshot2_generated
+        if not utils.is_freon():
+          screenshot_cmd = ' "DISPLAY=:1 import -window root %s"'
+        else:
+          screenshot_cmd = ' "/usr/local/autotest/bin/screenshot.py %s"'
+        options += ' --screenshot1_cmd' + screenshot_cmd % screenshot1_generated
+        options += ' --screenshot2_cmd' + screenshot_cmd % screenshot2_generated
 
-        cmd = 'X :1 vt1 & sleep 1; chvt 1 && DISPLAY=:1 %s %s' % (exefile,
-                                                                  options)
+        cmd = exefile + ' ' + options
+        if not utils.is_freon():
+          cmd = 'X :1 vt1 & sleep 1; chvt 1 && DISPLAY=:1 ' + cmd
         try:
           utils.run(cmd,
                     stdout_tee=utils.TEE_TO_LOGS,
                     stderr_tee=utils.TEE_TO_LOGS)
         finally:
-          # Just sending SIGTERM to X is not enough; we must wait for it to
-          # really die before we start a new X server (ie start ui).
-          utils.ensure_processes_are_dead_by_name('^X$')
+          if not utils.is_freon():
+            # Just sending SIGTERM to X is not enough; we must wait for it to
+            # really die before we start a new X server (ie start ui).
+            utils.ensure_processes_are_dead_by_name('^X$')
 
-        # convert -resize -depth 8 does not work. But resize honors previously
-        # chosen bit depth.
-        utils.system("convert -resize '100x100!' %s %s" %
-                     (screenshot1_generated, screenshot1_resized))
-        utils.system("convert -resize '100x100!' %s %s" %
-                     (screenshot2_generated, screenshot2_resized))
+        convert_cmd = ("convert -channel RGB -colorspace RGB -depth 8"
+                       " -resize '100x100!' %s %s")
+        utils.system(convert_cmd % (screenshot1_generated, screenshot1_resized))
+        utils.system(convert_cmd % (screenshot2_generated, screenshot2_resized))
         os.remove(screenshot1_generated)
         os.remove(screenshot2_generated)
 
-        utils.system("perceptualdiff -verbose %s %s"
-                     % (screenshot1_reference, screenshot1_resized))
-        utils.system("perceptualdiff -verbose %s %s"
-                     % (screenshot2_reference, screenshot2_resized))
+        diff_cmd = 'perceptualdiff -verbose %s %s'
+        utils.system(diff_cmd % (screenshot1_reference, screenshot1_resized))
+        utils.system(diff_cmd % (screenshot2_reference, screenshot2_resized))
