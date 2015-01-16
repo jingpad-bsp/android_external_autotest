@@ -6,6 +6,7 @@
 
 import logging
 import os
+import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
@@ -24,6 +25,7 @@ class display_ResolutionList(test.test):
 
     version = 1
     DEFAULT_TESTCASE_SPEC = ('HDMI', 1920, 1080)
+    RESOLUTION_CHANGE_TIME = 2
 
     # TODO: Allow reading testcase_spec from command line.
     def run_once(self, host, test_mirrored=False, testcase_spec=None):
@@ -66,8 +68,15 @@ class display_ResolutionList(test.test):
                 for r in resolution_list:
                     logging.info('Set resolution to %dx%d', *r)
                     display_facade.set_resolution(index, *r)
-                    screen_test.test_screen_with_image(
-                            r, test_mirrored, errors)
+                    time.sleep(self.RESOLUTION_CHANGE_TIME)
+
+                    if chameleon_port.wait_video_input_stable():
+                        screen_test.test_screen_with_image(
+                                r, test_mirrored, errors)
+                    else:
+                        message = 'No video on resolution %dx%d' % r
+                        logging.error(message)
+                        errors.append(message)
 
             if errors:
                 raise error.TestFail('; '.join(set(errors)))
