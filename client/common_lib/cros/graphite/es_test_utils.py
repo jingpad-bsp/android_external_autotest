@@ -82,9 +82,7 @@ def sequential_random_insert_ints(keys, num_entries, target_type, index,
         value = 10
         stats_target = TARGET_TO_STATS_CLASS[target_type](subname,
                 metadata=metadata,
-                index=index,
-                es_host=host,
-                es_port=port)
+                es=es_utils.ESMetadata(host=host, port=port, index=index))
 
         if target_type == 'timer':
             stats_target.start()
