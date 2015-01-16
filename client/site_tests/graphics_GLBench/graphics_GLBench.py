@@ -15,7 +15,7 @@ from autotest_lib.client.cros.graphics import graphics_utils
 # ssh root@machine
 # cd /usr/local/autotest/deps/glbench
 # stop ui
-# X :1 & sleep 1; DISPLAY=:1 ./glbench [-save [-oudir=<dir>]]
+# ./glbench [-save [-oudir=<dir>]]
 # start ui
 
 
@@ -106,10 +106,6 @@ class graphics_GLBench(test.test):
     return False
 
   def run_once(self, options='', hasty=False):
-    # TODO(ihf): Remove this once GLBench works on freon.
-    if utils.is_freon():
-      return
-
     dep = 'glbench'
     dep_dir = os.path.join(self.autodir, 'deps', dep)
     self.job.install_pkg(dep, 'dep', dep_dir)
@@ -128,7 +124,9 @@ class graphics_GLBench(test.test):
     if hasty:
       options += ' -hasty'
 
-    cmd = 'X :1 vt1 & sleep 1; chvt 1 && DISPLAY=:1 %s %s' % (exefile, options)
+    cmd = '%s %s' % (exefile, options)
+    if not utils.is_freon():
+      cmd = 'X :1 vt1 & sleep 1; chvt 1 && DISPLAY=:1 ' + cmd
     summary = None
     try:
       if hasty:
@@ -156,9 +154,10 @@ class graphics_GLBench(test.test):
           if not pc.verify_is_valid():
             raise error.TestError(pc.get_error_reason())
     finally:
-      # Just sending SIGTERM to X is not enough; we must wait for it to
-      # really die before we start a new X server (ie start ui).
-      utils.ensure_processes_are_dead_by_name('^X$')
+      if not utils.is_freon():
+        # Just sending SIGTERM to X is not enough; we must wait for it to
+        # really die before we start a new X server (ie start ui).
+        utils.ensure_processes_are_dead_by_name('^X$')
 
     # Write a copy of stdout to help debug failures.
     results_path = os.path.join(self.outputdir, 'summary.txt')
