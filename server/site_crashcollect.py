@@ -193,20 +193,14 @@ def find_package_of(host, exec_name):
     # The above is then parsed to find packages which contain executable files
     # (not directories), in this case "chromeos-base/dev-install-0.0.1-r711."
     #
-    # The final "|& cat" in the pipeline serves two purposes: it merges the
-    # stdout and stderr of "xargs stat" so we can parse both together, and it
-    # ensures a successful return from the command.  Otherwise "xargs stat"
-    # exits with error status, causing "host.run" to raise an exception.
-    #
     # TODO(milleral): portageq can show scary looking error messages
     # in the debug logs via stderr. We only look at stdout, so those
     # get filtered, but it would be good to silence them.
     cmd = ('portageq owners / ' + exec_name +
             r'| sed -e "s/^[^\t].*/@@@ & @@@/" -e "s/^\t//"'
             r'| tr \\n \\0'
-            ' | xargs -0 -r stat -L -c "%a %A %n"'
-            ' |& cat')
-    portageq = host.run(cmd)
+            ' | xargs -0 -r stat -L -c "%a %A %n" 2>&1')
+    portageq = host.run(cmd, ignore_status=True)
 
     # Parse into a set of names of packages containing an executable file.
     packages = set()
