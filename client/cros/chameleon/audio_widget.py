@@ -144,13 +144,13 @@ class AudioOutputWidget(AudioWidget):
     action that is available on an output audio port.
 
     """
-    def start_playback(self, file_path, blocking=False):
+    def start_playback(self, test_data, blocking=False):
         """Starts playing audio.
 
-        @param file_path: Path to the file to play.
+        @param test_data: An AudioTestData object.
         @param blocking: Blocks this call until playback finishes.
         """
-        self.handler.start_playback(file_path, blocking)
+        self.handler.start_playback(test_data, blocking)
 
 
     def stop_playback(self):
@@ -258,10 +258,10 @@ class ChameleonOutputWidgetHandler(ChameleonWidgetHandler):
 
     """
     # TODO(cychiang): Add Chameleon audio output port.
-    def start_playback(self, file_path, blocking=False):
+    def start_playback(self, test_data, blocking=False):
         """Starts playback.
 
-        @param file_path: Path to the file to play.
+        @param test_data: An AudioTestData object.
         @param blocking: Blocks this call until playback finishes.
 
         """
@@ -335,19 +335,36 @@ class CrosInputWidgetHandler(CrosWidgetHandler):
         raise NotImplementedError
 
 
+class CrosOutputWidgetHandlerError(Exception):
+    """The error in CrosOutputWidgetHandler."""
+    pass
+
+
 class CrosOutputWidgetHandler(CrosWidgetHandler):
     """
     This class abstracts a Cros device audio output widget handler.
 
     """
-    def start_playback(self, file_path, blocking=False):
+    _DEFAULT_DATA_FORMAT = dict(file_type='raw',
+                                sample_format='S16_LE',
+                                channel=2,
+                                rate=48000)
+
+    def start_playback(self, test_data, blocking=False):
         """Starts playing audio.
 
-        @param file_path: Path to the file to play.
+        @param test_data: An AudioTestData object.
         @param blocking: Blocks this call until playback finishes.
 
         """
-        return self._audio_facade.playback(file_path, blocking)
+        # TODO(cychiang): Do format conversion on Cros device if this is
+        # needed.
+        if test_data.data_format != self._DEFAULT_DATA_FORMAT:
+            raise CrosOutputWidgetHandlerError(
+                    'File format conversion for cros device is not supported.')
+
+        return self._audio_facade.playback(test_data.path, test_data.data_format,
+                                           blocking)
 
 
     def stop_playback(self):

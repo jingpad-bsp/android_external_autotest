@@ -148,9 +148,8 @@ class RemoteFacadeFactory(object):
 
     def create_audio_facade(self):
         """Creates an audio facade object."""
-        # TODO(cychiang): pass _client to AudioFacadeRemoteAdapter if needed.
         return audio_facade_adapter.AudioFacadeRemoteAdapter(
-                self._proxy)
+                self._client, self._proxy)
 
 
     def create_display_facade(self):

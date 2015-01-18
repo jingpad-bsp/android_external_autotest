@@ -48,8 +48,8 @@ class audio_AudioBasicHeadphone(test.test):
             # Starts playing, waits for some time, and then starts recording.
             # This is to avoid artifact caused by codec initialization.
             logging.info('Start playing %s on Cros device',
-                         golden_file.path_on_dut)
-            source.start_playback(golden_file.path_on_dut)
+                         golden_file.path)
+            source.start_playback(golden_file)
 
             time.sleep(self.DELAY_BEFORE_RECORD_SECONDS)
             logging.info('Start recording from Chameleon.')

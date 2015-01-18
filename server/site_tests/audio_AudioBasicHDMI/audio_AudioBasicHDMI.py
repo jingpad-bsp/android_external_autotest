@@ -51,11 +51,11 @@ class audio_AudioBasicHDMI(test.test):
             time.sleep(self.DELAY_BEFORE_PLAYBACK)
 
             logging.info('Start playing %s on Cros device',
-                         golden_file.path_on_dut)
-            source.start_playback(golden_file.path_on_dut, blocking=True)
+                         golden_file.path)
+            source.start_playback(golden_file, blocking=True)
 
             logging.info('Stopped playing %s on Cros device',
-                         golden_file.path_on_dut)
+                         golden_file.path)
             time.sleep(self.DELAY_AFTER_PLAYBACK)
 
             recorder.stop_recording()

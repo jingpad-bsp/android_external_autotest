@@ -15,13 +15,9 @@ class AudioTestDataException(Exception):
 
 class AudioTestData(object):
     """Class to represent audio test data."""
-    path_on_dut = None
-    path_on_server = None
-    data_format = None
-    def __init__(self, data_format, path_on_dut=None, path_on_server=None):
+    def __init__(self, data_format=None, path=None):
         """
-        Initializes an audio test file. At least one of path_on_dut and
-        path_on_server must be specified.
+        Initializes an audio test file.
 
         @param data_format: A dict containing data format including
                             file_type, sample_format, channel, and rate.
@@ -30,38 +26,16 @@ class AudioTestData(object):
                                            audio_data.SAMPLE_FORMAT.
                             channel: number of channels.
                             rate: sampling rate.
-        @param path_on_dut: The path to the file on DUT.
-        @param path_on_server: The path to the file on server.
+        @param path: The path to the file.
 
-        @raise AudioTestDataException if path_on_dut and path_on_server are not
-          specified.
+        @raises: AudioTestDataException if the path does not exist.
+
         """
-        if not path_on_dut and not path_on_server:
-            raise AudioTestDataException('No path is specified.')
-        self.path_on_dut = path_on_dut
-        self.path_on_server = path_on_server
         self.data_format = data_format
+        if not os.path.exists(path):
+            raise AudioTestDataException('Can not find path %s' % path)
+        self.path = path
 
-
-    @property
-    def path(self):
-        """The path to this test data.
-
-        This test data can be on server and/or on DUT. Client side and server
-        side test can use this property to access the path to the file.
-
-        @returns: The path to the file on server or on DUT, depending on which
-                  path exists.
-
-        @raises: IOError if path does not exist.
-
-        """
-        if os.path.exists(self.path_on_server):
-            return self.path_on_server
-        if os.path.exists(self.path_on_dut):
-            return self.path_on_dut
-        raise IOError('Can not find path %s nor %s' %
-                      (self.path_on_server, self.path_on_dut))
 
     def get_binary(self):
         """The binary of test data.
@@ -71,7 +45,6 @@ class AudioTestData(object):
         """
         with open(self.path, 'rb') as f:
             return f.read()
-
 
 
 AUDIO_PATH = os.path.join(os.path.dirname(__file__))
@@ -85,8 +58,7 @@ each sample being a signed 16-bit integer in little-endian with sampling rate
 48000 samples/sec.
 """
 SWEEP_TEST_FILE = AudioTestData(
-        path_on_dut='/usr/local/autotest/cros/audio/pad_sweep_pad_16.raw',
-        path_on_server=os.path.join(AUDIO_PATH, 'pad_sweep_pad_16.raw'),
+        path=os.path.join(AUDIO_PATH, 'pad_sweep_pad_16.raw'),
         data_format=dict(file_type='raw',
                          sample_format='S16_LE',
                          channel=2,
@@ -99,8 +71,7 @@ The file format is two-channel raw data with each sample being a signed
 16-bit integer in little-endian with sampling rate 48000 samples/sec.
 """
 FREQUENCY_TEST_FILE = AudioTestData(
-        path_on_dut='/usr/local/autotest/cros/audio/fix_2k_1k_16.raw',
-        path_on_server=os.path.join(AUDIO_PATH, 'fix_2k_1k_16.raw'),
+        path=os.path.join(AUDIO_PATH, 'fix_2k_1k_16.raw'),
         data_format=dict(file_type='raw',
                          sample_format='S16_LE',
                          channel=2,
