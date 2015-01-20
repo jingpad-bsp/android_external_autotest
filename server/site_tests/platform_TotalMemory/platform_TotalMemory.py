@@ -2,11 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, re
+import logging
 
 from autotest_lib.server import autotest, test
 from autotest_lib.client.common_lib import error
 
+_CHROME_PATH = '/opt/google/chrome/chrome'
 
 class platform_TotalMemory(test.test):
     version = 1
@@ -16,6 +17,16 @@ class platform_TotalMemory(test.test):
         """Login i.e. runs running client test"""
         self.autotest_client.run_test('desktopui_SimpleLogin',
                                       exit_without_logout=True)
+
+
+    def is_chrome_available(self):
+        """check if _CHROME_PATH exists
+
+        @return true if _CHROME_PATH exists
+        """
+        return self.host.run('ls %s' % _CHROME_PATH,
+                             ignore_status=True).exit_status == 0
+
 
     def get_meminfo(self, key):
         """Get memtotal form meminfo
@@ -40,7 +51,8 @@ class platform_TotalMemory(test.test):
         for reboot_count in xrange(reboot_counts):
             logging.info('Iteration %d', (reboot_count + 1))
             self.host.reboot()
-            self.action_login()
+            if self.is_chrome_available():
+                self.action_login()
 
             mem_total_size = self.get_meminfo('MemTotal')
             mem_total_list.append((mem_total_size))
@@ -51,7 +63,7 @@ class platform_TotalMemory(test.test):
             logging.info('MemFreeSize %d', mem_free_size)
 
         errors = list()
-        mem_total_diff = max(mem_total_list) - min(mem_total_list)    
+        mem_total_diff = max(mem_total_list) - min(mem_total_list)
         if mem_total_diff > self.ALLOWED_VARIANCE:
             errors.append('MemoryTotal is not consistent. variance=%dKB' %
                           mem_total_diff)
