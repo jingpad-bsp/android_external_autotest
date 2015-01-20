@@ -10,12 +10,7 @@ import time
 
 import common
 
-try:
-    import elasticsearch
-except ImportError:
-    logging.debug('import elasticsearch failed,'
-                  'no metadata will be reported.')
-    import elasticsearch_mock as elasticsearch
+import elasticsearch
 
 from autotest_lib.client.common_lib.cros.graphite import es_utils
 from autotest_lib.client.common_lib.cros.graphite import stats
