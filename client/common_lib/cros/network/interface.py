@@ -138,7 +138,8 @@ class Interface:
         exists = lambda path: self._run(
                 'ls "%s" &> /dev/null' % path,
                 ignore_status=True).exit_status == 0
-        read_file = lambda path: self._run('cat "%s"' % path).stdout.rstrip()
+        read_file = (lambda path: self._run('cat "%s"' % path).stdout.rstrip()
+                     if exists(path) else None)
         readlink = lambda path: self._run('readlink "%s"' % path).stdout.strip()
         if not self.is_wifi_device:
             logging.error('Device description not supported on non-wifi '
@@ -151,6 +152,9 @@ class Interface:
             logging.error('No device information found at %s', device_path)
             return None
 
+        # TODO(benchan): The 'vendor' / 'device' files do not always exist
+        # under the device path. We probably need to figure out an alternative
+        # way to determine the vendor and device ID.
         vendor_id = read_file(os.path.join(device_path, 'vendor'))
         product_id = read_file(os.path.join(device_path, 'device'))
         driver_info = DeviceInfo(vendor_id, product_id)
