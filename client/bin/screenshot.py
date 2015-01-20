@@ -1,19 +1,20 @@
 #!/usr/bin/env python
 
+import argparse
 import sys
 
-if len(sys.argv) < 2:
-    print "Usage: %s <path>" % sys.argv[0]
-    print "For example: $ %s /tmp/screenshot.png" % sys.argv[0]
-    print "I can output PNG, JPEG, GIF, and other PIL-supported formats."
-    sys.exit(1)
+argparser = argparse.ArgumentParser(description="Take a screenshot!",
+    epilog="I can output PNG, JPEG, GIF, and other PIL-supported formats.")
+argparser.add_argument("-c", "--crtc", type=int, default=0)
+argparser.add_argument("path")
 
-path = sys.argv[1]
+args = argparser.parse_args()
 
 # Do some evil.
 sys.path.insert(0, "/usr/local/autotest")
 
-from cros.graphics.drm import screenshot
+# This import can't be moved to before the sys.path alteration.
+from cros.graphics.drm import crtcScreenshot
 
-image = screenshot()
-image.save(path)
+image = crtcScreenshot(args.crtc)
+image.save(args.path)

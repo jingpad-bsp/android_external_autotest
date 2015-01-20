@@ -129,6 +129,9 @@ class DrmModeCrtc(Structure):
             fb._fd = self._fd
             fb._l = self._l
             return fb
+        else:
+            raise RuntimeError("CRTC %d doesn't have a framebuffer!" %
+                    self.crtc_id)
 
 
 class drm_mode_map_dumb(Structure):
@@ -354,13 +357,15 @@ def _screenshot(image, fb):
     return pixels
 
 
-def screenshot():
+def crtcScreenshot(crtc):
     """
     Take a screenshot, returning an image object.
+
+    @param crtc: The CRTC to screenshot.
     """
 
     d = drmFromMinor(0)
-    fb = d.resources().getCrtc(0).fb()
+    fb = d.resources().getCrtc(crtc).fb()
     image = Image.new("RGB", (fb.width, fb.height))
     pixels = _screenshot(image, fb)
 
