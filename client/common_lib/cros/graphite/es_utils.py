@@ -62,43 +62,18 @@ intended elasticsearch server.
 
 """
 
+import collections
 import json
 import logging
 import socket
 import time
-
-import common
 
 try:
     import elasticsearch
 except ImportError:
     import elasticsearch_mock as elasticsearch
 
-from autotest_lib.client.common_lib import global_config
 
-
-# Server and ports for elasticsearch (for metadata use only)
-METADATA_ES_SERVER = global_config.global_config.get_config_value(
-        'CROS', 'ES_HOST', default='localhost')
-ES_PORT = global_config.global_config.get_config_value(
-        'CROS', 'ES_PORT', type=int, default=9200)
-ES_UDP_PORT = global_config.global_config.get_config_value(
-        'CROS', 'ES_UDP_PORT', type=int, default=9700)
-# Whether to use http. udp is very little overhead (around 3 ms) compared to
-# using http (tcp) takes ~ 500 ms for the first connection and 50-100ms for
-# subsequent connections.
-ES_USE_HTTP = global_config.global_config.get_config_value(
-        'CROS', 'ES_USE_HTTP', type=bool, default=False)
-
-# If CLIENT/metadata_index is not set, INDEX_METADATA falls back to
-# autotest instance name (SERVER/hostname).
-INDEX_METADATA = global_config.global_config.get_config_value(
-        'CLIENT', 'metadata_index', type=str, default=None)
-if not INDEX_METADATA:
-    INDEX_METADATA = global_config.global_config.get_config_value(
-            'SERVER', 'hostname', type=str, default='localhost')
-
-# 3 Seconds before connection to esdb timeout.
 DEFAULT_TIMEOUT = 3
 
 
@@ -106,344 +81,314 @@ class EsUtilException(Exception):
     """Exception raised when functions here fail. """
     pass
 
-def create_udp_message_from_metadata(index, type_str, metadata):
-    """Outputs a json encoded string to send via udp to es server.
 
-    @param index: index in elasticsearch to insert data to
-    @param type_str: sets the _type field in elasticsearch db.
-    @param metadata: dictionary object containing metadata
-    @returns: string representing udp message.
-
-    Format of the string follows bulk udp api for es.
-    """
-    metadata_message = json.dumps(metadata, separators=(', ', ' : '))
-    message_header = json.dumps(
-            {'index': {'_index': index, '_type': type_str}},
-            separators=(', ', ' : '))
-    # Add new line, then the metadata message, then another new line.
-    return '%s\n%s\n' % (message_header, metadata_message)
+QueryResult = collections.namedtuple('QueryResult', ['total', 'hits'])
 
 
 class ESMetadata(object):
-    """Class handling es connection for posting metadata. """
+    """Class handling es connection for metadata."""
 
-    def __init__(self, host=METADATA_ES_SERVER, port=ES_PORT,
-                 timeout=DEFAULT_TIMEOUT, index=INDEX_METADATA):
+    @property
+    def es(self):
+        """Read only property, lazily initialized"""
+        if not self._es:
+            self._es = elasticsearch.Elasticsearch(host=self.host,
+                                                   port=self.port,
+                                                   timeout=self.timeout)
+        return self._es
+
+
+    def __init__(self, use_http, host, port, index, udp_port,
+                 timeout=DEFAULT_TIMEOUT):
         """Initialize ESMetadata object.
 
-        @param host: elasticsearch host
-        @param port: elasticsearch port
-        @param timeout: how long to wait while connecting to es.
+        @param use_http: Whether to send data to ES using HTTP.
+        @param host: Elasticsearch host.
+        @param port: Elasticsearch port.
+        @param index: What index the metadata is stored in.
+        @param udp_port: What port to use for UDP data.
+        @param timeout: How long to wait while connecting to es.
         """
+        self.use_http = use_http
         self.host = host
         self.port = port
-        self.timeout = timeout
         self.index = index
+        self.udp_port = udp_port
+        self.timeout = timeout
+        self._es = None
 
 
-    def _send_data(self, type_str, index, metadata):
-        """Sends data to insert into elasticsearch.
+    def _send_data_http(self, type_str, metadata):
+        """Sends data to insert into elasticsearch using HTTP.
 
         @param type_str: sets the _type field in elasticsearch db.
-        @param index: index in elasticsearch to insert data to.
         @param metadata: dictionary object containing metadata
         """
-        if not ES_USE_HTTP:
-            try:
-                message = create_udp_message_from_metadata(index, type_str,
-                                                           metadata)
-                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                result = sock.sendto(message, (self.host, ES_UDP_PORT))
-            except socket.error as e:
-                logging.warn(e)
-        else:
-            self.es = elasticsearch.Elasticsearch(host=self.host,
-                                                  port=self.port,
-                                                  timeout=self.timeout)
-            self.es.index(index=index, doc_type=type_str, body=metadata)
+        self.es.index(index=self.index, doc_type=type_str, body=metadata)
 
 
-    def post(self, type_str, metadata=None, log_time_recorded=True, **kwargs):
-        """Wraps call of send_data, inserts entry into elasticsearch.
+    def _send_data_udp(self, type_str, metadata):
+        """Sends data to insert into elasticsearch using UDP.
 
         @param type_str: sets the _type field in elasticsearch db.
         @param metadata: dictionary object containing metadata
-        @param log_time_recorded: True to automatically save the time metadata
-                                  is recorded. Default is True.
-        @param kwargs: additional metadata fields
+        """
+        try:
+            # Header.
+            message = json.dumps(
+                    {'index': {'_index': self.index, '_type': type_str}},
+                    separators=(', ', ' : '))
+            message += '\n'
+            # Metadata.
+            message += json.dumps(metadata, separators=(', ', ' : '))
+            message += '\n'
+
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.sendto(message, (self.host, self.udp_port))
+        except socket.error as e:
+            logging.warn(e)
+
+
+    def post(self, type_str, metadata, log_time_recorded=True, **kwargs):
+        """Wraps call of send_data, inserts entry into elasticsearch.
+
+        @param type_str: Sets the _type field in elasticsearch db.
+        @param metadata: Dictionary object containing metadata
+        @param log_time_recorded: Whether to automatically record the time
+                                  this metadata is recorded. Default is True.
+        @param kwargs: Additional metadata fields
         """
         if not metadata:
             return
-        # Create a copy to avoid issues from mutable types.
-        metadata_copy = metadata.copy()
-        # kwargs could be extra metadata, append to metadata.
-        metadata_copy.update(kwargs)
+
+        metadata = metadata.copy()
+        metadata.update(kwargs)
         # metadata should not contain anything with key '_type'
-        if '_type' in metadata_copy:
-            type_str = metadata_copy['_type']
-            del metadata_copy['_type']
+        if '_type' in metadata:
+            type_str = metadata['_type']
+            del metadata['_type']
         if log_time_recorded:
-            metadata_copy['time_recorded'] = time.time()
+            metadata['time_recorded'] = time.time()
         try:
-            self._send_data(type_str, self.index, metadata_copy)
+            if self.use_http:
+                self._send_data_http(type_str, metadata)
+            else:
+                self._send_data_udp(type_str, metadata)
         except elasticsearch.ElasticsearchException as e:
             logging.error(e)
 
+    def _compose_query(self, equality_constraints=[], fields_returned=None,
+                       range_constraints=[], size=1000000, sort_specs=None,
+                       regex_constraints=[], batch_constraints=[]):
+        """Creates a dict. representing multple range and/or equality queries.
 
-def create_range_eq_query_multiple(equality_constraints,
-                                   fields_returned=None,
-                                   range_constraints=[],
-                                   size=1000000,
-                                   sort_specs=None,
-                                   regex_constraints=[],
-                                   batch_constraints=[]):
-    """Creates a dict. representing multple range and/or equality queries.
-
-    Example input:
-        create_range_eq_query_multiple(
-                fields_returned = ['time_recorded', 'hostname',
-                                   'status', 'dbg_str'],
-                equality_constraints = [
-                    ('_type', 'host_history'),
-                    ('hostname', '172.22.169.106'),
-                ],
-                range_constraints = [
-                    ('time_recorded', 1405628341.904379, 1405700341.904379)
-                ],
-                size=20,
-                sort_specs=[
-                    'hostname',
-                    {'time_recorded': 'asc'},
-                ]
+        Example input:
+        _compose_query(
+            fields_returned = ['time_recorded', 'hostname',
+                               'status', 'dbg_str'],
+            equality_constraints = [
+                ('_type', 'host_history'),
+                ('hostname', '172.22.169.106'),
+            ],
+            range_constraints = [
+                ('time_recorded', 1405628341.904379, 1405700341.904379)
+            ],
+            size=20,
+            sort_specs=[
+                'hostname',
+                {'time_recorded': 'asc'},
+            ]
         )
 
-    Output:
-    {
-        'fields': ['time_recorded', 'hostname', 'status', 'dbg_str'],
-        'query': {
-            'bool': {
-                'minimum_should_match': 3,
-                'should': [
-                    {
-                        'term':  {
-                            '_type': 'host_history'
-                        }
-                    },
-
-                    {
-                        'term': {
-                            'hostname': '172.22.169.106'
-                        }
-                    },
-
-                    {
-                        'range': {
-                            'time_recorded': {
-                                'gte': 1405628341.904379,
-                                'lte': 1405700341.904379
+        Output:
+        {
+            'fields': ['time_recorded', 'hostname', 'status', 'dbg_str'],
+            'query': {
+                'bool': {
+                    'minimum_should_match': 3,
+                    'should': [
+                        {
+                            'term':  {
+                                '_type': 'host_history'
+                            }
+                        },
+                        {
+                            'term': {
+                                'hostname': '172.22.169.106'
+                            }
+                        },
+                        {
+                            'range': {
+                                'time_recorded': {
+                                    'gte': 1405628341.904379,
+                                    'lte': 1405700341.904379
+                                }
                             }
                         }
-                    }
-                ]
+                    ]
+                },
             },
-        },
-        'size': 20
-        'sort': [
-            'hostname',
-            { 'time_recorded': 'asc'},
-        ]
-    }
+            'size': 20
+            'sort': [
+                'hostname',
+                { 'time_recorded': 'asc'},
+            ]
+        }
 
-    @param equality_constraints: list of tuples of (field, value) pairs
-        representing what each field should equal to in the query.
-        e.g. [ ('field1', 1), ('field2', 'value') ]
-    @param fields_returned: list of fields that we should return when
-                            the query is executed. Set it to None to return all
-                            fields. Note that the key/vals will be stored in
-                            _source key of the hit object, if fields_returned is
-                            set to None.
-    @param range_constraints: list of tuples of (field, low, high) pairs
-        representing what each field should be between (inclusive).
-        e.g. [ ('field1', 2, 10), ('field2', -1, 20) ]
-        If you want one side to be unbounded, you can use None.
-        e.g. [ ('field1', 2, None) ] means value of field1 >= 2.
-    @param size: max number of entries to return. Default is 1000000.
-    @param sort_specs: A list of fields to sort on, tiebreakers will be
-        broken by the next field(s).
-    @param regex_constraints: A list of regex constraints of tuples of
-        (field, value) pairs, e.g., [('filed1', '.*value.*')].
-    @param batch_constraints: list of tuples of (field, list) pairs
-        representing each field should be equal to one of the values
-        in the list.
-        e.g., [ ('job_id', [10, 11, 12, 13]) ]
-    @returns: dictionary object that represents query to es.
-              This will return None if there are no equality constraints
-              and no range constraints.
-    """
-    if not equality_constraints and not range_constraints:
-        raise EsUtilException('No range or equality constraints specified...')
+        @param equality_constraints: list of tuples of (field, value) pairs
+            representing what each field should equal to in the query.
+            e.g. [ ('field1', 1), ('field2', 'value') ]
+        @param fields_returned: list of fields that we should return when
+            the query is executed. Set it to None to return all fields. Note
+            that the key/vals will be stored in _source key of the hit object,
+            if fields_returned is set to None.
+        @param range_constraints: list of tuples of (field, low, high) pairs
+            representing what each field should be between (inclusive).
+            e.g. [ ('field1', 2, 10), ('field2', -1, 20) ]
+            If you want one side to be unbounded, you can use None.
+            e.g. [ ('field1', 2, None) ] means value of field1 >= 2.
+        @param size: max number of entries to return. Default is 1000000.
+        @param sort_specs: A list of fields to sort on, tiebreakers will be
+            broken by the next field(s).
+        @param regex_constraints: A list of regex constraints of tuples of
+            (field, value) pairs, e.g., [('filed1', '.*value.*')].
+        @param batch_constraints: list of tuples of (field, list) pairs
+            representing each field should be equal to one of the values
+            in the list.
+            e.g., [ ('job_id', [10, 11, 12, 13]) ]
+        @returns: dictionary object that represents query to es.
+                  This will return None if there are no equality constraints
+                  and no range constraints.
+        """
+        if not equality_constraints and not range_constraints:
+            raise EsUtilException('No range or equality constraints specified.')
 
-    # Creates list of range dictionaries to put in the 'should' list.
-    range_list = []
-    if range_constraints:
-        for key, low, high in range_constraints:
-            if low is None and high is None:
-                continue
-            temp_dict = {}
-            if low is not None:
-                temp_dict['gte'] = low
-            if high is not None:
-                temp_dict['lte'] = high
-            range_list.append( {'range': {key: temp_dict}})
+        # Creates list of range dictionaries to put in the 'should' list.
+        range_list = []
+        if range_constraints:
+            for key, low, high in range_constraints:
+                if low is None and high is None:
+                    continue
+                temp_dict = {}
+                if low is not None:
+                    temp_dict['gte'] = low
+                if high is not None:
+                    temp_dict['lte'] = high
+                range_list.append( {'range': {key: temp_dict}})
 
-    # Creates the list of term dictionaries to put in the 'should' list.
-    eq_list = [{'term': {k: v}} for k, v in equality_constraints if k]
-    batch_list = [{'terms': {k: v}} for k, v in batch_constraints if k]
-    regex_list = [{'regexp': {k: v}} for k, v in regex_constraints if k]
-    constraints = eq_list + batch_list + range_list + regex_list
-    num_constraints = len(constraints)
-    query = {
-             'query': {
-                       'bool': {
-                                'should': constraints,
-                                'minimum_should_match': num_constraints,
-                               }
-                      },
+        # Creates the list of term dictionaries to put in the 'should' list.
+        eq_list = [{'term': {k: v}} for k, v in equality_constraints if k]
+        batch_list = [{'terms': {k: v}} for k, v in batch_constraints if k]
+        regex_list = [{'regexp': {k: v}} for k, v in regex_constraints if k]
+        constraints = eq_list + batch_list + range_list + regex_list
+        num_constraints = len(constraints)
+        query = {
+            'query': {
+                'bool': {
+                    'should': constraints,
+                    'minimum_should_match': num_constraints,
+                }
+            },
+        }
+        if fields_returned:
+            query['fields'] = fields_returned
+        query['size'] = size
+        if sort_specs:
+            query['sort'] = sort_specs
+        return query
+
+
+    def execute_query(self, query):
+        """Makes a query on the given index.
+
+        @param query: query dictionary (see _compose_query)
+        @returns: A QueryResult instance describing the result.
+
+        Example output:
+        {
+            "took" : 5,
+            "timed_out" : false,
+            "_shards" : {
+                "total" : 16,
+                "successful" : 16,
+                "failed" : 0
+            },
+            "hits" : {
+                "total" : 4,
+                "max_score" : 1.0,
+                "hits" : [ {
+                    "_index" : "graphite_metrics2",
+                    "_type" : "metric",
+                    "_id" : "rtntrjgdsafdsfdsfdsfdsfdssssssss",
+                    "_score" : 1.0,
+                    "_source":{"target_type": "timer",
+                               "host_id": 1,
+                               "job_id": 22,
+                               "time_start": 400}
+                }, {
+                    "_index" : "graphite_metrics2",
+                    "_type" : "metric",
+                    "_id" : "dfgfddddddddddddddddddddddhhh",
+                    "_score" : 1.0,
+                    "_source":{"target_type": "timer",
+                        "host_id": 2,
+                        "job_id": 23,
+                        "time_start": 405}
+                }, {
+                "_index" : "graphite_metrics2",
+                "_type" : "metric",
+                "_id" : "erwerwerwewtrewgfednvfngfngfrhfd",
+                "_score" : 1.0,
+                "_source":{"target_type": "timer",
+                           "host_id": 3,
+                           "job_id": 24,
+                           "time_start": 4098}
+                }, {
+                    "_index" : "graphite_metrics2",
+                    "_type" : "metric",
+                    "_id" : "dfherjgwetfrsupbretowegoegheorgsa",
+                    "_score" : 1.0,
+                    "_source":{"target_type": "timer",
+                               "host_id": 22,
+                               "job_id": 25,
+                               "time_start": 4200}
+                } ]
             }
-    if fields_returned:
-        query['fields'] = fields_returned
-    query['size'] = size
-    if sort_specs:
-        query['sort'] = sort_specs
-    return query
+        }
+
+        """
+        if not self.es.indices.exists(index=self.index):
+            logging.error('Index (%s) does not exist on %s:%s',
+                          self.index, self.host, self.port)
+            return None
+        result = self.es.search(index=self.index, body=query)
+        # Check if all matched records are returned. It could be the size is
+        # set too small. Special case for size set to 1, as that means that
+        # the query cares about the first matched entry.
+        # TODO: Use pagination in Elasticsearch. This needs major change on how
+        #       query results are iterated.
+        size = query.get('size', 1)
+        return_count = len(result['hits']['hits'])
+        total_match = result['hits']['total']
+        if total_match > return_count and size != 1:
+            logging.error('There are %d matched records, only %d entries are '
+                          'returned. Query size is set to %d.', total_match,
+                          return_count, size)
+
+        # Extract the actual results from the query.
+        output = QueryResult(total_match, [])
+        for hit in result['hits']['hits']:
+            converted = {}
+            if 'fields' in hit:
+                for key, value in hit['fields'].items():
+                    converted[key] = value[0]
+            else:
+                converted = hit['_source'].copy()
+            output.hits.append(converted)
+        return output
 
 
-def execute_query(query, index=INDEX_METADATA, host=METADATA_ES_SERVER,
-                  port=ES_PORT, timeout=3):
-    """Makes a query on the given index.
-
-    @param query: query dictionary (see create_range_query)
-    @param index: index within db to query, default to setting
-                  CLIENT/metadata_index.
-    @param host: host running es, default to setting CROS/ES_HOST.
-    @param port: port running es, default to setting CROS/ES_PORT.
-    @param timeout: seconds to wait before es retries if conn. fails.
-                    default is 3 seconds.
-    @returns: dictionary of the results, or None if index does not exist.
-
-    Example output:
-    {
-      "took" : 5,
-      "timed_out" : false,
-      "_shards" : {
-        "total" : 16,
-        "successful" : 16,
-        "failed" : 0
-      },
-      "hits" : {
-        "total" : 4,
-        "max_score" : 1.0,
-        "hits" : [ {
-          "_index" : "graphite_metrics2",
-          "_type" : "metric",
-          "_id" : "rtntrjgdsafdsfdsfdsfdsfdssssssss",
-          "_score" : 1.0,
-          "_source":{"target_type": "timer",
-                     "host_id": 1,
-                     "job_id": 22,
-                     "time_start": 400}
-        }, {
-          "_index" : "graphite_metrics2",
-          "_type" : "metric",
-          "_id" : "dfgfddddddddddddddddddddddhhh",
-          "_score" : 1.0,
-          "_source":{"target_type": "timer",
-                     "host_id": 2,
-                     "job_id": 23,
-                     "time_start": 405}
-        }, {
-          "_index" : "graphite_metrics2",
-          "_type" : "metric",
-          "_id" : "erwerwerwewtrewgfednvfngfngfrhfd",
-          "_score" : 1.0,
-          "_source":{"target_type": "timer",
-                     "host_id": 3,
-                     "job_id": 24,
-                     "time_start": 4098}
-        }, {
-          "_index" : "graphite_metrics2",
-          "_type" : "metric",
-          "_id" : "dfherjgwetfrsupbretowegoegheorgsa",
-          "_score" : 1.0,
-          "_source":{"target_type": "timer",
-                     "host_id": 22,
-                     "job_id": 25,
-                     "time_start": 4200}
-        } ]
-      }
-    }
-
-    """
-    es = elasticsearch.Elasticsearch(host=host, port=port, timeout=timeout)
-    if not es.indices.exists(index=index):
-        logging.error('Index (%s) does not exist on %s:%s', index, host, port)
-        return None
-    result = es.search(index=index, body=query)
-    # Check if not all matched records are returned. It could be size is set to
-    # too small. Special case for size set to 1, as that means that the query
-    # cares about the first matched entry.
-    # TODO: Use pagination in Elasticsearch. This needs major change on how
-    #       query results are iterated.
-    size = query.get('size', 1)
-    return_count = len(result['hits']['hits'])
-    total_match = result['hits']['total']
-    if total_match > return_count and size != 1:
-        logging.error('There are %d matched records, only %d entries are '
-                      'returned. Query size is set to %d.', total_match,
-                      return_count, size)
-    return result
-
-
-def convert_hit(hit):
-    """Convert ES query hits _source value to fields data.
-
-    When query ES without specifying fields value, the return hits retrieve all
-    data of the record and stores under `_source` key. Following is an example
-    of the _source value:
-    {'hostname': 'dut1', 'time_recorded': 17820784, 'status': 'Ready'}
-    On the other hand, if a query specifies fields value, the return hits
-    retrieve data only for given fields, for example:
-    {'hostname': ['dut1'], 'time_recorded': [17820784], 'status': ['Ready']}
-    Note that, althought the result look the same, the second case has value
-    stored in a list. To make the data consistent and easy to process, this
-    function convert the list value to a single data if applicable.
-
-    @param hit: ES query hit.
-    @return: A dictionary of cleaned up key, values.
-    """
-    if not hit:
-        return None
-    cleaned_data = {}
-    for field,value in hit.items():
-        cleaned_data[field] = (value[0] if isinstance(value, list) and
-                               len(value)==1 else value)
-    return cleaned_data
-
-
-def get_metadata(record, excluded_fields):
-    """Get the metadata from an ES record excluding a given list of fields.
-
-    @param record: A dictionary from ES query result, e.g.,
-                   {'hostname': ['123.3.4.5'],
-                    'time_recorded': [1782038784],
-                    'status': ['Repairing'],
-                    'task_id': [4574],
-                    'task_name': ['Repair']}
-    @param excluded_fields: A list of fields to be excluded from the record.
-    @returns: A dictionary of ES query result excluding a given list of fields.
-    """
-    result = {}
-    including_fields = set(record.keys()) - set(excluded_fields)
-    for field in including_fields:
-        result[field] = record[field]
-    return result
+    def query(self, *args, **kwargs):
+        """The arguments to this function are the same as _compose_query."""
+        query = self._compose_query(*args, **kwargs)
+        return self.execute_query(query)

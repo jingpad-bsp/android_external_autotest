@@ -21,7 +21,7 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
-from autotest_lib.client.common_lib.cros.graphite import es_utils
+from autotest_lib.client.common_lib.cros.graphite import autotest_es
 from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.client.cros import constants as client_constants
 from autotest_lib.client.cros import cros_ui
@@ -1417,7 +1417,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         except rpm_client.RemotePowerException:
             logging.error('Failed to turn Power On for this host after '
                           'cleanup through the RPM Infrastructure.')
-            es_utils.ESMetadata().post(
+            autotest_es.post(
                     type_str='RPM_poweron_failure',
                     metadata={'hostname': self.hostname})
 

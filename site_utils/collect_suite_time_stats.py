@@ -65,7 +65,7 @@ from datetime import timedelta
 import common
 from autotest_lib.client.common_lib import host_queue_entry_states
 from autotest_lib.client.common_lib import time_utils
-from autotest_lib.client.common_lib.cros.graphite import es_utils
+from autotest_lib.client.common_lib.cros.graphite import autotest_es
 from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import models
@@ -111,13 +111,12 @@ def get_nontask_runtime(job_id, dut, job_info_dict):
     @return: Tuple of sum of durations and the timestamp for the last
              Queued record.
     """
-    query = es_utils.create_range_eq_query_multiple(
+    results = autotest_es.query(
             fields_returned=['status', 'duration', 'time_recorded'],
             equality_constraints=[('_type', 'job_time_breakdown'),
                                   ('job_id', job_id),
                                   ('hostname', dut)],
             sort_specs=[{'time_recorded': 'desc'}])
-    results = es_utils.execute_query(query)
 
     sum = 0
     last_queued_timestamp = 0
@@ -126,8 +125,7 @@ def get_nontask_runtime(job_id, dut, job_info_dict):
     # (including the last "Queued" record).
     # Exploits the fact that "results" are ordered in the descending order
     # of time_recorded.
-    for hit in results['hits']['hits']:
-        hit = es_utils.convert_hit(hit['fields'])
+    for hit in results.hits:
         job_info_dict[job_id][hit['status']] = float(hit['duration'])
         if hit['status'] == 'Queued':
             # The first Queued record is the last one because of the descending
@@ -155,16 +153,14 @@ def get_tasks_runtime(task_list, dut, t_start, job_id, job_info_dict):
     @return: Sum of durations of the tasks.
     """
     t_start_epoch = time_utils.to_epoch_time(t_start)
-    query = es_utils.create_range_eq_query_multiple(
+    results = autotest_es.query(
             fields_returned=['status', 'task_id', 'duration'],
             equality_constraints=[('_type', 'job_time_breakdown'),
                                   ('hostname', dut)],
             range_constraints=[('time_recorded', t_start_epoch, None)],
             batch_constraints=[('task_id', task_list)])
-    results = es_utils.execute_query(query)
     sum = 0
-    for hit in results['hits']['hits']:
-        hit = es_utils.convert_hit(hit['fields'])
+    for hit in results.hits:
         sum += float(hit['duration'])
         job_info_dict[job_id][hit['status']] = float(hit['duration'])
         print_verbose('Task %s for Job %s took %s',
@@ -229,17 +225,15 @@ def get_child_jobs_info(suite_job_id, num_child_jobs, sanity_check):
              a DUT's hostname and the value is a list of jobs that ran on
              the DUT. List is the list of all jobs of the suite.
     """
-    query = es_utils.create_range_eq_query_multiple(
+    results = autotest_es.query(
             fields_returned=['job_id', 'hostname'],
             equality_constraints=[('_type', 'host_history'),
                                   ('parent_job_id', suite_job_id),
                                   ('status', 'Running'),])
-    results = es_utils.execute_query(query)
 
     dut_jobs_dict = {}
     job_filter = set()
-    for hit in results['hits']['hits']:
-        hit = es_utils.convert_hit(hit['fields'])
+    for hit in results.hits:
         job_id = hit['job_id']
         dut = hit['hostname']
         if job_id in job_filter:
@@ -287,13 +281,11 @@ def get_job_tasks(job_list, job_info_dict):
     @param job_list: List of job ids
     @param job_info_dict: Dictionary that task ids for each job will be stored.
     """
-    query = es_utils.create_range_eq_query_multiple(
+    results = autotest_es.query(
             fields_returned=['job_id', 'task_id'],
             equality_constraints=[('_type', 'host_history')],
             batch_constraints=[('job_id', job_list)])
-    results = es_utils.execute_query(query)
-    for hit in results['hits']['hits']:
-        hit = es_utils.convert_hit(hit['fields'])
+    for hit in results.hits:
         if 'task_id' in hit:
             info_dict = job_info_dict.setdefault(hit['job_id'], {})
             task_set = info_dict.setdefault('tasks', set())
@@ -377,7 +369,7 @@ def analyze_suites(start_time, end_time):
 
     start_time_epoch = time_utils.to_epoch_time(start_time)
     end_time_epoch = time_utils.to_epoch_time(end_time)
-    query = es_utils.create_range_eq_query_multiple(
+    results = autotest_es.query(
             fields_returned=['suite_name', 'suite_job_id', 'board', 'build',
                              'num_child_jobs', 'duration'],
             equality_constraints=[('_type', job_overhead.SUITE_RUNTIME_KEY),],
@@ -385,11 +377,9 @@ def analyze_suites(start_time, end_time):
                                 end_time_epoch)],
             sort_specs=[{'time_recorded': 'asc'}],
             batch_constraints=batch_constraints)
-    results = es_utils.execute_query(query)
-    print('Found %d suites' % (results['hits']['total']))
+    print('Found %d suites' % (results.total))
 
-    for hit in results['hits']['hits']:
-        hit = es_utils.convert_hit(hit['fields'])
+    for hit in results.hits:
         suite_job_id = hit['suite_job_id']
 
         try:

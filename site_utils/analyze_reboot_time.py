@@ -41,7 +41,7 @@ import time
 import common
 import host_history
 from autotest_lib.client.common_lib import time_utils
-from autotest_lib.client.common_lib.cros.graphite import es_utils
+from autotest_lib.client.common_lib.cros.graphite import autotest_es
 
 
 def get_entries(time_start, time_end, gte, lte, size, index, hostname):
@@ -60,7 +60,8 @@ def get_entries(time_start, time_end, gte, lte, size, index, hostname):
     time_end_epoch = time_utils.to_epoch_time(time_end)
     gte_epoch = time_utils.to_epoch_time(gte)
     lte_epoch = time_utils.to_epoch_time(lte)
-    query = es_utils.create_range_eq_query_multiple(
+    return autotest_es.query(
+        index=index,
         fields_returned=['hostname', 'time_recorded', 'value'],
         equality_constraints=[('_type', 'reboot_total'),
                               ('hostname', hostname)],
@@ -68,9 +69,6 @@ def get_entries(time_start, time_end, gte, lte, size, index, hostname):
                            ('value', gte_epoch, lte_epoch)],
         size=size,
         sort_specs=[{'hostname': 'asc'}, {'value': 'desc'}])
-    results = es_utils.execute_query(query, index=index,
-                                     host=es_utils.METADATA_ES_SERVER,
-                                     port=es_utils.ES_PORT)
     return results
 
 
@@ -85,20 +83,18 @@ def get_results_string(hostname, time_start, time_end, results):
     @param size: Max number of entries to return
     @returns: String reporting reboot times for this host.
     """
-    num_entries = results['hits']['total']
     return_string = ' Host: %s \n   Number of entries: %s \n' % (
-            hostname, results['hits']['total'])
+            hostname, results.total)
     return_string += ' %s - %s \n' % (
             time_utils.epoch_time_to_date_string(time_start),
             time_utils.epoch_time_to_date_string(time_end))
-    if num_entries <= 0:
+    if results.total <= 0:
         return return_string
-    for result in results['hits']['hits']:
-        fields = result['fields']
-        time_recorded = fields['time_recorded'][0]
+    for result in results.hits:
+        time_recorded = result['time_recorded'][0]
         time_string = time_utils.epoch_time_to_date_string(
                 time_recorded)
-        reboot_total = fields['value'][0]
+        reboot_total = result['value'][0]
         spaces = (15 - len(str(time_string))) * ' '
         return_string += '    %s  Reboot_time:  %.3fs\n' % (
                 time_string, reboot_total)

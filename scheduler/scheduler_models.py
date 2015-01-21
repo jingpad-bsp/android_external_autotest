@@ -23,7 +23,7 @@ from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import global_config, host_protections
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib import utils
-from autotest_lib.client.common_lib.cros.graphite import es_utils
+from autotest_lib.client.common_lib.cros.graphite import autotest_es
 from autotest_lib.client.common_lib.cros.graphite import stats
 from autotest_lib.frontend.afe import models, model_attributes
 from autotest_lib.scheduler import drone_manager, email_manager
@@ -613,7 +613,7 @@ class HostQueueEntry(DBObject):
         }
         if self.host:
             metadata['hostname'] = self.host.hostname
-        es_utils.ESMetadata().post(type_str=type_str, metadata=metadata)
+        autotest_es.post(type_str=type_str, metadata=metadata)
 
 
     @_timer.decorate

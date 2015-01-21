@@ -46,7 +46,8 @@ class EsTestUtilException(Exception):
 
 
 def sequential_random_insert_ints(keys, num_entries, target_type, index,
-                                  host, port, between_insert_secs=0,
+                                  host, port, use_http, udp_port,
+                                  between_insert_secs=0,
                                   print_interval=10):
     """Inserts a bunch of random entries into the es database.
     Keys are given, values are randomly generated.
@@ -77,7 +78,9 @@ def sequential_random_insert_ints(keys, num_entries, target_type, index,
         value = 10
         stats_target = TARGET_TO_STATS_CLASS[target_type](subname,
                 metadata=metadata,
-                es=es_utils.ESMetadata(host=host, port=port, index=index))
+                es=es_utils.ESMetadata(use_http=use_http, host=host,
+                                       port=port, index=index,
+                                       udp_port=udp_port))
 
         if target_type == 'timer':
             stats_target.start()
@@ -116,76 +119,3 @@ def clear_index(index, host, port, timeout, sleep_time=0.5, clear_timeout=5):
                 raise EsTestUtilException('clear_index failed.')
 
     print 'successfully deleted index %s' % (index)
-
-
-def create_range_eq_query(fields_returned,
-                          equals_key=None,
-                          equals_val=None,
-                          range_key=None,
-                          range_low=None,
-                          range_high=None,
-                          size=DEFAULT_NUM_ENTRIES,
-                          sort_specs=None):
-    """Creates a dict. representing range and/or equality queries.
-
-    @param fields_returned: list of fields that we should return when
-                            the query is executed
-    @param equals_key: Key that we filter based on equality. default=None
-    @param equals_val: value we want equals_key to be equal to. default=None
-    @param range_key: Key that we filter based on range. default=None
-    @param range_low: lower bound on the range_key (inclusive). default=None
-    @param range_high: upper bound on the range key (inclusive). default=None
-    @param size: max number of entries to return. default=100
-    @param sort_specs: A list of fields to sort on, tiebreakers will be
-        broken by the next field(s). default=None
-
-    @returns: dictionary representing query.
-              Returns none if there is no equals_key or range_key provided.
-
-    Example usage:
-    range_eq_query = create_range_eq_query(
-        ['job_id', 'host_id', 'job_start'],
-        equals_key='host_id', equals_val=10,
-        range_key='job_id', range_low=0, range_high=99999)
-
-    Output:
-    {
-        'fields': ['job_id', 'host_id', 'job_start'],
-            'query': {
-                'bool': {
-                    'minimum_should_match': 2,
-                    'should': [
-                        {
-                            'term':  {
-                                'host_id': 10,
-                            }
-                        },
-
-                        {   
-                            'range': {
-                                'job_id': {
-                                    'gte': 0,
-                                    'lte': 99999,
-                                }
-                            }
-                        }
-                    ]
-                }
-            },
-        'size': 20
-        'sort': [ ]
-    }
-    """
-    if not equals_key and not range_key:
-        raise EsTestUtilException('No range_key or equals_key specified.')
-    equality_constraints = [(equals_key, equals_val)] if equals_key else []
-    range_constraints = []
-    if range_key:
-        range_constraints = [(range_key, range_low, range_high)]
-    return es_utils.create_range_eq_query_multiple(
-        equality_constraints=equality_constraints,
-        fields_returned=fields_returned,
-        range_constraints=range_constraints,
-        size=size,
-        sort_specs=sort_specs,
-    )

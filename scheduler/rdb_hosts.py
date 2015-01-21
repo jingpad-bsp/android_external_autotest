@@ -20,7 +20,7 @@ import logging
 from django.core import exceptions as django_exceptions
 
 import common
-from autotest_lib.client.common_lib.cros.graphite import es_utils
+from autotest_lib.client.common_lib.cros.graphite import autotest_es
 from autotest_lib.frontend.afe import rdb_model_extensions as rdb_models
 from autotest_lib.frontend.afe import models as afe_models
 from autotest_lib.scheduler import rdb_requests
@@ -224,7 +224,7 @@ class RDBClientHostWrapper(RDBHost):
             'pools': self.pools,
         }
         metadata.update(self.metadata)
-        es_utils.ESMetadata().post(type_str=type_str, metadata=metadata)
+        autotest_es.post(type_str=type_str, metadata=metadata)
 
 
     def set_status(self, status):

@@ -21,7 +21,7 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import host_queue_entry_states
 from autotest_lib.client.common_lib import control_data, priorities, decorators
 from autotest_lib.client.common_lib import site_utils
-from autotest_lib.client.common_lib.cros.graphite import es_utils
+from autotest_lib.client.common_lib.cros.graphite import autotest_es
 
 # job options and user preferences
 DEFAULT_REBOOT_BEFORE = model_attributes.RebootBefore.IF_DIRTY
@@ -570,7 +570,7 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
         }
         if other_metadata:
             metadata = dict(metadata.items() + other_metadata.items())
-        es_utils.ESMetadata().post(type_str=type_str, metadata=metadata)
+        autotest_es.post(type_str=type_str, metadata=metadata)
 
 
     def save(self, *args, **kwargs):

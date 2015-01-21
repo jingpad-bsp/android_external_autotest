@@ -8,6 +8,7 @@ import logging
 
 import common
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib.cros.graphite import autotest_es
 from autotest_lib.client.common_lib.cros.graphite import es_utils
 
 try:
@@ -95,12 +96,17 @@ def _prepend_init(original):
     """Decorator to override __init__."""
 
     class _Derived(original):
-        def __init__(self, name, connection=None, bare=False, metadata=None,
-                     es=None):
+        default_es = es_utils.ESMetadata(use_http=autotest_es.ES_USE_HTTP,
+                                         host=autotest_es.METADATA_ES_SERVER,
+                                         port=autotest_es.ES_PORT,
+                                         index=autotest_es.INDEX_METADATA,
+                                         udp_port=autotest_es.ES_UDP_PORT)
+        def __init__(self, name, es=default_es, connection=None,
+                     bare=False, metadata=None):
             conn = connection or _conn
             super(_Derived, self).__init__(_prepend_server(name, bare), conn)
             self.metadata = metadata
-            self.es = es if es else es_utils.ESMetadata()
+            self.es = es
 
     return _Derived
 

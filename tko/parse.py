@@ -6,7 +6,6 @@ import os, sys, optparse, fcntl, errno, traceback, socket
 import common
 from autotest_lib.client.common_lib import mail, pidfile
 from autotest_lib.client.common_lib import utils
-from autotest_lib.client.common_lib.cros.graphite import es_utils
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.tko import models as tko_models
 from autotest_lib.server.cros.dynamic_suite import constants

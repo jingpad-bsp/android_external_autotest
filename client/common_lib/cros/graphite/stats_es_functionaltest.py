@@ -18,7 +18,7 @@ import optparse
 import time
 
 import common
-from autotest_lib.client.common_lib.cros.graphite import es_utils
+from autotest_lib.client.common_lib.cros.graphite import autotest_es
 from autotest_lib.client.common_lib.cros.graphite import es_test_utils
 
 
@@ -33,7 +33,7 @@ class StatsFunctionalTest(object):
         self.port = es_port
         self.index = index
         self.wait_time = 6 # Bulk flush is 5 seconds
-        if es_utils.ES_USE_HTTP:
+        if autotest_es.ES_USE_HTTP:
             # No flush time for http requests.
             self.wait_time = 2
 
@@ -69,6 +69,8 @@ class StatsFunctionalTest(object):
                 index=self.index,
                 host=self.host,
                 port=self.port,
+                use_http = autotest_es.ES_USE_HTTP,
+                udp_port = autotest_es.ES_UDP_PORT,
                 num_entries=num_entries,
                 print_interval=num_entries/5)
         # Wait a bit for es to be populated with the metadata entry.
@@ -76,20 +78,16 @@ class StatsFunctionalTest(object):
         # is configured to be 5 seconds.
         print 'waiting %s seconds...' % (self.wait_time)
         time.sleep(self.wait_time)
-        range_query = es_test_utils.create_range_eq_query(fields_returned=keys,
-                                                          range_key='host_id',
-                                                          range_low=0)
-        result = es_utils.execute_query(range_query,
-                                        self.index,
-                                        self.host,
-                                        self.port)
+        result = autotest_es.query(host=self.host, port=self.port,
+                                   index=self.index, fields_returned=keys,
+                                   range_constraints=[('host_id', 0, None)])
         if not result:
             print ('%s test error: Index %s not found.'
                    %(test_type, self.index))
             return
 
         # TODO(michaelliang): Check hits and total are valid keys at each layer.
-        num_entries_found = result['hits']['total']
+        num_entries_found = result.total
         print('  Inserted %s entries, found %s entries.'
               %(num_entries, num_entries_found))
         if num_entries_found != num_entries:
@@ -125,11 +123,11 @@ def main():
         print ('No tests specified.'
                'For help: python stats_es_functionaltest.py -h')
     if options.es_host == 'prod':
-        es_host = es_utils.METADATA_ES_SERVER
-        es_port = es_utils.ES_PORT
+        es_host = autotest_es.METADATA_ES_SERVER
+        es_port = autotest_es.ES_PORT
     elif options.es_host == 'test':
         es_host = 'http://localhost'
-        es_port = es_utils.ES_PORT
+        es_port = autotest_es.ES_PORT
     else:
         es_host = options.es_host
         es_port = options.es_port

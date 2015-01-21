@@ -52,7 +52,7 @@ from itertools import groupby
 import common
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import time_utils
-from autotest_lib.client.common_lib.cros.graphite import es_utils
+from autotest_lib.client.common_lib.cros.graphite import autotest_es
 
 
 class devserver_call(object):
@@ -62,13 +62,13 @@ class devserver_call(object):
     def __init__(self, hit):
         """Retrieve information from a ES query hit.
         """
-        self.devserver = hit['_source']['devserver']
-        self.subname = hit['_source']['subname']
-        self.artifacts = hit['_source']['artifacts'].split(' ')
-        self.image = hit['_source']['image']
-        self.value = hit['_source']['value']
+        self.devserver = hit['devserver']
+        self.subname = hit['subname']
+        self.artifacts = hit['artifacts'].split(' ')
+        self.image = hit['image']
+        self.value = hit['value']
         self.time_recorded = time_utils.epoch_time_to_date_string(
-                hit['_source']['time_recorded'])
+                hit['time_recorded'])
 
 
     def __str__(self):
@@ -100,7 +100,7 @@ def get_calls(time_start, time_end, artifact_filters=None,
             eqs.append(('artifacts', artifact))
     time_start_epoch = time_utils.to_epoch_time(time_start)
     time_end_epoch = time_utils.to_epoch_time(time_end)
-    query = es_utils.create_range_eq_query_multiple(
+    results = autotest_es.query(
             fields_returned=None,
             equality_constraints=eqs,
             range_constraints=[('time_recorded', time_start_epoch,
@@ -108,9 +108,8 @@ def get_calls(time_start, time_end, artifact_filters=None,
             size=size,
             sort_specs=[{'time_recorded': 'desc'}],
             regex_constraints=regex_constraints)
-    results = es_utils.execute_query(query, timeout=30)
     devserver_calls = []
-    for hit in results['hits']['hits']:
+    for hit in results.hits:
         devserver_calls.append(devserver_call(hit))
     logging.info('Found %d calls.', len(devserver_calls))
     return devserver_calls

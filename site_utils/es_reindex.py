@@ -26,7 +26,7 @@ import argparse
 import common
 from elasticsearch import Elasticsearch
 from elasticsearch import helpers
-from autotest_lib.client.common_lib.cros.graphite import es_utils
+from autotest_lib.client.common_lib.cros.graphite import autotest_es
 
 
 def main():
@@ -48,10 +48,10 @@ def main():
     query = {'query' : {'match_all' : {}},
              'size': 1}
 
-    result = es_utils.execute_query(query, options.old, options.host,
-                                    options.port)
-    count = result['hits']['total']
-    print 'Total number of records in index %s: %d' % (options.old, count)
+    result = autotest_es.execute_query(index=options.old, host=options.host,
+                                       port=options.port, query)
+    print 'Total number of records in index %s: %d' % (options.old,
+                                                       result.total)
 
     print ('Re-index: %s to index: %s for server %s:%s' %
            (options.old, options.new, options.host, options.port))
@@ -61,11 +61,10 @@ def main():
     print 'reindex completed.'
 
     print 'Checking records in the new index...'
-    result = es_utils.execute_query(query, options.new, options.host,
-                                    options.port)
-    count_new = result['hits']['total']
+    result = es.execute_query(index=options.new, host=options.host,
+                              port=options.port, query)
     print 'Total number of records in index %s: %d' % (options.new,
-                                                       count_new)
+                                                       result.total)
 
     # count_new can be larger than count if new records are added during
     # reindexing. This check only tries to make sure no record was lost.

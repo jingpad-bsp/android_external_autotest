@@ -21,7 +21,7 @@ import time
 
 import common
 from autotest_lib.client.common_lib import time_utils
-from autotest_lib.client.common_lib.cros.graphite import es_utils
+from autotest_lib.client.common_lib.cros.graphite import autotest_es
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import models
 
@@ -62,19 +62,17 @@ def get_host_labels(days_back=0, hostname=None, labels=None):
     # Search for the latest logged labels before the given days_back.
     # Default is 0, which means the last time host labels were logged.
     t_end = time.time() - days_back*24*3600
-    query_time_index = es_utils.create_range_eq_query_multiple(
+    results = autotest_es.query(
             fields_returned=['time_index'],
             equality_constraints=[('_type', _HOST_LABEL_TIME_INDEX_TYPE),],
             range_constraints=[('time_index', None, t_end)],
             size=1,
             sort_specs=[{'time_index': 'desc'}])
-    results = es_utils.execute_query(query_time_index)
-    count = int(results['hits']['total'])
     t_end_str = time_utils.epoch_time_to_date_string(t_end)
-    if count == 0:
+    if results.total == 0:
         logging.error('No label information was logged before %s.', t_end_str)
         return
-    time_index = results['hits']['hits'][0]['fields']['time_index'][0]
+    time_index = results['time_index'][0]
     logging.info('Host labels were recorded at %s',
                  time_utils.epoch_time_to_date_string(time_index))
 
@@ -86,14 +84,12 @@ def get_host_labels(days_back=0, hostname=None, labels=None):
     if labels:
         for label in labels:
             equality_constraints.append(('labels', label))
-    query_labels =  es_utils.create_range_eq_query_multiple(
+    results = autotest_es.query(
             fields_returned=['hostname', 'labels'],
             equality_constraints=equality_constraints)
-    results = es_utils.execute_query(query_labels)
 
     host_labels = {}
-    for hit in results['hits']['hits']:
-        hit = es_utils.convert_hit(hit['fields'])
+    for hit in results.hits:
         if 'labels' in hit:
             host_labels[hit['hostname']] = hit['labels']
 
@@ -111,11 +107,11 @@ def collect_info():
         info = {'hostname': host.hostname,
                 'labels': [label.name for label in host.labels.all()],
                 'time_index': time_index}
-        es_utils.ESMetadata().post(type_str=_HOST_LABEL_TYPE, metadata=info,
+        autotest_es.post(type_str=_HOST_LABEL_TYPE, metadata=info,
                                    log_time_recorded=False)
 
     # After all host label information is logged, save the time stamp.
-    es_utils.ESMetadata().post(type_str=_HOST_LABEL_TIME_INDEX_TYPE,
+    autotest_es.post(type_str=_HOST_LABEL_TIME_INDEX_TYPE,
                                metadata={'time_index': time_index},
                                log_time_recorded=False)
     logging.info('Finished collecting host labels for %d hosts.', len(hosts))

@@ -10,7 +10,7 @@ from itertools import groupby
 
 import common
 from autotest_lib.client.common_lib import time_utils
-from autotest_lib.client.common_lib.cros.graphite import es_utils
+from autotest_lib.client.common_lib.cros.graphite import autotest_es
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import models
 from autotest_lib.site_utils import host_label_utils
@@ -71,8 +71,8 @@ def lock_history_to_intervals(initial_lock_val, t_start, t_end, lock_history):
     locked_intervals = []
     t_prev = t_start
     state_prev = initial_lock_val
-    for entry in lock_history['hits']['hits']:
-        t_curr = entry['fields']['time_recorded'][0]
+    for entry in lock_history.hits:
+        t_curr = entry['time_recorded'][0]
 
         #If it is locked, then we put into locked_intervals
         if state_prev:
@@ -80,7 +80,7 @@ def lock_history_to_intervals(initial_lock_val, t_start, t_end, lock_history):
 
         # update vars
         t_prev = t_curr
-        state_prev = entry['fields']['locked'][0]
+        state_prev = entry['locked'][0]
     if state_prev:
         locked_intervals.append((t_prev, t_end))
     return locked_intervals
@@ -96,19 +96,15 @@ def find_most_recent_entry_before(t, type_str, hostname, fields):
     @returns: time, field_value of the latest entry.
     """
     t_epoch = time_utils.to_epoch_time(t)
-    query = es_utils.create_range_eq_query_multiple(
+    result = autotest_es.query(
             fields_returned=fields,
             equality_constraints=[('_type', type_str),
                                   ('hostname', hostname)],
             range_constraints=[('time_recorded', None, t_epoch)],
             size=1,
             sort_specs=[{'time_recorded': 'desc'}])
-    result = es_utils.execute_query(query)
-    if result['hits']['total'] > 0:
-        # If fields are not specified, the query returns all data for the
-        # record under key "_source"
-        key = 'fields' if fields else '_source'
-        return es_utils.convert_hit(result['hits']['hits'][0][key])
+    if result.total > 0:
+        return result.hits[0]
     return {}
 
 
@@ -137,27 +133,21 @@ def get_host_history_intervals(t_start, t_end, hostname, intervals):
     # I use [0] and [None] because lock_history_recent's type is list.
     t_lock = lock_history_recent.get('time_recorded', None)
     t_lock_val = lock_history_recent.get('locked', None)
-    host_history_recent = find_most_recent_entry_before(
+    t_metadata = find_most_recent_entry_before(
             t=t_start, type_str=_HOST_HISTORY_TYPE, hostname=hostname,
             fields=None)
-    t_host = host_history_recent.get('time_recorded', None)
-    t_host_stat = host_history_recent.get('status', None)
-    t_metadata = es_utils.get_metadata(host_history_recent,
-                                       ['time_recorded', 'status'])
-
-    status_first = t_host_stat if t_host else 'Ready'
+    t_host = t_metadata.pop('time_recorded', None)
+    t_host_stat = t_metadata.pop('status', None)
     t = min([t for t in [t_lock, t_host, t_start] if t])
 
     t_epoch = time_utils.to_epoch_time(t)
     t_end_epoch = time_utils.to_epoch_time(t_end)
-    query_lock_history = es_utils.create_range_eq_query_multiple(
+    lock_history_entries = autotest_es.query(
             fields_returned=['locked', 'time_recorded'],
             equality_constraints=[('_type', _LOCK_HISTORY_TYPE),
                                   ('hostname', hostname)],
             range_constraints=[('time_recorded', t_epoch, t_end_epoch)],
             sort_specs=[{'time_recorded': 'asc'}])
-
-    lock_history_entries = es_utils.execute_query(query_lock_history)
 
     locked_intervals = lock_history_to_intervals(t_lock_val, t, t_end,
                                                  lock_history_entries)
@@ -168,10 +158,9 @@ def get_host_history_intervals(t_start, t_end, hostname, intervals):
     intervals_of_statuses = collections.OrderedDict()
 
     for entry in intervals:
-        t_curr = entry['_source']['time_recorded']
-        status_curr = entry['_source']['status']
-        metadata = es_utils.get_metadata(entry['_source'],
-                                         ['time_recorded', 'status'])
+        metadata = entry.copy()
+        t_curr = metadata.pop('time_recorded')
+        status_curr = metadata.pop('status')
         intervals_of_statuses.update(calculate_status_times(
                 t_prev, t_curr, status_prev, metadata_prev, locked_intervals))
         # Update vars
@@ -277,15 +266,14 @@ def get_intervals_for_host(t_start, t_end, hostname):
     """
     t_start_epoch = time_utils.to_epoch_time(t_start)
     t_end_epoch = time_utils.to_epoch_time(t_end)
-    query_host_history = es_utils.create_range_eq_query_multiple(
+    host_history_entries = autotest_es.query(
                 fields_returned=None,
                 equality_constraints=[('_type', _HOST_HISTORY_TYPE),
                                       ('hostname', hostname)],
                 range_constraints=[('time_recorded', t_start_epoch,
                                     t_end_epoch)],
                 sort_specs=[{'time_recorded': 'asc'}])
-    host_history_entries = es_utils.execute_query(query_host_history)
-    return host_history_entries['hits']['hits']
+    return result.hits
 
 
 def get_intervals_for_hosts(t_start, t_end, hosts=None, board=None, pool=None):
@@ -324,14 +312,13 @@ def get_intervals_for_hosts(t_start, t_end, hosts=None, board=None, pool=None):
             equality_constraints.append(('labels', 'pool:'+pool))
         t_start_epoch = time_utils.to_epoch_time(t_start)
         t_end_epoch = time_utils.to_epoch_time(t_end)
-        query_labels =  es_utils.create_range_eq_query_multiple(
+        results =  autotest_es.query(
                 equality_constraints=equality_constraints,
                 range_constraints=[('time_recorded', t_start_epoch,
                                     t_end_epoch)],
                 sort_specs=[{'hostname': 'asc'}])
-        results = es_utils.execute_query(query_labels)
         results_group_by_host = {}
-        for hostname,intervals_for_host in groupby(results['hits']['hits'],
+        for hostname,intervals_for_host in groupby(results.hits,
                                                    lambda h: h['hostname']):
             results_group_by_host[hostname] = intervals_for_host
         for host in hosts:
