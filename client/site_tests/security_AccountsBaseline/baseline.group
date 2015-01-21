@@ -66,9 +66,10 @@ scanner:!:255:saned
 volume:!:257:
 uinput:!:258:bluetooth,volume
 apmanager:!:259:apmanager,privetd
-peerd:!:260:peerd,privetd
-privetd:!:262:privetd
+peerd:!:260:leaderd,peerd,privetd
+privetd:!:262:leaderd,privetd
 buffet:!:264:buffet,privetd
+leaderd:!:265:leaderd
 ntfs-3g:!:300:
 avfs:!:301:
 fuse-exfat:!:302:
