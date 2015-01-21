@@ -7,7 +7,6 @@
 __author__ = 'cliffordcheng@google.com (Clifford Cheng)'
 
 import re
-import time
 from selenium.webdriver.common.keys import Keys
 
 
@@ -52,7 +51,6 @@ class WebElements(object):
 class TextBox(WebElements):
     """Web element textbox and its controls."""
 
-    _timeout = 5
 
     def get_value(self):
         """
@@ -70,16 +68,15 @@ class TextBox(WebElements):
         @param value: The value to be set in the text box
         @raises RuntimeError if an error occurred when setting values
         """
-        wait_time = 0
-        self._element.clear()
+        # Using backspace instead of clear() because of crbug/450812
+        # TODO(cliffordcheng): Revert this once the bug is fixed
+        original_value = self._element.get_attribute('value')
+        for i in range(len(original_value)):
+            self._element.send_keys('\b')
         self._element.send_keys(value)
-        while wait_time < self._timeout and self.get_value() != value:
-          time.sleep(1)
-          wait_time += 1
         if self.get_value() != value:
             raise RuntimeError(
                     'Failed to set value "%s"', self._element.get_name())
-
 
 
 class Button(WebElements):

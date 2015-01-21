@@ -10,6 +10,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 
 CHECK_BOX_LIST = {'send_usage': 'sendUsage'}
 TEXT_BOX_LIST = {'min_video_bitrate': 'minVideoBitrate',
+                 'max_video_bitrate': 'maxVideoBitrate',
                  'max_tab_frame_rate': 'maxFrameRate',
                  'add_debug_dongle_ip': 'newReceiverIp'}
 RADIO_BUTTON_LIST = {'tab_casting_quality':
