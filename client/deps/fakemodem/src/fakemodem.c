@@ -234,7 +234,9 @@ main (int argc, char *argv[])
     { NULL }
   };
 
+  #if !GLIB_CHECK_VERSION(2,35,0)
   g_type_init ();
+  #endif
 
   opt_ctx = g_option_context_new (NULL);
   g_option_context_set_summary (opt_ctx,

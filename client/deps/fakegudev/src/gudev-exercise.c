@@ -22,7 +22,9 @@ main (int argc, const char *argv[])
 {
   int i;
 
+  #if !GLIB_CHECK_VERSION(2,35,0)
   g_type_init ();
+  #endif
 
   loop = g_main_loop_new (NULL, FALSE);
 
