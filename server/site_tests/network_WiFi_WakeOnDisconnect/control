@@ -8,7 +8,8 @@ AUTHOR = 'ejcaruso, samueltan, snanda'
 NAME = 'network_WiFi_WakeOnDisconnect'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
-DEPENDENCIES = 'wificell, servo'
+DEPENDENCIES = 'wificell, servo, board:samus'
+SUITE = 'wifi_matfunc, wifi_correctness_cros_core, wifi_release'
 
 DOC = """
 This tests wake-on-disconnect, which allows us to wake up and potentially
