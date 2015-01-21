@@ -103,7 +103,7 @@ class firmware_EventLog(FirmwareTest):
         if (not self._has_event(r'System boot') or
             not self._has_event(r'Chrome OS Recovery Mode \| Recovery Button')):
             raise error.TestError('Missing required event in recovery mode.')
-        if self._has_event(r'Developer Mode|Sleep| Wake'):
+        if self._has_event(r'Developer Mode|Sleep|FW Wake|ACPI Wake \| S3'):
             raise error.TestError('Incorrect event logged in recovery mode.')
 
         logging.info('Verifying eventlog behavior on suspend/resume')
