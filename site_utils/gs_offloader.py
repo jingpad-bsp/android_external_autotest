@@ -123,8 +123,7 @@ def get_cmd_list(dir_entry, gs_path):
   if USE_RSYNC_ENABLED:
     return ['gsutil', '-m', 'rsync', '-eR',
             dir_entry, os.path.join(gs_path, os.path.basename(dir_entry))]
-  return ['gsutil', '-m', 'cp', '-eR', '-a', 'project-private',
-          dir_entry, gs_path]
+  return ['gsutil', '-m', 'cp', '-eR', dir_entry, gs_path]
 
 
 def get_directory_size_kibibytes_cmd_list(directory):
