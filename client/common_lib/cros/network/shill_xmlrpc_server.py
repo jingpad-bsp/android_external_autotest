@@ -4,6 +4,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import dbus
 import logging
 import logging.handlers
 import multiprocessing
@@ -292,6 +293,28 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         """
         return self._wifi_proxy.wait_for_service_states(
                 ssid, states, timeout_seconds)
+
+
+    @xmlrpc_server.dbus_safe(None)
+    def get_service_order(self):
+        """Get the shill service order.
+
+        @return string service order on success, None otherwise.
+
+        """
+        return str(self._wifi_proxy.manager.GetServiceOrder())
+
+
+    @xmlrpc_server.dbus_safe(False)
+    def set_service_order(self, order):
+        """Set the shill service order.
+
+        @param order string comma-delimited service order (eg. 'ethernet,wifi')
+        @return bool True on success, False otherwise.
+
+        """
+        self._wifi_proxy.manager.SetServiceOrder(dbus.String(order))
+        return True
 
 
     @xmlrpc_server.dbus_safe(None)
