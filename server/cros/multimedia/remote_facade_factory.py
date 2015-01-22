@@ -56,7 +56,7 @@ class RemoteFacadeProxy(object):
         """
         self._client = host
         self._xmlrpc_proxy = None
-        self.connect()
+        self.connect(reconnect=False)
 
 
     def __getattr__(self, name):
@@ -80,22 +80,33 @@ class RemoteFacadeProxy(object):
                 xmlrpclib.ProtocolError,
                 httplib.BadStatusLine):
             # Reconnect the RPC server in case connection lost, e.g. reboot.
-            self.connect()
+            self.connect(reconnect=True)
             # Try again.
             return getattr(self._xmlrpc_proxy, name)(*args, **dargs)
 
 
-    def connect(self):
-        """Connects the XML-RPC proxy on the client."""
+    def connect(self, reconnect):
+        """Connects the XML-RPC proxy on the client.
+
+        @param reconnect: True for reconnection, False for the first-time.
+        """
         @retry.retry((socket.error,
                       xmlrpclib.ProtocolError,
                       httplib.BadStatusLine),
                      timeout_min=self.XMLRPC_RETRY_TIMEOUT / 60.0,
                      delay_sec=self.XMLRPC_RETRY_DELAY)
-        def connect_with_retries():
-            """Connects the XML-RPC proxy with retries."""
+        def connect_with_retries(reconnect):
+            """Connects the XML-RPC proxy with retries.
+
+            @param reconnect: True for reconnection, False for the first-time.
+            """
+            if reconnect:
+                command = constants.MULTIMEDIA_XMLRPC_SERVER_RESTART_COMMAND
+            else:
+                command = constants.MULTIMEDIA_XMLRPC_SERVER_COMMAND
+
             self._xmlrpc_proxy = self._client.xmlrpc_connect(
-                    constants.MULTIMEDIA_XMLRPC_SERVER_COMMAND,
+                    command,
                     constants.MULTIMEDIA_XMLRPC_SERVER_PORT,
                     command_name=(
                         constants.MULTIMEDIA_XMLRPC_SERVER_CLEANUP_PATTERN
@@ -105,7 +116,7 @@ class RemoteFacadeProxy(object):
                     timeout_seconds=self.XMLRPC_CONNECT_TIMEOUT)
 
         logging.info('Setup the connection to RPC server, with retries...')
-        connect_with_retries()
+        connect_with_retries(reconnect)
 
 
     def __del__(self):

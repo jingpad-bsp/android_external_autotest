@@ -59,6 +59,9 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--debug', action='store_true', required=False,
                         help=('create a debug console with a ServerProxy "s" '
                               'connecting to the XML RPC sever at localhost'))
+    parser.add_argument('--restart', action='store_true', required=False,
+                        help=('restart the XML RPC server without clearing '
+                              'the previous state'))
     args = parser.parse_args()
 
     if args.debug:
@@ -77,7 +80,8 @@ if __name__ == '__main__':
 
         with chrome.Chrome(
                 extension_paths=[constants.MULTIMEDIA_TEST_EXTENSION],
-                extra_browser_args=extra_browser_args) as cr:
+                extra_browser_args=extra_browser_args,
+                clear_enterprise_policy=not args.restart) as cr:
             server = xmlrpc_server.XmlRpcServer(
                     'localhost', constants.MULTIMEDIA_XMLRPC_SERVER_PORT)
             server.register_delegate(MultimediaXmlRpcDelegate(cr))
