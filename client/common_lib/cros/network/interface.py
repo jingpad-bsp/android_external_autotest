@@ -16,6 +16,13 @@ from autotest_lib.client.common_lib.cros.network import netblock
 DeviceDescription = collections.namedtuple('DeviceDescription',
                                            ['name', 'kernel_module'])
 
+
+# A tuple describing a default route, consisting of an interface name,
+# gateway IP address, and the metric value visible in the routing table.
+DefaultRoute = collections.namedtuple('DefaultRoute', ['interface_name',
+                                                       'gateway',
+                                                       'metric'])
+
 NAME_MARVELL_88W8797_SDIO = 'Marvell 88W8797 SDIO'
 NAME_MARVELL_88W8887_SDIO = 'Marvell 88W8887 SDIO'
 NAME_MARVELL_88W8897_SDIO = 'Marvell 88W8897 SDIO'
@@ -336,3 +343,42 @@ class Interface:
         logging.error('Failed to find noise level for %s at %d MHz.',
                       self._name, frequency_mhz)
         return None
+
+
+def get_prioritized_default_route(host=None, interface_name_regex=None):
+    """
+    Query a local or remote host for its prioritized default interface
+    and route.
+
+    @param interface_name_regex string regex to filter routes by interface.
+    @return DefaultRoute tuple, or None if no default routes are found.
+
+    """
+    # Build a list of default routes, filtered by interface if requested.
+    # Example command output: 'default via 172.23.188.254 dev eth0  metric 2'
+    run = host.run if host is not None else utils.run
+    output = run('ip route show').stdout
+    output_regex_str = 'default\s+via\s+(\S+)\s+dev\s+(\S+)\s+metric\s+(\d+)'
+    output_regex = re.compile(output_regex_str)
+    defaults = []
+    for item in output.splitlines():
+        if 'default' not in item:
+            continue
+        match = output_regex.match(item.strip())
+        if match is None:
+            raise error.TestFail('Unexpected route output: %s' % item)
+        gateway = match.group(1)
+        interface_name = match.group(2)
+        metric = int(match.group(3))
+        if interface_name_regex is not None:
+            if re.match(interface_name_regex, interface_name) is None:
+                continue
+        defaults.append(DefaultRoute(interface_name=interface_name,
+                                     gateway=gateway, metric=metric))
+    if not defaults:
+        return None
+
+    # Sort and return the route with the lowest metric value.
+    defaults.sort(key=lambda x: x.metric)
+    return defaults[0]
+
