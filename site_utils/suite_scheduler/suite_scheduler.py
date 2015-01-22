@@ -211,7 +211,7 @@ def main():
     if options.sanity:
         # config_file_getter generates a high amount of noise at DEBUG level
         logging.getLogger().setLevel(logging.WARNING)
-        d = driver.Driver(None, None)
+        d = driver.Driver(None, None, True)
         d.SetUpEventsAndTasks(config, None)
         tasks_per_event = d.TasksFromConfig(config)
         # flatten [[a]] -> [a]

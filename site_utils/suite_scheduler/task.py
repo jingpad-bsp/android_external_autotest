@@ -14,7 +14,6 @@ from constants import Labels
 import common
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.scheduler import scheduler_lib
-from autotest_lib.server import site_utils
 
 
 class MalformedConfigEntry(Exception):
@@ -47,6 +46,12 @@ class TotMilestoneManager(object):
 
     __metaclass__ = scheduler_lib.Singleton
 
+    # True if suite_scheduler is running for sanity check. When it's set to
+    # True, the code won't make gsutil call to get the actual tot milestone to
+    # avoid dependency on the installation of gsutil to run sanity check.
+    is_sanity = False
+
+
     @staticmethod
     def _tot_milestone():
         """Get the tot milestone, eg: R40
@@ -55,6 +60,11 @@ class TotMilestoneManager(object):
             the LATEST_BUILD_URL, or an empty string if LATEST_BUILD_URL
             doesn't exist.
         """
+        if TotMilestoneManager.is_sanity:
+            logging.info('suite_scheduler is running for sanity purpose, no '
+                         'need to get the actual tot milestone string.')
+            return 'R40'
+
         cmd = ['gsutil', 'cat', constants.LATEST_BUILD_URL]
         proc = subprocess.Popen(
                 cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

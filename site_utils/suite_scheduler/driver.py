@@ -27,14 +27,17 @@ class Driver(object):
     _LOOP_INTERVAL_SECONDS = 5 * 60
 
 
-    def __init__(self, scheduler, enumerator):
+    def __init__(self, scheduler, enumerator, is_sanity=False):
         """Constructor
 
         @param scheduler: an instance of deduping_scheduler.DedupingScheduler.
         @param enumerator: an instance of board_enumerator.BoardEnumerator.
+        @param is_sanity: Set to True if the driver is created for sanity check.
+                          Default is set to False.
         """
         self._scheduler = scheduler
         self._enumerator = enumerator
+        task.TotMilestoneManager.is_sanity = is_sanity
 
 
     def RereadAndReprocessConfig(self, config, mv):
