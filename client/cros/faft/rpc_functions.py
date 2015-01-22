@@ -13,6 +13,7 @@ import common
 from autotest_lib.client.cros.faft.utils import (cgpt_state,
                                                  cgpt_handler,
                                                  chromeos_interface,
+                                                 firmware_check_keys,
                                                  firmware_updater,
                                                  flashrom_handler,
                                                  kernel_handler,
@@ -144,6 +145,7 @@ class RPCFunctions(object):
         self._rootfs_handler.init(self._chromeos_interface)
 
         self._updater = firmware_updater.FirmwareUpdater(self._chromeos_interface)
+        self._check_keys = firmware_check_keys.firmwareCheckKeys()
 
         # Initialize temporary directory path
         self._temp_path = '/var/tmp/faft/autest'
@@ -788,6 +790,13 @@ class RPCFunctions(object):
         @param section: The rootfs to verify. May be A or B.
         """
         return self._rootfs_handler.verify_rootfs(section)
+
+    def _system_check_keys(self, expected_sequence):
+        """Check the keys sequence was as expected.
+
+        @param expected_sequence: A list of expected key sequences.
+        """
+        return self._check_keys.check_keys(expected_sequence)
 
     def cleanup(self):
         """Cleanup for the RPC server. Currently nothing."""

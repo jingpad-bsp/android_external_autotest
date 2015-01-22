@@ -116,24 +116,17 @@ class firmware_ECLidSwitch(FirmwareTest):
         self.faft_client.system.run_shell_command(cmd)
 
     def check_keycode(self):
-        """Check if lid open/close send power button keycode.
+        """Check that lid open/close do not send power button keycode.
 
         Returns:
           True if no power button keycode is captured. Otherwise, False.
         """
-        cmd = 'showkey | grep "keycode 116" | wc -l'
-
         self._open_lid()
         self.delayed_close_lid()
-        lines = self.faft_client.system.run_shell_command_get_output(cmd)
-        if int(lines[0].strip()) != 0:
-            logging.error("Captured power button keycode on lid close.")
-            self._open_lid()
+        if self.faft_client.system.check_keys([]) < 0:
             return False
         self.delayed_open_lid()
-        lines = self.faft_client.system.run_shell_command_get_output(cmd)
-        if int(lines[0].strip()) != 0:
-            logging.error("Captured power button keycode on lid close.")
+        if self.faft_client.system.check_keys([]) < 0:
             return False
         return True
 
@@ -170,9 +163,7 @@ class firmware_ECLidSwitch(FirmwareTest):
         ok = True
         logging.info("Stopping powerd")
         self.faft_client.system.run_shell_command('stop powerd')
-        if not self.check_keycode():
-            logging.error("check_keycode failed.")
-            ok = False
+        self.check_keycode()
         if not self.check_backlight():
             logging.error("check_backlight failed.")
             ok = False

@@ -2,12 +2,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import glob
 from itertools import groupby
 import logging
 from threading import Timer
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
+from autotest_lib.client.bin.input.input_device import *
 
 
 class firmware_FAFTSetup(FirmwareTest):
@@ -21,7 +23,7 @@ class firmware_FAFTSetup(FirmwareTest):
     """
     version = 1
 
-    # Delay between starting 'showkey' and pressing the keys
+    # Delay to ensure client is ready to read the key press.
     KEY_PRESS_DELAY = 2
 
 
@@ -46,104 +48,29 @@ class firmware_FAFTSetup(FirmwareTest):
                     "Please check there is no terminal opened on EC console.")
             raise error.TestFail("Failed EC console check.")
 
-    def compare_key_sequence(self, actual_seq, expected_seq):
-        """Comparator for key sequence captured by 'showkey'
-
-        This method compares if the last part of actual_seq matches
-        expected_seq. If two or more key presses in expected_seq are in a
-        tuple, their order are not compared. For example:
-          expected_seq = [a, (b, c)]
-        matches
-          actual_seq = [a, b, c] or actual_seq = [a, c, b]
-        This can be used to compare combo keys such as ctrl-D.
-
-        Args:
-          actual_seq: The actual key sequence captured by 'showkey'.
-          expected_seq: The expected key sequence.
-        """
-        # Actual key sequence must be at least as long as the expected
-        # sequence.
-        expected_length = 0
-        for s in expected_seq:
-            if isinstance(s, tuple):
-                expected_length += len(s)
-            else:
-                expected_length += 1
-        if len(actual_seq) < expected_length:
-            return False
-
-        # We only care about the last part of actual_seq. Let's reverse both
-        # sequences so that we can easily compare them backward.
-        actual_seq.reverse()
-        expected_seq.reverse()
-        index = 0
-        for s in expected_seq:
-            if isinstance(s, tuple):
-                length = len(s)
-                actual = actual_seq[index:index + length]
-                actual.sort()
-                expected = list(s)
-                expected.sort()
-                if actual != expected:
-                    return False
-                index += length
-            else:
-                if actual_seq[index] != s:
-                    return False
-                index += 1
-        return True
-
-    def key_sequence_string(self, key_seq):
-        """Get a human readable key sequence string.
-
-        Args:
-          key_seq: A list contains strings and/or tuple of strings.
-        """
-        s = []
-        for k in key_seq:
-            if isinstance(k, tuple):
-                s.append("---Unordered---")
-                s.extend(k)
-                s.append("---------------")
-            else:
-                s.append(k)
-        return "\n".join(s)
-
-    def base_keyboard_checker(self, press_action, expected_output):
+    def base_keyboard_checker(self, press_action):
         """Press key and check from DUT.
 
         Args:
             press_action: A callable that would press the keys when called.
-            expected_output: Expected output from "showkey".
         """
-        # Stop UI so that key presses don't go to X.
+        result = True
+        # Stop UI so that key presses don't go to Chrome.
         self.faft_client.system.run_shell_command("stop ui")
+
         # Press the keys
         Timer(self.KEY_PRESS_DELAY, press_action).start()
-        lines = self.faft_client.system.run_shell_command_get_output("showkey")
+
+        # Invoke client side script to monitor keystrokes
+        if not self.faft_client.system.check_keys([28, 29, 32]):
+            result = False
+
         # Turn UI back on
         self.faft_client.system.run_shell_command("start ui")
-
-        # We may be getting multiple key-press or key-release.
-        # Let's remove duplicated items.
-        dup_removed = [x[0] for x in groupby(lines)]
-
-        if not self.compare_key_sequence(dup_removed, expected_output):
-            logging.error("Keyboard simulation not working correctly")
-            logging.error("Captured keycodes:\n%s", "\n".join(dup_removed))
-            logging.error("Expected keycodes:\n%s",
-                          self.key_sequence_string(expected_output))
-            return False
-        logging.debug("Keyboard simulation is working correctly")
-        logging.debug("Captured keycodes:\n%s", "\n".join(dup_removed))
-        logging.debug("Expected keycodes:\n%s",
-                        self.key_sequence_string(expected_output))
-        return True
+        return result
 
     def keyboard_checker(self):
         """Press 'd', Ctrl, ENTER by servo and check from DUT."""
-
-        logging.debug("keyboard_checker")
 
         def keypress():
             self.servo.ctrl_d()
@@ -151,15 +78,7 @@ class firmware_FAFTSetup(FirmwareTest):
 
         keys = self.faft_config.key_checker
 
-        expected_output = [
-                ("keycode  {0:x} {1}".format(keys[0][0], keys[0][1]),
-                 "keycode  {0:x} {1}".format(keys[1][0], keys[1][1])),
-                ("keycode  {0:x} {1}".format(keys[2][0], keys[2][1]),
-                 "keycode  {0:x} {1}".format(keys[3][0], keys[3][1])),
-                "keycode  {0:x} {1}".format(keys[4][0], keys[4][1]),
-                "keycode  {0:x} {1}".format(keys[5][0], keys[5][1])]
-
-        return self.base_keyboard_checker(keypress, expected_output)
+        return self.base_keyboard_checker(keypress)
 
     def run_once(self):
         logging.info("Check EC console is available and test warm reboot")

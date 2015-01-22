@@ -511,6 +511,10 @@ class InputDevice:
                 (BTN_TOOL_FINGER in self.events[EV_KEY]) and
                 (EV_ABS in self.events))
 
+    def is_keyboard(self):
+        return ((EV_KEY in self.events) and
+                (KEY_F2 in self.events[EV_KEY]))
+
     def is_touchscreen(self):
         return ((EV_KEY in self.events) and
                 (BTN_TOUCH in self.events[EV_KEY]) and
