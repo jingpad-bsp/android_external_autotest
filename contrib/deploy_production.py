@@ -11,12 +11,14 @@ from autotest_lib.server import frontend
 from autotest_lib.site_utils.lib import infra
 
 
-def discover_servers(afe):
+def discover_servers(afe, server_filter=set()):
     """Discover the in-production servers to update.
 
     @param afe: Server to contact with RPC requests.
+    @param server_filter: A set of servers to get status for.
 
-    @returns A list of server host-names, in order for updates.
+    @returns: A list of tuple of (server_name, server_status), the list in
+              sorted by the order to be updated.
     """
     # Example server details....
     # {
@@ -28,8 +30,11 @@ def discover_servers(afe):
     rpc = frontend.AFE(server=afe)
     servers = rpc.run('get_servers')
 
-    # Do not update servers that need repair.
-    servers = [s for s in servers if s['status'] != 'repair_required']
+    # Do not update servers that need repair, and filter the server list by
+    # given server_filter if needed.
+    servers = [s for s in servers
+               if (s['status'] != 'repair_required' and
+                   (not server_filter or s['hostname'] in server_filter))]
 
     # Do not update devservers (not YET supported).
     servers = [s for s in servers if 'devserver' not in s['roles']]
@@ -48,7 +53,14 @@ def discover_servers(afe):
     # Order in which servers are updated.
     servers.sort(key=update_order)
 
-    return [s['hostname'] for s in servers]
+    # Build the return list of (hostname, status)
+    server_status = [(s['hostname'], s['status']) for s in servers]
+    found_servers = set([s['hostname'] for s in servers])
+    # Inject the servers passed in by user but not found in server database.
+    for server in server_filter-found_servers:
+        server_status.append((server, 'unknown'))
+
+    return server_status
 
 
 def parse_arguments(args):
@@ -118,21 +130,24 @@ def main(args):
     """
     options = parse_arguments(args)
 
-    if not options.servers:
-        print('Discover servers...')
-        options.servers = discover_servers(options.afe)
-        print()
+    print('Retrieving server status...')
+    server_status = discover_servers(options.afe, set(options.servers or []))
 
     # Display what we plan to update.
     print('Will update (in this order):')
-    for server in options.servers:
-        print('  ', server)
+    for server, status in server_status:
+        print('\t%-36s:\t%s' % (server, status))
     print()
 
     # Do the updating.
-    for server in options.servers:
+    for server, status in server_status:
+        if status == 'backup':
+            extra_args = ['--skip-service-status']
+        else:
+            extra_args = []
+
         cmd = ('/usr/local/autotest/contrib/deploy_production_local.py ' +
-               ' '.join(options.args))
+               ' '.join(options.args + extra_args))
         print('%s: %s' % (server, cmd))
         if not options.dryrun:
             try:

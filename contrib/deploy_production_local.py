@@ -220,7 +220,7 @@ def service_status(service_name):
     return subprocess.check_output(['sudo', 'status', service_name])
 
 
-def restart_services(service_names, dryrun=False):
+def restart_services(service_names, dryrun=False, skip_service_status=False):
     """Restart services as needed for the current server type.
 
     Restart the listed set of services, and watch to see if they are stable for
@@ -229,6 +229,8 @@ def restart_services(service_names, dryrun=False):
 
     @param service_names: The list of service to restart and monitor.
     @param dryrun: Don't really restart the service, just print out the command.
+    @param skip_service_status: Set to True to skip service status check.
+                                Default is False.
 
     @raises subprocess.CalledProcessError on a command failure.
     @raises UnstableServices if any services are unstable after restart.
@@ -245,6 +247,12 @@ def restart_services(service_names, dryrun=False):
         restart_service(name)
         service_statuses[name] = service_status(name)
 
+    # Skip service status check if --skip-service-status is specified. Used for
+    # servers in backup status.
+    if skip_service_status:
+        print('--skip-service-status is specified, skip checking services.')
+        return
+
     # Wait for a while to let the services settle.
     time.sleep(SERVICE_STABILITY_TIMER)
 
@@ -257,10 +265,12 @@ def restart_services(service_names, dryrun=False):
         raise UnstableServices(unstable_services)
 
 
-def run_deploy_actions(dryrun=False):
+def run_deploy_actions(dryrun=False, skip_service_status=False):
     """Run arbitrary update commands specified in global.ini.
 
     @param dryrun: Don't really restart the service, just print out the command.
+    @param skip_service_status: Set to True to skip service status check.
+                                Default is False.
 
     @raises subprocess.CalledProcessError on a command failure.
     @raises UnstableServices if any services are unstable after restart.
@@ -274,7 +284,8 @@ def run_deploy_actions(dryrun=False):
     services = discover_restart_services()
     if services:
         print('Restarting Services:', ', '.join(services))
-        restart_services(services, dryrun=dryrun)
+        restart_services(services, dryrun=dryrun,
+                         skip_service_status=skip_service_status)
 
 
 def report_changes(versions_before, versions_after):
@@ -345,6 +356,8 @@ def parse_arguments(args):
                         help='Run the post update actions (restart services).')
     parser.add_argument('--dryrun', action='store_true',
                         help='Don\'t actually run any commands, just log.')
+    parser.add_argument('--skip-service-status', action='store_true',
+                        help='Skip checking the service status.')
 
     results = parser.parse_args(args)
 
@@ -394,7 +407,9 @@ def main(args):
 
     if behaviors.actions:
         try:
-            run_deploy_actions(dryrun=behaviors.dryrun)
+            run_deploy_actions(
+                    dryrun=behaviors.dryrun,
+                    skip_service_status=behaviors.skip_service_status)
         except UnstableServices as e:
             print('The following services were not stable after '
                   'the update:')
