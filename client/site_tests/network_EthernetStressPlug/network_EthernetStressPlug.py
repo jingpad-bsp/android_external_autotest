@@ -11,6 +11,7 @@ import re
 import socket
 import struct
 import subprocess
+import sys
 import time
 
 from autotest_lib.client.bin import test, utils
@@ -46,6 +47,10 @@ class network_EthernetStressPlug(test.test):
                                    if x.startswith("eth")]
 
             for interface in avail_eth_interfaces:
+                # This is not the (bridged) eth dev we are looking for.
+                if os.path.exists("/sys/class/net/" + interface + "/brport"):
+                    continue
+
                 try:
                     link_file = open("/sys/class/net/" + interface +
                                      "/operstate")
@@ -67,37 +72,38 @@ class network_EthernetStressPlug(test.test):
             return 'eth0'
 
         def get_net_device_path(device='eth0'):
-            """ Uses udev to get the path of the desired internet device. """
+            """ Uses udev to get the path of the desired internet device.
+            Args:
+                device: look for the /sys entry for this ethX device
+            Returns:
+                /sys pathname for the found ethX device or raises an error.
+            """
             net_list = pyudev.Context().list_devices(subsystem='net')
             for dev in net_list:
-                if device in dev.sys_path:
-                    # Support usb devices where the device path should match
-                    # something of the form
-                    # /sys/devices/pci.*/0000.*/usb.*/.*.
-                    net_path = re.search('(/sys/devices/pci[^/]*/0000[^/]*/'
-                                         'usb[^/]*/[^/]*)', dev.sys_path)
-                    if net_path:
-                        return net_path.groups()[0]
+                if dev.sys_path.endswith("net/%s" % device):
+                    return dev.sys_path
 
-                    # On some system such as Snow, usb is not on pci bus
-                    net_path = re.search('(/sys/devices/.*/usb[^/].*/.*/'
-                                         'net/[^/]*)', dev.sys_path)
-                    if net_path:
-                        return net_path.groups()[0]
-
-                    # Support onboard Ethernet without usb dongle where the
-                    # device path should match something of the form
-                    # /sys/device/platform/.*/net/.*
-                    net_path = re.search('(/sys/devices/platform/.*/net/[^/]*)',
-                                         dev.sys_path)
-                    if net_path:
-                        return net_path.groups()[0]
-
-            raise error.TestError('%s was not found or could not be '
-                                  'for this test.' % device)
+            raise error.TestError('Could not find /sys device path for %s'
+                                  % device)
 
         self.interface = get_ethernet_interface()
         self.eth_syspath = get_net_device_path(self.interface)
+        self.eth_flagspath = os.path.join(self.eth_syspath, 'flags')
+
+        # USB Dongles: "authorized" file will disable the USB port and
+        # in some cases powers off the port. In either case, net/eth* goes
+        # away. And thus "../../.." won't be valid to access "authorized".
+        # Build the pathname that goes directly to authpath.
+        auth_path = os.path.join(self.eth_syspath, '../../../authorized')
+        if os.path.exists(auth_path):
+            # now rebuild the path w/o use of '..'
+            auth_path = os.path.split(self.eth_syspath)[0]
+            auth_path = os.path.split(auth_path)[0]
+            auth_path = os.path.split(auth_path)[0]
+
+            self.eth_authpath = os.path.join(auth_path,'authorized')
+        else:
+            self.eth_authpath = None
 
         # Stores the status of the most recently run iteration.
         self.test_status = {
@@ -188,24 +194,47 @@ class network_EthernetStressPlug(test.test):
         Args:
           power: 0 to unplug, 1 to plug.
         """
-        # "authorized" file will disable USB port and in some cases power
-        # off the port.
-        if os.path.exists(os.path.join(self.eth_syspath, 'authorized')):
-            fp = open(os.path.join(self.eth_syspath, 'authorized'), 'w')
-            fp.write('%d' % power)
-            fp.close()
-        # Linux supports standard ioctl to configures network devices by seting
-        # or getting a 16-bit short number flags.
-        # The LSB is IFF_UP, which controls that interface is running or not.
-        elif os.path.exists(os.path.join(self.eth_syspath, 'flags')):
-            fp = open(os.path.join(self.eth_syspath, 'flags'), 'w')
-            fp.write('0x1003' if power else '0x1002')
-            fp.close()
+
+        if self.eth_authpath:
+            try:
+                fp = open(self.eth_authpath, 'w')
+                fp.write('%d' % power)
+                fp.close()
+            except:
+                raise error.TestError('Could not write %d to %s' %
+                                      (power, self.eth_authpath))
+
+        # Linux can set network link state by frobbing "flags" bitfields.
+        # Bit fields are documented in include/uapi/linux/if.h.
+        # Bit 0 is IFF_UP (link up=1 or down=0).
+        elif os.path.exists(self.eth_flagspath):
+            try:
+                fp = open(self.eth_flagspath, mode='r')
+                val= int(fp.readline().strip(), 16)
+                fp.close()
+            except:
+                raise error.TestError('Could not read %s' % self.eth_flagspath)
+
+            if power:
+                newval = val | 1
+            else:
+                newval = val &  ~1
+
+            if val != newval:
+                try:
+                    fp = open(self.eth_flagspath, mode='w')
+                    fp.write('0x%x' % newval)
+                    fp.close()
+                except:
+                    raise error.TestError('Could not write 0x%x to %s' %
+                                          (newval, self.eth_flagspath))
+                logging.debug("eth flags: 0x%x to 0x%x" % (val, newval))
+
         # else use ifconfig eth0 up/down to switch
         else:
             logging.warning('plug/unplug event control not found. '
                             'Use ifconfig %s %s instead' %
-                         (self.interface, 'up' if power else 'down'))
+                            (self.interface, 'up' if power else 'down'))
             result = subprocess.check_call(['ifconfig', self.interface,
                                             'up' if power else 'down'])
             if result:
@@ -231,31 +260,31 @@ class network_EthernetStressPlug(test.test):
         start_time = time.time()
         end_time = start_time + timeout
 
-        status_str = ['off', 'on']
+        power_str = ['off', 'on']
         self._PowerEthernet(power)
 
         while time.time() < end_time:
             status = self.GetEthernetStatus()
 
-            # If ethernet is enabled and it has an IP, or if ethernet
-            # is disabled and does not have an IP, we are in the desired state.
+            # If ethernet is enabled  and has an IP, OR
+            # if ethernet is disabled and does not have an IP,
+            # then we are in the desired state.
             # Return the number of "seconds" for this to happen.
             # (translated to an approximation of the number of seconds)
             if (power and status and \
-                self.test_status['ipaddress'] is not None) or \
+                self.test_status['ipaddress'] is not None) \
+                or \
                 (not power and not status and \
                 self.test_status['ipaddress'] is None):
                 return time.time()-start_time
 
             time.sleep(1)
 
-        else:
-            logging.debug(self.test_status['reason'])
-            raise error.TestFail('ERROR: %s IP is %s despite setting power to '
-                                 '%s after %.2f seconds.' %
-                                 (self.interface, self.test_status['ipaddress'],
-                                 status_str[power],
-                                 self.test_status['last_wait']))
+        logging.debug(self.test_status['reason'])
+        raise error.TestFail('ERROR: TIMEOUT : %s IP is %s after setting '
+                             'power %s (last_wait = %.2f seconds)' %
+                             (self.interface, self.test_status['ipaddress'],
+                             power_str[power], self.test_status['last_wait']))
 
     def RandSleep(self, min_sleep, max_sleep):
         """ Sleeps for a random duration.
@@ -419,15 +448,24 @@ class network_EthernetStressPlug(test.test):
             #Sleep for a random duration between .5 and 2 seconds
             #for unplug and plug scenarios.
             for i in range(num_iterations):
-                logging.debug('Iteration: %d' % i)
-                if self.TestPowerEthernet(power=0) > self.secs_before_warning:
+                logging.debug('Iteration: %d start' % i)
+                linkdown_time = self.TestPowerEthernet(power=0)
+                linkdown_wait = self.test_status['last_wait']
+                if linkdown_time > self.secs_before_warning:
                     self.warning_count+=1
 
                 self.RandSleep(500, 2000)
-                if self.TestPowerEthernet(power=1) > self.secs_before_warning:
+
+                linkup_time = self.TestPowerEthernet(power=1)
+                linkup_wait = self.test_status['last_wait']
+
+                if linkup_time > self.secs_before_warning:
                     self.warning_count+=1
 
                 self.RandSleep(500, 2000)
+                logging.debug('Iteration: %d end (down:%f/%d up:%f/%d)' %
+                              (i, linkdown_wait, linkdown_time,
+                               linkup_wait, linkup_time))
 
                 if self.warning_count > num_iterations * self.warning_threshold:
                     raise error.TestFail('ERROR: %.2f%% of total runs (%d) '
@@ -438,5 +476,6 @@ class network_EthernetStressPlug(test.test):
                                           self.secs_before_warning))
 
         except Exception as e:
+            exc_info = sys.exc_info()
             self._PowerEthernet(1)
-            raise e
+            raise exc_info[0], exc_info[1], exc_info[2]
