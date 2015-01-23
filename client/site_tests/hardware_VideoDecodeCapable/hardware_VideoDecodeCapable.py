@@ -35,7 +35,7 @@ class hardware_VideoDecodeCapable(test.test):
 
     REQUESTED_V4L2_FORMATS = [
         # Requested formats for decoding devices
-        {KEY_DEVICE: '/dev/mfc-dec',
+        {KEY_DEVICE: '/dev/video-dec',
          KEY_FORMATS: ['cap_fmt_VM12', 'cap_fmt_NM12',
                       'out_fmt_H264', 'out_fmt_VP80']},
         # REQUESTED formats for GSCALER devices
@@ -114,7 +114,7 @@ class hardware_VideoDecodeCapable(test.test):
         Runs the embedded v4l2 binary to enumerate supported
         capture formats and output formats.
 
-        @param video_device: device interrogated (e.g. /dev/mfc-dec).
+        @param video_device: device interrogated (e.g. /dev/video-dec).
 
         @return a dict of keyvals reflecting the formats supported.
         """
