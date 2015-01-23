@@ -74,15 +74,22 @@ class peerd_AdvertiseServices(test.test):
         for entry in actual_data:
             # All labels should be key/value pairs.
             if entry.find('=') < 0:
-                raise error.TestFail('Unexpected TXT entry: %s' % entry)
+                raise error.TestFail('All TXT entries should have = separator, '
+                                     'but got: %s' % entry)
             k, v = entry.split('=', 1)
             if k not in expected_entries:
                 raise error.TestFail('Unexpected TXT entry key: %s' % k)
             if (expected_entries[k] != self.ANY_VALUE and
                     not re.match(expected_entries[k], v)):
-                raise error.TestFail('Expected TXT value to match %s for '
-                                     'entry=%s but got value=%r instead.' %
-                                     (expected_entries[k], k, v))
+                # We're going to return False here rather than fail the test
+                # for one tricky reason: in the root serbus record, we may
+                # find that the service list does not match our expectation
+                # since other daemons may be advertising services via peerd.
+                # We need to basically wait for our test service to show up.
+                logging.warning('Expected TXT value to match %s for '
+                                'entry=%s but got value=%r instead.',
+                                expected_entries[k], k, v)
+                return False
             expected_entries.pop(k)
         if expected_entries:
             # Raise a detailed exception here, rather than return false.
@@ -91,7 +98,7 @@ class peerd_AdvertiseServices(test.test):
         return True
 
 
-    def _ask_for_record(self, record_name, record_type, predicate):
+    def _ask_for_record(self, record_name, record_type):
         """Ask for a record, and query for it if we don't have it.
 
         @param record_name: string name of record (e.g. the complete host name
@@ -106,11 +113,6 @@ class peerd_AdvertiseServices(test.test):
             logging.warning('Found multiple records with name=%s and type=%r',
                             record_name, record_type)
         if found_records:
-            if not predicate(found_records[0].data):
-                raise error.TestFail('Found record with name=%s and type=%r '
-                                     'and unexpected value=%r.' %
-                                     (record_name, record_type,
-                                      found_records[0].data))
             logging.debug('Found record with name=%s, type=%r, value=%r.',
                           record_name, record_type, found_records[0].data)
             return found_records[0]
@@ -123,22 +125,24 @@ class peerd_AdvertiseServices(test.test):
 
     def _found_service_records(self, service_id, service_info, service_port):
         PTR_name = '_%s._tcp.%s' % (service_id, self._dns_domain)
-        record_PTR = self._ask_for_record(PTR_name, dpkt.dns.DNS_PTR,
-                                          lambda data: True)
+        record_PTR = self._ask_for_record(PTR_name, dpkt.dns.DNS_PTR)
         if not record_PTR:
             return False
         # Great, we know the PTR, make sure that we can also get the SRV and
         # TXT entries.
         TXT_name = SRV_name = record_PTR.data
-        if not self._ask_for_record(SRV_name, dpkt.dns.DNS_SRV,
-                                    lambda data: data[0] == self._hostname and
-                                                 data[3] == service_port):
+        record_SRV = self._ask_for_record(SRV_name, dpkt.dns.DNS_SRV)
+        if record_SRV is None:
             return False
+        if (record_SRV.data[0] != self._hostname or
+                record_SRV.data[3] != service_port):
+            raise error.TestFail('Expected SRV record data %r but got %r' %
+                                 ((self._hostname, service_port),
+                                  record_SRV.data))
         # TXT should exist.
-        record_TXT = self._ask_for_record(
-                TXT_name, dpkt.dns.DNS_TXT,
-                lambda data: self._check_txt_record_data(service_info, data))
-        if not record_TXT:
+        record_TXT = self._ask_for_record(TXT_name, dpkt.dns.DNS_TXT)
+        if (record_TXT is None or
+                not self._check_txt_record_data(service_info, record_TXT.data)):
             return False
         return True
 
@@ -156,9 +160,9 @@ class peerd_AdvertiseServices(test.test):
         logging.debug('Looking for records for %s.', self._hostname)
         # First, check that Avahi is doing the simple things and publishing
         # an A record.
-        if not self._ask_for_record(
-                self._hostname, dpkt.dns.DNS_A,
-                lambda data: data == self._chrooted_avahi.avahi_interface_addr):
+        record_A = self._ask_for_record(self._hostname, dpkt.dns.DNS_A)
+        if (record_A is None or
+                record_A.data != self._chrooted_avahi.avahi_interface_addr):
             return False
         logging.debug('Found A record, looking for serbus records.')
         # If we can see Avahi publishing that it's there, check that it has
