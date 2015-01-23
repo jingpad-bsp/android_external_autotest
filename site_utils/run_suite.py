@@ -108,6 +108,8 @@ def parse_options():
                       dest="afe_timeout_mins", default=30)
     parser.add_option("-t", "--timeout_mins", type="int",
                       dest="timeout_mins", default=1440)
+    parser.add_option("-x", "--max_runtime_mins", type="int",
+                      dest="max_runtime_mins", default=1440)
     parser.add_option("-d", "--delay_sec", type="int",
                       dest="delay_sec", default=10)
     parser.add_option("-m", "--mock_job_id", dest="mock_job_id",
@@ -1207,6 +1209,7 @@ def create_suite(afe, options):
                    suite_args=options.suite_args,
                    wait_for_results=wait,
                    timeout_mins=options.timeout_mins,
+                   max_runtime_mins=options.max_runtime_mins,
                    job_retry=retry, max_retries=options.max_retries,
                    suite_min_duts=options.suite_min_duts)
 
