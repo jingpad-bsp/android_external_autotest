@@ -5,8 +5,7 @@
 import logging
 
 from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib.cros import tpm_utils
-from telemetry.core import exceptions
+from autotest_lib.client.common_lib.cros import chrome, tpm_utils
 from telemetry.core.platform import cros_interface
 
 
@@ -24,12 +23,10 @@ def SwitchToRemora(browser):
     """
     _cri = cros_interface.CrOSInterface()
     pid = _cri.GetChromePid()
-    try:
-        # This will restart the browser.
-        _ExecuteOobeCmd(browser, 'Oobe.remoraRequisitionForTesting();')
-    except (exceptions.BrowserConnectionGoneException,
-            exceptions.DevtoolsTargetCrashException):
-        pass
+    # This will restart the browser.
+    chrome.Chrome.did_browser_crash(
+            lambda: _ExecuteOobeCmd(browser,
+                                    'Oobe.remoraRequisitionForTesting();'))
     utils.poll_for_condition(lambda: pid != _cri.GetChromePid(), timeout=60)
     utils.poll_for_condition(lambda: browser.oobe_exists, timeout=30)
 

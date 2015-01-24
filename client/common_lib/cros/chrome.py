@@ -6,6 +6,7 @@ import logging, os
 
 from telemetry.core import browser_finder, browser_options, exceptions
 from telemetry.core import extension_to_load, util
+from telemetry.core.backends.chrome_inspector import devtools_http
 
 
 class Chrome(object):
@@ -154,26 +155,8 @@ class Chrome(object):
         return self._browser_type
 
 
-    def wait_for_browser_to_come_up(self):
-        """Waits for the browser to come up. This should only be called after a
-        browser crash.
-        """
-        def _BrowserReady(cr):
-            try:
-                tab = cr.browser.tabs.New()
-            except (exceptions.BrowserGoneException,
-                    exceptions.BrowserConnectionGoneException):
-                return False
-            try:
-                tab.Close()
-            except (util.TimeoutException):
-                # crbug.com/350941
-                logging.error('Timed out closing tab')
-            return True
-        util.WaitFor(lambda: _BrowserReady(self), timeout=10)
-
-
-    def did_browser_crash(self, func):
+    @staticmethod
+    def did_browser_crash(func):
         """Runs func, returns True if the browser crashed, False otherwise.
 
         @param func: function to run.
@@ -181,10 +164,28 @@ class Chrome(object):
         """
         try:
             func()
-        except (exceptions.BrowserGoneException,
-                exceptions.BrowserConnectionGoneException):
+        except (exceptions.AppCrashException,
+                devtools_http.DevToolsClientConnectionError):
             return True
         return False
+
+
+    def wait_for_browser_to_come_up(self):
+        """Waits for the browser to come up. This should only be called after a
+        browser crash.
+        """
+        def _BrowserReady(cr):
+            tabs = []  # Wrapper for pass by reference.
+            if self.did_browser_crash(
+                    lambda: tabs.append(cr.browser.tabs.New())):
+                return False
+            try:
+                tabs[0].Close()
+            except (util.TimeoutException):
+                # crbug.com/350941
+                logging.error('Timed out closing tab')
+            return True
+        util.WaitFor(lambda: _BrowserReady(self), timeout=10)
 
 
     def close(self):
