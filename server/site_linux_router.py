@@ -843,6 +843,33 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         hostap_conf = self.hostapd_instances[instance].config_dict
         frequency = hostap_config.HostapConfig.get_frequency_for_channel(
                 hostap_conf['channel'])
+        self.configure_managed_station(
+                ssid, frequency, self.local_peer_ip_address(instance))
+        interface = self.station_instances[0].interface
+        # Since we now have two network interfaces connected to the same
+        # network, we need to disable the kernel's protection against
+        # incoming packets to an "unexpected" interface.
+        self.router.run('echo 2 > /proc/sys/net/ipv4/conf/%s/rp_filter' %
+                        interface)
+
+        # Similarly, we'd like to prevent the hostap interface from
+        # replying to ARP requests for the peer IP address and vice
+        # versa.
+        self.router.run('echo 1 > /proc/sys/net/ipv4/conf/%s/arp_ignore' %
+                        interface)
+        self.router.run('echo 1 > /proc/sys/net/ipv4/conf/%s/arp_ignore' %
+                        hostap_conf['interface'])
+
+
+    def configure_managed_station(self, ssid, frequency, ip_addr):
+        """Configure a router interface to connect as a client to a network.
+
+        @param ssid: string SSID of network to join.
+        @param frequency: int frequency required to join the network.
+        @param ip_addr: IP address to assign to this interface
+                        (e.g. '192.168.1.200').
+
+        """
         interface = self.get_wlanif(frequency, 'managed')
 
         # TODO(pstew): Configure other bits like PSK, 802.11n if tests
@@ -872,23 +899,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
         # Assign an IP address to this interface.
         self.router.run('%s addr add %s/24 dev %s' %
-                        (self.cmd_ip, self.local_peer_ip_address(instance),
-                         interface))
-
-        # Since we now have two network interfaces connected to the same
-        # network, we need to disable the kernel's protection against
-        # incoming packets to an "unexpected" interface.
-        self.router.run('echo 2 > /proc/sys/net/ipv4/conf/%s/rp_filter' %
-                        interface)
-
-        # Similarly, we'd like to prevent the hostap interface from
-        # replying to ARP requests for the peer IP address and vice
-        # versa.
-        self.router.run('echo 1 > /proc/sys/net/ipv4/conf/%s/arp_ignore' %
-                        interface)
-        self.router.run('echo 1 > /proc/sys/net/ipv4/conf/%s/arp_ignore' %
-                        hostap_conf['interface'])
-
+                        (self.cmd_ip, ip_addr, interface))
         self.station_instances.append(
                 StationInstance(ssid=ssid, interface=interface,
                                 dev_type='managed'))

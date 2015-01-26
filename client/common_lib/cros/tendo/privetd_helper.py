@@ -4,6 +4,8 @@
 
 import json
 import logging
+import random
+import string
 import time
 
 from autotest_lib.client.common_lib import error
@@ -34,6 +36,8 @@ PRIVETD_TEMP_STATE_FILE = '/tmp/privetd.state'
 DEFAULT_HTTP_PORT = 8080
 DEFAULT_HTTPS_PORT = 8081
 
+DEFAULT_DEVICE_CLASS = 'AB'  # = development board
+DEFAULT_DEVICE_MODEL_ID = 'AAA'  # = unregistered
 
 def privetd_is_installed(host=None):
     """Check if the privetd binary is installed.
@@ -55,6 +59,8 @@ def privetd_is_installed(host=None):
 class PrivetdConfig(object):
     """An object that knows how to restart privetd in various configurations."""
 
+    _num_names_generated = 0
+
     @staticmethod
     def naive_restart(host=None):
         """Restart privetd without modifying any settings.
@@ -67,6 +73,20 @@ class PrivetdConfig(object):
             run = host.run
         run('stop privetd', ignore_status=True)
         run('start privetd')
+
+
+    @staticmethod
+    def build_unique_device_name():
+        """@return a test-unique name for a Privet device."""
+        RAND_CHARS = string.ascii_lowercase + string.digits
+        NUM_RAND_CHARS = 4
+        rand_token = ''.join([random.choice(RAND_CHARS)
+                              for _ in range(NUM_RAND_CHARS)])
+        name = 'CrOS Core %s_%2d' % (rand_token,
+                                     PrivetdConfig._num_names_generated)
+        PrivetdConfig._num_names_generated += 1
+        logging.debug('Generated unique device name %s', name)
+        return name
 
 
     def __init__(self,
@@ -82,7 +102,10 @@ class PrivetdConfig(object):
                  http_port=DEFAULT_HTTP_PORT,
                  https_port=DEFAULT_HTTPS_PORT,
                  device_whitelist=None,
-                 disable_pairing_security=False):
+                 disable_pairing_security=False,
+                 device_name=None,
+                 device_class=DEFAULT_DEVICE_CLASS,
+                 device_model_id=DEFAULT_DEVICE_MODEL_ID):
         """Construct a privetd configuration.
 
         @param wifi_bootstrap_mode: one of BOOTSTRAP_CONFIG_* above.
@@ -106,6 +129,10 @@ class PrivetdConfig(object):
                 consider exclusively for connectivity monitoring (e.g.
                 ['eth0', 'wlan0']).
         @param disable_security: bool True to disable pairing security
+        @param device_name: string Device name.  A 'unique' device name
+                will be generated if this is unspecified.
+        @param device_class: string device class, a two character string.
+        @param device_model_id: string device model ID, a 3 character string.
 
         """
         self.wifi_bootstrap_mode = wifi_bootstrap_mode
@@ -121,6 +148,10 @@ class PrivetdConfig(object):
         self.https_port = https_port
         self.device_whitelist = device_whitelist
         self.disable_pairing_security = disable_pairing_security
+        self.device_name = (device_name or
+                            PrivetdConfig.build_unique_device_name())
+        self.device_class = device_class
+        self.device_model_id = device_model_id
 
 
     def restart_with_config(self, host=None):
@@ -138,6 +169,9 @@ class PrivetdConfig(object):
                 'monitor_timeout_seconds': self.monitor_timeout_seconds,
                 'connect_timeout_seconds': self.connect_timeout_seconds,
                 'bootstrap_timeout_seconds': self.bootstrap_timeout_seconds,
+                'device_class': self.device_class,
+                'device_model_id': self.device_model_id,
+                'device_name': self.device_name,
         }
         flag_list = []
         flag_list.append('PRIVETD_LOG_LEVEL=%d' % self.log_verbosity)
@@ -165,6 +199,51 @@ class PrivetdConfig(object):
             run('echo > %s' % self.state_file_path)
             run('chown privetd:privetd %s' % self.state_file_path)
         run('start privetd %s' % ' '.join(flag_list))
+
+
+    def is_softap_ssid(self, ssid):
+        """Check whether |ssid| could represent privetd with this config.
+
+        @param ssid: string SSID of network.
+        @return True iff this could be a network started by privetd configured
+                with settings in |self|.
+
+        """
+        logging.debug('Checking whether softAP SSID "%s" '
+                      'looks like a privet SSID', ssid)
+
+        if len(ssid) > 31:
+            logging.debug('SSID was too long')
+            return False
+        if ssid.find('.') < 0:
+            logging.debug('Missing SSID separator')
+            return False
+        name, suffix = ssid.split('.', 1)
+        if len(suffix) != 10:
+            logging.debug('Suffix was %d characters, rather than 10.',
+                          len(suffix))
+            return False
+        device_class = suffix[0:2]
+        model_id = suffix[2:5]
+        flags = suffix[5:7]
+        version = suffix[7:10]
+        if version != 'prv':
+            logging.debug('Suffix should end with prv, not %s', suffix)
+            return False
+        if self.device_class is not None and device_class != self.device_class:
+            logging.debug('Expected device_class=%s, but got %s',
+                          self.device_class, device_class)
+            return False
+        if self.device_model_id and model_id != self.device_model_id:
+            logging.debug('Expected model_id=%s, but got %s',
+                          self.device_model_id, model_id)
+            return False
+        # TODO(wiley) Add flag support
+        if not name.startswith(self.device_name):
+            logging.debug('Expected SSID to start with "%s" but got "%s".',
+                          self.device_name, name)
+            return False
+        return True
 
 
 class PrivetdHelper(object):

@@ -13,9 +13,15 @@ This test validates the privet pairing/authentication/setup flow.
 
 """
 
+from autotest_lib.client.common_lib import utils
+
 def run(machine):
+    CMDLINE_ROUTER_HOSTNAME = 'router_addr'
+    cmdline_args = utils.args_to_dict(args)
+    router_hostname = cmdline_args.get(CMDLINE_ROUTER_HOSTNAME, None)
     job.run_test('privetd_PrivetSetupFlow',
-                 host=hosts.create_host(machine))
+                 host=hosts.create_host(machine),
+                 router_hostname=router_hostname)
 
 
 parallel_simple(run, machines)
