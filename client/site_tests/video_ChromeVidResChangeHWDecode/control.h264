@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Project, chromeos-video@google.com"
-NAME = "video_ChromeVidResChangeHWDecode.H264"
+NAME = "video_ChromeVidResChangeHWDecode.h264"
 PURPOSE = "Verify that VDA works for H264 resolution-changing video."
 CRITERIA = """
 This test will fail if VDA doesn't work for mp4 resolution-changing video.

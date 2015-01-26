@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = 'owenlin@chromium.org, chromeos-video@google.com'
-NAME = 'hardware_VideoDecodeCapable'
+NAME = 'hardware_VideoDecodeCapable.v4l2'
 PURPOSE = 'Verify formats availability for hardware offload.'
 CRITERIA = """
 This test will fail if reported supported formats are different from expected.

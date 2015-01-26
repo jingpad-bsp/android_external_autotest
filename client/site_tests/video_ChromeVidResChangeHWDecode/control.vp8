@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Project, chromeos-video@google.com"
-NAME = "video_ChromeVidResChangeHWDecode.VP8"
+NAME = "video_ChromeVidResChangeHWDecode.vp8"
 PURPOSE = "Verify that VDA works for VP8 resolution-changing video."
 CRITERIA = """
 This test will fail if VDA doesn't work for webm resolution-changing video.

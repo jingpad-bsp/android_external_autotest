@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Project, chromeos-video@google.com"
-NAME = "video_VideoSeek"
+NAME = "video_VideoSeek.vp8"
 PURPOSE = "Verify that VP8 non-resolution-changing video seek works in Chrome"
 CRITERIA = """
 This test will fail if a non-resolution-changing VP8 video fails to seek in Chrome HTML5 page.

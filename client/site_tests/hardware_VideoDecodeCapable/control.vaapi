@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = 'The Chromium OS Authors,chromeos-video@google.com'
-NAME = 'hardware_VideoDecodeCapable'
+NAME = 'hardware_VideoDecodeCapable.vaapi'
 PURPOSE = 'Probe for the video decoding capability'
 CRITERIA = """
 This test fails when the video decoding capabilities are different from expected.

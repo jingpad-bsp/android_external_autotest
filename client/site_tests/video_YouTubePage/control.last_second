@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "dunno@chromium.org"
-NAME = "video_YouTubePageLastSecond"
+NAME = "video_YouTubePage.last_second"
 PURPOSE = "Verify that YouTube page HTML5 video plays last second of video."
 CRITERIA = """
 This test will fail if YouTube page HTML5 video fails to continuously play the
