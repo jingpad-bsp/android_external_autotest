@@ -228,11 +228,33 @@ class _sysinfo_logger(object):
 
 
 def runtest(job, url, tag, args, dargs):
+    """Server-side runtest.
+
+    @param job: A server_job instance.
+    @param url: URL to the test.
+    @param tag: Test tag that will be appended to the test name.
+                See client/common_lib/test.py:runtest
+    @param args: args to pass to the test.
+    @param dargs: key-val based args to pass to the test.
+    """
+
+    disable_before_test_hook = dargs.pop('disable_before_test_sysinfo', False)
+    disable_after_test_hook = dargs.pop('disable_after_test_sysinfo', False)
+    disable_before_iteration_hook = dargs.pop(
+            'disable_before_iteration_sysinfo', False)
+    disable_after_iteration_hook = dargs.pop(
+            'disable_after_iteration_sysinfo', False)
+
     if not dargs.pop('disable_sysinfo', False):
         logger = _sysinfo_logger(job)
-        logging_args = [logger.before_hook, logger.after_hook,
-                        logger.before_iteration_hook,
-                        logger.after_iteration_hook]
+        logging_args = [
+            logger.before_hook if not disable_before_test_hook else None,
+            logger.after_hook if not disable_after_test_hook else None,
+            (logger.before_iteration_hook
+                 if not disable_before_iteration_hook else None),
+            (logger.after_iteration_hook
+                 if not disable_after_iteration_hook else None),
+        ]
     else:
         logger = None
         logging_args = [None, None, None, None]
