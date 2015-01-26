@@ -288,6 +288,34 @@ class Interface:
         return None
 
 
+    @property
+    def mtu(self):
+        """@return the interface configured maximum transmission unit (MTU)."""
+        # "ip addr show %s 2> /dev/null" returns something that looks like:
+        #
+        # 2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast
+        #    link/ether ac:16:2d:07:51:0f brd ff:ff:ff:ff:ff:ff
+        #    inet 172.22.73.124/22 brd 172.22.75.255 scope global eth0
+        #    inet6 2620:0:1000:1b02:ae16:2dff:fe07:510f/64 scope global dynamic
+        #       valid_lft 2591982sec preferred_lft 604782sec
+        #    inet6 fe80::ae16:2dff:fe07:510f/64 scope link
+        #       valid_lft forever preferred_lft forever
+        #
+        # We extract the 'mtu' value (in this example "1500")
+        try:
+            result = self._run('ip addr show %s 2> /dev/null' % self._name)
+            address_info = result.stdout
+        except error.CmdError, e:
+            # The "ip" command will return non-zero if the interface does
+            # not exist.
+            return None
+
+        match = re.search('mtu\s+(\d+)', address_info)
+        if not match:
+            raise error.TestFail('MTU information is not available.')
+        return int(match.group(1))
+
+
     def noise_level(self, frequency_mhz):
         """Get the noise level for an interface at a given frequency.
 
