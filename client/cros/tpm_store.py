@@ -31,10 +31,6 @@ class TPMStore(object):
 
 
     def __enter__(self):
-        if cryptohome.is_tpm_lockout_in_effect():
-            raise error.TestError('The TPM is in dictonary defend mode. '
-                                  'The TPMStore may behave in unexpected '
-                                  'ways, exiting.')
         self.setup()
         return self
 
@@ -57,6 +53,10 @@ class TPMStore(object):
         @param output_type the object type to use in inserting into the TPM.
 
         """
+        if cryptohome.is_tpm_lockout_in_effect():
+            raise error.TestError('The TPM is in dictonary defend mode. '
+                                  'The TPMStore may behave in unexpected '
+                                  'ways, exiting.')
         pem_file = tempfile.NamedTemporaryFile()
         pem_file.file.write(pem)
         pem_file.file.flush()
