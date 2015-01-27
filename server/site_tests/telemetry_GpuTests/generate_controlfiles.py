@@ -16,6 +16,7 @@ TESTS = [
     'memory_test',
     'pixel',
     'screenshot_sync',
+    'trace_test',
     'webgl_conformance'
     # TODO(ihf): Reevaluate robustness once crbug.com/379397 is fixed.
     # 'webgl_robustness'
@@ -30,7 +31,7 @@ CONTROLFILE_TEMPLATE = """\
 
 AUTHOR = 'chromeos-gfx'
 NAME = 'telemetry_GpuTests.{0}'
-SUITE = 'graphics, perf_v2'
+SUITE = 'graphics_per-day, graphics, graphics_browser'
 TIME = 'LONG'
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = 'gl'
@@ -41,6 +42,8 @@ This server control file executes the GPU telemetry test: {0}.
 
 Pass local=True to run with local telemetry and no AFE server.
 '''
+
+from autotest_lib.client.common_lib import utils
 
 def run_test(machine):
     host = hosts.create_host(machine)
