@@ -8,6 +8,7 @@ import logging
 import os
 import time
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
 from autotest_lib.client.cros.chameleon import chameleon_screen_test
@@ -67,6 +68,10 @@ class display_Resolution(test.test):
                                     test_name)
                 logging.info('Use EDID: %s', test_name)
                 with chameleon_port.use_edid_file(path):
+                    utils.wait_for_value_changed(
+                            display_facade.get_external_connector_name,
+                            old_value=False)
+
                     if test_reboot:
                         host.test_wait_for_boot(boot_id)
 

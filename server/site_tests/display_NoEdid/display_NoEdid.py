@@ -6,6 +6,7 @@
 
 import logging
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
 from autotest_lib.client.cros.chameleon import chameleon_screen_test
@@ -39,7 +40,10 @@ class display_NoEdid(test.test):
                     chameleon_port, display_facade, self.outputdir)
 
             with chameleon_port.use_edid(edid.NO_EDID):
-                if not display_facade.get_external_connector_name():
+                connector_name = utils.wait_for_value_changed(
+                            display_facade.get_external_connector_name,
+                            old_value=False)
+                if not connector_name:
                     error_message = 'Failed to detect display without an EDID'
                     logging.error(error_message)
                     errors.append(error_message)

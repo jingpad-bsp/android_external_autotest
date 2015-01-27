@@ -8,6 +8,7 @@ import glob
 import logging
 import os
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
 from autotest_lib.client.cros.chameleon import chameleon_screen_test
@@ -69,9 +70,9 @@ class display_EdidStress(test.test):
                 try:
                     with chameleon_port.use_edid(
                             edid.Edid.from_file(filepath, skip_verify=True)):
-                        if not chameleon_port.wait_video_input_stable():
-                            raise error.TestFail('Failed to wait source stable')
-                        resolution = display_facade.get_external_resolution()
+                        resolution = utils.wait_for_value_changed(
+                                display_facade.get_external_resolution,
+                                old_value=(0, 0))
                         if resolution == (0, 0):
                             raise error.TestFail('Detected resolution 0x0')
                         if screen_test.test_resolution(resolution):

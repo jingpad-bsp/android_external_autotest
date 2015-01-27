@@ -8,6 +8,7 @@ import logging
 import os
 import time
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
 from autotest_lib.client.cros.chameleon import chameleon_screen_test
@@ -53,7 +54,9 @@ class display_ResolutionList(test.test):
 
             logging.info('Use EDID: %s', test_name)
             with chameleon_port.use_edid_file(edid_path):
-                index = display_facade.get_first_external_display_index()
+                index = utils.wait_for_value_changed(
+                        display_facade.get_first_external_display_index,
+                        old_value=False)
                 if not index:
                     raise error.TestFail("No external display is found.")
 

@@ -9,6 +9,7 @@ import os
 import random
 import time
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
 from autotest_lib.client.cros.chameleon import chameleon_screen_test
@@ -57,8 +58,9 @@ class display_SuspendStress(test.test):
             logging.info('Use EDID: %s', test_name)
             with chameleon_port.use_edid_file(edid_path):
                 # Keep the original connector name, for later comparison.
-                expected_connector = (
-                        display_facade.get_external_connector_name())
+                expected_connector = utils.wait_for_value_changed(
+                        display_facade.get_external_connector_name,
+                        old_value=False)
                 logging.info('See the display on DUT: %s', expected_connector)
 
                 if not expected_connector:

@@ -6,6 +6,7 @@
 
 import logging, os, shutil, time
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
 from autotest_lib.client.cros.chameleon import chameleon_screen_test
@@ -181,7 +182,9 @@ class display_EndToEnd(test.test):
         # Wait video stable, making sure CrOS switches to a proper resolution.
         self.chameleon_port.wait_video_input_stable()
         # Get the resolution for the edid applied
-        self.resolution = self.display_facade.get_external_resolution()
+        self.resolution = utils.wait_for_value_changed(
+                self.display_facade.get_external_resolution,
+                old_value=(0, 0))
         logging.debug('External display resolution: %s',
                 str(self.resolution))
 
