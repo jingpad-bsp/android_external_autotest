@@ -8,7 +8,7 @@ TIME = 'SHORT'
 TEST_TYPE = 'Server'
 DEPENDENCIES = 'wificell'
 SUITE = ('wifi_matfunc, wifi_matfunc_bcm4356, wifi_matfunc_marvell8897,'
-         'wifi_release, wifi_perf')
+         'wifi_matfunc_intel7265')
 
 DOC = """
 This test updates the router in a WiFi cell to the latest stable version.

@@ -6,7 +6,8 @@ AUTHOR = 'wiley, pstew, quiche'
 NAME = 'network_WiFi_SecChange'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
-SUITE = 'wifi_matfunc, wifi_matfunc_bcm4356, wifi_matfunc_marvell8897'
+SUITE = ('wifi_matfunc, wifi_matfunc_bcm4356, wifi_matfunc_marvell8897,'
+         'wifi_matfunc_intel7265')
 DEPENDENCIES = 'wificell'
 
 DOC = """
