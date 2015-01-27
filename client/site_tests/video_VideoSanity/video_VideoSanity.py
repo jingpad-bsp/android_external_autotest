@@ -97,11 +97,11 @@ class video_VideoSanity(test.test):
 
 
     def run_once(self):
-        boards = ['x86-mario', 'x86-zgb']
+        boards_to_skip = ['x86-mario', 'x86-zgb']
         # TODO(scottz): Remove this when crbug.com/220147 is fixed.
         dut_board = utils.get_current_board()
-        if dut_board in boards:
-           raise error.TestNAError('This test is not available on %s' %
-                                    dut_board)
+        if dut_board in boards_to_skip:
+            logging.info("Skipping test run on this board.")
+            return
         with chrome.Chrome() as cr:
             self.run_video_sanity_test(cr.browser)
