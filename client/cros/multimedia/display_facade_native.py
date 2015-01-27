@@ -6,6 +6,7 @@
 
 import exceptions
 import multiprocessing
+import numpy
 import os
 import re
 import time
@@ -297,35 +298,35 @@ class DisplayFacadeNative(object):
         @param path: path to image file.
         @param box: 4-tuple giving the upper left and lower right coordinates.
         """
-        graphics_utils.take_screenshot_crop(path, box)
+        if utils.is_freon():
+            # Hack to take a screenshot from the tab instead of framebuffer.
+            # TODO: Make the framebuffer capture work on Freon.
+            self.take_tab_screenshot(path)
+        else:
+            graphics_utils.take_screenshot_crop(path, box)
         return True
 
 
-    def take_tab_screenshot(self, url_pattern, output_suffix):
+    def take_tab_screenshot(self, output_path, url_pattern=None):
         """Takes a screenshot of the tab specified by the given url pattern.
 
-        The captured screenshot is saved to:
-            /tmp/screenshot_<output_suffix>_<last_part_of_url>.png
-
+        @param output_path: A path of the output file.
         @param url_pattern: A string of url pattern used to search for tabs.
-        @param output_suffix: A suffix appended to the file name of captured
-                PNG image.
+                            Default is to look for .svg image.
         """
-        if not url_pattern:
-            # If no URL pattern is provided, defaults to capture all the tabs
-            # that show PNG images.
-            url_pattern = '.png'
+        if url_pattern is None:
+            # If no URL pattern is provided, defaults to capture the first
+            # tab that shows SVG image.
+            url_pattern = '.svg'
 
         tabs = self._browser.tabs
-        screenshots = []
         for i in xrange(0, len(tabs)):
             if url_pattern in tabs[i].url:
-                screenshots.append((tabs[i].url, tabs[i].Screenshot(timeout=5)))
-
-        output_file = ('/tmp/screenshot_%s_%%s.png' % output_suffix)
-        for url, screenshot in screenshots:
-            image_filename = os.path.splitext(url.rsplit('/', 1)[-1])[0]
-            screenshot.WriteFile(output_file % image_filename)
+                data = tabs[i].Screenshot(timeout=5)
+                # Flip the colors from BGR to RGB.
+                data = numpy.fliplr(data.reshape(-1, 3)).reshape(data.shape)
+                data.tofile(output_path)
+                break
         return True
 
 
