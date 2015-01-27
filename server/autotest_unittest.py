@@ -190,7 +190,6 @@ class TestBaseAutotest(unittest.TestCase):
         run_obj.tag = tag
         run_obj.autodir = 'autodir'
         run_obj.verify_machine.expect_call()
-        run_obj.verify_machine.expect_call()
         run_obj.background = False
         debug = os.path.join('.', 'debug')
         os.makedirs.expect_call(debug)

@@ -376,7 +376,7 @@ class BaseAutotest(installable_object.InstallableObject):
             logging.error("Verify failed on %s. Reinstalling autotest",
                           host.hostname)
             self.install(host)
-        atrun.verify_machine()
+            atrun.verify_machine()
         debug = os.path.join(results_dir, 'debug')
         try:
             os.makedirs(debug)
