@@ -64,3 +64,11 @@ class PrivetdDBusHelper(object):
         state = self.manager_properties.Get(
                 MANAGER_INTERFACE, 'WiFiBootstrapState')
         return dbus_util.dbus2primitive(state)
+
+
+    @property
+    def pairing_info(self):
+        """@return string DBus exposed bootstrapping state for WiFi."""
+        pairing_info = self.manager_properties.Get(
+                MANAGER_INTERFACE, 'PairingInfo')
+        return dbus_util.dbus2primitive(pairing_info)
