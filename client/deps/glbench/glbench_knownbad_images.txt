@@ -50,6 +50,10 @@ chrome-os-partner-bug-11731/yuv_shader_1.pixmd5-222e71aee3ca62cf5be3f5067036bbd2
 chrome-os-partner-bug-11731/yuv_shader_2.pixmd5-93e2a7af53d311bc4ab4a6433fab50fc.png
 chrome-os-partner-bug-11731/yuv_shader_3.pixmd5-ffcf79d4ac574de377c2852c22e2185a.png
 chrome-os-partner-bug-11731/yuv_shader_4.pixmd5-ffcf79d4ac574de377c2852c22e2185a.png
+chrome-os-partner-bug-35823/yuv_shader_1.pixmd5-8c19411be58324e815b66eb1605b167d.png
+chrome-os-partner-bug-35823/yuv_shader_2.pixmd5-4b6fc7b241b0668c760980429d50f885.png
+chrome-os-partner-bug-35823/yuv_shader_3.pixmd5-8c19411be58324e815b66eb1605b167d.png
+chrome-os-partner-bug-35823/yuv_shader_4.pixmd5-8c19411be58324e815b66eb1605b167d.png
 chrome-os-partner-bug-4368/yuv_shader_3.pixmd5-9c9793f0798be17bc50d356b34b26f14.png
 chrome-os-partner-bug-4368/yuv_shader_4.pixmd5-9c9793f0798be17bc50d356b34b26f14.png
 chromium-bug-278573/yuv_shader_2.pixmd5-4662367b298e1e295e90c1be26443e26.png
