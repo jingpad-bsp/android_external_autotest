@@ -19,11 +19,152 @@ URL_SETUP_STATUS = 'v3/setup/status'
 
 SETUP_START_RESPONSE_WIFI_SECTION = 'wifi'
 
+BOOTSTRAP_CONFIG_DISABLED = 'off'
+BOOTSTRAP_CONFIG_AUTOMATIC = 'automatic'
+BOOTSTRAP_CONFIG_MANUAL = 'manual'
+
+WIFI_BOOTSTRAP_STATE_DISABLED = 'disabled'
+WIFI_BOOTSTRAP_STATE_WAITING = 'waiting'
+WIFI_BOOTSTRAP_STATE_CONNECTING = 'connecting'
+WIFI_BOOTSTRAP_STATE_MONITORING = 'monitoring'
+
+PRIVETD_CONF_FILE_PATH = '/tmp/privetd.conf'
+PRIVETD_TEMP_STATE_FILE = '/tmp/privetd.state'
+
+DEFAULT_HTTP_PORT = 8080
+DEFAULT_HTTPS_PORT = 8081
+
+
+def privetd_is_installed(host=None):
+    """Check if the privetd binary is installed.
+
+    @param host: Host object if we're interested in a remote host.
+    @return True iff privetd is installed in this system.
+
+    """
+    run = utils.run
+    if host is not None:
+        run = host.run
+    result = run('if [ -f /usr/bin/privetd ]; then exit 0; fi; exit 1',
+                 ignore_status=True)
+    if result.exit_status == 0:
+        return True
+    return False
+
+
+class PrivetdConfig(object):
+    """An object that knows how to restart privetd in various configurations."""
+
+    @staticmethod
+    def naive_restart(host=None):
+        """Restart privetd without modifying any settings.
+
+        @param host: Host object if privetd is running on a remote host.
+
+        """
+        run = utils.run
+        if host is not None:
+            run = host.run
+        run('stop privetd', ignore_status=True)
+        run('start privetd')
+
+
+    def __init__(self,
+                 wifi_bootstrap_mode=BOOTSTRAP_CONFIG_DISABLED,
+                 gcd_bootstrap_mode=BOOTSTRAP_CONFIG_DISABLED,
+                 monitor_timeout_seconds=120,
+                 connect_timeout_seconds=60,
+                 bootstrap_timeout_seconds=300,
+                 log_verbosity=0,
+                 state_file_path=PRIVETD_TEMP_STATE_FILE,
+                 clean_state=True,
+                 enable_ping=False,
+                 http_port=DEFAULT_HTTP_PORT,
+                 https_port=DEFAULT_HTTPS_PORT,
+                 device_whitelist=None,
+                 disable_pairing_security=False):
+        """Construct a privetd configuration.
+
+        @param wifi_bootstrap_mode: one of BOOTSTRAP_CONFIG_* above.
+        @param gcd_bootstrap_mode: one of BOOTSTRAP_CONFIG_* above.
+        @param monitor_timeout_seconds: int timeout for the WiFi bootstrapping
+                state machine.
+        @param connect_timeout_seconds: int timeout for the WiFi bootstrapping
+                state machine.
+        @param bootstrap_timeout_seconds: int timeout for the WiFi bootstrapping
+                state machine.
+        @param log_verbosity: int logging verbosity for privetd.
+        @param state_file_path: string path to privetd state file.
+        @param clean_state: bool True to clear state from the state file.
+        @param log_verbosity: integer verbosity level of log messages.
+        @param enable_ping: bool True if we should enable the ping URL
+                on the privetd web server.
+        @param http_port: integer port number for the privetd HTTP server.
+        @param https_port: integer port number for the privetd HTTPS server.
+        @param device_whitelist: list of string network interface names to
+                consider exclusively for connectivity monitoring (e.g.
+                ['eth0', 'wlan0']).
+        @param disable_security: bool True to disable pairing security
+
+        """
+        self.wifi_bootstrap_mode = wifi_bootstrap_mode
+        self.gcd_bootstrap_mode = gcd_bootstrap_mode
+        self.monitor_timeout_seconds = monitor_timeout_seconds
+        self.connect_timeout_seconds = connect_timeout_seconds
+        self.bootstrap_timeout_seconds = bootstrap_timeout_seconds
+        self.log_verbosity = log_verbosity
+        self.clean_state = clean_state
+        self.state_file_path = state_file_path
+        self.enable_ping = enable_ping
+        self.http_port = http_port
+        self.https_port = https_port
+        self.device_whitelist = device_whitelist
+        self.disable_pairing_security = disable_pairing_security
+
+
+    def restart_with_config(self, host=None):
+        """Restart privetd in this configuration.
+
+        @param host: Host object if privetd is running on a remote host.
+
+        """
+        run = utils.run
+        if host is not None:
+            run = host.run
+        conf_dict = {
+                'wifi_bootstrapping_mode': self.wifi_bootstrap_mode,
+                'gcd_bootstrapping_mode': self.gcd_bootstrap_mode,
+                'monitor_timeout_seconds': self.monitor_timeout_seconds,
+                'connect_timeout_seconds': self.connect_timeout_seconds,
+                'bootstrap_timeout_seconds': self.bootstrap_timeout_seconds,
+                'state_file': self.state_file_path,
+        }
+        flag_list = []
+        flag_list.append('PRIVETD_LOG_LEVEL=%d' % self.log_verbosity)
+        flag_list.append('PRIVETD_HTTP_PORT=%d' % self.http_port)
+        flag_list.append('PRIVETD_HTTPS_PORT=%d' % self.https_port)
+        flag_list.append('PRIVETD_CONFIG_PATH=%s' % PRIVETD_CONF_FILE_PATH)
+        if self.enable_ping:
+            flag_list.append('PRIVETD_ENABLE_PING=true')
+        if self.disable_pairing_security:
+            flag_list.append('PRIVETD_DISABLE_SECURITY=true')
+        if self.device_whitelist:
+            flag_list.append('PRIVETD_DEVICE_WHITELIST=%s' %
+                             ','.join(self.device_whitelist))
+        run('stop privetd', ignore_status=True)
+        conf_lines = ['%s=%s' % pair for pair in conf_dict.iteritems()]
+        # Go through this convoluted shell magic here because we need to create
+        # this file on both remote and local hosts (see how run() is defined).
+        run('cat <<EOF >%s\n%s\nEOF\n' % (PRIVETD_CONF_FILE_PATH,
+                                          '\n'.join(conf_lines)))
+        if self.clean_state:
+            run('echo > %s' % self.state_file_path)
+            run('chown privetd:privetd %s' % self.state_file_path)
+        run('start privetd %s' % ' '.join(flag_list))
+
 
 class PrivetdHelper(object):
     """Delegate class containing logic useful with privetd."""
-    DEFAULT_HTTP_PORT = 8080
-    DEFAULT_HTTPS_PORT = 8081
 
 
     def __init__(self, host=None):
@@ -32,8 +173,8 @@ class PrivetdHelper(object):
         if host is not None:
             self._host = host
             self._run = host.run
-        self._http_port = self.DEFAULT_HTTP_PORT
-        self._https_port = self.DEFAULT_HTTPS_PORT
+        self._http_port = DEFAULT_HTTP_PORT
+        self._https_port = DEFAULT_HTTPS_PORT
 
 
     def _build_privet_url(self, path_fragment, use_https=True):
@@ -107,43 +248,6 @@ class PrivetdHelper(object):
                                      (url, http_code))
             logging.warn('Failed to connect to host. Retrying...')
             time.sleep(retry_delay)
-
-
-    def restart_privetd(self, log_verbosity=0, enable_ping=False,
-                        http_port=DEFAULT_HTTP_PORT,
-                        https_port=DEFAULT_HTTPS_PORT,
-                        device_whitelist=None,
-                        disable_security=False):
-        """Restart privetd in various configurations.
-
-        @param log_verbosity: integer verbosity level of log messages.
-        @param enable_ping: bool True if we should enable the ping URL
-                on the privetd web server.
-        @param http_port: integer port number for the privetd HTTP server.
-        @param https_port: integer port number for the privetd HTTPS server.
-        @param device_whitelist: list of string network interface names to
-                consider exclusively for connectivity monitoring (e.g.
-                ['eth0', 'wlan0']).
-        @param disable_security: bool True to disable pairing security
-
-        """
-        self._http_port = http_port
-        self._https_port = https_port
-        flag_list = []
-        flag_list.append('PRIVETD_LOG_LEVEL=%d' % log_verbosity)
-        flag_list.append('PRIVETD_HTTP_PORT=%d' % self._http_port)
-        flag_list.append('PRIVETD_HTTPS_PORT=%d' % self._https_port)
-        if enable_ping:
-            flag_list.append('PRIVETD_ENABLE_PING=true')
-        if disable_security:
-            flag_list.append('PRIVETD_DISABLE_SECURITY=true')
-        if device_whitelist:
-            flag_list.append('PRIVETD_DEVICE_WHITELIST=%s' %
-                             ','.join(device_whitelist))
-        self._run('stop privetd', ignore_status=True)
-        self._run('start privetd %s' % ' '.join(flag_list))
-        # TODO(wiley) Ping some DBus API that will let us know when the daemon
-        #             reaches steady state.
 
 
     def send_privet_request(self, path_fragment, request_data=None,

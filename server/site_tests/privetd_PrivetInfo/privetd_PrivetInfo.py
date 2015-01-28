@@ -13,13 +13,12 @@ class privetd_PrivetInfo(test.test):
     version = 1
 
     def warmup(self, host):
-        self.helper = privetd_helper.PrivetdHelper(host=host)
-        self.helper.restart_privetd(log_verbosity=3, enable_ping=True)
-        self.helper.ping_server()  # Make sure the server is up and running.
+        config = privetd_helper.PrivetdConfig(log_verbosity=3, enable_ping=True)
+        config.restart_with_config(host=host)
 
 
     def cleanup(self, host):
-        self.helper.restart_privetd()
+        privetd_helper.PrivetdConfig.naive_restart(host=host)
 
 
     def validate_api(self, apis):
@@ -54,7 +53,9 @@ class privetd_PrivetInfo(test.test):
 
 
     def run_once(self, host):
-        json_data = self.helper.send_privet_request(privetd_helper.URL_INFO)
+        helper = privetd_helper.PrivetdHelper(host=host)
+        helper.ping_server()  # Make sure the server is up and running.
+        json_data = helper.send_privet_request(privetd_helper.URL_INFO)
 
         # Do some sanity checks on the returned JSON object.
         if json_data['version'] != '3.0':

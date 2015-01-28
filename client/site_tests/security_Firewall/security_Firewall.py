@@ -8,8 +8,8 @@ import os
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
+from autotest_lib.client.common_lib.cros.tendo import privetd_helper
 from autotest_lib.client.cros.networking import apmanager_helper
-from autotest_lib.client.cros.tendo import privetd_helper
 
 
 class security_Firewall(test.test):

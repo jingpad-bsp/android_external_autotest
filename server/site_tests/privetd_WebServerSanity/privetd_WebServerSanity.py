@@ -11,14 +11,15 @@ class privetd_WebServerSanity(test.test):
     version = 1
 
     def warmup(self, host):
-        self.helper = privetd_helper.PrivetdHelper(host=host)
-        self.helper.restart_privetd(log_verbosity=3, enable_ping=True)
+        config = privetd_helper.PrivetdConfig(log_verbosity=3, enable_ping=True)
+        config.restart_with_config(host=host)
 
 
     def cleanup(self, host):
-        self.helper.restart_privetd()
+        privetd_helper.PrivetdConfig.naive_restart(host=host)
 
 
     def run_once(self, host):
-        self.helper.ping_server()
-        self.helper.ping_server(use_https=True)
+        helper = privetd_helper.PrivetdHelper(host=host)
+        helper.ping_server()
+        helper.ping_server(use_https=True)

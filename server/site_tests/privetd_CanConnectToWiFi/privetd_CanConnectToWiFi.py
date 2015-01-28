@@ -55,9 +55,11 @@ class privetd_CanConnectToWiFi(wifi_cell_test_base.WiFiCellTestBase):
         self.context.configure(router_conf)
         ssid = self.context.router.get_ssid()
         helper = privetd_helper.PrivetdHelper(host=self.context.client.host)
-        helper.restart_privetd(log_verbosity=3, enable_ping=True,
-                               device_whitelist=[self.context.client.wifi_if],
-                               disable_security=True)
+        privetd_config = privetd_helper.PrivetdConfig(
+                log_verbosity=3, enable_ping=True,
+                device_whitelist=[self.context.client.wifi_if],
+                disable_pairing_security=True)
+        privetd_config.restart_with_config(host=self.context.client.host)
         helper.ping_server(use_https=False)
         helper.ping_server(use_https=True)
         if self.is_wifi_online(helper):
@@ -86,7 +88,7 @@ class privetd_CanConnectToWiFi(wifi_cell_test_base.WiFiCellTestBase):
 
 
     def cleanup(self):
-        helper = privetd_helper.PrivetdHelper(host=self.context.client.host)
-        helper.restart_privetd()
+        privetd_helper.PrivetdConfig.naive_restart(
+                host=self.context.client.host)
         super(privetd_CanConnectToWiFi, self).cleanup()
 

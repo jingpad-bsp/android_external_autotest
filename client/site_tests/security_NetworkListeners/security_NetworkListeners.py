@@ -8,7 +8,7 @@ import os
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
-from autotest_lib.client.cros.tendo import privetd_helper
+from autotest_lib.client.common_lib.cros.tendo import privetd_helper
 
 # Since we parse lsof output in several places, these centralize the
 # column numbering for finding things in lsof output.  For example:
