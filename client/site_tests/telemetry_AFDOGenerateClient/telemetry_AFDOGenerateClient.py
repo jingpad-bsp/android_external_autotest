@@ -19,6 +19,9 @@ build of Chrome.
 
 import logging
 import os
+import sys
+import time
+import traceback
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
@@ -72,7 +75,22 @@ class telemetry_AFDOGenerateClient(test.test):
         """Display predetermined set of pages so that we can profile Chrome."""
         with chrome.Chrome() as cr:
             for benchmark in PAGE_CYCLER_BENCHMARKS:
-                self._navigate_page_cycler(cr, benchmark)
+                self._try_page_cycler(cr, benchmark)
+
+    def _try_page_cycler(self, cr, benchmark):
+        """Try executing a page cycler and recover if browser dies.
+
+        Navigates to the specified page_cycler, checks if the browser
+        died while executing it and waits until browser recovers.
+
+        @param cr: instance of chrome.Chrome class to control chrome.
+        @param benchmark: page_cycler page to display.
+        """
+        if cr.did_browser_crash(
+                lambda: self._navigate_page_cycler(cr, benchmark)):
+            logging.info('Browser died while navigating %s', benchmark)
+            logging.info('Trying to continue...')
+            cr.wait_for_browser_to_come_up()
 
 
     def _navigate_page_cycler(self, cr, benchmark):
@@ -84,15 +102,25 @@ class telemetry_AFDOGenerateClient(test.test):
         @param cr: instance of chrome.Chrome class to control chrome.
         @param benchmark: page_cycler page to display.
         """
-
         PC_START_PAGE = 'data/page_cycler/%s/start.html?auto=1'
         PC_DONE_EXP = 'window.document.cookie.indexOf("__pc_done=1") >= 0'
         tab = cr.browser.tabs.New()
-        tab.Activate()
-        benchmark_start_page = PC_START_PAGE % benchmark
-        logging.info('Navigating to page cycler %s', benchmark)
-        tab.Navigate(FILE_URL_PREFIX + benchmark_start_page)
-        tab.WaitForDocumentReadyStateToBeComplete()
-        tab.WaitForJavaScriptExpression(PC_DONE_EXP, 600)
-        logging.info('Completed page cycler %s', benchmark)
-        tab.Close()
+        try:
+            tab.Activate()
+            logging.info('Navigating to page cycler %s', benchmark)
+            start_time = time.time()
+            benchmark_start_page = PC_START_PAGE % benchmark
+            tab.Navigate(FILE_URL_PREFIX + benchmark_start_page)
+            tab.WaitForDocumentReadyStateToBeComplete(timeout=180)
+            tab.WaitForJavaScriptExpression(PC_DONE_EXP, 600)
+            end_time = time.time()
+            logging.info('Completed page cycler %s in %f seconds',
+                         benchmark, end_time - start_time)
+        except Exception as unk_exc:
+            end_time = time.time()
+            logging.info('After navigating %s for %f seconds got exception %s',
+                         benchmark, end_time - start_time, str(unk_exc))
+            traceback.print_exc(file=sys.stdout)
+            raise
+        finally:
+            tab.Close()
