@@ -43,14 +43,19 @@ class JobQueryManager(object):
         @return: A dictionary representing job related information.
         """
         job_id = queue_entry.job_id
-        job_deps = self._job_deps.get(job_id, [])
-        job_deps = [dep for dep in job_deps
-                if not provision.is_for_special_action(self._labels[dep].name)]
+        job_deps, job_preferred_deps = [], []
+        for dep in self._job_deps.get(job_id, []):
+           if not provision.is_for_special_action(self._labels[dep].name):
+               job_deps.append(dep)
+           elif provision.Provision.acts_on(self._labels[dep].name):
+               job_preferred_deps.append(dep)
+
         job_acls = self._job_acls.get(job_id, [])
         parent_id = queue_entry.job.parent_job_id
         min_duts = self._suite_min_duts.get(parent_id, 0) if parent_id else 0
 
         return {'deps': job_deps, 'acls': job_acls,
+                'preferred_deps': job_preferred_deps,
                 'host_id': queue_entry.host_id,
                 'parent_job_id': queue_entry.job.parent_job_id,
                 'priority': queue_entry.job.priority,

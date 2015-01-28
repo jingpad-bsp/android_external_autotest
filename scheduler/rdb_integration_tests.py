@@ -229,6 +229,47 @@ class BaseRDBTest(rdb_testing_utils.AbstractBaseRDBTester, unittest.TestCase):
         self.assertTrue(matching_host.leased == 1)
 
 
+    def testPreferredDeps(self):
+        """Test that perferred deps is respected.
+
+        If multiple hosts satisfied a job's deps, the one with preferred
+        label will be assigned to the job.
+
+        @raises AssertionError: If a host without a preferred label is
+                                assigned to the job instead of one with
+                                a preferred label.
+        """
+        lumpy_deps = set(['board:lumpy'])
+        stumpy_deps = set(['board:stumpy'])
+        stumpy_deps_with_crosversion = set(
+                ['board:stumpy', 'cros-version:lumpy-release/R41-6323.0.0'])
+
+        acls = set(['a', 'b'])
+        # Hosts lumpy1 and lumpy2 are created as a control group,
+        # which ensures that if no preferred label is used, the host
+        # with a smaller id will be chosen first. We need to make sure
+        # stumpy2 was chosen because it has a cros-version label, but not
+        # because of other randomness.
+        self.db_helper.create_host('lumpy1', deps=lumpy_deps, acls=acls)
+        self.db_helper.create_host('lumpy2', deps=lumpy_deps, acls=acls)
+        self.db_helper.create_host('stumpy1', deps=stumpy_deps, acls=acls)
+        self.db_helper.create_host(
+                    'stumpy2', deps=stumpy_deps_with_crosversion , acls=acls)
+        job_1 = self.create_job(user='autotest_system',
+                              deps=lumpy_deps, acls=acls)
+        job_2 = self.create_job(user='autotest_system',
+                              deps=stumpy_deps_with_crosversion, acls=acls)
+        queue_entries = self._dispatcher._refresh_pending_queue_entries()
+        matching_hosts  = list(rdb_lib.acquire_hosts(queue_entries))
+        assignment = {}
+        import logging
+        for job, host in zip(queue_entries, matching_hosts):
+            self.check_host_assignment(job.id, host.id)
+            assignment[job.id] = host.hostname
+        self.assertEqual(assignment[job_1.id], 'lumpy1')
+        self.assertEqual(assignment[job_2.id], 'stumpy2')
+
+
     def testBadDeps(self):
         """Test that we find no hosts when only acls match.
 

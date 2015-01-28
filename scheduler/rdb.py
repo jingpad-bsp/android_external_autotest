@@ -297,6 +297,29 @@ class AvailableHostRequestHandler(BaseHostRequestHandler):
         return acl_match and label_match
 
 
+    @classmethod
+    def _sort_hosts_by_preferred_deps(cls, hosts, preferred_deps):
+        """Sort hosts in the order of how many preferred deps it has.
+
+        This allows rdb always choose the hosts with the most preferred deps
+        for a request. One important use case is including cros-version as
+        a preferred dependence. By choosing a host with the same cros-version,
+        we can save the time on provisioning it. Note this is not guaranteed
+        if preferred_deps contains other labels as well.
+
+        @param hosts: A list of hosts to sort.
+        @param preferred_deps: A list of deps that are preferred.
+
+        @return: A list of sorted hosts.
+
+        """
+        hosts = sorted(
+                hosts,
+                key=lambda host: len(set(preferred_deps) & set(host.labels)),
+                reverse=True)
+        return hosts
+
+
     @rdb_cache_manager.memoize_hosts
     def _acquire_hosts(self, request, hosts_required, is_acquire_min_duts=False,
                        **kwargs):
@@ -325,6 +348,8 @@ class AvailableHostRequestHandler(BaseHostRequestHandler):
         # <-----[:attempt_lease_hosts](evicted)--------> <-(returned, cached)->
         # |   -leased_hosts-  |   -stale cached hosts-  | -unleased matching- |
         # --used this request---used by earlier request----------unused--------
+        hosts = self._sort_hosts_by_preferred_deps(
+                hosts, request.preferred_deps)
         attempt_lease_hosts = min(len(hosts), hosts_required)
         leased_host_count = 0
         if attempt_lease_hosts:

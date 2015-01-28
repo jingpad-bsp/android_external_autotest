@@ -192,13 +192,14 @@ class AcquireHostRequest(HostRequest):
     """
     # TODO(beeps): Priority and parent_job_id shouldn't be a part of the
     # core request.
-    _request_args = set(['priority', 'deps', 'acls', 'parent_job_id',
-                         'suite_min_duts'])
+    _request_args = set(['priority', 'deps', 'preferred_deps', 'acls',
+                         'parent_job_id', 'suite_min_duts'])
 
 
     def __init__(self, **kwargs):
         try:
             kwargs['deps'] = frozenset(kwargs['deps'])
+            kwargs['preferred_deps'] = frozenset(kwargs['preferred_deps'])
             kwargs['acls'] = frozenset(kwargs['acls'])
 
             # parent_job_id defaults to NULL but always serializing it as an int
