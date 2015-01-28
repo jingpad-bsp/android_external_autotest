@@ -4,20 +4,21 @@
 
 AUTHOR = "ChromeOS Team"
 NAME = "network_Ipv6SimpleNegotiation"
-PURPOSE = "Verify IPv6 negotions can succeed in the most normal case"
+PURPOSE = "Verify IPv6 negotiation can succeed in the most normal case"
 CRITERIA = """
-This test fails if the kernel IPv6 code can successfully negotiate a
-globally scoped address.   Run a DHCP negotiation at the same time,
-since this is currently required to gain connectivity in ChromeOS.
+This test fails if the kernel IPv6 code cannot successfully negotiate a
+globally scoped address and obtain IPv6 DNS server addresses through
+RDNSS via an IPv6 router.
 """
+SUITE = "network_nightly"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
 
 DOC = """
-  Tests that we can acquire an IPv6 globally scoped address via router
-  announcements.
+  Tests that we can acquire an IPv6 globally scoped address and IPv6 DNS
+  server addresses via router announcements.
 """
 
 job.run_test('network_Ipv6SimpleNegotiation')

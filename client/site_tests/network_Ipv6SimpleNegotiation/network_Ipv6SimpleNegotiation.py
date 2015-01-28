@@ -7,22 +7,16 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
-from autotest_lib.client.cros import dhcp_packet
 from autotest_lib.client.cros import dhcp_test_base
 from autotest_lib.client.cros import radvd_server
 from autotest_lib.client.cros.networking import shill_proxy
 
-# Length of time the lease from the DHCP server is valid.
-LEASE_TIME_SECONDS = 60
-# We'll fill in the subnet and give this address to the client.
-INTENDED_IP_SUFFIX = '0.0.0.101'
-
 class network_Ipv6SimpleNegotiation(dhcp_test_base.DhcpTestBase):
     """
     The test subclass that implements IPv6 negotiation.  This test
-    starts an IPv6 router, then completes a normal DHCP negotiation
-    to bring up a stable connection.  It then performs a series of
-    tests on the IPv6 addresses that the DUT should have also gained.
+    starts an IPv6 router, then performs a series of tests on the
+    IPv6 addresses and IPv6 DNS addresses that the DUT should have
+    gained.
     """
 
     def _get_ip6_addresses(self):
@@ -84,41 +78,6 @@ class network_Ipv6SimpleNegotiation(dhcp_test_base.DhcpTestBase):
             return ipconfig_properties
         else:
             raise error.TestError('Found no IPv6 IPConfig entries')
-
-
-    def negotiate_dhcp_lease(self):
-        """Perform a DHCP negotiation.
-
-        Although this test isn't really meant to validate DHCP negotiation,
-        we should go through this process so the connection manager keeps the
-        interface up long enough for the IPv6 negotiation to complete reliably.
-
-        """
-        subnet_mask = self.ethernet_pair.interface_subnet_mask
-        intended_ip = dhcp_test_base.DhcpTestBase.rewrite_ip_suffix(
-                subnet_mask,
-                self.server_ip,
-                INTENDED_IP_SUFFIX)
-        # Two real name servers, and a bogus one to be unpredictable.
-        dns_servers = ['8.8.8.8', '8.8.4.4', '192.168.87.88']
-        domain_name = 'corp.google.com'
-        dns_search_list = [
-                'you.can.pry.google.com',
-                'my.pixel.google.com',
-                'from.my.cold.dead.hands.google.com',
-                ]
-        # This is the pool of information the server will give out to the client
-        # upon request.
-        dhcp_options = {
-                dhcp_packet.OPTION_SERVER_ID : self.server_ip,
-                dhcp_packet.OPTION_SUBNET_MASK : subnet_mask,
-                dhcp_packet.OPTION_IP_LEASE_TIME : LEASE_TIME_SECONDS,
-                dhcp_packet.OPTION_REQUESTED_IP : intended_ip,
-                dhcp_packet.OPTION_DNS_SERVERS : dns_servers,
-                dhcp_packet.OPTION_DOMAIN_NAME : domain_name,
-                dhcp_packet.OPTION_DNS_DOMAIN_SEARCH_LIST : dns_search_list,
-                }
-        self.negotiate_and_check_lease(dhcp_options)
 
 
     def verify_ipv6_addresses(self):
@@ -214,9 +173,7 @@ class network_Ipv6SimpleNegotiation(dhcp_test_base.DhcpTestBase):
         server.start_server()
 
         try:
-            self.negotiate_dhcp_lease()
-
-            # Wait a bit more for IPv6 negotiation to complete.
+            # Wait for IPv6 negotiation to complete.
             time.sleep(radvd_server.RADVD_DEFAULT_MAX_ADV_INTERVAL)
 
             # In this time, we should have also acquired an IPv6 address.
