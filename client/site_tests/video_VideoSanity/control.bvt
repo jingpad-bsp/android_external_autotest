@@ -8,7 +8,8 @@ PURPOSE = 'Verify that Chrome media and video works'
 CRITERIA = """
 This test will fail if Chrome media is not enable or video doesn't play.
 """
-SUITE = 'bvt-cq'
+# Disabled due to flake in PFQ for daisy_skate. http://crbug.com/450335
+#SUITE = 'bvt-cq'
 TIME = 'SHORT'
 TEST_CATEGORY = 'General'
 TEST_CLASS = 'video'
