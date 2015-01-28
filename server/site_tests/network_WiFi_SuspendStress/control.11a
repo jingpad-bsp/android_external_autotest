@@ -9,6 +9,7 @@ NAME = 'network_WiFi_SuspendStress.11a'
 TIME = 'MEDIUM'
 TEST_TYPE = 'Server'
 DEPENDENCIES = 'servo, wificell'
+SUITE = 'wifi_matfunc'
 
 DOC = """
 This test uses servo to simulate lid close and open events and checks that the
