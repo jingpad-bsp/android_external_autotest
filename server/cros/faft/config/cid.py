@@ -6,6 +6,7 @@
 
 from autotest_lib.server.cros.faft.config import auron
 
+
 class Values(auron.Values):
-	    """Inherit overrides from Auron."""
-	        pass
+    """Inherit overrides from Auron."""
+    pass
