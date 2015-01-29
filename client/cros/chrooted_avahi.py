@@ -7,11 +7,11 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import netblock
+from autotest_lib.client.common_lib.cros import virtual_ethernet_pair
 from autotest_lib.client.cros import avahi_utils
 from autotest_lib.client.cros import network_chroot
 from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros import tcpdump
-from autotest_lib.client.cros import virtual_ethernet_pair
 
 
 class ChrootedAvahi(object):

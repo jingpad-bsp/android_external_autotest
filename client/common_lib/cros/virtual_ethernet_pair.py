@@ -45,6 +45,8 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib.cros.network import interface
 
 class VirtualEthernetPair(object):
+    """ Class for configuring virtual ethernet device pair. """
+
     @staticmethod
     def _interface_exists(interface_name):
         """
@@ -52,12 +54,14 @@ class VirtualEthernetPair(object):
         """
         return interface.Interface(interface_name).exists
 
+
     def __init__(self,
-                 interface_name="veth_master",
-                 peer_interface_name="veth_slave",
-                 interface_ip="10.9.8.1/24",
-                 peer_interface_ip="10.9.8.2/24",
-                 ignore_shutdown_errors=False):
+                 interface_name='veth_master',
+                 peer_interface_name='veth_slave',
+                 interface_ip='10.9.8.1/24',
+                 peer_interface_ip='10.9.8.2/24',
+                 ignore_shutdown_errors=False,
+                 host=None):
         """
         Construct a object managing a virtual ethernet pair.  One end of the
         interface will be called |interface_name|, and the peer end
@@ -69,12 +73,15 @@ class VirtualEthernetPair(object):
         """
         super(VirtualEthernetPair, self).__init__()
         self._is_healthy = True
-        self._logger = logging.getLogger("virtual_test_interface")
         self._interface_name = interface_name
         self._peer_interface_name = peer_interface_name
         self._interface_ip = interface_ip
         self._peer_interface_ip = peer_interface_ip
         self._ignore_shutdown_errors = ignore_shutdown_errors
+        self._run = utils.run
+        if host is not None:
+            self._run = host.run
+
 
     def setup(self):
         """
@@ -84,32 +91,32 @@ class VirtualEthernetPair(object):
         """
         self._is_healthy = False
         if self._either_interface_exists():
-            self._logger.warning("At least one test interface already existed."
-                                 "  Attempting to remove.")
+            logging.warning('At least one test interface already existed.'
+                            '  Attempting to remove.')
             self._remove_test_interface()
             if self._either_interface_exists():
-                self._logger.error("Failed to remove unexpected test "
-                                   "interface.  Aborting.")
+                logging.error('Failed to remove unexpected test '
+                              'interface.  Aborting.')
                 return
 
         self._create_test_interface()
         if not self._interface_exists(self._interface_name):
-            self._logger.error("Failed to create master test interface.")
+            logging.error('Failed to create master test interface.')
             return
 
         if not self._interface_exists(self._peer_interface_name):
-            self._logger.error("Failed to create peer test interface.")
+            logging.error('Failed to create peer test interface.')
             return
         # Unless you tell the firewall about the interface, you're not going to
         # get any IP traffic through.  Since this is basically a loopback
         # device, just allow all traffic.
         for name in (self._interface_name, self._peer_interface_name):
-            code = utils.system("iptables -I INPUT -i %s -j ACCEPT" %
-                                name)
+            code = self._run('iptables -I INPUT -i %s -j ACCEPT' % name)
             if code != 0:
-                self._logger.error("iptables rule addition failed for interface"
-                                   " %s" % name)
+                logging.error('iptables rule addition failed for interface %s',
+                              name)
         self._is_healthy = True
+
 
     def teardown(self):
         """
@@ -118,100 +125,125 @@ class VirtualEthernetPair(object):
         isn't there or fails to be removed.
         """
         for name in (self._interface_name, self._peer_interface_name):
-            utils.system("iptables -D INPUT -i %s -j ACCEPT" % name,
-                         ignore_status=True)
+            self._run('iptables -D INPUT -i %s -j ACCEPT' % name,
+                      ignore_status=True)
         if not self._either_interface_exists():
-            self._logger.warning("VirtualEthernetPair.teardown() called, "
-                                 "but no interface was found.")
+            logging.warning('VirtualEthernetPair.teardown() called, '
+                            'but no interface was found.')
             return
 
         self._remove_test_interface()
         if self._either_interface_exists():
-            self._logger.error("Failed to destroy test interface.")
+            logging.error('Failed to destroy test interface.')
+
 
     @property
     def is_healthy(self):
+        """@return True if virtual ethernet pair is configured."""
         return self._is_healthy
+
 
     @property
     def interface_name(self):
+        """@return string name of the interface."""
         return self._interface_name
+
 
     @property
     def peer_interface_name(self):
+        """@return string name of the peer interface."""
         return self._peer_interface_name
+
 
     @property
     def interface_ip(self):
+        """@return string IPv4 address of the interface."""
         return interface.Interface(self.interface_name).ipv4_address
+
 
     @property
     def peer_interface_ip(self):
+        """@return string IPv4 address of the peer interface."""
         return interface.Interface(self.peer_interface_name).ipv4_address
+
 
     @property
     def interface_subnet_mask(self):
+        """@return string IPv4 subnet mask of the interface."""
         return interface.Interface(self.interface_name).ipv4_subnet_mask
+
 
     @property
     def interface_prefix(self):
+        """@return int IPv4 prefix length."""
         return interface.Interface(self.interface_name).ipv4_prefix
+
 
     @property
     def peer_interface_subnet_mask(self):
+        """@return string IPv4 subnet mask of the peer interface."""
         return interface.Interface(self.peer_interface_name).ipv4_subnet_mask
+
 
     @property
     def interface_mac(self):
+        """@return string MAC address of the interface."""
         return interface.Interface(self.interface_name).mac_address
+
 
     @property
     def peer_interface_mac(self):
+        """@return string MAC address of the peer interface."""
         return interface.Interface(self._peer_interface_name).mac_address
+
 
     def __enter__(self):
         self.setup()
         return self
 
+
     def __exit__(self, exc_type, exc_value, traceback):
         self.teardown()
+
 
     def _either_interface_exists(self):
         return (self._interface_exists(self._interface_name) or
                 self._interface_exists(self._peer_interface_name))
+
 
     def _remove_test_interface(self):
         """
         Remove the virtual ethernet device installed by
         _create_test_interface().
         """
-        utils.system("ifconfig %s down" % self._interface_name,
-                     ignore_status=self._ignore_shutdown_errors)
-        utils.system("ifconfig %s down" % self._peer_interface_name,
-                     ignore_status=self._ignore_shutdown_errors)
-        utils.system("ip link delete %s &> /dev/null " % self._interface_name,
-                     ignore_status=self._ignore_shutdown_errors)
+        self._run('ifconfig %s down' % self._interface_name,
+                  ignore_status=self._ignore_shutdown_errors)
+        self._run('ifconfig %s down' % self._peer_interface_name,
+                  ignore_status=self._ignore_shutdown_errors)
+        self._run('ip link delete %s &> /dev/null ' % self._interface_name,
+                  ignore_status=self._ignore_shutdown_errors)
 
         # Under most normal circumstances a successful deletion of
         # |_interface_name| should also remove |_peer_interface_name|,
         # but if we elected to ignore failures above, that may not be
         # the case.
-        utils.system("ip link delete %s &> /dev/null " %
-                     self._peer_interface_name, ignore_status=True)
+        self._run('ip link delete %s &> /dev/null ' %
+                  self._peer_interface_name, ignore_status=True)
+
 
     def _create_test_interface(self):
         """
         Set up a virtual ethernet device and configure the host side with a
         fake IP address.
         """
-        utils.system("ip link add name %s "
-                     "type veth peer name %s &> /dev/null " %
-                     (self._interface_name, self._peer_interface_name))
-        utils.system("ip link set %s up" % self._interface_name)
-        utils.system("ip link set %s up" % self._peer_interface_name)
+        self._run('ip link add name %s '
+                  'type veth peer name %s &> /dev/null ' %
+                  (self._interface_name, self._peer_interface_name))
+        self._run('ip link set %s up' % self._interface_name)
+        self._run('ip link set %s up' % self._peer_interface_name)
         if not self._interface_ip is None:
-            utils.system("ifconfig %s %s" % (self._interface_name,
-                                             self._interface_ip))
+            self._run('ifconfig %s %s' % (self._interface_name,
+                                          self._interface_ip))
         if not self._peer_interface_ip is None:
-            utils.system("ifconfig %s %s" % (self._peer_interface_name,
-                                             self._peer_interface_ip))
+            self._run('ifconfig %s %s' % (self._peer_interface_name,
+                                          self._peer_interface_ip))

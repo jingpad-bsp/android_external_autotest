@@ -7,8 +7,8 @@ import time
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros import virtual_ethernet_pair
 from autotest_lib.client.cros import hostapd_server
-from autotest_lib.client.cros import virtual_ethernet_pair
 from autotest_lib.client.cros.networking import shill_proxy
 
 class network_8021xEapDetection(test.test):

@@ -18,10 +18,10 @@ import traceback
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros import virtual_ethernet_pair
 from autotest_lib.client.cros import dhcp_handling_rule
 from autotest_lib.client.cros import dhcp_packet
 from autotest_lib.client.cros import dhcp_test_server
-from autotest_lib.client.cros import virtual_ethernet_pair
 from autotest_lib.client.cros.networking import shill_proxy
 
 

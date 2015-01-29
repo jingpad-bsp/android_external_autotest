@@ -9,8 +9,8 @@ import urlparse
 import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros import virtual_ethernet_pair
 from autotest_lib.client.cros import network, network_chroot
-from autotest_lib.client.cros import virtual_ethernet_pair
 from autotest_lib.client.cros.cellular import test_endpoint
 
 class PseudoNetInterface(object):
