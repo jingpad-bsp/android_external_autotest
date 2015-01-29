@@ -448,6 +448,10 @@
     "dashboard_test_name": "webrtc.webrtc_cases"
   },
   {
+    "autotest_name": "video_HangoutHardwarePerf",
+    "master_name": "ChromeOSVideo"
+  },
+  {
     "autotest_name": "video_PlaybackPerf",
     "master_name": "ChromeOSVideo"
   },
