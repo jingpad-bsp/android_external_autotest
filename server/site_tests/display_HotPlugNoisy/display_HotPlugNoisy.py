@@ -84,26 +84,22 @@ class display_HotPlugNoisy(test.test):
                         self.PULSES_PLUGGED if plugged_after_noise
                                             else self.PULSES_UNPLUGGED)
 
-                if screen_test.check_external_display_connected(
-                        expected_connector if plugged_after_noise else False,
-                        errors):
-                    # Skip the following test if an unexpected display detected.
-                    continue
-
                 if plugged_after_noise:
-                    err_on_1st_trial = None
-                    if chameleon_port.wait_video_input_stable():
-                        err_on_1st_trial = screen_test.test_screen_with_image(
-                                resolution, test_mirrored)
-                    else:
-                        err_on_1st_trial = 'video input not stable'
-                    if err_on_1st_trial:
+                    err = screen_test.check_external_display_connected(
+                            expected_connector)
+
+                    if not err:
+                        if chameleon_port.wait_video_input_stable():
+                            err = screen_test.test_screen_with_image(
+                                    resolution, test_mirrored)
+                        else:
+                            err = 'video input not stable'
+                    if err:
                         # When something goes wrong after the noise, a normal
                         # user would try to re-plug the cable to recover.
                         # We emulate this behavior below and report error if
                         # the problem persists.
-                        logging.error('Error possibly flaky: %s',
-                                err_on_1st_trial)
+                        logging.error('Error possibly flaky: %s', err)
                         logging.info('Replug and retry the screen test...')
                         chameleon_port.unplug()
                         time.sleep(self.REPLUG_DELAY_SEC)
@@ -112,6 +108,7 @@ class display_HotPlugNoisy(test.test):
                         screen_test.test_screen_with_image(
                                 resolution, test_mirrored, errors)
                 else:
+                    screen_test.check_external_display_connected(False, errors)
                     time.sleep(1)
 
         if errors:
