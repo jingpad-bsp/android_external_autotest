@@ -30,14 +30,15 @@ class display_EdidStress(test.test):
                    'DP': {'DP'},
                    'VGA': {'VGA'}}
 
-    def run_once(self, host):
+    def run_once(self, host, edid_set):
 
         def _get_edid_type(s):
             i = s.rfind('_') + 1
             j = len(s) - len('.txt')
             return s[i:j].upper()
 
-        edid_path = os.path.join(self.bindir, 'test_data', 'edids', '*')
+        edid_path = os.path.join(self.bindir, 'test_data', 'edids',
+                                 edid_set, '*')
 
         factory = remote_facade_factory.RemoteFacadeFactory(host)
         display_facade = factory.create_display_facade()
