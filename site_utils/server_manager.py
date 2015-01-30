@@ -78,7 +78,7 @@ def _add_role(server, role, action):
     print 'Role %s is added to server %s.' % (role, server.hostname)
 
 
-def _delete_role(server, role, action):
+def _delete_role(server, role, action=False):
     """Delete a role from the server.
 
     @param server: An object of server_models.Server.

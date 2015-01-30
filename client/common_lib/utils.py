@@ -9,5 +9,6 @@ inheritance with, just a collection of static methods.
 """
 
 from autotest_lib.client.common_lib.base_utils import *
+from autotest_lib.client.common_lib.lsbrelease_utils import *
 if os.path.exists(os.path.join(os.path.dirname(__file__), 'site_utils.py')):
     from autotest_lib.client.common_lib.site_utils import *

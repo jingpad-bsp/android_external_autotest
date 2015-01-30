@@ -11,7 +11,10 @@ import time
 import urllib2
 import uuid
 
-from autotest_lib.client.common_lib import base_utils, error, global_config
+from autotest_lib.client.common_lib import base_utils
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import lsbrelease_utils
 from autotest_lib.client.cros import constants
 
 
@@ -109,52 +112,6 @@ def get_chrome_version(job_views):
     return None
 
 
-def _lsbrelease_search(regex, group_id=0):
-    """Searches /etc/lsb-release for a regex match.
-
-    @param regex: Regex to match.
-    @param group_id: The group in the regex we are searching for.
-                     Default is group 0.
-
-    @returns the string in the specified group if there is a match or None if
-             not found.
-
-    @raises IOError if /etc/lsb-release can not be accessed.
-    """
-    with open(constants.LSB_RELEASE) as lsb_release_file:
-        for line in lsb_release_file:
-            m = re.match(regex, line)
-            if m:
-                return m.group(group_id)
-    return None
-
-
-def get_current_board():
-    """Return the current board name.
-
-    @return current board name, e.g "lumpy", None on fail.
-    """
-    return _lsbrelease_search(r'^CHROMEOS_RELEASE_BOARD=(.+)$', group_id=1)
-
-
-def get_chromeos_release_version():
-    """
-    @return chromeos version in device under test as string. None on fail.
-    """
-    return _lsbrelease_search(r'^CHROMEOS_RELEASE_VERSION=(.+)$', group_id=1)
-
-
-def is_moblab():
-    """Return if we are running on a Moblab system or not.
-
-    @return the board string if this is a Moblab device or None if it is not.
-    """
-    try:
-        return _lsbrelease_search(r'.*moblab')
-    except IOError as e:
-        logging.error('Unable to determine if this is a moblab system: %s', e)
-
-
 def get_interface_mac_address(interface):
     """Return the MAC address of a given interface.
 
@@ -179,7 +136,7 @@ def get_offload_gsuri():
 
     @returns gsuri to offload test results to.
     """
-    if not is_moblab():
+    if not lsbrelease_utils.is_moblab():
         return DEFAULT_OFFLOAD_GSURI
     moblab_id_filepath = '/home/moblab/.moblab_id'
     if os.path.exists(moblab_id_filepath):

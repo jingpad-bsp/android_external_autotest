@@ -3,17 +3,30 @@
 provides access to global configuration file
 """
 
+# The config values can be stored in 3 config files:
+#     global_config.ini
+#     moblab_config.ini
+#     shadow_config.ini
+# When the code is running in Moblab, config values in moblab config override
+# values in global config, and config values in shadow config override values
+# in both moblab and global config.
+# When the code is running in a non-Moblab host, moblab_config.ini is ignored.
+# Config values in shadow config will override values in global config.
+
 __author__ = 'raphtee@google.com (Travis Miller)'
 
-import os, sys, ConfigParser, logging
+import os, sys, ConfigParser
 from autotest_lib.client.common_lib import error
-
+from autotest_lib.client.common_lib import lsbrelease_utils
 
 class ConfigError(error.AutotestError):
+    """Configuration error."""
     pass
 
 
 class ConfigValueError(ConfigError):
+    """Configuration value error, raised when value failed to be converted to
+    expected type."""
     pass
 
 
@@ -26,6 +39,7 @@ root_dir = os.path.dirname(client_dir)
 # This will happen if client is executing inside a full autotest tree, or if
 # other entry points are being executed
 global_config_path_root = os.path.join(root_dir, 'global_config.ini')
+moblab_config_path_root = os.path.join(root_dir, 'moblab_config.ini')
 shadow_config_path_root = os.path.join(root_dir, 'shadow_config.ini')
 config_in_root = os.path.exists(global_config_path_root)
 
@@ -36,6 +50,10 @@ config_in_client = os.path.exists(global_config_path_client)
 
 if config_in_root:
     DEFAULT_CONFIG_FILE = global_config_path_root
+    if os.path.exists(moblab_config_path_root):
+        DEFAULT_MOBLAB_FILE = moblab_config_path_root
+    else:
+        DEFAULT_MOBLAB_FILE = None
     if os.path.exists(shadow_config_path_root):
         DEFAULT_SHADOW_FILE = shadow_config_path_root
     else:
@@ -43,29 +61,36 @@ if config_in_root:
     RUNNING_STAND_ALONE_CLIENT = False
 elif config_in_client:
     DEFAULT_CONFIG_FILE = global_config_path_client
+    DEFAULT_MOBLAB_FILE = None
     DEFAULT_SHADOW_FILE = None
     RUNNING_STAND_ALONE_CLIENT = True
 else:
     DEFAULT_CONFIG_FILE = None
+    DEFAULT_MOBLAB_FILE = None
     DEFAULT_SHADOW_FILE = None
     RUNNING_STAND_ALONE_CLIENT = True
 
 class global_config(object):
+    """Object to access config values."""
     _NO_DEFAULT_SPECIFIED = object()
 
     config = None
     config_file = DEFAULT_CONFIG_FILE
+    moblab_file=DEFAULT_MOBLAB_FILE
     shadow_file = DEFAULT_SHADOW_FILE
     running_stand_alone_client = RUNNING_STAND_ALONE_CLIENT
 
 
     def check_stand_alone_client_run(self):
+        """Check if this is a stand alone client that does not need config."""
         return self.running_stand_alone_client
 
 
     def set_config_files(self, config_file=DEFAULT_CONFIG_FILE,
-                            shadow_file=DEFAULT_SHADOW_FILE):
+                         shadow_file=DEFAULT_SHADOW_FILE,
+                         moblab_file=DEFAULT_MOBLAB_FILE):
         self.config_file = config_file
+        self.moblab_file = moblab_file
         self.shadow_file = shadow_file
         self.config = None
 
@@ -166,8 +191,11 @@ class global_config(object):
 
 
     def override_config_value(self, section, key, new_value):
-        """
-        Override a value from the config file with a new value.
+        """Override a value from the config file with a new value.
+
+        @param section: Name of the section.
+        @param key: Name of the key.
+        @param new_value: new value.
         """
         self._ensure_config_parsed()
         self.config.set(section, key, new_value)
@@ -182,30 +210,46 @@ class global_config(object):
 
 
     def _ensure_config_parsed(self):
+        """Make sure config files are parsed.
+        """
         if self.config is None:
             self.parse_config_file()
 
 
-    def merge_configs(self, shadow_config):
-        # overwrite whats in config with whats in shadow_config
-        sections = shadow_config.sections()
+    def merge_configs(self, override_config):
+        """Merge existing config values with the ones in given override_config.
+
+        @param override_config: Configs to override existing config values.
+        """
+        # overwrite whats in config with whats in override_config
+        sections = override_config.sections()
         for section in sections:
             # add the section if need be
             if not self.config.has_section(section):
                 self.config.add_section(section)
             # now run through all options and set them
-            options = shadow_config.options(section)
+            options = override_config.options(section)
             for option in options:
-                val = shadow_config.get(section, option)
+                val = override_config.get(section, option)
                 self.config.set(section, option, val)
 
 
     def parse_config_file(self):
+        """Parse config files."""
         self.config = ConfigParser.ConfigParser()
         if self.config_file and os.path.exists(self.config_file):
             self.config.read(self.config_file)
         else:
             raise ConfigError('%s not found' % (self.config_file))
+
+        # If it's running in Moblab, read moblab config file if exists,
+        # overwrite the value in global config.
+        if (lsbrelease_utils.is_moblab() and self.moblab_file and
+            os.path.exists(self.moblab_file)):
+            moblab_config = ConfigParser.ConfigParser()
+            moblab_config.read(self.moblab_file)
+            # now we merge moblab into global
+            self.merge_configs(moblab_config)
 
         # now also read the shadow file if there is one
         # this will overwrite anything that is found in the
