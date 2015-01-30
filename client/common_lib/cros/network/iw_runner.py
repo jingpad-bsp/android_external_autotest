@@ -101,12 +101,8 @@ class IwRunner(object):
                 bss = bss_match.group(1)
             if line.startswith('freq:'):
                 frequency = int(line.split()[1])
-            if line.startswith('SSID:'):
-                ssid = line.split()
-                if len(ssid) > 1:
-                    ssid = ssid[1]
-                else:
-                    ssid = None
+            if line.startswith('SSID: '):
+                _, ssid = line.split(': ', 1)
             if line.startswith('* secondary channel offset'):
                 ht = HT_TABLE[line.split(':')[1].strip()]
             if line.startswith('WPA'):
