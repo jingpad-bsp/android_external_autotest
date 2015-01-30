@@ -124,6 +124,8 @@ class security_StatefulPermissions(test.test):
         prunelist.append("/encrypted/var/log/metrics/uma-events")
         # '/run/lock' is world-writeable.
         prunelist.append("/encrypted/var/lock")
+        # '/var/log/asan' should be world-writeable: crbug.com/453579
+        prunelist.append("/encrypted/var/log/asan")
 
         # Add system-wide exclusions.
         prunelist.extend(self.systemwide_exclusions())
