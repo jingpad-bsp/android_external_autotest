@@ -36,13 +36,31 @@ LIST_PROC_FUNCTIONS(F)
 #define PLATFORM_STRING STRING(PLATFORM)
 
 #if PLATFORM_IS(GLX)
+
 #include "waffle_glx.h"
+#define DISPLAY NULL
+
 #elif PLATFORM_IS(X11_EGL)
+
 #include "waffle_x11_egl.h"
+#define DISPLAY NULL
+
 #elif PLATFORM_IS(GBM)
+
 #include <xf86drmMode.h>
 #include <gbm.h>
 #include "waffle_gbm.h"
+
+// Supply a path here because waffle will use a render node by default,
+// and GetDisplaySize() won't work.
+// TODO(fjhenigman): there are probably better options than hard-coding
+// a path, perhaps adding to waffle some way of hinting that we don't
+// want a render node.  Or, since it's probably only the code in
+// GetDisplaySize() that balks on a render node, and that code ought to go
+// away someday, we might be able to change this hard-coded path to NULL
+// at that time.
+#define DISPLAY "/dev/dri/card0"
+
 #else
 #error "platform not specified - compile with -DPLATFORM=<platform>"
 #endif
@@ -140,7 +158,7 @@ void WaffleInterface::InitOnce() {
   waffle_init(initAttribs);
   WAFFLE_CHECK_ERROR;
 
-  display_ = waffle_display_connect(NULL);
+  display_ = waffle_display_connect(DISPLAY);
   WAFFLE_CHECK_ERROR;
 
   CHECK(GetDisplaySize());
