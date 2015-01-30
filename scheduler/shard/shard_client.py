@@ -133,6 +133,8 @@ class ShardClient(object):
             with transaction.commit_on_success():
                 models.Job.deserialize(job)
 
+        host_ids = [h['id'] for h in hosts_serialized]
+        logging.info('Heartbeat response contains hosts %s', host_ids)
         job_ids = [j['id'] for j in jobs_serialized]
         logging.info('Heartbeat response contains jobs %s', job_ids)
 
