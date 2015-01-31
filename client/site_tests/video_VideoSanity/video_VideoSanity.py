@@ -42,7 +42,7 @@ class video_VideoSanity(test.test):
             returns the current playback location in seconds (int).
 
         """
-        return int(self.tab.EvaluateJavaScript('testvideo.currentTime'))
+        return self.tab.EvaluateJavaScript('testvideo.currentTime')
 
 
     def video_duration(self):
@@ -52,7 +52,7 @@ class video_VideoSanity(test.test):
             returns the total video length in seconds (int).
 
         """
-        return int(self.tab.EvaluateJavaScript('testvideo.duration'))
+        return self.tab.EvaluateJavaScript('testvideo.duration')
 
 
     def run_video_sanity_test(self, browser):
@@ -61,7 +61,7 @@ class video_VideoSanity(test.test):
         @param browser: The Browser object to run the test with.
 
         """
-        self.tab = browser.tabs.New()
+        self.tab = browser.tabs[0]
         # Verifying <video> support.
         video_containers = ('mp4', 'ogg', 'webm')
         self.tab.Navigate('http://localhost:8000/video.html')
@@ -84,16 +84,26 @@ class video_VideoSanity(test.test):
         # Muting the video.
         self.tab.EvaluateJavaScript('testvideo.volume=0')
 
-        # Verifying video playback.
-        playback = 0 # seconds
-        prev_playback = 0
-        while (self.video_current_time() < self.video_duration()
-               and playback < PLAYBACK_TEST_TIME_S):
-            if self.video_current_time() <= prev_playback:
-                raise error.TestError('Video is not playing.')
-            prev_playback = self.video_current_time()
+
+        playback_test_count = 0
+        prev_time_s = -1
+        duration = self.video_duration()
+
+        while True:
+            current_time_s = self.video_current_time()
+
+            if (current_time_s >= duration
+                or playback_test_count >= PLAYBACK_TEST_TIME_S):
+                break
+
+            if current_time_s <= prev_time_s:
+                msg = ("Current time is %.3fs while Previous time was %.3fs. "
+                       "Video is not playing" % (current_time_s, prev_time_s))
+                raise error.TestError(msg)
+
+            prev_time_s = current_time_s
+            playback_test_count += 1
             time.sleep(1)
-            playback = playback + 1
 
 
     def run_once(self):
