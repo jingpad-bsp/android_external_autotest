@@ -667,6 +667,11 @@ class InvalidDataError(Exception):
     pass
 
 
+class ContainerError(Exception):
+    """Exception raised when program runs into error using container.
+    """
+
+
 # This MUST remain at the end of the file.
 # Limit 'from error import *' to only import the exception instances.
 for _name, _thing in locals().items():

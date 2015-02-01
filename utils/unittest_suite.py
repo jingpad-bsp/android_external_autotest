@@ -108,6 +108,8 @@ SKIP = set((
     # crbug.com/432621 These files are not tests, and will disappear soon.
     'des_01_test.py',
     'des_02_test.py',
+    # Rquire lxc to be installed
+    'lxc_functional_test.py',
     ))
 
 LONG_TESTS = (REQUIRES_MYSQLDB |

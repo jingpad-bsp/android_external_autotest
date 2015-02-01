@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import inspect
 import logging
 import os
 import re
@@ -326,13 +327,13 @@ def parse_chrome_version(version_string):
     return ver, milestone
 
 
-
 def is_localhost(server):
     """Check if server is equivalent to localhost.
 
     @param server: Name of the server to check.
 
     @return: True if given server is equivalent to localhost.
+
     @raise socket.gaierror: If server name failed to be resolved.
     """
     if server in _LOCAL_HOST_LIST:
@@ -343,3 +344,35 @@ def is_localhost(server):
     except socket.gaierror:
         logging.error('Failed to resolve server name %s.', server)
         return False
+
+
+def get_function_arg_value(func, arg_name, args, kwargs):
+    """Get the value of the given argument for the function.
+
+    @param func: Function being called with given arguments.
+    @param arg_name: Name of the argument to look for value.
+    @param args: arguments for function to be called.
+    @param kwargs: keyword arguments for function to be called.
+
+    @return: The value of the given argument for the function.
+
+    @raise ValueError: If the argument is not listed function arguemnts.
+    @raise KeyError: If no value is found for the given argument.
+    """
+    if arg_name in kwargs:
+        return kwargs[arg_name]
+
+    argspec = inspect.getargspec(func)
+    index = argspec.args.index(arg_name)
+    try:
+        return args[index]
+    except IndexError:
+        try:
+            # The argument can use a default value. Reverse the default value
+            # so argument with default value can be counted from the last to
+            # the first.
+            return argspec.defaults[::-1][len(argspec.args) - index - 1]
+        except IndexError:
+            raise KeyError('Argument %s is not given a value. argspec: %s, '
+                           'args:%s, kwargs:%s' %
+                           (arg_name, argspec, args, kwargs))
