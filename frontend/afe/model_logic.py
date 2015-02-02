@@ -1214,10 +1214,36 @@ class ModelExtensions(rdb_model_extensions.ModelValidators):
         @param link: Name of the relation.
         @param data: Serialized representation of the related objects.
                      This is a list with of dictionaries.
+        @param related_class: A class representing a django model, with which
+                              this class has a one-to-many relationship.
         """
         relation_set = getattr(self, link)
+        if related_class == self.get_attribute_model():
+            # When deserializing a model together with
+            # its attributes, clear all the exising attributes to ensure
+            # db consistency. Note 'update' won't be sufficient, as we also
+            # want to remove any attributes that no longer exist in |data|.
+            #
+            # core_filters is a dictionary of filters, defines how
+            # RelatedMangager would query for the 1-to-many relationship. E.g.
+            # Host.objects.get(
+            #     id=20).hostattribute_set.core_filters = {host_id:20}
+            # We use it to delete objects related to the current object.
+            related_class.objects.filter(**relation_set.core_filters).delete()
         for serialized in data:
             relation_set.add(related_class.deserialize(serialized))
+
+
+    @classmethod
+    def get_attribute_model(cls):
+        """Return the attribute model.
+
+        Subclass with attribute-like model should override this to
+        return the attribute model class. This method will be
+        called by _deserialize_2m_relation to determine whether
+        to clear the one-to-many relations first on deserialization of object.
+        """
+        return None
 
 
 class ModelWithInvalid(ModelExtensions):

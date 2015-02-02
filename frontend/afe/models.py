@@ -136,9 +136,11 @@ class Label(model_logic.ModelWithInvalid, dbmodels.Model):
         queue_entry.save()
 
 
+
     class Meta:
         """Metadata for class Label."""
         db_table = 'afe_labels'
+
 
     def __unicode__(self):
         return unicode(self.name)
@@ -686,9 +688,20 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
         return HostAttribute, dict(host=self, attribute=attribute)
 
 
+    @classmethod
+    def get_attribute_model(cls):
+        """Return the attribute model.
+
+        Override method in parent class. See ModelExtensions for details.
+        @returns: The attribute model of Host.
+        """
+        return HostAttribute
+
+
     class Meta:
         """Metadata for the Host class."""
         db_table = 'afe_hosts'
+
 
     def __unicode__(self):
         return unicode(self.hostname)
@@ -698,6 +711,7 @@ class HostAttribute(dbmodels.Model, model_logic.ModelExtensions):
     """Arbitrary keyvals associated with hosts."""
 
     SERIALIZATION_LINKS_TO_KEEP = set(['host'])
+    SERIALIZATION_LOCAL_LINKS_TO_UPDATE = set(['value'])
     host = dbmodels.ForeignKey(Host)
     attribute = dbmodels.CharField(max_length=90)
     value = dbmodels.CharField(max_length=300)
@@ -707,6 +721,36 @@ class HostAttribute(dbmodels.Model, model_logic.ModelExtensions):
     class Meta:
         """Metadata for the HostAttribute class."""
         db_table = 'afe_host_attributes'
+
+
+    @classmethod
+    def get_record(cls, data):
+        """Check the database for an identical record.
+
+        Use host_id and attribute to search for a existing record.
+
+        @raises: DoesNotExist, if no record found
+        @raises: MultipleObjectsReturned if multiple records found.
+        """
+        # TODO(fdeng): We should use host_id and attribute together as
+        #              a primary key in the db.
+        return cls.objects.get(host_id=data['host_id'],
+                               attribute=data['attribute'])
+
+
+    @classmethod
+    def deserialize(cls, data):
+        """Override deserialize in parent class.
+
+        Do not deserialize id as id is not kept consistent on master and shards.
+
+        @param data: A dictionary of data to deserialize.
+
+        @returns: A HostAttribute object.
+        """
+        if data:
+            data.pop('id')
+        return super(HostAttribute, cls).deserialize(data)
 
 
 class Test(dbmodels.Model, model_logic.ModelExtensions):
@@ -1549,6 +1593,22 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
                     for keyval in self.jobkeyval_set.all())
 
 
+    @classmethod
+    def get_attribute_model(cls):
+        """Return the attribute model.
+
+        Override method in parent class. This class is called when
+        deserializing the one-to-many relationship betwen Job and JobKeyval.
+        On deserialization, we will try to clear any existing job keyvals
+        associated with a job to avoid any inconsistency.
+        Though Job doesn't implement ModelWithAttribute, we still treat
+        it as an attribute model for this purpose.
+
+        @returns: The attribute model of Job.
+        """
+        return JobKeyval
+
+
     class Meta:
         """Metadata for class Job."""
         db_table = 'afe_jobs'
@@ -1559,11 +1619,45 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
 
 class JobKeyval(dbmodels.Model, model_logic.ModelExtensions):
     """Keyvals associated with jobs"""
+
+    SERIALIZATION_LINKS_TO_KEEP = set(['job'])
+    SERIALIZATION_LOCAL_LINKS_TO_UPDATE = set(['value'])
+
     job = dbmodels.ForeignKey(Job)
     key = dbmodels.CharField(max_length=90)
     value = dbmodels.CharField(max_length=300)
 
     objects = model_logic.ExtendedManager()
+
+
+    @classmethod
+    def get_record(cls, data):
+        """Check the database for an identical record.
+
+        Use job_id and key to search for a existing record.
+
+        @raises: DoesNotExist, if no record found
+        @raises: MultipleObjectsReturned if multiple records found.
+        """
+        # TODO(fdeng): We should use job_id and key together as
+        #              a primary key in the db.
+        return cls.objects.get(job_id=data['job_id'], key=data['key'])
+
+
+    @classmethod
+    def deserialize(cls, data):
+        """Override deserialize in parent class.
+
+        Do not deserialize id as id is not kept consistent on master and shards.
+
+        @param data: A dictionary of data to deserialize.
+
+        @returns: A JobKeyval object.
+        """
+        if data:
+            data.pop('id')
+        return super(JobKeyval, cls).deserialize(data)
+
 
     class Meta:
         """Metadata for class JobKeyval."""

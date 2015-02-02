@@ -481,12 +481,15 @@ class SerializationTest(unittest.TestCase,
                                                   'status': 'Queued'}],
                           'id': 5,
                           'jobkeyval_set': [{'id': 10,
+                                             'job_id': 5,
                                              'key': 'suite',
                                              'value': 'dummy'},
                                             {'id': 11,
+                                             'job_id': 5,
                                              'key': 'build',
                                              'value': 'daisy-release'},
                                             {'id': 12,
+                                             'job_id': 5,
                                              'key': 'experimental',
                                              'value': 'False'}],
                           'max_runtime_hrs': 72,
@@ -545,12 +548,15 @@ class SerializationTest(unittest.TestCase,
                                                   'status': 'Queued'}],
                           'id': 7,
                           'jobkeyval_set': [{'id': 16,
+                                             'job_id': 7,
                                              'key': 'suite',
                                              'value': 'dummy'},
                                             {'id': 17,
+                                             'job_id': 7,
                                              'key': 'build',
                                              'value': 'daisy-release'},
                                             {'id': 18,
+                                             'job_id': 7,
                                              'key': 'experimental',
                                              'value': 'False'}],
                           'max_runtime_hrs': 72,
@@ -583,9 +589,16 @@ class SerializationTest(unittest.TestCase,
             'hosts': [host.serialize() for host in hosts],
             'jobs': [job.serialize() for job in jobs]
         }
-
-        self.assertEqual(generated_heartbeat_response,
-                         self._get_example_response())
+        example_response = self._get_example_response()
+        # For attribute-like objects, we don't care about its id.
+        for r in [generated_heartbeat_response, example_response]:
+            for job in r['jobs']:
+                for keyval in job['jobkeyval_set']:
+                    keyval.pop('id')
+            for host in r['hosts']:
+                for attribute in host['hostattribute_set']:
+                    keyval.pop('id')
+        self.assertEqual(generated_heartbeat_response, example_response)
 
 
     def test_update(self):
