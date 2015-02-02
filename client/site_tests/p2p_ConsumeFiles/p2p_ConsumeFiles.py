@@ -9,7 +9,8 @@ import tempfile
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error, utils
-from autotest_lib.client.cros import service_stopper, avahi_utils
+from autotest_lib.client.common_lib.cros import avahi_utils
+from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.netprotos import cros_p2p, zeroconf
 
 

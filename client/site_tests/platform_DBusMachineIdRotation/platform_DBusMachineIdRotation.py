@@ -9,7 +9,7 @@ import time
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import avahi_utils
+from autotest_lib.client.common_lib.cros import avahi_utils
 
 class platform_DBusMachineIdRotation(test.test):
     """Verify that /var/lib/dbus/machine-id is properly rotated.

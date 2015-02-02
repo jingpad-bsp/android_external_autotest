@@ -101,7 +101,7 @@ class p2p_ServeFiles(test.test):
             self._p2p.setup(dumpdir=self.job.resultdir)
         except:
             logging.exception('Failed to start tested services.')
-            raise error.TestError('Failed to setup p2p/avahi environment.')
+            raise
 
         # Share a file on the DUT.
         content = open('/dev/urandom').read(16*1024)

@@ -57,7 +57,7 @@ class p2p_ShareFiles(test.test):
             self._p2p.setup()
         except:
             logging.exception('Failed to start tested services.')
-            raise error.TestError('Failed to setup p2p/avahi environment.')
+            raise
 
         self._sim = simulator.Simulator(self._p2p.tap)
         # Create a single fake peer that will be sending the multicast requests.

@@ -7,7 +7,8 @@ import os
 import shutil
 
 from autotest_lib.client.common_lib import error, utils
-from autotest_lib.client.cros import service_stopper, avahi_utils, tcpdump
+from autotest_lib.client.common_lib.cros import avahi_utils
+from autotest_lib.client.cros import service_stopper, tcpdump
 
 
 P2P_SHARE_PATH = '/var/cache/p2p'
