@@ -30,10 +30,13 @@ class platform_Perf(test.test):
             # Perf command for getting a detailed report.
             perf_report_args = [ 'perf', 'report', '-D', '-i', perf_file_path ]
 
-            result = subprocess.call(perf_record_args)
-            if result != 0:
-                raise error.TestFail('Could not run command: ' +
-                                     ' '.join(perf_record_args))
+            try:
+                subprocess.check_output(perf_record_args,
+                                        stderr=subprocess.STDOUT)
+            except subprocess.CalledProcessError as cmd_error:
+                raise error.TestFail("Running command [%s] failed: %s" %
+                                     (' '.join(perf_record_args),
+                                      cmd_error.output))
 
             # Make sure the file still exists.
             if not os.path.isfile(perf_file_path):
@@ -56,7 +59,10 @@ class platform_Perf(test.test):
 
         finally:
             # Delete the perf data file.
-            os.remove(perf_file_path)
+            try:
+                os.remove(perf_file_path)
+            except OSError as e:
+                if e.errno != errno.ENONENT: raise
 
         if result is None:
             raise error.TestFail('Could not find kernel mapping in perf '
