@@ -8,6 +8,7 @@ import logging
 import logging.handlers
 
 import common
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import xmlrpc_server
 from autotest_lib.client.cros import constants
 from autotest_lib.client.cros.networking import apmanager_proxy
@@ -37,15 +38,14 @@ class ApmanagerXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
 
     @xmlrpc_server.dbus_safe(None)
-    def start_service(self, ssid, channel=None):
+    def start_service(self, config_params):
         """Create/start an AP service.
 
-        @param ssid string SSID of the AP.
-        @param channel int Operating channel of the AP.
+        @param config_params dictionary of configuration parameters.
         @return string object path for the AP service.
 
         """
-        return self._apmanager_proxy.start_service(ssid, channel)
+        return self._apmanager_proxy.start_service(config_params)
 
 
     def terminate_service(self, service):

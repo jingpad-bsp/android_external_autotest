@@ -7,6 +7,7 @@ import time
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros.network import apmanager_constants
 from autotest_lib.client.cros.networking import apmanager_proxy
 
 class apmanager_CheckAPProcesses(test.test):
@@ -48,8 +49,10 @@ class apmanager_CheckAPProcesses(test.test):
 
     def run_once(self):
         """Test body."""
+        # AP configuration parameters, only configuring SSID.
+        ap_config = {apmanager_constants.CONFIG_SSID: 'testap'}
         manager = apmanager_proxy.ApmanagerProxy()
-        service = manager.start_service('testap')
+        service = manager.start_service(ap_config)
         self._verify_process('hostapd', True)
         self._verify_process('dnsmasq', True)
         manager.terminate_service(service)

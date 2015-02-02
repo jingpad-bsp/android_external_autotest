@@ -6,6 +6,7 @@ import dbus
 import dbus.mainloop.glib
 import time
 
+from autotest_lib.client.common_lib.cros.network import apmanager_constants
 from autotest_lib.client.cros import dbus_util
 
 
@@ -33,17 +34,18 @@ class ApmanagerProxy(object):
     # AP Service property keys
     SERVICE_PROPERTY_CONFIG = 'Config'
 
-    # AP Configuration property keys
-    CONFIG_PROPERTY_BRIDGE_INTERFACE = 'BridgeInterface'
-    CONFIG_PROPERTY_CHANNEL = 'Channel'
-    CONFIG_PROPERTY_HIDDEN_NETWORK = 'HiddenNetwork'
-    CONFIG_PROPERTY_HW_MODE = 'HwMode'
-    CONFIG_PROPERTY_INTERFACE_NAME = 'InterfaceName'
-    CONFIG_PROPERTY_OPERATION_MODE = 'OperationMode'
-    CONFIG_PROPERTY_PASSPHRASE = 'Passphrase'
-    CONFIG_PROPERTY_SECURITY_MODE = 'SecurityMode'
-    CONFIG_PROPERTY_SERVER_ADDRESS_INDEX = 'ServerAddressIndex'
-    CONFIG_PROPERTY_SSID = 'Ssid'
+    # Mapping for property to dbus type function.
+    CONFIG_PROPERTY_DBUS_TYPE_MAPPING = {
+            apmanager_constants.CONFIG_BRIDGE_INTERFACE: dbus.String,
+            apmanager_constants.CONFIG_CHANNEL: dbus.UInt16,
+            apmanager_constants.CONFIG_HIDDEN_NETWORK: dbus.Boolean,
+            apmanager_constants.CONFIG_HW_MODE: dbus.String,
+            apmanager_constants.CONFIG_INTERFACE_NAME: dbus.String,
+            apmanager_constants.CONFIG_OPERATION_MODE: dbus.String,
+            apmanager_constants.CONFIG_PASSPHRASE: dbus.String,
+            apmanager_constants.CONFIG_SECURITY_MODE: dbus.String,
+            apmanager_constants.CONFIG_SERVER_ADDRESS_INDEX: dbus.UInt16,
+            apmanager_constants.CONFIG_SSID: dbus.String}
 
     POLLING_INTERVAL_SECONDS = 0.2
 
@@ -154,11 +156,10 @@ class ApmanagerProxy(object):
 
     # TODO(zqiu): add more optional parameters for setting additional
     # service configurations.
-    def start_service(self, ssid, channel=None):
+    def start_service(self, config_params):
         """Create/start an AP service with provided configurations.
 
-        @param ssid string SSID of the AP service.
-        @param channel int operating channel of the AP service.
+        @param config_params dictionary of configuration parameters.
         @return string object path of the newly created service.
 
         """
@@ -172,15 +173,17 @@ class ApmanagerProxy(object):
                                         self.DBUS_SERVICE_INTERFACE,
                                         self.SERVICE_PROPERTY_CONFIG))
         # Set configuration properties.
-        self._set_dbus_property(service_config,
-                                self.DBUS_CONFIG_INTERFACE,
-                                self.CONFIG_PROPERTY_SSID,
-                                dbus.String(ssid, variant_level=1))
-        if channel is not None:
-            self._set_dbus_property(service_config,
-                                    self.DBUS_CONFIG_INTERFACE,
-                                    self.CONFIG_PROPERTY_CHANNEL,
-                                    dbus.UInt16(channel, variant_level=1))
+        for name, value in config_params.iteritems():
+            if name in self.CONFIG_PROPERTY_DBUS_TYPE_MAPPING:
+                func = self.CONFIG_PROPERTY_DBUS_TYPE_MAPPING[name]
+                self._set_dbus_property(service_config,
+                                        self.DBUS_CONFIG_INTERFACE,
+                                        name,
+                                        func(value, variant_level=1))
+            else:
+                raise ApmanagerProxyError('Unknown configuration parameter [%s]'
+                                          % name)
+
         # Start AP service.
         service.Start()
         return service.object_path

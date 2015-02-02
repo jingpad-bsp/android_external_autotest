@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros.network import apmanager_constants
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server.cros.network import apmanager_service_provider
 from autotest_lib.server.cros.network import wifi_cell_test_base
@@ -11,15 +13,24 @@ class apmanager_SimpleConnect(wifi_cell_test_base.WiFiCellTestBase):
     """Test that the DUT can connect to an AP created by apmanager."""
     version = 1
 
-
     XMLRPC_BRINGUP_TIMEOUT_SECONDS = 60
+
+    def parse_additional_arguments(self, commandline_args, additional_params):
+        """Hook into super class to take control files parameters.
+
+        @param commandline_args dict of parsed parameters from the autotest.
+        @param additional_params dict of AP configuration parameters.
+
+        """
+        self._configurations = additional_params
 
 
     def run_once(self):
         """Sets up a router, connects to it, pings it."""
         ssid = self.context.router.build_unique_ssid()
+        self._configurations[apmanager_constants.CONFIG_SSID] = ssid
         with apmanager_service_provider.ApmanagerServiceProvider(
-                self.context.router, ssid):
+                self.context.router, self._configurations):
             assoc_params = xmlrpc_datatypes.AssociationParameters()
             assoc_params.ssid = ssid
             self.context.assert_connect_wifi(assoc_params)
