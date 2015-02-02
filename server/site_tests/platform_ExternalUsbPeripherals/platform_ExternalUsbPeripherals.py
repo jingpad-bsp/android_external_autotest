@@ -8,7 +8,7 @@ from autotest_lib.client.cros.crash_test import CrashTest
 from autotest_lib.server import autotest, test
 from autotest_lib.client.common_lib import error
 
-_WAIT_DELAY = 10
+_WAIT_DELAY = 15
 _LONG_TIMEOUT = 200
 _SUSPEND_RESUME_BOARDS = ['daisy', 'panther']
 _LOGIN_FAILED = 'DEVICE COULD NOT LOGIN!'
