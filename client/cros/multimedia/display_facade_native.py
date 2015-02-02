@@ -4,6 +4,7 @@
 
 """Facade to access the display-related functionality."""
 
+import exceptions
 import multiprocessing
 import os
 import re
@@ -23,8 +24,12 @@ TimeoutException = telemetry.core.util.TimeoutException
 _FLAKY_CALL_RETRY_TIMEOUT_SEC = 60
 _FLAKY_CALL_RETRY_DELAY_SEC = 1
 
+_telemetry_devtools = telemetry.core.backends.chrome_inspector.devtools_http
 _retry_chrome_call = retry.retry(
-        telemetry.core.exceptions.BrowserConnectionGoneException,
+        (telemetry.core.exceptions.BrowserConnectionGoneException,
+         telemetry.core.exceptions.DevtoolsTargetCrashException,
+         _telemetry_devtools.DevToolsClientUrlError,
+         exceptions.IndexError),
         timeout_min=_FLAKY_CALL_RETRY_TIMEOUT_SEC / 60.0,
         delay_sec=_FLAKY_CALL_RETRY_DELAY_SEC)
 
