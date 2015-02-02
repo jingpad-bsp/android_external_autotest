@@ -27,7 +27,7 @@ class display_HotPlugAtBoot(test.test):
         (True, False),
     ]
     # Allowed timeout for reboot.
-    REBOOT_TIMEOUT = 20
+    REBOOT_TIMEOUT = 30
 
     def run_once(self, host, test_mirrored=False):
         factory = remote_facade_factory.RemoteFacadeFactory(host)

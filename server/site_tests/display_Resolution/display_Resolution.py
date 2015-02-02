@@ -24,6 +24,10 @@ class display_Resolution(test.test):
     external display function of the DUT.
     """
     version = 1
+
+    # Allowed timeout for reboot.
+    REBOOT_TIMEOUT = 30
+
     RESOLUTION_TEST_LIST = [
             # Mix DP and HDMI together to test the converter cases.
             ('DP', 1280, 800),
@@ -62,7 +66,7 @@ class display_Resolution(test.test):
                     logging.info('Reboot...')
                     boot_id = host.get_boot_id()
                     host.reboot(wait=False)
-                    host.test_wait_for_shutdown()
+                    host.test_wait_for_shutdown(self.REBOOT_TIMEOUT)
 
                 path = os.path.join(self.bindir, 'test_data', 'edids',
                                     test_name)

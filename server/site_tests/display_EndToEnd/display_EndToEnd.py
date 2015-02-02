@@ -30,6 +30,8 @@ class display_EndToEnd(test.test):
     SUSPEND_TIMEOUT = 15
     # Allowed timeout for the transition of resume.
     RESUME_TIMEOUT = 30
+    # Allowed timeout for reboot.
+    REBOOT_TIMEOUT = 30
     # Default waiting time in sec
     WAIT_TIME = 5
     # Crash paths to check for crash meta data
@@ -83,7 +85,7 @@ class display_EndToEnd(test.test):
         logging.info('Reboot...')
         self.host.reboot(wait=False)
         time.sleep(self.WAIT_TIME)
-        self.host.test_wait_for_shutdown()
+        self.host.test_wait_for_shutdown(self.REBOOT_TIMEOUT)
         self.host.test_wait_for_boot(boot_id)
         self.chameleon_port.set_plug(plugged_after)
 
