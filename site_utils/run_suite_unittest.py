@@ -252,6 +252,9 @@ class ResultCollectorUnittest(unittest.TestCase):
             self.assertEqual(collector._buildbot_links[i].anchor, expect[0])
             self.assertEqual(collector._buildbot_links[i].url, expect[1])
             self.assertEqual(collector._buildbot_links[i].retry_count, 0)
+            # Assert that a wmatrix retry dashboard link is created.
+            self.assertNotEqual(
+                    collector._buildbot_links[i].GenerateWmatrixRetryLink(),'')
 
 
     def _end_to_end_test_helper(

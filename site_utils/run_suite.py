@@ -62,6 +62,9 @@ from autotest_lib.site_utils import job_overhead
 
 CONFIG = global_config.global_config
 
+WMATRIX_RETRY_URL = CONFIG.get_config_value('BUG_REPORTING',
+                                            'wmatrix_retry_url')
+
 # Return code that will be sent back to autotest_rpc_server.py
 RETURN_CODES = enum.Enum(
         'OK', 'ERROR', 'WARNING', 'INFRA_FAILURE', 'SUITE_TIMEOUT',
@@ -252,7 +255,7 @@ class LogLink(object):
 
 
     def __init__(self, anchor, server, job_string, bug_info=None, reason=None,
-                 retry_count=0):
+                 retry_count=0, testname=None):
         """Initialize the LogLink by generating the log URL.
 
         @param anchor      The link text.
@@ -261,11 +264,13 @@ class LogLink(object):
         @param bug_info    Info about the bug, if one was filed.
         @param reason      A string representing the reason of failure if any.
         @param retry_count How many times the test has been retried.
+        @param testname    Optional Arg that supplies the testname.
         """
         self.anchor = anchor
         self.url = self._URL_PATTERN % (server, job_string)
         self.reason = reason
         self.retry_count = retry_count
+        self.testname = testname
         if bug_info:
             self.bug_id, self.bug_count = bug_info
         else:
@@ -316,6 +321,19 @@ class LogLink(object):
         @return A link formatted for human readability.
         """
         return '%s%s' % (self.anchor, self.url)
+
+
+    def GenerateWmatrixRetryLink(self):
+        """Generate a link to the wmatrix retry dashboard.
+
+        @return A link formatted for the buildbot log annotator.
+        """
+        if not self.testname:
+            return None
+
+        return GetBuildbotStepLink(
+                'Flaky test dashboard view for test %s' %
+                self.testname, WMATRIX_RETRY_URL % self.testname)
 
 
 class Timings(object):
@@ -1009,7 +1027,8 @@ class ResultCollector(object):
                             self._max_testname_width),
                     server=self._instance_server,
                     job_string=job_id_owner,
-                    bug_info=bug_info, retry_count=retry_count)
+                    bug_info=bug_info, retry_count=retry_count,
+                    testname=v.get_testname())
             self._web_links.append(link)
 
             if v.should_display_buildbot_link():
@@ -1130,6 +1149,9 @@ class ResultCollector(object):
         """Output buildbot links."""
         for link in self._buildbot_links:
             logging.info(link.GenerateBuildbotLink())
+            wmatrix_link = link.GenerateWmatrixRetryLink()
+            if wmatrix_link:
+                logging.info(wmatrix_link)
 
 
     def run(self):

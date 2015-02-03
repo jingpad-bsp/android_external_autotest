@@ -67,8 +67,8 @@ _build_prefix = global_config.global_config.get_config_value(
     BUG_CONFIG_SECTION, 'build_prefix', default='')
 
 
-WMATRIX_RETRY_URL = ('https://wmatrix.googleplex.com/retry_teststats/?'
-                     'days_back=30&tests=%s')
+WMATRIX_RETRY_URL = global_config.global_config.get_config_value(
+    BUG_CONFIG_SECTION, 'wmatrix_retry_url')
 
 
 class InvalidBugTemplateException(Exception):
