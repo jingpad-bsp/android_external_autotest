@@ -1,4 +1,4 @@
-# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -166,7 +166,8 @@ class firmware_FWupdate(FirmwareTest):
         self.dut_run_cmd(command)
 
         # Copy local shellball to DUT.
-        dut_access.CopyToDevice('%s/chromeos-firmwareupdate' % shellball_dir, shellball, mode='scp')
+        dut_access.CopyToDevice('%s/chromeos-firmwareupdate' % shellball_dir,
+                                shellball, mode='scp')
 
         # Cleanup.
         logging.info('Cleanup %s %s', shellball_dir, extract_dir)
@@ -193,8 +194,11 @@ class firmware_FWupdate(FirmwareTest):
 
         @param hostname: DUT hostname.
         """
-        dut = remote_access.ChromiumOSDevice(hostname, username='root')
-        dut.DisableRootfsVerification()
+        logging.info('Disabling rootfs verification on device...')
+        command = ['/usr/share/vboot/bin/make_dev_ssd.sh',
+                   '--remove_rootfs_verification',
+                   '--force']
+        self.faft_client.system.run_shell_command(' '.join(command))
 
     def run_once(self, host):
         """Run chromeos-firmwareupdate with recovery or factory mode.
@@ -206,6 +210,7 @@ class firmware_FWupdate(FirmwareTest):
 
         # Make rootfs writeable
         self.make_rootfs_writable(host.hostname)
+        host.reboot()
 
         # Repack shellball with new ec and bios.
         self.repack_shellball(host.hostname)
@@ -226,4 +231,3 @@ class firmware_FWupdate(FirmwareTest):
         assert bios_version == crossystem_after['ro_fwid']
         assert ec_version == crossystem_after['ec_version']
         assert pd_version == crossystem_after['pd_version']
-
