@@ -51,7 +51,8 @@ class network_WlanDriver(test.test):
                      '3.14': 'wireless-3.8/mwifiex/mwifiex_sdio.ko'
             },
             'Broadcom BCM4354 SDIO': {
-                     '3.8': 'wireless/brcm80211/brcmfmac/brcmfmac.ko'
+                     '3.8': 'wireless/brcm80211/brcmfmac/brcmfmac.ko',
+                     '3.14': 'wireless-3.8/brcm80211/brcmfmac/brcmfmac.ko'
             },
             'Broadcom BCM4356 PCIE': {
                      '3.10': 'wireless-3.8/brcm80211/brcmfmac/brcmfmac.ko'
