@@ -31,12 +31,15 @@ class BaseActionable(object):
 class TestActionable(BaseActionable):
     """A test to be executed as an action"""
 
-    def __init__(self, test):
+    def __init__(self, test, extra_kwargs={}):
         """Init method.
 
         @param test: String, the test to run, e.g. dummy_PassServer
+        @param extra_kargs: A dictionary, extra keyval-based args
+                            that will be passed when execute the test.
         """
         self.test = test
+        self.extra_kwargs = extra_kwargs
 
 
     def execute(self, job, host, *args, **kwargs):
@@ -49,6 +52,7 @@ class TestActionable(BaseActionable):
 
         @returns True if succeeds, False otherwise.
         """
+        kwargs.update(self.extra_kwargs)
         return job.run_test(self.test, host=host, *args, **kwargs)
 
 

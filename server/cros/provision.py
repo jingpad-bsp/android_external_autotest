@@ -146,7 +146,13 @@ class Provision(_SpecialTaskAction):
     # Create some way to discover and register provisioning tests so that we
     # don't need to hand-maintain a list of all of them.
     _actions = {
-        CROS_VERSION_PREFIX: actionables.TestActionable('provision_AutoUpdate'),
+        CROS_VERSION_PREFIX: actionables.TestActionable(
+                'provision_AutoUpdate',
+                extra_kwargs={'disable_sysinfo': False,
+                              'disable_before_test_sysinfo': False,
+                              'disable_before_iteration_sysinfo': True,
+                              'disable_after_test_sysinfo': True,
+                              'disable_after_iteration_sysinfo': True}),
         FW_VERSION_PREFIX: actionables.TestActionable(
                 'provision_FirmwareUpdate'),
     }
