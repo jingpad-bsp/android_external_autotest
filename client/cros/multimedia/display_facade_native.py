@@ -22,7 +22,8 @@ TimeoutException = telemetry.core.util.TimeoutException
 
 
 _FLAKY_CALL_RETRY_TIMEOUT_SEC = 60
-_FLAKY_CALL_RETRY_DELAY_SEC = 1
+_FLAKY_CHROME_CALL_RETRY_DELAY_SEC = 1
+_FLAKY_DISPLAY_CALL_RETRY_DELAY_SEC = 2
 
 _telemetry_devtools = telemetry.core.backends.chrome_inspector.devtools_http
 _retry_chrome_call = retry.retry(
@@ -31,12 +32,12 @@ _retry_chrome_call = retry.retry(
          _telemetry_devtools.DevToolsClientUrlError,
          exceptions.IndexError),
         timeout_min=_FLAKY_CALL_RETRY_TIMEOUT_SEC / 60.0,
-        delay_sec=_FLAKY_CALL_RETRY_DELAY_SEC)
+        delay_sec=_FLAKY_CHROME_CALL_RETRY_DELAY_SEC)
 
 _retry_display_call = retry.retry(
         (KeyError, error.CmdError),
         timeout_min=_FLAKY_CALL_RETRY_TIMEOUT_SEC / 60.0,
-        delay_sec=_FLAKY_CALL_RETRY_DELAY_SEC)
+        delay_sec=_FLAKY_DISPLAY_CALL_RETRY_DELAY_SEC)
 
 
 class DisplayFacadeNative(object):
