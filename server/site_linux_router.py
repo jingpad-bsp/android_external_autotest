@@ -587,6 +587,22 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         return instance.interface
 
 
+    def get_station_interface(self, instance):
+        """Get the name of the interface associated with a station.
+
+        @param instance: int station instance number.
+        @return string interface name (e.g. 'managed0').
+
+        """
+        if instance not in range(len(self.station_instances)):
+            raise error.TestFail('Invalid instance number (%d) with %d '
+                                 'instances configured.' %
+                                 (instance, len(self.station_instances)))
+
+        instance = self.station_instances[instance]
+        return instance.interface
+
+
     def get_hostapd_mac(self, ap_num):
         """Return the MAC address of an AP in the test.
 

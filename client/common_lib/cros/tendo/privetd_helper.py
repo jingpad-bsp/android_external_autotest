@@ -128,7 +128,7 @@ class PrivetdConfig(object):
         @param device_whitelist: list of string network interface names to
                 consider exclusively for connectivity monitoring (e.g.
                 ['eth0', 'wlan0']).
-        @param disable_security: bool True to disable pairing security
+        @param disable_pairing_security: bool True to disable pairing security
         @param device_name: string Device name.  A 'unique' device name
                 will be generated if this is unspecified.
         @param device_class: string device class, a two character string.
@@ -250,14 +250,24 @@ class PrivetdHelper(object):
     """Delegate class containing logic useful with privetd."""
 
 
-    def __init__(self, host=None):
+    def __init__(self, host=None, hostname='localhost',
+                 http_port=DEFAULT_HTTP_PORT, https_port=DEFAULT_HTTPS_PORT):
+        """Construct a PrivetdHelper
+
+        @param host: host object where we should run the HTTP requests from.
+        @param hostname: string hostname of host to issue HTTP requests against.
+        @param http_port: int HTTP port to use when making HTTP requests.
+        @param https_port: int HTTPS port to use when making HTTPs requests.
+
+        """
         self._host = None
         self._run = utils.run
         if host is not None:
             self._host = host
             self._run = host.run
-        self._http_port = DEFAULT_HTTP_PORT
-        self._https_port = DEFAULT_HTTPS_PORT
+        self._hostname = hostname
+        self._http_port = http_port
+        self._https_port = https_port
 
 
     def _build_privet_url(self, path_fragment, use_https=True):
@@ -274,8 +284,8 @@ class PrivetdHelper(object):
         if use_https:
             protocol = 'https'
             port = self._https_port
-        hostname = '127.0.0.1'
-        url = '%s://%s:%s/privet/%s' % (protocol, hostname, port, path_fragment)
+        url = '%s://%s:%s/privet/%s' % (protocol, self._hostname, port,
+                                        path_fragment)
         return url
 
 
@@ -439,4 +449,3 @@ class PrivetdHelper(object):
                                             auth_token=auth_token)
         return (response['wifi']['status'] == 'success' and
                 response['wifi']['ssid'] == ssid)
-

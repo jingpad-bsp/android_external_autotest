@@ -2,21 +2,31 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
 import time
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros import avahi_utils
 from autotest_lib.client.common_lib.cros.network import interface
 from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.client.common_lib.cros.network import netblock
 from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
+from autotest_lib.client.common_lib.cros.tendo import peerd_config
 from autotest_lib.client.common_lib.cros.tendo import privetd_helper
 from autotest_lib.server import site_linux_router
 from autotest_lib.server import test
 from autotest_lib.server.cros.network import hostap_config
+from autotest_lib.server.cros.network import wifi_client
+
 
 PASSPHRASE = 'chromeos'
+
 PRIVET_AP_STARTUP_TIMEOUT_SECONDS = 30
+PRIVET_MDNS_RECORD_TIMEOUT_SECONDS = 10
+PRIVET_CONNECT_TIMEOUT_SECONDS = 30
+
+POLLING_PERIOD = 0.5
 
 
 class privetd_PrivetSetupFlow(test.test):
@@ -25,6 +35,7 @@ class privetd_PrivetSetupFlow(test.test):
 
     def warmup(self, host, router_hostname=None):
         self._router = None
+        self._shill_xmlrpc_proxy = None
         self._privet_config = privetd_helper.PrivetdConfig(
                 log_verbosity=3,
                 enable_ping=True,
@@ -35,19 +46,23 @@ class privetd_PrivetSetupFlow(test.test):
                 test_name=self.__class__.__name__,
                 client_hostname=host.hostname,
                 router_addr=router_hostname)
+        self._shill_xmlrpc_proxy = wifi_client.get_xmlrpc_proxy(host)
+        # Cleans up profiles, wifi credentials, sandboxes our new credentials.
+        self._shill_xmlrpc_proxy.init_test_network_state()
+        peerd_config.PeerdConfig(verbosity_level=3).restart_with_config(
+                host=host)
 
 
     def cleanup(self, host):
-        privetd_helper.PrivetdConfig.naive_restart(host=host)
+        if self._shill_xmlrpc_proxy is not None:
+            self._shill_xmlrpc_proxy.clean_profiles()
         if self._router is not None:
             self._router.close()
+        privetd_helper.PrivetdConfig.naive_restart(host=host)
 
 
     def run_once(self, host):
-        helper = privetd_helper.PrivetdHelper(host=host)
-        helper.ping_server()  # Make sure the server is up and running.
-
-        # We should see a bootstrapping network broadcasting from the device.
+        logging.info('Looking for privet bootstrapping network from DUT.')
         scan_interface = self._router.get_wlanif(2437, 'managed')
         self._router.host.run('%s link set %s up' %
                               (self._router.cmd_ip, scan_interface))
@@ -85,16 +100,85 @@ class privetd_PrivetSetupFlow(test.test):
         self._router.configure_managed_station(
                 privet_bss.ssid, privet_bss.frequency,
                 ap_netblock.get_addr_in_block(200))
+        station_interface = self._router.get_station_interface(instance=0)
+        logging.debug('Set up station on %s', station_interface)
         self._router.ping(ping_runner.PingConfig(ap_netblock.addr, count=3))
 
+        logging.info('Looking for privet webserver in mDNS records.')
+        start_time = time.time()
+        while time.time() - start_time < PRIVET_MDNS_RECORD_TIMEOUT_SECONDS:
+            all_records = avahi_utils.avahi_browse(host=self._router.host)
+            records = [record for record in all_records
+                       if (record.interface == station_interface and
+                           record.record_type == '_privet._tcp')]
+            if records:
+                break
+            time.sleep(POLLING_PERIOD)
+        if not records:
+            raise error.TestFail('Did not find privet mDNS records in time.')
+        if len(records) > 1:
+            raise error.TestFail('Should not see multiple privet records.')
+        privet_record = records[0]
+        # TODO(wiley) pull the HTTPs port number out of the /info API.
+        helper = privetd_helper.PrivetdHelper(
+                host=host, hostname=privet_record.address,
+                http_port=int(privet_record.port))
+        helper.ping_server()
 
-        raise error.TestNAError('Finished implemented part of test.')
-        # TODO(wiley): The following:
-        #   Use avahi-browse to look around from the router and find privet
-        #       mDNS records.
-        #   Use ip/port information in those records to call the /info API.
-        #   Then call /pairing/start
-        #   Then call /pairing/finish
-        #   Then call /setup/start
-        #   Confirm that the AP on the client goes down
-        #   Confirm that the client connects to the AP in the 5Ghz range.
+        # Now configure the client with WiFi credentials.
+        auth_token = helper.privet_auth()
+        ssid = self._router.get_ssid()
+        data = helper.setup_add_wifi_credentials(ssid, PASSPHRASE)
+        helper.setup_start(data, auth_token)
+
+        logging.info('Waiting for DUT to connect to router network.')
+        start_time = time.time()
+        # Wait for the DUT to take down the AP.
+        while time.time() - start_time < PRIVET_CONNECT_TIMEOUT_SECONDS:
+            if not dut_iw_runner.list_interfaces(desired_if_type='AP'):
+                break
+            time.sleep(POLLING_PERIOD)
+        else:
+            raise error.TestFail('Timeout waiting for DUT to take down AP.')
+
+        # But we should be able to ping the client from the router's AP.
+        while time.time() - start_time < PRIVET_CONNECT_TIMEOUT_SECONDS:
+            if dut_iw_runner.list_interfaces(desired_if_type='managed'):
+                break
+            time.sleep(POLLING_PERIOD)
+        else:
+            raise error.TestFail('Timeout waiting for DUT managerd interface.')
+
+        while time.time() - start_time < PRIVET_CONNECT_TIMEOUT_SECONDS:
+            devs = dut_iw_runner.list_interfaces(desired_if_type='managed')
+            if devs:
+                managed_interface = interface.Interface(devs[0].if_name,
+                                                        host=host)
+                # Check if we have an IP yet.
+                if managed_interface.ipv4_address_and_prefix:
+                    break
+            time.sleep(POLLING_PERIOD)
+        else:
+            raise error.TestFail('Timeout waiting for DUT managerd interface.')
+
+        managed_netblock = netblock.from_addr(
+                managed_interface.ipv4_address_and_prefix)
+        while time.time() - start_time < PRIVET_CONNECT_TIMEOUT_SECONDS:
+            PING_COUNT = 3
+            result = self._router.ping(
+                    ping_runner.PingConfig(managed_netblock.addr,
+                                           ignore_result=True,
+                                           count=PING_COUNT))
+            if result.received == PING_COUNT:
+                break
+            time.sleep(POLLING_PERIOD)
+        else:
+            raise error.TestFail('Timeout before ping was successful.')
+
+        # And privetd should think it is online as well.
+        helper = privetd_helper.PrivetdHelper(
+                host=host, hostname=managed_netblock.addr,
+                http_port=int(privet_record.port),
+                https_port=int(privet_record.port) + 1)
+        if not helper.wifi_setup_was_successful(ssid, auth_token):
+            raise error.TestFail('Device claims to be offline, but is online.')
