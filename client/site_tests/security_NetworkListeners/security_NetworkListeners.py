@@ -8,7 +8,7 @@ import os
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
-from autotest_lib.client.common_lib.cros.tendo import privetd_helper
+from autotest_lib.client.common_lib.cros.tendo import webservd_helper
 
 # Since we parse lsof output in several places, these centralize the
 # column numbering for finding things in lsof output.  For example:
@@ -102,8 +102,8 @@ class security_NetworkListeners(test.test):
             baseline_set = self.load_baseline('baseline')
             # TODO(wiley) Remove when we get per-board
             #             baselines (crbug.com/406013)
-            if privetd_helper.privetd_is_installed():
-                baseline_set.update(self.load_baseline('baseline.privetd'))
+            if webservd_helper.webservd_is_installed():
+                baseline_set.update(self.load_baseline('baseline.webservd'))
 
             # If something in the observed set is not
             # covered by the baseline...

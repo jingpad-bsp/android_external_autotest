@@ -8,7 +8,7 @@ import os
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
-from autotest_lib.client.common_lib.cros.tendo import privetd_helper
+from autotest_lib.client.common_lib.cros.tendo import webservd_helper
 from autotest_lib.client.cros.networking import apmanager_helper
 
 
@@ -67,8 +67,8 @@ class security_Firewall(test.test):
 
         baseline = self.load_baseline('baseline')
         # TODO(wiley) Remove when we get per-board baselines (crbug.com/406013)
-        if privetd_helper.privetd_is_installed():
-            baseline.update(self.load_baseline('baseline.privet'))
+        if webservd_helper.webservd_is_installed():
+            baseline.update(self.load_baseline('baseline.webservd'))
         if apmanager_helper.apmanager_is_installed():
             baseline.update(self.load_baseline('baseline.apmanager'))
         current = self.get_firewall_settings()
