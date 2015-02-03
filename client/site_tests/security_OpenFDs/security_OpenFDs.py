@@ -164,6 +164,10 @@ class security_OpenFDs(test.test):
                    r'0[57]00 /dev/urandom',
                    r'0300 /var/log/chrome/chrome_.*',
                    r'0[37]00 /var/log/ui/ui.*',
+                   # Font files can be kept open in renderers
+                   # for performance reasons.
+                   # See crbug.com/452227.
+                   r'0500 /usr/share/fonts/.*',
                   ]
 
         # Whitelist fd-type check, suitable for Chrome processes.
