@@ -49,6 +49,7 @@ class display_HotPlugNoisy(test.test):
                 chameleon_board, display_facade)
 
         errors = []
+        warns = []
         for chameleon_port in finder.iterate_all_ports():
             screen_test = chameleon_screen_test.ChameleonScreenTest(
                     chameleon_port, display_facade, self.outputdir)
@@ -99,7 +100,8 @@ class display_HotPlugNoisy(test.test):
                         # user would try to re-plug the cable to recover.
                         # We emulate this behavior below and report error if
                         # the problem persists.
-                        logging.error('Error possibly flaky: %s', err)
+                        logging.warn('Possibly flaky: %s', err)
+                        warns.append('Possibly flaky: %s' % err)
                         logging.info('Replug and retry the screen test...')
                         chameleon_port.unplug()
                         time.sleep(self.REPLUG_DELAY_SEC)
@@ -113,3 +115,5 @@ class display_HotPlugNoisy(test.test):
 
         if errors:
             raise error.TestFail('; '.join(set(errors)))
+        elif warns:
+            raise error.TestWarn('; '.join(set(warns)))
