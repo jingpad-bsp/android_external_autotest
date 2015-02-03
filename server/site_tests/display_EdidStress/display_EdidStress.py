@@ -7,6 +7,7 @@
 import glob
 import logging
 import os
+import xmlrpclib
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -78,7 +79,7 @@ class display_EdidStress(test.test):
                             raise error.TestFail('Detected resolution 0x0')
                         if screen_test.test_resolution(resolution):
                             raise error.TestFail('Resolution test failed')
-                except error.TestFail as e:
+                except (error.TestFail, xmlrpclib.Fault) as e:
                     logging.warning(e)
                     logging.error('EDID not supported: %s', filename)
                     failed_edids.append(filename)
