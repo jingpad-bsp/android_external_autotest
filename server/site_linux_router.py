@@ -928,3 +928,19 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             logging.info('Beacon footer file does not exist.  Ignoring.')
             return
         self.host.run('echo -ne %s > %s' % ('%r' % footer, footer_file))
+
+
+    def setup_bridge_mode_dhcp_server(self):
+        """Setup an DHCP server for bridge mode.
+
+        Setup an DHCP server on the master interface of the virtual ethernet
+        pair, with peer interface connected to the bridge interface. This is
+        used for testing APs in bridge mode.
+
+        """
+        # Start a local server on master interface of virtual ethernet pair.
+        self.start_local_server(
+                self.get_virtual_ethernet_master_interface())
+        # Add peer interface to the bridge.
+        self.add_interface_to_bridge(
+                self.get_virtual_ethernet_peer_interface())

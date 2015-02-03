@@ -27,6 +27,16 @@ class apmanager_SimpleConnect(wifi_cell_test_base.WiFiCellTestBase):
 
     def run_once(self):
         """Sets up a router, connects to it, pings it."""
+        # Setup bridge mode test environments if AP is configured to operate in
+        # bridge mode.
+        if (apmanager_constants.CONFIG_OPERATION_MODE in self._configurations
+            and self._configurations[apmanager_constants.CONFIG_OPERATION_MODE]
+                    == apmanager_constants.OPERATION_MODE_BRIDGE):
+            # Setup DHCP server on the other side of the bridge.
+            self.context.router.setup_bridge_mode_dhcp_server()
+            self._configurations[apmanager_constants.CONFIG_BRIDGE_INTERFACE] =\
+                    self.context.router.get_bridge_interface()
+
         ssid = self.context.router.build_unique_ssid()
         self._configurations[apmanager_constants.CONFIG_SSID] = ssid
         with apmanager_service_provider.ApmanagerServiceProvider(

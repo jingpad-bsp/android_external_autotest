@@ -9,6 +9,7 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import path_utils
+from autotest_lib.client.common_lib.cros import virtual_ethernet_pair
 from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.server.cros.network import packet_capturer
@@ -34,6 +35,7 @@ class LinuxSystem(object):
     CAPABILITY_SEND_MANAGEMENT_FRAME = 'send_management_frame'
     CAPABILITY_TDLS = 'tdls'
     CAPABILITY_VHT = 'vht'
+    BRIDGE_INTERFACE_NAME = 'br0'
 
 
     @property
@@ -81,6 +83,8 @@ class LinuxSystem(object):
         self._wlanifs_initialized = False
         self._capabilities = None
         self._ping_runner = ping_runner.PingRunner(host=self.host)
+        self._bridge_interface = None
+        self._virtual_ethernet_pair = None
 
 
     @property
@@ -133,6 +137,22 @@ class LinuxSystem(object):
         return phys_for_frequency, phy_bus_type
 
 
+    def _create_bridge_interface(self):
+        """Create a bridge interface."""
+        self.host.run('%s link add name %s type bridge' %
+                      (self.cmd_ip, self.BRIDGE_INTERFACE_NAME))
+        self.host.run('%s link set dev %s up' %
+                      (self.cmd_ip, self.BRIDGE_INTERFACE_NAME))
+        self._bridge_interface = self.BRIDGE_INTERFACE_NAME
+
+
+    def _create_virtual_ethernet_pair(self):
+        """Create a virtual ethernet pair."""
+        self._virtual_ethernet_pair = virtual_ethernet_pair.VirtualEthernetPair(
+                interface_ip=None, peer_interface_ip=None, host=self.host)
+        self._virtual_ethernet_pair.setup()
+
+
     def remove_interface(self, interface):
         """Remove an interface from a WiFi device.
 
@@ -159,6 +179,10 @@ class LinuxSystem(object):
             if net_dev.inherited:
                 continue
             self.remove_interface(net_dev.if_name)
+        if self._bridge_interface is not None:
+            self.remove_bridge_interface()
+        if self._virtual_ethernet_pair is not None:
+            self.remove_ethernet_pair_interface()
         self.host.close()
         self.host = None
 
@@ -319,6 +343,65 @@ class LinuxSystem(object):
         for net_dev in self._wlanifs_in_use:
             if net_dev.if_name == wlanif:
                  self._wlanifs_in_use.remove(net_dev)
+
+
+    def get_bridge_interface(self):
+        """Return the bridge interface, create one if it is not created yet.
+
+        @return string name of bridge interface.
+        """
+        if self._bridge_interface is None:
+            self._create_bridge_interface()
+        return self._bridge_interface
+
+
+    def remove_bridge_interface(self):
+        """Remove the bridge interface that's been created."""
+        if self._bridge_interface is not None:
+            self.host.run('%s link delete %s type bridge' %
+                          (self.cmd_ip, self._bridge_interface))
+        self._bridge_interface = None
+
+
+    def add_interface_to_bridge(self, interface):
+        """Add an interface to the bridge interface.
+
+        This will create the bridge interface if it is not created yet.
+
+        @param interface string name of the interface to add to the bridge.
+        """
+        if self._bridge_interface is None:
+            self._create_bridge_interface()
+        self.host.run('%s link set dev %s master %s' %
+                      (self.cmd_ip, interface, self._bridge_interface))
+
+
+    def get_virtual_ethernet_master_interface(self):
+        """Return the master interface of the virtual ethernet pair.
+
+        @return string name of the master interface of the virtual ethernet
+                pair.
+        """
+        if self._virtual_ethernet_pair is None:
+            self._create_virtual_ethernet_pair()
+        return self._virtual_ethernet_pair.interface_name
+
+
+    def get_virtual_ethernet_peer_interface(self):
+        """Return the peer interface of the virtual ethernet pair.
+
+        @return string name of the peer interface of the virtual ethernet pair.
+        """
+        if self._virtual_ethernet_pair is None:
+            self._create_virtual_ethernet_pair()
+        return self._virtual_ethernet_pair.peer_interface_name
+
+
+    def remove_ethernet_pair_interface(self):
+        """Remove the virtual ethernet pair that's been created."""
+        if self._virtual_ethernet_pair is not None:
+            self._virtual_ethernet_pair.teardown()
+        self._virtual_ethernet_pair = None
 
 
     def require_capabilities(self, requirements, fatal_failure=False):

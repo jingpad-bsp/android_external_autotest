@@ -118,10 +118,10 @@ class Interface:
         # We extract the second column from any entry for which the first
         # column is an address type we are interested in.  For example,
         # for "inet 172.22.73.124/22 ...", we will capture "172.22.73.124/22".
-        try:
-            result = self._run('ip addr show %s 2> /dev/null' % self._name)
-            address_info = result.stdout
-        except error.CmdError, e:
+        result = self._run('ip addr show %s 2> /dev/null' % self._name,
+                           ignore_status=True)
+        address_info = result.stdout
+        if result.exit_status != 0:
             # The "ip" command will return non-zero if the interface does
             # not exist.
             return {}

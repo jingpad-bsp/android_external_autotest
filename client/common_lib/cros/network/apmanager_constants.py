@@ -16,5 +16,9 @@ CONFIG_SECURITY_MODE = 'SecurityMode'
 CONFIG_SERVER_ADDRESS_INDEX = 'ServerAddressIndex'
 CONFIG_SSID = 'Ssid'
 
+# Configuration value definitions
+OPERATION_MODE_BRIDGE = 'bridge'
+OPERATION_MODE_SERVER = 'server'
+
 # Default configuration values.
 DEFAULT_CHANNEL_NUMBER = 6

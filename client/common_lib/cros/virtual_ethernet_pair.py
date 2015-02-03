@@ -47,14 +47,6 @@ from autotest_lib.client.common_lib.cros.network import interface
 class VirtualEthernetPair(object):
     """ Class for configuring virtual ethernet device pair. """
 
-    @staticmethod
-    def _interface_exists(interface_name):
-        """
-        Returns True iff we found an interface with name |interface_name|.
-        """
-        return interface.Interface(interface_name).exists
-
-
     def __init__(self,
                  interface_name='veth_master',
                  peer_interface_name='veth_slave',
@@ -79,6 +71,7 @@ class VirtualEthernetPair(object):
         self._peer_interface_ip = peer_interface_ip
         self._ignore_shutdown_errors = ignore_shutdown_errors
         self._run = utils.run
+        self._host = host
         if host is not None:
             self._run = host.run
 
@@ -111,8 +104,9 @@ class VirtualEthernetPair(object):
         # get any IP traffic through.  Since this is basically a loopback
         # device, just allow all traffic.
         for name in (self._interface_name, self._peer_interface_name):
-            code = self._run('iptables -I INPUT -i %s -j ACCEPT' % name)
-            if code != 0:
+            status = self._run('iptables -I INPUT -i %s -j ACCEPT' % name,
+                               ignore_status=True)
+            if status.exit_status != 0:
                 logging.error('iptables rule addition failed for interface %s',
                               name)
         self._is_healthy = True
@@ -204,6 +198,13 @@ class VirtualEthernetPair(object):
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.teardown()
+
+
+    def _interface_exists(self, interface_name):
+        """
+        Returns True iff we found an interface with name |interface_name|.
+        """
+        return interface.Interface(interface_name, host=self._host).exists
 
 
     def _either_interface_exists(self):
