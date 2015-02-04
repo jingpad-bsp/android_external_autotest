@@ -10,10 +10,6 @@ cd $SCRIPT_DIR
 INTEREST=(
 	chromeos-lab-alerts@google.com
 	skc-fireteam@google.com
-	jrbarnette@google.com
-	preeyanka@google.com
-	skc-fireteam@google.com
-	sosa@google.com
 )
 
 mailx -s "DUT board inventories $RUNDATE" "${INTEREST[@]}" <$RUNFILE
