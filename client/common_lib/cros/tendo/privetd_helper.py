@@ -96,6 +96,7 @@ class PrivetdConfig(object):
         @param log_verbosity: int logging verbosity for privetd.
         @param state_file_path: string path to privetd state file.
         @param clean_state: bool True to clear state from the state file.
+                |state_file_path| must not be None if this is True.
         @param log_verbosity: integer verbosity level of log messages.
         @param enable_ping: bool True if we should enable the ping URL
                 on the privetd web server.
@@ -137,7 +138,6 @@ class PrivetdConfig(object):
                 'monitor_timeout_seconds': self.monitor_timeout_seconds,
                 'connect_timeout_seconds': self.connect_timeout_seconds,
                 'bootstrap_timeout_seconds': self.bootstrap_timeout_seconds,
-                'state_file': self.state_file_path,
         }
         flag_list = []
         flag_list.append('PRIVETD_LOG_LEVEL=%d' % self.log_verbosity)
@@ -151,6 +151,8 @@ class PrivetdConfig(object):
         if self.device_whitelist:
             flag_list.append('PRIVETD_DEVICE_WHITELIST=%s' %
                              ','.join(self.device_whitelist))
+        if self.state_file_path:
+            flag_list.append('PRIVETD_STATE_PATH=%s' % self.state_file_path)
         run('stop privetd', ignore_status=True)
         conf_lines = ['%s=%s' % pair for pair in conf_dict.iteritems()]
         # Go through this convoluted shell magic here because we need to create
@@ -158,6 +160,8 @@ class PrivetdConfig(object):
         run('cat <<EOF >%s\n%s\nEOF\n' % (PRIVETD_CONF_FILE_PATH,
                                           '\n'.join(conf_lines)))
         if self.clean_state:
+            if not self.state_file_path:
+                raise error.TestError('Cannot clean unknown state file path.')
             run('echo > %s' % self.state_file_path)
             run('chown privetd:privetd %s' % self.state_file_path)
         run('start privetd %s' % ' '.join(flag_list))
