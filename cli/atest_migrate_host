@@ -30,8 +30,8 @@ for label in old_host_labels:
     if not new.get_labels(name=label.name):
         print label
         new_label = new.create_label(name=label.name,
-                                     platform=label.platform,
-                                     only_if_needed=label.only_if_needed)
+                                        platform=label.platform,
+                                        only_if_needed=label.only_if_needed)
     # Add any missing labels to the machine
     if not [l for l in new_host.get_labels() if l.name == label.name]:
         new_host.add_labels([label.name])
