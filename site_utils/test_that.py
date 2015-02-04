@@ -551,6 +551,9 @@ def parse_arguments(argv):
                              'against already installed DUT image. Examples: '
                              'link-paladin/R34-5222.0.0-rc2, '
                              'lumpy-release/R34-5205.0.0')
+    parser.add_argument('-p', '--pool', metavar='POOL', default='try-bot',
+                        help='Pool to use when running tests in the lab. '
+                             'Default is "try-bot"')
     parser.add_argument('--fast', action='store_true', dest='fast_mode',
                         default=False,
                         help='Enable fast mode.  This will cause test_that to '
@@ -896,7 +899,7 @@ def _main_for_lab_run(argv, arguments):
                '--board', arguments.board,
                '--build', arguments.build,
                '--suite_name', 'test_that_wrapper',
-               '--pool', 'try-bot',
+               '--pool', arguments.pool,
                '--suite_args', flattened_argv]
     logging.info('About to start lab suite with command %s.', command)
     return subprocess.call(command)
