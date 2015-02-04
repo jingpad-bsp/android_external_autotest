@@ -176,7 +176,7 @@ class ChameleonVideoInputFinder(ChameleonInputFinder):
                         old_value=False)
                 logging.info('CrOS detected external connector: %r', output)
 
-                if output and output.startswith(connector_type):
+                if output:
                     yield video_port
                     yielded = True
                 else:
