@@ -31,6 +31,7 @@ NAME_ATHEROS_AR9280 = 'Atheros AR9280'
 NAME_ATHEROS_AR9382 = 'Atheros AR9382'
 NAME_ATHEROS_AR9462 = 'Atheros AR9462'
 NAME_INTEL_7260 = 'Intel 7260'
+NAME_INTEL_7265 = 'Intel 7265'
 NAME_BROADCOM_BCM4354_SDIO = 'Broadcom BCM4354 SDIO'
 NAME_BROADCOM_BCM4356_PCIE = 'Broadcom BCM4356 PCIE'
 NAME_UNKNOWN = 'Unknown WiFi Device'
@@ -49,6 +50,7 @@ DEVICE_NAME_LOOKUP = {
     # TODO(wiley): Why is this number slightly different on some platforms?
     #              Is it just a different part source?
     DeviceInfo('0x8086', '0x08b2'): NAME_INTEL_7260,
+    DeviceInfo('0x8086', '0x095a'): NAME_INTEL_7265,
     DeviceInfo('0x02d0', '0x4354'): NAME_BROADCOM_BCM4354_SDIO,
     DeviceInfo('0x14e4', '0x43ec'): NAME_BROADCOM_BCM4356_PCIE,
 }
