@@ -144,9 +144,7 @@ class TestBug(Bug):
                     'results log: %(results_log)s.\n'
                     'status log: %(status_log)s.\n'
                     'buildbot stages: %(buildbot_stages)s.\n'
-                    'job link: %(job)s.\n\n'
-                    'You may want to check the test retry dashboard in case '
-                    'this is a flakey test: %(retry_url)s\n')
+                    'job link: %(job)s.\n')
 
         specifics = {
             'status': self.status,
@@ -160,7 +158,6 @@ class TestBug(Bug):
             'status_log': links.status_log,
             'buildbot_stages': links.buildbot,
             'job': links.job,
-            'retry_url': links.retry_url,
         }
 
         return template % specifics
@@ -178,16 +175,14 @@ class TestBug(Bug):
                                                  'status_log,'
                                                  'artifacts,'
                                                  'buildbot,'
-                                                 'job',
-                                                 'retry_url'))
+                                                 'job'))
         return links(reporting_utils.link_result_logs(
                          self.job_id, self.result_owner, self.hostname),
                      reporting_utils.link_status_log(
                          self.job_id, self.result_owner, self.hostname),
                      reporting_utils.link_build_artifacts(self.build),
                      reporting_utils.link_buildbot_stages(self.build),
-                     reporting_utils.link_job(self.job_id),
-                     reporting_utils.link_retry_url(self.name))
+                     reporting_utils.link_job(self.job_id))
 
 
 class MachineKillerBug(Bug):

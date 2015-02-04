@@ -67,10 +67,6 @@ _build_prefix = global_config.global_config.get_config_value(
     BUG_CONFIG_SECTION, 'build_prefix', default='')
 
 
-WMATRIX_RETRY_URL = ('https://wmatrix.googleplex.com/retry_teststats/?'
-                     'days_back=30&tests=%s')
-
-
 class InvalidBugTemplateException(Exception):
     """Exception raised when a bug template is not valid, e.g., missing value
     for essential attributes.
@@ -324,13 +320,3 @@ def link_buildbot_stages(build):
                      metadata.get('builder-name'),
                      metadata.get('build-number'))).replace(' ', '%20')
     return 'NA'
-
-
-def link_retry_url(test_name):
-    """Link to the wmatrix retry stats page for this test.
-
-    @param test_name: Test we want to search the retry stats page for.
-
-    @return: A link to the wmatrix retry stats dashboard for this test.
-    """
-    return WMATRIX_RETRY_URL % test_name
