@@ -6,7 +6,9 @@ import logging
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.client.common_lib.cros.tendo import privetd_helper
+from autotest_lib.client.cros.networking import wifi_proxy
 from autotest_lib.client.cros.tendo import privetd_dbus_helper
 
 def check(value, expected, description):
@@ -32,13 +34,16 @@ class privetd_BasicDBusAPI(test.test):
 
     def run_once(self):
         """Test entry point."""
-        # Initially, disable bootstapping.
+        # Initially, disable bootstapping and remove WiFi credentials.
         config = privetd_helper.PrivetdConfig(
                 wifi_bootstrap_mode=privetd_helper.BOOTSTRAP_CONFIG_DISABLED,
                 gcd_bootstrap_mode=privetd_helper.BOOTSTRAP_CONFIG_DISABLED,
                 log_verbosity=3,
+                clean_state=True,
                 disable_pairing_security=True)
         privetd = privetd_dbus_helper.make_dbus_helper(config)
+        self._shill = wifi_proxy.WifiProxy.get_proxy()
+        self._shill.remove_all_wifi_entries()
 
         check(privetd.manager.Ping(), 'Hello world!', 'ping response')
         check(privetd.wifi_bootstrap_status,
@@ -47,7 +52,7 @@ class privetd_BasicDBusAPI(test.test):
         check(privetd.pairing_info, {}, 'pairing info')
         # But we should still be able to pair.
         helper = privetd_helper.PrivetdHelper()
-        data = {'pairing': 'embeddedCode', 'crypto': 'none'}
+        data = {'pairing': 'pinCode', 'crypto': 'none'}
         pairing = helper.send_privet_request(privetd_helper.URL_PAIRING_START,
                                              request_data=data)
         # And now we should be able to see a pin code in our pairing status.
@@ -71,14 +76,21 @@ class privetd_BasicDBusAPI(test.test):
         check(privetd.pairing_info, {}, 'pairing info')
 
         # Then enable bootstrapping, and check that we're waiting for creds.
+        iw_helper = iw_runner.IwRunner()
+        interfaces = iw_helper.list_interfaces(desired_if_type='managed')
+        if not interfaces:
+            raise error.TestError('Cannot find appropriate WiFi interface to '
+                                  'whitelist.')
         config.wifi_bootstrap_mode = privetd_helper.BOOTSTRAP_CONFIG_AUTOMATIC
+        config.device_whitelist = [interface.if_name
+                                   for interface in interfaces]
         privetd = privetd_dbus_helper.make_dbus_helper(config)
         check(privetd.wifi_bootstrap_status,
               privetd_helper.WIFI_BOOTSTRAP_STATE_WAITING,
               'wifi bootstrap status')
 
 
-    def clean(self):
+    def cleanup(self):
         """Clean up processes altered during the test."""
         privetd_helper.PrivetdConfig.naive_restart()
 

@@ -381,7 +381,7 @@ class PrivetdHelper(object):
         @return resulting auth token.
 
         """
-        data = {'pairing': 'embeddedCode', 'crypto': 'none'}
+        data = {'pairing': 'pinCode', 'crypto': 'none'}
         pairing = self.send_privet_request(URL_PAIRING_START, request_data=data)
 
         data = {'sessionId': pairing['sessionId'],
