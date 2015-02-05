@@ -5,6 +5,7 @@
 import logging
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros import servo_afe_board_map
 from autotest_lib.server import test
 from autotest_lib.server.cros.servo import servo
 
@@ -293,9 +294,10 @@ class infra_ServoDiagnosis(test.test):
 
         # Make sure servo board matches DUT label
         board = host._get_board_from_afe()
+        board = servo_afe_board_map.map_afe_board_to_servo_board(board)
         if (board and results['board'] is not None and
                 board != results['board']):
-            logging.info('AFE says board is %s', board)
+            logging.info('AFE says board should be %s', board)
             if results['servod']:
                 servo_host.run('stop servod', ignore_status=True)
             servo_host.run('start servod BOARD=%s' % board)
