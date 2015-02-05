@@ -21,7 +21,7 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.server import site_utils as server_site_utils
 from autotest_lib.server.cros.servo import servo
@@ -83,7 +83,7 @@ class ServoHost(ssh_host.SSHHost):
     INITIALIZE_SERVO_TIMEOUT_SECS = 30
 
     _MAX_POWER_CYCLE_ATTEMPTS = 3
-    _timer = stats.Timer('servo_host')
+    _timer = autotest_stats.Timer('servo_host')
 
 
     def _initialize(self, servo_host='localhost', servo_port=9999,
@@ -454,7 +454,8 @@ class ServoHost(ssh_host.SSHHost):
                 updater.trigger_update()
             except autoupdater.RootFSUpdateError as e:
                 trigger_download_status = 'failed with %s' % str(e)
-                stats.Counter('servo_host.RootFSUpdateError').increment()
+                autotest_stats.Counter('servo_host.RootFSUpdateError'
+                                       ).increment()
             else:
                 trigger_download_status = 'passed'
             logging.info('Triggered download and update %s for %s, '
@@ -583,17 +584,18 @@ class ServoHost(ssh_host.SSHHost):
             try:
                 repair_func()
                 self.verify()
-                stats.Counter(counter_prefix + 'SUCCEEDED').increment()
+                autotest_stats.Counter(counter_prefix + 'SUCCEEDED').increment()
                 return
             except ServoHostRepairMethodNA as e:
                 logging.warning('Repair method NA: %s', e)
-                stats.Counter(counter_prefix + 'RepairNA').increment()
+                autotest_stats.Counter(counter_prefix + 'RepairNA').increment()
                 errors.append(str(e))
             except Exception as e:
                 logging.warning('Failed to repair servo: %s', e)
-                stats.Counter(counter_prefix + 'FAILED').increment()
+                autotest_stats.Counter(counter_prefix + 'FAILED').increment()
                 errors.append(str(e))
-        stats.Counter('servo_host_repair.Full_Repair_Failed').increment()
+        autotest_stats.Counter('servo_host_repair.Full_Repair_Failed'). \
+                increment()
         raise ServoHostRepairTotalFailure(
                 'All attempts at repairing the servo failed:\n%s' %
                 '\n'.join(errors))

@@ -1,4 +1,4 @@
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.server.cros import provision
 
 
@@ -16,7 +16,7 @@ def verify(machine):
         # servo update if needed.
         host = hosts.create_host(machine, initialize=False, auto_monitor=False,
                                  try_lab_servo=True)
-        timer = stats.Timer('verify_time')
+        timer = autotest_stats.Timer('verify_time')
         timer.start()
 
         host.verify()

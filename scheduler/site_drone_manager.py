@@ -4,7 +4,7 @@
 import logging
 
 from autotest_lib.client.common_lib import global_config, error
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.scheduler import drones, scheduler_config
 
 HOSTS_JOB_SUBDIR = 'hosts/'
@@ -16,7 +16,7 @@ ENABLE_ARCHIVING =  global_config.global_config.get_config_value(
 class SiteDroneManager(object):
 
 
-    _timer = stats.Timer('drone_manager')
+    _timer = autotest_stats.Timer('drone_manager')
 
 
     def copy_to_results_repository(self, process, source_path,

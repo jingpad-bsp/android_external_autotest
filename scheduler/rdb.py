@@ -12,7 +12,7 @@ import common
 from django.core import exceptions as django_exceptions
 from django.db.models import fields
 from django.db.models import Q
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.frontend.afe import models
 from autotest_lib.scheduler import rdb_cache_manager
 from autotest_lib.scheduler import rdb_hosts
@@ -21,7 +21,7 @@ from autotest_lib.scheduler import rdb_utils
 from autotest_lib.server import utils
 
 
-_timer = stats.Timer(rdb_utils.RDB_STATS_KEY)
+_timer = autotest_stats.Timer(rdb_utils.RDB_STATS_KEY)
 _is_master = not utils.is_shard()
 
 
@@ -414,10 +414,10 @@ class AvailableHostRequestHandler(BaseHostRequestHandler):
         logging.debug('Host acquisition stats: distinct requests: %s, leased '
                       'hosts: %s, unsatisfied requests: %s', distinct_requests,
                       self.leased_hosts_count, self.unsatisfied_requests)
-        stats.Gauge(rdb_utils.RDB_STATS_KEY).send('leased_hosts',
-                                                  self.leased_hosts_count)
-        stats.Gauge(rdb_utils.RDB_STATS_KEY).send('unsatisfied_requests',
-                                                  self.unsatisfied_requests)
+        autotest_stats.Gauge(rdb_utils.RDB_STATS_KEY).send(
+                'leased_hosts', self.leased_hosts_count)
+        autotest_stats.Gauge(rdb_utils.RDB_STATS_KEY).send(
+                'unsatisfied_requests', self.unsatisfied_requests)
 
 
     @_timer.decorate

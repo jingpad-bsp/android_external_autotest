@@ -12,7 +12,7 @@ import logging
 
 import common
 
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import models
 from autotest_lib.server.cros.dynamic_suite import constants
@@ -20,7 +20,7 @@ from autotest_lib.scheduler import scheduler_models
 from autotest_lib.scheduler import scheduler_lib
 
 
-_job_timer = stats.Timer('scheduler.job_query_manager')
+_job_timer = autotest_stats.Timer('scheduler.job_query_manager')
 class AFEJobQueryManager(object):
     """Query manager for AFE Jobs."""
 
@@ -210,7 +210,7 @@ class AFEJobQueryManager(object):
         return dict((keyval.job_id, int(keyval.value)) for keyval in query)
 
 
-_host_timer = stats.Timer('scheduler.host_query_manager')
+_host_timer = autotest_stats.Timer('scheduler.host_query_manager')
 class AFEHostQueryManager(object):
     """Query manager for AFE Hosts."""
 

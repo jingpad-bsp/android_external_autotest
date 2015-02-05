@@ -22,7 +22,7 @@ from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.common_lib.cros.graphite import autotest_es
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.client.cros import constants as client_constants
 from autotest_lib.client.cros import cros_ui
 from autotest_lib.client.cros.audio import cras_utils
@@ -480,7 +480,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 'branch': branch,
                 'devserver': devserver.replace('.', '_'),
             }
-            stats.Gauge('verify_job_repo_url').send(
+            autotest_stats.Gauge('verify_job_repo_url').send(
                 '%(board)s.%(build_type)s.%(branch)s.%(devserver)s' % stats_key,
                 stage_time)
 
@@ -945,7 +945,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                               % usb_boot_timeout)
         logging.info('Downloading image to USB, then booting from it. Usb boot '
                      'timeout = %s', usb_boot_timeout)
-        timer = stats.Timer(usb_boot_timer_key)
+        timer = autotest_stats.Timer(usb_boot_timer_key)
         timer.start()
         self.servo.install_recovery_image(image_url)
         if not self.wait_up(timeout=usb_boot_timeout):
@@ -956,7 +956,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         install_timer_key = ('servo_install.install_timeout_%s'
                              % install_timeout)
-        timer = stats.Timer(install_timer_key)
+        timer = autotest_stats.Timer(install_timer_key)
         timer.start()
         logging.info('Installing image through chromeos-install.')
         self.run('chromeos-install --yes --lab_preserve_logs=%s' %
@@ -1153,35 +1153,35 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 repair_func()
                 self.try_collect_crashlogs()
                 self.check_device()
-                stats.Counter(
+                autotest_stats.Counter(
                         '%s.SUCCEEDED' % repair_func.__name__).increment()
                 if board:
-                    stats.Counter(
+                    autotest_stats.Counter(
                         '%s.%s.SUCCEEDED' % (repair_func.__name__,
                                              board)).increment()
                 return
             except error.AutoservRepairMethodNA as e:
-                stats.Counter(
+                autotest_stats.Counter(
                         '%s.RepairNA' % repair_func.__name__).increment()
                 if board:
-                    stats.Counter(
+                    autotest_stats.Counter(
                         '%s.%s.RepairNA' % (repair_func.__name__,
                                             board)).increment()
                 logging.warning('Repair function NA: %s', e)
                 errors.append(str(e))
             except Exception as e:
-                stats.Counter(
+                autotest_stats.Counter(
                         '%s.FAILED' % repair_func.__name__).increment()
                 if board:
-                    stats.Counter(
+                    autotest_stats.Counter(
                         '%s.%s.FAILED' % (repair_func.__name__,
                                           board)).increment()
                 logging.warning('Failed to repair device: %s', e)
                 errors.append(str(e))
 
-        stats.Counter('Full_Repair_Failed').increment()
+        autotest_stats.Counter('Full_Repair_Failed').increment()
         if board:
-            stats.Counter(
+            autotest_stats.Counter(
                 'Full_Repair_Failed.%s' % board).increment()
         raise error.AutoservRepairTotalFailure(
                 'All attempts at repairing the device failed:\n%s' %

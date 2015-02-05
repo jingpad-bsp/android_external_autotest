@@ -14,13 +14,13 @@ import socket
 import subprocess
 
 import common
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.frontend import database_settings_helper
 from autotest_lib.scheduler import email_manager
 
 
 STATS_KEY = 'db_optimize.%s' % socket.gethostname()
-timer = stats.Timer(STATS_KEY)
+timer = autotest_stats.Timer(STATS_KEY)
 
 @timer.decorate
 def main_without_exception_handling():

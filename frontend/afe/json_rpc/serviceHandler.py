@@ -32,7 +32,7 @@ except django_exceptions.ImproperlyConfigured:
     from json import encoder
     json_encoder = encoder.JSONEncoder()
 
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 
 
 json_decoder = decoder.JSONDecoder()
@@ -103,11 +103,11 @@ class ServiceHandler(object):
         except KeyError:
             raise BadServiceRequest(request)
 
-        stats.Counter('rpc').increment(methName)
+        autotest_stats.Counter('rpc').increment(methName)
 
         metadata = request.copy()
         metadata['_type'] = 'rpc'
-        timer = stats.Timer('rpc', metadata=metadata)
+        timer = autotest_stats.Timer('rpc', metadata=metadata)
 
         try:
             timer.start()

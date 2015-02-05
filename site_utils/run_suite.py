@@ -48,7 +48,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config, enum
 from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib import time_utils
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.server import utils
@@ -458,25 +458,25 @@ class Timings(object):
         # value the member artifact_end_time is set to None.
         if self.download_start_time:
             if self.payload_end_time:
-                stats.Timer(data_key).send('payload_download_time',
-                    (self.payload_end_time -
-                     self.download_start_time).total_seconds())
+                autotest_stats.Timer(data_key).send('payload_download_time',
+                        (self.payload_end_time -
+                         self.download_start_time).total_seconds())
 
             if self.artifact_end_time:
-                stats.Timer(data_key).send('artifact_download_time',
-                    (self.artifact_end_time -
-                     self.download_start_time).total_seconds())
+                autotest_stats.Timer(data_key).send('artifact_download_time',
+                        (self.artifact_end_time -
+                         self.download_start_time).total_seconds())
 
         if self.tests_end_time:
             if self.suite_start_time:
-                stats.Timer(data_key).send('suite_run_time',
-                    (self.tests_end_time -
-                     self.suite_start_time).total_seconds())
+                autotest_stats.Timer(data_key).send('suite_run_time',
+                        (self.tests_end_time -
+                         self.suite_start_time).total_seconds())
 
             if self.tests_start_time:
-                stats.Timer(data_key).send('tests_run_time',
-                    (self.tests_end_time -
-                     self.tests_start_time).total_seconds())
+                autotest_stats.Timer(data_key).send('tests_run_time',
+                        (self.tests_end_time -
+                         self.tests_start_time).total_seconds())
 
 
 _DEFAULT_AUTOTEST_INSTANCE = CONFIG.get_config_value(
@@ -1381,7 +1381,8 @@ def main():
 
     logging.info('Will return from run_suite with status: %s',
                   RETURN_CODES.get_string(code))
-    stats.Counter('run_suite.%s' % RETURN_CODES.get_string(code)).increment()
+    autotest_stats.Counter('run_suite.%s' %
+                           RETURN_CODES.get_string(code)).increment()
     return code
 
 

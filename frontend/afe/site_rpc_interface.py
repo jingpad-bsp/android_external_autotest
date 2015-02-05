@@ -18,7 +18,7 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib.cros import dev_server
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.frontend.afe import rpc_utils
 from autotest_lib.server import utils
 from autotest_lib.server.cros.dynamic_suite import constants
@@ -62,9 +62,10 @@ def _get_control_file_contents_by_name(build, ds, suite_name):
     @return the contents of the desired control file.
     """
     getter = control_file_getter.DevServerGetter.create(build, ds)
-    timer = stats.Timer('control_files.parse.%s.%s' %
-                        (ds.get_server_name(ds.url()).replace('.', '_'),
-                            suite_name.rsplit('.')[-1]))
+    timer = autotest_stats.Timer('control_files.parse.%s.%s' %
+                                 (ds.get_server_name(ds.url()
+                                                     ).replace('.', '_'),
+                                  suite_name.rsplit('.')[-1]))
     # Get the control file for the suite.
     try:
         with timer:
@@ -102,8 +103,8 @@ def _stage_build_artifacts(build):
     # components to be downloaded in the background.
     ds = dev_server.ImageServer.resolve(build)
     timings[constants.DOWNLOAD_STARTED_TIME] = formatted_now()
-    timer = stats.Timer('control_files.stage.%s' % (
-                    ds.get_server_name(ds.url()).replace('.', '_')))
+    timer = autotest_stats.Timer('control_files.stage.%s' % (
+            ds.get_server_name(ds.url()).replace('.', '_')))
     try:
         with timer:
             ds.stage_artifacts(build, ['test_suites'])
@@ -373,7 +374,7 @@ def shard_heartbeat(shard_hostname, jobs=(), hqes=(),
     # A NOT IN query with 5000 ids took about 30ms in tests made.
     # These numbers seem low enough to outweigh the disadvantages of the
     # solutions described above.
-    timer = stats.Timer('shard_heartbeat')
+    timer = autotest_stats.Timer('shard_heartbeat')
     with timer:
         shard_obj = rpc_utils.retrieve_shard(shard_hostname=shard_hostname)
         rpc_utils.persist_records_sent_from_shard(shard_obj, jobs, hqes)

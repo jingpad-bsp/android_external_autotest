@@ -9,7 +9,7 @@ import logging
 
 import common
 from autotest_lib.client.common_lib import error, global_config, utils
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.scheduler import email_manager, drone_utility, drones
 from autotest_lib.scheduler import scheduler_config
 from autotest_lib.scheduler import thread_lib
@@ -153,7 +153,7 @@ class BaseDroneManager(object):
     # about a drone hitting process limit is sent.
     NOTIFY_INTERVAL = 60 * 60 * 24 # one day
     _STATS_KEY = 'drone_manager'
-    _timer = stats.Timer(_STATS_KEY)
+    _timer = autotest_stats.Timer(_STATS_KEY)
 
 
     def __init__(self):
@@ -408,7 +408,7 @@ class BaseDroneManager(object):
                 info = self._registered_pidfile_info[pidfile_id]
                 if info.num_processes is not None:
                     drone.active_processes += info.num_processes
-        stats.Gauge(self._STATS_KEY).send(
+        autotest_stats.Gauge(self._STATS_KEY).send(
                 '%s.%s' % (drone.hostname.replace('.', '_'),
                            'active_processes'), drone.active_processes)
 

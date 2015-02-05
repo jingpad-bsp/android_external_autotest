@@ -18,7 +18,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros import retry
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 # TODO(cmasone): redo this class using requests module; http://crosbug.com/30107
 
 
@@ -238,7 +238,7 @@ class DevServer(object):
         try:
             result_dict = json.load(cStringIO.StringIO(make_call()))
             free_disk = result_dict['free_disk']
-            stats.Gauge(server_name).send('free_disk', free_disk)
+            autotest_stats.Gauge(server_name).send('free_disk', free_disk)
 
             skip_devserver_health_check = CONFIG.get_config_value('CROS',
                                               'skip_devserver_health_check',
@@ -248,19 +248,21 @@ class DevServer(object):
             elif (free_disk < DevServer._MIN_FREE_DISK_SPACE_GB):
                 logging.error('Devserver check_health failed. Free disk space '
                               'is low. Only %dGB is available.', free_disk)
-                stats.Counter(server_name +
-                              '.devserver_not_healthy').increment()
+                autotest_stats.Counter(server_name +
+                                       '.devserver_not_healthy').increment()
                 return False
 
             # This counter indicates the load of a devserver. By comparing the
             # value of this counter for all devservers, we can evaluate the
             # load balancing across all devservers.
-            stats.Counter(server_name + '.devserver_healthy').increment()
+            autotest_stats.Counter(server_name +
+                                   '.devserver_healthy').increment()
             return True
         except Exception as e:
             logging.error('Devserver call failed: "%s", timeout: %s seconds,'
                           ' Error: %s', call, timeout_min * 60, e)
-            stats.Counter(server_name + '.devserver_not_healthy').increment()
+            autotest_stats.Counter(server_name +
+                                   '.devserver_not_healthy').increment()
             return False
 
 
@@ -358,8 +360,8 @@ class CrashServer(DevServer):
             logging.warning("Can't 'import requests' to connect to dev server.")
             return ''
 
-        stats.Counter('CrashServer.symbolicate_dump').increment()
-        timer = stats.Timer('CrashServer.symbolicate_dump')
+        autotest_stats.Counter('CrashServer.symbolicate_dump').increment()
+        timer = autotest_stats.Timer('CrashServer.symbolicate_dump')
         timer.start()
         # Symbolicate minidump.
         call = self.build_call('symbolicate_dump',
@@ -616,8 +618,8 @@ class ImageServer(DevServer):
                     'stage_artifacts_count', server_name, artifacts)
             metadata = self.create_metadata(server_name, image, artifacts,
                                             files)
-            stats.Counter(counter_key, metadata=metadata).increment()
-            timer = stats.Timer(timer_key, metadata=metadata)
+            autotest_stats.Counter(counter_key, metadata=metadata).increment()
+            timer = autotest_stats.Timer(timer_key, metadata=metadata)
             timer.start()
         try:
             self.call_and_wait(call_name='stage',
@@ -633,7 +635,8 @@ class ImageServer(DevServer):
             if artifacts:
                 timeout_key = self.create_stats_str(
                         'stage_artifacts_timeout', server_name, artifacts)
-                stats.Counter(timeout_key, metadata=metadata).increment()
+                autotest_stats.Counter(timeout_key,
+                                       metadata=metadata).increment()
             raise DevServerException(
                     'stage_artifacts timed out: %s' % staging_info)
 
@@ -686,7 +689,7 @@ class ImageServer(DevServer):
         counter_key = self.create_stats_str(
                     'trigger_download_count', server_name, artifacts_list)
         metadata = self.create_metadata(server_name, image, artifacts_list)
-        stats.Counter(counter_key, metadata=metadata).increment()
+        autotest_stats.Counter(counter_key, metadata=metadata).increment()
         try:
             response = self.call_and_wait(call_name='stage',
                                           archive_url=archive_url,
@@ -698,7 +701,7 @@ class ImageServer(DevServer):
             logging.error('trigger_download timed out for %s.', image)
             timeout_key = self.create_stats_str(
                     'trigger_download_timeout', server_name, artifacts_list)
-            stats.Counter(timeout_key, metadata=metadata).increment()
+            autotest_stats.Counter(timeout_key, metadata=metadata).increment()
             raise DevServerException(
                     'trigger_download timed out for %s.' % image)
         was_successful = response == 'Success'
@@ -759,7 +762,7 @@ class ImageServer(DevServer):
             timeout_key = self.create_stats_str(
                     'finish_download_timeout', server_name, artifacts_list)
             metadata = self.create_metadata(server_name, image, artifacts_list)
-            stats.Counter(timeout_key, metadata=metadata).increment()
+            autotest_stats.Counter(timeout_key, metadata=metadata).increment()
             raise DevServerException(
                     'finish_download timed out for %s.' % image)
 

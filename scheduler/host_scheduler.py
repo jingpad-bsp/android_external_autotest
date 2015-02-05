@@ -63,7 +63,7 @@ import common
 from autotest_lib.frontend import setup_django_environment
 
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.scheduler import email_manager
 from autotest_lib.scheduler import query_managers
 from autotest_lib.scheduler import rdb_lib
@@ -102,7 +102,7 @@ class SuiteRecorder(object):
     """
 
 
-    _timer = stats.Timer('suite_recorder')
+    _timer = autotest_stats.Timer('suite_recorder')
 
 
     def __init__(self, job_query_manager):
@@ -189,7 +189,7 @@ class BaseHostScheduler(object):
     """
 
 
-    _timer = stats.Timer('base_host_scheduler')
+    _timer = autotest_stats.Timer('base_host_scheduler')
     host_assignment = collections.namedtuple('host_assignment', ['host', 'job'])
 
 
@@ -289,7 +289,7 @@ class BaseHostScheduler(object):
 class HostScheduler(BaseHostScheduler):
     """A scheduler capable managing host acquisition for new jobs."""
 
-    _timer = stats.Timer('host_scheduler')
+    _timer = autotest_stats.Timer('host_scheduler')
 
 
     def __init__(self):
@@ -334,9 +334,11 @@ class HostScheduler(BaseHostScheduler):
             self.schedule_host_job(acquisition.host, acquisition.job)
             self._record_host_assignment(acquisition.host, acquisition.job)
             new_jobs_with_hosts += 1
-        stats.Gauge(key).send('new_jobs_with_hosts', new_jobs_with_hosts)
-        stats.Gauge(key).send('new_jobs_without_hosts',
-                              len(unverified_host_jobs) - new_jobs_with_hosts)
+        autotest_stats.Gauge(key).send('new_jobs_with_hosts',
+                                       new_jobs_with_hosts)
+        autotest_stats.Gauge(key).send('new_jobs_without_hosts',
+                                       len(unverified_host_jobs) -
+                                       new_jobs_with_hosts)
 
 
     @_timer.decorate

@@ -18,7 +18,7 @@ import common
 from autotest_lib.client.common_lib import utils, global_config, error
 from autotest_lib.client.common_lib import logging_manager
 from autotest_lib.client.common_lib.cros import retry
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.scheduler import drone_logging_config
 from autotest_lib.scheduler import email_manager, scheduler_config
 from autotest_lib.server import hosts, subcommand
@@ -32,7 +32,7 @@ _TEMPORARY_DIRECTORY = 'drone_tmp'
 _TRANSFER_FAILED_FILE = '.transfer_failed'
 
 _STATS_KEY = 'drone_utility'
-timer = stats.Timer(_STATS_KEY)
+timer = autotest_stats.Timer(_STATS_KEY)
 
 class _MethodCall(object):
     def __init__(self, method, args, kwargs):
@@ -224,16 +224,17 @@ class BaseDroneUtility(object):
             the processes to kill.
         """
         kill_proc_key = 'kill_processes'
-        stats.Gauge(_STATS_KEY).send('%s.%s' % (kill_proc_key, 'net'),
-                                     len(process_list))
+        autotest_stats.Gauge(_STATS_KEY).send('%s.%s' % (kill_proc_key, 'net'),
+                                              len(process_list))
         try:
             logging.info('List of process to be killed: %s', process_list)
             sig_counts = utils.nuke_pids(
                             [-process.pid for process in process_list],
                             signal_queue=(signal.SIGKILL,))
             for name, count in sig_counts.iteritems():
-                stats.Gauge(_STATS_KEY).send('%s.%s' % (kill_proc_key, name),
-                                             count)
+                autotest_stats.Gauge(_STATS_KEY).send('%s.%s' %
+                                                      (kill_proc_key, name),
+                                                      count)
         except error.AutoservRunError as e:
             self._warn('Error occured when killing processes. Error: %s' % e)
 
@@ -523,8 +524,8 @@ def main():
         calls = parse_input()
     args = _parse_args(sys.argv[1:])
     if args.call_time is not None:
-        stats.Gauge(_STATS_KEY).send('invocation_overhead',
-                                     time.time() - args.call_time)
+        autotest_stats.Gauge(_STATS_KEY).send('invocation_overhead',
+                                              time.time() - args.call_time)
 
     drone_utility = DroneUtility()
     return_value = drone_utility.execute_calls(calls)

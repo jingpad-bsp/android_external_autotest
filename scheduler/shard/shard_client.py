@@ -16,7 +16,7 @@ import common
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.frontend.afe import models
 from autotest_lib.scheduler import email_manager
 from autotest_lib.scheduler import scheduler_lib
@@ -86,7 +86,7 @@ RPC_TIMEOUT_MIN = 5
 RPC_DELAY_SEC = 5
 
 STATS_KEY = 'shard_client.%s' % socket.gethostname()
-timer = stats.Timer(STATS_KEY)
+timer = autotest_stats.Timer(STATS_KEY)
 _heartbeat_client = None
 
 
@@ -121,9 +121,9 @@ class ShardClient(object):
         hosts_serialized = heartbeat_response['hosts']
         jobs_serialized = heartbeat_response['jobs']
 
-        stats.Gauge(STATS_KEY).send(
+        autotest_stats.Gauge(STATS_KEY).send(
             'hosts_received', len(hosts_serialized))
-        stats.Gauge(STATS_KEY).send(
+        autotest_stats.Gauge(STATS_KEY).send(
             'jobs_received', len(jobs_serialized))
 
         for host in hosts_serialized:
@@ -248,10 +248,10 @@ class ShardClient(object):
         logging.info("Performing heartbeat.")
 
         packet = self._heartbeat_packet()
-        stats.Gauge(STATS_KEY).send(
+        autotest_stats.Gauge(STATS_KEY).send(
                 'heartbeat.request_size', len(str(packet)))
         response = self.afe.run(HEARTBEAT_AFE_ENDPOINT, **packet)
-        stats.Gauge(STATS_KEY).send(
+        autotest_stats.Gauge(STATS_KEY).send(
                 'heartbeat.response_size', len(str(response)))
 
         self._mark_jobs_as_uploaded([job['id'] for job in packet['jobs']])
@@ -326,13 +326,13 @@ def get_shard_client():
 
 def main():
     try:
-        stats.Counter(STATS_KEY + 'starts').increment()
+        autotest_stats.Counter(STATS_KEY + 'starts').increment()
         main_without_exception_handling()
     except Exception as e:
         message = 'Uncaught exception; terminating shard_client.'
         email_manager.manager.log_stacktrace(message)
         logging.exception(message)
-        stats.Counter(STATS_KEY + 'uncaught_exceptions').increment()
+        autotest_stats.Counter(STATS_KEY + 'uncaught_exceptions').increment()
         raise
     finally:
         email_manager.manager.send_queued_emails()

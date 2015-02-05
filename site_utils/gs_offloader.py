@@ -35,7 +35,7 @@ except ImportError:
 
 import job_directories
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.scheduler import email_manager
 from chromite.lib import parallel
 
@@ -45,7 +45,7 @@ GS_OFFLOADING_ENABLED = global_config.global_config.get_config_value(
 
 STATS_KEY = 'gs_offloader.%s' % socket.gethostname()
 
-timer = stats.Timer(STATS_KEY)
+timer = autotest_stats.Timer(STATS_KEY)
 
 # Nice setting for process, the higher the number the lower the priority.
 NICENESS = 10
@@ -171,7 +171,7 @@ def get_offload_dir_func(gs_uri):
 
     """
     try:
-      counter = stats.Counter(STATS_KEY)
+      counter = autotest_stats.Counter(STATS_KEY)
       counter.increment('jobs_offload_started')
 
       error = False
@@ -189,8 +189,8 @@ def get_offload_dir_func(gs_uri):
         kibibytes_transferred = get_directory_size_kibibytes(dir_entry)
 
         counter.increment('kibibytes_transferred_total', kibibytes_transferred)
-        stats.Gauge(STATS_KEY).send(
-            'kibibytes_transferred', kibibytes_transferred)
+        autotest_stats.Gauge(STATS_KEY).send(
+                'kibibytes_transferred', kibibytes_transferred)
         counter.increment('jobs_offloaded')
         shutil.rmtree(dir_entry)
       else:

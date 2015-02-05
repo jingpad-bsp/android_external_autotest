@@ -21,7 +21,7 @@ import django.db
 
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.frontend.afe import models, rpc_utils
 from autotest_lib.scheduler import agent_task, drone_manager
 from autotest_lib.scheduler import email_manager, gc_stats, host_scheduler
@@ -317,7 +317,7 @@ class BaseDispatcher(object):
         major step begins so we can try to figure out where we are using most
         of the tick time.
         """
-        timer = stats.Timer('scheduler.tick')
+        timer = autotest_stats.Timer('scheduler.tick')
         self._log_tick_msg('Calling new tick, starting garbage collection().')
         self._garbage_collection()
         self._log_tick_msg('Calling _drone_manager.trigger_refresh().')
@@ -483,7 +483,7 @@ class BaseDispatcher(object):
         status_list = ','.join("'%s'" % status for status in statuses)
         queue_entries = scheduler_models.HostQueueEntry.fetch(
                 where='status IN (%s)' % status_list)
-        stats.Gauge('scheduler.jobs_per_tick').send(
+        autotest_stats.Gauge('scheduler.jobs_per_tick').send(
                 'running', len(queue_entries))
 
         agent_tasks = []
@@ -801,7 +801,7 @@ class BaseDispatcher(object):
                 host_jobs.append(queue_entry)
                 new_jobs_need_hosts = new_jobs_need_hosts + 1
 
-        stats.Gauge(key).send('new_hostless_jobs', new_hostless_jobs)
+        autotest_stats.Gauge(key).send('new_hostless_jobs', new_hostless_jobs)
         if not host_jobs:
             return
         if not _inline_host_acquisition:
@@ -816,9 +816,11 @@ class BaseDispatcher(object):
             self._schedule_host_job(host_assignment.host, host_assignment.job)
             new_jobs_with_hosts = new_jobs_with_hosts + 1
 
-        stats.Gauge(key).send('new_jobs_with_hosts', new_jobs_with_hosts)
-        stats.Gauge(key).send('new_jobs_without_hosts',
-                              new_jobs_need_hosts - new_jobs_with_hosts)
+        autotest_stats.Gauge(key).send('new_jobs_with_hosts',
+                                       new_jobs_with_hosts)
+        autotest_stats.Gauge(key).send('new_jobs_without_hosts',
+                                       new_jobs_need_hosts -
+                                       new_jobs_with_hosts)
 
 
     def _schedule_running_host_queue_entries(self):
@@ -1008,9 +1010,9 @@ class BaseDispatcher(object):
                 num_finished_this_cycle += agent.task.num_processes
                 self._log_extra_msg("Agent finished")
                 self.remove_agent(agent)
-        stats.Gauge('scheduler.jobs_per_tick').send(
+        autotest_stats.Gauge('scheduler.jobs_per_tick').send(
                 'agents_started', num_started_this_cycle)
-        stats.Gauge('scheduler.jobs_per_tick').send(
+        autotest_stats.Gauge('scheduler.jobs_per_tick').send(
                 'agents_finished', num_finished_this_cycle)
         logging.info('%d running processes. %d added this cycle.',
                      _drone_manager.total_running_processes(),

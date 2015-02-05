@@ -4,7 +4,7 @@
 
 
 import common
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.site_utils.lib import infra
 from autotest_lib.site_utils.stats import registry
 
@@ -17,7 +17,7 @@ def time_wait(server):
     @param server: The AFE server.
     """
     out = infra.execute_command(server, 'ss -o state time-wait | wc -l')
-    stat = stats.Gauge(server, bare=True)
+    stat = autotest_stats.Gauge(server, bare=True)
     # ss prints out a header for the columns also, so we subtract one to report
     # about only the data.
     stat.send('time_wait_sockets', int(out.strip())-1)

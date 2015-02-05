@@ -31,14 +31,14 @@ import sys
 from datetime import datetime
 
 import common
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.server import frontend
 from autotest_lib.server import utils
 
 
 LOG_NAME_TEMPLATE = 'abort_suite-%s.log'
 SUITE_JOB_NAME_TEMPLATE = '%s-test_suites/control.%s'
-_timer = stats.Timer('abort_suites')
+_timer = autotest_stats.Timer('abort_suites')
 
 
 def parse_args():

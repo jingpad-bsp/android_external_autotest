@@ -8,7 +8,7 @@ import time, logging, random
 from autotest_lib.frontend.afe import models
 from autotest_lib.scheduler import email_manager, scheduler_config
 from autotest_lib.client.common_lib import host_protections
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 
 class PeriodicCleanup(object):
 
@@ -43,7 +43,7 @@ class UserCleanup(PeriodicCleanup):
     """User cleanup that is controlled by the global config variable
        clean_interval_minutes in the SCHEDULER section.
     """
-    timer = stats.Timer('monitor_db_cleanup.user_cleanup')
+    timer = autotest_stats.Timer('monitor_db_cleanup.user_cleanup')
 
 
     def __init__(self, db, clean_interval_minutes):
@@ -219,7 +219,7 @@ class TwentyFourHourUpkeep(PeriodicCleanup):
     """Cleanup that runs at the startup of monitor_db and every subsequent
        twenty four hours.
     """
-    timer = stats.Timer('monitor_db_cleanup.twentyfourhour_cleanup')
+    timer = autotest_stats.Timer('monitor_db_cleanup.twentyfourhour_cleanup')
 
 
     def __init__(self, db, run_at_initialize=True):

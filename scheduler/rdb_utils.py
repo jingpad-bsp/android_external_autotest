@@ -10,7 +10,7 @@ Do not import rdb or autotest modules here to avoid cyclic dependencies.
 import collections
 
 import common
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.client.common_lib import priorities
 
 RDB_STATS_KEY = 'rdb'
@@ -99,7 +99,7 @@ class RequestAccountant(object):
     get_rest requests, it will not be fullfilled anyway.
     """
 
-    _gauge = stats.Gauge(RDB_STATS_KEY)
+    _gauge = autotest_stats.Gauge(RDB_STATS_KEY)
 
 
     def __init__(self, host_requests):

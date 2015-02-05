@@ -81,7 +81,7 @@ import collections
 import logging
 
 import common
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.client.common_lib.global_config import global_config
 from autotest_lib.scheduler import rdb_utils
 
@@ -233,9 +233,10 @@ class RDBHostCacheManager(object):
         staleness = self.mean_staleness()
         logging.debug('Cache stats: hit ratio: %.2f%%, '
                       'avg staleness per line: %.2f%%.', hit_ratio, staleness)
-        stats.Gauge(rdb_utils.RDB_STATS_KEY).send('cache.hit_ratio', hit_ratio)
-        stats.Gauge(rdb_utils.RDB_STATS_KEY).send('cache.stale_entries',
-                                                  staleness)
+        autotest_stats.Gauge(rdb_utils.RDB_STATS_KEY).send(
+                'cache.hit_ratio', hit_ratio)
+        autotest_stats.Gauge(rdb_utils.RDB_STATS_KEY).send(
+                'cache.stale_entries', staleness)
 
 
     @classmethod

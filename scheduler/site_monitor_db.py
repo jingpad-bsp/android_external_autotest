@@ -8,7 +8,7 @@ import os
 import logging
 
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.frontend.afe import models
 from autotest_lib.scheduler import email_manager
 from autotest_lib.scheduler import scheduler_config, scheduler_models
@@ -94,7 +94,7 @@ class SiteDispatcher(object):
     DEFAULT_REQUESTED_BY_USER_ID = 1
 
 
-    _timer = stats.Timer('scheduler')
+    _timer = autotest_stats.Timer('scheduler')
 
 
     @_timer.decorate

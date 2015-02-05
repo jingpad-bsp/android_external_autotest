@@ -58,7 +58,7 @@ from autotest_lib.server import server_job, utils, autoserv_parser, autotest
 from autotest_lib.server import utils as server_utils
 from autotest_lib.site_utils import job_overhead
 from autotest_lib.client.common_lib import pidfile, logging_manager
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 
 def log_alarm(signum, frame):
     logging.error("Received SIGALARM. Ignoring and continuing on.")
@@ -380,8 +380,8 @@ def main():
                 try:
                     afe = frontend.AFE()
                     board = server_utils.get_board_from_afe(machines[0], afe)
-                    timer = stats.Timer('autoserv_run_time.%s.%s' %
-                                        (board, test_name))
+                    timer = autotest_stats.Timer('autoserv_run_time.%s.%s' %
+                                                 (board, test_name))
                     timer.start()
                 except (urllib2.HTTPError, urllib2.URLError):
                     # Ignore error if RPC failed to get board

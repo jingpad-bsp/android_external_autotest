@@ -19,7 +19,7 @@ import cPickle, cStringIO, logging, os, re, time
 
 from autotest_lib.client.common_lib import global_config, error, utils
 from autotest_lib.client.common_lib import host_protections
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.client.bin import partition
 
 
@@ -221,9 +221,9 @@ class Host(object):
         implementation based entirely on wait_up and wait_down. """
         key_string = 'Reboot.%s' % dargs.get('board')
 
-        total_reboot_timer = stats.Timer('%s.total' % key_string,
+        total_reboot_timer = autotest_stats.Timer('%s.total' % key_string,
                 metadata=self.construct_host_metadata('reboot_total'))
-        wait_down_timer = stats.Timer('%s.wait_down' % key_string,
+        wait_down_timer = autotest_stats.Timer('%s.wait_down' % key_string,
                 metadata=self.construct_host_metadata('reboot_down'))
 
         total_reboot_timer.start()
@@ -235,7 +235,7 @@ class Host(object):
                 self.record("ABORT", None, "reboot.verify", "shut down failed")
             raise error.AutoservShutdownError("Host did not shut down")
         wait_down_timer.stop()
-        wait_up_timer = stats.Timer('%s.wait_up' % key_string,
+        wait_up_timer = autotest_stats.Timer('%s.wait_up' % key_string,
                 metadata=self.construct_host_metadata('reboot_up'))
         wait_up_timer.start()
         if self.wait_up(timeout):

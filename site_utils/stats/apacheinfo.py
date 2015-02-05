@@ -8,7 +8,7 @@ import logging
 
 import common
 import requests
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.site_utils.stats import registry
 
 
@@ -35,5 +35,5 @@ def rpcs_per_sec(server):
     m = re.search("(\d+) requests/sec", page)
     if m:
         val = int(m.groups(0)[0])
-        stat = stats.Gauge(server, bare=True)
+        stat = autotest_stats.Gauge(server, bare=True)
         stat.send('requests_per_sec', val)

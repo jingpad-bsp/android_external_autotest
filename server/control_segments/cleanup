@@ -2,7 +2,7 @@ import logging
 import os
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.server.cros import provision
 
 
@@ -17,7 +17,7 @@ def cleanup(machine):
         job.record('START', None, 'cleanup')
         host = hosts.create_host(machine, initialize=False, auto_monitor=False,
                                  try_lab_servo=True)
-        timer = stats.Timer('cleanup_time')
+        timer = autotest_stats.Timer('cleanup_time')
         timer.start()
 
         # Try to save /var/log files. If the dut is not sshable, try to restart

@@ -24,7 +24,7 @@ from autotest_lib.client.common_lib import global_config, host_protections
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros.graphite import autotest_es
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.frontend.afe import models, model_attributes
 from autotest_lib.scheduler import drone_manager, email_manager
 from autotest_lib.scheduler import rdb_lib
@@ -389,7 +389,7 @@ class Host(DBObject):
     _fields = ('id', 'hostname', 'locked', 'synch_id', 'status',
                'invalid', 'protection', 'locked_by_id', 'lock_time', 'dirty',
                'leased', 'shard_id')
-    _timer = stats.Timer("scheduler_models.Host")
+    _timer = autotest_stats.Timer("scheduler_models.Host")
 
 
     @_timer.decorate
@@ -466,7 +466,7 @@ class HostQueueEntry(DBObject):
     _fields = ('id', 'job_id', 'host_id', 'status', 'meta_host',
                'active', 'complete', 'deleted', 'execution_subdir',
                'atomic_group_id', 'aborted', 'started_on', 'finished_on')
-    _timer = stats.Timer('scheduler_models.HostQueueEntry')
+    _timer = autotest_stats.Timer('scheduler_models.HostQueueEntry')
 
 
     def __init__(self, id=None, row=None, **kwargs):
@@ -929,7 +929,7 @@ class Job(DBObject):
                'parse_failed_repair', 'max_runtime_hrs', 'drone_set_id',
                'parameterized_job_id', 'max_runtime_mins', 'parent_job_id',
                'test_retry', 'run_reset', 'timeout_mins', 'shard_id')
-    _timer = stats.Timer("scheduler_models.Job")
+    _timer = autotest_stats.Timer("scheduler_models.Job")
 
     # This does not need to be a column in the DB.  The delays are likely to
     # be configured short.  If the scheduler is stopped and restarted in

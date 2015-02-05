@@ -35,7 +35,7 @@ import datetime
 from django.db.models import Count
 import common
 from autotest_lib.client.common_lib import priorities
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.frontend.afe import models, model_logic, model_attributes
 from autotest_lib.frontend.afe import control_file, rpc_utils
 from autotest_lib.frontend.afe import site_rpc_interface
@@ -45,7 +45,7 @@ from autotest_lib.server import utils
 from autotest_lib.server.cros.dynamic_suite import tools
 
 
-_timer = stats.Timer('rpc_interface')
+_timer = autotest_stats.Timer('rpc_interface')
 
 def get_parameterized_autoupdate_image_url(job):
     """Get the parameterized autoupdate image url from a parameterized job."""

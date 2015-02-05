@@ -17,7 +17,7 @@ from datetime import timedelta
 import common
 from autotest_lib.client.common_lib import mail
 from autotest_lib.client.common_lib import time_utils
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.site_utils import host_history
 from autotest_lib.site_utils import host_history_utils
 from autotest_lib.site_utils import host_label_utils
@@ -79,12 +79,14 @@ def report_stats(board, pool, start_time, end_time, span):
         print 'Machine utilization rate  = %-4.2f%%' % (100*mur)
         print 'Machine availability rate = %-4.2f%%' % (100*mar)
 
-    stats.Gauge('machine_utilization_rate').send('%s_hours.%s.%s' %
-                                                 (span, board, pool), mur)
-    stats.Gauge('machine_availability_rate').send('%s_hours.%s.%s' %
-                                                  (span, board, pool), mar)
-    stats.Gauge('machine_idle_rate').send('%s_hours.%s.%s' %
-                                          (span, board, pool), mir)
+    autotest_stats.Gauge('machine_utilization_rate').send('%s_hours.%s.%s' %
+                                                          (span, board, pool),
+                                                          mur)
+    autotest_stats.Gauge('machine_availability_rate').send('%s_hours.%s.%s' %
+                                                           (span, board, pool),
+                                                           mar)
+    autotest_stats.Gauge('machine_idle_rate').send('%s_hours.%s.%s' %
+                                                   (span, board, pool), mir)
 
 
 def main():

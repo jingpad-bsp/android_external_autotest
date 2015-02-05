@@ -13,16 +13,16 @@ import common
 import elasticsearch
 
 from autotest_lib.client.common_lib.cros.graphite import es_utils
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 
 
 # Defines methods in the stats class that can take in metadata.
 TARGET_TO_STATS_CLASS = {
-    'timer': stats.Timer,
-    'gauge': stats.Gauge,
-    'raw': stats.Raw,
-    'average': stats.Average,
-    'counter': stats.Counter,
+    'timer': autotest_stats.Timer,
+    'gauge': autotest_stats.Gauge,
+    'raw': autotest_stats.Raw,
+    'average': autotest_stats.Average,
+    'counter': autotest_stats.Counter,
 }
 
 # Maps target type to method to trigger sending of metadata.

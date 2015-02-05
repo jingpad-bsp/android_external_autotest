@@ -26,7 +26,7 @@ import threading
 import logging
 
 import common
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 
 
 class DroneTaskQueueException(Exception):
@@ -40,7 +40,7 @@ class ExceptionRememberingThread(threading.Thread):
     def run(self):
         """Wrapper around the thread's run method."""
         try:
-            with stats.Timer(self.name):
+            with autotest_stats.Timer(self.name):
                 super(ExceptionRememberingThread, self).run()
         except Exception as self.err:
             logging.error('%s raised an exception that will be re-raised by '
@@ -63,7 +63,7 @@ class PersistentTimer(object):
 
     def start(self):
         """Create and start a new timer."""
-        self.timer = stats.Timer(self.name)
+        self.timer = autotest_stats.Timer(self.name)
         self.timer.start()
 
 

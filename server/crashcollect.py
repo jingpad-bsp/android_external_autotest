@@ -1,7 +1,7 @@
 import os, time, logging, shutil
 
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib.cros.graphite import stats
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.client.cros import constants
 from autotest_lib.server import utils
 
@@ -15,7 +15,7 @@ get_site_crashinfo = utils.import_site_function(
     lambda host, test_start_time: None)
 
 
-_timer = stats.Timer('crash_collection')
+_timer = autotest_stats.Timer('crash_collection')
 
 @_timer.decorate
 def get_crashdumps(host, test_start_time):
@@ -81,7 +81,7 @@ def wait_for_machine_to_recover(host, hours_to_wait=HOURS_TO_WAIT):
     logging.info("Waiting %s hours for %s to come up (%s)",
                  hours_to_wait, host.hostname, current_time)
     if not host.wait_up(timeout=hours_to_wait * 3600):
-        stats.Counter('collect_crashinfo_timeout').increment()
+        autotest_stats.Counter('collect_crashinfo_timeout').increment()
         logging.warning("%s down, unable to collect crash info",
                         host.hostname)
         return False
