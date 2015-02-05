@@ -5,6 +5,9 @@
 import logging
 
 from autotest_lib.client.common_lib import utils
+from autotest_lib.client.cros import constants
+from autotest_lib.server import frontend
+from autotest_lib.server import site_utils
 from autotest_lib.server import test
 from autotest_lib.server.cros.network import wifi_test_context_manager
 
@@ -25,6 +28,16 @@ class WiFiCellTestBase(test.test):
     client.
 
     """
+
+    def initialize(self, host):
+        # Add the variant key if there is one
+        afe = frontend.AFE(debug=True)
+        variant_name = site_utils.get_label_from_afe(host.hostname,
+                                                     'variant:',
+                                                     afe)
+        if variant_name:
+            self.write_test_keyval({constants.VARIANT_KEY: variant_name})
+
 
     @property
     def context(self):

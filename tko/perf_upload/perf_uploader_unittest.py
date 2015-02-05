@@ -333,22 +333,23 @@ class test_format_for_upload(unittest.TestCase):
         """Verifies format_for_upload generates correct json data."""
         result = perf_uploader._format_for_upload(
                 'platform', '1200.0.0', '25.10.0.0', 'WINKY E2A-F2K-Q35',
-                'test_machine', self._perf_data, self._PRESENT_INFO)
+                'i7', 'test_machine', self._perf_data, self._PRESENT_INFO)
         expected_result_string = (
                 '[{"supplemental_columns": {"r_cros_version": "1200.0.0", '
                 '"a_hardware_identifier" : "WINKY E2A-F2K-Q35",'
                 '"a_hardware_hostname" : "test_machine",'
-                '"r_chrome_version": "25.10.0.0"}, "bot": "cros-platform", '
+                '"r_chrome_version": "25.10.0.0"}, "bot": "cros-platform-i7", '
                 '"higher_is_better": false, "value": 2.7, '
                 '"units": "msec", "master": "new_master_name", '
                 '"error": 0.2, "test": "new_test_name/graph_name/metric1"}, '
                 '{"supplemental_columns": {"r_cros_version": "1200.0.0", '
                 '"a_hardware_identifier" : "WINKY E2A-F2K-Q35",'
                 '"a_hardware_hostname" : "test_machine",'
-                '"r_chrome_version": "25.10.0.0"}, "bot": "cros-platform", '
+                '"r_chrome_version": "25.10.0.0"}, "bot": "cros-platform-i7", '
                 '"higher_is_better": true, "value": 101.35, '
                 '"units": "frames_per_sec", "master": "new_master_name", '
                 '"error": 5.78, "test": "new_test_name/metric2"}]')
+
         self._verify_result_string(result['data'], expected_result_string)
 
 

@@ -16,6 +16,7 @@ must be logged in with an @google.com account to view chromeOS perf data there.
 import httplib, json, math, os, urllib, urllib2
 
 import common
+from autotest_lib.client.cros import constants
 from autotest_lib.tko import utils as tko_utils
 
 _ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -156,8 +157,8 @@ def _gather_presentation_info(config_data, test_name):
 
 
 def _format_for_upload(platform_name, cros_version, chrome_version,
-                       hardware_id, hardware_hostname, perf_data,
-                       presentation_info):
+                       hardware_id, variant_name, hardware_hostname,
+                       perf_data, presentation_info):
     """Formats perf data suitably to upload to the perf dashboard.
 
     The perf dashboard expects perf data to be uploaded as a
@@ -172,6 +173,7 @@ def _format_for_upload(platform_name, cros_version, chrome_version,
     @param chrome_version: The string chrome version number.
     @param hardware_id: String that identifies the type of hardware the test was
         executed on.
+    @param variant_name: String that identifies the variant name of the board.
     @param hardware_hostname: String that identifies the name of the device the
         test was executed on.
     @param perf_data: A dictionary of measured perf data as computed by
@@ -184,6 +186,8 @@ def _format_for_upload(platform_name, cros_version, chrome_version,
 
     """
     dash_entries = []
+    if variant_name:
+        platform_name += '-' + variant_name
     for (desc, graph), data in perf_data.iteritems():
         # Each perf metric is named by a path that encodes the test name,
         # a graph name (if specified), and a description.  This must be defined
@@ -274,6 +278,7 @@ def upload_test(job, test):
     chrome_version = test.attributes.get('CHROME_VERSION', '')
     hardware_id = test.attributes.get('hwid', '')
     hardware_hostname = test.machine
+    variant_name = test.attributes.get(constants.VARIANT_KEY, None)
     # Prefix the chromeOS version number with the chrome milestone.
     # TODO(dennisjeffrey): Modify the dashboard to accept the chromeOS version
     # number *without* the milestone attached.
@@ -283,7 +288,7 @@ def upload_test(job, test):
         presentation_info = _gather_presentation_info(config_data, test_name)
         formatted_data = _format_for_upload(
                 platform_name, cros_version, chrome_version, hardware_id,
-                hardware_hostname, perf_data, presentation_info)
+                variant_name, hardware_hostname, perf_data, presentation_info)
         _send_to_dashboard(formatted_data)
     except PerfUploadingError as e:
         tko_utils.dprint('Error when uploading perf data to the perf '
