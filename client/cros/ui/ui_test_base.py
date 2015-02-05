@@ -8,7 +8,8 @@ import os
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.cros.image_comparison import image_comparison_factory
-
+from PIL import Image
+from PIL import ImageDraw
 
 class ui_TestBase(test.test):
     """ Encapsulates steps needed to collect screenshots for ui pieces.
@@ -149,14 +150,19 @@ class ui_TestBase(test.test):
         """
         pass
 
-
-    @abc.abstractproperty
-    def test_area(self):
+    def draw_image_mask(self, filepath, rectangle, fill='white'):
         """
-        Abstract property that gets the name of the test area.
-        e.g. SystemTray, SettingsPage
-        Each child class must implement this so as to identify what test the
-        child class is doing.
+        Used to draw a mask over selected portions of the captured screenshot.
+        This allows us to mask out things that change between runs while
+        letting us focus on the parts we do care about.
+
+        @param filepath: string, the complete path to the image
+        @param rectangle: tuple, the top left and bottom right coordinates
+        @param fill: string, the color to fill the mask with
 
         """
-        pass
+
+        im = Image.open(filepath)
+        draw = ImageDraw.Draw(im)
+        draw.rectangle(rectangle, fill=fill)
+        im.save(filepath)

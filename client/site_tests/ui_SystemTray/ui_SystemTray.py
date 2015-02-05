@@ -2,8 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
+import os
+
+from autotest_lib.client.bin import site_utils
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.graphics import graphics_utils
+from autotest_lib.client.cros.image_comparison import rgb_image_comparer
 from autotest_lib.client.cros.ui import ui_test_base
 
 
@@ -14,10 +19,6 @@ class ui_SystemTray(ui_test_base.ui_TestBase):
     See comments on parent class for overview of how things flow.
 
     """
-
-    @property
-    def test_area(self):
-        return 'system_tray'
 
     def capture_screenshot(self, filepath):
         """
@@ -31,6 +32,9 @@ class ui_SystemTray(ui_test_base.ui_TestBase):
         if True, we login as the test user
         if False, we login as guest
 
+        For the logged in user we mask the profile photo so that the randomly
+        generated profile pictures don't break the tests.
+
         @param filepath: path, fullpath to where the screenshot will be saved to
 
         """
@@ -43,22 +47,36 @@ class ui_SystemTray(ui_test_base.ui_TestBase):
             return
 
         with chrome.Chrome(logged_in=self.logged_in):
-            graphics_utils.take_screenshot_crop(filepath, box)
+            # set up a pixel comparer
+            image_name = os.path.splitext(filepath)[0]
+            temp_file_path = '%s_temp.png' % image_name
+            comparer = rgb_image_comparer.RGBImageComparer(
+                    rgb_pixel_threshold=0)
 
-    def run_once(self, width, height, logged_in=None):
-        """
-        Called by autotest. Calls the parent template method that runs
-        test.
+            def has_animation_stopped():
+                """
+                Takes two screenshots. Checks if they are identical to
+                indicate the shelf has stop animating.
 
-        """
+                """
 
-        # store values passed in from control file.
-        # we will use them in capture_screenshot() which will get called as
-        # part of run_screenshot_comparison_test() - the parent's method.
+                graphics_utils.take_screenshot_crop(filepath, box)
+                graphics_utils.take_screenshot_crop(temp_file_path, box)
+                diff = comparer.compare(filepath, temp_file_path)
+                logging.debug("Pixel diff count: %d", diff.diff_pixel_count)
+                return diff.diff_pixel_count == 0
 
+            site_utils.poll_for_condition(has_animation_stopped,
+                                          desc='end of system tray animation')
+
+            if self.logged_in and self.mask_points is not None:
+                self.draw_image_mask(filepath, self.mask_points)
+
+
+    def run_once(self, width, height, mask_points=None, logged_in=None):
         self.width = width
         self.height = height
         self.logged_in = logged_in
+        self.mask_points = mask_points
 
-        # see parent for implementation!
         self.run_screenshot_comparison_test()
