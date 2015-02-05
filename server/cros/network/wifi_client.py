@@ -27,10 +27,36 @@ WAKE_ON_WIFI_PACKET_SSID = 'packet_and_ssid'
 
 ConnectTime = namedtuple('ConnectTime', 'state, time')
 
+XMLRPC_BRINGUP_TIMEOUT_SECONDS = 60
+
+def get_xmlrpc_proxy(host):
+    """Get a shill XMLRPC proxy for |host|.
+
+    The returned object has no particular type.  Instead, when you call
+    a method on the object, it marshalls the objects passed as arguments
+    and uses them to make RPCs on the remote server.  Thus, you should
+    read shill_xmlrpc_server.py to find out what methods are supported.
+
+    @param host: host object representing a remote device.
+    @return proxy object for remote XMLRPC server.
+
+    """
+    # Make sure the client library is on the device so that the proxy
+    # code is there when we try to call it.
+    client_at = autotest.Autotest(host)
+    client_at.install()
+    # Start up the XMLRPC proxy on the client
+    proxy = host.xmlrpc_connect(
+            constants.SHILL_XMLRPC_SERVER_COMMAND,
+            constants.SHILL_XMLRPC_SERVER_PORT,
+            command_name=constants.SHILL_XMLRPC_SERVER_CLEANUP_PATTERN,
+            ready_test_name=constants.SHILL_XMLRPC_SERVER_READY_METHOD,
+            timeout_seconds=XMLRPC_BRINGUP_TIMEOUT_SECONDS)
+    return proxy
+
+
 class WiFiClient(site_linux_system.LinuxSystem):
     """WiFiClient is a thin layer of logic over a remote DUT in wifitests."""
-
-    XMLRPC_BRINGUP_TIMEOUT_SECONDS = 60
 
     DEFAULT_PING_COUNT = 10
     COMMAND_PING = 'ping'
@@ -222,17 +248,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
             self._shill_proxy = wpa_cli_proxy.WpaCliProxy(
                     self.host, self._wifi_if)
         else:
-            # Make sure the client library is on the device so that the proxy
-            # code is there when we try to call it.
-            client_at = autotest.Autotest(self.host)
-            client_at.install()
-            # Start up the XMLRPC proxy on the client
-            self._shill_proxy = self.host.xmlrpc_connect(
-                    constants.SHILL_XMLRPC_SERVER_COMMAND,
-                    constants.SHILL_XMLRPC_SERVER_PORT,
-                    command_name=constants.SHILL_XMLRPC_SERVER_CLEANUP_PATTERN,
-                    ready_test_name=constants.SHILL_XMLRPC_SERVER_READY_METHOD,
-                    timeout_seconds=self.XMLRPC_BRINGUP_TIMEOUT_SECONDS)
+            self._shill_proxy = get_xmlrpc_proxy(self.host)
             interfaces = self._shill_proxy.list_controlled_wifi_interfaces()
             if not interfaces:
                 logging.debug('No interfaces managed by shill. Rebooting host')
