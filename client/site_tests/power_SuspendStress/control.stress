@@ -5,7 +5,7 @@
 AUTHOR = "mohsinally"
 NAME = "power_SuspendStress.stress"
 PURPOSE = "Run repeated iterations of suspend/resume to find rare errors."
-SUITE = "stress_experimental"
+SUITE = "stress"
 TIME = "LONG"
 TEST_CATEGORY = "Stress"
 TEST_CLASS = "power"
