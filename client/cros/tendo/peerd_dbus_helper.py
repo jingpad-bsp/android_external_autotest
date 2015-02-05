@@ -31,7 +31,7 @@ SERVICE_PROPERTY_ID = 'ServiceId'
 SERVICE_PROPERTY_INFO = 'ServiceInfo'
 SERVICE_PROPERTY_IPS = 'IpInfos'
 
-# Possible technologies for use with PeerdHelper.start_monitoring().
+# Possible technologies for use with PeerdDBusHelper.start_monitoring().
 TECHNOLOGY_ALL = 'all'
 TECHNOLOGY_MDNS = 'mDNS'
 
@@ -39,43 +39,32 @@ TECHNOLOGY_MDNS = 'mDNS'
 EXPOSE_SERVICE_SECTION_MDNS = 'mdns'
 EXPOSE_SERVICE_MDNS_PORT = 'port'
 
-def make_helper(bus=None, timeout_seconds=10, verbosity_level=None,
-                mdns_prefix=None):
-    """Wait for peerd to come up, then return a PeerdHelper for it.
+def make_helper(peerd_config, bus=None, timeout_seconds=10):
+    """Wait for peerd to come up, then return a PeerdDBusHelper for it.
 
+    @param peerd_config: a PeerdConfig object.
     @param bus: DBus bus to use, or specify None to create one internally.
     @param timeout_seconds: number of seconds to wait for peerd to come up.
-    @param verbosity_level: int level of log verbosity from peerd (e.g. 0
-                            will log INFO level, 3 is verbosity level 3).
-    @param mdns_prefix: string prefix for mDNS records.  Will be ignored if
-                        using that prefix causes name conflicts.
-    @return PeerdHelper instance if peerd comes up, None otherwise.
+    @return PeerdDBusHelper instance if peerd comes up, None otherwise.
 
     """
-    utils.run('stop peerd', ignore_status=True)
-    flags = []
-    if verbosity_level is not None:
-        flags.append(' PEERD_LOG_LEVEL=%d' % verbosity_level)
-    if mdns_prefix is not None:
-        flags.append(' PEERD_INITIAL_MDNS_PREFIX=%s' % mdns_prefix)
-    utils.run('start peerd %s' % ''.join(flags))
+    start_time = time.time()
+    peerd_config.restart_with_config(timeout_seconds=timeout_seconds)
     if bus is None:
         dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
         bus = dbus.SystemBus()
-    end_time = time.time() + timeout_seconds
-    connection = None
-    while time.time() < end_time:
+    while time.time() - start_time < timeout_seconds:
         if not bus.name_has_owner(SERVICE_NAME):
             time.sleep(0.2)
-        return PeerdHelper(bus)
+        return PeerdDBusHelper(bus)
     raise error.TestFail('peerd did not start in a timely manner.')
 
 
-class PeerdHelper(object):
+class PeerdDBusHelper(object):
     """Container for convenience methods related to peerd."""
 
     def __init__(self, bus):
-        """Construct a PeerdHelper.
+        """Construct a PeerdDBusHelper.
 
         @param bus: DBus bus to use, or specify None and this object will
                     create a mainloop and bus.

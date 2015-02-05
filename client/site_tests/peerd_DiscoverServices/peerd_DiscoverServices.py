@@ -7,10 +7,11 @@ import logging
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros.tendo import peerd_config
 from autotest_lib.client.cros import chrooted_avahi
 from autotest_lib.client.cros.netprotos import interface_host
 from autotest_lib.client.cros.netprotos import zeroconf
-from autotest_lib.client.cros.tendo import peerd_helper
+from autotest_lib.client.cros.tendo import peerd_dbus_helper
 
 
 class peerd_DiscoverServices(test.test):
@@ -55,7 +56,8 @@ class peerd_DiscoverServices(test.test):
         self._chrooted_avahi = chrooted_avahi.ChrootedAvahi()
         self._chrooted_avahi.start()
         # Start up a fresh copy of peerd with really verbose logging.
-        self._peerd = peerd_helper.make_helper(verbosity_level=3)
+        self._peerd = peerd_dbus_helper.make_helper(
+                peerd_config.PeerdConfig(verbosity_level=3))
         # Listen on our half of the interface pair for mDNS advertisements.
         self._host = interface_host.InterfaceHost(
                 self._chrooted_avahi.unchrooted_interface_name)
@@ -133,8 +135,8 @@ class peerd_DiscoverServices(test.test):
                     port,
                     ['='.join(pair) for pair in info.iteritems()])
 
-        # Look for mDNS records through peerd
-        self._peerd.start_monitoring([peerd_helper.TECHNOLOGY_MDNS])
+            # Look for mDNS records through peerd
+        self._peerd.start_monitoring([peerd_dbus_helper.TECHNOLOGY_MDNS])
         # Wait for advertisements of that service to appear from avahi.
         logging.info('Waiting for peerd to discover our services.')
         success, duration = self._host.run_until(self._has_expected_peer,
