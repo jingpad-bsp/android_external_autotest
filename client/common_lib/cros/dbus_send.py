@@ -3,6 +3,9 @@
 # found in the LICENSE file.
 
 import collections
+import dbus
+import logging
+import pipes
 import re
 import shlex
 
@@ -114,10 +117,50 @@ def _parse_dbus_send_output(dbus_send_stdout):
     token_stream = _build_token_stream(lines)
     ret_val = _parse_value(token_stream)
     # Note that DBus permits multiple response values, and this is not handled.
+    logging.debug('Got DBus response: %r', ret_val)
     return DBusSendResult(sender=sender, responder=responder, response=ret_val)
 
 
-def dbus_send(bus_name, interface, object_path, method_name,
+def _build_arg_string(raw_args):
+    """Construct a string of arguments to a DBus method as dbus-send expects.
+
+    @param raw_args list of dbus.* type objects to seriallize.
+    @return string suitable for dbus-send.
+
+    """
+    dbus.Boolean
+    int_map = {
+            dbus.Int16: 'int16:',
+            dbus.Int32: 'int32:',
+            dbus.Int64: 'int64:',
+            dbus.UInt16: 'uint16:',
+            dbus.UInt32: 'uint32:',
+            dbus.UInt64: 'uint64:',
+            dbus.Double: 'double:',
+            dbus.Byte: 'byte:',
+    }
+    arg_list = []
+    for arg in raw_args:
+        if isinstance(arg, dbus.String):
+            arg_list.append(pipes.quote('string:%s' %
+                                        arg.replace('"', r'\"')))
+            continue
+        if isinstance(arg, dbus.Boolean):
+            if arg:
+                arg_list.append('boolean:true')
+            else:
+                arg_list.append('boolean:false')
+            continue
+        for prim_type, prefix in int_map.iteritems():
+            if isinstance(arg, prim_type):
+                arg_list.append(prefix + str(arg))
+                continue
+
+        raise error.TestError('No support for serializing %r' % arg)
+    return ' '.join(arg_list)
+
+
+def dbus_send(bus_name, interface, object_path, method_name, args=None,
               host=None, timeout_seconds=2, tolerate_failures=False):
     """Call dbus-send without arguments.
 
@@ -125,6 +168,8 @@ def dbus_send(bus_name, interface, object_path, method_name,
     @param interface: string DBus interface of object to call method on.
     @param object_path: string DBus path of remote object to call method on.
     @param method_name: string name of method to call.
+    @param args: optional list of arguments.  Arguments must be of types
+            from the python dbus module.
     @param host: An optional host object if running against a remote host.
     @param timeout_seconds: number of seconds to wait for a response.
     @param tolerate_failures: boolean True to ignore problems receiving a
@@ -135,7 +180,10 @@ def dbus_send(bus_name, interface, object_path, method_name,
     cmd = ('dbus-send --system --print-reply --reply-timeout=%d --dest=%s '
            '%s %s.%s' % (int(timeout_seconds * 1000), bus_name,
                          object_path, interface, method_name))
+    if args is not None:
+        cmd = cmd + ' ' + _build_arg_string(args)
     result = run(cmd, ignore_status=tolerate_failures)
     if result.exit_status != 0:
+        logging.debug('%r', result.stdout)
         return None
     return _parse_dbus_send_output(result.stdout)
