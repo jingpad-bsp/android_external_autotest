@@ -67,7 +67,7 @@ volume:!:257:
 uinput:!:258:bluetooth,volume
 apmanager:!:259:apmanager,privetd
 peerd:!:260:chronos,leaderd,peerd,privetd
-privetd:!:262:chronos,leaderd,privetd,webservd
+privetd:!:262:chronos,leaderd,privetd
 buffet:!:264:chronos,buffet,privetd
 leaderd:!:265:chronos,leaderd
 webservd:!:266:privetd,webservd
