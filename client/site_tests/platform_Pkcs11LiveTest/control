@@ -1,0 +1,17 @@
+# Copyright 2015 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "usanghi"
+NAME = "platform_Pkcs11LiveTest"
+SUITE = "experimental"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "platform"
+TEST_TYPE = "client"
+
+DOC = """
+This autotest runs the Chaps Live tests on a device with an owned TPM1.2.
+"""
+
+job.run_test('platform_Pkcs11LiveTest')
