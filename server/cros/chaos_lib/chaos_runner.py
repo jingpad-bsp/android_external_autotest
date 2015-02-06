@@ -311,9 +311,9 @@ class ChaosRunner(object):
                  cannot be found.
 
         """
-
         # Firmware versions manually aggregated by installing ToT on each device
-        known_firmware_ver = ['Atheros', 'mwifiex', 'loaded firmware version']
+        known_firmware_ver = ['Atheros', 'mwifiex', 'loaded firmware version',
+                              'brcmf_c_preinit_dcmds']
 
         # Find and return firmware version in logs
         for firmware_ver in known_firmware_ver:
@@ -329,6 +329,8 @@ class ChaosRunner(object):
                     pattern = '%s [\d.]+ \([\w.]+\)' % firmware_ver
                 elif 'loaded firmware version' in result_str:
                     pattern = '(\d+\.\d+\.\d+.\d)'
+                elif 'Firmware version' in result_str:
+                    pattern = '\d+\.\d+\.\d+ \([\w.]+\)'
                 else:
                     logging.info('%s does not match known firmware versions.',
                                  result_str)
