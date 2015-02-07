@@ -96,7 +96,7 @@ class fio_graph_generator():
 
         # Sort & calculate percentile
         if percentile:
-            data.sort(key=lambda x:x[1])
+            data.sort(key=lambda x: x[1])
             l = len(data)
             for i in range(l):
                 data[i][0] = 100 * (i + 0.5) / l
@@ -106,7 +106,7 @@ class fio_graph_generator():
         row = [None] * (pass_count + 1)
         for d in data:
             row[0] = {'v' : '%.3f' % d[0]}
-            row[pass_index + 1] = {'v': d[1] }
+            row[pass_index + 1] = {'v': d[1]}
             all_row.append({'c': row[:]})
 
         return all_row
@@ -125,19 +125,18 @@ class fio_graph_generator():
         @return: list of column in google.visualization.DataTable format
         """
         if percentile:
-            col_name_list = ['percentile'] + pass_list
+            col_name_list = ['percentile'] + [p[0] for p in pass_list]
         else:
-            col_name_list = ['time'] + pass_list
+            col_name_list = ['time'] + [p[0] for p in pass_list]
 
         return [{'label': name, 'type': 'number'} for name in col_name_list]
 
     @classmethod
-    def _gen_data_row(cls, test_name, test_type, pass_list, percentile):
+    def _gen_data_row(cls, test_type, pass_list, percentile):
         """
         Generate row for google.visualization.DataTable by generate all log
         file name and call _parse_log_file for each file
 
-        @param test_name: name of current workload. i.e. randwrite
         @param test_type: type of value collected for current test. i.e. IOPs
         @param pass_list: list of run passes for current test
         @param percentile: flag to use percentile as key instead of timestamp
@@ -146,27 +145,25 @@ class fio_graph_generator():
         """
         all_row = []
         pass_count = len(pass_list)
-        for pass_index, pass_str in enumerate(pass_list):
-            log_file_name = str('%s_%s_%s.log' %
-                                (test_name, pass_str, test_type))
+        for pass_index, log_file_name in enumerate([p[1] for p in pass_list]):
             all_row.extend(cls._parse_log_file(log_file_name, pass_index,
                                                 pass_count, percentile))
         return all_row
 
     @classmethod
-    def _write_data(cls, f, test_name, test_type, pass_list, percentile):
+    def _write_data(cls, f, test_type, pass_list, percentile):
         """
         Write google.visualization.DataTable object to output file.
         https://developers.google.com/chart/interactive/docs/reference
 
-        @param test_name: name of current workload. i.e. randwrite
+        @param f: html file to update
         @param test_type: type of value collected for current test. i.e. IOPs
         @param pass_list: list of run passes for current test
         @param percentile: flag to use percentile as key instead of timestamp
         """
         col = cls._gen_data_col(pass_list, percentile)
-        row = cls._gen_data_row(test_name, test_type, pass_list, percentile)
-        data_dict = { 'cols' : col, 'rows' : row}
+        row = cls._gen_data_row(test_type, pass_list, percentile)
+        data_dict = {'cols' : col, 'rows' : row}
 
         f.write('var data = new google.visualization.DataTable(')
         json.dump(data_dict, f)
@@ -182,7 +179,7 @@ class fio_graph_generator():
         @param test_type: type of value collected for current test. i.e. IOPs
         @param percentile: flag to use percentile as key instead of timestamp
         """
-        option = {'pointSize': 1 }
+        option = {'pointSize': 1}
         if percentile:
             option['title'] = ('Percentile graph of %s for %s workload' %
                                (cls.graph_title[test_type], test_name))
@@ -190,8 +187,8 @@ class fio_graph_generator():
             option['title'] = ('Graph of %s for %s workload over time' %
                                (cls.graph_title[test_type], test_name))
 
-        option['hAxis'] = { 'title': cls.h_title[percentile]}
-        option['vAxis'] = { 'title': cls.v_title[test_type]}
+        option['hAxis'] = {'title': cls.h_title[percentile]}
+        option['vAxis'] = {'title': cls.v_title[test_type]}
 
         f.write('var options = ')
         json.dump(option, f)
@@ -218,7 +215,7 @@ class fio_graph_generator():
 
         with open(out_file_name, 'w') as f:
             f.write(cls.html_head)
-            cls._write_data(f, test_name, test_type, pass_list, percentile)
+            cls._write_data(f, test_type, pass_list, percentile)
             cls._write_option(f, test_name, test_type, percentile)
             f.write(cls.html_tail)
 
@@ -252,9 +249,9 @@ def fio_parse_dict(d, prefix):
 
     # No need to parse something that didn't run such as read stat in write job.
     if 'io_bytes' in d and d['io_bytes'] == 0:
-        return { }
+        return {}
 
-    results = { }
+    results = {}
     for k, v in d.items():
 
         # remove >, >=, <, <=
@@ -280,7 +277,7 @@ def fio_parser(lines, prefix=None):
     @param lines: text output of json fio output.
     @param prefix: prefix for result keys.
     """
-    results = { }
+    results = {}
     fio_dict = json.loads(lines)
 
     if prefix:
@@ -314,13 +311,15 @@ def fio_generate_graph():
     # move fio log to result dir
     for log_type in log_types:
         logging.info('log_type %s', log_type)
-        logs = utils.system_output('ls *_%s.log' % log_type, ignore_status=True)
+        logs = utils.system_output('ls *_%s.*log' % log_type, ignore_status=True)
         if not logs:
             continue
 
         pattern = r"""(?P<jobname>.*)_                    # jobname
-                      ((?P<runpass>p\d+)_)                # pass
-                      (?P<type>bw|iops|lat|clat|slat).log # type
+                      ((?P<runpass>p\d+)_|)               # pass
+                      (?P<type>bw|iops|lat|clat|slat)     # type
+                      (.(?P<thread>\d+)|)                 # thread id for newer fio.
+                      .log
                    """
         matcher = re.compile(pattern, re.X)
 
@@ -334,7 +333,9 @@ def fio_generate_graph():
                 continue
 
             jobname = match.group('jobname')
-            runpass = match.group('runpass')
+            runpass = match.group('runpass') or '1'
+            if match.group('thread'):
+                runpass += '_' +  match.group('thread')
 
             # All files for particular job name are group together for create
             # graph that can compare performance between result from each pass.
@@ -343,14 +344,13 @@ def fio_generate_graph():
                     fio_graph_generator(current_job, log_type, pass_list).run()
                 current_job = jobname
                 pass_list = []
-
-            pass_list.append(runpass)
+            pass_list.append((runpass, log))
 
         if pass_list:
             fio_graph_generator(current_job, log_type, pass_list).run()
 
 
-        cmd = 'mv *_%s.log results' % log_type
+        cmd = 'mv *_%s.*log results' % log_type
         utils.run(cmd, ignore_status=True)
         utils.run('mv *.html results', ignore_status=True)
 
