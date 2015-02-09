@@ -46,7 +46,7 @@ class RegistrationTicketsTest(mox.MoxTestBase):
         # Claimed ticket
         expected_ticket = dict(
                 id=1234, userEmail='buffet@tasty.org',
-                deviceDraft=dict(systemName='buffet_device',
+                deviceDraft=dict(name='buffet_device',
                                  deviceKind='vendor',
                                  channel=dict(supportedType='xmpp')))
         self.tickets[(1234, None)] = expected_ticket
@@ -58,29 +58,13 @@ class RegistrationTicketsTest(mox.MoxTestBase):
         self.assertIn('robotAccountAuthorizationCode', returned_json)
 
 
-    def testClaim(self):
-        """Tests that we can claim a ticket."""
-        self.tickets[(1234, None)] = dict(id=1234)
-        self.mox.StubOutWithMock(common_util, 'grab_header_field')
-        self.mox.StubOutWithMock(common_util, 'parse_serialized_json')
-        update_ticket = dict(userEmail='me')
-        common_util.parse_serialized_json().AndReturn(update_ticket)
-        common_util.grab_header_field('Authorization').AndReturn(
-                'Bearer %s' % self.registration.TEST_ACCESS_TOKEN)
-
-        self.mox.ReplayAll()
-        returned_json = self.registration.PATCH(1234)
-        self.assertIn('userEmail', returned_json)
-        # This should have changed to an actual user.
-        self.assertNotEquals(returned_json['userEmail'], 'me')
-        self.mox.VerifyAll()
-
-
     def testInsert(self):
         """Tests that we can create a new ticket."""
         self.mox.StubOutWithMock(common_util, 'parse_serialized_json')
-        common_util.parse_serialized_json().AndReturn(None)
-
+        common_util.parse_serialized_json().AndReturn({'userEmail': 'me'})
+        self.mox.StubOutWithMock(common_util, 'grab_header_field')
+        common_util.grab_header_field('Authorization').AndReturn(
+                'Bearer %s' % self.registration.TEST_ACCESS_TOKEN)
         self.mox.ReplayAll()
         returned_json = self.registration.POST()
         self.assertIn('id', returned_json)

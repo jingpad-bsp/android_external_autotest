@@ -21,10 +21,9 @@ class RegistrationTickets(object):
 
     A common workflow of using this API is:
 
-    POST .../ # Creates a new ticket with id <id>.
-    PATCH .../<id> with json blob # Updates ticket with device info including
-             OAUTH2 bearer token + userEmail: me to claim the device.
-    POST .../<id>/finalize # Finalize the device registration (robot info).
+    client: POST .../ # Creates a new ticket with id <id> claims the ticket.
+    device: PATCH .../<id> with json blob # Populate ticket with device info
+    device: POST .../<id>/finalize # Finalize the device registration.
     """
     # OAUTH2 Bearer Access Token
     TEST_ACCESS_TOKEN = '1/TEST-ME'
@@ -52,11 +51,7 @@ class RegistrationTickets(object):
 
 
     def _finalize(self, id, api_key, ticket):
-        """Finalizes the ticket by adding robot account info.
-
-        Raises:
-            server_errors.HTTPError if the ticket hasn't been claimed yet.
-        """
+        """Finalizes the ticket causing the server to add robot account info."""
         if 'userEmail' not in ticket:
             raise server_errors.HTTPError(400, 'Unclaimed ticket')
 
@@ -135,14 +130,23 @@ class RegistrationTickets(object):
 
         else:
             data = common_util.parse_serialized_json()
-            if not data:
-                data = {}
+            if data is None or data.get('userEmail', None) != 'me':
+                raise server_errors.HTTPError(
+                        400,
+                        'Require userEmail=me to create ticket %s' % operation)
+            if [key for key in data.iterkeys() if key != 'userEmail']:
+                raise server_errors.HTTPError(
+                        400, 'Extra data for ticket creation: %r.' % data)
+            if id:
+                raise server_errors.HTTPError(
+                        400, 'Should not specify ticket ID.')
 
+            self._add_claim_data(data)
             # We have an insert operation so make sure we have all required
             # fields.
-            if not id:
-                data.update(self._default_registration_ticket())
+            data.update(self._default_registration_ticket())
 
+            logging.info('Ticket is being created.')
             return self.resource.update_data_val(id, api_key, data_in=data)
 
 
@@ -163,10 +167,6 @@ class RegistrationTickets(object):
             server_errors.HTTPError(400, 'Missing id for operation')
 
         data = common_util.parse_serialized_json()
-
-        # Handle claiming a ticket with an authorized request.
-        if data and data.get('userEmail') == 'me':
-            self._add_claim_data(data)
 
         return self.resource.update_data_val(
                 id, api_key, data_in=data)

@@ -5,6 +5,7 @@
 """Module contains a simple implementation of the devices RPC."""
 
 from cherrypy import tools
+import logging
 
 import common
 from fake_device_server import common_util
@@ -33,7 +34,7 @@ class Devices(resource_method.ResourceMethod):
     exposed = True
 
     # Requires keys in device_config to create a device.
-    required_keys = ['systemName', 'deviceKind', 'channel']
+    required_keys = ['name', 'deviceKind', 'channel']
 
 
 
@@ -54,6 +55,8 @@ class Devices(resource_method.ResourceMethod):
         @param device_config: Json dict for the device.
         @raises server_errors.HTTPError: if the config is missing a required key
         """
+        logging.info('Creating device with api_key=%s and device_config=%r',
+                     api_key, device_config)
         # Verify required keys exist in the device draft.
         if not device_config:
             raise server_errors.HTTPError(400, 'Empty device draft.')

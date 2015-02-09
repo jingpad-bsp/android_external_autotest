@@ -48,7 +48,7 @@ class DevicesClient(common_client.CommonClient):
         @param channel: supported communication channel.
         @param kwargs: additional dictionary of args to put in config.
         """
-        data = dict(systemName=system_name,
+        data = dict(name=system_name,
                     deviceKind=device_kind,
                     channel=channel,
                     **kwargs)

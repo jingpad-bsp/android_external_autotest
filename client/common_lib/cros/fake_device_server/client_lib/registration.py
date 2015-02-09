@@ -59,14 +59,18 @@ class RegistrationClient(common_client.CommonClient):
         return json.loads(url_h.read())
 
 
-    def create_registration_ticket(self, initial_data=None):
-        """Creates a new registration ticket.
-
-        @param initial_data: optional dictionary of data to pass for ticket.
-        """
-        data = initial_data or {}
-        request = urllib2.Request(self.get_url(), json.dumps(data),
-                                  {'Content-Type': 'application/json'})
+    def create_registration_ticket(self):
+        """Creates a new registration ticket."""
+        # We're going to fall back onto this test access token, if we don't
+        # have a real one.  Tests rely on this behavior.
+        token = registration_tickets.RegistrationTickets.TEST_ACCESS_TOKEN
+        headers = {'Content-Type': 'application/json',
+                   'Authorization': 'Bearer %s' % token,
+        }
+        auth_headers = self.add_auth_headers()
+        headers.update(auth_headers)
+        data = {'userEmail': 'me'}
+        request = urllib2.Request(self.get_url(), json.dumps(data), headers)
         url_h = urllib2.urlopen(request)
         return json.loads(url_h.read())
 
@@ -96,25 +100,16 @@ class RegistrationClient(common_client.CommonClient):
         logging.info('Initial Ticket: %s', ticket)
         ticket_id = ticket['id']
 
-        device_draft = dict(systemName=system_name,
+        device_draft = dict(name=system_name,
                             deviceKind=device_kind,
                             channel=dict(supportedType=channel),
                             **kwargs)
-        headers = self.add_auth_headers()
-        if not headers:
-            # Insert test auth.
-            headers = [
-                    ['Authorization',
-                    'Bearer ' +
-                    registration_tickets.RegistrationTickets.TEST_ACCESS_TOKEN
-                    ]]
 
         ticket = self.update_registration_ticket(
                 ticket_id,
                 {'deviceDraft': device_draft,
                  'userEmail': 'me',
-                 'oauthClientId': oauth_client_id},
-                additional_headers=headers)
+                 'oauthClientId': oauth_client_id})
 
         logging.info('Updated Ticket After Claiming: %s', ticket)
         return self.finalize_registration_ticket(ticket_id)
