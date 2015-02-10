@@ -4,7 +4,29 @@
 
 from autotest_lib.client.common_lib.cros.network import apmanager_constants
 from autotest_lib.client.cros import constants
+from autotest_lib.server import autotest
 from autotest_lib.server.cros.network import hostap_config
+
+XMLRPC_BRINGUP_TIMEOUT_SECONDS = 60
+
+def get_xmlrpc_proxy(host):
+    """Get an apmanager XMLRPC proxy for |host|.
+
+    @param host: host object representing a remote device.
+    @return proxy object for remote XMLRPC server.
+
+    """
+    # Make sure the client library on the device is up-to-date.
+    client_at = autotest.Autotest(host)
+    client_at.install()
+    # Start up the XMLRPC proxy on the device.
+    proxy = host.xmlrpc_connect(
+            constants.APMANAGER_XMLRPC_SERVER_COMMAND,
+            constants.APMANAGER_XMLRPC_SERVER_PORT,
+            command_name=constants.APMANAGER_XMLRPC_SERVER_CLEANUP_PATTERN,
+            ready_test_name=constants.APMANAGER_XMLRPC_SERVER_READY_METHOD,
+            timeout_seconds=XMLRPC_BRINGUP_TIMEOUT_SECONDS)
+    return proxy
 
 
 class ApmanagerServiceProvider(object):
@@ -35,12 +57,7 @@ class ApmanagerServiceProvider(object):
                 hostap_config.HostapConfig.get_frequency_for_channel(
                         channel),
                 'managed')
-        self._xmlrpc_server = self._linux_system.host.xmlrpc_connect(
-                constants.APMANAGER_XMLRPC_SERVER_COMMAND,
-                constants.APMANAGER_XMLRPC_SERVER_PORT,
-                command_name=constants.APMANAGER_XMLRPC_SERVER_CLEANUP_PATTERN,
-                ready_test_name=constants.APMANAGER_XMLRPC_SERVER_READY_METHOD,
-                timeout_seconds=self.XMLRPC_BRINGUP_TIMEOUT_SECONDS)
+        self._xmlrpc_server = get_xmlrpc_proxy(self._linux_system.host)
         self._service = self._xmlrpc_server.start_service(self._config_params)
 
 
