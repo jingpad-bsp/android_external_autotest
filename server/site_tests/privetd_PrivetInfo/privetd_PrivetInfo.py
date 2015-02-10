@@ -29,6 +29,7 @@ class privetd_PrivetInfo(test.test):
         """
         expected = ['/privet/info',
                     '/privet/v3/auth',
+                    '/privet/v3/pairing/cancel',
                     '/privet/v3/pairing/confirm',
                     '/privet/v3/pairing/start',
                     '/privet/v3/setup/start',
@@ -46,7 +47,7 @@ class privetd_PrivetInfo(test.test):
         """
         expected = {'crypto': ['p224_spake2'],
                     'mode': ['anonymous', 'pairing'],
-                    'pairing': ['embeddedCode']};
+                    'pairing': ['pinCode']};
         if auth != expected:
             raise error.TestFail('Expected authentication: %r, given: %r'
                                  % (auth, expected))
