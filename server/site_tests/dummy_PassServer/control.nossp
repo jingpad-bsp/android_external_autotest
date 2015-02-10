@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "dummy_PassServer"
+NAME = "dummy_PassServer_nossp"
 PURPOSE = "Demonstrate success methods of autotests."
 CRITERIA = "This test will always succeed."
 SUITE = "dummy_server"
@@ -11,9 +11,12 @@ TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "dummy"
 TEST_TYPE = "server"
+# Force not to use server side package for this test.
+REQUIRE_SSP = False
 
 DOC = """
-This is a helper test that will succeed.
+This is a helper test that will succeed and force not to use server side
+packaging.
 """
 
 def run(machine):
