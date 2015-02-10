@@ -18,8 +18,7 @@ DOC = """
 This test is intended to be run with many iterations to ensure that the DUT
 does boot into Chrome OS and then does power off later.
 
-The iteration should be specified by the parameter -a "faft_iterations=10"
-in run_remote_test.sh.
+Runs 500 iterations.
 """
 
 args_dict = utils.args_to_dict(args)

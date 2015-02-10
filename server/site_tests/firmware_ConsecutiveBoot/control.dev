@@ -8,7 +8,7 @@ AUTHOR = "Chrome OS Team"
 NAME = "firmware_ConsecutiveBoot"
 PURPOSE = "Servo based consecutive boot test"
 CRITERIA = "This test will fail if DUT fails to boot from power-off"
-SUITE = "faft,faft_stress,faft_dev"
+SUITE = "faft_stress,faft_dev"
 TIME = "SHORT"
 TEST_CATEGORY = "Stress"
 TEST_CLASS = "firmware"
@@ -16,10 +16,9 @@ TEST_TYPE = "server"
 
 DOC = """
 This test is intended to be run with many iterations to ensure that the DUT
-does boot into Chrome OS and then does power off later.
+does boot into Chrome OS and then does power off later in developer mode.
 
-The iteration should be specified by the parameter -a "faft_iterations=10"
-in run_remote_test.sh.
+The iteration should be specified by the parameter -a "faft_iterations=10".
 """
 
 args_dict = utils.args_to_dict(args)
