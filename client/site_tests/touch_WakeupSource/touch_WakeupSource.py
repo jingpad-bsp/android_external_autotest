@@ -45,8 +45,10 @@ class touch_WakeupSource(touch_playback_test_base.touch_playback_test_base):
 
         result = utils.run('cat %s' % filename).stdout.strip()
         if result == 'enabled':
+            logging.info('Found that %s is a wake source.', input_type)
             return True
         elif result == 'disabled':
+            logging.info('Found that %s is not a wake source.', input_type)
             return False
         error.TestError('wakeup file for %s on input%s said "%s".' %
                         (input_type, node_num, result))
@@ -66,6 +68,10 @@ class touch_WakeupSource(touch_playback_test_base.touch_playback_test_base):
                         raise error.TestFail('Touchpad is not a wake source!')
 
         # Check that touchscreen is not a wake source (if present).
+        # Devices without a touchpad should have touchscreen as wake source.
         if self._has_touchscreen:
-            if self._is_wake_source('touchscreen'):
-                raise error.TestFail('Touchpad is a wake source!')
+            touchscreen_wake = self._is_wake_source('touchscreen')
+            if self._has_touchpad and touchscreen_wake:
+                raise error.TestFail('Touchscreen is a wake source!')
+            if not self._has_touchpad and not touchscreen_wake:
+                raise error.TestFail('Touchscreen is not a wake source!')
