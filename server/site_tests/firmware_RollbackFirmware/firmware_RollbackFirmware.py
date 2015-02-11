@@ -30,15 +30,6 @@ class firmware_RollbackFirmware(FirmwareTest):
         super(firmware_RollbackFirmware, self).cleanup()
 
     def run_once(self, dev_mode=False):
-        # Recovery reason RW_FW_ROLLBACK available after Alex/ZGB.
-        if self.faft_client.system.get_platform_name() in (
-                'Mario', 'Alex', 'ZGB'):
-            recovery_reason = vboot.RECOVERY_REASON['RO_INVALID_RW']
-        elif self.fw_vboot2:
-            recovery_reason = vboot.RECOVERY_REASON['RO_INVALID_RW']
-        else:
-            recovery_reason = vboot.RECOVERY_REASON['RW_FW_ROLLBACK']
-
         logging.info("Rollback firmware A.")
         self.check_state((self.checkers.fw_tries_checker, 'A'))
         self.faft_client.bios.move_version_backward('a')
@@ -55,7 +46,9 @@ class firmware_RollbackFirmware(FirmwareTest):
         logging.info("Expected recovery boot and restores firmware A and B.")
         self.check_state((self.checkers.crossystem_checker, {
                            'mainfw_type': 'recovery',
-                           'recovery_reason': recovery_reason,
+                           'recovery_reason': (
+                                vboot.RECOVERY_REASON['RO_INVALID_RW'],
+                                vboot.RECOVERY_REASON['RW_FW_ROLLBACK']),
                            }))
         self.faft_client.bios.move_version_forward(('a', 'b'))
         self.reboot_warm()
