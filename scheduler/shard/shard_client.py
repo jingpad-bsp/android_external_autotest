@@ -18,6 +18,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.frontend.afe import models
+from autotest_lib.frontend.afe import rpc_utils
 from autotest_lib.scheduler import email_manager
 from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
@@ -284,12 +285,6 @@ def handle_signal(signum, frame):
     _heartbeat_client.shutdown()
 
 
-def _get_global_afe_hostname():
-    """Read the hostname of the global AFE from the global configuration."""
-    return global_config.global_config.get_config_value(
-            'SHARD', 'global_afe_hostname')
-
-
 def _get_shard_hostname_and_ensure_running_on_shard():
     """Read the hostname the local shard from the global configuration.
 
@@ -320,7 +315,7 @@ def get_shard_client():
 
     @returns A shard client instance.
     """
-    global_afe_hostname = _get_global_afe_hostname()
+    global_afe_hostname = rpc_utils.get_global_afe_hostname()
     shard_hostname = _get_shard_hostname_and_ensure_running_on_shard()
     tick_pause_sec = _get_tick_pause_sec()
     return ShardClient(global_afe_hostname, shard_hostname, tick_pause_sec)

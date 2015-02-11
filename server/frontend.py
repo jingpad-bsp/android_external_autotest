@@ -653,6 +653,7 @@ class AFE(RpcClient):
         if self.job:
             self.job.record(result, None, testname, status='')
 
+
     def poll_job_results(self, tko, job, enough=1, debug=False):
         """
         Analyse all job results by platform
