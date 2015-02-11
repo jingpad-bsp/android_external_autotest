@@ -23,7 +23,7 @@ class power_Status(test.test):
         time.sleep(2)
 
         logging.info("battery_energy: %f" % status.battery[0].energy)
-        logging.info("linepower_online: %s" % status.linepower[0].online)
+        logging.info("linepower_online: %s" % status.on_ac())
 
         keyvals = plog.calc()
         keyvals.update(tlog.calc())

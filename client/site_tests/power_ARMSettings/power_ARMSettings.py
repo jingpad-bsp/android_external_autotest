@@ -21,7 +21,7 @@ class power_ARMSettings(test.test):
             raise error.TestNAError('Unsupported CPU')
 
         status = power_status.get_status()
-        if status.linepower[0].online:
+        if status.on_ac():
             logging.info('AC Power is online')
             self._on_ac = True
         else:

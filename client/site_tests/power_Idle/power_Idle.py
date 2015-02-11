@@ -41,7 +41,7 @@ class power_Idle(test.test):
             self._stats = power_status.StatoMatic()
 
             measurements = []
-            if not self.status.linepower[0].online:
+            if not self.status.on_ac():
                 measurements.append(
                     power_status.SystemPower(self.status.battery_path))
             if power_utils.has_rapl_support():
@@ -69,7 +69,7 @@ class power_Idle(test.test):
         keyvals['level_backlight_current'] = self._backlight.get_level()
 
         # record battery stats if not on AC
-        if self.status.linepower[0].online:
+        if self.status.on_ac():
             keyvals['b_on_ac'] = 1
         else:
             keyvals['b_on_ac'] = 0

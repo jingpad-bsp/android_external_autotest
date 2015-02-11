@@ -388,10 +388,10 @@ class SysStat(object):
     def __init__(self):
         power_supply_path = '/sys/class/power_supply/*'
         self.battery = None
-        self.linepower = None
+        self.linepower = []
         self.thermal = None
         self.battery_path = None
-        self.linepower_path = None
+        self.linepower_path = []
 
         power_supplies = glob.glob(power_supply_path)
         for path in power_supplies:
@@ -402,7 +402,7 @@ class SysStat(object):
             if power_type == 'Battery':
                 self.battery_path = path
             elif power_type in self.psu_types:
-                self.linepower_path = path
+                self.linepower_path.append(path)
 
         if not self.battery_path or not self.linepower_path:
             logging.warning("System does not provide power sysfs interface")
@@ -414,11 +414,14 @@ class SysStat(object):
         """
         Initialize device power status objects.
         """
+        self.linepower = []
+
         if self.battery_path:
             self.battery = [ BatteryStat(self.battery_path) ]
-        if self.linepower_path:
-            self.linepower = [ LineStat(self.linepower_path) ]
-        else:
+
+        for path in self.linepower_path:
+            self.linepower.append(LineStat(path))
+        if not self.linepower:
             self.linepower = [ LineStatDummy() ]
 
         temp_str = self.thermal.get_temps()
@@ -432,7 +435,10 @@ class SysStat(object):
         """
         Returns true if device is currently running from AC power.
         """
-        on_ac = self.linepower[0].online
+        on_ac = False
+        for linepower in self.linepower:
+            on_ac |= linepower.online
+
         # Butterfly can incorrectly report AC online for some time after
         # unplug. Check battery discharge state to confirm.
         if utils.get_board() == 'butterfly':

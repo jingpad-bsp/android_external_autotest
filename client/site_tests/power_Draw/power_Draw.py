@@ -14,7 +14,7 @@ class power_Draw(test.test):
 
     def run_once(self, seconds=200, sleep=10):
         status = power_status.get_status()
-        if status.linepower[0].online:
+        if status.on_ac():
             logging.warning('AC power is online -- '
                          'unable to monitor energy consumption')
             return

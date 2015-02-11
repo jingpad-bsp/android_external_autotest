@@ -14,7 +14,7 @@ class power_BatteryCharge(test.test):
     def initialize(self):
         self.status = power_status.get_status()
 
-        if not self.on_ac():
+        if not self.status.on_ac():
             raise error.TestNAError(
                   'This test needs to be run with the AC power online')
 
@@ -135,7 +135,3 @@ class power_BatteryCharge(test.test):
             self._services.restore_services()
         if hasattr(self, '_backlight') and self._backlight:
             self._backlight.restore()
-
-
-    def on_ac(self):
-        return self.status.linepower[0].online
