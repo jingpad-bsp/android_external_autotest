@@ -4,7 +4,8 @@
 
 AUTHOR = 'wiley, pstew, quiche'
 NAME = 'network_WiFi_Perf.11a_wep'
-SUITE = 'wifi_perf'
+SUITE = ('wifi_perf, wifi_perf_bcm4356, wifi_perf_marvell8897,'
+         'wifi_perf_intel7265')
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
 DEPENDENCIES = 'wificell'
