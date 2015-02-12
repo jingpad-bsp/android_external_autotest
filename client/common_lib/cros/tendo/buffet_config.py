@@ -11,13 +11,15 @@ from autotest_lib.client.common_lib.cros import dbus_send
 from autotest_lib.client.common_lib.cros.fake_device_server import fake_oauth
 from autotest_lib.client.common_lib.cros.fake_device_server import server
 
-BUFFET_CONFIG_PATH = '/tmp/buffet.fake.conf'
-BUFFET_STATE_PATH = '/tmp/buffet.fake.state'
+TEST_CONFIG_PATH = '/tmp/buffet.fake.conf'
+TEST_STATE_PATH = '/tmp/buffet.fake.state'
 
 SERVICE_NAME = 'org.chromium.Buffet'
 
+COMMAND_INTERFACE = 'org.chromium.Buffet.Command'
 MANAGER_INTERFACE = 'org.chromium.Buffet.Manager'
 MANAGER_OBJECT_PATH = '/org/chromium/Buffet/Manager'
+OBJECT_MANAGER_PATH = '/org/chromium/Buffet'
 
 TEST_MESSAGE = 'Hello world!'
 
@@ -25,7 +27,7 @@ LOCAL_SERVER_PORT = server.PORT
 LOCAL_OAUTH_URL = 'http://localhost:%d/%s/' % (LOCAL_SERVER_PORT,
                                                fake_oauth.OAUTH_PATH)
 LOCAL_SERVICE_URL = 'http://localhost:%d/' % LOCAL_SERVER_PORT
-TEST_API_KEY = 'this_is_an_api_key'
+TEST_API_KEY = fake_oauth.TEST_API_KEY
 
 LOCAL_CLOUD_FAKES = {
         'client_id': 'this_is_my_client_id',
@@ -53,19 +55,25 @@ class BuffetConfig(object):
 
     def __init__(self,
                  log_verbosity=None,
-                 clean_state=True,
-                 use_local_cloud_fakes=True):
+                 state_file_path=TEST_STATE_PATH,
+                 use_local_cloud_fakes=True,
+                 test_definitions_dir=None):
         self.log_verbosity = log_verbosity
-        self.clean_state = clean_state
+        self.state_file_path = state_file_path
         self.use_local_cloud_fakes = use_local_cloud_fakes
+        self.test_definitions_dir = test_definitions_dir
 
 
-    def restart_with_config(self, host=None, timeout_seconds=10):
+    def restart_with_config(self,
+                            host=None,
+                            timeout_seconds=10,
+                            clean_state=True):
         """Restart Buffet with this configuration.
 
         @param host: Host object if we're interested in a remote host.
         @param timeout_seconds: number of seconds to wait for Buffet to
                 come up.
+        @param clean_state: boolean True to remove all existing state.
 
         """
         run = utils.run if host is None else host.run
@@ -80,12 +88,15 @@ class BuffetConfig(object):
             # create this file on both remote and local hosts (see how run() is
             # defined).
             run('cat <<EOF >%s\n%s\nEOF\n' %
-                (BUFFET_CONFIG_PATH, '\n'.join(conf_lines)))
-            flag_list.append('BUFFET_CONFIG_PATH=%s' % BUFFET_CONFIG_PATH)
-        if self.clean_state:
-            run('echo > %s' % BUFFET_STATE_PATH)
-            run('chown buffet:buffet %s' % BUFFET_STATE_PATH)
-            flag_list.append('BUFFET_STATE_PATH=%s' % BUFFET_STATE_PATH)
+                (TEST_CONFIG_PATH, '\n'.join(conf_lines)))
+            flag_list.append('BUFFET_CONFIG_PATH=%s' % TEST_CONFIG_PATH)
+        if clean_state:
+            run('echo > %s' % self.state_file_path)
+            run('chown buffet:buffet %s' % self.state_file_path)
+        flag_list.append('BUFFET_STATE_PATH=%s' % self.state_file_path)
+        if self.test_definitions_dir is not None:
+            flag_list.append('BUFFET_TEST_DEFINITIONS_PATH=%s' %
+                             self.test_definitions_dir)
         run('start buffet %s' % ' '.join(flag_list))
         start_time = time.time()
         while time.time() - start_time < timeout_seconds:
