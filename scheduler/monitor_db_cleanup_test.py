@@ -22,6 +22,35 @@ class UserCleanupTest(unittest.TestCase, frontend_test_utils.FrontendTestMixin):
         self._frontend_common_teardown()
 
 
+    def test_clear_stuck_hosts(self):
+        """Test _clear_stuck_hosts method. """
+        for i, status in zip([0, 1], [models.Host.Status.RUNNING,
+                                      models.Host.Status.RESETTING]):
+            self.hosts[i].status = status
+            self.hosts[i].leased = True
+            self.hosts[i].save()
+            job = self._create_job_simple([self.hosts[i].id])
+            h = job.hostqueueentry_set.all()[0]
+            h.active = 0
+            h.status = models.HostQueueEntry.Status.COMPLETED
+            h.save()
+            s = models.SpecialTask.schedule_special_task(
+                    host=self.hosts[i], task=models.SpecialTask.Task.VERIFY)
+            s.is_active = 0
+            s.save()
+
+        self.cleanup._clear_stuck_hosts()
+
+        for i in range(0, len(self.hosts)):
+            host = models.Host.objects.get(id=self.hosts[i].id)
+            if i in (0, 1):
+                self.assertEquals(host.status,
+                                  models.Host.Status.REPAIR_FAILED)
+            else:
+                self.assertEquals(host.status,
+                                  models.Host.Status.READY)
+
+
     def test_reverify_dead_hosts(self):
         # unlimited reverifies
         self.god.stub_with(scheduler_config.config,

@@ -58,6 +58,7 @@ class UserCleanup(PeriodicCleanup):
         self._abort_jobs_past_max_runtime()
         self._clear_inactive_blocks()
         self._check_for_db_inconsistencies()
+        self._clear_stuck_hosts()
         self._reverify_dead_hosts()
         self._django_session_cleanup()
 
@@ -161,6 +162,48 @@ class UserCleanup(PeriodicCleanup):
             LEFT JOIN (SELECT DISTINCT job_id FROM afe_host_queue_entries
                        WHERE NOT complete) hqe
             USING (job_id) WHERE hqe.job_id IS NULL""")
+
+
+    def _clear_stuck_hosts(self):
+        """Clear hosts that are stuck in active states.
+
+        DB can get corrupted, e.g. in scheduler crashes.
+        After we recover from failures, we sometimes
+        see hosts stuck in active states without an active special
+        task or hqe associated with it. We need to reset these hosts by
+        setting their state to 'Repair Failed' and with for the
+        periodically reverify to get them back.
+        """
+        s = models.Host.Status
+        states = (s.VERIFYING, s.REPAIRING, s.CLEANING,
+                  s.RESETTING, s.PROVISIONING)
+        hosts_stuck_special_tasks = self._db.execute("""
+            SELECT afe_hosts.id, afe_hosts.hostname FROM afe_hosts
+            LEFT OUTER JOIN afe_special_tasks
+            ON (afe_hosts.id = afe_special_tasks.host_id
+                AND afe_special_tasks.is_active = 1)
+            WHERE afe_special_tasks.id IS NULL AND locked=0 and invalid=0 AND
+                  afe_hosts.status in (%s, %s, %s, %s, %s);""" , states)
+
+        hosts_stuck_hqes = self._db.execute("""
+            SELECT afe_hosts.id, afe_hosts.hostname FROM afe_hosts
+            LEFT OUTER JOIN afe_host_queue_entries
+            ON (afe_hosts.id = afe_host_queue_entries.host_id
+                AND afe_host_queue_entries.active = 1)
+            WHERE afe_host_queue_entries.id IS NULL AND
+                  afe_hosts.status=%s AND
+                  afe_hosts.locked = 0 AND afe_hosts.invalid=0;""" ,
+            (s.RUNNING,))
+        stuck_hosts = hosts_stuck_special_tasks + hosts_stuck_hqes
+        host_ids = [row[0] for row in stuck_hosts]
+        hostnames = [row[1] for row in stuck_hosts]
+        if stuck_hosts:
+            models.Host.objects.filter(
+                    id__in=host_ids).update(status=s.REPAIR_FAILED)
+            logging.warning(
+                    'Found hosts stuck in Reparing/Verifing/Cleaning/Resetting/'
+                    'Provisioning/Running state with no active special tasks '
+                    'or hqes. Set them to Repair Failed: %s', hostnames)
 
 
     def _should_reverify_hosts_now(self):
