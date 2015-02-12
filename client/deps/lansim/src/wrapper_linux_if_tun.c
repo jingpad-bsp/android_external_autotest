@@ -24,24 +24,16 @@
 #include <Python.h>
 #include <sys/ioctl.h>
 #include <netinet/in.h>
-#include <linux/if.h>
+#include <net/if.h>
 #include <linux/if_tun.h>
 
 void _init_linux_if_tun_h(PyObject *m) {
   /* Read queue size */
   PyModule_AddIntMacro(m, TUN_READQ_SIZE);
-
-  /* TUN device flags */
+  /* TUN device type flags: deprecated. Use IFF_TUN/IFF_TAP instead. */
   PyModule_AddIntMacro(m, TUN_TUN_DEV);
   PyModule_AddIntMacro(m, TUN_TAP_DEV);
   PyModule_AddIntMacro(m, TUN_TYPE_MASK);
-
-  PyModule_AddIntMacro(m, TUN_FASYNC);
-  PyModule_AddIntMacro(m, TUN_NOCHECKSUM);
-  PyModule_AddIntMacro(m, TUN_NO_PI);
-  PyModule_AddIntMacro(m, TUN_ONE_QUEUE);
-  PyModule_AddIntMacro(m, TUN_PERSIST);
-  PyModule_AddIntMacro(m, TUN_VNET_HDR);
 
   /* Ioctl defines */
   PyModule_AddIntMacro(m, TUNSETNOCSUM);
@@ -61,14 +53,29 @@ void _init_linux_if_tun_h(PyObject *m) {
   PyModule_AddIntMacro(m, TUNDETACHFILTER);
   PyModule_AddIntMacro(m, TUNGETVNETHDRSZ);
   PyModule_AddIntMacro(m, TUNSETVNETHDRSZ);
+  PyModule_AddIntMacro(m, TUNSETQUEUE);
+  PyModule_AddIntMacro(m, TUNSETIFINDEX);
+  PyModule_AddIntMacro(m, TUNGETFILTER);
+  PyModule_AddIntMacro(m, TUNSETVNETLE);
+  PyModule_AddIntMacro(m, TUNGETVNETLE);
 
   /* TUNSETIFF ifr flags */
   PyModule_AddIntMacro(m, IFF_TUN);
   PyModule_AddIntMacro(m, IFF_TAP);
   PyModule_AddIntMacro(m, IFF_NO_PI);
+  /* This flag has no real effect */
   PyModule_AddIntMacro(m, IFF_ONE_QUEUE);
   PyModule_AddIntMacro(m, IFF_VNET_HDR);
   PyModule_AddIntMacro(m, IFF_TUN_EXCL);
+  PyModule_AddIntMacro(m, IFF_MULTI_QUEUE);
+  PyModule_AddIntMacro(m, IFF_ATTACH_QUEUE);
+  PyModule_AddIntMacro(m, IFF_DETACH_QUEUE);
+  /* read-only flag */
+  PyModule_AddIntMacro(m, IFF_PERSIST);
+  PyModule_AddIntMacro(m, IFF_NOFILTER);
+
+  /* Socket options */
+  PyModule_AddIntMacro(m, TUN_TX_TIMESTAMP);
 
   /* Features for GSO (TUNSETOFFLOAD). */
   PyModule_AddIntMacro(m, TUN_F_CSUM);
