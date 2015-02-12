@@ -10,23 +10,28 @@ from autotest_lib.client.cros import touch_playback_test_base
 
 
 class touch_UpdateErrors(touch_playback_test_base.touch_playback_test_base):
-    """Check that there are no touch update errors."""
+    """Check that touch update is tried and that there are no update errors."""
     version = 1
 
     def _check_updates(self):
-        """Fail the test if device has any update errors for touch.
+        """Fail the test if device has problems with touch firmware update.
 
-        @raises: TestFail if no update is found or if there is an error.
+        @raises: TestFail if no update attempt occurs or if there is an error.
 
         """
         log_cmd = 'grep -i touch /var/log/messages'
 
-        # Check for no errors in touch logs.
-        for term in ['error', 'fail']:
-            error_cmd = '%s | grep -i %s' % (log_cmd, term)
-            error_logs = utils.run(error_cmd, ignore_status=True).stdout
-            if len(error_logs) > 0:
-                raise error.TestFail('Error: %s.' % error_logs.split('\n')[0])
+        pass_terms = ['chromeos-touch-firmware-update']
+        fail_terms = ['error', 'fail']
+
+        # Check for key terms in touch logs.
+        for term in pass_terms + fail_terms:
+            search_cmd = '%s | grep -i %s' % (log_cmd, term)
+            log_entries = utils.run(search_cmd, ignore_status=True).stdout
+            if term in fail_terms and len(log_entries) > 0:
+                raise error.TestFail('Error: %s.' % log_entries.split('\n')[0])
+            if term in pass_terms and len(log_entries) == 0:
+                raise error.TestFail('Touch firmware did not attempt update.')
 
     def run_once(self):
         """Entry point of this test."""
