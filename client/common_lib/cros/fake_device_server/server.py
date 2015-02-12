@@ -30,8 +30,8 @@ def stop_server():
 
 def start_server():
     """Starts the cherrypy server and blocks."""
-    commands_resource = resource_delegate.ResourceDelegate({})
-    commands_handler = commands.Commands(commands_resource)
+    oauth_handler = fake_oauth.FakeOAuth()
+    commands_handler = commands.Commands()
     cherrypy.tree.mount(
         commands_handler, '/' + commands.COMMANDS_PATH,
         {'/':
@@ -39,7 +39,9 @@ def start_server():
         }
     )
     devices_resource = resource_delegate.ResourceDelegate({})
-    devices_handler = devices.Devices(devices_resource, commands_handler)
+    devices_handler = devices.Devices(devices_resource,
+                                      commands_handler,
+                                      oauth_handler)
     cherrypy.tree.mount(
         devices_handler, '/' + devices.DEVICES_PATH,
         {'/':
@@ -56,7 +58,6 @@ def start_server():
             {'request.dispatch': cherrypy.dispatch.MethodDispatcher()}
         }
     )
-    oauth_handler = fake_oauth.FakeOAuth()
     cherrypy.tree.mount(
         oauth_handler,
         '/' + fake_oauth.OAUTH_PATH,

@@ -73,7 +73,8 @@ class CommandsClient(common_client.CommonClient):
         @param data: command.
         """
         headers = self.add_auth_headers({'Content-Type': 'application/json'})
-        request = urllib2.Request(self.get_url(params={'deviceId':device_id}),
+        data['deviceId'] = device_id
+        request = urllib2.Request(self.get_url(),
                                   json.dumps(data),
                                   headers=headers)
         url_h = urllib2.urlopen(request)

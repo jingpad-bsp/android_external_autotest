@@ -39,11 +39,14 @@ class ResourceDelegate(object):
         Raises:
             server_errors.HTTPError if the data_val doesn't exist.
         """
-        data_val = self._data.get((id, api_key))
-        if data_val:
-            return data_val
-        else:
-            raise server_errors.HTTPError(400, 'Invalid data ID: %s' % id)
+        key = (id, api_key)
+        data_val = self._data.get(key)
+        if not data_val:
+            # Put the tuple we want inside another tuple, so that Python doesn't
+            # unroll |key| and complain that we haven't asked to printf two
+            # values.
+            raise server_errors.HTTPError(400, 'Invalid data key: %r' % (key,))
+        return data_val
 
 
     def get_data_vals(self):
@@ -60,10 +63,13 @@ class ResourceDelegate(object):
         Raises:
             server_errors.HTTPError if the data_val doesn't exist.
         """
-        if (id, api_key) in self._data:
-            del self._data[(id, api_key)]
-        else:
-            raise server_errors.HTTPError(400, 'Invalid data ID: %s' % id)
+        key = (id, api_key)
+        if key not in self._data:
+            # Put the tuple we want inside another tuple, so that Python doesn't
+            # unroll |key| and complain that we haven't asked to printf two
+            # values.
+            raise server_errors.HTTPError(400, 'Invalid data key: %r' % (key,))
+        del self._data[key]
 
 
     def update_data_val(self, id, api_key, data_in=None, update=True):

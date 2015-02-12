@@ -6,6 +6,7 @@
 
 import cherrypy
 import json
+import logging
 
 import common
 from fake_device_server import server_errors
@@ -23,7 +24,21 @@ def grab_header_field(header_name):
 
     @param header_name: Header name to retrieve.
     """
-    return cherrypy.request.headers.get(header_name)
+    return cherrypy.request.headers.get(header_name, None)
+
+
+def get_access_token():
+    """Returns the access token from an incoming request.
+
+    @return string access token or None.
+
+    """
+    header = grab_header_field('Authorization')
+    if header is None:
+        logging.error('No authorization header found.')
+        return None
+    logging.debug('Got authorization header "%s"', header)
+    return header.split()[1]
 
 
 def parse_common_args(args_tuple, kwargs, supported_operations=set()):

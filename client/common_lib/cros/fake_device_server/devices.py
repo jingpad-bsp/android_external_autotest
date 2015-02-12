@@ -33,12 +33,8 @@ class Devices(resource_method.ResourceMethod):
     # Needed for cherrypy to expose this to requests.
     exposed = True
 
-    # Requires keys in device_config to create a device.
-    required_keys = ['name', 'deviceKind', 'channel']
 
-
-
-    def __init__(self, resource, commands_instance):
+    def __init__(self, resource, commands_instance, oauth_instance):
         """Initializes a registration ticket.
 
         @param resource: A resource delegate for storing devices.
@@ -46,6 +42,31 @@ class Devices(resource_method.ResourceMethod):
         """
         super(Devices, self).__init__(resource)
         self.commands_instance = commands_instance
+        self._oauth = oauth_instance
+
+
+    def _handle_state_patch(self, device_id, api_key, data):
+        """Patch a device's state with the given update data.
+
+        @param device_id: string device id to update.
+        @param api_key: string api_key to support this resource delegate.
+        @param data: json blob provided to patchState API.
+
+        """
+        # TODO(wiley) this.
+
+
+    def _validate_device_resource(self, resource):
+        # Verify required keys exist in the device draft.
+        if not resource:
+            raise server_errors.HTTPError(400, 'Empty device resource.')
+
+        for key in ['name', 'deviceKind', 'channel']:
+            if key not in resource:
+                raise server_errors.HTTPError(400, 'Must specify %s' % key)
+
+        # Add server fields.
+        resource['kind'] = 'clouddevices#device'
 
 
     def create_device(self, api_key, device_config):
@@ -57,25 +78,10 @@ class Devices(resource_method.ResourceMethod):
         """
         logging.info('Creating device with api_key=%s and device_config=%r',
                      api_key, device_config)
-        # Verify required keys exist in the device draft.
-        if not device_config:
-            raise server_errors.HTTPError(400, 'Empty device draft.')
-
-        for key in self.required_keys:
-            if key not in device_config:
-                raise server_errors.HTTPError(400, 'Must specify %s' % key)
-
-        # Create default state.
-        device_config['kind'] = 'clouddevices#device'
-        device_config['state'] = { 'version': '',
-                                   'base': { 'connectionStatus': 'online'},
-                                 }
-        device_config['etag'] = '0' # SOMETHING RANDOM
-        device_config['owner'] = '0' # GET OWNER
-
+        self._validate_device_resource(device_config)
         new_device = self.resource.update_data_val(None, api_key,
                                                    data_in=device_config)
-        self.commands_instance.new_device(new_device['id'], api_key)
+        self.commands_instance.new_device(new_device['id'])
         return new_device
 
 
@@ -102,16 +108,65 @@ class Devices(resource_method.ResourceMethod):
 
     @tools.json_out()
     def POST(self, *args, **kwargs):
-        """Creates a new device using the incoming json data."""
-        id, api_key, _ = common_util.parse_common_args(args, kwargs)
+        """Handle POSTs for a device.
+
+        Supported APIs include:
+
+        POST /devices/<device-id>/patchState
+
+        """
+        args = list(args)
+        device_id = args.pop(0) if args else None
+        operation = args.pop(0) if args else None
+        if device_id is None or operation != 'patchState':
+            raise server_errors.HTTPError(400, 'Unsupported operation.')
         data = common_util.parse_serialized_json()
+        access_token = common_util.get_access_token()
+        api_key = self._oauth.get_api_key_from_access_token(access_token)
+        self._handle_state_patch(device_id, api_key, data)
+        return {'state': self.resource.get_data_val(device_id,
+                                                    api_key)['state']}
 
-        if id:
-            raise server_errors.HTTPError(400, 'Cannot pass an id to INSERT')
-        if not data:
-            data = {}
 
-        return self.create_device(api_key, data)
+    @tools.json_out()
+    def PUT(self, *args, **kwargs):
+        """Update an existing device using the incoming json data.
+
+        On startup, devices make a request like:
+
+        PUT http://<server-host>/devices/<device-id>
+
+        {'channel': {'supportedType': 'xmpp'},
+         'commandDefs': {},
+         'description': 'test_description ',
+         'deviceKind': 'test_device_kind',
+         'displayName': 'test_display_name ',
+         'id': '4471f7',
+         'location': 'test_location ',
+         'name': 'test_device_name',
+         'state': {'base': {'firmwareVersion': '6771.0.2015_02_09_1429',
+                            'isProximityTokenRequired': False,
+                            'localDiscoveryEnabled': False,
+                            'manufacturer': '',
+                            'model': '',
+                            'serialNumber': '',
+                            'supportUrl': '',
+                            'updateUrl': ''}}}
+
+        This PUT has no API key, but comes with an OAUTH access token.
+
+        """
+        device_id, _, _ = common_util.parse_common_args(args, kwargs)
+        access_token = common_util.get_access_token()
+        api_key = self._oauth.get_api_key_from_access_token(access_token)
+        data = common_util.parse_serialized_json()
+        self._validate_device_resource(data)
+
+        logging.info('Updating device with id=%s and device_config=%r',
+                     device_id, data)
+        new_device = self.resource.update_data_val(device_id, api_key,
+                                                   data_in=data)
+        return {}  # TODO(wiley) No idea what GCD returns here, leave it blank.
 
 
     def DELETE(self, *args, **kwargs):
@@ -125,4 +180,4 @@ class Devices(resource_method.ResourceMethod):
         """
         id, api_key, _ = common_util.parse_common_args(args, kwargs)
         self.resource.del_data_val(id, api_key)
-        self.commands_instance.remove_device(id, api_key)
+        self.commands_instance.remove_device(id)

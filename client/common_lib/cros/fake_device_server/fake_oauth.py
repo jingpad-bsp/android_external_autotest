@@ -5,10 +5,12 @@
 
 from cherrypy import tools
 
+import common
 from fake_device_server import server_errors
 
 OAUTH_PATH = 'fake_oauth'
 
+TEST_API_KEY = 'this_is_an_api_key'
 TEST_DEVICE_ACCESS_TOKEN = 'a_device_access_token'
 TEST_DEVICE_REFRESH_TOKEN = 'a_device_refresh_token'
 TOKEN_EXPIRATION_SECONDS = 24 * 60 * 60  # 24 hours.
@@ -23,6 +25,11 @@ class FakeOAuth(object):
     def __init__(self):
         self._device_access_token = TEST_DEVICE_ACCESS_TOKEN
         self._device_refresh_token = TEST_DEVICE_REFRESH_TOKEN
+
+    def get_api_key_from_access_token(self, access_token):
+        if access_token == self._device_access_token:
+            return TEST_API_KEY
+        return None
 
 
     @tools.json_out()

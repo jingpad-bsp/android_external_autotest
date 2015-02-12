@@ -6,107 +6,101 @@
 
 from cherrypy import tools
 import logging
+import uuid
 
 import common
 from fake_device_server import common_util
 from fake_device_server import constants
-from fake_device_server import resource_method
 from fake_device_server import server_errors
 
 COMMANDS_PATH = 'commands'
 
 
 # TODO(sosa) Support upload method (and mediaPath parameter).
-class Commands(resource_method.ResourceMethod):
+class Commands(object):
     """A simple implementation of the commands interface."""
 
     # Needed for cherrypy to expose this to requests.
     exposed = True
 
     # Roots of command resource representation that might contain commands.
-    _COMMAND_ROOTS = set(['base', 'aggregator', 'printer', 'storage'])
+    _COMMAND_ROOTS = set(['base', 'aggregator', 'printer', 'storage', 'test'])
 
 
-    def __init__(self, resource):
-        """Initializes a registration ticket.
-
-        @param resource: A resource delegate.
-        """
-        super(Commands, self).__init__(resource)
-
-        # Maps devices to commands.
+    def __init__(self):
+        """Initializes a Commands handler."""
+        # A map of device_id's to maps of command ids to command resources
         self.device_commands = dict()
+        self._num_commands_created = 0
 
 
-    def new_device(self, device_id, api_key):
+    def _generate_command_id(self):
+        """@return unique command ID."""
+        command_id = '%s_%03d' % (uuid.uuid4().hex[0:6],
+                                  self._num_commands_created)
+        self._num_commands_created += 1
+        return command_id
+
+    def new_device(self, device_id):
         """Adds knowledge of a device with the given |device_id|.
 
         This method should be called whenever a new device is created. It
         populates an empty command dict for each device state.
 
         @param device_id: Device id to add.
-        @param api_key: key for the application.
+
         """
-        self.device_commands[(device_id, api_key)] = {}
+        self.device_commands[device_id] = {}
 
 
-    def remove_device(self, device_id, api_key):
+    def remove_device(self, device_id):
         """Removes knowledge of the given device.
 
         @param device_id: Device id to remove.
-        @param api_key: key for the application.
+
         """
-        del self.device_commands[(device_id, api_key)]
+        del self.device_commands[device_id]
 
 
-    def create_command(self, api_key, device_id, command_config):
+    def create_command(self, command_resource):
         """Creates, queues and returns a new command.
 
         @param api_key: Api key for the application.
         @param device_id: Device id of device to send command.
-        @param command_config: Json dict for command.
+        @param command_resource: Json dict for command.
         """
-        if (device_id, api_key) not in self.device_commands.keys():
-            raise server_errors.HTTPError(400, 'Unknown device with id %s' %
-                                          device_id)
+        device_id = command_resource.get('deviceId', None)
+        if not device_id:
+            raise server_errors.HTTPError(
+                    400, 'Can only create a command if you provide a deviceId.')
 
-        # We only need to verify that a command is specified (and only one
-        # command is specified).
-        many_command_error = 'Either no commands or multiple commands specified'
+        if device_id not in self.device_commands:
+            raise server_errors.HTTPError(
+                    400, 'Unknown device with id %s' % device_id)
 
-        command_key_set = self._COMMAND_ROOTS.intersection(
-                set(command_config.keys()))
-        if len(command_key_set) != 1:
-            # If this isn't exactly 1, then either no commands are specified OR
-            # more than one command is specified.
-            raise server_errors.HTTPError(400, many_command_error)
+        if 'name' not in command_resource:
+            raise server_errors.HTTPError(
+                    400, 'Missing command name.')
 
-        # Tracks the path of the command in the command_config.
-        command_parts = [command_key_set.pop()]
-        command = command_config[command_parts[0]]
-
-        # All commands must have exactly one entry that is the command one-level
-        # down i.e. base.Reboot.*
-        if len(command.keys()) != 1:
-            raise server_errors.HTTPError(400, many_command_error)
-
-        command_parts.append(command.keys()[0])
         # Print out something useful (command base.Reboot)
-        logging.info('Received command %s', '.'.join(command_parts))
+        logging.info('Received command %s', command_resource['name'])
 
         # TODO(sosa): Check to see if command is in devices CDD.
         # Queue command, create it and insert to device->command mapping.
-        command_config['state'] = constants.QUEUED_STATE
-        new_command = self.resource.update_data_val(None, api_key,
-                                                    data_in=command_config)
-        self.device_commands[(device_id,
-                              api_key)][new_command['id']] = new_command
-        return new_command
+        command_id = self._generate_command_id()
+        command_resource['id'] = command_id
+        command_resource['state'] = constants.QUEUED_STATE
+        self.device_commands[device_id][command_id] = command_resource
+        return command_resource
 
 
     @tools.json_out()
     def GET(self, *args, **kwargs):
-        """GET .../(command_id) gets command info or lists all devices.
+        """Handle GETs against the command API.
+
+        GET .../(command_id) returns a command resource
+        GET .../queue?deviceId=... returns the command queue
+        GET .../?deviceId=... returns the command queue
 
         Supports both the GET / LIST commands for commands. List lists all
         devices a user has access to, however, this implementation just returns
@@ -114,39 +108,48 @@ class Commands(resource_method.ResourceMethod):
 
         Raises:
             server_errors.HTTPError if the device doesn't exist.
+
         """
-        id, api_key, _ = common_util.parse_common_args(args, kwargs)
-        if id:
-            return self.resource.get_data_val(id, api_key)
-        else:
+        args = list(args)
+        requested_command_id = args.pop(0) if args else None
+        device_id = kwargs.get('deviceId', None)
+        if args:
+            raise server_errors.HTTPError(400, 'Unsupported API')
+        if not device_id or device_id not in self.device_commands:
+            raise server_errors.HTTPError(
+                    400, 'Can only list commands by valid deviceId.')
+        if requested_command_id is None:
+            requested_command_id = 'queue'
+
+        if requested_command_id == 'queue':
             # Returns listing (ignores optional parameters).
             listing = {'kind': 'clouddevices#commandsListResponse'}
-            device_id = kwargs.get('deviceId')
-            if not device_id:
-                raise server_errors.HTTPError(400, 'Can only list commands by '
-                                              'deviceId.')
-
-            requested_state = kwargs.get('state')
+            requested_state = kwargs.get('state', None)
             listing['commands'] = []
-            for command in self.device_commands[(device_id, api_key)].values():
+            for _, command in self.device_commands[device_id].iteritems():
                 # Check state for match (if None, just append all of them).
-                if not requested_state or requested_state == command['state']:
+                if (requested_state is None or
+                        requested_state == command['state']):
                     listing['commands'].append(command)
-
+            logging.info('Returning queue of commands: %r', listing)
             return listing
+        # TODO(wiley) We could check permissions here, we should be a device
+        #             accessing its own command, or a user.
+        for command_id, resource in self.device_commands[device_id].iteritems():
+            if command_id == requested_command_id:
+                return self.device_commands[device_id][command_id]
+
+        raise server_errors.HTTPError(
+                400, 'No command with ID=%s found' % requested_command_id)
 
 
     @tools.json_out()
     def POST(self, *args, **kwargs):
-        """Creates a new device using the incoming json data."""
-        id, api_key, _ = common_util.parse_common_args(args, kwargs)
+        """Creates a new command using the incoming json data."""
+        # TODO(wiley) We could check authorization here, which should be
+        #             a client/owner of the device.
         data = common_util.parse_serialized_json()
         if not data:
-            data = {}
+            raise server_errors.HTTPError(400, 'Require JSON body')
 
-        device_id = kwargs.get('deviceId')
-        if not device_id:
-            raise server_errors.HTTPError(400, 'Can only create a command if '
-                                          'you provide a deviceId.')
-
-        return self.create_command(api_key, device_id, data)
+        return self.create_command(data)

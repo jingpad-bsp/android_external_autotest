@@ -12,6 +12,7 @@ import unittest
 import common
 from fake_device_server import commands
 from fake_device_server import devices
+from fake_device_server import fake_oauth
 from fake_device_server import resource_delegate
 from fake_device_server import server_errors
 
@@ -23,12 +24,12 @@ class DevicesTest(mox.MoxTestBase):
         """Sets up mox and a ticket / registration objects."""
         mox.MoxTestBase.setUp(self)
         self.devices_resource = {}
-        self.commands_resource = {}
-        self.commands = commands.Commands(
-                resource_delegate.ResourceDelegate(self.commands_resource))
+        self.commands = commands.Commands()
+        self.fake_oauth = fake_oauth.FakeOAuth()
         self.devices = devices.Devices(
                 resource_delegate.ResourceDelegate(self.devices_resource),
-                self.commands)
+                self.commands,
+                self.fake_oauth)
 
 
     def testCreateDevice(self):
@@ -40,9 +41,9 @@ class DevicesTest(mox.MoxTestBase):
 
         new_device = self.devices.create_device(None, good_device_config)
         self.assertTrue('id' in new_device)
-        new_id = new_device['id']
+        device_id = new_device['id']
         # New device should be registered with commands handler.
-        self.assertTrue((new_id, None) in self.commands.device_commands)
+        self.assertTrue(device_id in self.commands.device_commands)
 
         bad_device_config = dict(name='buffet_device',
                                  deviceKind='vendor')
@@ -78,13 +79,13 @@ class DevicesTest(mox.MoxTestBase):
     def testDeleteDevice(self):
         """Tests that we correctly delete a device."""
         # Register device with commands handler first.
-        self.commands.new_device(12345, None)
+        self.commands.new_device(12345)
         self.devices_resource[(12345, None)] = dict(id=12345, nobody='care')
         self.devices.DELETE(12345)
 
         self.assertTrue(12345 not in self.devices_resource)
         # Make sure the device is deleted from the command handler.
-        self.assertRaises(KeyError, self.commands.remove_device, 12345, None)
+        self.assertRaises(KeyError, self.commands.remove_device, 12345)
 
         # Should error out if we try to delete something that doesn't exist.
         self.assertRaises(server_errors.HTTPError,
