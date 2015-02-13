@@ -636,7 +636,8 @@ def create_parameterized_job(name, priority, test, parameters, kernel=None,
                              run_verify=False, email_list='', dependencies=(),
                              reboot_before=None, reboot_after=None,
                              parse_failed_repair=None, hostless=False,
-                             keyvals=None, drone_set=None, run_reset=True):
+                             keyvals=None, drone_set=None, run_reset=True,
+                             require_ssq=None):
     """
     Creates and enqueues a parameterized job.
 
@@ -743,8 +744,8 @@ def create_job(name, priority, control_file, control_type,
                run_verify=False, email_list='', dependencies=(),
                reboot_before=None, reboot_after=None, parse_failed_repair=None,
                hostless=False, keyvals=None, drone_set=None, image=None,
-               parent_job_id=None, test_retry=0, run_reset=True, args=(),
-               **kwargs):
+               parent_job_id=None, test_retry=0, run_reset=True,
+               require_ssp=None, args=(), **kwargs):
     """\
     Create and enqueue a job.
 
@@ -780,6 +781,12 @@ def create_job(name, priority, control_file, control_type,
     @param test_retry Number of times to retry test if the test did not
         complete successfully. (optional, default: 0)
     @param run_reset Should the host be reset before running the test?
+    @param require_ssp Set to True to require server-side packaging to run the
+                       test. If it's set to None, drone will still try to run
+                       the server side with server-side packaging. If the
+                       autotest-server package doesn't exist for the build or
+                       image is not set, drone will run the test without server-
+                       side packaging. Default is None.
     @param args A list of args to be injected into control file.
     @param kwargs extra keyword args. NOT USED.
 

@@ -153,7 +153,8 @@ class base_server_job(base_job.base_job):
                  ssh_options=host_factory.DEFAULT_SSH_OPTIONS,
                  test_retry=0, group_name='',
                  tag='', disable_sysinfo=False,
-                 control_filename=SERVER_CONTROL_FILENAME):
+                 control_filename=SERVER_CONTROL_FILENAME,
+                 require_ssp=False):
         """
         Create a server side job object.
 
@@ -181,6 +182,7 @@ class base_server_job(base_job.base_job):
                 tests for a modest shortening of test time.  [optional]
         @param control_filename: The filename where the server control file
                 should be written in the results directory.
+        @param require_ssp: Require to use server-side packaging to run the test.
         """
         super(base_server_job, self).__init__(resultdir=resultdir,
                                               test_retry=test_retry)
@@ -216,6 +218,7 @@ class base_server_job(base_job.base_job):
         self.drop_caches_between_iterations = False
         self._control_filename = control_filename
         self._disable_sysinfo = disable_sysinfo
+        self._require_ssp = require_ssp
 
         self.logging = logging_manager.get_logging_manager(
                 manage_stdout_and_stderr=True, redirect_fds=True)
@@ -510,6 +513,12 @@ class base_server_job(base_job.base_job):
         return wrapper
 
 
+    def _run_with_ssp(self):
+        """Run the server job with server-side packaging.
+        """
+        raise NotImplementedError('Server-side packaging is not supported yet.')
+
+
     def parallel_simple(self, function, machines, log=True, timeout=None,
                         return_results=False):
         """
@@ -640,7 +649,10 @@ class base_server_job(base_job.base_job):
                 else:
                     utils.open_write_close(server_control_file, control)
                 logging.info("Processing control file")
-                self._execute_code(server_control_file, namespace)
+                if self._require_ssp:
+                    self._run_with_ssp()
+                else:
+                    self._execute_code(server_control_file, namespace)
                 logging.info("Finished processing control file")
 
                 # If no device error occured, no need to collect crashinfo.

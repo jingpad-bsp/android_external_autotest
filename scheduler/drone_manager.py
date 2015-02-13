@@ -234,7 +234,7 @@ class BaseDroneManager(object):
 
 
     def _add_drone(self, hostname):
-        logging.info('Adding drone %s' % hostname)
+        logging.info('Adding drone %s', hostname)
         drone = drones.get_drone(hostname)
         if drone:
             self._drones[drone.hostname] = drone
@@ -277,7 +277,6 @@ class BaseDroneManager(object):
                 disabled = config.get_config_value(
                         section, '%s_disabled' % hostname, default='')
                 drone.enabled = not bool(disabled)
-
                 drone.max_processes = config.get_config_value(
                         section, '%s_max_processes' % hostname, type=int,
                         default=scheduler_config.config.max_processes_per_drone)
@@ -610,11 +609,25 @@ class BaseDroneManager(object):
 
 
     def _choose_drone_for_execution(self, num_processes, username,
-                                    drone_hostnames_allowed):
+                                    drone_hostnames_allowed,
+                                    require_ssp=False):
+        """Choose a drone to execute command.
+
+        @param num_processes: Number of processes needed for execution.
+        @param username: Name of the user to execute the command.
+        @param drone_hostnames_allowed: A list of names of drone allowed.
+        @param require_ssp: Require server-side packaging to execute the,
+                            command, default to False.
+
+        @return: A drone object to be used for execution.
+        """
         # cycle through drones is order of increasing used capacity until
         # we find one that can handle these processes
         checked_drones = []
         usable_drones = []
+        # Drones do not support server-side packaging, used as backup if no
+        # drone is found to run command requires server-side packaging.
+        no_ssp_drones = []
         drone_to_use = None
         while self._drone_queue:
             drone = heapq.heappop(self._drone_queue).drone
@@ -628,6 +641,11 @@ class BaseDroneManager(object):
             if not drone_allowed:
                 logging.debug('Drone %s not allowed: ', drone.hostname)
                 continue
+            if require_ssp and not drone.support_ssp:
+                logging.debug('Drone %s does not support server-side '
+                              'packaging.', drone.hostname)
+                no_ssp_drones.append(drone)
+                continue
 
             usable_drones.append(drone)
 
@@ -639,6 +657,7 @@ class BaseDroneManager(object):
                          drone.max_processes)
 
         if not drone_to_use and usable_drones:
+            # Drones are all over loaded, pick the one with least load.
             drone_summary = ','.join('%s %s/%s' % (drone.hostname,
                                                    drone.active_processes,
                                                    drone.max_processes)
@@ -646,6 +665,9 @@ class BaseDroneManager(object):
             logging.error('No drone has capacity to handle %d processes (%s) '
                           'for user %s', num_processes, drone_summary, username)
             drone_to_use = self._least_loaded_drone(usable_drones)
+        elif not drone_to_use and require_ssp and no_ssp_drones:
+            # No drone supports server-side packaging, choose the least loaded.
+            drone_to_use = self._least_loaded_drone(no_ssp_drones)
 
         # refill _drone_queue
         for drone in checked_drones:
@@ -696,15 +718,21 @@ class BaseDroneManager(object):
         if paired_with_pidfile:
             drone = self._get_drone_for_pidfile_id(paired_with_pidfile)
         else:
-            drone = self._choose_drone_for_execution(num_processes, username,
-                                                     drone_hostnames_allowed)
+            require_ssp = '--require-ssp' in command
+            drone = self._choose_drone_for_execution(
+                    num_processes, username, drone_hostnames_allowed,
+                    require_ssp=require_ssp)
+            # Enable --warn-no-ssp option for autoserv to log a warning and run
+            # the command without using server-side packaging.
+            if require_ssp and not drone.support_ssp:
+                command.append('--warn-no-ssp')
 
         if not drone:
             raise DroneManagerError('command failed; no drones available: %s'
                                     % command)
 
-        logging.info("command = %s" % command)
-        logging.info('log file = %s:%s' % (drone.hostname, log_file))
+        logging.info("command = %s", command)
+        logging.info('log file = %s:%s', drone.hostname, log_file)
         self._write_attached_files(working_directory, drone)
         drone.queue_call('execute_command', command, abs_working_directory,
                          log_file, pidfile_name)

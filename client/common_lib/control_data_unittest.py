@@ -24,6 +24,7 @@ TEST_CLASS=u'Kernel'
 TEST_CATEGORY='Stress'
 TEST_TYPE='client'
 RETRIES = 5
+REQUIRE_SSP = False
 """
 
 
@@ -52,6 +53,7 @@ class ParseControlTest(unittest.TestCase):
         self.assertEquals(cd.test_category, "stress")
         self.assertEquals(cd.test_type, "client")
         self.assertEquals(cd.retries, 5)
+        self.assertEquals(cd.require_ssp, False)
 
 
 class ParseControlFileBugTemplate(unittest.TestCase):

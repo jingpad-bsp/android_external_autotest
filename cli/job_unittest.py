@@ -735,7 +735,8 @@ class job_create_unittest(cli_mock.cli_unittest):
 
     data = {'priority': 'Medium', 'control_file': ctrl_file, 'hosts': ['host0'],
             'name': 'test_job0', 'control_type': CLIENT, 'email_list': '',
-            'meta_hosts': [], 'synch_count': 1, 'dependencies': []}
+            'meta_hosts': [], 'synch_count': 1, 'dependencies': [],
+            'require_ssp': False}
 
 
     def test_execute_create_job(self):

@@ -19,6 +19,7 @@ from autotest_lib.frontend import setup_django_environment
 
 import django.db
 
+from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
@@ -70,6 +71,9 @@ _inline_host_acquisition = global_config.global_config.get_config_value(
         scheduler_config.CONFIG_SECTION, 'inline_host_acquisition', type=bool,
         default=True)
 
+_enable_ssp_container = global_config.global_config.get_config_value(
+        'AUTOSERV', 'enable_ssp_container', type=bool,
+        default=True)
 
 def _site_init_monitor_db_dummy():
     return {}
@@ -1291,6 +1295,11 @@ class QueueTask(AbstractQueueTask):
 
     def _command_line(self):
          invocation = super(QueueTask, self)._command_line()
+         # Check if server-side packaging is needed.
+         if (_enable_ssp_container and
+             self.job.control_type == control_data.CONTROL_TYPE.SERVER and
+             self.job.require_ssp != False):
+            invocation += ['--require-ssp']
          return invocation + ['--verify_job_repo_url']
 
 

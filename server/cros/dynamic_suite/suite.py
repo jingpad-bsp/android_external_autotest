@@ -669,7 +669,8 @@ class Suite(object):
             parent_job_id=self._suite_job_id,
             test_retry=test.retries,
             priority=self._priority,
-            synch_count=test.sync_count)
+            synch_count=test.sync_count,
+            require_ssp=test.require_ssp)
 
         setattr(test_obj, 'test_name', test.name)
 

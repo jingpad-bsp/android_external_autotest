@@ -25,6 +25,7 @@ class FakeControlData(object):
         self.sync_count = 1
         self.job_retries = job_retries
         self.bug_template = {}
+        self.require_ssp = None
 
 
 class FakeJob(object):

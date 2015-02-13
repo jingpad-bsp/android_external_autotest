@@ -56,6 +56,11 @@ class ControlData(object):
         self.test_class = ''
         self.retries = 0
         self.job_retries = 0
+        # Default to require server-side package. Unless require_ssp is
+        # explicitly set to False, server-side package will be used for the
+        # job. This can be overridden by global config
+        # AUTOSERV/enable_ssp_container
+        self.require_ssp = None
 
         diff = REQUIRED_VARS - set(vars)
         if diff:
@@ -188,6 +193,7 @@ class ControlData(object):
     def set_retries(self, val):
         self._set_int('retries', val)
 
+
     def set_job_retries(self, val):
         self._set_int('job_retries', val)
 
@@ -195,6 +201,10 @@ class ControlData(object):
     def set_bug_template(self, val):
         if type(val) == dict:
             setattr(self, 'bug_template', val)
+
+
+    def set_require_ssp(self, val):
+        self._set_bool('require_ssp', val)
 
 
 def _extract_const(expr):

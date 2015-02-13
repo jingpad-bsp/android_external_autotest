@@ -42,6 +42,9 @@ class _BaseAbstractDrone(object):
         self._autotest_install_dir = AUTOTEST_INSTALL_DIR
         self._host = None
         self.timestamp_remote_calls = timestamp_remote_calls
+        # If drone supports server-side packaging. The property support_ssp will
+        # init self._support_ssp later.
+        self._support_ssp = None
 
 
     def shutdown(self):
@@ -136,6 +139,24 @@ class _BaseAbstractDrone(object):
 
     def set_autotest_install_dir(self, path):
         pass
+
+
+    @property
+    def support_ssp(self):
+        """Check if the drone supports server-side packaging with container.
+
+        @return: True if the drone supports server-side packaging with container
+        """
+        if not self._host:
+            raise ValueError('Can not determine if drone supports server-side '
+                             'packaging before host is set.')
+        if self._support_ssp is None:
+            try:
+                self._host.run('which lxc-start')
+                self._support_ssp = True
+            except error.AutotestHostRunError:
+                self._support_ssp = False
+        return self._support_ssp
 
 
 SiteDrone = utils.import_site_class(

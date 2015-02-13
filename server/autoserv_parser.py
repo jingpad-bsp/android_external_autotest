@@ -168,6 +168,16 @@ class base_autoserv_parser(object):
                                dest="ssh_options", default='',
                                help=("A string giving command line flags "
                                      "that will be included in ssh commands"))
+        self.parser.add_option("--require-ssp", action="store_true",
+                               dest="require_ssp", default=False,
+                               help=("Force the autoserv process to run with "
+                                     "server-side packaging"))
+        self.parser.add_option("--warn-no-ssp", action="store_true",
+                               dest="warn_no_ssp", default=False,
+                               help=("Post a warning in autoserv log that the "
+                                     "process runs in a drone without server-"
+                                     "side packaging support, even though the "
+                                     "job requires server-side packaging"))
 
 
     def parse_args(self):

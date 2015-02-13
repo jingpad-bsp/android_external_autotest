@@ -364,7 +364,7 @@ class job_create(job_create_or_clone):
     [--one-time-hosts <hosts>] [--email <email>]
     [--dependencies <labels this job is dependent on>]
     [--atomic_group <atomic group name>] [--parse-failed-repair <option>]
-    [--image <http://path/to/image>]
+    [--image <http://path/to/image>] [--require-ssp]
     job_name
 
     Creating a job is rather different from the other create operations,
@@ -430,6 +430,9 @@ class job_create(job_create_or_clone):
         self.parser.add_option('-i', '--image',
                                help='OS image to install before running the '
                                     'test.')
+        self.parser.add_option('--require-ssp',
+                               help='Require server-side packaging',
+                               default=False, action='store_true')
 
 
     @staticmethod
@@ -519,6 +522,8 @@ class job_create(job_create_or_clone):
             self.data['control_type'] = control_data.CONTROL_TYPE_NAMES.SERVER
         else:
             self.data['control_type'] = control_data.CONTROL_TYPE_NAMES.CLIENT
+
+        self.data['require_ssp'] = options.require_ssp
 
         return options, leftover
 
