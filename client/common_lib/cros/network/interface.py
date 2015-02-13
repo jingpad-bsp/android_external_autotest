@@ -145,7 +145,7 @@ class Interface:
     def device_description(self):
         """@return DeviceDescription object for a WiFi interface, or None."""
         exists = lambda path: self._run(
-                'ls "%s" &> /dev/null' % path,
+                'test -e "%s"' % path,
                 ignore_status=True).exit_status == 0
         read_file = (lambda path: self._run('cat "%s"' % path).stdout.rstrip()
                      if exists(path) else None)
