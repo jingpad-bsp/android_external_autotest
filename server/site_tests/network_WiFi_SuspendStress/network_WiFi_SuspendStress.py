@@ -1,4 +1,4 @@
-# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -55,10 +55,14 @@ class network_WiFi_SuspendStress(wifi_cell_test_base.WiFiCellTestBase):
 
     def stress_wifi_suspend(self):
         """Perform the suspend stress."""
-        self._host.servo.lid_close()
-        self._host.wait_down(timeout=_DELAY)
-        self._host.servo.lid_open()
-        self._host.wait_up(timeout=_DELAY)
+        if self._host.servo.get('lid_open') == 'not_applicable':
+            self.context.client.do_suspend(10)
+        else:
+            self._host.servo.lid_close()
+            self._host.wait_down(timeout=_DELAY)
+            self._host.servo.lid_open()
+            self._host.wait_up(timeout=_DELAY)
+
         state_info = self.context.wait_for_connection(
             self.context.router.get_ssid())
         self._timings.append(state_info.time)
