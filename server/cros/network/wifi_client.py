@@ -15,7 +15,9 @@ from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.cros import constants
 from autotest_lib.server import autotest
+from autotest_lib.server import frontend
 from autotest_lib.server import site_linux_system
+from autotest_lib.server import site_utils
 from autotest_lib.server.cros.network import wpa_cli_proxy
 from autotest_lib.server.hosts import adb_host
 
@@ -170,6 +172,12 @@ class WiFiClient(site_linux_system.LinuxSystem):
 
 
     @property
+    def conductive(self):
+        """@return True if the rig is conductive; False otherwise."""
+        return self._conductive
+
+
+    @property
     def wifi_if(self):
         """@return string wifi device on machine (e.g. mlan0)."""
         return self._wifi_if
@@ -232,6 +240,14 @@ class WiFiClient(site_linux_system.LinuxSystem):
         self._command_wpa_cli = 'wpa_cli'
         self._machine_id = None
         self._result_dir = result_dir
+        self._conductive = False
+
+        afe = frontend.AFE(debug=True)
+        conductive = site_utils.get_label_from_afe(client_host.hostname,
+                                                   'conductive:',
+                                                   afe)
+        if conductive and conductive.lower() == 'true':
+            self._conductive = True
         if isinstance(self.host, adb_host.ADBHost):
             # Look up the WiFi device (and its MAC) on the client.
             devs = self.iw_runner.list_interfaces(desired_if_type='managed')

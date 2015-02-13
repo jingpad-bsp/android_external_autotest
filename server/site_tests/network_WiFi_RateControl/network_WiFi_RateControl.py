@@ -119,13 +119,10 @@ class network_WiFi_RateControl(wifi_cell_test_base.WiFiCellTestBase):
         """Test body."""
         # Just abort the test if we're in the lab and not on a machine known
         # to be conducted.  This test assumes a really great RF environment.
-        # TODO(wiley) This is pretty hacky.  Maybe there is a way to encode
-        #             this in a more general way?
         hostname = self.context.client.host.hostname
         if utils.host_is_in_lab_zone(hostname):
-            in_oyster_bay = hostname.startswith('chromeos1-')
             in_grover_cell = hostname.startswith('chromeos1-grover-')
-            if in_oyster_bay and not in_grover_cell:
+            if not self.context.client.conductive and not in_grover_cell:
                 raise error.TestNAError(
                         'This test requires a great RF environment.')
 
