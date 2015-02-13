@@ -290,7 +290,9 @@ class PrivetdHelper(object):
 
 
     def _http_request(self, url, request_data=None, retry_count=0,
-                      retry_delay=0.3, headers={}):
+                      retry_delay=0.3, headers={},
+                      timeout_seconds=10,
+                      tolerate_failure=False):
         """Sends a GET/POST request to a web server at the given |url|.
 
         If the request fails due to error 111:Connection refused, try it again
@@ -300,10 +302,13 @@ class PrivetdHelper(object):
 
         @param url: URL path to send the request to.
         @param request_data: json data to send in POST request.
-                             If None, a GET request is sent with no data.
+                If None, a GET request is sent with no data.
         @param retry_count: max request retry count.
         @param retry_delay: retry_delay (in seconds) between retries.
         @param headers: optional dictionary of http request headers
+        @param timeout_seconds: int number of seconds for curl to wait
+                to complete the request.
+        @param tolerate_failure: True iff we should allow curl failures.
         @return The string content of the page requested at url.
 
         """
@@ -318,6 +323,8 @@ class PrivetdHelper(object):
             args.append(': '.join(header))
         # TODO(wiley do cert checking
         args.append('--insecure')
+        args.append('--max-time')
+        args.append('%d' % timeout_seconds)
         # Write the HTTP code to stdout
         args.append('-w')
         args.append('%{http_code}')
@@ -330,13 +337,15 @@ class PrivetdHelper(object):
             retry_count -= 1
             raw_response = ''
             success = result.exit_status == 0
-            http_code = result.stdout
+            http_code = result.stdout or 'timeout'
             if success:
                 raw_response = self._run('cat %s' % output_file).stdout
                 logging.debug('Got raw response: %s', raw_response)
             if success and http_code == '200':
                 return raw_response
             if retry_count < 0:
+                if tolerate_failure:
+                    return None
                 raise error.TestFail('Failed requesting %s (code=%s)' %
                                      (url, http_code))
             logging.warn('Failed to connect to host. Retrying...')
@@ -344,7 +353,8 @@ class PrivetdHelper(object):
 
 
     def send_privet_request(self, path_fragment, request_data=None,
-                            auth_token='Privet anonymous'):
+                            auth_token='Privet anonymous',
+                            tolerate_failure=False):
         """Sends a privet request over HTTPS.
 
         @param path_fragment: URL path fragment to be appended to /privet/ URL.
@@ -352,6 +362,7 @@ class PrivetdHelper(object):
                              If None, a GET request is sent with no data.
         @param auth_token: authorization token to be added as 'Authorization'
                            http header using 'Privet' as the auth realm.
+        @param tolerate_failure: True iff we should allow curl failures.
 
         """
         if isinstance(request_data, dict):
@@ -359,7 +370,10 @@ class PrivetdHelper(object):
         headers = {'Authorization': auth_token}
         url = self._build_privet_url(path_fragment, use_https=True)
         data = self._http_request(url, request_data=request_data,
-                                  headers=headers)
+                                  headers=headers,
+                                  tolerate_failure=tolerate_failure)
+        if data is None and tolerate_failure:
+            return None
         try:
             json_data = json.loads(data)
             data = json.dumps(json_data)  # Drop newlines, pretty format.
@@ -379,7 +393,7 @@ class PrivetdHelper(object):
 
         """
         url = self._build_privet_url(URL_PING, use_https=use_https);
-        content = self._http_request(url, retry_count=5)
+        content = self._http_request(url, retry_delay=5, retry_count=5)
         if content != 'Hello, world!':
             raise error.TestFail('Unexpected response from web server: %s.' %
                                  content)
@@ -427,12 +441,13 @@ class PrivetdHelper(object):
                 formed by one or more calls to setup_add_*() above.
         @param auth_token: string auth token returned from privet_auth()
                 above.
-        @return dict containing the parsed JSON response.
 
         """
-        response = self.send_privet_request(URL_SETUP_START, request_data=data,
-                                            auth_token=auth_token)
-        return response
+        # We don't return the response here, because in general, we may not
+        # get one.  In many cases, we'll tear down the AP so quickly that
+        # the webserver won't have time to respond.
+        self.send_privet_request(URL_SETUP_START, request_data=data,
+                                 auth_token=auth_token, tolerate_failure=True)
 
 
     def wifi_setup_was_successful(self, ssid, auth_token):

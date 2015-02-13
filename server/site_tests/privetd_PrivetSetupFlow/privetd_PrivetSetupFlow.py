@@ -121,7 +121,8 @@ class privetd_PrivetSetupFlow(test.test):
         privet_record = records[0]
         # TODO(wiley) pull the HTTPs port number out of the /info API.
         helper = privetd_helper.PrivetdHelper(
-                host=host, hostname=privet_record.address,
+                host=self._router.host,
+                hostname=privet_record.address,
                 http_port=int(privet_record.port))
         helper.ping_server()
 
@@ -178,7 +179,7 @@ class privetd_PrivetSetupFlow(test.test):
         # And privetd should think it is online as well.
         helper = privetd_helper.PrivetdHelper(
                 host=host, hostname=managed_netblock.addr,
-                http_port=int(privet_record.port),
-                https_port=int(privet_record.port) + 1)
+                http_port=int(privet_record.port))
+        helper.ping_server()
         if not helper.wifi_setup_was_successful(ssid, auth_token):
             raise error.TestFail('Device claims to be offline, but is online.')
