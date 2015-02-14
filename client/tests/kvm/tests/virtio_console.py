@@ -1257,7 +1257,7 @@ def run_virtio_console(test, params, env):
             on_guest("virt.close('%s')" % (port.name), vm, 2)
             on_guest("virt.open('%s')" % (port.name), vm, 2)
             try:
-                os.system("dd if=/dev/random of='%s' bs=4096 &>/dev/null &"
+                os.system("dd if=/dev/random of='%s' bs=4096 >/dev/null 2>&1 &"
                           % port.path)
             except:
                 pass

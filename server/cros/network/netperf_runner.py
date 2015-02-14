@@ -500,8 +500,8 @@ class NetperfRunner(object):
     def __enter__(self):
         logging.info('Starting netserver...')
         self._kill_netserv()
-        self._server_host.run('%s -p %d &> /dev/null' % (self._command_netserv,
-                                                         self.NETPERF_PORT))
+        self._server_host.run('%s -p %d >/dev/null 2>&1' %
+                              (self._command_netserv, self.NETPERF_PORT))
         startup_time = time.time()
         self._client_proxy.firewall_open('tcp', self._server_proxy.wifi_ip)
         self._client_proxy.firewall_open('udp', self._server_proxy.wifi_ip)

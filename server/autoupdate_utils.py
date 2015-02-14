@@ -47,7 +47,7 @@ class AutoUpdateTester():
         logging.info('Starting devserver...')
 
         opts = '--image %s' % image_path
-        cmd = 'python devserver.py %s &>%s &' % (opts, DEVSERVER_LOG)
+        cmd = 'python devserver.py %s >%s 2>&1 &' % (opts, DEVSERVER_LOG)
         logging.info('devserver cmd: %s' % cmd)
 
         try:

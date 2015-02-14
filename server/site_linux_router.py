@@ -906,7 +906,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
         # Connect the station.
         self.router.run('%s link set %s up' % (self.cmd_ip, interface))
-        start_command = ('%s -dd -t -i%s -P%s -c%s -D%s &> %s &' %
+        start_command = ('%s -dd -t -i%s -P%s -c%s -D%s >%s 2>&1 &' %
                          (self.cmd_wpa_supplicant,
                          interface, pid_file, conf_file,
                          self.HOSTAPD_DRIVER_NAME, log_file))

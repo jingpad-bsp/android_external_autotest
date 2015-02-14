@@ -146,7 +146,7 @@ class ChrootedAvahi(object):
         self._chroot.add_copied_config_files(['etc/resolv.conf',
                                               'etc/avahi/hosts'])
         self._chroot.add_startup_command(
-                '/usr/sbin/avahi-daemon --file=/%s &> %s' %
+                '/usr/sbin/avahi-daemon --file=/%s >%s 2>&1' %
                 (self.AVAHI_CONFIG_FILE, self.AVAHI_LOG_FILE))
         self._chroot.bridge_dbus_namespaces()
         self._chroot.startup()

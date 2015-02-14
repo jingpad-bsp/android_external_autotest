@@ -221,14 +221,14 @@ class VirtualEthernetPair(object):
                   ignore_status=self._ignore_shutdown_errors)
         self._run('ifconfig %s down' % self._peer_interface_name,
                   ignore_status=self._ignore_shutdown_errors)
-        self._run('ip link delete %s &> /dev/null ' % self._interface_name,
+        self._run('ip link delete %s >/dev/null 2>&1' % self._interface_name,
                   ignore_status=self._ignore_shutdown_errors)
 
         # Under most normal circumstances a successful deletion of
         # |_interface_name| should also remove |_peer_interface_name|,
         # but if we elected to ignore failures above, that may not be
         # the case.
-        self._run('ip link delete %s &> /dev/null ' %
+        self._run('ip link delete %s >/dev/null 2>&1' %
                   self._peer_interface_name, ignore_status=True)
 
 
@@ -238,7 +238,7 @@ class VirtualEthernetPair(object):
         fake IP address.
         """
         self._run('ip link add name %s '
-                  'type veth peer name %s &> /dev/null ' %
+                  'type veth peer name %s >/dev/null 2>&1' %
                   (self._interface_name, self._peer_interface_name))
         self._run('ip link set %s up' % self._interface_name)
         self._run('ip link set %s up' % self._peer_interface_name)
