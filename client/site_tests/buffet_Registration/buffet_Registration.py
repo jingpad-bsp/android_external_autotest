@@ -64,6 +64,47 @@ class buffet_Registration(test.test):
     version = 1
 
 
+    def initialize(self):
+        # We're going to confirm buffet is polling by issuing commands to
+        # the mock GCD server, then checking that buffet gets them.  The
+        # commands are test.TestEcho commands with a single parameter
+        # |message|.  |self._expected_messages| is a list of these messages.
+        self._expected_messages = []
+        # We store our command definitions under this root.
+        self._temp_dir_path = None
+        self._bus = dbus.SystemBus()
+        # Spin up our mock server.
+        self._gcd = process_watcher.ProcessWatcher(
+                '/usr/local/autotest/common_lib/cros/'
+                        'fake_device_server/server.py')
+        self._gcd.start()
+        # Create the command definition we want to use.
+        self._temp_dir_path = tempfile.mkdtemp()
+        commands_dir = os.path.join(self._temp_dir_path, 'commands')
+        os.mkdir(commands_dir)
+        command_definition_path = os.path.join(
+                commands_dir, '%s.json' % TEST_COMMAND_CATEGORY)
+        with open(command_definition_path, 'w') as f:
+            f.write(json.dumps(TEST_COMMAND_DEFINITION))
+        utils.run('chown -R buffet:buffet %s' % self._temp_dir_path)
+        logging.debug('Created test commands definition: %s',
+                      command_definition_path)
+
+
+    def _check_registration_status_is(self, expected_status):
+        manager_properties = dbus.Interface(
+                self._bus.get_object(buffet_config.SERVICE_NAME,
+                                     buffet_config.MANAGER_OBJECT_PATH),
+                dbus_interface='org.freedesktop.DBus.Properties')
+        actual_status = manager_properties.Get(
+                buffet_config.MANAGER_INTERFACE,
+                buffet_config.MANAGER_PROPERTY_STATUS)
+        if actual_status != expected_status:
+            raise error.TestFail('Buffet should be %s, but is %s.' %
+                                 (expected_status, actual_status))
+        return actual_status
+
+
     def _check_buffet_is_polling(self, device_id, timeout_seconds=10):
         """Assert that buffet is polling for new commands.
 
@@ -119,29 +160,6 @@ class buffet_Registration(test.test):
 
     def run_once(self, use_prod=False):
         """Test entry point."""
-        self._temp_dir_path = None
-        # Spin up our mock server.
-        self._gcd = process_watcher.ProcessWatcher(
-                '/usr/local/autotest/common_lib/cros/'
-                        'fake_device_server/server.py')
-        self._gcd.start()
-        self._bus = dbus.SystemBus()
-        # We're going to confirm buffet is polling by issuing commands to
-        # the mock GCD server, then checking that buffet gets them.  The
-        # commands are test.TestEcho commands with a single parameter
-        # |message|.  |self._expected_messages is a list of these messages.
-        self._expected_messages = []
-        # Create the command definition we want to use.
-        self._temp_dir_path = tempfile.mkdtemp()
-        commands_dir = os.path.join(self._temp_dir_path, 'commands')
-        os.mkdir(commands_dir)
-        command_definition_path = os.path.join(
-                commands_dir, '%s.json' % TEST_COMMAND_CATEGORY)
-        with open(command_definition_path, 'w') as f:
-            f.write(json.dumps(TEST_COMMAND_DEFINITION))
-        utils.run('chown -R buffet:buffet %s' % self._temp_dir_path)
-        logging.debug('Created test commands definition: %s',
-                      command_definition_path)
         # Set up some clients for ourselves to interact with our GCD server.
         registration_client = registration.RegistrationClient(
                 server_url=buffet_config.LOCAL_SERVICE_URL,
@@ -157,6 +175,8 @@ class buffet_Registration(test.test):
                 log_verbosity=3,
                 test_definitions_dir=self._temp_dir_path)
         config.restart_with_config(clean_state=True)
+        self._check_registration_status_is(
+                buffet_config.STATUS_UNREGISTERED)
         # Now register the device against a ticket we create.
         ticket = registration_client.create_registration_ticket()
         logging.info('Created ticket: %r', ticket)
@@ -183,6 +203,8 @@ class buffet_Registration(test.test):
         _assert_has(device_resource, 'modelManifestId', 'TST',
                     'device resource')
         logging.info('Registration successful')
+        self._check_registration_status_is(
+                buffet_config.STATUS_REGISTERED)
         # Confirm that we StartDevice after registering successfully.
         self._check_buffet_is_polling(device_id)
         # Now restart buffet, while maintaining our built up state.  Confirm
@@ -192,6 +214,8 @@ class buffet_Registration(test.test):
         logging.info('Checking that Buffet automatically starts polling '
                      'after restart.')
         self._check_buffet_is_polling(device_id)
+        self._check_registration_status_is(
+                buffet_config.STATUS_REGISTERED)
 
 
     def cleanup(self):
