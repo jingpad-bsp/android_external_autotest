@@ -43,9 +43,8 @@ class firmware_ConsecutiveBoot(FirmwareTest):
         self.faft_client.system.run_shell_command('/sbin/shutdown -P now')
         logging.info('Wait for client to go offline')
         self.wait_for_client_offline(timeout=100, orig_boot_id=boot_id)
-        # The system should be ready in a few seconds, sleep 5 to be sure.
-        logging.info('sleep 5')
-        time.sleep(5)
+        # The system should be ready in a few seconds, sleep a bit to be sure.
+        time.sleep(self.faft_config.powerup_ready)
         logging.info("Tap power key to boot.")
         self.servo.power_short_press()
         logging.info('wait_for_client online')

@@ -103,3 +103,6 @@ class Values(object):
 
     # Delay for user to power cycle the device
     user_power_cycle = 20
+
+    # Delay after /sbin/shutdown before pressing power button
+    powerup_ready = 10
