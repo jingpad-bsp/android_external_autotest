@@ -87,6 +87,11 @@ LONG_RUNTIME = set((
     'task_loop_unittest.py'  # crbug.com/254030
     ))
 
+# Unitests that only work in chroot. The names are for module name, thus no
+# file extension of ".py".
+REQUIRES_CHROOT = set((
+    'mbim_channel_unittest',
+    ))
 
 SKIP = set((
     # This particular KVM autotest test is not a unittest
@@ -194,6 +199,21 @@ def scan_for_modules(start, options):
                     print 'testing', path_no_py
     return modules
 
+
+def is_inside_chroot():
+    """Check if the process is running inside the chroot.
+
+    @return: True if the process is running inside the chroot, False otherwise.
+    """
+    try:
+        # chromite may not be setup, e.g., in vm, therefore the ImportError
+        # needs to be handled.
+        from chromite.lib import cros_build_lib
+        return cros_build_lib.IsInsideChroot()
+    except ImportError:
+        return False
+
+
 def find_and_run_tests(start, options):
     """
     Find and run Python unittest suites below the given directory.  Only look
@@ -212,8 +232,14 @@ def find_and_run_tests(start, options):
     if options.debug:
         print 'Number of test modules found:', len(modules)
 
+    chroot = is_inside_chroot()
     functions = {}
     for module_names in modules:
+        if not chroot and module_names[-1] in REQUIRES_CHROOT:
+            if options.debug:
+                print ('Test %s requires to run in chroot, skipped.' %
+                       module_names[-1])
+            continue
         # Create a function that'll test a particular module.  module=module
         # is a hack to force python to evaluate the params now.  We then
         # rename the function to make error reporting nicer.
