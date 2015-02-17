@@ -69,7 +69,7 @@ class ChameleonPortFinder(object):
         elif self.connected == []:
             text = 'No port detected on the Chameleon board.'
         else:
-            text = ('Detected %d connected port(s): %s.\t'
+            text = ('Detected %d connected port(s): %s. \t'
                     % (len(self.connected), ports_to_str(self.connected)))
 
         if self.failed:

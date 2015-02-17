@@ -8,9 +8,10 @@ import exceptions
 import multiprocessing
 import numpy
 import os
-import re
 import time
-
+import telemetry
+import logging
+import pprint
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome, retry
@@ -216,56 +217,30 @@ class DisplayFacadeNative(object):
 
             # TODO(tingyuan):
             # Support for multiple external monitors (i.e. for chromebox)
-
             end_time = time.time() + timeout
             while time.time() < end_time:
-                r = self.get_output_rect(self.get_external_connector_name())
+                r = self.get_external_resolution()
                 if (width, height) == (r[0], r[1]):
                     return True
                 time.sleep(0.1)
-            raise TimeoutException("Failed to change resolution to %r (%r"
-                    " detected)" % ((width, height), r))
+            raise TimeoutException('Failed to change resolution to %r (%r'
+                                   ' detected)' % ((width, height), r))
         finally:
             self.close_tab()
-
-
-    @_retry_display_call
-    def get_output_rect(self, output):
-        """Gets the size and position of the given output on the screen buffer.
-
-        @param output: The output name as a string.
-
-        @return A tuple of the rectangle (width, height, fb_offset_x,
-                fb_offset_y) of ints.
-        """
-        regexp = re.compile(
-                r'^([-A-Za-z0-9]+)\s+connected\s+(\d+)x(\d+)\+(\d+)\+(\d+)',
-                re.M)
-        match = regexp.findall(graphics_utils.call_xrandr())
-        for m in match:
-            if m[0] == output:
-                return (int(m[1]), int(m[2]), int(m[3]), int(m[4]))
-        return (0, 0, 0, 0)
-
 
     def get_external_resolution(self):
         """Gets the resolution of the external screen.
 
         @return The resolution tuple (width, height)
         """
-        connector = self.get_external_connector_name()
-        width, height, _, _ = self.get_output_rect(connector)
-        return (width, height)
-
+        return graphics_utils.get_external_resolution()
 
     def get_internal_resolution(self):
         """Gets the resolution of the internal screen.
 
         @return The resolution tuple (width, height)
         """
-        connector = self.get_internal_connector_name()
-        width, height, _, _ = self.get_output_rect(connector)
-        return (width, height)
+        return graphics_utils.get_internal_resolution()
 
 
     def set_content_protection(self, state):
@@ -288,18 +263,28 @@ class DisplayFacadeNative(object):
         return graphics_utils.get_content_protection(connector)
 
 
-    def take_screenshot_crop(self, path, box):
-        """Captures the DUT screenshot, use box for cropping.
+    def get_external_crtc(self):
+        """Gets the external crtc.
+
+        @return The id of the external crtc."""
+        return graphics_utils.get_external_crtc()
+
+
+    def get_internal_crtc(self):
+        """Gets the internal crtc.
+
+        @retrun The id of the internal crtc."""
+        return graphics_utils.get_internal_crtc()
+
+
+    def take_screenshot_crtc(self, path, id):
+        """Captures the DUT screenshot, use id for selecting screen.
 
         @param path: path to image file.
-        @param box: 4-tuple giving the upper left and lower right coordinates.
+        @param id: The id of the crtc to screenshot.
         """
-        if utils.is_freon():
-            # Hack to take a screenshot from the tab instead of framebuffer.
-            # TODO: Make the framebuffer capture work on Freon.
-            self.take_tab_screenshot(path)
-        else:
-            graphics_utils.take_screenshot_crop(path, box)
+
+        graphics_utils.take_screenshot_crop(path, crtc_id=id)
         return True
 
 

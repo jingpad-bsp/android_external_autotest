@@ -102,6 +102,6 @@ class ScreenComparer(object):
                     # TODO(waihong): Save to a better lossless format.
                     file_path = os.path.join(
                             self._output_dir,
-                            '%s-%s.bmp' % (prefix_str, tags[i]))
+                            '%s-%s.png' % (prefix_str, tags[i]))
                     logging.info('Output the image to %s', file_path)
                     images[i].save(file_path)

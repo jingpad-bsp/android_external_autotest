@@ -8,11 +8,9 @@
 import argparse
 import code
 import logging
-import os
 import xmlrpclib
-
-import common   # pylint: disable-msg=W0611
-from autotest_lib.client.bin import utils
+import traceback
+import common   # pylint: disable=unused-import
 from autotest_lib.client.common_lib.cros import chrome, xmlrpc_server
 from autotest_lib.client.cros import constants
 from autotest_lib.client.cros.multimedia import audio_facade_native
@@ -22,11 +20,11 @@ from autotest_lib.client.cros.multimedia import display_facade_native
 class MultimediaXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
     """XML RPC delegate for multimedia testing."""
 
-    def __init__(self, chrome):
+    def __init__(self, chromium):
         """Initializes the facade objects."""
         self._facades = {
-            'audio': audio_facade_native.AudioFacadeNative(chrome),
-            'display': display_facade_native.DisplayFacadeNative(chrome)
+            'audio': audio_facade_native.AudioFacadeNative(chromium),
+            'display': display_facade_native.DisplayFacadeNative(chromium)
         }
 
     def _dispatch(self, method, params):
@@ -38,20 +36,24 @@ class MultimediaXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
         """
         try:
-            if '.' not in method:
-                func = getattr(self, method)
-            else:
-                facade_name, method_name = method.split('.', 1)
-                if facade_name in self._facades:
-                    func = getattr(self._facades[facade_name], method_name)
+            try:
+                if '.' not in method:
+                    func = getattr(self, method)
                 else:
-                    raise Exception('unknown facade: %s' % facade_name)
-        except AttributeError:
-            raise Exception('method %s not supported' % method)
+                    facade_name, method_name = method.split('.', 1)
+                    if facade_name in self._facades:
+                        func = getattr(self._facades[facade_name], method_name)
+                    else:
+                        raise Exception('unknown facade: %s' % facade_name)
+            except AttributeError:
+                raise Exception('method %s not supported' % method)
 
-        logging.info('Dispatching method %s with args %s',
-                     str(func), str(params))
-        return func(*params)
+            logging.info('Dispatching method %s with args %s',
+                         str(func), str(params))
+            return func(*params)
+        except:
+            # TODO(ihf): Try to return meaningful stacktraces from the client.
+            return traceback.format_exc()
 
 
 if __name__ == '__main__':
@@ -71,10 +73,6 @@ if __name__ == '__main__':
     else:
         logging.basicConfig(level=logging.DEBUG)
         logging.debug('multimedia_xmlrpc_server main...')
-
-        utils.assert_has_X_server()
-        os.environ['DISPLAY'] = ':0.0'
-        os.environ['XAUTHORITY'] = '/home/chronos/.Xauthority'
 
         extra_browser_args = ['--enable-gpu-benchmarking']
 

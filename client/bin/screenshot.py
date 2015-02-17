@@ -3,10 +3,12 @@
 import argparse
 import sys
 
-argparser = argparse.ArgumentParser(description="Take a screenshot!",
+argparser = argparse.ArgumentParser(
+    description="Take a screenshot!",
     epilog="I can output PNG, JPEG, GIF, and other PIL-supported formats.")
-argparser.add_argument("-c", "--crtc", type=int, default=0)
-argparser.add_argument("path")
+argparser.add_argument("-c", "--crtc", type=int, default=0,
+                       help="CRTC id (default first screen)")
+argparser.add_argument("path", help="output image location")
 
 args = argparser.parse_args()
 

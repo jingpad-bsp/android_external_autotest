@@ -6,6 +6,8 @@ import httplib
 import logging
 import socket
 import xmlrpclib
+import pprint, traceback
+import sys
 
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.cros import constants
@@ -75,14 +77,29 @@ class RemoteFacadeProxy(object):
         @return: The return value of the RPC method.
         """
         try:
-            return getattr(self._xmlrpc_proxy, name)(*args, **dargs)
-        except (socket.error,
-                xmlrpclib.ProtocolError,
-                httplib.BadStatusLine):
-            # Reconnect the RPC server in case connection lost, e.g. reboot.
-            self.connect(reconnect=True)
-            # Try again.
-            return getattr(self._xmlrpc_proxy, name)(*args, **dargs)
+            # TODO(ihf): This logs all traffic from server to client. Make the spew optional.
+            rpc = (
+                '%s(%s, %s)' %
+                (pprint.pformat(name), pprint.pformat(args),
+                 pprint.pformat(dargs)))
+            try:
+                value = getattr(self._xmlrpc_proxy, name)(*args, **dargs)
+                logging.info('RPC %s returns %s.', rpc, pprint.pformat(value))
+                return value
+            except (socket.error,
+                    xmlrpclib.ProtocolError,
+                    httplib.BadStatusLine):
+                # Reconnect the RPC server in case connection lost, e.g. reboot.
+                self.connect(reconnect=True)
+                # Try again.
+                logging.warning('Retrying RPC %s.', rpc)
+                value = getattr(self._xmlrpc_proxy, name)(*args, **dargs)
+                logging.info('RPC %s returns %s.', rpc, pprint.pformat(value))
+                return value
+        except:
+            logging.error(
+                'Failed RPC %s with status [%s].', rpc, sys.exc_info()[0])
+            raise
 
 
     def connect(self, reconnect):
@@ -93,8 +110,8 @@ class RemoteFacadeProxy(object):
         @retry.retry((socket.error,
                       xmlrpclib.ProtocolError,
                       httplib.BadStatusLine),
-                     timeout_min=self.XMLRPC_RETRY_TIMEOUT / 60.0,
-                     delay_sec=self.XMLRPC_RETRY_DELAY)
+                      timeout_min=self.XMLRPC_RETRY_TIMEOUT / 60.0,
+                      delay_sec=self.XMLRPC_RETRY_DELAY)
         def connect_with_retries(reconnect):
             """Connects the XML-RPC proxy with retries.
 

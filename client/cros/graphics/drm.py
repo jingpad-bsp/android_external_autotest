@@ -75,17 +75,17 @@ class DrmModeResources(Structure):
         if self._l:
             self._l.drmModeFreeResources(self)
 
-    def getCrtc(self, index):
+    def getCrtc(self, crtc_id=None):
         """
         Obtain the CRTC at a given index.
 
         @param index: The CRTC to get.
         """
 
-        if not 0 <= index < self.count_crtcs:
-            raise IndexError("CRTC index out of range")
+        if not crtc_id:
+            crtc_id = self.crtcs[0]
 
-        crtc = self._l.drmModeGetCrtc(self._fd, self.crtcs[index]).contents
+        crtc = self._l.drmModeGetCrtc(self._fd, crtc_id).contents
         crtc._fd = self._fd
         crtc._l = self._l
         return crtc
@@ -131,7 +131,7 @@ class DrmModeCrtc(Structure):
             return fb
         else:
             raise RuntimeError("CRTC %d doesn't have a framebuffer!" %
-                    self.crtc_id)
+                               self.crtc_id)
 
 
 class drm_mode_map_dumb(Structure):
@@ -203,7 +203,7 @@ class DrmModeFB(Structure):
         mapDumb.handle = self.handle
 
         rv = self._l.drmIoctl(self._fd, DRM_IOCTL_MODE_MAP_DUMB,
-                pointer(mapDumb))
+                              pointer(mapDumb))
         if rv:
             raise IOError(rv, os.strerror(rv))
 
@@ -213,7 +213,7 @@ class DrmModeFB(Structure):
         # compared to C; check the documentation before altering this
         # incantation.
         self._map = mmap.mmap(self._fd, size, flags=mmap.MAP_SHARED,
-                prot=mmap.PROT_READ, offset=mapDumb.offset)
+                              prot=mmap.PROT_READ, offset=mapDumb.offset)
 
     def unmap(self):
         """
@@ -357,15 +357,14 @@ def _screenshot(image, fb):
     return pixels
 
 
-def crtcScreenshot(crtc):
+def crtcScreenshot(crtc_id=None):
     """
     Take a screenshot, returning an image object.
 
     @param crtc: The CRTC to screenshot.
     """
-
     d = drmFromMinor(0)
-    fb = d.resources().getCrtc(crtc).fb()
+    fb = d.resources().getCrtc(crtc_id).fb()
     image = Image.new("RGB", (fb.width, fb.height))
     pixels = _screenshot(image, fb)
 

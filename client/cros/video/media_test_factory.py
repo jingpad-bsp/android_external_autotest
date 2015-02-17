@@ -92,7 +92,7 @@ class MediaTestFactory(object):
         self.video_name = video_name
         self.video_format = video_format
         self.video_def = video_def
-        self.time_format = "%H:%M:%S"
+        self.time_format = '%H:%M:%S'
         self.video_source_file = None
 
         # Test constants
@@ -115,6 +115,19 @@ class MediaTestFactory(object):
         self.biopic_num_upload_retries = None
 
         self.parser = None
+
+        # Stuff that was forgotten to initialize.
+        self.bottom_pixels_to_crop = None
+        self.chameleon_interface = None
+        self.media_id = None
+        self.media_length = None
+        self.media_url = None
+        self.screen_height_pixels = None
+        self.screen_width_pixels = None
+        self.time_btwn_polling_s = None
+        self.time_out_events_s = None
+        self.timeout_video_input_s = None
+        self.top_pixels_to_crop = None
 
         self._load_configuration()
 
@@ -190,7 +203,9 @@ class MediaTestFactory(object):
         self.screen_width_pixels = res[0]
         self.screen_height_pixels = res[1]
 
-        dut = utils.get_current_board()
+        # TODO(ihf): Remove this once "_freon" has been deprecated as a
+        # variant name.
+        dut = utils.get_current_board().replace('_freon', '')
 
         self.parser.read(os.path.join(self.autotest_cros_video_dir,
                                       self.device_spec_filename))
@@ -323,7 +338,7 @@ class MediaTestFactory(object):
         chameleon_board = chameleon.create_chameleon_board(hostname, args)
 
         box = (0, self.top_pixels_to_crop, self.screen_width_pixels,
-        self.screen_height_pixels - self.bottom_pixels_to_crop)
+               self.screen_height_pixels - self.bottom_pixels_to_crop)
 
         return chameleon_screenshot_capturer.ChameleonScreenshotCapturer(
                 chameleon_board,

@@ -7,9 +7,11 @@ Provides graphics related utils, like capturing screenshots or checking on
 the state of the graphics driver.
 """
 
+import collections
 import glob
 import logging
 import os
+import pprint
 import re
 import sys
 import time
@@ -28,15 +30,15 @@ def waffle_platform(platform):
     """ Return waffle enum string and value for the given platform. """
     # these should match what's in waffle.h in the media-libs/waffle package
     name, value = dict(
-        android = ("ANDROID", 0x0011),
-        cgl     = ("CGL"    , 0x0012),
-        glx     = ("GLX"    , 0x0013),
-        wayland = ("WAYLAND", 0x0014),
-        x11_egl = ("X11_EGL", 0x0015),
-        gbm     = ("GBM"    , 0x0016),
-    ).get(platform, ("", 0))
+        android=('ANDROID', 0x0011),
+        cgl=('CGL', 0x0012),
+        glx=('GLX', 0x0013),
+        wayland=('WAYLAND', 0x0014),
+        x11_egl=('X11_EGL', 0x0015),
+        gbm=('GBM', 0x0016),
+    ).get(platform, ('', 0))
     if name:
-        name = "WAFFLE_PLATFORM_" + name
+        name = 'WAFFLE_PLATFORM_' + name
     else:
         raise error.TestFail('Unknown waffle_platform "%s"' % platform)
     return name, value
@@ -51,7 +53,7 @@ def xcommand(cmd, user=None):
     @param user: if not None su command to desired user.
     @return a modified command line string with necessary X setup
     """
-    logging.warning("xcommand will be deprecated under freon!")
+    logging.warning('xcommand will be deprecated under freon!')
     if user is not None:
         cmd = 'su %s -c \'%s\'' % (user, cmd)
     if not utils.is_freon():
@@ -141,8 +143,8 @@ def screen_wakeup():
     # Move the mouse a little bit to wake up the screen.
     if utils.is_freon():
         device = _get_uinput_device_mouse_rel()
-        _uinput_emit(device, "REL_X", 1)
-        _uinput_emit(device, "REL_X", -1)
+        _uinput_emit(device, 'REL_X', 1)
+        _uinput_emit(device, 'REL_X', -1)
     else:
         xsystem('xdotool mousemove_relative 1 1')
 
@@ -167,29 +169,33 @@ uinput_device_mouse_rel = None
 # Don't add more events to this list than are used. For a complete list of
 # available events check python2.7/site-packages/uinput/ev.py.
 UINPUT_DEVICE_EVENTS_KEYBOARD = [
-        uinput.KEY_F4,
-        uinput.KEY_F11,
-        uinput.KEY_KPPLUS,
-        uinput.KEY_KPMINUS,
-        uinput.KEY_LEFTCTRL,
-        uinput.KEY_TAB
-    ]
+    uinput.KEY_F4,
+    uinput.KEY_F11,
+    uinput.KEY_KPPLUS,
+    uinput.KEY_KPMINUS,
+    uinput.KEY_LEFTCTRL,
+    uinput.KEY_TAB,
+    uinput.KEY_UP,
+    uinput.KEY_DOWN,
+    uinput.KEY_LEFT,
+    uinput.KEY_RIGHT
+]
 # TODO(ihf): Find an ABS sequence that actually works.
 UINPUT_DEVICE_EVENTS_TOUCH = [
-        uinput.BTN_TOUCH,
-        uinput.ABS_MT_SLOT,
-        uinput.ABS_MT_POSITION_X + (0, 2560, 0, 0),
-        uinput.ABS_MT_POSITION_Y + (0, 1700, 0, 0),
-        uinput.ABS_MT_TRACKING_ID + (0, 10, 0, 0),
-        uinput.BTN_TOUCH
+    uinput.BTN_TOUCH,
+    uinput.ABS_MT_SLOT,
+    uinput.ABS_MT_POSITION_X + (0, 2560, 0, 0),
+    uinput.ABS_MT_POSITION_Y + (0, 1700, 0, 0),
+    uinput.ABS_MT_TRACKING_ID + (0, 10, 0, 0),
+    uinput.BTN_TOUCH
 ]
 UINPUT_DEVICE_EVENTS_MOUSE_REL = [
-        uinput.REL_X,
-        uinput.REL_Y,
-        uinput.BTN_MOUSE,
-        uinput.BTN_LEFT,
-        uinput.BTN_RIGHT
-    ]
+    uinput.REL_X,
+    uinput.REL_Y,
+    uinput.BTN_MOUSE,
+    uinput.BTN_LEFT,
+    uinput.BTN_RIGHT
+]
 
 
 def _get_uinput_device_keyboard():
@@ -309,12 +315,12 @@ def activate_focus_at(rel_x, rel_y):
     @param rel_x: relative horizontal position between 0 and 1.
     @param rel_y: relattive vertical position between 0 and 1.
     """
-    width, height = get_display_resolution()
+    width, height = get_internal_resolution()
     device = _get_uinput_device_touch()
     _uinput_emit(device, 'ABS_MT_SLOT', 0, syn=False)
     _uinput_emit(device, 'ABS_MT_TRACKING_ID', 1, syn=False)
-    _uinput_emit(device, 'ABS_MT_POSITION_X', int(rel_x*width), syn=False)
-    _uinput_emit(device, 'ABS_MT_POSITION_Y', int(rel_y*height), syn=False)
+    _uinput_emit(device, 'ABS_MT_POSITION_X', int(rel_x * width), syn=False)
+    _uinput_emit(device, 'ABS_MT_POSITION_Y', int(rel_y * height), syn=False)
     _uinput_emit(device, 'BTN_TOUCH', 1, syn=True)
     time.sleep(0.2)
     _uinput_emit(device, 'BTN_TOUCH', 0, syn=True)
@@ -339,13 +345,8 @@ def take_screenshot(resultsdir, fname_prefix, extension='png'):
     logging.info('Saving screenshot to %s.', screenshot_file)
 
     try:
-        if utils.is_freon():
-            image = drm.screenshot()
-            image.save(screenshot_file)
-            return screenshot_file
-        else:
-            xsystem('/usr/local/bin/import -window root -depth 8 %s' %
-                    screenshot_file)
+        image = drm.crtcScreenshot()
+        image.save(screenshot_file)
     except Exception as err:
         # Do not raise an exception if the screenshot fails while processing
         # another exception.
@@ -369,125 +370,91 @@ def take_screenshot_crop_by_height(fullpath, final_height, x_offset_pixels,
     @param y_offset_pixels: integer, number of pixels from top margin
                             to begin cropping.
     """
-    if utils.is_freon():
-        image = drm.screenshot()
-        image.crop()
-        width, height = image.size
-        # Preserve aspect ratio: Wf / Wi == Hf / Hi
-        final_width = int(width * (float(final_height) / height))
-        box = (x_offset_pixels, y_offset_pixels,
-               x_offset_pixels + final_width, y_offset_pixels + final_height)
-        cropped = image.crop(box)
-        cropped.save(fullpath)
-        return fullpath
-
-    params = {'height': final_height, 'x_offset': x_offset_pixels,
-              'y_offset': y_offset_pixels, 'path': fullpath}
-    import_cmd = ('/usr/local/bin/import -window root -depth 8 -crop '
-                  'x%(height)d+%(x_offset)d+%(y_offset)d %(path)s' % params)
-
-    execute_screenshot_capture(import_cmd)
+    image = drm.crtcScreenshot()
+    image.crop()
+    width, height = image.size
+    # Preserve aspect ratio: Wf / Wi == Hf / Hi
+    final_width = int(width * (float(final_height) / height))
+    box = (x_offset_pixels, y_offset_pixels,
+           x_offset_pixels + final_width, y_offset_pixels + final_height)
+    cropped = image.crop(box)
+    cropped.save(fullpath)
     return fullpath
 
 
-def take_screenshot_crop(fullpath, box=None):
+def take_screenshot_crop(fullpath, box=None, crtc_id=None):
     """
     Take a screenshot using import tool, crop according to dim given by the box.
     @param fullpath: path, full path to save the image to.
     @param box: 4-tuple giving the upper left and lower right pixel coordinates.
     """
-
-    if utils.is_freon():
-        image = drm.screenshot()
-        if box:
-            image = image.crop(box)
-        image.save(fullpath)
-        return fullpath
-
-    if box:
-        upperx, uppery, lowerx, lowery = box
-        img_w = lowerx - upperx
-        img_h = lowery - uppery
-        import_cmd = ('/usr/local/bin/import -window root -depth 8 -crop '
-                      '%dx%d+%d+%d' % (img_w, img_h, upperx, uppery))
+    if crtc_id is not None:
+        image = drm.crtcScreenshot(crtc_id)
     else:
-        import_cmd = ('/usr/local/bin/import -window root -depth 8')
+        image = drm.crtcScreenshot(get_internal_crtc())
+    if box:
+        image = image.crop(box)
+    image.save(fullpath)
+    return fullpath
 
-    execute_screenshot_capture('%s %s' % (import_cmd, fullpath))
+
+_MODETEST_CONNECTOR_PATTERN = re.compile(
+    r'^(\d+)\s+\d+\s+(connected|disconnected)\s+(\S+)\s+\d+x\d+\s+\d+\s+\d+')
+
+_MODETEST_MODE_PATTERN = re.compile(
+    r'\s+.+\d+\s+(\d+)\s+\d+\s+\d+\s+\d+\s+(\d+)\s+\d+\s+\d+\s+\d+\s+flags:.+type:'
+    r' preferred')
+
+_MODETEST_CRTCS_START_PATTERN = re.compile(r'^id\s+fb\s+pos\s+size')
+
+_MODETEST_CRTC_PATTERN = re.compile(
+    r'^(\d+)\s+(\d+)\s+\((\d+),(\d+)\)\s+\((\d+)x(\d+)\)')
+
+Connector = collections.namedtuple(
+    'Connector', [
+        'cid',  # connector id (integer)
+        'ctype',  # connector type, e.g. 'eDP', 'HDMI-A', 'DP'
+        'connected',  # boolean
+        'size',  # current screen size, e.g. (1024, 768)
+        'encoder',  # encoder id (integer)
+        # list of resolution tuples, e.g. [(1920,1080), (1600,900), ...]
+        'modes',
+    ])
+
+CRTC = collections.namedtuple(
+    'CRTC', [
+        'id',  # crtc id
+        'fb',  # fb id
+        'pos',  # position, e.g. (0,0)
+        'size',  # size, e.g. (1366,768)
+    ])
 
 
-def _get_display_resolution_freon():
+def _get_display_resolution():
     """
     Parses output of modetest to determine the display resolution of the dut.
     @return: tuple, (w,h) resolution of device under test.
     """
-    modetest_output = utils.system_output('modetest -c')
-    modetest_connector_pattern = (r'\d+\s+\d+\s+(connected|disconnected)\s+'
-                                  r'[- 0-9a-zA-Z]+\s+\d+x\d+\s+\d+\s+\d+')
-    modetest_mode_pattern = (r'\s+.+\d+\s+(\d+)\s+\d+\s+\d+\s+\d+\s+(\d+)\s+'
-                             r'\d+\s+\d+\s+\d+\s+flags:')
-    connected = False
-    for line in modetest_output.splitlines():
-        connector_match = re.match(modetest_connector_pattern, line)
-        if connector_match is not None:
-            if connector_match.group(1) == 'connected':
-                connected = True
-        if connected:
-            mode_match = re.match(modetest_mode_pattern, line)
-            if mode_match is not None:
-                return int(mode_match.group(1)), int(mode_match.group(2))
+    connectors = get_modetest_connectors()
+    for connector in connectors:
+        if connector.connected:
+            return connector.size
     return None
 
 
-def _get_display_resolution_x():
-    """
-    Parses output of xrandr to determine the display resolution of the dut.
-    @return: tuple, (w,h) resolution of device under test.
-    """
-    env_vars = 'DISPLAY=:0.0 XAUTHORITY=/home/chronos/.Xauthority'
-    cmd = '%s xrandr | egrep -o "current [0-9]* x [0-9]*"' % env_vars
-    output = utils.system_output(cmd)
-    match = re.search('(\d+) x (\d+)', output)
-    if len(match.groups()) == 2:
-        return int(match.group(1)), int(match.group(2))
-    return None
-
-
-def get_display_resolution():
-    """
-    Determines the display resolution of the dut.
-    @return: tuple, (w,h) resolution of device under test.
-    """
-    if utils.is_freon():
-        return _get_display_resolution_freon()
-    else:
-        return _get_display_resolution_x()
-
-def _get_num_outputs_freon():
+def _get_num_outputs_connected():
     """
     Parses output of modetest to determine the number of connected displays
     @return: The number of connected displays
     """
-    modetest_output = utils.system_output('modetest -c')
-    modetest_connector_pattern = (r'\d+\s+\d+\s+(connected|disconnected)\s+'
-                                  r'[- 0-9a-zA-Z]+\s+\d+x\d+\s+\d+\s+\d+')
     connected = 0
-    for line in modetest_output.splitlines():
-        connector_match = re.match(modetest_connector_pattern, line)
-        if connector_match is not None:
-            if connector_match.group(1) == 'connected':
-                connected = connected + 1
+    connectors = get_modetest_connectors()
+    for connector in connectors:
+        if connector.connected:
+            connected = connected + 1
 
-    return connected;
+    return connected
 
-def _get_num_outputs_x():
-    """
-    Parses the output of xrandr to determine the number of connected displays
-    @return: The number of connected displays
-    """
-    xrandr_state = get_xrandr_output_state()
-    output_states = [xrandr_state[name] for name in xrandr_state]
-    return sum([1 if is_enabled else 0 for is_enabled in output_states])
 
 def get_num_outputs_on():
     """
@@ -496,10 +463,8 @@ def get_num_outputs_on():
     Return value: integer value of number of connected outputs that are on.
     """
 
-    if utils.is_freon():
-        return _get_num_outputs_freon()
-    else:
-        return _get_num_outputs_x()
+    return _get_num_outputs_connected()
+
 
 def call_xrandr(args_string=''):
     """
@@ -515,42 +480,121 @@ def call_xrandr(args_string=''):
     return utils.system_output(xcommand('xrandr %s' % args_string))
 
 
-def get_xrandr_output_state():
+def get_modetest_connectors():
     """
-    Retrieves output status of connected display(s) using xrandr.
+    Retrieves a list of Connectors using modetest.
 
-    When xrandr report a display is "connected", it doesn't mean the
-    display is active. For active display, it will have '*' after display mode.
+    Return value: List of Connectors.
+    """
+    connectors = []
+    modetest_output = utils.system_output('modetest -c')
+    for line in modetest_output.splitlines():
+        # First search for a new connector.
+        connector_match = re.match(_MODETEST_CONNECTOR_PATTERN, line)
+        if connector_match is not None:
+            cid = int(connector_match.group(1))
+            connected = False
+            if connector_match.group(2) == 'connected':
+                connected = True
+            ctype = connector_match.group(3)
+            size = (-1, -1)
+            encoder = -1
+            modes = None
+            connectors.append(
+                Connector(cid, ctype, connected, size, encoder, modes))
+        else:
+            # See if we find corresponding line with modes, sizes etc.
+            mode_match = re.match(_MODETEST_MODE_PATTERN, line)
+            if mode_match is not None:
+                size = (int(mode_match.group(1)), int(mode_match.group(2)))
+                # Update display size of last connector in list.
+                c = connectors.pop()
+                connectors.append(
+                    Connector(
+                        c.cid, c.ctype, c.connected, size, c.encoder,
+                        c.modes))
+    return connectors
+
+
+def get_modetest_crtcs():
+    """
+    Returns a list of CRTC data.
+    
+    Sample:
+        [CRTC(id=19, fb=50, pos=(0, 0), size=(1366, 768)),
+         CRTC(id=22, fb=54, pos=(0, 0), size=(1920, 1080))]
+    """
+    crtcs = []
+    modetest_output = utils.system_output('modetest -p')
+    found = False
+    for line in modetest_output.splitlines():
+        if found:
+            crtc_match = re.match(_MODETEST_CRTC_PATTERN, line)
+            if crtc_match is not None:
+                crtc_id = int(crtc_match.group(1))
+                fb = int(crtc_match.group(2))
+                x = int(crtc_match.group(3))
+                y = int(crtc_match.group(4))
+                width = int(crtc_match.group(5))
+                height = int(crtc_match.group(6))
+                crtcs.append(CRTC(crtc_id, fb, (x, y), (width, height)))
+            elif line and not line[0].isspace():
+                return crtcs
+        if re.match(_MODETEST_CRTCS_START_PATTERN, line) is not None:
+            found = True
+    return crtcs
+
+
+def get_modetest_output_state():
+    """
+    Reduce the output of get_modetest_connectors to a dictionary of connector/active states.
+    """
+    connectors = get_modetest_connectors()
+    outputs = {}
+    for connector in connectors:
+        # TODO(ihf): Figure out why modetest output needs filtering.
+        if connector.connected:
+            outputs[connector.ctype] = connector.connected
+    return outputs
+
+
+def get_output_rect(output):
+    """Gets the size and position of the given output on the screen buffer.
+
+    @param output: The output name as a string.
+
+    @return A tuple of the rectangle (width, height, fb_offset_x,
+            fb_offset_y) of ints.
+    """
+    connectors = get_modetest_connectors()
+    for connector in connectors:
+        if connector.ctype == output:
+            # Concatenate two 2-tuples to 4-tuple.
+            return connector.size + (0, 0)  # TODO(ihf): Should we use CRTC.pos?
+    return (0, 0, 0, 0)
+
+
+def get_internal_resolution():
+    crtcs = get_modetest_crtcs()
+    if len(crtcs) > 0:
+        return crtcs[0].size
+    return (-1, -1)
+
+
+def get_external_resolution():
+    crtcs = get_modetest_crtcs()
+    if len(crtcs) > 1:
+        return crtcs[1].size
+    return (-1, -1)
+
+
+def get_display_output_state():
+    """
+    Retrieves output status of connected display(s).
 
     Return value: dictionary of connected display states.
-                  key = output name
-                  value = True if the display is active; False otherwise.
     """
-    output = call_xrandr().split('\n')
-    xrandr_outputs = {}
-    current_output_name = ''
-
-    # Parse output of xrandr, line by line.
-    for line in output:
-        if line.startswith('Screen'):
-            continue
-        # If the line contains "connected", it is a connected display, as
-        # opposed to a disconnected output.
-        if line.find(' connected') != -1:
-            current_output_name = line.split()[0]
-            # Temporarily mark it as inactive until we see a '*' afterward.
-            xrandr_outputs[current_output_name] = False
-            continue
-
-        # If "connected" was not found, this is a line that shows a display
-        # mode, e.g:    1920x1080      50.0     60.0     24.0
-        # Check if this has an asterisk indicating it's on.
-        if line.find('*') != -1 and current_output_name:
-            xrandr_outputs[current_output_name] = True
-            # Reset the output name since this should not be set more than once.
-            current_output_name = ''
-
-    return xrandr_outputs
+    return get_modetest_output_state()
 
 
 def set_xrandr_output(output_name, enable):
@@ -564,22 +608,47 @@ def set_xrandr_output(output_name, enable):
     call_xrandr('--output %s --%s' % (output_name, 'auto' if enable else 'off'))
 
 
+def set_modetest_output(output_name, enable):
+    # TODO(ihf): figure out what to do here. Don't think this is the right command.
+    # modetest -s <connector_id>[,<connector_id>][@<crtc_id>]:<mode>[-<vrefresh>][@<format>]  set a mode
+    pass
+
+
+def set_display_output(output_name, enable):
+    """
+    Sets the output given by |output_name| on or off.
+    """
+    set_modetest_output(output_name, enable)
+
+
+# TODO(ihf): Fix this for multiple external connectors.
+def get_external_crtc(index=0):
+    crtcs = get_modetest_crtcs()
+    if len(crtcs) > index + 1:
+        return crtcs[index + 1].id
+    return -1
+
+
+def get_internal_crtc():
+    crtcs = get_modetest_crtcs()
+    if len(crtcs) > 0:
+        return crtcs[0].id
+    return -1
+
+
+# TODO(ihf): Fix this for multiple external connectors.
 def get_external_connector_name():
     """Gets the name of the external output connector.
 
     @return The external output connector name as a string, if any.
             Otherwise, return False.
     """
-    if utils.is_freon():
-        raise error.TestFail('freon: get_external_connector_name '
-                             'not implemented')
-    xrandr_output = get_xrandr_output_state()
-    for output in xrandr_output.iterkeys():
-        if xrandr_output[output] and (
-            output.startswith('HDMI') or
-            output.startswith('DP') or
-            output.startswith('DVI') or
-            output.startswith('VGA')):
+    outputs = get_display_output_state()
+    for output in outputs.iterkeys():
+        if (output.startswith('HDMI')
+                or output.startswith('DP')
+                or output.startswith('DVI')
+                or output.startswith('VGA')):
             return output
     return False
 
@@ -590,15 +659,12 @@ def get_internal_connector_name():
     @return The internal output connector name as a string, if any.
             Otherwise, return False.
     """
-    if utils.is_freon():
-        raise error.TestFail('freon: get_internal_connector_name '
-                             'not implemented')
-    xrandr_output = get_xrandr_output_state()
-    for output in xrandr_output.iterkeys():
+    outputs = get_display_output_state()
+    for output in outputs.iterkeys():
         # reference: chromium_org/chromeos/display/output_util.cc
-        if (output.startswith('eDP') or
-            output.startswith('LVDS') or
-            output.startswith('DSI')):
+        if (output.startswith('eDP')
+                or output.startswith('LVDS')
+                or output.startswith('DSI')):
             return output
     return False
 
@@ -612,13 +678,11 @@ def wait_output_connected(output):
     """
     def _is_connected(output):
         """Helper function."""
-        xrandr_output = get_xrandr_output_state()
-        if output not in xrandr_output:
+        outputs = get_display_output_state()
+        if output not in outputs:
             return False
-        return xrandr_output[output]
+        return outputs[output]
 
-    if utils.is_freon():
-        raise error.TestFail('freon: wait_output_connected not implemented')
     return utils.wait_for_value(lambda: _is_connected(output),
                                 expected_value=True)
 
@@ -668,29 +732,6 @@ def get_content_protection(output_name):
     return False
 
 
-def execute_screenshot_capture(cmd):
-    """
-    Executes command to capture a screenshot.
-
-    Provides safe execution of command to capture screenshot by wrapping
-    the command around a try-catch construct.
-
-    @param cmd: string, screenshot capture command.
-    """
-    if utils.is_freon():
-        raise error.TestFail('freon: execute_screenshot_capture not '
-                             'implemented')
-    old_exc_type = sys.exc_info()[0]
-    try:
-        xsystem(cmd)
-    except Exception as err:
-        # Do not raise an exception if the screenshot fails while processing
-        # another exception.
-        if old_exc_type is None:
-            raise
-        logging.error(err)
-
-
 def wflinfo():
     """
     Return a wflinfo command appropriate to the current graphics platform/api.
@@ -728,26 +769,25 @@ class GraphicsKernelMemory(object):
     # these, the test will read from that path.
 
     exynos_fields = {
-        'gem_objects' : ['/sys/kernel/debug/dri/0/exynos_gem_objects'],
-        'memory'      : ['/sys/class/misc/mali0/device/memory',
-                         '/sys/class/misc/mali0/device/gpu_memory'],
+        'gem_objects': ['/sys/kernel/debug/dri/0/exynos_gem_objects'],
+        'memory': ['/sys/class/misc/mali0/device/memory',
+                   '/sys/class/misc/mali0/device/gpu_memory'],
     }
     # TODO Add memory nodes once the GPU patches landed.
-    rockchip_fields = {
-    }
+    rockchip_fields = {}
     tegra_fields = {
         'memory': ['/sys/kernel/debug/memblock/memory'],
     }
     x86_fields = {
-        'gem_objects' : ['/sys/kernel/debug/dri/0/i915_gem_objects'],
-        'memory'      : ['/sys/kernel/debug/dri/0/i915_gem_gtt'],
+        'gem_objects': ['/sys/kernel/debug/dri/0/i915_gem_objects'],
+        'memory': ['/sys/kernel/debug/dri/0/i915_gem_gtt'],
     }
     arch_fields = {
-        'exynos5' : exynos_fields,
-        'tegra'   : tegra_fields,
+        'exynos5': exynos_fields,
+        'tegra': tegra_fields,
         'rockchip': rockchip_fields,
-        'i386'    : x86_fields,
-        'x86_64'  : x86_fields,
+        'i386': x86_fields,
+        'x86_64': x86_fields,
     }
 
     num_errors = 0

@@ -29,13 +29,10 @@ class DisplayFacadeLocalAdapter(display_facade_native.DisplayFacadeNative):
         return super(DisplayFacadeLocalAdapter, self)
 
 
-    def _read_root_window_rect(self, w, h, x, y):
+    def _read_root_window_rect(self, id):
         """Reads the given rectangle from frame buffer.
 
-        @param w: The width of the rectangle to read.
-        @param h: The height of the rectangle to read.
-        @param x: The x coordinate.
-        @param y: The y coordinate.
+        @param crtc: The id of the crtc to read.
 
         @return: An Image object, or None if any error.
         """
@@ -43,10 +40,9 @@ class DisplayFacadeLocalAdapter(display_facade_native.DisplayFacadeNative):
             # Not a valid rectangle
             return None
 
-        with tempfile.NamedTemporaryFile(suffix='.rgb') as f:
-            box = (x, y, x + w, y + h)
-            self._display_native.take_screenshot_crop(f.name, box)
-            return Image.fromstring('RGB', (w, h), open(f.name).read())
+        with tempfile.NamedTemporaryFile(suffix='.png') as f:
+            self._display_native.take_screenshot_crtc(f.name, crtc_id=id)
+            return Image.open(f.name)
 
 
     def capture_internal_screen(self):
@@ -54,19 +50,18 @@ class DisplayFacadeLocalAdapter(display_facade_native.DisplayFacadeNative):
 
         @return: An Image object. None if any error.
         """
-        output = self._display_native.get_internal_connector_name()
-        return self._read_root_window_rect(
-                *self._display_native.get_output_rect(output))
+        id = self._display_native.get_internal_crtc()
+        return self._read_root_window_rect(id)
 
 
+    # TODO(ihf): This function needs to be fixed for multiple screens.
     def capture_external_screen(self):
         """Captures the external screen framebuffer.
 
         @return: An Image object.
         """
-        output = self._display_native.get_external_connector_name()
-        return self._read_root_window_rect(
-                *self._display_native.get_output_rect(output))
+        id = self._display_native.get_external_crtc()
+        return self._read_root_window_rect(id)
 
 
     def get_display_info(self):

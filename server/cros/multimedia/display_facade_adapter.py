@@ -153,27 +153,33 @@ class DisplayFacadeRemoteAdapter(object):
         return self._display_proxy.get_content_protection()
 
 
-    def _read_root_window_rect(self, w, h, x, y):
+    def _read_root_window_rect(self, crtc_id):
         """Reads the given rectangle from the X root window.
 
-        @param w: The width of the rectangle to read.
-        @param h: The height of the rectangle to read.
-        @param x: The x coordinate.
-        @param y: The y coordinate.
+        @param crtc_id: The id of the crtc to screenshot.
 
         @return: An Image object, or None if any error.
         """
-        if 0 in (w, h):
-            # Not a valid rectangle
-            return None
-
-        with tempfile.NamedTemporaryFile(suffix='.rgb') as f:
+        with tempfile.NamedTemporaryFile(suffix='.png') as f:
             basename = os.path.basename(f.name)
             remote_path = os.path.join('/tmp', basename)
-            box = (x, y, x + w, y + h)
-            self._display_proxy.take_screenshot_crop(remote_path, box)
+            self._display_proxy.take_screenshot_crtc(remote_path, crtc_id)
             self._client.get_file(remote_path, f.name)
-            return Image.fromstring('RGB', (w, h), open(f.name).read())
+            return Image.open(f.name)
+
+
+    def get_external_crtc(self):
+        """Gets the external crtc.
+
+        @return The id of the external crtc."""
+        return self._display_proxy.get_external_crtc()
+
+
+    def get_internal_crtc(self):
+        """Gets the internal crtc.
+
+        @return The id of the internal crtc."""
+        return self._display_proxy.get_internal_crtc()
 
 
     def capture_internal_screen(self):
@@ -181,19 +187,18 @@ class DisplayFacadeRemoteAdapter(object):
 
         @return: An Image object. None if any error.
         """
-        output = self.get_internal_connector_name()
-        return self._read_root_window_rect(
-                *self._display_proxy.get_output_rect(output))
+        id = self.get_internal_crtc()
+        return self._read_root_window_rect(id)
 
 
+    # TODO(ihf): This needs to be fixed for multiple external screens.
     def capture_external_screen(self):
         """Captures the external screen framebuffer.
 
         @return: An Image object.
         """
-        output = self.get_external_connector_name()
-        return self._read_root_window_rect(
-                *self._display_proxy.get_output_rect(output))
+        id = self.get_external_crtc()
+        return self._read_root_window_rect(id)
 
 
     def get_external_resolution(self):
@@ -222,6 +227,7 @@ class DisplayFacadeRemoteAdapter(object):
         self._display_proxy.set_resolution(display_index, width, height)
 
 
+    # pylint: disable = W0141
     def get_display_info(self):
         """Gets the information of all the displays that are connected to the
                 DUT.
