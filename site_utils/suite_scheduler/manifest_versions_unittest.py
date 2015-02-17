@@ -9,6 +9,7 @@
 # Turn off "access to protected member of class"
 # pylint: disable=W0212
 
+import datetime
 import os
 import re
 import time
@@ -158,9 +159,9 @@ build-name/x86-alex-factory/pass/20/2048.1.0.xml
         self.assertFalse(self.mv.AnyManifestsSinceRev(rev))
 
 
-    def testManifestsSinceDays(self):
+    def testManifestsSinceDate(self):
         """Ensure we can get manifests for a board since N days ago."""
-        days_ago = 7
+        since_date = datetime.datetime(year=2015, month=2, day=1)
         board = 'x86-alex'
         self._ExpectGlob(['some/paths'])
         self.mox.StubOutWithMock(manifest_versions, '_SystemOutput')
@@ -168,7 +169,7 @@ build-name/x86-alex-factory/pass/20/2048.1.0.xml
             mox.StrContains('log')).MultipleTimes().AndReturn(
                 self._MANIFESTS_STRING)
         self.mox.ReplayAll()
-        br_man = self.mv.ManifestsSinceDays(days_ago, board)
+        br_man = self.mv.ManifestsSinceDate(since_date, board)
         for pair in br_man.keys():
             self.assertTrue(pair, self._BRANCHES)
         for manifest_list in br_man.itervalues():
@@ -176,31 +177,31 @@ build-name/x86-alex-factory/pass/20/2048.1.0.xml
         self.assertEquals(br_man[('release', '20')][-1], '2057.0.10')
 
 
-    def testNoManifestsSinceDays(self):
+    def testNoManifestsSinceDate(self):
         """Ensure we can deal with no manifests since N days ago."""
-        days_ago = 7
+        since_date = datetime.datetime(year=2015, month=2, day=1)
         board = 'x86-alex'
         self._ExpectGlob(['some/paths'])
         self.mox.StubOutWithMock(manifest_versions, '_SystemOutput')
         manifest_versions._SystemOutput(mox.StrContains('log')).AndReturn([])
         self.mox.ReplayAll()
-        br_man = self.mv.ManifestsSinceDays(days_ago, board)
+        br_man = self.mv.ManifestsSinceDate(since_date, board)
         self.assertEquals(br_man, {})
 
 
-    def testNoManifestsPathsSinceDays(self):
+    def testNoManifestsPathsSinceDate(self):
         """Ensure we can deal with finding no paths to pass to'git log'."""
-        days_ago = 7
+        since_date = datetime.datetime(year=2015, month=2, day=1)
         board = 'x86-alex'
         self._ExpectGlob([])
         self.mox.ReplayAll()
-        br_man = self.mv.ManifestsSinceDays(days_ago, board)
+        br_man = self.mv.ManifestsSinceDate(since_date, board)
         self.assertEquals(br_man, {})
 
 
-    def testManifestsSinceDaysExplodes(self):
+    def testManifestsSinceDateExplodes(self):
         """Ensure we handle failures in querying manifests."""
-        days_ago = 7
+        since_date = datetime.datetime(year=2015, month=2, day=1)
         board = 'x86-alex'
         self._ExpectGlob(['some/paths'])
         self.mox.StubOutWithMock(manifest_versions, '_SystemOutput')
@@ -208,12 +209,12 @@ build-name/x86-alex-factory/pass/20/2048.1.0.xml
             manifest_versions.QueryException())
         self.mox.ReplayAll()
         self.assertRaises(manifest_versions.QueryException,
-                          self.mv.ManifestsSinceDays, days_ago, board)
+                          self.mv.ManifestsSinceDate, since_date, board)
 
 
     def testUnparseableManifestPath(self):
         """Ensure we don't explode if we encounter an unparseable path."""
-        days_ago = 7
+        since_date = datetime.datetime(year=2015, month=2, day=1)
         board = 'link'
         build_name = 'link-depthcharge-pgo-codename-release-suffix-part-two'
         manifest = 'build-name/%s/pass/25/1234.0.0.xml' % build_name
@@ -222,7 +223,7 @@ build-name/x86-alex-factory/pass/20/2048.1.0.xml
         manifest_versions._SystemOutput(
             mox.StrContains('log')).MultipleTimes().AndReturn(manifest)
         self.mox.ReplayAll()
-        br_man = self.mv.ManifestsSinceDays(days_ago, board)
+        br_man = self.mv.ManifestsSinceDate(since_date, board)
         # We should skip the manifest that we passed in, as we can't parse it,
         # so we should get no manifests back.
         self.assertEquals(br_man, {})

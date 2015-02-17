@@ -111,10 +111,11 @@ class TimedEventTestBase(mox.MoxTestBase):
         board = 'faux_board'
         branch_manifests = {('factory','16'): ['last16'],
                             ('release','17'): ['first17', 'last17']}
-        self.mv.ManifestsSinceDays(days, board).AndReturn(branch_manifests)
+        since_date = self.BaseTime() - datetime.timedelta(days=days)
+        self.mv.ManifestsSinceDate(since_date, board).AndReturn(
+                branch_manifests)
         timed_event.TimedEvent._now().MultipleTimes().AndReturn(self.BaseTime())
         self.mox.ReplayAll()
-
         branch_builds = self.CreateEvent().GetBranchBuildsForBoard(board)
         for (type, milestone), manifests in branch_manifests.iteritems():
             build = None

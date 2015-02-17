@@ -64,7 +64,8 @@ class TimedEvent(base_event.BaseEvent):
         @param days_ago: how many days back to look for manifests.
         @return {branch: [build-name]}
         """
-        all_branch_manifests = self._mv.ManifestsSinceDays(days_ago, board)
+        since_date = self._deadline - datetime.timedelta(days=days_ago)
+        all_branch_manifests = self._mv.ManifestsSinceDate(since_date, board)
         latest_branch_builds = {}
         for (type, milestone), manifests in all_branch_manifests.iteritems():
             build = base_event.BuildName(board, type, milestone, manifests[-1])

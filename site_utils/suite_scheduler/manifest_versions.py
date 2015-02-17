@@ -166,21 +166,21 @@ class ManifestVersions(object):
                              (self._MANIFEST_VERSIONS_URL, retry_count, msg))
 
 
-    def ManifestsSinceDays(self, days_ago, board):
-        """Return map of branch:manifests for |board| for last |days_ago| days.
+    def ManifestsSinceDate(self, since_date, board):
+        """Return map of branch:manifests for |board| since |since_date|.
 
         To fully specify a 'branch', one needs both the type and the numeric
         milestone the branch was cut for, e.g. ('release', '19') or
         ('factory', '17').
 
-        @param days_ago: return all manifest files from today back to |days_ago|
-                         days ago.
+        @param since_date: a datetime object, return all manifest files
+                           since |since_date|
         @param board: the board whose manifests we want to check for.
         @return {(branch_type, milestone): [manifests, oldest, to, newest]}
         """
         return self._GetManifests(
             re.compile(self._BOARD_MANIFEST_RE_PATTERN % board),
-            self._QueryManifestsSinceDays(days_ago, board))
+            self._QueryManifestsSinceDate(since_date, board))
 
 
     def ManifestsSinceRev(self, rev, board):
@@ -288,16 +288,15 @@ class ManifestVersions(object):
         return self._QueryManifestsSince(git_rev + '..HEAD', board)
 
 
-    def _QueryManifestsSinceDays(self, days_ago, board):
-        """Return list of manifest files for |board| for last |days_ago| days.
+    def _QueryManifestsSinceDate(self, since_date, board):
+        """Return list of manifest files for |board| since |since_date|.
 
-        @param days_ago: return all manifest files from today back to |days_ago|
-                         days ago.
+        @param sync_date: a datetime object, return all manifest files
+                          since |since_date|.
         @param board: the board whose manifests we want to check for.
         @raise QueryException if errors occur.
         """
-        return self._QueryManifestsSince('--since="%d days ago"' % days_ago,
-                                         board)
+        return self._QueryManifestsSince('--since="%s"' % since_date, board)
 
 
     def _ExpandGlobMinusPrefix(self, prefix, path_glob):
