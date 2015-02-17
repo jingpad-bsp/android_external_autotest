@@ -26,13 +26,19 @@ class platform_Firewall(test.test):
 
     _POLL_INTERVAL = 5
 
-    _IPTABLES_DEL_CMD = "iptables -D INPUT -p %s -m %s --dport %d -j ACCEPT"
+    _IPTABLES_DEL_CMD = "%s -D INPUT -p %s -m %s --dport %d -j ACCEPT"
 
     @staticmethod
-    def _iptables_rules():
-        rule_output = utils.system_output("iptables -S")
+    def _iptables_rules(executable):
+        rule_output = utils.system_output("%s -S" % executable)
         logging.debug(rule_output)
         return [line.strip() for line in rule_output.splitlines()]
+
+
+    @staticmethod
+    def _check_rule(expected_rule, actual_rules, error_msg, executable):
+        if expected_rule not in actual_rules:
+            raise error.TestFail(error_msg % executable)
 
 
     def run_once(self):
@@ -51,37 +57,37 @@ class platform_Firewall(test.test):
                                           tcp_lifeline)
             # |ret| is a dbus.Boolean, but compares as int.
             if ret == 0:
-                raise error.TestFail(
-                        "RequestTcpPortAccess returned false.")
+                raise error.TestFail("RequestTcpPortAccess returned false.")
 
             udp_lifeline = dbus.types.UnixFd(self.udp_r)
             ret = pb.RequestUdpPortAccess(dbus.UInt16(self._PORT), "",
                                           udp_lifeline)
             # |ret| is a dbus.Boolean, but compares as int.
-            if (ret == 0):
-                raise error.TestFail(
-                        "RequestUdpPortAccess returned false.")
+            if ret == 0:
+                raise error.TestFail("RequestUdpPortAccess returned false.")
 
             iface_lifeline = dbus.types.UnixFd(self.iface_r)
             ret = pb.RequestTcpPortAccess(dbus.UInt16(self._PORT),
                                           dbus.String(self._IFACE),
                                           iface_lifeline)
             # |ret| is a dbus.Boolean, but compares as int.
-            if (ret == 0):
+            if ret == 0:
                 raise error.TestFail(
                         "RequestTcpPortAccess(port, interface) returned false.")
 
-            rules = self._iptables_rules()
-            if self._TCP_RULE not in rules:
-                raise error.TestFail(
-                        "RequestTcpPortAccess did not add iptables rule.")
-            if self._UDP_RULE not in rules:
-                raise error.TestFail(
-                        "RequestUdpPortAccess did not add iptables rule.")
-            if self._IFACE_RULE not in rules:
-                raise error.TestFail(
-                        "RequestTcpPortAccess(port, interface)"
-                        " did not add iptables rule.")
+            # Test IPv4 and IPv6.
+            for executable in ["iptables", "ip6tables"]:
+                actual_rules = self._iptables_rules(executable)
+                self._check_rule(self._TCP_RULE, actual_rules,
+                                 "RequestTcpPortAccess did not add %s rule.",
+                                 executable)
+                self._check_rule(self._UDP_RULE, actual_rules,
+                                 "RequestUdpPortAccess did not add %s rule.",
+                                 executable)
+                self._check_rule(self._IFACE_RULE, actual_rules,
+                                 "RequestTcpPortAccess(port, interface)"
+                                 " did not add %s rule.",
+                                 executable)
 
             # permission_broker should plug the firewall hole
             # when the requesting process exits.
@@ -94,11 +100,13 @@ class platform_Firewall(test.test):
             # for processes that have exited.
             # This is ugly, but it's either this or polling /var/log/messages.
             time.sleep(self._POLL_INTERVAL + 1)
-            rules = self._iptables_rules()
-            if (self._TCP_RULE in rules or self._UDP_RULE in rules
-                or self._IFACE_RULE in rules):
-                raise error.TestFail(
-                        "permission_broker did not remove iptables rule.")
+            # Test IPv4 and IPv6.
+            for executable in ["iptables", "ip6tables"]:
+                rules = self._iptables_rules(executable)
+                if (self._TCP_RULE in rules or self._UDP_RULE in rules
+                    or self._IFACE_RULE in rules):
+                    raise error.TestFail(
+                        "permission_broker did not remove %s rule.", executable)
 
         except dbus.DBusException as e:
             raise error.TestFail("D-Bus error: " + e.get_dbus_message())
@@ -117,10 +125,14 @@ class platform_Firewall(test.test):
         # This also allows us to clean up iptables rules unconditionally.
         # The command will fail if the rule has already been deleted,
         # but it won't fail the test.
-        cmd = self._IPTABLES_DEL_CMD % ("tcp", "tcp", self._PORT)
-        utils.system(cmd, ignore_status=True)
-        cmd = self._IPTABLES_DEL_CMD % ("udp", "udp", self._PORT)
-        utils.system(cmd, ignore_status=True)
-        cmd = self._IPTABLES_DEL_CMD % ("tcp", "tcp", self._PORT)
-        cmd += " -i %s" % self._IFACE
-        utils.system(cmd, ignore_status=True)
+        for executable in ["iptables", "ip6tables"]:
+            cmd = self._IPTABLES_DEL_CMD % (executable, "tcp", "tcp",
+                                            self._PORT)
+            utils.system(cmd, ignore_status=True)
+            cmd = self._IPTABLES_DEL_CMD % (executable, "udp", "udp",
+                                            self._PORT)
+            utils.system(cmd, ignore_status=True)
+            cmd = self._IPTABLES_DEL_CMD % (executable, "tcp", "tcp",
+                                            self._PORT)
+            cmd += " -i %s" % self._IFACE
+            utils.system(cmd, ignore_status=True)
