@@ -88,23 +88,33 @@ class IwEventLogger(object):
                                    message=parse_line.group(4))
 
 
-    def get_association_time(self):
-        """Return association time.
+    def get_reassociation_time(self):
+        """Return reassociation time.
 
         This function will search the iw event log to determine the time it
-        takes from start of scan to being connected.
+        takes from start of reassociation request to being connected. Start of
+        reassociation request could be either an attempt to scan or to
+        disconnect. Assume the one that appeared in the log first is the start
+        of the reassociation request.
 
-        @returns float number of seconds it take from start of scan to
-                connected. Return None if unable to determine the time based on
-                the log.
+        @returns float number of seconds it take from start of reassociation
+                request to being connected. Return None if unable to determine
+                the time based on the log.
 
         """
         start_time = None
         end_time = None
-        # Figure out the time when scanning started and the time when client
-        # is connected.
+        # Figure out the time when reassociation process started and the time
+        # when client is connected.
         for entry in self.get_log_entries():
             if (entry.message.startswith('scan started') and
+                    start_time is None):
+                start_time = entry.timestamp
+            # Newer wpa_supplicant would attempt to disconnect then reconnect
+            # without scanning. So if no scan event is detected before the
+            # disconnect attempt, we'll assume the disconnect attempt is the
+            # beginning of the reassociate attempt.
+            if (entry.message.startswith('del station') and
                     start_time is None):
                 start_time = entry.timestamp
             if entry.message.startswith('connected'):

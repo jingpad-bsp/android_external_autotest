@@ -810,7 +810,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
             logger.stop()
 
             # Get association time based on the iw event log
-            reassociate_time = logger.get_association_time()
+            reassociate_time = logger.get_reassociation_time()
             if reassociate_time is None or reassociate_time > timeout_seconds:
                 raise error.TestFail(
                         'Failed to reassociate within given timeout')
