@@ -7,7 +7,7 @@ RUNFILE=$DUT_DATA_DIR/inventory-$RUNDATE.txt
 
 mkdir -p $DUT_DATA_DIR
 SEP=
-for pool in bvt cq tot-cq pfq
+for pool in bvt cq
 do
     echo -n "$SEP"
     STATUS=$DUT_DATA_DIR/full.$RUNDATE.$pool.txt
