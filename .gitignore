@@ -61,6 +61,3 @@ site_utils/buildbot_src/
 puppylab/Vagrantfile
 puppylab/chromeos_lab_core_cluster.box
 puppylab/.vagrant
-
-# Container directory
-containers/
