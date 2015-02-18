@@ -79,14 +79,14 @@ var tasks = [
     ],
   },
   {
-    // After 54 minutes, watch Google IO for 6 minutes
+    // After 54 minutes, watch Big Buck Bunny for 6 minutes
     type: 'window',
     name: 'video',
     start: minutes(54),
     duration: minutes(6),
     focus: true,
     tabs: [
-        'http://www.youtube.com/v/ecI_hCBGEIM&autoplay=1&start=3364'
+        'http://www.youtube.com/embed/YE7VzlLtp-4?start=236&autoplay=1'
     ]
   },
 ];
