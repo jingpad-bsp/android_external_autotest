@@ -2,16 +2,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-TIME="SHORT"
-AUTHOR = "The Chromium OS Authors"
+AUTHOR = "jorgelo"
 DOC = "Enforces firewall settings."
 NAME = "security_Firewall"
-PURPOSE = "To keep strict (paranoid) firewall settings."
-CRITERIA = "Fail if firewall settings don't match the baseline."
-SUITE = "bvt-inline, smoke"
+TIME="SHORT"
 TEST_CLASS = "security"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"
+SUITE = "bvt-inline, smoke"
 JOB_RETRIES = 2
 
 job.run_test("security_Firewall")
