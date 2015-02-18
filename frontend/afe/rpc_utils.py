@@ -6,7 +6,10 @@ only RPC interface functions go into that file.
 
 __author__ = 'showard@google.com (Steve Howard)'
 
-import datetime, os, inspect
+import datetime
+import inspect
+import os
+import sys
 import django.http
 from autotest_lib.frontend.afe import models, model_logic
 from autotest_lib.client.common_lib import control_data, error
@@ -1100,7 +1103,13 @@ def fanout_rpc(host_objs, rpc_name, include_hostnames=True, **kwargs):
     for shard, hostnames in shard_host_map.iteritems():
         if include_hostnames:
             kwargs['hosts'] = hostnames
-        run_rpc_on_multiple_hostnames(rpc_name, [shard], **kwargs)
+        try:
+            run_rpc_on_multiple_hostnames(rpc_name, [shard], **kwargs)
+        except:
+            ei = sys.exc_info()
+            new_exc = error.RPCException('RPC %s failed on shard %s due to '
+                    '%s: %s' % (rpc_name, shard, ei[0].__name__, ei[1]))
+            raise new_exc.__class__, new_exc, ei[2]
 
 
 def forward_multi_host_rpc_to_shards(func):
