@@ -320,9 +320,12 @@ class power_LoadTest(test.test):
         voltage_mean = voltage_np.mean()
         keyvals['v_voltage_mean'] = voltage_mean
 
+        keyvals['wh_energy_powerlogger'] = \
+                             self._energy_use_from_powerlogger(keyvals)
+
         if keyvals['ah_charge_used'] > 0:
-            bat_life_scale = (keyvals['ah_charge_full_design'] /
-                              keyvals['ah_charge_used']) * \
+            bat_life_scale = (keyvals['wh_energy_full_design'] /
+                              keyvals['wh_energy_powerlogger']) * \
                               ((100 - keyvals['percent_sys_low_battery']) / 100)
 
             keyvals['minutes_battery_life'] = bat_life_scale * \
@@ -518,3 +521,27 @@ class power_LoadTest(test.test):
             return False
 
         return out.find('RUNNING') >= 0
+
+
+    def _energy_use_from_powerlogger(self, keyval):
+        """
+        Calculates the energy use, in Wh, used over the course of the run as
+        reported by the PowerLogger.
+
+        Args:
+          keyval: the dictionary of keyvals containing PowerLogger output
+
+        Returns:
+          energy_wh: total energy used over the course of this run
+
+        """
+        energy_wh = 0
+        loop = 0
+        while True:
+            duration_key = 'loop%d_system_duration' % loop
+            avg_power_key = 'loop%d_system_pwr' % loop
+            if duration_key not in keyval or avg_power_key not in keyval:
+                break
+            energy_wh += keyval[duration_key] * keyval[avg_power_key] / 3600
+            loop += 1
+        return energy_wh
