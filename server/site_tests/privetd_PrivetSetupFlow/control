@@ -7,6 +7,7 @@ NAME = 'privetd_PrivetSetupFlow'
 TIME = 'FAST'
 TEST_TYPE = 'Server'
 SUITE='tendo_experimental'
+DEPENDENCIES = 'wificell'
 
 DOC = """
 This test validates the privet pairing/authentication/setup flow.
