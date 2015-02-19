@@ -4,6 +4,7 @@
 
 import logging
 import os
+import shutil
 import SimpleHTTPServer
 import sys
 import threading
@@ -84,6 +85,7 @@ class platform_MetricsUploader(test.test):
     """
 
     version = 1
+    _CONSENT_FILE = '/home/chronos/Consent To Send Stats'
 
     def setup(self):
         os.chdir(self.srcdir)
@@ -172,10 +174,38 @@ class platform_MetricsUploader(test.test):
                                  + str(proto.product))
 
 
+    def _test_metrics_disabled(self):
+        """
+        When metrics are disabled, nothing should get uploaded.
+        """
+        self._create_one_sample()
+
+        self.server = FakeServer()
+        self.server.Start()
+
+        utils.system_output('metrics_daemon -uploader_test '
+                            '-server="%s"' % SERVER_ADDRESS,
+                            timeout=10, retain_output=True)
+
+        self.server.Stop()
+
+        if len(self.server.messages) != 0:
+            raise error.TestFail('message received by the server')
+
+
+    def _get_saved_consent_file_path(self):
+        return os.path.join(self.bindir, 'saved_consent')
+
+
     def run_once(self):
         """
         Run the tests.
         """
+        if os.path.exists(self._CONSENT_FILE):
+          shutil.move(self._CONSENT_FILE, self._get_saved_consent_file_path())
+        # enable metrics reporting
+        utils.open_write_close(self._CONSENT_FILE, 'foo')
+
         logging.info(('=' * 4) + 'Check that metrics samples can be uploaded '
                      'with the default configuration')
         self._test_simple_upload()
@@ -189,7 +219,20 @@ class platform_MetricsUploader(test.test):
                      '/etc/os-release.d/')
         self._test_check_product_id()
 
+        os.remove(self._CONSENT_FILE)
+        logging.info(('=' * 4) + 'Check that metrics are not uploaded when '
+                     'metrics are disabled.')
+        self._test_metrics_disabled()
+
 
     def cleanup(self):
         self._services.restore_services()
         self._tempdir.clean()
+
+        # The consent file might or might not exist depending on whether a test
+        # failed or not. Handle both cases.
+        if os.path.exists(self._CONSENT_FILE):
+          os.remove(self._CONSENT_FILE)
+
+        if os.path.exists(self._get_saved_consent_file_path()):
+          shutil.move(self._get_saved_consent_file_path(), self._CONSENT_FILE)
