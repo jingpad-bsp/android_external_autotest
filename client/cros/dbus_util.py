@@ -6,6 +6,9 @@ import dbus
 import logging
 
 
+DBUS_INTERFACE_OBJECT_MANAGER = 'org.freedesktop.DBus.ObjectManager'
+
+
 def dbus2primitive(value):
     """Convert values from dbus types to python types.
 
@@ -39,3 +42,44 @@ def dbus2primitive(value):
         logging.error('Failed to convert dbus object of class: %r',
                       value.__class__.__name__)
         return value
+
+
+def get_objects_with_interface(service_name, object_manager_path,
+                               dbus_interface, path_prefix=None,
+                               bus=None):
+    """Get objects that have a particular interface via a property manager.
+
+    @param service_name: string remote service exposing the object manager
+            to query (e.g. 'org.chromium.peerd').
+    @param object_manager_path: string DBus path of object manager on remote
+            service (e.g. '/org/chromium/peerd')
+    @param dbus_interface: string interface of object we're interested in.
+    @param path_prefix: string prefix of DBus path to filter for.  If not
+            None, we'll return only objects in the remote service whose
+            paths start with this prefix.
+    @param bus: dbus.Bus object, defaults to dbus.SystemBus().  Note that
+            normally, dbus.SystemBus() multiplexes a single DBus connection
+            among its instances.
+    @return dict that maps object paths to dicts of interface name to properties
+            exposed by that interface.  This is similar to the structure
+            returned by org.freedesktop.DBus.ObjectManaber.GetManagedObjects().
+
+    """
+    if bus is None:
+        bus = dbus.SystemBus()
+    object_manager = dbus.Interface(
+            bus.get_object(service_name, object_manager_path),
+            dbus_interface=DBUS_INTERFACE_OBJECT_MANAGER)
+    objects = dbus2primitive(object_manager.GetManagedObjects())
+    logging.debug('Saw objects %r', objects)
+    # Filter by interface.
+    objects = [(path, interfaces)
+               for path, interfaces in objects.iteritems()
+               if dbus_interface in interfaces]
+    if path_prefix is not None:
+        objects = [(path, interfaces)
+                   for path, interfaces in objects
+                   if path.startswith(path_prefix)]
+    objects = dict(objects)
+    logging.debug('Filtered objects: %r', objects)
+    return objects

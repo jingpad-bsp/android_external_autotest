@@ -10,9 +10,16 @@ from autotest_lib.client.common_lib.cros import dbus_send
 
 
 SERVICE_NAME = 'org.chromium.peerd'
-DBUS_INTERFACE_MANAGER = 'org.chromium.peerd.Manager'
-DBUS_PATH_MANAGER = '/org/chromium/peerd/Manager'
 
+DBUS_PATH_MANAGER = '/org/chromium/peerd/Manager'
+DBUS_PATH_SELF = '/org/chromium/peerd/Self'
+
+DBUS_INTERFACE_MANAGER = 'org.chromium.peerd.Manager'
+DBUS_INTERFACE_SERVICE = 'org.chromium.peerd.Service'
+
+OBJECT_MANAGER_PATH = '/org/chromium/peerd'
+
+SERVICE_PROPERTY_SERVICE_ID = 'ServiceId'
 
 class PeerdConfig(object):
     """An object that knows how to restart peerd in various configurations."""
