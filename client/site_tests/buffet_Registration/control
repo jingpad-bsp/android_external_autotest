@@ -6,6 +6,7 @@ AUTHOR = 'wiley, avakulenko'
 NAME = 'buffet_Registration'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
+SUITE = 'tendo_experimental'
 
 DOC = """
 Check that Buffet goes through the basic registration process as expected.
