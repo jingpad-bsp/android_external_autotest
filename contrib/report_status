@@ -29,8 +29,15 @@ awk '
     }
     { next }
     END {
+        reported = 0
         for (board in total) {
-            printf "'"$FMT"'", board, working[board], total[board]
+            if (working[board] != total[board]) {
+                printf "'"$FMT"'", board, working[board], total[board]
+                reported++
+            }
+        }
+        if (reported == 0) {
+            print "(all boards at full strength)"
         }
     }
 ' $REPORT | sort -nk 2
