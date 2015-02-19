@@ -506,7 +506,8 @@ class SerializationTest(unittest.TestCase,
                           'synch_count': 1,
                           'test_retry': 0,
                           'timeout': 24,
-                          'timeout_mins': 1440},
+                          'timeout_mins': 1440,
+                          'require_ssp': None},
                          {'control_file': 'some control file\n\n\n',
                           'control_type': 2,
                           'created_on': '2014-09-04T13:09:35',
@@ -573,7 +574,8 @@ class SerializationTest(unittest.TestCase,
                           'synch_count': 1,
                           'test_retry': 0,
                           'timeout': 24,
-                          'timeout_mins': 1440}]}
+                          'timeout_mins': 1440,
+                          'require_ssp': None}]}
 
 
     def test_response(self):

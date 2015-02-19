@@ -561,7 +561,8 @@ True
 ...         'parameterized_job': None,
 ...         'test_retry': 0,
 ...         'parent_job': None,
-...         'shard': None}
+...         'shard': None,
+...         'require_ssp': None}
 True
 
 # get_host_queue_entries returns a lot of data, so let's only check a couple

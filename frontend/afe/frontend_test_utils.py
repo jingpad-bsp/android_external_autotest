@@ -131,7 +131,8 @@ class FrontendTestMixin(object):
             synch_count=synch_count, created_on=created_on,
             reboot_before=model_attributes.RebootBefore.NEVER,
             drone_set=drone_set, control_file=control_file,
-            parameterized_job=parameterized_job, parent_job=parent_job)
+            parameterized_job=parameterized_job, parent_job=parent_job,
+            require_ssp=None)
 
         # Update the job's dependencies to include the metahost.
         for metahost_label in metahosts:

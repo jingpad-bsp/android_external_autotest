@@ -1221,6 +1221,8 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
     parent_job: Parent job (optional)
     test_retry: Number of times to retry test if the test did not complete
                 successfully. (optional, default: 0)
+    require_ssp: Require server-side packaging unless require_ssp is set to
+                 False. (optional, default: None)
     """
 
     # TODO: Investigate, if jobkeyval_set is really needed.
@@ -1322,6 +1324,10 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
     # If this is None on the master, a slave should be found.
     # If this is None on a slave, it should be synced back to the master
     shard = dbmodels.ForeignKey(Shard, blank=True, null=True)
+
+    # If this is None, server-side packaging will be used for server side test,
+    # unless it's disabled in global config AUTOSERV/enable_ssp_container.
+    require_ssp = dbmodels.NullBooleanField(default=None, blank=True, null=True)
 
     # custom manager
     objects = JobManager()
@@ -1433,7 +1439,8 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
             parameterized_job=parameterized_job,
             parent_job=options.get('parent_job_id'),
             test_retry=options.get('test_retry'),
-            run_reset=options.get('run_reset'))
+            run_reset=options.get('run_reset'),
+            require_ssp=options.get('require_ssp'))
 
         job.dependency_labels = options['dependencies']
 
