@@ -86,7 +86,7 @@ class power_BatteryCharge(test.test):
             time.sleep(time_to_sleep)
 
             self.status.refresh()
-            if not self.on_ac():
+            if not self.status.on_ac():
                 raise error.TestError(
                       'This test needs to be run with the AC power online')
 
