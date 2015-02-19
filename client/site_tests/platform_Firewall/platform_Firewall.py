@@ -36,22 +36,40 @@ class platform_Firewall(test.test):
 
 
     @staticmethod
-    def _check_rule(expected_rule, actual_rules, error_msg, executable):
-        if expected_rule not in actual_rules:
+    def _check(expected_rule, actual_rules, error_msg, executable, check):
+        # If check() returns false, fail the test.
+        if not check(expected_rule, actual_rules):
             raise error.TestFail(error_msg % executable)
 
 
-    def run_once(self):
-        bus = dbus.SystemBus()
-        pb_proxy = bus.get_object('org.chromium.PermissionBroker',
-                                  '/org/chromium/PermissionBroker')
-        pb = dbus.Interface(pb_proxy, 'org.chromium.PermissionBroker')
+    @staticmethod
+    def _check_included(expected_rule, actual_rules, error_msg, executable):
+        # Test whether the rule is included, fail if it's not.
+        platform_Firewall._check(
+                expected_rule, actual_rules, error_msg, executable,
+                lambda e, a: e in a)
 
+
+    @staticmethod
+    def _check_not_included(expected_rule, actual_rules, error_msg, executable):
+        # Test whether the rule is not included, fail if it is.
+        platform_Firewall._check(
+                expected_rule, actual_rules, error_msg, executable,
+                lambda e, a: e not in a)
+
+
+    def run_once(self):
+        # Create lifeline file descriptors.
         self.tcp_r, self.tcp_w = os.pipe()
         self.udp_r, self.udp_w = os.pipe()
         self.iface_r, self.iface_w = os.pipe()
 
         try:
+            bus = dbus.SystemBus()
+            pb_proxy = bus.get_object('org.chromium.PermissionBroker',
+                                      '/org/chromium/PermissionBroker')
+            pb = dbus.Interface(pb_proxy, 'org.chromium.PermissionBroker')
+
             tcp_lifeline = dbus.types.UnixFd(self.tcp_r)
             ret = pb.RequestTcpPortAccess(dbus.UInt16(self._PORT), "",
                                           tcp_lifeline)
@@ -78,22 +96,45 @@ class platform_Firewall(test.test):
             # Test IPv4 and IPv6.
             for executable in ["iptables", "ip6tables"]:
                 actual_rules = self._iptables_rules(executable)
-                self._check_rule(self._TCP_RULE, actual_rules,
-                                 "RequestTcpPortAccess did not add %s rule.",
-                                 executable)
-                self._check_rule(self._UDP_RULE, actual_rules,
-                                 "RequestUdpPortAccess did not add %s rule.",
-                                 executable)
-                self._check_rule(self._IFACE_RULE, actual_rules,
-                                 "RequestTcpPortAccess(port, interface)"
-                                 " did not add %s rule.",
-                                 executable)
+                self._check_included(
+                        self._TCP_RULE, actual_rules,
+                        "RequestTcpPortAccess did not add %s rule.",
+                        executable)
+                self._check_included(
+                        self._UDP_RULE, actual_rules,
+                        "RequestUdpPortAccess did not add %s rule.",
+                        executable)
+                self._check_included(
+                        self._IFACE_RULE, actual_rules,
+                        "RequestTcpPortAccess(port, interface)"
+                        " did not add %s rule.",
+                        executable)
+
+            ret = pb.ReleaseTcpPort(dbus.UInt16(self._PORT), "")
+            # |ret| is a dbus.Boolean, but compares as int.
+            if ret == 0:
+                raise error.TestFail("ReleaseTcpPort returned false.")
+
+            ret = pb.ReleaseUdpPort(dbus.UInt16(self._PORT), "")
+            # |ret| is a dbus.Boolean, but compares as int.
+            if ret == 0:
+                raise error.TestFail("ReleaseUdpPort returned false.")
+
+            # Test IPv4 and IPv6.
+            for executable in ["iptables", "ip6tables"]:
+                rules = self._iptables_rules(executable)
+                self._check_not_included(
+                        self._TCP_RULE, rules,
+                        "ReleaseTcpPortAccess did not remove %s rule.",
+                        executable)
+                self._check_not_included(
+                        self._UDP_RULE, rules,
+                        "ReleaseUdpPortAccess did not remove %s rule.",
+                        executable)
 
             # permission_broker should plug the firewall hole
             # when the requesting process exits.
-            # Simulate the process exiting by closing both write ends.
-            os.close(self.tcp_w)
-            os.close(self.udp_w)
+            # Simulate the process exiting by closing |iface_w|.
             os.close(self.iface_w)
 
             # permission_broker checks every |_POLL_INTERVAL| seconds
@@ -103,10 +144,10 @@ class platform_Firewall(test.test):
             # Test IPv4 and IPv6.
             for executable in ["iptables", "ip6tables"]:
                 rules = self._iptables_rules(executable)
-                if (self._TCP_RULE in rules or self._UDP_RULE in rules
-                    or self._IFACE_RULE in rules):
-                    raise error.TestFail(
-                        "permission_broker did not remove %s rule.", executable)
+                self._check_not_included(
+                        self._IFACE_RULE, rules,
+                        "permission_broker did not remove %s rule.",
+                        executable)
 
         except dbus.DBusException as e:
             raise error.TestFail("D-Bus error: " + e.get_dbus_message())
