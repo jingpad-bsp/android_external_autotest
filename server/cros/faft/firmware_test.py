@@ -318,8 +318,7 @@ class FirmwareTest(FAFTBase):
         @raise TestError: if failed to boot the USB image.
         """
         logging.info('Try boot into USB image...')
-        self.servo.switch_usbkey('host')
-        self.enable_rec_mode_and_reboot()
+        self.enable_rec_mode_and_reboot('host')
         self.wait_fw_screen_and_plug_usb()
         try:
             self.wait_for_client(install_deps=True)
@@ -931,7 +930,7 @@ class FirmwareTest(FAFTBase):
         """Power cycle DUT AC power."""
         self._client.power_cycle(self.power_control)
 
-    def enable_rec_mode_and_reboot(self):
+    def enable_rec_mode_and_reboot(self, usb_state=None):
         """Switch to rec mode and reboot.
 
         This method emulates the behavior of the old physical recovery switch,
@@ -941,6 +940,8 @@ class FirmwareTest(FAFTBase):
         self.blocking_sync()
         psc = self.servo.get_power_state_controller()
         psc.power_off()
+        if usb_state:
+            self.servo.switch_usbkey(usb_state)
         psc.power_on(psc.REC_ON)
 
     def enable_dev_mode_and_reboot(self):
@@ -986,10 +987,9 @@ class FirmwareTest(FAFTBase):
     def enable_keyboard_dev_mode(self):
         """Enable keyboard controlled developer mode"""
         logging.info("Enabling keyboard controlled developer mode")
-        # Plug out USB disk for preventing recovery boot without warning
-        self.servo.switch_usbkey('host')
         # Rebooting EC with rec mode on. Should power on AP.
-        self.enable_rec_mode_and_reboot()
+        # Plug out USB disk for preventing recovery boot without warning
+        self.enable_rec_mode_and_reboot(usb_state='host')
         self.wait_for_client_offline()
         self.wait_fw_screen_and_switch_keyboard_dev_mode(dev=True)
 
@@ -1257,11 +1257,10 @@ class FirmwareTest(FAFTBase):
         shim to reset TPM values.
         """
         # Unplug USB first to avoid the complicated USB autoboot cases.
-        self.servo.switch_usbkey('host')
         is_dev = self.checkers.crossystem_checker({'devsw_boot': '1'})
         if not is_dev:
             self.enable_dev_mode_and_reboot()
-        self.enable_rec_mode_and_reboot()
+        self.enable_rec_mode_and_reboot(usb_state='host')
         self.wait_fw_screen_and_plug_usb()
         time.sleep(self.faft_config.install_shim_done)
         self.reboot_warm_trigger()
