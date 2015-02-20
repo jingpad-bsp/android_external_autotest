@@ -35,6 +35,7 @@ LOCAL_CLOUD_FAKES = {
         'api_key': TEST_API_KEY,
         'oauth_url': LOCAL_OAUTH_URL,
         'service_url': LOCAL_SERVICE_URL,
+        'model_id': 'TST',
 }
 
 

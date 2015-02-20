@@ -180,6 +180,8 @@ class buffet_Registration(test.test):
         logging.debug('Got device resource=%r', device_resource)
         _assert_has(device_resource, 'name', TEST_DEVICE_NAME,
                     'device resource')
+        _assert_has(device_resource, 'modelManifestId', 'TST',
+                    'device resource')
         logging.info('Registration successful')
         # Confirm that we StartDevice after registering successfully.
         self._check_buffet_is_polling(device_id)
