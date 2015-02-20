@@ -114,7 +114,7 @@ class IwEventLogger(object):
             # without scanning. So if no scan event is detected before the
             # disconnect attempt, we'll assume the disconnect attempt is the
             # beginning of the reassociate attempt.
-            if (entry.message.startswith('del station') and
+            if (entry.message.startswith('disconnected') and
                     start_time is None):
                 start_time = entry.timestamp
             if entry.message.startswith('connected'):
