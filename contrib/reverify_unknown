@@ -40,7 +40,7 @@ NEED_VERIFY='
     print $1
   }
 '
-VERIFY=( $(site_utils/dut_status.py -d 28 "${HOSTS[@]}" | awk "$NEED_VERIFY") )
+VERIFY=( $(site_utils/dut_status.py -d 19 "${HOSTS[@]}" | awk "$NEED_VERIFY") )
 
 # Reverify the unknown hosts.
 contrib/reverify_hosts "${VERIFY[@]}"
