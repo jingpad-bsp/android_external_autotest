@@ -72,7 +72,7 @@ def get_host_labels(days_back=0, hostname=None, labels=None):
     if results.total == 0:
         logging.error('No label information was logged before %s.', t_end_str)
         return
-    time_index = results['time_index'][0]
+    time_index = results.hits[0]['time_index']
     logging.info('Host labels were recorded at %s',
                  time_utils.epoch_time_to_date_string(time_index))
 

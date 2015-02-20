@@ -72,7 +72,7 @@ def lock_history_to_intervals(initial_lock_val, t_start, t_end, lock_history):
     t_prev = t_start
     state_prev = initial_lock_val
     for entry in lock_history.hits:
-        t_curr = entry['time_recorded'][0]
+        t_curr = entry['time_recorded']
 
         #If it is locked, then we put into locked_intervals
         if state_prev:
@@ -80,7 +80,7 @@ def lock_history_to_intervals(initial_lock_val, t_start, t_end, lock_history):
 
         # update vars
         t_prev = t_curr
-        state_prev = entry['locked'][0]
+        state_prev = entry['locked']
     if state_prev:
         locked_intervals.append((t_prev, t_end))
     return locked_intervals
@@ -138,6 +138,7 @@ def get_host_history_intervals(t_start, t_end, hostname, intervals):
             fields=None)
     t_host = t_metadata.pop('time_recorded', None)
     t_host_stat = t_metadata.pop('status', None)
+    status_first = t_host_stat if t_host else 'Ready'
     t = min([t for t in [t_lock, t_host, t_start] if t])
 
     t_epoch = time_utils.to_epoch_time(t)
@@ -273,7 +274,7 @@ def get_intervals_for_host(t_start, t_end, hostname):
                 range_constraints=[('time_recorded', t_start_epoch,
                                     t_end_epoch)],
                 sort_specs=[{'time_recorded': 'asc'}])
-    return result.hits
+    return host_history_entries.hits
 
 
 def get_intervals_for_hosts(t_start, t_end, hosts=None, board=None, pool=None):
