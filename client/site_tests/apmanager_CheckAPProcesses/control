@@ -6,6 +6,7 @@ AUTHOR = 'zqiu, wiley, pstew'
 NAME = 'apmanager_CheckAPProcesses'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
+SUITE = 'tendo_experimental'
 
 DOC = """
   Verify the required processes (hostapd and dnsmasq) are started/terminated
