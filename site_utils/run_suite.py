@@ -166,10 +166,16 @@ def verify_options_and_args(options, args):
     @returns: True if verification passes, False otherwise.
 
     """
-    if not options.mock_job_id:
-        if args:
-            print 'Unknown arguments: ' + str(args)
-            return False
+    if args:
+        print 'Unknown arguments: ' + str(args)
+        return False
+
+    if options.mock_job_id and (
+            not options.build or not options.name or not options.board):
+        print ('When using -m, need to specify build, board and suite '
+               'name which you have used for creating the original job')
+        return False
+    else:
         if not options.build:
             print 'Need to specify which build to use'
             return False
@@ -1246,7 +1252,7 @@ def main_without_exception_handling():
         return RETURN_CODES.INVALID_OPTIONS
 
     log_name = 'run_suite-default.log'
-    if not options.mock_job_id:
+    if options.build:
         # convert build name from containing / to containing only _
         log_name = 'run_suite-%s.log' % options.build.replace('/', '_')
         log_dir = os.path.join(common.autotest_dir, 'logs')
@@ -1265,19 +1271,29 @@ def main_without_exception_handling():
     logging.info('Autotest instance: %s', instance_server)
 
     rpc_helper = diagnosis_utils.RPCHelper(afe)
-    try:
-        rpc_helper.check_dut_availability(options.board, options.pool,
-                                          options.minimum_duts)
-    except diagnosis_utils.NotEnoughDutsError:
-        logging.info(GetBuildbotStepLink(
-                'Pool Health Bug', LogLink.get_bug_link(rpc_helper.bug)))
-        raise
-
+    is_real_time = True
     if options.mock_job_id:
         job_id = int(options.mock_job_id)
+        existing_job = afe.get_jobs(id=job_id, finished=True)
+        if existing_job:
+            is_real_time = False
+        else:
+            existing_job = afe.get_jobs(id=job_id)
+        if existing_job:
+            job_created_on = time_utils.date_string_to_epoch_time(
+                    existing_job[0].created_on)
+        else:
+            raise utils.TestLabException('Failed to retrieve job: %d' % job_id)
     else:
         try:
+            rpc_helper.check_dut_availability(options.board, options.pool,
+                                              options.minimum_duts)
             job_id = create_suite(afe, options)
+            job_created_on = time.time()
+        except diagnosis_utils.NotEnoughDutsError:
+            logging.info(GetBuildbotStepLink(
+                    'Pool Health Bug', LogLink.get_bug_link(rpc_helper.bug)))
+            raise
         except (error.CrosDynamicSuiteException,
                 error.RPCException, proxy.JSONRPCException) as e:
             logging.warning('Error Message: %s', e)
@@ -1286,7 +1302,7 @@ def main_without_exception_handling():
             return RETURN_CODES.INVALID_OPTIONS
 
     job_timer = diagnosis_utils.JobTimer(
-            time.time(), float(options.timeout_mins))
+            job_created_on, float(options.timeout_mins))
     job_url = reporting_utils.link_job(job_id,
                                        instance_server=instance_server)
     logging.info('%s Created suite job: %s',
@@ -1336,13 +1352,14 @@ def main_without_exception_handling():
         collector.output_results()
         code = collector.return_code
         return_message = collector.return_message
-        if not options.mock_job_id:
+        if is_real_time:
             # Do not record stats if the suite was aborted (either by a user
             # or through the golo rpc).
             # Also do not record stats if is_aborted is None, indicating
             # aborting status is unknown yet.
             if collector.is_aborted == False:
                 collector.gather_timing_stats()
+
             if collector.is_aborted == True and is_suite_timeout:
                 # There are two possible cases when a suite times out.
                 # 1. the suite job was aborted due to timing out
