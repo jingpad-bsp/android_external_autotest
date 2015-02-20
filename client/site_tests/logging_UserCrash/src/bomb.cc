@@ -4,7 +4,7 @@
 
 extern int DefeatTailOptimizationForBomb();
 
-int recbomb(int n) {
+__attribute__ ((noinline)) int recbomb(int n) {
   if (n < 2) {
     *(char*)0x16 = 0;
     return 1;
