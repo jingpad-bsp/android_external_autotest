@@ -192,17 +192,22 @@ class WidgetLink(object):
 
 
 class AudioBusLink(WidgetLink):
-    """The abstraction for bus on audio board.
+    """The abstraction of widget link using audio bus on audio board.
 
     Properties:
-        bus_index: The bus index on audio board.
+        _audio_bus: An AudioBus object.
+
     """
-    def __init__(self, bus_index):
+    def __init__(self, audio_bus):
+        """Initializes an AudioBusLink.
+
+        @param audio_bus: An AudioBus object.
+
+        """
         super(AudioBusLink, self).__init__()
-        self.bus_index = bus_index
-        logging.debug(
-                'Create an AudioBusLink with bus '
-                'index %d', bus_index)
+        self._audio_bus = audio_bus
+        logging.debug('Create an AudioBusLink with bus index %d',
+                      audio_bus.bus_index)
 
 
     def plug_input(self, widget):
@@ -211,42 +216,38 @@ class AudioBusLink(WidgetLink):
         @param widget: An AudioWidget object.
 
         """
-        # TODO(cychiang) Implement audio board path control to connect
-        # audio port of widget to bus input. This would be done through
-        # a chameleon_board object passed in by AudioWidgetFactory.
-        # e.g. self.chameleon_board.audio_board.connect_audio_bus(
-        #              self.bus_index, widget.audio_port.port_id)
+        self._check_widget_direction('Output', widget)
+
+        self._audio_bus.connect(widget.audio_port.port_id)
 
         # TODO(cychiang) Implement fixture control to plug 3.5mm jack if
         # widget is on Cros device and it is not plugged yet.
-        # e.g. self.chameleon_board.audio_board.plug_audio_jack()
-        self._check_widget_direction('Output', widget)
+        # e.g. self._audio_fixture_plug.plug_audio_jack()
+
         logging.info(
-                'Plug audio board bus %d input to %s',
-                self.bus_index, widget.audio_port)
+                'Plugged audio board bus %d input to %s',
+                self._audio_bus.bus_index, widget.audio_port)
 
 
     def unplug_input(self, widget):
-        """Unplugs input of audio bus to the widget.
+        """Unplugs input of audio bus from the widget.
 
         @param widget: An AudioWidget object.
 
         """
+        self._check_widget_direction('Output', widget)
+
+        self._audio_bus.disconnect(widget.audio_port.port_id)
+
         # TODO(cychiang) Implement fixture control to unplug 3.5mm jack if
         # widget is on Cros device and both headphone and external mic are not
         # used.
+        # e.g. self._audio_fixture_plug.unplug_audio_jack()
         # We might need an argument here to decide to unplug 3.5mm jack or not.
-        # e.g. self.chameleon_board.audio_board.unplug_audio_jack()
 
-        # TODO(cychiang) Implement audio board path control to disconnect
-        # audio port of widget from bus input. This would be done through
-        # a chameleon_board object passed in by AudioWidgetFactory.
-        # e.g. self.chameleon_board.audio_board.disconnect_audio_bus(
-        #              self.bus_index, widget.audio_port.port_id)
-        self._check_widget_direction('Output', widget)
         logging.info(
-                'Unplug audio board bus %d input from %s',
-                self.bus_index, widget.audio_port)
+                'Unplugged audio board bus %d input from %s',
+                self._audio_bus.bus_index, widget.audio_port)
 
 
     def plug_output(self, widget):
@@ -255,42 +256,38 @@ class AudioBusLink(WidgetLink):
         @param widget: An AudioWidget object.
 
         """
-        # TODO(cychiang) Implement audio board path control to connect
-        # audio port of widget to bus output. This would be done through
-        # a chameleon_board object passed in by AudioWidgetFactory.
-        # e.g. self.chameleon_board.audio_board.connect_audio_bus(
-        #              self.bus_index, widget.audio_port.port_id)
+        self._check_widget_direction('Input', widget)
+
+        self._audio_bus.connect(widget.audio_port.port_id)
 
         # TODO(cychiang) Implement fixture control to plug 3.5mm jack if
         # widget is on Cros device and it is not plugged yet.
-        # e.g. self.chameleon_board.audio_board.plug_audio_jack()
-        self._check_widget_direction('Input', widget)
+        # e.g. self._audio_fixture_plug.plug_audio_jack()
+
         logging.info(
-                'Plug audio board bus %d output to %s',
-                self.bus_index, widget.audio_port)
+                'Plugged audio board bus %d output to %s',
+                self._audio_bus.bus_index, widget.audio_port)
 
 
     def unplug_output(self, widget):
-        """Plugs output of audio bus to the widget.
+        """Unplugs output of audio bus from the widget.
 
         @param widget: An AudioWidget object.
 
         """
+        self._check_widget_direction('Input', widget)
+
+        self._audio_bus.disconnect(widget.audio_port.port_id)
+
         # TODO(cychiang) Implement fixture control to unplug 3.5mm jack if
         # widget is on Cros device and both headphone and external mic are not
         # used.
+        # e.g. self._audio_fixture_plug.unplug_audio_jack()
         # We might need an argument here to decide to unplug 3.5mm jack or not.
-        # e.g. self.chameleon_board.audio_board.unplug_audio_jack()
 
-        # TODO(cychiang) Implement audio board path control to disconnect
-        # audio port of widget from bus input. This would be done through
-        # a chameleon_board object passed in by AudioWidgetFactory.
-        # e.g. self.chameleon_board.audio_board.disconnect_audio_bus(
-        #              self.bus_index, widget.audio_port.port_id)
-        self._check_widget_direction('Input', widget)
         logging.info(
-                'Unplug audio board bus %d output from %s',
-                self.bus_index, widget.audio_port)
+                'Unplugged audio board bus %d output from %s',
+                self._audio_bus.bus_index, widget.audio_port)
 
 
 class AudioBusToChameleonLink(AudioBusLink):
@@ -302,7 +299,8 @@ class AudioBusToChameleonLink(AudioBusLink):
     def __init__(self, *args, **kwargs):
         super(AudioBusToChameleonLink, self).__init__(
             *args, **kwargs)
-        self.name = 'Audio board bus %s to Chameleon' % self.bus_index
+        self.name = ('Audio board bus %s to Chameleon' %
+                     self._audio_bus.bus_index)
         self.channel_map = self._DEFAULT_CHANNEL_MAP
         logging.debug(
                 'Create an AudioBusToChameleonLink named %s with '
@@ -318,7 +316,7 @@ class AudioBusToCrosLink(AudioBusLink):
     def __init__(self, *args, **kwargs):
         super(AudioBusToCrosLink, self).__init__(
             *args, **kwargs)
-        self.name = 'Audio board bus %s to Cros' % self.bus_index
+        self.name = 'Audio board bus %s to Cros' % self._audio_bus.bus_index
         self.channel_map = self._DEFAULT_CHANNEL_MAP
         logging.debug(
                 'Create an AudioBusToCrosLink named %s with '

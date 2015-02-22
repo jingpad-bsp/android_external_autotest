@@ -67,8 +67,10 @@ class AudioLinkFactory(object):
     widgets.
 
     Properties:
-        _audio_buses: A dict containing mapping from index number
-                      to object of AudioBusLink's subclass.
+        _audio_bus_links: A dict containing mapping from index number
+                          to object of AudioBusLink's subclass.
+        _audio_board: An AudioBoard object to access Chameleon
+                      audio board functionality.
 
     """
 
@@ -83,10 +85,17 @@ class AudioLinkFactory(object):
         # TODO(cychiang): Add link for other widget pairs.
     }
 
-    def __init__(self):
-        # There are two audio buses on audio board. Initializes them to
-        # None. They may be changed to objects of AudioBusLink's subclass.
-        self._audio_buses = {0: None, 1: None}
+    def __init__(self, audio_board):
+        """Initializes an AudioLinkFactory.
+
+        @param audio_board: An AudioBoard object to access Chameleon
+                            audio board functionality.
+
+        """
+        # There are two audio buses on audio board. Initializes these links
+        # to None. They may be changed to objects of AudioBusLink's subclass.
+        self._audio_bus_links = {1: None, 2: None}
+        self._audio_board = audio_board
 
 
     def _acquire_audio_bus_index(self):
@@ -97,7 +106,7 @@ class AudioLinkFactory(object):
         @raises: AudioLinkFactoryError if there is no available
                  audio bus.
         """
-        for index, bus in self._audio_buses.iteritems():
+        for index, bus in self._audio_bus_links.iteritems():
             if not (bus and bus.occupied):
                 return index
 
@@ -130,10 +139,12 @@ class AudioLinkFactory(object):
         # Acquires audio bus if there is available bus.
         # Creates a bus of AudioBusLink's subclass that is more
         # specific than AudioBusLink.
+        # Controls this link using AudioBus object obtained from AudioBoard
+        # object.
         elif issubclass(link_type, audio_widget_link.AudioBusLink):
             bus_index = self._acquire_audio_bus_index()
-            link = link_type(bus_index)
-            self._audio_buses[bus_index] = link
+            link = link_type(self._audio_board.get_audio_bus(bus_index))
+            self._audio_bus_links[bus_index] = link
         else:
             raise NotImplementedError('Link %s is not implemented' % link_type)
 
@@ -168,7 +179,7 @@ class AudioWidgetFactory(object):
         """
         self._audio_facade = factory.create_audio_facade()
         self._chameleon_board = chameleon_board
-        self._link_factory = AudioLinkFactory()
+        self._link_factory = AudioLinkFactory(chameleon_board.get_audio_board())
 
 
     def create_widget(self, port_id):

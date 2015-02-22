@@ -13,6 +13,7 @@ from PIL import Image
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.chameleon import audio_board
 from autotest_lib.client.cros.chameleon import edid as edid_lib
 
 
@@ -83,7 +84,7 @@ class ChameleonBoard(object):
         @param chameleon_connection: ChameleonConnection object.
         """
         self._chameleond_proxy = chameleon_connection.chameleond_proxy
-
+        self._audio_board = audio_board.AudioBoard(chameleon_connection)
 
     def reset(self):
         """Resets Chameleon board."""
@@ -130,6 +131,14 @@ class ChameleonBoard(object):
         # Eliminate duplicated ports. It simplifies the labels of dual-port
         # devices, i.e. dp_dp categorized into dp.
         return '_'.join(sorted(set(connectors)))
+
+
+    def get_audio_board(self):
+        """Gets the audio board on Chameleon.
+
+        @return: An AudioBoard object.
+        """
+        return self._audio_board
 
 
 class ChameleonPort(object):
