@@ -10,6 +10,7 @@ from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
 from autotest_lib.client.cros import backchannel, httpd
+from autotest_lib.client.cros import memory_bandwidth_logger
 from autotest_lib.client.cros import power_rapl, power_status, power_utils
 from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.audio import audio_helper
@@ -42,7 +43,7 @@ class power_LoadTest(test.test):
                  verbose=True, force_wifi=False, wifi_ap='', wifi_sec='none',
                  wifi_pw='', wifi_timeout=60, tasks='', kblight_percent=10,
                  volume_level=10, mic_gain=10, low_batt_margin_p=2,
-                 ac_ok=False):
+                 ac_ok=False, log_mem_bandwidth=False):
         """
         percent_initial_charge_min: min battery charge at start of test
         check_network: check that Ethernet interface is not running
@@ -66,6 +67,7 @@ class power_LoadTest(test.test):
         low_batt_margin_p: percent low battery margin to be added to
             sys_low_batt_p to guarantee test completes prior to powerd shutdown
         ac_ok: boolean to allow running on AC
+        log_mem_bandwidth: boolean to log memory bandwidth during the test
         """
         self._backlight = None
         self._services = None
@@ -95,6 +97,7 @@ class power_LoadTest(test.test):
         self._volume_level = volume_level
         self._mic_gain = mic_gain
         self._ac_ok = ac_ok
+        self._log_mem_bandwidth = log_mem_bandwidth
         self._wait_time = 60
         self._stats = collections.defaultdict(list)
 
@@ -219,6 +222,10 @@ class power_LoadTest(test.test):
         self._tlog = power_status.TempLogger([], seconds_period=20)
         self._plog.start()
         self._tlog.start()
+        if self._log_mem_bandwidth:
+            self._mlog = memory_bandwidth_logger.MemoryBandwidthLogger(
+                raw=False, seconds_period=2)
+            self._mlog.start()
 
         ext_path = os.path.join(os.path.dirname(__file__), 'extension')
         self._browser = chrome.Chrome(extension_paths=[ext_path],
@@ -302,6 +309,10 @@ class power_LoadTest(test.test):
         keyvals = self._plog.calc()
         keyvals.update(self._tlog.calc())
         keyvals.update(self._statomatic.publish())
+
+        if self._log_mem_bandwidth:
+            self._mlog.stop()
+            self._mlog.join()
 
         _log_all_stats()
         _log_per_loop_stats()
