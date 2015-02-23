@@ -281,6 +281,8 @@ class WiFiClient(site_linux_system.LinuxSystem):
         self.powersave_switch(False)
         # All tests that use this object assume the interface starts enabled.
         self.set_device_enabled(self._wifi_if, True)
+        # Turn on scheduled scan by default.
+        self.shill.set_sched_scan(True)
 
 
     def _assert_method_supported(self, method_name):
@@ -336,6 +338,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
         self.stop_capture()
         self.powersave_switch(False)
         self.shill.clean_profiles()
+        self.shill.set_sched_scan(True)
         super(WiFiClient, self).close()
 
 

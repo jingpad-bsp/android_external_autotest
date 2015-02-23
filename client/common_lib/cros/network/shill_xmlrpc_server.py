@@ -342,6 +342,18 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         return self._wifi_proxy.get_active_wifi_SSIDs()
 
 
+    @xmlrpc_server.dbus_safe(False)
+    def set_sched_scan(self, enable):
+        """Configure scheduled scan.
+
+        @param enable bool flag indicating to enable/disable scheduled scan.
+        @return True on success, False otherwise.
+
+        """
+        self._wifi_proxy.manager.set_sched_scan(enable)
+        return True
+
+
     def enable_ui(self):
         """@return True iff the UI was successfully started."""
         return cros_ui.start(allow_fail=True) == 0
