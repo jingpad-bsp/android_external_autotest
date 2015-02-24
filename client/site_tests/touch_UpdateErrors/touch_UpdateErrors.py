@@ -13,6 +13,10 @@ class touch_UpdateErrors(touch_playback_test_base.touch_playback_test_base):
     """Check that touch update is tried and that there are no update errors."""
     version = 1
 
+    # Older devices with Synaptics touchpads do not report firmware updates.
+    _INVALID_BOARDS = ['x86-alex', 'x86-alex_he', 'x86-zgb', 'x86-zgb_he',
+                       'x86-mario', 'stout']
+
     def _check_updates(self):
         """Fail the test if device has problems with touch firmware update.
 
@@ -39,6 +43,14 @@ class touch_UpdateErrors(touch_playback_test_base.touch_playback_test_base):
         # Skip run on devices which do not have touch inputs.
         if not self._has_touchpad and not self._has_touchscreen:
             logging.info('This device does not have a touch input source.')
+            return
+
+        # Skip run on invalid touch inputs.
+        device = utils.get_board()
+        if device.find('freon') >= 0:
+            device = device[:-len('_freon')]
+        if device in self._INVALID_BOARDS:
+            logging.info('This touchpad is not supported for this test.')
             return
 
         self._check_updates()
