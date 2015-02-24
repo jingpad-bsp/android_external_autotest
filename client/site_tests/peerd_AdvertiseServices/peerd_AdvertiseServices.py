@@ -185,7 +185,7 @@ class peerd_AdvertiseServices(test.test):
 
     def run_once(self):
         # Tell peerd about this exciting new service we have.
-        service_token = self._peerd.expose_service(
+        self._peerd.expose_service(
                 self.TEST_SERVICE_ID,
                 self.TEST_SERVICE_INFO,
                 mdns_options={'port': self.TEST_SERVICE_PORT})

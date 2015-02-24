@@ -119,8 +119,7 @@ class peerd_HandlesNameConflicts(test.test):
 
     def run_once(self):
         # Tell peerd about this exciting new service we have.
-        service_token = self._peerd.expose_service(self.TEST_SERVICE_ID,
-                                                   self.TEST_SERVICE_INFO)
+        self._peerd.expose_service(self.TEST_SERVICE_ID, self.TEST_SERVICE_INFO)
         # Wait for advertisements of that service to appear from avahi.
         # They should be prefixed with our special name, since there are no
         # conflicts.
@@ -149,8 +148,7 @@ class peerd_HandlesNameConflicts(test.test):
                 self.SERBUS_PROTOCOL,
                 self.SERBUS_PORT,
                 ['invalid=record'])
-        service_token = self._peerd.expose_service(self.TEST_SERVICE_ID,
-                                                   self.TEST_SERVICE_INFO)
+        self._peerd.expose_service(self.TEST_SERVICE_ID, self.TEST_SERVICE_INFO)
         run_until_predicate = lambda: self._found_expected_PTR_records(
                 self.INITIAL_MDNS_PREFIX)
         success, duration = self._host.run_until(run_until_predicate,

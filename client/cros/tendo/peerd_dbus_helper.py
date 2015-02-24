@@ -177,13 +177,13 @@ class PeerdDBusHelper(object):
                 if k == EXPOSE_SERVICE_MDNS_PORT:
                     v = dbus.UInt16(v)
                 options[EXPOSE_SERVICE_SECTION_MDNS][k] = v
-        return self._manager.ExposeService(service_id, service_info, options)
+        self._manager.ExposeService(service_id, service_info, options)
 
 
-    def remove_service(self, service_token):
+    def remove_service(self, service_id):
         """Remove a service previously added via expose_service().
 
-        @param service_token: string token returned by expose_service().
+        @param service_id: string service ID of service to remove.
 
         """
-        self._manager.RemoveExposedService(service_token)
+        self._manager.RemoveExposedService(service_id)
