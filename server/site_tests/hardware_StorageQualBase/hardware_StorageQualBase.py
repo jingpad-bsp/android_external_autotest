@@ -50,11 +50,13 @@ class hardware_StorageQualBase(test.test):
         client = hosts.create_host(client_ip)
         client_at = autotest.Autotest(client)
         for test_name, argv in self.CLIENT_FUNCTIONAL_TESTS:
-            client_at.run_test(test_name, tag=client_tag, **argv)
+            client_at.run_test(test_name, disable_sysinfo=True, tag=client_tag,
+                               **argv)
 
         # Test real life performance
         for script in self.CRYPTO_TESTS:
             client_at.run_test('platform_CryptohomeFio',
+                disable_sysinfo=True,
                 from_internal_disk_only=True,
                 script=script,
                 tag='_'.join([client_tag, script]),

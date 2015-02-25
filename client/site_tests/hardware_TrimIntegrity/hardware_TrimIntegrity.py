@@ -159,6 +159,7 @@ class hardware_TrimIntegrity(test.test):
 
         # Check read speed/latency when reading real data.
         self.job.run_test('hardware_StorageFio',
+                          disable_sysinfo=True,
                           filesize=fio_file_size,
                           requirements=[('4k_read_qd32', [])],
                           tag='before_trim')
@@ -225,6 +226,7 @@ class hardware_TrimIntegrity(test.test):
 
         # Check read speed/latency when reading from trimmed data.
         self.job.run_test('hardware_StorageFio',
+                          disable_sysinfo=True,
                           filesize=fio_file_size,
                           requirements=[('4k_read_qd32', [])],
                           tag='after_trim')

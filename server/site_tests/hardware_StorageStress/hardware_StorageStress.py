@@ -154,8 +154,8 @@ class hardware_StorageStress(test.test):
         Write test data to host using hardware_StorageFio
         """
         logging.info('_write_data')
-        self._client_at.run_test('hardware_StorageFio', wait=0,
-            tag='%s_%d' % ('write_data', self._loop_count),
+        self._client_at.run_test('hardware_StorageFio', disable_sysinfo=True,
+            wait=0, tag='%s_%d' % ('write_data', self._loop_count),
             requirements=[(self._FIO_REQUIREMENT_FILE, self._FIO_WRITE_FLAGS)])
         self._check_client_test_result(self._client)
 
@@ -164,8 +164,8 @@ class hardware_StorageStress(test.test):
         Verify test data using hardware_StorageFio
         """
         logging.info(str('_verify_data #%d' % self._loop_count))
-        self._client_at.run_test('hardware_StorageFio', wait=0,
-            tag='%s_%d' % ('verify_data', self._loop_count),
+        self._client_at.run_test('hardware_StorageFio', disable_sysinfo=True,
+            wait=0, tag='%s_%d' % ('verify_data', self._loop_count),
             requirements=[(self._FIO_REQUIREMENT_FILE, self._FIO_VERIFY_FLAGS)])
         self._check_client_test_result(self._client)
 
@@ -179,18 +179,21 @@ class hardware_StorageStress(test.test):
 
         # use the default requirement that write different pattern arround.
         self._client_at.run_test('hardware_StorageFio',
+                                 disable_sysinfo=True,
                                  tag='%s_%d' % ('soak', self._loop_count),
                                  requirements=[('64k_stress', [])],
                                  time_length=self._soak_time)
         self._check_client_test_result(self._client)
 
         self._client_at.run_test('hardware_StorageFio',
+                                 disable_sysinfo=True,
                                  tag='%s_%d' % ('surf', self._loop_count),
                                  requirements=[('surfing', [])],
                                  time_length=self._soak_time)
         self._check_client_test_result(self._client)
 
         self._client_at.run_test('hardware_StorageFio',
+                                 disable_sysinfo=True,
                                  tag='%s_%d' % ('integrity', self._loop_count),
                                  wait=0, integrity=True)
         self._check_client_test_result(self._client)

@@ -18,6 +18,7 @@ class hardware_StorageQualTrimStress(test.test):
             [lambda: job.run_test('power_SuspendStress', tag='disk',
                 duration=%d, init_delay=10, min_suspend=7)],
             [lambda: job.run_test('hardware_TrimIntegrity', test_length=%d+30,
+                disable_sysinfo=True,
                 tag='qual_trim')])""" % (duration, duration-30)
         client_at.run(control, '.', None)
 

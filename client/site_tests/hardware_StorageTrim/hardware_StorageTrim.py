@@ -40,6 +40,7 @@ class hardware_StorageTrim(test.test):
 
         # Use fio to fill device first.
         self.job.run_test('hardware_StorageFio',
+                          disable_sysinfo=True,
                           dev=dev,
                           filesize=0,
                           requirements=[('disk_fill', [])],
@@ -53,6 +54,7 @@ class hardware_StorageTrim(test.test):
 
         # Check write performance
         self.job.run_test('hardware_StorageFio',
+                          disable_sysinfo=True,
                           dev=dev,
                           filesize=0,
                           requirements=requirements,
@@ -65,6 +67,7 @@ class hardware_StorageTrim(test.test):
 
         # Check write performance
         self.job.run_test('hardware_StorageFio',
+                          disable_sysinfo=True,
                           dev=dev,
                           filesize=0,
                           requirements=requirements,
