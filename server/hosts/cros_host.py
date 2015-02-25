@@ -689,9 +689,17 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                     'Update failed. No update URL provided.')
 
         if repair:
-            # In case the system is in a bad state, we always reboot the machine
-            # before machine_install.
+            # In case the system is in a bad state, we always reboot
+            # the machine before trying to repair.
+            #
+            # If Chrome is crashing, the ui-respawn job may reboot
+            # the DUT to try and "fix" it.  Guard against that
+            # behavior by stopping the 'ui' job.
+            #
+            # If Chrome failed to start, update-engine won't be running,
+            # so restart it by force.
             self.reboot(timeout=self.REBOOT_TIMEOUT, wait=True)
+            self.run('stop ui || true')
             self.run('stop update-engine; start update-engine')
             force_update = True
 
