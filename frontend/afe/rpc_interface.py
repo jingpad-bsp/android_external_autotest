@@ -1066,9 +1066,7 @@ def get_host_queue_entries(start_time=None, end_time=None, **filter_data):
                                                    start_time,
                                                    end_time,
                                                    **filter_data)
-    return rpc_utils.prepare_rows_as_nested_dicts(
-            models.HostQueueEntry.query_objects(filter_data),
-            ('host', 'atomic_group', 'job'))
+    return rpc_utils.get_serialized_local_host_queue_entries(**filter_data)
 
 
 def get_num_host_queue_entries(start_time=None, end_time=None, **filter_data):
@@ -1099,9 +1097,13 @@ def get_hqe_percentage_complete(**filter_data):
 # special tasks
 
 def get_special_tasks(**filter_data):
-    return rpc_utils.prepare_rows_as_nested_dicts(
-            models.SpecialTask.query_objects(filter_data),
-            ('host', 'queue_entry'))
+    # Task id is not universally unique, the id passed in would only be
+    # applicable to local db.
+    if 'id' in filter_data or 'id__in' in filter_data:
+        return rpc_utils.get_serialized_local_special_tasks(**filter_data)
+    else:
+        return rpc_utils.get_data(rpc_utils.get_serialized_local_special_tasks,
+                'get_special_tasks', **filter_data)
 
 
 # support for host detail view
