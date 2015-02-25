@@ -104,11 +104,9 @@ import sys
 import time
 
 import common
-from autotest_lib.frontend import setup_django_environment
-
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import time_utils
-from autotest_lib.frontend.afe import models as afe_models
+from autotest_lib.server import frontend
 from autotest_lib.site_utils.suite_scheduler import constants
 
 
@@ -144,7 +142,7 @@ _DEFAULT_DURATION = 24
 
 
 def _parse_time(time_string):
-    return int(time_utils.date_string_to_epoch_time(time_string))
+    return int(time_utils.to_epoch_time(time_string))
 
 
 class JobEvent(object):
@@ -170,29 +168,29 @@ class JobEvent(object):
     """
 
     get_config_value = global_config.global_config.get_config_value
-    _AFE_HOSTNAME = get_config_value('SERVER', 'hostname')
     _LOG_URL_PATTERN = get_config_value('CROS', 'log_url_pattern')
 
     @classmethod
-    def get_log_url(cls, logdir):
+    def get_log_url(cls, afe_hostname, logdir):
         """Return a URL to job results.
 
         The URL is constructed from a base URL determined by the
         global config, plus the relative path of the job's log
         directory.
 
+        @param afe_hostname Hostname for autotest frontend
         @param logdir Relative path of the results log directory.
 
         @return A URL to the requested results log.
 
         """
-        return cls._LOG_URL_PATTERN % (cls._AFE_HOSTNAME, logdir)
+        return cls._LOG_URL_PATTERN % (afe_hostname, logdir)
 
 
     def __init__(self, start_time, end_time):
-        self.start_time = int(time.mktime(start_time.timetuple()))
+        self.start_time = _parse_time(start_time)
         if end_time:
-            self.end_time = int(time.mktime(end_time.timetuple()))
+            self.end_time = _parse_time(end_time)
         else:
             self.end_time = None
 
@@ -241,14 +239,15 @@ class SpecialTaskEvent(JobEvent):
     """
 
     @classmethod
-    def get_tasks(cls, host_id, start_time, end_time):
+    def get_tasks(cls, afe, host_id, start_time, end_time):
         """Return special tasks for a host in a given time range.
 
         Return a list of `SpecialTaskEvent` objects representing all
-        special task that ran on the given host in the given time
+        special tasks that ran on the given host in the given time
         range.  The list is ordered as it was returned by the query
         (i.e. unordered).
 
+        @param afe         Autotest frontend
         @param host_id     Database host id of the desired host.
         @param start_time  Start time of the range of interest.
         @param end_time    End time of the range of interest.
@@ -258,15 +257,16 @@ class SpecialTaskEvent(JobEvent):
         """
         filter_start = time_utils.epoch_time_to_date_string(start_time)
         filter_end = time_utils.epoch_time_to_date_string(end_time)
-        tasks = afe_models.SpecialTask.objects.filter(
+        tasks = afe.get_special_tasks(
                 host_id=host_id,
                 time_started__gte=filter_start,
                 time_started__lte=filter_end,
-                is_complete=True)
-        return [cls(t) for t in tasks]
+                is_complete=1)
+        return [cls(afe.server, t) for t in tasks]
 
 
-    def __init__(self, afetask):
+    def __init__(self, afe_hostname, afetask):
+        self._afe_hostname = afe_hostname
         self._afetask = afetask
         super(SpecialTaskEvent, self).__init__(
                 afetask.time_started, afetask.time_finished)
@@ -277,7 +277,7 @@ class SpecialTaskEvent(JobEvent):
         logdir = ('hosts/%s/%s-%s' %
                   (self._afetask.host.hostname, self._afetask.id,
                    self._afetask.task.lower()))
-        return SpecialTaskEvent.get_log_url(logdir)
+        return SpecialTaskEvent.get_log_url(self._afe_hostname, logdir)
 
 
     @property
@@ -299,7 +299,7 @@ class TestJobEvent(JobEvent):
     """
 
     @classmethod
-    def get_hqes(cls, host_id, start_time, end_time):
+    def get_hqes(cls, afe, host_id, start_time, end_time):
         """Return HQEs for a host in a given time range.
 
         Return a list of `TestJobEvent` objects representing all the
@@ -307,6 +307,7 @@ class TestJobEvent(JobEvent):
         time range.  The list is ordered as it was returned by the
         query (i.e. unordered).
 
+        @param afe         Autotest frontend
         @param host_id     Database host id of the desired host.
         @param start_time  Start time of the range of interest.
         @param end_time    End time of the range of interest.
@@ -316,15 +317,16 @@ class TestJobEvent(JobEvent):
         """
         filter_start = time_utils.epoch_time_to_date_string(start_time)
         filter_end = time_utils.epoch_time_to_date_string(end_time)
-        hqelist = afe_models.HostQueueEntry.objects.filter(
+        hqelist = afe.get_host_queue_entries(
                 host_id=host_id,
-                started_on__gte=filter_start,
-                started_on__lte=filter_end,
-                complete=True)
-        return [cls(hqe) for hqe in hqelist]
+                start_time=filter_start,
+                end_time=filter_end,
+                complete=1)
+        return [cls(afe.server, hqe) for hqe in hqelist]
 
 
-    def __init__(self, hqe):
+    def __init__(self, afe_hostname, hqe):
+        self._afe_hostname = afe_hostname
         self._hqe = hqe
         super(TestJobEvent, self).__init__(
                 hqe.started_on, hqe.finished_on)
@@ -333,7 +335,7 @@ class TestJobEvent(JobEvent):
     @property
     def job_url(self):
         logdir = '%s-%s' % (self._hqe.job.id, self._hqe.job.owner)
-        return TestJobEvent.get_log_url(logdir)
+        return TestJobEvent.get_log_url(self._afe_hostname, logdir)
 
 
     @property
@@ -363,13 +365,14 @@ class HostJobHistory(object):
     """
 
     @classmethod
-    def get_host_history(cls, hostname, start_time, end_time):
+    def get_host_history(cls, afe, hostname, start_time, end_time):
         """Create a HostJobHistory instance for a single host.
 
         Simple factory method to construct host history from a
         hostname.  Simply looks up the host in the AFE database, and
         passes it to the class constructor.
 
+        @param afe         Autotest frontend
         @param hostname    Name of the host.
         @param start_time  Start time for the history's time
                            interval.
@@ -378,12 +381,12 @@ class HostJobHistory(object):
         @return A new HostJobHistory instance.
 
         """
-        afehost = afe_models.Host.objects.get(hostname=hostname)
-        return cls(afehost, start_time, end_time)
+        afehost = afe.get_hosts(hostname=hostname)[0]
+        return cls(afe, afehost, start_time, end_time)
 
 
     @classmethod
-    def get_multiple_histories(cls, start_time, end_time,
+    def get_multiple_histories(cls, afe, start_time, end_time,
                                board=None, pool=None):
         """Create HostJobHistory instances for a set of hosts.
 
@@ -391,13 +394,14 @@ class HostJobHistory(object):
         board type", "all hosts in a given pool", or "all hosts
         of a given board and pool".
 
+        @param afe         Autotest frontend
+        @param start_time  Start time for the history's time
+                           interval.
+        @param end_time    End time for the history's time interval.
         @param board       All hosts must have this board type; if
                            `None`, all boards are allowed.
         @param pool        All hosts must be in this pool; if
                            `None`, all pools are allowed.
-        @param start_time  Start time for the history's time
-                           interval.
-        @param end_time    End time for the history's time interval.
 
         @return A list of new HostJobHistory instances.
 
@@ -407,18 +411,18 @@ class HostJobHistory(object):
         # Our caller currently won't (can't) do this, but assert to
         # be safe.
         assert board is not None or pool is not None
-        filtered_set = afe_models.Host.objects
+        labels = []
         if board is not None:
-            label_name = constants.Labels.BOARD_PREFIX + board
-            filtered_set = filtered_set.filter(labels__name=label_name)
+            labels.append(constants.Labels.BOARD_PREFIX + board)
         if pool is not None:
-            label_name = constants.Labels.POOL_PREFIX + pool
-            filtered_set = filtered_set.filter(labels__name=label_name)
-        return [cls(afehost, start_time, end_time)
-                    for afehost in filtered_set]
+            labels.append(constants.Labels.POOL_PREFIX + pool)
+        kwargs = {'multiple_labels': labels}
+        hosts = afe.get_hosts(**kwargs)
+        return [cls(afe, h, start_time, end_time) for h in hosts]
 
 
-    def __init__(self, afehost, start_time, end_time):
+    def __init__(self, afe, afehost, start_time, end_time):
+        self._afe = afe
         self.hostname = afehost.hostname
         self.start_time = start_time
         self.end_time = end_time
@@ -436,9 +440,9 @@ class HostJobHistory(object):
         if self._history is not None:
             return
         newtasks = SpecialTaskEvent.get_tasks(
-                self._host.id, self.start_time, self.end_time)
+                self._afe, self._host.id, self.start_time, self.end_time)
         newhqes = TestJobEvent.get_hqes(
-                self._host.id, self.start_time, self.end_time)
+                self._afe, self._host.id, self.start_time, self.end_time)
         newhistory = newtasks + newhqes
         newhistory.sort(reverse=True)
         self._history = newhistory
@@ -513,13 +517,13 @@ def _print_host_summaries(history_list, arguments):
         status, event = history.last_diagnosis()
         if not _include_status(status, arguments):
             continue
+        datestr = '---'
+        url = '---'
         if event is not None:
             datestr = time_utils.epoch_time_to_date_string(
                     event.start_time)
             url = event.job_url
-        else:
-            datestr = '---'
-            url = '---'
+
         print fmt % (history.hostname,
                      _DIAGNOSIS_IDS[status],
                      datestr,
@@ -588,7 +592,7 @@ def _validate_time_range(arguments):
                            arguments.duration * 60 * 60)
 
 
-def _get_host_histories(arguments):
+def _get_host_histories(afe, arguments):
     """Return HostJobHistory objects for the requested hosts.
 
     Checks that individual hosts specified on the command line are
@@ -599,6 +603,7 @@ def _get_host_histories(arguments):
     valid requested hostnames, using the time range supplied on the
     command line.
 
+    @param afe       Autotest frontend
     @param arguments Parsed arguments object as returned by
                      ArgumentParser.parse_args().
     @return List of HostJobHistory objects for the hosts requested
@@ -610,7 +615,7 @@ def _get_host_histories(arguments):
     for hostname in arguments.hostnames:
         try:
             h = HostJobHistory.get_host_history(
-                    hostname, arguments.since, arguments.until)
+                    afe, hostname, arguments.since, arguments.until)
             histories.append(h)
         except:
             print >>sys.stderr, ('WARNING: Ignoring unknown host %s' %
@@ -622,7 +627,7 @@ def _get_host_histories(arguments):
     return histories
 
 
-def _validate_host_list(arguments):
+def _validate_host_list(afe, arguments):
     """Validate the user-specified list of hosts.
 
     Hosts may be specified implicitly with --board or --pool, or
@@ -636,6 +641,7 @@ def _validate_host_list(arguments):
     requested hosts, using the time range supplied on the command
     line.
 
+    @param afe       Autotest frontend
     @param arguments Parsed arguments object as returned by
                      ArgumentParser.parse_args().
     @return List of HostJobHistory objects for the hosts requested
@@ -648,10 +654,10 @@ def _validate_host_list(arguments):
                                  'with --board or --pool')
             sys.exit(1)
         histories = HostJobHistory.get_multiple_histories(
-                arguments.since, arguments.until,
+                afe, arguments.since, arguments.until,
                 board=arguments.board, pool=arguments.pool)
     else:
-        histories = _get_host_histories(arguments)
+        histories = _get_host_histories(afe, arguments)
     if not histories:
         print >>sys.stderr, 'FATAL: no valid hosts found'
         sys.exit(1)
@@ -679,7 +685,7 @@ def _validate_format_options(arguments):
         arguments.broken = True
 
 
-def _validate_command(arguments):
+def _validate_command(afe, arguments):
     """Check that the command's arguments are valid.
 
     This performs command line checking to enforce command line
@@ -692,6 +698,7 @@ def _validate_command(arguments):
         defaults as necessary.
       * Identify invalid host names.
 
+    @param afe       Autotest frontend
     @param arguments Parsed arguments object as returned by
                      ArgumentParser.parse_args().
     @return List of HostJobHistory objects for the hosts requested
@@ -700,7 +707,7 @@ def _validate_command(arguments):
     """
     _validate_time_range(arguments)
     _validate_format_options(arguments)
-    return _validate_host_list(arguments)
+    return _validate_host_list(afe, arguments)
 
 
 def _parse_command(argv):
@@ -758,6 +765,10 @@ def _parse_command(argv):
     parser.add_argument('hostnames',
                         nargs='*',
                         help='host names of DUTs to report on')
+    parser.add_argument('--web',
+                        help='Master autotest frontend hostname. If no value '
+                             'is given, the one in global config will be used.',
+                        default=None)
     arguments = parser.parse_args(argv[1:])
     return arguments
 
@@ -769,7 +780,8 @@ def main(argv):
 
     """
     arguments = _parse_command(argv)
-    history_list = _validate_command(arguments)
+    afe = frontend.AFE(server=arguments.web)
+    history_list = _validate_command(afe, arguments)
     if arguments.oneline:
         _print_host_summaries(history_list, arguments)
     else:

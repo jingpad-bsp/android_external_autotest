@@ -310,6 +310,11 @@ class AFE(RpcClient):
                                                       status.meta_host)]
 
 
+    def get_special_tasks(self, **data):
+        tasks = self.run('get_special_tasks', **data)
+        return [SpecialTask(self, t) for t in tasks]
+
+
     def create_job_by_test(self, tests, kernel=None, use_container=False,
                            kernel_cmdline=None, **dargs):
         """
@@ -850,10 +855,7 @@ class JobStatus(RpcObject):
         status, complete, deleted, meta_host, host, active, execution_subdir, id
     """
     def __init__(self, afe, hash):
-        # This should call super
-        self.afe = afe
-        self.hash = hash
-        self.__dict__.update(hash)
+        super(JobStatus, self).__init__(afe, hash)
         self.job = Job(afe, self.job)
         if getattr(self, 'host'):
             self.host = Host(afe, self.host)
@@ -865,6 +867,19 @@ class JobStatus(RpcObject):
         else:
             hostname = 'None'
         return 'JOB STATUS: %s-%s' % (self.job.id, hostname)
+
+
+class SpecialTask(RpcObject):
+    """
+    AFE special task object
+    """
+    def __init__(self, afe, hash):
+        super(SpecialTask, self).__init__(afe, hash)
+        self.host = Host(afe, self.host)
+
+
+    def __repr__(self):
+        return 'SPECIAL TASK: %s' % self.id
 
 
 class Host(RpcObject):
