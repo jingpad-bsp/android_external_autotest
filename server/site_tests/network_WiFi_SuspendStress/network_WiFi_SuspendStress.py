@@ -5,6 +5,7 @@
 import json
 import logging
 import time
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server import autotest
 from autotest_lib.server.cros import stress
@@ -75,6 +76,13 @@ class network_WiFi_SuspendStress(wifi_cell_test_base.WiFiCellTestBase):
 
     def run_once(self, suspends=5):
         self._host = self.context.client.host
+
+        # If the DUT is up and cold_reset is set to on, that means the DUT does
+        # not support cold_reset.  We can't run the test, because it may get
+        # in a bad state and we won't be able to recover.
+        if self._host.servo.get('cold_reset') == 'on':
+            raise error.TestNAError('This DUT does not support cold reset, '
+                                    'exiting')
         for router_conf, client_conf in self._configurations:
             self.context.configure(router_conf)
             assoc_params = xmlrpc_datatypes.AssociationParameters(
@@ -104,4 +112,5 @@ class network_WiFi_SuspendStress(wifi_cell_test_base.WiFiCellTestBase):
 
     def cleanup(self):
         """Cold reboot the device so the WiFi card is back in a good state."""
-        self._host.servo.get_power_state_controller().reset()
+        if self._host.servo.get('cold_reset') == 'off':
+            self._host.servo.get_power_state_controller().reset()
