@@ -56,7 +56,7 @@ class firmware_ECBootTime(FirmwareTest):
             raise error.TestFail("Boot time longer than 1 second.")
 
     def is_veyron_board(self):
-        veyrons = ('Brain', 'Jerry', 'Mighty', 'Minnie',
+        veyrons = ('Brain', 'Jaq', 'Jerry', 'Mighty', 'Minnie',
                    'Pinky', 'Remy',  'Rialto', 'Speedy')
         output = self.faft_client.system.get_platform_name()
         return output in veyrons
