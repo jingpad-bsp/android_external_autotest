@@ -20,6 +20,7 @@ The common options are:
 See topic_common.py for a High Level Design and Algorithm.
 
 """
+import re
 
 from autotest_lib.cli import action_common, topic_common
 from autotest_lib.client.common_lib import host_protections
@@ -229,12 +230,12 @@ class host_stat(host):
             acls = self.execute_rpc('get_acl_groups', hosts__hostname=host)
 
             labels = self.execute_rpc('get_labels', host__hostname=host)
-            results.append ([[stat], acls, labels])
+            results.append([[stat], acls, labels, stat['attributes']])
         return results
 
 
     def output(self, results):
-        for stats, acls, labels in results:
+        for stats, acls, labels, attributes in results:
             print '-'*5
             self.print_fields(stats,
                               keys=['hostname', 'platform',
@@ -243,6 +244,7 @@ class host_stat(host):
             self.print_by_ids(acls, 'ACLs', line_before=True)
             labels = self._cleanup_labels(labels)
             self.print_by_ids(labels, 'Labels', line_before=True)
+            self.print_dict(attributes, 'Host Attributes', line_before=True)
 
 
 class host_jobs(host):
@@ -308,11 +310,14 @@ class host_mod(host):
     """atest host mod --lock|--unlock|--protection
     --mlist <file>|<hosts>"""
     usage_action = 'mod'
+    attribute_regex = r'^(?P<attribute>\w+)=(?P<value>.+)?'
 
     def __init__(self):
         """Add the options specific to the mod action"""
         self.data = {}
         self.messages = []
+        self.attribute = None
+        self.value = None
         super(host_mod, self).__init__()
         self.parser.add_option('-l', '--lock',
                                help='Lock hosts',
@@ -326,6 +331,10 @@ class host_mod(host):
                                      ', '.join('"%s"' % p
                                                for p in self.protections)),
                                choices=self.protections)
+        self.parser.add_option('--attribute', '-a', default='',
+                               help=('Host attribute to add or change. Format '
+                                     'is <attribute>=<value>. Value can be '
+                                     'blank to delete attribute.'))
 
 
     def parse(self):
@@ -338,8 +347,18 @@ class host_mod(host):
             self.data['protection'] = options.protection
             self.messages.append('Protection set to "%s"' % options.protection)
 
-        if len(self.data) == 0:
+        if len(self.data) == 0 and not options.attribute:
             self.invalid_syntax('No modification requested')
+
+        if options.attribute:
+            match = re.match(self.attribute_regex, options.attribute)
+            if not match:
+                self.invalid_syntax('Attributes must be in <attribute>=<value>'
+                                    ' syntax!')
+
+            self.attribute = match.group('attribute')
+            self.value = match.group('value')
+
         return (options, leftover)
 
 
@@ -349,6 +368,10 @@ class host_mod(host):
             try:
                 res = self.execute_rpc('modify_host', item=host,
                                        id=host, **self.data)
+                if self.attribute:
+                    self.execute_rpc('set_host_attribute',
+                                     attribute=self.attribute,
+                                     value=self.value, hostname=host)
                 # TODO: Make the AFE return True or False,
                 # especially for lock
                 successes.append(host)
