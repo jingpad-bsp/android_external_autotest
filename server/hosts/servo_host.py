@@ -25,8 +25,15 @@ from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.server import site_utils as server_site_utils
 from autotest_lib.server.cros.servo import servo
+from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.hosts import ssh_host
 from autotest_lib.site_utils.rpm_control_system import rpm_client
+
+
+# Names of the host attributes in the database that represent the values for
+# the servo_host and servo_port for a servo connected to the DUT.
+SERVO_HOST_ATTR = 'servo_host'
+SERVO_PORT_ATTR = 'servo_port'
 
 
 class ServoHostException(error.AutoservError):
@@ -325,6 +332,8 @@ class ServoHost(ssh_host.SSHHost):
         @raises ServoHostVerifyFailure if /var/lib/servod/config does not exist.
 
         """
+        if self._is_localhost:
+            return
         try:
             self.run('test -f /var/lib/servod/config')
         except (error.AutoservRunError, error.AutoservSSHTimeout) as e:
@@ -644,8 +653,19 @@ def create_servo_host(dut, servo_args, try_lab_servo=False):
     @returns: A ServoHost object or None. See comments above.
 
     """
-    lab_servo_hostname = make_servo_hostname(dut)
-    is_in_lab = utils.host_is_in_lab_zone(lab_servo_hostname)
+    if not utils.is_moblab():
+        lab_servo_hostname = make_servo_hostname(dut)
+        is_in_lab = utils.host_is_in_lab_zone(lab_servo_hostname)
+    else:
+        # Servos on Moblab are not in the actual lab.
+        is_in_lab = False
+        afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
+        hosts = afe.get_hosts(hostname=dut)
+        if hosts and SERVO_HOST_ATTR in hosts[0].attributes:
+            servo_args = {}
+            servo_args[SERVO_HOST_ATTR] = hosts[0].attributes[SERVO_HOST_ATTR]
+            servo_args[SERVO_PORT_ATTR] = hosts[0].attributes.get(
+                    SERVO_PORT_ATTR, 9999)
 
     if not is_in_lab:
         if servo_args is None:
