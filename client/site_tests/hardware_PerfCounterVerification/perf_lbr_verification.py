@@ -103,7 +103,7 @@ class Mmap(object):
         return result
 
 RAW_EVENT_CODES = {
-    'br_inst_retired.any': 'r4c4',
+    'br_inst_retired.all_branches': 'r4c4',
 }
 
 def TranslateEvents(events):
@@ -262,7 +262,7 @@ def main():
         sys.stdout.flush()
     branch = ReadBranchAddressesFile('src/noploop_branch.txt')
     facts = GatherPerfBranchSamples('src/noploop', branch,
-                                    'br_inst_retired.any',
+                                    'br_inst_retired.all_branches',
                                     10000,
                                     progress_func=_Progress)
     dt = numpy.dtype([('loops', numpy.int), ('branch_count', numpy.int)])

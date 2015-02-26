@@ -22,4 +22,4 @@ job.run_test('hardware_PerfCounterVerification', tag='cycles_instructions',
              perf_cmd='stat', events=('cycles', 'instructions'))
 
 job.run_test('hardware_PerfCounterVerification', tag='LBR',
-             perf_cmd='record -b', events=('br_inst_retired.any',))
+             perf_cmd='record -b', events=('br_inst_retired.all_branches',))
