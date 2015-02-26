@@ -14,6 +14,14 @@ _CHROME_PATH = '/opt/google/chrome/chrome'
 class platform_FullyChargedPowerStatus(test.test):
     version = 1
 
+    def cleanup(self):
+        """ Power on RPM and open lid on cleanup.
+
+        """
+        self.host.power_on()
+        self.host.servo.lid_open()
+
+
     def get_power_supply_parameters(self):
         """ Retrieve power supply info
 
@@ -95,8 +103,8 @@ class platform_FullyChargedPowerStatus(test.test):
             raise error.TestError('No RPM is setup to device')
 
         online, state, percentage = self.get_power_supply_parameters()
-        if not ( online == 'yes' and state == 'Fully charged' and percentage > 95 ):
-            raise error.TestError('The DUT is not on AC & not Fully Charged ')
+        if not ( online == 'yes' and percentage > 95 ):
+            raise error.TestError('The DUT is not on AC or Battery charge is low ')
 
         if not self.is_chrome_available():
             raise error.TestError('Chrome does not reside on DUT')
@@ -113,7 +121,7 @@ class platform_FullyChargedPowerStatus(test.test):
                 time.sleep(_WAIT_DELAY)
 
             # Suspend DUT(closing lid)
-            host.servo.lid_close()
+            self.host.servo.lid_close()
             self.wait_to_disconnect()
             logging.info('DUT suspended')
 
@@ -122,6 +130,7 @@ class platform_FullyChargedPowerStatus(test.test):
                 self.host.power_on()
             else:
                 self.host.power_off()
+                time.sleep(_WAIT_DELAY)
             time.sleep(_WAIT_DELAY)
 
             # Set power before resume
@@ -129,10 +138,11 @@ class platform_FullyChargedPowerStatus(test.test):
                 self.host.power_on()
             else:
                 self.host.power_off()
+                time.sleep(_WAIT_DELAY)
             time.sleep(_WAIT_DELAY)
 
             # Resume DUT(open lid)
-            host.servo.lid_open()
+            self.host.servo.lid_open()
             self.wait_to_come_up()
             logging.info('DUT resumed')
 
