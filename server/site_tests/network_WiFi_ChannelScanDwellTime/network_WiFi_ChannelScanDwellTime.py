@@ -116,19 +116,13 @@ class network_WiFi_ChannelScanDwellTime(wifi_cell_test_base.WiFiCellTestBase):
         self.context.router.require_capabilities(
                   [site_linux_system.LinuxSystem.
                           CAPABILITY_SEND_MANAGEMENT_FRAME])
-        # When scheduled scan is enabled, the driver could be in the middle of
-        # scheduled scan when we ask it to perform a single-channel scan, at
-        # which the driver would actually perform the single-channel scan after
-        # the scheduled scan is completed. This causes the returned scan results
-        # to contain BSSes from both the scheduled scan and the single-channel
-        # scan, and may mess up the dwell time calculation.
-        # Disable the scheduled scan before we attempt the single-channel
-        # scan. This will also cancel any ongoing scheduled scan in the driver.
-        self.context.client.shill.set_sched_scan(False)
+        # Stop wpasupplicant to prevent shill and wpa_supplicant from
+        # performing any scans during the test, which might interfere with the
+        # scan to be performed by this test.
+        self.context.client.stop_wpasupplicant()
         # Get channel dwell time for single-channel scan
         dwell_time = self._channel_dwell_time_test(True)
         logging.info('Channel dwell time for single-channel scan: %d ms',
                      dwell_time)
         self.write_perf_keyval({'dwell_time_single_channel_scan': dwell_time})
-        # Enable scheduled scan.
-        self.context.client.shill.set_sched_scan(True)
+        self.context.client.start_wpasupplicant()
