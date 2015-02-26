@@ -9,6 +9,7 @@ import time
 from contextlib import contextmanager
 from collections import namedtuple
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import interface
 from autotest_lib.client.common_lib.cros.network import iw_runner
@@ -55,6 +56,16 @@ def get_xmlrpc_proxy(host):
             ready_test_name=constants.SHILL_XMLRPC_SERVER_READY_METHOD,
             timeout_seconds=XMLRPC_BRINGUP_TIMEOUT_SECONDS)
     return proxy
+
+
+def _is_conductive(hostname):
+    if utils.host_is_in_lab_zone(hostname):
+        conductive = site_utils.get_label_from_afe(hostname,
+                                                  'conductive:',
+                                                   frontend.AFE())
+        if conductive and conductive.lower() == 'true':
+            return True
+    return False
 
 
 class WiFiClient(site_linux_system.LinuxSystem):
@@ -177,6 +188,12 @@ class WiFiClient(site_linux_system.LinuxSystem):
         return self._conductive
 
 
+    @conductive.setter
+    """Set the conductive member to True to False."""
+    def conductive(self, value):
+        self._conductive = value
+
+
     @property
     def wifi_if(self):
         """@return string wifi device on machine (e.g. mlan0)."""
@@ -240,14 +257,8 @@ class WiFiClient(site_linux_system.LinuxSystem):
         self._command_wpa_cli = 'wpa_cli'
         self._machine_id = None
         self._result_dir = result_dir
-        self._conductive = False
+        self._conductive = _is_conductive(client_host.hostname)
 
-        afe = frontend.AFE(debug=True)
-        conductive = site_utils.get_label_from_afe(client_host.hostname,
-                                                   'conductive:',
-                                                   afe)
-        if conductive and conductive.lower() == 'true':
-            self._conductive = True
         if isinstance(self.host, adb_host.ADBHost):
             # Look up the WiFi device (and its MAC) on the client.
             devs = self.iw_runner.list_interfaces(desired_if_type='managed')

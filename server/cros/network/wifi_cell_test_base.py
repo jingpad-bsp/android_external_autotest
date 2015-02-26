@@ -4,6 +4,7 @@
 
 import logging
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.cros import constants
 from autotest_lib.server import frontend
@@ -30,14 +31,17 @@ class WiFiCellTestBase(test.test):
     """
 
     def initialize(self, host):
-        # Add the variant key if there is one
-        afe = frontend.AFE(debug=True)
-        variant_name = site_utils.get_label_from_afe(host.hostname,
-                                                     'variant:',
-                                                     afe)
-        if variant_name:
-            self.write_test_keyval({constants.VARIANT_KEY: variant_name})
-
+        if utils.host_is_in_lab_zone(host.hostname):
+            # There are some DUTs that have different types of wifi modules.
+            # In order to generate separate performance graphs, a variant
+            # name is needed.  Writing this key will generate results with
+            # the name of <board>-<variant>.
+            afe = frontend.AFE(debug=True)
+            variant_name = site_utils.get_label_from_afe(host.hostname,
+                                                         'variant:',
+                                                         afe)
+            if variant_name:
+                self.write_test_keyval({constants.VARIANT_KEY: variant_name})
 
     @property
     def context(self):

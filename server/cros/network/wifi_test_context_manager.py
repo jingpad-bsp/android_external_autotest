@@ -25,6 +25,7 @@ class WiFiTestContextManager(object):
     """
     CMDLINE_ATTEN_ADDR = 'atten_addr'
     CMDLINE_CLIENT_PACKET_CAPTURES = 'client_capture'
+    CMDLINE_CONDUCTIVE_RIG = 'conductive_rig'
     CMDLINE_PACKET_CAPTURE_SNAPLEN = 'capture_snaplen'
     CMDLINE_ROUTER_ADDR = 'router_addr'
     CMDLINE_ROUTER_PACKET_CAPTURES = 'router_capture'
@@ -171,6 +172,8 @@ class WiFiTestContextManager(object):
         if self.CMDLINE_PACKET_CAPTURE_SNAPLEN in self._cmdline_args:
             self._packet_capture_snaplen = int(
                     self._cmdline_args[self.CMDLINE_PACKET_CAPTURE_SNAPLEN])
+        if self.CMDLINE_CONDUCTIVE_RIG in self._cmdline_args:
+            self.client.conductive = True
         for system in (self.client, self.router):
             system.sync_host_times()
 
