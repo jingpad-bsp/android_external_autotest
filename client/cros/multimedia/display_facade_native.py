@@ -19,7 +19,8 @@ from autotest_lib.client.cros import constants, sys_power
 from autotest_lib.client.cros.graphics import graphics_utils
 from autotest_lib.client.cros.multimedia import image_generator
 
-TimeoutException = telemetry.core.util.TimeoutException
+class TimeoutException(Exception):
+    pass
 
 
 _FLAKY_CALL_RETRY_TIMEOUT_SEC = 60

@@ -98,7 +98,7 @@ class Chrome(object):
                 browser_to_create = browser_finder.FindBrowser(finder_options)
                 self._browser = browser_to_create.Create(finder_options)
                 break
-            except (util.TimeoutException, exceptions.LoginException) as e:
+            except (exceptions.LoginException) as e:
                 logging.error('Timed out logging in, tries=%d, error=%s',
                               i, repr(e))
                 if i == num_tries-1:
@@ -181,7 +181,7 @@ class Chrome(object):
                 return False
             try:
                 tabs[0].Close()
-            except (util.TimeoutException):
+            except:
                 # crbug.com/350941
                 logging.error('Timed out closing tab')
             return True
