@@ -189,8 +189,8 @@ class WiFiClient(site_linux_system.LinuxSystem):
 
 
     @conductive.setter
-    """Set the conductive member to True to False."""
     def conductive(self, value):
+        """Set the conductive member to True or False."""
         self._conductive = value
 
 
