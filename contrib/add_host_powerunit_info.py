@@ -25,6 +25,8 @@ Workflow:
     <Upload mapping information in csv file to AFE>
     python add_host_powerunit_info.py --csv mapping_file.csv
 
+To dump existing mapping to a backup file:
+    python add_host_powerunit_info.py --csv backup.csv --backup
 """
 import argparse
 import csv
@@ -82,8 +84,19 @@ def add_from_csv(afe, csv_file):
             add_powerunit_info_to_host(afe, device, keyvals)
 
 
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
+def dump_to_csv(afe, csv_file):
+    logging.info('Back up host attribues to %s', csv_file)
+    with open(csv_file, 'w') as f:
+        hosts = afe.get_hosts()
+        for h in hosts:
+            logging.info('Proccessing %s', h.hostname)
+            f.write(h.hostname + ',')
+            for key in POWERUNIT_KEYS:
+                f.write(h.attributes.get(key, '') + ',')
+            f.write('\n')
+
+
+def parse_options():
     parser = argparse.ArgumentParser(
             description='Add power unit information to host attributes.')
     parser.add_argument('--csv', type=str, dest='csv_file', required=True,
@@ -95,12 +108,32 @@ if __name__ == '__main__':
                         help='AFE server that the script will be talking to. '
                              'If not speicified, will default to using the '
                              'server in global_config.ini')
+    parser.add_argument('--backup', action='store_true', dest='backup',
+                        default=False,
+                        help='If specified, will back up the current '
+                             'configurations to the csv file.')
     options = parser.parse_args()
-    if not os.path.exists(options.csv_file):
+    file_exists = os.path.exists(options.csv_file)
+    if options.backup and file_exists:
+        logging.error('%s already exists.', options.csv_file)
+        sys.exit(1)
+    if not options.backup and not file_exists:
         logging.error('%s is not a valid file.', options.csv_file)
         sys.exit(1)
+    return options
 
+
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG)
+    options = parse_options()
     afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10,
                                         server=options.server)
     logging.info('Connected to %s', afe.server)
-    add_from_csv(afe, options.csv_file)
+    if options.backup:
+        dump_to_csv(afe, options.csv_file)
+    else:
+        confirm_msg = ('Upload rpm mapping from %s, are you sure?'
+                       % options.csv_file)
+        confirm = raw_input("%s (y/N) " % confirm_msg).lower() == 'y'
+        if confirm:
+            add_from_csv(afe, options.csv_file)
