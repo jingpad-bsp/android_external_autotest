@@ -4,12 +4,34 @@ SCRIPT_DIR=$(dirname $(readlink -f $0))
 RUNDATE=$(date +%Y-%m-%d.%H)
 RUNFILE=$SCRIPT_DIR/../logs/dut-data/boards-$RUNDATE.txt
 
-cd $SCRIPT_DIR
-./board-status-summary >$RUNFILE
+# By default, we're invoked without arguments.  This is used by
+# the cron job, and means we should generate output and mail it to
+# the default mail alias.
+#
+# Invoking with arguments is for testing:  It allows running through
+# the full logic and output generation, without spamming the alert
+# aliases.
 
-INTEREST=(
-	chromeos-lab-alerts@google.com
-	skc-fireteam@google.com
-)
+cd $SCRIPT_DIR
+if [ $# -eq 0 ]; then
+  # TODO(jrbarnette):  Really, this feels like a hack.  The cron job
+  # that invokes this script is installed and enabled on both a
+  # primary and backup server, meaning the e-mail will be generated
+  # twice.  We don't want that, so unless this is the primary server,
+  # quash this job.
+  if ! ../cli/atest server list $(hostname) 2>&1 |
+      grep -q '^Status *: *primary'; then
+    exit 0
+  fi
+
+  INTEREST=(
+    chromeos-lab-alerts@google.com
+    skc-fireteam@google.com
+  )
+else
+  INTEREST=( "$@" )
+fi
+
+./board-status-summary >$RUNFILE
 
 mailx -s "DUT board inventories $RUNDATE" "${INTEREST[@]}" <$RUNFILE

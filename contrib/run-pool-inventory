@@ -5,21 +5,44 @@ RUNDATE=$(date +%Y-%m-%d.%H)
 DUT_DATA_DIR=$SCRIPT_DIR/../logs/dut-data
 RUNFILE=$DUT_DATA_DIR/inventory-$RUNDATE.txt
 
+# By default, we're invoked without arguments.  This is used by
+# the cron job, and means we should generate output and mail it to
+# the default mail alias.
+#
+# Invoking with arguments is for testing:  It allows running through
+# the full logic and output generation, without spamming the alert
+# aliases.
+
+cd $SCRIPT_DIR
+if [ $# -eq 0 ]; then
+  # TODO(jrbarnette):  Really, this feels like a hack.  The cron job
+  # that invokes this script is installed and enabled on both a
+  # primary and backup server, meaning the e-mail will be generated
+  # twice.  We don't want that, so unless this is the primary server,
+  # quash this job.
+  if ! ../cli/atest server list $(hostname) 2>&1 |
+      grep -q '^Status *: *primary'; then
+    exit 0
+  fi
+
+  INTEREST=(
+    chromeos-lab-alerts@google.com
+  )
+else
+  INTEREST=( "$@" )
+fi
+
 mkdir -p $DUT_DATA_DIR
 SEP=
 for pool in bvt cq
 do
     echo -n "$SEP"
     STATUS=$DUT_DATA_DIR/full.$RUNDATE.$pool.txt
-    $SCRIPT_DIR/full_status $pool >$STATUS
-    $SCRIPT_DIR/report_status $STATUS
+    ./full_status $pool >$STATUS
+    ./report_status $STATUS
     SEP="
 
 "
 done >$RUNFILE
-
-INTEREST=(
-	chromeos-lab-alerts@google.com
-)
 
 mailx -s "DUT pool inventories $RUNDATE" "${INTEREST[@]}" <$RUNFILE
