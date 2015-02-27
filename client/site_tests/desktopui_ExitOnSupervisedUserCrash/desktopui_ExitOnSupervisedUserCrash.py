@@ -57,10 +57,10 @@ class desktopui_ExitOnSupervisedUserCrash(test.test):
                 nuke_browser_error = e
                 logging.warning('Browser may have crashed untimely: ', e)
 
-        try:
-            listener.wait_for_signals(desc='Session stopped.',
-                                      timeout=self._SESSION_STOP_TIMEOUT)
-        except utils.TimeoutError as actual_problem:
-            if nuke_browser_error is not None:
-                actual_problem = nuke_browser_error
-            raise error.TestFail(actual_problem)
+            try:
+                listener.wait_for_signals(desc='Session stopped.',
+                                          timeout=self._SESSION_STOP_TIMEOUT)
+            except utils.TimeoutError as actual_problem:
+                if nuke_browser_error is not None:
+                    actual_problem = nuke_browser_error
+                raise error.TestFail(actual_problem)
