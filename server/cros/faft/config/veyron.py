@@ -12,3 +12,4 @@ class Values(object):
     ec_capability = ['battery', 'charging', 'keyboard', 'arm', 'lid']
     ec_boot_to_console = 1.1
     wp_voltage = 'pp3300'
+    confirm_screen = 6
