@@ -377,22 +377,30 @@ class FirmwareTest(FAFTBase):
         tmpd = self.servo.system_output('mktemp -d -t usbcheck.XXXX')
         self.servo.system('mount -o ro %s %s' % (rootfs, tmpd))
 
-        if install_shim:
-            dir_list = self.servo.system_output('ls -a %s' %
-                                                os.path.join(tmpd, 'root'))
-            check_passed = '.factory_installer' in dir_list
-        else:
-            check_passed = self.servo.system_output(
-                'grep -i "CHROMEOS_RELEASE_DESCRIPTION=.*test" %s' %
-                os.path.join(tmpd, 'etc/lsb-release'),
-                ignore_status=True)
-        for cmd in ('umount %s' % rootfs, 'sync', 'rm -rf %s' % tmpd):
-            self.servo.system(cmd)
-
-        if not check_passed:
-            raise error.TestError(
-                'No Chrome OS %s found on the USB flash plugged into servo' %
-                ('install shim' if install_shim else 'test'))
+        try:
+            if install_shim:
+                dir_list = self.servo.system_output('ls -a %s' %
+                                                    os.path.join(tmpd, 'root'))
+                if '.factory_installer' not in dir_list:
+                    raise error.TestError(
+                        'USB stick in servo is not a factory install shim')
+            else:
+                usb_lsb = self.servo.system_output('cat %s' %
+                    os.path.join(tmpd, 'etc/lsb-release'))
+                logging.debug('Dumping lsb-release on USB stick:\n%s', usb_lsb)
+                dut_lsb = '\n'.join(self.faft_client.system.
+                    run_shell_command_get_output('cat /etc/lsb-release'))
+                logging.debug('Dumping lsb-release on DUT:\n%s', dut_lsb)
+                if not re.search(r'RELEASE_DESCRIPTION=.*test', usb_lsb):
+                    raise error.TestError('USB stick in servo is no test image')
+                usb_board = re.search(r'BOARD=(.*)', usb_lsb).group(1)
+                dut_board = re.search(r'BOARD=(.*)', dut_lsb).group(1)
+                if usb_board != dut_board:
+                    raise error.TestError('USB stick in servo contains a %s '
+                        'image, but DUT is a %s' % (usb_board, dut_board))
+        finally:
+            for cmd in ('umount %s' % rootfs, 'sync', 'rm -rf %s' % tmpd):
+                self.servo.system(cmd)
 
         self.mark_setup_done('usb_check')
 
