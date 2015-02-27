@@ -26,9 +26,6 @@ class KernelError(SuspendFailure):
             # crosbug.com/37594: debug tracing clock desync we don't care about
             (r'kernel/trace/ring_buffer.c:\d+ rb_reserve_next_event',
              r'Delta way too big!'),
-            # crosbug.com/p/35778: ACPI interpreter enables interrupts
-            (r'drivers/base/syscore.c:\d+ syscore_resume',
-             r'Interrupts enabled after wakeup_syscore_find_source'),
         ]
 
 
