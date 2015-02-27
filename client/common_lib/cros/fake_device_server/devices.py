@@ -158,6 +158,8 @@ class Devices(resource_method.ResourceMethod):
         """
         device_id, _, _ = common_util.parse_common_args(args, kwargs)
         access_token = common_util.get_access_token()
+        if not access_token:
+            raise server_errors.HTTPError(401, 'Access denied.')
         api_key = self._oauth.get_api_key_from_access_token(access_token)
         data = common_util.parse_serialized_json()
         self._validate_device_resource(data)

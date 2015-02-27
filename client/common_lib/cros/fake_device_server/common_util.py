@@ -37,8 +37,12 @@ def get_access_token():
     if header is None:
         logging.error('No authorization header found.')
         return None
+    fields = header.split()
+    if len(fields) != 2 or fields[0] != "Bearer":
+        logging.error('No access token found.')
+        return None
     logging.debug('Got authorization header "%s"', header)
-    return header.split()[1]
+    return fields[1]
 
 
 def parse_common_args(args_tuple, kwargs, supported_operations=set()):
