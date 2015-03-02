@@ -68,8 +68,8 @@ class _AudioScale(object):
     The scales are determined by experiment.
 
     """
-    DOWN_SCALE = 0.005
-    UP_SCALE = 200.0
+    DOWN_SCALE = 0.0033
+    UP_SCALE = 300.0
     NO_SCALE = None
 
 
