@@ -179,8 +179,6 @@ class platform_ExternalUsbPeripherals(test.test):
         logging.info('--- RESUMING')
         self.host.servo.power_key(0.1)
         self.wait_to_come_up(_RESUME_FAILED, _LONG_TIMEOUT)
-        if thread.is_alive():
-            raise error.TestFail('SUSPEND thread did not terminate!')
 
 
     def crash_not_detected(self, crash_path):
