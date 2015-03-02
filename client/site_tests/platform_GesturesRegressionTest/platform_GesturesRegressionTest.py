@@ -4,8 +4,7 @@
 
 import os
 import sys
-from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import site_utils
+from autotest_lib.client.bin import test, utils
 
 
 _PLATFORM_MAPPINGS = {'daisy': 'snow',
@@ -31,7 +30,7 @@ class platform_GesturesRegressionTest(test.test):
     def run_once(self):
         """ Run the regression test and collect the results.
         """
-        board = site_utils.get_current_board()
+        board = utils.get_current_board()
         platform = _PLATFORM_MAPPINGS.get(board, board)
 
         # find paths for touchpad tests
@@ -41,6 +40,7 @@ class platform_GesturesRegressionTest(test.test):
 
         # create test runner
         sys.path.append(framework_dir)
+        sys.path.append(root)
         from test_runner import ParallelTestRunner
         runner = ParallelTestRunner(tests_dir)
 
