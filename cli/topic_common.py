@@ -666,23 +666,6 @@ class atest(object):
         return '  '.join(["%%-%ds" % lens[key] for key in keys])
 
 
-    def print_dict(self, items, title=None, line_before=False):
-        """Print a dictionary.
-
-        @param items: Dictionary to print.
-        @param title: Title of the output, default to None.
-        @param line_before: True to print an empty line before the output,
-                            default to False.
-        """
-        if not items:
-            return
-        if line_before:
-            print
-        print title
-        for key, value in items.items():
-            print '%s : %s' % (key, value)
-
-
     def print_table_std(self, items, keys_header, sublist_keys=()):
         """Print a mix of header and lists in a user readable format.
 
