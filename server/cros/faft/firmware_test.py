@@ -391,7 +391,7 @@ class FirmwareTest(FAFTBase):
                 dut_lsb = '\n'.join(self.faft_client.system.
                     run_shell_command_get_output('cat /etc/lsb-release'))
                 logging.debug('Dumping lsb-release on DUT:\n%s', dut_lsb)
-                if not re.search(r'RELEASE_DESCRIPTION=.*test', usb_lsb):
+                if not re.search(r'RELEASE_DESCRIPTION=.*(T|t)est', usb_lsb):
                     raise error.TestError('USB stick in servo is no test image')
                 usb_board = re.search(r'BOARD=(.*)', usb_lsb).group(1)
                 dut_board = re.search(r'BOARD=(.*)', dut_lsb).group(1)
