@@ -24,10 +24,10 @@ class AudioPort(object):
         host: The host of this audio port, e.g. 'Chameleon', 'Cros',
               'Peripheral'.
         interface: The interface of this audio port, e.g. 'HDMI', 'Headphone'.
-        direction: The direction of this audio port, that is, 'Input' or
-                   'Output'. Note that bidirectional interface like 3.5mm
-                   jack is separated to two interfaces 'Headphone' and
-                   'External Mic'.
+        role: The role of this audio port, that is, 'source' or
+              'sink'. Note that bidirectional interface like 3.5mm
+              jack is separated to two interfaces 'Headphone' and
+             'External Mic'.
 
     """
     def __init__(self, port_id):
@@ -40,7 +40,7 @@ class AudioPort(object):
         self.port_id = port_id
         self.host = ids.get_host(port_id)
         self.interface = ids.get_interface(port_id)
-        self.direction = ids.get_direction(port_id)
+        self.role = ids.get_role(port_id)
         logging.debug('Created AudioPort: %s', self)
 
 
@@ -48,11 +48,11 @@ class AudioPort(object):
         """String representation of audio port.
 
         @returns: The string representation of audio port which is composed by
-                  host, interface, and direction.
+                  host, interface, and role.
 
         """
         return '( %s | %s | %s )' % (
-                self.host, self.interface, self.direction)
+                self.host, self.interface, self.role)
 
 
 class AudioLinkFactoryError(Exception):
@@ -197,10 +197,10 @@ class AudioWidgetFactory(object):
             @param audio_port: An AudioPort object.
 
             @returns: A Chameleon(Input/Output)WidgetHandler depending on
-                      direction of audio_port.
+                      role of audio_port.
 
             """
-            if audio_port.direction == 'Input':
+            if audio_port.role == 'sink':
                 return audio_widget.ChameleonInputWidgetHandler(
                         self._chameleon_board, audio_port.interface)
             else:
@@ -214,10 +214,10 @@ class AudioWidgetFactory(object):
             @param audio_port: An AudioPort object.
 
             @returns: A Cros(Input/Output)WidgetHandler depending on
-                      direction of audio_port.
+                      role of audio_port.
 
             """
-            if audio_port.direction == 'Input':
+            if audio_port.role == 'sink':
                 return audio_widget.CrosInputWidgetHandler(self._audio_facade)
             else:
                 return audio_widget.CrosOutputWidgetHandler(self._audio_facade)
@@ -226,7 +226,7 @@ class AudioWidgetFactory(object):
         def _create_audio_widget(audio_port, handler):
             """Creates an AudioWidget for given AudioPort using WidgetHandler.
 
-            Creates an AudioWidget with the direction of audio_port. Put
+            Creates an AudioWidget with the role of audio_port. Put
             the widget handler into the widget so the widget can handle
             action requests.
 
@@ -234,10 +234,10 @@ class AudioWidgetFactory(object):
             @param handler: A WidgetHandler object.
 
             @returns: An Audio(Input/Output)Widget depending on
-                      direction of audio_port.
+                      role of audio_port.
 
             """
-            if audio_port.direction == 'Input':
+            if audio_port.role == 'sink':
                 return audio_widget.AudioInputWidget(audio_port, handler)
             return audio_widget.AudioOutputWidget(audio_port, handler)
 

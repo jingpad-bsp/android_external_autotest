@@ -137,18 +137,18 @@ class WidgetLink(object):
                             self.name, port_id, widget.audio_port.port_id))
 
 
-    def _check_widget_direction(self, direction, widget):
-        """Checks that the direction of a widget is expected.
+    def _check_widget_role(self, role, widget):
+        """Checks that the role of a widget is expected.
 
-        @param direction: 'Input' or 'Output'.
+        @param role: 'source' or 'sink'.
         @param widget: An AudioWidget object.
 
-        @raises: WidgetLinkError if the direction of widget is not expected.
+        @raises: WidgetLinkError if the role of widget is not expected.
         """
-        if widget.audio_port.direction != direction:
+        if widget.audio_port.role != role:
             raise WidgetLinkError(
                     'Link %s expects a %s widget, but gets a %s widget' % (
-                            self.name, direction, widget.audio_port.direction))
+                            self.name, role, widget.audio_port.role))
 
 
     @abc.abstractmethod
@@ -216,7 +216,7 @@ class AudioBusLink(WidgetLink):
         @param widget: An AudioWidget object.
 
         """
-        self._check_widget_direction('Output', widget)
+        self._check_widget_role('source', widget)
 
         self._audio_bus.connect(widget.audio_port.port_id)
 
@@ -235,7 +235,7 @@ class AudioBusLink(WidgetLink):
         @param widget: An AudioWidget object.
 
         """
-        self._check_widget_direction('Output', widget)
+        self._check_widget_role('source', widget)
 
         self._audio_bus.disconnect(widget.audio_port.port_id)
 
@@ -256,7 +256,7 @@ class AudioBusLink(WidgetLink):
         @param widget: An AudioWidget object.
 
         """
-        self._check_widget_direction('Input', widget)
+        self._check_widget_role('sink', widget)
 
         self._audio_bus.connect(widget.audio_port.port_id)
 
@@ -275,7 +275,7 @@ class AudioBusLink(WidgetLink):
         @param widget: An AudioWidget object.
 
         """
-        self._check_widget_direction('Input', widget)
+        self._check_widget_role('sink', widget)
 
         self._audio_bus.disconnect(widget.audio_port.port_id)
 
