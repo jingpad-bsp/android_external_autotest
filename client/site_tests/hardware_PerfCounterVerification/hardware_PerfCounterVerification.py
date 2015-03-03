@@ -16,7 +16,7 @@ import stats_utils
 
 
 INTEL_LBR_UARCHS = (
-    'Broadwell',
+    # 'Broadwell',  # Waiting on kernel support.
     'Haswell',
     'IvyBridge',
     'SandyBridge')
