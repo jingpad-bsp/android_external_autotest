@@ -8,6 +8,7 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import apmanager_constants
+from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.networking import apmanager_proxy
 
 class apmanager_CheckAPProcesses(test.test):
@@ -18,6 +19,10 @@ class apmanager_CheckAPProcesses(test.test):
 
 
     POLLING_INTERVAL_SECONDS = 0.2
+    # These services interact with the apmanager in undesirable ways.
+    # For instance, privetd has a bad habit of starting up APs, which
+    # prevents the test from doing likewise.
+    RELATED_SERVICES = ['privetd']
 
 
     def _verify_process(self,
@@ -49,12 +54,14 @@ class apmanager_CheckAPProcesses(test.test):
 
     def run_once(self):
         """Test body."""
-        # AP configuration parameters, only configuring SSID.
-        ap_config = {apmanager_constants.CONFIG_SSID: 'testap'}
-        manager = apmanager_proxy.ApmanagerProxy()
-        service = manager.start_service(ap_config)
-        self._verify_process('hostapd', True)
-        self._verify_process('dnsmasq', True)
-        manager.terminate_service(service)
-        self._verify_process('hostapd', False)
-        self._verify_process('dnsmasq', False)
+        with service_stopper.ServiceStopper(
+                services_to_stop=self.RELATED_SERVICES):
+            # AP configuration parameters, only configuring SSID.
+            ap_config = {apmanager_constants.CONFIG_SSID: 'testap'}
+            manager = apmanager_proxy.ApmanagerProxy()
+            service = manager.start_service(ap_config)
+            self._verify_process('hostapd', True)
+            self._verify_process('dnsmasq', True)
+            manager.terminate_service(service)
+            self._verify_process('hostapd', False)
+            self._verify_process('dnsmasq', False)
