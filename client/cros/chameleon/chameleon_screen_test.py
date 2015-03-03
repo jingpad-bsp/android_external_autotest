@@ -5,6 +5,7 @@
 import logging
 import time
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.cros.chameleon import screen_utility_factory
 
 
@@ -104,7 +105,10 @@ class ChameleonScreenTest(object):
         if test_mirrored:
             test_image_size = self._display_facade.get_internal_resolution()
         else:
-            test_image_size = self._display_facade.get_external_resolution()
+            # DUT needs time to respond to the plug event
+            test_image_size = utils.wait_for_value_changed(
+                    self._display_facade.get_external_resolution,
+                    old_value=None)
 
         error = self._resolution_comparer.compare(expected_resolution)
         if not error:

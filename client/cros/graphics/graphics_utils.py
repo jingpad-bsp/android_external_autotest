@@ -633,14 +633,21 @@ def get_internal_resolution():
 
 
 def get_external_resolution():
+    """Gets the resolution of the external display.
+
+    @return A tuple of (width, height) or None if no external display is
+            connected.
+    """
     if utils.is_freon():
         crtcs = get_modetest_crtcs()
         if len(crtcs) > 1:
             return crtcs[1].size
-        return (-1, -1)
+        return None
     else:
         connector = get_external_connector_name()
         width, height, _, _ = get_output_rect_x(connector)
+        if width == 0 and height == 0:
+            return None
         return (width, height)
 
 
