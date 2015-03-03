@@ -97,7 +97,7 @@ class platform_MemCheck(test.test):
         cmd = 'mosys memory spd print timings -s speeds'
         # result example
         # DDR3-800, DDR3-1066, DDR3-1333, DDR3-1600
-        pattern = 'DDR([3-9]|[1-9]\d+)-(?P<speed>\d+)'
+        pattern = '[A-Z]*DDR([3-9]|[1-9]\d+)[A-Z]*-(?P<speed>\d+)'
         timing_run = utils.run(cmd)
 
         keyval['speedref'] = speedref
