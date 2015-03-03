@@ -17,7 +17,7 @@ import cherrypy
 import common
 from fake_device_server import commands
 from fake_device_server import devices
-from fake_device_server import fake_oauth
+from fake_device_server import oauth
 from fake_device_server import registration_tickets
 from fake_device_server import resource_delegate
 
@@ -30,8 +30,8 @@ def stop_server():
 
 def start_server():
     """Starts the cherrypy server and blocks."""
-    oauth_handler = fake_oauth.FakeOAuth()
-    commands_handler = commands.Commands()
+    oauth_handler = oauth.OAuth()
+    commands_handler = commands.Commands(oauth_handler)
     cherrypy.tree.mount(
         commands_handler, '/' + commands.COMMANDS_PATH,
         {'/':
@@ -39,6 +39,7 @@ def start_server():
         }
     )
     devices_resource = resource_delegate.ResourceDelegate({})
+    # TODO(wiley): We need to validate device commands.
     devices_handler = devices.Devices(devices_resource,
                                       commands_handler,
                                       oauth_handler)
@@ -60,7 +61,7 @@ def start_server():
     )
     cherrypy.tree.mount(
         oauth_handler,
-        '/' + fake_oauth.OAUTH_PATH,
+        '/' + oauth.OAUTH_PATH,
         {'/':
             {'request.dispatch': cherrypy.dispatch.MethodDispatcher()}
         }

@@ -20,6 +20,8 @@ from autotest_lib.client.common_lib.cros.fake_device_server.client_lib import \
 from autotest_lib.client.common_lib.cros.fake_device_server.client_lib import \
         devices
 from autotest_lib.client.common_lib.cros.fake_device_server.client_lib import \
+        oauth
+from autotest_lib.client.common_lib.cros.fake_device_server.client_lib import \
         registration
 from autotest_lib.client.common_lib.cros.tendo import buffet_config
 
@@ -91,18 +93,37 @@ class buffet_Registration(test.test):
                       command_definition_path)
 
 
-    def _check_registration_status_is(self, expected_status):
+    def _check_registration_status_is(self, expected_status,
+                                      timeout_seconds=0):
+        """Assert that buffet has the given registration status.
+
+        Optionally, a timeout can be specified to wait until the
+        status changes.
+
+        @param device_id: string device id created during registration.
+        @param expected_status: the status to wait for.
+        @param timeout_seconds: number of seconds to wait for status to change.
+
+        """
         manager_properties = dbus.Interface(
                 self._bus.get_object(buffet_config.SERVICE_NAME,
                                      buffet_config.MANAGER_OBJECT_PATH),
                 dbus_interface='org.freedesktop.DBus.Properties')
-        actual_status = manager_properties.Get(
+
+        start_time = time.time()
+        while True:
+            actual_status = manager_properties.Get(
                 buffet_config.MANAGER_INTERFACE,
                 buffet_config.MANAGER_PROPERTY_STATUS)
-        if actual_status != expected_status:
-            raise error.TestFail('Buffet should be %s, but is %s.' %
-                                 (expected_status, actual_status))
-        return actual_status
+            if actual_status == expected_status:
+                return
+            time_spent = time.time() - start_time
+            if time_spent > timeout_seconds:
+                raise error.TestFail('Buffet should be %s, but is %s '
+                                     '(waited %.1f seconds).' %
+                                     (expected_status, actual_status,
+                                      time_spent))
+            time.sleep(0.5)
 
 
     def _check_buffet_is_polling(self, device_id, timeout_seconds=30):
@@ -167,6 +188,9 @@ class buffet_Registration(test.test):
         device_client = devices.DevicesClient(
                 server_url=buffet_config.LOCAL_SERVICE_URL,
                 api_key=buffet_config.TEST_API_KEY)
+        oauth_client = oauth.OAuthClient(
+                server_url=buffet_config.LOCAL_SERVICE_URL,
+                api_key=buffet_config.TEST_API_KEY)
         self._command_client = commands.CommandsClient(
                 server_url=buffet_config.LOCAL_SERVICE_URL,
                 api_key=buffet_config.TEST_API_KEY)
@@ -213,6 +237,16 @@ class buffet_Registration(test.test):
         config.restart_with_config(clean_state=False)
         logging.info('Checking that Buffet automatically starts polling '
                      'after restart.')
+        self._check_buffet_is_polling(device_id)
+        self._check_registration_status_is(
+                buffet_config.STATUS_REGISTERED)
+
+        # Now invalidate buffet's current access token and check that
+        # we can still poll for commands. This demonstrates that
+        # buffet is able to get a new access token if the one that
+        # it's been using has been revoked.
+        oauth_client.invalidate_all_access_tokens()
+        logging.info('Checking that Buffet can obtain a new access token.')
         self._check_buffet_is_polling(device_id)
         self._check_registration_status_is(
                 buffet_config.STATUS_REGISTERED)

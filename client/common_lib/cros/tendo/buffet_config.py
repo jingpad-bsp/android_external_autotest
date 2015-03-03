@@ -8,7 +8,7 @@ import time
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros import dbus_send
-from autotest_lib.client.common_lib.cros.fake_device_server import fake_oauth
+from autotest_lib.client.common_lib.cros.fake_device_server import oauth
 from autotest_lib.client.common_lib.cros.fake_device_server import server
 
 TEST_CONFIG_PATH = '/tmp/buffet.fake.conf'
@@ -34,9 +34,9 @@ TEST_MESSAGE = 'Hello world!'
 
 LOCAL_SERVER_PORT = server.PORT
 LOCAL_OAUTH_URL = 'http://localhost:%d/%s/' % (LOCAL_SERVER_PORT,
-                                               fake_oauth.OAUTH_PATH)
+                                               oauth.OAUTH_PATH)
 LOCAL_SERVICE_URL = 'http://localhost:%d/' % LOCAL_SERVER_PORT
-TEST_API_KEY = fake_oauth.TEST_API_KEY
+TEST_API_KEY = oauth.TEST_API_KEY
 
 LOCAL_CLOUD_FAKES = {
         'client_id': 'this_is_my_client_id',

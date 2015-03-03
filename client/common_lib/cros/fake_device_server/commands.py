@@ -27,11 +27,12 @@ class Commands(object):
     _COMMAND_ROOTS = set(['base', 'aggregator', 'printer', 'storage', 'test'])
 
 
-    def __init__(self):
+    def __init__(self, oauth_handler):
         """Initializes a Commands handler."""
         # A map of device_id's to maps of command ids to command resources
         self.device_commands = dict()
         self._num_commands_created = 0
+        self._oauth_handler = oauth_handler
 
 
     def _generate_command_id(self):
@@ -121,6 +122,9 @@ class Commands(object):
         if requested_command_id is None:
             requested_command_id = 'queue'
 
+        if not self._oauth_handler.is_request_authorized():
+            raise server_errors.HTTPError(401, 'Access denied.')
+
         if requested_command_id == 'queue':
             # Returns listing (ignores optional parameters).
             listing = {'kind': 'clouddevices#commandsListResponse'}
@@ -133,8 +137,7 @@ class Commands(object):
                     listing['commands'].append(command)
             logging.info('Returning queue of commands: %r', listing)
             return listing
-        # TODO(wiley) We could check permissions here, we should be a device
-        #             accessing its own command, or a user.
+
         for command_id, resource in self.device_commands[device_id].iteritems():
             if command_id == requested_command_id:
                 return self.device_commands[device_id][command_id]

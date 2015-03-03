@@ -13,7 +13,7 @@ import common
 from fake_device_server import common_util
 from fake_device_server import commands
 from fake_device_server import devices
-from fake_device_server import fake_oauth
+from fake_device_server import oauth
 from fake_device_server import registration_tickets
 from fake_device_server import resource_delegate
 from fake_device_server import server_errors
@@ -27,12 +27,12 @@ class RegistrationTicketsTest(mox.MoxTestBase):
         mox.MoxTestBase.setUp(self)
         self.tickets = {}
         self.devices_resource = {}
-        self.commands = commands.Commands()
-        self.fake_oauth = fake_oauth.FakeOAuth()
+        self.oauth = oauth.OAuth()
+        self.commands = commands.Commands(self.oauth)
         self.devices = devices.Devices(
                 resource_delegate.ResourceDelegate(self.devices_resource),
                 self.commands,
-                self.fake_oauth)
+                self.oauth)
 
         self.registration = registration_tickets.RegistrationTickets(
                 resource_delegate.ResourceDelegate(self.tickets), self.devices)
