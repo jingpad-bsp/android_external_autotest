@@ -967,8 +967,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         timer = autotest_stats.Timer(install_timer_key)
         timer.start()
         logging.info('Installing image through chromeos-install.')
-        self.run('chromeos-install --yes --lab_preserve_logs=%s' %
-                 self._LOGS_TO_COLLECT_FILE,
+        self.run('chromeos-install --yes',
                  timeout=install_timeout)
         self.run('halt')
         timer.stop()
