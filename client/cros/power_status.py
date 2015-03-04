@@ -1105,7 +1105,8 @@ class StatoMatic(object):
         self._astats = [USBSuspendStats(),
                         CPUFreqStats(),
                         GPUFreqStats(incremental=False),
-                        CPUIdleStats()]
+                        CPUIdleStats(),
+                        CPUPackageStats()]
         self._disk = DiskStateLogger()
         self._disk.start()
 
