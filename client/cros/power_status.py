@@ -764,6 +764,8 @@ class CPUPackageStats(AbstractStats):
     ATOM         =              {'C2': 0x3F8, 'C4': 0x3F9, 'C6': 0x3FA}
     NEHALEM      =              {'C3': 0x3F8, 'C6': 0x3F9, 'C7': 0x3FA}
     SANDY_BRIDGE = {'C2': 0x60D, 'C3': 0x3F8, 'C6': 0x3F9, 'C7': 0x3FA}
+    HASWELL      = {'C2': 0x60D, 'C3': 0x3F8, 'C6': 0x3F9, 'C7': 0x3FA,
+                                 'C8': 0x630, 'C9': 0x631,'C10': 0x632}
 
     def __init__(self):
         def _get_platform_states():
@@ -794,8 +796,12 @@ class CPUPackageStats(AbstractStats):
                 '002A': self.SANDY_BRIDGE, # SandyBridge (i3/i5/i7/C/X)
                 '002D': self.SANDY_BRIDGE, # SandyBridge-E (i7)
                 '003A': self.SANDY_BRIDGE, # IvyBridge (i3/i5/i7/X)
-                '003C': self.SANDY_BRIDGE, # unclear (Haswell?)
+                '003C': self.HASWELL,      # Haswell (Core/Xeon)
+                '003D': self.HASWELL,      # Broadwell (Core)
                 '003E': self.SANDY_BRIDGE, # IvyBridge (Xeon)
+                '003F': self.HASWELL,      # Haswell-E (Core/Xeon)
+                '004F': self.HASWELL,      # Broadwell (Xeon)
+                '0056': self.HASWELL,      # Broadwell (Xeon D)
                 }.get(values[6], None)
 
         self._platform_states = _get_platform_states()
