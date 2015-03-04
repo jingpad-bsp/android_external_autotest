@@ -5,6 +5,17 @@ import glob, logging, os, re, shutil
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 
+
+# Possible display power settings. Copied from chromeos::DisplayPowerState
+# in Chrome's dbus service constants.
+DISPLAY_POWER_ALL_ON = 0
+DISPLAY_POWER_ALL_OFF = 1
+DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON = 2
+DISPLAY_POWER_INTERNAL_ON_EXTERNAL_OFF = 3
+# for bounds checking
+DISPLAY_POWER_MAX = 4
+
+
 def get_x86_cpu_arch():
     """Identify CPU architectural type.
 
@@ -46,6 +57,14 @@ def has_rapl_support():
     return False
 
 
+def _call_dbus_method(destination, path, interface, method_name, args):
+    """Performs a generic dbus method call."""
+    command = ('dbus-send --type=method_call --system '
+               '--dest=%s %s %s.%s %s') % (destination, path, interface,
+               method_name, args)
+    utils.system_output(command)
+
+
 def call_powerd_dbus_method(method_name, args=''):
     """
     Calls a dbus method exposed by powerd.
@@ -54,13 +73,23 @@ def call_powerd_dbus_method(method_name, args=''):
     @param method_name: name of the dbus method.
     @param args: string containing args to dbus method call.
     """
-    destination = 'org.chromium.PowerManager'
-    path = '/org/chromium/PowerManager'
-    interface = 'org.chromium.PowerManager'
-    command = ('dbus-send --type=method_call --system ' + \
-               '--dest=%s %s %s.%s %s') % (destination, path, interface, \
-               method_name, args)
-    utils.system_output(command)
+    _call_dbus_method(destination='org.chromium.PowerManager',
+                      path='/org/chromium/PowerManager',
+                      interface='org.chromium.PowerManager',
+                      method_name=method_name, args=args)
+
+def call_chrome_dbus_method(method_name, args=''):
+    """
+    Calls a dbus method exposed by chrome.
+
+    Arguments:
+    @param method_name: name of the dbus method.
+    @param args: string containing args to dbus method call.
+    """
+    _call_dbus_method(destination='org.chromium.LibCrosService',
+                      path='/org/chromium/LibCrosService',
+                      interface='org.chomium.LibCrosServiceInterface',
+                      method_name=method_name, args=args)
 
 
 class BacklightException(Exception):
@@ -307,9 +336,6 @@ class BacklightController(object):
     Private attributes:
       _max_num_steps: maximum number of backlight adjustment steps between 0 and
                       max brightness.
-
-    Private methods:
-      _call_powerd_dbus_method: executes dbus method call to power manager.
     """
 
     def __init__(self):
@@ -368,6 +394,26 @@ class BacklightController(object):
         while num_steps_taken < self._max_num_steps:
             self.decrease_brightness(allow_off)
             num_steps_taken += 1
+
+
+class DisplayException(Exception):
+    """Class for Display exceptions."""
+
+
+def set_display_power(power_val):
+    """Function to control screens via Chrome.
+
+    Possible arguments:
+      DISPLAY_POWER_ALL_ON,
+      DISPLAY_POWER_ALL_OFF,
+      DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON,
+      DISPLAY_POWER_INTERNAL_ON_EXTENRAL_OFF
+    """
+    if (not isinstance(power_val, int)
+            or power_val < DISPLAY_POWER_ALL_ON
+            or power_val >= DISPLAY_POWER_MAX):
+        raise DisplayException('Invalid display power setting: %d' % power_val)
+    call_chrome_dbus_method('SetDisplayPower', 'int32:%d' % power_val)
 
 
 class PowerPrefChanger(object):

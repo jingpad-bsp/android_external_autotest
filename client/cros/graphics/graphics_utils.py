@@ -20,6 +20,7 @@ import uinput
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import power_utils
 from autotest_lib.client.cros.graphics import drm
 
 
@@ -87,7 +88,9 @@ def screen_disable_blanking():
 def screen_disable_energy_saving():
     """ Called from power_Consumption to immediately disable energy saving. """
     if utils.is_freon():
-        raise error.TestFail('freon: do_power_consumption_xset not implemented')
+        # All we need to do here is enable displays via Chrome.
+        power_utils.set_display_power(power_utils.DISPLAY_POWER_ALL_ON)
+        return
     # Disable X screen saver
     xsystem(XSET + ' s 0 0')
     # Disable DPMS Standby/Suspend/Off
