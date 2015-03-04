@@ -251,6 +251,16 @@ class buffet_Registration(test.test):
         self._check_registration_status_is(
                 buffet_config.STATUS_REGISTERED)
 
+        # Now invalidate buffet's access and refresh token and check
+        # that buffet transitions to the invalid_credentials state.
+        oauth_client.invalidate_all_refresh_tokens()
+        oauth_client.invalidate_all_access_tokens()
+        logging.info('Checking that Buffet transitions to invalid_credentials '
+                     'when its refresh token has been invalidated.')
+        self._check_registration_status_is(
+                buffet_config.STATUS_INVALID_CREDENTIALS,
+                timeout_seconds=20)
+
 
     def cleanup(self):
         buffet_config.BuffetConfig.naive_restart()

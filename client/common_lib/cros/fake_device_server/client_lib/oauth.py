@@ -27,3 +27,13 @@ class OAuthClient(common_client.CommonClient):
                                   json.dumps(dict()), headers=headers)
         url_h = urllib2.urlopen(request)
         return json.loads(url_h.read())
+
+
+    def invalidate_all_refresh_tokens(self):
+        """Invalidates all refresh tokens previously issued."""
+        headers = self.add_auth_headers({'Content-Type': 'application/json'})
+        request = urllib2.Request(
+            self.get_url(['invalidate_all_refresh_tokens']),
+            json.dumps(dict()), headers=headers)
+        url_h = urllib2.urlopen(request)
+        return json.loads(url_h.read())

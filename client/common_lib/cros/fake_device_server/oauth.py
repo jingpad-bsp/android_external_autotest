@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 
-from cherrypy import tools
+import cherrypy
 
 import common
 import logging
@@ -45,23 +45,38 @@ class OAuth(object):
         return False
 
 
-    @tools.json_out()
+    @cherrypy.tools.json_out()
     def POST(self, *args, **kwargs):
         """Handle a post to get a refresh/access token.
 
-        We expect the device to provide:
-            {"code", auth_code},
-            {"client_id", client_id_},
-            {"client_secret", client_secret_},
-            {"redirect_uri", "oob"},
-            {"scope", "https://www.googleapis.com/auth/clouddevices"},
-            {"grant_type", "authorization_code"}
+        We expect the device to provide (a subset of) the following parameters.
 
-        but we're going to ignore all that and return hardcoded values.
+            code
+            client_id
+            client_secret
+            redirect_uri
+            scope
+            grant_type
+            refresh_token
+
+        in the request body in query-string format (see the OAuth docs
+        for details). Since we're a bare-minimum implementation we're
+        going to ignore most of these.
 
         """
         path = list(args)
         if path == ['token']:
+            body_length = int(cherrypy.request.headers.get('Content-Length', 0))
+            body = cherrypy.request.rfile.read(body_length)
+            params = cherrypy.lib.httputil.parse_query_string(body)
+            refresh_token = params.get('refresh_token')
+            if refresh_token and refresh_token != self._device_refresh_token:
+                logging.info('Wrong refresh token - expected %s but '
+                             'device sent %s',
+                             self._device_refresh_token, refresh_token)
+                cherrypy.response.status = 400
+                response = {'error': 'invalid_grant'}
+                return response
             response = {
                 'access_token': self._device_access_token,
                 'refresh_token': self._device_refresh_token,
@@ -74,6 +89,10 @@ class OAuth(object):
             # previously granted to a device and cause us to return
             # the concatenated one for future requests.
             self._device_access_token += '_X'
+            return dict()
+        elif path == ['invalidate_all_refresh_tokens']:
+            # Same here, only for the refresh token.
+            self._device_refresh_token += '_X'
             return dict()
         else:
             raise server_errors.HTTPError(
