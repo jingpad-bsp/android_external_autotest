@@ -77,7 +77,8 @@ XSET = 'LD_LIBRARY_PATH=/usr/local/lib xset'
 def screen_disable_blanking():
     """ Called from power_Backlight to disable screen blanking. """
     if utils.is_freon():
-        raise error.TestFail('freon: do_power_backlight_xset not implemented')
+        # We don't have to worry about unexpected screensavers or DPMS here.
+        return
     xsystem(XSET + ' s off')
     xsystem(XSET + ' dpms 0 0 0')
     xsystem(XSET + ' -dpms')
