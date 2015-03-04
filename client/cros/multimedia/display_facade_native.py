@@ -8,6 +8,7 @@ import exceptions
 import multiprocessing
 import numpy
 import os
+import re
 import time
 import telemetry
 import logging
@@ -228,6 +229,7 @@ class DisplayFacadeNative(object):
         finally:
             self.close_tab()
 
+    @_retry_display_call
     def get_external_resolution(self):
         """Gets the resolution of the external screen.
 
@@ -275,6 +277,44 @@ class DisplayFacadeNative(object):
 
         @retrun The id of the internal crtc."""
         return graphics_utils.get_internal_crtc()
+
+
+    def get_output_rect(self, output):
+        """Gets the size and position of the given output on the screen buffer.
+
+        @param output: The output name as a string.
+
+        @return A tuple of the rectangle (width, height, fb_offset_x,
+                fb_offset_y) of ints.
+        """
+        regexp = re.compile(
+                r'^([-A-Za-z0-9]+)\s+connected\s+(\d+)x(\d+)\+(\d+)\+(\d+)',
+                re.M)
+        match = regexp.findall(graphics_utils.call_xrandr())
+        for m in match:
+            if m[0] == output:
+                return (int(m[1]), int(m[2]), int(m[3]), int(m[4]))
+        return (0, 0, 0, 0)
+
+
+    def take_internal_screenshot(self, path):
+        if utils.is_freon():
+            self.take_screenshot_crtc(path, self.get_internal_crtc())
+        else:
+            output = self.get_internal_connector_name()
+            box = self.get_output_rect(output)
+            graphics_utils.take_screenshot_crop_x(path, box)
+            return output, box  # for logging/debugging
+
+
+    def take_external_screenshot(self, path):
+        if utils.is_freon():
+            self.take_screenshot_crtc(path, self.get_external_crtc())
+        else:
+            output = self.get_external_connector_name()
+            box = self.get_output_rect(output)
+            graphics_utils.take_screenshot_crop_x(path, box)
+            return output, box  # for logging/debugging
 
 
     def take_screenshot_crtc(self, path, id):

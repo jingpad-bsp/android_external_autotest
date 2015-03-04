@@ -153,33 +153,20 @@ class DisplayFacadeRemoteAdapter(object):
         return self._display_proxy.get_content_protection()
 
 
-    def _read_root_window_rect(self, crtc_id):
-        """Reads the given rectangle from the X root window.
+    def _take_screenshot(self, screenshot_func):
+        """Gets screenshot from DUT.
 
-        @param crtc_id: The id of the crtc to screenshot.
+        @param screenshot_func: function to take a screenshot and save the image
+                to specified path on DUT. Usage: screenshot_func(remote_path).
 
         @return: An Image object, or None if any error.
         """
         with tempfile.NamedTemporaryFile(suffix='.png') as f:
             basename = os.path.basename(f.name)
             remote_path = os.path.join('/tmp', basename)
-            self._display_proxy.take_screenshot_crtc(remote_path, crtc_id)
+            screenshot_func(remote_path)
             self._client.get_file(remote_path, f.name)
             return Image.open(f.name)
-
-
-    def get_external_crtc(self):
-        """Gets the external crtc.
-
-        @return The id of the external crtc."""
-        return self._display_proxy.get_external_crtc()
-
-
-    def get_internal_crtc(self):
-        """Gets the internal crtc.
-
-        @return The id of the internal crtc."""
-        return self._display_proxy.get_internal_crtc()
 
 
     def capture_internal_screen(self):
@@ -187,8 +174,8 @@ class DisplayFacadeRemoteAdapter(object):
 
         @return: An Image object. None if any error.
         """
-        id = self.get_internal_crtc()
-        return self._read_root_window_rect(id)
+        screenshot_func = self._display_proxy.take_internal_screenshot
+        return self._take_screenshot(screenshot_func)
 
 
     # TODO(ihf): This needs to be fixed for multiple external screens.
@@ -197,8 +184,8 @@ class DisplayFacadeRemoteAdapter(object):
 
         @return: An Image object.
         """
-        id = self.get_external_crtc()
-        return self._read_root_window_rect(id)
+        screenshot_func = self._display_proxy.take_external_screenshot
+        return self._take_screenshot(screenshot_func)
 
 
     def get_external_resolution(self):

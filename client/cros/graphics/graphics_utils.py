@@ -382,6 +382,31 @@ def take_screenshot_crop_by_height(fullpath, final_height, x_offset_pixels,
     return fullpath
 
 
+def take_screenshot_crop_x(fullpath, box=None):
+    """
+    Take a screenshot using import tool, crop according to dim given by the box.
+    @param fullpath: path, full path to save the image to.
+    @param box: 4-tuple giving the upper left and lower right pixel coordinates.
+    """
+
+    if box:
+        img_w, img_h, upperx, uppery = box
+        cmd = ('/usr/local/bin/import -window root -depth 8 -crop '
+                      '%dx%d+%d+%d' % (img_w, img_h, upperx, uppery))
+    else:
+        cmd = ('/usr/local/bin/import -window root -depth 8')
+
+    old_exc_type = sys.exc_info()[0]
+    try:
+        xsystem('%s %s' % (cmd, fullpath))
+    except Exception as err:
+        # Do not raise an exception if the screenshot fails while processing
+        # another exception.
+        if old_exc_type is None:
+            raise
+        logging.error(err)
+
+
 def take_screenshot_crop(fullpath, box=None, crtc_id=None):
     """
     Take a screenshot using import tool, crop according to dim given by the box.
@@ -575,17 +600,45 @@ def get_output_rect(output):
 
 
 def get_internal_resolution():
-    crtcs = get_modetest_crtcs()
-    if len(crtcs) > 0:
-        return crtcs[0].size
-    return (-1, -1)
+    if utils.is_freon():
+        crtcs = get_modetest_crtcs()
+        if len(crtcs) > 0:
+            return crtcs[0].size
+        return (-1, -1)
+    else:
+        connector = get_internal_connector_name()
+        width, height, _, _ = get_output_rect_x(connector)
+        return (width, height)
 
 
 def get_external_resolution():
-    crtcs = get_modetest_crtcs()
-    if len(crtcs) > 1:
-        return crtcs[1].size
-    return (-1, -1)
+    if utils.is_freon():
+        crtcs = get_modetest_crtcs()
+        if len(crtcs) > 1:
+            return crtcs[1].size
+        return (-1, -1)
+    else:
+        connector = get_external_connector_name()
+        width, height, _, _ = get_output_rect_x(connector)
+        return (width, height)
+
+
+def get_output_rect_x(output):
+    """Gets the size and position of the given output on the screen buffer.
+
+    @param output: The output name as a string.
+
+    @return A tuple of the rectangle (width, height, fb_offset_x,
+            fb_offset_y) of ints.
+    """
+    regexp = re.compile(
+            r'^([-A-Za-z0-9]+)\s+connected\s+(\d+)x(\d+)\+(\d+)\+(\d+)',
+            re.M)
+    match = regexp.findall(call_xrandr())
+    for m in match:
+        if m[0] == output:
+            return (int(m[1]), int(m[2]), int(m[3]), int(m[4]))
+    return (0, 0, 0, 0)
 
 
 def get_display_output_state():
@@ -594,7 +647,48 @@ def get_display_output_state():
 
     Return value: dictionary of connected display states.
     """
-    return get_modetest_output_state()
+    if utils.is_freon():
+        return get_modetest_output_state()
+    else:
+        return get_xrandr_output_state()
+
+
+def get_xrandr_output_state():
+    """
+    Retrieves output status of connected display(s) using xrandr.
+
+    When xrandr report a display is "connected", it doesn't mean the
+    display is active. For active display, it will have '*' after display mode.
+
+    Return value: dictionary of connected display states.
+                  key = output name
+                  value = True if the display is active; False otherwise.
+    """
+    output = call_xrandr().split('\n')
+    xrandr_outputs = {}
+    current_output_name = ''
+
+    # Parse output of xrandr, line by line.
+    for line in output:
+        if line.startswith('Screen'):
+            continue
+        # If the line contains "connected", it is a connected display, as
+        # opposed to a disconnected output.
+        if line.find(' connected') != -1:
+            current_output_name = line.split()[0]
+            # Temporarily mark it as inactive until we see a '*' afterward.
+            xrandr_outputs[current_output_name] = False
+            continue
+
+        # If "connected" was not found, this is a line that shows a display
+        # mode, e.g:    1920x1080      50.0     60.0     24.0
+        # Check if this has an asterisk indicating it's on.
+        if line.find('*') != -1 and current_output_name:
+            xrandr_outputs[current_output_name] = True
+            # Reset the output name since this should not be set more than once.
+            current_output_name = ''
+
+    return xrandr_outputs
 
 
 def set_xrandr_output(output_name, enable):
@@ -645,7 +739,7 @@ def get_external_connector_name():
     """
     outputs = get_display_output_state()
     for output in outputs.iterkeys():
-        if (output.startswith('HDMI')
+        if outputs[output] and (output.startswith('HDMI')
                 or output.startswith('DP')
                 or output.startswith('DVI')
                 or output.startswith('VGA')):
