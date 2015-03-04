@@ -70,7 +70,7 @@ def delete_label(id):
 
 
 def add_label(name, ignore_exception_if_exists=False, **kwargs):
-    """Add a new label with a given name.
+    """Adds a new label of a given name.
 
     @param name: label name.
     @param ignore_exception_if_exists: If True and the exception was
@@ -100,7 +100,7 @@ def add_label(name, ignore_exception_if_exists=False, **kwargs):
 
 
 def add_label_to_hosts(id, hosts):
-    """Add a label with the given id to the given hosts only in local DB.
+    """Adds a label of the given id to the given hosts only in local DB.
 
     @param id: id or name of a label. More often a label name.
     @param hosts: The hostnames of hosts that need the label.
@@ -115,7 +115,7 @@ def add_label_to_hosts(id, hosts):
 
 
 def label_add_hosts(id, hosts):
-    """Add a label with the given id to the given hosts.
+    """Adds a label with the given id to the given hosts.
 
     This method should be run only on master not shards.
     The given label will be created if it doesn't exist, provided the `id`
@@ -132,7 +132,6 @@ def label_add_hosts(id, hosts):
         rpc_utils.route_rpc_to_master('label_add_hosts', id=id, hosts=hosts)
         return
 
-    host_objs = models.Host.smart_get_bulk(hosts)
     try:
         label = models.Label.smart_get(id)
     except models.Label.DoesNotExist:
@@ -146,9 +145,18 @@ def label_add_hosts(id, hosts):
                              'the argument, id, as a string (label name).'
                              % id)
     add_label_to_hosts(id, hosts)
+
+    host_objs = models.Host.smart_get_bulk(hosts)
     # Make sure the label exists on the shard with the same id
     # as it is on the master.
-    # It is possible that the label is already in a shard.
+    # It is possible that the label is already in a shard because
+    # we are adding a new label only to shards of hosts that the label
+    # is going to be attached.
+    # For example, we add a label L1 to a host in shard S1.
+    # Master and S1 will have L1 but other shards won't.
+    # Later, when we add the same label L1 to hosts in shards S1 and S2,
+    # S1 already has the label but S2 doesn't.
+    # S2 should have the new label without any problem.
     # We ignore exception in such a case.
     rpc_utils.fanout_rpc(
             host_objs, 'add_label', name=label.name, id=label.id,
@@ -156,10 +164,32 @@ def label_add_hosts(id, hosts):
     rpc_utils.fanout_rpc(host_objs, 'add_label_to_hosts', id=id)
 
 
-@rpc_utils.forward_multi_host_rpc_to_shards
-def label_remove_hosts(id, hosts):
+def remove_label_from_hosts(id, hosts):
+    """Removes a label of the given id from the given hosts only in local DB.
+
+    @param id: id or name of a label.
+    @param hosts: The hostnames of hosts that need to remove the label from.
+    """
     host_objs = models.Host.smart_get_bulk(hosts)
     models.Label.smart_get(id).host_set.remove(*host_objs)
+
+
+def label_remove_hosts(id, hosts):
+    """Removes a label of the given id from the given hosts.
+
+    This method should be run only on master not shards.
+
+    @param id: id or name of a label.
+    @param hosts: A list of hostnames or ids. More often hostnames.
+    """
+    # This RPC call should be accepted only by master.
+    if utils.is_shard():
+        rpc_utils.route_rpc_to_master('label_remove_hosts', id=id, hosts=hosts)
+        return
+
+    remove_label_from_hosts(id, hosts)
+    host_objs = models.Host.smart_get_bulk(hosts)
+    rpc_utils.fanout_rpc(host_objs, 'remove_label_from_hosts', id=id)
 
 
 def get_labels(exclude_filters=(), **filter_data):
