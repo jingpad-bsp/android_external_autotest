@@ -4,11 +4,11 @@
 
 AUTHOR = 'krisr, tienchang, bmahadev'
 NAME = 'network_WiFi_SuspendStress.WPA2'
-TIME = 'SHORT'
+TIME = 'MEDIUM'
 TEST_TYPE = 'Server'
+DEPENDENCIES = 'servo, wificell'
 SUITE = ('wifi_matfunc, wifi_matfunc_bcm4356, wifi_matfunc_marvell8897,'
          'wifi_matfunc_intel7265')
-DEPENDENCIES = 'wificell, servo'
 DOC = """
 This test uses servo to simulate lid close and open events and checks that the
 wifi adapter is brought back up and connects to a WPA network.
@@ -18,9 +18,13 @@ from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
 from autotest_lib.server.cros.network import hostap_config
+from autotest_lib.server import utils
 
+args_dict = utils.args_to_dict(args)
+servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
 def run(machine):
+    host = hosts.create_host(machine, servo_args=servo_args)
     wpa_config = xmlrpc_security_types.WPAConfig(
             psk='chromeos',
             wpa_mode=xmlrpc_security_types.WPAConfig.MODE_PURE_WPA2,
@@ -32,12 +36,11 @@ def run(machine):
     assoc_params = xmlrpc_datatypes.AssociationParameters()
     assoc_params.security_config = wpa_config
     configurations = [(ap_config, assoc_params)]
-    host = hosts.create_host(machine)
     job.run_test('network_WiFi_SuspendStress',
-                 tag=NAME.split('.')[1],
                  host=host,
+                 tag=NAME.split('.')[1],
+                 suspends=5,
                  raw_cmdline_args=args,
                  additional_params=configurations)
-
 
 parallel_simple(run, machines)
