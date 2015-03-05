@@ -27,4 +27,4 @@ qualification process.
 
 """
 
-job.run_test('ui_AppLauncher', width=300, height=97)
+job.run_test('ui_AppLauncher', width=300, height=100)

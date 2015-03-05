@@ -60,3 +60,11 @@ def is_moblab():
         return _lsbrelease_search(r'.*moblab')
     except (IOError, ImportError) as e:
         logging.error('Unable to determine if this is a moblab system: %s', e)
+
+
+def get_chrome_milestone():
+    """
+    @return the value for the Chrome milestone
+    """
+    return _lsbrelease_search(r'^CHROMEOS_RELEASE_CHROME_MILESTONE=(.+)$',
+                              group_id=1)

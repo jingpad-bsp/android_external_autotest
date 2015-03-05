@@ -36,7 +36,7 @@ class ui_AppLauncher(ui_test_base.ui_TestBase):
             graphics_utils.press_key_X('super')
 
             # Open the 'All Apps' folder
-            for x in range(0, 6):
+            for x in xrange(0, 7):
                 graphics_utils.press_key_X('Tab')
                 time.sleep(0.5)
 

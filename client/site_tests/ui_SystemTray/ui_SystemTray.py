@@ -67,6 +67,7 @@ class ui_SystemTray(ui_test_base.ui_TestBase):
                 return diff.diff_pixel_count == 0
 
             site_utils.poll_for_condition(has_animation_stopped,
+                                          timeout=30,
                                           desc='end of system tray animation')
 
             if self.logged_in and self.mask_points is not None:

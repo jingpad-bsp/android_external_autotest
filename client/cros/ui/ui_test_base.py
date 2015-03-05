@@ -4,9 +4,10 @@
 
 import abc
 import os
+import urllib2
 
 from autotest_lib.client.bin import test, utils
-from autotest_lib.client.common_lib import file_utils
+from autotest_lib.client.common_lib import error, file_utils, lsbrelease_utils
 from autotest_lib.client.cros.image_comparison import image_comparison_factory
 from PIL import Image
 from PIL import ImageDraw
@@ -99,6 +100,7 @@ class ui_TestBase(test.test):
         golden_image_remote_path = os.path.join(
                 ui_TestBase.REMOTE_DIR,
                 'ui',
+                lsbrelease_utils.get_chrome_milestone(),
                 self.folder_name,
                 filename)
 
@@ -106,8 +108,14 @@ class ui_TestBase(test.test):
 
         test_image_filepath = os.path.join(ui_TestBase.WORKING_DIR, filename)
 
-        file_utils.download_file(golden_image_remote_path,
-                                 golden_image_local_path)
+        try:
+            file_utils.download_file(golden_image_remote_path,
+                                     golden_image_local_path)
+        except urllib2.HTTPError as e:
+            warn = "No screenshot found for {0} on milestone {1}. ".format(
+                self.tagged_testname, lsbrelease_utils.get_chrome_milestone())
+            warn += e.msg
+            raise error.TestWarn(warn)
 
         self.capture_screenshot(test_image_filepath)
 
