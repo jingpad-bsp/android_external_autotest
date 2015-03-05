@@ -10,11 +10,12 @@ HELP="${USAGE}\n\n\
 Install and configure software needed to run autotest locally.\n\
 If you're just working on tests, you do not need to run this.\n\n\
 Options:\n\
-  -p Desired Autotest DB password\n\
-  -a Absolute path to autotest source tree.\n
-  -v Show info logging from build_externals.py and compile_gwt_clients.py \n
+  -p Desired Autotest DB password.\n\
+  -a Absolute path to autotest source tree.\n\
+  -v Show info logging from build_externals.py and compile_gwt_clients.py \n\
   -n Non-interactive mode, doesn't ask for any user input.
-     Requires -p and -a to be set."
+     Requires -p and -a to be set.\n\
+  -m Master node."
 
 function get_y_or_n_interactive {
     local ret
@@ -42,7 +43,8 @@ AUTOTEST_DIR=
 PASSWD=
 verbose="FALSE"
 noninteractive="FALSE"
-while getopts ":p:a:nvh" opt; do
+master="FALSE"
+while getopts ":p:a:vnmh" opt; do
   case $opt in
     a)
       AUTOTEST_DIR=$OPTARG
@@ -55,6 +57,9 @@ while getopts ":p:a:nvh" opt; do
       ;;
     n)
       noninteractive="TRUE"
+      ;;
+    m)
+      master="TRUE"
       ;;
     h)
       echo -e "${HELP}" >&2
@@ -201,11 +206,18 @@ check_database()
     get_y_or_n clobberdb "Clobber existing MySQL database? [Y/n]: " "n"
   fi
 
+  local sql_priv="GRANT ALL PRIVILEGES ON $db_name.* TO \
+  'chromeosqa-admin'@'localhost' IDENTIFIED BY '${PASSWD}';"
+
+  # Master DB needs to enable connection from shard nodes.
+  if [ "${master}" = "TRUE" ]; then
+    sql_priv="${sql_priv} GRANT ALL PRIVILEGES ON $db_name.* TO \
+    'chromeosqa-admin'@'%' IDENTIFIED BY '${PASSWD}';"
+  fi
+
   local sql_command="drop database if exists $db_name; \
   create database $db_name; \
-  grant all privileges on $db_name.* TO \
-  'chromeosqa-admin'@'localhost' identified by '${PASSWD}'; \
-  FLUSH PRIVILEGES;"
+  ${sql_priv} FLUSH PRIVILEGES;"
 
   if [[ "${clobberdb}" = 'y' ]]; then
     mysql -u root "${PASSWD_STRING}" -e "${sql_command}"
@@ -268,19 +280,21 @@ if [ ! -d /etc/apache2/run ]; then
 fi
 sudo ln -sf "${AT_DIR}"/apache/apache-conf \
   /etc/apache2/sites-available/autotest-server.conf
-# disable currently active default
+# Disable currently active default
 sudo a2dissite 000-default default || true
-# enable autotest server
+# Enable autotest server
 sudo a2ensite autotest-server.conf
 # Enable rewrite module
 sudo a2enmod rewrite
 # Enable wsgi
 sudo a2enmod wsgi
-# enable version
+# Enable version
 # built-in on trusty
 sudo a2enmod version || true
-# enable headers
+# Enable headers
 sudo a2enmod headers
+# Enable cgid
+sudo a2enmod cgid
 # Setup permissions so that Apache web user can read the proper files.
 chmod -R o+r "${AT_DIR}"
 find "${AT_DIR}"/ -type d -print0 | xargs --null chmod o+x
