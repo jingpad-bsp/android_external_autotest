@@ -75,6 +75,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         public RadioChooser.Display getRebootAfter();
         public HasValue<Boolean> getParseFailedRepair();
         public ICheckBox getHostless();
+        public ICheckBox getRequireSSP();
         public HasText getPool();
         public ITextBox getArgs();
         public HostSelector.Display getHostSelectorDisplay();
@@ -193,6 +194,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         if (display.getHostless().getValue()) {
             hostSelector.setEnabled(false);
         }
+        display.getRequireSSP().setValue(jobObject.get("require_ssp").isBoolean().booleanValue());
         if (staticData.getData("drone_sets_enabled").isBoolean().booleanValue()) {
             if (cloneObject.get("drone_set").isNull() == null) {
                 display.getDroneSet().selectByName(Utils.jsonToString(cloneObject.get("drone_set")));
@@ -590,6 +592,8 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         display.getParseFailedRepair().setValue(
                 repository.getData("parse_failed_repair_default").isBoolean().booleanValue());
         display.getHostless().setValue(false);
+        // Default require_ssp to False, since it's not applicable to client side test.
+        display.getRequireSSP().setValue(false);
         display.getKernel().setText("");
         display.getKernelCmdline().setText("");
         display.getImageUrl().setText("");
@@ -670,6 +674,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
                 args.put("parse_failed_repair",
                          JSONBoolean.getInstance(display.getParseFailedRepair().getValue()));
                 args.put("hostless", JSONBoolean.getInstance(display.getHostless().getValue()));
+                args.put("require_ssp", JSONBoolean.getInstance(display.getRequireSSP().getValue()));
                 args.put("pool", new JSONString(display.getPool().getText()));
 
                 if (staticData.getData("drone_sets_enabled").isBoolean().booleanValue()) {
@@ -694,6 +699,24 @@ public class CreateJobViewPresenter implements TestSelectorListener {
                         argsArray.set(argsArray.size(), new JSONString(arg.trim()));
                     }
                     args.put("args", argsArray);
+                }
+
+                // TODO(crbug.com/464962): Fall back to build in cros-version label if possible.
+                // Validate server-side packaging requirements
+                if (display.getRequireSSP().getValue()) {
+                    String error = "";
+                    if (controlTypeSelect.getControlType() == "Client") {
+                        error = "Client side test does not need server-side packaging.";
+                    }
+                    else if (imageUrlString.equals("")) {
+                      error = "You must specify an image to run test with server-side packaging.";
+                    }
+
+                    if (error != "") {
+                        display.getSubmitJobButton().setEnabled(true);
+                        NotifyManager.getInstance().showError(error);
+                        return;
+                    }
                 }
 
                 rpcProxy.rpcCall("create_job_page_handler", args, new JsonRpcCallback() {

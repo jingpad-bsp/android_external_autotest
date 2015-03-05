@@ -183,6 +183,8 @@ public class JobDetailView extends DetailView implements TableWidgetFactory {
                 showField(jobObject, "reboot_after", "view_reboot_after");
                 showField(jobObject, "parse_failed_repair", "view_parse_failed_repair");
                 showField(jobObject, "synch_count", "view_synch_count");
+                String require_ssp = Utils.jsonToString(jobObject.get("require_ssp"));
+                showText(require_ssp, "view_require_ssp");
                 showField(jobObject, "dependencies", "view_dependencies");
 
                 if (staticData.getData("drone_sets_enabled").isBoolean().booleanValue()) {

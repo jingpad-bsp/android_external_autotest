@@ -111,6 +111,10 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
     private ToolTip hostlessToolTip = new ToolTip(
         "?",
         "Check to run a suite of tests, and select Server from the Test type dropdown list.");
+    private CheckBoxImpl require_ssp = new CheckBoxImpl();
+    private ToolTip require_sspToolTip = new ToolTip(
+        "?",
+        "Check to force a server side test to use server-side packaging.");
     private TextBox pool = new TextBox();
     private ToolTip poolToolTip = new ToolTip(
         "?",
@@ -194,6 +198,8 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
         panel.add(parseFailedRepairToolTip, "create_parse_failed_repair");
         panel.add(hostless, "create_hostless");
         panel.add(hostlessToolTip, "create_hostless");
+        panel.add(require_ssp, "create_require_ssp");
+        panel.add(require_sspToolTip, "create_require_ssp");
         panel.add(pool, "create_pool");
         panel.add(poolToolTip, "create_pool");
         panel.add(args, "create_args");
@@ -250,6 +256,10 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
 
     public ICheckBox getHostless() {
         return hostless;
+    }
+
+    public ICheckBox getRequireSSP() {
+      return require_ssp;
     }
 
     public HasText getPool() {
