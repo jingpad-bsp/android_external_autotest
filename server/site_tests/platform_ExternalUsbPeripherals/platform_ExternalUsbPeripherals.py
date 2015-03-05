@@ -10,10 +10,6 @@ from autotest_lib.client.common_lib import error
 
 _WAIT_DELAY = 15
 _LONG_TIMEOUT = 200
-_SUSPEND_RESUME_BOARDS = ['daisy', 'panther']
-_LOGIN_FAILED = 'DEVICE COULD NOT LOGIN!'
-_SUSPEND_FAILED = 'Failed to SUSPEND within timeout'
-_RESUME_FAILED = 'Failed to RESUME within timeout'
 _CRASH_PATHS = [CrashTest._SYSTEM_CRASH_DIR.replace("/crash",""),
                 CrashTest._FALLBACK_USER_CRASH_DIR.replace("/crash",""),
                 CrashTest._USER_CRASH_DIRS.replace("/crash","")]
@@ -70,37 +66,6 @@ class platform_ExternalUsbPeripherals(test.test):
                                       exit_without_logout=True)
 
 
-    def wait_to_disconnect(self, fail_msg,
-                           suspend_timeout = _LONG_TIMEOUT):
-        """Wait for DUT to suspend.
-
-        @param fail_msg: Failure message
-        @param suspend_timeout: Time in seconds to wait to disconnect
-
-        @exception TestFail  if fail to disconnect in time
-        @returns time took to disconnect
-        """
-        start_time = int(time.time())
-        if not self.host.ping_wait_down(timeout=suspend_timeout):
-            raise error.TestFail(fail_msg)
-        return int(time.time()) - start_time
-
-
-    def wait_to_come_up(self, fail_msg, resume_timeout):
-        """Wait for DUT to resume.
-
-        @param fail_msg: Failure message
-        @param resume_timeout: Time in seconds to wait to come up
-
-        @exception TestFail  if fail to come_up in time
-        @returns time took to come up
-        """
-        start_time = int(time.time())
-        if not self.host.wait_up(timeout=resume_timeout):
-            raise error.TestFail(fail_msg)
-        return int(time.time()) - start_time
-
-
     def wait_for_cmd_output(self, cmd, check, timeout, timeout_msg):
         """Waits till command output is meta
 
@@ -126,59 +91,29 @@ class platform_ExternalUsbPeripherals(test.test):
 
 
     def action_suspend(self):
-        """Suspend i.e. close lid"""
-        self.host.servo.lid_close()
-        stime = self.wait_to_disconnect(_SUSPEND_FAILED)
-        self.suspend_status = True
-        logging.debug('--- Suspended in %d sec', stime)
+        """Suspend i.e. powerd_dbus_suspend and wait
 
-
-
-    def action_resume(self):
-        """Resume i.e. open lid"""
-        self.host.servo.lid_open()
-        rtime = self.wait_to_come_up(_RESUME_FAILED, _LONG_TIMEOUT)
-        self.suspend_status = False
-        logging.debug('--- Resumed in %d sec', rtime)
-
-
-    def powerd_suspend_with_timeout(self, timeout):
-        """Suspend the device with wakeup alarm
-
-        @param timeout: Wait time for the suspend wakealarm
-
+        @returns boot_id for the following resume
         """
-        self.host.run('echo 0 > /sys/class/rtc/rtc0/wakealarm')
-        self.host.run('echo +%d > /sys/class/rtc/rtc0/wakealarm' % timeout)
-        self.host.run('powerd_dbus_suspend --delay=0 &')
-
-
-    def suspend_action_resume(self, action):
-        """suspends and resumes through powerd_dbus_suspend in thread.
-
-        @param action: Action while suspended
-
-        """
-
-        # Suspend and wait to be suspended
-        logging.info('--- SUSPENDING')
-        thread = threading.Thread(target = self.powerd_suspend_with_timeout,
-                                  args = (_LONG_TIMEOUT,))
+        boot_id = self.host.get_boot_id()
+        thread = threading.Thread(target = self.host.suspend)
         thread.start()
-        self.wait_to_disconnect(_SUSPEND_FAILED)
+        self.host.test_wait_for_sleep(_LONG_TIMEOUT)
+        logging.debug('--- Suspended')
+        return boot_id
 
-        # Execute action after suspending
-        do_while_suspended = re.findall(r'SUSPEND(\w*)RESUME', action)[0]
-        logging.info('--- %s-ing', do_while_suspended)
-        if do_while_suspended =='_UNPLUG_':
-            self.set_hub_power(False)
-        elif do_while_suspended =='_PLUG_':
-            self.set_hub_power(True)
 
-        # Press power key and resume ( and terminate thread)
-        logging.info('--- RESUMING')
-        self.host.servo.power_key(0.1)
-        self.wait_to_come_up(_RESUME_FAILED, _LONG_TIMEOUT)
+
+    def action_resume(self, boot_id):
+        """Resume i.e. press power key and wait
+
+        @param boot_id: boot id obtained prior to suspending
+
+        """
+        self.host.servo.power_short_press()
+        self.host.test_wait_for_resume(boot_id, _LONG_TIMEOUT)
+        logging.debug('--- Resumed')
+
 
 
     def crash_not_detected(self, crash_path):
@@ -275,31 +210,12 @@ class platform_ExternalUsbPeripherals(test.test):
         return result
 
 
-    def change_suspend_resume(self, actions):
-        """ Modifying actions to suspend and resume
-
-        Changes suspend and resume actions done with lid_close
-        to suspend_resume done with powerd_dbus_suspend
-
-        @param actions: the sequence of accions to perform
-
-        @returns The changed to suspend_resume action_sequence
-        """
-        susp_resumes = re.findall(r'(SUSPEND,\w*,*RESUME)',actions)
-        for susp_resume in susp_resumes:
-            replace_with = susp_resume.replace(',', '_')
-            actions = actions.replace(susp_resume, replace_with, 1)
-        return actions
-
-
-    def crash_data_removed(self):
-        """Delete crash meta files"""
+    def remove_crash_data(self):
+        """Delete crash meta files if present"""
         for crash_path in _CRASH_PATHS:
             if not self.crash_not_detected(crash_path):
                 self.host.run('rm -rf %s/crash' % crash_path,
                               ignore_status=True)
-                return True
-        return False
 
 
     def add_failure(self, reason):
@@ -320,6 +236,7 @@ class platform_ExternalUsbPeripherals(test.test):
         self.usb_list = usb_list
         self.usb_checks = usb_checks
         self.crash_check = crash_check
+
 
         self.suspend_status = False
         self.login_status = False
@@ -350,11 +267,9 @@ class platform_ExternalUsbPeripherals(test.test):
 
         board = host.get_board().split(':')[1]
         action_sequence = action_sequence.upper()
-        if board in _SUSPEND_RESUME_BOARDS:
-            action_sequence = self.change_suspend_resume(action_sequence)
         actions = action_sequence.split(',')
-        if self.crash_data_removed():
-            self.fail_reasons = []
+        boot_id = 0
+        self.remove_crash_data()
 
         for iteration in xrange(1, repeat + 1):
             step = 0
@@ -365,7 +280,7 @@ class platform_ExternalUsbPeripherals(test.test):
                 logging.info(self.action_step)
 
                 if action == 'RESUME':
-                    self.action_resume()
+                    self.action_resume(boot_id)
                 elif action == 'UNPLUG':
                     self.set_hub_power(False)
                 elif action == 'PLUG':
@@ -383,9 +298,7 @@ class platform_ExternalUsbPeripherals(test.test):
                         time.sleep(_WAIT_DELAY * 3)
                         self.login_status = False
                     elif action == 'SUSPEND':
-                        self.action_suspend()
-                    elif re.match(r'SUSPEND\w*RESUME',action) is not None:
-                        self.suspend_action_resume(action)
+                        boot_id = self.action_suspend()
                 else:
                     logging.info('WRONG ACTION: %s .', self.action_step)
 
