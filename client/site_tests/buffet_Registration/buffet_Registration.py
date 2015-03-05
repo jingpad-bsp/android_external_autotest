@@ -105,7 +105,7 @@ class buffet_Registration(test.test):
         return actual_status
 
 
-    def _check_buffet_is_polling(self, device_id, timeout_seconds=10):
+    def _check_buffet_is_polling(self, device_id, timeout_seconds=30):
         """Assert that buffet is polling for new commands.
 
         @param device_id: string device id created during registration.
