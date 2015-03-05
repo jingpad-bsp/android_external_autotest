@@ -40,7 +40,8 @@ class privetd_PrivetSetupFlow(test.test):
                 log_verbosity=3,
                 enable_ping=True,
                 wifi_bootstrap_mode=privetd_helper.BOOTSTRAP_CONFIG_AUTOMATIC,
-                disable_pairing_security=True)
+                disable_pairing_security=True,
+                device_whitelist=privetd_helper.INFER_WIFI_INTERFACES)
         self._privet_config.restart_with_config(host=host)
         self._router = site_linux_router.build_router_proxy(
                 test_name=self.__class__.__name__,

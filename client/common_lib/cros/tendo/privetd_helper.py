@@ -10,6 +10,7 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
+from autotest_lib.client.common_lib.cros.network import iw_runner
 
 URL_PING = 'ping'
 URL_INFO = 'info'
@@ -38,6 +39,10 @@ DEFAULT_HTTPS_PORT = 443
 
 DEFAULT_DEVICE_CLASS = 'AB'  # = development board
 DEFAULT_DEVICE_MODEL_ID = 'AAA'  # = unregistered
+
+# Using an instance of object forces consumers to use a reference
+# to this object.
+INFER_WIFI_INTERFACES = object()
 
 def privetd_is_installed(host=None):
     """Check if the privetd binary is installed.
@@ -127,7 +132,9 @@ class PrivetdConfig(object):
         @param https_port: integer port number for the privetd HTTPS server.
         @param device_whitelist: list of string network interface names to
                 consider exclusively for connectivity monitoring (e.g.
-                ['eth0', 'wlan0']).
+                ['eth0', 'wlan0']). Alternatively, pass INFER_WIFI_INTERFACES
+                to cause a list of WiFi interfaces to be inferred at restart
+                time.
         @param disable_pairing_security: bool True to disable pairing security
         @param device_name: string Device name.  A 'unique' device name
                 will be generated if this is unspecified.
@@ -163,6 +170,14 @@ class PrivetdConfig(object):
         run = utils.run
         if host is not None:
             run = host.run
+        run('stop privetd', ignore_status=True)
+        if self.device_whitelist == INFER_WIFI_INTERFACES:
+            iw_helper = iw_runner.IwRunner(remote_host=host)
+            netdevs = iw_helper.list_interfaces(desired_if_type='managed')
+            self.device_whitelist = [netdev.if_name for netdev in netdevs]
+            if not self.device_whitelist:
+                raise error.TestFail(
+                        'No WiFi interfaces found to whitelist for privetd.')
         conf_dict = {
                 'wifi_bootstrapping_mode': self.wifi_bootstrap_mode,
                 'gcd_bootstrapping_mode': self.gcd_bootstrap_mode,
@@ -187,7 +202,6 @@ class PrivetdConfig(object):
                              ','.join(self.device_whitelist))
         if self.state_file_path:
             flag_list.append('PRIVETD_STATE_PATH=%s' % self.state_file_path)
-        run('stop privetd', ignore_status=True)
         conf_lines = ['%s=%s' % pair for pair in conf_dict.iteritems()]
         # Go through this convoluted shell magic here because we need to create
         # this file on both remote and local hosts (see how run() is defined).
