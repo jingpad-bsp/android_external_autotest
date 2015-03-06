@@ -288,6 +288,7 @@ def get_modules_dir():
 
 _CPUINFO_RE = re.compile(r'^(?P<key>[^\t]*)\t*: ?(?P<value>.*)$')
 
+
 def get_cpuinfo():
     """Read /proc/cpuinfo and convert to a list of dicts."""
     cpuinfo = []
@@ -305,6 +306,7 @@ def get_cpuinfo():
             # cpuinfo usually ends in a blank line, so this shouldn't happen.
             cpuinfo.append(cpu)
     return cpuinfo
+
 
 def get_cpu_arch():
     """Work out which CPU architecture we're running on"""
@@ -330,6 +332,7 @@ def get_cpu_arch():
     else:
         return 'i386'
 
+
 def get_arm_soc_family():
     """Work out which ARM SoC we're running on"""
     f = open('/proc/cpuinfo', 'r')
@@ -343,12 +346,14 @@ def get_arm_soc_family():
         return 'rockchip'
     return 'arm'
 
+
 def get_cpu_soc_family():
     """Like get_cpu_arch, but for ARM, returns the SoC family name"""
     family = get_cpu_arch()
     if family == 'arm':
        family = get_arm_soc_family()
     return family
+
 
 INTEL_UARCH_TABLE = {
     '06_36': 'Atom',
@@ -379,6 +384,7 @@ INTEL_UARCH_TABLE = {
     '0F_03': 'Prescott',
     '06_0D': 'Dothan',
 }
+
 
 def get_intel_cpu_uarch(numeric=False):
     """Return the Intel microarchitecture we're running on, or None.
@@ -419,15 +425,43 @@ def count_cpus():
     except Exception as e:
       logging.exception('can not get cpu count from'
                         ' multiprocessing.cpu_count()')
-
-    f = file('/proc/cpuinfo', 'r')
-    cpus = 0
-    for line in f.readlines():
-        # Matches lines like "processor      : 0"
-        if re.search(r'^processor\s*:\s*[0-9]+$', line):
-            cpus += 1
+    cpuinfo = get_cpuinfo()
     # Returns at least one cpu. Check comment #1 in crosbug.com/p/9582.
-    return cpus if cpus > 0 else 1
+    return len(cpuinfo) or 1
+
+
+def cpu_online_map():
+    """
+    Check out the available cpu online map
+    """
+    cpuinfo = get_cpuinfo()
+    cpus = []
+    for cpu in cpuinfo:
+      cpus.append(cpu['processor'])  # grab cpu number
+    return cpus
+
+
+def get_cpu_family():
+    cpuinfo = get_cpuinfo()[0]
+    return int(cpuinfo['cpu_family'])
+
+
+def get_cpu_vendor():
+    cpuinfo = get_cpuinfo()
+    vendors = [cpu['vendor_id'] for cpu in cpuinfo]
+    for v in vendors[1:]:
+        if v != vendors[0]:
+            raise error.TestError('multiple cpu vendors found: ' + str(vendors))
+    return vendors[0]
+
+
+def probe_cpus():
+    """
+    This routine returns a list of cpu devices found under
+    /sys/devices/system/cpu.
+    """
+    cmd = 'find /sys/devices/system/cpu/ -maxdepth 1 -type d -name cpu*'
+    return utils.system_output(cmd).splitlines()
 
 
 # Returns total memory in kb
@@ -617,17 +651,6 @@ def check_for_kernel_feature(feature):
         raise ValueError("Kernel doesn't have a %s feature" % (feature))
 
 
-def cpu_online_map():
-    """
-    Check out the available cpu online map
-    """
-    cpus = []
-    for line in open('/proc/cpuinfo', 'r').readlines():
-        if line.startswith('processor'):
-            cpus.append(line.split()[2]) # grab cpu number
-    return cpus
-
-
 def check_glibc_ver(ver):
     glibc_ver = commands.getoutput('ldd --version').splitlines()[0]
     glibc_ver = re.search(r'(\d+\.\d+(\.\d+)?)', glibc_ver).group()
@@ -722,16 +745,6 @@ def freespace(path):
 def disk_block_size(path):
     """Return the disk block size, in bytes"""
     return os.statvfs(path).f_bsize
-
-
-def get_cpu_family():
-    procinfo = utils.system_output('cat /proc/cpuinfo')
-    CPU_FAMILY_RE = re.compile(r'^cpu family\s+:\s+(\S+)', re.M)
-    matches = CPU_FAMILY_RE.findall(procinfo)
-    if matches:
-        return int(matches[0])
-    else:
-        raise error.TestError('Could not get valid cpu family data')
 
 
 def get_disks():
@@ -953,24 +966,6 @@ def get_num_huge_pages():
 
 def set_num_huge_pages(num):
     utils.system('/sbin/sysctl vm.nr_hugepages=%d' % num)
-
-
-def get_cpu_vendor():
-    cpuinfo = open('/proc/cpuinfo').read()
-    vendors = re.findall(r'(?m)^vendor_id\s*:\s*(\S+)\s*$', cpuinfo)
-    for i in xrange(1, len(vendors)):
-        if vendors[i] != vendors[0]:
-            raise error.TestError('multiple cpu vendors found: ' + str(vendors))
-    return vendors[0]
-
-
-def probe_cpus():
-    """
-    This routine returns a list of cpu devices found under
-    /sys/devices/system/cpu.
-    """
-    cmd = 'find /sys/devices/system/cpu/ -maxdepth 1 -type d -name cpu*'
-    return utils.system_output(cmd).splitlines()
 
 
 def ping_default_gateway():
