@@ -948,8 +948,7 @@ class ModelExtensions(rdb_model_extensions.ModelValidators):
             for field in self._meta.concrete_model._meta.local_fields:
                 if field.rel is None:
                     serialized[field.name] = field._get_val_from_obj(self)
-                elif (include_dependencies and
-                      field.name in self.SERIALIZATION_LINKS_TO_KEEP):
+                elif field.name in self.SERIALIZATION_LINKS_TO_KEEP:
                     # attname will contain "_id" suffix for foreign keys,
                     # e.g. HostAttribute.host will be serialized as 'host_id'.
                     # Use it for easy deserialization.
