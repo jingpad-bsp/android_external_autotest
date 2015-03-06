@@ -10,11 +10,10 @@ import numpy
 import os
 import re
 import time
-import telemetry
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import retry
+from autotest_lib.client.common_lib.cros import chrome, retry
 from autotest_lib.client.cros import constants, sys_power
 from autotest_lib.client.cros.graphics import graphics_utils
 from autotest_lib.client.cros.multimedia import image_generator
@@ -27,12 +26,8 @@ _FLAKY_CALL_RETRY_TIMEOUT_SEC = 60
 _FLAKY_CHROME_CALL_RETRY_DELAY_SEC = 1
 _FLAKY_DISPLAY_CALL_RETRY_DELAY_SEC = 2
 
-_telemetry_devtools = telemetry.core.backends.chrome_inspector.devtools_http
 _retry_chrome_call = retry.retry(
-        (telemetry.core.exceptions.BrowserConnectionGoneException,
-         telemetry.core.exceptions.DevtoolsTargetCrashException,
-         _telemetry_devtools.DevToolsClientUrlError,
-         exceptions.IndexError),
+        (chrome.Error, exceptions.IndexError),
         timeout_min=_FLAKY_CALL_RETRY_TIMEOUT_SEC / 60.0,
         delay_sec=_FLAKY_CHROME_CALL_RETRY_DELAY_SEC)
 

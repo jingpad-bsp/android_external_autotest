@@ -6,7 +6,9 @@ import logging, os
 
 from telemetry.core import browser_finder, browser_options, exceptions
 from telemetry.core import extension_to_load, util
-from telemetry.core.backends.chrome_inspector import devtools_http
+
+
+Error = exceptions.Error
 
 
 class Chrome(object):
@@ -164,8 +166,7 @@ class Chrome(object):
         """
         try:
             func()
-        except (exceptions.AppCrashException,
-                devtools_http.DevToolsClientConnectionError):
+        except (Error):
             return True
         return False
 
