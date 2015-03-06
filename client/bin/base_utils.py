@@ -82,7 +82,8 @@ def extract_tarball(tarball):
     dir = None
 
     for line in extracted:
-        line = re.sub(r'^./', '', line)
+        if line.startswith('./'):
+            line = line[2:]
         if not line or line == '.':
             continue
         topdir = line.split('/')[0]
@@ -596,6 +597,11 @@ def append_path(oldpath, newpath):
         return newpath
 
 
+_TIME_OUTPUT_RE = re.compile(
+        r'([\d\.]*)user ([\d\.]*)system '
+        r'(\d*):([\d\.]*)elapsed (\d*)%CPU')
+
+
 def avgtime_print(dir):
     """ Calculate some benchmarking statistics.
         Input is a directory containing a file called 'time'.
@@ -603,23 +609,40 @@ def avgtime_print(dir):
         Output is average Elapsed, User, and System time in seconds,
           and average CPU percentage.
     """
-    f = open(dir + "/time")
     user = system = elapsed = cpu = count = 0
-    r = re.compile('([\d\.]*)user ([\d\.]*)system (\d*):([\d\.]*)elapsed (\d*)%CPU')
-    for line in f.readlines():
-        try:
-            s = r.match(line);
-            user += float(s.group(1))
-            system += float(s.group(2))
-            elapsed += (float(s.group(3)) * 60) + float(s.group(4))
-            cpu += float(s.group(5))
-            count += 1
-        except:
-            raise ValueError("badly formatted times")
+    with open(dir + "/time") as f:
+        for line in f:
+            try:
+                m = _TIME_OUTPUT_RE.match(line);
+                user += float(m.group(1))
+                system += float(m.group(2))
+                elapsed += (float(m.group(3)) * 60) + float(m.group(4))
+                cpu += float(m.group(5))
+                count += 1
+            except:
+                raise ValueError("badly formatted times")
 
-    f.close()
     return "Elapsed: %0.2fs User: %0.2fs System: %0.2fs CPU: %0.0f%%" % \
           (elapsed / count, user / count, system / count, cpu / count)
+
+
+def to_seconds(time_string):
+    """Converts a string in M+:SS.SS format to S+.SS"""
+    elts = time_string.split(':')
+    if len(elts) == 1:
+        return time_string
+    return str(int(elts[0]) * 60 + float(elts[1]))
+
+
+_TIME_OUTPUT_RE_2 = re.compile(r'(.*?)user (.*?)system (.*?)elapsed')
+
+
+def extract_all_time_results(results_string):
+    """Extract user, system, and elapsed times into a list of tuples"""
+    results = []
+    for result in _TIME_OUTPUT_RE_2.findall(results_string):
+        results.append(tuple([to_seconds(elt) for elt in result]))
+    return results
 
 
 def running_config():
@@ -692,23 +715,6 @@ def node_size():
     return ((memtotal() * 1024) / nodes)
 
 
-def to_seconds(time_string):
-    """Converts a string in M+:SS.SS format to S+.SS"""
-    elts = time_string.split(':')
-    if len(elts) == 1:
-        return time_string
-    return str(int(elts[0]) * 60 + float(elts[1]))
-
-
-def extract_all_time_results(results_string):
-    """Extract user, system, and elapsed times into a list of tuples"""
-    pattern = re.compile(r"(.*?)user (.*?)system (.*?)elapsed")
-    results = []
-    for result in pattern.findall(results_string):
-        results.append(tuple([to_seconds(elt) for elt in result]))
-    return results
-
-
 def pickle_load(filename):
     return pickle.load(open(filename, 'r'))
 
@@ -747,10 +753,11 @@ def disk_block_size(path):
     return os.statvfs(path).f_bsize
 
 
+_DISK_PARTITION_3_RE = re.compile(r'^(/dev/hd[a-z]+)3', re.M)
+
 def get_disks():
     df_output = utils.system_output('df')
-    disk_re = re.compile(r'^(/dev/hd[a-z]+)3', re.M)
-    return disk_re.findall(df_output)
+    return _DISK_PARTITION_3_RE.findall(df_output)
 
 
 def get_disk_size(disk_name):
@@ -792,6 +799,9 @@ def get_disk_model(disk_name):
     return utils.system_output(cmd)
 
 
+_DISK_DEV_RE = re.compile(r'/dev/sd[a-z]|/dev/mmcblk[0-9]*')
+
+
 def get_disk_from_filename(filename):
     """
     Return the disk device the filename is on.
@@ -800,7 +810,6 @@ def get_disk_from_filename(filename):
 
     @param filename: name of file, full path.
     """
-    re_disk = re.compile('/dev/sd[a-z]|/dev/mmcblk[0-9]*')
 
     if not os.path.exists(filename):
         raise error.TestError('file %s missing' % filename)
@@ -808,7 +817,7 @@ def get_disk_from_filename(filename):
     if filename[0] != '/':
         raise error.TestError('This code works only with full path')
 
-    m = re_disk.match(filename)
+    m = _DISK_DEV_RE.match(filename)
     while not m:
         if filename[0] != '/':
             return None
@@ -827,7 +836,7 @@ def get_disk_from_filename(filename):
         else:
             cmd = 'df "%s" | tail -1 | cut -f 1 -d" "' % filename
         filename = utils.system_output(cmd)
-        m = re_disk.match(filename)
+        m = _DISK_DEV_RE.match(filename)
     return m.group(0)
 
 
