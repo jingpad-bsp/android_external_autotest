@@ -5,11 +5,12 @@
 import ConfigParser
 import logging
 
+from autotest_lib.client.cros.image_comparison import bp_http_client
+from autotest_lib.client.cros.image_comparison import bp_image_comparer
+from autotest_lib.client.cros.image_comparison import pdiff_image_comparer
 from autotest_lib.client.cros.image_comparison import rgb_image_comparer
 from autotest_lib.client.cros.image_comparison import upload_on_fail_comparer
 from autotest_lib.client.cros.image_comparison import verifier
-from autotest_lib.client.cros.image_comparison import bp_http_client
-from autotest_lib.client.cros.image_comparison import bp_image_comparer
 from autotest_lib.client.cros.video import method_logger
 
 
@@ -75,6 +76,16 @@ class ImageComparisonFactory(object):
 
 
     @method_logger.log
+    def make_pdiff_comparer(self):
+        """
+        @returns a PDiffImageComparer object.
+
+        """
+
+        return pdiff_image_comparer.PdiffImageComparer()
+
+
+    @method_logger.log
     def make_upload_on_fail_comparer(self, project_name=None):
         """
         @param project_name: string, name of project to use in bp.
@@ -87,7 +98,7 @@ class ImageComparisonFactory(object):
         if success:
             # bp comparer was successfully made
             return upload_on_fail_comparer.UploadOnFailComparer(
-                    local_comparer = self.make_rgb_comparer(),
+                    local_comparer = self.make_pdiff_comparer(),
                     remote_comparer = comparer,
                     threshold = self.pixel_count_thres)
 
@@ -140,8 +151,9 @@ class ImageComparisonFactory(object):
                                                          self.bp_upload_retries)
             success = True
         except bp_http_client.BiopicClientError:
-            logging.debug('**Could not make BpImageComparer. Defaulting to RGB')
+            logging.debug('**Could not make BpImageComparer. Defaulting to '
+                          'Local Pdiff Comparer')
             # we don't expect other kinds of exceptions to occur. If they do
             # we will know about it and decide what to do
-            comparer = self.make_rgb_comparer()
+            comparer = self.make_pdiff_comparer()
         return comparer, success

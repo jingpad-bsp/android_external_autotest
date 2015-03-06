@@ -11,19 +11,24 @@ from autotest_lib.client.cros.image_comparison import comparison_result
 from autotest_lib.client.cros.video import method_logger
 
 
+"""
+
+*** Consider using PdiffImageComparer instead of this class ***
+  * This class uses pixel by pixel comparer while PdiffImageComparer encapsules
+  * the perceptualdiff tool available in ChromeOS
+
+"""
+
+
 class RGBImageComparer(object):
     """
-    Compares two RGB images using built-in python image library
+    Compares two RGB images using built-in python image library.
 
     """
 
 
     def __init__(self, rgb_pixel_threshold):
-        self.threshold = rgb_pixel_threshold
-
-
-    def __enter__(self):
-        return self
+        self.pixel_threshold = rgb_pixel_threshold
 
 
     @method_logger.log
@@ -68,7 +73,8 @@ class RGBImageComparer(object):
         # number of times the corresponding color in the image.
 
         above_thres_tuples = [t for t in colorstuples
-                              if any(pixel > self.threshold for pixel in t[1])]
+                              if any(pixel > self.pixel_threshold
+                                     for pixel in t[1])]
 
         logging.debug("Color counts above thres.: %d", len(above_thres_tuples))
         logging.debug(heapq.nlargest(max_debug_count, above_thres_tuples))
@@ -76,7 +82,11 @@ class RGBImageComparer(object):
         diff_pixels = sum(t[0] for t in above_thres_tuples)
 
         return comparison_result.ComparisonResult(diff_pixels, '')
-
-
+    
+    
+    def __enter__(self):
+        return self
+    
+    
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
