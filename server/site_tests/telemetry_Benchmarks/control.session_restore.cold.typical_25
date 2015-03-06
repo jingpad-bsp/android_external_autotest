@@ -8,7 +8,6 @@ from autotest_lib.client.common_lib import utils
 
 AUTHOR = 'sbasi, achuith, rohitbm'
 NAME = 'telemetry_Benchmarks.session_restore.cold.typical_25'
-SUITE = 'performance'
 TIME = 'LONG'
 TEST_CATEGORY = 'Benchmark'
 TEST_CLASS = 'performance'
