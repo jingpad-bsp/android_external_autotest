@@ -155,6 +155,13 @@ class graphics_Idle(test.test):
         if self._gpu_type == 'mali':
             node = '/sys/devices/11800000.mali/'
             clock_path = utils.locate_file('clock', node)
+            enable_path = utils.locate_file('dvfs', node)
+
+            enable = utils.read_one_line(enable_path)
+            logging.info('DVFS enable = %s', enable)
+            if not enable == 'on':
+                logging.error('Error: DVFS is not enabled')
+                return 'DVFS is not enabled. '
 
             tries = 0
             found = False
