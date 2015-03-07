@@ -156,6 +156,7 @@ class graphics_Idle(test.test):
             node = '/sys/devices/11800000.mali/'
             clock_path = utils.locate_file('clock', node)
             enable_path = utils.locate_file('dvfs', node)
+            freqs_path = utils.locate_file('available_frequencies', node)
 
             enable = utils.read_one_line(enable_path)
             logging.info('DVFS enable = %s', enable)
@@ -163,12 +164,17 @@ class graphics_Idle(test.test):
                 logging.error('Error: DVFS is not enabled')
                 return 'DVFS is not enabled. '
 
+            # available_frequencies are always sorted in ascending order
+            lowest_freq = int(utils.read_one_line(freqs_path))
+            logging.info('Using min DVFS clock = %u', lowest_freq)
+
             tries = 0
             found = False
             while not found and tries < 80:
                 time.sleep(0.25)
-                clock = utils.read_file(clock_path)
-                if int(clock) <= 266000000:
+                clock = int(utils.read_one_line(clock_path))
+                if clock <= lowest_freq:
+                    logging.info('Found idle DVFS clock = %u', clock)
                     found = True
                     break
 
@@ -176,7 +182,8 @@ class graphics_Idle(test.test):
 
             if not found:
                 utils.log_process_activity()
-                logging.error('Error: did not see the min DVFS clock')
+                logging.error('Error: DVFS clock (%u) > min (%u)',
+                              clock, lowest_freq)
                 return 'Did not see the min DVFS clock. '
 
         return ''
