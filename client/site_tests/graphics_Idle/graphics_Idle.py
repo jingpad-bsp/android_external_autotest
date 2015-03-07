@@ -15,6 +15,7 @@ class graphics_Idle(test.test):
     """Class for graphics_Idle.  See 'control' for details."""
     version = 1
     _gpu_type = None
+    _cpu_type = None
 
 
     def run_once(self):
@@ -24,6 +25,7 @@ class graphics_Idle(test.test):
         # We use kiosk mode to make sure Chrome is idle.
         with chrome.Chrome(logged_in=False, extra_browser_args=['--kiosk']):
             self._gpu_type = utils.get_gpu_family()
+            self._cpu_type = utils.get_cpu_soc_family()
             errors = ''
             errors += self.verify_graphics_dvfs()
             errors += self.verify_graphics_fbc()
@@ -153,14 +155,26 @@ class graphics_Idle(test.test):
         seconds."""
         logging.info('Running verify_graphics_dvfs')
         if self._gpu_type == 'mali':
-            node = '/sys/devices/11800000.mali/'
+            if self._cpu_type == 'exynos5':
+                node = '/sys/devices/11800000.mali/'
+                enable_node = 'dvfs'
+                enable_value = 'on'
+            elif self._cpu_type == 'rockchip':
+                node = '/sys/devices/ffa30000.gpu/'
+                enable_node = 'dvfs_enable'
+                enable_value = '1'
+            else:
+                logging.error('Error: Unknown CPU type (%s) for mali GPU.',
+                              self._cpu_type)
+                return 'Unknown CPU type for mali GPU. '
+
             clock_path = utils.locate_file('clock', node)
-            enable_path = utils.locate_file('dvfs', node)
+            enable_path = utils.locate_file(enable_node, node)
             freqs_path = utils.locate_file('available_frequencies', node)
 
             enable = utils.read_one_line(enable_path)
             logging.info('DVFS enable = %s', enable)
-            if not enable == 'on':
+            if not enable == enable_value:
                 logging.error('Error: DVFS is not enabled')
                 return 'DVFS is not enabled. '
 
