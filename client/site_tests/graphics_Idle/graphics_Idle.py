@@ -153,15 +153,14 @@ class graphics_Idle(test.test):
         seconds."""
         logging.info('Running verify_graphics_dvfs')
         if self._gpu_type == 'mali':
+            node = '/sys/devices/11800000.mali/'
+            clock_path = utils.locate_file('clock', node)
+
             tries = 0
             found = False
             while not found and tries < 80:
                 time.sleep(0.25)
-                param_path = '/sys/devices/11800000.mali/clock'
-                if not os.path.exists(param_path):
-                    logging.error('Error: %s not found.', param_path)
-                    break
-                clock = utils.read_file(param_path)
+                clock = utils.read_file(clock_path)
                 if int(clock) <= 266000000:
                     found = True
                     break
