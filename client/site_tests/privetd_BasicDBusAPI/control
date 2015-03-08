@@ -6,7 +6,7 @@ AUTHOR = 'wiley, avakulenko'
 NAME = 'privetd_BasicDBusAPI'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
-SUITE = 'tendo_experimental'
+SUITE = 'tendo_experimental, smoke'
 
 DOC = """
 Check that basic DBus API calls to the privetd daemon return expected responses.

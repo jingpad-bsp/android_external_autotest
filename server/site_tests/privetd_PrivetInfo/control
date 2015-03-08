@@ -6,7 +6,7 @@ AUTHOR = 'avakulenko, wiley, keybuk'
 NAME = 'privetd_PrivetInfo'
 TIME = 'FAST'
 TEST_TYPE = 'Server'
-SUITE='tendo_experimental'
+SUITE='tendo_experimental, smoke'
 
 DOC = """
 This test verifies that the privetd responds to /privet/info request and returns
