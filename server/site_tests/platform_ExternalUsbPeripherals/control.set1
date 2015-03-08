@@ -71,7 +71,7 @@ def run(machine):
         }
 
     job.run_test("platform_ExternalUsbPeripherals", host=host,
-                 client_autotest="desktopui_SimpleLogin",
+                 disable_sysinfo=True, client_autotest="desktopui_SimpleLogin",
                  action_sequence=action_sequence, repeat=repeat,
                  usb_list = usb_list, usb_checks=usb_checks,
                  crash_check=crash_check)

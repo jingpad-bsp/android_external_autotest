@@ -42,7 +42,7 @@ def run(machine):
     action_sequence = str(args_dict.get("action_sequence", default_actions))
 
     job.run_test("platform_ExternalUsbPeripherals", host=host,
-                 client_autotest="desktopui_SimpleLogin",
+                 disable_sysinfo=True, client_autotest="desktopui_SimpleLogin",
                  action_sequence=action_sequence, repeat=repeat)
 
 parallel_simple(run, machines)
