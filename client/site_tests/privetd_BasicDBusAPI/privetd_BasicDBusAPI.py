@@ -77,6 +77,13 @@ class privetd_BasicDBusAPI(test.test):
 
         # Then enable bootstrapping, and check that we're waiting for creds.
         iw_helper = iw_runner.IwRunner()
+        if not iw_helper.list_phys():
+            # This happens in virtual machines, which don't have WiFi devices
+            # at all. Since privetd behavior in such an environment is largely
+            # undefined, let it go.
+            logging.warning('Not testing privetd DBus API around '
+                            'bootstrapping because we have no WiFi interfaces.')
+            return
         interfaces = iw_helper.list_interfaces(desired_if_type='managed')
         if not interfaces:
             raise error.TestError('Cannot find appropriate WiFi interface to '
