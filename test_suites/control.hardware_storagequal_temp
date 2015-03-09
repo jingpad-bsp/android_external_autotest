@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = 'gwendal'
-NAME = 'storage_qual'
+NAME = 'storage_qual_temp'
 TIME = 'LENGTHY'
 TEST_CATEGORY = 'General'
 TEST_CLASS = 'suite'
@@ -11,8 +11,8 @@ TEST_TYPE = 'Server'
 
 DOC = """
 This dynamic suite runs the storage qualification tests.
-Until issue with suspendstress are fixed, use qual storage_qual_temp instead
-of this one.
+Until issue with suspendstress are fixed, used this qual instead of
+storage_qual.
 
 @param build: The name of the image to test.
           Ex: x86-mario-release/R17-1412.33.0-a1-b29
