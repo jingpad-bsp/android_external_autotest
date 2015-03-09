@@ -127,6 +127,16 @@ def get_selected_nodes():
 
     return (output_match.group(1).strip(), input_match.group(1).strip())
 
+
+def set_selected_output_node_volume(volume):
+    """Sets the selected output node volume.
+
+    @param volume: the volume to be set (0-100).
+    """
+    selected_output_node_id, _ = get_selected_nodes()
+    set_node_volume(selected_output_node_id, volume)
+
+
 def get_active_stream_count():
     """Gets the number of active streams."""
     server_info = dump_server_info()

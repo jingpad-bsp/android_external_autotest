@@ -119,6 +119,15 @@ class AudioFacadeNative(object):
         return True
 
 
+    def set_selected_output_volume(self, volume):
+        """Sets the selected output volume.
+
+        @param volume: the volume to be set(0-100).
+
+        """
+        cras_utils.set_selected_output_node_volume(volume)
+
+
 class RecorderError(Exception):
     """Error in Recorder."""
     pass

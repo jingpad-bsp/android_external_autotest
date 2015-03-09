@@ -113,3 +113,12 @@ class AudioFacadeRemoteAdapter(object):
         self._client.get_file(remote_path, file_path)
 
         return True
+
+
+    def set_selected_output_volume(self, volume):
+        """Sets the selected output volume on DUT.
+
+        @param volume: the volume to be set(0-100).
+
+        """
+        self._audio_proxy.set_selected_output_volume(volume)
