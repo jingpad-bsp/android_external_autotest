@@ -31,6 +31,7 @@ class Plankton(object):
     USBC_COMMAND_DELAY = 0.5
     # Plankton USBC commands.
     USBC_ROLE = 'usbc_role'
+    USBC_MUX = 'usbc_mux'
     RE_USBC_ROLE_VOLTAGE = re.compile(r'src(\d+)v')
     USBC_CHARGING_VOLTAGES = {
         0: 'sink',
@@ -148,3 +149,16 @@ class Plankton(object):
                                          (self.USBC_PD_STATES[state],
                                           self.POLL_STATE_SECS)),
             timeout=self.POLL_STATE_SECS)
+
+
+    def set_usbc_mux(self, mux):
+        """Sets Plankton usbc_mux.
+
+        @param mux: Specified mux state name.
+        """
+        if mux not in ['dp', 'usb']:
+            raise PlanktonError('Invalid mux name: %s, '
+                                'should be either \'dp\' or \'usb\'.' % mux)
+        self.set(self.USBC_MUX, mux)
+        time.sleep(self.USBC_COMMAND_DELAY)
+
