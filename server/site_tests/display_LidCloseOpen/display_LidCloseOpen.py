@@ -206,8 +206,14 @@ class display_LidCloseOpen(test.test):
             # Check internal screen switch to primary display
             self.check_primary_display_on_internal_screen()
 
+            # Plug monitor if not plugged, such that we can test the screen.
+            if not plugged_before_open:
+                self.chameleon_port.set_plug(True)
+                self.chameleon_port.wait_video_input_stable(
+                        timeout=self.WAIT_TIME_PLUG_TRANSITION)
+
             # Check status
-            if plugged_before_open:
-                self.check_external_display()
+            self.check_external_display()
+
             if self.errors:
                 raise error.TestFail('; '.join(set(self.errors)))
