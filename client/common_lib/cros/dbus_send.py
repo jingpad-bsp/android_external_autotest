@@ -187,3 +187,18 @@ def dbus_send(bus_name, interface, object_path, method_name, args=None,
         logging.debug('%r', result.stdout)
         return None
     return _parse_dbus_send_output(result.stdout)
+
+
+def get_property(bus_name, interface, object_path, property_name, host=None):
+    """A helpful wrapper that extracts the value of a DBus property.
+
+    @param bus_name: string identifier of DBus connection to send a message to.
+    @param interface: string DBus interface exposing the property.
+    @param object_path: string DBus path of remote object to call method on.
+    @param property_name: string name of property to get.
+    @param host: An optional host object if running against a remote host.
+
+    """
+    return dbus_send(bus_name, dbus.PROPERTIES_IFACE, object_path, 'Get',
+                     args=[dbus.String(interface), dbus.String(property_name)],
+                     host=host)

@@ -15,11 +15,34 @@ DBUS_PATH_MANAGER = '/org/chromium/peerd/Manager'
 DBUS_PATH_SELF = '/org/chromium/peerd/Self'
 
 DBUS_INTERFACE_MANAGER = 'org.chromium.peerd.Manager'
+DBUS_INTERFACE_PEER = 'org.chromium.peerd.Peer'
 DBUS_INTERFACE_SERVICE = 'org.chromium.peerd.Service'
 
 OBJECT_MANAGER_PATH = '/org/chromium/peerd'
 
 SERVICE_PROPERTY_SERVICE_ID = 'ServiceId'
+
+
+def confirm_peerd_up(service_name=SERVICE_NAME, timeout_seconds=10, host=None):
+    """Confirm that an instance of peerd is running.
+
+    @param service_name: string name of DBus connection to look for peerd on.
+            Defaults to the well known peerd bus name.
+    @param timeout_seconds: number of seconds to wait for peerd to answer
+            queries.
+    @param host: Host object if peerd is running on a remote host.
+
+    """
+    start_time = time.time()
+    while time.time() - start_time < timeout_seconds:
+        result = dbus_send.dbus_send(
+                service_name, DBUS_INTERFACE_MANAGER, DBUS_PATH_MANAGER,
+                'Ping', host=host, tolerate_failures=True)
+        if result is not None and result.response == 'Hello world!':
+            return
+        time.sleep(0.5)
+    raise error.TestFail('Timed out before peerd at %s started.' % service_name)
+
 
 class PeerdConfig(object):
     """An object that knows how to restart peerd in various configurations."""
@@ -40,7 +63,7 @@ class PeerdConfig(object):
     def restart_with_config(self, host=None, timeout_seconds=10):
         """Restart peerd with this config.
 
-        @param host: Host object if privetd is running on a remote host.
+        @param host: Host object if peerd is running on a remote host.
         @param timeout_seconds: number of seconds to wait for peerd to start.
                 Pass None to return without confirming peerd startup.
 
@@ -55,12 +78,6 @@ class PeerdConfig(object):
         run('start peerd %s' % ' '.join(flag_list))
         if timeout_seconds is None:
             return
-        start_time = time.time()
-        while time.time() - start_time < timeout_seconds:
-            result = dbus_send.dbus_send(
-                    SERVICE_NAME, DBUS_INTERFACE_MANAGER, DBUS_PATH_MANAGER,
-                    'Ping', host=host, tolerate_failures=True)
-            if result is not None and result.response == 'Hello world!':
-                return
-            time.sleep(0.5)
-        raise error.TestFail('Timed out before peerd restarted.')
+        confirm_peerd_up(service_name=SERVICE_NAME,
+                         timeout_seconds=timeout_seconds,
+                         host=host)
