@@ -13,6 +13,7 @@ TIME = 'SHORT'
 TEST_CATEGORY = 'PLAYBACKCAPTURE'
 TEST_CLASS = "audio"
 TEST_TYPE = 'client'
+DEPENDENCIES = 'audio_loopback_dongle'
 
 DOC = """
 Test that audio playback and capture are working.

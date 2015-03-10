@@ -13,6 +13,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "audio"
 TEST_TYPE = "client"
+DEPENDENCIES = 'audio_loopback_dongle'
 
 DOC = """
 Test that the sound from media files can be heard by recording from mic in

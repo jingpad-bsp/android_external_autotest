@@ -13,6 +13,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "accessibility"
 TEST_TYPE = "client"
+DEPENDENCIES = 'audio_loopback_dongle'
 
 DOC = """
 Uses audio loopback to record snippets of audio, checking whether there was any

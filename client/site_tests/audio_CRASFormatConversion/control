@@ -13,6 +13,7 @@ TEST_CATEGORY = 'PLAYBACKCAPTURE'
 TEST_CLASS = 'audio'
 TEST_TYPE = 'client'
 SUITE = 'audio'
+DEPENDENCIES = 'audio_loopback_dongle'
 
 DOC = """
 NOTE: For this test to pass you need to have the line out looped back to mic-in.

@@ -13,6 +13,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "desktopui"
 TEST_TYPE = "client"
+DEPENDENCIES = 'audio_loopback_dongle'
 
 DOC = """
 Test that Flash video sound can be heard by arecord at mic in.
