@@ -202,12 +202,17 @@ class video_HangoutHardwarePerf(chrome_binary_test.ChromeBinaryTest):
             v[0] = self._downloads.get_path(v[0])
             v[-1:-1] = ['0', '0'] # no fps requirements
             test_video_data.append(':'.join(v))
-        return [self.get_chrome_binary_path(VDA_BINARY),
-                '--gtest_filter=DecodeVariations/*/0',
-                '--test_video_data=%s' % ';'.join(test_video_data),
-                '--rendering_warm_up=%d' % RENDERING_WARM_UP,
-                '--rendering_fps=%f' % RENDERING_FPS,
-                '--num_play_throughs=%d' % MAX_INT]
+        cmd_line = [
+            self.get_chrome_binary_path(VDA_BINARY),
+            '--gtest_filter=DecodeVariations/*/0',
+            '--test_video_data=%s' % ';'.join(test_video_data),
+            '--rendering_warm_up=%d' % RENDERING_WARM_UP,
+            '--rendering_fps=%f' % RENDERING_FPS,
+            '--num_play_throughs=%d' % MAX_INT]
+        if utils.is_freon():
+            cmd_line.append('--ozone-platform=gbm')
+        return cmd_line
+
 
     def get_vea_unittest_cmd_line(self, encode_videos):
         test_stream_data = []

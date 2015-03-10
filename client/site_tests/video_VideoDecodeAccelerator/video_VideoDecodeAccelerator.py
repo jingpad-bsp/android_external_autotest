@@ -4,6 +4,7 @@
 
 import logging
 import os
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import chrome_binary_test
 
@@ -41,6 +42,9 @@ class video_VideoDecodeAccelerator(chrome_binary_test.ChromeBinaryTest):
 
             if gtest_filter:
               cmd_line = '%s --gtest_filter=%s' % (cmd_line, gtest_filter)
+
+            if utils.is_freon():
+                cmd_line += ' --ozone-platform=gbm'
 
             try:
                 self.run_chrome_test_binary(self.binary, cmd_line)
