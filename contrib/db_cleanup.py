@@ -242,7 +242,7 @@ def _delete_all_data_before_date(date):
     # First cleanup all afe_job related data (prior to 2 days before date).
     # The reason for this is not all afe_jobs may be in tko_jobs.
     afe_date = _subtract_days(date, 2)
-    logging.debug('Cleaning up all afe_job data prior to %s.', afe_date)
+    logging.info('Cleaning up all afe_job data prior to %s.', afe_date)
     _delete_table_data_before_date('afe_aborted_host_queue_entries',
                                    'queue_entry_id',
                                    'afe_jobs', 'id', afe_date,
@@ -282,7 +282,7 @@ def _delete_all_data_before_date(date):
 
     # Now go through and clean up all the rows related to tko_jobs prior to
     # date.
-    logging.debug('Cleaning up all data related to tko_jobs prior to %s.',
+    logging.info('Cleaning up all data related to tko_jobs prior to %s.',
                   date)
     _delete_table_data_before_date('tko_test_attributes', 'id',
                                    'tko_tests', TEST_IDX,
@@ -350,8 +350,9 @@ def main():
     """main"""
     args = parse_args()
 
-    level = logging.DEBUG if args.verbose else logging.WARNING
+    level = logging.DEBUG if args.verbose else logging.INFO
     logging.basicConfig(level=level, format=LOGGING_FORMAT)
+    logging.info('Calling: %s', sys.argv)
 
     if not re.match(DATE_FORMAT_REGEX, args.date):
         print 'DATE must be in yyyy-mm-dd format!'
