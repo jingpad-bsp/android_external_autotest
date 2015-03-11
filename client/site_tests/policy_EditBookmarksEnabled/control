@@ -1,0 +1,77 @@
+# Copyright 2015 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "scunningham"
+NAME = "policy_EditBookmarksEnabled"
+SUITE = "regression"
+TIME = "SHORT"
+TEST_CATEGORY = "General"
+TEST_CLASS = "enterprise"
+TEST_TYPE = "client"
+
+DOC = """
+Verify effect of EditBookmarksEnabled policy on client behavior & appearance.
+
+Usage:
+From chroot of your Chromium OS client, run the test remotely using test_that:
+$ test_that -b <board> <IPAddress> policy_EditBookmarksEnabled [arguments]
+where <board> is the board name (e.g., wolf), and <IP> is the IP Address of
+the device (e.g., 172.22.67.234).
+
+When no arguments are given, all test cases defined in the test are run using
+the fake AutoTest DM Server for policy download, and production GAIA for user
+authentication.
+
+Use the mode=single argument to run a single test case, and the case argument
+to specify the test case to run. E.g.:
+--args='mode=single case=True'
+--args='mode=single case=False'
+--args='mode=single case=NotSet'
+
+
+On your Chrome OS device, run the test locally from the command line:
+$ /usr/local/autotest/bin/autotest /usr/local/autotest/tests/
+  policy_EditBookmarksEnabled/control [arguments]
+
+When no arguments are given, all test cases defined in the test are run using
+the fake AutoTest DM Server for policy download, and production GAIA for user
+authentication.
+
+Use the mode=single argument to run a single test case, and the case argument
+to specify the test case to run, the same as when run using test_that remotely.
+
+Use the env argument to select the environment parameters to be used during
+the test. The env argument determines which GAIA login server and DMServer will
+be used by the Chrome OS device to authenticate user sign-ins and to download
+policies. Note that your tests cannot give policy json to set up the DMServer
+in production (prod), staging (cr-dev, cr-auto), or test (dm-test).
+
+Valid values for env are:
+  prod: production - DMServer and GAIA in production
+  cr-dev: staging - DMServer (cros-dev) and GAIA in staging
+  cr-auto: staging - DMServer (cros-auto) and GAIA in staging
+  dm-test: test - Python server on chromium-dm-test.appspot.com and
+           GAIA in production
+  dm-fake (default): AutoTest - fake AutoTest DMServer and GAIA in production.
+
+When you select an environment other than the default 'dm-fake' AutoTest,
+you must provide the user credentials. E.g.:
+--args='env=cr-auto username=tester1@testdomain.com password=test1234'
+
+When you select an environment other than dm-fake, and you specify a single
+test case to run, you may optionally specify the policy value that the test
+case expects to be shown on the chrome://policy page. This is uncommon usage,
+but is provided to support situations where the same test case method may be
+used in multiple tests, but with different policy values pre-set by the user
+on the external DM Server.
+
+When using env=dm-test, you must specify the dms_name for your instance of the
+chromium-dm-test service. E.g.:
+--args='env=dm-test dms_name=xot-dmst username=...'
+
+"""
+
+job.run_test("policy_EditBookmarksEnabled", args=args)
+
+
