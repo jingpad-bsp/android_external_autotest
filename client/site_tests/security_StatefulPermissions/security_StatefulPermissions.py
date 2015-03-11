@@ -33,14 +33,13 @@ class security_StatefulPermissions(test.test):
                                  "/encrypted/var/cache/shared_extensions",
                                  "/encrypted/var/cache/touch_trial/selection",
                                  "/encrypted/var/lib/cromo",
+                                 "/encrypted/var/lib/opencryptoki",
                                  "/encrypted/var/lib/timezone",
                                  "/encrypted/var/lib/Synaptics/chronos.1000",
-                                 "/encrypted/var/lib/opencryptoki",
-                                 "/encrypted/var/log/connectivity.log",
-                                 "/encrypted/var/log/connectivity.bak",
-                                 "/encrypted/var/log/window_manager",
-                                 "/encrypted/var/log/metrics",
                                  "/encrypted/var/log/chrome",
+                                 "/encrypted/var/log/connectivity.bak",
+                                 "/encrypted/var/log/connectivity.log",
+                                 "/encrypted/var/log/metrics",
                                  "/encrypted/var/minidumps",
                                  "/home/user"],
                      "chronos-access": [],
@@ -120,8 +119,8 @@ class security_StatefulPermissions(test.test):
             return "true" # return a no-op shell command, e.g. for root.
 
         # Exclude world-writeable stuff.
-        # '/var/log/metrics/uma-events' is world-writeable: crbug.com/198054.
-        prunelist.append("/encrypted/var/log/metrics/uma-events")
+        # '/var/lib/metrics/uma-events' is world-writeable: crbug.com/198054.
+        prunelist.append("/encrypted/var/lib/metrics/uma-events")
         # '/run/lock' is world-writeable.
         prunelist.append("/encrypted/var/lock")
         # '/var/log/asan' should be world-writeable: crbug.com/453579
