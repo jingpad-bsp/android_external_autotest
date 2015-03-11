@@ -1200,8 +1200,14 @@ class ResultCollector(object):
                 self._suite_name, self._build, self._board)
 
         # Record suite runtime in metadata db.
-        runtime_in_secs = (self.timings.tests_end_time -
-                self.timings.suite_start_time).total_seconds()
+        # Some failure modes can leave times unassigned, report sentinel value
+        # in that case.
+        runtime_in_secs = -1
+        if (self.timings.tests_end_time is not None and
+            self.timings.suite_start_time is not None):
+          runtime_in_secs = (self.timings.tests_end_time -
+                  self.timings.suite_start_time).total_seconds()
+
         job_overhead.record_suite_runtime(self._suite_job_id, self._suite_name,
                 self._board, self._build, self._num_child_jobs, runtime_in_secs)
 
