@@ -68,6 +68,8 @@ class Verifier(object):
 
         log_msgs = ["Threshold for diff pixel count = %d" % self.threshold]
 
+        test_run_comp_url = ''
+
         for g_image, t_image in zip(golden_image_paths, test_image_paths):
 
             with self.image_comparer:
@@ -75,6 +77,23 @@ class Verifier(object):
                                                        t_image,
                                                        self.box)
                 diff_pixels = comp_res.diff_pixel_count
+
+                """
+                If biopic was used, compare() returns a comparison url of this
+                form https://biopic.corp.google.com/a/b/this_comparison_result/
+                We want this: https://biopic.corp.google.com/a/b, so we can see
+                links for the entire test run (many comparison urls).
+
+                If biopic was not invoked (local comparer succeeded) compare()
+                returns '' as comparison url. The first one you get will be
+                the same for all since they are part of the same test run.
+
+                """
+
+                #TODO(mussa): Use the more robust urlparse.ParseResult if
+                # biopic URL scheme changes
+                if test_run_comp_url == '' and comp_res.comparison_url != '':
+                    test_run_comp_url = os.path.dirname(comp_res.comparison_url)
 
             if diff_pixels > self.threshold:
                 failure_count += 1
@@ -90,14 +109,14 @@ class Verifier(object):
 
         if failure_count > 0:
             cnt = len(golden_image_paths)
-            # grab the parent link for comparison urls
-            comparison_url = os.path.dirname(comp_res.comparison_url)
-
-            report_mes = ("%d / %d test images were not golden. Comparison "
-                          "url: %s. %s " % (failure_count,
-                                            cnt,
-                                            comparison_url,
-                                            '\t'.join(log_msgs)))
+            report_mes = ("*** WARNING: UI Based Image Comparison - Test "
+                          "Failure typically needs further investigation ***\t"
+                          "%d / %d test images differed substantially from the "
+                          "golden images. Comparison url: %s. %s "
+                                  % (failure_count,
+                                     cnt,
+                                     test_run_comp_url,
+                                     '\t'.join(log_msgs)))
 
             raise error.TestFail(report_mes)
 
