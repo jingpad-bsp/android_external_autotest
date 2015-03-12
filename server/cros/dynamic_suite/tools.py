@@ -81,6 +81,23 @@ def get_devserver_build_from_package_url(package_url):
             devserver_build_tuple[1].replace('archive/', ''))
 
 
+def get_build_from_image(image):
+    """Get the build name from the image string.
+
+    @param image: A string of image, can be the build name or a url to the
+                  build, e.g.,
+                  http://devserver/update/alex-release/R27-3837.0.0
+
+    @return: Name of the build. Return None if fail to parse build name.
+    """
+    if not image.startswith('http://'):
+        return image
+    else:
+        match = re.match('.*/([^/]+/R\d+-[^/]+)', image)
+        if match:
+            return match.group(1)
+
+
 def get_random_best_host(afe, host_list, require_usable_hosts=True):
     """
     Randomly choose the 'best' host from host_list, using fresh status.

@@ -485,6 +485,40 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 stage_time)
 
 
+    def stage_server_side_package(self, image=None):
+        """Stage autotest server-side package on devserver.
+
+        @param image: Full path of an OS image to install or a build name.
+
+        @return: A url to the autotest server-side package.
+        """
+        if image:
+            image_name = tools.get_build_from_image(image)
+            if not image_name:
+                raise error.AutoservError(
+                        'Failed to parse build name from %s' % image)
+            ds = dev_server.ImageServer.resolve(image_name)
+        else:
+            job_repo_url = self.lookup_job_repo_url()
+            if job_repo_url:
+                devserver_url, image_name = (
+                    tools.get_devserver_build_from_package_url(job_repo_url))
+                ds = dev_server.ImageServer(devserver_url)
+            else:
+                labels = self._AFE.get_labels(
+                        name__startswith=ds_constants.VERSION_PREFIX,
+                        host__hostname=self.hostname)
+                if not labels:
+                    raise error.AutoservError(
+                            'Failed to stage server-side package. The host has '
+                            'no job_report_url attribute or version label.')
+                image_name = labels[0].name[len(ds_constants.VERSION_PREFIX):]
+                ds = dev_server.ImageServer.resolve(image_name)
+        ds.stage_artifacts(image_name, ['autotest_server_package'])
+        return '%s/static/%s/%s' % (ds.url(), image_name,
+                                    'autotest_server_package.tar.bz2')
+
+
     def _try_stateful_update(self, update_url, force_update, updater):
         """Try to use stateful update to initialize DUT.
 

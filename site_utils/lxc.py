@@ -22,6 +22,7 @@ container, e.g.,
 import argparse
 import logging
 import os
+import socket
 import sys
 import time
 
@@ -30,13 +31,14 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import retry
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 
 
 # Name of the base container.
 BASE = 'base'
 # Naming convention of test container, e.g., test_300_1422862512, where 300 is
 # the test job ID, 1422862512 is the tick when container is created.
-TEST_CONTAINER_NAME_FMT = 'test_%d_%d'
+TEST_CONTAINER_NAME_FMT = 'test_%s_%d'
 CONTAINER_AUTOTEST_DIR = '/usr/local/autotest'
 # Naming convention of the result directory in test container.
 RESULT_DIR_FMT = os.path.join(CONTAINER_AUTOTEST_DIR, 'results', '%s')
@@ -55,6 +57,11 @@ CONTAINER_BASE_URL = global_config.global_config.get_config_value(
 # Default directory used to store LXC containers.
 DEFAULT_CONTAINER_PATH = global_config.global_config.get_config_value(
         'AUTOSERV', 'container_path')
+
+# Path to drone_temp folder in the container, which stores the control file for
+# test job to run.
+CONTROL_TEMP_PATH = os.path.join(CONTAINER_AUTOTEST_DIR, 'drone_tmp')
+
 # Bash command to return the file count in a directory. Test the existence first
 # so the command can return an error code if the directory doesn't exist.
 COUNT_FILE_CMD = '[ -d %(dir)s ] && ls %(dir)s | wc -l'
@@ -76,6 +83,9 @@ NETWORK_INIT_TIMEOUT = 120
 # Network bring up is slower in Moblab.
 NETWORK_INIT_CHECK_INTERVAL = 2 if IS_MOBLAB else 0.1
 
+STATS_KEY = 'lxc.%s' % socket.gethostname()
+timer = autotest_stats.Timer(STATS_KEY)
+
 def run(cmd, sudo=True, **kwargs):
     """Runs a command on the local system.
 
@@ -93,6 +103,36 @@ def run(cmd, sudo=True, **kwargs):
         cmd = 'sudo ' + cmd
     logging.debug(cmd)
     return utils.run(cmd, kwargs)
+
+
+def is_in_container():
+    """Check if the process is running inside a container.
+
+    @return: True if the process is running inside a container, otherwise False.
+    """
+    try:
+        run('cat /proc/1/cgroup | grep "/lxc/" || false')
+        return True
+    except error.CmdError:
+        return False
+
+
+def path_exists(path):
+    """Check if path exists.
+
+    If the process is not running with root user, os.path.exists may fail to
+    check if a path owned by root user exists. This function uses command
+    `ls path` to check if path exists.
+
+    @param path: Path to check if it exists.
+
+    @return: True if path exists, otherwise False.
+    """
+    try:
+        run('ls "%s"' % path)
+        return True
+    except error.CmdError:
+        return False
 
 
 def _get_container_info_moblab(container_path, **filters):
@@ -130,7 +170,7 @@ def _get_container_info_moblab(container_path, **filters):
     for name in os.listdir(container_path):
         # Skip all files and folders without rootfs subfolder.
         if (os.path.isfile(os.path.join(container_path, name)) or
-            not os.path.exists(os.path.join(container_path, name, 'rootfs'))):
+            not path_exists(os.path.join(container_path, name, 'rootfs'))):
             continue
         info = {'name': name,
                 'state': 'RUNNING' if name in active_containers else 'STOPPED'
@@ -309,6 +349,7 @@ class Container(object):
             return False
 
 
+    @timer.decorate
     def start(self, wait_for_network=True):
         """Start the container.
 
@@ -336,6 +377,7 @@ class Container(object):
                           time.time() - start_time)
 
 
+    @timer.decorate
     def stop(self):
         """Stop the container.
 
@@ -351,6 +393,7 @@ class Container(object):
                             output))
 
 
+    @timer.decorate
     def destroy(self, force=True):
         """Destroy the container.
 
@@ -381,7 +424,7 @@ class Container(object):
         # created from base container by snapshot, base_dir should be set to
         # the path to the delta0 folder.
         base_dir = os.path.join(self.container_path, self.name, 'delta0')
-        if not os.path.exists(base_dir):
+        if not path_exists(base_dir):
             base_dir = os.path.join(self.container_path, self.name, 'rootfs')
         # Create directory in container for mount.
         run('mkdir -p %s' % os.path.join(base_dir, destination))
@@ -479,6 +522,7 @@ class ContainerBucket(object):
             container.destroy()
 
 
+    @timer.decorate
     def create_from_base(self, name):
         """Create a container from the base container.
 
@@ -551,9 +595,10 @@ class ContainerBucket(object):
             (self.container_path, config_path))
 
 
+    @timer.decorate
     @cleanup_if_fail()
     def setup_test(self, name, job_id, server_package_url, result_path,
-                   skip_cleanup=False):
+                   control=None, skip_cleanup=False):
         """Setup test container for the test job to run.
 
         The setup includes:
@@ -570,6 +615,8 @@ class ContainerBucket(object):
         @param server_package_url: Url to download autotest_server package.
         @param result_path: Directory to be mounted to container to store test
                             results.
+        @param control: Path to the control file to run the test job. Default is
+                        set to None.
         @param skip_cleanup: Set to True to skip cleanup, used to troubleshoot
                              container failures.
 
@@ -600,6 +647,14 @@ class ContainerBucket(object):
         shadow_config = os.path.join(common.autotest_dir, 'shadow_config.ini')
         run('cp %s %s' % (shadow_config, autotest_path))
 
+        # Copy over control file to run the test job.
+        if control:
+            container_drone_temp = os.path.join(autotest_path, 'drone_tmp')
+            run('mkdir -p %s'% container_drone_temp)
+            container_control_file = os.path.join(
+                    container_drone_temp, os.path.basename(control))
+            run('cp %s %s' % (control, container_control_file))
+
         if IS_MOBLAB:
             site_packages_path = MOBLAB_SITE_PACKAGES
             site_packages_container_path = MOBLAB_SITE_PACKAGES_CONTAINER[1:]
@@ -622,10 +677,19 @@ class ContainerBucket(object):
             container.mount_dir(source, destination, readonly)
 
         # Update file permissions.
-        run('sudo chown -R root "%s"' % autotest_path)
-        run('sudo chgrp -R root "%s"' % autotest_path)
+        # TODO(dshi): crbug.com/459344 Skip following action when test container
+        # can be unprivileged container.
+        run('chown -R root "%s"' % autotest_path)
+        run('chgrp -R root "%s"' % autotest_path)
 
         container.start(name)
+        # Make sure the rsa file has right permission.
+        container.attach_run('chmod 700 /root/.ssh/testing_rsa')
+        # Inject "AUTOSERV/enable_master_ssh: False" in shadow config as
+        # container does not support master ssh connection yet.
+        container.attach_run(
+                'echo $\'[AUTOSERV]\nenable_master_ssh: False\' >> "%s"' %
+                os.path.join(CONTAINER_AUTOTEST_DIR, 'shadow_config.ini'))
 
         container.verify_autotest_setup(job_id)
 

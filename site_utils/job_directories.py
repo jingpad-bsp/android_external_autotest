@@ -2,6 +2,7 @@ import abc
 import datetime
 import glob
 import os
+import re
 import time
 
 import common
@@ -26,6 +27,34 @@ def _is_job_expired(age_limit, timestamp):
   job_time = time_utils.time_string_to_datetime(timestamp)
   expiration = job_time + datetime.timedelta(days=age_limit)
   return datetime.datetime.now() >= expiration
+
+
+def get_job_id_or_task_id(result_dir):
+    """Extract job id or special task id from result_dir
+
+    @param result_dir: path to the result dir.
+            For test job:
+            /usr/local/autotest/results/2032-chromeos-test/chromeos1-rack5-host6
+            The hostname at the end is optional.
+            For special task:
+            /usr/local/autotest/results/hosts/chromeos1-rack5-host6/1343-cleanup
+
+    @returns: integer representing the job id or task id.
+    """
+    if not result_dir:
+        return
+    result_dir = os.path.abspath(result_dir)
+    special_task_pattern = '.*/hosts/[^/]+/(\d+)-[^/]+'
+    job_pattern = '.*/(\d+)-[^/]+'
+    # Try to get the job ID from the last pattern of number-text. This avoids
+    # issue with path like 123-results/456-debug_user, in which 456 is the real
+    # job ID.
+    m = re.findall(job_pattern, result_dir)
+    if m:
+        return int(m[-1])
+    else:
+        m = re.match(special_task_pattern, result_dir)
+        return int(m.group(1)) if m else None
 
 
 class _JobDirectory(object):
@@ -67,7 +96,7 @@ class _JobDirectory(object):
 
   def __init__(self, resultsdir):
     self._dirname = resultsdir
-    self._id = os.path.basename(resultsdir).split('-')[0]
+    self._id = get_job_id_or_task_id(resultsdir)
     self._offload_count = 0
     self._first_offload_start = 0
 
