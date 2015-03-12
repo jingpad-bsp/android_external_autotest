@@ -53,6 +53,17 @@ class Plankton(object):
         plankton_port = args_dict.get('plankton_port', self.DEFAULT_SERVO_PORT)
         remote = 'http://%s:%s' % (plankton_host, plankton_port)
         self._server = xmlrpclib.ServerProxy(remote)
+        self.init_io_expander()
+
+
+    def init_io_expander(self):
+        """Initializes Plankton IO expander register settings."""
+        if not int(self.get('debug_usb_sel')):
+            raise PlanktonError('debug_usb_sel (SW3) should be ON!! '
+                                'Please use CN15 to connect Plankton.')
+        self.set('typec_to_hub_sw', '0')
+        self.set('usb2_mux_sw', '1')
+        self.set('usb_dn_pwren', 'on')
 
 
     def set(self, control_name, value):
