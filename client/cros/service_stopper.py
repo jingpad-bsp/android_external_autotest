@@ -85,3 +85,8 @@ class ServiceStopper(object):
 
     def __exit__(self, exnval, exntype, exnstack):
         self.restore_services()
+
+
+    def close(self):
+        """Equivalent to restore_services."""
+        self.restore_services()
