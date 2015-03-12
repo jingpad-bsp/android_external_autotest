@@ -689,6 +689,16 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                              ignore_status=True)
 
 
+    def set_ap_interface_down(self, instance=0):
+        """Bring down the hostapd interface.
+
+        @param instance int router instance number.
+
+        """
+        self.host.run('%s link set %s down' %
+                      (self.cmd_ip, self.get_hostapd_interface(instance)))
+
+
     def confirm_pmksa_cache_use(self, instance=0):
         """Verify that the PMKSA auth was cached on a hostapd instance.
 

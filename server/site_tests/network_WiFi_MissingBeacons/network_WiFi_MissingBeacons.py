@@ -59,8 +59,13 @@ class network_WiFi_MissingBeacons(wifi_cell_test_base.WiFiCellTestBase):
         client_config = xmlrpc_datatypes.AssociationParameters(ssid=ssid)
         self.context.assert_connect_wifi(client_config)
         self.context.assert_ping_from_dut()
-        self.context.router.deconfig_aps(silent=True)
+        # Take down the AP interface, which looks like the AP "disappeared"
+        # from the DUT's point of view.  This is also much faster than actually
+        # tearing down the AP, which allows us to watch for the client reporting
+        # itself as disconnected.
+        self.context.router.set_ap_interface_down()
         self._assert_disconnect(ssid)
+        self.context.router.deconfig_aps()
         logging.info('Repeating test with a client scan just before AP death.')
         self.context.configure(ap_config)
         ssid = self.context.router.get_ssid()
@@ -68,5 +73,6 @@ class network_WiFi_MissingBeacons(wifi_cell_test_base.WiFiCellTestBase):
         self.context.assert_connect_wifi(client_config)
         self.context.assert_ping_from_dut()
         self.context.client.scan(frequencies=[], ssids=[])
-        self.context.router.deconfig_aps(silent=True)
+        self.context.router.set_ap_interface_down()
         self._assert_disconnect(ssid)
+        self.context.router.deconfig_aps()
