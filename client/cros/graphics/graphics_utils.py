@@ -413,6 +413,8 @@ def take_screenshot_crop(fullpath, box=None, crtc_id=None):
     @param fullpath: path, full path to save the image to.
     @param box: 4-tuple giving the upper left and lower right pixel coordinates.
     """
+    if not utils.is_freon():
+        return take_screenshot_crop_x(fullpath, box)
     if crtc_id is not None:
         image = drm.crtcScreenshot(crtc_id)
     else:
@@ -460,10 +462,29 @@ def get_display_resolution():
     Parses output of modetest to determine the display resolution of the dut.
     @return: tuple, (w,h) resolution of device under test.
     """
+    if not utils.is_freon():
+        return _get_display_resolution_x()
+
     connectors = get_modetest_connectors()
     for connector in connectors:
         if connector.connected:
             return connector.size
+    return None
+
+
+def _get_display_resolution_x():
+    """
+    Used temporarily while Daisy's modetest isn't working
+    TODO(dhaddock): remove when no longer needed
+    @return: tuple, (w,h) resolution of device under test.
+    """
+    env_vars = 'DISPLAY=:0.0 ' \
+                              'XAUTHORITY=/home/chronos/.Xauthority'
+    cmd = '%s xrandr | egrep -o "current [0-9]* x [0-9]*"' % env_vars
+    output = utils.system_output(cmd)
+    match = re.search('(\d+) x (\d+)', output)
+    if len(match.groups()) == 2:
+        return int(match.group(1)), int(match.group(2))
     return None
 
 

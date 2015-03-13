@@ -5,6 +5,7 @@
 import time
 
 from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.graphics import graphics_utils
 from autotest_lib.client.cros.ui import ui_test_base
 
@@ -15,6 +16,21 @@ class ui_AppLauncher(ui_test_base.ui_TestBase):
     See comments on parent class for overview of how things flow.
 
     """
+
+    def initialize(self):
+        """Perform necessary initialization prior to test run.
+
+        Private Attributes:
+          _services: service_stopper.ServiceStopper object
+        """
+        # Do not switch off screen for screenshot utility.
+        self._services = service_stopper.ServiceStopper(['powerd'])
+        self._services.stop_services()
+
+
+    def cleanup(self):
+        self._services.restore_services()
+
 
     def capture_screenshot(self, filepath):
         """
@@ -45,7 +61,7 @@ class ui_AppLauncher(ui_test_base.ui_TestBase):
 
             # Take a screenshot and crop to just the launcher
             w, h = graphics_utils.get_display_resolution()
-            box = (self.width, self.height, w - self.width, h - self.height)
+            box = (w - self.width, h - self.height, self.width, self.height)
             graphics_utils.take_screenshot_crop(filepath, box)
 
 
