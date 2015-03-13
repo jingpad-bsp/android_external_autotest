@@ -13,7 +13,7 @@ from autotest_lib.server.cros.network import wifi_cell_test_base
 from autotest_lib.server.cros.network import wifi_client
 
 SUSPEND_WAIT_TIME=10
-RESUME_WAIT_TIME=10
+RESUME_WAIT_TIME=25
 
 
 class network_WiFi_WoWLAN(wifi_cell_test_base.WiFiCellTestBase):
@@ -23,7 +23,7 @@ class network_WiFi_WoWLAN(wifi_cell_test_base.WiFiCellTestBase):
 
     def initialize(self, host):
         """Set up for dark resume."""
-        dark_resume_utils.dark_resume_setup(host)
+        self._dr_utils = dark_resume_utils.DarkResumeUtils(host)
 
 
     def run_once(self):
@@ -46,25 +46,23 @@ class network_WiFi_WoWLAN(wifi_cell_test_base.WiFiCellTestBase):
             client.add_wake_packet_source(router.wifi_ip)
             logging.info('Set up WoWLAN')
 
-            client.do_suspend_bg(SUSPEND_WAIT_TIME + RESUME_WAIT_TIME + 10)
-            time.sleep(SUSPEND_WAIT_TIME)
+            with self._dr_utils.suspend():
+                time.sleep(SUSPEND_WAIT_TIME)
 
-            router.send_magic_packet(dut_ip, dut_mac)
+                router.send_magic_packet(dut_ip, dut_mac)
 
-            # The DUT should wake up soon, but we'll give it a bit of a
-            # grace period.
-            if not client.host.wait_up(timeout=RESUME_WAIT_TIME):
-                raise error.TestFail('Client failed to wake up.')
+                # The DUT should wake up soon, but we'll give it a bit of a
+                # grace period.
+                time.sleep(RESUME_WAIT_TIME)
+                if self._dr_utils.count_dark_resumes() < 1:
+                    raise error.TestFail('Client failed to wake up.')
 
-            logging.info('Client woke up successfully.')
+                logging.info('Client woke up successfully.')
 
 
     def cleanup(self):
-        # make sure the DUT is up on the way out
-        self.context.client.host.servo.ctrl_key()
+        self._dr_utils.teardown()
         # clean up packet wake sources
         self.context.client.remove_all_wake_packet_sources()
-
-        dark_resume_utils.dark_resume_teardown(self.context.client.host)
         # make sure we clean up everything
         super(network_WiFi_WoWLAN, self).cleanup()

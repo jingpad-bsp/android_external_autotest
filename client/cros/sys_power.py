@@ -4,7 +4,13 @@
 
 """Provides utility methods for controlling powerd in ChromiumOS."""
 
-import errno, logging, os, rtc, time, upstart
+import errno
+import logging
+import multiprocessing
+import os
+import rtc
+import time
+import upstart
 
 SYSFS_POWER_STATE = '/sys/power/state'
 SYSFS_WAKEUP_COUNT = '/sys/power/wakeup_count'
@@ -112,6 +118,26 @@ def do_suspend(suspend_seconds, delay_seconds=0):
     os.system(command)
     check_wakeup(alarm)
     return alarm
+
+
+def suspend_bg_for_dark_resume(delay_seconds=0):
+    """Do a non-blocking indefinite suspend using power manager. ONLY USE THIS
+    IF YOU ARE ABSOLUTELY CERTAIN YOU NEED TO.
+
+    Wait for |delay_seconds|, then suspend to RAM (S3). This does not set an RTC
+    alarm and does not pass an external wakeup count. It is meant to be used for
+    dark resume testing, where the server-side API exposes it in such a fashion
+    that the DUT will be woken by the server no matter how the test is exited.
+
+    @param delay_seconds: Number of seconds wait before suspending the DUT.
+
+    """
+    upstart.ensure_running(['powerd'])
+    command = ('/usr/bin/powerd_dbus_suspend --delay=%d '
+               '--timeout=30') % delay_seconds
+    logging.info("Running '%s'", command)
+    process = multiprocessing.Process(target=os.system, args=(command,))
+    process.start()
 
 
 def kernel_suspend(seconds):
