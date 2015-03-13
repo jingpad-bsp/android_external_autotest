@@ -7,7 +7,7 @@ import os
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib.cros import chrome
-from autotest_lib.client.cros import constants
+from autotest_lib.client.cros import constants, service_stopper
 from autotest_lib.client.cros.image_comparison import image_comparison_factory
 from autotest_lib.client.cros.video import media_test_factory
 from autotest_lib.client.cros.video import sequence_generator
@@ -21,6 +21,21 @@ class video_GlitchDetection(test.test):
     """
 
     version = 2
+
+    def initialize(self):
+        """Perform necessary initialization prior to test run.
+
+        Private Attributes:
+          _services: service_stopper.ServiceStopper object
+        """
+        # Do not switch off screen for screenshot utility.
+        self._services = service_stopper.ServiceStopper(['powerd'])
+        self._services.stop_services()
+
+
+    def cleanup(self):
+        self._services.restore_services()
+
 
     def run_video_glitch_detection_test(self, chrome):
         """

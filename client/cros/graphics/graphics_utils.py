@@ -455,7 +455,7 @@ CRTC = collections.namedtuple(
     ])
 
 
-def _get_display_resolution():
+def get_display_resolution():
     """
     Parses output of modetest to determine the display resolution of the dut.
     @return: tuple, (w,h) resolution of device under test.

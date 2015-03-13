@@ -7,10 +7,10 @@ import os
 
 from autotest_lib.client.bin import site_utils
 from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.graphics import graphics_utils
 from autotest_lib.client.cros.image_comparison import rgb_image_comparer
 from autotest_lib.client.cros.ui import ui_test_base
-
 
 class ui_SystemTray(ui_test_base.ui_TestBase):
     """
@@ -19,6 +19,21 @@ class ui_SystemTray(ui_test_base.ui_TestBase):
     See comments on parent class for overview of how things flow.
 
     """
+
+    def initialize(self):
+        """Perform necessary initialization prior to test run.
+
+        Private Attributes:
+          _services: service_stopper.ServiceStopper object
+        """
+        # Do not switch off screen for screenshot utility.
+        self._services = service_stopper.ServiceStopper(['powerd'])
+        self._services.stop_services()
+
+
+    def cleanup(self):
+        self._services.restore_services()
+
 
     def capture_screenshot(self, filepath):
         """
