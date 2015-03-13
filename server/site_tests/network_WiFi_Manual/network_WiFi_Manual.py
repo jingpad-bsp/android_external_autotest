@@ -16,5 +16,8 @@ class network_WiFi_Manual(wifi_cell_test_base.WiFiCellTestBase):
     def run_once(self):
         """Body of the test."""
         self.context.configure(hostap_config.HostapConfig(
-                channel=1, ssid='manual_test'))
+            channel=1, ssid='manual_test',
+            mode=hostap_config.HostapConfig.MODE_11N_MIXED,
+            n_capabilities=
+            [hostap_config.HostapConfig.N_CAPABILITY_HT40_PLUS]))
         signal.pause()
