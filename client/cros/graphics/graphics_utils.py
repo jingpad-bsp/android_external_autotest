@@ -826,7 +826,7 @@ def get_content_protection(output_name):
     return False
 
 
-def wflinfo():
+def wflinfo_cmd():
     """
     Return a wflinfo command appropriate to the current graphics platform/api.
     """
@@ -841,7 +841,12 @@ def wflinfo():
 
 def is_sw_rasterizer():
     """Return true if OpenGL is using a software rendering."""
-    cmd = wflinfo() + ' | grep "OpenGL renderer string"'
+    # TODO(ihf): Remove this after porting waffle. crbug.com/431585
+    if utils.is_freon():
+        logging.warning('Due to crbug.com/431585 unable to determine if using '
+                        'software rasterizer on Freon.')
+        return False
+    cmd = wflinfo_cmd() + ' | grep "OpenGL renderer string"'
     cmd = xcommand(cmd)
     output = utils.run(cmd)
     result = output.stdout.splitlines()[0]
