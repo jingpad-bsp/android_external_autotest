@@ -97,6 +97,10 @@ class platform_FullyChargedPowerStatus(test.test):
         self.host = host
         self.autotest_client = autotest.Autotest(self.host)
 
+        # Check the servo object
+        if self.host.servo is None:
+            raise error.TestError('Invalid servo object found on the host.')
+
         if self.host.has_power():
             self.host.power_on()
         else:
