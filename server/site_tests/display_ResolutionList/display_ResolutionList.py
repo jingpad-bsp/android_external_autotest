@@ -69,6 +69,13 @@ class display_ResolutionList(test.test):
                 display_facade.set_mirrored(test_mirrored)
 
                 for r in resolution_list:
+                    # FIXME: send a keystroke to keep display on.
+                    # This is to work around a problem where the display may be
+                    # turned off if the test has run for a long time (e.g.,
+                    # greater than 15 min). When the display is off,
+                    # set_resolution() will fail.
+                    display_facade.hide_cursor()
+
                     logging.info('Set resolution to %dx%d', *r)
                     display_facade.set_resolution(index, *r)
                     time.sleep(self.RESOLUTION_CHANGE_TIME)
