@@ -10,81 +10,15 @@
 # checks basic EC functionality, such as FAN and temperature sensor.
 
 
-import re
 import time
-import logging
 
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-
-
-def has_ectool():
-    cmd = 'which ectool'
-    return (utils.system(cmd, ignore_status=True) == 0)
-
-class ECControl(object):
-    HELLO_RE = "EC says hello"
-    GET_FANSPEED_RE = "Current fan RPM: ([0-9]*)"
-    SET_FANSPEED_RE = "Fan target RPM set."
-    TEMP_SENSOR_RE = "Reading temperature...([0-9]*)"
-    TOGGLE_AUTO_FAN_RE = "Automatic fan control is now on"
-    # For battery, check we can see a non-zero capacity value.
-    BATTERY_RE = "Design capacity:\s+[1-9]\d*\s+mAh"
-    LIGHTBAR_RE = "^ 05\s+3f\s+3f$"
-
-    def ec_command(self, cmd):
-        full_cmd = 'ectool %s' % cmd
-        result = utils.system_output(full_cmd)
-        logging.info('Command: %s', full_cmd)
-        logging.info('Result: %s', result)
-        return result
-
-    def hello(self):
-        response = self.ec_command('hello')
-        return (re.search(self.HELLO_RE, response) is not None)
-
-    def auto_fan_ctrl(self):
-        response = self.ec_command('autofanctrl')
-        logging.info('Turned on auto fan control.')
-        return (re.search(self.TOGGLE_AUTO_FAN_RE, response) is not None)
-
-    def get_fanspeed(self):
-        response = self.ec_command('pwmgetfanrpm')
-        match = re.search(self.GET_FANSPEED_RE, response)
-        if not match:
-            raise error.TestError('Unable to read fan speed')
-
-        rpm = int(match.group(1))
-        logging.info('Fan speed: %d', rpm)
-        return rpm
-
-    def set_fanspeed(self, rpm):
-        response = self.ec_command('pwmsetfanrpm %d' % rpm)
-        logging.info('Set fan speed: %d', rpm)
-        return (re.search(self.SET_FANSPEED_RE, response) is not None)
-
-    def get_temperature(self, idx):
-        response = self.ec_command('temps %d' % idx)
-        match = re.search(self.TEMP_SENSOR_RE, response)
-        if not match:
-            raise error.TestError('Unable to read temperature sensor %d' % idx)
-
-        return int(match.group(1))
-
-    def get_battery(self):
-        response = self.ec_command('battery')
-        return (re.search(self.BATTERY_RE, response) is not None)
-
-    def get_lightbar(self):
-        self.ec_command('lightbar on')
-        self.ec_command('lightbar init')
-        self.ec_command('lightbar 4 255 255 255')
-        response = self.ec_command('lightbar')
-        self.ec_command('lightbar off')
-        return (re.search(self.LIGHTBAR_RE, response, re.MULTILINE) is not None)
+from autotest_lib.client.cros import ec as cros_ec
 
 
 class hardware_EC(test.test):
+    """Class for hardware_EC test."""
     version = 1
 
     def run_once(self,
@@ -96,14 +30,7 @@ class hardware_EC(test.test):
                  test_lightbar=False,
                  fan_delay_secs=3):
 
-        if not has_ectool():
-            ec_info = utils.system_output("mosys ec info",
-                                          ignore_status=True)
-            logging.warning("Ectool absent on this platform ( %s )",
-                         ec_info)
-            raise error.TestNAError("Platform doesn't support ectool")
-
-        ec = ECControl()
+        ec = cros_ec.EC()
 
         if not ec.hello():
             raise error.TestError('EC communication failed')
