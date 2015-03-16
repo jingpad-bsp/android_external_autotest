@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import socket
+
 import common
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros.graphite import autotest_es
@@ -15,12 +17,16 @@ from autotest_lib.client.common_lib.cros.graphite import stats
 # then this will show up on Graphite as milleral/mtv/<stats>.  This seems
 # silly, so let's replace '.'s with '_'s to disambiguate Graphite folders
 # from FQDN hostnames.
-AUTOTEST_SERVER = global_config.global_config.get_config_value(
-        'SERVER', 'hostname', default='localhost').replace('.', '_')
 STATSD_SERVER = global_config.global_config.get_config_value('CROS',
         'STATSD_SERVER', default='')
 STATSD_PORT = global_config.global_config.get_config_value('CROS',
         'STATSD_PORT', type=int, default=0)
+hostname = global_config.global_config.get_config_value(
+        'SERVER', 'hostname', default='localhost')
+
+if hostname.lower() in ['localhost', '127.0.0.1']:
+    hostname = socket.gethostname()
+hostname = hostname.replace('.', '_')
 
 _default_es = es_utils.ESMetadata(use_http=autotest_es.ES_USE_HTTP,
                                   host=autotest_es.METADATA_ES_SERVER,
@@ -28,7 +34,7 @@ _default_es = es_utils.ESMetadata(use_http=autotest_es.ES_USE_HTTP,
                                   index=autotest_es.INDEX_METADATA,
                                   udp_port=autotest_es.ES_UDP_PORT)
 _statsd = stats.Statsd(es=_default_es, host=STATSD_SERVER, port=STATSD_PORT,
-                       prefix=AUTOTEST_SERVER)
+                       prefix=hostname)
 
 
 def _es_init(original):
