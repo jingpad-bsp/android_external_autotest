@@ -18,7 +18,7 @@ from autotest_lib.client.cros import service_stopper
 
 DISABLE_ACCELERATED_VIDEO_DECODE_BROWSER_ARGS = [
         '--disable-accelerated-video-decode']
-DOWNLOAD_BASE = 'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/crowd/'
+DOWNLOAD_BASE = 'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/traffic/'
 
 GPU_VIDEO_INIT_HISTOGRAM = 'Media.GpuVideoDecoderInitializeStatus'
 HISTOGRAMS_URL = 'chrome://histograms/' + GPU_VIDEO_INIT_HISTOGRAM
