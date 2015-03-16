@@ -1,0 +1,17 @@
+# Copyright 2015 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = 'wiley'
+NAME = 'leaderd_Election'
+TIME = 'FAST'
+TEST_TYPE = 'client'
+SUITE = ''
+
+DOC = """
+This test sets up a number of instances of leaderd on the local
+host and checks that they see each other and agree on a leader.
+
+"""
+
+job.run_test('leaderd_Election')
