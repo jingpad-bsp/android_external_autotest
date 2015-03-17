@@ -22,7 +22,7 @@ MANAGER_OBJECT_PATH = '/org/chromium/Buffet/Manager'
 OBJECT_MANAGER_PATH = '/org/chromium/Buffet'
 
 MANAGER_PROPERTY_STATUS = 'Status'
-STATUS_OFFLINE = 'offline'
+MANAGER_PROPERTY_DEVICE_ID = 'DeviceId'
 STATUS_UNCONFIGURED = 'unconfigured'
 STATUS_CONNECTING = 'connecting'
 STATUS_CONNECTED = 'connected'

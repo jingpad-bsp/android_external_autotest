@@ -94,6 +94,7 @@ class buffet_Registration(test.test):
 
 
     def _check_registration_status_is(self, expected_status,
+                                      expected_device_id='',
                                       timeout_seconds=0):
         """Assert that buffet has the given registration status.
 
@@ -115,14 +116,24 @@ class buffet_Registration(test.test):
             actual_status = manager_properties.Get(
                 buffet_config.MANAGER_INTERFACE,
                 buffet_config.MANAGER_PROPERTY_STATUS)
-            if actual_status == expected_status:
+            actual_device_id = manager_properties.Get(
+                buffet_config.MANAGER_INTERFACE,
+                buffet_config.MANAGER_PROPERTY_DEVICE_ID)
+            if (actual_status == expected_status and
+                actual_device_id == expected_device_id):
                 return
             time_spent = time.time() - start_time
             if time_spent > timeout_seconds:
-                raise error.TestFail('Buffet should be %s, but is %s '
-                                     '(waited %.1f seconds).' %
-                                     (expected_status, actual_status,
-                                      time_spent))
+                if actual_status != expected_status:
+                    raise error.TestFail('Buffet should be %s, but is %s '
+                                         '(waited %.1f seconds).' %
+                                         (expected_status, actual_status,
+                                          time_spent))
+                if actual_device_id != expected_device_id:
+                    raise error.TestFail('Device ID  should be %s, but is %s '
+                                         '(waited %.1f seconds).' %
+                                         (expected_device_id, actual_device_id,
+                                          time_spent))
             time.sleep(0.5)
 
 
@@ -228,7 +239,7 @@ class buffet_Registration(test.test):
                     'device resource')
         logging.info('Registration successful')
         self._check_registration_status_is(
-                buffet_config.STATUS_CONNECTED)
+                buffet_config.STATUS_CONNECTED, expected_device_id=device_id)
         # Confirm that we StartDevice after registering successfully.
         self._check_buffet_is_polling(device_id)
         # Now restart buffet, while maintaining our built up state.  Confirm
@@ -239,7 +250,7 @@ class buffet_Registration(test.test):
                      'after restart.')
         self._check_buffet_is_polling(device_id)
         self._check_registration_status_is(
-                buffet_config.STATUS_CONNECTED)
+                buffet_config.STATUS_CONNECTED, expected_device_id=device_id)
 
         # Now invalidate buffet's current access token and check that
         # we can still poll for commands. This demonstrates that
@@ -249,7 +260,7 @@ class buffet_Registration(test.test):
         logging.info('Checking that Buffet can obtain a new access token.')
         self._check_buffet_is_polling(device_id)
         self._check_registration_status_is(
-                buffet_config.STATUS_CONNECTED)
+                buffet_config.STATUS_CONNECTED, expected_device_id=device_id)
 
         # Now invalidate buffet's access and refresh token and check
         # that buffet transitions to the invalid_credentials state.
@@ -259,6 +270,7 @@ class buffet_Registration(test.test):
                      'when its refresh token has been invalidated.')
         self._check_registration_status_is(
                 buffet_config.STATUS_INVALID_CREDENTIALS,
+                expected_device_id=device_id,
                 timeout_seconds=20)
 
 
