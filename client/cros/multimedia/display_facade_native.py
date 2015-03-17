@@ -197,30 +197,34 @@ class DisplayFacadeNative(object):
                     var display = options.DisplayOptions.instance_
                               .displays_[%(index)d];
                     var modes = display.resolutions;
-                    var is_m38 = modes.length > 0
-                             && "originalWidth" in modes[0];
-                    if (is_m38) {
-                      for (index in modes) {
-                          var mode = modes[index];
-                          if (mode.originalWidth == %(width)d &&
-                                  mode.originalHeight == %(height)d) {
-                              chrome.send('setDisplayMode', [display.id, mode]);
-                              break;
-                          }
-                      }
-                    } else {
-                      chrome.send('setResolution',
-                          [display.id, %(width)d, %(height)d]);
+                    for (index in modes) {
+                        var mode = modes[index];
+                        if (mode.originalWidth == %(width)d &&
+                                mode.originalHeight == %(height)d) {
+                            chrome.send('setDisplayMode', [display.id, mode]);
+                            break;
+                        }
                     }
                     """
                     % {'index': display_index, 'width': width, 'height': height}
             )
 
+            def _get_selected_resolution():
+                modes = tab.EvaluateJavaScript(
+                        """
+                        options.DisplayOptions.instance_
+                                 .displays_[%(index)d].resolutions
+                        """
+                        % {'index': display_index})
+                for mode in modes:
+                    if mode['selected']:
+                        return (mode['originalWidth'], mode['originalHeight'])
+
             # TODO(tingyuan):
             # Support for multiple external monitors (i.e. for chromebox)
             end_time = time.time() + timeout
             while time.time() < end_time:
-                r = self.get_external_resolution()
+                r = _get_selected_resolution()
                 if (width, height) == (r[0], r[1]):
                     return True
                 time.sleep(0.1)
