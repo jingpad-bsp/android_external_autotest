@@ -5,7 +5,7 @@
 from autotest_lib.server import utils
 
 AUTHOR = "chromeos-chameleon"
-NAME = "display_Resolution.lid_close_open"
+NAME = "display_Resolution.relid_mirrored"
 PURPOSE = "Remotely controlled display resolution test."
 CRITERIA = "This test will fail if the screens mismatch."
 SUITE = "chameleon_dp,chameleon_hdmi"
@@ -17,8 +17,8 @@ DEPENDENCIES = 'chameleon,servo'
 
 DOC = """
 This test remotely tests display resolution functions, by switching EDIDs
-and then performing lid close and open. DUT is expected to detect a new
-resolution after lid open.
+in mirrored mode while performing lid close, and then lid open. DUT is
+expected to detect a new resolution after lid open.
 """
 
 args_dict = utils.args_to_dict(args)
@@ -28,7 +28,7 @@ servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 def run(machine):
     host = hosts.create_host(machine, chameleon_args=chameleon_args,
                              servo_args=servo_args)
-    job.run_test("display_Resolution", host=host,
-                 test_lid_close_open=True, tag="lid_close_open")
+    job.run_test("display_Resolution", host=host, test_mirrored=True,
+                 test_lid_close_open=True, tag="relid_mirrored")
 
 parallel_simple(run, machines)
