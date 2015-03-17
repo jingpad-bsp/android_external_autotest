@@ -80,13 +80,8 @@ class display_ResolutionList(test.test):
                     display_facade.set_resolution(index, *r)
                     time.sleep(self.RESOLUTION_CHANGE_TIME)
 
-                    if chameleon_port.wait_video_input_stable():
-                        screen_test.test_screen_with_image(
-                                r, test_mirrored, errors)
-                    else:
-                        message = 'No video on resolution %dx%d' % r
-                        logging.error(message)
-                        errors.append(message)
+                    chameleon_port.wait_video_input_stable()
+                    screen_test.test_screen_with_image(r, test_mirrored, errors)
 
             if errors:
                 raise error.TestFail('; '.join(set(errors)))
