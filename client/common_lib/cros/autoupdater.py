@@ -366,6 +366,10 @@ class ChromiumOSUpdater():
                                              self.host.hostname)
             self._update_error_queue.put(update_error)
             raise update_error
+        except Exception as e:
+            # Don't allow other exceptions to not be caught.
+            self._update_error_queue.put(e)
+            raise e
 
         try:
             self._verify_update_completed()
@@ -397,6 +401,10 @@ class ChromiumOSUpdater():
                                                self.host.hostname)
             self._update_error_queue.put(update_error)
             raise update_error
+        except Exception as e:
+            # Don't allow other exceptions to not be caught.
+            self._update_error_queue.put(e)
+            raise e
 
 
     def run_update(self, force_update, update_root=True):
