@@ -16,7 +16,7 @@ class touch_WakeupSource(touch_playback_test_base.touch_playback_test_base):
     version = 1
 
     # Devices whose touchpads should not be a wake source.
-    _NO_TOUCHPAD_WAKE = ['clapper', 'glimmer']
+    _NO_TOUCHPAD_WAKE = ['clapper', 'glimmer', 'veyron_minnie']
 
     # Devices with Synaptics touchpads that do not report wake source.
     _INVALID_BOARDS = ['x86-alex', 'x86-alex_he', 'x86-zgb', 'x86-zgb_he',
