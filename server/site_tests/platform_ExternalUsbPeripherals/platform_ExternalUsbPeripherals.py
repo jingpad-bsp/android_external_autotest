@@ -224,8 +224,9 @@ class platform_ExternalUsbPeripherals(test.test):
         @param reason: failure reason to record
 
         """
-        self.fail_reasons.append('%s FAILS - %s' %
-                                 (self.action_step, reason))
+        if self.action_step is not None:
+            self.fail_reasons.append('%s FAILS - %s' %
+                                     (self.action_step, reason))
 
 
     def run_once(self, host, client_autotest, action_sequence, repeat,
