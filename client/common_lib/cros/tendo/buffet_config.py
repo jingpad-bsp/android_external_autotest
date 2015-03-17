@@ -23,12 +23,10 @@ OBJECT_MANAGER_PATH = '/org/chromium/Buffet'
 
 MANAGER_PROPERTY_STATUS = 'Status'
 STATUS_OFFLINE = 'offline'
-STATUS_CLOUD_ERROR = 'cloud_error'
+STATUS_UNCONFIGURED = 'unconfigured'
+STATUS_CONNECTING = 'connecting'
+STATUS_CONNECTED = 'connected'
 STATUS_INVALID_CREDENTIALS = 'invalid_credentials'
-STATUS_UNREGISTERED = 'unregistered'
-STATUS_REGISTERING = 'registering'
-STATUS_REGISTERED = 'registered'
-
 
 TEST_MESSAGE = 'Hello world!'
 

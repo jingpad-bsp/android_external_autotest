@@ -200,7 +200,7 @@ class buffet_Registration(test.test):
                 test_definitions_dir=self._temp_dir_path)
         config.restart_with_config(clean_state=True)
         self._check_registration_status_is(
-                buffet_config.STATUS_UNREGISTERED)
+                buffet_config.STATUS_UNCONFIGURED)
         # Now register the device against a ticket we create.
         ticket = registration_client.create_registration_ticket()
         logging.info('Created ticket: %r', ticket)
@@ -228,7 +228,7 @@ class buffet_Registration(test.test):
                     'device resource')
         logging.info('Registration successful')
         self._check_registration_status_is(
-                buffet_config.STATUS_REGISTERED)
+                buffet_config.STATUS_CONNECTED)
         # Confirm that we StartDevice after registering successfully.
         self._check_buffet_is_polling(device_id)
         # Now restart buffet, while maintaining our built up state.  Confirm
@@ -239,7 +239,7 @@ class buffet_Registration(test.test):
                      'after restart.')
         self._check_buffet_is_polling(device_id)
         self._check_registration_status_is(
-                buffet_config.STATUS_REGISTERED)
+                buffet_config.STATUS_CONNECTED)
 
         # Now invalidate buffet's current access token and check that
         # we can still poll for commands. This demonstrates that
@@ -249,7 +249,7 @@ class buffet_Registration(test.test):
         logging.info('Checking that Buffet can obtain a new access token.')
         self._check_buffet_is_polling(device_id)
         self._check_registration_status_is(
-                buffet_config.STATUS_REGISTERED)
+                buffet_config.STATUS_CONNECTED)
 
         # Now invalidate buffet's access and refresh token and check
         # that buffet transitions to the invalid_credentials state.
