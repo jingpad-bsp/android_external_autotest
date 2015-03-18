@@ -15,9 +15,7 @@ class WaffleInterface : public GLInterface {
   WaffleInterface() : display_(NULL),
                    config_(NULL),
                    surface_(NULL),
-                   context_(NULL),
-                   width_(0),
-                   height_(0) { }
+                   context_(NULL) { }
   virtual ~WaffleInterface() {}
 
   virtual bool Init();
@@ -45,15 +43,12 @@ class WaffleInterface : public GLInterface {
 
  private:
   void InitOnce();
-  bool GetDisplaySize();
+  void GetSurfaceSize(GLint *width, GLint *height);
 
   struct waffle_display *display_;
   struct waffle_config *config_;
   struct waffle_window *surface_;
   struct waffle_context *context_;
-
-  int width_;
-  int height_;
 };
 
 #endif // BENCH_GL_WAFFLE_STUFF_H_

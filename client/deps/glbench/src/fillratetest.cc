@@ -200,6 +200,11 @@ bool FboFillRateTest::Run() {
     CHECK(!glGetError());
 
     // Setup Framebuffer.
+    // TODO(fjhenigman): In WAFFLE_PLATFORM_NULL the default framebuffer
+    // is NOT zero, so we have to save the current binding and restore
+    // that value later.  Fix this.
+    GLint save_fb;
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &save_fb);
     GLuint framebuffer = 0;
     glGenFramebuffers(1, &framebuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
@@ -223,7 +228,7 @@ bool FboFillRateTest::Run() {
     FillRateTestNormalSubWindow(name, size, size);
 
     // Clean up for this loop.
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, save_fb);
     glDeleteFramebuffers(1, &framebuffer);
     glDeleteTextures(1, &source_texture);
     glDeleteTextures(1, &destination_texture);

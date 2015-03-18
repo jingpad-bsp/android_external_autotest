@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#define WAFFLE_API_VERSION 0x0106
+
 #include "base/logging.h"
 #include "main.h"
 #include "waffle_stuff.h"
@@ -23,46 +25,23 @@ LIST_PROC_FUNCTIONS(F)
 #define GL_API WAFFLE_CONTEXT_OPENGL_ES2
 #endif
 
-// TODO(fjhenigman): upstream this platform selection stuff to waffle
-#define PLATFORM_GLX     1
-#define PLATFORM_X11_EGL 2
-#define PLATFORM_GBM     3
+#define ID_PLATFORM_GLX     1
+#define ID_PLATFORM_X11_EGL 2
+#define ID_PLATFORM_NULL    3
 
 #define CONCAT(a,b) a ## b
-#define STRING(a) #a
-#define PLATFORM_NUMBER(x) CONCAT(PLATFORM_, x)
-#define PLATFORM_ENUM(x) CONCAT(WAFFLE_PLATFORM_, x)
-#define PLATFORM_IS(x) PLATFORM_NUMBER(x) == PLATFORM_NUMBER(PLATFORM)
-#define PLATFORM_STRING STRING(PLATFORM)
+#define PLATFORM_ID(x) CONCAT(ID_, x)
+#define PLATFORM_ENUM(x) CONCAT(WAFFLE_, x)
+#define THIS_IS(x) PLATFORM_ID(x) == PLATFORM_ID(PLATFORM)
 
-#if PLATFORM_IS(GLX)
-
+#if THIS_IS(PLATFORM_GLX)
 #include "waffle_glx.h"
-#define DISPLAY NULL
-
-#elif PLATFORM_IS(X11_EGL)
-
+#elif THIS_IS(PLATFORM_X11_EGL)
 #include "waffle_x11_egl.h"
-#define DISPLAY NULL
-
-#elif PLATFORM_IS(GBM)
-
-#include <xf86drmMode.h>
-#include <gbm.h>
-#include "waffle_gbm.h"
-
-// Supply a path here because waffle will use a render node by default,
-// and GetDisplaySize() won't work.
-// TODO(fjhenigman): there are probably better options than hard-coding
-// a path, perhaps adding to waffle some way of hinting that we don't
-// want a render node.  Or, since it's probably only the code in
-// GetDisplaySize() that balks on a render node, and that code ought to go
-// away someday, we might be able to change this hard-coded path to NULL
-// at that time.
-#define DISPLAY "/dev/dri/card0"
-
+#elif THIS_IS(PLATFORM_NULL)
+#include "waffle_null.h"
 #else
-#error "platform not specified - compile with -DPLATFORM=<platform>"
+#error "Compile with -DPLATFORM=PLATFORM_<x> where <x> is NULL, GLX or X11_EGL."
 #endif
 
 #define WAFFLE_CHECK_ERROR do { CHECK(WaffleOK()); } while (0)
@@ -81,68 +60,40 @@ static bool WaffleOK() {
   return false;
 }
 
-// TODO(fjhenigman): when waffle allows requesting a full screen window,
-//                   this should no longer be necessary
-bool WaffleInterface::GetDisplaySize() {
-  union waffle_native_display *ndpy = waffle_display_get_native(display_);
-  bool ok = false;
+void WaffleInterface::GetSurfaceSize(GLint *width, GLint *height) {
+  union waffle_native_window *nw = waffle_window_get_native(surface_);
 
-  if (!ndpy)
-    return false;
-
-#if PLATFORM_IS(GBM)
-  // find first in-use connector then
-  //   get encoder connected to it
-  //   get crtc connected to encoder
-  //   get mode from crtc
-  // OR
-  //   get connector's preferred mode
-  int fd = gbm_device_get_fd(ndpy->gbm->gbm_device);
-  drmModeModeInfoPtr mode = NULL;
-  drmModeResPtr res = drmModeGetResources(fd);
-  for (int i = 0; !mode && i < res->count_connectors; ++i) {
-    drmModeConnectorPtr conn = drmModeGetConnector(fd, res->connectors[i]);
-    drmModeEncoderPtr enc = NULL;
-    drmModeCrtcPtr crtc = NULL;
-    if (conn && conn->connection == DRM_MODE_CONNECTED) {
-      enc = drmModeGetEncoder(fd, conn->encoder_id);
-      if (enc)
-        crtc = drmModeGetCrtc(fd, enc->crtc_id);
-      if (crtc)
-        mode = &crtc->mode;
-      if (!mode) {
-        // display apparently not initialized, use first preferred mode
-        // (or last mode if none are preferred)
-        for (int j = 0; j < conn->count_modes; ++j) {
-          mode = conn->modes + j;
-          if (mode->type & DRM_MODE_TYPE_PREFERRED)
-            break;
-        }
-      }
-      if (mode) {
-        width_ = mode->hdisplay;
-        height_ = mode->vdisplay;
-        ok = true;
-      }
-    }
-    drmModeFreeConnector(conn);
-    drmModeFreeEncoder(enc);
-    drmModeFreeCrtc(crtc);
-  }
-  drmModeFreeResources(res);
+#if THIS_IS(PLATFORM_NULL)
+  *width = nw->null->width;
+  *height = nw->null->height;
+#elif THIS_IS(PLATFORM_GLX)
+  unsigned w, h;
+#if 0
+  // doesn't work with mesa - https://bugs.freedesktop.org/show_bug.cgi?id=54080
+  glXQueryDrawable(nw->glx->xlib_display, nw->glx->xlib_window, GLX_WIDTH, &w);
+  glXQueryDrawable(nw->glx->xlib_display, nw->glx->xlib_window, GLX_HEIGHT, &h);
 #else
-#if PLATFORM_IS(GLX)
-  Display *xdpy = ndpy->glx->xlib_display;
-#elif PLATFORM_IS(X11_EGL)
-  Display *xdpy = ndpy->x11_egl->xlib_display;
+   Window root;
+   int x, y;
+   unsigned bd, depth;
+   XGetGeometry(nw->glx->xlib_display, nw->glx->xlib_window,
+                &root, &x, &y, &w, &h, &bd, &depth);
 #endif
-  width_ = DisplayWidth(xdpy, DefaultScreen(xdpy));
-  height_ = DisplayHeight(xdpy, DefaultScreen(xdpy));
-  ok = true;
+  *width = w;
+  *height = h;
+#elif THIS_IS(PLATFORM_X11_EGL)
+  EGLint w, h;
+  eglQuerySurface(nw->x11_egl->display.egl_display, nw->x11_egl->egl_surface,
+                  EGL_WIDTH, &w);
+  eglQuerySurface(nw->x11_egl->display.egl_display, nw->x11_egl->egl_surface,
+                  EGL_HEIGHT, &h);
+  *width = w;
+  *height = h;
+#else
+#error "Compile with -DPLATFORM=PLATFORM_<x> where <x> is NULL, GLX or X11_EGL."
 #endif
 
-  free(ndpy);
-  return ok;
+  free(nw);
 }
 
 void WaffleInterface::InitOnce() {
@@ -158,20 +109,8 @@ void WaffleInterface::InitOnce() {
   waffle_init(initAttribs);
   WAFFLE_CHECK_ERROR;
 
-  display_ = waffle_display_connect(DISPLAY);
+  display_ = waffle_display_connect(NULL);
   WAFFLE_CHECK_ERROR;
-
-  CHECK(GetDisplaySize());
-
-  if (g_width == -1)
-    g_width = width_;
-  if (g_height == -1)
-    g_height = height_;
-
-  if (g_height > height_ || g_width > width_)
-    printf("# Warning: buffer dimensions (%d, %d)"
-           "larger than fullscreen (%d, %d)\n",
-            g_height, g_width, height_, width_);
 
   int32_t configAttribs[] = {
     WAFFLE_CONTEXT_API,     GL_API,
@@ -187,7 +126,16 @@ void WaffleInterface::InitOnce() {
   config_ = waffle_config_choose(display_, configAttribs);
   WAFFLE_CHECK_ERROR;
 
-  surface_ = waffle_window_create(config_, g_width, g_height);
+  if (g_width == -1 && g_height == -1) {
+    const intptr_t attrib[] = {
+      WAFFLE_WINDOW_FULLSCREEN, 1,
+      0
+    };
+    surface_ = waffle_window_create2(config_, attrib);
+    GetSurfaceSize(&g_width, &g_height);
+  } else {
+    surface_ = waffle_window_create(config_, g_width, g_height);
+  }
   WAFFLE_CHECK_ERROR;
 
   waffle_window_show(surface_);

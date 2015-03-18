@@ -16,12 +16,12 @@ endif
 
 ifneq ($(USE_X),)
     ifneq ($(USE_GLES),)
-        PLATFORM = X11_EGL
+        PLATFORM = PLATFORM_X11_EGL
     else
-        PLATFORM = GLX
+        PLATFORM = PLATFORM_GLX
     endif
 else
-    PLATFORM = GBM
+    PLATFORM = PLATFORM_NULL
 endif
 
 SOURCES_GL_BENCH = main.cc yuvtest.cc testbase.cc
@@ -56,8 +56,8 @@ TEARTEST = ../teartest
 WINDOWMANAGERTEST = ../windowmanagertest
 
 PLATFORM_PKGS = waffle-1
-ifeq ($(PLATFORM),GBM)
-    PLATFORM_PKGS += libdrm gbm
+ifeq ($(PLATFORM),PLATFORM_GLX)
+    PLATFORM_PKGS += x11
 endif
 PLATFORM_CFLAGS = -DPLATFORM=$(PLATFORM)
 PLATFORM_CFLAGS += $(shell $(PKG_CONFIG) --cflags $(PLATFORM_PKGS))
