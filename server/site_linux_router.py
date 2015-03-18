@@ -47,7 +47,8 @@ def build_router_hostname(client_hostname=None, router_hostname=None):
                                            cmdline_override=router_hostname)
 
 
-def build_router_proxy(test_name='', client_hostname=None, router_addr=None):
+def build_router_proxy(test_name='', client_hostname=None, router_addr=None,
+                       enable_avahi=False):
     """Build up a LinuxRouter object.
 
     Verifies that the remote host responds to ping.
@@ -56,6 +57,7 @@ def build_router_proxy(test_name='', client_hostname=None, router_addr=None):
     @param test_name: string name of this test (e.g. 'network_WiFi_TestName').
     @param client_hostname: string hostname of DUT if we're in the lab.
     @param router_addr: string DNS/IPv4 address to use for router host object.
+    @param enable_avahi: boolean True iff avahi should be started on the router.
 
     @return LinuxRouter or raise error.TestError on failure.
 
@@ -68,7 +70,8 @@ def build_router_proxy(test_name='', client_hostname=None, router_addr=None):
         raise error.TestError('Router at %s is not pingable.' %
                               router_hostname)
 
-    return LinuxRouter(hosts.create_host(router_hostname), test_name)
+    return LinuxRouter(hosts.create_host(router_hostname), test_name,
+                       enable_avahi=enable_avahi)
 
 
 class LinuxRouter(site_linux_system.LinuxSystem):
@@ -135,11 +138,13 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         return self.get_wifi_ip(0)
 
 
-    def __init__(self, host, test_name):
+    def __init__(self, host, test_name, enable_avahi=False):
         """Build a LinuxRouter.
 
         @param host Host object representing the remote machine.
         @param test_name string name of this test.  Used in SSID creation.
+        @param enable_avahi: boolean True iff avahi should be started on the
+                router.
 
         """
         super(LinuxRouter, self).__init__(host, 'router')
@@ -188,6 +193,12 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
         # Reset all antennas to be active
         self.set_default_antenna_bitmap()
+
+        # Some tests want this functionality, but otherwise, it's a distraction.
+        if enable_avahi:
+            self.host.run('start avahi', ignore_status=True)
+        else:
+            self.host.run('stop avahi', ignore_status=True)
 
 
     def close(self):

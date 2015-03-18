@@ -46,7 +46,8 @@ class privetd_PrivetSetupFlow(test.test):
         self._router = site_linux_router.build_router_proxy(
                 test_name=self.__class__.__name__,
                 client_hostname=host.hostname,
-                router_addr=router_hostname)
+                router_addr=router_hostname,
+                enable_avahi=True)
         self._shill_xmlrpc_proxy = wifi_client.get_xmlrpc_proxy(host)
         # Cleans up profiles, wifi credentials, sandboxes our new credentials.
         self._shill_xmlrpc_proxy.init_test_network_state()
