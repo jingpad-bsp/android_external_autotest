@@ -24,6 +24,7 @@ class TextureUpdateTest : public TextureTest {
 bool TextureUpdateTest::TestFunc(uint64_t iterations) {
   glGetError();
 
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
   glFlush();
   for (uint64_t i = 0; i < iterations; ++i) {
