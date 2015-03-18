@@ -110,6 +110,7 @@ static int initGraphics(int32_t platform)
         WAFFLE_GREEN_SIZE,      5,
         WAFFLE_BLUE_SIZE,       5,
         WAFFLE_ALPHA_SIZE,      0,
+        WAFFLE_DEPTH_SIZE,      16,
         WAFFLE_DOUBLE_BUFFERED, true,
         0
     };
@@ -138,6 +139,9 @@ static int initGraphics(int32_t platform)
 
     sWindow = waffle_window_create(sConfig, sWindowWidth, sWindowHeight);
     if (!sWindow)
+        return waffleError();
+
+    if (!waffle_window_show(sWindow))
         return waffleError();
 
     ok = waffle_make_current(sDisplay, sWindow, sContext);
@@ -176,29 +180,38 @@ static void deinitGraphics()
         waffleError();
 }
 
+#define PLATFORM(x) { #x, WAFFLE_PLATFORM_##x }
+
+static struct platform_item {
+    const char *name;
+    int32_t value;
+} platform_list[] = {
+    PLATFORM(GLX),
+    PLATFORM(X11_EGL),
+    PLATFORM(GBM),
+    PLATFORM(NULL),
+    { NULL, 0 }
+};
+
 int main(int argc, char *argv[])
 {
-    int32_t platform = WAFFLE_NONE;
-    if (argc == 3)
-    {
-        // TODO(fjhenigman): add waffle_to_string_to_enum to waffle
-        // then only pass in platform string here.
-        platform = atoi(argv[2]);
-        if (strcmp(waffle_enum_to_string(platform), argv[1]))
-        {
-            // check if waffle changed platform names/values so that
-            // they no longer match those in the test driver
-            fprintf(stderr, "Error: %s != %d\n", argv[1], platform);
-            return EXIT_FAILURE;
-        }
+    // TODO(fjhenigman): add waffle_to_string_to_enum to waffle then use it
+    // to parse the platform arg.
+    int32_t platform_value = WAFFLE_NONE;
+    struct platform_item *p = platform_list;
+    while (argc == 2 && p->name && platform_value == WAFFLE_NONE) {
+        if (!strcasecmp(argv[1], p->name))
+            platform_value = p->value;
+        ++p;
     }
-    if (platform == WAFFLE_NONE )
+
+    if (platform_value == WAFFLE_NONE)
     {
-        fprintf(stderr, "Usage: SanOGLES <platform name> <platform value>\n");
+        fprintf(stderr, "Usage: SanOGLES <platform>\n");
         return EXIT_FAILURE;
     }
 
-    if (!initGraphics(platform))
+    if (!initGraphics(platform_value))
     {
         fprintf(stderr, "Error: Graphics initialization failed.\n");
         return EXIT_FAILURE;
@@ -222,9 +235,6 @@ int main(int argc, char *argv[])
                                   timeNow.tv_usec / 1000),
                   sWindowWidth, sWindowHeight);
         gettimeofday(&timeAfter, NULL);
-        if (num_frames == 0)
-            if (!waffle_window_show(sWindow))
-                waffleError();
 
 #ifdef SAN_ANGELES_OBSERVATION_GLES
         checkGLErrors();

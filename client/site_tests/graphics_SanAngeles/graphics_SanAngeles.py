@@ -6,6 +6,7 @@ import logging, os, re
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.graphics import graphics_utils
 
 class graphics_SanAngeles(test.test):
@@ -23,8 +24,14 @@ class graphics_SanAngeles(test.test):
 
     def initialize(self):
         self.GSC = graphics_utils.GraphicsStateChecker()
+        if utils.is_freon():
+            # If UI is running, we must stop it and restore later.
+            self._services = service_stopper.ServiceStopper(['ui'])
+            self._services.stop_services()
 
     def cleanup(self):
+        if utils.is_freon() and self._services:
+            self._services.restore_services()
         if self.GSC:
             keyvals = self.GSC.get_memory_keyvals()
             for key, val in keyvals.iteritems():
@@ -48,8 +55,7 @@ class graphics_SanAngeles(test.test):
                                  '%s, %s or %s.  Test setup error.'
                                  % (cmd_gl, cmd_gles, cmd_gles_s))
 
-        cmd += ' %s %d' % graphics_utils.waffle_platform(
-                              utils.graphics_platform())
+        cmd += ' ' + utils.graphics_platform()
         cmd = graphics_utils.xcommand(cmd)
         result = utils.run(cmd,
                            stderr_is_expected = False,
