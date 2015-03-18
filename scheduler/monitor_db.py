@@ -168,10 +168,17 @@ def main_without_exception_handling():
         initialize()
         dispatcher = Dispatcher()
         dispatcher.initialize(recover_hosts=options.recover_hosts)
+        minimum_tick_sec = global_config.global_config.get_config_value(
+                scheduler_config.CONFIG_SECTION, 'minimum_tick_sec', type=float)
 
         while not _shutdown and not server._shutdown_scheduler:
+            start = time.time()
             dispatcher.tick()
-            time.sleep(scheduler_config.config.tick_pause_sec)
+            curr_tick_sec = time.time() - start
+            if (minimum_tick_sec > curr_tick_sec):
+                time.sleep(minimum_tick_sec - curr_tick_sec)
+            else:
+                time.sleep(0.0001)
     except Exception:
         email_manager.manager.log_stacktrace(
             "Uncaught exception; terminating monitor_db")
