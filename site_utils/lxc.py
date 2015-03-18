@@ -21,6 +21,7 @@ container, e.g.,
 
 import argparse
 import logging
+import netifaces
 import os
 import socket
 import sys
@@ -33,6 +34,8 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 
+
+config = global_config.global_config
 
 # Name of the base container.
 BASE = 'base'
@@ -52,11 +55,9 @@ ATTRIBUTES = ['name', 'state', 'ipv4', 'ipv6', 'autostart', 'pid', 'memory',
 MOUNT_FMT = ('lxc.mount.entry = %(source)s %(destination)s none '
              'bind%(readonly)s 0 0')
 # url to the base container.
-CONTAINER_BASE_URL = global_config.global_config.get_config_value(
-        'AUTOSERV', 'container_base')
+CONTAINER_BASE_URL = config.get_config_value('AUTOSERV', 'container_base')
 # Default directory used to store LXC containers.
-DEFAULT_CONTAINER_PATH = global_config.global_config.get_config_value(
-        'AUTOSERV', 'container_path')
+DEFAULT_CONTAINER_PATH = config.get_config_value('AUTOSERV', 'container_path')
 
 # Path to drone_temp folder in the container, which stores the control file for
 # test job to run.
@@ -595,6 +596,59 @@ class ContainerBucket(object):
             (self.container_path, config_path))
 
 
+    def get_host_ip(self):
+        """Get the IP address of the host running containers on lxcbr*.
+
+        This function gets the IP address on network interface lxcbr*. The
+        assumption is that lxc uses the network interface started with "lxcbr".
+
+        @return: IP address of the host running containers.
+        """
+        lxc_network = None
+        for name in netifaces.interfaces():
+            if name.startswith('lxcbr'):
+                lxc_network = name
+                break
+        if not lxc_network:
+            raise error.ContainerError('Failed to find network interface used '
+                                       'by lxc. All existing interfaces are: '
+                                       '%s' % netifaces.interfaces())
+        return netifaces.ifaddresses(lxc_network)[netifaces.AF_INET][0]['addr']
+
+
+    def modify_shadow_config(self, container, shadow_config):
+        """Update the shadow config used in container with correct values.
+
+        1. Disable master ssh connection in shadow config, as it is not working
+           properly in container yet, and produces noise in the log.
+        2. Update AUTOTEST_WEB/host and SERVER/hostname to be the IP of the host
+           if any is set to localhost or 127.0.0.1.
+
+        @param container: The container object to be updated in shadow config.
+        @param shadow_config: Path the the shadow config file to be used in the
+                              container.
+        """
+        # Inject "AUTOSERV/enable_master_ssh: False" in shadow config as
+        # container does not support master ssh connection yet.
+        container.attach_run(
+                'echo $\'\n[AUTOSERV]\nenable_master_ssh: False\n\' >> %s' %
+                shadow_config)
+
+        host_ip = self.get_host_ip()
+        local_names = ['localhost', '127.0.0.1']
+
+        db_host = config.get_config_value('AUTOTEST_WEB', 'host')
+        if db_host.lower() in local_names:
+            container.attach_run(
+                    'echo $\'\n[AUTOTEST_WEB]\nhost: %s\n\' >> %s' %
+                    (host_ip, shadow_config))
+
+        afe_host = config.get_config_value('SERVER', 'hostname')
+        if afe_host.lower() in local_names:
+            container.attach_run('echo $\'\n[SERVER]\nhostname: %s\n\' >> %s' %
+                                 (host_ip, shadow_config))
+
+
     @timer.decorate
     @cleanup_if_fail()
     def setup_test(self, name, job_id, server_package_url, result_path,
@@ -645,7 +699,9 @@ class ContainerBucket(object):
         download_extract(server_package_url, autotest_pkg_path, usr_local_path)
         # Copy over local shadow_config.ini
         shadow_config = os.path.join(common.autotest_dir, 'shadow_config.ini')
-        run('cp %s %s' % (shadow_config, autotest_path))
+        container_shadow_config = os.path.join(autotest_path,
+                                               'shadow_config.ini')
+        run('cp %s %s' % (shadow_config, container_shadow_config))
 
         # Copy over control file to run the test job.
         if control:
@@ -685,10 +741,8 @@ class ContainerBucket(object):
         container.start(name)
         # Make sure the rsa file has right permission.
         container.attach_run('chmod 700 /root/.ssh/testing_rsa')
-        # Inject "AUTOSERV/enable_master_ssh: False" in shadow config as
-        # container does not support master ssh connection yet.
-        container.attach_run(
-                'echo $\'[AUTOSERV]\nenable_master_ssh: False\' >> "%s"' %
+        self.modify_shadow_config(
+                container,
                 os.path.join(CONTAINER_AUTOTEST_DIR, 'shadow_config.ini'))
 
         container.verify_autotest_setup(job_id)
