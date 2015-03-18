@@ -1037,7 +1037,7 @@ def graphics_platform():
     """
     use_flags = get_ui_use_flags()
     if 'X' not in use_flags:
-        return 'gbm'
+        return 'null'
     elif 'opengles' in use_flags:
         return 'x11_egl'
     return 'glx'

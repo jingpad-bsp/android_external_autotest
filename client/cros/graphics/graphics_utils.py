@@ -858,22 +858,12 @@ def wflinfo_cmd():
     """
     Return a wflinfo command appropriate to the current graphics platform/api.
     """
-    platform = utils.graphics_platform()
-    api = utils.graphics_api()
-    if platform not in ('android', 'cgl', 'gbm', 'glx', 'wayland', 'x11_egl'):
-        raise error.TestFail('wflinfo: unknown platform')
-    if api not in ('gl', 'gles1', 'gles2', 'gles3'):
-        raise error.TestFail('wflinfo: unknown api')
-    return 'wflinfo -p %s -a %s' % (platform, api)
+    return 'wflinfo -p %s -a %s' % (utils.graphics_platform(),
+                                    utils.graphics_api())
 
 
 def is_sw_rasterizer():
     """Return true if OpenGL is using a software rendering."""
-    # TODO(ihf): Remove this after porting waffle. crbug.com/431585
-    if utils.is_freon():
-        logging.warning('Due to crbug.com/431585 unable to determine if using '
-                        'software rasterizer on Freon.')
-        return False
     cmd = wflinfo_cmd() + ' | grep "OpenGL renderer string"'
     cmd = xcommand(cmd)
     output = utils.run(cmd)
