@@ -12,6 +12,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.audio import audio_test_data
 from autotest_lib.client.cros.chameleon import chameleon_audio_helper
 from autotest_lib.client.cros.chameleon import chameleon_audio_ids
+from autotest_lib.client.cros.chameleon import chameleon_port_finder
 from autotest_lib.server import test
 from autotest_lib.server.cros.multimedia import remote_facade_factory
 
@@ -29,6 +30,8 @@ class audio_AudioBasicHDMI(test.test):
     DELAY_AFTER_BINDING = 2
 
     def run_once(self, host):
+        edid_path = os.path.join(self.bindir,
+                                 'test_data/edids/HDMI_DELL_U2410.txt')
         golden_file = audio_test_data.SWEEP_TEST_FILE
 
         chameleon_board = host.chameleon
@@ -45,36 +48,44 @@ class audio_AudioBasicHDMI(test.test):
             chameleon_audio_ids.ChameleonIds.HDMI)
         binder = widget_factory.create_binder(source, recorder)
 
-        with chameleon_audio_helper.bind_widgets(binder):
-            time.sleep(DELAY_AFTER_BINDING)
-            audio_facade = factory.create_audio_facade()
-            output_node, _ = audio_facade.get_selected_node_types()
-            if output_node != 'HDMI':
-                raise error.TestError(
-                        '%s rather than HDMI is selected on Cros device' %
-                                output_node)
-
-            logging.info('Start recording from Chameleon.')
-            recorder.start_recording()
-
-            time.sleep(self.DELAY_BEFORE_PLAYBACK)
-
-            logging.info('Start playing %s on Cros device',
-                         golden_file.path)
-            source.start_playback(golden_file, blocking=True)
-
-            logging.info('Stopped playing %s on Cros device',
-                         golden_file.path)
-            time.sleep(self.DELAY_AFTER_PLAYBACK)
-
-            recorder.stop_recording()
-            logging.info('Stopped recording from Chameleon.')
-
-        recorded_file = os.path.join(self.resultsdir, "recorded.raw")
-        logging.info('Saving recorded data to %s', recorded_file)
-        recorder.save_file(recorded_file)
-
-        if not chameleon_audio_helper.compare_recorded_result(
-                golden_file, recorder, 'correlation'):
+        display_facade = factory.create_display_facade()
+        finder = chameleon_port_finder.ChameleonVideoInputFinder(
+                chameleon_board, display_facade)
+        hdmi_port = finder.find_port('HDMI')
+        if not hdmi_port:
             raise error.TestError(
-                    'Recorded file does not match playback file')
+                    'Can not find HDMI port, perhaps HDMI is not connected?')
+        with hdmi_port.use_edid_file(edid_path):
+            with chameleon_audio_helper.bind_widgets(binder):
+                time.sleep(DELAY_AFTER_BINDING)
+                audio_facade = factory.create_audio_facade()
+                output_node, _ = audio_facade.get_selected_node_types()
+                if output_node != 'HDMI':
+                    raise error.TestError(
+                            '%s rather than HDMI is selected on Cros device' %
+                                    output_node)
+
+                logging.info('Start recording from Chameleon.')
+                recorder.start_recording()
+
+                time.sleep(self.DELAY_BEFORE_PLAYBACK)
+
+                logging.info('Start playing %s on Cros device',
+                             golden_file.path)
+                source.start_playback(golden_file, blocking=True)
+
+                logging.info('Stopped playing %s on Cros device',
+                             golden_file.path)
+                time.sleep(self.DELAY_AFTER_PLAYBACK)
+
+                recorder.stop_recording()
+                logging.info('Stopped recording from Chameleon.')
+
+            recorded_file = os.path.join(self.resultsdir, "recorded.raw")
+            logging.info('Saving recorded data to %s', recorded_file)
+            recorder.save_file(recorded_file)
+
+            if not chameleon_audio_helper.compare_recorded_result(
+                    golden_file, recorder, 'correlation'):
+                raise error.TestError(
+                        'Recorded file does not match playback file')
