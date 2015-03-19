@@ -241,3 +241,43 @@ def node_type_is_plugged(node_type, server_info=None):
             line_split[_INDEX_VALUE_PLUGGED] == 'yes'):
             state = True
     return state
+
+
+# Cras node types reported from cras_test_client --dump_server_info.
+CRAS_OUTPUT_NODE_TYPES = ['HEADPHONE', 'INTERNAL_SPEAKER', 'HDMI', 'USB',
+                          'BLUETOOTH']
+CRAS_INPUT_NODE_TYPES = ['MIC', 'INTERNAL_MIC', 'USB', 'BLUETOOTH']
+CRAS_NODE_TYPES = CRAS_OUTPUT_NODE_TYPES + CRAS_INPUT_NODE_TYPES
+
+
+def get_node_type(node):
+    """Gets node type by node id.
+
+    @param node: A string for node id, e.g. 4:1.
+
+    @returns: The node type reported by cras. The types are:
+
+
+    @raises: RuntimeError if node type is invalid or can not be determined.
+
+    """
+    # From server info, find a line starting with node id and get its
+    # node type. E.g.:
+    # 3:0    75   yes     no     1419323058   HEADPHONE  *Headphone
+    _MIN_LENGTH = 7
+    _INDEX_NODE_ID = 0
+    _INDEX_NODE_TYPE = 5
+    server_info = dump_server_info()
+    for line in server_info.splitlines():
+        # '*' is the mark that a node is selected, replace it with ' ' so it
+        # will not break field spliting.
+        line_split = line.replace('*', ' ').split()
+        if len(line_split) < _MIN_LENGTH:
+            continue
+        if line_split[_INDEX_NODE_ID] != node:
+            continue
+        node_type = line_split[_INDEX_NODE_TYPE]
+        if node_type not in CRAS_NODE_TYPES:
+            raise RuntimeError('Node type %s is invalid' % node_type)
+        return node_type
+    raise RuntimeError('Can not find node type for node %s' % node)
