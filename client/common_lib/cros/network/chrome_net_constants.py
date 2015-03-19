@@ -5,3 +5,5 @@
 # These constants are used by the Chrome end-to-end tests.
 OPEN_CONNECT = 'OpenNetworkConnect'
 OPEN_ROAM = 'OpenNetworkRoam'
+SHORT_TIMEOUT = 10
+LONG_TIMEOUT = 30
