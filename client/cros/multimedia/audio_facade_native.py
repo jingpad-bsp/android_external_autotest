@@ -128,6 +128,18 @@ class AudioFacadeNative(object):
         cras_utils.set_selected_output_node_volume(volume)
 
 
+    def get_selected_node_types(self):
+        """Gets the selected output and input node types.
+
+        @returns: A tuple (output node type, input node type) where node types
+                  are defined in cras_utils.CRAS_NODE_TYPES.
+
+        """
+        output_node, input_node = cras_utils.get_selected_nodes()
+        return (cras_utils.get_node_type(output_node),
+                cras_utils.get_node_type(input_node))
+
+
 class RecorderError(Exception):
     """Error in Recorder."""
     pass
