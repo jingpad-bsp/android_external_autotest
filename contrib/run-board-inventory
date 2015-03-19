@@ -3,6 +3,7 @@
 SCRIPT_DIR=$(dirname $(readlink -f $0))
 RUNDATE=$(date +%Y-%m-%d.%H)
 RUNFILE=$SCRIPT_DIR/../logs/dut-data/boards-$RUNDATE.txt
+GMAIL_SCRIPT=$SCRIPT_DIR/../site_utils/gmail_lib.py
 
 # By default, we're invoked without arguments.  This is used by
 # the cron job, and means we should generate output and mail it to
@@ -34,4 +35,4 @@ fi
 
 ./board-status-summary >$RUNFILE
 
-mailx -s "DUT board inventories $RUNDATE" "${INTEREST[@]}" <$RUNFILE
+$GMAIL_SCRIPT -s "DUT board inventories $RUNDATE" "${INTEREST[@]}" <$RUNFILE
