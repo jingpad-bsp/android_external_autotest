@@ -47,7 +47,7 @@ _BUG_TEMPLATE = {
     'status': None,
     'summary': None,
     'title': None,
-    'cc': ['bjanakiraman@chromium.org', 'scottz@chromium.org']
+    'cc': ['bjanakiraman@chromium.org']
 }
 
 dynamic_suite.reimage_and_run(
