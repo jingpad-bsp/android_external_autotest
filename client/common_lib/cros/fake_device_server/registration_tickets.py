@@ -32,13 +32,16 @@ class RegistrationTickets(object):
     exposed = True
 
 
-    def __init__(self, resource, devices_instance):
+    def __init__(self, resource, devices_instance, fail_control_handler):
         """Initializes a registration ticket.
 
         @param resource: A resource delegate.
+        @param devices_instance: Instance of Devices class.
+        @param fail_control_handler: Instance of FailControl.
         """
         self.resource = resource
         self.devices_instance = devices_instance
+        self._fail_control_handler = fail_control_handler
 
 
     def _default_registration_ticket(self):
@@ -100,6 +103,7 @@ class RegistrationTickets(object):
         Raises:
             server_errors.HTTPError if the ticket doesn't exist.
         """
+        self._fail_control_handler.ensure_not_in_failure_mode()
         id, api_key, _ = common_util.parse_common_args(args, kwargs)
         return self.resource.get_data_val(id, api_key)
 
@@ -118,6 +122,7 @@ class RegistrationTickets(object):
             server_errors.HTTPError if the ticket should exist but doesn't
             (claim/finalize) or if we can't parse all the args.
         """
+        self._fail_control_handler.ensure_not_in_failure_mode()
         id, api_key, operation = common_util.parse_common_args(
                 args, kwargs, supported_operations=set(['finalize']))
         if operation:
@@ -162,6 +167,7 @@ class RegistrationTickets(object):
         Raises:
             server_errors.HTTPError if the ticket doesn't exist.
         """
+        self._fail_control_handler.ensure_not_in_failure_mode()
         id, api_key, _ = common_util.parse_common_args(args, kwargs)
         if not id:
             server_errors.HTTPError(400, 'Missing id for operation')
@@ -183,6 +189,7 @@ class RegistrationTickets(object):
 
         Raises:
         """
+        self._fail_control_handler.ensure_not_in_failure_mode()
         id, api_key, _ = common_util.parse_common_args(args, kwargs)
         if not id:
             server_errors.HTTPError(400, 'Missing id for operation')

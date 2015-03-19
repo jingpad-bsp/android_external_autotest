@@ -13,6 +13,7 @@ import unittest
 import common
 from fake_device_server import commands
 from fake_device_server import fake_oauth
+from fake_device_server import fail_control
 from fake_device_server import server_errors
 
 
@@ -31,7 +32,8 @@ class CommandsTest(mox.MoxTestBase):
         # Use a fake OAuth module to work around the hack that this
         # module bypass cherrypy by directly invoking commands.GET.
         self.oauth = fake_oauth.FakeOAuth()
-        self.commands = commands.Commands(self.oauth)
+        self.fail_control = fail_control.FailControl()
+        self.commands = commands.Commands(self.oauth, self.fail_control)
 
 
     def testCreateCommand(self):

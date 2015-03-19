@@ -12,6 +12,7 @@ import unittest
 import common
 from fake_device_server import commands
 from fake_device_server import devices
+from fake_device_server import fail_control
 from fake_device_server import oauth
 from fake_device_server import resource_delegate
 from fake_device_server import server_errors
@@ -24,12 +25,14 @@ class DevicesTest(mox.MoxTestBase):
         """Sets up mox and a ticket / registration objects."""
         mox.MoxTestBase.setUp(self)
         self.devices_resource = {}
-        self.oauth = oauth.OAuth()
-        self.commands = commands.Commands(self.oauth)
+        self.fail_control = fail_control.FailControl()
+        self.oauth = oauth.OAuth(self.fail_control)
+        self.commands = commands.Commands(self.oauth, self.fail_control)
         self.devices = devices.Devices(
                 resource_delegate.ResourceDelegate(self.devices_resource),
                 self.commands,
-                self.oauth)
+                self.oauth,
+                self.fail_control)
 
 
     def testCreateDevice(self):

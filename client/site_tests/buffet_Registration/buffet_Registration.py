@@ -20,6 +20,8 @@ from autotest_lib.client.common_lib.cros.fake_device_server.client_lib import \
 from autotest_lib.client.common_lib.cros.fake_device_server.client_lib import \
         devices
 from autotest_lib.client.common_lib.cros.fake_device_server.client_lib import \
+        fail_control
+from autotest_lib.client.common_lib.cros.fake_device_server.client_lib import \
         oauth
 from autotest_lib.client.common_lib.cros.fake_device_server.client_lib import \
         registration
@@ -202,6 +204,9 @@ class buffet_Registration(test.test):
         oauth_client = oauth.OAuthClient(
                 server_url=buffet_config.LOCAL_SERVICE_URL,
                 api_key=buffet_config.TEST_API_KEY)
+        fail_control_client = fail_control.FailControlClient(
+                server_url=buffet_config.LOCAL_SERVICE_URL,
+                api_key=buffet_config.TEST_API_KEY)
         self._command_client = commands.CommandsClient(
                 server_url=buffet_config.LOCAL_SERVICE_URL,
                 api_key=buffet_config.TEST_API_KEY)
@@ -251,6 +256,28 @@ class buffet_Registration(test.test):
         self._check_buffet_is_polling(device_id)
         self._check_registration_status_is(
                 buffet_config.STATUS_CONNECTED, expected_device_id=device_id)
+
+        # Now make fake_device_server fail all request from Buffet
+        # with HTTP Error Code 500 (Internal Server Error) and check
+        # that we transition to the CONNECTING state.
+        logging.info('Checking that Buffet transitions to CONNECTING after we start '
+                     'failling its requests')
+        fail_control_client.start_failing_requests()
+        self._check_registration_status_is(
+                buffet_config.STATUS_CONNECTING,
+                expected_device_id=device_id,
+                timeout_seconds=20)
+
+        # Stop failing request from and check that we transition to
+        # the CONNECTED state.
+        logging.info('Checking that Buffet transitions to CONNECTED after we stop '
+                     'failling its requests')
+        fail_control_client.stop_failing_requests()
+        self._check_registration_status_is(
+                buffet_config.STATUS_CONNECTED,
+                expected_device_id=device_id,
+                timeout_seconds=20)
+        self._check_buffet_is_polling(device_id)
 
         # Now invalidate buffet's current access token and check that
         # we can still poll for commands. This demonstrates that

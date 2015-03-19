@@ -27,12 +27,13 @@ class Commands(object):
     _COMMAND_ROOTS = set(['base', 'aggregator', 'printer', 'storage', 'test'])
 
 
-    def __init__(self, oauth_handler):
+    def __init__(self, oauth_handler, fail_control_handler):
         """Initializes a Commands handler."""
         # A map of device_id's to maps of command ids to command resources
         self.device_commands = dict()
         self._num_commands_created = 0
         self._oauth_handler = oauth_handler
+        self._fail_control_handler = fail_control_handler
 
 
     def _generate_command_id(self):
@@ -111,6 +112,7 @@ class Commands(object):
             server_errors.HTTPError if the device doesn't exist.
 
         """
+        self._fail_control_handler.ensure_not_in_failure_mode()
         args = list(args)
         requested_command_id = args.pop(0) if args else None
         device_id = kwargs.get('deviceId', None)
@@ -151,6 +153,7 @@ class Commands(object):
         """Creates a new command using the incoming json data."""
         # TODO(wiley) We could check authorization here, which should be
         #             a client/owner of the device.
+        self._fail_control_handler.ensure_not_in_failure_mode()
         data = common_util.parse_serialized_json()
         if not data:
             raise server_errors.HTTPError(400, 'Require JSON body')

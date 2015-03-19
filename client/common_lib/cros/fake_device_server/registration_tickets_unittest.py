@@ -13,6 +13,7 @@ import common
 from fake_device_server import common_util
 from fake_device_server import commands
 from fake_device_server import devices
+from fake_device_server import fail_control
 from fake_device_server import oauth
 from fake_device_server import registration_tickets
 from fake_device_server import resource_delegate
@@ -27,15 +28,18 @@ class RegistrationTicketsTest(mox.MoxTestBase):
         mox.MoxTestBase.setUp(self)
         self.tickets = {}
         self.devices_resource = {}
-        self.oauth = oauth.OAuth()
-        self.commands = commands.Commands(self.oauth)
+        self.fail_control = fail_control.FailControl()
+        self.oauth = oauth.OAuth(self.fail_control)
+        self.commands = commands.Commands(self.oauth, self.fail_control)
         self.devices = devices.Devices(
                 resource_delegate.ResourceDelegate(self.devices_resource),
                 self.commands,
-                self.oauth)
+                self.oauth,
+                self.fail_control)
 
         self.registration = registration_tickets.RegistrationTickets(
-                resource_delegate.ResourceDelegate(self.tickets), self.devices)
+                resource_delegate.ResourceDelegate(self.tickets), self.devices,
+                self.fail_control)
 
 
     def testFinalize(self):

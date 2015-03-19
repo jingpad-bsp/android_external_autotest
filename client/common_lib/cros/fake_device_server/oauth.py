@@ -24,9 +24,10 @@ class OAuth(object):
     # Needed for cherrypy to expose this to requests.
     exposed = True
 
-    def __init__(self):
+    def __init__(self, fail_control_handler):
         self._device_access_token = TEST_DEVICE_ACCESS_TOKEN
         self._device_refresh_token = TEST_DEVICE_REFRESH_TOKEN
+        self._fail_control_handler = fail_control_handler
 
 
     def get_api_key_from_access_token(self, access_token):
@@ -64,6 +65,7 @@ class OAuth(object):
         going to ignore most of these.
 
         """
+        self._fail_control_handler.ensure_not_in_failure_mode()
         path = list(args)
         if path == ['token']:
             body_length = int(cherrypy.request.headers.get('Content-Length', 0))

@@ -34,15 +34,19 @@ class Devices(resource_method.ResourceMethod):
     exposed = True
 
 
-    def __init__(self, resource, commands_instance, oauth_instance):
+    def __init__(self, resource, commands_instance, oauth_instance,
+                 fail_control_handler):
         """Initializes a registration ticket.
 
         @param resource: A resource delegate for storing devices.
         @param commands_instance: Instance of commands method class.
+        @param oauth_instance: Instance of oauth class.
+        @param fail_control_handler: Instance of FailControl.
         """
         super(Devices, self).__init__(resource)
         self.commands_instance = commands_instance
         self._oauth = oauth_instance
+        self._fail_control_handler = fail_control_handler
 
 
     def _handle_state_patch(self, device_id, api_key, data):
@@ -96,6 +100,7 @@ class Devices(resource_method.ResourceMethod):
         Raises:
             server_errors.HTTPError if the device doesn't exist.
         """
+        self._fail_control_handler.ensure_not_in_failure_mode()
         id, api_key, _ = common_util.parse_common_args(args, kwargs)
         if id:
             return self.resource.get_data_val(id, api_key)
@@ -115,6 +120,7 @@ class Devices(resource_method.ResourceMethod):
         POST /devices/<device-id>/patchState
 
         """
+        self._fail_control_handler.ensure_not_in_failure_mode()
         args = list(args)
         device_id = args.pop(0) if args else None
         operation = args.pop(0) if args else None
@@ -156,6 +162,7 @@ class Devices(resource_method.ResourceMethod):
         This PUT has no API key, but comes with an OAUTH access token.
 
         """
+        self._fail_control_handler.ensure_not_in_failure_mode()
         device_id, _, _ = common_util.parse_common_args(args, kwargs)
         access_token = common_util.get_access_token()
         if not access_token:
@@ -180,6 +187,7 @@ class Devices(resource_method.ResourceMethod):
         Raises:
             server_errors.HTTPError if the device doesn't exist.
         """
+        self._fail_control_handler.ensure_not_in_failure_mode()
         id, api_key, _ = common_util.parse_common_args(args, kwargs)
         self.resource.del_data_val(id, api_key)
         self.commands_instance.remove_device(id)
